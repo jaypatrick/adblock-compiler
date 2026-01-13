@@ -1880,7 +1880,12 @@ async function queueCompileJob(
 ): Promise<string> {
     // Check if queues are available
     if (!env.ADBLOCK_COMPILER_QUEUE || !env.ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY) {
-        throw new Error('Queue bindings not configured. Async compilation is not available.');
+        throw new Error(
+            'Queue bindings are not available. ' +
+            'To use async compilation, you must configure Cloudflare Queues in wrangler.toml. ' +
+            'See https://github.com/jaypatrick/adblock-compiler/blob/master/docs/QUEUE_SUPPORT.md for setup instructions. ' +
+            'Alternatively, use the synchronous endpoints: POST /compile or POST /compile/batch'
+        );
     }
 
     const requestId = generateRequestId('compile');
@@ -1927,7 +1932,12 @@ async function queueBatchCompileJob(
 ): Promise<string> {
     // Check if queues are available
     if (!env.ADBLOCK_COMPILER_QUEUE || !env.ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY) {
-        throw new Error('Queue bindings not configured. Async compilation is not available.');
+        throw new Error(
+            'Queue bindings are not available. ' +
+            'To use async compilation, you must configure Cloudflare Queues in wrangler.toml. ' +
+            'See https://github.com/jaypatrick/adblock-compiler/blob/master/docs/QUEUE_SUPPORT.md for setup instructions. ' +
+            'Alternatively, use the synchronous endpoints: POST /compile or POST /compile/batch'
+        );
     }
 
     const requestId = generateRequestId('batch');
