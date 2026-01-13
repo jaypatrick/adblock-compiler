@@ -786,9 +786,9 @@
     <div class="container">
         <header>
             <h1>🛡️ Adblock Compiler</h1>
-            <p><strong>Compiler-as-a-Service</strong> | Real-time filter list compilation with event-driven pipeline</p>
-            <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 5px;">Powered by Cloudflare Workers • <a href="https://adblock-compiler.jayson-knight.workers.dev/api" style="color: white; text-decoration: underline;" target="_blank">API</a> • <span id="header-version">v0.6.90</span></p>
-            <button class="theme-toggle" id="theme-toggle" aria-label="Toggle dark mode">
+            <p><strong>Compiler-as-a-Service</strong> | Real-time streaming compilation with SSE event pipeline</p>
+            <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 5px;">Powered by Cloudflare Workers • <a href="https://adblock-compiler.jayson-knight.workers.dev/api" style="color: white; text-decoration: underline;" target="_blank">API</a> • <span id="header-version">v0.7.15</span></p>
+            <button class="theme-toggle" id="theme-toggle">
                 <span class="theme-toggle-icon" id="theme-icon">🌙</span>
                 <span class="theme-toggle-label" id="theme-label">Dark Mode</span>
             </button>
@@ -1327,14 +1327,31 @@ eventSource.addEventListener('result', (e) => {
                         label.textContent = 'Dark Mode';
                     }
                 }
+
+                const toggleButton = document.getElementById('theme-toggle');
+                if (toggleButton) {
+                    const ariaLabel = theme === 'dark'
+                        ? 'Switch to light mode'
+                        : 'Switch to dark mode';
+                    toggleButton.setAttribute('aria-label', ariaLabel);
+                }
             },
 
             updateTurnstileTheme(theme) {
                 // Re-render Turnstile widgets with new theme
                 if (window.turnstile && turnstileSiteKey) {
                     document.querySelectorAll('.cf-turnstile').forEach(widget => {
-                        // Remove existing widget content
-                        window.turnstile.remove(widget);
+                        // Remove existing widget content, if it has been rendered
+                        if (typeof window.turnstile.remove === 'function' && widget.firstChild) {
+                            try {
+                                window.turnstile.remove(widget);
+                            } catch (error) {
+                                console.error(
+                                    'Failed to remove Turnstile widget:',
+                                    error instanceof Error ? error.message : String(error),
+                                );
+                            }
+                        }
                         // Re-render with new theme
                         window.turnstile.render(widget, {
                             sitekey: turnstileSiteKey,
