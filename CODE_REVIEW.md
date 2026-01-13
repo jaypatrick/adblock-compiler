@@ -1,7 +1,7 @@
 # Adblock Compiler - Code Review
 
 **Date:** 2026-01-13
-**Version Reviewed:** 0.7.17
+**Version Reviewed:** 0.7.18
 **Reviewer:** Comprehensive Code Review
 
 ---
@@ -27,7 +27,7 @@ The codebase is production-ready with:
 
 **Location:** `src/version.ts`, `src/plugins/PluginSystem.ts`
 
-**Issue:** Hardcoded version `0.6.91` in `PluginSystem.ts` was out of sync with actual version `0.7.17`.
+**Issue:** Hardcoded version `0.6.91` in `PluginSystem.ts` was out of sync with actual version `0.7.18`.
 
 **Resolution:** Updated to use centralized `VERSION` constant from `src/version.ts`.
 
@@ -405,4 +405,4 @@ The adblock-compiler codebase is:
 
 ---
 
-_This code review reflects the state of the codebase as of 2026-01-13 at version 0.7.17._
+_This code review reflects the state of the codebase as of 2026-01-13 at version 0.7.18._
