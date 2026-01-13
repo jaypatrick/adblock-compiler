@@ -1,7 +1,7 @@
 # Adblock Compiler - Code Review
 
-**Date:** 2026-01-11
-**Version Reviewed:** 0.6.91
+**Date:** 2026-01-13
+**Version Reviewed:** 0.7.17
 **Reviewer:** Claude Code Review
 
 ---
@@ -14,30 +14,29 @@ The adblock-compiler is a well-architected Deno-native project with solid fundam
 
 ## Part A: Code Quality Improvements
 
-### 1. **Version Synchronization Issue** 🔴 High Priority
+### 1. **Version Synchronization Issue** ✅ Fixed
 
-**Location:** `src/compiler/FilterCompiler.ts:19-22`, `src/platform/WorkerCompiler.ts:28-31`
+**Location:** `src/version.ts`, `src/plugins/PluginSystem.ts`
 
-**Problem:** The `PACKAGE_INFO.version` is hardcoded as `'0.6.88'` in multiple files while `deno.json` shows version `0.6.91`. This causes the compiled output header to report an incorrect version.
+**Status:** A centralized `src/version.ts` file now exists and is used throughout the codebase. The hardcoded version in `PluginSystem.ts` has been updated to use the `VERSION` constant.
+
+**Previous Problem:** The `PACKAGE_INFO.version` was hardcoded in multiple files, causing version drift.
+
+**Solution Implemented:**
+
+**Solution Implemented:**
 
 ```typescript
-// Current (wrong):
-const PACKAGE_INFO = {
-    name: '@jk-com/adblock-compiler',
-    version: '0.6.88', // Hardcoded, out of sync!
+// src/version.ts (centralized version management)
+export const VERSION = '0.7.17';
+export const PACKAGE_NAME = '@jk-com/adblock-compiler';
+export const PACKAGE_INFO = {
+    name: PACKAGE_NAME,
+    version: VERSION,
 } as const;
 ```
 
-**Recommendation:** Create a centralized version module or read from `deno.json` at build time:
-
-```typescript
-// Option 1: Central version file
-// src/version.ts
-export const VERSION = '0.6.91';
-
-// Option 2: Build-time injection
-// Use Deno's import.meta or a build script
-```
+All files now import from `src/version.ts` instead of hardcoding version numbers.
 
 ---
 
