@@ -229,7 +229,7 @@ Deno.test({
         assertEquals(data.results?.length, 2);
 
         // Validate each result
-        data.results?.forEach((result) => {
+        data.results?.forEach((result: CompileResponse & { id: string }) => {
             assertExists(result.id);
             assertExists(result.rules);
             assertEquals(Array.isArray(result.rules), true);

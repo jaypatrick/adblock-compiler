@@ -53,9 +53,9 @@ export interface CompilationMetrics {
 }
 
 export interface PreviousVersion {
-    rules: string[];
-    ruleCount: number;
-    compiledAt: string;
+    rules?: string[];
+    ruleCount?: number;
+    compiledAt?: string;
 }
 
 // Batch Compile Response (POST /compile/batch)
