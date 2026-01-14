@@ -43,8 +43,14 @@ jobs:
             - name: Format check
               run: deno fmt --check
 
+            - name: Install npm dependencies
+              run: npm install
+
             - name: Type check
-              run: deno check src/index.ts
+              run: |
+                  deno check src/index.ts
+                  deno check worker/worker.ts
+                  deno check worker/tail.ts
 
             - name: Test with coverage
               run: |

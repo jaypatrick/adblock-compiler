@@ -27,7 +27,7 @@
         "lint": "deno lint",
         "fmt": "deno fmt",
         "fmt:check": "deno fmt --check",
-        "check": "deno check src/index.ts",
+        "check": "deno check src/index.ts && deno check worker/worker.ts && deno check worker/tail.ts",
         "cache": "deno cache src/index.ts"
     },
     "imports": {
