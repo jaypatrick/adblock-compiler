@@ -54,7 +54,7 @@ Deno.test({
         validateResponseStatus(response, [200]);
         assertEquals(response.headers.get('content-type')?.includes('application/json'), true);
 
-        const data = await response.json();
+        const data = await response.json() as any;
         validateBasicSchema(data, ['name', 'version', 'endpoints']);
 
         assertEquals(data.name, spec.info.title);
@@ -69,7 +69,7 @@ Deno.test({
         validateResponseStatus(response, [200]);
         assertEquals(response.headers.get('content-type')?.includes('application/json'), true);
 
-        const data = await response.json();
+        const data = await response.json() as any;
         validateBasicSchema(data, ['window', 'timestamp', 'endpoints']);
     },
 });
@@ -107,7 +107,7 @@ Deno.test({
             assertEquals(['HIT', 'MISS'].includes(cacheHeader), true);
         }
 
-        const data = await response.json();
+        const data = await response.json() as any;
         validateBasicSchema(data, ['success', 'rules', 'ruleCount', 'compiledAt']);
 
         assertEquals(data.success, true);
@@ -142,7 +142,7 @@ Deno.test({
 
         validateResponseStatus(response, [200]);
 
-        const data = await response.json();
+        const data = await response.json() as any;
         validateBasicSchema(data, ['success', 'rules', 'metrics']);
 
         // Validate metrics structure
@@ -170,7 +170,7 @@ Deno.test({
 
         validateResponseStatus(response, [500]);
 
-        const data = await response.json();
+        const data = await response.json() as any;
         assertEquals(data.success, false);
         assertExists(data.error);
     },
@@ -220,7 +220,7 @@ Deno.test({
 
         validateResponseStatus(response, [200]);
 
-        const data = await response.json();
+        const data = await response.json() as any;
         validateBasicSchema(data, ['success', 'results']);
 
         assertEquals(data.success, true);
@@ -318,7 +318,7 @@ Deno.test({
 
         validateResponseStatus(response, [200]);
 
-        const data = await response.json();
+        const data = await response.json() as any;
         validateBasicSchema(data, ['pending', 'completed', 'failed']);
 
         assertEquals(typeof data.pending, 'number');
@@ -354,7 +354,7 @@ Deno.test({
         validateResponseStatus(response, [202, 500]);
 
         if (response.status === 202) {
-            const data = await response.json();
+            const data = await response.json() as any;
             validateBasicSchema(data, ['success', 'requestId', 'message']);
             assertEquals(data.success, true);
         }
@@ -411,7 +411,7 @@ Deno.test({
 
         validateResponseStatus(response, [200]);
 
-        const data = await response.json();
+        const data = await response.json() as any;
         assertEquals(data.success, true);
     },
 });
