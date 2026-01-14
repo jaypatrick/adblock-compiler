@@ -200,7 +200,7 @@ async function handleCompileRequest(
     ws: WebSocket,
     message: ClientMessage & { type: 'compile' },
     state: WebSocketConnectionState,
-    env: Env,
+    _env: Env,
 ): Promise<void> {
     const { sessionId, configuration, preFetchedContent, benchmark } = message;
 
