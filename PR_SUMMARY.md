@@ -11,11 +11,13 @@ This PR addresses multiple requirements including fixing linting errors, removin
 **Problem:** CI/CD was failing with linting error about unused `env` parameter in `worker/websocket.ts`
 
 **Solution:**
+
 - Changed `env: Env` to `_env: Env` in `handleCompileRequest` function (line 210)
 - Follows Deno linting conventions for intentionally unused parameters
 - All 146 files now pass linting checks
 
 **Files Changed:**
+
 - `worker/websocket.ts`
 
 ### 2. ✅ Removed Node.js Dependencies
@@ -23,15 +25,18 @@ This PR addresses multiple requirements including fixing linting errors, removin
 **Problem:** Found Node.js dependency (`node:process`) in `prisma.config.ts`
 
 **Solution:**
+
 - Replaced `process.env.DATABASE_URL` with `Deno.env.get('DATABASE_URL')`
 - Removed `import process from 'node:process'`
 - Verified zero remaining `node:` imports in codebase
 - Project now has **zero Node.js dependencies**
 
 **Files Changed:**
+
 - `prisma.config.ts`
 
 **Code Formatting:**
+
 - Ran `deno fmt` to fix formatting issues across 9 files
 - All 166 files now pass formatting checks
 
@@ -40,12 +45,14 @@ This PR addresses multiple requirements including fixing linting errors, removin
 **New Features Added to `public/websocket-test.html`:**
 
 #### Visual Enhancements
+
 - **Event Count Badge:** Shows total events received (up to 1000 stored)
 - **Auto-Scroll Indicator:** Visual indicator showing active/paused state with color coding
   - Green (●): Auto-scroll active
   - Red (●): Auto-scroll paused
 
 #### Filtering & Search
+
 - **Event Type Filter:** Dropdown to filter by:
   - All Events
   - Welcome messages
@@ -64,6 +71,7 @@ This PR addresses multiple requirements including fixing linting errors, removin
   - Instant filtering as you type
 
 #### Controls
+
 - **Pause/Resume Button:** Toggle auto-scrolling
   - Paused: Allows manual scrolling through logs
   - Active: Automatically scrolls to newest events
@@ -71,6 +79,7 @@ This PR addresses multiple requirements including fixing linting errors, removin
 - **Clear Button:** Clear all displayed logs
 
 #### Performance Optimizations
+
 - Stores up to 1,000 events in memory
 - Displays maximum 500 events in DOM
 - Millisecond-precision timestamps
@@ -78,6 +87,7 @@ This PR addresses multiple requirements including fixing linting errors, removin
 - Event data with syntax-highlighted JSON
 
 **Files Changed:**
+
 - `public/websocket-test.html` (209 lines added)
 
 ### 4. 📚 Comprehensive Batch API Documentation
@@ -87,6 +97,7 @@ Created `docs/BATCH_API_GUIDE.md` - a **visual learning edition** with 20+ diagr
 #### Documentation Highlights
 
 **Architecture Diagrams (Mermaid):**
+
 1. **High-Level System Architecture** - Shows client → API → processing → storage flow
 2. **Queue Processing Pipeline** - Complete validation → queue → processing → storage flow
 3. **Sync vs Async Comparison** - Visual comparison of both approaches
@@ -107,6 +118,7 @@ Created `docs/BATCH_API_GUIDE.md` - a **visual learning edition** with 20+ diagr
 18. **Benefits Overview** - Why use Batch API
 
 **Code Examples:**
+
 - JavaScript/TypeScript examples
 - Python examples with requests library
 - cURL command examples
@@ -115,6 +127,7 @@ Created `docs/BATCH_API_GUIDE.md` - a **visual learning edition** with 20+ diagr
 - Error handling patterns
 
 **Best Practices:**
+
 - Batch size optimization
 - Error handling strategies
 - Caching strategies
@@ -122,29 +135,34 @@ Created `docs/BATCH_API_GUIDE.md` - a **visual learning edition** with 20+ diagr
 - Polling intervals
 
 **Troubleshooting:**
+
 - Common issues and solutions
 - Debugging workflow
 - Queue status monitoring
 
 **Files Changed:**
+
 - `docs/BATCH_API_GUIDE.md` (new file, 1,220+ lines)
 - `docs/README.md` (updated with link to new guide)
 
 ## Testing
 
 ### Linting
+
 ```bash
 deno lint
 # ✅ Checked 146 files - PASSED
 ```
 
 ### Formatting
+
 ```bash
 deno fmt --check
 # ✅ Checked 166 files - PASSED
 ```
 
 ### Node.js Dependencies
+
 ```bash
 grep -r "from 'node:" --include="*.ts" --include="*.js" .
 # ✅ No results - PASSED (zero Node.js dependencies)
@@ -177,6 +195,7 @@ The real-time event logging window now includes:
 ### Documentation Examples
 
 The new Batch API guide includes:
+
 - 🎨 20+ colorful Mermaid diagrams
 - 📊 Visual flowcharts and sequence diagrams
 - 🗺️ Mind maps for decision making
@@ -186,18 +205,21 @@ The new Batch API guide includes:
 ## Impact
 
 ### Developer Experience
+
 - ✅ CI/CD now passes without errors
 - ✅ Zero Node.js dependencies ensures pure Deno runtime
 - ✅ Real-time debugging with enhanced event viewer
 - ✅ Visual documentation helps developers understand batch API quickly
 
 ### Code Quality
+
 - ✅ All linting rules enforced
 - ✅ Consistent code formatting
 - ✅ Platform-native APIs (Deno) instead of Node.js
 - ✅ Better maintainability
 
 ### Documentation
+
 - ✅ Comprehensive visual guide for batch operations
 - ✅ 20+ diagrams make complex concepts easy to understand
 - ✅ Code examples in multiple languages
@@ -206,6 +228,7 @@ The new Batch API guide includes:
 ## Related Issues
 
 Fixes the linting error reported in CI/CD:
+
 ```
 error[no-unused-vars]: `env` is never used
   --> /home/runner/work/adblock-compiler/adblock-compiler/worker/websocket.ts:210:5
@@ -246,11 +269,13 @@ error[no-unused-vars]: `env` is never used
 ---
 
 **Total Lines Changed:**
+
 - Added: ~1,450 lines
 - Modified: ~15 lines
 - Deleted: ~2 lines
 
 **Total Files Changed:** 5 files
+
 - `worker/websocket.ts`
 - `prisma.config.ts`
 - `public/websocket-test.html`
