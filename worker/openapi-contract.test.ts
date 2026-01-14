@@ -110,9 +110,9 @@ Deno.test({
         const data = await response.json() as any;
         validateBasicSchema(data, ['success', 'rules', 'ruleCount', 'compiledAt']);
 
-        assertEquals((data as any).success, true);
-        assertEquals(Array.isArray((data as any).rules), true);
-        assertEquals(typeof (data as any).ruleCount, 'number');
+        assertEquals(data.success, true);
+        assertEquals(Array.isArray(data.rules), true);
+        assertEquals(typeof data.ruleCount, 'number');
     },
 });
 
@@ -146,9 +146,9 @@ Deno.test({
         validateBasicSchema(data, ['success', 'rules', 'metrics']);
 
         // Validate metrics structure
-        assertExists((data as any).metrics);
-        assertExists((data as any).metrics.totalDurationMs);
-        assertEquals(typeof (data as any).metrics.totalDurationMs, 'number');
+        assertExists(data.metrics);
+        assertExists(data.metrics.totalDurationMs);
+        assertEquals(typeof data.metrics.totalDurationMs, 'number');
     },
 });
 
@@ -171,8 +171,8 @@ Deno.test({
         validateResponseStatus(response, [500]);
 
         const data = await response.json() as any;
-        assertEquals((data as any).success, false);
-        assertExists((data as any).error);
+        assertEquals(data.success, false);
+        assertExists(data.error);
     },
 });
 
@@ -321,9 +321,9 @@ Deno.test({
         const data = await response.json() as any;
         validateBasicSchema(data, ['pending', 'completed', 'failed']);
 
-        assertEquals(typeof (data as any).pending, 'number');
-        assertEquals(typeof (data as any).completed, 'number');
-        assertEquals(typeof (data as any).failed, 'number');
+        assertEquals(typeof data.pending, 'number');
+        assertEquals(typeof data.completed, 'number');
+        assertEquals(typeof data.failed, 'number');
     },
 });
 
