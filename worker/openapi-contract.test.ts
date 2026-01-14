@@ -223,12 +223,12 @@ Deno.test({
         const data = await response.json() as any;
         validateBasicSchema(data, ['success', 'results']);
 
-        assertEquals((data as any).success, true);
-        assertEquals(Array.isArray((data as any).results), true);
-        assertEquals((data as any).results.length, 2);
+        assertEquals(data.success, true);
+        assertEquals(Array.isArray(data.results), true);
+        assertEquals(data.results.length, 2);
 
         // Validate each result
-        (data as any).results.forEach((result: any) => {
+        data.results.forEach((result: any) => {
             assertExists(result.id);
             assertExists(result.rules);
             assertEquals(Array.isArray(result.rules), true);
@@ -356,7 +356,7 @@ Deno.test({
         if (response.status === 202) {
             const data = await response.json() as any;
             validateBasicSchema(data, ['success', 'requestId', 'message']);
-            assertEquals((data as any).success, true);
+            assertEquals(data.success, true);
         }
     },
 });
@@ -412,7 +412,7 @@ Deno.test({
         validateResponseStatus(response, [200]);
 
         const data = await response.json() as any;
-        assertEquals((data as any).success, true);
+        assertEquals(data.success, true);
     },
 });
 
