@@ -379,9 +379,161 @@
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
+
+        /* Notification System */
+        .notification-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1000;
+            max-width: 400px;
+        }
+
+        .notification {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+            display: flex;
+            align-items: start;
+            gap: 12px;
+            animation: slideIn 0.3s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        @keyframes slideIn {
+            from {
+                transform: translateX(400px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        .notification::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 4px;
+        }
+
+        .notification.success::before { background: var(--success); }
+        .notification.error::before { background: var(--danger); }
+        .notification.info::before { background: var(--info); }
+        .notification.warning::before { background: var(--warning); }
+
+        .notification-icon {
+            font-size: 24px;
+            flex-shrink: 0;
+        }
+
+        .notification-content {
+            flex: 1;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: var(--dark);
+            margin-bottom: 4px;
+        }
+
+        .notification-message {
+            font-size: 14px;
+            color: var(--text-light);
+        }
+
+        .notification-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: var(--text-light);
+            padding: 0;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .notification-close:hover {
+            color: var(--dark);
+        }
+
+        .notification-settings {
+            background: white;
+            border-radius: 12px;
+            padding: 16px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            margin-bottom: 24px;
+        }
+
+        .notification-settings h3 {
+            font-size: 16px;
+            color: var(--dark);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .notification-toggle {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--light);
+            border-radius: 8px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 48px;
+            height: 24px;
+            background: #cbd5e1;
+            border-radius: 24px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .toggle-switch.active {
+            background: var(--success);
+        }
+
+        .toggle-switch::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            transition: transform 0.3s;
+        }
+
+        .toggle-switch.active::after {
+            transform: translateX(24px);
+        }
+
+        .toggle-label {
+            flex: 1;
+            font-size: 14px;
+            color: var(--text);
+        }
     </style>
 </head>
 <body>
+    <!-- Notification Container -->
+    <div class="notification-container" id="notificationContainer"></div>
+
     <div class="container">
         <!-- Header -->
         <header class="header">
@@ -401,6 +553,23 @@
                 </div>
             </div>
         </header>
+
+        <!-- Notification Settings -->
+        <div class="notification-settings">
+            <h3>
+                <span>🔔</span>
+                Notification Settings
+            </h3>
+            <div class="notification-toggle" onclick="toggleNotifications()">
+                <div class="toggle-switch" id="notificationToggle"></div>
+                <div class="toggle-label">
+                    <strong>Enable Browser Notifications</strong>
+                    <div style="font-size: 12px; color: var(--text-light); margin-top: 4px;">
+                        Get notified when async compilation jobs complete
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- Stats Overview -->
         <div class="stats-grid">
@@ -575,7 +744,7 @@
         <!-- Footer -->
         <footer class="footer">
             <p>
-                Adblock Compiler v<span id="version">0.7.23</span> •
+                Adblock Compiler v<span id="version">0.8.0</span> •
                 <a href="https://github.com/jaypatrick/adblock-compiler" target="_blank">GitHub</a> •
                 <a href="https://jsr.io/@jk-com/adblock-compiler" target="_blank">JSR Package</a> •
                 <a href="/api" target="_blank">API Documentation</a>
@@ -585,12 +754,200 @@
 
     <script>
         let queueChart = null;
+        let notificationsEnabled = false;
+        let trackedJobs = new Map(); // Track async jobs for notifications
 
         // Initialize dashboard
         async function initDashboard() {
             await refreshMetrics();
             setupAutoRefresh();
             initQueueChart();
+            initNotifications();
+            monitorAsyncJobs();
+        }
+
+        // Initialize notification system
+        function initNotifications() {
+            // Check if notifications are supported
+            if (!('Notification' in window)) {
+                console.warn('Browser notifications not supported');
+                return;
+            }
+
+            // Check stored preference
+            const stored = localStorage.getItem('notificationsEnabled');
+            if (stored === 'true' && Notification.permission === 'granted') {
+                notificationsEnabled = true;
+                updateNotificationToggle();
+            }
+        }
+
+        // Toggle notifications
+        async function toggleNotifications() {
+            const toggle = document.getElementById('notificationToggle');
+            
+            if (!notificationsEnabled) {
+                // Request permission
+                if (!('Notification' in window)) {
+                    showInPageNotification('error', 'Not Supported', 'Browser notifications are not supported');
+                    return;
+                }
+
+                const permission = await Notification.requestPermission();
+                if (permission === 'granted') {
+                    notificationsEnabled = true;
+                    localStorage.setItem('notificationsEnabled', 'true');
+                    updateNotificationToggle();
+                    showInPageNotification('success', 'Notifications Enabled', 'You will be notified when async jobs complete');
+                    
+                    // Show test notification
+                    new Notification('Adblock Compiler', {
+                        body: 'Notifications are now enabled!',
+                        icon: '/favicon.ico',
+                        badge: '/favicon.ico'
+                    });
+                } else {
+                    showInPageNotification('warning', 'Permission Denied', 'Please allow notifications in your browser settings');
+                }
+            } else {
+                // Disable notifications
+                notificationsEnabled = false;
+                localStorage.setItem('notificationsEnabled', 'false');
+                updateNotificationToggle();
+                showInPageNotification('info', 'Notifications Disabled', 'You will no longer receive notifications');
+            }
+        }
+
+        // Update notification toggle UI
+        function updateNotificationToggle() {
+            const toggle = document.getElementById('notificationToggle');
+            if (toggle) {
+                if (notificationsEnabled) {
+                    toggle.classList.add('active');
+                } else {
+                    toggle.classList.remove('active');
+                }
+            }
+        }
+
+        // Show in-page notification (toast)
+        function showInPageNotification(type, title, message) {
+            const container = document.getElementById('notificationContainer');
+            if (!container) return;
+
+            const notification = document.createElement('div');
+            notification.className = `notification ${type}`;
+            
+            const icons = {
+                success: '✅',
+                error: '❌',
+                warning: '⚠️',
+                info: 'ℹ️'
+            };
+
+            notification.innerHTML = `
+                <div class="notification-icon">${icons[type] || 'ℹ️'}</div>
+                <div class="notification-content">
+                    <div class="notification-title">${title}</div>
+                    <div class="notification-message">${message}</div>
+                </div>
+                <button class="notification-close" onclick="this.parentElement.remove()">×</button>
+            `;
+
+            container.appendChild(notification);
+
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (notification.parentElement) {
+                    notification.style.opacity = '0';
+                    notification.style.transform = 'translateX(400px)';
+                    setTimeout(() => notification.remove(), 300);
+                }
+            }, 5000);
+        }
+
+        // Track async job
+        function trackAsyncJob(requestId, configName) {
+            trackedJobs.set(requestId, {
+                configName,
+                startTime: Date.now(),
+                notified: false
+            });
+            localStorage.setItem('trackedJobs', JSON.stringify(Array.from(trackedJobs.entries())));
+        }
+
+        // Monitor async jobs
+        async function monitorAsyncJobs() {
+            // Restore tracked jobs from storage
+            const stored = localStorage.getItem('trackedJobs');
+            if (stored) {
+                try {
+                    const entries = JSON.parse(stored);
+                    trackedJobs = new Map(entries);
+                } catch (e) {
+                    console.error('Failed to restore tracked jobs:', e);
+                }
+            }
+
+            // Check for completed jobs every 10 seconds
+            setInterval(async () => {
+                if (trackedJobs.size === 0) return;
+
+                try {
+                    const queueStatsRes = await fetch('/queue/stats');
+                    if (!queueStatsRes.ok) return;
+
+                    const queueStats = await queueStatsRes.json();
+                    const completedJobs = queueStats.history?.filter(j => j.status === 'completed') || [];
+
+                    for (const [requestId, jobInfo] of trackedJobs.entries()) {
+                        if (jobInfo.notified) continue;
+
+                        const completed = completedJobs.find(j => j.requestId === requestId);
+                        if (completed) {
+                            // Job completed!
+                            const duration = Math.round(completed.duration || 0);
+                            
+                            // Show browser notification
+                            if (notificationsEnabled && Notification.permission === 'granted') {
+                                new Notification('Compilation Complete', {
+                                    body: `${completed.configName || jobInfo.configName} compiled in ${duration}ms`,
+                                    icon: '/favicon.ico',
+                                    badge: '/favicon.ico'
+                                });
+                            }
+
+                            // Show in-page notification
+                            showInPageNotification(
+                                'success',
+                                'Async Job Complete',
+                                `${completed.configName || jobInfo.configName} finished in ${duration}ms`
+                            );
+
+                            // Mark as notified
+                            jobInfo.notified = true;
+                            trackedJobs.set(requestId, jobInfo);
+                            
+                            // Remove from tracking after notification
+                            setTimeout(() => {
+                                trackedJobs.delete(requestId);
+                                localStorage.setItem('trackedJobs', JSON.stringify(Array.from(trackedJobs.entries())));
+                            }, 60000); // Keep for 1 minute
+                        }
+                    }
+
+                    // Clean up old jobs (> 1 hour)
+                    const now = Date.now();
+                    for (const [requestId, jobInfo] of trackedJobs.entries()) {
+                        if (now - jobInfo.startTime > 3600000) {
+                            trackedJobs.delete(requestId);
+                        }
+                    }
+                    localStorage.setItem('trackedJobs', JSON.stringify(Array.from(trackedJobs.entries())));
+                } catch (error) {
+                    console.error('Error monitoring async jobs:', error);
+                }
+            }, 10000); // Check every 10 seconds
         }
 
         // Refresh all metrics
