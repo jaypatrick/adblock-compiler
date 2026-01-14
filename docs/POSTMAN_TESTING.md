@@ -8,13 +8,13 @@ This guide explains how to use the Postman collection to test the Adblock Compil
 
 1. Open Postman
 2. Click **Import** in the top left
-3. Select **File** and choose `docs/tools/docs/tools/postman-collection.json`
+3. Select **File** and choose `docs/tools/postman-collection.json`
 4. The collection will appear in your workspace
 
 ### 2. Import the Environment
 
 1. Click **Import** again
-2. Select **File** and choose `docs/tools/docs/tools/postman-environment.json`
+2. Select **File** and choose `docs/tools/postman-environment.json`
 3. Select the "Adblock Compiler - Local" environment from the dropdown in the top right
 
 ### 3. Start the Server

@@ -631,6 +631,16 @@
                     </div>
                 </a>
 
+                <a href="/docs/api/index.html" class="nav-card" target="_blank">
+                    <div class="nav-card-icon">📖</div>
+                    <h3>API Documentation</h3>
+                    <p>Complete OpenAPI 3.0 documentation with interactive examples, schemas, and endpoint details powered by ReDoc.</p>
+                    <div class="nav-card-footer">
+                        <span class="nav-card-tag tag-info">Reference</span>
+                        <span class="arrow">→</span>
+                    </div>
+                </a>
+
                 <a href="/e2e-tests.html" class="nav-card">
                     <div class="nav-card-icon">🔬</div>
                     <h3>E2E Integration Tests</h3>
@@ -726,7 +736,7 @@
         <div class="quick-actions">
             <h3>⚡ Quick Actions</h3>
             <div class="action-buttons">
-                <button class="btn btn-primary" onclick="window.location.href='/api'">
+                <button class="btn btn-primary" onclick="window.location.href='/docs/api/index.html'">
                     <span>📖</span> API Docs
                 </button>
                 <button class="btn btn-success" onclick="window.location.href='/metrics'">
@@ -735,9 +745,69 @@
                 <button class="btn btn-warning" onclick="window.location.href='/queue/stats'">
                     <span>⏳</span> Queue Stats
                 </button>
-                <button class="btn btn-info" onclick="clearCache()">
-                    <span>🗑️</span> Clear Cache
+                <button class="btn btn-info" onclick="testApiEndpoint()">
+                    <span>🧪</span> Test API
                 </button>
+            </div>
+        </div>
+
+        <!-- API Tester -->
+        <div class="chart-container" id="apiTester" style="display: none;">
+            <div class="chart-header">
+                <h3>🧪 Interactive API Tester</h3>
+                <button class="btn btn-info" onclick="closeApiTester()">
+                    <span>✕</span> Close
+                </button>
+            </div>
+            
+            <div style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 8px;">
+                    Select Endpoint:
+                </label>
+                <select id="apiEndpointSelect" onchange="updateApiTesterEndpoint()" style="width: 100%; padding: 10px; border: 2px solid var(--border); border-radius: 8px; font-size: 14px;">
+                    <option value="/api">GET /api - API Information</option>
+                    <option value="/metrics">GET /metrics - Performance Metrics</option>
+                    <option value="/queue/stats">GET /queue/stats - Queue Statistics</option>
+                    <option value="/compile" selected>POST /compile - Compile Filter List</option>
+                </select>
+            </div>
+
+            <div id="apiRequestBody" style="margin-bottom: 16px;">
+                <label style="display: block; font-size: 14px; font-weight: 600; color: var(--dark); margin-bottom: 8px;">
+                    Request Body (JSON):
+                </label>
+                <textarea id="apiRequestBodyText" rows="12" style="width: 100%; padding: 12px; border: 2px solid var(--border); border-radius: 8px; font-family: 'Monaco', 'Courier New', monospace; font-size: 13px; resize: vertical;">{
+  "configuration": {
+    "name": "Test Filter List",
+    "sources": [
+      {
+        "name": "Example Source",
+        "source": "||example.com^\n||ads.example.com^\n127.0.0.1 tracker.example.com"
+      }
+    ],
+    "transformations": ["RemoveComments", "Deduplicate", "RemoveEmptyLines"]
+  },
+  "benchmark": true
+}</textarea>
+            </div>
+
+            <div style="display: flex; gap: 12px; margin-bottom: 16px;">
+                <button class="btn btn-primary" onclick="executeApiTest()" id="apiTestButton" style="flex: 1;">
+                    <span>🚀</span> Send Request
+                </button>
+                <button class="btn btn-secondary" onclick="resetApiTester()" style="flex: 1;">
+                    <span>🔄</span> Reset
+                </button>
+            </div>
+
+            <div id="apiTesterResponse" style="display: none; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <label style="font-size: 14px; font-weight: 600; color: var(--dark);">
+                        Response:
+                    </label>
+                    <span id="apiResponseStatus" style="padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 600;"></span>
+                </div>
+                <pre id="apiResponseBody" style="background: var(--code-bg); padding: 16px; border-radius: 8px; overflow-x: auto; font-family: 'Monaco', 'Courier New', monospace; font-size: 12px; line-height: 1.5; max-height: 400px; overflow-y: auto;"></pre>
             </div>
         </div>
 
@@ -753,9 +823,24 @@
     </div>
 
     <script>
-        let queueChart = null;
-        let notificationsEnabled = false;
-        let trackedJobs = new Map(); // Track async jobs for notifications
+        // Dashboard state management
+        const DashboardState = {
+            queueChart: null,
+            notificationsEnabled: false,
+            trackedJobs: new Map(),
+            jobMonitorInterval: null,
+
+            // Debounced localStorage save
+            saveTrackedJobs: (() => {
+                let timeout;
+                return () => {
+                    clearTimeout(timeout);
+                    timeout = setTimeout(() => {
+                        localStorage.setItem('trackedJobs', JSON.stringify(Array.from(DashboardState.trackedJobs.entries())));
+                    }, 1000);
+                };
+            })()
+        };
 
         // Initialize dashboard
         async function initDashboard() {
@@ -763,7 +848,7 @@
             setupAutoRefresh();
             initQueueChart();
             initNotifications();
-            monitorAsyncJobs();
+            startJobMonitoring();
         }
 
         // Initialize notification system
@@ -777,7 +862,7 @@
             // Check stored preference
             const stored = localStorage.getItem('notificationsEnabled');
             if (stored === 'true' && Notification.permission === 'granted') {
-                notificationsEnabled = true;
+                DashboardState.notificationsEnabled = true;
                 updateNotificationToggle();
             }
         }
@@ -786,7 +871,7 @@
         async function toggleNotifications() {
             const toggle = document.getElementById('notificationToggle');
             
-            if (!notificationsEnabled) {
+            if (!DashboardState.notificationsEnabled) {
                 // Request permission
                 if (!('Notification' in window)) {
                     showInPageNotification('error', 'Not Supported', 'Browser notifications are not supported');
@@ -795,7 +880,7 @@
 
                 const permission = await Notification.requestPermission();
                 if (permission === 'granted') {
-                    notificationsEnabled = true;
+                    DashboardState.notificationsEnabled = true;
                     localStorage.setItem('notificationsEnabled', 'true');
                     updateNotificationToggle();
                     showInPageNotification('success', 'Notifications Enabled', 'You will be notified when async jobs complete');
@@ -811,7 +896,7 @@
                 }
             } else {
                 // Disable notifications
-                notificationsEnabled = false;
+                DashboardState.notificationsEnabled = false;
                 localStorage.setItem('notificationsEnabled', 'false');
                 updateNotificationToggle();
                 showInPageNotification('info', 'Notifications Disabled', 'You will no longer receive notifications');
@@ -822,7 +907,7 @@
         function updateNotificationToggle() {
             const toggle = document.getElementById('notificationToggle');
             if (toggle) {
-                if (notificationsEnabled) {
+                if (DashboardState.notificationsEnabled) {
                     toggle.classList.add('active');
                 } else {
                     toggle.classList.remove('active');
@@ -868,30 +953,48 @@
 
         // Track async job
         function trackAsyncJob(requestId, configName) {
-            trackedJobs.set(requestId, {
+            DashboardState.trackedJobs.set(requestId, {
                 configName,
                 startTime: Date.now(),
                 notified: false
             });
-            localStorage.setItem('trackedJobs', JSON.stringify(Array.from(trackedJobs.entries())));
+            DashboardState.saveTrackedJobs();
         }
 
-        // Monitor async jobs
-        async function monitorAsyncJobs() {
+        // Start monitoring async jobs
+        function startJobMonitoring() {
             // Restore tracked jobs from storage
             const stored = localStorage.getItem('trackedJobs');
             if (stored) {
                 try {
                     const entries = JSON.parse(stored);
-                    trackedJobs = new Map(entries);
+                    DashboardState.trackedJobs = new Map(entries);
                 } catch (e) {
                     console.error('Failed to restore tracked jobs:', e);
                 }
             }
 
+            // Monitor jobs if we have any tracked
+            if (DashboardState.trackedJobs.size > 0) {
+                startMonitorInterval();
+            }
+        }
+
+        // Start the monitor interval
+        function startMonitorInterval() {
+            // Clear existing interval if any
+            if (DashboardState.jobMonitorInterval) {
+                clearInterval(DashboardState.jobMonitorInterval);
+            }
+
             // Check for completed jobs every 10 seconds
-            setInterval(async () => {
-                if (trackedJobs.size === 0) return;
+            DashboardState.jobMonitorInterval = setInterval(async () => {
+                // Stop monitoring if no jobs
+                if (DashboardState.trackedJobs.size === 0) {
+                    clearInterval(DashboardState.jobMonitorInterval);
+                    DashboardState.jobMonitorInterval = null;
+                    return;
+                }
 
                 try {
                     const queueStatsRes = await fetch('/queue/stats');
@@ -900,7 +1003,7 @@
                     const queueStats = await queueStatsRes.json();
                     const completedJobs = queueStats.history?.filter(j => j.status === 'completed') || [];
 
-                    for (const [requestId, jobInfo] of trackedJobs.entries()) {
+                    for (const [requestId, jobInfo] of DashboardState.trackedJobs.entries()) {
                         if (jobInfo.notified) continue;
 
                         const completed = completedJobs.find(j => j.requestId === requestId);
@@ -909,7 +1012,7 @@
                             const duration = Math.round(completed.duration || 0);
                             
                             // Show browser notification
-                            if (notificationsEnabled && Notification.permission === 'granted') {
+                            if (DashboardState.notificationsEnabled && Notification.permission === 'granted') {
                                 new Notification('Compilation Complete', {
                                     body: `${completed.configName || jobInfo.configName} compiled in ${duration}ms`,
                                     icon: '/favicon.ico',
@@ -926,24 +1029,24 @@
 
                             // Mark as notified
                             jobInfo.notified = true;
-                            trackedJobs.set(requestId, jobInfo);
+                            DashboardState.trackedJobs.set(requestId, jobInfo);
                             
                             // Remove from tracking after notification
                             setTimeout(() => {
-                                trackedJobs.delete(requestId);
-                                localStorage.setItem('trackedJobs', JSON.stringify(Array.from(trackedJobs.entries())));
+                                DashboardState.trackedJobs.delete(requestId);
+                                DashboardState.saveTrackedJobs();
                             }, 60000); // Keep for 1 minute
                         }
                     }
 
                     // Clean up old jobs (> 1 hour)
                     const now = Date.now();
-                    for (const [requestId, jobInfo] of trackedJobs.entries()) {
+                    for (const [requestId, jobInfo] of DashboardState.trackedJobs.entries()) {
                         if (now - jobInfo.startTime > 3600000) {
-                            trackedJobs.delete(requestId);
+                            DashboardState.trackedJobs.delete(requestId);
                         }
                     }
-                    localStorage.setItem('trackedJobs', JSON.stringify(Array.from(trackedJobs.entries())));
+                    DashboardState.saveTrackedJobs();
                 } catch (error) {
                     console.error('Error monitoring async jobs:', error);
                 }
@@ -1028,7 +1131,7 @@
             const ctx = document.getElementById('queueChart');
             if (!ctx) return;
 
-            queueChart = new Chart(ctx, {
+            DashboardState.queueChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: [],
@@ -1063,7 +1166,7 @@
 
         // Update queue chart
         function updateQueueChart(queueStats) {
-            if (!queueChart || !queueStats.depthHistory) return;
+            if (!DashboardState.queueChart || !queueStats.depthHistory) return;
 
             const history = queueStats.depthHistory.slice(-20); // Last 20 data points
             const labels = history.map((_, i) => {
@@ -1073,9 +1176,9 @@
             });
             const data = history.map(h => h.depth || 0);
 
-            queueChart.data.labels = labels;
-            queueChart.data.datasets[0].data = data;
-            queueChart.update();
+            DashboardState.queueChart.data.labels = labels;
+            DashboardState.queueChart.data.datasets[0].data = data;
+            DashboardState.queueChart.update();
         }
 
         // Setup auto-refresh
@@ -1093,10 +1196,150 @@
                   'Results show operations per second and relative performance.');
         }
 
-        // Clear cache (placeholder)
-        function clearCache() {
-            if (confirm('Clear compilation cache? This will remove all cached results.')) {
-                alert('Cache clearing is an admin operation.\nUse Cloudflare dashboard or wrangler CLI to manage KV cache.');
+        // API Tester Functions
+        function testApiEndpoint() {
+            const tester = document.getElementById('apiTester');
+            if (tester) {
+                tester.style.display = 'block';
+                tester.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+        }
+
+        function closeApiTester() {
+            const tester = document.getElementById('apiTester');
+            if (tester) {
+                tester.style.display = 'none';
+            }
+        }
+
+        function updateApiTesterEndpoint() {
+            const select = document.getElementById('apiEndpointSelect');
+            const requestBodyDiv = document.getElementById('apiRequestBody');
+            const responseDiv = document.getElementById('apiTesterResponse');
+            
+            if (!select || !requestBodyDiv) return;
+
+            const value = select.value;
+            
+            // Hide response when changing endpoint
+            if (responseDiv) responseDiv.style.display = 'none';
+
+            // Show/hide request body based on method
+            if (value === '/compile') {
+                requestBodyDiv.style.display = 'block';
+            } else {
+                requestBodyDiv.style.display = 'none';
+            }
+        }
+
+        function resetApiTester() {
+            const textarea = document.getElementById('apiRequestBodyText');
+            const responseDiv = document.getElementById('apiTesterResponse');
+            
+            if (textarea) {
+                textarea.value = `{
+  "configuration": {
+    "name": "Test Filter List",
+    "sources": [
+      {
+        "name": "Example Source",
+        "source": "||example.com^\\n||ads.example.com^\\n127.0.0.1 tracker.example.com"
+      }
+    ],
+    "transformations": ["RemoveComments", "Deduplicate", "RemoveEmptyLines"]
+  },
+  "benchmark": true
+}`;
+            }
+            
+            if (responseDiv) {
+                responseDiv.style.display = 'none';
+            }
+        }
+
+        async function executeApiTest() {
+            const select = document.getElementById('apiEndpointSelect');
+            const textarea = document.getElementById('apiRequestBodyText');
+            const button = document.getElementById('apiTestButton');
+            const responseDiv = document.getElementById('apiTesterResponse');
+            const responseStatus = document.getElementById('apiResponseStatus');
+            const responseBody = document.getElementById('apiResponseBody');
+            
+            if (!select) return;
+
+            const endpoint = select.value;
+            const isPost = endpoint === '/compile';
+            
+            // Disable button during request
+            if (button) {
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner"></span> Sending...';
+            }
+
+            try {
+                const options = {
+                    method: isPost ? 'POST' : 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+
+                if (isPost && textarea) {
+                    try {
+                        const body = JSON.parse(textarea.value);
+                        options.body = JSON.stringify(body, null, 2);
+                    } catch (e) {
+                        throw new Error('Invalid JSON in request body: ' + e.message);
+                    }
+                }
+
+                const response = await fetch(endpoint, options);
+                const data = await response.json();
+
+                // Show response
+                if (responseDiv && responseStatus && responseBody) {
+                    responseDiv.style.display = 'block';
+                    
+                    // Set status badge
+                    responseStatus.textContent = `${response.status} ${response.statusText}`;
+                    if (response.ok) {
+                        responseStatus.style.background = '#d1fae5';
+                        responseStatus.style.color = '#065f46';
+                    } else {
+                        responseStatus.style.background = '#fecaca';
+                        responseStatus.style.color = '#991b1b';
+                    }
+                    
+                    // Format and display response
+                    responseBody.textContent = JSON.stringify(data, null, 2);
+                    
+                    // Scroll to response
+                    responseDiv.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+
+                // Show success notification
+                if (response.ok) {
+                    showInPageNotification('success', 'API Test Success', `${endpoint} returned ${response.status}`);
+                } else {
+                    showInPageNotification('warning', 'API Response', `${endpoint} returned ${response.status}`);
+                }
+            } catch (error) {
+                // Show error
+                if (responseDiv && responseStatus && responseBody) {
+                    responseDiv.style.display = 'block';
+                    responseStatus.textContent = 'Error';
+                    responseStatus.style.background = '#fecaca';
+                    responseStatus.style.color = '#991b1b';
+                    responseBody.textContent = error.message;
+                }
+                
+                showInPageNotification('error', 'API Test Failed', error.message);
+            } finally {
+                // Re-enable button
+                if (button) {
+                    button.disabled = false;
+                    button.innerHTML = '<span>🚀</span> Send Request';
+                }
             }
         }
 
