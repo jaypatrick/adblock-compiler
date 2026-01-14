@@ -2106,7 +2106,6 @@ eventSource.addEventListener('result', (e) => {
         function updateQueueHealth(stats) {
             const indicator = document.getElementById('queue-health-indicator');
             const pending = stats.pending || 0;
-            const processingRate = stats.processingRate || 0;
             const queueLag = stats.queueLag || 0;
             
             let healthClass = 'health-healthy';

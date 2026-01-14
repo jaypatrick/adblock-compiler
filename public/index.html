@@ -869,8 +869,6 @@
 
         // Toggle notifications
         async function toggleNotifications() {
-            const toggle = document.getElementById('notificationToggle');
-            
             if (!DashboardState.notificationsEnabled) {
                 // Request permission
                 if (!('Notification' in window)) {
