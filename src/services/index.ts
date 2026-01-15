@@ -1,10 +1,10 @@
 export { FilterService } from './FilterService.ts';
 export {
-    type AnalyticsEngineDataPoint,
+    AnalyticsService,
     type AnalyticsEngineDataset,
+    type AnalyticsEngineDataPoint,
     type AnalyticsEventData,
     type AnalyticsEventType,
-    AnalyticsService,
     type ApiRequestEventData,
     type CompilationEventData,
     type RateLimitEventData,
