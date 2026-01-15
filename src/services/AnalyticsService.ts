@@ -9,9 +9,9 @@
  * ## Analytics Engine Data Model
  *
  * Analytics Engine supports up to:
- * - 1 index (blob1) - Used for grouping/filtering (e.g., event type)
- * - 20 doubles - Numeric values for aggregation
- * - 20 blobs - String values for categorization
+ * - 1 index value in the `indexes` array (typically `indexes[0]`) - Used for grouping/filtering (e.g., event type)
+ * - 20 double values in the `doubles` array - Numeric values for aggregation
+ * - 20 blob values in the `blobs` array - String/blob values for categorization
  *
  * ## Event Types
  *
