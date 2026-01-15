@@ -15,7 +15,7 @@
 
 import type { IDetailedLogger } from '../types/index.ts';
 import type { IStorageAdapter, StorageAdapterConfig } from './IStorageAdapter.ts';
-import type { CacheEntry, CompilationMetadata, QueryOptions, StorageEntry, StorageStats } from './NoSqlStorage.ts';
+import type { CacheEntry, CompilationMetadata, QueryOptions, StorageEntry, StorageStats } from './types.ts';
 
 /**
  * Type for Prisma Client - using any to avoid direct dependency
@@ -41,8 +41,8 @@ function deserializeKey(key: string): string[] {
 /**
  * Prisma-based storage adapter implementation
  *
- * Provides the same interface as NoSqlStorage but backed by Prisma,
- * enabling use with SQLite, PostgreSQL, or MongoDB.
+ * Default storage backend using Prisma ORM with SQLite.
+ * Supports SQLite, PostgreSQL, MySQL, and MongoDB.
  */
 export class PrismaStorageAdapter implements IStorageAdapter {
     private prisma: PrismaClientType | null = null;
