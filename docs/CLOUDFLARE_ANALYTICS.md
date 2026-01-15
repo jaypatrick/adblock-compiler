@@ -108,7 +108,7 @@ const ipHash = AnalyticsService.hashIp('192.168.1.1');
 
 // Categorize user agents
 const category = AnalyticsService.categorizeUserAgent(userAgent);
-// Returns: 'cli_tool', 'programming_language', 'api_client', 'bot', 'browser', 'other', 'unknown'
+// Returns: 'adguard', 'ublock', 'browser', 'curl', 'bot', 'library', 'unknown'
 ```
 
 ## Tracked Locations
@@ -148,12 +148,12 @@ Use the Cloudflare dashboard or GraphQL API to query analytics:
 ```sql
 -- Compilation success rate over last 24 hours
 SELECT
-    index1 as event_type,
+    blob1 as event_type,
     COUNT(*) as count
 FROM adguard-compiler-analytics-engine
 WHERE timestamp > NOW() - INTERVAL '24' HOUR
-    AND index1 IN ('compilation_success', 'compilation_error')
-GROUP BY index1
+    AND blob1 IN ('compilation_success', 'compilation_error')
+GROUP BY blob1
 
 -- Average compilation duration by config
 SELECT
@@ -162,28 +162,28 @@ SELECT
     COUNT(*) as total_compilations
 FROM adguard-compiler-analytics-engine
 WHERE timestamp > NOW() - INTERVAL '7' DAY
-    AND index1 = 'compilation_success'
+    AND blob1 = 'compilation_success'
 GROUP BY blob2
 ORDER BY total_compilations DESC
 
 -- Cache hit ratio
 SELECT
-    SUM(CASE WHEN index1 = 'cache_hit' THEN 1 ELSE 0 END) as hits,
-    SUM(CASE WHEN index1 = 'cache_miss' THEN 1 ELSE 0 END) as misses,
-    SUM(CASE WHEN index1 = 'cache_hit' THEN 1 ELSE 0 END) * 100.0 /
+    SUM(CASE WHEN blob1 = 'cache_hit' THEN 1 ELSE 0 END) as hits,
+    SUM(CASE WHEN blob1 = 'cache_miss' THEN 1 ELSE 0 END) as misses,
+    SUM(CASE WHEN blob1 = 'cache_hit' THEN 1 ELSE 0 END) * 100.0 /
         COUNT(*) as hit_rate_percent
 FROM adguard-compiler-analytics-engine
 WHERE timestamp > NOW() - INTERVAL '24' HOUR
-    AND index1 IN ('cache_hit', 'cache_miss')
+    AND blob1 IN ('cache_hit', 'cache_miss')
 
 -- Rate limit events by IP hash
 SELECT
-    blob7 as ip_hash,
+    blob3 as ip_hash,
     COUNT(*) as limit_events
 FROM adguard-compiler-analytics-engine
 WHERE timestamp > NOW() - INTERVAL '1' HOUR
-    AND index1 = 'rate_limit_exceeded'
-GROUP BY blob7
+    AND blob1 = 'rate_limit_exceeded'
+GROUP BY blob3
 ORDER BY limit_events DESC
 LIMIT 10
 ```
@@ -195,7 +195,7 @@ The `AnalyticsService` gracefully handles missing Analytics Engine:
 ```typescript
 constructor(dataset?: AnalyticsEngineDataset) {
     this.dataset = dataset;
-    this.enabled = dataset !== undefined;
+    this.enabled = !!dataset;
 }
 
 private writeDataPoint(event: AnalyticsEventData): void {
@@ -251,9 +251,11 @@ export interface YourEventData {
 3. Add a tracking method to `AnalyticsService`:
 ```typescript
 public trackYourEvent(data: YourEventData): void {
-    this.writeDataPoint('your_new_event', {
-        ...data,
-        timestamp: data.timestamp ?? new Date().toISOString(),
+    this.writeDataPoint({
+        eventType: 'your_new_event',
+        timestamp: Date.now(),
+        doubles: [data.someNumber],
+        blobs: [data.requestId, data.someString],
     });
 }
 ```
