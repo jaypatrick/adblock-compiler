@@ -88,6 +88,9 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
         // Initialize event emitter for real-time progress tracking
         const events = new WorkflowEvents(this.env.METRICS, runId, 'cache-warming');
 
+        // Initialize analytics service
+        const analytics = new AnalyticsService(this.env.ANALYTICS_ENGINE);
+
         // Use provided configurations or fall back to defaults
         const configsToWarm = configurations.length > 0 ? configurations : DEFAULT_POPULAR_CONFIGS;
 
@@ -95,6 +98,14 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
             `[WORKFLOW:CACHE-WARM] Starting cache warming (runId: ${runId}, ` +
                 `scheduled: ${scheduled}, configs: ${configsToWarm.length})`,
         );
+
+        // Track workflow started via Analytics Engine
+        analytics.trackWorkflowStarted({
+            requestId: runId,
+            workflowId: runId,
+            workflowType: 'cache-warming',
+            itemCount: configsToWarm.length,
+        });
 
         // Emit workflow started event
         await events.emitWorkflowStarted({
@@ -328,6 +339,16 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 totalDurationMs: totalDuration,
             });
 
+            // Track workflow completed via Analytics Engine
+            analytics.trackWorkflowCompleted({
+                requestId: runId,
+                workflowId: runId,
+                workflowType: 'cache-warming',
+                durationMs: totalDuration,
+                itemCount: configsToWarm.length,
+                successCount: warmedConfigurations,
+            });
+
             console.log(
                 `[WORKFLOW:CACHE-WARM] Cache warming completed: ${warmedConfigurations}/${configsToWarm.length} ` +
                     `successful in ${totalDuration}ms (runId: ${runId})`,
@@ -344,6 +365,15 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
             console.error(`[WORKFLOW:CACHE-WARM] Cache warming workflow failed (runId: ${runId}):`, errorMessage);
+
+            // Track workflow failed via Analytics Engine
+            analytics.trackWorkflowFailed({
+                requestId: runId,
+                workflowId: runId,
+                workflowType: 'cache-warming',
+                durationMs: Date.now() - startTime,
+                error: errorMessage,
+            });
 
             // Emit workflow failed event
             await events.emitWorkflowFailed(errorMessage, {
