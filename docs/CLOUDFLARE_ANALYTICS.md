@@ -157,13 +157,13 @@ GROUP BY index1
 
 -- Average compilation duration by config
 SELECT
-    blob1 as config_name,
+    blob2 as config_name,
     AVG(double1) as avg_duration_ms,
     COUNT(*) as total_compilations
 FROM adguard-compiler-analytics-engine
 WHERE timestamp > NOW() - INTERVAL '7' DAY
     AND index1 = 'compilation_success'
-GROUP BY blob1
+GROUP BY blob2
 ORDER BY total_compilations DESC
 
 -- Cache hit ratio
@@ -178,12 +178,12 @@ WHERE timestamp > NOW() - INTERVAL '24' HOUR
 
 -- Rate limit events by IP hash
 SELECT
-    blob6 as ip_hash,
+    blob7 as ip_hash,
     COUNT(*) as limit_events
 FROM adguard-compiler-analytics-engine
 WHERE timestamp > NOW() - INTERVAL '1' HOUR
     AND index1 = 'rate_limit_exceeded'
-GROUP BY blob6
+GROUP BY blob7
 ORDER BY limit_events DESC
 LIMIT 10
 ```
