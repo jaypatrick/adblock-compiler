@@ -43,7 +43,7 @@
         "@std/testing": "jsr:@std/testing@^1.0.0",
         "@std/async": "jsr:@std/async@^1.0.0",
         "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20260103.0",
-        "cloudflare:workers": "npm:@cloudflare/workers-types@^4.20260103.0"
+        "cloudflare:workers": "./worker/cloudflare-workers-shim.ts"
     },
     "lint": {
         "rules": {
