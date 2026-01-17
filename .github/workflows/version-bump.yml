@@ -121,7 +121,11 @@ jobs:
                     exit 0
                   fi
 
-                  git add deno.json package.json src/version.ts wrangler.toml || true
+                  # Only add files that were modified and exist
+                  git add deno.json package.json 2>/dev/null || true
+                  [ -f src/version.ts ] && git add src/version.ts
+                  [ -f wrangler.toml ] && git add wrangler.toml
+                  
                   git commit -m "chore: bump version to ${{ steps.bump.outputs.new }}"
                   git push
 

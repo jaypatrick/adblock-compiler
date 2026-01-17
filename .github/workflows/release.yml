@@ -135,6 +135,8 @@ jobs:
               with:
                   context: .
                   push: true
+                  # Multi-platform build includes ARM64 which uses QEMU emulation and builds slower
+                  # To speed up builds, change to: platforms: linux/amd64
                   platforms: linux/amd64,linux/arm64
                   tags: |
                       ghcr.io/${{ github.repository }}:${{ steps.version.outputs.version }}
@@ -173,7 +175,13 @@ jobs:
               run: |
                   set -euo pipefail
                   mkdir -p release
-                  find artifacts -type f -exec cp {} release/ \;
+                  # Copy all artifacts, preserving directory structure to avoid conflicts
+                  for dir in artifacts/*/; do
+                    artifact_name=$(basename "$dir")
+                    if [ -f "$dir$artifact_name" ]; then
+                      cp "$dir$artifact_name" "release/$artifact_name"
+                    fi
+                  done
                   ls -lah release/
 
             - name: Generate release notes
