@@ -7,12 +7,7 @@
 
 import { createTracingContext, WorkerCompiler } from '../src/index.ts';
 import type { Env } from './worker.ts';
-import type {
-    ClientMessage,
-    CompilationSession,
-    ServerMessage,
-    WebSocketConnectionState,
-} from '../src/types/websocket.ts';
+import type { ClientMessage, CompilationSession, ServerMessage, WebSocketConnectionState } from '../src/types/websocket.ts';
 
 /**
  * WebSocket handler configuration
@@ -74,10 +69,14 @@ export async function handleWebSocketUpgrade(
     });
 
     // Return the client WebSocket
-    return new Response(null, {
-        status: 101,
-        webSocket: client,
-    });
+    // Note: webSocket is a Cloudflare Workers-specific property
+    return new Response(
+        null,
+        {
+            status: 101,
+            webSocket: client,
+        } as ResponseInit & { webSocket: WebSocket },
+    );
 }
 
 /**
@@ -91,9 +90,7 @@ function setupWebSocketHandlers(
     // Handle incoming messages
     ws.addEventListener('message', async (event) => {
         try {
-            const data = typeof event.data === 'string'
-                ? event.data
-                : await event.data.text();
+            const data = typeof event.data === 'string' ? event.data : await event.data.text();
 
             // Check message size
             if (data.length > WS_CONFIG.MAX_MESSAGE_SIZE) {
@@ -207,7 +204,7 @@ async function handleCompileRequest(
     ws: WebSocket,
     message: ClientMessage & { type: 'compile' },
     state: WebSocketConnectionState,
-    env: Env,
+    _env: Env,
 ): Promise<void> {
     const { sessionId, configuration, preFetchedContent, benchmark } = message;
 
@@ -315,7 +312,7 @@ async function handleCompileRequest(
             type: 'compile:complete',
             sessionId,
             rules: result.rules,
-            ruleCount: result.ruleCount,
+            ruleCount: result.rules.length,
             metrics: result.metrics,
             compiledAt: new Date().toISOString(),
             timestamp: new Date().toISOString(),
