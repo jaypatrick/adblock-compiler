@@ -9,6 +9,9 @@ workers_dev = true
 [build]
 command = ""
 
+[browser]
+binding = "BROWSER"
+
 [observability]
 [observability.logs]
 enabled = true
@@ -43,20 +46,37 @@ bucket_name = "adblock-compiler-r2-storage"
 [[durable_objects.bindings]]
 class_name = "AdblockCompiler"
 name = "ADBLOCK_COMPILER"
+
+[[durable_objects.bindings]]
+name = "MCP_OBJECT"
+class_name = "PlaywrightMCP"
+
+# Containers configuration for AdblockCompiler
 [[containers]]
 class_name = "AdblockCompiler"
 image = "./Dockerfile"
 max_instances = 5
 instance_type = "basic"
 
+# Database migrations - each must have a unique tag
 [[migrations]]
 new_sqlite_classes = ["AdblockCompiler"]
 tag = "v1"
 
+[[migrations]]
+new_sqlite_classes = ["PlaywrightMCP"]
+tag = "v2"
+
 # Environment variables
 [vars]
-COMPILER_VERSION = "0.7.22"
+COMPILER_VERSION = "0.8.7"
 TURNSTILE_SITE_KEY = "0x4AAAAAACMKiPZdJh8I8IEM"
+# ADMIN_KEY is managed via Cloudflare secrets (wrangler secret put ADMIN_KEY)
+
+[[d1_databases]]
+binding = "DB"
+database_name = "adblock-compiler-d1-database"
+database_id = "3e8e7dfe-3213-452a-a671-6c18e6e74ce5"
 
 # Static assets configuration using modern assets
 [assets]
@@ -108,3 +128,53 @@ tail_consumers = [{ service = "adblock-compiler-tail" }]
 [[analytics_engine_datasets]]
 binding = "ANALYTICS_ENGINE"
 dataset = "adguard-compiler-analytics-engine"
+
+# ============================================================================
+# Cloudflare Workflows - Durable execution for async operations
+# ============================================================================
+# Workflows provide crash-resistant, automatically resumable execution
+# with built-in retry logic and step-by-step checkpointing.
+#
+# Benefits over queue-based processing:
+# - Automatic state persistence between steps
+# - Crash recovery - resumes from last successful step
+# - Built-in retry with configurable policies
+# - Observable step-by-step progress
+# - Reliable scheduled execution with cron triggers
+
+# Compilation Workflow - Handles single async compilations with durability
+[[workflows]]
+name = "compilation-workflow"
+binding = "COMPILATION_WORKFLOW"
+class_name = "CompilationWorkflow"
+
+# Batch Compilation Workflow - Handles batch compilations with per-item recovery
+[[workflows]]
+name = "batch-compilation-workflow"
+binding = "BATCH_COMPILATION_WORKFLOW"
+class_name = "BatchCompilationWorkflow"
+
+# Cache Warming Workflow - Pre-populates cache on schedule
+[[workflows]]
+name = "cache-warming-workflow"
+binding = "CACHE_WARMING_WORKFLOW"
+class_name = "CacheWarmingWorkflow"
+
+# Health Monitoring Workflow - Monitors source health on schedule
+[[workflows]]
+name = "health-monitoring-workflow"
+binding = "HEALTH_MONITORING_WORKFLOW"
+class_name = "HealthMonitoringWorkflow"
+
+# ============================================================================
+# Cron Triggers for Scheduled Workflows
+# ============================================================================
+# Cron triggers automatically invoke workflows on schedule
+
+[triggers]
+# Cache warming every 6 hours
+# Health monitoring every hour
+crons = [
+    "0 */6 * * *",   # Cache warming: At minute 0 past every 6th hour
+    "0 * * * *",     # Health monitoring: At minute 0 past every hour
+]

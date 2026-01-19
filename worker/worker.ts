@@ -13,6 +13,42 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
+/**
+ * D1 Database type from Cloudflare Workers Types
+ */
+interface D1Database {
+    prepare(query: string): D1PreparedStatement;
+    dump(): Promise<ArrayBuffer>;
+    batch<T = unknown>(statements: D1PreparedStatement[]): Promise<D1Result<T>[]>;
+    exec(query: string): Promise<D1ExecResult>;
+}
+
+interface D1PreparedStatement {
+    bind(...values: unknown[]): D1PreparedStatement;
+    first<T = unknown>(colName?: string): Promise<T | null>;
+    run(): Promise<D1Result>;
+    all<T = unknown>(): Promise<D1Result<T>>;
+    raw<T = unknown>(): Promise<T[]>;
+}
+
+interface D1Result<T = unknown> {
+    results?: T[];
+    success: boolean;
+    error?: string;
+    meta?: {
+        duration: number;
+        changes: number;
+        last_row_id: number;
+        rows_read: number;
+        rows_written: number;
+    };
+}
+
+interface D1ExecResult {
+    count: number;
+    duration: number;
+}
+
 // NOTE: Container class for Cloudflare Containers deployment
 // This is a stub for local development. When deploying with containers enabled,
 // Cloudflare will use the Container runtime automatically.
@@ -39,6 +75,41 @@ export class AdblockCompiler {
 import { createTracingContext, type DiagnosticEvent, type ICompilerEvents, type IConfiguration, WorkerCompiler } from '../src/index.ts';
 import { WORKER_DEFAULTS } from '../src/config/defaults.ts';
 import { handleWebSocketUpgrade } from './websocket.ts';
+import { AnalyticsService } from '../src/services/AnalyticsService.ts';
+
+// Import Workflow classes and types
+import {
+    type BatchCompilationParams,
+    BatchCompilationWorkflow,
+    type CacheWarmingParams,
+    CacheWarmingWorkflow,
+    type CompilationParams,
+    CompilationWorkflow,
+    type HealthMonitoringParams,
+    HealthMonitoringWorkflow,
+    type WorkflowStatus,
+} from './workflows/index.ts';
+
+/**
+ * Workflow binding type - matches Cloudflare Workers Workflow type
+ */
+interface Workflow<Params = unknown> {
+    create(options?: { id?: string; params?: Params }): Promise<WorkflowInstance>;
+    get(id: string): Promise<WorkflowInstance>;
+}
+
+interface WorkflowInstance {
+    id: string;
+    pause(): Promise<void>;
+    resume(): Promise<void>;
+    terminate(): Promise<void>;
+    restart(): Promise<void>;
+    status(): Promise<{
+        status: WorkflowStatus;
+        output?: unknown;
+        error?: string;
+    }>;
+}
 
 /**
  * Environment bindings for the worker.
@@ -57,6 +128,17 @@ export interface Env {
     // Turnstile configuration
     TURNSTILE_SITE_KEY?: string;
     TURNSTILE_SECRET_KEY?: string;
+    // D1 Database binding (optional - for SQLite admin features)
+    DB?: D1Database;
+    // Admin authentication key
+    ADMIN_KEY?: string;
+    // Workflow bindings (optional - for durable execution)
+    COMPILATION_WORKFLOW?: Workflow<CompilationParams>;
+    BATCH_COMPILATION_WORKFLOW?: Workflow<BatchCompilationParams>;
+    CACHE_WARMING_WORKFLOW?: Workflow<CacheWarmingParams>;
+    HEALTH_MONITORING_WORKFLOW?: Workflow<HealthMonitoringParams>;
+    // Analytics Engine binding (optional - for metrics tracking)
+    ANALYTICS_ENGINE?: AnalyticsEngineDataset;
 }
 
 /**
@@ -140,10 +222,10 @@ const METRICS_WINDOW = WORKER_DEFAULTS.METRICS_WINDOW_SECONDS;
 /**
  * Error message for when queue bindings are not configured
  */
-const QUEUE_BINDINGS_NOT_AVAILABLE_ERROR = `Queue bindings are not available. \
-To use async compilation, you must configure Cloudflare Queues in wrangler.toml. \
-See https://github.com/jaypatrick/adblock-compiler/blob/master/docs/QUEUE_SUPPORT.md for setup instructions. \
-Alternatively, use the synchronous endpoints: POST /compile or POST /compile/batch`;
+const QUEUE_BINDINGS_NOT_AVAILABLE_ERROR = 'Queue bindings are not available. ' +
+    'To use async compilation, you must configure Cloudflare Queues in wrangler.toml. ' +
+    'See https://github.com/jaypatrick/adblock-compiler/blob/master/docs/QUEUE_SUPPORT.md for setup instructions. ' +
+    'Alternatively, use the synchronous endpoints: POST /compile or POST /compile/batch';
 
 /**
  * In-memory map for request deduplication
@@ -394,6 +476,16 @@ async function getMetrics(env: Env): Promise<any> {
         timestamp: new Date().toISOString(),
         endpoints: stats,
     };
+}
+
+/**
+ * Create an AnalyticsService instance for tracking metrics to Cloudflare Analytics Engine.
+ *
+ * @param env - The environment bindings
+ * @returns An AnalyticsService instance (no-op if ANALYTICS_ENGINE is not configured)
+ */
+function createAnalyticsService(env: Env): AnalyticsService {
+    return new AnalyticsService(env.ANALYTICS_ENGINE);
 }
 
 /**
@@ -793,7 +885,7 @@ async function handleCompileStream(
                             sendEvent('diagnostic', diagEvent);
                     }
                 }
-                
+
                 // Also emit diagnostics to tail worker for logging
                 emitDiagnosticsToTailWorker(result.diagnostics);
             }
@@ -861,10 +953,21 @@ async function handleCompileStream(
 async function handleCompileJson(
     request: Request,
     env: Env,
+    analytics?: AnalyticsService,
+    requestId?: string,
 ): Promise<Response> {
     const startTime = Date.now();
     const body = await request.json() as CompileRequest;
     const { configuration, preFetchedContent, benchmark } = body;
+    const configName = configuration.name || 'unnamed';
+    const sourceCount = configuration.sources?.length || 0;
+
+    // Track compilation request
+    analytics?.trackCompilationRequest({
+        requestId,
+        configName,
+        sourceCount,
+    });
 
     // Check cache if no pre-fetched content (pre-fetched = dynamic, don't cache)
     const cacheKey = (!preFetchedContent || Object.keys(preFetchedContent).length === 0) ? getCacheKey(configuration) : null;
@@ -879,6 +982,14 @@ async function handleCompileJson(
         const pending = pendingCompilations.get(cacheKey);
         if (pending) {
             const result = await pending;
+            // Track cache hit (deduplicated)
+            analytics?.trackCacheHit({
+                requestId,
+                configName,
+                cacheKey,
+                ruleCount: result.ruleCount,
+                durationMs: Date.now() - startTime,
+            });
             return Response.json({
                 ...result,
                 deduplicated: true,
@@ -904,6 +1015,16 @@ async function handleCompileJson(
                     compiledAt: result.compiledAt || new Date().toISOString(),
                 };
 
+                // Track cache hit
+                analytics?.trackCacheHit({
+                    requestId,
+                    configName,
+                    cacheKey,
+                    ruleCount: result.ruleCount,
+                    outputSizeBytes: cached.byteLength,
+                    durationMs: Date.now() - startTime,
+                });
+
                 return Response.json({
                     ...result,
                     cached: true,
@@ -919,6 +1040,13 @@ async function handleCompileJson(
                 console.error('Cache decompression failed:', error);
             }
         }
+
+        // Track cache miss
+        analytics?.trackCacheMiss({
+            requestId,
+            configName,
+            cacheKey,
+        });
     }
 
     // Create compilation promise for deduplication
@@ -992,6 +1120,16 @@ async function handleCompileJson(
         // Record error metrics
         await recordMetric(env, '/compile', duration, false, result.error);
 
+        // Track compilation error
+        analytics?.trackCompilationError({
+            requestId,
+            configName,
+            sourceCount,
+            durationMs: duration,
+            error: result.error,
+            cacheKey: cacheKey || undefined,
+        });
+
         return Response.json(result, {
             status: 500,
             headers: {
@@ -1002,6 +1140,18 @@ async function handleCompileJson(
 
     // Record success metrics
     await recordMetric(env, '/compile', duration, true);
+
+    // Track compilation success
+    const outputSize = result.rules ? JSON.stringify(result.rules).length : 0;
+    analytics?.trackCompilationSuccess({
+        requestId,
+        configName,
+        sourceCount,
+        ruleCount: result.ruleCount,
+        durationMs: duration,
+        outputSizeBytes: outputSize,
+        cacheKey: cacheKey || undefined,
+    });
 
     return Response.json(result, {
         headers: {
@@ -1964,13 +2114,812 @@ async function queueBatchCompileJob(
     return requestId;
 }
 
+// ============================================================================
+// Admin Storage API Handlers
+// ============================================================================
+
+/**
+ * Verify admin authentication
+ */
+function verifyAdminAuth(request: Request, env: Env): { authorized: boolean; error?: string } {
+    const adminKey = request.headers.get('X-Admin-Key');
+
+    // If no ADMIN_KEY is configured, admin features are disabled
+    if (!env.ADMIN_KEY) {
+        return { authorized: false, error: 'Admin features not configured' };
+    }
+
+    // Verify the provided key matches
+    if (!adminKey || adminKey !== env.ADMIN_KEY) {
+        return { authorized: false, error: 'Unauthorized' };
+    }
+
+    return { authorized: true };
+}
+
+/**
+ * Handle admin storage stats endpoint
+ */
+async function handleAdminStorageStats(env: Env): Promise<Response> {
+    if (!env.DB) {
+        return Response.json(
+            { success: false, error: 'D1 database not configured' },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        // Get stats from storage tables
+        const [storageCount, filterCacheCount, compilationCount, expiredStorage, expiredCache] = await env.DB.batch([
+            env.DB.prepare(`SELECT COUNT(*) as count FROM storage_entries`),
+            env.DB.prepare(`SELECT COUNT(*) as count FROM filter_cache`),
+            env.DB.prepare(`SELECT COUNT(*) as count FROM compilation_metadata`),
+            env.DB.prepare(`SELECT COUNT(*) as count FROM storage_entries WHERE expiresAt IS NOT NULL AND expiresAt < datetime('now')`),
+            env.DB.prepare(`SELECT COUNT(*) as count FROM filter_cache WHERE expiresAt IS NOT NULL AND expiresAt < datetime('now')`),
+        ]);
+
+        const stats = {
+            storage_entries: ((storageCount.results as Array<{ count: number }>) || [])[0]?.count || 0,
+            filter_cache: ((filterCacheCount.results as Array<{ count: number }>) || [])[0]?.count || 0,
+            compilation_metadata: ((compilationCount.results as Array<{ count: number }>) || [])[0]?.count || 0,
+            expired_storage: ((expiredStorage.results as Array<{ count: number }>) || [])[0]?.count || 0,
+            expired_cache: ((expiredCache.results as Array<{ count: number }>) || [])[0]?.count || 0,
+        };
+
+        return Response.json(
+            {
+                success: true,
+                stats,
+                timestamp: new Date().toISOString(),
+            },
+            { headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Handle admin clear expired entries endpoint
+ */
+async function handleAdminClearExpired(env: Env): Promise<Response> {
+    if (!env.DB) {
+        return Response.json(
+            { success: false, error: 'D1 database not configured' },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        const [storageResult, cacheResult] = await env.DB.batch([
+            env.DB.prepare(`DELETE FROM storage_entries WHERE expiresAt IS NOT NULL AND expiresAt < datetime('now')`),
+            env.DB.prepare(`DELETE FROM filter_cache WHERE expiresAt IS NOT NULL AND expiresAt < datetime('now')`),
+        ]);
+
+        const deleted = (storageResult.meta?.changes || 0) + (cacheResult.meta?.changes || 0);
+
+        return Response.json(
+            {
+                success: true,
+                deleted,
+                message: `Cleared ${deleted} expired entries`,
+            },
+            { headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Handle admin clear cache endpoint
+ */
+async function handleAdminClearCache(env: Env): Promise<Response> {
+    if (!env.DB) {
+        return Response.json(
+            { success: false, error: 'D1 database not configured' },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        const [storageResult, cacheResult] = await env.DB.batch([
+            env.DB.prepare(`DELETE FROM storage_entries WHERE key LIKE 'cache/%'`),
+            env.DB.prepare(`DELETE FROM filter_cache`),
+        ]);
+
+        const deleted = (storageResult.meta?.changes || 0) + (cacheResult.meta?.changes || 0);
+
+        return Response.json(
+            {
+                success: true,
+                deleted,
+                message: `Cleared ${deleted} cache entries`,
+            },
+            { headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Handle admin export endpoint
+ */
+async function handleAdminExport(env: Env): Promise<Response> {
+    if (!env.DB) {
+        return Response.json(
+            { success: false, error: 'D1 database not configured' },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        // Export data from all tables (limited to prevent memory issues)
+        const [storageEntries, filterCache, compilationMetadata] = await env.DB.batch([
+            env.DB.prepare(`SELECT * FROM storage_entries LIMIT 1000`),
+            env.DB.prepare(`SELECT * FROM filter_cache LIMIT 100`),
+            env.DB.prepare(`SELECT * FROM compilation_metadata ORDER BY timestamp DESC LIMIT 100`),
+        ]);
+
+        const exportData = {
+            exportedAt: new Date().toISOString(),
+            storage_entries: storageEntries.results || [],
+            filter_cache: filterCache.results || [],
+            compilation_metadata: compilationMetadata.results || [],
+        };
+
+        return Response.json(exportData, {
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+                'Content-Disposition': `attachment; filename="storage-export-${Date.now()}.json"`,
+            },
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Handle admin vacuum endpoint
+ */
+async function handleAdminVacuum(env: Env): Promise<Response> {
+    if (!env.DB) {
+        return Response.json(
+            { success: false, error: 'D1 database not configured' },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        await env.DB.exec('VACUUM');
+
+        return Response.json(
+            {
+                success: true,
+                message: 'Database vacuum completed',
+            },
+            { headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Handle admin list tables endpoint
+ */
+async function handleAdminListTables(env: Env): Promise<Response> {
+    if (!env.DB) {
+        return Response.json(
+            { success: false, error: 'D1 database not configured' },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        const result = await env.DB
+            .prepare(`SELECT name, type FROM sqlite_master WHERE type IN ('table', 'index') ORDER BY type, name`)
+            .all<{ name: string; type: string }>();
+
+        return Response.json(
+            {
+                success: true,
+                tables: result.results || [],
+            },
+            { headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Handle admin SQL query endpoint (read-only)
+ */
+async function handleAdminQuery(request: Request, env: Env): Promise<Response> {
+    if (!env.DB) {
+        return Response.json(
+            { success: false, error: 'D1 database not configured' },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        const body = await request.json() as { sql: string };
+        const { sql } = body;
+
+        if (!sql || typeof sql !== 'string') {
+            return Response.json(
+                { success: false, error: 'Missing or invalid SQL query' },
+                { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } },
+            );
+        }
+
+        // Validate that the query is read-only (SELECT only)
+        const normalizedSql = sql.trim().toUpperCase();
+        if (!normalizedSql.startsWith('SELECT')) {
+            return Response.json(
+                { success: false, error: 'Only SELECT queries are allowed' },
+                { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } },
+            );
+        }
+
+        // Additional safety checks - block dangerous patterns
+        const dangerousPatterns = [
+            /;\s*DELETE/i,
+            /;\s*UPDATE/i,
+            /;\s*INSERT/i,
+            /;\s*DROP/i,
+            /;\s*ALTER/i,
+            /;\s*CREATE/i,
+            /;\s*TRUNCATE/i,
+            /;\s*ATTACH/i,
+            /;\s*DETACH/i,
+        ];
+
+        for (const pattern of dangerousPatterns) {
+            if (pattern.test(sql)) {
+                return Response.json(
+                    { success: false, error: 'Query contains disallowed SQL statements' },
+                    { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } },
+                );
+            }
+        }
+
+        const result = await env.DB.prepare(sql).all();
+
+        return Response.json(
+            {
+                success: true,
+                rows: result.results || [],
+                rowCount: result.results?.length || 0,
+                meta: result.meta,
+            },
+            { headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+// ============================================================================
+// Workflow API Handlers
+// ============================================================================
+
+/**
+ * Error message for when workflow bindings are not configured
+ */
+const WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR = 'Workflow bindings are not available. ' +
+    'Workflows must be configured in wrangler.toml. See the Cloudflare Workflows documentation for setup instructions.';
+
+/**
+ * Generate a unique workflow instance ID
+ */
+function generateWorkflowId(prefix: string): string {
+    return `${prefix}-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+}
+
+/**
+ * Handle workflow-based async compilation
+ */
+async function handleWorkflowCompile(
+    request: Request,
+    env: Env,
+): Promise<Response> {
+    if (!env.COMPILATION_WORKFLOW) {
+        return Response.json(
+            { success: false, error: WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        const body = await request.json() as CompileRequest;
+        const { configuration, preFetchedContent, benchmark, priority } = body;
+
+        const params: CompilationParams = {
+            requestId: generateWorkflowId('wf-compile'),
+            configuration,
+            preFetchedContent,
+            benchmark,
+            priority,
+            queuedAt: Date.now(),
+        };
+
+        // Create a new workflow instance
+        const instance = await env.COMPILATION_WORKFLOW.create({
+            id: params.requestId,
+            params,
+        });
+
+        // deno-lint-ignore no-console
+        console.log(`[WORKFLOW:API] Created compilation workflow instance: ${instance.id}`);
+
+        return Response.json(
+            {
+                success: true,
+                message: 'Compilation workflow started',
+                workflowId: instance.id,
+                workflowType: 'compilation',
+            },
+            {
+                status: 202,
+                headers: { 'Access-Control-Allow-Origin': '*' },
+            },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // deno-lint-ignore no-console
+        console.error('[WORKFLOW:API] Failed to create compilation workflow:', message);
+
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Handle workflow-based batch compilation
+ */
+async function handleWorkflowBatchCompile(
+    request: Request,
+    env: Env,
+): Promise<Response> {
+    if (!env.BATCH_COMPILATION_WORKFLOW) {
+        return Response.json(
+            { success: false, error: WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        interface BatchRequest {
+            requests: Array<{
+                id: string;
+                configuration: IConfiguration;
+                preFetchedContent?: Record<string, string>;
+                benchmark?: boolean;
+            }>;
+            priority?: Priority;
+        }
+
+        const body = await request.json() as BatchRequest;
+        const { requests, priority } = body;
+
+        if (!requests || !Array.isArray(requests) || requests.length === 0) {
+            return Response.json(
+                { success: false, error: 'Invalid batch request' },
+                { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } },
+            );
+        }
+
+        const batchId = generateWorkflowId('wf-batch');
+        const params: BatchCompilationParams = {
+            batchId,
+            requests,
+            priority,
+            queuedAt: Date.now(),
+        };
+
+        const instance = await env.BATCH_COMPILATION_WORKFLOW.create({
+            id: batchId,
+            params,
+        });
+
+        // deno-lint-ignore no-console
+        console.log(`[WORKFLOW:API] Created batch compilation workflow: ${instance.id} (${requests.length} items)`);
+
+        return Response.json(
+            {
+                success: true,
+                message: 'Batch compilation workflow started',
+                workflowId: instance.id,
+                workflowType: 'batch-compilation',
+                batchSize: requests.length,
+            },
+            {
+                status: 202,
+                headers: { 'Access-Control-Allow-Origin': '*' },
+            },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // deno-lint-ignore no-console
+        console.error('[WORKFLOW:API] Failed to create batch compilation workflow:', message);
+
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Handle manual cache warming trigger
+ */
+async function handleWorkflowCacheWarm(
+    request: Request,
+    env: Env,
+): Promise<Response> {
+    if (!env.CACHE_WARMING_WORKFLOW) {
+        return Response.json(
+            { success: false, error: WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        const body = await request.json() as { configurations?: IConfiguration[] };
+        const configurations = body.configurations || [];
+
+        const runId = generateWorkflowId('wf-cache-warm');
+        const params: CacheWarmingParams = {
+            runId,
+            configurations,
+            scheduled: false,
+        };
+
+        const instance = await env.CACHE_WARMING_WORKFLOW.create({
+            id: runId,
+            params,
+        });
+
+        // deno-lint-ignore no-console
+        console.log(`[WORKFLOW:API] Created cache warming workflow: ${instance.id}`);
+
+        return Response.json(
+            {
+                success: true,
+                message: 'Cache warming workflow started',
+                workflowId: instance.id,
+                workflowType: 'cache-warming',
+                configurationsCount: configurations.length || 'default',
+            },
+            {
+                status: 202,
+                headers: { 'Access-Control-Allow-Origin': '*' },
+            },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // deno-lint-ignore no-console
+        console.error('[WORKFLOW:API] Failed to create cache warming workflow:', message);
+
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Handle manual health monitoring trigger
+ */
+async function handleWorkflowHealthCheck(
+    request: Request,
+    env: Env,
+): Promise<Response> {
+    if (!env.HEALTH_MONITORING_WORKFLOW) {
+        return Response.json(
+            { success: false, error: WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        const body = await request.json() as {
+            sources?: Array<{ name: string; url: string; expectedMinRules?: number }>;
+            alertOnFailure?: boolean;
+        };
+
+        const runId = generateWorkflowId('wf-health');
+        const params: HealthMonitoringParams = {
+            runId,
+            sources: body.sources || [],
+            alertOnFailure: body.alertOnFailure ?? true,
+        };
+
+        const instance = await env.HEALTH_MONITORING_WORKFLOW.create({
+            id: runId,
+            params,
+        });
+
+        // deno-lint-ignore no-console
+        console.log(`[WORKFLOW:API] Created health monitoring workflow: ${instance.id}`);
+
+        return Response.json(
+            {
+                success: true,
+                message: 'Health monitoring workflow started',
+                workflowId: instance.id,
+                workflowType: 'health-monitoring',
+                sourcesCount: body.sources?.length || 'default',
+            },
+            {
+                status: 202,
+                headers: { 'Access-Control-Allow-Origin': '*' },
+            },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // deno-lint-ignore no-console
+        console.error('[WORKFLOW:API] Failed to create health monitoring workflow:', message);
+
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Get workflow instance status
+ */
+async function handleWorkflowStatus(
+    workflowId: string,
+    workflowType: string,
+    env: Env,
+): Promise<Response> {
+    let workflow: Workflow<unknown> | undefined;
+
+    switch (workflowType) {
+        case 'compilation':
+            workflow = env.COMPILATION_WORKFLOW;
+            break;
+        case 'batch-compilation':
+            workflow = env.BATCH_COMPILATION_WORKFLOW;
+            break;
+        case 'cache-warming':
+            workflow = env.CACHE_WARMING_WORKFLOW;
+            break;
+        case 'health-monitoring':
+            workflow = env.HEALTH_MONITORING_WORKFLOW;
+            break;
+        default:
+            return Response.json(
+                { success: false, error: `Unknown workflow type: ${workflowType}` },
+                { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } },
+            );
+    }
+
+    if (!workflow) {
+        return Response.json(
+            { success: false, error: WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR },
+            { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+
+    try {
+        const instance = await workflow.get(workflowId);
+        const status = await instance.status();
+
+        return Response.json(
+            {
+                success: true,
+                workflowId,
+                workflowType,
+                status: status.status,
+                output: status.output,
+                error: status.error,
+            },
+            { headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        return Response.json(
+            { success: false, error: message },
+            { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Get workflow metrics
+ */
+async function handleWorkflowMetrics(env: Env): Promise<Response> {
+    try {
+        const [compileMetrics, batchMetrics, cacheWarmMetrics, healthMetrics] = await Promise.all([
+            env.METRICS.get('workflow:compile:metrics', 'json'),
+            env.METRICS.get('workflow:batch:metrics', 'json'),
+            env.METRICS.get('workflow:cache-warm:metrics', 'json'),
+            env.METRICS.get('workflow:health:metrics', 'json'),
+        ]);
+
+        return Response.json(
+            {
+                success: true,
+                timestamp: new Date().toISOString(),
+                workflows: {
+                    compilation: compileMetrics || { totalCompilations: 0 },
+                    batchCompilation: batchMetrics || { totalBatches: 0 },
+                    cacheWarming: cacheWarmMetrics || { totalRuns: 0 },
+                    healthMonitoring: healthMetrics || { totalChecks: 0 },
+                },
+            },
+            { headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Get workflow events for real-time progress tracking
+ */
+async function handleWorkflowEvents(
+    workflowId: string,
+    env: Env,
+    since?: string,
+): Promise<Response> {
+    try {
+        const eventsKey = `workflow:events:${workflowId}`;
+        const eventLog = await env.METRICS.get(eventsKey, 'json') as {
+            workflowId: string;
+            workflowType: string;
+            startedAt: string;
+            completedAt?: string;
+            events: Array<{
+                type: string;
+                workflowId: string;
+                workflowType: string;
+                timestamp: string;
+                step?: string;
+                progress?: number;
+                message?: string;
+                data?: Record<string, unknown>;
+            }>;
+        } | null;
+
+        if (!eventLog) {
+            return Response.json(
+                {
+                    success: true,
+                    workflowId,
+                    events: [],
+                    message: 'No events found for this workflow',
+                },
+                { headers: { 'Access-Control-Allow-Origin': '*' } },
+            );
+        }
+
+        // Filter events since a specific timestamp if provided (for returned events only)
+        let events = eventLog.events;
+        if (since) {
+            const sinceTime = new Date(since).getTime();
+            events = events.filter((e) => new Date(e.timestamp).getTime() > sinceTime);
+        }
+
+        // Find the latest overall progress from the full event log
+        const progressEvents = eventLog.events.filter((e) => e.type === 'workflow:progress');
+        const latestProgress = progressEvents.length > 0 ? (progressEvents[progressEvents.length - 1].progress ?? 0) : 0;
+
+        // Determine if workflow is complete based on the full event log
+        const isComplete = eventLog.events.some((e) => e.type === 'workflow:completed' || e.type === 'workflow:failed');
+
+        return Response.json(
+            {
+                success: true,
+                workflowId,
+                workflowType: eventLog.workflowType,
+                startedAt: eventLog.startedAt,
+                completedAt: eventLog.completedAt,
+                progress: latestProgress,
+                isComplete,
+                events,
+            },
+            { headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
+/**
+ * Get latest health check results
+ */
+async function handleHealthLatest(env: Env): Promise<Response> {
+    try {
+        const latest = await env.METRICS.get('health:latest', 'json');
+
+        if (!latest) {
+            return Response.json(
+                {
+                    success: true,
+                    message: 'No health check data available. Run a health check first.',
+                    data: null,
+                },
+                { headers: { 'Access-Control-Allow-Origin': '*' } },
+            );
+        }
+
+        return Response.json(
+            {
+                success: true,
+                data: latest,
+            },
+            { headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+
+        return Response.json(
+            { success: false, error: message },
+            { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
+        );
+    }
+}
+
 /**
  * Main fetch handler for the Cloudflare Worker.
  */
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
+        const requestId = generateRequestId('api');
         const url = new URL(request.url);
         const { pathname } = url;
+        const analytics = createAnalyticsService(env);
+        const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
 
         // Handle CORS preflight
         if (request.method === 'OPTIONS') {
@@ -2032,6 +2981,68 @@ export default {
                     'Cache-Control': 'no-cache',
                 },
             });
+        }
+
+        // ========================================================================
+        // Admin Storage Endpoints (require X-Admin-Key header)
+        // ========================================================================
+
+        if (pathname.startsWith('/admin/storage')) {
+            // Verify admin authentication
+            const auth = verifyAdminAuth(request, env);
+            if (!auth.authorized) {
+                return Response.json(
+                    { success: false, error: auth.error },
+                    {
+                        status: 401,
+                        headers: {
+                            'Access-Control-Allow-Origin': '*',
+                            'WWW-Authenticate': 'X-Admin-Key',
+                        },
+                    },
+                );
+            }
+
+            // Admin storage stats
+            if (pathname === '/admin/storage/stats' && request.method === 'GET') {
+                return handleAdminStorageStats(env);
+            }
+
+            // Admin clear expired entries
+            if (pathname === '/admin/storage/clear-expired' && request.method === 'POST') {
+                return handleAdminClearExpired(env);
+            }
+
+            // Admin clear cache
+            if (pathname === '/admin/storage/clear-cache' && request.method === 'POST') {
+                return handleAdminClearCache(env);
+            }
+
+            // Admin export data
+            if (pathname === '/admin/storage/export' && request.method === 'GET') {
+                return handleAdminExport(env);
+            }
+
+            // Admin vacuum database
+            if (pathname === '/admin/storage/vacuum' && request.method === 'POST') {
+                return handleAdminVacuum(env);
+            }
+
+            // Admin list tables
+            if (pathname === '/admin/storage/tables' && request.method === 'GET') {
+                return handleAdminListTables(env);
+            }
+
+            // Admin SQL query (read-only)
+            if (pathname === '/admin/storage/query' && request.method === 'POST') {
+                return handleAdminQuery(request, env);
+            }
+
+            // Unknown admin endpoint
+            return Response.json(
+                { success: false, error: 'Unknown admin endpoint' },
+                { status: 404, headers: { 'Access-Control-Allow-Origin': '*' } },
+            );
         }
 
         // Handle queue results endpoint - fetch cached results for a completed job
@@ -2185,10 +3196,17 @@ export default {
             (pathname === '/compile' || pathname === '/compile/stream' ||
                 pathname === '/compile/batch') && request.method === 'POST'
         ) {
-            const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
             const allowed = await checkRateLimit(env, ip);
 
             if (!allowed) {
+                // Track rate limit exceeded event
+                analytics.trackRateLimitExceeded({
+                    requestId,
+                    clientIpHash: AnalyticsService.hashIp(ip),
+                    rateLimit: RATE_LIMIT_MAX_REQUESTS,
+                    windowSeconds: RATE_LIMIT_WINDOW,
+                });
+
                 return Response.json(
                     {
                         success: false,
@@ -2235,7 +3253,7 @@ export default {
             }
 
             if (pathname === '/compile') {
-                return handleCompileJson(request, env);
+                return handleCompileJson(request, env, analytics, requestId);
             }
 
             if (pathname === '/compile/stream') {
@@ -2321,6 +3339,70 @@ export default {
             return handleCompileBatchAsync(request, env);
         }
 
+        // ========================================================================
+        // Workflow API Endpoints (Durable execution via Cloudflare Workflows)
+        // ========================================================================
+
+        // Workflow: Start async compilation
+        if (pathname === '/workflow/compile' && request.method === 'POST') {
+            return handleWorkflowCompile(request, env);
+        }
+
+        // Workflow: Start batch compilation
+        if (pathname === '/workflow/batch' && request.method === 'POST') {
+            return handleWorkflowBatchCompile(request, env);
+        }
+
+        // Workflow: Trigger manual cache warming
+        if (pathname === '/workflow/cache-warm' && request.method === 'POST') {
+            return handleWorkflowCacheWarm(request, env);
+        }
+
+        // Workflow: Trigger manual health check
+        if (pathname === '/workflow/health-check' && request.method === 'POST') {
+            return handleWorkflowHealthCheck(request, env);
+        }
+
+        // Workflow: Get workflow instance status
+        // Pattern: /workflow/status/:type/:id
+        if (pathname.startsWith('/workflow/status/') && request.method === 'GET') {
+            const parts = pathname.split('/');
+            if (parts.length >= 5) {
+                const workflowType = parts[3];
+                const instanceId = parts[4];
+                return handleWorkflowStatus(workflowType, instanceId, env);
+            }
+            return Response.json(
+                { success: false, error: 'Invalid workflow status path. Use /workflow/status/:type/:id' },
+                { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } },
+            );
+        }
+
+        // Workflow: Get workflow metrics
+        if (pathname === '/workflow/metrics' && request.method === 'GET') {
+            return handleWorkflowMetrics(env);
+        }
+
+        // Workflow: Get workflow events for real-time progress
+        // Pattern: /workflow/events/:workflowId
+        if (pathname.startsWith('/workflow/events/') && request.method === 'GET') {
+            const parts = pathname.split('/');
+            if (parts.length >= 4) {
+                const workflowId = parts[3];
+                const since = url.searchParams.get('since') || undefined;
+                return handleWorkflowEvents(workflowId, env, since);
+            }
+            return Response.json(
+                { success: false, error: 'Invalid workflow events path. Use /workflow/events/:workflowId' },
+                { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } },
+            );
+        }
+
+        // Health: Get latest health check results
+        if (pathname === '/health/latest' && request.method === 'GET') {
+            return handleHealthLatest(env);
+        }
+
         // Serve web UI and static files
         if (request.method === 'GET') {
             // Try to serve from ASSETS
@@ -2365,4 +3447,70 @@ export default {
     async queue(batch: MessageBatch<QueueMessage>, env: Env): Promise<void> {
         await handleQueue(batch, env);
     },
+
+    /**
+     * Scheduled (cron) handler for workflow triggers
+     *
+     * Cron schedule from wrangler.toml:
+     * - "0 *\/6 * * *" - Cache warming every 6 hours
+     * - "0 * * * *"    - Health monitoring every hour
+     */
+    async scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
+        const cronPattern = event.cron;
+        const runId = `scheduled-${Date.now()}`;
+
+        // deno-lint-ignore no-console
+        console.log(`[CRON] Scheduled event triggered: ${cronPattern} (runId: ${runId})`);
+
+        try {
+            // Cache warming: every 6 hours (0 */6 * * *)
+            if (cronPattern === '0 */6 * * *') {
+                if (env.CACHE_WARMING_WORKFLOW) {
+                    const instance = await env.CACHE_WARMING_WORKFLOW.create({
+                        id: `cache-warm-${runId}`,
+                        params: {
+                            runId: `cron-${runId}`,
+                            configurations: [], // Use defaults
+                            scheduled: true,
+                        },
+                    });
+                    // deno-lint-ignore no-console
+                    console.log(`[CRON] Started cache warming workflow: ${instance.id}`);
+                } else {
+                    // deno-lint-ignore no-console
+                    console.warn('[CRON] CACHE_WARMING_WORKFLOW not available');
+                }
+            }
+
+            // Health monitoring: every hour (0 * * * *)
+            if (cronPattern === '0 * * * *') {
+                if (env.HEALTH_MONITORING_WORKFLOW) {
+                    const instance = await env.HEALTH_MONITORING_WORKFLOW.create({
+                        id: `health-check-${runId}`,
+                        params: {
+                            runId: `cron-${runId}`,
+                            sources: [], // Use defaults
+                            alertOnFailure: true,
+                        },
+                    });
+                    // deno-lint-ignore no-console
+                    console.log(`[CRON] Started health monitoring workflow: ${instance.id}`);
+                } else {
+                    // deno-lint-ignore no-console
+                    console.warn('[CRON] HEALTH_MONITORING_WORKFLOW not available');
+                }
+            }
+        } catch (error) {
+            // deno-lint-ignore no-console
+            console.error(`[CRON] Failed to start scheduled workflow (${cronPattern}):`, error);
+        }
+    },
 };
+
+// ============================================================================
+// Export Workflow classes for Cloudflare Workers runtime
+// ============================================================================
+// These exports allow Cloudflare to instantiate the workflow classes
+// as defined in wrangler.toml [[workflows]] bindings.
+
+export { BatchCompilationWorkflow, CacheWarmingWorkflow, CompilationWorkflow, HealthMonitoringWorkflow };
