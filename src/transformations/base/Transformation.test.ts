@@ -64,13 +64,13 @@ Deno.test('Transformation - base class', async (t) => {
         assertEquals(transformation['logger'], silentLogger);
     });
 
-    await t.step('should have abstract type property', () => {
+    await t.step('should have type property', () => {
         const transformation = new TestSyncTransformation();
         assertExists(transformation.type);
         assertEquals(transformation.type, TransformationType.RemoveComments);
     });
 
-    await t.step('should have abstract name property', () => {
+    await t.step('should have name property', () => {
         const transformation = new TestSyncTransformation();
         assertExists(transformation.name);
         assertEquals(typeof transformation.name, 'string');
@@ -220,7 +220,7 @@ Deno.test('Transformation - logging methods', async (t) => {
         transformation.executeSync(rules);
     });
 
-    await t.step('should use custom logger for logging', () => {
+    await t.step('should invoke custom logger methods when logging', () => {
         let infoLogged = false;
         let debugLogged = false;
         let errorLogged = false;

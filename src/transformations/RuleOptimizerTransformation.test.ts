@@ -67,7 +67,7 @@ Deno.test('RuleOptimizerTransformation - getStats', async (t) => {
         // Create redundant rules (subdomain and parent domain)
         optimizer.executeSync([
             '||example.com^',
-            '||ads.example.com^', // This might be considered redundant
+            '||ads.example.com^',
         ]);
 
         const stats = optimizer.getStats();

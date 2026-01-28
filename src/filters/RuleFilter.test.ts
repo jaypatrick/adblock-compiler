@@ -101,24 +101,26 @@ Deno.test('RuleFilter - applyExclusions', async (t) => {
         const exclusionsFile = './test_exclusions.txt';
         await Deno.writeTextFile(exclusionsFile, 'example.com\ntest.com\n');
 
-        const filterService = new FilterService(silentLogger);
-        const ruleFilter = new RuleFilter(filterService, silentLogger);
-        const rules = [
-            '||example.com^',
-            '||test.com^',
-            '||domain.org^',
-        ];
-        const filterable = createFilterable({
-            exclusions_sources: [exclusionsFile],
-        });
+        try {
+            const filterService = new FilterService(silentLogger);
+            const ruleFilter = new RuleFilter(filterService, silentLogger);
+            const rules = [
+                '||example.com^',
+                '||test.com^',
+                '||domain.org^',
+            ];
+            const filterable = createFilterable({
+                exclusions_sources: [exclusionsFile],
+            });
 
-        const result = await ruleFilter.applyExclusions(rules, filterable);
+            const result = await ruleFilter.applyExclusions(rules, filterable);
 
-        assertEquals(result.length, 1);
-        assertEquals(result[0], '||domain.org^');
-
-        // Cleanup
-        await Deno.remove(exclusionsFile);
+            assertEquals(result.length, 1);
+            assertEquals(result[0], '||domain.org^');
+        } finally {
+            // Cleanup
+            await Deno.remove(exclusionsFile);
+        }
     });
 
     await t.step('should combine exclusions and exclusions_sources', async () => {
@@ -126,25 +128,27 @@ Deno.test('RuleFilter - applyExclusions', async (t) => {
         const exclusionsFile = './test_exclusions.txt';
         await Deno.writeTextFile(exclusionsFile, 'test.com\n');
 
-        const filterService = new FilterService(silentLogger);
-        const ruleFilter = new RuleFilter(filterService, silentLogger);
-        const rules = [
-            '||example.com^',
-            '||test.com^',
-            '||domain.org^',
-        ];
-        const filterable = createFilterable({
-            exclusions: ['example.com'],
-            exclusions_sources: [exclusionsFile],
-        });
+        try {
+            const filterService = new FilterService(silentLogger);
+            const ruleFilter = new RuleFilter(filterService, silentLogger);
+            const rules = [
+                '||example.com^',
+                '||test.com^',
+                '||domain.org^',
+            ];
+            const filterable = createFilterable({
+                exclusions: ['example.com'],
+                exclusions_sources: [exclusionsFile],
+            });
 
-        const result = await ruleFilter.applyExclusions(rules, filterable);
+            const result = await ruleFilter.applyExclusions(rules, filterable);
 
-        assertEquals(result.length, 1);
-        assertEquals(result[0], '||domain.org^');
-
-        // Cleanup
-        await Deno.remove(exclusionsFile);
+            assertEquals(result.length, 1);
+            assertEquals(result[0], '||domain.org^');
+        } finally {
+            // Cleanup
+            await Deno.remove(exclusionsFile);
+        }
     });
 
     await t.step('should throw error on invalid exclusions_sources', async () => {
@@ -248,25 +252,27 @@ Deno.test('RuleFilter - applyInclusions', async (t) => {
         const inclusionsFile = './test_inclusions.txt';
         await Deno.writeTextFile(inclusionsFile, 'example.com\ntest.com\n');
 
-        const filterService = new FilterService(silentLogger);
-        const ruleFilter = new RuleFilter(filterService, silentLogger);
-        const rules = [
-            '||example.com^',
-            '||test.com^',
-            '||domain.org^',
-        ];
-        const filterable = createFilterable({
-            inclusions_sources: [inclusionsFile],
-        });
+        try {
+            const filterService = new FilterService(silentLogger);
+            const ruleFilter = new RuleFilter(filterService, silentLogger);
+            const rules = [
+                '||example.com^',
+                '||test.com^',
+                '||domain.org^',
+            ];
+            const filterable = createFilterable({
+                inclusions_sources: [inclusionsFile],
+            });
 
-        const result = await ruleFilter.applyInclusions(rules, filterable);
+            const result = await ruleFilter.applyInclusions(rules, filterable);
 
-        assertEquals(result.length, 2);
-        assertEquals(result.includes('||example.com^'), true);
-        assertEquals(result.includes('||test.com^'), true);
-
-        // Cleanup
-        await Deno.remove(inclusionsFile);
+            assertEquals(result.length, 2);
+            assertEquals(result.includes('||example.com^'), true);
+            assertEquals(result.includes('||test.com^'), true);
+        } finally {
+            // Cleanup
+            await Deno.remove(inclusionsFile);
+        }
     });
 
     await t.step('should combine inclusions and inclusions_sources', async () => {
@@ -274,26 +280,28 @@ Deno.test('RuleFilter - applyInclusions', async (t) => {
         const inclusionsFile = './test_inclusions.txt';
         await Deno.writeTextFile(inclusionsFile, 'test.com\n');
 
-        const filterService = new FilterService(silentLogger);
-        const ruleFilter = new RuleFilter(filterService, silentLogger);
-        const rules = [
-            '||example.com^',
-            '||test.com^',
-            '||domain.org^',
-        ];
-        const filterable = createFilterable({
-            inclusions: ['example.com'],
-            inclusions_sources: [inclusionsFile],
-        });
+        try {
+            const filterService = new FilterService(silentLogger);
+            const ruleFilter = new RuleFilter(filterService, silentLogger);
+            const rules = [
+                '||example.com^',
+                '||test.com^',
+                '||domain.org^',
+            ];
+            const filterable = createFilterable({
+                inclusions: ['example.com'],
+                inclusions_sources: [inclusionsFile],
+            });
 
-        const result = await ruleFilter.applyInclusions(rules, filterable);
+            const result = await ruleFilter.applyInclusions(rules, filterable);
 
-        assertEquals(result.length, 2);
-        assertEquals(result.includes('||example.com^'), true);
-        assertEquals(result.includes('||test.com^'), true);
-
-        // Cleanup
-        await Deno.remove(inclusionsFile);
+            assertEquals(result.length, 2);
+            assertEquals(result.includes('||example.com^'), true);
+            assertEquals(result.includes('||test.com^'), true);
+        } finally {
+            // Cleanup
+            await Deno.remove(inclusionsFile);
+        }
     });
 
     await t.step('should throw error on invalid inclusions_sources', async () => {

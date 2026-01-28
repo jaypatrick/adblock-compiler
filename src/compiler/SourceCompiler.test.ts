@@ -212,22 +212,24 @@ Deno.test('SourceCompiler - compile', async (t) => {
 `;
         await Deno.writeTextFile(testFile, content);
 
-        const compiler = new SourceCompiler({ logger: silentLogger });
-        const source = createTestSource({ source: testFile });
+        try {
+            const compiler = new SourceCompiler({ logger: silentLogger });
+            const source = createTestSource({ source: testFile });
 
-        const result = await compiler.compile(source);
+            const result = await compiler.compile(source);
 
-        assertExists(result);
-        // Upstream headers should be stripped
-        const hasUpstreamHeaders = result.some((line) => 
-            line.includes('! Title:') || 
-            line.includes('! Homepage:') || 
-            line.includes('! Version:')
-        );
-        assertEquals(hasUpstreamHeaders, false);
-
-        // Cleanup
-        await Deno.remove(testFile);
+            assertExists(result);
+            // Upstream headers should be stripped
+            const hasUpstreamHeaders = result.some((line) =>
+                line.includes('! Title:') ||
+                line.includes('! Homepage:') ||
+                line.includes('! Version:')
+            );
+            assertEquals(hasUpstreamHeaders, false);
+        } finally {
+            // Cleanup
+            await Deno.remove(testFile);
+        }
     });
 
     await t.step('should handle empty source files', async () => {
@@ -235,16 +237,18 @@ Deno.test('SourceCompiler - compile', async (t) => {
         const testFile = `${testResourcesDir}empty.txt`;
         await Deno.writeTextFile(testFile, '');
 
-        const compiler = new SourceCompiler({ logger: silentLogger });
-        const source = createTestSource({ source: testFile });
+        try {
+            const compiler = new SourceCompiler({ logger: silentLogger });
+            const source = createTestSource({ source: testFile });
 
-        const result = await compiler.compile(source);
+            const result = await compiler.compile(source);
 
-        assertExists(result);
-        assertEquals(Array.isArray(result), true);
-
-        // Cleanup
-        await Deno.remove(testFile);
+            assertExists(result);
+            assertEquals(Array.isArray(result), true);
+        } finally {
+            // Cleanup
+            await Deno.remove(testFile);
+        }
     });
 });
 
