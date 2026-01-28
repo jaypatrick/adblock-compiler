@@ -3,14 +3,7 @@
  */
 
 import { assertEquals, assertExists, assertRejects } from '@std/assert';
-import {
-    DownloaderPlugin,
-    Plugin,
-    PluginContext,
-    PluginManifest,
-    PluginRegistry,
-    TransformationPlugin,
-} from './PluginSystem.ts';
+import { DownloaderPlugin, Plugin, PluginContext, PluginManifest, PluginRegistry, TransformationPlugin } from './PluginSystem.ts';
 import { silentLogger } from '../utils/index.ts';
 
 // Test data

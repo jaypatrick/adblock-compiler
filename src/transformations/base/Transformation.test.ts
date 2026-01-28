@@ -4,7 +4,7 @@
 
 import { assertEquals, assertExists } from '@std/assert';
 import { AsyncTransformation, SyncTransformation, Transformation } from './Transformation.ts';
-import { TransformationType, ITransformationContext } from '../../types/index.ts';
+import { ITransformationContext, TransformationType } from '../../types/index.ts';
 import { silentLogger } from '../../utils/index.ts';
 
 /**

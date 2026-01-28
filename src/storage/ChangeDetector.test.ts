@@ -3,7 +3,7 @@
  */
 
 import { assertEquals } from '@std/assert';
-import { ChangeDetector, ChangeDetectionResult, ChangeSummary, SourceSnapshot } from './ChangeDetector.ts';
+import { ChangeDetectionResult, ChangeDetector, SourceSnapshot } from './ChangeDetector.ts';
 import { IStorageAdapter } from './IStorageAdapter.ts';
 import { silentLogger } from '../utils/index.ts';
 

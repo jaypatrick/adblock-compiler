@@ -311,9 +311,9 @@ Deno.test('SourceCompiler - error handling', async (t) => {
 
     await t.step('should include source name in error', async () => {
         const compiler = new SourceCompiler({ logger: silentLogger });
-        const source = createTestSource({ 
+        const source = createTestSource({
             name: 'My Test Source',
-            source: '/invalid/path.txt' 
+            source: '/invalid/path.txt',
         });
 
         try {

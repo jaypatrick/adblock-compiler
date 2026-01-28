@@ -3,7 +3,7 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import { CachingDownloader, CachingOptions, DownloadResult } from './CachingDownloader.ts';
+import { CachingDownloader, CachingOptions } from './CachingDownloader.ts';
 import { IDownloader } from '../types/index.ts';
 import { IStorageAdapter } from './IStorageAdapter.ts';
 import { silentLogger } from '../utils/index.ts';

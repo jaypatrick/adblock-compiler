@@ -3,7 +3,7 @@
  */
 
 import { assertEquals } from '@std/assert';
-import { HealthStatus, SourceAttempt, SourceHealthMetrics, SourceHealthMonitor } from './SourceHealthMonitor.ts';
+import { HealthStatus, SourceHealthMonitor } from './SourceHealthMonitor.ts';
 import { IStorageAdapter } from './IStorageAdapter.ts';
 import { silentLogger } from '../utils/index.ts';
 
