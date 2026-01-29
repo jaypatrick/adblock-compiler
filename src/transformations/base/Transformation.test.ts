@@ -27,8 +27,8 @@ class TestAsyncTransformation extends AsyncTransformation {
     public readonly name = 'Test Async Transformation';
 
     public async execute(rules: readonly string[], _context?: ITransformationContext): Promise<readonly string[]> {
-        // Simulate async operation
-        await new Promise((resolve) => setTimeout(resolve, 1));
+        // Simulate async operation without setTimeout to avoid resource leaks in tests
+        await Promise.resolve();
         return rules.map((rule) => rule.toLowerCase());
     }
 }
