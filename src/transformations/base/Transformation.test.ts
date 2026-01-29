@@ -4,7 +4,7 @@
 
 import { assertEquals, assertExists } from '@std/assert';
 import { AsyncTransformation, SyncTransformation, Transformation } from './Transformation.ts';
-import { ITransformationContext, TransformationType } from '../../types/index.ts';
+import { ITransformationContext, SourceType, TransformationType } from '../../types/index.ts';
 import { silentLogger } from '../../utils/index.ts';
 
 /**
@@ -123,7 +123,7 @@ Deno.test('SyncTransformation', async (t) => {
         const transformation = new TestSyncTransformation();
         const rules = ['||example.com^'];
         const context: ITransformationContext = {
-            configuration: { source: 'test', type: 0 },
+            configuration: { source: 'test', type: SourceType.Adblock },
             logger: silentLogger,
         };
 
@@ -178,7 +178,7 @@ Deno.test('AsyncTransformation', async (t) => {
         const transformation = new TestAsyncTransformation();
         const rules = ['||EXAMPLE.COM^'];
         const context: ITransformationContext = {
-            configuration: { source: 'test', type: 0 },
+            configuration: { source: 'test', type: SourceType.Adblock },
             logger: silentLogger,
         };
 

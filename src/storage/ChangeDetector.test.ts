@@ -5,13 +5,14 @@
 import { assertEquals } from '@std/assert';
 import { ChangeDetectionResult, ChangeDetector, SourceSnapshot } from './ChangeDetector.ts';
 import { IStorageAdapter } from './IStorageAdapter.ts';
+import type { CompilationMetadata } from './types.ts';
 import { silentLogger } from '../utils/index.ts';
 
 /**
  * Mock storage adapter for testing
  */
 class MockStorageAdapter implements IStorageAdapter {
-    private data = new Map<string, { data: unknown; expiresAt?: number }>();
+    private data = new Map<string, { data: unknown; createdAt: number; updatedAt: number; expiresAt?: number }>();
     private _isOpen = true;
 
     async open(): Promise<void> {
@@ -26,7 +27,7 @@ class MockStorageAdapter implements IStorageAdapter {
         return this._isOpen;
     }
 
-    async get<T>(key: string[]): Promise<{ data: T; expiresAt?: number } | null> {
+    async get<T>(key: string[]): Promise<{ data: T; createdAt: number; updatedAt: number; expiresAt?: number } | null> {
         const keyStr = key.join('/');
         const entry = this.data.get(keyStr);
         if (!entry) return null;
@@ -37,14 +38,19 @@ class MockStorageAdapter implements IStorageAdapter {
             return null;
         }
 
-        return entry as { data: T; expiresAt?: number };
+        return entry as { data: T; createdAt: number; updatedAt: number; expiresAt?: number };
     }
 
     async set(key: string[], value: unknown, ttlMs?: number): Promise<boolean> {
         const keyStr = key.join('/');
-        const entry: { data: unknown; expiresAt?: number } = { data: value };
+        const now = Date.now();
+        const entry: { data: unknown; createdAt: number; updatedAt: number; expiresAt?: number } = {
+            data: value,
+            createdAt: now,
+            updatedAt: now,
+        };
         if (ttlMs) {
-            entry.expiresAt = Date.now() + ttlMs;
+            entry.expiresAt = now + ttlMs;
         }
         this.data.set(keyStr, entry);
         return true;
@@ -56,10 +62,10 @@ class MockStorageAdapter implements IStorageAdapter {
     }
 
     async list<T>(options?: { prefix?: string[]; limit?: number; reverse?: boolean }): Promise<
-        Array<{ key: string[]; value: { data: T; expiresAt?: number } }>
+        Array<{ key: string[]; value: { data: T; createdAt: number; updatedAt: number; expiresAt?: number } }>
     > {
         const prefixStr = options?.prefix ? options.prefix.join('/') : '';
-        const results: Array<{ key: string[]; value: { data: T; expiresAt?: number } }> = [];
+        const results: Array<{ key: string[]; value: { data: T; createdAt: number; updatedAt: number; expiresAt?: number } }> = [];
 
         for (const [keyStr, entry] of this.data.entries()) {
             if (keyStr.startsWith(prefixStr)) {
@@ -69,7 +75,7 @@ class MockStorageAdapter implements IStorageAdapter {
                 }
                 results.push({
                     key: keyStr.split('/'),
-                    value: entry as { data: T; expiresAt?: number },
+                    value: entry as { data: T; createdAt: number; updatedAt: number; expiresAt?: number },
                 });
             }
         }
@@ -98,9 +104,9 @@ class MockStorageAdapter implements IStorageAdapter {
     }
 
     async getStats(): Promise<{
-        totalEntries: number;
-        expiredEntries: number;
-        storageSize: number;
+        entryCount: number;
+        expiredCount: number;
+        sizeEstimate: number;
     }> {
         const now = Date.now();
         let expiredEntries = 0;
@@ -110,9 +116,9 @@ class MockStorageAdapter implements IStorageAdapter {
             }
         }
         return {
-            totalEntries: this.data.size,
-            expiredEntries,
-            storageSize: 0,
+            entryCount: this.data.size,
+            expiredCount: expiredEntries,
+            sizeEstimate: 0,
         };
     }
 
@@ -124,29 +130,28 @@ class MockStorageAdapter implements IStorageAdapter {
         ttlMs?: number,
     ): Promise<boolean> {
         const entry = {
+            source,
             content,
             hash,
             etag,
-            timestamp: Date.now(),
         };
         return await this.set(['cache', 'filters', source], entry, ttlMs);
     }
 
-    async getCachedFilterList(source: string): Promise<{
-        data: { content: string[]; hash: string; etag?: string; timestamp: number };
-    } | null> {
-        return await this.get<{ content: string[]; hash: string; etag?: string; timestamp: number }>([
+    async getCachedFilterList(source: string): Promise<{ source: string; content: string[]; hash: string; etag?: string } | null> {
+        const entry = await this.get<{ source: string; content: string[]; hash: string; etag?: string }>([
             'cache',
             'filters',
             source,
         ]);
+        return entry ? entry.data : null;
     }
 
     async storeCompilationMetadata(_metadata: unknown): Promise<boolean> {
         return true;
     }
 
-    async getCompilationHistory(_configName: string, _limit?: number): Promise<unknown[]> {
+    async getCompilationHistory(_configName: string, _limit?: number): Promise<CompilationMetadata[]> {
         return [];
     }
 
@@ -227,8 +232,8 @@ Deno.test('ChangeDetector - storeSnapshot', async (t) => {
         await detector.storeSnapshot(snapshot);
 
         const stored = await storage.get<SourceSnapshot>(['snapshots', 'sources', 'source1']);
-        assertEquals(stored?.source, 'source1');
-        assertEquals(stored?.hash, 'hash123');
+        assertEquals(stored?.data.source, 'source1');
+        assertEquals(stored?.data.hash, 'hash123');
     });
 });
 
@@ -424,7 +429,7 @@ Deno.test('ChangeDetector - generateChangeSummary', async (t) => {
             await detector.detectChanges('source4', ['||fresh.com^'], 'hash4'), // New source
         ];
 
-        const summary = detector.generateChangeSummary(results);
+        const summary = await detector.generateChangeSummary(results);
 
         assertEquals(summary.totalSources, 3);
         assertEquals(summary.changedSources, 1);
@@ -443,7 +448,7 @@ Deno.test('ChangeDetector - generateChangeSummary', async (t) => {
             await detector.detectChanges('source1', ['||example.com^', '||new.com^'], 'hash-new'),
         ];
 
-        const summary = detector.generateChangeSummary(results);
+        const summary = await detector.generateChangeSummary(results);
 
         assertEquals(summary.changes.length, 1);
         assertEquals(summary.changes[0].source, 'source1');
