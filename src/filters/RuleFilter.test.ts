@@ -311,7 +311,7 @@ Deno.test('RuleFilter - applyInclusions', async (t) => {
             inclusions_sources: ['/nonexistent/file.txt'],
         });
 
-        // Should not throw error, but return empty array
+        // Should not throw error, but return original rules unchanged
         // (FilterService logs warning and continues with empty patterns)
         const result = await ruleFilter.applyInclusions(rules, filterable);
         assertEquals(result, rules);
