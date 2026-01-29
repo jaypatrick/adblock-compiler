@@ -123,7 +123,8 @@ Deno.test('SyncTransformation', async (t) => {
         const transformation = new TestSyncTransformation();
         const rules = ['||example.com^'];
         const context: ITransformationContext = {
-            source: { source: 'test', type: 0 },
+            configuration: { source: 'test', type: 0 },
+            logger: silentLogger,
         };
 
         const result = transformation.executeSync(rules, context);
@@ -177,7 +178,8 @@ Deno.test('AsyncTransformation', async (t) => {
         const transformation = new TestAsyncTransformation();
         const rules = ['||EXAMPLE.COM^'];
         const context: ITransformationContext = {
-            source: { source: 'test', type: 0 },
+            configuration: { source: 'test', type: 0 },
+            logger: silentLogger,
         };
 
         const result = await transformation.execute(rules, context);
@@ -229,12 +231,14 @@ Deno.test('Transformation - logging methods', async (t) => {
             info: () => {
                 infoLogged = true;
             },
-            debug: () => {
-                debugLogged = true;
-            },
+            warn: () => {},
             error: () => {
                 errorLogged = true;
             },
+            debug: () => {
+                debugLogged = true;
+            },
+            trace: () => {},
         };
 
         const transformation = new LoggingTransformation(customLogger);

@@ -29,76 +29,154 @@ class MockDownloader implements IDownloader {
  * Mock storage adapter for testing
  */
 class MockStorageAdapter implements IStorageAdapter {
-    private data = new Map<string, unknown>();
+    private data = new Map<string, { data: unknown; expiresAt?: number }>();
+    private _isOpen = true;
 
-    async get<T>(key: string[]): Promise<T | null> {
+    async open(): Promise<void> {
+        this._isOpen = true;
+    }
+
+    async close(): Promise<void> {
+        this._isOpen = false;
+    }
+
+    isOpen(): boolean {
+        return this._isOpen;
+    }
+
+    async get<T>(key: string[]): Promise<{ data: T; expiresAt?: number } | null> {
         const keyStr = key.join('/');
-        return (this.data.get(keyStr) as T) ?? null;
-    }
+        const entry = this.data.get(keyStr);
+        if (!entry) return null;
 
-    async set(key: string[], value: unknown): Promise<void> {
-        const keyStr = key.join('/');
-        this.data.set(keyStr, value);
-    }
-
-    async delete(key: string[]): Promise<void> {
-        const keyStr = key.join('/');
-        this.data.delete(keyStr);
-    }
-
-    async list(prefix: string[]): Promise<string[][]> {
-        const prefixStr = prefix.join('/');
-        const results: string[][] = [];
-        for (const key of this.data.keys()) {
-            if (key.startsWith(prefixStr)) {
-                results.push(key.split('/'));
-            }
-        }
-        return results;
-    }
-
-    async clear(): Promise<void> {
-        this.data.clear();
-    }
-
-    async has(key: string[]): Promise<boolean> {
-        const keyStr = key.join('/');
-        return this.data.has(keyStr);
-    }
-
-    async keys(prefix?: string[]): Promise<string[][]> {
-        return this.list(prefix ?? []);
-    }
-
-    async getCachedFilterList(source: string): Promise<{ content: string[]; hash: string } | null> {
-        const cached = await this.get<{ content: string[]; hash: string; timestamp: number; ttl: number }>([
-            'cache',
-            'filters',
-            source,
-        ]);
-        if (!cached) return null;
-
-        // Check TTL
-        if (Date.now() - cached.timestamp > cached.ttl) {
+        // Check if expired
+        if (entry.expiresAt && Date.now() > entry.expiresAt) {
+            this.data.delete(keyStr);
             return null;
         }
 
-        return { content: cached.content, hash: cached.hash };
+        return entry as { data: T; expiresAt?: number };
+    }
+
+    async set(key: string[], value: unknown, ttlMs?: number): Promise<boolean> {
+        const keyStr = key.join('/');
+        const entry: { data: unknown; expiresAt?: number } = { data: value };
+        if (ttlMs) {
+            entry.expiresAt = Date.now() + ttlMs;
+        }
+        this.data.set(keyStr, entry);
+        return true;
+    }
+
+    async delete(key: string[]): Promise<boolean> {
+        const keyStr = key.join('/');
+        return this.data.delete(keyStr);
+    }
+
+    async list<T>(options?: { prefix?: string[]; limit?: number; reverse?: boolean }): Promise<
+        Array<{ key: string[]; value: { data: T; expiresAt?: number } }>
+    > {
+        const prefixStr = options?.prefix ? options.prefix.join('/') : '';
+        const results: Array<{ key: string[]; value: { data: T; expiresAt?: number } }> = [];
+
+        for (const [keyStr, entry] of this.data.entries()) {
+            if (keyStr.startsWith(prefixStr)) {
+                // Skip expired entries
+                if (entry.expiresAt && Date.now() > entry.expiresAt) {
+                    continue;
+                }
+                results.push({
+                    key: keyStr.split('/'),
+                    value: entry as { data: T; expiresAt?: number },
+                });
+            }
+        }
+
+        if (options?.reverse) {
+            results.reverse();
+        }
+
+        if (options?.limit) {
+            return results.slice(0, options.limit);
+        }
+
+        return results;
+    }
+
+    async clearExpired(): Promise<number> {
+        const now = Date.now();
+        let count = 0;
+        for (const [key, entry] of this.data.entries()) {
+            if (entry.expiresAt && now > entry.expiresAt) {
+                this.data.delete(key);
+                count++;
+            }
+        }
+        return count;
+    }
+
+    async getStats(): Promise<{
+        totalEntries: number;
+        expiredEntries: number;
+        storageSize: number;
+    }> {
+        const now = Date.now();
+        let expiredEntries = 0;
+        for (const entry of this.data.values()) {
+            if (entry.expiresAt && now > entry.expiresAt) {
+                expiredEntries++;
+            }
+        }
+        return {
+            totalEntries: this.data.size,
+            expiredEntries,
+            storageSize: 0,
+        };
     }
 
     async cacheFilterList(
         source: string,
         content: string[],
         hash: string,
-        _etag?: string,
-        ttl?: number,
-    ): Promise<void> {
-        await this.set(['cache', 'filters', source], {
+        etag?: string,
+        ttlMs?: number,
+    ): Promise<boolean> {
+        const entry = {
             content,
             hash,
+            etag,
             timestamp: Date.now(),
-            ttl: ttl ?? 3600000,
-        });
+        };
+        return await this.set(['cache', 'filters', source], entry, ttlMs);
+    }
+
+    async getCachedFilterList(source: string): Promise<{
+        data: { content: string[]; hash: string; etag?: string; timestamp: number };
+    } | null> {
+        return await this.get<{ content: string[]; hash: string; etag?: string; timestamp: number }>([
+            'cache',
+            'filters',
+            source,
+        ]);
+    }
+
+    async storeCompilationMetadata(_metadata: unknown): Promise<boolean> {
+        return true;
+    }
+
+    async getCompilationHistory(_configName: string, _limit?: number): Promise<unknown[]> {
+        return [];
+    }
+
+    async clearCache(): Promise<number> {
+        const entries = await this.list({ prefix: ['cache'] });
+        let count = 0;
+        for (const entry of entries) {
+            if (await this.delete(entry.key)) {
+                count++;
+            }
+        }
+        return count;
     }
 }
 
