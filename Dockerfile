@@ -9,7 +9,7 @@ ARG DENO_VERSION=2.6.3
 FROM node:20-bookworm-slim AS node-base
 
 ARG DENO_VERSION
-ARG TARGETARCH
+ARG TARGETARCH=amd64
 
 # Install required packages
 RUN apt-get update && apt-get install -y \
@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
 RUN case ${TARGETARCH} in \
         amd64) DENO_ARCH="x86_64-unknown-linux-gnu" ;; \
         arm64) DENO_ARCH="aarch64-unknown-linux-gnu" ;; \
-        *) echo "Unsupported architecture: ${TARGETARCH}" && exit 1 ;; \
+        *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
     esac && \
     wget --no-check-certificate https://github.com/denoland/deno/releases/download/v${DENO_VERSION}/deno-${DENO_ARCH}.zip -O /tmp/deno.zip && \
     unzip /tmp/deno.zip -d /tmp && \
