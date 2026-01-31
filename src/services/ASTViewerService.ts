@@ -1,6 +1,6 @@
 /**
  * AST Viewer Service
- * 
+ *
  * Provides functionality to parse adblock rules and generate structured
  * AST representations for display and analysis.
  */
@@ -124,9 +124,7 @@ export class ASTViewerService {
             };
         } else if (AGTreeParser.isComment(ast)) {
             info.properties!.comment = {
-                text: 'text' in ast && ast.text && typeof ast.text === 'object' && 'value' in ast.text
-                    ? String(ast.text.value)
-                    : '',
+                text: 'text' in ast && ast.text && typeof ast.text === 'object' && 'value' in ast.text ? String(ast.text.value) : '',
             };
 
             if (AGTreeParser.isMetadataComment(ast)) {
