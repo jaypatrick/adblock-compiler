@@ -101,21 +101,21 @@ export class ASTViewerService {
         // Extract type-specific properties
         if (AGTreeParser.isNetworkRule(ast)) {
             const props = AGTreeParser.extractNetworkRuleProperties(ast);
-            info.properties!.network = {
+            info.properties.network = {
                 pattern: props.pattern,
                 isException: props.isException,
                 modifiers: props.modifiers,
             };
         } else if (AGTreeParser.isHostRule(ast)) {
             const props = AGTreeParser.extractHostRuleProperties(ast);
-            info.properties!.host = {
+            info.properties.host = {
                 ip: props.ip,
                 hostnames: props.hostnames,
                 comment: props.comment,
             };
         } else if (AGTreeParser.isCosmeticRule(ast)) {
             const props = AGTreeParser.extractCosmeticRuleProperties(ast);
-            info.properties!.cosmetic = {
+            info.properties.cosmetic = {
                 domains: props.domains,
                 separator: props.separator,
                 isException: props.isException,
@@ -123,7 +123,7 @@ export class ASTViewerService {
                 ruleType: props.type,
             };
         } else if (AGTreeParser.isComment(ast)) {
-            info.properties!.comment = {
+            info.properties.comment = {
                 text: 'text' in ast && ast.text && typeof ast.text === 'object' && 'value' in ast.text ? String(ast.text.value) : '',
             };
 

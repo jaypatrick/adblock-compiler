@@ -12,13 +12,18 @@ import { AGTreeParser } from './src/utils/AGTreeParser.ts';
 // Example rules to parse
 const exampleRules = [
     '||example.com^$third-party',
-    '@@||example.com^',
+    '@@||example.com/allowed^',
     '127.0.0.1 ad.example.com',
     'example.com##.ad-banner',
     'example.com##+js(abort-on-property-read, ads)',
     '! This is a comment',
     '! Title: My Filter List',
+    '! Description: Example filter list',
     'example.com,~subdomain.example.com##.selector',
+    '||ads.example.com^$script,domain=example.com|example.org',
+    '0.0.0.0 tracking.example.com',
+    'example.com#@#.ad-banner',
+    '||example.com^$important,third-party',
 ];
 
 console.log('='.repeat(80));
