@@ -410,22 +410,6 @@ export class ValidateTransformation extends SyncTransformation {
 
             const pattern = props.pattern;
 
-            // Check minimum pattern length
-            if (pattern.length < MAX_PATTERN_LENGTH) {
-                this.debug(`The rule is too short: ${ruleText}`);
-                this.addValidationError(
-                    errors,
-                    ValidationErrorType.PatternTooShort,
-                    ValidationSeverity.Error,
-                    ruleText,
-                    'Pattern too short',
-                    `Minimum pattern length is ${MAX_PATTERN_LENGTH} characters`,
-                    rule,
-                    lineNumber,
-                );
-                return false;
-            }
-
             // Special case: regex rules are valid
             if (pattern.startsWith('/') && pattern.endsWith('/')) {
                 return true;
@@ -466,6 +450,22 @@ export class ValidateTransformation extends SyncTransformation {
             }
 
             const domainToCheck = StringUtils.substringBetween(ruleText, DOMAIN_PREFIX, DOMAIN_SEPARATOR);
+
+            // Check minimum domain length for ||domain^ format rules
+            if (domainToCheck && domainToCheck.length < 3) {
+                this.debug(`The domain is too short: ${ruleText}`);
+                this.addValidationError(
+                    errors,
+                    ValidationErrorType.PatternTooShort,
+                    ValidationSeverity.Error,
+                    ruleText,
+                    'Pattern too short',
+                    'Minimum domain length is 3 characters',
+                    rule,
+                    lineNumber,
+                );
+                return false;
+            }
 
             if (domainToCheck && wildcardIdx !== -1) {
                 const startsWithWildcard = domainToCheck.startsWith(WILDCARD_DOMAIN_PART);
