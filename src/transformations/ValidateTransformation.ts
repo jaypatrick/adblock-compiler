@@ -5,8 +5,7 @@
  * Removes invalid rules and their preceding comments.
  */
 
-import { ILogger, TransformationType } from '../types/index.ts';
-import { ValidationError, ValidationErrorType, ValidationReport, ValidationSeverity } from '../types/validation.ts';
+import { ILogger, IValidationError, IValidationReport, TransformationType, ValidationErrorType, ValidationSeverity } from '../types/index.ts';
 import { StringUtils, TldUtils } from '../utils/index.ts';
 import { AGTreeParser, type AnyRule, type HostRule, type NetworkRule, RuleCategory } from '../utils/AGTreeParser.ts';
 import { SyncTransformation } from './base/Transformation.ts';
@@ -51,9 +50,8 @@ export class ValidateTransformation extends SyncTransformation {
 
     /** Whether IP addresses are allowed in rules */
     protected readonly allowIp: boolean;
-    private previousRuleRemoved: boolean = false;
-    /** Validation errors collected during transformation */
-    private validationErrors: ValidationError[] = [];
+    /** Last validation report (from most recent executeSync call) */
+    private lastValidationReport: IValidationReport | null = null;
     /** Current source name for error tracking */
     private currentSourceName?: string;
 
@@ -77,26 +75,10 @@ export class ValidateTransformation extends SyncTransformation {
     }
 
     /**
-     * Get the validation report
+     * Get the validation report from the most recent executeSync call
      */
-    public getValidationReport(totalRules: number, validRules: number): ValidationReport {
-        const errors = this.validationErrors;
-        return {
-            errorCount: errors.filter((e) => e.severity === ValidationSeverity.Error).length,
-            warningCount: errors.filter((e) => e.severity === ValidationSeverity.Warning).length,
-            infoCount: errors.filter((e) => e.severity === ValidationSeverity.Info).length,
-            errors,
-            totalRules,
-            validRules,
-            invalidRules: totalRules - validRules,
-        };
-    }
-
-    /**
-     * Clear validation errors
-     */
-    public clearValidationErrors(): void {
-        this.validationErrors = [];
+    public getValidationReport(): IValidationReport | null {
+        return this.lastValidationReport;
     }
 
     /**
@@ -106,26 +88,44 @@ export class ValidateTransformation extends SyncTransformation {
      */
     public executeSync(rules: string[]): string[] {
         const filtered = [...rules];
-        this.previousRuleRemoved = false;
-        this.clearValidationErrors();
+        const validationErrors: IValidationError[] = [];
+        let previousRuleRemoved = false;
+        const totalRules = rules.length;
 
         // Iterate from end to beginning to handle preceding comments
         for (let i = filtered.length - 1; i >= 0; i -= 1) {
             const ruleText = filtered[i];
             const parseResult = AGTreeParser.parse(ruleText);
-            const isValidRule = this.isValidParsedRule(parseResult.ast, ruleText, i);
+            const isValidRule = this.isValidParsedRule(
+                parseResult.ast,
+                ruleText,
+                i + 1,
+                validationErrors,
+            );
             const isCommentOrEmpty = this.isCommentOrEmpty(parseResult.ast, ruleText);
 
             if (!isValidRule) {
-                this.previousRuleRemoved = true;
+                previousRuleRemoved = true;
                 filtered.splice(i, 1);
-            } else if (this.previousRuleRemoved && isCommentOrEmpty) {
+            } else if (previousRuleRemoved && isCommentOrEmpty) {
                 this.debug(`Removing a comment or empty line preceding an invalid rule: ${ruleText}`);
                 filtered.splice(i, 1);
             } else {
-                this.previousRuleRemoved = false;
+                previousRuleRemoved = false;
             }
         }
+
+        // Store the validation report for retrieval
+        const validRules = filtered.length;
+        this.lastValidationReport = {
+            errorCount: validationErrors.filter((e) => e.severity === ValidationSeverity.Error).length,
+            warningCount: validationErrors.filter((e) => e.severity === ValidationSeverity.Warning).length,
+            infoCount: validationErrors.filter((e) => e.severity === ValidationSeverity.Info).length,
+            errors: validationErrors,
+            totalRules,
+            validRules,
+            invalidRules: totalRules - validRules,
+        };
 
         return filtered;
     }
@@ -148,9 +148,10 @@ export class ValidateTransformation extends SyncTransformation {
     }
 
     /**
-     * Add a validation error
+     * Add a validation error to the provided errors array
      */
     private addValidationError(
+        errors: IValidationError[],
         type: ValidationErrorType,
         severity: ValidationSeverity,
         ruleText: string,
@@ -159,7 +160,7 @@ export class ValidateTransformation extends SyncTransformation {
         ast?: AnyRule,
         lineNumber?: number,
     ): void {
-        this.validationErrors.push({
+        errors.push({
             type,
             severity,
             ruleText,
@@ -174,7 +175,12 @@ export class ValidateTransformation extends SyncTransformation {
     /**
      * Validates a parsed rule using the AST.
      */
-    protected isValidParsedRule(ast: AnyRule | null, ruleText: string, lineNumber?: number): boolean {
+    protected isValidParsedRule(
+        ast: AnyRule | null,
+        ruleText: string,
+        lineNumber: number | undefined,
+        errors: IValidationError[],
+    ): boolean {
         // Empty or whitespace-only rules are valid
         if (StringUtils.isEmpty(ruleText.trim())) {
             return true;
@@ -193,6 +199,7 @@ export class ValidateTransformation extends SyncTransformation {
             }
             this.debug(`Failed to parse rule: ${ruleText}`);
             this.addValidationError(
+                errors,
                 ValidationErrorType.ParseError,
                 ValidationSeverity.Error,
                 ruleText,
@@ -213,6 +220,7 @@ export class ValidateTransformation extends SyncTransformation {
         if (ast.category === RuleCategory.Invalid) {
             this.debug(`Invalid rule syntax: ${ruleText}`);
             this.addValidationError(
+                errors,
                 ValidationErrorType.SyntaxError,
                 ValidationSeverity.Error,
                 ruleText,
@@ -226,18 +234,19 @@ export class ValidateTransformation extends SyncTransformation {
 
         // Validate host rules (/etc/hosts format)
         if (AGTreeParser.isHostRule(ast)) {
-            return this.validateHostRule(ast as HostRule, ruleText, lineNumber);
+            return this.validateHostRule(ast as HostRule, ruleText, lineNumber, errors);
         }
 
         // Validate network rules (adblock format)
         if (AGTreeParser.isNetworkRule(ast)) {
-            return this.validateNetworkRule(ast as NetworkRule, ruleText, lineNumber);
+            return this.validateNetworkRule(ast as NetworkRule, ruleText, lineNumber, errors);
         }
 
         // Cosmetic rules are not valid for DNS blockers
         if (AGTreeParser.isCosmeticRule(ast)) {
             this.debug(`Cosmetic rules are not supported for DNS blocking: ${ruleText}`);
             this.addValidationError(
+                errors,
                 ValidationErrorType.CosmeticNotSupported,
                 ValidationSeverity.Error,
                 ruleText,
@@ -261,13 +270,15 @@ export class ValidateTransformation extends SyncTransformation {
         hostname: string,
         ruleText: string,
         hasLimitModifier: boolean,
-        lineNumber?: number,
+        lineNumber: number | undefined,
+        errors: IValidationError[],
     ): boolean {
         const result = TldUtils.parse(hostname);
 
         if (!result.hostname) {
             this.debug(`Invalid hostname ${hostname} in the rule: ${ruleText}`);
             this.addValidationError(
+                errors,
                 ValidationErrorType.InvalidHostname,
                 ValidationSeverity.Error,
                 ruleText,
@@ -282,6 +293,7 @@ export class ValidateTransformation extends SyncTransformation {
         if (!this.allowIp && result.isIp) {
             this.debug(`IP addresses not allowed: ${hostname} in rule: ${ruleText}`);
             this.addValidationError(
+                errors,
                 ValidationErrorType.IpNotAllowed,
                 ValidationSeverity.Error,
                 ruleText,
@@ -296,6 +308,7 @@ export class ValidateTransformation extends SyncTransformation {
         if (result.hostname === result.publicSuffix && !hasLimitModifier) {
             this.debug(`Matching the whole public suffix ${hostname} is not allowed: ${ruleText}`);
             this.addValidationError(
+                errors,
                 ValidationErrorType.PublicSuffixMatch,
                 ValidationSeverity.Error,
                 ruleText,
@@ -313,7 +326,12 @@ export class ValidateTransformation extends SyncTransformation {
     /**
      * Validates a /etc/hosts rule using AGTree AST.
      */
-    protected validateHostRule(rule: HostRule, ruleText: string, lineNumber?: number): boolean {
+    protected validateHostRule(
+        rule: HostRule,
+        ruleText: string,
+        lineNumber: number | undefined,
+        errors: IValidationError[],
+    ): boolean {
         try {
             const props = AGTreeParser.extractHostRuleProperties(rule);
 
@@ -323,7 +341,7 @@ export class ValidateTransformation extends SyncTransformation {
             }
 
             for (const hostname of props.hostnames) {
-                if (!this.validateHostname(hostname, ruleText, false, lineNumber)) {
+                if (!this.validateHostname(hostname, ruleText, false, lineNumber, errors)) {
                     return false;
                 }
             }
@@ -338,7 +356,12 @@ export class ValidateTransformation extends SyncTransformation {
     /**
      * Validates an adblock-style network rule using AGTree AST.
      */
-    protected validateNetworkRule(rule: NetworkRule, ruleText: string, lineNumber?: number): boolean {
+    protected validateNetworkRule(
+        rule: NetworkRule,
+        ruleText: string,
+        lineNumber: number | undefined,
+        errors: IValidationError[],
+    ): boolean {
         try {
             const props = AGTreeParser.extractNetworkRuleProperties(rule);
             let hasLimitModifier = false;
@@ -350,6 +373,7 @@ export class ValidateTransformation extends SyncTransformation {
                     if (!SUPPORTED_MODIFIERS.includes(modName) && !SUPPORTED_MODIFIERS.includes(mod.name)) {
                         this.debug(`Contains unsupported modifier ${mod.name}: ${ruleText}`);
                         this.addValidationError(
+                            errors,
                             ValidationErrorType.UnsupportedModifier,
                             ValidationSeverity.Error,
                             ruleText,
@@ -370,6 +394,7 @@ export class ValidateTransformation extends SyncTransformation {
                 if (!validationResult.valid) {
                     this.debug(`Modifier validation failed: ${validationResult.errors.join(', ')}: ${ruleText}`);
                     this.addValidationError(
+                        errors,
                         ValidationErrorType.ModifierValidationFailed,
                         ValidationSeverity.Warning,
                         ruleText,
@@ -389,6 +414,7 @@ export class ValidateTransformation extends SyncTransformation {
             if (pattern.length < MAX_PATTERN_LENGTH) {
                 this.debug(`The rule is too short: ${ruleText}`);
                 this.addValidationError(
+                    errors,
                     ValidationErrorType.PatternTooShort,
                     ValidationSeverity.Error,
                     ruleText,
@@ -414,6 +440,7 @@ export class ValidateTransformation extends SyncTransformation {
             if (!/^[a-zA-Z0-9-.*|^]+$/.test(toTest)) {
                 this.debug(`The rule contains characters that cannot be in a domain name: ${ruleText}`);
                 this.addValidationError(
+                    errors,
                     ValidationErrorType.InvalidCharacters,
                     ValidationSeverity.Error,
                     ruleText,
@@ -447,12 +474,12 @@ export class ValidateTransformation extends SyncTransformation {
 
                 if (startsWithWildcard && isOnlyTld) {
                     const cleanedDomain = domainToCheck.replace(WILDCARD_DOMAIN_PART, '');
-                    return this.validateHostname(cleanedDomain, ruleText, hasLimitModifier, lineNumber);
+                    return this.validateHostname(cleanedDomain, ruleText, hasLimitModifier, lineNumber, errors);
                 }
                 return true;
             }
 
-            if (domainToCheck && !this.validateHostname(domainToCheck, ruleText, hasLimitModifier, lineNumber)) {
+            if (domainToCheck && !this.validateHostname(domainToCheck, ruleText, hasLimitModifier, lineNumber, errors)) {
                 return false;
             }
 
