@@ -14,7 +14,6 @@ const DOMAIN_PREFIX = '||';
 const DOMAIN_SEPARATOR = '^';
 const WILDCARD = '*';
 const WILDCARD_DOMAIN_PART = '*.';
-const MAX_PATTERN_LENGTH = 5;
 
 /**
  * Modifiers that can limit the rule for specific domains.
