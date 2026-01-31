@@ -1168,14 +1168,7 @@
 
                 <div class="form-group">
                     <label for="ast-input">Adblock Rules (one per line)</label>
-                    <textarea id="ast-input" placeholder="Enter adblock rules to parse:
-||example.com^$third-party
-@@||example.com/allowed^
-127.0.0.1 ad.example.com
-example.com##.ad-banner
-example.com##+js(abort-on-property-read, ads)
-! This is a comment
-! Title: My Filter List">||example.com^$third-party
+                    <textarea id="ast-input">||example.com^$third-party
 @@||example.com/allowed^
 127.0.0.1 ad.example.com
 example.com##.ad-banner
@@ -2897,7 +2890,10 @@ eventSource.addEventListener('result', (e) => {
                 '! Title: My Filter List',
                 '! Description: Example filter list',
                 'example.com,~subdomain.example.com##.selector',
-                '||ads.example.com^$script,domain=example.com|example.org'
+                '||ads.example.com^$script,domain=example.com|example.org',
+                '0.0.0.0 tracking.example.com',
+                'example.com#@#.ad-banner',
+                '||example.com^$important,third-party'
             ];
             astInput.value = examples.join('\n');
         });
@@ -2952,7 +2948,7 @@ eventSource.addEventListener('result', (e) => {
                 let html = `
                     <div class="ast-rule-header">
                         <div class="ast-rule-text">${escapeHtml(rule.ruleText)}</div>
-                        <span class="ast-badge ${badgeClass}">${rule.category || 'Invalid'}</span>
+                        <span class="ast-badge ${badgeClass}">${escapeHtml(rule.category || 'Invalid')}</span>
                     </div>
                 `;
 
@@ -2964,11 +2960,11 @@ eventSource.addEventListener('result', (e) => {
                         <div class="ast-info-grid">
                             <div class="ast-info-item">
                                 <div class="ast-info-label">Type</div>
-                                <div class="ast-info-value">${rule.type}</div>
+                                <div class="ast-info-value">${escapeHtml(rule.type)}</div>
                             </div>
                             <div class="ast-info-item">
                                 <div class="ast-info-label">Syntax</div>
-                                <div class="ast-info-value">${rule.syntax}</div>
+                                <div class="ast-info-value">${escapeHtml(rule.syntax)}</div>
                             </div>
                             <div class="ast-info-item">
                                 <div class="ast-info-label">Valid</div>
@@ -2998,7 +2994,7 @@ eventSource.addEventListener('result', (e) => {
                                             <div class="ast-property-value">
                                                 <div class="ast-modifier-list">
                                                     ${net.modifiers.map(m => 
-                                                        `<span class="ast-modifier-chip">${m.exception ? '~' : ''}${m.name}${m.value ? '=' + m.value : ''}</span>`
+                                                        `<span class="ast-modifier-chip">${m.exception ? '~' : ''}${escapeHtml(m.name)}${m.value ? '=' + escapeHtml(m.value) : ''}</span>`
                                                     ).join('')}
                                                 </div>
                                             </div>
@@ -3013,11 +3009,11 @@ eventSource.addEventListener('result', (e) => {
                                     <div class="ast-properties-title">Host Rule Properties</div>
                                     <div class="ast-property">
                                         <div class="ast-property-key">IP Address:</div>
-                                        <div class="ast-property-value">${host.ip}</div>
+                                        <div class="ast-property-value">${escapeHtml(host.ip)}</div>
                                     </div>
                                     <div class="ast-property">
                                         <div class="ast-property-key">Hostnames:</div>
-                                        <div class="ast-property-value">${host.hostnames.join(', ')}</div>
+                                        <div class="ast-property-value">${host.hostnames.map(h => escapeHtml(h)).join(', ')}</div>
                                     </div>
                                     ${host.comment ? `
                                         <div class="ast-property">
@@ -3034,7 +3030,7 @@ eventSource.addEventListener('result', (e) => {
                                     <div class="ast-properties-title">Cosmetic Rule Properties</div>
                                     <div class="ast-property">
                                         <div class="ast-property-key">Domains:</div>
-                                        <div class="ast-property-value">${cos.domains.join(', ') || 'All domains'}</div>
+                                        <div class="ast-property-value">${(cos.domains && cos.domains.length > 0 ? cos.domains.map((d) => escapeHtml(d)).join(', ') : 'All domains')}</div>
                                     </div>
                                     <div class="ast-property">
                                         <div class="ast-property-key">Separator:</div>
@@ -3058,7 +3054,7 @@ eventSource.addEventListener('result', (e) => {
                                     ${comment.header ? `
                                         <div class="ast-property">
                                             <div class="ast-property-key">Header:</div>
-                                            <div class="ast-property-value">${comment.header}</div>
+                                            <div class="ast-property-value">${escapeHtml(comment.header)}</div>
                                         </div>
                                         <div class="ast-property">
                                             <div class="ast-property-key">Value:</div>
@@ -3077,7 +3073,7 @@ eventSource.addEventListener('result', (e) => {
 
                     // Full AST (collapsible)
                     if (showFullAST && rule.ast) {
-                        const astId = 'ast-' + Math.random().toString(36).substr(2, 9);
+                        const astId = 'ast-' + Math.random().toString(36).substring(2, 11);
                         html += `
                             <div>
                                 <div class="ast-json-toggle" onclick="this.classList.toggle('collapsed'); document.getElementById('${astId}').style.display = this.classList.contains('collapsed') ? 'none' : 'block';">
