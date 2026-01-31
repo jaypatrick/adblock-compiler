@@ -11,31 +11,31 @@
 import {
     AdblockSyntax,
     AdblockSyntaxError,
-    CommentRuleType,
-    CosmeticRuleType,
-    FilterListParser,
-    NetworkRuleType,
-    RuleCategory,
-    RuleGenerator,
-    RuleParser,
     type AgentCommentRule,
     type AnyCommentRule,
     type AnyCosmeticRule,
     type AnyNetworkRule,
     type AnyRule,
     type CommentRule,
+    CommentRuleType,
     type ConfigCommentRule,
     type CosmeticRule,
+    CosmeticRuleType,
     type EmptyRule,
     type FilterList,
+    FilterListParser,
     type HintCommentRule,
     type HostRule,
     type MetadataCommentRule,
     type Modifier,
     type ModifierList,
     type NetworkRule,
+    NetworkRuleType,
     type ParserOptions,
     type PreProcessorCommentRule,
+    RuleCategory,
+    RuleGenerator,
+    RuleParser,
 } from '@adguard/agtree';
 
 /**
@@ -179,11 +179,7 @@ export class AGTreeParser {
                 ruleText,
             };
         } catch (error) {
-            const errorMessage = error instanceof AdblockSyntaxError
-                ? error.message
-                : error instanceof Error
-                ? error.message
-                : String(error);
+            const errorMessage = error instanceof AdblockSyntaxError ? error.message : error instanceof Error ? error.message : String(error);
 
             return {
                 ast: null,
@@ -596,16 +592,14 @@ export class AGTreeParser {
 export {
     AdblockSyntax,
     AdblockSyntaxError,
-    CommentRuleType,
-    CosmeticRuleType,
-    NetworkRuleType,
-    RuleCategory,
     type AnyCommentRule,
     type AnyCosmeticRule,
     type AnyNetworkRule,
     type AnyRule,
     type CommentRule,
+    CommentRuleType,
     type CosmeticRule,
+    CosmeticRuleType,
     type EmptyRule,
     type FilterList,
     type HostRule,
@@ -613,5 +607,7 @@ export {
     type Modifier,
     type ModifierList,
     type NetworkRule,
+    NetworkRuleType,
     type ParserOptions,
+    RuleCategory,
 };

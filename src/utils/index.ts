@@ -2,15 +2,7 @@
 export { RuleUtils } from './RuleUtils.ts';
 
 // AGTree Parser (adblock rule parsing with AST)
-export {
-    AGTreeParser,
-    AdblockSyntax,
-    AdblockSyntaxError,
-    CommentRuleType,
-    CosmeticRuleType,
-    NetworkRuleType,
-    RuleCategory,
-} from './AGTreeParser.ts';
+export { AdblockSyntax, AdblockSyntaxError, AGTreeParser, CommentRuleType, CosmeticRuleType, NetworkRuleType, RuleCategory } from './AGTreeParser.ts';
 export type {
     AnyCommentRule,
     AnyCosmeticRule,

@@ -6,14 +6,7 @@
  */
 
 import { IAdblockRule, IAdblockRuleTokens, IEtcHostsRule, IRuleModifier } from '../types/index.ts';
-import {
-    AGTreeParser,
-    type AnyRule,
-    type NetworkRule,
-    type HostRule,
-    RuleCategory,
-    NetworkRuleType,
-} from './AGTreeParser.ts';
+import { AGTreeParser, type AnyRule, type HostRule, type NetworkRule, NetworkRuleType, RuleCategory } from './AGTreeParser.ts';
 
 /**
  * Converts a domain to ASCII (Punycode) representation.
