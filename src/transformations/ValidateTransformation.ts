@@ -7,13 +7,7 @@
 
 import { ILogger, TransformationType } from '../types/index.ts';
 import { StringUtils, TldUtils } from '../utils/index.ts';
-import {
-    AGTreeParser,
-    RuleCategory,
-    type AnyRule,
-    type NetworkRule,
-    type HostRule,
-} from '../utils/AGTreeParser.ts';
+import { AGTreeParser, type AnyRule, type HostRule, type NetworkRule, RuleCategory } from '../utils/AGTreeParser.ts';
 import { SyncTransformation } from './base/Transformation.ts';
 
 const DOMAIN_PREFIX = '||';
