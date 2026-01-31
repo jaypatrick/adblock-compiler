@@ -98,10 +98,10 @@ export class ASTViewerService {
         }
 
         const ast = result.ast;
-        
+
         // Initialize properties object
         const properties: RuleProperties = {};
-        
+
         // Extract type-specific properties
         if (AGTreeParser.isNetworkRule(ast)) {
             const props = AGTreeParser.extractNetworkRuleProperties(ast);
@@ -139,7 +139,7 @@ export class ASTViewerService {
                 }
             }
         }
-        
+
         const info: ParsedRuleInfo = {
             ruleText,
             success: true,
