@@ -69,6 +69,17 @@ export interface RuleProperties {
 }
 
 /**
+ * Summary of parsed rules.
+ */
+export interface RuleSummary {
+    total: number;
+    successful: number;
+    failed: number;
+    byCategory: Record<string, number>;
+    byType: Record<string, number>;
+}
+
+/**
  * AST Viewer Service for parsing and analyzing adblock rules.
  */
 export class ASTViewerService {
@@ -87,35 +98,28 @@ export class ASTViewerService {
         }
 
         const ast = result.ast;
-        const info: ParsedRuleInfo = {
-            ruleText,
-            success: true,
-            category: ast.category,
-            type: ast.type,
-            syntax: ast.syntax,
-            valid: AGTreeParser.isValid(ast),
-            properties: {},
-            ast,
-        };
-
+        
+        // Initialize properties object
+        const properties: RuleProperties = {};
+        
         // Extract type-specific properties
         if (AGTreeParser.isNetworkRule(ast)) {
             const props = AGTreeParser.extractNetworkRuleProperties(ast);
-            info.properties.network = {
+            properties.network = {
                 pattern: props.pattern,
                 isException: props.isException,
                 modifiers: props.modifiers,
             };
         } else if (AGTreeParser.isHostRule(ast)) {
             const props = AGTreeParser.extractHostRuleProperties(ast);
-            info.properties.host = {
+            properties.host = {
                 ip: props.ip,
                 hostnames: props.hostnames,
                 comment: props.comment,
             };
         } else if (AGTreeParser.isCosmeticRule(ast)) {
             const props = AGTreeParser.extractCosmeticRuleProperties(ast);
-            info.properties.cosmetic = {
+            properties.cosmetic = {
                 domains: props.domains,
                 separator: props.separator,
                 isException: props.isException,
@@ -123,15 +127,29 @@ export class ASTViewerService {
                 ruleType: props.type,
             };
         } else if (AGTreeParser.isComment(ast)) {
-            info.properties.comment = {
+            properties.comment = {
                 text: 'text' in ast && ast.text && typeof ast.text === 'object' && 'value' in ast.text ? String(ast.text.value) : '',
             };
 
             if (AGTreeParser.isMetadataComment(ast)) {
-                info.properties!.comment.header = ast.header?.value;
-                info.properties!.comment.value = ast.value?.value;
+                // We know comment exists because we just created it above
+                if (properties.comment) {
+                    properties.comment.header = ast.header?.value;
+                    properties.comment.value = ast.value?.value;
+                }
             }
         }
+        
+        const info: ParsedRuleInfo = {
+            ruleText,
+            success: true,
+            category: ast.category,
+            type: ast.type,
+            syntax: ast.syntax,
+            valid: AGTreeParser.isValid(ast),
+            properties,
+            ast,
+        };
 
         return info;
     }
@@ -179,19 +197,13 @@ export class ASTViewerService {
     /**
      * Generate a summary of parsed rules.
      */
-    static generateSummary(parsedRules: ParsedRuleInfo[]): {
-        total: number;
-        successful: number;
-        failed: number;
-        byCategory: Record<string, number>;
-        byType: Record<string, number>;
-    } {
-        const summary = {
+    static generateSummary(parsedRules: ParsedRuleInfo[]): RuleSummary {
+        const summary: RuleSummary = {
             total: parsedRules.length,
             successful: 0,
             failed: 0,
-            byCategory: {} as Record<string, number>,
-            byType: {} as Record<string, number>,
+            byCategory: {},
+            byType: {},
         };
 
         for (const rule of parsedRules) {
