@@ -5,8 +5,7 @@
  * Removes invalid rules and their preceding comments.
  */
 
-import { ILogger, TransformationType } from '../types/index.ts';
-import { ValidationError, ValidationErrorType, ValidationReport, ValidationSeverity } from '../types/validation.ts';
+import { ILogger, IValidationError, IValidationReport, TransformationType, ValidationErrorType, ValidationSeverity } from '../types/index.ts';
 import { StringUtils, TldUtils } from '../utils/index.ts';
 import { AGTreeParser, type AnyRule, type HostRule, type NetworkRule, RuleCategory } from '../utils/AGTreeParser.ts';
 import { SyncTransformation } from './base/Transformation.ts';
@@ -53,7 +52,7 @@ export class ValidateTransformation extends SyncTransformation {
     protected readonly allowIp: boolean;
     private previousRuleRemoved: boolean = false;
     /** Validation errors collected during transformation */
-    private validationErrors: ValidationError[] = [];
+    private validationErrors: IValidationError[] = [];
     /** Current source name for error tracking */
     private currentSourceName?: string;
 
@@ -79,8 +78,8 @@ export class ValidateTransformation extends SyncTransformation {
     /**
      * Get the validation report
      */
-    public getValidationReport(totalRules: number, validRules: number): ValidationReport {
-        const errors = this.validationErrors;
+    public getValidationReport(totalRules: number, validRules: number): IValidationReport {
+        const errors = [...this.validationErrors];
         return {
             errorCount: errors.filter((e) => e.severity === ValidationSeverity.Error).length,
             warningCount: errors.filter((e) => e.severity === ValidationSeverity.Warning).length,
@@ -113,7 +112,7 @@ export class ValidateTransformation extends SyncTransformation {
         for (let i = filtered.length - 1; i >= 0; i -= 1) {
             const ruleText = filtered[i];
             const parseResult = AGTreeParser.parse(ruleText);
-            const isValidRule = this.isValidParsedRule(parseResult.ast, ruleText, i);
+            const isValidRule = this.isValidParsedRule(parseResult.ast, ruleText, i + 1);
             const isCommentOrEmpty = this.isCommentOrEmpty(parseResult.ast, ruleText);
 
             if (!isValidRule) {
