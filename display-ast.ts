@@ -2,7 +2,7 @@
 
 /**
  * Display AST from AGTree
- * 
+ *
  * This script demonstrates parsing adblock filter rules using AGTree
  * and displays their Abstract Syntax Tree (AST) representations.
  */
@@ -29,16 +29,16 @@ console.log();
 for (const ruleText of exampleRules) {
     console.log('Rule:', ruleText);
     console.log('-'.repeat(80));
-    
+
     const result = AGTreeParser.parse(ruleText);
-    
+
     if (result.success && result.ast) {
         // Display basic information
         console.log('Category:', result.ast.category);
         console.log('Type:', result.ast.type);
         console.log('Syntax:', result.ast.syntax);
         console.log('Valid:', AGTreeParser.isValid(result.ast));
-        
+
         // Type-specific information
         if (AGTreeParser.isNetworkRule(result.ast)) {
             console.log('\nNetwork Rule Properties:');
@@ -66,14 +66,14 @@ for (const ruleText of exampleRules) {
                 console.log('  Header:', result.ast.header?.value || 'N/A');
             }
         }
-        
+
         // Display full AST (formatted)
         console.log('\nFull AST:');
         console.log(JSON.stringify(result.ast, null, 2));
     } else {
         console.log('ERROR:', result.error || 'Failed to parse');
     }
-    
+
     console.log();
     console.log('='.repeat(80));
     console.log();
