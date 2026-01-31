@@ -444,13 +444,23 @@ export class ValidateTransformation extends SyncTransformation {
                 return false;
             }
 
-            if (!pattern.startsWith(DOMAIN_PREFIX) || sepIdx === -1) {
+            // If pattern doesn't start with ||, it's valid
+            if (!pattern.startsWith(DOMAIN_PREFIX)) {
                 return true;
             }
 
-            const domainToCheck = StringUtils.substringBetween(ruleText, DOMAIN_PREFIX, DOMAIN_SEPARATOR);
+            // Extract domain for validation
+            let domainToCheck: string | null = null;
+            if (sepIdx !== -1) {
+                // Pattern has separator: ||domain^ format
+                domainToCheck = StringUtils.substringBetween(ruleText, DOMAIN_PREFIX, DOMAIN_SEPARATOR);
+            } else {
+                // Pattern without separator: ||domain format
+                // Extract domain after ||
+                domainToCheck = pattern.substring(DOMAIN_PREFIX.length);
+            }
 
-            // Check minimum domain length for ||domain^ format rules
+            // Check minimum domain length for ||domain^ and ||domain format rules
             if (domainToCheck && domainToCheck.length < 3) {
                 this.debug(`The domain is too short: ${ruleText}`);
                 this.addValidationError(
@@ -464,6 +474,11 @@ export class ValidateTransformation extends SyncTransformation {
                     lineNumber,
                 );
                 return false;
+            }
+
+            // If no separator, we've validated what we can - allow it through
+            if (sepIdx === -1) {
+                return true;
             }
 
             if (domainToCheck && wildcardIdx !== -1) {
