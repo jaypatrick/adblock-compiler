@@ -6,12 +6,7 @@
  */
 
 import { ILogger, TransformationType } from '../types/index.ts';
-import {
-    ValidationError,
-    ValidationErrorType,
-    ValidationReport,
-    ValidationSeverity,
-} from '../types/validation.ts';
+import { ValidationError, ValidationErrorType, ValidationReport, ValidationSeverity } from '../types/validation.ts';
 import { StringUtils, TldUtils } from '../utils/index.ts';
 import { AGTreeParser, type AnyRule, type HostRule, type NetworkRule, RuleCategory } from '../utils/AGTreeParser.ts';
 import { SyncTransformation } from './base/Transformation.ts';
@@ -113,7 +108,6 @@ export class ValidateTransformation extends SyncTransformation {
         const filtered = [...rules];
         this.previousRuleRemoved = false;
         this.clearValidationErrors();
-        const totalRules = rules.length;
 
         // Iterate from end to beginning to handle preceding comments
         for (let i = filtered.length - 1; i >= 0; i -= 1) {
