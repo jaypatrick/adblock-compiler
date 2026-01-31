@@ -15,5 +15,8 @@
         "@cloudflare/playwright-mcp": "^0.0.5",
         "@cloudflare/workers-types": "^4.20260103.0",
         "wrangler": "^4.54.0"
+    },
+    "dependencies": {
+        "@adguard/agtree": "^3.4.3"
     }
 }
