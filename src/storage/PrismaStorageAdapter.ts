@@ -123,7 +123,7 @@ export class PrismaStorageAdapter implements IStorageAdapter {
                     const adapter = new PrismaPg(pool);
                     this.prisma = new PrismaClient({ adapter });
                     this.logger.info('Using PostgreSQL with pg driver adapter (connection pooling enabled)');
-                } catch (adapterError) {
+                } catch (_adapterError) {
                     // Fall back to standard Prisma client if adapter fails
                     this.logger.warn('Failed to initialize pg adapter, falling back to standard client');
                     this.prisma = new PrismaClient({
