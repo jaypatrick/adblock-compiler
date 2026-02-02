@@ -1,10 +1,10 @@
 // Prisma Schema for AdBlock Compiler Storage
-// This schema supports SQLite (default), PostgreSQL, and MongoDB
+// This schema supports PostgreSQL (default), SQLite, and MongoDB
 //
 // Usage:
-//   SQLite:     DATABASE_URL="file:./dev.db"
 //   PostgreSQL: DATABASE_URL="postgresql://user:pass@localhost:5432/adblock"
-//   MongoDB:    DATABASE_URL="mongodb://localhost:27017/adblock"
+//   SQLite:     DATABASE_URL="file:./dev.db" (change provider to "sqlite")
+//   MongoDB:    DATABASE_URL="mongodb://localhost:27017/adblock" (change provider to "mongodb")
 
 generator client {
   provider = "prisma-client"
@@ -19,12 +19,12 @@ datasource db {
   // - "sqlite" for local/embedded (default)
   // - "postgresql" for production SQL
   // - "mongodb" for NoSQL
-  provider = "sqlite"
+  provider = "postgresql"
   // Note: In Prisma 7, the url is configured in prisma.config.ts, not here
 }
 
-// Default DATABASE_URL for SQLite: "file:./data/adblock.db"
-// The database will be created in the project's data/ directory
+// Default DATABASE_URL for PostgreSQL: "postgresql://adblock:adblock@localhost:5432/adblock"
+// For Docker: "postgresql://adblock:adblock@postgres:5432/adblock"
 
 // ============================================================================
 // Storage Entry - Generic key-value storage with metadata

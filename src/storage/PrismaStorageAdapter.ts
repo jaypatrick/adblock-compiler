@@ -2,15 +2,22 @@
  * Prisma Storage Adapter
  *
  * Storage backend implementation using Prisma ORM.
- * Supports SQLite, PostgreSQL, and MongoDB databases.
+ * Supports PostgreSQL (default), SQLite, and MongoDB databases.
+ *
+ * For PostgreSQL, this adapter can use the @prisma/adapter-pg driver adapter
+ * for improved performance with connection pooling via the `pg` package.
  *
  * Note: This adapter requires @prisma/client to be installed and
  * prisma generate to be run before use.
  *
  * Installation:
- *   npm install @prisma/client
+ *   npm install @prisma/client pg
  *   npx prisma generate
  *   npx prisma db push (or npx prisma migrate dev)
+ *
+ * Environment Variables:
+ *   DATABASE_URL - PostgreSQL connection string
+ *   USE_PG_ADAPTER - Set to "true" to use the pg driver adapter (optional)
  */
 
 import process from 'node:process';
@@ -19,10 +26,10 @@ import type { IStorageAdapter, StorageAdapterConfig } from './IStorageAdapter.ts
 import type { CacheEntry, CompilationMetadata, QueryOptions, StorageEntry, StorageStats } from './types.ts';
 
 /**
- * Default SQLite database URL
- * Creates the database in ./data/adblock.db relative to the project root
+ * Default PostgreSQL database URL
+ * For local development, connects to localhost PostgreSQL instance
  */
-const DEFAULT_DATABASE_URL = 'file:./data/adblock.db';
+const DEFAULT_DATABASE_URL = 'postgresql://adblock:adblock@localhost:5432/adblock';
 
 /**
  * Type for Prisma Client - using any to avoid direct dependency
@@ -75,6 +82,9 @@ export class PrismaStorageAdapter implements IStorageAdapter {
 
     /**
      * Opens the Prisma client connection
+     *
+     * For PostgreSQL databases, this method can optionally use the @prisma/adapter-pg
+     * driver adapter for improved performance. Set USE_PG_ADAPTER=true to enable.
      */
     async open(): Promise<void> {
         if (this._isOpen) {
@@ -84,7 +94,6 @@ export class PrismaStorageAdapter implements IStorageAdapter {
 
         try {
             // Dynamic import to avoid hard dependency
-            // In production: import { PrismaClient } from '@prisma/client'
             const { PrismaClient } = await import('@prisma/client');
 
             // Use config connectionString, env var, or default
@@ -93,15 +102,51 @@ export class PrismaStorageAdapter implements IStorageAdapter {
                 process.env?.DATABASE_URL ||
                 DEFAULT_DATABASE_URL;
 
-            this.prisma = new PrismaClient({
-                datasources: {
-                    db: {
-                        url: databaseUrl,
-                    },
-                },
-            });
+            // Check if we should use the pg driver adapter for PostgreSQL
+            const usePgAdapter = (typeof Deno !== 'undefined' ? Deno.env.get('USE_PG_ADAPTER') : undefined) ||
+                process.env?.USE_PG_ADAPTER;
+            const isPostgres = databaseUrl.startsWith('postgresql://') || databaseUrl.startsWith('postgres://');
 
-            this.logger.debug(`Using database: ${databaseUrl}`);
+            if (isPostgres && usePgAdapter === 'true') {
+                // Use the pg driver adapter for better connection pooling
+                try {
+                    const { Pool } = await import('pg');
+                    const { PrismaPg } = await import('@prisma/adapter-pg');
+
+                    const pool = new Pool({
+                        connectionString: databaseUrl,
+                        max: 10, // Maximum number of connections in the pool
+                        idleTimeoutMillis: 30000, // Close idle connections after 30 seconds
+                        connectionTimeoutMillis: 5000, // Timeout after 5 seconds when connecting
+                    });
+
+                    const adapter = new PrismaPg(pool);
+                    this.prisma = new PrismaClient({ adapter });
+                    this.logger.info('Using PostgreSQL with pg driver adapter (connection pooling enabled)');
+                } catch (adapterError) {
+                    // Fall back to standard Prisma client if adapter fails
+                    this.logger.warn('Failed to initialize pg adapter, falling back to standard client');
+                    this.prisma = new PrismaClient({
+                        datasources: {
+                            db: {
+                                url: databaseUrl,
+                            },
+                        },
+                    });
+                }
+            } else {
+                // Standard Prisma client (works with SQLite, PostgreSQL, MongoDB)
+                this.prisma = new PrismaClient({
+                    datasources: {
+                        db: {
+                            url: databaseUrl,
+                        },
+                    },
+                });
+            }
+
+            const dbType = isPostgres ? 'PostgreSQL' : databaseUrl.startsWith('file:') ? 'SQLite' : 'Database';
+            this.logger.debug(`Using ${dbType}: ${databaseUrl.replace(/:[^:@]+@/, ':****@')}`); // Mask password
 
             await this.prisma.$connect();
             this._isOpen = true;

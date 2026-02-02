@@ -38,7 +38,10 @@
         "db:generate": "deno run -A --env=.envrc npm:prisma generate",
         "db:push": "deno run -A --env=.envrc npm:prisma db push",
         "db:migrate": "deno run -A --env=.envrc npm:prisma migrate dev",
-        "db:studio": "deno run -A --env=.envrc npm:prisma studio"
+        "db:migrate:deploy": "deno run -A --env=.envrc npm:prisma migrate deploy",
+        "db:migrate:reset": "deno run -A --env=.envrc npm:prisma migrate reset",
+        "db:studio": "deno run -A --env=.envrc npm:prisma studio",
+        "db:seed": "deno run -A --env=.envrc npm:prisma db seed"
     },
     "imports": {
         "@/": "./src/",
@@ -54,7 +57,8 @@
         "cloudflare:workers": "./worker/cloudflare-workers-shim.ts",
         "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.3.0",
         "@prisma/client": "npm:@prisma/client@^7.3.0",
-        "prisma": "npm:prisma@^7.3.0"
+        "prisma": "npm:prisma@^7.3.0",
+        "pg": "npm:pg@^8.13.1"
     },
     "lint": {
         "rules": {

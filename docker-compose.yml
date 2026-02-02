@@ -1,4 +1,26 @@
 services:
+    # PostgreSQL database service
+    postgres:
+        image: postgres:17-alpine
+        container_name: adblock-postgres
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER:-adblock}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-adblock}
+            POSTGRES_DB: ${POSTGRES_DB:-adblock}
+        volumes:
+            - postgres-data:/var/lib/postgresql/data
+        ports:
+            - '5432:5432'
+        restart: unless-stopped
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-adblock} -d ${POSTGRES_DB:-adblock}']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        networks:
+            - adblock-network
+
     # Main adblock-compiler service
     adblock-compiler:
         build:
@@ -12,10 +34,14 @@ services:
             - COMPILER_VERSION=0.8.7
             - DENO_DIR=/app/.deno
             - PORT=8787
+            - DATABASE_URL=postgresql://${POSTGRES_USER:-adblock}:${POSTGRES_PASSWORD:-adblock}@postgres:5432/${POSTGRES_DB:-adblock}
         volumes:
             # Persist Deno cache
             - deno-cache:/app/.deno
         restart: unless-stopped
+        depends_on:
+            postgres:
+                condition: service_healthy
         healthcheck:
             test: ['CMD', 'curl', '-f', 'http://localhost:8787/api']
             interval: 30s
@@ -28,6 +54,8 @@ services:
 volumes:
     deno-cache:
         name: adblock-compiler-deno-cache
+    postgres-data:
+        name: adblock-compiler-postgres-data
 
 networks:
     adblock-network:
