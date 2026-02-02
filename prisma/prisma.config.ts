@@ -8,6 +8,6 @@ export default defineConfig({
     datasource: {
         // Default to PostgreSQL connection
         // Override with DATABASE_URL environment variable
-        url: process.env.DATABASE_URL ?? 'postgresql://adblock:adblock@localhost:5432/adblock',
+        url: process.env.DIRECT_DATABASE_URL ?? 'postgresql://adblock:adblock@localhost:5432/adblock',
     },
 });
