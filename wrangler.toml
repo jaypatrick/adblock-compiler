@@ -17,8 +17,9 @@ command = ""
 # Build output directory: public
 # Root directory: (leave empty)
 
-[browser]
-binding = "BROWSER"
+# Browser binding - uncomment only if using Cloudflare Browser Rendering
+# [browser]
+# binding = "BROWSER"
 
 [observability]
 [observability.logs]
@@ -56,11 +57,13 @@ class_name = "AdblockCompiler"
 name = "ADBLOCK_COMPILER"
 
 # Containers configuration for AdblockCompiler
-[[containers]]
-class_name = "AdblockCompiler"
-image = "./Dockerfile"
-max_instances = 5
-instance_type = "basic"
+# Commented out - causes deployment issues in standard Workers environment
+# Uncomment only when deploying to Cloudflare with Container support
+# [[containers]]
+# class_name = "AdblockCompiler"
+# image = "./Dockerfile"
+# max_instances = 5
+# instance_type = "basic"
 
 # Database migrations - each must have a unique tag
 [[migrations]]
