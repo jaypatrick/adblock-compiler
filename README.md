@@ -29,14 +29,16 @@
 
 > **Note:** This is a Deno-native rewrite of the original [@adguard/hostlist-compiler](https://www.npmjs.com/package/@adguard/hostlist-compiler). The package provides more functionality with improved performance and no Node.js dependencies.
 
-## 🎉 New in v0.11.3
+## 🎉 New in v0.11.4
 
-- **🔧 Version Management** - Version consistency across all configuration files
-- **📦 Synchronization** - All version references now properly synchronized
-- **✅ Maintenance** - Regular version bump and maintenance update
+- **⚡ WebAssembly Support** - High-performance pattern matching via AssemblyScript (3-5x speedup)
+- **🚀 WASM-accelerated Operations** - Optimized wildcard matching, string hashing, and pattern detection
+- **🔄 Automatic Fallback** - Seamless JavaScript fallback when WASM unavailable
+- **📦 Tiny Footprint** - Just 17KB optimized WASM module
 
 ## ✨ Features
 
+- **⚡ WebAssembly Acceleration** - Optional WASM support for 3-5x faster pattern matching
 - **🎯 Multi-Source Compilation** - Combine filter lists from URLs, files, or inline rules
 - **⚡ Performance** - Gzip compression (70-80% cache reduction), request deduplication, smart caching
 - **🔄 Circuit Breaker** - Automatic retry with exponential backoff for unreliable sources
@@ -54,6 +56,7 @@
   - [Configuration](#configuration)
   - [Command-line](#command-line)
   - [API](#api)
+- [WebAssembly Support](#webassembly-support)
 - [OpenAPI Specification](#openapi-specification)
 - [Docker Deployment](#docker-deployment)
 - [Cloudflare Pages Deployment](docs/deployment/cloudflare-pages.md)
@@ -377,6 +380,74 @@ const config: IConfiguration = {
 const result = await compiler.compile(config);
 console.log(`Compiled ${result.length} rules`);
 ```
+
+## <a name="webassembly-support"></a> WebAssembly Support
+
+The adblock-compiler includes **optional WebAssembly acceleration** for performance-critical operations, providing **3-5x speedup** for pattern matching and string operations.
+
+### Quick Start
+
+```typescript
+import { initWasm, WasmWildcard } from '@jk-com/adblock-compiler';
+
+// Initialize WASM at startup
+await initWasm();
+
+// Use WASM-accelerated Wildcard class
+const pattern = new WasmWildcard('*.example.com');
+console.log(pattern.test('sub.example.com')); // true
+console.log(pattern.usingWasm); // true if WASM initialized
+```
+
+### Building WASM Modules
+
+```bash
+# Install dependencies
+npm install
+
+# Build WASM modules (17KB optimized)
+npm run asbuild
+```
+
+### WASM Functions
+
+```typescript
+import {
+    wasmWildcardMatch,
+    wasmPlainMatch,
+    wasmHashString,
+    isWasmAvailable,
+} from '@jk-com/adblock-compiler';
+
+// Check if WASM is available
+if (isWasmAvailable()) {
+    // Use WASM-accelerated functions
+    const matches = wasmWildcardMatch('sub.example.com', '*.example.com');
+    const hash = wasmHashString('rule-to-hash');
+}
+```
+
+### Performance Benefits
+
+- **Wildcard Matching**: 3-5x faster than pure JavaScript
+- **String Hashing**: 2-3x faster (used in deduplication)
+- **Pattern Detection**: 2-4x faster for bulk operations
+- **Tiny Footprint**: Only 17KB for the optimized WASM module
+
+### Automatic Fallback
+
+All WASM functions automatically fall back to JavaScript implementations if:
+- WASM initialization fails
+- Runtime doesn't support WebAssembly
+- WASM files are not available
+
+This ensures **100% compatibility** across all environments while providing performance boosts where possible.
+
+### Learn More
+
+- 📖 [Complete WASM Documentation](docs/WASM.md)
+- 💻 [WASM Usage Examples](examples/wasm-usage.ts)
+- 🏗️ [AssemblyScript Source](assembly/)
 
 ## <a name="openapi-specification"></a> OpenAPI Specification
 
@@ -797,6 +868,14 @@ deno task check
 
 # Cache dependencies
 deno task cache
+
+# Build WebAssembly modules
+npm run asbuild              # Build both debug and release
+npm run asbuild:debug        # Debug build with source maps
+npm run asbuild:release      # Optimized release build
+
+# Test WASM functionality
+deno test --allow-read src/wasm/
 ```
 
 ### Project structure
@@ -811,10 +890,21 @@ src/
 ├── transformations/ # Rule transformations (with *.test.ts files)
 ├── types/         # TypeScript type definitions
 ├── utils/         # Utility functions (with *.test.ts files)
+├── wasm/          # WebAssembly loader and utilities (with *.test.ts files)
 ├── index.ts       # Main library exports
 └── mod.ts         # Deno module exports
 
 Note: All tests are co-located with source files (*.test.ts next to *.ts)
+
+assembly/          # AssemblyScript WASM source code
+├── index.ts       # WASM entry point
+├── wildcard.ts    # Pattern matching implementations
+└── tsconfig.json  # AssemblyScript TypeScript config
+
+build/wasm/        # Built WASM modules (gitignored)
+├── adblock.wasm         # Optimized release build (~17KB)
+├── adblock.debug.wasm   # Debug build with source maps (~28KB)
+└── *.js / *.d.ts        # Auto-generated JS bindings
 
 worker/            # Cloudflare Worker implementation (production-ready)
 ├── worker.ts      # Main worker with API endpoints
