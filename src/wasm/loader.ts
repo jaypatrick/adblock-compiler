@@ -7,8 +7,9 @@
 
 import { logger } from '../utils/logger.ts';
 
-// Type definitions for WASM exports
+// Type definitions for WASM exports (matches generated .d.ts)
 interface WasmExports {
+    memory: WebAssembly.Memory;
     add(a: number, b: number): number;
     plainMatch(haystack: string, needle: string): number;
     wildcardMatch(str: string, pattern: string): number;
@@ -23,23 +24,31 @@ let wasmModule: WasmExports | null = null;
 let wasmInitialized = false;
 
 /**
- * Initialize the WASM module
+ * Initialize the WASM module using the generated JavaScript bindings
  * This should be called once at startup
  */
-export async function initWasm(wasmPath?: string): Promise<boolean> {
+export async function initWasm(): Promise<boolean> {
     if (wasmInitialized) {
         return wasmModule !== null;
     }
 
     try {
-        // Default to release build
-        const path = wasmPath ?? new URL('../../build/wasm/adblock.wasm', import.meta.url).pathname;
+        // Try to import the generated bindings
+        // Note: In production, this would import from build/wasm/adblock.js
+        // For now, we'll manually instantiate the WASM
+        const wasmPath = new URL('../../build/wasm/adblock.wasm', import.meta.url).pathname;
         
-        // Load WASM module
-        const wasmBytes = await Deno.readFile(path);
-        const wasmInstance = await WebAssembly.instantiate(wasmBytes, {});
+        // Load and instantiate WASM module
+        const wasmBytes = await Deno.readFile(wasmPath);
+        const { instance } = await WebAssembly.instantiate(wasmBytes, {
+            env: {
+                abort(message: number, fileName: number, lineNumber: number, columnNumber: number) {
+                    logger.error(`WASM abort: ${message} at ${fileName}:${lineNumber}:${columnNumber}`);
+                },
+            },
+        });
         
-        wasmModule = wasmInstance.instance.exports as unknown as WasmExports;
+        wasmModule = instance.exports as unknown as WasmExports;
         wasmInitialized = true;
         
         logger.info('WASM module initialized successfully');

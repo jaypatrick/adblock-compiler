@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- **WebAssembly Support** - Optional WASM acceleration via AssemblyScript for 3-5x performance improvement
+  - High-performance wildcard pattern matching
+  - Optimized string hashing for deduplication
+  - Pattern detection utilities (regex detection, wildcard detection)
+  - Automatic fallback to JavaScript when WASM unavailable
+  - Just 17KB optimized WASM module (28KB debug version)
+  - `WasmWildcard` class as drop-in replacement for standard `Wildcard`
+  - Comprehensive documentation and examples
+  - Performance benchmarks
+- AssemblyScript build system with debug and release targets
+- WASM loader with automatic JavaScript fallback
+- Build commands: `npm run asbuild`, `npm run asbuild:debug`, `npm run asbuild:release`
+- WASM utility functions: `wasmPlainMatch`, `wasmWildcardMatch`, `wasmHashString`, `wasmIsRegexPattern`, `wasmHasWildcard`
+
+### Changed
+
+- Updated README with WebAssembly features and usage examples
+- Enhanced development documentation with WASM build instructions
+- Updated project structure to include `assembly/` and `src/wasm/` directories
+- Updated `.gitignore` to exclude WASM build artifacts
+
+### Documentation
+
+- Added `docs/WASM.md` - Comprehensive WebAssembly guide
+- Added `assembly/README.md` - AssemblyScript development guide
+- Added `examples/wasm-usage.ts` - WASM usage examples with performance demos
+- Added WASM section to main README with quick start guide
+- Added performance benchmarks in `src/wasm/wasm.bench.ts`
+- Added unit tests for WASM functionality
+
 ## [0.9.1] - 2026-01-31
 
 ### Added
