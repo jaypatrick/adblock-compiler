@@ -25,6 +25,17 @@ dist/
 hostlist-compiler
 hostlist-compiler.exe
 
+# WASM build artifacts
+build/wasm/*.wasm
+build/wasm/*.wat
+build/wasm/*.wasm.map
+build/wasm/*.js
+build/wasm/*.d.ts
+assembly/build/
+assembly/package.json.bak
+assembly/index.html
+assembly/tests/
+
 # Cloudflare Workers
 .wrangler/
 worker-configuration.d.ts

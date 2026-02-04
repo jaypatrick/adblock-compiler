@@ -146,6 +146,18 @@ export type { OptimizationStats, RuleOptimizerOptions } from './transformations/
 export { createSimplePlugin, globalRegistry, loadPlugin, PluginRegistry, PluginTransformationWrapper } from './plugins/index.ts';
 export type { DownloaderPlugin, Plugin, PluginContext, PluginLoadOptions, PluginManifest, TransformationPlugin } from './plugins/index.ts';
 
+// WebAssembly support
+export { initWasm, isWasmAvailable, WasmWildcard } from './wasm/index.ts';
+export {
+    wasmHashString,
+    wasmHasWildcard,
+    wasmIsRegexPattern,
+    wasmPlainMatch,
+    wasmStringEquals,
+    wasmStringEqualsIgnoreCase,
+    wasmWildcardMatch,
+} from './wasm/index.ts';
+
 // Default export for backward compatibility
 import { compile as compileFunc } from './compiler/index.ts';
 export default compileFunc;

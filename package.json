@@ -9,11 +9,16 @@
         "tail": "wrangler tail",
         "tail:deploy": "wrangler deploy --config wrangler.tail.toml",
         "tail:dev": "wrangler dev --config wrangler.tail.toml",
-        "tail:logs": "wrangler tail adblock-compiler-tail"
+        "tail:logs": "wrangler tail adblock-compiler-tail",
+        "asbuild:debug": "asc assembly/index.ts --target debug --outFile build/wasm/adblock.debug.wasm --sourceMap",
+        "asbuild:release": "asc assembly/index.ts --target release --outFile build/wasm/adblock.wasm --sourceMap --optimize",
+        "asbuild": "npm run asbuild:debug && npm run asbuild:release",
+        "test:wasm": "node assembly/tests/index.js"
     },
     "devDependencies": {
         "@cloudflare/playwright-mcp": "^0.0.5",
         "@cloudflare/workers-types": "^4.20260131.0",
+        "assemblyscript": "^0.27.33",
         "wrangler": "^4.61.1"
     },
     "dependencies": {
