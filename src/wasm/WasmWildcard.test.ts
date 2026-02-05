@@ -34,7 +34,7 @@ Deno.test('WasmWildcard - wildcard pattern matching', () => {
 
     assertEquals(wildcard.test('sub.example.com'), true);
     assertEquals(wildcard.test('deep.sub.example.com'), true);
-    assertEquals(wildcard.test('example.com'), true); // Empty wildcard match
+    assertEquals(wildcard.test('example.com'), false); // * must match at least something (empty doesn't count with leading dot)
     assertEquals(wildcard.test('example.org'), false);
     assertEquals(wildcard.isPlain, false);
     assertEquals(wildcard.isWildcard, true);
@@ -76,7 +76,7 @@ Deno.test('WasmWildcard - multiple wildcards', () => {
 
     assertEquals(wildcard.test('this is a test with example data'), true);
     assertEquals(wildcard.test('test example'), true);
-    assertEquals(wildcard.test('example test'), true);
+    assertEquals(wildcard.test('example test'), false); // 'test' must come before 'example' in the pattern
     assertEquals(wildcard.test('no match here'), false);
 });
 

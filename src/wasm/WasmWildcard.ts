@@ -20,6 +20,8 @@ export class WasmWildcard {
     private readonly regex: RegExp | null = null;
     private readonly plainStr: string;
     private readonly useWasm: boolean;
+    private readonly _isWildcard: boolean;
+    private readonly _isRegex: boolean;
 
     /**
      * Creates a new WASM-accelerated Wildcard pattern matcher.
@@ -36,15 +38,19 @@ export class WasmWildcard {
 
         // Check if it's a regex pattern
         const isRegex = this.useWasm ? wasmIsRegexPattern(pattern) : (pattern.startsWith('/') && pattern.endsWith('/') && pattern.length > 2);
+        this._isRegex = isRegex;
 
         if (isRegex) {
             const regexStr = pattern.substring(1, pattern.length - 1);
             this.regex = new RegExp(regexStr, 'mi');
+            this._isWildcard = false;
         } else {
             const hasWildcard = this.useWasm ? wasmHasWildcard(pattern) : pattern.includes('*');
+            this._isWildcard = hasWildcard;
 
-            if (hasWildcard) {
-                // Convert wildcard pattern to regex
+            // Only compile to regex if NOT using WASM or if no wildcard
+            if (hasWildcard && !this.useWasm) {
+                // Convert wildcard pattern to regex (JavaScript fallback only)
                 const regexStr = pattern
                     .split(/\*+/)
                     .map(StringUtils.escapeRegExp)
@@ -67,12 +73,18 @@ export class WasmWildcard {
             throw new TypeError('Invalid argument passed to WasmWildcard.test');
         }
 
-        // Use regex for regex patterns
+        // For regex patterns, always use JavaScript regex
+        if (this.regex !== null && this.isRegex) {
+            return this.regex.test(str);
+        }
+
+        // For wildcard patterns with WASM available, use WASM
+        if (this.useWasm && this.isWildcard) {
+            return wasmWildcardMatch(str, this.plainStr);
+        }
+
+        // For wildcard patterns without WASM, use JavaScript regex (already compiled in constructor)
         if (this.regex !== null) {
-            // For wildcard patterns, try WASM first
-            if (this.useWasm && this.isWildcard) {
-                return wasmWildcardMatch(str, this.plainStr);
-            }
             return this.regex.test(str);
         }
 
@@ -102,21 +114,21 @@ export class WasmWildcard {
      * Checks if this is a regex pattern.
      */
     public get isRegex(): boolean {
-        return this.regex !== null && this.plainStr.startsWith('/');
+        return this._isRegex;
     }
 
     /**
      * Checks if this is a wildcard pattern.
      */
     public get isWildcard(): boolean {
-        return this.regex !== null && !this.plainStr.startsWith('/');
+        return this._isWildcard;
     }
 
     /**
      * Checks if this is a plain string pattern.
      */
     public get isPlain(): boolean {
-        return this.regex === null;
+        return !this._isRegex && !this._isWildcard;
     }
 
     /**
