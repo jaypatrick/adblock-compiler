@@ -1,6 +1,6 @@
 /**
  * Benchmark: WASM vs JavaScript pattern matching
- * 
+ *
  * Run with: deno bench --allow-read src/wasm/wasm.bench.ts
  */
 

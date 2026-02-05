@@ -13,7 +13,7 @@ Deno.test('WasmWildcard - constructor validation', () => {
     assertThrows(
         () => new WasmWildcard(''),
         TypeError,
-        'Wildcard cannot be empty'
+        'Wildcard cannot be empty',
     );
 });
 
@@ -67,7 +67,7 @@ Deno.test('WasmWildcard - test argument validation', () => {
         // @ts-ignore - Testing invalid argument
         () => wildcard.test(123),
         TypeError,
-        'Invalid argument passed to WasmWildcard.test'
+        'Invalid argument passed to WasmWildcard.test',
     );
 });
 
@@ -117,7 +117,7 @@ Deno.test('WasmWildcard - compatibility with standard Wildcard', async () => {
         assertEquals(
             wasm.test(input),
             standard.test(input),
-            `Pattern "${pattern}" on input "${input}" should match`
+            `Pattern "${pattern}" on input "${input}" should match`,
         );
     }
 });

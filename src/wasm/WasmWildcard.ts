@@ -1,6 +1,6 @@
 /**
  * WASM-accelerated Wildcard pattern matcher
- * 
+ *
  * This class is a drop-in replacement for the standard Wildcard class
  * that uses WebAssembly for improved performance.
  */
@@ -13,7 +13,7 @@ import { isWasmAvailable, wasmHasWildcard, wasmIsRegexPattern, wasmPlainMatch, w
  * 1. Plain string matching (substring search)
  * 2. Wildcard patterns with * (glob-style)
  * 3. Full regular expressions when wrapped in /regex/
- * 
+ *
  * Falls back to JavaScript implementations if WASM is not available.
  */
 export class WasmWildcard {
@@ -35,17 +35,13 @@ export class WasmWildcard {
         this.useWasm = isWasmAvailable();
 
         // Check if it's a regex pattern
-        const isRegex = this.useWasm
-            ? wasmIsRegexPattern(pattern)
-            : (pattern.startsWith('/') && pattern.endsWith('/') && pattern.length > 2);
+        const isRegex = this.useWasm ? wasmIsRegexPattern(pattern) : (pattern.startsWith('/') && pattern.endsWith('/') && pattern.length > 2);
 
         if (isRegex) {
             const regexStr = pattern.substring(1, pattern.length - 1);
             this.regex = new RegExp(regexStr, 'mi');
         } else {
-            const hasWildcard = this.useWasm
-                ? wasmHasWildcard(pattern)
-                : pattern.includes('*');
+            const hasWildcard = this.useWasm ? wasmHasWildcard(pattern) : pattern.includes('*');
 
             if (hasWildcard) {
                 // Convert wildcard pattern to regex
@@ -61,7 +57,7 @@ export class WasmWildcard {
     /**
      * Tests if the pattern matches the given string.
      * Uses WASM for plain and wildcard matching when available.
-     * 
+     *
      * @param str - String to test against the pattern
      * @returns true if the string matches the pattern
      * @throws TypeError if argument is not a string

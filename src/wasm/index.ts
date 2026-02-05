@@ -1,6 +1,6 @@
 /**
  * WebAssembly module exports for adblock-compiler
- * 
+ *
  * This module provides WASM-accelerated implementations of performance-critical operations.
  */
 

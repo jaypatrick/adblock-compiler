@@ -85,7 +85,8 @@
             ".pnp.*",
             "*.lock",
             "*.lcov",
-            "*.d.ts"
+            "*.d.ts",
+            "build/"
         ]
     },
     "fmt": {
@@ -110,7 +111,8 @@
             ".pnp.*",
             "*.lock",
             "*.lcov",
-            "*.d.ts"
+            "*.d.ts",
+            "build/"
         ]
     },
     "test": {

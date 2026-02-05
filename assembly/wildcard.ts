@@ -1,6 +1,6 @@
 /**
  * WebAssembly-optimized wildcard pattern matching
- * 
+ *
  * This module provides high-performance pattern matching for:
  * - Plain string matching (substring search)
  * - Wildcard patterns with * (glob-style)
@@ -9,8 +9,9 @@
 
 /**
  * Escape special regex characters in a string
+ * Note: This function is currently unused but kept for potential future use
  */
-function escapeRegExp(str: string): string {
+function _escapeRegExp(str: string): string {
     let result = '';
     for (let i = 0; i < str.length; i++) {
         const char = str.charAt(i);
@@ -29,49 +30,13 @@ function escapeRegExp(str: string): string {
 }
 
 /**
- * Convert wildcard pattern to regex pattern
- * Splits by * and joins with [\s\S]* (match any character including newlines)
- */
-function wildcardToRegex(pattern: string): string {
-    const parts: string[] = [];
-    let currentPart = '';
-    
-    for (let i = 0; i < pattern.length; i++) {
-        const char = pattern.charAt(i);
-        if (char === '*') {
-            if (currentPart.length > 0) {
-                parts.push(escapeRegExp(currentPart));
-                currentPart = '';
-            }
-        } else {
-            currentPart += char;
-        }
-    }
-    
-    if (currentPart.length > 0) {
-        parts.push(escapeRegExp(currentPart));
-    }
-    
-    let regexStr = '^';
-    for (let i = 0; i < parts.length; i++) {
-        regexStr += parts[i];
-        if (i < parts.length - 1) {
-            regexStr += '[\\s\\S]*';
-        }
-    }
-    regexStr += '$';
-    
-    return regexStr;
-}
-
-/**
  * Simple case-insensitive substring search
  * Returns 1 if found, 0 if not found
  */
 export function plainMatch(haystack: string, needle: string): i32 {
     const haystackLower = haystack.toLowerCase();
     const needleLower = needle.toLowerCase();
-    
+
     if (haystackLower.includes(needleLower)) {
         return 1;
     }
@@ -81,7 +46,7 @@ export function plainMatch(haystack: string, needle: string): i32 {
 /**
  * Wildcard pattern matching with * support
  * Returns 1 if match, 0 if no match
- * 
+ *
  * Pattern format: "*.example.com" matches "sub.example.com"
  */
 export function wildcardMatch(str: string, pattern: string): i32 {
@@ -89,11 +54,11 @@ export function wildcardMatch(str: string, pattern: string): i32 {
     if (!pattern.includes('*')) {
         return plainMatch(str, pattern);
     }
-    
+
     // Split pattern by wildcards
     const parts: string[] = [];
     let currentPart = '';
-    
+
     for (let i = 0; i < pattern.length; i++) {
         const char = pattern.charAt(i);
         if (char === '*') {
@@ -105,36 +70,36 @@ export function wildcardMatch(str: string, pattern: string): i32 {
             currentPart += char;
         }
     }
-    
+
     if (currentPart.length > 0) {
         parts.push(currentPart.toLowerCase());
     }
-    
+
     // If no parts, pattern is just "*" which matches everything
     if (parts.length === 0) {
         return 1;
     }
-    
+
     const strLower = str.toLowerCase();
     let searchPos = 0;
-    
+
     // Check if each part exists in order
     for (let i = 0; i < parts.length; i++) {
         const part = parts[i];
         const pos = strLower.indexOf(part, searchPos);
-        
+
         if (pos < 0) {
-            return 0;  // Part not found
+            return 0; // Part not found
         }
-        
+
         // For first part, must match at start if pattern doesn't start with *
         if (i === 0 && !pattern.startsWith('*') && pos !== 0) {
             return 0;
         }
-        
+
         searchPos = pos + part.length;
     }
-    
+
     // For last part, must match at end if pattern doesn't end with *
     if (!pattern.endsWith('*')) {
         const lastPart = parts[parts.length - 1];
@@ -142,7 +107,7 @@ export function wildcardMatch(str: string, pattern: string): i32 {
             return 0;
         }
     }
-    
+
     return 1;
 }
 

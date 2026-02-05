@@ -2,7 +2,7 @@
  * Tests for WASM module loader and functionality
  */
 
-import { assertEquals, assertExists } from '@std/assert';
+import { assertEquals } from '@std/assert';
 import {
     initWasm,
     isWasmAvailable,

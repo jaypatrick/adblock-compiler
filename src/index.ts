@@ -148,15 +148,7 @@ export type { DownloaderPlugin, Plugin, PluginContext, PluginLoadOptions, Plugin
 
 // WebAssembly support
 export { initWasm, isWasmAvailable, WasmWildcard } from './wasm/index.ts';
-export {
-    wasmHashString,
-    wasmHasWildcard,
-    wasmIsRegexPattern,
-    wasmPlainMatch,
-    wasmStringEquals,
-    wasmStringEqualsIgnoreCase,
-    wasmWildcardMatch,
-} from './wasm/index.ts';
+export { wasmHashString, wasmHasWildcard, wasmIsRegexPattern, wasmPlainMatch, wasmStringEquals, wasmStringEqualsIgnoreCase, wasmWildcardMatch } from './wasm/index.ts';
 
 // Default export for backward compatibility
 import { compile as compileFunc } from './compiler/index.ts';

@@ -37,21 +37,21 @@ Build configuration is defined in `asconfig.json` at the project root:
 
 ```json
 {
-  "targets": {
-    "debug": {
-      "outFile": "build/wasm/adblock.debug.wasm",
-      "sourceMap": true,
-      "debug": true
+    "targets": {
+        "debug": {
+            "outFile": "build/wasm/adblock.debug.wasm",
+            "sourceMap": true,
+            "debug": true
+        },
+        "release": {
+            "outFile": "build/wasm/adblock.wasm",
+            "optimizeLevel": 3,
+            "shrinkLevel": 0
+        }
     },
-    "release": {
-      "outFile": "build/wasm/adblock.wasm",
-      "optimizeLevel": 3,
-      "shrinkLevel": 0
+    "options": {
+        "bindings": "esm"
     }
-  },
-  "options": {
-    "bindings": "esm"
-  }
 }
 ```
 

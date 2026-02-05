@@ -29,8 +29,9 @@ hostlist-compiler.exe
 build/wasm/*.wasm
 build/wasm/*.wat
 build/wasm/*.wasm.map
-build/wasm/*.js
-build/wasm/*.d.ts
+# Keep the generated JS bindings and TypeScript definitions (needed at runtime)
+# build/wasm/*.js
+# build/wasm/*.d.ts
 assembly/build/
 assembly/package.json.bak
 assembly/index.html

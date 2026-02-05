@@ -1,6 +1,6 @@
 /**
  * WebAssembly module loader for adblock-compiler
- * 
+ *
  * This module provides a high-level interface to WASM-accelerated functions.
  * Falls back to JavaScript implementations if WASM is not available.
  */
@@ -33,24 +33,23 @@ export async function initWasm(): Promise<boolean> {
     }
 
     try {
-        // Try to import the generated bindings
-        // Note: In production, this would import from build/wasm/adblock.js
-        // For now, we'll manually instantiate the WASM
-        const wasmPath = new URL('../../build/wasm/adblock.wasm', import.meta.url).pathname;
-        
-        // Load and instantiate WASM module
-        const wasmBytes = await Deno.readFile(wasmPath);
-        const { instance } = await WebAssembly.instantiate(wasmBytes, {
-            env: {
-                abort(message: number, fileName: number, lineNumber: number, columnNumber: number) {
-                    logger.error(`WASM abort: ${message} at ${fileName}:${lineNumber}:${columnNumber}`);
-                },
-            },
-        });
-        
-        wasmModule = instance.exports as unknown as WasmExports;
+        // Import the generated bindings which handle proper memory management
+        // @deno-types="../../build/wasm/adblock.d.ts"
+        const bindings = await import('../../build/wasm/adblock.js');
+
+        wasmModule = {
+            memory: bindings.memory,
+            add: bindings.add,
+            plainMatch: bindings.plainMatch,
+            wildcardMatch: bindings.wildcardMatch,
+            isRegexPattern: bindings.isRegexPattern,
+            hasWildcard: bindings.hasWildcard,
+            hashString: bindings.hashString,
+            stringEquals: bindings.stringEquals,
+            stringEqualsIgnoreCase: bindings.stringEqualsIgnoreCase,
+        };
+
         wasmInitialized = true;
-        
         logger.info('WASM module initialized successfully');
         return true;
     } catch (error) {
@@ -94,7 +93,7 @@ export function wasmWildcardMatch(str: string, pattern: string): boolean {
     // Fallback to JavaScript (simplified)
     const regex = new RegExp(
         '^' + pattern.split('*').map(escapeRegExp).join('.*') + '$',
-        'i'
+        'i',
     );
     return regex.test(str);
 }

@@ -1,6 +1,6 @@
 /**
  * WebAssembly entry point for adblock-compiler
- * 
+ *
  * This module provides high-performance utilities for filter list processing:
  * - Pattern matching (wildcards, plain strings)
  * - String hashing for deduplication
@@ -8,15 +8,7 @@
  */
 
 // Re-export wildcard pattern matching functions
-export {
-    hashString,
-    hasWildcard,
-    isRegexPattern,
-    plainMatch,
-    stringEquals,
-    stringEqualsIgnoreCase,
-    wildcardMatch,
-} from './wildcard';
+export { hashString, hasWildcard, isRegexPattern, plainMatch, stringEquals, stringEqualsIgnoreCase, wildcardMatch } from './wildcard';
 
 /**
  * Example function: Add two numbers
@@ -25,4 +17,3 @@ export {
 export function add(a: i32, b: i32): i32 {
     return a + b;
 }
-

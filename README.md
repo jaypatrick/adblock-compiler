@@ -412,12 +412,7 @@ npm run asbuild
 ### WASM Functions
 
 ```typescript
-import {
-    wasmWildcardMatch,
-    wasmPlainMatch,
-    wasmHashString,
-    isWasmAvailable,
-} from '@jk-com/adblock-compiler';
+import { isWasmAvailable, wasmHashString, wasmPlainMatch, wasmWildcardMatch } from '@jk-com/adblock-compiler';
 
 // Check if WASM is available
 if (isWasmAvailable()) {
@@ -437,6 +432,7 @@ if (isWasmAvailable()) {
 ### Automatic Fallback
 
 All WASM functions automatically fall back to JavaScript implementations if:
+
 - WASM initialization fails
 - Runtime doesn't support WebAssembly
 - WASM files are not available
