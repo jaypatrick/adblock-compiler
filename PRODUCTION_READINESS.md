@@ -356,7 +356,10 @@ class CircuitBreaker {
 
     async execute<T>(fn: () => Promise<T>): Promise<T> {
         if (this.state === 'OPEN') {
-            if (this.lastFailureTime && Date.now() - this.lastFailureTime.getTime() > this.timeout) {
+            if (
+                this.lastFailureTime &&
+                Date.now() - this.lastFailureTime.getTime() > this.timeout
+            ) {
                 this.state = 'HALF_OPEN';
             } else {
                 throw new Error('Circuit breaker is OPEN');
@@ -658,7 +661,10 @@ function addSecurityHeaders(response: Response): Response {
     headers.set('X-Frame-Options', 'DENY');
     headers.set('X-XSS-Protection', '1; mode=block');
     headers.set('Content-Security-Policy', "default-src 'self'");
-    headers.set('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    headers.set(
+        'Strict-Transport-Security',
+        'max-age=31536000; includeSubDomains',
+    );
 
     return new Response(response.body, {
         status: response.status,
@@ -679,11 +685,13 @@ function isSafeUrl(url: string): boolean {
     const parsed = new URL(url);
 
     // Block private IPs
-    if (parsed.hostname === 'localhost' ||
+    if (
+        parsed.hostname === 'localhost' ||
         parsed.hostname.startsWith('127.') ||
         parsed.hostname.startsWith('192.168.') ||
         parsed.hostname.startsWith('10.') ||
-        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(parsed.hostname)) {
+        /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(parsed.hostname)
+    ) {
         return false;
     }
 
@@ -777,6 +785,7 @@ compilation_total{status="error"} 5
 **Justification**: Real-time visibility into system health
 
 **Implementation**: Web UI showing:
+
 - Active compilations
 - Error rates
 - Cache hit ratios
@@ -799,10 +808,12 @@ compilation_total{status="error"} 5
 ```typescript
 function validateEnvironment(): void {
     const required = ['DATABASE_URL', 'ADMIN_API_KEY'];
-    const missing = required.filter(key => !Deno.env.get(key));
+    const missing = required.filter((key) => !Deno.env.get(key));
 
     if (missing.length > 0) {
-        throw new Error(`Missing required environment variables: ${missing.join(', ')}`);
+        throw new Error(
+            `Missing required environment variables: ${missing.join(', ')}`,
+        );
     }
 }
 
@@ -848,6 +859,7 @@ if (isShuttingDown) {
 **Justification**: Operators need clear procedures for incidents
 
 **Create**: `docs/RUNBOOK.md` with:
+
 - How to investigate compilation failures
 - How to handle rate limit issues
 - How to restart services
@@ -918,6 +930,7 @@ if (isShuttingDown) {
 ## Implementation Roadmap
 
 ### Phase 1: Core Observability (2-3 weeks)
+
 - Structured JSON logging (FEATURE-001)
 - Centralized error reporting (FEATURE-006)
 - OpenTelemetry integration (FEATURE-009)
@@ -926,6 +939,7 @@ if (isShuttingDown) {
 - Metrics export (FEATURE-017)
 
 ### Phase 2: Security Hardening (1-2 weeks)
+
 - Request size limits (BUG-002)
 - CSRF protection (BUG-010)
 - SSRF protection (BUG-012)
@@ -933,24 +947,28 @@ if (isShuttingDown) {
 - Per-endpoint rate limiting (FEATURE-014)
 
 ### Phase 3: Input Validation (1 week)
+
 - Zod schema validation (FEATURE-004)
 - Type validation in handlers (BUG-003)
 - URL allowlist/blocklist (FEATURE-005)
 - Startup config validation (FEATURE-019)
 
 ### Phase 4: Resilience (1-2 weeks)
+
 - Circuit breaker pattern (FEATURE-008)
 - Distributed trace ID propagation (BUG-007)
 - Graceful shutdown (FEATURE-020)
 - Silent error handling fixes (BUG-004, BUG-005)
 
 ### Phase 5: Developer Experience (1 week)
+
 - Eliminate direct console usage (BUG-001)
 - Error code documentation (FEATURE-007)
 - Operational runbook (FEATURE-021)
 - API documentation (FEATURE-022)
 
 ### Phase 6: Performance & Quality (ongoing)
+
 - Performance sampling (FEATURE-010)
 - Request duration metrics (FEATURE-011)
 - Performance benchmarks (FEATURE-013)

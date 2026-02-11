@@ -29,7 +29,10 @@ Currently, the worker endpoints do not enforce request body size limits, which c
 **Proposed Solution**:
 
 ```typescript
-async function validateRequestSize(request: Request, maxBytes: number = 1024 * 1024): Promise<void> {
+async function validateRequestSize(
+    request: Request,
+    maxBytes: number = 1024 * 1024,
+): Promise<void> {
     const contentLength = request.headers.get('content-length');
     if (contentLength && parseInt(contentLength) > maxBytes) {
         throw new Error(`Request body exceeds ${maxBytes} bytes`);
