@@ -41,6 +41,7 @@ export class AdblockCompiler {
 
 import { createTracingContext, type DiagnosticEvent, type ICompilerEvents, type IConfiguration, WorkerCompiler } from '../src/index.ts';
 import { WORKER_DEFAULTS } from '../src/config/defaults.ts';
+import { VERSION } from '../src/version.ts';
 import { handleWebSocketUpgrade } from './websocket.ts';
 import { AnalyticsService } from '../src/services/AnalyticsService.ts';
 import { getDeploymentHistory, getDeploymentStats, getLatestDeployment } from '../src/deployment/version.ts';
@@ -1430,7 +1431,7 @@ async function handleCompileBatchAsync(
 function handleInfo(env: Env): Response {
     const info = {
         name: 'Hostlist Compiler Worker',
-        version: env.COMPILER_VERSION,
+        version: env.COMPILER_VERSION || VERSION,
         endpoints: {
             'GET /': 'Web UI for interactive compilation',
             'GET /api': 'API information (this endpoint)',
@@ -2861,7 +2862,7 @@ export default {
                         {
                             success: false,
                             error: 'D1 database not available',
-                            version: env.COMPILER_VERSION || 'unknown',
+                            version: env.COMPILER_VERSION || VERSION,
                         },
                         { status: 503, headers: { 'Access-Control-Allow-Origin': '*' } },
                     );
@@ -2873,7 +2874,7 @@ export default {
                     {
                         success: true,
                         data: deployment || {
-                            version: env.COMPILER_VERSION || 'unknown',
+                            version: env.COMPILER_VERSION || VERSION,
                             message: 'No deployment history available',
                         },
                     },
@@ -2890,7 +2891,7 @@ export default {
                     {
                         success: false,
                         error: message,
-                        version: env.COMPILER_VERSION || 'unknown',
+                        version: env.COMPILER_VERSION || VERSION,
                     },
                     { status: 500, headers: { 'Access-Control-Allow-Origin': '*' } },
                 );

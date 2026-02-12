@@ -12,6 +12,7 @@
  */
 
 import type { Env } from './types.ts';
+import { VERSION } from '../src/version.ts';
 import { JsonResponse } from './utils/response.ts';
 import { checkRateLimit, verifyAdminAuth, verifyTurnstileToken } from './middleware/index.ts';
 import { handleASTParseRequest, handleCompileAsync, handleCompileBatch, handleCompileBatchAsync, handleCompileJson, handleCompileStream } from './handlers/compile.ts';
@@ -94,7 +95,7 @@ async function handleInfo(
 ): Promise<Response> {
     return JsonResponse.success({
         name: 'adblock-compiler-worker',
-        version: env.COMPILER_VERSION || 'unknown',
+        version: env.COMPILER_VERSION || VERSION,
         endpoints: {
             compile: 'POST /compile',
             compileStream: 'POST /compile/stream',

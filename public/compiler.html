@@ -986,7 +986,7 @@
         <header>
             <h1>🛡️ Adblock Compiler</h1>
             <p><strong>Compiler-as-a-Service</strong> | Real-time streaming compilation with SSE event pipeline</p>
-            <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 5px;">Powered by Cloudflare Workers • <a href="https://adblock-compiler.jayson-knight.workers.dev/api" style="color: white; text-decoration: underline;" target="_blank">API</a> • <span id="header-version">v0.11.3</span></p>
+            <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 5px;">Powered by Cloudflare Workers • <a href="https://adblock-compiler.jayson-knight.workers.dev/api" style="color: white; text-decoration: underline;" target="_blank">API</a> • <span id="header-version">v0.12.0</span></p>
             <button class="theme-toggle" id="theme-toggle">
                 <span class="theme-toggle-icon" id="theme-icon">🌙</span>
                 <span class="theme-toggle-label" id="theme-label">Dark Mode</span>
@@ -1502,7 +1502,7 @@ eventSource.addEventListener('result', (e) => {
         </div>
 
         <footer>
-            <p>Powered by <a href="https://github.com/jaypatrick/adblock-compiler" target="_blank">@jk-com/adblock-compiler</a> • <span id="footer-version">v0.11.3</span></p>
+            <p>Powered by <a href="https://github.com/jaypatrick/adblock-compiler" target="_blank">@jk-com/adblock-compiler</a> • <span id="footer-version">v0.12.0</span></p>
             <p>Made with ❤️ for better internet filtering | Streaming API enabled</p>
         </footer>
     </div>
@@ -1612,17 +1612,25 @@ eventSource.addEventListener('result', (e) => {
         // Fetch compiler version from API
         async function fetchCompilerVersion() {
             try {
-                const apiUrl = window.location.hostname === 'localhost' 
-                    ? '/api'
-                    : 'https://adblock-compiler.jayson-knight.workers.dev/api';
-                
-                const response = await fetch(apiUrl);
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.version) {
-                        const versionText = `v${data.version}`;
-                        document.getElementById('header-version').textContent = versionText;
-                        document.getElementById('footer-version').textContent = versionText;
+                // Try /api/version first, fall back to /api
+                const endpoints = ['/api/version', '/api'];
+
+                for (const endpoint of endpoints) {
+                    try {
+                        const response = await fetch(endpoint);
+                        if (response.ok) {
+                            const data = await response.json();
+                            const version = data.data?.version || data.version;
+                            if (version) {
+                                const versionText = `v${version}`;
+                                document.getElementById('header-version').textContent = versionText;
+                                document.getElementById('footer-version').textContent = versionText;
+                                return; // Success, exit
+                            }
+                        }
+                    } catch (err) {
+                        // Try next endpoint
+                        continue;
                     }
                 }
             } catch (error) {
