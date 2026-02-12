@@ -129,10 +129,11 @@ All worker files use this pattern:
 import { VERSION } from '../src/version.ts';
 
 // Later in code:
-version: env.COMPILER_VERSION || VERSION
+version: env.COMPILER_VERSION || VERSION;
 ```
 
 This ensures:
+
 1. Production uses `COMPILER_VERSION` from wrangler.toml
 2. Local dev/tests use `VERSION` from src/version.ts if env var missing
 3. No "unknown" versions
@@ -151,6 +152,7 @@ async function loadVersion() {
 ```
 
 This ensures:
+
 1. Version always matches deployed worker
 2. No manual HTML updates needed
 3. Fallback version only shown on API failure
