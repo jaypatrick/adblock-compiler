@@ -48,9 +48,35 @@ Test files import VERSION for consistency:
 
 - **`worker/queue.integration.test.ts`** - Uses `VERSION + '-test'`
 
-## Version Update Checklist
+## Version Update Process
 
-When bumping the version:
+### Automatic (Recommended)
+
+The project uses **automatic version bumping** based on Conventional Commits:
+
+- **Automatic**: Version is bumped automatically when you merge PRs with proper commit messages
+- **No manual editing**: Version files are updated automatically
+- **Changelog generation**: CHANGELOG.md is updated automatically
+- **Release creation**: GitHub releases are created automatically
+
+See [docs/AUTO_VERSION_BUMP.md](docs/AUTO_VERSION_BUMP.md) for complete details.
+
+**Quick Guide:**
+
+```bash
+# Minor bump (new feature)
+git commit -m "feat: add new transformation"
+
+# Patch bump (bug fix)
+git commit -m "fix: resolve parsing error"
+
+# Major bump (breaking change)
+git commit -m "feat!: change API interface"
+```
+
+### Manual (Fallback)
+
+If you need to manually bump the version:
 
 1. ✅ Update `src/version.ts` - Change the VERSION constant
 2. ✅ Update `deno.json` - Change the "version" field
@@ -58,7 +84,9 @@ When bumping the version:
 4. ✅ Update `wrangler.toml` - Change COMPILER_VERSION in [vars] section
 5. ⚠️ Optional: Update HTML fallback versions in `public/index.html` and `public/compiler.html` (they will be overridden by API)
 6. ✅ Update `CHANGELOG.md` - Document the changes
-7. ✅ Commit with message: `chore: bump version to X.Y.Z`
+7. ✅ Commit with message: `chore: bump version to X.Y.Z [skip ci]`
+
+Or use the GitHub Actions workflow: Actions → Version Bump → Run workflow
 
 ## Architecture Benefits
 
