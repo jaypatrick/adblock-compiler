@@ -96,19 +96,23 @@ The workflow automatically generates a changelog entry with:
 - **Performance** section - Improvements from `perf:` commits
 - **BREAKING CHANGES** section - Breaking changes from commit footers
 
-### 5. Commit and Tag
+### 5. Pull Request Creation
 
 The workflow:
-1. Commits changes with message: `chore: bump version to X.Y.Z [skip ci]`
-2. Creates a git tag: `vX.Y.Z`
-3. Pushes both commit and tag to the repository
+1. Creates a new branch: `auto-version-bump-X.Y.Z`
+2. Commits changes with message: `chore: bump version to X.Y.Z`
+3. Pushes the branch to the repository
+4. Creates a pull request with the version bump changes
 
-### 6. Release Trigger
+### 6. Tag Creation and Release
 
-The new tag automatically triggers the `release.yml` workflow which:
-- Builds binaries for all platforms
-- Publishes to JSR (JavaScript Registry)
-- Creates a GitHub Release
+After the version bump PR is merged:
+1. The `create-version-tag.yml` workflow is triggered
+2. It creates a git tag: `vX.Y.Z`
+3. The tag automatically triggers the `release.yml` workflow which:
+   - Builds binaries for all platforms
+   - Publishes to JSR (JavaScript Registry)
+   - Creates a GitHub Release
 
 ## Skipping Version Bumps
 
@@ -226,17 +230,17 @@ Old format is no longer supported. See migration guide.
 
 ## Integration with Other Workflows
 
-### Release Workflow
+### Version Bump Flow
 
 ```
-Auto Version Bump → Creates Tag (v1.2.3) → Triggers Release Workflow
+Auto Version Bump → Creates PR → PR Merged → Create Version Tag → Triggers Release Workflow
 ```
 
-The release workflow:
-1. Validates the code
-2. Builds binaries for all platforms
-3. Publishes to JSR
-4. Creates GitHub Release with changelog
+The complete flow:
+1. **Auto Version Bump**: Creates a PR with version changes
+2. **PR Review**: Human or automated review/merge of the PR
+3. **Create Version Tag**: Automatically creates tag after PR merge
+4. **Release Workflow**: Builds, publishes, and creates GitHub release
 
 ### CI Workflow
 
@@ -298,10 +302,12 @@ git commit -m "feat: add WebSocket support for real-time compilation"
 git push origin main
 
 # Result
-# Version: 0.12.0 → 0.13.0
-# Changelog: Added "WebSocket support for real-time compilation"
-# Tag: v0.13.0
-# Release: Triggered automatically
+# A PR is created: "chore: bump version to 0.13.0"
+# After PR is merged:
+#   - Version: 0.12.0 → 0.13.0
+#   - Changelog: Added "WebSocket support for real-time compilation"
+#   - Tag: v0.13.0
+#   - Release: Triggered automatically
 ```
 
 ### Example 2: Bug Fix
@@ -312,10 +318,12 @@ git commit -m "fix: resolve race condition in queue processing"
 git push origin main
 
 # Result
-# Version: 0.13.0 → 0.13.1
-# Changelog: Fixed "race condition in queue processing"
-# Tag: v0.13.1
-# Release: Triggered automatically
+# A PR is created: "chore: bump version to 0.13.1"
+# After PR is merged:
+#   - Version: 0.13.0 → 0.13.1
+#   - Changelog: Fixed "race condition in queue processing"
+#   - Tag: v0.13.1
+#   - Release: Triggered automatically
 ```
 
 ### Example 3: Breaking Change
@@ -329,10 +337,12 @@ Sync methods have been removed. Update your code to use await."
 git push origin main
 
 # Result
-# Version: 0.13.1 → 1.0.0
-# Changelog: Breaking change documented with migration guide
-# Tag: v1.0.0
-# Release: Triggered automatically
+# A PR is created: "chore: bump version to 1.0.0"
+# After PR is merged:
+#   - Version: 0.13.1 → 1.0.0
+#   - Changelog: Breaking change documented with migration guide
+#   - Tag: v1.0.0
+#   - Release: Triggered automatically
 ```
 
 ### Example 4: No Version Bump
@@ -364,4 +374,5 @@ If you're used to manual version bumping:
 - [Semantic Versioning](https://semver.org/) - SemVer specification
 - `.github/workflows/version-bump.yml` - Manual version bump workflow
 - `.github/workflows/auto-version-bump.yml` - Automatic version bump workflow
+- `.github/workflows/create-version-tag.yml` - Tag creation after PR merge
 - `.github/workflows/release.yml` - Release workflow
