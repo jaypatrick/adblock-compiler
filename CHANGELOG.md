@@ -27,8 +27,6 @@ Add comprehensive version management documentation
 - Include troubleshooting guide
 - Update copilot instructions with version management reference
 
-
-
 ## [0.9.1] - 2026-01-31
 
 ### Added
