@@ -9,6 +9,7 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
+import { VERSION } from '../src/version.ts';
 
 /**
  * Mock KV Namespace for testing
@@ -141,7 +142,7 @@ interface MockEnv {
 
 function createMockEnv(): MockEnv {
     return {
-        COMPILER_VERSION: '0.7.7-test',
+        COMPILER_VERSION: VERSION + '-test',
         COMPILATION_CACHE: new MockKVNamespace(),
         RATE_LIMIT: new MockKVNamespace(),
         METRICS: new MockKVNamespace(),

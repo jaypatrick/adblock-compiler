@@ -1181,6 +1181,19 @@ This pluggable architecture allows you to:
 - Add logging and metrics
 - Mock sources for testing
 
+## Contributing
+
+We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+
+### Quick Start for Contributors
+
+1. Fork and clone the repository
+2. Make your changes following our [commit message guidelines](CONTRIBUTING.md#commit-message-guidelines)
+3. Use conventional commits: `feat:`, `fix:`, `docs:`, etc.
+4. Submit a pull request
+
+**Automatic Version Bumping**: When your PR is merged, the version will be automatically bumped based on your commit messages. See [docs/AUTO_VERSION_BUMP.md](docs/AUTO_VERSION_BUMP.md) for details.
+
 ## License
 
 GPL-3.0 - See [LICENSE](LICENSE) for details.

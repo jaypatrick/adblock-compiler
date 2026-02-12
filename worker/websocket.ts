@@ -6,6 +6,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { createTracingContext, WorkerCompiler } from '../src/index.ts';
+import { VERSION } from '../src/version.ts';
 import type { Env } from './worker.ts';
 import type { ClientMessage, CompilationSession, ServerMessage, WebSocketConnectionState } from '../src/types/websocket.ts';
 
@@ -58,7 +59,7 @@ export async function handleWebSocketUpgrade(
     // Send welcome message
     sendMessage(server, {
         type: 'welcome',
-        version: env.COMPILER_VERSION || '2.0.0',
+        version: env.COMPILER_VERSION || VERSION,
         connectionId,
         capabilities: {
             maxConcurrentCompilations: WS_CONFIG.MAX_CONCURRENT_COMPILATIONS,
