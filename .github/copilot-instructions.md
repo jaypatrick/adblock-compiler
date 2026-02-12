@@ -227,8 +227,11 @@ The codebase supports multiple runtimes through a platform abstraction layer:
 
 ## Version Management
 
-- **Version sync**: Keep version consistent across `deno.json` and `package.json`
-- **Version file**: `src/version.ts` contains the canonical version string
+- **Single source of truth**: `src/version.ts` exports the canonical VERSION constant
+- **Version sync**: Keep version consistent across `src/version.ts`, `deno.json`, `package.json`, and `wrangler.toml`
+- **Worker imports**: All worker files import VERSION from `src/version.ts` as fallback for `env.COMPILER_VERSION`
+- **Dynamic loading**: HTML files load version from `/api/version` endpoint at runtime
+- **Documentation**: See `VERSION_MANAGEMENT.md` for detailed version update process
 - **Publishing**: CI/CD automatically publishes to JSR on version changes to master branch
 
 ## Security
