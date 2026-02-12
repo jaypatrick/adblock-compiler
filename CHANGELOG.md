@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.1] - 2026-02-12
+
+### Added### Fixed
+
+- add pull-requests permission and null check to auto-version-bump workflow
+- modify auto-version-bump to create PR instead of direct push
+- correct markdown formatting in VERSION_MANAGEMENT.md
+
+### BREAKING CHANGES
+
+- feat!/fix!/BREAKING CHANGE: → major bump (0.12.0 → 1.0.0)
+
+Co-authored-by: jaypatrick <1800595+jaypatrick@users.noreply.github.com>
+
+Add comprehensive version management documentation
+
+- Create VERSION_MANAGEMENT.md with detailed sync process
+- Document single source of truth pattern (src/version.ts)
+- Add version update checklist
+- Include troubleshooting guide
+- Update copilot instructions with version management reference
+
+
+
 ## [0.9.1] - 2026-01-31
 
 ### Added
