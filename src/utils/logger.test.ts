@@ -285,6 +285,8 @@ Deno.test('StructuredLogger - should support all log levels', () => {
     const logger = new StructuredLogger({ level: LogLevel.Trace });
 
     const outputs: Record<string, string> = {};
+    // Track debug outputs separately since both trace and debug use console.debug
+    const debugOutputs: string[] = [];
 
     // Capture all console methods
     const originalConsoleDebug = console.debug;
@@ -293,7 +295,7 @@ Deno.test('StructuredLogger - should support all log levels', () => {
     const originalConsoleError = console.error;
 
     console.debug = (msg: string) => {
-        outputs.debug = msg;
+        debugOutputs.push(msg);
     };
     console.info = (msg: string) => {
         outputs.info = msg;
@@ -313,10 +315,15 @@ Deno.test('StructuredLogger - should support all log levels', () => {
         logger.error('error message');
         logger.success('success message');
 
-        // Verify trace
-        const traceParsed = JSON.parse(outputs.debug);
+        // Verify trace (first debug output)
+        const traceParsed = JSON.parse(debugOutputs[0]);
         assertEquals(traceParsed.level, 'trace');
         assertEquals(traceParsed.message, 'trace message');
+
+        // Verify debug (second debug output)
+        const debugParsed = JSON.parse(debugOutputs[1]);
+        assertEquals(debugParsed.level, 'debug');
+        assertEquals(debugParsed.message, 'debug message');
 
         // Verify info
         const infoParsed = JSON.parse(outputs.info);
