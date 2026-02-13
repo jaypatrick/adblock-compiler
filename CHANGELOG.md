@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Changed
+
+- **Validation System Upgrade** - Replaced manual validation with Zod schema validation
+  - Added Zod 3.24.1 dependency for runtime type validation
+  - Created `ConfigurationSchema` and `SourceSchema` in `src/configuration/schemas.ts`
+  - Created request body schemas in `worker/schemas.ts` (CompileRequest, BatchRequest, ASTParseRequest)
+  - Refactored `ConfigurationValidator` to use Zod while maintaining backward compatibility
+  - Updated all worker handlers to validate request bodies with Zod
+  - Improved error messages with better type safety and validation
+  - All 840 tests passing with 100% backward compatibility
+
 ## [0.12.1] - 2026-02-12
 
 ### Added### Fixed

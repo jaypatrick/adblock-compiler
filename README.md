@@ -48,6 +48,7 @@
 - **📖 OpenAPI 3.0 Specification** - Full API documentation with contract tests
 - **🌍 Universal** - Works in Deno, Node.js, Cloudflare Workers, browsers
 - **🎨 11 Transformations** - Deduplicate, compress, validate, and more
+- **✅ Type-Safe Validation** - Zod schema validation with TypeScript integration
 
 - [Installation](#installation)
 - [Usage](#usage)
