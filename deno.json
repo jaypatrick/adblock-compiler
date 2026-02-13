@@ -51,6 +51,7 @@
         "@/": "./src/",
         "@adguard/agtree": "npm:@adguard/agtree@^4.0.0",
         "wrangler": "npm:wrangler@^4.63.0",
+        "zod": "npm:zod@^3.24.1",
         "@std/path": "jsr:@std/path@^1.1.4",
         "@std/fs": "jsr:@std/fs@^1.0.22",
         "@std/cli": "jsr:@std/cli@^1.0.17",

@@ -17,6 +17,7 @@
         "wrangler": "^4.63.0"
     },
     "dependencies": {
-        "@adguard/agtree": "^4.0.0"
+        "@adguard/agtree": "^4.0.0",
+        "zod": "^3.24.1"
     }
 }
