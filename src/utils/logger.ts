@@ -58,10 +58,10 @@ function getTimestamp(): string {
  * Console-based logger implementation for Deno
  */
 export class Logger implements ILogger {
-    private level: LogLevel;
-    private prefix: string;
-    private timestamps: boolean;
-    private colors: boolean;
+    protected level: LogLevel;
+    protected prefix: string;
+    protected timestamps: boolean;
+    protected colors: boolean;
 
     constructor(options: LoggerOptions = {}) {
         this.level = options.level ?? LogLevel.Info;
@@ -277,8 +277,8 @@ export class StructuredLogger extends Logger {
         };
 
         // Only include prefix if set
-        if (this['prefix']) {
-            entry.prefix = this['prefix'];
+        if (this.prefix) {
+            entry.prefix = this.prefix;
         }
 
         // Only include context if provided
@@ -303,7 +303,7 @@ export class StructuredLogger extends Logger {
      * Logs a trace message with optional context
      */
     override trace(message: string, context?: Record<string, unknown>): void {
-        if (this['level'] <= LogLevel.Trace) {
+        if (this.level <= LogLevel.Trace) {
             console.debug(this.createLogEntry(LogLevel.Trace, message, context));
         }
     }
@@ -312,7 +312,7 @@ export class StructuredLogger extends Logger {
      * Logs a debug message with optional context
      */
     override debug(message: string, context?: Record<string, unknown>): void {
-        if (this['level'] <= LogLevel.Debug) {
+        if (this.level <= LogLevel.Debug) {
             console.debug(this.createLogEntry(LogLevel.Debug, message, context));
         }
     }
@@ -321,7 +321,7 @@ export class StructuredLogger extends Logger {
      * Logs an info message with optional context
      */
     override info(message: string, context?: Record<string, unknown>): void {
-        if (this['level'] <= LogLevel.Info) {
+        if (this.level <= LogLevel.Info) {
             console.info(this.createLogEntry(LogLevel.Info, message, context));
         }
     }
@@ -330,7 +330,7 @@ export class StructuredLogger extends Logger {
      * Logs a warning message with optional context
      */
     override warn(message: string, context?: Record<string, unknown>): void {
-        if (this['level'] <= LogLevel.Warn) {
+        if (this.level <= LogLevel.Warn) {
             console.warn(this.createLogEntry(LogLevel.Warn, message, context));
         }
     }
@@ -339,7 +339,7 @@ export class StructuredLogger extends Logger {
      * Logs an error message with optional context
      */
     override error(message: string, context?: Record<string, unknown>): void {
-        if (this['level'] <= LogLevel.Error) {
+        if (this.level <= LogLevel.Error) {
             console.error(this.createLogEntry(LogLevel.Error, message, context));
         }
     }
@@ -348,7 +348,7 @@ export class StructuredLogger extends Logger {
      * Logs a success message (info level) with optional context
      */
     override success(message: string, context?: Record<string, unknown>): void {
-        if (this['level'] <= LogLevel.Info) {
+        if (this.level <= LogLevel.Info) {
             // Success is logged at info level with 'success' in the message or context
             const successContext = { ...context, type: 'success' };
             console.info(this.createLogEntry(LogLevel.Info, message, successContext));
@@ -359,9 +359,9 @@ export class StructuredLogger extends Logger {
      * Creates a child logger with an additional prefix
      */
     override child(prefix: string): StructuredLogger {
-        const childPrefix = this['prefix'] ? `${this['prefix']}:${prefix}` : prefix;
+        const childPrefix = this.prefix ? `${this.prefix}:${prefix}` : prefix;
         return new StructuredLogger({
-            level: this['level'],
+            level: this.level,
             prefix: childPrefix,
             correlationId: this.correlationId,
             traceId: this.traceId,

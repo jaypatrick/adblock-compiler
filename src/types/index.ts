@@ -202,8 +202,9 @@ export interface ILogger extends IDetailedLogger {
 
 /**
  * Log level type for structured logging
+ * Maps to standard syslog severity levels
  */
-export type LogLevelType = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'success';
+export type LogLevelType = 'trace' | 'debug' | 'info' | 'warn' | 'error';
 
 /**
  * Structured log entry for production observability
