@@ -16,7 +16,11 @@ export function getCookie(request: Request, name: string): string | undefined {
 
     const cookies = cookieHeader.split(';').map((c) => c.trim());
     const cookie = cookies.find((c) => c.startsWith(`${name}=`));
-    return cookie?.split('=')[1];
+    if (!cookie) return undefined;
+
+    // Handle cookie values that contain '=' characters
+    const parts = cookie.split('=');
+    return parts.slice(1).join('=');
 }
 
 /**

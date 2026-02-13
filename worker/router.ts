@@ -115,18 +115,27 @@ async function handleInfo(
  * Generates a new CSRF token and sets it as a cookie
  */
 async function handleCsrfToken(
-    _request: Request,
+    request: Request,
     _env: Env,
     _params: RouteParams,
 ): Promise<Response> {
     const token = generateCsrfToken();
 
+    // Determine if we're in a secure context (HTTPS)
+    const url = new URL(request.url);
+    const isSecure = url.protocol === 'https:';
+
     const cookieHeader = setCookie('csrf-token', token, {
         maxAge: 3600, // 1 hour
         path: '/',
         sameSite: 'Lax',
-        httpOnly: false, // Must be false so JavaScript can read it for API calls
-        secure: true, // Require HTTPS
+        // Note: httpOnly is false to allow JavaScript access for the double-submit pattern.
+        // The token value itself provides CSRF protection - it's not a secret that needs
+        // httpOnly protection. The security comes from the same-origin policy preventing
+        // attackers from reading the cookie value.
+        httpOnly: false,
+        // Use HTTPS in production, allow HTTP for local development
+        secure: isSecure,
     });
 
     return JsonResponse.success(

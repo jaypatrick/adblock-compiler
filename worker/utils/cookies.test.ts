@@ -56,6 +56,16 @@ Deno.test('Cookies: getCookie - should handle cookies with spaces', () => {
     assertEquals(getCookie(request, 'name2'), 'value2');
 });
 
+Deno.test('Cookies: getCookie - should handle cookie values containing equals signs', () => {
+    const request = new Request('https://example.com', {
+        headers: {
+            'Cookie': 'token=abc=def=ghi',
+        },
+    });
+
+    assertEquals(getCookie(request, 'token'), 'abc=def=ghi');
+});
+
 Deno.test('Cookies: setCookie - should create basic cookie', () => {
     const cookie = setCookie('name', 'value');
     assertEquals(cookie, 'name=value');
