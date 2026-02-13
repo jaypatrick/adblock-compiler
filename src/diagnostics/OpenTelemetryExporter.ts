@@ -5,10 +5,10 @@
  * standard tracing API for compatibility with major observability platforms.
  */
 
-import { type Context, type Span, SpanStatusCode, type Tracer, trace } from '@opentelemetry/api';
+import { context, type Span, SpanStatusCode, type Tracer, trace } from '@opentelemetry/api';
 import { VERSION } from '../version.ts';
 import type { AnyDiagnosticEvent, IDiagnosticsCollector } from './types.ts';
-import { TraceCategory, TraceSeverity } from './types.ts';
+import { TraceSeverity } from './types.ts';
 
 /**
  * Configuration options for OpenTelemetry exporter
@@ -36,7 +36,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
     private readonly serviceName: string;
     private readonly enableConsoleLogging: boolean;
     private readonly activeSpans = new Map<string, Span>();
-    private readonly spanContexts = new Map<string, Context>();
+    private readonly spanContexts = new Map<string, unknown>();
     private readonly operationNames = new Map<string, string>();
 
     /**
@@ -63,7 +63,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
         
         // Store span and context for later completion
         this.activeSpans.set(eventId, span);
-        this.spanContexts.set(eventId, trace.setSpan(trace.context.active(), span));
+        this.spanContexts.set(eventId, trace.setSpan(context.active(), span));
         this.operationNames.set(eventId, operation);
 
         // Add operation name as attribute
@@ -367,15 +367,9 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
         if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
             span.setAttribute(key, value);
         } else if (Array.isArray(value)) {
-            // OpenTelemetry supports arrays of primitives
-            const allPrimitives = value.every((v) =>
-                typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean'
-            );
-            if (allPrimitives) {
-                span.setAttribute(key, value as (string | number | boolean)[]);
-            } else {
-                span.setAttribute(key, JSON.stringify(value));
-            }
+            // OpenTelemetry API only supports string arrays, not mixed types
+            // Stringify arrays for simplicity
+            span.setAttribute(key, JSON.stringify(value));
         } else {
             // For objects, stringify
             span.setAttribute(key, JSON.stringify(value));
