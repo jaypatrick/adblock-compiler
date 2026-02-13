@@ -206,6 +206,14 @@ export async function cloneAndParseBody<T>(request: Request): Promise<{ data?: T
 // ============================================================================
 
 /**
+ * Get the configured maximum request body size in bytes
+ */
+export function getMaxRequestBodySize(env: Env): number {
+    const maxMB = env.MAX_REQUEST_BODY_MB ? parseFloat(env.MAX_REQUEST_BODY_MB) : undefined;
+    return maxMB ? maxMB * 1024 * 1024 : WORKER_DEFAULTS.MAX_REQUEST_BODY_BYTES;
+}
+
+/**
  * Validate request body size to prevent DoS attacks.
  *
  * @param request - Incoming request
@@ -216,9 +224,8 @@ export async function validateRequestSize(
     request: Request,
     env: Env,
 ): Promise<{ valid: boolean; error?: string; maxBytes?: number }> {
-    // Get configured max size (in MB) or use default
-    const maxMB = env.MAX_REQUEST_BODY_MB ? parseFloat(env.MAX_REQUEST_BODY_MB) : undefined;
-    const maxBytes = maxMB ? maxMB * 1024 * 1024 : WORKER_DEFAULTS.MAX_REQUEST_BODY_BYTES;
+    // Use centralized function to get max size
+    const maxBytes = getMaxRequestBodySize(env);
 
     // First check: Content-Length header (fast path)
     const contentLength = request.headers.get('content-length');
@@ -256,12 +263,4 @@ export async function validateRequestSize(
             maxBytes,
         };
     }
-}
-
-/**
- * Get the configured maximum request body size in bytes
- */
-export function getMaxRequestBodySize(env: Env): number {
-    const maxMB = env.MAX_REQUEST_BODY_MB ? parseFloat(env.MAX_REQUEST_BODY_MB) : undefined;
-    return maxMB ? maxMB * 1024 * 1024 : WORKER_DEFAULTS.MAX_REQUEST_BODY_BYTES;
 }
