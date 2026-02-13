@@ -14,7 +14,7 @@
  * or to any configured OTLP endpoint.
  */
 
-import { trace } from '@opentelemetry/api';
+import { context, trace } from '@opentelemetry/api';
 import {
     createOpenTelemetryExporter,
     SourceCompiler,
@@ -94,7 +94,7 @@ async function manualSpanExample() {
         parentSpan.setAttribute('example.type', 'manual-instrumentation');
 
         // Create a nested span
-        const childSpan = tracer.startSpan('child-operation', {}, trace.setSpan(trace.context.active(), parentSpan));
+        const childSpan = tracer.startSpan('child-operation', {}, trace.setSpan(context.active(), parentSpan));
 
         childSpan.setAttribute('operation', 'data-processing');
 
