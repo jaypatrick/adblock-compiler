@@ -45,6 +45,7 @@
 - **📡 Real-time Updates** - Server-Sent Events (SSE) and WebSocket support
 - **🔔 Async Notifications** - Get notified when background jobs complete
 - **🌐 Admin Dashboard** - Monitor metrics, queue depth, and system health
+- **🔒 CSRF Protection** - Double-submit cookie pattern for secure state-changing requests
 - **📖 OpenAPI 3.0 Specification** - Full API documentation with contract tests
 - **🌍 Universal** - Works in Deno, Node.js, Cloudflare Workers, browsers
 - **🎨 11 Transformations** - Deduplicate, compress, validate, and more
@@ -55,6 +56,7 @@
   - [Command-line](#command-line)
   - [API](#api)
 - [OpenAPI Specification](#openapi-specification)
+- [Security: CSRF Protection](#security-csrf-protection)
 - [Docker Deployment](#docker-deployment)
 - [Cloudflare Pages Deployment](docs/deployment/cloudflare-pages.md)
 - [Transformations](#transformations)
@@ -431,6 +433,86 @@ curl https://adblock-compiler.jayson-knight.workers.dev/api
 ```
 
 **View the full OpenAPI specification:** [`openapi.yaml`](openapi.yaml)
+
+## Security: CSRF Protection
+
+All state-changing endpoints (POST, PUT, DELETE) are protected with CSRF (Cross-Site Request Forgery) tokens to prevent unauthorized cross-site requests.
+
+### How CSRF Protection Works
+
+The API uses the **double-submit cookie pattern**:
+
+1. Request a CSRF token from `GET /api/csrf-token`
+2. Token is returned in response body and set as a `csrf-token` cookie
+3. Include the token in the `X-CSRF-Token` header for all POST/PUT/DELETE requests
+4. Server validates that the header token matches the cookie value
+
+### Getting a CSRF Token
+
+```bash
+# Request a CSRF token
+curl -c cookies.txt https://adblock-compiler.jayson-knight.workers.dev/api/csrf-token
+
+# Response:
+{
+  "success": true,
+  "token": "a1b2c3d4e5f6..."
+}
+```
+
+### Using the CSRF Token
+
+```bash
+# Include token in header for POST requests
+curl -b cookies.txt \
+  -H "Content-Type: application/json" \
+  -H "X-CSRF-Token: a1b2c3d4e5f6..." \
+  -d '{"configuration": {...}}' \
+  https://adblock-compiler.jayson-knight.workers.dev/compile
+```
+
+### Protected Endpoints
+
+The following endpoints require CSRF tokens:
+
+- `POST /compile` - Compile filter lists
+- `POST /compile/stream` - Streaming compilation with SSE
+- `POST /compile/batch` - Batch compilation
+- `POST /compile/async` - Async compilation via queue
+- `POST /compile/batch/async` - Async batch compilation
+- `POST /ast/parse` - Parse AST from rules
+- `POST /admin/storage/*` - Admin storage operations (also require authentication)
+
+### Security Properties
+
+- **Cryptographically secure tokens** - 256-bit random tokens (64 hex characters)
+- **Short-lived** - Tokens expire after 1 hour
+- **SameSite cookies** - Additional protection against CSRF attacks
+- **HTTPS required** - Secure flag set on cookies
+
+### JavaScript/TypeScript Example
+
+```typescript
+// 1. Get CSRF token
+const tokenResponse = await fetch('https://adblock-compiler.jayson-knight.workers.dev/api/csrf-token');
+const { token } = await tokenResponse.json();
+
+// 2. Use token in subsequent POST requests
+const response = await fetch('https://adblock-compiler.jayson-knight.workers.dev/compile', {
+    method: 'POST',
+    headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': token,
+    },
+    credentials: 'include', // Important: Include cookies
+    body: JSON.stringify({
+        configuration: {
+            name: 'My Filter List',
+            sources: [/* ... */],
+        },
+    }),
+});
+```
 
 ## <a name="docker-deployment"></a> Docker Deployment
 
