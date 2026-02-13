@@ -31,10 +31,11 @@ const pendingCompilations = new Map<string, Promise<CompilationResult>>();
 
 /**
  * Formats Zod validation errors into a readable error message.
+ * Uses slash-separated paths to match ConfigurationValidator format.
  */
 function formatZodErrors(error: z.ZodError): string {
     return error.issues.map((issue) => {
-        const path = issue.path.length > 0 ? issue.path.join('.') : 'root';
+        const path = issue.path.length > 0 ? '/' + issue.path.join('/') : '/';
         return `${path}: ${issue.message}`;
     }).join(', ');
 }
