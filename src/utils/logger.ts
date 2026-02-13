@@ -218,7 +218,7 @@ export class Logger implements ILogger {
 /**
  * Default logger instance
  */
-export const logger = new Logger();
+export const logger: Logger = new Logger();
 
 /**
  * Parses module overrides from environment variable.
