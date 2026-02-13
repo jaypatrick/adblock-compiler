@@ -1021,15 +1021,15 @@ await tracer.startActiveSpan('compile-filters', async (span) => {
     try {
         span.setAttribute('config.name', 'My Config');
         span.setAttribute('sources.count', 3);
-        
+
         const diagnostics = createOpenTelemetryExporter();
         const compiler = new WorkerCompiler({ diagnostics });
-        
+
         const result = await compiler.compile(config);
-        
+
         span.setAttribute('output.rules.count', result.length);
         span.setStatus({ code: SpanStatusCode.OK });
-        
+
         return result;
     } catch (error) {
         span.recordException(error);
@@ -1047,13 +1047,13 @@ await tracer.startActiveSpan('compile-filters', async (span) => {
 interface OpenTelemetryExporterOptions {
     /** Service name for telemetry (default: 'adblock-compiler') */
     serviceName?: string;
-    
+
     /** Service version (default: package version) */
     serviceVersion?: string;
-    
+
     /** Enable console logging for debugging (default: false) */
     enableConsoleLogging?: boolean;
-    
+
     /** Custom tracer instance (optional) */
     tracer?: Tracer;
 }
@@ -1072,6 +1072,7 @@ docker-compose -f docker-compose.otel.yml up -d
 ```
 
 Traces include:
+
 - **Operation spans**: Compilation, downloads, transformations
 - **Performance metrics**: Duration, rule counts, sizes
 - **Error tracking**: Exceptions with stack traces
