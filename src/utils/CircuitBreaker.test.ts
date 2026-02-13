@@ -13,7 +13,6 @@ Deno.test('CircuitBreaker', async (t) => {
 
         assertEquals(status.state, CircuitState.CLOSED);
         assertEquals(status.failureCount, 0);
-        assertEquals(status.successCount, 0);
     });
 
     await t.step('should execute successful operations in CLOSED state', async () => {

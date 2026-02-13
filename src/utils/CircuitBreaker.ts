@@ -46,8 +46,6 @@ export interface CircuitBreakerStatus {
     state: CircuitState;
     /** Number of consecutive failures */
     failureCount: number;
-    /** Number of consecutive successes (in HALF_OPEN state) */
-    successCount: number;
     /** Timestamp of last failure */
     lastFailureTime?: Date;
     /** Timestamp of last success */
@@ -98,7 +96,6 @@ export class CircuitBreakerError extends Error {
 export class CircuitBreaker {
     private state: CircuitState = CircuitState.CLOSED;
     private failureCount = 0;
-    private successCount = 0;
     private lastFailureTime?: Date;
     private lastSuccessTime?: Date;
     private lastStateChange: Date = new Date();
@@ -163,7 +160,6 @@ export class CircuitBreaker {
             // Success in HALF_OPEN state means we can close the circuit
             this.transitionTo(CircuitState.CLOSED);
             this.failureCount = 0;
-            this.successCount = 0;
             this.logger.info(
                 `Circuit breaker${this.name ? ` ${this.name}` : ''} recovered - transitioning to CLOSED`,
             );
@@ -216,7 +212,6 @@ export class CircuitBreaker {
         return {
             state: this.state,
             failureCount: this.failureCount,
-            successCount: this.successCount,
             lastFailureTime: this.lastFailureTime,
             lastSuccessTime: this.lastSuccessTime,
             lastStateChange: this.lastStateChange,
@@ -232,7 +227,6 @@ export class CircuitBreaker {
         this.logger.info(`Circuit breaker${this.name ? ` ${this.name}` : ''} manually reset`);
         this.transitionTo(CircuitState.CLOSED);
         this.failureCount = 0;
-        this.successCount = 0;
         this.lastFailureTime = undefined;
     }
 
