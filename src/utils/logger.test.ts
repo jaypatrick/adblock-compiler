@@ -284,9 +284,11 @@ Deno.test('StructuredLogger - child should inherit correlationId and traceId', (
 Deno.test('StructuredLogger - should support all log levels', () => {
     const logger = new StructuredLogger({ level: LogLevel.Trace });
 
-    const outputs: Record<string, string> = {};
     // Track debug outputs separately since both trace and debug use console.debug
     const debugOutputs: string[] = [];
+    // Track info outputs separately since both info and success use console.info
+    const infoOutputs: string[] = [];
+    const outputs: Record<string, string> = {};
 
     // Capture all console methods
     const originalConsoleDebug = console.debug;
@@ -298,7 +300,7 @@ Deno.test('StructuredLogger - should support all log levels', () => {
         debugOutputs.push(msg);
     };
     console.info = (msg: string) => {
-        outputs.info = msg;
+        infoOutputs.push(msg);
     };
     console.warn = (msg: string) => {
         outputs.warn = msg;
@@ -325,8 +327,8 @@ Deno.test('StructuredLogger - should support all log levels', () => {
         assertEquals(debugParsed.level, 'debug');
         assertEquals(debugParsed.message, 'debug message');
 
-        // Verify info
-        const infoParsed = JSON.parse(outputs.info);
+        // Verify info (first info output)
+        const infoParsed = JSON.parse(infoOutputs[0]);
         assertEquals(infoParsed.level, 'info');
         assertEquals(infoParsed.message, 'info message');
 
@@ -339,6 +341,12 @@ Deno.test('StructuredLogger - should support all log levels', () => {
         const errorParsed = JSON.parse(outputs.error);
         assertEquals(errorParsed.level, 'error');
         assertEquals(errorParsed.message, 'error message');
+
+        // Verify success (second info output since success uses console.info)
+        const successParsed = JSON.parse(infoOutputs[1]);
+        assertEquals(successParsed.level, 'info'); // success is logged at info level
+        assertEquals(successParsed.message, 'success message');
+        assertEquals(successParsed.context?.type, 'success'); // has success type in context
     } finally {
         console.debug = originalConsoleDebug;
         console.info = originalConsoleInfo;
