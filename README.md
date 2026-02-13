@@ -39,7 +39,7 @@
 
 - **🎯 Multi-Source Compilation** - Combine filter lists from URLs, files, or inline rules
 - **⚡ Performance** - Gzip compression (70-80% cache reduction), request deduplication, smart caching
-- **🔄 Circuit Breaker** - Automatic retry with exponential backoff for unreliable sources
+- **🔄 Circuit Breaker** - Fail-fast protection for consistently failing sources with automatic recovery
 - **📊 Visual Diff** - See what changed between compilations
 - **🎪 Batch Processing** - Compile up to 10 lists in parallel
 - **📡 Real-time Updates** - Server-Sent Events (SSE) and WebSocket support
@@ -69,6 +69,7 @@
   - [TrimLines](#trimlines)
   - [InsertFinalNewLine](#insertfinalnewline)
   - [ConvertToAscii](#convert-to-ascii)
+- [Resilience & Circuit Breaker](#resilience)
 - [Extensibility](#extensibility)
 - [Development](#development)
 - [Platform Support](#platform-support)
@@ -680,6 +681,92 @@ Here's what we will have after applying this transformation:
 ||*.xn--11b4c3d^
 ||*.xn--1qqw23a^
 ```
+
+## <a name="resilience"></a> Resilience & Circuit Breaker
+
+The FilterDownloader includes built-in circuit breaker protection to prevent cascading failures when filter sources are consistently failing. This feature improves system resilience and reduces resource waste.
+
+### Circuit Breaker States
+
+The circuit breaker has three states:
+
+- **CLOSED** (Normal) - Requests pass through normally. Failures are counted.
+- **OPEN** (Failing) - After threshold failures, circuit opens and requests fail immediately without attempting the operation.
+- **HALF_OPEN** (Testing) - After a timeout, circuit allows one probe request to test if the service has recovered.
+
+### Configuration
+
+Circuit breaker is enabled by default and can be configured via `DownloaderOptions`:
+
+```typescript
+import { FilterDownloader } from '@jk-com/adblock-compiler';
+
+const downloader = new FilterDownloader({
+    enableCircuitBreaker: true,           // Enable circuit breaker (default: true)
+    circuitBreakerThreshold: 5,           // Failures before opening (default: 5)
+    circuitBreakerTimeout: 60000,         // Timeout before retry in ms (default: 60000)
+});
+```
+
+### How It Works
+
+1. **Tracking Failures**: Each unique URL has its own circuit breaker instance
+2. **Opening Circuit**: After `circuitBreakerThreshold` consecutive failures, the circuit opens
+3. **Fail Fast**: While OPEN, requests fail immediately with a `CircuitBreakerError`
+4. **Recovery**: After `circuitBreakerTimeout` milliseconds, one probe request is allowed
+5. **Auto-Recovery**: If the probe succeeds, circuit closes and normal operation resumes
+
+### Monitoring Circuit Breaker Status
+
+You can monitor the status of all circuit breakers:
+
+```typescript
+const downloader = new FilterDownloader();
+
+// After some downloads
+const statuses = downloader.getCircuitBreakerStatuses();
+
+for (const [url, status] of statuses) {
+    console.log(`${url}: ${status.state} (failures: ${status.failureCount})`);
+}
+```
+
+### Using Circuit Breaker Directly
+
+The `CircuitBreaker` class can be used independently for other operations:
+
+```typescript
+import { CircuitBreaker } from '@jk-com/adblock-compiler';
+
+const breaker = new CircuitBreaker({
+    failureThreshold: 3,
+    resetTimeout: 30000,
+    name: 'external-api',
+});
+
+try {
+    const result = await breaker.execute(async () => {
+        const response = await fetch('https://api.example.com/data');
+        if (!response.ok) throw new Error('Request failed');
+        return response.json();
+    });
+    console.log('Success:', result);
+} catch (error) {
+    if (error instanceof CircuitBreakerError) {
+        console.log('Circuit is open, try again at:', error.nextAttempt);
+    } else {
+        console.error('Operation failed:', error);
+    }
+}
+```
+
+### Benefits
+
+- **Resource Protection**: Stop wasting resources on consistently failing sources
+- **Fail Fast**: Immediate failure detection without waiting for timeouts
+- **Automatic Recovery**: Self-healing when services recover
+- **Independent Circuits**: Each URL has its own circuit breaker
+- **Configurable Behavior**: Adjust thresholds and timeouts per use case
 
 ## Extensibility
 
