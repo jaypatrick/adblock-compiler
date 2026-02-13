@@ -6,6 +6,7 @@
 import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
 import { createTracingContext, type ICompilerEvents, WorkerCompiler } from '../../src/index.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
+import { ErrorSeverity, type IErrorReporter } from '../../src/utils/index.ts';
 import { generateRequestId, JsonResponse } from '../utils/index.ts';
 import { recordMetric } from './metrics.ts';
 import { compress, decompress, emitDiagnosticsToTailWorker, getCacheKey, QUEUE_BINDINGS_NOT_AVAILABLE_ERROR, updateQueueStats } from './queue.ts';
@@ -83,6 +84,7 @@ export async function handleCompileJson(
     env: Env,
     analytics?: AnalyticsService,
     requestId?: string,
+    errorReporter?: IErrorReporter,
 ): Promise<Response> {
     const startTime = Date.now();
     const body = await request.json() as CompileRequest;
@@ -203,14 +205,33 @@ export async function handleCompileJson(
                         { expirationTtl: CACHE_TTL },
                     );
                 } catch (error) {
-                    // deno-lint-ignore no-console
-                    console.error('Cache compression failed:', error);
+                    const err = error instanceof Error ? error : new Error(String(error));
+                    console.error('Cache compression failed:', err);
+                    // Report cache errors as warnings (non-critical)
+                    errorReporter?.report(err, {
+                        requestId,
+                        configName,
+                        tags: { operation: 'cache-compression' },
+                    }, ErrorSeverity.Warning);
                 }
             }
 
             return response;
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
+            const err = error instanceof Error ? error : new Error(message);
+
+            // Report compilation errors
+            errorReporter?.report(err, {
+                requestId,
+                configName,
+                sourceCount,
+                url: request.url,
+                method: request.method,
+                tags: { operation: 'compilation' },
+                extra: { cacheKey: cacheKey || undefined },
+            }, ErrorSeverity.Error);
+
             return { success: false, error: message };
         } finally {
             if (cacheKey) {
@@ -268,6 +289,7 @@ export async function handleCompileJson(
 export async function handleCompileStream(
     request: Request,
     env: Env,
+    errorReporter?: IErrorReporter,
 ): Promise<Response> {
     const startTime = Date.now();
     const body = await request.json() as CompileRequest;
@@ -366,14 +388,27 @@ export async function handleCompileStream(
                         { expirationTtl: CACHE_TTL },
                     );
                 } catch (error) {
-                    // deno-lint-ignore no-console
-                    console.error('Cache compression failed:', error);
+                    const err = error instanceof Error ? error : new Error(String(error));
+                    console.error('Cache compression failed:', err);
+                    // Report cache errors as warnings
+                    errorReporter?.report(err, {
+                        tags: { operation: 'cache-compression-stream' },
+                    }, ErrorSeverity.Warning);
                 }
             }
 
             await recordMetric(env, '/compile/stream', Date.now() - startTime, true);
         } catch (error) {
             const message = error instanceof Error ? error.message : String(error);
+            const err = error instanceof Error ? error : new Error(message);
+
+            // Report streaming compilation errors
+            errorReporter?.report(err, {
+                url: request.url,
+                method: request.method,
+                tags: { operation: 'streaming-compilation' },
+            }, ErrorSeverity.Error);
+
             await writer.write(
                 encoder.encode(`event: error\ndata: ${JSON.stringify({ error: message })}\n\n`),
             );

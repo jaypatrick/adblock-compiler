@@ -977,6 +977,65 @@ Features:
 
 📚 **[Tail Worker Documentation](worker/TAIL_WORKER.md)** - Complete guide for setup and configuration
 
+**Error Reporting**:
+
+The worker includes centralized error reporting for production monitoring and observability. Errors are automatically captured and can be sent to multiple backends:
+
+- **Console** - Development and fallback (default)
+- **Cloudflare Analytics Engine** - Production aggregation and analysis
+- **Sentry** - Full-featured error tracking (placeholder for future integration)
+
+Environment variables:
+
+```bash
+# Error reporter type (console, cloudflare, sentry, composite)
+ERROR_REPORTER_TYPE=cloudflare
+
+# Sentry DSN (optional, for Sentry integration)
+SENTRY_DSN=https://your-sentry-dsn@sentry.io/project-id
+
+# Verbose logging (true/false)
+ERROR_REPORTER_VERBOSE=false
+```
+
+The error reporter automatically captures:
+
+- Compilation errors with full context (configuration, sources, stack traces)
+- Cache failures (as warnings)
+- Network errors with retry information
+- Request metadata (ID, URL, method, IP)
+- Performance metrics (duration, rule counts)
+
+All errors are tagged with severity levels (debug, info, warning, error, fatal) and include structured context for analysis in your observability platform.
+
+```typescript
+import { type IConfiguration, WorkerCompiler } from '@jk-com/adblock-compiler';
+import { createWorkerErrorReporter } from './worker/utils/index.ts';
+
+export default {
+    async fetch(request: Request, env: Env): Promise<Response> {
+        // Create error reporter
+        const errorReporter = createWorkerErrorReporter(env);
+
+        try {
+            // Your compilation logic
+        } catch (error) {
+            // Report errors with context
+            await errorReporter.reportAsync(error, {
+                requestId: 'req-123',
+                configName: 'my-config',
+                url: request.url,
+                method: request.method,
+                tags: { operation: 'compilation' },
+            });
+            throw error;
+        }
+    },
+};
+```
+
+📚 **Error Reporting** is integrated into all worker endpoints automatically. See `src/utils/ErrorReporter.ts` for implementation details.
+
 ```typescript
 import { type IConfiguration, WorkerCompiler } from '@jk-com/adblock-compiler';
 

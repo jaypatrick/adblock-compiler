@@ -13,7 +13,7 @@
 
 import type { Env } from './types.ts';
 import { VERSION } from '../src/version.ts';
-import { JsonResponse } from './utils/response.ts';
+import { createWorkerErrorReporter, JsonResponse } from './utils/index.ts';
 import { checkRateLimit, verifyAdminAuth, verifyTurnstileToken } from './middleware/index.ts';
 import { handleASTParseRequest, handleCompileAsync, handleCompileBatch, handleCompileBatchAsync, handleCompileJson, handleCompileStream } from './handlers/compile.ts';
 import { handleMetrics, recordMetric } from './handlers/metrics.ts';
@@ -27,6 +27,7 @@ import {
     handleAdminStorageStats,
     handleAdminVacuum,
 } from './handlers/admin.ts';
+import { ErrorSeverity } from '../src/utils/index.ts';
 
 // Re-export Env type for external use
 export type { Env };
@@ -144,14 +145,20 @@ const routes: Route[] = [
     {
         method: 'POST',
         pattern: '/compile',
-        handler: async (req, env, params) => handleCompileJson(req, env, undefined, params.requestId),
+        handler: async (req, env, params) => {
+            const errorReporter = createWorkerErrorReporter(env);
+            return handleCompileJson(req, env, undefined, params.requestId, errorReporter);
+        },
         rateLimit: true,
         turnstile: true,
     },
     {
         method: 'POST',
         pattern: '/compile/stream',
-        handler: async (req, env) => handleCompileStream(req, env),
+        handler: async (req, env) => {
+            const errorReporter = createWorkerErrorReporter(env);
+            return handleCompileStream(req, env, errorReporter);
+        },
         rateLimit: true,
         turnstile: true,
     },
@@ -270,6 +277,9 @@ export async function handleRequest(
     const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
     const requestId = generateRequestId('api');
 
+    // Create error reporter for this request
+    const errorReporter = createWorkerErrorReporter(env);
+
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
         return handleCors();
@@ -337,6 +347,21 @@ export async function handleRequest(
     } catch (error) {
         const duration = performance.now() - startTime;
         const message = error instanceof Error ? error.message : String(error);
+        const err = error instanceof Error ? error : new Error(message);
+
+        // Report uncaught errors
+        await errorReporter.reportAsync(err, {
+            requestId,
+            url: request.url,
+            method: request.method,
+            tags: {
+                pathname,
+                ip,
+            },
+            extra: {
+                duration,
+            },
+        }, ErrorSeverity.Error);
 
         await recordMetric(env, pathname, duration, false, message);
 
