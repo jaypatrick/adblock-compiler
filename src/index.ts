@@ -24,6 +24,10 @@ export * from './types/index.ts';
 export { RuleUtils, StringUtils, TldUtils, Wildcard } from './utils/index.ts';
 export type { BenchmarkResult, CompilationMetrics, ParsedHost } from './utils/index.ts';
 
+// Logging
+export { createLogger, createLoggerFromEnv, Logger, logger, LogLevel, parseModuleOverrides, silentLogger, StructuredLogger } from './utils/index.ts';
+export type { LoggerOptions, ModuleOverrides } from './utils/index.ts';
+
 // Error utilities
 export { BaseError, CompilationError, ErrorUtils, NetworkError, SourceError, ValidationError } from './utils/index.ts';
 
