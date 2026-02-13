@@ -11,7 +11,7 @@ import { generateRequestId, JsonResponse } from '../utils/index.ts';
 import { recordMetric } from './metrics.ts';
 import { compress, decompress, emitDiagnosticsToTailWorker, getCacheKey, QUEUE_BINDINGS_NOT_AVAILABLE_ERROR, updateQueueStats } from './queue.ts';
 import type { BatchRequest, CompilationResult, CompileQueueMessage, CompileRequest, Env, PreviousVersion, Priority } from '../types.ts';
-import { ASTParseRequestSchema, BatchRequestSchema, CompileRequestSchema } from '../schemas.ts';
+import { ASTParseRequestSchema, BatchRequestAsyncSchema, BatchRequestSchema, CompileRequestSchema } from '../schemas.ts';
 
 // ============================================================================
 // Configuration
@@ -24,6 +24,20 @@ const CACHE_TTL = WORKER_DEFAULTS.CACHE_TTL_SECONDS;
  * Maps cache keys to pending compilation promises.
  */
 const pendingCompilations = new Map<string, Promise<CompilationResult>>();
+
+// ============================================================================
+// Helper Functions
+// ============================================================================
+
+/**
+ * Formats Zod validation errors into a readable error message.
+ */
+function formatZodErrors(error: z.ZodError): string {
+    return error.issues.map((issue) => {
+        const path = issue.path.length > 0 ? issue.path.join('.') : 'root';
+        return `${path}: ${issue.message}`;
+    }).join(', ');
+}
 
 // ============================================================================
 // Streaming Logger
@@ -95,11 +109,7 @@ export async function handleCompileJson(
         const result = CompileRequestSchema.safeParse(rawBody);
 
         if (!result.success) {
-            const errors = result.error.issues.map((issue) => {
-                const path = issue.path.length > 0 ? issue.path.join('.') : 'root';
-                return `${path}: ${issue.message}`;
-            }).join(', ');
-            return JsonResponse.badRequest(`Invalid request body: ${errors}`);
+            return JsonResponse.badRequest(`Invalid request body: ${formatZodErrors(result.error)}`);
         }
 
         body = result.data;
@@ -299,11 +309,7 @@ export async function handleCompileStream(
         const result = CompileRequestSchema.safeParse(rawBody);
 
         if (!result.success) {
-            const errors = result.error.issues.map((issue) => {
-                const path = issue.path.length > 0 ? issue.path.join('.') : 'root';
-                return `${path}: ${issue.message}`;
-            }).join(', ');
-            return JsonResponse.badRequest(`Invalid request body: ${errors}`);
+            return JsonResponse.badRequest(`Invalid request body: ${formatZodErrors(result.error)}`);
         }
 
         body = result.data;
@@ -452,11 +458,7 @@ export async function handleCompileBatch(
         const result = BatchRequestSchema.safeParse(rawBody);
 
         if (!result.success) {
-            const errors = result.error.issues.map((issue) => {
-                const path = issue.path.length > 0 ? issue.path.join('.') : 'root';
-                return `${path}: ${issue.message}`;
-            }).join(', ');
-            return JsonResponse.badRequest(`Invalid request body: ${errors}`);
+            return JsonResponse.badRequest(`Invalid request body: ${formatZodErrors(result.error)}`);
         }
 
         const body: BatchRequest = result.data;
@@ -598,11 +600,7 @@ export async function handleCompileAsync(
         const result = CompileRequestSchema.safeParse(rawBody);
 
         if (!result.success) {
-            const errors = result.error.issues.map((issue) => {
-                const path = issue.path.length > 0 ? issue.path.join('.') : 'root';
-                return `${path}: ${issue.message}`;
-            }).join(', ');
-            return JsonResponse.badRequest(`Invalid request body: ${errors}`);
+            return JsonResponse.badRequest(`Invalid request body: ${formatZodErrors(result.error)}`);
         }
 
         const body: CompileRequest = result.data;
@@ -646,14 +644,10 @@ export async function handleCompileBatchAsync(
     try {
         // Validate request body
         const rawBody = await request.json();
-        const result = BatchRequestSchema.safeParse(rawBody);
+        const result = BatchRequestAsyncSchema.safeParse(rawBody);
 
         if (!result.success) {
-            const errors = result.error.issues.map((issue) => {
-                const path = issue.path.length > 0 ? issue.path.join('.') : 'root';
-                return `${path}: ${issue.message}`;
-            }).join(', ');
-            return JsonResponse.badRequest(`Invalid request body: ${errors}`);
+            return JsonResponse.badRequest(`Invalid request body: ${formatZodErrors(result.error)}`);
         }
 
         const body: BatchRequest = result.data;
@@ -771,11 +765,7 @@ export async function handleASTParseRequest(
         const result = ASTParseRequestSchema.safeParse(rawBody);
 
         if (!result.success) {
-            const errors = result.error.issues.map((issue) => {
-                const path = issue.path.length > 0 ? issue.path.join('.') : 'root';
-                return `${path}: ${issue.message}`;
-            }).join(', ');
-            return JsonResponse.badRequest(`Invalid request body: ${errors}`);
+            return JsonResponse.badRequest(`Invalid request body: ${formatZodErrors(result.error)}`);
         }
 
         const body = result.data;

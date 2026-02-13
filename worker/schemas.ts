@@ -7,6 +7,12 @@ import { z } from 'zod';
 import { ConfigurationSchema } from '../../src/configuration/schemas.ts';
 
 /**
+ * Constants for batch request limits
+ */
+export const BATCH_REQUEST_LIMIT_SYNC = 10;
+export const BATCH_REQUEST_LIMIT_ASYNC = 100;
+
+/**
  * Priority schema
  */
 const PrioritySchema = z.enum(['standard', 'high']);
@@ -33,12 +39,22 @@ const BatchRequestItemSchema = z.object({
 }).strict();
 
 /**
- * Schema for batch compile request body
+ * Schema for synchronous batch compile request body (max 10 requests)
  */
 export const BatchRequestSchema = z.object({
     requests: z.array(BatchRequestItemSchema)
         .min(1, 'Batch request must contain at least one request')
-        .max(100, 'Batch request limited to 100 requests maximum'),
+        .max(BATCH_REQUEST_LIMIT_SYNC, `Batch request limited to ${BATCH_REQUEST_LIMIT_SYNC} requests maximum`),
+    priority: PrioritySchema.optional(),
+}).strict();
+
+/**
+ * Schema for asynchronous batch compile request body (max 100 requests)
+ */
+export const BatchRequestAsyncSchema = z.object({
+    requests: z.array(BatchRequestItemSchema)
+        .min(1, 'Batch request must contain at least one request')
+        .max(BATCH_REQUEST_LIMIT_ASYNC, `Batch request limited to ${BATCH_REQUEST_LIMIT_ASYNC} requests maximum`),
     priority: PrioritySchema.optional(),
 }).strict();
 
@@ -60,4 +76,5 @@ export const ASTParseRequestSchema = z.object({
  */
 export type CompileRequestInput = z.input<typeof CompileRequestSchema>;
 export type BatchRequestInput = z.input<typeof BatchRequestSchema>;
+export type BatchRequestAsyncInput = z.input<typeof BatchRequestAsyncSchema>;
 export type ASTParseRequestInput = z.input<typeof ASTParseRequestSchema>;
