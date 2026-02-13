@@ -48,6 +48,7 @@
 - **📖 OpenAPI 3.0 Specification** - Full API documentation with contract tests
 - **🌍 Universal** - Works in Deno, Node.js, Cloudflare Workers, browsers
 - **🎨 11 Transformations** - Deduplicate, compress, validate, and more
+- **📝 Structured Logging** - Production-ready JSON logs for observability (CloudWatch, Datadog, Splunk)
 
 - [Installation](#installation)
 - [Usage](#usage)
@@ -751,6 +752,105 @@ Topics covered:
 - Extending the compiler
 - Plugin systems
 - Best practices
+
+### Structured Logging
+
+The compiler supports structured JSON logging for production observability and log aggregation systems (CloudWatch, Datadog, Splunk, etc.).
+
+#### Basic Usage
+
+```typescript
+import { createLogger, LogLevel } from '@jk-com/adblock-compiler';
+
+// Create a structured logger
+const logger = createLogger({
+    structured: true,
+    level: LogLevel.Info,
+});
+
+// Log messages with context
+logger.info('Processing started', { itemCount: 42 });
+// Output: {"timestamp":"2024-01-01T12:00:00.000Z","level":"info","message":"Processing started","context":{"itemCount":42}}
+```
+
+#### Advanced Features
+
+```typescript
+import { LogLevel, StructuredLogger } from '@jk-com/adblock-compiler';
+
+// Create logger with correlation and trace IDs
+const logger = new StructuredLogger({
+    level: LogLevel.Info,
+    prefix: 'compiler',
+    correlationId: 'req-abc-123',
+    traceId: 'trace-xyz-456',
+});
+
+// Log with additional context
+logger.info('Compilation started', {
+    sources: 5,
+    transformations: 3,
+});
+
+// Create child logger (inherits correlation/trace IDs)
+const sourceLogger = logger.child('source-1');
+sourceLogger.info('Downloading filter list', { url: 'https://example.com/list.txt' });
+
+// Update correlation ID dynamically
+logger.setCorrelationId('req-def-789');
+
+// All log levels supported
+logger.trace('Detailed trace information', { step: 1 });
+logger.debug('Debug information', { cacheHit: true });
+logger.warn('Warning message', { retryCount: 3 });
+logger.error('Error occurred', { errorCode: 'ERR_NETWORK' });
+logger.success('Operation completed', { duration: 1234 });
+```
+
+#### Structured Log Format
+
+```json
+{
+    "timestamp": "2024-01-01T12:00:00.000Z",
+    "level": "info",
+    "message": "Processing started",
+    "prefix": "compiler:source-1",
+    "context": {
+        "sources": 5,
+        "transformations": 3
+    },
+    "correlationId": "req-abc-123",
+    "traceId": "trace-xyz-456"
+}
+```
+
+#### Configuration Options
+
+- `structured: boolean` - Enable JSON output mode (default: `false`)
+- `level: LogLevel` - Minimum log level to output
+- `prefix: string` - Logger name/prefix (included in output)
+- `correlationId: string` - Correlation ID for grouping related logs
+- `traceId: string` - Trace ID for distributed tracing
+- `timestamps: boolean` - Not used in structured mode (always ISO 8601)
+- `colors: boolean` - Not used in structured mode (JSON doesn't need colors)
+
+#### Backward Compatibility
+
+The standard `Logger` class remains unchanged and continues to output human-readable text:
+
+```typescript
+import { createLogger, LogLevel } from '@jk-com/adblock-compiler';
+
+// Standard text logger (default)
+const logger = createLogger({
+    level: LogLevel.Info,
+    timestamps: true,
+    colors: true,
+});
+
+logger.info('Processing started');
+// Output: 2024-01-01T12:00:00.000Z INFO Processing started
+```
 
 ## <a name="development"></a> Development
 
