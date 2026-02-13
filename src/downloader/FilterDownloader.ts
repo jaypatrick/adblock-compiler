@@ -12,7 +12,7 @@
 import type { ILogger } from '../types/index.ts';
 import { silentLogger } from '../utils/logger.ts';
 import { evaluateBooleanExpression } from '../utils/BooleanExpressionParser.ts';
-import { ErrorUtils, FileSystemError, NetworkError, PathUtils } from '../utils/index.ts';
+import { CircuitBreaker, ErrorUtils, FileSystemError, NetworkError, PathUtils } from '../utils/index.ts';
 import { NETWORK_DEFAULTS, PREPROCESSOR_DEFAULTS } from '../config/defaults.ts';
 import { USER_AGENT } from '../version.ts';
 
@@ -34,6 +34,12 @@ export interface DownloaderOptions {
     maxRetries?: number;
     /** Base delay for exponential backoff (milliseconds) */
     retryDelay?: number;
+    /** Enable circuit breaker for failing sources (default: true) */
+    enableCircuitBreaker?: boolean;
+    /** Circuit breaker failure threshold before opening (default: 5) */
+    circuitBreakerThreshold?: number;
+    /** Circuit breaker reset timeout in milliseconds (default: 60000) */
+    circuitBreakerTimeout?: number;
 }
 
 /**
@@ -47,6 +53,9 @@ const DEFAULT_OPTIONS: Required<DownloaderOptions> = {
     maxIncludeDepth: PREPROCESSOR_DEFAULTS.MAX_INCLUDE_DEPTH,
     maxRetries: NETWORK_DEFAULTS.MAX_RETRIES,
     retryDelay: NETWORK_DEFAULTS.RETRY_DELAY_MS,
+    enableCircuitBreaker: true,
+    circuitBreakerThreshold: 5,
+    circuitBreakerTimeout: 60000,
 };
 
 /**
@@ -84,6 +93,7 @@ export class FilterDownloader {
     private readonly options: Required<DownloaderOptions>;
     private readonly logger: ILogger;
     private readonly visitedUrls: Set<string> = new Set();
+    private readonly circuitBreakers: Map<string, CircuitBreaker> = new Map();
 
     /**
      * Creates a new FilterDownloader
@@ -93,6 +103,42 @@ export class FilterDownloader {
     constructor(options?: DownloaderOptions, logger?: ILogger) {
         this.options = { ...DEFAULT_OPTIONS, ...options };
         this.logger = logger ?? silentLogger;
+    }
+
+    /**
+     * Gets or creates a circuit breaker for a given URL
+     */
+    private getCircuitBreaker(url: string): CircuitBreaker | null {
+        if (!this.options.enableCircuitBreaker) {
+            return null;
+        }
+
+        if (!this.circuitBreakers.has(url)) {
+            const breaker = new CircuitBreaker({
+                failureThreshold: this.options.circuitBreakerThreshold,
+                resetTimeout: this.options.circuitBreakerTimeout,
+                logger: this.logger,
+                name: url,
+            });
+            this.circuitBreakers.set(url, breaker);
+        }
+
+        return this.circuitBreakers.get(url)!;
+    }
+
+    /**
+     * Gets the status of all circuit breakers
+     */
+    getCircuitBreakerStatuses(): Map<string, { state: string; failureCount: number }> {
+        const statuses = new Map<string, { state: string; failureCount: number }>();
+        for (const [url, breaker] of this.circuitBreakers.entries()) {
+            const status = breaker.getStatus();
+            statuses.set(url, {
+                state: status.state,
+                failureCount: status.failureCount,
+            });
+        }
+        return statuses;
     }
 
     /**
@@ -156,6 +202,30 @@ export class FilterDownloader {
      * Fetches content from a URL with retry logic and circuit breaker
      */
     private async fetchUrl(url: string): Promise<string> {
+        const breaker = this.getCircuitBreaker(url);
+
+        // If circuit breaker is disabled or null, execute normally
+        if (!breaker) {
+            return this.fetchUrlInternal(url);
+        }
+
+        // Execute with circuit breaker protection
+        try {
+            return await breaker.execute(() => this.fetchUrlInternal(url));
+        } catch (error) {
+            // Log circuit breaker status on error
+            const status = breaker.getStatus();
+            this.logger.debug(
+                `Circuit breaker for ${url}: state=${status.state}, failures=${status.failureCount}`,
+            );
+            throw error;
+        }
+    }
+
+    /**
+     * Internal URL fetching with retry logic
+     */
+    private async fetchUrlInternal(url: string): Promise<string> {
         let lastError: Error | null = null;
 
         for (let attempt = 0; attempt <= this.options.maxRetries; attempt++) {
