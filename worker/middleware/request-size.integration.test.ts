@@ -132,8 +132,7 @@ Deno.test({
         try {
             // Just importing the module verifies that all dependencies resolve correctly
             await import('../router.ts');
-            // If we get here, the import succeeded
-            assertEquals(true, true);
+            // If we get here, the import succeeded - no explicit assertion needed
         } catch (error) {
             // Fail the test if import fails
             throw new Error(`Router import failed: ${error instanceof Error ? error.message : String(error)}`);

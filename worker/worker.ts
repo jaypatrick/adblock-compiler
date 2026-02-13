@@ -230,6 +230,24 @@ function hashString(str: string): string {
 }
 
 /**
+ * Create a 413 Payload Too Large response
+ */
+function createPayloadTooLargeResponse(error: string): Response {
+    return Response.json(
+        {
+            success: false,
+            error,
+        },
+        {
+            status: 413,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+            },
+        },
+    );
+}
+
+/**
  * Record request metrics
  */
 async function recordMetric(
@@ -3249,18 +3267,7 @@ export default {
             // Validate request body size
             const sizeValidation = await validateRequestSize(request, env);
             if (!sizeValidation.valid) {
-                return Response.json(
-                    {
-                        success: false,
-                        error: sizeValidation.error || 'Request body too large',
-                    },
-                    {
-                        status: 413,
-                        headers: {
-                            'Access-Control-Allow-Origin': '*',
-                        },
-                    },
-                );
+                return createPayloadTooLargeResponse(sizeValidation.error || 'Request body too large');
             }
 
             const allowed = await checkRateLimit(env, ip);
@@ -3337,18 +3344,7 @@ export default {
             // Validate request body size
             const sizeValidation = await validateRequestSize(request, env);
             if (!sizeValidation.valid) {
-                return Response.json(
-                    {
-                        success: false,
-                        error: sizeValidation.error || 'Request body too large',
-                    },
-                    {
-                        status: 413,
-                        headers: {
-                            'Access-Control-Allow-Origin': '*',
-                        },
-                    },
-                );
+                return createPayloadTooLargeResponse(sizeValidation.error || 'Request body too large');
             }
             return handleASTParseRequest(request, env);
         }
@@ -3363,18 +3359,7 @@ export default {
             // Validate request body size
             const sizeValidation = await validateRequestSize(request, env);
             if (!sizeValidation.valid) {
-                return Response.json(
-                    {
-                        success: false,
-                        error: sizeValidation.error || 'Request body too large',
-                    },
-                    {
-                        status: 413,
-                        headers: {
-                            'Access-Control-Allow-Origin': '*',
-                        },
-                    },
-                );
+                return createPayloadTooLargeResponse(sizeValidation.error || 'Request body too large');
             }
 
             // Verify Turnstile token if configured
@@ -3414,18 +3399,7 @@ export default {
             // Validate request body size
             const sizeValidation = await validateRequestSize(request, env);
             if (!sizeValidation.valid) {
-                return Response.json(
-                    {
-                        success: false,
-                        error: sizeValidation.error || 'Request body too large',
-                    },
-                    {
-                        status: 413,
-                        headers: {
-                            'Access-Control-Allow-Origin': '*',
-                        },
-                    },
-                );
+                return createPayloadTooLargeResponse(sizeValidation.error || 'Request body too large');
             }
 
             // Verify Turnstile token if configured

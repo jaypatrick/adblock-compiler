@@ -3,7 +3,7 @@
  * Ensures proper validation and DoS attack prevention.
  */
 
-import { assertEquals } from '@std/assert';
+import { assert, assertEquals } from '@std/assert';
 import { getMaxRequestBodySize, validateRequestSize } from './index.ts';
 import type { Env } from '../types.ts';
 
@@ -91,9 +91,8 @@ Deno.test({
 
         assertEquals(result.valid, false);
         assertEquals(result.maxBytes, 1024 * 1024);
-        assertEquals(
+        assert(
             result.error?.includes('exceeds maximum allowed size'),
-            true,
             'Error message should mention exceeding limit',
         );
     },
@@ -168,8 +167,8 @@ Deno.test({
         const result = await validateRequestSize(request, env);
 
         assertEquals(result.valid, false);
-        assertEquals(result.error?.includes(String(bodySize)), true, 'Should include actual size');
-        assertEquals(result.error?.includes(String(1024 * 1024)), true, 'Should include max size');
+        assert(result.error?.includes(String(bodySize)), 'Should include actual size');
+        assert(result.error?.includes(String(1024 * 1024)), 'Should include max size');
     },
 });
 
