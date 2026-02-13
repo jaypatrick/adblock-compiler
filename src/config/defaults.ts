@@ -41,6 +41,8 @@ export const WORKER_DEFAULTS = {
     METRICS_WINDOW_SECONDS: 300,
     /** Maximum batch requests allowed */
     MAX_BATCH_REQUESTS: 10,
+    /** Maximum request body size in bytes (1MB default) */
+    MAX_REQUEST_BODY_BYTES: 1024 * 1024,
 } as const;
 
 /**

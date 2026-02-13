@@ -14,7 +14,7 @@
 import type { Env } from './types.ts';
 import { VERSION } from '../src/version.ts';
 import { JsonResponse } from './utils/response.ts';
-import { checkRateLimit, verifyAdminAuth, verifyTurnstileToken } from './middleware/index.ts';
+import { checkRateLimit, validateRequestSize, verifyAdminAuth, verifyTurnstileToken } from './middleware/index.ts';
 import { handleASTParseRequest, handleCompileAsync, handleCompileBatch, handleCompileBatchAsync, handleCompileJson, handleCompileStream } from './handlers/compile.ts';
 import { handleMetrics, recordMetric } from './handlers/metrics.ts';
 import { handleQueueResults, handleQueueStats } from './handlers/queue.ts';
@@ -61,6 +61,7 @@ interface Route {
     rateLimit?: boolean;
     requireAuth?: boolean;
     turnstile?: boolean;
+    validateBodySize?: boolean;
 }
 
 /**
@@ -147,6 +148,7 @@ const routes: Route[] = [
         handler: async (req, env, params) => handleCompileJson(req, env, undefined, params.requestId),
         rateLimit: true,
         turnstile: true,
+        validateBodySize: true,
     },
     {
         method: 'POST',
@@ -154,6 +156,7 @@ const routes: Route[] = [
         handler: async (req, env) => handleCompileStream(req, env),
         rateLimit: true,
         turnstile: true,
+        validateBodySize: true,
     },
     {
         method: 'POST',
@@ -161,6 +164,7 @@ const routes: Route[] = [
         handler: async (req, env) => handleCompileBatch(req, env),
         rateLimit: true,
         turnstile: true,
+        validateBodySize: true,
     },
     {
         method: 'POST',
@@ -168,6 +172,7 @@ const routes: Route[] = [
         handler: async (req, env) => handleCompileAsync(req, env),
         rateLimit: true,
         turnstile: true,
+        validateBodySize: true,
     },
     {
         method: 'POST',
@@ -175,12 +180,14 @@ const routes: Route[] = [
         handler: async (req, env) => handleCompileBatchAsync(req, env),
         rateLimit: true,
         turnstile: true,
+        validateBodySize: true,
     },
     {
         method: 'POST',
         pattern: '/ast/parse',
         handler: async (req, env) => handleASTParseRequest(req, env),
         rateLimit: true,
+        validateBodySize: true,
     },
 
     // Admin endpoints
@@ -295,6 +302,14 @@ export async function handleRequest(
     const startTime = performance.now();
 
     try {
+        // Request body size validation
+        if (route.validateBodySize) {
+            const sizeValidation = await validateRequestSize(request, env);
+            if (!sizeValidation.valid) {
+                return JsonResponse.error(sizeValidation.error || 'Request body too large', 413);
+            }
+        }
+
         // Rate limiting
         if (route.rateLimit) {
             const allowed = await checkRateLimit(env, ip);

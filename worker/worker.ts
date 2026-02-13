@@ -45,6 +45,7 @@ import { VERSION } from '../src/version.ts';
 import { handleWebSocketUpgrade } from './websocket.ts';
 import { AnalyticsService } from '../src/services/AnalyticsService.ts';
 import { getDeploymentHistory, getDeploymentStats, getLatestDeployment } from '../src/deployment/version.ts';
+import { validateRequestSize } from './middleware/index.ts';
 
 // Import Workflow classes and types
 import {
@@ -226,6 +227,24 @@ function hashString(str: string): string {
         hash = hash & hash; // Convert to 32bit integer
     }
     return Math.abs(hash).toString(36);
+}
+
+/**
+ * Create a 413 Payload Too Large response
+ */
+function createPayloadTooLargeResponse(error: string): Response {
+    return Response.json(
+        {
+            success: false,
+            error,
+        },
+        {
+            status: 413,
+            headers: {
+                'Access-Control-Allow-Origin': '*',
+            },
+        },
+    );
 }
 
 /**
@@ -3245,6 +3264,12 @@ export default {
             (pathname === '/compile' || pathname === '/compile/stream' ||
                 pathname === '/compile/batch') && request.method === 'POST'
         ) {
+            // Validate request body size
+            const sizeValidation = await validateRequestSize(request, env);
+            if (!sizeValidation.valid) {
+                return createPayloadTooLargeResponse(sizeValidation.error || 'Request body too large');
+            }
+
             const allowed = await checkRateLimit(env, ip);
 
             if (!allowed) {
@@ -3316,6 +3341,11 @@ export default {
 
         // AST Parser endpoint
         if (pathname === '/ast/parse' && request.method === 'POST') {
+            // Validate request body size
+            const sizeValidation = await validateRequestSize(request, env);
+            if (!sizeValidation.valid) {
+                return createPayloadTooLargeResponse(sizeValidation.error || 'Request body too large');
+            }
             return handleASTParseRequest(request, env);
         }
 
@@ -3326,6 +3356,12 @@ export default {
 
         // Async compilation endpoints (Turnstile verified)
         if (pathname === '/compile/async' && request.method === 'POST') {
+            // Validate request body size
+            const sizeValidation = await validateRequestSize(request, env);
+            if (!sizeValidation.valid) {
+                return createPayloadTooLargeResponse(sizeValidation.error || 'Request body too large');
+            }
+
             // Verify Turnstile token if configured
             if (env.TURNSTILE_SECRET_KEY) {
                 const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -3360,6 +3396,12 @@ export default {
         }
 
         if (pathname === '/compile/batch/async' && request.method === 'POST') {
+            // Validate request body size
+            const sizeValidation = await validateRequestSize(request, env);
+            if (!sizeValidation.valid) {
+                return createPayloadTooLargeResponse(sizeValidation.error || 'Request body too large');
+            }
+
             // Verify Turnstile token if configured
             if (env.TURNSTILE_SECRET_KEY) {
                 const ip = request.headers.get('CF-Connecting-IP') || 'unknown';

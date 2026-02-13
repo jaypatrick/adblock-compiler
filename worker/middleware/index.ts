@@ -200,3 +200,67 @@ export async function cloneAndParseBody<T>(request: Request): Promise<{ data?: T
     // Type assertion needed due to Cloudflare Workers types
     return parseJsonBody<T>(cloned as Request);
 }
+
+// ============================================================================
+// Request Body Size Validation
+// ============================================================================
+
+/**
+ * Get the configured maximum request body size in bytes
+ */
+export function getMaxRequestBodySize(env: Env): number {
+    const maxMB = env.MAX_REQUEST_BODY_MB ? parseFloat(env.MAX_REQUEST_BODY_MB) : undefined;
+    return maxMB ? maxMB * 1024 * 1024 : WORKER_DEFAULTS.MAX_REQUEST_BODY_BYTES;
+}
+
+/**
+ * Validate request body size to prevent DoS attacks.
+ *
+ * @param request - Incoming request
+ * @param env - Environment bindings
+ * @returns Validation result with error message if size limit exceeded
+ */
+export async function validateRequestSize(
+    request: Request,
+    env: Env,
+): Promise<{ valid: boolean; error?: string; maxBytes?: number }> {
+    // Use centralized function to get max size
+    const maxBytes = getMaxRequestBodySize(env);
+
+    // First check: Content-Length header (fast path)
+    const contentLength = request.headers.get('content-length');
+    if (contentLength) {
+        const bodySize = parseInt(contentLength, 10);
+        if (!isNaN(bodySize) && bodySize > maxBytes) {
+            return {
+                valid: false,
+                error: `Request body size (${bodySize} bytes) exceeds maximum allowed size (${maxBytes} bytes)`,
+                maxBytes,
+            };
+        }
+    }
+
+    // Second check: Validate actual body size during read
+    // This catches requests without Content-Length header
+    try {
+        const cloned = request.clone();
+        const arrayBuffer = await cloned.arrayBuffer();
+        const actualSize = arrayBuffer.byteLength;
+
+        if (actualSize > maxBytes) {
+            return {
+                valid: false,
+                error: `Request body size (${actualSize} bytes) exceeds maximum allowed size (${maxBytes} bytes)`,
+                maxBytes,
+            };
+        }
+
+        return { valid: true, maxBytes };
+    } catch (error) {
+        return {
+            valid: false,
+            error: `Failed to validate request body size: ${ErrorUtils.getMessage(error)}`,
+            maxBytes,
+        };
+    }
+}

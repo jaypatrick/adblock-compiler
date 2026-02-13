@@ -111,6 +111,8 @@ export interface Env {
     DB?: D1Database;
     // Admin authentication key
     ADMIN_KEY?: string;
+    // Request body size limit in megabytes (optional - defaults to 1MB)
+    MAX_REQUEST_BODY_MB?: string;
     // Workflow bindings (optional - for durable execution)
     COMPILATION_WORKFLOW?: Workflow<CompilationParams>;
     BATCH_COMPILATION_WORKFLOW?: Workflow<BatchCompilationParams>;
