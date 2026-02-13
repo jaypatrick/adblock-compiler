@@ -1,4 +1,4 @@
-import { assertEquals, assertExists } from '@std/assert';
+import { assertEquals, assertExists, assertRejects } from '@std/assert';
 import { FilterService } from './FilterService.ts';
 
 const mockLogger = {
@@ -88,4 +88,43 @@ Deno.test('FilterService.prepareWildcards - wildcards should match correctly', a
     // Test wildcard match
     assertEquals(result[1].test('tracking.example.com'), true);
     assertEquals(result[1].test('safe.example.com'), false);
+});
+
+// Error handling tests
+Deno.test('FilterService.downloadAll - should propagate errors when download fails', async () => {
+    const service = new FilterService(mockLogger);
+
+    // Try to download from a non-existent file
+    await assertRejects(
+        async () => {
+            await service.downloadAll(['/non/existent/file.txt']);
+        },
+        Error,
+        'File not found',
+    );
+});
+
+Deno.test('FilterService.downloadAll - should propagate network errors', async () => {
+    const service = new FilterService(mockLogger);
+
+    // Try to download from an invalid URL (should fail with network error)
+    await assertRejects(
+        async () => {
+            await service.downloadAll(['http://this-domain-does-not-exist-12345.invalid']);
+        },
+        Error,
+    );
+});
+
+Deno.test('FilterService.prepareWildcards - should propagate download errors from sources', async () => {
+    const service = new FilterService(mockLogger);
+
+    // Try to prepare wildcards with a failing source
+    await assertRejects(
+        async () => {
+            await service.prepareWildcards(['*example*'], ['/non/existent/source.txt']);
+        },
+        Error,
+        'File not found',
+    );
 });

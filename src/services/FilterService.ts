@@ -23,6 +23,7 @@ export class FilterService {
      *
      * @param sources - Array of source URLs or paths
      * @returns Promise resolving to array of filtered rules
+     * @throws {SourceError} If any source download fails
      */
     public async downloadAll(sources: readonly string[]): Promise<readonly string[]> {
         if (!sources?.length) {
@@ -32,17 +33,12 @@ export class FilterService {
         // Download all sources in parallel and flatten results
         const results = await Promise.all(
             sources.map(async (source) => {
-                try {
-                    const rulesStr = await FilterDownloader.download(
-                        source,
-                        {},
-                        { allowEmptyResponse: true },
-                    );
-                    return rulesStr.filter((el) => el.trim().length > 0 && !RuleUtils.isComment(el));
-                } catch (error) {
-                    this.logger.warn(`Failed to download source ${source}: ${error}`);
-                    return [];
-                }
+                const rulesStr = await FilterDownloader.download(
+                    source,
+                    {},
+                    { allowEmptyResponse: true },
+                );
+                return rulesStr.filter((el) => el.trim().length > 0 && !RuleUtils.isComment(el));
             }),
         );
 
