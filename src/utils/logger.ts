@@ -91,7 +91,7 @@ export class Logger implements ILogger {
      */
     private resolveLogLevel(defaultLevel: LogLevel): LogLevel {
         // If this logger has a module name and there's an override for it, use the override
-        if (this.module && this.moduleOverrides[this.module] !== undefined) {
+        if (this.module && this.module.length > 0 && this.moduleOverrides[this.module] !== undefined) {
             return this.moduleOverrides[this.module];
         }
         return defaultLevel;
@@ -348,9 +348,9 @@ export function createLoggerFromEnv(options?: LoggerOptions): Logger {
 
     // Merge with provided options (provided options take precedence)
     return createLogger({
-        level: defaultLevel,
-        structured,
         ...options,
+        level: options?.level ?? defaultLevel,
+        structured: options?.structured ?? structured,
         // Merge module overrides (provided options override env)
         moduleOverrides: {
             ...moduleOverrides,

@@ -892,15 +892,33 @@ const logger = createLogger({
 });
 
 const compilerLogger = createLogger({
+    level: LogLevel.Warn,
     module: 'compiler',
     prefix: 'FilterCompiler',
-    ...logger,
+    moduleOverrides: {
+        'compiler': LogLevel.Info,
+        'downloader': LogLevel.Debug,
+    },
 });
 
 const downloaderLogger = createLogger({
+    level: LogLevel.Warn,
     module: 'downloader', 
     prefix: 'FilterDownloader',
-    ...logger,
+    moduleOverrides: {
+        'compiler': LogLevel.Info,
+        'downloader': LogLevel.Debug,
+    },
+});
+
+const transformLogger = createLogger({
+    level: LogLevel.Warn,
+    module: 'transformation',
+    prefix: 'Transformation',
+    moduleOverrides: {
+        'compiler': LogLevel.Info,
+        'downloader': LogLevel.Debug,
+    },
 });
 
 // Only logs matching their module's override level

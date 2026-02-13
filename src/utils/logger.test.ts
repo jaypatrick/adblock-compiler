@@ -471,6 +471,30 @@ Deno.test('Logger - should create logger with module name', () => {
     assertEquals(logger.getModule(), 'compiler');
 });
 
+Deno.test('Logger - should ignore empty string module name', () => {
+    const logger = new Logger({
+        level: LogLevel.Info,
+        module: '', // Empty string
+        moduleOverrides: {
+            '': LogLevel.Debug,
+        },
+    });
+
+    // Should use default level, not the override
+    let debugCallCount = 0;
+    const originalConsoleDebug = console.debug;
+    console.debug = () => {
+        debugCallCount++;
+    };
+
+    try {
+        logger.debug('debug message'); // Should NOT log (default is Info)
+        assertEquals(debugCallCount, 0);
+    } finally {
+        console.debug = originalConsoleDebug;
+    }
+});
+
 Deno.test('Logger - should create logger with module overrides', () => {
     const logger = new Logger({
         level: LogLevel.Info,
