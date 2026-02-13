@@ -4,6 +4,7 @@
  */
 
 import type { IContentFetcher, IHttpFetcherOptions } from './types.ts';
+import { validateUrlForSsrf } from '../utils/index.ts';
 
 const DEFAULT_OPTIONS: Required<Omit<IHttpFetcherOptions, 'headers'>> = {
     timeout: 30000,
@@ -39,6 +40,9 @@ export class HttpFetcher implements IContentFetcher {
      * Fetches content from a URL.
      */
     public async fetch(source: string): Promise<string> {
+        // Validate URL for SSRF protection
+        validateUrlForSsrf(source);
+
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), this.options.timeout);
 

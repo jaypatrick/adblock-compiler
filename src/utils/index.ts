@@ -73,5 +73,8 @@ export {
 // Path utilities
 export { PathUtils } from './PathUtils.ts';
 
+// URL validation (SSRF protection)
+export { isSafeUrl, validateUrlForSsrf } from './UrlValidator.ts';
+
 // Boolean expression parser (safe alternative to Function constructor)
 export { evaluateBooleanExpression, getKnownPlatforms, isKnownPlatform } from './BooleanExpressionParser.ts';

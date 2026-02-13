@@ -12,7 +12,7 @@
 import type { ILogger } from '../types/index.ts';
 import { silentLogger } from '../utils/logger.ts';
 import { evaluateBooleanExpression } from '../utils/BooleanExpressionParser.ts';
-import { ErrorUtils, FileSystemError, NetworkError, PathUtils } from '../utils/index.ts';
+import { ErrorUtils, FileSystemError, NetworkError, PathUtils, validateUrlForSsrf } from '../utils/index.ts';
 import { NETWORK_DEFAULTS, PREPROCESSOR_DEFAULTS } from '../config/defaults.ts';
 import { USER_AGENT } from '../version.ts';
 
@@ -156,6 +156,9 @@ export class FilterDownloader {
      * Fetches content from a URL with retry logic and circuit breaker
      */
     private async fetchUrl(url: string): Promise<string> {
+        // Validate URL for SSRF protection
+        validateUrlForSsrf(url);
+
         let lastError: Error | null = null;
 
         for (let attempt = 0; attempt <= this.options.maxRetries; attempt++) {
