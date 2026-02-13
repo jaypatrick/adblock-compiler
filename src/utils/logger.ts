@@ -32,6 +32,13 @@ const Colors = {
 } as const;
 
 /**
+ * Module-specific log level overrides
+ */
+export interface ModuleOverrides {
+    [moduleName: string]: LogLevel;
+}
+
+/**
  * Logger configuration options
  */
 export interface LoggerOptions {
@@ -45,6 +52,10 @@ export interface LoggerOptions {
     correlationId?: string;
     /** Trace ID for distributed tracing */
     traceId?: string;
+    /** Module name for this logger instance */
+    module?: string;
+    /** Module-specific log level overrides */
+    moduleOverrides?: ModuleOverrides;
 }
 
 /**
@@ -62,12 +73,28 @@ export class Logger implements ILogger {
     protected prefix: string;
     protected timestamps: boolean;
     protected colors: boolean;
+    protected module: string;
+    protected moduleOverrides: ModuleOverrides;
 
     constructor(options: LoggerOptions = {}) {
-        this.level = options.level ?? LogLevel.Info;
+        this.module = options.module ?? '';
+        this.moduleOverrides = options.moduleOverrides ?? {};
+        // Resolve effective log level based on module overrides
+        this.level = this.resolveLogLevel(options.level ?? LogLevel.Info);
         this.prefix = options.prefix ?? '';
         this.timestamps = options.timestamps ?? false;
         this.colors = options.colors ?? true;
+    }
+
+    /**
+     * Resolves the effective log level for this logger based on module overrides
+     */
+    private resolveLogLevel(defaultLevel: LogLevel): LogLevel {
+        // If this logger has a module name and there's an override for it, use the override
+        if (this.module && this.module.length > 0 && this.moduleOverrides[this.module] !== undefined) {
+            return this.moduleOverrides[this.module];
+        }
+        return defaultLevel;
     }
 
     /**
@@ -161,6 +188,8 @@ export class Logger implements ILogger {
             prefix: childPrefix,
             timestamps: this.timestamps,
             colors: this.colors,
+            module: this.module,
+            moduleOverrides: this.moduleOverrides,
         });
     }
 
@@ -170,12 +199,85 @@ export class Logger implements ILogger {
     setLevel(level: LogLevel): void {
         this.level = level;
     }
+
+    /**
+     * Gets the module name for this logger
+     */
+    getModule(): string {
+        return this.module;
+    }
+
+    /**
+     * Gets the module overrides configuration
+     */
+    getModuleOverrides(): ModuleOverrides {
+        return { ...this.moduleOverrides };
+    }
 }
 
 /**
  * Default logger instance
  */
 export const logger = new Logger();
+
+/**
+ * Parses module overrides from environment variable.
+ * Expected format: "module1:level1,module2:level2"
+ * Example: "compiler:debug,downloader:trace"
+ *
+ * @param envValue - The environment variable value
+ * @returns Parsed module overrides object
+ */
+export function parseModuleOverrides(envValue: string | undefined): ModuleOverrides {
+    if (!envValue) {
+        return {};
+    }
+
+    const overrides: ModuleOverrides = {};
+    const pairs = envValue.split(',');
+
+    for (const pair of pairs) {
+        const trimmedPair = pair.trim();
+        if (!trimmedPair) continue;
+
+        const [moduleName, levelName] = trimmedPair.split(':');
+        if (!moduleName || !levelName) continue;
+
+        const trimmedModule = moduleName.trim();
+        const trimmedLevel = levelName.trim().toLowerCase();
+
+        // Parse log level from string
+        let level: LogLevel;
+        switch (trimmedLevel) {
+            case 'trace':
+                level = LogLevel.Trace;
+                break;
+            case 'debug':
+                level = LogLevel.Debug;
+                break;
+            case 'info':
+                level = LogLevel.Info;
+                break;
+            case 'warn':
+            case 'warning':
+                level = LogLevel.Warn;
+                break;
+            case 'error':
+                level = LogLevel.Error;
+                break;
+            case 'silent':
+                level = LogLevel.Silent;
+                break;
+            default:
+                // Skip invalid log levels
+                continue;
+        }
+
+        overrides[trimmedModule] = level;
+    }
+
+    return overrides;
+}
 
 /**
  * Creates a new logger with the given options
@@ -187,6 +289,74 @@ export function createLogger(options?: LoggerOptions): Logger {
         return new StructuredLogger(options);
     }
     return new Logger(options);
+}
+
+/**
+ * Creates a logger with configuration from environment variables.
+ * Reads the following environment variables:
+ * - LOG_LEVEL: Default log level (trace, debug, info, warn, error, silent)
+ * - LOG_MODULE_OVERRIDES: Module-specific overrides in format "module1:level1,module2:level2"
+ * - LOG_STRUCTURED: Enable structured JSON output (true/false)
+ *
+ * @param options - Additional options to merge with environment configuration
+ * @returns A configured Logger instance
+ *
+ * @example
+ * ```typescript
+ * // Set via environment:
+ * // LOG_LEVEL=info
+ * // LOG_MODULE_OVERRIDES=compiler:debug,downloader:trace
+ * const logger = createLoggerFromEnv({ prefix: 'myapp' });
+ * ```
+ */
+export function createLoggerFromEnv(options?: LoggerOptions): Logger {
+    // Parse default log level from environment
+    let defaultLevel = LogLevel.Info;
+    const envLevelRaw = typeof Deno !== 'undefined' && Deno.env ? Deno.env.get('LOG_LEVEL') : undefined;
+    const envLevel = envLevelRaw?.toLowerCase();
+    if (envLevel) {
+        switch (envLevel) {
+            case 'trace':
+                defaultLevel = LogLevel.Trace;
+                break;
+            case 'debug':
+                defaultLevel = LogLevel.Debug;
+                break;
+            case 'info':
+                defaultLevel = LogLevel.Info;
+                break;
+            case 'warn':
+            case 'warning':
+                defaultLevel = LogLevel.Warn;
+                break;
+            case 'error':
+                defaultLevel = LogLevel.Error;
+                break;
+            case 'silent':
+                defaultLevel = LogLevel.Silent;
+                break;
+        }
+    }
+
+    // Parse module overrides from environment
+    const envOverrides = typeof Deno !== 'undefined' && Deno.env ? Deno.env.get('LOG_MODULE_OVERRIDES') : undefined;
+    const moduleOverrides = parseModuleOverrides(envOverrides);
+
+    // Parse structured flag from environment
+    const envStructured = typeof Deno !== 'undefined' && Deno.env ? Deno.env.get('LOG_STRUCTURED') : undefined;
+    const structured = envStructured === 'true' || envStructured === '1';
+
+    // Merge with provided options (provided options take precedence)
+    return createLogger({
+        ...options,
+        level: options?.level ?? defaultLevel,
+        structured: options?.structured ?? structured,
+        // Merge module overrides (provided options override env)
+        moduleOverrides: {
+            ...moduleOverrides,
+            ...(options?.moduleOverrides || {}),
+        },
+    });
 }
 
 /**
@@ -249,6 +419,8 @@ export class StructuredLogger extends Logger {
             prefix: options.prefix,
             timestamps: false, // Don't use parent's timestamp formatting
             colors: false, // JSON doesn't need colors
+            module: options.module,
+            moduleOverrides: options.moduleOverrides,
         });
         this.correlationId = options.correlationId;
         this.traceId = options.traceId;
@@ -366,6 +538,8 @@ export class StructuredLogger extends Logger {
             correlationId: this.correlationId,
             traceId: this.traceId,
             structured: true,
+            module: this.module,
+            moduleOverrides: this.moduleOverrides,
         });
     }
 

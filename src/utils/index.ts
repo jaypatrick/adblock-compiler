@@ -39,8 +39,8 @@ export { RetryStrategies, withRetry } from './AsyncRetry.ts';
 export type { RetryOptions, RetryResult } from './AsyncRetry.ts';
 
 // Logging
-export { createLogger, Logger, logger, LogLevel, silentLogger, StructuredLogger } from './logger.ts';
-export type { LoggerOptions } from './logger.ts';
+export { createLogger, createLoggerFromEnv, Logger, logger, LogLevel, parseModuleOverrides, silentLogger, StructuredLogger } from './logger.ts';
+export type { LoggerOptions, ModuleOverrides } from './logger.ts';
 
 // Benchmarking
 export { BenchmarkCollector, formatDuration, formatNumber, Timer } from './Benchmark.ts';

@@ -829,10 +829,119 @@ logger.success('Operation completed', { duration: 1234 });
 - `structured: boolean` - Enable JSON output mode (default: `false`)
 - `level: LogLevel` - Minimum log level to output
 - `prefix: string` - Logger name/prefix (included in output)
+- `module: string` - Module name for this logger instance (enables module-specific log levels)
+- `moduleOverrides: ModuleOverrides` - Per-module log level overrides
 - `correlationId: string` - Correlation ID for grouping related logs
 - `traceId: string` - Trace ID for distributed tracing
 - `timestamps: boolean` - Not used in structured mode (always ISO 8601)
 - `colors: boolean` - Not used in structured mode (JSON doesn't need colors)
+
+#### Per-Module Log Levels
+
+Control log verbosity for specific modules independently of the global log level. Perfect for debugging specific components without flooding logs with verbose output from all modules.
+
+**Basic Usage:**
+
+```typescript
+import { createLogger, LogLevel } from '@jk-com/adblock-compiler';
+
+// Create logger with module-specific overrides
+const logger = createLogger({
+    level: LogLevel.Info,  // Default level
+    moduleOverrides: {
+        'compiler': LogLevel.Debug,     // Show debug logs for compiler
+        'downloader': LogLevel.Trace,   // Show all logs for downloader
+    },
+});
+
+// Create module-specific loggers
+const compilerLogger = createLogger({
+    level: LogLevel.Info,
+    module: 'compiler',
+    prefix: 'Compiler',
+    moduleOverrides: logger.getModuleOverrides(),
+});
+
+compilerLogger.debug('This will show'); // Module override is Debug
+compilerLogger.info('This will also show');
+```
+
+**Environment Variable Configuration:**
+
+```bash
+# Set default level and module overrides via environment variables
+export LOG_LEVEL=info
+export LOG_MODULE_OVERRIDES=compiler:debug,downloader:trace
+
+# Create logger from environment
+import { createLoggerFromEnv } from '@jk-com/adblock-compiler';
+
+const logger = createLoggerFromEnv({ prefix: 'myapp' });
+```
+
+**Real-World Example:**
+
+```typescript
+// Production setup: minimal logging by default, detailed for specific modules
+const logger = createLogger({
+    level: LogLevel.Warn,  // Only warnings and errors by default
+    moduleOverrides: {
+        'compiler': LogLevel.Info,      // Show compilation progress
+        'downloader': LogLevel.Debug,   // Debug network issues
+    },
+});
+
+const compilerLogger = createLogger({
+    level: LogLevel.Warn,
+    module: 'compiler',
+    prefix: 'FilterCompiler',
+    moduleOverrides: {
+        'compiler': LogLevel.Info,
+        'downloader': LogLevel.Debug,
+    },
+});
+
+const downloaderLogger = createLogger({
+    level: LogLevel.Warn,
+    module: 'downloader', 
+    prefix: 'FilterDownloader',
+    moduleOverrides: {
+        'compiler': LogLevel.Info,
+        'downloader': LogLevel.Debug,
+    },
+});
+
+const transformLogger = createLogger({
+    level: LogLevel.Warn,
+    module: 'transformation',
+    prefix: 'Transformation',
+    moduleOverrides: {
+        'compiler': LogLevel.Info,
+        'downloader': LogLevel.Debug,
+    },
+});
+
+// Only logs matching their module's override level
+compilerLogger.info('Starting compilation');  // Shows (override: Info)
+downloaderLogger.debug('Checking cache');     // Shows (override: Debug)
+transformLogger.info('Processing rules');     // Hidden (default: Warn)
+```
+
+**Child Loggers Inherit Module Configuration:**
+
+```typescript
+const parentLogger = createLogger({
+    level: LogLevel.Info,
+    module: 'compiler',
+    moduleOverrides: { 'compiler': LogLevel.Debug },
+});
+
+// Child inherits module and overrides
+const childLogger = parentLogger.child('SourceCompiler');
+childLogger.debug('This shows'); // Inherits compiler:Debug override
+```
+
+See `examples/module-log-levels-example.ts` for more examples.
 
 #### Backward Compatibility
 
