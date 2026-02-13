@@ -7,13 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.13.0] - 2026-02-13
 
-### Added- implement StructuredLogger for production observability
+### Added
 
-
+- Implement StructuredLogger for production observability
 
 ## [0.12.1] - 2026-02-12
 
-### Added### Fixed
+### Fixed
 
 - add pull-requests permission and null check to auto-version-bump workflow
 - modify auto-version-bump to create PR instead of direct push
