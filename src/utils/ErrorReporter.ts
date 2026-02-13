@@ -227,12 +227,11 @@ export class SentryErrorReporter implements IErrorReporter {
      * Note: The DSN parameter is currently unused as this is a placeholder implementation.
      * It will be used when Sentry SDK integration is added in the future.
      *
-     * @param dsn - Sentry Data Source Name (DSN) - reserved for future Sentry SDK integration
+     * @param _dsn - Sentry Data Source Name (DSN) - reserved for future Sentry SDK integration
      * @param options - Sentry configuration options
      */
     constructor(
-        // @ts-ignore: Parameter reserved for future Sentry SDK integration
-        dsn: string,
+        _dsn: string, // Reserved for future Sentry SDK integration
         private readonly options: {
             /** Environment (production, staging, development) */
             environment?: string;
