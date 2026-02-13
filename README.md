@@ -488,7 +488,7 @@ The following endpoints require CSRF tokens:
 - **Cryptographically secure tokens** - 256-bit random tokens (64 hex characters)
 - **Short-lived** - Tokens expire after 1 hour
 - **SameSite cookies** - Additional protection against CSRF attacks
-- **HTTPS required** - Secure flag set on cookies
+- **HTTPS in production** - Secure flag set on cookies for HTTPS; allows HTTP for local development
 
 ### JavaScript/TypeScript Example
 

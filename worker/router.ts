@@ -74,6 +74,16 @@ function generateRequestId(prefix: string): string {
 
 /**
  * CORS preflight handler
+ *
+ * Note: CORS is configured to allow all origins ('*'). While this reduces the
+ * effectiveness of CSRF protection for credential-based requests, the double-submit
+ * cookie pattern still provides protection because:
+ * 1. Browsers enforce same-origin policy for reading cookies
+ * 2. Attackers cannot read the csrf-token cookie value from their origin
+ * 3. The X-CSRF-Token header must match the cookie value
+ *
+ * For production deployments requiring stricter CORS, configure
+ * Access-Control-Allow-Origin to specific trusted domains.
  */
 function handleCors(): Response {
     return new Response(null, {
