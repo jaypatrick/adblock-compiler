@@ -211,6 +211,9 @@ export async function handleCompileJson(
                     errorReporter?.report(err, {
                         requestId,
                         configName,
+                        sourceCount,
+                        url: request.url,
+                        method: request.method,
                         tags: { operation: 'cache-compression' },
                     }, ErrorSeverity.Warning);
                 }
@@ -294,6 +297,8 @@ export async function handleCompileStream(
     const startTime = Date.now();
     const body = await request.json() as CompileRequest;
     const { configuration, preFetchedContent, benchmark } = body;
+    const configName = configuration.name || 'unnamed';
+    const sourceCount = configuration.sources?.length || 0;
 
     const cacheKey = (!preFetchedContent || Object.keys(preFetchedContent).length === 0) ? await getCacheKey(configuration) : null;
 
@@ -392,6 +397,11 @@ export async function handleCompileStream(
                     console.error('Cache compression failed:', err);
                     // Report cache errors as warnings
                     errorReporter?.report(err, {
+                        requestId: crypto.randomUUID(), // Generate ID for streaming requests
+                        configName,
+                        sourceCount,
+                        url: request.url,
+                        method: request.method,
                         tags: { operation: 'cache-compression-stream' },
                     }, ErrorSeverity.Warning);
                 }
@@ -404,6 +414,9 @@ export async function handleCompileStream(
 
             // Report streaming compilation errors
             errorReporter?.report(err, {
+                requestId: crypto.randomUUID(), // Generate ID for streaming requests
+                configName,
+                sourceCount,
                 url: request.url,
                 method: request.method,
                 tags: { operation: 'streaming-compilation' },

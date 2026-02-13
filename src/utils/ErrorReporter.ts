@@ -223,11 +223,16 @@ export class CloudflareErrorReporter implements IErrorReporter {
 export class SentryErrorReporter implements IErrorReporter {
     /**
      * Creates a new SentryErrorReporter.
-     * @param _dsn - Sentry Data Source Name (DSN) - reserved for future Sentry SDK integration
+     *
+     * Note: The DSN parameter is currently unused as this is a placeholder implementation.
+     * It will be used when Sentry SDK integration is added in the future.
+     *
+     * @param dsn - Sentry Data Source Name (DSN) - reserved for future Sentry SDK integration
      * @param options - Sentry configuration options
      */
     constructor(
-        _dsn: string, // Reserved for future Sentry SDK integration
+        // @ts-ignore: Parameter reserved for future Sentry SDK integration
+        dsn: string,
         private readonly options: {
             /** Environment (production, staging, development) */
             environment?: string;
