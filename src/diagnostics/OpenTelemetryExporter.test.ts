@@ -41,9 +41,7 @@ class MockSpan implements Span {
     }
 
     addEvent(name: string, attributesOrStartTime?: unknown, _startTime?: unknown): this {
-        const attributes = typeof attributesOrStartTime === 'object' && !Array.isArray(attributesOrStartTime)
-            ? attributesOrStartTime as Record<string, unknown>
-            : undefined;
+        const attributes = typeof attributesOrStartTime === 'object' && !Array.isArray(attributesOrStartTime) ? attributesOrStartTime as Record<string, unknown> : undefined;
         this.events.push({ name, attributes });
         return this;
     }
@@ -121,7 +119,7 @@ Deno.test('OpenTelemetryExporter - operationStart creates span with attributes',
 
     assertExists(eventId);
     assertEquals(mockTracer.spans.length, 1);
-    
+
     const span = mockTracer.spans[0];
     assertEquals(span.attributes['operation.name'], 'testOperation');
     assertEquals(span.attributes['service.name'], 'adblock-compiler');
@@ -230,7 +228,7 @@ Deno.test('OpenTelemetryExporter - emit adds event to active span', () => {
     const exporter = new OpenTelemetryExporter({ tracer: mockTracer });
 
     const eventId = exporter.operationStart('testOperation');
-    
+
     exporter.emit({
         eventId: 'test-event-id',
         timestamp: new Date().toISOString(),
@@ -314,7 +312,7 @@ Deno.test('OpenTelemetryExporter - handles array attributes correctly', () => {
     assertExists(span.attributes['input.numberArray']);
     // Mixed array should be stringified
     assertExists(span.attributes['input.mixedArray']);
-    
+
     exporter.operationComplete(eventId);
 });
 
@@ -333,6 +331,6 @@ Deno.test('OpenTelemetryExporter - handles null and undefined attributes', () =>
     assertEquals(span.attributes['input.nullValue'], undefined);
     assertEquals(span.attributes['input.undefinedValue'], undefined);
     assertEquals(span.attributes['input.validValue'], 'test');
-    
+
     exporter.operationComplete(eventId);
 });
