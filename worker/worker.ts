@@ -207,6 +207,56 @@ async function verifyTurnstileToken(
 }
 
 /**
+ * Validate request body size to prevent DoS attacks
+ */
+async function validateRequestSize(
+    request: Request,
+    env: Env,
+): Promise<{ valid: boolean; error?: string; maxBytes?: number }> {
+    // Get configured max size (in MB) or use default
+    const maxMB = env.MAX_REQUEST_BODY_MB ? parseFloat(env.MAX_REQUEST_BODY_MB) : undefined;
+    const maxBytes = maxMB ? maxMB * 1024 * 1024 : WORKER_DEFAULTS.MAX_REQUEST_BODY_BYTES;
+
+    // First check: Content-Length header (fast path)
+    const contentLength = request.headers.get('content-length');
+    if (contentLength) {
+        const bodySize = parseInt(contentLength, 10);
+        if (!isNaN(bodySize) && bodySize > maxBytes) {
+            return {
+                valid: false,
+                error: `Request body size (${bodySize} bytes) exceeds maximum allowed size (${maxBytes} bytes)`,
+                maxBytes,
+            };
+        }
+    }
+
+    // Second check: Validate actual body size during read
+    // This catches requests without Content-Length header
+    try {
+        const cloned = request.clone();
+        const arrayBuffer = await cloned.arrayBuffer();
+        const actualSize = arrayBuffer.byteLength;
+
+        if (actualSize > maxBytes) {
+            return {
+                valid: false,
+                error: `Request body size (${actualSize} bytes) exceeds maximum allowed size (${maxBytes} bytes)`,
+                maxBytes,
+            };
+        }
+
+        return { valid: true, maxBytes };
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return {
+            valid: false,
+            error: `Failed to validate request body size: ${message}`,
+            maxBytes,
+        };
+    }
+}
+
+/**
  * Generate cache key from configuration
  */
 function getCacheKey(config: IConfiguration): string {
@@ -3245,6 +3295,23 @@ export default {
             (pathname === '/compile' || pathname === '/compile/stream' ||
                 pathname === '/compile/batch') && request.method === 'POST'
         ) {
+            // Validate request body size
+            const sizeValidation = await validateRequestSize(request, env);
+            if (!sizeValidation.valid) {
+                return Response.json(
+                    {
+                        success: false,
+                        error: sizeValidation.error || 'Request body too large',
+                    },
+                    {
+                        status: 413,
+                        headers: {
+                            'Access-Control-Allow-Origin': '*',
+                        },
+                    },
+                );
+            }
+
             const allowed = await checkRateLimit(env, ip);
 
             if (!allowed) {
@@ -3316,6 +3383,22 @@ export default {
 
         // AST Parser endpoint
         if (pathname === '/ast/parse' && request.method === 'POST') {
+            // Validate request body size
+            const sizeValidation = await validateRequestSize(request, env);
+            if (!sizeValidation.valid) {
+                return Response.json(
+                    {
+                        success: false,
+                        error: sizeValidation.error || 'Request body too large',
+                    },
+                    {
+                        status: 413,
+                        headers: {
+                            'Access-Control-Allow-Origin': '*',
+                        },
+                    },
+                );
+            }
             return handleASTParseRequest(request, env);
         }
 
@@ -3326,6 +3409,23 @@ export default {
 
         // Async compilation endpoints (Turnstile verified)
         if (pathname === '/compile/async' && request.method === 'POST') {
+            // Validate request body size
+            const sizeValidation = await validateRequestSize(request, env);
+            if (!sizeValidation.valid) {
+                return Response.json(
+                    {
+                        success: false,
+                        error: sizeValidation.error || 'Request body too large',
+                    },
+                    {
+                        status: 413,
+                        headers: {
+                            'Access-Control-Allow-Origin': '*',
+                        },
+                    },
+                );
+            }
+
             // Verify Turnstile token if configured
             if (env.TURNSTILE_SECRET_KEY) {
                 const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -3360,6 +3460,23 @@ export default {
         }
 
         if (pathname === '/compile/batch/async' && request.method === 'POST') {
+            // Validate request body size
+            const sizeValidation = await validateRequestSize(request, env);
+            if (!sizeValidation.valid) {
+                return Response.json(
+                    {
+                        success: false,
+                        error: sizeValidation.error || 'Request body too large',
+                    },
+                    {
+                        status: 413,
+                        headers: {
+                            'Access-Control-Allow-Origin': '*',
+                        },
+                    },
+                );
+            }
+
             // Verify Turnstile token if configured
             if (env.TURNSTILE_SECRET_KEY) {
                 const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
