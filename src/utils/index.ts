@@ -39,7 +39,7 @@ export { RetryStrategies, withRetry } from './AsyncRetry.ts';
 export type { RetryOptions, RetryResult } from './AsyncRetry.ts';
 
 // Logging
-export { createLogger, Logger, logger, LogLevel, silentLogger } from './logger.ts';
+export { createLogger, Logger, logger, LogLevel, silentLogger, StructuredLogger } from './logger.ts';
 export type { LoggerOptions } from './logger.ts';
 
 // Benchmarking

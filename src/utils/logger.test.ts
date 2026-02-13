@@ -112,3 +112,335 @@ Deno.test('Logger - LogLevel enum should have expected values', () => {
     assertEquals(LogLevel.Error, 3);
     assertEquals(LogLevel.Silent, 4);
 });
+
+// ============================================================================
+// StructuredLogger Tests
+// ============================================================================
+
+import { StructuredLogger } from './logger.ts';
+
+Deno.test('StructuredLogger - should create with default options', () => {
+    const logger = new StructuredLogger();
+    assertEquals(logger instanceof StructuredLogger, true);
+    assertEquals(logger instanceof Logger, true);
+});
+
+Deno.test('StructuredLogger - should create with correlation and trace IDs', () => {
+    const logger = new StructuredLogger({
+        correlationId: 'corr-123',
+        traceId: 'trace-456',
+    });
+    assertEquals(logger instanceof StructuredLogger, true);
+});
+
+Deno.test('StructuredLogger - createLogger with structured flag should return StructuredLogger', () => {
+    const logger = createLogger({ structured: true });
+    assertEquals(logger instanceof StructuredLogger, true);
+});
+
+Deno.test('StructuredLogger - createLogger without structured flag should return Logger', () => {
+    const logger = createLogger({ structured: false });
+    assertEquals(logger instanceof Logger, true);
+    assertEquals(logger instanceof StructuredLogger, false);
+});
+
+Deno.test('StructuredLogger - should output valid JSON', () => {
+    const logger = new StructuredLogger({ level: LogLevel.Info });
+
+    // Capture console output
+    const originalConsoleInfo = console.info;
+    let capturedOutput = '';
+    console.info = (msg: string) => {
+        capturedOutput = msg;
+    };
+
+    try {
+        logger.info('test message');
+
+        // Should be valid JSON
+        const parsed = JSON.parse(capturedOutput);
+        assertEquals(parsed.level, 'info');
+        assertEquals(parsed.message, 'test message');
+        assertEquals(typeof parsed.timestamp, 'string');
+    } finally {
+        console.info = originalConsoleInfo;
+    }
+});
+
+Deno.test('StructuredLogger - should include context when provided', () => {
+    const logger = new StructuredLogger({ level: LogLevel.Info });
+
+    const originalConsoleInfo = console.info;
+    let capturedOutput = '';
+    console.info = (msg: string) => {
+        capturedOutput = msg;
+    };
+
+    try {
+        logger.info('test message', { userId: 123, action: 'login' });
+
+        const parsed = JSON.parse(capturedOutput);
+        assertEquals(parsed.context.userId, 123);
+        assertEquals(parsed.context.action, 'login');
+    } finally {
+        console.info = originalConsoleInfo;
+    }
+});
+
+Deno.test('StructuredLogger - should include correlationId when set', () => {
+    const logger = new StructuredLogger({
+        level: LogLevel.Info,
+        correlationId: 'corr-123',
+    });
+
+    const originalConsoleInfo = console.info;
+    let capturedOutput = '';
+    console.info = (msg: string) => {
+        capturedOutput = msg;
+    };
+
+    try {
+        logger.info('test message');
+
+        const parsed = JSON.parse(capturedOutput);
+        assertEquals(parsed.correlationId, 'corr-123');
+    } finally {
+        console.info = originalConsoleInfo;
+    }
+});
+
+Deno.test('StructuredLogger - should include traceId when set', () => {
+    const logger = new StructuredLogger({
+        level: LogLevel.Info,
+        traceId: 'trace-456',
+    });
+
+    const originalConsoleInfo = console.info;
+    let capturedOutput = '';
+    console.info = (msg: string) => {
+        capturedOutput = msg;
+    };
+
+    try {
+        logger.info('test message');
+
+        const parsed = JSON.parse(capturedOutput);
+        assertEquals(parsed.traceId, 'trace-456');
+    } finally {
+        console.info = originalConsoleInfo;
+    }
+});
+
+Deno.test('StructuredLogger - should include prefix when set', () => {
+    const logger = new StructuredLogger({
+        level: LogLevel.Info,
+        prefix: 'myapp',
+    });
+
+    const originalConsoleInfo = console.info;
+    let capturedOutput = '';
+    console.info = (msg: string) => {
+        capturedOutput = msg;
+    };
+
+    try {
+        logger.info('test message');
+
+        const parsed = JSON.parse(capturedOutput);
+        assertEquals(parsed.prefix, 'myapp');
+    } finally {
+        console.info = originalConsoleInfo;
+    }
+});
+
+Deno.test('StructuredLogger - child should inherit correlationId and traceId', () => {
+    const parent = new StructuredLogger({
+        level: LogLevel.Info,
+        prefix: 'parent',
+        correlationId: 'corr-123',
+        traceId: 'trace-456',
+    });
+
+    const child = parent.child('child');
+
+    const originalConsoleInfo = console.info;
+    let capturedOutput = '';
+    console.info = (msg: string) => {
+        capturedOutput = msg;
+    };
+
+    try {
+        child.info('test message');
+
+        const parsed = JSON.parse(capturedOutput);
+        assertEquals(parsed.prefix, 'parent:child');
+        assertEquals(parsed.correlationId, 'corr-123');
+        assertEquals(parsed.traceId, 'trace-456');
+    } finally {
+        console.info = originalConsoleInfo;
+    }
+});
+
+Deno.test('StructuredLogger - should support all log levels', () => {
+    const logger = new StructuredLogger({ level: LogLevel.Trace });
+
+    const outputs: Record<string, string> = {};
+
+    // Capture all console methods
+    const originalConsoleDebug = console.debug;
+    const originalConsoleInfo = console.info;
+    const originalConsoleWarn = console.warn;
+    const originalConsoleError = console.error;
+
+    console.debug = (msg: string) => {
+        outputs.debug = msg;
+    };
+    console.info = (msg: string) => {
+        outputs.info = msg;
+    };
+    console.warn = (msg: string) => {
+        outputs.warn = msg;
+    };
+    console.error = (msg: string) => {
+        outputs.error = msg;
+    };
+
+    try {
+        logger.trace('trace message');
+        logger.debug('debug message');
+        logger.info('info message');
+        logger.warn('warn message');
+        logger.error('error message');
+        logger.success('success message');
+
+        // Verify trace
+        const traceParsed = JSON.parse(outputs.debug);
+        assertEquals(traceParsed.level, 'trace');
+        assertEquals(traceParsed.message, 'trace message');
+
+        // Verify info
+        const infoParsed = JSON.parse(outputs.info);
+        assertEquals(infoParsed.level, 'info');
+        assertEquals(infoParsed.message, 'info message');
+
+        // Verify warn
+        const warnParsed = JSON.parse(outputs.warn);
+        assertEquals(warnParsed.level, 'warn');
+        assertEquals(warnParsed.message, 'warn message');
+
+        // Verify error
+        const errorParsed = JSON.parse(outputs.error);
+        assertEquals(errorParsed.level, 'error');
+        assertEquals(errorParsed.message, 'error message');
+    } finally {
+        console.debug = originalConsoleDebug;
+        console.info = originalConsoleInfo;
+        console.warn = originalConsoleWarn;
+        console.error = originalConsoleError;
+    }
+});
+
+Deno.test('StructuredLogger - should respect log level filtering', () => {
+    const logger = new StructuredLogger({ level: LogLevel.Error });
+
+    let infoCallCount = 0;
+    let errorCallCount = 0;
+
+    const originalConsoleInfo = console.info;
+    const originalConsoleError = console.error;
+
+    console.info = () => {
+        infoCallCount++;
+    };
+    console.error = () => {
+        errorCallCount++;
+    };
+
+    try {
+        logger.info('should not log');
+        logger.error('should log');
+
+        assertEquals(infoCallCount, 0);
+        assertEquals(errorCallCount, 1);
+    } finally {
+        console.info = originalConsoleInfo;
+        console.error = originalConsoleError;
+    }
+});
+
+Deno.test('StructuredLogger - setCorrelationId should update correlationId', () => {
+    const logger = new StructuredLogger({ level: LogLevel.Info });
+    logger.setCorrelationId('new-corr-id');
+
+    const originalConsoleInfo = console.info;
+    let capturedOutput = '';
+    console.info = (msg: string) => {
+        capturedOutput = msg;
+    };
+
+    try {
+        logger.info('test');
+        const parsed = JSON.parse(capturedOutput);
+        assertEquals(parsed.correlationId, 'new-corr-id');
+    } finally {
+        console.info = originalConsoleInfo;
+    }
+});
+
+Deno.test('StructuredLogger - setTraceId should update traceId', () => {
+    const logger = new StructuredLogger({ level: LogLevel.Info });
+    logger.setTraceId('new-trace-id');
+
+    const originalConsoleInfo = console.info;
+    let capturedOutput = '';
+    console.info = (msg: string) => {
+        capturedOutput = msg;
+    };
+
+    try {
+        logger.info('test');
+        const parsed = JSON.parse(capturedOutput);
+        assertEquals(parsed.traceId, 'new-trace-id');
+    } finally {
+        console.info = originalConsoleInfo;
+    }
+});
+
+Deno.test('StructuredLogger - should not include empty context', () => {
+    const logger = new StructuredLogger({ level: LogLevel.Info });
+
+    const originalConsoleInfo = console.info;
+    let capturedOutput = '';
+    console.info = (msg: string) => {
+        capturedOutput = msg;
+    };
+
+    try {
+        logger.info('test message', {});
+
+        const parsed = JSON.parse(capturedOutput);
+        assertEquals(parsed.context, undefined);
+    } finally {
+        console.info = originalConsoleInfo;
+    }
+});
+
+Deno.test('StructuredLogger - success should mark type as success in context', () => {
+    const logger = new StructuredLogger({ level: LogLevel.Info });
+
+    const originalConsoleInfo = console.info;
+    let capturedOutput = '';
+    console.info = (msg: string) => {
+        capturedOutput = msg;
+    };
+
+    try {
+        logger.success('operation succeeded');
+
+        const parsed = JSON.parse(capturedOutput);
+        assertEquals(parsed.level, 'info');
+        assertEquals(parsed.context.type, 'success');
+    } finally {
+        console.info = originalConsoleInfo;
+    }
+});
