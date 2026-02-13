@@ -459,3 +459,217 @@ Deno.test('StructuredLogger - success should mark type as success in context', (
         console.info = originalConsoleInfo;
     }
 });
+
+// ============================================================================
+// Module Override Tests
+// ============================================================================
+
+import { createLoggerFromEnv, parseModuleOverrides } from './logger.ts';
+
+Deno.test('Logger - should create logger with module name', () => {
+    const logger = new Logger({ module: 'compiler' });
+    assertEquals(logger.getModule(), 'compiler');
+});
+
+Deno.test('Logger - should create logger with module overrides', () => {
+    const logger = new Logger({
+        level: LogLevel.Info,
+        moduleOverrides: {
+            'compiler': LogLevel.Debug,
+            'downloader': LogLevel.Trace,
+        },
+    });
+    const overrides = logger.getModuleOverrides();
+    assertEquals(overrides['compiler'], LogLevel.Debug);
+    assertEquals(overrides['downloader'], LogLevel.Trace);
+});
+
+Deno.test('Logger - should respect module-specific log level', () => {
+    const logger = new Logger({
+        level: LogLevel.Info,
+        module: 'compiler',
+        moduleOverrides: {
+            'compiler': LogLevel.Debug,
+            'downloader': LogLevel.Trace,
+        },
+    });
+
+    // Capture console output
+    let debugCallCount = 0;
+    let infoCallCount = 0;
+
+    const originalConsoleDebug = console.debug;
+    const originalConsoleInfo = console.info;
+
+    console.debug = () => {
+        debugCallCount++;
+    };
+    console.info = () => {
+        infoCallCount++;
+    };
+
+    try {
+        logger.debug('debug message'); // Should log (module override is Debug)
+        logger.info('info message'); // Should also log
+
+        assertEquals(debugCallCount, 1);
+        assertEquals(infoCallCount, 1);
+    } finally {
+        console.debug = originalConsoleDebug;
+        console.info = originalConsoleInfo;
+    }
+});
+
+Deno.test('Logger - should use default level when no module override exists', () => {
+    const logger = new Logger({
+        level: LogLevel.Error,
+        module: 'other-module',
+        moduleOverrides: {
+            'compiler': LogLevel.Debug,
+        },
+    });
+
+    // Capture console output
+    let infoCallCount = 0;
+    let errorCallCount = 0;
+
+    const originalConsoleInfo = console.info;
+    const originalConsoleError = console.error;
+
+    console.info = () => {
+        infoCallCount++;
+    };
+    console.error = () => {
+        errorCallCount++;
+    };
+
+    try {
+        logger.info('info message'); // Should NOT log (default is Error)
+        logger.error('error message'); // Should log
+
+        assertEquals(infoCallCount, 0);
+        assertEquals(errorCallCount, 1);
+    } finally {
+        console.info = originalConsoleInfo;
+        console.error = originalConsoleError;
+    }
+});
+
+Deno.test('Logger - child should inherit module and overrides', () => {
+    const parent = new Logger({
+        level: LogLevel.Info,
+        module: 'compiler',
+        moduleOverrides: {
+            'compiler': LogLevel.Debug,
+        },
+    });
+
+    const child = parent.child('transformation');
+
+    assertEquals(child.getModule(), 'compiler');
+    const overrides = child.getModuleOverrides();
+    assertEquals(overrides['compiler'], LogLevel.Debug);
+});
+
+Deno.test('parseModuleOverrides - should parse valid format', () => {
+    const overrides = parseModuleOverrides('compiler:debug,downloader:trace');
+    assertEquals(overrides['compiler'], LogLevel.Debug);
+    assertEquals(overrides['downloader'], LogLevel.Trace);
+});
+
+Deno.test('parseModuleOverrides - should handle different level names', () => {
+    const overrides = parseModuleOverrides(
+        'mod1:trace,mod2:debug,mod3:info,mod4:warn,mod5:error,mod6:silent',
+    );
+    assertEquals(overrides['mod1'], LogLevel.Trace);
+    assertEquals(overrides['mod2'], LogLevel.Debug);
+    assertEquals(overrides['mod3'], LogLevel.Info);
+    assertEquals(overrides['mod4'], LogLevel.Warn);
+    assertEquals(overrides['mod5'], LogLevel.Error);
+    assertEquals(overrides['mod6'], LogLevel.Silent);
+});
+
+Deno.test('parseModuleOverrides - should handle warning as alias for warn', () => {
+    const overrides = parseModuleOverrides('mod:warning');
+    assertEquals(overrides['mod'], LogLevel.Warn);
+});
+
+Deno.test('parseModuleOverrides - should handle whitespace', () => {
+    const overrides = parseModuleOverrides('  compiler : debug , downloader : trace  ');
+    assertEquals(overrides['compiler'], LogLevel.Debug);
+    assertEquals(overrides['downloader'], LogLevel.Trace);
+});
+
+Deno.test('parseModuleOverrides - should ignore empty pairs', () => {
+    const overrides = parseModuleOverrides('compiler:debug,,downloader:trace');
+    assertEquals(overrides['compiler'], LogLevel.Debug);
+    assertEquals(overrides['downloader'], LogLevel.Trace);
+});
+
+Deno.test('parseModuleOverrides - should ignore invalid pairs', () => {
+    const overrides = parseModuleOverrides('compiler:debug,invalid,downloader:trace');
+    assertEquals(overrides['compiler'], LogLevel.Debug);
+    assertEquals(overrides['downloader'], LogLevel.Trace);
+    assertEquals(overrides['invalid'], undefined);
+});
+
+Deno.test('parseModuleOverrides - should ignore invalid log levels', () => {
+    const overrides = parseModuleOverrides('compiler:debug,downloader:invalid');
+    assertEquals(overrides['compiler'], LogLevel.Debug);
+    assertEquals(overrides['downloader'], undefined);
+});
+
+Deno.test('parseModuleOverrides - should return empty object for undefined', () => {
+    const overrides = parseModuleOverrides(undefined);
+    assertEquals(Object.keys(overrides).length, 0);
+});
+
+Deno.test('parseModuleOverrides - should return empty object for empty string', () => {
+    const overrides = parseModuleOverrides('');
+    assertEquals(Object.keys(overrides).length, 0);
+});
+
+Deno.test('createLoggerFromEnv - should work without environment variables', () => {
+    const logger = createLoggerFromEnv();
+    assertEquals(logger instanceof Logger, true);
+});
+
+Deno.test('StructuredLogger - should support module overrides', () => {
+    const logger = new StructuredLogger({
+        level: LogLevel.Info,
+        module: 'compiler',
+        moduleOverrides: {
+            'compiler': LogLevel.Debug,
+        },
+    });
+
+    let debugCallCount = 0;
+    const originalConsoleDebug = console.debug;
+    console.debug = () => {
+        debugCallCount++;
+    };
+
+    try {
+        logger.debug('debug message'); // Should log due to module override
+        assertEquals(debugCallCount, 1);
+    } finally {
+        console.debug = originalConsoleDebug;
+    }
+});
+
+Deno.test('StructuredLogger - child should inherit module overrides', () => {
+    const parent = new StructuredLogger({
+        level: LogLevel.Info,
+        module: 'compiler',
+        moduleOverrides: {
+            'compiler': LogLevel.Debug,
+        },
+        correlationId: 'corr-123',
+    });
+
+    const child = parent.child('transformation');
+
+    assertEquals(child.getModule(), 'compiler');
+    const overrides = child.getModuleOverrides();
+    assertEquals(overrides['compiler'], LogLevel.Debug);
+});
