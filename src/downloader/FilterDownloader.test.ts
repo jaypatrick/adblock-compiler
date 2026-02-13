@@ -4,6 +4,7 @@
 
 import { assertEquals, assertRejects } from '@std/assert';
 import { FilterDownloader } from './FilterDownloader.ts';
+import { ValidationError } from '../utils/ErrorUtils.ts';
 
 // Test file content for local file tests
 const TEST_DIR = './test_fixtures';
@@ -238,6 +239,70 @@ Deno.test('FilterDownloader', async (t) => {
         assertEquals(result[0], '||line1.com^');
         assertEquals(result[1], '||line2.com^');
         assertEquals(result[2], '||line3.com^');
+    });
+
+    await t.step('should block localhost URLs (SSRF protection)', async () => {
+        const downloader = new FilterDownloader();
+
+        await assertRejects(
+            async () => await downloader.download('http://localhost/filter.txt'),
+            ValidationError,
+            'Localhost access is blocked',
+        );
+
+        await assertRejects(
+            async () => await downloader.download('http://127.0.0.1/filter.txt'),
+            ValidationError,
+            'Localhost access is blocked',
+        );
+    });
+
+    await t.step('should block private IP URLs (SSRF protection)', async () => {
+        const downloader = new FilterDownloader();
+
+        await assertRejects(
+            async () => await downloader.download('http://10.0.0.1/filter.txt'),
+            ValidationError,
+            'Private IP access is blocked',
+        );
+
+        await assertRejects(
+            async () => await downloader.download('http://192.168.1.1/filter.txt'),
+            ValidationError,
+            'Private IP access is blocked',
+        );
+
+        await assertRejects(
+            async () => await downloader.download('http://172.16.0.1/filter.txt'),
+            ValidationError,
+            'Private IP access is blocked',
+        );
+    });
+
+    await t.step('should block link-local addresses (SSRF protection)', async () => {
+        const downloader = new FilterDownloader();
+
+        await assertRejects(
+            async () => await downloader.download('http://169.254.1.1/filter.txt'),
+            ValidationError,
+            'Link-local address access is blocked',
+        );
+    });
+
+    await t.step('should block non-HTTP protocols (SSRF protection)', async () => {
+        const downloader = new FilterDownloader();
+
+        await assertRejects(
+            async () => await downloader.download('file:///etc/passwd'),
+            ValidationError,
+            'Unsafe protocol',
+        );
+
+        await assertRejects(
+            async () => await downloader.download('ftp://example.com/filter.txt'),
+            ValidationError,
+            'Unsafe protocol',
+        );
     });
 
     // Cleanup: Remove test fixtures

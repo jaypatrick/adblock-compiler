@@ -1,5 +1,6 @@
 import { assertEquals, assertRejects } from '@std/assert';
 import { HttpFetcher } from './HttpFetcher.ts';
+import { ValidationError } from '../utils/ErrorUtils.ts';
 
 // Unit tests (no network access required)
 
@@ -133,4 +134,70 @@ Deno.test({
             Error,
         );
     },
+});
+
+// SSRF Protection tests (no network access required)
+
+Deno.test('HttpFetcher - should block localhost URLs (SSRF protection)', async () => {
+    const fetcher = new HttpFetcher();
+
+    await assertRejects(
+        async () => await fetcher.fetch('http://localhost/filter.txt'),
+        ValidationError,
+        'Localhost access is blocked',
+    );
+
+    await assertRejects(
+        async () => await fetcher.fetch('http://127.0.0.1/filter.txt'),
+        ValidationError,
+        'Localhost access is blocked',
+    );
+});
+
+Deno.test('HttpFetcher - should block private IP URLs (SSRF protection)', async () => {
+    const fetcher = new HttpFetcher();
+
+    await assertRejects(
+        async () => await fetcher.fetch('http://10.0.0.1/filter.txt'),
+        ValidationError,
+        'Private IP access is blocked',
+    );
+
+    await assertRejects(
+        async () => await fetcher.fetch('http://192.168.1.1/filter.txt'),
+        ValidationError,
+        'Private IP access is blocked',
+    );
+
+    await assertRejects(
+        async () => await fetcher.fetch('http://172.16.0.1/filter.txt'),
+        ValidationError,
+        'Private IP access is blocked',
+    );
+});
+
+Deno.test('HttpFetcher - should block link-local addresses (SSRF protection)', async () => {
+    const fetcher = new HttpFetcher();
+
+    await assertRejects(
+        async () => await fetcher.fetch('http://169.254.1.1/filter.txt'),
+        ValidationError,
+        'Link-local address access is blocked',
+    );
+});
+
+Deno.test('HttpFetcher - should block non-HTTP protocols (SSRF protection)', async () => {
+    const fetcher = new HttpFetcher();
+
+    await assertRejects(
+        async () => await fetcher.fetch('file:///etc/passwd'),
+        ValidationError,
+        'Unsafe protocol',
+    );
+
+    await assertRejects(
+        async () => await fetcher.fetch('ftp://example.com/filter.txt'),
+        ValidationError,
+        'Unsafe protocol',
+    );
 });
