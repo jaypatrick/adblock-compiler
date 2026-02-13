@@ -22,11 +22,17 @@ Last Updated: 2026-02-11
 **Location**: Worker POST endpoints
 **Fix**: Add CSRF token validation
 
-#### BUG-012: No SSRF protection for source URLs
+#### ~~BUG-012: No SSRF protection for source URLs~~ [FIXED]
 
+**Status**: ✅ Fixed in v0.12.1
 **Impact**: Internal network access via malicious source URLs
-**Location**: `src/downloader/FilterDownloader.ts`
-**Fix**: Validate URLs to block private IPs and non-HTTP protocols
+**Location**: `src/downloader/FilterDownloader.ts`, `src/platform/HttpFetcher.ts`
+**Fix**: Implemented comprehensive URL validation that blocks:
+- Localhost and loopback addresses (127.0.0.0/8, ::1)
+- Private IP ranges (10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, fc00::/7)
+- Link-local addresses (169.254.0.0/16, fe80::/10)
+- Non-HTTP/HTTPS protocols (file://, ftp://, etc.)
+**Files**: `src/utils/UrlValidator.ts`, `src/downloader/FilterDownloader.ts`, `src/platform/HttpFetcher.ts`
 
 ### High
 

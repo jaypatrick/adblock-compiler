@@ -1181,6 +1181,31 @@ This pluggable architecture allows you to:
 - Add logging and metrics
 - Mock sources for testing
 
+## Security
+
+The adblock-compiler includes comprehensive security features to protect against common vulnerabilities:
+
+### SSRF Protection
+
+All URL fetching operations are validated before execution to prevent Server-Side Request Forgery (SSRF) attacks:
+
+- **Localhost blocking**: Prevents access to localhost and loopback addresses
+- **Private IP blocking**: Blocks private IP ranges (10.x, 172.16-31.x, 192.168.x)
+- **Link-local blocking**: Prevents access to link-local addresses
+- **Protocol validation**: Only HTTP and HTTPS protocols are allowed
+
+This prevents malicious filter lists from accessing internal network resources or sensitive data.
+
+### Safe Expression Parsing
+
+The preprocessor directive evaluator uses a safe boolean expression parser that does not use `eval()` or the `Function` constructor, preventing code injection attacks.
+
+### Input Validation
+
+All configuration inputs are validated using TypeScript type checking and runtime validation to ensure data integrity.
+
+For more information, see [SECURITY.md](SECURITY.md).
+
 ## Contributing
 
 We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
