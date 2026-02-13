@@ -847,10 +847,10 @@ import { createLogger, LogLevel } from '@jk-com/adblock-compiler';
 
 // Create logger with module-specific overrides
 const logger = createLogger({
-    level: LogLevel.Info,  // Default level
+    level: LogLevel.Info, // Default level
     moduleOverrides: {
-        'compiler': LogLevel.Debug,     // Show debug logs for compiler
-        'downloader': LogLevel.Trace,   // Show all logs for downloader
+        'compiler': LogLevel.Debug, // Show debug logs for compiler
+        'downloader': LogLevel.Trace, // Show all logs for downloader
     },
 });
 
@@ -884,10 +884,10 @@ const logger = createLoggerFromEnv({ prefix: 'myapp' });
 ```typescript
 // Production setup: minimal logging by default, detailed for specific modules
 const logger = createLogger({
-    level: LogLevel.Warn,  // Only warnings and errors by default
+    level: LogLevel.Warn, // Only warnings and errors by default
     moduleOverrides: {
-        'compiler': LogLevel.Info,      // Show compilation progress
-        'downloader': LogLevel.Debug,   // Debug network issues
+        'compiler': LogLevel.Info, // Show compilation progress
+        'downloader': LogLevel.Debug, // Debug network issues
     },
 });
 
@@ -903,7 +903,7 @@ const compilerLogger = createLogger({
 
 const downloaderLogger = createLogger({
     level: LogLevel.Warn,
-    module: 'downloader', 
+    module: 'downloader',
     prefix: 'FilterDownloader',
     moduleOverrides: {
         'compiler': LogLevel.Info,
@@ -922,9 +922,9 @@ const transformLogger = createLogger({
 });
 
 // Only logs matching their module's override level
-compilerLogger.info('Starting compilation');  // Shows (override: Info)
-downloaderLogger.debug('Checking cache');     // Shows (override: Debug)
-transformLogger.info('Processing rules');     // Hidden (default: Warn)
+compilerLogger.info('Starting compilation'); // Shows (override: Info)
+downloaderLogger.debug('Checking cache'); // Shows (override: Debug)
+transformLogger.info('Processing rules'); // Hidden (default: Warn)
 ```
 
 **Child Loggers Inherit Module Configuration:**
