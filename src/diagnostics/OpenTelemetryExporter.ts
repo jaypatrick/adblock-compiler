@@ -1,11 +1,11 @@
 /**
  * OpenTelemetry integration for distributed tracing.
- * 
+ *
  * Bridges the existing IDiagnosticsCollector interface with OpenTelemetry's
  * standard tracing API for compatibility with major observability platforms.
  */
 
-import { context, type Span, SpanStatusCode, type Tracer, trace } from '@opentelemetry/api';
+import { context, type Span, SpanStatusCode, trace, type Tracer } from '@opentelemetry/api';
 import { VERSION } from '../version.ts';
 import type { AnyDiagnosticEvent, IDiagnosticsCollector } from './types.ts';
 import { TraceSeverity } from './types.ts';
@@ -26,7 +26,7 @@ export interface OpenTelemetryExporterOptions {
 
 /**
  * DiagnosticsCollector that exports events to OpenTelemetry.
- * 
+ *
  * This class bridges the existing diagnostics system with OpenTelemetry's
  * distributed tracing standard, enabling integration with platforms like
  * Datadog, Honeycomb, Jaeger, and others.
@@ -46,7 +46,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
     constructor(options: OpenTelemetryExporterOptions = {}) {
         this.serviceName = options.serviceName ?? 'adblock-compiler';
         this.enableConsoleLogging = options.enableConsoleLogging ?? false;
-        
+
         // Use provided tracer or get from global trace provider
         this.tracer = options.tracer ?? trace.getTracer(
             this.serviceName,
@@ -60,7 +60,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
     public operationStart(operation: string, input?: Record<string, unknown>): string {
         const span = this.tracer.startSpan(operation);
         const eventId = this.generateEventId();
-        
+
         // Store span and context for later completion
         this.activeSpans.set(eventId, span);
         this.spanContexts.set(eventId, trace.setSpan(context.active(), span));
@@ -139,7 +139,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
 
         // Record the exception in the span
         span.recordException(error);
-        
+
         // Set span status to error
         span.setStatus({
             code: SpanStatusCode.ERROR,
@@ -177,7 +177,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
     ): void {
         // Create a short-lived span for the metric
         const span = this.tracer.startSpan(`metric.${metric}`);
-        
+
         span.setAttribute('metric.name', metric);
         span.setAttribute('metric.value', value);
         span.setAttribute('metric.unit', unit);
@@ -206,7 +206,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
         size?: number,
     ): void {
         const span = this.tracer.startSpan(`cache.${operation}`);
-        
+
         span.setAttribute('cache.operation', operation);
         span.setAttribute('cache.key', this.hashKey(key));
         if (size !== undefined) {
@@ -233,10 +233,10 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
         responseSize?: number,
     ): void {
         const span = this.tracer.startSpan(`http.${method.toLowerCase()}`);
-        
+
         span.setAttribute('http.method', method);
         span.setAttribute('http.url', this.sanitizeUrl(url));
-        
+
         if (statusCode !== undefined) {
             span.setAttribute('http.status_code', statusCode);
             // Set error status for 4xx and 5xx responses
@@ -247,11 +247,11 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
                 });
             }
         }
-        
+
         if (durationMs !== undefined) {
             span.setAttribute('http.duration_ms', durationMs);
         }
-        
+
         if (responseSize !== undefined) {
             span.setAttribute('http.response_size', responseSize);
         }
@@ -259,7 +259,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
         if (!statusCode || statusCode < 400) {
             span.setStatus({ code: SpanStatusCode.OK });
         }
-        
+
         span.end();
 
         if (this.enableConsoleLogging) {
@@ -277,7 +277,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
         if (activeSpanEntries.length > 0) {
             // Attach to the most recently started span
             const [, span] = activeSpanEntries[activeSpanEntries.length - 1];
-            
+
             span.addEvent(event.message, {
                 'event.id': event.eventId,
                 'event.category': event.category,
@@ -288,12 +288,12 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
         } else {
             // No active span, create a standalone span for the event
             const span = this.tracer.startSpan(`event.${event.category}`);
-            
+
             span.setAttribute('event.id', event.eventId);
             span.setAttribute('event.category', event.category);
             span.setAttribute('event.severity', event.severity);
             span.setAttribute('event.message', event.message);
-            
+
             if (event.metadata) {
                 for (const [key, value] of Object.entries(event.metadata)) {
                     this.setSpanAttribute(span, `metadata.${key}`, value);
@@ -381,7 +381,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
      */
     private flattenMetadata(metadata: Record<string, unknown>): Record<string, string | number | boolean> {
         const flattened: Record<string, string | number | boolean> = {};
-        
+
         for (const [key, value] of Object.entries(metadata)) {
             if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
                 flattened[key] = value;
@@ -389,7 +389,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
                 flattened[key] = JSON.stringify(value);
             }
         }
-        
+
         return flattened;
     }
 
