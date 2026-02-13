@@ -130,23 +130,18 @@ interface LoggerConfig {
 
 **Issues**:
 
-#### 🐛 BUG-002: No request body size limits
+#### ✅ BUG-002: Request body size limits (RESOLVED)
 
-**Severity**: High
-**Location**: `worker/handlers/compile.ts`, `worker/middleware/index.ts`
+**Status**: Fixed in commit `8b67d43` (2026-02-13)
+**Location**: `worker/middleware/index.ts` - `validateRequestSize()` function
 
-**Impact**: Large payloads could cause memory exhaustion or DoS
+**Implementation**:
 
-**Recommendation**:
-
-```typescript
-async function validateRequestSize
-    const contentLength = request.headers.get('content-length');
-    if (contentLength && parseInt(contentLength) > maxBytes) {
-        throw new Error(`Request body exceeds ${maxBytes} bytes`);
-    }
-}
-```
+- Added `validateRequestSize()` middleware function
+- Configurable via `MAX_REQUEST_BODY_MB` environment variable
+- Default limit: 1MB
+- Returns `413 Payload Too Large` for oversized requests
+- Validates both `Content-Length` header and actual body size
 
 #### 🐛 BUG-003: Weak type validation in compile handler
 
@@ -886,7 +881,7 @@ if (isShuttingDown) {
 3. 🚀 **FEATURE-006**: Centralized error reporting
 4. 🚀 **FEATURE-008**: Circuit breaker pattern
 5. 🚀 **FEATURE-009**: OpenTelemetry integration
-6. 🐛 **BUG-002**: Request body size limits
+6. ~~🐛 **BUG-002**: Request body size limits~~ ✅ RESOLVED
 7. 🐛 **BUG-006**: Diagnostics event export
 8. 🐛 **BUG-010**: CSRF protection
 9. 🐛 **BUG-012**: SSRF protection
@@ -940,7 +935,7 @@ if (isShuttingDown) {
 
 ### Phase 2: Security Hardening (1-2 weeks)
 
-- Request size limits (BUG-002)
+- ~~Request size limits (BUG-002)~~ ✅ RESOLVED
 - CSRF protection (BUG-010)
 - SSRF protection (BUG-012)
 - Security headers (BUG-011)

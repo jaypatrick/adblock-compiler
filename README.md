@@ -1271,8 +1271,26 @@ The production worker (`worker/worker.ts`) includes:
 - Pre-fetched content support to bypass CORS restrictions
 - Caching with KV storage
 - Rate limiting
+- Request body size limits (DoS protection)
 - Request deduplication
 - Cloudflare Queue integration for async compilation
+
+**Request Body Size Limits**:
+
+The worker validates request body sizes to prevent denial-of-service attacks via large payloads. The default limit is 1MB.
+
+```bash
+# Configure in environment (megabytes)
+MAX_REQUEST_BODY_MB="2"  # Set to 2MB limit
+```
+
+Requests exceeding the limit receive a `413 Payload Too Large` response:
+
+```json
+{
+    "error": "Request body size (2097152 bytes) exceeds maximum allowed size (1048576 bytes)"
+}
+```
 
 **Cloudflare Queue Support**:
 
