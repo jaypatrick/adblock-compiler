@@ -45,6 +45,7 @@ import { VERSION } from '../src/version.ts';
 import { handleWebSocketUpgrade } from './websocket.ts';
 import { AnalyticsService } from '../src/services/AnalyticsService.ts';
 import { getDeploymentHistory, getDeploymentStats, getLatestDeployment } from '../src/deployment/version.ts';
+import { validateRequestSize } from './middleware/index.ts';
 
 // Import Workflow classes and types
 import {
@@ -202,56 +203,6 @@ async function verifyTurnstileToken(
         return {
             success: false,
             error: 'Turnstile verification service unavailable',
-        };
-    }
-}
-
-/**
- * Validate request body size to prevent DoS attacks
- */
-async function validateRequestSize(
-    request: Request,
-    env: Env,
-): Promise<{ valid: boolean; error?: string; maxBytes?: number }> {
-    // Get configured max size (in MB) or use default
-    const maxMB = env.MAX_REQUEST_BODY_MB ? parseFloat(env.MAX_REQUEST_BODY_MB) : undefined;
-    const maxBytes = maxMB ? maxMB * 1024 * 1024 : WORKER_DEFAULTS.MAX_REQUEST_BODY_BYTES;
-
-    // First check: Content-Length header (fast path)
-    const contentLength = request.headers.get('content-length');
-    if (contentLength) {
-        const bodySize = parseInt(contentLength, 10);
-        if (!isNaN(bodySize) && bodySize > maxBytes) {
-            return {
-                valid: false,
-                error: `Request body size (${bodySize} bytes) exceeds maximum allowed size (${maxBytes} bytes)`,
-                maxBytes,
-            };
-        }
-    }
-
-    // Second check: Validate actual body size during read
-    // This catches requests without Content-Length header
-    try {
-        const cloned = request.clone();
-        const arrayBuffer = await cloned.arrayBuffer();
-        const actualSize = arrayBuffer.byteLength;
-
-        if (actualSize > maxBytes) {
-            return {
-                valid: false,
-                error: `Request body size (${actualSize} bytes) exceeds maximum allowed size (${maxBytes} bytes)`,
-                maxBytes,
-            };
-        }
-
-        return { valid: true, maxBytes };
-    } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        return {
-            valid: false,
-            error: `Failed to validate request body size: ${message}`,
-            maxBytes,
         };
     }
 }
