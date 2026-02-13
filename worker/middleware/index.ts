@@ -5,6 +5,7 @@
 
 import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
 import { ErrorUtils } from '../../src/utils/index.ts';
+import { getCookie } from '../utils/cookies.ts';
 import type { AdminAuthResult, Env, RateLimitData, TurnstileResult, TurnstileVerifyResponse } from '../types.ts';
 
 // ============================================================================
@@ -199,4 +200,50 @@ export async function cloneAndParseBody<T>(request: Request): Promise<{ data?: T
     const cloned = request.clone();
     // Type assertion needed due to Cloudflare Workers types
     return parseJsonBody<T>(cloned as Request);
+}
+
+// ============================================================================
+// CSRF Protection
+// ============================================================================
+
+/**
+ * CSRF token cookie name
+ */
+const CSRF_COOKIE_NAME = 'csrf-token';
+
+/**
+ * CSRF token header name
+ */
+const CSRF_HEADER_NAME = 'X-CSRF-Token';
+
+/**
+ * Generate a cryptographically secure CSRF token.
+ *
+ * @returns A hex-encoded random token (64 characters)
+ */
+export function generateCsrfToken(): string {
+    // Generate 32 random bytes (256 bits)
+    const bytes = new Uint8Array(32);
+    crypto.getRandomValues(bytes);
+
+    // Convert to hex string
+    return Array.from(bytes)
+        .map((b) => b.toString(16).padStart(2, '0'))
+        .join('');
+}
+
+/**
+ * Validate CSRF token from request.
+ * Implements double-submit cookie pattern: token must be present in both
+ * the X-CSRF-Token header and the csrf-token cookie, and they must match.
+ *
+ * @param request - The incoming request
+ * @returns true if the token is valid, false otherwise
+ */
+export function validateCsrfToken(request: Request): boolean {
+    const token = request.headers.get(CSRF_HEADER_NAME);
+    const cookie = getCookie(request, CSRF_COOKIE_NAME);
+
+    // Both token and cookie must be present and match
+    return Boolean(token && cookie && token === cookie);
 }

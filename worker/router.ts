@@ -14,7 +14,8 @@
 import type { Env } from './types.ts';
 import { VERSION } from '../src/version.ts';
 import { JsonResponse } from './utils/response.ts';
-import { checkRateLimit, verifyAdminAuth, verifyTurnstileToken } from './middleware/index.ts';
+import { setCookie } from './utils/cookies.ts';
+import { checkRateLimit, generateCsrfToken, validateCsrfToken, verifyAdminAuth, verifyTurnstileToken } from './middleware/index.ts';
 import { handleASTParseRequest, handleCompileAsync, handleCompileBatch, handleCompileBatchAsync, handleCompileJson, handleCompileStream } from './handlers/compile.ts';
 import { handleMetrics, recordMetric } from './handlers/metrics.ts';
 import { handleQueueResults, handleQueueStats } from './handlers/queue.ts';
@@ -61,6 +62,7 @@ interface Route {
     rateLimit?: boolean;
     requireAuth?: boolean;
     turnstile?: boolean;
+    csrfProtection?: boolean;
 }
 
 /**
@@ -79,7 +81,7 @@ function handleCors(): Response {
         headers: {
             'Access-Control-Allow-Origin': '*',
             'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
-            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Key',
+            'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Key, X-CSRF-Token',
             'Access-Control-Max-Age': '86400',
         },
     });
@@ -109,6 +111,35 @@ async function handleInfo(
 }
 
 /**
+ * CSRF token generation handler
+ * Generates a new CSRF token and sets it as a cookie
+ */
+async function handleCsrfToken(
+    _request: Request,
+    _env: Env,
+    _params: RouteParams,
+): Promise<Response> {
+    const token = generateCsrfToken();
+
+    const cookieHeader = setCookie('csrf-token', token, {
+        maxAge: 3600, // 1 hour
+        path: '/',
+        sameSite: 'Lax',
+        httpOnly: false, // Must be false so JavaScript can read it for API calls
+        secure: true, // Require HTTPS
+    });
+
+    return JsonResponse.success(
+        { token },
+        {
+            headers: {
+                'Set-Cookie': cookieHeader,
+            },
+        },
+    );
+}
+
+/**
  * Route definitions using the modular handlers
  */
 const routes: Route[] = [
@@ -124,6 +155,13 @@ const routes: Route[] = [
         method: 'GET',
         pattern: '/metrics',
         handler: async (_req, env) => handleMetrics(env),
+    },
+
+    // CSRF Token
+    {
+        method: 'GET',
+        pattern: '/api/csrf-token',
+        handler: handleCsrfToken,
     },
 
     // Queue Stats
@@ -147,6 +185,7 @@ const routes: Route[] = [
         handler: async (req, env, params) => handleCompileJson(req, env, undefined, params.requestId),
         rateLimit: true,
         turnstile: true,
+        csrfProtection: true,
     },
     {
         method: 'POST',
@@ -154,6 +193,7 @@ const routes: Route[] = [
         handler: async (req, env) => handleCompileStream(req, env),
         rateLimit: true,
         turnstile: true,
+        csrfProtection: true,
     },
     {
         method: 'POST',
@@ -161,6 +201,7 @@ const routes: Route[] = [
         handler: async (req, env) => handleCompileBatch(req, env),
         rateLimit: true,
         turnstile: true,
+        csrfProtection: true,
     },
     {
         method: 'POST',
@@ -168,6 +209,7 @@ const routes: Route[] = [
         handler: async (req, env) => handleCompileAsync(req, env),
         rateLimit: true,
         turnstile: true,
+        csrfProtection: true,
     },
     {
         method: 'POST',
@@ -175,12 +217,14 @@ const routes: Route[] = [
         handler: async (req, env) => handleCompileBatchAsync(req, env),
         rateLimit: true,
         turnstile: true,
+        csrfProtection: true,
     },
     {
         method: 'POST',
         pattern: '/ast/parse',
         handler: async (req, env) => handleASTParseRequest(req, env),
         rateLimit: true,
+        csrfProtection: true,
     },
 
     // Admin endpoints
@@ -195,12 +239,14 @@ const routes: Route[] = [
         pattern: '/admin/storage/clear-expired',
         handler: async (_req, env) => handleAdminClearExpired(env),
         requireAuth: true,
+        csrfProtection: true,
     },
     {
         method: 'POST',
         pattern: '/admin/storage/clear-cache',
         handler: async (_req, env) => handleAdminClearCache(env),
         requireAuth: true,
+        csrfProtection: true,
     },
     {
         method: 'GET',
@@ -213,6 +259,7 @@ const routes: Route[] = [
         pattern: '/admin/storage/vacuum',
         handler: async (_req, env) => handleAdminVacuum(env),
         requireAuth: true,
+        csrfProtection: true,
     },
     {
         method: 'GET',
@@ -225,6 +272,7 @@ const routes: Route[] = [
         pattern: '/admin/storage/query',
         handler: async (req, env) => handleAdminQuery(req, env),
         requireAuth: true,
+        csrfProtection: true,
     },
 ];
 
@@ -323,6 +371,14 @@ export async function handleRequest(
                 }
             } catch {
                 // Body parsing failed, skip turnstile check
+            }
+        }
+
+        // CSRF protection
+        if (route.csrfProtection) {
+            const isValid = validateCsrfToken(request);
+            if (!isValid) {
+                return JsonResponse.error('CSRF token validation failed', 403);
             }
         }
 
