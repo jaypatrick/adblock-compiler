@@ -201,6 +201,32 @@ export interface ILogger extends IDetailedLogger {
 }
 
 /**
+ * Log level type for structured logging
+ */
+export type LogLevelType = 'trace' | 'debug' | 'info' | 'warn' | 'error' | 'success';
+
+/**
+ * Structured log entry for production observability
+ * Designed for log aggregation systems (CloudWatch, Datadog, Splunk)
+ */
+export interface IStructuredLog {
+    /** ISO 8601 timestamp */
+    timestamp: string;
+    /** Log level */
+    level: LogLevelType;
+    /** Human-readable message */
+    message: string;
+    /** Optional prefix/logger name */
+    prefix?: string;
+    /** Optional context metadata for filtering and analytics */
+    context?: Record<string, unknown>;
+    /** Optional correlation ID for grouping related logs */
+    correlationId?: string;
+    /** Optional trace ID for distributed tracing */
+    traceId?: string;
+}
+
+/**
  * Downloader interface for dependency injection
  * Allows different downloader implementations
  */
