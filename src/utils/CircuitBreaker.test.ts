@@ -298,9 +298,7 @@ Deno.test('CircuitBreaker - should handle rapid successive failures', async () =
     const breaker = new CircuitBreaker({ failureThreshold: 3 });
 
     // Rapid failures
-    const promises = Array.from({ length: 5 }, () =>
-        breaker.execute(createAlwaysFailingFunction()).catch(() => 'failed')
-    );
+    const promises = Array.from({ length: 5 }, () => breaker.execute(createAlwaysFailingFunction()).catch(() => 'failed'));
 
     await Promise.all(promises);
 

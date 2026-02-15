@@ -117,9 +117,7 @@ export class CircuitBreaker {
 
         // Check if circuit should transition from OPEN to HALF_OPEN
         if (this.state === CircuitState.OPEN) {
-            const timeSinceLastFailure = this.lastFailureTime
-                ? Date.now() - this.lastFailureTime.getTime()
-                : 0;
+            const timeSinceLastFailure = this.lastFailureTime ? Date.now() - this.lastFailureTime.getTime() : 0;
 
             if (timeSinceLastFailure > this.timeout) {
                 this.transitionTo(CircuitState.HALF_OPEN);
