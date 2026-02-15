@@ -181,7 +181,7 @@ export class SentryErrorReporter implements IErrorReporter {
                     function: func || 'anonymous',
                     lineno: parseInt(lineNo, 10),
                     colno: parseInt(colNo, 10),
-                } as Record<string, unknown>;
+                };
             })
             .filter((frame): frame is StackFrame => frame !== null);
 
