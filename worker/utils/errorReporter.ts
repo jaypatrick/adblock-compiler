@@ -5,24 +5,17 @@
 
 import type { Env } from '../types.ts';
 import { VERSION } from '../../src/version.ts';
-import {
-    CloudflareErrorReporter,
-    CompositeErrorReporter,
-    ConsoleErrorReporter,
-    IErrorReporter,
-    NoOpErrorReporter,
-    SentryErrorReporter,
-} from '../../src/utils/ErrorReporter.ts';
+import { CloudflareErrorReporter, CompositeErrorReporter, ConsoleErrorReporter, IErrorReporter, NoOpErrorReporter, SentryErrorReporter } from '../../src/utils/ErrorReporter.ts';
 
 /**
  * Creates an error reporter based on environment configuration.
- * 
+ *
  * Supported configurations:
  * - ERROR_REPORTER_TYPE: 'console', 'cloudflare', 'sentry', 'composite', or 'none'
  * - SENTRY_DSN: Required if using Sentry reporter
  * - ERROR_REPORTER_VERBOSE: 'true' for verbose console logging
  * - ANALYTICS_ENGINE: Cloudflare Analytics Engine binding (optional)
- * 
+ *
  * @param env - Worker environment bindings
  * @returns Configured error reporter instance
  */

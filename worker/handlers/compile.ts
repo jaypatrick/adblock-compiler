@@ -213,7 +213,7 @@ export async function handleCompileJson(
             return response;
         } catch (error) {
             const errorObj = ErrorUtils.toError(error);
-            
+
             // Report compilation errors to centralized error reporting
             const errorReporter = createWorkerErrorReporter(env);
             errorReporter.reportSync(errorObj, {
@@ -222,7 +222,7 @@ export async function handleCompileJson(
                 configName: configuration.name,
                 sourceCount: configuration.sources?.length,
             });
-            
+
             const message = errorObj.message;
             return { success: false, error: message };
         } finally {
@@ -550,7 +550,7 @@ export async function handleCompileBatch(
         return JsonResponse.success({ results });
     } catch (error) {
         const errorObj = ErrorUtils.toError(error);
-        
+
         // Report batch compilation errors to centralized error reporting
         const errorReporter = createWorkerErrorReporter(env);
         errorReporter.reportSync(errorObj, {
@@ -558,7 +558,7 @@ export async function handleCompileBatch(
             path: '/compile/batch',
             batchSize: requests.length,
         });
-        
+
         const message = errorObj.message;
         await recordMetric(env, '/compile/batch', Date.now() - startTime, false, message);
         return JsonResponse.serverError(message);

@@ -56,7 +56,7 @@ export class ConsoleErrorReporter implements IErrorReporter {
     reportSync(error: Error, context?: ErrorContext): void {
         const formatted = ErrorUtils.format(error);
         console.error('[ErrorReporter]', formatted);
-        
+
         if (this.verbose && context) {
             console.error('[ErrorReporter] Context:', JSON.stringify(context, null, 2));
         }

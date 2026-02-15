@@ -3,13 +3,7 @@
  */
 
 import { assertEquals, assertExists, assertInstanceOf } from '@std/assert';
-import {
-    CloudflareErrorReporter,
-    CompositeErrorReporter,
-    ConsoleErrorReporter,
-    NoOpErrorReporter,
-    SentryErrorReporter,
-} from './ErrorReporter.ts';
+import { CloudflareErrorReporter, CompositeErrorReporter, ConsoleErrorReporter, NoOpErrorReporter, SentryErrorReporter } from './ErrorReporter.ts';
 import type { AnalyticsEngineDataset, ErrorContext } from './ErrorReporter.ts';
 
 // ============================================================================
