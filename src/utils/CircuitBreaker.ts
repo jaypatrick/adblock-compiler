@@ -53,14 +53,17 @@ export interface CircuitBreakerOptions {
  * Circuit breaker error thrown when the circuit is open
  */
 export class CircuitBreakerOpenError extends Error {
-    override readonly name = 'CircuitBreakerOpenError';
+    public override readonly name: string = 'CircuitBreakerOpenError';
 
     constructor(
         message: string,
         public readonly state: CircuitBreakerState,
-        public readonly circuitBreakerName?: string,
+        breakerName?: string,
     ) {
         super(message);
+        if (breakerName) {
+            this.message = `[${breakerName}] ${message}`;
+        }
     }
 }
 

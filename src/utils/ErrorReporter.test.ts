@@ -38,9 +38,9 @@ class MockFetch {
         options: RequestInit;
     }> = [];
 
-    async fetch(input: URL | RequestInfo, init?: RequestInit): Promise<Response> {
-        const url = input instanceof URL ? input.toString() : typeof input === 'string' ? input : input.url;
-        this.requests.push({ url, options: init ?? {} });
+    async fetch(input: URL | RequestInfo, options?: RequestInit): Promise<Response> {
+        const url = typeof input === 'string' ? input : input instanceof URL ? input.toString() : input.url;
+        this.requests.push({ url, options: options ?? {} });
         return new Response(JSON.stringify({ id: 'test-event-id' }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },
@@ -191,7 +191,7 @@ Deno.test('SentryErrorReporter - builds correct payload', async () => {
     const dsn = 'https://abc123@o123456.ingest.sentry.io/7890';
     const mockFetch = new MockFetch();
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.fetch.bind(mockFetch);
+    globalThis.fetch = mockFetch.fetch.bind(mockFetch) as typeof globalThis.fetch;
 
     const reporter = new SentryErrorReporter(dsn, {
         environment: 'test',
@@ -227,7 +227,7 @@ Deno.test('SentryErrorReporter - reportSync fires and forgets', () => {
     const dsn = 'https://abc123@o123456.ingest.sentry.io/7890';
     const mockFetch = new MockFetch();
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.fetch.bind(mockFetch);
+    globalThis.fetch = mockFetch.fetch.bind(mockFetch) as typeof globalThis.fetch;
 
     const reporter = new SentryErrorReporter(dsn);
     const error = new Error('Sync sentry error');
@@ -344,7 +344,7 @@ Deno.test('SentryErrorReporter - includes stack trace in payload', async () => {
     const dsn = 'https://abc123@o123456.ingest.sentry.io/7890';
     const mockFetch = new MockFetch();
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.fetch.bind(mockFetch);
+    globalThis.fetch = mockFetch.fetch.bind(mockFetch) as typeof globalThis.fetch;
 
     const reporter = new SentryErrorReporter(dsn);
     const error = new Error('Stack trace test');
