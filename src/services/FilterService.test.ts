@@ -95,7 +95,6 @@ Deno.test('FilterService.downloadAll - should propagate errors when download fai
         'Failed to download source',
     );
 });
-
 Deno.test('FilterService.prepareWildcards - should propagate errors when source download fails', async () => {
     const service = new FilterService();
 

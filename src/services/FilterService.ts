@@ -6,7 +6,6 @@ import { ErrorUtils, RuleUtils, Wildcard } from '../utils/index.ts';
  * Uses fully asynchronous operations for optimal performance.
  */
 export class FilterService {
-
     /**
      * Downloads all specified files and returns non-empty, non-comment lines.
      * Processes sources in parallel for optimal performance.

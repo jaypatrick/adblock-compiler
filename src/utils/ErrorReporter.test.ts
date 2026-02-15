@@ -191,7 +191,7 @@ Deno.test('SentryErrorReporter - builds correct payload', async () => {
     const dsn = 'https://abc123@o123456.ingest.sentry.io/7890';
     const mockFetch = new MockFetch();
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.fetch.bind(mockFetch);
+    globalThis.fetch = mockFetch.fetch.bind(mockFetch) as typeof globalThis.fetch;
 
     const reporter = new SentryErrorReporter(dsn, {
         environment: 'test',
@@ -227,7 +227,7 @@ Deno.test('SentryErrorReporter - reportSync fires and forgets', () => {
     const dsn = 'https://abc123@o123456.ingest.sentry.io/7890';
     const mockFetch = new MockFetch();
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.fetch.bind(mockFetch);
+    globalThis.fetch = mockFetch.fetch.bind(mockFetch) as typeof globalThis.fetch;
 
     const reporter = new SentryErrorReporter(dsn);
     const error = new Error('Sync sentry error');
@@ -344,7 +344,7 @@ Deno.test('SentryErrorReporter - includes stack trace in payload', async () => {
     const dsn = 'https://abc123@o123456.ingest.sentry.io/7890';
     const mockFetch = new MockFetch();
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch.fetch.bind(mockFetch);
+    globalThis.fetch = mockFetch.fetch.bind(mockFetch) as typeof globalThis.fetch;
 
     const reporter = new SentryErrorReporter(dsn);
     const error = new Error('Stack trace test');
