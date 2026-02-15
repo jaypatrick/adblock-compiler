@@ -97,7 +97,7 @@ export async function handleCompileJson(
 
         if (!validationResult.success) {
             const errors = validationResult.error.issues
-                .map((issue) => `${issue.path.join('/')}: ${issue.message}`)
+                .map((issue) => `/${issue.path.join('/')}: ${issue.message}`)
                 .join(', ');
             return JsonResponse.badRequest(`Invalid request body: ${errors}`);
         }
@@ -446,7 +446,7 @@ export async function handleCompileBatch(
 
         if (!validationResult.success) {
             const errors = validationResult.error.issues
-                .map((issue) => `${issue.path.join('/')}: ${issue.message}`)
+                .map((issue) => `/${issue.path.join('/')}: ${issue.message}`)
                 .join(', ');
             return JsonResponse.badRequest(`Invalid batch request: ${errors}`);
         }
@@ -630,7 +630,7 @@ export async function handleCompileBatchAsync(
 
         if (!validationResult.success) {
             const errors = validationResult.error.issues
-                .map((issue) => `${issue.path.join('/')}: ${issue.message}`)
+                .map((issue) => `/${issue.path.join('/')}: ${issue.message}`)
                 .join(', ');
             return JsonResponse.badRequest(`Invalid batch request: ${errors}`);
         }
