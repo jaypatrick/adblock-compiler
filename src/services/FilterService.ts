@@ -1,21 +1,11 @@
 import { FilterDownloader } from '../downloader/index.ts';
-import { ILogger } from '../types/index.ts';
-import { RuleUtils, Wildcard } from '../utils/index.ts';
+import { ErrorUtils, RuleUtils, Wildcard } from '../utils/index.ts';
 
 /**
  * Service for downloading and preparing filter wildcards.
  * Uses fully asynchronous operations for optimal performance.
  */
 export class FilterService {
-    private readonly logger: ILogger;
-
-    /**
-     * Creates a new FilterService
-     * @param logger - Logger instance for output
-     */
-    constructor(logger: ILogger) {
-        this.logger = logger;
-    }
 
     /**
      * Downloads all specified files and returns non-empty, non-comment lines.
@@ -23,6 +13,7 @@ export class FilterService {
      *
      * @param sources - Array of source URLs or paths
      * @returns Promise resolving to array of filtered rules
+     * @throws SourceError if any download fails
      */
     public async downloadAll(sources: readonly string[]): Promise<readonly string[]> {
         if (!sources?.length) {
@@ -40,8 +31,7 @@ export class FilterService {
                     );
                     return rulesStr.filter((el) => el.trim().length > 0 && !RuleUtils.isComment(el));
                 } catch (error) {
-                    this.logger.warn(`Failed to download source ${source}: ${error}`);
-                    return [];
+                    throw ErrorUtils.sourceDownloadError(source, ErrorUtils.toError(error));
                 }
             }),
         );
@@ -56,6 +46,7 @@ export class FilterService {
      * @param rules - Optional array of rule patterns
      * @param sources - Optional array of source URLs or paths
      * @returns Promise resolving to array of Wildcard objects
+     * @throws SourceError if any source download fails
      */
     public async prepareWildcards(
         rules?: readonly string[],
