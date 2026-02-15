@@ -205,12 +205,7 @@ export class FilterDownloader {
 
         // Use circuit breaker
         const breaker = this.getCircuitBreaker(url);
-        try {
-            return await breaker.execute(() => this.fetchUrlWithRetry(url));
-        } catch (error) {
-            // Re-throw the error if it's a circuit breaker error or network error
-            throw error;
-        }
+        return await breaker.execute(() => this.fetchUrlWithRetry(url));
     }
 
     /**
