@@ -9,8 +9,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added- Add circuit breaker pattern for unreliable source downloads
 
-
-
 ## [0.15.0] - 2026-02-13
 
 ### Added- Add OpenTelemetry integration for distributed tracing
