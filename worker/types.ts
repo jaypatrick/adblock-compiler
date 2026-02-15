@@ -120,6 +120,10 @@ export interface Env {
     HEALTH_MONITORING_WORKFLOW?: Workflow<HealthMonitoringParams>;
     // Analytics Engine binding (optional - for metrics tracking)
     ANALYTICS_ENGINE?: AnalyticsEngineDataset;
+    // Error reporting configuration
+    ERROR_REPORTER_TYPE?: string; // 'console', 'cloudflare', 'sentry', 'composite'
+    SENTRY_DSN?: string; // Sentry Data Source Name (required if using Sentry)
+    ERROR_REPORTER_VERBOSE?: string; // 'true' or 'false' for verbose console logging
 }
 
 // ============================================================================

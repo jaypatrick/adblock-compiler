@@ -14,6 +14,8 @@
 import type { Env } from './types.ts';
 import { VERSION } from '../src/version.ts';
 import { JsonResponse } from './utils/response.ts';
+import { createWorkerErrorReporter } from './utils/errorReporter.ts';
+import { ErrorUtils } from '../src/utils/ErrorUtils.ts';
 import { checkRateLimit, validateRequestSize, verifyAdminAuth, verifyTurnstileToken } from './middleware/index.ts';
 import { handleASTParseRequest, handleCompileAsync, handleCompileBatch, handleCompileBatchAsync, handleCompileJson, handleCompileStream } from './handlers/compile.ts';
 import { handleMetrics, recordMetric } from './handlers/metrics.ts';
@@ -351,7 +353,17 @@ export async function handleRequest(
         return response;
     } catch (error) {
         const duration = performance.now() - startTime;
-        const message = error instanceof Error ? error.message : String(error);
+        const errorObj = ErrorUtils.toError(error);
+        const message = errorObj.message;
+
+        // Report error to centralized error reporting
+        const errorReporter = createWorkerErrorReporter(env);
+        errorReporter.reportSync(errorObj, {
+            requestId,
+            ip,
+            path: pathname,
+            method: request.method,
+        });
 
         await recordMetric(env, pathname, duration, false, message);
 
