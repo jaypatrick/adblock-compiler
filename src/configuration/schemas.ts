@@ -66,11 +66,49 @@ export const CompileRequestSchema = z.object({
 export const BatchRequestSchema = z.object({
     requests: z.array(
         z.object({
-            id: z.string(),
+            id: z.string().min(1, 'id is required and must be a non-empty string'),
             configuration: ConfigurationSchema,
             preFetchedContent: z.record(z.string(), z.string()).optional(),
             benchmark: z.boolean().optional(),
         }),
-    ),
+    ).nonempty('requests array must not be empty'),
     priority: z.enum(['standard', 'high']).optional(),
-});
+}).refine(
+    (data) => {
+        // Check for duplicate IDs
+        const ids = new Set<string>();
+        for (const req of data.requests) {
+            if (ids.has(req.id)) {
+                return false;
+            }
+            ids.add(req.id);
+        }
+        return true;
+    },
+    {
+        message: 'Duplicate request IDs are not allowed',
+        path: ['requests'],
+    },
+);
+
+/**
+ * Schema for sync batch requests (max 10 items)
+ */
+export const BatchRequestSyncSchema = BatchRequestSchema.refine(
+    (data) => data.requests.length <= 10,
+    {
+        message: 'Batch request limited to 10 requests maximum',
+        path: ['requests'],
+    },
+);
+
+/**
+ * Schema for async batch requests (max 100 items)
+ */
+export const BatchRequestAsyncSchema = BatchRequestSchema.refine(
+    (data) => data.requests.length <= 100,
+    {
+        message: 'Batch request limited to 100 requests maximum',
+        path: ['requests'],
+    },
+);
