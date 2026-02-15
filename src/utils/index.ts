@@ -70,6 +70,10 @@ export {
     ValidationError,
 } from './ErrorUtils.ts';
 
+// Error reporting
+export { CloudflareErrorReporter, CompositeErrorReporter, ConsoleErrorReporter, NoOpErrorReporter, SentryErrorReporter } from './ErrorReporter.ts';
+export type { AnalyticsEngineDataset, ErrorContext, IErrorReporter } from './ErrorReporter.ts';
+
 // Path utilities
 export { PathUtils } from './PathUtils.ts';
 

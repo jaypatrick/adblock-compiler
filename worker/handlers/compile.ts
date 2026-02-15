@@ -7,6 +7,8 @@ import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
 import { createTracingContext, type ICompilerEvents, WorkerCompiler } from '../../src/index.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import { generateRequestId, JsonResponse } from '../utils/index.ts';
+import { createWorkerErrorReporter } from '../utils/errorReporter.ts';
+import { ErrorUtils } from '../../src/utils/ErrorUtils.ts';
 import { recordMetric } from './metrics.ts';
 import { compress, decompress, emitDiagnosticsToTailWorker, getCacheKey, QUEUE_BINDINGS_NOT_AVAILABLE_ERROR, updateQueueStats } from './queue.ts';
 import type { BatchRequest, CompilationResult, CompileQueueMessage, CompileRequest, Env, PreviousVersion, Priority } from '../types.ts';
@@ -210,7 +212,18 @@ export async function handleCompileJson(
 
             return response;
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
+            const errorObj = ErrorUtils.toError(error);
+
+            // Report compilation errors to centralized error reporting
+            const errorReporter = createWorkerErrorReporter(env);
+            errorReporter.reportSync(errorObj, {
+                requestId,
+                path: '/compile',
+                configName: configuration.name,
+                sourceCount: configuration.sources?.length,
+            });
+
+            const message = errorObj.message;
             return { success: false, error: message };
         } finally {
             if (cacheKey) {
@@ -536,7 +549,17 @@ export async function handleCompileBatch(
 
         return JsonResponse.success({ results });
     } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
+        const errorObj = ErrorUtils.toError(error);
+
+        // Report batch compilation errors to centralized error reporting
+        const errorReporter = createWorkerErrorReporter(env);
+        errorReporter.reportSync(errorObj, {
+            requestId: params.requestId,
+            path: '/compile/batch',
+            batchSize: requests.length,
+        });
+
+        const message = errorObj.message;
         await recordMetric(env, '/compile/batch', Date.now() - startTime, false, message);
         return JsonResponse.serverError(message);
     }
