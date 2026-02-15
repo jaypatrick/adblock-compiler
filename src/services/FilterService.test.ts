@@ -107,4 +107,3 @@ Deno.test('FilterService.prepareWildcards - should propagate errors when source 
         'Failed to download source',
     );
 });
-
