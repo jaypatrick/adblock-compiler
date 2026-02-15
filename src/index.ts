@@ -31,6 +31,16 @@ export type { LoggerOptions, ModuleOverrides } from './utils/index.ts';
 // Error utilities
 export { BaseError, CompilationError, ErrorUtils, NetworkError, SourceError, ValidationError } from './utils/index.ts';
 
+// Error reporting
+export {
+    CloudflareErrorReporter,
+    CompositeErrorReporter,
+    ConsoleErrorReporter,
+    NoOpErrorReporter,
+    SentryErrorReporter,
+} from './utils/index.ts';
+export type { AnalyticsEngineDataPoint, AnalyticsEngineDataset, ErrorContext, IErrorReporter } from './utils/index.ts';
+
 // Boolean expression parser
 export { evaluateBooleanExpression, getKnownPlatforms, isKnownPlatform } from './utils/index.ts';
 
