@@ -1125,6 +1125,7 @@ reporter.report(new Error('Compilation failed'), {
 ```
 
 **Analytics Engine Data Structure:**
+
 - `doubles[0]`: Timestamp (ms since epoch)
 - `doubles[1]`: HTTP status code (if applicable)
 - `blobs[0]`: Request ID
@@ -1152,6 +1153,7 @@ reporter.report(new Error('Test error'), {
 ```
 
 **Options:**
+
 - `verbose`: Include full stack traces (default: `true`)
 
 #### SentryErrorReporter
@@ -1173,6 +1175,7 @@ reporter.report(new Error('Database error'), {
 ```
 
 **Options:**
+
 - `environment`: Environment name (production, staging, etc.)
 - `release`: Release version for tracking
 
@@ -1181,12 +1184,7 @@ reporter.report(new Error('Database error'), {
 Combines multiple error reporters to send errors to multiple backends simultaneously.
 
 ```typescript
-import {
-    CompositeErrorReporter,
-    ConsoleErrorReporter,
-    CloudflareErrorReporter,
-    SentryErrorReporter,
-} from '@jk-com/adblock-compiler';
+import { CloudflareErrorReporter, CompositeErrorReporter, ConsoleErrorReporter, SentryErrorReporter } from '@jk-com/adblock-compiler';
 
 const reporter = new CompositeErrorReporter([
     new ConsoleErrorReporter({ verbose: true }),
@@ -1217,8 +1215,8 @@ export default {
             });
             return new Response('Internal Server Error', { status: 500 });
         }
-    }
-}
+    },
+};
 ```
 
 ### Environment Configuration
@@ -1306,6 +1304,7 @@ query {
 ```
 
 📚 **Related Documentation:**
+
 - [Cloudflare Analytics Engine](https://developers.cloudflare.com/analytics/analytics-engine/)
 - [Sentry for Cloudflare Workers](https://docs.sentry.io/platforms/javascript/guides/cloudflare/)
 - [Error Utilities](src/utils/ErrorUtils.ts) - Custom error types and utilities

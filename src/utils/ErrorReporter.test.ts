@@ -6,8 +6,8 @@
 
 import { assertEquals, assertExists } from '@std/assert';
 import {
-    AnalyticsEngineDataset,
     AnalyticsEngineDataPoint,
+    AnalyticsEngineDataset,
     CloudflareErrorReporter,
     CompositeErrorReporter,
     ConsoleErrorReporter,
@@ -40,7 +40,7 @@ class MockAnalyticsEngine implements AnalyticsEngineDataset {
 /**
  * Mock console for testing console output
  */
-class MockConsole {
+class _MockConsole {
     public errors: Array<{ message: string; context?: ErrorContext }> = [];
 
     error(message: string, context?: ErrorContext): void {
@@ -272,7 +272,7 @@ Deno.test('SentryErrorReporter - should use custom environment and release', () 
 });
 
 Deno.test('SentryErrorReporter - should handle fetch errors gracefully', () => {
-    const { errors } = captureConsoleErrors(() => {
+    const { errors: _errors } = captureConsoleErrors(() => {
         // Override fetch to throw
         const originalFetch = globalThis.fetch;
         globalThis.fetch = () => Promise.reject(new Error('Network error'));
