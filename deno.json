@@ -63,7 +63,8 @@
         "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.3.0",
         "@prisma/client": "npm:@prisma/client@^7.3.0",
         "prisma": "npm:prisma@^7.3.0",
-        "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0"
+        "@opentelemetry/api": "npm:@opentelemetry/api@^1.9.0",
+        "zod": "npm:zod@^4.3.6"
     },
     "lint": {
         "rules": {
