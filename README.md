@@ -1081,6 +1081,235 @@ Traces include:
 
 📚 **[OpenTelemetry Example](examples/opentelemetry-example.ts)** - Complete example with manual instrumentation
 
+## Error Reporting
+
+The adblock-compiler provides centralized error reporting for production monitoring. Errors can be reported to multiple backends including Cloudflare Analytics Engine, Sentry, or console logging.
+
+### Error Reporter Interface
+
+All error reporters implement the `IErrorReporter` interface:
+
+```typescript
+interface IErrorReporter {
+    report(error: Error, context?: ErrorContext): void;
+}
+
+interface ErrorContext {
+    requestId?: string;
+    configName?: string;
+    source?: string;
+    transformation?: string;
+    statusCode?: number;
+    userId?: string;
+    environment?: string;
+    [key: string]: unknown;
+}
+```
+
+### Available Implementations
+
+#### CloudflareErrorReporter
+
+Reports errors to Cloudflare Analytics Engine for aggregation and analysis. **Recommended for production Cloudflare Workers deployments**.
+
+```typescript
+import { CloudflareErrorReporter } from '@jk-com/adblock-compiler';
+
+const reporter = new CloudflareErrorReporter(env.ANALYTICS_ENGINE);
+
+reporter.report(new Error('Compilation failed'), {
+    requestId: '123',
+    configName: 'my-config',
+    statusCode: 500,
+});
+```
+
+**Analytics Engine Data Structure:**
+- `doubles[0]`: Timestamp (ms since epoch)
+- `doubles[1]`: HTTP status code (if applicable)
+- `blobs[0]`: Request ID
+- `blobs[1]`: Error name (e.g., 'NetworkError', 'CompilationError')
+- `blobs[2]`: Error message (truncated to 256 chars)
+- `blobs[3]`: Config/Source name
+- `blobs[4]`: Transformation name
+- `blobs[5]`: Environment (production, staging, etc.)
+- `blobs[6]`: Error code (from custom error types)
+- `blobs[7]`: User ID
+
+#### ConsoleErrorReporter
+
+Logs errors to the console with formatted output. **Recommended for development and debugging**.
+
+```typescript
+import { ConsoleErrorReporter } from '@jk-com/adblock-compiler';
+
+const reporter = new ConsoleErrorReporter({ verbose: true });
+
+reporter.report(new Error('Test error'), {
+    requestId: '456',
+    configName: 'test-config',
+});
+```
+
+**Options:**
+- `verbose`: Include full stack traces (default: `true`)
+
+#### SentryErrorReporter
+
+Reports errors to Sentry for rich error tracking with stack traces and user context.
+
+```typescript
+import { SentryErrorReporter } from '@jk-com/adblock-compiler';
+
+const reporter = new SentryErrorReporter('https://public@sentry.io/project-id', {
+    environment: 'production',
+    release: '1.0.0',
+});
+
+reporter.report(new Error('Database error'), {
+    requestId: '789',
+    userId: 'user-123',
+});
+```
+
+**Options:**
+- `environment`: Environment name (production, staging, etc.)
+- `release`: Release version for tracking
+
+#### CompositeErrorReporter
+
+Combines multiple error reporters to send errors to multiple backends simultaneously.
+
+```typescript
+import {
+    CompositeErrorReporter,
+    ConsoleErrorReporter,
+    CloudflareErrorReporter,
+    SentryErrorReporter,
+} from '@jk-com/adblock-compiler';
+
+const reporter = new CompositeErrorReporter([
+    new ConsoleErrorReporter({ verbose: true }),
+    new CloudflareErrorReporter(env.ANALYTICS_ENGINE),
+    new SentryErrorReporter(env.SENTRY_DSN),
+]);
+
+reporter.report(error, context); // Reports to all three backends
+```
+
+### Cloudflare Worker Integration
+
+For Cloudflare Workers, use the factory functions to automatically configure error reporters based on environment variables:
+
+```typescript
+import { createWorkerErrorReporter } from '@jk-com/adblock-compiler/worker/utils';
+
+export default {
+    async fetch(request: Request, env: Env): Promise<Response> {
+        const errorReporter = createWorkerErrorReporter(env);
+
+        try {
+            // Your worker code here
+        } catch (error) {
+            errorReporter.report(error as Error, {
+                requestId: crypto.randomUUID(),
+                environment: 'production',
+            });
+            return new Response('Internal Server Error', { status: 500 });
+        }
+    }
+}
+```
+
+### Environment Configuration
+
+Configure error reporting via environment variables in your `wrangler.toml`:
+
+```toml
+[vars]
+# Error reporter type: 'console' | 'cloudflare' | 'sentry' | 'composite' | 'none'
+ERROR_REPORTER_TYPE = "cloudflare"
+
+# Verbose console output (for ConsoleErrorReporter)
+ERROR_REPORTER_VERBOSE = "true"
+
+# Sentry DSN (required if ERROR_REPORTER_TYPE is 'sentry' or 'composite')
+SENTRY_DSN = "https://public@sentry.io/project-id"
+```
+
+**Supported ERROR_REPORTER_TYPE values:**
+
+- `console`: Console-based error logging (development)
+- `cloudflare`: Cloudflare Analytics Engine (production default if ANALYTICS_ENGINE available)
+- `sentry`: Sentry error tracking (requires SENTRY_DSN)
+- `composite`: Multiple reporters (console + cloudflare + sentry if configured)
+- `none` or `disabled`: No error reporting
+- undefined: Auto-detect (uses Analytics Engine if available, else console)
+
+### Best Practices
+
+1. **Use Analytics Engine for Production**: Cloudflare Analytics Engine provides unlimited-cardinality analytics without performance impact.
+
+2. **Add Rich Context**: Include request IDs, config names, and other relevant metadata:
+   ```typescript
+   errorReporter.report(error, {
+       requestId,
+       configName: config.name,
+       source: sourceUrl,
+       transformation: 'Deduplicate',
+       environment: 'production',
+   });
+   ```
+
+3. **Combine Console + Analytics in Development**: Use composite reporter for local debugging with production-like monitoring:
+   ```typescript
+   const reporter = new CompositeErrorReporter([
+       new ConsoleErrorReporter({ verbose: true }),
+       new CloudflareErrorReporter(env.ANALYTICS_ENGINE),
+   ]);
+   ```
+
+4. **Don't Report Twice**: The router in `worker/router.ts` already has global error handling. Only add error reporting in catch blocks for specific error handling needs.
+
+5. **Use Custom Error Types**: Leverage built-in error types (CompilationError, NetworkError, etc.) for automatic error code tracking:
+   ```typescript
+   import { NetworkError } from '@jk-com/adblock-compiler';
+
+   throw new NetworkError('Fetch failed', url, 500);
+   // Error code 'NETWORK_ERROR' automatically included in reports
+   ```
+
+### Querying Analytics Engine Data
+
+Query error data using Cloudflare's GraphQL API:
+
+```graphql
+query {
+  viewer {
+    accounts(filter: { accountTag: "YOUR_ACCOUNT_ID" }) {
+      analyticsDataset: analyticsEngineWriteDataset(
+        filter: { index: "error_report" }
+        limit: 100
+        orderBy: [timestamp_DESC]
+      ) {
+        timestamp: double1    # Error timestamp
+        statusCode: double2   # HTTP status code
+        requestId: blob1      # Request ID
+        errorName: blob2      # Error name
+        errorMessage: blob3   # Error message
+        configName: blob4     # Config/source name
+        environment: blob6    # Environment
+      }
+    }
+  }
+}
+```
+
+📚 **Related Documentation:**
+- [Cloudflare Analytics Engine](https://developers.cloudflare.com/analytics/analytics-engine/)
+- [Sentry for Cloudflare Workers](https://docs.sentry.io/platforms/javascript/guides/cloudflare/)
+- [Error Utilities](src/utils/ErrorUtils.ts) - Custom error types and utilities
+
 ## <a name="development"></a> Development
 
 ### Prerequisites

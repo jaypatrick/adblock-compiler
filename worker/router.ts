@@ -27,6 +27,8 @@ import {
     handleAdminStorageStats,
     handleAdminVacuum,
 } from './handlers/admin.ts';
+import { createWorkerErrorReporter } from './utils/errorReporter.ts';
+import type { IErrorReporter } from '../src/utils/ErrorReporter.ts';
 
 // Re-export Env type for external use
 export type { Env };
@@ -277,6 +279,14 @@ export async function handleRequest(
     const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
     const requestId = generateRequestId('api');
 
+    // Initialize error reporter for this request
+    let errorReporter: IErrorReporter | undefined;
+    try {
+        errorReporter = createWorkerErrorReporter(env);
+    } catch (reporterError) {
+        console.error('Failed to initialize error reporter:', reporterError);
+    }
+
     // Handle CORS preflight
     if (request.method === 'OPTIONS') {
         return handleCors();
@@ -351,7 +361,22 @@ export async function handleRequest(
         return response;
     } catch (error) {
         const duration = performance.now() - startTime;
-        const message = error instanceof Error ? error.message : String(error);
+        const errorObj = error instanceof Error ? error : new Error(String(error));
+        const message = errorObj.message;
+
+        // Report error to centralized error reporting
+        if (errorReporter) {
+            try {
+                errorReporter.report(errorObj, {
+                    requestId,
+                    source: pathname,
+                    statusCode: 500,
+                    environment: 'production',
+                });
+            } catch (reportError) {
+                console.error('Failed to report error:', reportError);
+            }
+        }
 
         await recordMetric(env, pathname, duration, false, message);
 
