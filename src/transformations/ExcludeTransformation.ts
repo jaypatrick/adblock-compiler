@@ -20,7 +20,7 @@ export class ExcludeTransformation extends AsyncTransformation {
      */
     constructor(logger?: ILogger) {
         super(logger);
-        this.filterService = new FilterService(this.logger);
+        this.filterService = new FilterService();
     }
 
     /**

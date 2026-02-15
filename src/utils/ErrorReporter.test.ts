@@ -38,8 +38,9 @@ class MockFetch {
         options: RequestInit;
     }> = [];
 
-    async fetch(url: string, options: RequestInit): Promise<Response> {
-        this.requests.push({ url, options });
+    async fetch(input: URL | RequestInfo, init?: RequestInit): Promise<Response> {
+        const url = input instanceof URL ? input.toString() : typeof input === 'string' ? input : input.url;
+        this.requests.push({ url, options: init ?? {} });
         return new Response(JSON.stringify({ id: 'test-event-id' }), {
             status: 200,
             headers: { 'Content-Type': 'application/json' },

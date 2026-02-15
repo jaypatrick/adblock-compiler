@@ -161,7 +161,7 @@ export class SentryErrorReporter implements IErrorReporter {
         if (!error.stack) return undefined;
 
         const lines = error.stack.split('\n');
-        const frames = lines
+        const frames: Array<Record<string, unknown>> = lines
             .slice(1) // Skip first line (error message)
             .map((line) => {
                 // Parse stack trace line (format varies by runtime)
@@ -174,7 +174,7 @@ export class SentryErrorReporter implements IErrorReporter {
                     function: func || 'anonymous',
                     lineno: parseInt(lineNo, 10),
                     colno: parseInt(colNo, 10),
-                };
+                } as Record<string, unknown>;
             })
             .filter((frame): frame is Record<string, unknown> => frame !== null);
 
