@@ -1,5 +1,6 @@
-import { assertEquals, assertExists } from '@std/assert';
+import { assertEquals, assertExists, assertRejects } from '@std/assert';
 import { FilterService } from './FilterService.ts';
+import { SourceError } from '../utils/index.ts';
 
 const mockLogger = {
     info: () => {},
@@ -89,3 +90,30 @@ Deno.test('FilterService.prepareWildcards - wildcards should match correctly', a
     assertEquals(result[1].test('tracking.example.com'), true);
     assertEquals(result[1].test('safe.example.com'), false);
 });
+
+Deno.test('FilterService.downloadAll - should propagate errors when download fails', async () => {
+    const service = new FilterService(mockLogger);
+
+    // Use an invalid URL that will fail to download
+    await assertRejects(
+        async () => {
+            await service.downloadAll(['https://invalid-url-that-does-not-exist-12345.com/filter.txt']);
+        },
+        SourceError,
+        'Failed to download source',
+    );
+});
+
+Deno.test('FilterService.prepareWildcards - should propagate errors when source download fails', async () => {
+    const service = new FilterService(mockLogger);
+
+    // Use an invalid URL that will fail to download
+    await assertRejects(
+        async () => {
+            await service.prepareWildcards(['*valid*'], ['https://invalid-url-that-does-not-exist-12345.com/filter.txt']);
+        },
+        SourceError,
+        'Failed to download source',
+    );
+});
+
