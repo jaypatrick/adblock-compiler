@@ -554,9 +554,8 @@ export async function handleCompileBatch(
         // Report batch compilation errors to centralized error reporting
         const errorReporter = createWorkerErrorReporter(env);
         errorReporter.reportSync(errorObj, {
-            requestId: params.requestId,
+            requestId: crypto.randomUUID(),
             path: '/compile/batch',
-            batchSize: requests.length,
         });
 
         const message = errorObj.message;

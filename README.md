@@ -1096,12 +1096,7 @@ The adblock-compiler provides centralized error reporting for production monitor
 #### Basic Usage
 
 ```typescript
-import {
-    ConsoleErrorReporter,
-    CloudflareErrorReporter,
-    SentryErrorReporter,
-    CompositeErrorReporter,
-} from '@jk-com/adblock-compiler';
+import { CloudflareErrorReporter, CompositeErrorReporter, ConsoleErrorReporter, SentryErrorReporter } from '@jk-com/adblock-compiler';
 
 // Console reporter (development)
 const consoleReporter = new ConsoleErrorReporter(true /* verbose */);
