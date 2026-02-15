@@ -160,10 +160,17 @@ export class SentryErrorReporter implements IErrorReporter {
     private parseStackTrace(error: Error): { frames: Array<Record<string, unknown>> } | undefined {
         if (!error.stack) return undefined;
 
+        type StackFrame = {
+            filename: string;
+            function: string;
+            lineno: number;
+            colno: number;
+        };
+
         const lines = error.stack.split('\n');
-        const frames: Array<Record<string, unknown>> = lines
+        const frames: StackFrame[] = lines
             .slice(1) // Skip first line (error message)
-            .map((line) => {
+            .map((line): StackFrame | null => {
                 // Parse stack trace line (format varies by runtime)
                 const match = line.match(/at\s+(?:(.+?)\s+\()?(.+?):(\d+):(\d+)\)?/);
                 if (!match) return null;
@@ -176,7 +183,7 @@ export class SentryErrorReporter implements IErrorReporter {
                     colno: parseInt(colNo, 10),
                 } as Record<string, unknown>;
             })
-            .filter((frame): frame is Record<string, unknown> => frame !== null);
+            .filter((frame): frame is StackFrame => frame !== null);
 
         return { frames: frames.reverse() }; // Sentry wants oldest first
     }

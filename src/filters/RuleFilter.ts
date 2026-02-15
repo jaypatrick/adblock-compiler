@@ -20,10 +20,10 @@ export class RuleFilter {
 
     /**
      * Applies exclusion patterns to filter out unwanted rules.
+     * If source download fails, logs a warning and returns original rules unchanged.
      * @param rules - Array of rules to filter
      * @param filterable - Configuration containing exclusion patterns
-     * @returns Filtered array of rules
-     * @throws Error if wildcard preparation fails
+     * @returns Filtered array of rules, or original rules if preparation fails
      */
     public async applyExclusions(
         rules: string[],
@@ -59,19 +59,18 @@ export class RuleFilter {
 
             return filtered;
         } catch (error) {
-            this.logger.error(`Failed to apply exclusions: ${error instanceof Error ? error.message : String(error)}`);
-            throw new Error(
-                `Rule exclusion failed: ${error instanceof Error ? error.message : String(error)}`,
-            );
+            // Log warning and return original rules when source download fails
+            this.logger.warn(`Failed to apply exclusions: ${error instanceof Error ? error.message : String(error)}`);
+            return rules;
         }
     }
 
     /**
      * Applies inclusion patterns to keep only matching rules.
+     * If source download fails, logs a warning and returns original rules unchanged.
      * @param rules - Array of rules to filter
      * @param filterable - Configuration containing inclusion patterns
-     * @returns Filtered array of rules
-     * @throws Error if wildcard preparation fails
+     * @returns Filtered array of rules, or original rules if preparation fails
      */
     public async applyInclusions(
         rules: string[],
@@ -105,10 +104,9 @@ export class RuleFilter {
 
             return filtered;
         } catch (error) {
-            this.logger.error(`Failed to apply inclusions: ${error instanceof Error ? error.message : String(error)}`);
-            throw new Error(
-                `Rule inclusion failed: ${error instanceof Error ? error.message : String(error)}`,
-            );
+            // Log warning and return original rules when source download fails
+            this.logger.warn(`Failed to apply inclusions: ${error instanceof Error ? error.message : String(error)}`);
+            return rules;
         }
     }
 
