@@ -95,7 +95,7 @@ export class TransformationPipeline {
     constructor(registry?: TransformationRegistry, logger?: ILogger, eventEmitter?: CompilerEventEmitter) {
         this.logger = logger || defaultLogger;
         this.registry = registry || new TransformationRegistry(this.logger);
-        this.filterService = new FilterService(this.logger);
+        this.filterService = new FilterService();
         this.eventEmitter = eventEmitter || createEventEmitter();
     }
 

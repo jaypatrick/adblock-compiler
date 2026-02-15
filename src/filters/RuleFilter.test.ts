@@ -17,7 +17,7 @@ function createFilterable(overrides: Partial<IFilterable> = {}): IFilterable {
 
 Deno.test('RuleFilter - applyExclusions', async (t) => {
     await t.step('should return rules unchanged when no exclusions', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = ['||example.com^', '||test.com^', '||domain.org^'];
         const filterable = createFilterable({});
@@ -28,7 +28,7 @@ Deno.test('RuleFilter - applyExclusions', async (t) => {
     });
 
     await t.step('should return rules unchanged when empty exclusions array', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = ['||example.com^', '||test.com^'];
         const filterable = createFilterable({ exclusions: [] });
@@ -39,7 +39,7 @@ Deno.test('RuleFilter - applyExclusions', async (t) => {
     });
 
     await t.step('should exclude rules matching plain string pattern', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = [
             '||example.com^',
@@ -59,7 +59,7 @@ Deno.test('RuleFilter - applyExclusions', async (t) => {
     });
 
     await t.step('should exclude rules matching wildcard pattern', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = [
             '||example.com^',
@@ -77,7 +77,7 @@ Deno.test('RuleFilter - applyExclusions', async (t) => {
     });
 
     await t.step('should exclude rules matching multiple patterns', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = [
             '||example.com^',
@@ -102,7 +102,7 @@ Deno.test('RuleFilter - applyExclusions', async (t) => {
         await Deno.writeTextFile(exclusionsFile, 'example.com\ntest.com\n');
 
         try {
-            const filterService = new FilterService(silentLogger);
+            const filterService = new FilterService();
             const ruleFilter = new RuleFilter(filterService, silentLogger);
             const rules = [
                 '||example.com^',
@@ -129,7 +129,7 @@ Deno.test('RuleFilter - applyExclusions', async (t) => {
         await Deno.writeTextFile(exclusionsFile, 'test.com\n');
 
         try {
-            const filterService = new FilterService(silentLogger);
+            const filterService = new FilterService();
             const ruleFilter = new RuleFilter(filterService, silentLogger);
             const rules = [
                 '||example.com^',
@@ -152,7 +152,7 @@ Deno.test('RuleFilter - applyExclusions', async (t) => {
     });
 
     await t.step('should handle invalid exclusions_sources gracefully', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = ['||example.com^'];
         const filterable = createFilterable({
@@ -168,7 +168,7 @@ Deno.test('RuleFilter - applyExclusions', async (t) => {
 
 Deno.test('RuleFilter - applyInclusions', async (t) => {
     await t.step('should return rules unchanged when no inclusions', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = ['||example.com^', '||test.com^', '||domain.org^'];
         const filterable = createFilterable({});
@@ -179,7 +179,7 @@ Deno.test('RuleFilter - applyInclusions', async (t) => {
     });
 
     await t.step('should return rules unchanged when empty inclusions array', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = ['||example.com^', '||test.com^'];
         const filterable = createFilterable({ inclusions: [] });
@@ -190,7 +190,7 @@ Deno.test('RuleFilter - applyInclusions', async (t) => {
     });
 
     await t.step('should include only rules matching plain string pattern', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = [
             '||example.com^',
@@ -208,7 +208,7 @@ Deno.test('RuleFilter - applyInclusions', async (t) => {
     });
 
     await t.step('should include only rules matching wildcard pattern', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = [
             '||example.com^',
@@ -227,7 +227,7 @@ Deno.test('RuleFilter - applyInclusions', async (t) => {
     });
 
     await t.step('should include rules matching multiple patterns', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = [
             '||example.com^',
@@ -252,7 +252,7 @@ Deno.test('RuleFilter - applyInclusions', async (t) => {
         await Deno.writeTextFile(inclusionsFile, 'example.com\ntest.com\n');
 
         try {
-            const filterService = new FilterService(silentLogger);
+            const filterService = new FilterService();
             const ruleFilter = new RuleFilter(filterService, silentLogger);
             const rules = [
                 '||example.com^',
@@ -280,7 +280,7 @@ Deno.test('RuleFilter - applyInclusions', async (t) => {
         await Deno.writeTextFile(inclusionsFile, 'test.com\n');
 
         try {
-            const filterService = new FilterService(silentLogger);
+            const filterService = new FilterService();
             const ruleFilter = new RuleFilter(filterService, silentLogger);
             const rules = [
                 '||example.com^',
@@ -304,7 +304,7 @@ Deno.test('RuleFilter - applyInclusions', async (t) => {
     });
 
     await t.step('should handle invalid inclusions_sources gracefully', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = ['||example.com^'];
         const filterable = createFilterable({
@@ -320,7 +320,7 @@ Deno.test('RuleFilter - applyInclusions', async (t) => {
 
 Deno.test('RuleFilter - pattern optimization', async (t) => {
     await t.step('should efficiently handle plain string patterns', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = Array.from({ length: 1000 }, (_, i) => `||example${i}.com^`);
         const filterable = createFilterable({
@@ -334,7 +334,7 @@ Deno.test('RuleFilter - pattern optimization', async (t) => {
     });
 
     await t.step('should efficiently handle regex patterns', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = [
             '||example.com^',
@@ -353,7 +353,7 @@ Deno.test('RuleFilter - pattern optimization', async (t) => {
     });
 
     await t.step('should handle mixed plain and regex patterns', async () => {
-        const filterService = new FilterService(silentLogger);
+        const filterService = new FilterService();
         const ruleFilter = new RuleFilter(filterService, silentLogger);
         const rules = [
             '||example.com^',
