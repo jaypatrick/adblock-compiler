@@ -12,7 +12,7 @@
 import type { ILogger } from '../types/index.ts';
 import { silentLogger } from '../utils/logger.ts';
 import { evaluateBooleanExpression } from '../utils/BooleanExpressionParser.ts';
-import { ErrorUtils, FileSystemError, NetworkError, PathUtils } from '../utils/index.ts';
+import { CircuitBreaker, ErrorUtils, FileSystemError, NetworkError, PathUtils } from '../utils/index.ts';
 import { NETWORK_DEFAULTS, PREPROCESSOR_DEFAULTS } from '../config/defaults.ts';
 import { USER_AGENT } from '../version.ts';
 
@@ -34,6 +34,12 @@ export interface DownloaderOptions {
     maxRetries?: number;
     /** Base delay for exponential backoff (milliseconds) */
     retryDelay?: number;
+    /** Enable circuit breaker per URL (default: true) */
+    enableCircuitBreaker?: boolean;
+    /** Circuit breaker failure threshold (default: 5) */
+    circuitBreakerThreshold?: number;
+    /** Circuit breaker timeout in milliseconds (default: 60000) */
+    circuitBreakerTimeout?: number;
 }
 
 /**
@@ -47,6 +53,9 @@ const DEFAULT_OPTIONS: Required<DownloaderOptions> = {
     maxIncludeDepth: PREPROCESSOR_DEFAULTS.MAX_INCLUDE_DEPTH,
     maxRetries: NETWORK_DEFAULTS.MAX_RETRIES,
     retryDelay: NETWORK_DEFAULTS.RETRY_DELAY_MS,
+    enableCircuitBreaker: true,
+    circuitBreakerThreshold: 5,
+    circuitBreakerTimeout: 60000,
 };
 
 /**
@@ -84,6 +93,7 @@ export class FilterDownloader {
     private readonly options: Required<DownloaderOptions>;
     private readonly logger: ILogger;
     private readonly visitedUrls: Set<string> = new Set();
+    private readonly circuitBreakers: Map<string, CircuitBreaker> = new Map();
 
     /**
      * Creates a new FilterDownloader
@@ -103,6 +113,38 @@ export class FilterDownloader {
     async download(source: string): Promise<string[]> {
         this.visitedUrls.clear();
         return this.downloadInternal(source, 0);
+    }
+
+    /**
+     * Gets or creates a circuit breaker for a URL
+     */
+    private getCircuitBreaker(url: string): CircuitBreaker {
+        if (!this.circuitBreakers.has(url)) {
+            const breaker = new CircuitBreaker({
+                failureThreshold: this.options.circuitBreakerThreshold,
+                timeout: this.options.circuitBreakerTimeout,
+                logger: this.logger,
+                name: `FilterDownloader:${url}`,
+            });
+            this.circuitBreakers.set(url, breaker);
+        }
+        return this.circuitBreakers.get(url)!;
+    }
+
+    /**
+     * Gets circuit breaker statistics for monitoring
+     */
+    getCircuitBreakerStats(): Map<string, { state: string; failures: number; lastFailure?: Date }> {
+        const stats = new Map();
+        for (const [url, breaker] of this.circuitBreakers.entries()) {
+            const breakerStats = breaker.getStats();
+            stats.set(url, {
+                state: breakerStats.state,
+                failures: breakerStats.failureCount,
+                lastFailure: breakerStats.lastFailureTime,
+            });
+        }
+        return stats;
     }
 
     /**
@@ -156,6 +198,25 @@ export class FilterDownloader {
      * Fetches content from a URL with retry logic and circuit breaker
      */
     private async fetchUrl(url: string): Promise<string> {
+        // Check if circuit breaker is enabled
+        if (!this.options.enableCircuitBreaker) {
+            return this.fetchUrlWithRetry(url);
+        }
+
+        // Use circuit breaker
+        const breaker = this.getCircuitBreaker(url);
+        try {
+            return await breaker.execute(() => this.fetchUrlWithRetry(url));
+        } catch (error) {
+            // Re-throw the error if it's a circuit breaker error or network error
+            throw error;
+        }
+    }
+
+    /**
+     * Fetches content from a URL with retry logic (internal)
+     */
+    private async fetchUrlWithRetry(url: string): Promise<string> {
         let lastError: Error | null = null;
 
         for (let attempt = 0; attempt <= this.options.maxRetries; attempt++) {

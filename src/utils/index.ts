@@ -38,6 +38,10 @@ export type { ParsedHost } from './TldUtils.ts';
 export { RetryStrategies, withRetry } from './AsyncRetry.ts';
 export type { RetryOptions, RetryResult } from './AsyncRetry.ts';
 
+// Circuit breaker for resilient operations
+export { CircuitBreaker, CircuitState } from './CircuitBreaker.ts';
+export type { CircuitBreakerOptions, CircuitBreakerStats } from './CircuitBreaker.ts';
+
 // Logging
 export { createLogger, createLoggerFromEnv, Logger, logger, LogLevel, parseModuleOverrides, silentLogger, StructuredLogger } from './logger.ts';
 export type { LoggerOptions, ModuleOverrides } from './logger.ts';
