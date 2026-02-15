@@ -14,13 +14,14 @@
     "jsr:@std/testing@^1.0.17": "1.0.17",
     "jsr:@std/yaml@*": "1.0.10",
     "npm:@adguard/agtree@4": "4.0.0",
-    "npm:@cloudflare/playwright-mcp@^0.0.5": "0.0.5_@cloudflare+workers-types@4.20260207.0",
+    "npm:@cloudflare/playwright-mcp@^0.0.5": "0.0.5_zod@4.3.6_@cloudflare+workers-types@4.20260207.0",
     "npm:@cloudflare/workers-types@^4.20260207.0": "4.20260207.0",
     "npm:@opentelemetry/api@^1.9.0": "1.9.0",
     "npm:@prisma/adapter-pg@^7.3.0": "7.3.0",
     "npm:@prisma/client@^7.3.0": "7.3.0_prisma@7.3.0",
     "npm:prisma@^7.3.0": "7.3.0",
-    "npm:wrangler@^4.63.0": "4.63.0_@cloudflare+workers-types@4.20260207.0_unenv@2.0.0-rc.24_workerd@1.20260205.0"
+    "npm:wrangler@^4.63.0": "4.63.0_@cloudflare+workers-types@4.20260207.0_unenv@2.0.0-rc.24_workerd@1.20260205.0",
+    "npm:zod@^4.3.6": "4.3.6"
   },
   "jsr": {
     "@std/assert@1.0.18": {
@@ -129,7 +130,7 @@
         "@ai-sdk/provider",
         "@ai-sdk/provider-utils",
         "zod@3.25.76",
-        "zod-to-json-schema"
+        "zod-to-json-schema@3.25.1_zod@3.25.76"
       ]
     },
     "@babel/runtime-corejs3@7.28.6": {
@@ -165,14 +166,14 @@
     "@cloudflare/kv-asset-handler@0.4.2": {
       "integrity": "sha512-SIOD2DxrRRwQ+jgzlXCqoEFiKOFqaPjhnNTGKXSRLvp1HiOvapLaFG2kEr9dYQTYe8rKrd9uvDUzmAITeNyaHQ=="
     },
-    "@cloudflare/playwright-mcp@0.0.5_@cloudflare+workers-types@4.20260207.0": {
+    "@cloudflare/playwright-mcp@0.0.5_zod@4.3.6_@cloudflare+workers-types@4.20260207.0": {
       "integrity": "sha512-EGVJNSlrVxVpiZJvY+8Ls7eIK0F/QdOlwCoaV6lKKt9RKZ5+I5wLb5pMY9c8crfpgLDVpOdvWifN1juaxnYlbg==",
       "dependencies": [
         "@cloudflare/playwright",
-        "@modelcontextprotocol/sdk",
+        "@modelcontextprotocol/sdk@1.25.2_zod@4.3.6_ajv@8.17.1_express@5.2.1",
         "agents",
         "yaml",
-        "zod-to-json-schema"
+        "zod-to-json-schema@3.25.1_zod@4.3.6"
       ]
     },
     "@cloudflare/playwright@0.0.11": {
@@ -566,7 +567,28 @@
         "pkce-challenge",
         "raw-body",
         "zod@3.25.76",
-        "zod-to-json-schema"
+        "zod-to-json-schema@3.25.1_zod@3.25.76"
+      ]
+    },
+    "@modelcontextprotocol/sdk@1.25.2_zod@4.3.6_ajv@8.17.1_express@5.2.1": {
+      "integrity": "sha512-LZFeo4F9M5qOhC/Uc1aQSrBHxMrvxett+9KLHt7OhcExtoiRN9DKgbZffMP/nxjutWDQpfMDfP3nkHI4X9ijww==",
+      "dependencies": [
+        "@hono/node-server",
+        "ajv",
+        "ajv-formats",
+        "content-type",
+        "cors",
+        "cross-spawn",
+        "eventsource",
+        "eventsource-parser",
+        "express",
+        "express-rate-limit",
+        "jose",
+        "json-schema-typed",
+        "pkce-challenge",
+        "raw-body",
+        "zod@4.3.6",
+        "zod-to-json-schema@3.25.1_zod@4.3.6"
       ]
     },
     "@mrleebo/prisma-ast@0.13.1": {
@@ -732,7 +754,7 @@
     "agents@0.0.109_react@19.2.3_zod@3.25.76_@cloudflare+workers-types@4.20260207.0": {
       "integrity": "sha512-QExGnLWyQZ0JzYOv3QAKM2LM8jmnGi+WhCASQhsCtARoGk1xfo0ho0aSjXUmPbcL0OnTsqZm3W/Lu6fygCTQgA==",
       "dependencies": [
-        "@modelcontextprotocol/sdk",
+        "@modelcontextprotocol/sdk@1.25.2_zod@3.25.76_ajv@8.17.1_express@5.2.1",
         "ai",
         "cron-schedule",
         "mimetext",
@@ -1931,11 +1953,20 @@
         "zod@3.25.76"
       ]
     },
+    "zod-to-json-schema@3.25.1_zod@4.3.6": {
+      "integrity": "sha512-pM/SU9d3YAggzi6MtR4h7ruuQlqKtad8e9S0fmxcMi+ueAK5Korys/aWcV9LIIHTVbj01NdzxcnXSN+O74ZIVA==",
+      "dependencies": [
+        "zod@4.3.6"
+      ]
+    },
     "zod@3.24.4": {
       "integrity": "sha512-OdqJE9UDRPwWsrHjLN2F8bPxvwJBK22EHLWtanu0LSYr5YqzsaaW3RMgmjwr8Rypg5k+meEJdSPXJZXE/yqOMg=="
     },
     "zod@3.25.76": {
       "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="
+    },
+    "zod@4.3.6": {
+      "integrity": "sha512-rftlrkhHZOcjDwkGlnUtZZkvaPHCsDATp4pGpuOOMDaTdDDXF91wuVDJoWoPsKX/3YPQ5fHuF3STjcYyKr+Qhg=="
     }
   },
   "remote": {
@@ -2054,7 +2085,8 @@
       "npm:@prisma/adapter-pg@^7.3.0",
       "npm:@prisma/client@^7.3.0",
       "npm:prisma@^7.3.0",
-      "npm:wrangler@^4.63.0"
+      "npm:wrangler@^4.63.0",
+      "npm:zod@^4.3.6"
     ],
     "packageJson": {
       "dependencies": [

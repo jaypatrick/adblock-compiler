@@ -1,14 +1,6 @@
-import { IConfiguration, IValidationResult, TransformationType } from '../types/index.ts';
-
-/**
- * Valid transformation names for validation
- */
-const VALID_TRANSFORMATIONS = new Set<string>(Object.values(TransformationType));
-
-/**
- * Valid source types
- */
-const VALID_SOURCE_TYPES = new Set(['adblock', 'hosts']);
+import { IConfiguration, IValidationResult } from '../types/index.ts';
+import { ConfigurationSchema } from './schemas.ts';
+import { z } from 'zod';
 
 /**
  * Validation error details
@@ -20,17 +12,69 @@ interface ValidationError {
 
 /**
  * Validates configuration objects against the expected schema.
- * Pure TypeScript implementation without external dependencies.
+ * Uses Zod for runtime validation with TypeScript integration.
  */
 export class ConfigurationValidator {
+    /**
+     * Converts Zod errors to the format expected by existing code.
+     * Maintains compatibility with previous error message format.
+     */
+    private formatZodErrors(error: z.ZodError): ValidationError[] {
+        const errors: ValidationError[] = [];
+
+        for (const issue of error.issues) {
+            const path = '/' + issue.path.join('/');
+            let message = issue.message;
+
+            // Customize error messages for better compatibility
+            if (issue.code === 'invalid_type') {
+                const fieldName = String(issue.path[issue.path.length - 1] || 'field');
+                if ('received' in issue && issue.received === 'undefined') {
+                    message = `${fieldName} is required`;
+                } else {
+                    message = `must be ${'expected' in issue ? issue.expected : 'valid type'}`;
+                }
+            } else if (issue.code === 'unrecognized_keys') {
+                if ('keys' in issue && Array.isArray(issue.keys)) {
+                    for (const key of issue.keys) {
+                        errors.push({
+                            path: issue.path.length > 0 ? `/${issue.path.join('/')}/${key}` : `/${key}`,
+                            message: `unknown property: ${key}`,
+                        });
+                    }
+                    continue;
+                }
+            } else if (issue.code === 'too_small') {
+                const fieldName = String(issue.path[issue.path.length - 1] || 'field');
+                if ('minimum' in issue && issue.minimum === 1) {
+                    if ('type' in issue) {
+                        if (issue.type === 'string') {
+                            message = `${fieldName} is required and must be a non-empty string`;
+                        } else if (issue.type === 'array') {
+                            message = `${fieldName} is required and must be a non-empty array`;
+                        }
+                    }
+                }
+            } else if (issue.code === 'invalid_value') {
+                // Handle enum values
+                if ('options' in issue && Array.isArray(issue.options)) {
+                    message = `type must be one of: ${issue.options.join(', ')}`;
+                }
+            }
+
+            errors.push({ path, message });
+        }
+
+        return errors;
+    }
+
     /**
      * Validates a configuration object.
      * @param configuration - Configuration object to validate
      * @returns Validation result with valid flag and error text
      */
     public validate(configuration: unknown): IValidationResult {
-        const errors: ValidationError[] = [];
-
+        // Handle null/undefined early
         if (!configuration || typeof configuration !== 'object') {
             return {
                 valid: false,
@@ -38,73 +82,10 @@ export class ConfigurationValidator {
             };
         }
 
-        const config = configuration as Record<string, unknown>;
+        const result = ConfigurationSchema.safeParse(configuration);
 
-        // Validate required fields
-        if (!this.isNonEmptyString(config.name)) {
-            errors.push({ path: '/name', message: 'name is required and must be a non-empty string' });
-        }
-
-        if (!Array.isArray(config.sources) || config.sources.length === 0) {
-            errors.push({ path: '/sources', message: 'sources is required and must be a non-empty array' });
-        } else {
-            // Validate each source
-            config.sources.forEach((source, index) => {
-                const sourceErrors = this.validateSource(source, `/sources/${index}`);
-                errors.push(...sourceErrors);
-            });
-        }
-
-        // Validate optional string fields
-        if (config.description !== undefined && typeof config.description !== 'string') {
-            errors.push({ path: '/description', message: 'description must be a string' });
-        }
-        if (config.homepage !== undefined && typeof config.homepage !== 'string') {
-            errors.push({ path: '/homepage', message: 'homepage must be a string' });
-        }
-        if (config.license !== undefined && typeof config.license !== 'string') {
-            errors.push({ path: '/license', message: 'license must be a string' });
-        }
-        if (config.version !== undefined && typeof config.version !== 'string') {
-            errors.push({ path: '/version', message: 'version must be a string' });
-        }
-
-        // Validate transformations
-        if (config.transformations !== undefined) {
-            const transformErrors = this.validateTransformations(
-                config.transformations,
-                '/transformations',
-            );
-            errors.push(...transformErrors);
-        }
-
-        // Validate exclusions/inclusions arrays
-        this.validateStringArray(config.exclusions, '/exclusions', errors);
-        this.validateStringArray(config.exclusions_sources, '/exclusions_sources', errors);
-        this.validateStringArray(config.inclusions, '/inclusions', errors);
-        this.validateStringArray(config.inclusions_sources, '/inclusions_sources', errors);
-
-        // Check for unknown properties
-        const validProps = new Set([
-            'name',
-            'description',
-            'homepage',
-            'license',
-            'version',
-            'sources',
-            'transformations',
-            'exclusions',
-            'exclusions_sources',
-            'inclusions',
-            'inclusions_sources',
-        ]);
-        for (const key of Object.keys(config)) {
-            if (!validProps.has(key)) {
-                errors.push({ path: `/${key}`, message: `unknown property: ${key}` });
-            }
-        }
-
-        if (errors.length > 0) {
+        if (!result.success) {
+            const errors = this.formatZodErrors(result.error);
             const errorsText = errors
                 .map((e) => `${e.path}: ${e.message}`)
                 .join('\n');
@@ -128,126 +109,5 @@ export class ConfigurationValidator {
         }
 
         return configuration as IConfiguration;
-    }
-
-    /**
-     * Validates a source object.
-     */
-    private validateSource(source: unknown, basePath: string): ValidationError[] {
-        const errors: ValidationError[] = [];
-
-        if (!source || typeof source !== 'object') {
-            errors.push({ path: basePath, message: 'source must be an object' });
-            return errors;
-        }
-
-        const src = source as Record<string, unknown>;
-
-        // Required: source field
-        if (!this.isNonEmptyString(src.source)) {
-            errors.push({ path: `${basePath}/source`, message: 'source is required and must be a non-empty string' });
-        }
-
-        // Optional: name
-        if (src.name !== undefined && !this.isNonEmptyString(src.name)) {
-            errors.push({ path: `${basePath}/name`, message: 'name must be a non-empty string' });
-        }
-
-        // Optional: type
-        if (src.type !== undefined) {
-            if (typeof src.type !== 'string' || !VALID_SOURCE_TYPES.has(src.type)) {
-                errors.push({ path: `${basePath}/type`, message: `type must be one of: ${[...VALID_SOURCE_TYPES].join(', ')}` });
-            }
-        }
-
-        // Optional: transformations
-        if (src.transformations !== undefined) {
-            const transformErrors = this.validateTransformations(
-                src.transformations,
-                `${basePath}/transformations`,
-            );
-            errors.push(...transformErrors);
-        }
-
-        // Validate exclusions/inclusions arrays
-        this.validateStringArray(src.exclusions, `${basePath}/exclusions`, errors);
-        this.validateStringArray(src.exclusions_sources, `${basePath}/exclusions_sources`, errors);
-        this.validateStringArray(src.inclusions, `${basePath}/inclusions`, errors);
-        this.validateStringArray(src.inclusions_sources, `${basePath}/inclusions_sources`, errors);
-
-        // Check for unknown properties
-        const validProps = new Set([
-            'name',
-            'source',
-            'type',
-            'transformations',
-            'exclusions',
-            'exclusions_sources',
-            'inclusions',
-            'inclusions_sources',
-        ]);
-        for (const key of Object.keys(src)) {
-            if (!validProps.has(key)) {
-                errors.push({ path: `${basePath}/${key}`, message: `unknown property: ${key}` });
-            }
-        }
-
-        return errors;
-    }
-
-    /**
-     * Validates transformations array.
-     */
-    private validateTransformations(value: unknown, path: string): ValidationError[] {
-        const errors: ValidationError[] = [];
-
-        if (!Array.isArray(value)) {
-            errors.push({ path, message: 'transformations must be an array' });
-            return errors;
-        }
-
-        value.forEach((item, index) => {
-            if (typeof item !== 'string') {
-                errors.push({ path: `${path}/${index}`, message: 'transformation must be a string' });
-            } else if (!VALID_TRANSFORMATIONS.has(item)) {
-                errors.push({
-                    path: `${path}/${index}`,
-                    message: `invalid transformation: ${item}. Valid values: ${[...VALID_TRANSFORMATIONS].join(', ')}`,
-                });
-            }
-        });
-
-        return errors;
-    }
-
-    /**
-     * Validates an optional string array field.
-     */
-    private validateStringArray(
-        value: unknown,
-        path: string,
-        errors: ValidationError[],
-    ): void {
-        if (value === undefined) {
-            return;
-        }
-
-        if (!Array.isArray(value)) {
-            errors.push({ path, message: 'must be an array' });
-            return;
-        }
-
-        value.forEach((item, index) => {
-            if (typeof item !== 'string') {
-                errors.push({ path: `${path}/${index}`, message: 'must be a string' });
-            }
-        });
-    }
-
-    /**
-     * Checks if a value is a non-empty string.
-     */
-    private isNonEmptyString(value: unknown): value is string {
-        return typeof value === 'string' && value.length > 0;
     }
 }

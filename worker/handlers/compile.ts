@@ -12,6 +12,7 @@ import { ErrorUtils } from '../../src/utils/ErrorUtils.ts';
 import { recordMetric } from './metrics.ts';
 import { compress, decompress, emitDiagnosticsToTailWorker, getCacheKey, QUEUE_BINDINGS_NOT_AVAILABLE_ERROR, updateQueueStats } from './queue.ts';
 import type { BatchRequest, CompilationResult, CompileQueueMessage, CompileRequest, Env, PreviousVersion, Priority } from '../types.ts';
+import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../../src/configuration/schemas.ts';
 
 // ============================================================================
 // Configuration
@@ -87,7 +88,26 @@ export async function handleCompileJson(
     requestId?: string,
 ): Promise<Response> {
     const startTime = Date.now();
-    const body = await request.json() as CompileRequest;
+
+    // Parse and validate request body
+    let body: CompileRequest;
+    try {
+        const rawBody = await request.json();
+        const validationResult = CompileRequestSchema.safeParse(rawBody);
+
+        if (!validationResult.success) {
+            const errors = validationResult.error.issues
+                .map((issue) => `/${issue.path.join('/')}: ${issue.message}`)
+                .join(', ');
+            return JsonResponse.badRequest(`Invalid request body: ${errors}`);
+        }
+
+        body = validationResult.data;
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return JsonResponse.badRequest(`Failed to parse request body: ${errorMessage}`);
+    }
+
     const { configuration, preFetchedContent, benchmark } = body;
     const configName = configuration.name || 'unnamed';
     const sourceCount = configuration.sources?.length || 0;
@@ -420,32 +440,19 @@ export async function handleCompileBatch(
     const startTime = Date.now();
 
     try {
-        const body = await request.json() as BatchRequest;
+        // Parse and validate request body
+        const rawBody = await request.json();
+        const validationResult = BatchRequestSyncSchema.safeParse(rawBody);
+
+        if (!validationResult.success) {
+            const errors = validationResult.error.issues
+                .map((issue) => `/${issue.path.join('/')}: ${issue.message}`)
+                .join(', ');
+            return JsonResponse.badRequest(`Invalid batch request: ${errors}`);
+        }
+
+        const body = validationResult.data;
         const { requests } = body;
-
-        if (!requests || !Array.isArray(requests)) {
-            return JsonResponse.badRequest('Invalid batch request format. Expected { requests: [...] }');
-        }
-
-        if (requests.length === 0) {
-            return JsonResponse.badRequest('Batch request must contain at least one request');
-        }
-
-        if (requests.length > 10) {
-            return JsonResponse.badRequest('Batch request limited to 10 requests maximum');
-        }
-
-        // Validate all requests have IDs
-        const ids = new Set<string>();
-        for (const req of requests) {
-            if (!req.id) {
-                return JsonResponse.badRequest('Each request must have an "id" field');
-            }
-            if (ids.has(req.id)) {
-                return JsonResponse.badRequest(`Duplicate request ID: ${req.id}`);
-            }
-            ids.add(req.id);
-        }
 
         // Process all requests in parallel
         const results = await Promise.all(
@@ -617,20 +624,19 @@ export async function handleCompileBatchAsync(
     const startTime = Date.now();
 
     try {
-        const body = await request.json() as BatchRequest;
+        // Parse and validate request body
+        const rawBody = await request.json();
+        const validationResult = BatchRequestAsyncSchema.safeParse(rawBody);
+
+        if (!validationResult.success) {
+            const errors = validationResult.error.issues
+                .map((issue) => `/${issue.path.join('/')}: ${issue.message}`)
+                .join(', ');
+            return JsonResponse.badRequest(`Invalid batch request: ${errors}`);
+        }
+
+        const body = validationResult.data;
         const { requests, priority = 'standard' } = body;
-
-        if (!requests || !Array.isArray(requests)) {
-            return JsonResponse.badRequest('Invalid batch request format. Expected { requests: [...] }');
-        }
-
-        if (requests.length === 0) {
-            return JsonResponse.badRequest('Batch request must contain at least one request');
-        }
-
-        if (requests.length > 100) {
-            return JsonResponse.badRequest('Batch request limited to 100 requests maximum');
-        }
 
         // deno-lint-ignore no-console
         console.log(`[API:BATCH-ASYNC] Queueing batch of ${requests.length} compilations with ${priority} priority`);

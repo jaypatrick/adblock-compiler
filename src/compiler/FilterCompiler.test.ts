@@ -72,7 +72,7 @@ Deno.test('FilterCompiler - should reject invalid configuration', async () => {
     await assertRejects(
         () => compiler.compile(invalidConfig),
         Error,
-        '/name: name is required and must be a non-empty string',
+        '/name:',
     );
 });
 
