@@ -247,7 +247,7 @@ Deno.test('CircuitBreaker', async (t) => {
             name: 'test-circuit',
         });
 
-        // Open the circuit
+        // Open the circuit - verify it still works with custom logger
         for (let i = 0; i < 2; i++) {
             await assertRejects(
                 () => breaker.execute(() => Promise.reject(new Error('fail'))),
