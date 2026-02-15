@@ -1,21 +1,11 @@
 import { FilterDownloader } from '../downloader/index.ts';
-import { ILogger } from '../types/index.ts';
-import { ErrorUtils, RuleUtils, SourceError, Wildcard } from '../utils/index.ts';
+import { ErrorUtils, RuleUtils, Wildcard } from '../utils/index.ts';
 
 /**
  * Service for downloading and preparing filter wildcards.
  * Uses fully asynchronous operations for optimal performance.
  */
 export class FilterService {
-    private readonly logger: ILogger;
-
-    /**
-     * Creates a new FilterService
-     * @param logger - Logger instance for output
-     */
-    constructor(logger: ILogger) {
-        this.logger = logger;
-    }
 
     /**
      * Downloads all specified files and returns non-empty, non-comment lines.
