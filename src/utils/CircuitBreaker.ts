@@ -50,6 +50,24 @@ export interface CircuitBreakerOptions {
 }
 
 /**
+ * Circuit breaker statistics
+ */
+export interface CircuitBreakerStats {
+    /** Current state of the circuit breaker */
+    state: CircuitBreakerState;
+    /** Current number of consecutive failures */
+    failureCount: number;
+    /** Failure threshold before circuit opens */
+    threshold: number;
+    /** Timeout in milliseconds before recovery attempt */
+    timeout: number;
+    /** Time of the last failure, if any */
+    lastFailureTime: Date | undefined;
+    /** Time remaining until recovery attempt (0 if not OPEN) */
+    timeUntilRecovery: number;
+}
+
+/**
  * Circuit breaker error thrown when the circuit is open
  */
 export class CircuitBreakerOpenError extends Error {
@@ -230,7 +248,7 @@ export class CircuitBreaker {
     /**
      * Gets circuit breaker statistics
      */
-    getStats() {
+    getStats(): CircuitBreakerStats {
         return {
             state: this.state,
             failureCount: this.failureCount,
