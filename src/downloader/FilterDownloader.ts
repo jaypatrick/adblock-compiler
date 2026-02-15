@@ -13,6 +13,7 @@ import type { ILogger } from '../types/index.ts';
 import { silentLogger } from '../utils/logger.ts';
 import { evaluateBooleanExpression } from '../utils/BooleanExpressionParser.ts';
 import { CircuitBreaker, ErrorUtils, FileSystemError, NetworkError, PathUtils } from '../utils/index.ts';
+import type { CircuitBreakerStats } from '../utils/index.ts';
 import { NETWORK_DEFAULTS, PREPROCESSOR_DEFAULTS } from '../config/defaults.ts';
 import { USER_AGENT } from '../version.ts';
 
@@ -134,15 +135,10 @@ export class FilterDownloader {
     /**
      * Gets circuit breaker statistics for monitoring
      */
-    getCircuitBreakerStats(): Map<string, { state: string; failures: number; lastFailure?: Date }> {
-        const stats = new Map();
+    getCircuitBreakerStats(): Map<string, CircuitBreakerStats> {
+        const stats = new Map<string, CircuitBreakerStats>();
         for (const [url, breaker] of this.circuitBreakers.entries()) {
-            const breakerStats = breaker.getStats();
-            stats.set(url, {
-                state: breakerStats.state,
-                failures: breakerStats.failureCount,
-                lastFailure: breakerStats.lastFailureTime,
-            });
+            stats.set(url, breaker.getStats());
         }
         return stats;
     }

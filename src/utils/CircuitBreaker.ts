@@ -228,11 +228,10 @@ export class CircuitBreaker {
     }
 
     /**
-     * Checks if the circuit is currently allowing requests
+     * Checks if the circuit is currently open (blocking requests)
      */
     isOpen(): boolean {
-        return this.state === CircuitState.OPEN &&
-            (!this.lastFailureTime || Date.now() - this.lastFailureTime.getTime() < this.timeout);
+        return this.state === CircuitState.OPEN;
     }
 
     /**

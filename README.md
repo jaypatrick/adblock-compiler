@@ -1130,7 +1130,7 @@ try {
 // Monitor circuit breaker states
 const stats = downloader.getCircuitBreakerStats();
 for (const [url, stat] of stats) {
-    console.log(`${url}: ${stat.state} (${stat.failures} failures)`);
+    console.log(`${url}: ${stat.state} (${stat.failureCount} failures)`);
 }
 ```
 
