@@ -3,13 +3,7 @@
  */
 
 import { assertEquals } from '@std/assert';
-import {
-    BatchRequestAsyncSchema,
-    BatchRequestSyncSchema,
-    CompileRequestSchema,
-    ConfigurationSchema,
-    SourceSchema,
-} from './schemas.ts';
+import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema, ConfigurationSchema, SourceSchema } from './schemas.ts';
 import { SourceType, TransformationType } from '../types/index.ts';
 
 // SourceSchema tests
