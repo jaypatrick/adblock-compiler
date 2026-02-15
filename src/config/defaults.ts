@@ -17,6 +17,10 @@ export const NETWORK_DEFAULTS = {
     RETRY_DELAY_MS: 1_000,
     /** Maximum jitter percentage for retry backoff */
     RETRY_JITTER_PERCENT: 0.3,
+    /** Circuit breaker failure threshold */
+    CIRCUIT_BREAKER_THRESHOLD: 5,
+    /** Circuit breaker timeout in milliseconds */
+    CIRCUIT_BREAKER_TIMEOUT_MS: 60_000,
 } as const;
 
 /**

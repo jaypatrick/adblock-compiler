@@ -12,6 +12,7 @@
 import type { ILogger } from '../types/index.ts';
 import { silentLogger } from '../utils/logger.ts';
 import { evaluateBooleanExpression } from '../utils/BooleanExpressionParser.ts';
+import { CircuitBreaker, CircuitBreakerOpenError } from '../utils/CircuitBreaker.ts';
 import { ErrorUtils, FileSystemError, NetworkError, PathUtils } from '../utils/index.ts';
 import { NETWORK_DEFAULTS, PREPROCESSOR_DEFAULTS } from '../config/defaults.ts';
 import { USER_AGENT } from '../version.ts';
@@ -34,6 +35,12 @@ export interface DownloaderOptions {
     maxRetries?: number;
     /** Base delay for exponential backoff (milliseconds) */
     retryDelay?: number;
+    /** Enable circuit breaker for failed requests */
+    enableCircuitBreaker?: boolean;
+    /** Circuit breaker failure threshold */
+    circuitBreakerThreshold?: number;
+    /** Circuit breaker timeout in milliseconds */
+    circuitBreakerTimeout?: number;
 }
 
 /**
@@ -47,6 +54,9 @@ const DEFAULT_OPTIONS: Required<DownloaderOptions> = {
     maxIncludeDepth: PREPROCESSOR_DEFAULTS.MAX_INCLUDE_DEPTH,
     maxRetries: NETWORK_DEFAULTS.MAX_RETRIES,
     retryDelay: NETWORK_DEFAULTS.RETRY_DELAY_MS,
+    enableCircuitBreaker: true,
+    circuitBreakerThreshold: NETWORK_DEFAULTS.CIRCUIT_BREAKER_THRESHOLD,
+    circuitBreakerTimeout: NETWORK_DEFAULTS.CIRCUIT_BREAKER_TIMEOUT_MS,
 };
 
 /**
@@ -84,6 +94,7 @@ export class FilterDownloader {
     private readonly options: Required<DownloaderOptions>;
     private readonly logger: ILogger;
     private readonly visitedUrls: Set<string> = new Set();
+    private readonly circuitBreakers: Map<string, CircuitBreaker> = new Map();
 
     /**
      * Creates a new FilterDownloader
@@ -93,6 +104,27 @@ export class FilterDownloader {
     constructor(options?: DownloaderOptions, logger?: ILogger) {
         this.options = { ...DEFAULT_OPTIONS, ...options };
         this.logger = logger ?? silentLogger;
+    }
+
+    /**
+     * Gets or creates a circuit breaker for a URL
+     */
+    private getCircuitBreaker(url: string): CircuitBreaker | null {
+        if (!this.options.enableCircuitBreaker) {
+            return null;
+        }
+
+        if (!this.circuitBreakers.has(url)) {
+            const breaker = new CircuitBreaker({
+                threshold: this.options.circuitBreakerThreshold,
+                timeout: this.options.circuitBreakerTimeout,
+                logger: this.logger,
+                name: `FilterDownloader:${url}`,
+            });
+            this.circuitBreakers.set(url, breaker);
+        }
+
+        return this.circuitBreakers.get(url)!;
     }
 
     /**
@@ -156,83 +188,106 @@ export class FilterDownloader {
      * Fetches content from a URL with retry logic and circuit breaker
      */
     private async fetchUrl(url: string): Promise<string> {
-        let lastError: Error | null = null;
+        const breaker = this.getCircuitBreaker(url);
 
-        for (let attempt = 0; attempt <= this.options.maxRetries; attempt++) {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), this.options.timeout);
+        // Wrap the fetch logic in circuit breaker if enabled
+        const fetchFn = async () => {
+            let lastError: Error | null = null;
 
+            for (let attempt = 0; attempt <= this.options.maxRetries; attempt++) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), this.options.timeout);
+
+                try {
+                    this.logger.debug(`Fetching ${url} (attempt ${attempt + 1}/${this.options.maxRetries + 1})`);
+
+                    const response = await fetch(url, {
+                        signal: controller.signal,
+                        headers: {
+                            'User-Agent': this.options.userAgent,
+                        },
+                        redirect: 'follow',
+                    });
+
+                    if (!response.ok) {
+                        // Only retry on 5xx errors and 429 (rate limit)
+                        const shouldRetry = response.status >= 500 || response.status === 429;
+                        if (!shouldRetry || attempt === this.options.maxRetries) {
+                            throw ErrorUtils.httpError(url, response.status, response.statusText);
+                        }
+
+                        lastError = ErrorUtils.httpError(url, response.status, response.statusText);
+                        this.logger.warn(`Request failed with ${response.status}, retrying...`);
+                    } else {
+                        const text = await response.text();
+
+                        if (!text && !this.options.allowEmptyResponse) {
+                            throw new NetworkError('Empty response received', url);
+                        }
+
+                        return text;
+                    }
+                } catch (error) {
+                    // Preserve NetworkError instances
+                    if (error instanceof NetworkError) {
+                        lastError = error;
+                    } else {
+                        lastError = ErrorUtils.toError(error);
+                    }
+
+                    // Check if it's a timeout/abort error
+                    const isTimeoutError = lastError.name === 'AbortError' ||
+                        lastError.message.includes('aborted');
+
+                    if (isTimeoutError) {
+                        lastError = ErrorUtils.timeoutError(url, this.options.timeout);
+                    }
+
+                    // Don't retry on 4xx client errors
+                    if (!isTimeoutError && lastError.message.includes('HTTP 4')) {
+                        throw lastError;
+                    }
+
+                    if (attempt === this.options.maxRetries) {
+                        throw lastError;
+                    }
+
+                    this.logger.warn(`Request failed: ${lastError.message}, retrying...`);
+                } finally {
+                    clearTimeout(timeoutId);
+                }
+
+                // Exponential backoff with jitter
+                if (attempt < this.options.maxRetries) {
+                    const backoffDelay = this.options.retryDelay * Math.pow(2, attempt);
+                    const jitter = Math.random() * 0.3 * backoffDelay; // Add up to 30% jitter
+                    const delay = backoffDelay + jitter;
+
+                    this.logger.debug(`Waiting ${Math.round(delay)}ms before retry...`);
+                    await new Promise((resolve) => setTimeout(resolve, delay));
+                }
+            }
+
+            throw lastError ?? new NetworkError('Failed to fetch URL after retries', url);
+        };
+
+        // Execute with circuit breaker if enabled, otherwise execute directly
+        if (breaker) {
             try {
-                this.logger.debug(`Fetching ${url} (attempt ${attempt + 1}/${this.options.maxRetries + 1})`);
-
-                const response = await fetch(url, {
-                    signal: controller.signal,
-                    headers: {
-                        'User-Agent': this.options.userAgent,
-                    },
-                    redirect: 'follow',
-                });
-
-                if (!response.ok) {
-                    // Only retry on 5xx errors and 429 (rate limit)
-                    const shouldRetry = response.status >= 500 || response.status === 429;
-                    if (!shouldRetry || attempt === this.options.maxRetries) {
-                        throw ErrorUtils.httpError(url, response.status, response.statusText);
-                    }
-
-                    lastError = ErrorUtils.httpError(url, response.status, response.statusText);
-                    this.logger.warn(`Request failed with ${response.status}, retrying...`);
-                } else {
-                    const text = await response.text();
-
-                    if (!text && !this.options.allowEmptyResponse) {
-                        throw new NetworkError('Empty response received', url);
-                    }
-
-                    return text;
-                }
+                return await breaker.execute(fetchFn);
             } catch (error) {
-                // Preserve NetworkError instances
-                if (error instanceof NetworkError) {
-                    lastError = error;
-                } else {
-                    lastError = ErrorUtils.toError(error);
+                if (error instanceof CircuitBreakerOpenError) {
+                    // Convert circuit breaker error to NetworkError for consistency
+                    throw new NetworkError(
+                        `Circuit breaker is OPEN for ${url}: ${error.message}`,
+                        url,
+                    );
                 }
-
-                // Check if it's a timeout/abort error
-                const isTimeoutError = lastError.name === 'AbortError' ||
-                    lastError.message.includes('aborted');
-
-                if (isTimeoutError) {
-                    lastError = ErrorUtils.timeoutError(url, this.options.timeout);
-                }
-
-                // Don't retry on 4xx client errors
-                if (!isTimeoutError && lastError.message.includes('HTTP 4')) {
-                    throw lastError;
-                }
-
-                if (attempt === this.options.maxRetries) {
-                    throw lastError;
-                }
-
-                this.logger.warn(`Request failed: ${lastError.message}, retrying...`);
-            } finally {
-                clearTimeout(timeoutId);
+                throw error;
             }
-
-            // Exponential backoff with jitter
-            if (attempt < this.options.maxRetries) {
-                const backoffDelay = this.options.retryDelay * Math.pow(2, attempt);
-                const jitter = Math.random() * 0.3 * backoffDelay; // Add up to 30% jitter
-                const delay = backoffDelay + jitter;
-
-                this.logger.debug(`Waiting ${Math.round(delay)}ms before retry...`);
-                await new Promise((resolve) => setTimeout(resolve, delay));
-            }
+        } else {
+            return await fetchFn();
         }
-
-        throw lastError ?? new NetworkError('Failed to fetch URL after retries', url);
     }
 
     /**
@@ -429,5 +484,28 @@ export class FilterDownloader {
         };
         const downloader = new FilterDownloader(mergedOptions);
         return downloader.download(source);
+    }
+
+    /**
+     * Gets circuit breaker statistics for all URLs
+     * Useful for monitoring and debugging
+     */
+    getCircuitBreakerStats(): Map<string, ReturnType<CircuitBreaker['getStats']>> {
+        const stats = new Map<string, ReturnType<CircuitBreaker['getStats']>>();
+        for (const [url, breaker] of this.circuitBreakers.entries()) {
+            stats.set(url, breaker.getStats());
+        }
+        return stats;
+    }
+
+    /**
+     * Resets all circuit breakers
+     * Useful for manual recovery or testing
+     */
+    resetCircuitBreakers(): void {
+        for (const breaker of this.circuitBreakers.values()) {
+            breaker.reset();
+        }
+        this.logger.info('All circuit breakers reset');
     }
 }
