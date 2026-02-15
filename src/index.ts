@@ -34,6 +34,10 @@ export { BaseError, CompilationError, ErrorUtils, NetworkError, SourceError, Val
 // Boolean expression parser
 export { evaluateBooleanExpression, getKnownPlatforms, isKnownPlatform } from './utils/index.ts';
 
+// Circuit breaker for resilient operations
+export { CircuitBreaker, CircuitState } from './utils/index.ts';
+export type { CircuitBreakerOptions, CircuitBreakerStats } from './utils/index.ts';
+
 // Event system for observability
 export { CompilerEventEmitter, createEventEmitter, NoOpEventEmitter } from './utils/index.ts';
 
