@@ -1112,9 +1112,9 @@ import { FilterDownloader } from '@jk-com/adblock-compiler';
 
 // Circuit breaker enabled by default
 const downloader = new FilterDownloader({
-    enableCircuitBreaker: true,         // Default: true
-    circuitBreakerThreshold: 5,         // Default: 5 failures
-    circuitBreakerTimeout: 60000,       // Default: 60 seconds
+    enableCircuitBreaker: true, // Default: true
+    circuitBreakerThreshold: 5, // Default: 5 failures
+    circuitBreakerTimeout: 60000, // Default: 60 seconds
 });
 
 // Download with circuit breaker protection
@@ -1142,10 +1142,10 @@ You can also use the circuit breaker independently:
 import { CircuitBreaker, CircuitState } from '@jk-com/adblock-compiler';
 
 const breaker = new CircuitBreaker({
-    failureThreshold: 5,      // Trip after 5 consecutive failures
-    timeout: 60000,           // Wait 60s before attempting recovery
-    successThreshold: 2,      // Require 2 successes to fully recover
-    name: 'MyAPI',           // Name for logging
+    failureThreshold: 5, // Trip after 5 consecutive failures
+    timeout: 60000, // Wait 60s before attempting recovery
+    successThreshold: 2, // Require 2 successes to fully recover
+    name: 'MyAPI', // Name for logging
 });
 
 // Wrap unreliable operations
@@ -1184,16 +1184,16 @@ breaker.reset();
 interface CircuitBreakerOptions {
     /** Number of consecutive failures before opening circuit (default: 5) */
     failureThreshold?: number;
-    
+
     /** Time in ms to wait before attempting recovery (default: 60000) */
     timeout?: number;
-    
+
     /** Number of consecutive successes in HALF_OPEN before closing (default: 2) */
     successThreshold?: number;
-    
+
     /** Logger for circuit state changes (optional) */
     logger?: ILogger;
-    
+
     /** Name for this circuit (for logging/monitoring, default: 'CircuitBreaker') */
     name?: string;
 }
