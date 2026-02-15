@@ -240,6 +240,46 @@ Deno.test('FilterDownloader', async (t) => {
         assertEquals(result[2], '||line3.com^');
     });
 
+    await t.step('should expose circuit breaker stats', async () => {
+        const content = '||example.com^';
+        await Deno.writeTextFile(`${TEST_DIR}/stats.txt`, content);
+
+        const downloader = new FilterDownloader();
+        await downloader.download(`${TEST_DIR}/stats.txt`);
+
+        const stats = downloader.getCircuitBreakerStats();
+        // Stats should be empty for local file downloads
+        assertEquals(stats.size, 0);
+    });
+
+    await t.step('should allow disabling circuit breaker', async () => {
+        const content = '||example.com^';
+        await Deno.writeTextFile(`${TEST_DIR}/no-cb.txt`, content);
+
+        const downloader = new FilterDownloader({ enableCircuitBreaker: false });
+        const result = await downloader.download(`${TEST_DIR}/no-cb.txt`);
+
+        assertEquals(result.length, 1);
+        assertEquals(result[0], '||example.com^');
+
+        const stats = downloader.getCircuitBreakerStats();
+        assertEquals(stats.size, 0);
+    });
+
+    await t.step('should allow custom circuit breaker threshold', async () => {
+        const content = '||example.com^';
+        await Deno.writeTextFile(`${TEST_DIR}/custom-cb.txt`, content);
+
+        const downloader = new FilterDownloader({
+            circuitBreakerThreshold: 3,
+            circuitBreakerTimeout: 30000,
+        });
+        const result = await downloader.download(`${TEST_DIR}/custom-cb.txt`);
+
+        assertEquals(result.length, 1);
+        assertEquals(result[0], '||example.com^');
+    });
+
     // Cleanup: Remove test fixtures
     await Deno.remove(TEST_DIR, { recursive: true });
 });

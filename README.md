@@ -71,6 +71,7 @@
   - [InsertFinalNewLine](#insertfinalnewline)
   - [ConvertToAscii](#convert-to-ascii)
 - [Extensibility](#extensibility)
+- [Circuit Breaker](#circuit-breaker)
 - [Development](#development)
 - [Platform Support](#platform-support)
   - [Edge Runtimes (Generic)](#edge-runtimes)
@@ -1080,6 +1081,131 @@ Traces include:
 - **Network events**: HTTP requests with status codes
 
 📚 **[OpenTelemetry Example](examples/opentelemetry-example.ts)** - Complete example with manual instrumentation
+
+### <a name="circuit-breaker"></a> Circuit Breaker
+
+The adblock-compiler includes a **Circuit Breaker** pattern for resilient network operations. This prevents resource waste on consistently failing filter list sources and enables automatic recovery.
+
+#### How It Works
+
+The circuit breaker has three states:
+
+1. **CLOSED** (normal operation): Requests pass through normally
+2. **OPEN** (circuit tripped): Requests fail immediately after threshold failures
+3. **HALF_OPEN** (testing recovery): Single request allowed to test if resource recovered
+
+```
+CLOSED --[failures ≥ threshold]--> OPEN --[timeout elapsed]--> HALF_OPEN
+   ↑                                                                 |
+   └-----------------[success]-----------------+--[failure]----------┘
+                                               |
+                                          [threshold
+                                          successes]
+```
+
+#### Integration with FilterDownloader
+
+Circuit breakers are automatically enabled per-URL in `FilterDownloader`:
+
+```typescript
+import { FilterDownloader } from '@jk-com/adblock-compiler';
+
+// Circuit breaker enabled by default
+const downloader = new FilterDownloader({
+    enableCircuitBreaker: true,         // Default: true
+    circuitBreakerThreshold: 5,         // Default: 5 failures
+    circuitBreakerTimeout: 60000,       // Default: 60 seconds
+});
+
+// Download with circuit breaker protection
+try {
+    const rules = await downloader.download('https://example.com/list.txt');
+} catch (error) {
+    if (error.message.includes('Circuit breaker is OPEN')) {
+        // Circuit tripped - source is unreliable
+        console.log('Source is currently unavailable, will retry later');
+    }
+}
+
+// Monitor circuit breaker states
+const stats = downloader.getCircuitBreakerStats();
+for (const [url, stat] of stats) {
+    console.log(`${url}: ${stat.state} (${stat.failures} failures)`);
+}
+```
+
+#### Standalone Usage
+
+You can also use the circuit breaker independently:
+
+```typescript
+import { CircuitBreaker, CircuitState } from '@jk-com/adblock-compiler';
+
+const breaker = new CircuitBreaker({
+    failureThreshold: 5,      // Trip after 5 consecutive failures
+    timeout: 60000,           // Wait 60s before attempting recovery
+    successThreshold: 2,      // Require 2 successes to fully recover
+    name: 'MyAPI',           // Name for logging
+});
+
+// Wrap unreliable operations
+try {
+    const result = await breaker.execute(async () => {
+        const response = await fetch('https://unreliable-api.com/data');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        return response.json();
+    });
+    console.log('Success:', result);
+} catch (error) {
+    console.error('Failed:', error.message);
+}
+
+// Check circuit state
+console.log('Circuit state:', breaker.getState());
+console.log('Is open?', breaker.isOpen());
+
+// Get detailed statistics
+const stats = breaker.getStats();
+console.log({
+    state: stats.state,
+    failures: stats.failureCount,
+    successes: stats.successCount,
+    totalRequests: stats.totalRequests,
+    lastFailure: stats.lastFailureTime,
+});
+
+// Manually reset if needed
+breaker.reset();
+```
+
+#### Configuration Options
+
+```typescript
+interface CircuitBreakerOptions {
+    /** Number of consecutive failures before opening circuit (default: 5) */
+    failureThreshold?: number;
+    
+    /** Time in ms to wait before attempting recovery (default: 60000) */
+    timeout?: number;
+    
+    /** Number of consecutive successes in HALF_OPEN before closing (default: 2) */
+    successThreshold?: number;
+    
+    /** Logger for circuit state changes (optional) */
+    logger?: ILogger;
+    
+    /** Name for this circuit (for logging/monitoring, default: 'CircuitBreaker') */
+    name?: string;
+}
+```
+
+#### Benefits
+
+- **Fail Fast**: Avoid wasting time on known-bad sources
+- **Resource Protection**: Prevent cascading failures in downstream systems
+- **Automatic Recovery**: Periodically test if failed sources have recovered
+- **Per-URL Isolation**: Circuit breakers are independent for each URL
+- **Monitoring**: Get real-time visibility into source reliability
 
 ## <a name="development"></a> Development
 
