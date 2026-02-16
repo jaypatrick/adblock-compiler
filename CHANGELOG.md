@@ -11,8 +11,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - update OpenAPI path references after root directory reorganization
 
-
-
 ## [0.16.0] - 2026-02-15
 
 ### Added- Add circuit breaker pattern for unreliable source downloads
