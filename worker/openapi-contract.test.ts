@@ -13,7 +13,7 @@ import { parse } from 'https://deno.land/std@0.224.0/yaml/mod.ts';
 import type { ApiInfo, BatchCompileResponse, CompileResponse, MetricsResponse, QueueResponse, QueueStats } from './openapi-types.ts';
 
 const BASE_URL = Deno.env.get('API_BASE_URL') || 'http://localhost:8787';
-const OPENAPI_PATH = './openapi.yaml';
+const OPENAPI_PATH = './docs/api/openapi.yaml';
 const SKIP_CONTRACT_TESTS = Deno.env.get('SKIP_CONTRACT_TESTS') !== 'false';
 
 // Load OpenAPI spec

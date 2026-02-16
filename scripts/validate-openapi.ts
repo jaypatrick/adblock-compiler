@@ -16,7 +16,7 @@ interface ValidationResult {
     warnings: string[];
 }
 
-const OPENAPI_PATH = './openapi.yaml';
+const OPENAPI_PATH = './docs/api/openapi.yaml';
 
 async function validateOpenAPI(): Promise<ValidationResult> {
     const result: ValidationResult = {

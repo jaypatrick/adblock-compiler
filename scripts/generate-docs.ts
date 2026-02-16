@@ -10,7 +10,7 @@
 import { parse } from 'https://deno.land/std@0.224.0/yaml/mod.ts';
 import { ensureDir } from 'https://deno.land/std@0.224.0/fs/mod.ts';
 
-const OPENAPI_PATH = './openapi.yaml';
+const OPENAPI_PATH = './docs/api/openapi.yaml';
 const OUTPUT_DIR = './docs/api';
 const OUTPUT_FILE = `${OUTPUT_DIR}/index.html`;
 
