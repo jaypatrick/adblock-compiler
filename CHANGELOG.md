@@ -7,17 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.16.1] - 2026-02-16
 
-### Added### Fixed
+### Fixed
 
 - update OpenAPI path references after root directory reorganization
 
 ## [0.16.0] - 2026-02-15
 
-### Added- Add circuit breaker pattern for unreliable source downloads
+### Added
+
+- Add circuit breaker pattern for unreliable source downloads
 
 ## [0.15.0] - 2026-02-13
 
-### Added- Add OpenTelemetry integration for distributed tracing
+### Added
+
+- Add OpenTelemetry integration for distributed tracing
 
 ### Fixed
 
@@ -26,7 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.14.0] - 2026-02-13
 
-### Added- Add per-module log level configuration
+### Added
+
+- Add per-module log level configuration
 
 ### Fixed
 
