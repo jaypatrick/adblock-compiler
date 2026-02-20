@@ -1294,6 +1294,23 @@ deno task check
 deno task cache
 ```
 
+### Frontend Development (Tailwind CSS)
+
+The frontend uses Tailwind CSS for styling. After making changes to HTML files:
+
+```bash
+# Build CSS for development
+npm run build:css
+
+# Build CSS and watch for changes (useful during development)
+npm run build:css:watch
+
+# Build minified CSS for production
+npm run build:css:prod
+```
+
+For more details, see [Tailwind CSS Integration Guide](docs/TAILWIND_CSS.md).
+
 ### Project structure
 
 ```

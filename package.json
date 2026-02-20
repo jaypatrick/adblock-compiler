@@ -9,11 +9,17 @@
         "tail": "wrangler tail",
         "tail:deploy": "wrangler deploy --config wrangler.tail.toml",
         "tail:dev": "wrangler dev --config wrangler.tail.toml",
-        "tail:logs": "wrangler tail adblock-compiler-tail"
+        "tail:logs": "wrangler tail adblock-compiler-tail",
+        "build:css": "npx tailwindcss -i ./public/input.css -o ./public/tailwind.css",
+        "build:css:watch": "npx tailwindcss -i ./public/input.css -o ./public/tailwind.css --watch",
+        "build:css:prod": "npx tailwindcss -i ./public/input.css -o ./public/tailwind.css --minify"
     },
     "devDependencies": {
         "@cloudflare/playwright-mcp": "^0.0.5",
         "@cloudflare/workers-types": "^4.20260207.0",
+        "autoprefixer": "^10.4.24",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^3.4.19",
         "wrangler": "^4.63.0"
     },
     "dependencies": {
