@@ -16,6 +16,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - Add circuit breaker pattern for unreliable source downloads
+- Add centralized error reporting with Sentry, Cloudflare Analytics Engine, and console backends
+- Add Zod schema validation for configuration objects and API request bodies
+
+### Changed
+
+- Refactor ConfigurationValidator to use Zod instead of manual validation
 
 ## [0.15.0] - 2026-02-13
 
