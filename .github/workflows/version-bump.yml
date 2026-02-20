@@ -253,14 +253,20 @@ jobs:
                       # Get line number of first version entry
                       FIRST_VERSION_LINE=$(grep -n "^## \[" CHANGELOG.md | head -1 | cut -d: -f1)
                       
-                      # Create temporary file with new entry inserted
-                      {
-                        head -n $((FIRST_VERSION_LINE - 1)) CHANGELOG.md  # Keep header up to first version
-                        echo "$CHANGELOG_ENTRY"
-                        tail -n +$FIRST_VERSION_LINE CHANGELOG.md  # Keep rest of changelog
-                      } > CHANGELOG.md.tmp
-                      mv CHANGELOG.md.tmp CHANGELOG.md
-                      echo "Changelog updated"
+                      # Verify we got a valid line number
+                      if [ -n "$FIRST_VERSION_LINE" ] && [ "$FIRST_VERSION_LINE" -gt 0 ]; then
+                        # Create temporary file with new entry inserted
+                        {
+                          head -n $((FIRST_VERSION_LINE - 1)) CHANGELOG.md  # Keep header up to first version
+                          echo "$CHANGELOG_ENTRY"
+                          tail -n +$FIRST_VERSION_LINE CHANGELOG.md  # Keep rest of changelog
+                        } > CHANGELOG.md.tmp
+                        mv CHANGELOG.md.tmp CHANGELOG.md
+                        echo "Changelog updated"
+                      else
+                        echo "Warning: Could not determine changelog insertion point, appending to end"
+                        echo "$CHANGELOG_ENTRY" >> CHANGELOG.md
+                      fi
                     else
                       # No existing versions, append to end
                       echo "$CHANGELOG_ENTRY" >> CHANGELOG.md
