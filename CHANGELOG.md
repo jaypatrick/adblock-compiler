@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+
+## [0.17.0] - 2026-02-20
+
+### Added- create proof of concept for React, Vue, and Angular framework evaluation
+
+### Fixed
+
+- address PR review comments - Angular 19 naming, RxJS leak, missing files, React CDN warning
+- apply deno fmt to fix CI format check failure (18 files)
+- upgrade Angular PoC deps from 17.1.0 to 19.2.18 to fix security vulnerabilities
+- add validation for changelog line number in version-bump workflow
+- make changelog insertion more robust in version-bump workflow
+
+
 ## [0.16.1] - 2026-02-16
 
 ### Fixed
