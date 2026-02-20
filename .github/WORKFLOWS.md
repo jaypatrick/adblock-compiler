@@ -4,11 +4,12 @@ This document describes the GitHub Actions workflows used in this repository and
 
 ## Overview
 
-The repository uses three main workflows:
+The repository uses four main workflows:
 
 1. **CI** (`ci.yml`) - Continuous Integration for code quality and deployment
-2. **Release** (`release.yml`) - Build and publish releases
-3. **Version Bump** (`version-bump.yml`) - Manage version updates
+2. **Version Bump** (`version-bump.yml`) - Automatic or manual version updates with changelog
+3. **Create Version Tag** (`create-version-tag.yml`) - Creates release tags for merged version bump PRs
+4. **Release** (`release.yml`) - Build and publish releases
 
 ## CI Workflow
 
@@ -70,29 +71,48 @@ The repository uses three main workflows:
 
 ## Version Bump Workflow
 
-**Trigger**: Manual dispatch only (removed automatic PR triggering)
+**Trigger**: Push to main, Manual dispatch
 
 ### Jobs
 
-1. **Bump** - Update version in all relevant files
-2. **Trigger Release** - Optionally trigger release workflow (if requested)
+1. **Version Bump** - Automatically analyze commits and bump version, or manually specify bump type
+2. **Trigger Release** - Optionally trigger release workflow (if requested via manual dispatch)
 
-### Key Improvements
+### Key Features
 
-- ✅ **Manual Only**: Removed automatic triggering on PR open (was disruptive)
-- ✅ **Better Error Handling**: Uses case statement instead of if/elif chain
-- ✅ **Verification Step**: Validates version was updated correctly
-- ✅ **Focused Updates**: Only updates core files (removed example file updates)
-- ✅ **Clearer Output**: Better logging of version changes
-- ✅ **Selective Git Add**: Only adds files that exist, preventing errors
+- ✅ **Automatic Detection**: Uses conventional commits to determine version bump type
+- ✅ **Manual Override**: Can manually specify patch/minor/major bump
+- ✅ **Changelog Generation**: Automatically generates changelog entries from commits
+- ✅ **PR-Based**: Creates pull request with version changes for review
+- ✅ **Skip Logic**: Skips if `[skip ci]` or `[skip version]` in commit message
+
+### Conventional Commits Support
+
+- `feat:` → minor bump
+- `fix:` → patch bump
+- `perf:` → patch bump
+- `feat!:` or `BREAKING CHANGE:` → major bump
 
 ### Changes from Previous Version
 
-- **Removed**: Automatic trigger on PR open
-- **Removed**: PR comment functionality
-- **Removed**: Updates to example files (should be done manually)
-- **Added**: Verification step
-- **Added**: Better error handling
+- **Consolidated**: Merged `auto-version-bump.yml` and `version-bump.yml` into single workflow
+- **Simplified**: Single workflow handles both automatic and manual triggers
+- **Improved**: Better error handling and verification steps
+
+## Create Version Tag Workflow
+
+**Trigger**: PR closed (for version bump PRs only)
+
+### Jobs
+
+1. **Create Tag** - Creates release tag when version bump PR is merged
+
+### Key Features
+
+- ✅ **Automatic Tagging**: Creates `v<version>` tag when version bump PR is merged
+- ✅ **Idempotent**: Checks if tag exists before creating
+- ✅ **Cleanup**: Deletes version bump branch after tagging
+- ✅ **Release Trigger**: Tag automatically triggers release workflow
 
 ## Caching Strategy
 
@@ -170,9 +190,18 @@ This ensures:
 1. Make your changes on a feature branch
 2. Create a PR and wait for CI to pass
 3. Merge to main
-4. Run "Version Bump" workflow with desired bump type
-5. Optionally check "Create a release after bumping" to automatically trigger release
-6. Or manually create a tag `v<version>` to trigger release
+4. Version bump workflow automatically runs and creates a version bump PR
+5. Review and merge the version bump PR
+6. Create version tag workflow automatically creates the release tag
+7. Release workflow automatically builds and publishes the release
+
+**Or for manual version bump:**
+
+1. Make your changes on a feature branch
+2. Create a PR and wait for CI to pass
+3. Merge to main
+4. Run "Version Bump" workflow manually with desired bump type
+5. Optionally check "Create a release after bumping" to skip the PR review step
 
 ### Troubleshooting
 
