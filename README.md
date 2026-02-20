@@ -380,6 +380,49 @@ const result = await compiler.compile(config);
 console.log(`Compiled ${result.length} rules`);
 ```
 
+#### Runtime Validation with Zod
+
+The package includes **Zod schemas** for type-safe runtime validation of configurations and API requests:
+
+```typescript
+import { ConfigurationSchema, ConfigurationValidator } from '@jk-com/adblock-compiler';
+
+// Using the validator class (backward-compatible)
+const validator = new ConfigurationValidator();
+const result = validator.validate(configObject);
+
+if (!result.valid) {
+    console.error('Validation failed:', result.errorsText);
+} else {
+    console.log('Configuration is valid!');
+}
+
+// Or use Zod schemas directly for more control
+const parseResult = ConfigurationSchema.safeParse(configObject);
+
+if (!parseResult.success) {
+    console.error('Validation failed:');
+    for (const issue of parseResult.error.issues) {
+        console.error(`  ${issue.path.join('.')}: ${issue.message}`);
+    }
+} else {
+    // parseResult.data contains the validated configuration
+    const validatedConfig = parseResult.data;
+    console.log('Configuration is valid!');
+}
+```
+
+**Available Schemas:**
+- `ConfigurationSchema` - Main configuration validation
+- `SourceSchema` - Individual source validation
+- `CompileRequestSchema` - Worker compilation request
+- `BatchRequestSchema` - Batch compilation requests
+- `ValidationReportSchema` - Validation error reports
+- `HttpFetcherOptionsSchema` - HTTP fetcher options
+- `PlatformCompilerOptionsSchema` - Platform compiler options
+
+For detailed documentation and examples, see [Zod Validation Guide](docs/ZOD_VALIDATION.md).
+
 ## <a name="openapi-specification"></a> OpenAPI Specification
 
 This package includes a comprehensive **OpenAPI 3.0.3** specification for the REST API, enabling:
