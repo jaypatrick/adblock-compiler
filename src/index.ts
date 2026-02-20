@@ -74,8 +74,23 @@ export type {
 export { FilterDownloader } from './downloader/index.ts';
 export type { DownloaderOptions } from './downloader/index.ts';
 
-// Configuration
-export { ConfigurationValidator } from './configuration/index.ts';
+// Configuration and Validation Schemas
+export {
+    BatchRequestAsyncSchema,
+    BatchRequestSchema,
+    BatchRequestSyncSchema,
+    CompileRequestSchema,
+    ConfigurationSchema,
+    ConfigurationValidator,
+    HttpFetcherOptionsSchema,
+    PlatformCompilerOptionsSchema,
+    SourceSchema,
+    ValidationErrorSchema,
+    ValidationErrorTypeSchema,
+    ValidationReportSchema,
+    ValidationResultSchema,
+    ValidationSeveritySchema,
+} from './configuration/index.ts';
 
 // Zod schemas for runtime validation
 export {

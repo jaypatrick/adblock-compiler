@@ -14,6 +14,7 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 - [Quick Start Guide](guides/quick-start.md) - Get up and running with Docker in minutes
 - [API Documentation](api/README.md) - REST API reference and examples
 - [Client Libraries](guides/clients.md) - Client examples for Python, TypeScript, and Go
+- [**Zod Validation Guide**](ZOD_VALIDATION.md) - 🆕 Runtime validation with Zod schemas
 
 ### Deployment
 
@@ -49,6 +50,7 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 - [Benchmarks](benchmarks.md) - Performance benchmarking guide
 - [Extensibility](EXTENSIBILITY.md) - Custom transformations and extensions
 - [Diagnostics](DIAGNOSTICS.md) - Event emission and tracing
+- [Validation Errors](VALIDATION_ERRORS.md) - Understanding validation errors and reporting
 
 ### Reference
 

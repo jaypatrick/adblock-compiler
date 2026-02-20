@@ -241,7 +241,7 @@ docs/POSTMAN_TESTING.md          # Postman guide
 
 ## 🔗 Links
 
-- **OpenAPI Spec:** [openapi.yaml](../../openapi.yaml)
+- **OpenAPI Spec:** [openapi.yaml](openapi.yaml)
 - **Complete Guide:** [OPENAPI_TOOLING.md](../OPENAPI_TOOLING.md)
 - **Postman Guide:** [POSTMAN_TESTING.md](../POSTMAN_TESTING.md)
 - **Queue Guide:** [QUEUE_SUPPORT.md](../QUEUE_SUPPORT.md)
