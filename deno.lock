@@ -1,6 +1,7 @@
 {
   "version": "5",
   "specifiers": {
+    "jsr:@opentelemetry/api@^1.9.0": "1.9.0",
     "jsr:@std/assert@^1.0.17": "1.0.18",
     "jsr:@std/assert@^1.0.18": "1.0.18",
     "jsr:@std/async@^1.1.0": "1.1.1",
@@ -13,17 +14,19 @@
     "jsr:@std/path@^1.1.4": "1.1.4",
     "jsr:@std/testing@^1.0.17": "1.0.17",
     "jsr:@std/yaml@*": "1.0.10",
+    "jsr:@zod/zod@^4.3.6": "4.3.6",
     "npm:@adguard/agtree@4": "4.0.0",
     "npm:@cloudflare/playwright-mcp@^0.0.5": "0.0.5_zod@4.3.6_@cloudflare+workers-types@4.20260207.0",
     "npm:@cloudflare/workers-types@^4.20260207.0": "4.20260207.0",
-    "npm:@opentelemetry/api@^1.9.0": "1.9.0",
     "npm:@prisma/adapter-pg@^7.3.0": "7.3.0",
     "npm:@prisma/client@^7.3.0": "7.3.0_prisma@7.3.0",
     "npm:prisma@^7.3.0": "7.3.0",
-    "npm:wrangler@^4.63.0": "4.63.0_@cloudflare+workers-types@4.20260207.0_unenv@2.0.0-rc.24_workerd@1.20260205.0",
-    "npm:zod@^4.3.6": "4.3.6"
+    "npm:wrangler@^4.63.0": "4.63.0_@cloudflare+workers-types@4.20260207.0_unenv@2.0.0-rc.24_workerd@1.20260205.0"
   },
   "jsr": {
+    "@opentelemetry/api@1.9.0": {
+      "integrity": "a8a4980ff5eff7bd322715cad1a128b3208675f1e05b8adbfcf6b240502739b7"
+    },
     "@std/assert@1.0.18": {
       "integrity": "270245e9c2c13b446286de475131dc688ca9abcd94fc5db41d43a219b34d1c78",
       "dependencies": [
@@ -75,6 +78,9 @@
     },
     "@std/yaml@1.0.10": {
       "integrity": "245706ea3511cc50c8c6d00339c23ea2ffa27bd2c7ea5445338f8feff31fa58e"
+    },
+    "@zod/zod@4.3.6": {
+      "integrity": "7144e5e11f8ffc3cf6e2fca624f6597a8762898aac9868cc8938e9398b96ffe4"
     }
   },
   "npm": {
@@ -2073,20 +2079,20 @@
   },
   "workspace": {
     "dependencies": [
+      "jsr:@opentelemetry/api@^1.9.0",
       "jsr:@std/assert@^1.0.18",
       "jsr:@std/async@^1.1.1",
       "jsr:@std/cli@^1.0.17",
       "jsr:@std/fs@^1.0.22",
       "jsr:@std/path@^1.1.4",
       "jsr:@std/testing@^1.0.17",
+      "jsr:@zod/zod@^4.3.6",
       "npm:@adguard/agtree@4",
       "npm:@cloudflare/workers-types@^4.20260207.0",
-      "npm:@opentelemetry/api@^1.9.0",
       "npm:@prisma/adapter-pg@^7.3.0",
       "npm:@prisma/client@^7.3.0",
       "npm:prisma@^7.3.0",
-      "npm:wrangler@^4.63.0",
-      "npm:zod@^4.3.6"
+      "npm:wrangler@^4.63.0"
     ],
     "packageJson": {
       "dependencies": [
