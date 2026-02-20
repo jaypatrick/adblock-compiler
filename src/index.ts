@@ -31,6 +31,10 @@ export type { LoggerOptions, ModuleOverrides } from './utils/index.ts';
 // Error utilities
 export { BaseError, CompilationError, ErrorUtils, NetworkError, SourceError, ValidationError } from './utils/index.ts';
 
+// Circuit breaker for resilience
+export { CircuitBreaker, CircuitBreakerOpenError, CircuitBreakerState } from './utils/index.ts';
+export type { CircuitBreakerOptions } from './utils/index.ts';
+
 // Boolean expression parser
 export { evaluateBooleanExpression, getKnownPlatforms, isKnownPlatform } from './utils/index.ts';
 
@@ -72,6 +76,15 @@ export type { DownloaderOptions } from './downloader/index.ts';
 
 // Configuration
 export { ConfigurationValidator } from './configuration/index.ts';
+
+// Zod schemas for runtime validation
+export {
+    BatchRequestAsyncSchema,
+    BatchRequestSyncSchema,
+    CompileRequestSchema,
+    ConfigurationSchema,
+    SourceSchema,
+} from './configuration/index.ts';
 
 // Transformations
 export {
