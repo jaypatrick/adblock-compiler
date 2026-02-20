@@ -1,14 +1,14 @@
 /**
  * Angular PoC - Compiler Form Component
- * 
+ *
  * ANGULAR PATTERN: Reactive Forms with FormBuilder
  * Demonstrates form state management, validation, and API integration
  */
 
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, FormArray, ReactiveFormsModule, Validators } from '@angular/forms';
-import { CompilerService, CompileResponse } from '../services/compiler.service';
+import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { CompileResponse, CompilerService } from '../services/compiler.service';
 
 /**
  * CompilerComponent
@@ -16,10 +16,10 @@ import { CompilerService, CompileResponse } from '../services/compiler.service';
  * Uses FormBuilder for creating form controls and FormArray for dynamic lists
  */
 @Component({
-  selector: 'app-compiler',
-  standalone: true,
-  imports: [CommonModule, ReactiveFormsModule], // Import FormsModule for template-driven forms
-  template: `
+    selector: 'app-compiler',
+    standalone: true,
+    imports: [CommonModule, ReactiveFormsModule], // Import FormsModule for template-driven forms
+    template: `
     <div>
       <h1>Compiler</h1>
       <p class="mb-2" style="color: var(--text-muted)">
@@ -121,7 +121,7 @@ import { CompilerService, CompileResponse } from '../services/compiler.service';
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     /* Component-scoped styles */
     
     .form-section {
@@ -300,129 +300,129 @@ import { CompilerService, CompileResponse } from '../services/compiler.service';
     
     .mb-2 { margin-bottom: 20px; }
     .mt-2 { margin-top: 20px; }
-  `]
+  `],
 })
 export class CompilerComponent implements OnInit {
-  /**
-   * Component Properties
-   */
-  // URL validation pattern constant
-  private readonly URL_PATTERN = 'https?://.+';
-  
-  compilerForm!: FormGroup;
-  availableTransformations: string[] = [];
-  loading = false;
-  error: string | null = null;
-  results: CompileResponse | null = null;
+    /**
+     * Component Properties
+     */
+    // URL validation pattern constant
+    private readonly URL_PATTERN = 'https?://.+';
 
-  /**
-   * Constructor with Dependency Injection
-   * Angular's DI provides FormBuilder and CompilerService instances
-   */
-  constructor(
-    private fb: FormBuilder,
-    private compilerService: CompilerService
-  ) {}
+    compilerForm!: FormGroup;
+    availableTransformations: string[] = [];
+    loading = false;
+    error: string | null = null;
+    results: CompileResponse | null = null;
 
-  /**
-   * Lifecycle Hook: OnInit
-   * Called after component initialization
-   * Pattern: Initialize form and load data
-   */
-  ngOnInit(): void {
-    // Get available transformations from service
-    this.availableTransformations = this.compilerService.getAvailableTransformations();
-    
-    // Initialize reactive form
-    this.initializeForm();
-  }
+    /**
+     * Constructor with Dependency Injection
+     * Angular's DI provides FormBuilder and CompilerService instances
+     */
+    constructor(
+        private fb: FormBuilder,
+        private compilerService: CompilerService,
+    ) {}
 
-  /**
-   * Initialize Reactive Form
-   * Pattern: FormBuilder for creating form structure
-   */
-  private initializeForm(): void {
-    // Create transformations form group with all checkboxes
-    const transformationsGroup: { [key: string]: boolean } = {};
-    this.availableTransformations.forEach((trans, index) => {
-      // Default first two to checked
-      transformationsGroup[trans] = index < 2;
-    });
+    /**
+     * Lifecycle Hook: OnInit
+     * Called after component initialization
+     * Pattern: Initialize form and load data
+     */
+    ngOnInit(): void {
+        // Get available transformations from service
+        this.availableTransformations = this.compilerService.getAvailableTransformations();
 
-    // Build form with FormBuilder
-    this.compilerForm = this.fb.group({
-      urls: this.fb.array([
-        this.fb.control('', [Validators.required, Validators.pattern(this.URL_PATTERN)])
-      ]),
-      transformations: this.fb.group(transformationsGroup)
-    });
-  }
-
-  /**
-   * Getter for URLs FormArray
-   * Pattern: Convenient access to form array
-   */
-  get urlsArray(): FormArray {
-    return this.compilerForm.get('urls') as FormArray;
-  }
-
-  /**
-   * Add URL input field
-   */
-  addUrl(): void {
-    this.urlsArray.push(
-      this.fb.control('', [Validators.required, Validators.pattern(this.URL_PATTERN)])
-    );
-  }
-
-  /**
-   * Remove URL input field
-   */
-  removeUrl(index: number): void {
-    if (this.urlsArray.length > 1) {
-      this.urlsArray.removeAt(index);
-    }
-  }
-
-  /**
-   * Form Submit Handler
-   * Pattern: Reactive form submission with service call
-   */
-  onSubmit(): void {
-    if (this.compilerForm.invalid) {
-      this.error = 'Please fill in all required fields';
-      return;
+        // Initialize reactive form
+        this.initializeForm();
     }
 
-    // Get form values
-    const urls: string[] = this.compilerForm.value.urls.filter((url: string) => url.trim() !== '');
-    
-    // Get selected transformations
-    const transformationsObj = this.compilerForm.value.transformations;
-    const selectedTransformations = Object.keys(transformationsObj)
-      .filter(key => transformationsObj[key]);
+    /**
+     * Initialize Reactive Form
+     * Pattern: FormBuilder for creating form structure
+     */
+    private initializeForm(): void {
+        // Create transformations form group with all checkboxes
+        const transformationsGroup: { [key: string]: boolean } = {};
+        this.availableTransformations.forEach((trans, index) => {
+            // Default first two to checked
+            transformationsGroup[trans] = index < 2;
+        });
 
-    if (urls.length === 0) {
-      this.error = 'Please enter at least one URL';
-      return;
+        // Build form with FormBuilder
+        this.compilerForm = this.fb.group({
+            urls: this.fb.array([
+                this.fb.control('', [Validators.required, Validators.pattern(this.URL_PATTERN)]),
+            ]),
+            transformations: this.fb.group(transformationsGroup),
+        });
     }
 
-    // Call API through service
-    this.loading = true;
-    this.error = null;
-    this.results = null;
+    /**
+     * Getter for URLs FormArray
+     * Pattern: Convenient access to form array
+     */
+    get urlsArray(): FormArray {
+        return this.compilerForm.get('urls') as FormArray;
+    }
 
-    // Subscribe to Observable
-    // Pattern: RxJS subscription for async operations
-    this.compilerService.compile(urls, selectedTransformations).subscribe({
-      next: (response) => {
-        this.results = response;
-        this.loading = false;
-      },
-      error: (err) => {
-        this.error = err.message || 'An error occurred during compilation';
-        this.loading = false;
-      }
-    });
-  }
+    /**
+     * Add URL input field
+     */
+    addUrl(): void {
+        this.urlsArray.push(
+            this.fb.control('', [Validators.required, Validators.pattern(this.URL_PATTERN)]),
+        );
+    }
+
+    /**
+     * Remove URL input field
+     */
+    removeUrl(index: number): void {
+        if (this.urlsArray.length > 1) {
+            this.urlsArray.removeAt(index);
+        }
+    }
+
+    /**
+     * Form Submit Handler
+     * Pattern: Reactive form submission with service call
+     */
+    onSubmit(): void {
+        if (this.compilerForm.invalid) {
+            this.error = 'Please fill in all required fields';
+            return;
+        }
+
+        // Get form values
+        const urls: string[] = this.compilerForm.value.urls.filter((url: string) => url.trim() !== '');
+
+        // Get selected transformations
+        const transformationsObj = this.compilerForm.value.transformations;
+        const selectedTransformations = Object.keys(transformationsObj)
+            .filter((key) => transformationsObj[key]);
+
+        if (urls.length === 0) {
+            this.error = 'Please enter at least one URL';
+            return;
+        }
+
+        // Call API through service
+        this.loading = true;
+        this.error = null;
+        this.results = null;
+
+        // Subscribe to Observable
+        // Pattern: RxJS subscription for async operations
+        this.compilerService.compile(urls, selectedTransformations).subscribe({
+            next: (response) => {
+                this.results = response;
+                this.loading = false;
+            },
+            error: (err) => {
+                this.error = err.message || 'An error occurred during compilation';
+                this.loading = false;
+            },
+        });
+    }
 }

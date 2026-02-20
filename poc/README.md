@@ -19,11 +19,13 @@ Each PoC demonstrates how the existing vanilla HTML/CSS/JS frontend would be imp
 ### 1. React PoC ([react/index.html](./react/index.html))
 
 **Technology Stack:**
+
 - React 18 (via CDN)
 - React Router v6 (via CDN)
 - Babel Standalone (for JSX transformation)
 
 **Key Patterns:**
+
 - Functional components with Hooks
 - `useState` for local state
 - `useEffect` for side effects
@@ -32,6 +34,7 @@ Each PoC demonstrates how the existing vanilla HTML/CSS/JS frontend would be imp
 - Custom hooks for reusable logic
 
 **How to Run:**
+
 ```bash
 cd poc/react
 # Open index.html in a web browser
@@ -41,6 +44,7 @@ python3 -m http.server 8000
 ```
 
 **Advantages:**
+
 - 🚀 Huge ecosystem and community
 - 📚 Abundant learning resources
 - 🔧 Flexible and unopinionated
@@ -48,6 +52,7 @@ python3 -m http.server 8000
 - 🧩 Rich component library ecosystem
 
 **Considerations:**
+
 - Requires build tooling for production (Vite, webpack)
 - More decisions to make (state management, routing)
 - JSX learning curve
@@ -57,11 +62,13 @@ python3 -m http.server 8000
 ### 2. Vue 3 PoC ([vue/index.html](./vue/index.html))
 
 **Technology Stack:**
+
 - Vue 3 (via CDN)
 - Vue Router 4 (via CDN)
 - Composition API
 
 **Key Patterns:**
+
 - Composition API with `setup()`
 - `ref()` and `reactive()` for reactive state
 - `computed()` for derived state
@@ -71,6 +78,7 @@ python3 -m http.server 8000
 - Composables for reusable logic
 
 **How to Run:**
+
 ```bash
 cd poc/vue
 # Open index.html in a web browser
@@ -80,6 +88,7 @@ python3 -m http.server 8001
 ```
 
 **Advantages:**
+
 - 🎨 Progressive framework (start simple, scale up)
 - 📖 Excellent documentation
 - 🔄 Two-way data binding
@@ -88,6 +97,7 @@ python3 -m http.server 8001
 - 🛠️ Official router and state management
 
 **Considerations:**
+
 - Smaller ecosystem than React
 - Less corporate backing
 - Composition API is newer (learning curve)
@@ -97,12 +107,14 @@ python3 -m http.server 8001
 ### 3. Angular PoC ([angular/](./angular/))
 
 **Technology Stack:**
+
 - Angular 17+ (Standalone Components)
 - TypeScript
 - RxJS
 - Reactive Forms
 
 **Key Patterns:**
+
 - Standalone components (no NgModules)
 - Dependency Injection
 - Reactive Forms with FormBuilder
@@ -112,6 +124,7 @@ python3 -m http.server 8001
 - Component-scoped styles
 
 **How to Run:**
+
 ```bash
 cd poc/angular
 npm install
@@ -120,6 +133,7 @@ npm start
 ```
 
 **Advantages:**
+
 - 🏢 Enterprise-ready framework
 - 📘 Full TypeScript integration
 - 🧰 Complete solution (router, forms, HTTP, testing)
@@ -128,6 +142,7 @@ npm start
 - 💼 Popular in enterprise environments
 
 **Considerations:**
+
 - Steeper learning curve
 - More boilerplate code
 - Larger bundle size
@@ -137,24 +152,25 @@ npm start
 
 ## 🔍 Feature Comparison
 
-| Feature | React | Vue | Angular |
-|---------|-------|-----|---------|
-| **Learning Curve** | Medium | Easy | Steep |
-| **Bundle Size** | Small-Medium | Small | Large |
-| **Performance** | Excellent | Excellent | Very Good |
-| **TypeScript** | Optional | Optional | Required |
-| **State Management** | External (Redux, Zustand) | Built-in (Pinia) | Services + RxJS |
-| **Form Handling** | Manual / Libraries | v-model + validation | Reactive Forms |
-| **Routing** | React Router | Vue Router | Angular Router |
-| **Build Setup** | Vite / CRA | Vite / Vue CLI | Angular CLI |
-| **Testing** | Jest + Testing Library | Vitest / Jest | Jasmine + Karma |
-| **Mobile** | React Native | Native options | Ionic / NativeScript |
-| **Community** | Very Large | Large | Large |
-| **Corporate Backing** | Meta | Independent | Google |
+| Feature               | React                     | Vue                  | Angular              |
+| --------------------- | ------------------------- | -------------------- | -------------------- |
+| **Learning Curve**    | Medium                    | Easy                 | Steep                |
+| **Bundle Size**       | Small-Medium              | Small                | Large                |
+| **Performance**       | Excellent                 | Excellent            | Very Good            |
+| **TypeScript**        | Optional                  | Optional             | Required             |
+| **State Management**  | External (Redux, Zustand) | Built-in (Pinia)     | Services + RxJS      |
+| **Form Handling**     | Manual / Libraries        | v-model + validation | Reactive Forms       |
+| **Routing**           | React Router              | Vue Router           | Angular Router       |
+| **Build Setup**       | Vite / CRA                | Vite / Vue CLI       | Angular CLI          |
+| **Testing**           | Jest + Testing Library    | Vitest / Jest        | Jasmine + Karma      |
+| **Mobile**            | React Native              | Native options       | Ionic / NativeScript |
+| **Community**         | Very Large                | Large                | Large                |
+| **Corporate Backing** | Meta                      | Independent          | Google               |
 
 ## 🎨 Visual Comparison
 
 All three PoCs implement the same design using the existing color scheme:
+
 - **Primary Gradient**: `#667eea` → `#764ba2`
 - **Dark Mode**: Supported in all implementations
 - **Responsive Design**: Mobile-friendly layouts
@@ -163,6 +179,7 @@ All three PoCs implement the same design using the existing color scheme:
 ## 📊 Code Structure Comparison
 
 ### React
+
 ```
 - Functional components
 - JSX templates
@@ -172,6 +189,7 @@ All three PoCs implement the same design using the existing color scheme:
 ```
 
 ### Vue
+
 ```
 - Single-file components (or templates)
 - Template syntax (HTML-like)
@@ -181,6 +199,7 @@ All three PoCs implement the same design using the existing color scheme:
 ```
 
 ### Angular
+
 ```
 - Class-based components
 - Inline or external templates
@@ -192,6 +211,7 @@ All three PoCs implement the same design using the existing color scheme:
 ## 🚀 Migration Path Recommendations
 
 ### Choose **React** if:
+
 - ✅ You want maximum flexibility
 - ✅ Large ecosystem is important
 - ✅ Team has React experience
@@ -199,6 +219,7 @@ All three PoCs implement the same design using the existing color scheme:
 - ✅ You prefer functional programming
 
 ### Choose **Vue** if:
+
 - ✅ You want an easy learning curve
 - ✅ Progressive enhancement is important
 - ✅ You like template-based syntax
@@ -206,6 +227,7 @@ All three PoCs implement the same design using the existing color scheme:
 - ✅ You value excellent documentation
 
 ### Choose **Angular** if:
+
 - ✅ You need an enterprise framework
 - ✅ TypeScript is a requirement
 - ✅ You want a complete solution
@@ -215,6 +237,7 @@ All three PoCs implement the same design using the existing color scheme:
 ## 📈 Existing App Analysis
 
 ### Current Stack
+
 - **Multi-page application** (compiler.html, index.html, admin-storage.html, test.html)
 - **Vanilla JavaScript** with manual DOM manipulation
 - **CSS Custom Properties** for theming
@@ -224,6 +247,7 @@ All three PoCs implement the same design using the existing color scheme:
 ### Migration Benefits
 
 **All Frameworks Provide:**
+
 1. **Single Page Application** - No page reloads, faster navigation
 2. **Component Reusability** - DRY principle, maintainable code
 3. **State Management** - Predictable data flow
@@ -240,25 +264,27 @@ All PoCs use the same API contract:
 **Endpoint:** `POST /api/compile`
 
 **Request:**
+
 ```json
 {
-  "configuration": {
-    "name": "Filter List Name",
-    "sources": [
-      { "source": "https://example.com/filters.txt" }
-    ],
-    "transformations": [
-      "RemoveComments",
-      "Deduplicate",
-      "TrimLines",
-      "RemoveEmptyLines"
-    ]
-  },
-  "benchmark": true
+    "configuration": {
+        "name": "Filter List Name",
+        "sources": [
+            { "source": "https://example.com/filters.txt" }
+        ],
+        "transformations": [
+            "RemoveComments",
+            "Deduplicate",
+            "TrimLines",
+            "RemoveEmptyLines"
+        ]
+    },
+    "benchmark": true
 }
 ```
 
 **Response:**
+
 ```json
 {
   "success": true,
@@ -273,6 +299,7 @@ All PoCs use the same API contract:
 ```
 
 **Available Transformations:**
+
 - RemoveComments
 - Compress
 - RemoveModifiers
@@ -288,16 +315,19 @@ All PoCs use the same API contract:
 ## 📝 Implementation Notes
 
 ### React & Vue (CDN Versions)
+
 - Single HTML file, no build step required
 - Suitable for PoC and small projects
 - For production, use Vite or other build tools
 
 ### Angular
+
 - Requires Node.js and npm
 - Uses Angular CLI for development
 - Production-ready setup out of the box
 
 ### Production Considerations
+
 1. **Build Process**: All frameworks need bundling for production
 2. **Code Splitting**: Lazy load routes and components
 3. **SEO**: Consider SSR (Next.js, Nuxt, Angular Universal)
@@ -308,6 +338,7 @@ All PoCs use the same API contract:
 ## 🧪 Testing the PoCs
 
 ### React & Vue (CDN)
+
 1. Open the HTML file directly in a browser
 2. Or serve with a local HTTP server:
    ```bash
@@ -316,6 +347,7 @@ All PoCs use the same API contract:
    ```
 
 ### Angular
+
 1. Install dependencies: `npm install`
 2. Run dev server: `npm start`
 3. Build for production: `npm run build`
@@ -323,16 +355,19 @@ All PoCs use the same API contract:
 ## 🎓 Learning Resources
 
 ### React
+
 - [Official React Docs](https://react.dev/)
 - [React Router](https://reactrouter.com/)
 - [React Hooks](https://react.dev/reference/react)
 
 ### Vue
+
 - [Official Vue Docs](https://vuejs.org/)
 - [Vue Router](https://router.vuejs.org/)
 - [Composition API](https://vuejs.org/guide/extras/composition-api-faq.html)
 
 ### Angular
+
 - [Official Angular Docs](https://angular.io/docs)
 - [Standalone Components](https://angular.io/guide/standalone-components)
 - [Reactive Forms](https://angular.io/guide/reactive-forms)
@@ -350,6 +385,7 @@ All PoCs use the same API contract:
 ## 🤝 Contributing
 
 These PoCs are starting points. Feel free to extend them with:
+
 - Additional pages (admin-storage, test)
 - Chart.js integration
 - WebSocket support

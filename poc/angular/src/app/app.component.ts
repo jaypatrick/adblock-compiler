@@ -1,13 +1,13 @@
 /**
  * Angular PoC - App Component (Root Component)
- * 
+ *
  * ANGULAR PATTERN: Root component with router outlet
  * This is the entry point component that contains the app shell
  */
 
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
 
 /**
  * AppComponent
@@ -15,15 +15,15 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
  * Contains navigation and router outlet for nested routes
  */
 @Component({
-  selector: 'app-root',
-  standalone: true,
-  imports: [
-    CommonModule,
-    RouterOutlet,
-    RouterLink,
-    RouterLinkActive
-  ],
-  template: `
+    selector: 'app-root',
+    standalone: true,
+    imports: [
+        CommonModule,
+        RouterOutlet,
+        RouterLink,
+        RouterLinkActive,
+    ],
+    template: `
     <div class="app-container">
       <!-- Navigation -->
       <nav class="nav">
@@ -62,7 +62,7 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
       </main>
     </div>
   `,
-  styles: [`
+    styles: [`
     /* App-level styles */
     
     .app-container {
@@ -134,39 +134,39 @@ import { RouterOutlet, RouterLink, RouterLinkActive } from '@angular/router';
       box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
       min-height: 400px;
     }
-  `]
+  `],
 })
 export class AppComponent implements OnInit {
-  theme: 'light' | 'dark' = 'light';
+    theme: 'light' | 'dark' = 'light';
 
-  /**
-   * Lifecycle Hook: OnInit
-   * Initialize theme from localStorage
-   */
-  ngOnInit(): void {
-    // Load theme from localStorage
-    const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-    if (savedTheme) {
-      this.theme = savedTheme;
-      this.applyTheme();
+    /**
+     * Lifecycle Hook: OnInit
+     * Initialize theme from localStorage
+     */
+    ngOnInit(): void {
+        // Load theme from localStorage
+        const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
+        if (savedTheme) {
+            this.theme = savedTheme;
+            this.applyTheme();
+        }
     }
-  }
 
-  /**
-   * Toggle Theme Handler
-   * Pattern: Event handler method that updates state and DOM
-   */
-  toggleTheme(): void {
-    this.theme = this.theme === 'light' ? 'dark' : 'light';
-    this.applyTheme();
-    localStorage.setItem('theme', this.theme);
-  }
+    /**
+     * Toggle Theme Handler
+     * Pattern: Event handler method that updates state and DOM
+     */
+    toggleTheme(): void {
+        this.theme = this.theme === 'light' ? 'dark' : 'light';
+        this.applyTheme();
+        localStorage.setItem('theme', this.theme);
+    }
 
-  /**
-   * Apply Theme to DOM
-   * Pattern: Direct DOM manipulation for theme attribute
-   */
-  private applyTheme(): void {
-    document.documentElement.setAttribute('data-theme', this.theme);
-  }
+    /**
+     * Apply Theme to DOM
+     * Pattern: Direct DOM manipulation for theme attribute
+     */
+    private applyTheme(): void {
+        document.documentElement.setAttribute('data-theme', this.theme);
+    }
 }

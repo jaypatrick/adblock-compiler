@@ -97,12 +97,14 @@ ng build --configuration production
 ## 🎨 Features Demonstrated
 
 ### Home Page
+
 - Dashboard with statistics cards
 - `*ngFor` structural directive for list rendering
 - Interpolation binding with `{{ }}`
 - Component-scoped styles
 
 ### Compiler Page
+
 - **Reactive Forms** with `FormBuilder`
 - **Dynamic Form Controls** with `FormArray`
 - **Checkbox Group** with nested `FormGroup`
@@ -112,6 +114,7 @@ ng build --configuration production
 - **RxJS Observables** for async operations
 
 ### Navigation & Theming
+
 - Client-side routing with Angular Router
 - `routerLink` directive for navigation
 - `routerLinkActive` for active link highlighting
@@ -121,23 +124,27 @@ ng build --configuration production
 ## 🔧 Key Files Explained
 
 ### `main.ts` - Application Bootstrap
+
 ```typescript
 bootstrapApplication(AppComponent, {
-  providers: [
-    provideRouter(routes),
-    provideHttpClient()
-  ]
+    providers: [
+        provideRouter(routes),
+        provideHttpClient(),
+    ],
 });
 ```
+
 - Standalone bootstrap (no NgModule)
 - Functional providers for router and HTTP client
 
 ### `app.component.ts` - Root Component
+
 - App shell with navigation
 - Router outlet for nested routes
 - Theme toggle functionality
 
 ### `compiler.component.ts` - Compiler Form
+
 - Reactive Forms with FormBuilder
 - FormArray for dynamic URL inputs
 - FormGroup for transformation checkboxes
@@ -145,62 +152,70 @@ bootstrapApplication(AppComponent, {
 - RxJS subscription handling
 
 ### `compiler.service.ts` - API Service
+
 - Injectable service with HttpClient
 - Type-safe interfaces for request/response
 - RxJS operators for error handling
 - Mock data fallback for demo
 
 ### `app.routes.ts` - Route Configuration
+
 ```typescript
 export const routes: Routes = [
-  { path: '', component: HomeComponent },
-  { path: 'compiler', component: CompilerComponent }
+    { path: '', component: HomeComponent },
+    { path: 'compiler', component: CompilerComponent },
 ];
 ```
 
 ## 🎯 Angular-Specific Advantages
 
 ### 1. **TypeScript First**
+
 - Full type safety throughout the application
 - Interfaces for data contracts
 - Better IDE support and refactoring
 
 ### 2. **Dependency Injection**
+
 - Built-in DI system
 - Easy testing with mock services
 - Singleton services for shared state
 
 ### 3. **Reactive Forms**
+
 - Strongly-typed form controls
 - Built-in validation
 - Testable form logic
 - Dynamic form generation
 
 ### 4. **RxJS Integration**
+
 - Powerful reactive programming
 - Observable-based data streams
 - Rich operator library for transformations
 
 ### 5. **Component Encapsulation**
+
 - Scoped styles by default
 - Clear component boundaries
 - Shadow DOM support (optional)
 
 ### 6. **Structural Directives**
+
 - `*ngIf` for conditional rendering
 - `*ngFor` for list rendering
 - `*ngSwitch` for multi-conditional rendering
 
 ## 📊 Comparison with Existing Stack
 
-| Feature | Current (Vanilla) | Angular |
-|---------|------------------|---------|
-| **State Management** | Manual DOM manipulation | Reactive data binding |
-| **Routing** | Multi-page (page reload) | Single-page (no reload) |
-| **Forms** | Manual validation | Built-in validation |
-| **Type Safety** | None | Full TypeScript |
-| **Component Reuse** | Copy-paste | Import components |
-| **Testing** | Manual | Built-in testing tools |
+| Feature              | Current (Vanilla)        | Angular                 |
+| -------------------- | ------------------------ | ----------------------- |
+| **State Management** | Manual DOM manipulation  | Reactive data binding   |
+| **Routing**          | Multi-page (page reload) | Single-page (no reload) |
+| **Forms**            | Manual validation        | Built-in validation     |
+| **Type Safety**      | None                     | Full TypeScript         |
+| **Component Reuse**  | Copy-paste               | Import components       |
+| **Testing**          | Manual                   | Built-in testing tools  |
 
 ## 🧪 Testing
 
@@ -230,12 +245,12 @@ The compiler service calls `/api/compile` with:
 
 ```typescript
 interface CompileRequest {
-  configuration: {
-    name: string;
-    sources: Array<{ source: string }>;
-    transformations: string[];
-  };
-  benchmark?: boolean;
+    configuration: {
+        name: string;
+        sources: Array<{ source: string }>;
+        transformations: string[];
+    };
+    benchmark?: boolean;
 }
 ```
 

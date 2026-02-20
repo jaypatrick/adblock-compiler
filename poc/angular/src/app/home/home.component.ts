@@ -1,6 +1,6 @@
 /**
  * Angular PoC - Home/Dashboard Component
- * 
+ *
  * ANGULAR PATTERN: Standalone component with inline template
  * Demonstrates Angular's component architecture and data binding
  */
@@ -13,8 +13,8 @@ import { CommonModule } from '@angular/common';
  * TypeScript interface for type safety
  */
 interface StatCard {
-  label: string;
-  value: string;
+    label: string;
+    value: string;
 }
 
 /**
@@ -23,10 +23,10 @@ interface StatCard {
  * Displays dashboard with statistics cards
  */
 @Component({
-  selector: 'app-home',
-  standalone: true,
-  imports: [CommonModule], // Import common directives like *ngFor, *ngIf
-  template: `
+    selector: 'app-home',
+    standalone: true,
+    imports: [CommonModule], // Import common directives like *ngFor, *ngIf
+    template: `
     <div>
       <h1>Adblock Compiler Dashboard</h1>
       <p class="mb-2" style="color: var(--text-muted)">
@@ -52,7 +52,7 @@ interface StatCard {
       </div>
     </div>
   `,
-  styles: [`
+    styles: [`
     /* Component-scoped styles */
     /* These styles are encapsulated to this component only */
     
@@ -102,17 +102,17 @@ interface StatCard {
       color: #1e40af;
       border: 1px solid #bfdbfe;
     }
-  `]
+  `],
 })
 export class HomeComponent {
-  /**
-   * Component Properties
-   * Pattern: TypeScript class properties define component state
-   */
-  stats: StatCard[] = [
-    { label: 'Filter Lists Compiled', value: '1,234' },
-    { label: 'Total Rules Processed', value: '456K' },
-    { label: 'Active Transformations', value: '12' },
-    { label: 'Cache Hit Rate', value: '89%' }
-  ];
+    /**
+     * Component Properties
+     * Pattern: TypeScript class properties define component state
+     */
+    stats: StatCard[] = [
+        { label: 'Filter Lists Compiled', value: '1,234' },
+        { label: 'Total Rules Processed', value: '456K' },
+        { label: 'Active Transformations', value: '12' },
+        { label: 'Cache Hit Rate', value: '89%' },
+    ];
 }

@@ -1,6 +1,6 @@
 /**
  * Angular PoC - Application Bootstrap
- * 
+ *
  * ANGULAR PATTERN: Application bootstrap with standalone components
  * This is the entry point that initializes the Angular application
  */
@@ -17,11 +17,11 @@ import { routes } from './app/app.routes';
  * Angular 17+ uses standalone components and functional providers
  */
 bootstrapApplication(AppComponent, {
-  providers: [
-    // Provide router with routes configuration
-    provideRouter(routes),
-    
-    // Provide HttpClient for API calls
-    provideHttpClient()
-  ]
-}).catch(err => console.error(err));
+    providers: [
+        // Provide router with routes configuration
+        provideRouter(routes),
+
+        // Provide HttpClient for API calls
+        provideHttpClient(),
+    ],
+}).catch((err) => console.error(err));
