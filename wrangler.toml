@@ -72,7 +72,7 @@ tag = "v1"
 # IMPORTANT: This version should match src/version.ts VERSION constant
 # The worker will fall back to src/version.ts if this is not set
 # To update: change src/version.ts, deno.json, and package.json, then update this value
-COMPILER_VERSION = "0.16.2"
+COMPILER_VERSION = "0.16.3"
 # TURNSTILE_SITE_KEY, ADMIN_KEY, etc. are loaded from .env files via .envrc
 # For local dev: managed by .env.development and .env.local
 # For production: managed via Cloudflare secrets (wrangler secret put ADMIN_KEY)
