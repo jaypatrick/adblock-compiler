@@ -27,17 +27,11 @@ export const QueueMessageTypeSchema = z.enum(['compile', 'batch-compile', 'cache
 export const WorkflowStatusSchema = z.enum(['queued', 'running', 'completed', 'failed', 'paused', 'terminated']);
 
 // ============================================================================
-// Request Schemas (already exported from configuration/schemas.ts)
-// ============================================================================
-// These are re-exported for convenience in worker context
-// - CompileRequestSchema
-// - BatchRequestSchema
-// - BatchRequestSyncSchema
-// - BatchRequestAsyncSchema
-
-// ============================================================================
 // AST Parse Request Schema
 // ============================================================================
+// Note: CompileRequestSchema, BatchRequestSchema, BatchRequestSyncSchema, and
+// BatchRequestAsyncSchema are available from '../src/configuration/schemas.ts'
+// and can be imported directly when needed in worker context.
 
 /**
  * Schema for AST parse request
@@ -77,6 +71,17 @@ const BaseQueueMessageSchema = z.object({
 });
 
 /**
+ * Schema for a single batch request item
+ * Shared between batch-related schemas to prevent drift.
+ */
+export const BatchRequestItemSchema = z.object({
+    id: z.string().min(1),
+    configuration: ConfigurationSchema,
+    preFetchedContent: z.record(z.string(), z.string()).optional(),
+    benchmark: z.boolean().optional(),
+});
+
+/**
  * Schema for single compilation queue message
  */
 export const CompileQueueMessageSchema = BaseQueueMessageSchema.extend({
@@ -91,14 +96,7 @@ export const CompileQueueMessageSchema = BaseQueueMessageSchema.extend({
  */
 export const BatchCompileQueueMessageSchema = BaseQueueMessageSchema.extend({
     type: z.literal('batch-compile'),
-    requests: z.array(
-        z.object({
-            id: z.string().min(1),
-            configuration: ConfigurationSchema,
-            preFetchedContent: z.record(z.string(), z.string()).optional(),
-            benchmark: z.boolean().optional(),
-        }),
-    ).nonempty(),
+    requests: z.array(BatchRequestItemSchema).nonempty(),
 });
 
 /**
@@ -139,14 +137,7 @@ export const CompilationParamsSchema = z.object({
  */
 export const BatchCompilationParamsSchema = z.object({
     batchId: z.string().min(1),
-    requests: z.array(
-        z.object({
-            id: z.string().min(1),
-            configuration: ConfigurationSchema,
-            preFetchedContent: z.record(z.string(), z.string()).optional(),
-            benchmark: z.boolean().optional(),
-        }),
-    ).nonempty(),
+    requests: z.array(BatchRequestItemSchema).nonempty(),
     priority: PrioritySchema.optional(),
     queuedAt: z.number().int().positive(),
 });
@@ -372,7 +363,7 @@ export const CompilationResultSchema = z.object({
  */
 export const SourceFetchResultSchema = z.object({
     name: z.string(),
-    url: z.string(),
+    url: z.string().url(),
     success: z.boolean(),
     ruleCount: z.number().int().nonnegative().optional(),
     error: z.string().optional(),
@@ -445,7 +436,7 @@ export const BatchWorkflowResultSchema = z.object({
  */
 export const SourceHealthResultSchema = z.object({
     name: z.string(),
-    url: z.string(),
+    url: z.string().url(),
     healthy: z.boolean(),
     statusCode: z.number().int().optional(),
     responseTimeMs: z.number().nonnegative().optional(),

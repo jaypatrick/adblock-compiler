@@ -392,3 +392,157 @@ Deno.test('WorkflowInstanceInfoSchema validates workflow instance info', () => {
     };
     assertEquals(WorkflowInstanceInfoSchema.safeParse(valid).success, true);
 });
+
+// Tests for previously uncovered schemas
+
+Deno.test('BatchCompilationParamsSchema validates batch compilation params', () => {
+    const valid = {
+        batchId: 'batch-123',
+        requests: [
+            {
+                id: 'req-1',
+                configuration: {
+                    name: 'List 1',
+                    sources: [{ source: 'https://example.com/list1.txt' }],
+                },
+            },
+            {
+                id: 'req-2',
+                configuration: {
+                    name: 'List 2',
+                    sources: [{ source: 'https://example.com/list2.txt' }],
+                },
+            },
+        ],
+        priority: 'high',
+        queuedAt: Date.now(),
+    };
+    assertEquals(BatchCompilationParamsSchema.safeParse(valid).success, true);
+
+    const invalid = {
+        batchId: 'batch-123',
+        requests: [], // Empty requests
+        queuedAt: Date.now(),
+    };
+    assertEquals(BatchCompilationParamsSchema.safeParse(invalid).success, false);
+});
+
+Deno.test('CacheWarmingParamsSchema validates cache warming params', () => {
+    const valid = {
+        runId: 'run-123',
+        configurations: [
+            {
+                name: 'List 1',
+                sources: [{ source: 'https://example.com/list.txt' }],
+            },
+        ],
+        scheduled: true,
+    };
+    assertEquals(CacheWarmingParamsSchema.safeParse(valid).success, true);
+
+    const invalid = {
+        runId: 'run-123',
+        configurations: [], // Empty configurations
+        scheduled: true,
+    };
+    assertEquals(CacheWarmingParamsSchema.safeParse(invalid).success, false);
+});
+
+Deno.test('AggregatedMetricsSchema validates aggregated metrics', () => {
+    const valid = {
+        window: '1h',
+        timestamp: new Date().toISOString(),
+        endpoints: {
+            '/api/compile': {
+                count: 100,
+                success: 95,
+                failed: 5,
+                avgDuration: 150.5,
+                errors: { 'timeout': 3, 'validation': 2 },
+            },
+        },
+    };
+    assertEquals(AggregatedMetricsSchema.safeParse(valid).success, true);
+});
+
+Deno.test('BatchWorkflowResultSchema validates batch workflow results', () => {
+    const valid = {
+        batchId: 'batch-123',
+        totalRequests: 2,
+        successful: 2,
+        failed: 0,
+        results: [
+            {
+                success: true,
+                requestId: 'req-1',
+                configName: 'List 1',
+                compiledAt: new Date().toISOString(),
+                totalDurationMs: 1000,
+                steps: {},
+            },
+            {
+                success: true,
+                requestId: 'req-2',
+                configName: 'List 2',
+                compiledAt: new Date().toISOString(),
+                totalDurationMs: 1200,
+                steps: {},
+            },
+        ],
+        totalDurationMs: 2200,
+    };
+    assertEquals(BatchWorkflowResultSchema.safeParse(valid).success, true);
+});
+
+Deno.test('HealthMonitoringResultSchema validates health monitoring results', () => {
+    const valid = {
+        runId: 'run-123',
+        sourcesChecked: 3,
+        healthySources: 2,
+        unhealthySources: 1,
+        results: [
+            {
+                name: 'Source 1',
+                url: 'https://example.com/list1.txt',
+                healthy: true,
+                statusCode: 200,
+                responseTimeMs: 150,
+                ruleCount: 1000,
+                lastChecked: new Date().toISOString(),
+            },
+            {
+                name: 'Source 2',
+                url: 'https://example.com/list2.txt',
+                healthy: false,
+                error: 'Connection timeout',
+                lastChecked: new Date().toISOString(),
+            },
+        ],
+        alertsSent: true,
+        totalDurationMs: 500,
+    };
+    assertEquals(HealthMonitoringResultSchema.safeParse(valid).success, true);
+});
+
+Deno.test('CacheWarmingResultSchema validates cache warming results', () => {
+    const valid = {
+        runId: 'run-123',
+        scheduled: true,
+        warmedConfigurations: 5,
+        failedConfigurations: 1,
+        details: [
+            {
+                configName: 'List 1',
+                success: true,
+                cacheKey: 'cache-key-1',
+            },
+            {
+                configName: 'List 2',
+                success: false,
+                error: 'Download failed',
+            },
+        ],
+        totalDurationMs: 3000,
+    };
+    assertEquals(CacheWarmingResultSchema.safeParse(valid).success, true);
+});

@@ -289,16 +289,16 @@ try {
 ### Error Message Format
 
 Validation errors include:
-- **Path**: JSON path to the invalid field (e.g., `/sources/0/source`)
+- **Path**: Path to the invalid field (e.g., `sources.0.source`)
 - **Message**: Human-readable error description
 - **Code**: Error type code (e.g., `invalid_type`, `too_small`, `custom`)
 
 Example error output:
 ```
-/name: name is required and must be a non-empty string
-/sources: sources is required and must be a non-empty array
-/sources/0/source: source is required and must be a non-empty string
-/transformations/2: Invalid enum value. Expected 'RemoveComments' | 'Compress' | ..., received 'InvalidTransformation'
+sources.0.source: source is required and must be a non-empty string
+sources: sources is required and must be a non-empty array
+name: name is required and must be a non-empty string
+transformations.2: Invalid enum value. Expected 'RemoveComments' | 'Compress' | ..., received 'InvalidTransformation'
 ```
 
 ## Schema Composition
@@ -389,8 +389,8 @@ Override default error messages for better UX:
 ```typescript
 const CustomSourceSchema = z.object({
     source: z.string()
-        .min(1, 'Please provide a source URL or file path')
-        .url('Source must be a valid URL or file path'),
+        .min(1, 'Please provide a source URL')
+        .url('Source must be a valid URL'),
     name: z.string()
         .min(1, 'Name cannot be empty')
         .max(100, 'Name must be 100 characters or less')
