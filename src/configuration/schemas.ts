@@ -175,7 +175,7 @@ export const ValidationErrorSchema = z.object({
     type: ValidationErrorTypeSchema,
     severity: ValidationSeveritySchema,
     ruleText: z.string(),
-    lineNumber: z.number().int().positive().optional(),
+    lineNumber: z.number().int().min(1).optional(), // Line numbers are 1-based
     message: z.string(),
     details: z.string().optional(),
     ast: z.unknown().optional(), // AST node - not validated as it's complex
