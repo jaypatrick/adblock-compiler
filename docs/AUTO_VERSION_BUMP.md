@@ -10,9 +10,11 @@ The project uses **Conventional Commits** to automatically determine version bum
 
 ### Automatic Trigger
 
-The `auto-version-bump.yml` workflow automatically runs when:
+The `version-bump.yml` workflow automatically runs when:
 - Code is pushed to `main` or `master` branch
 - A PR is merged to the main branch
+
+It can also be triggered manually with a specific version bump type.
 
 ### Version Bump Rules
 
@@ -127,18 +129,14 @@ git commit -m "chore: update dependencies [skip version]"
 
 If you need to manually bump the version:
 
-### Option 1: Use the Manual Workflow
+### Option 1: Use the Workflow Dispatch
+
+You can manually trigger the version bump workflow:
 
 ```bash
 # Go to Actions → Version Bump → Run workflow
-# Select bump type: patch, minor, or major
-```
-
-### Option 2: Use the Auto Workflow with Force
-
-```bash
-# Go to Actions → Auto Version Bump → Run workflow
-# Select force bump type: patch, minor, or major
+# Select bump type: patch, minor, or major (or leave empty for auto-detect)
+# Optionally check "Create a release after bumping"
 ```
 
 ## Best Practices
@@ -233,11 +231,11 @@ Old format is no longer supported. See migration guide.
 ### Version Bump Flow
 
 ```
-Auto Version Bump → Creates PR → PR Merged → Create Version Tag → Triggers Release Workflow
+Version Bump (auto or manual) → Creates PR → PR Merged → Create Version Tag → Triggers Release Workflow
 ```
 
 The complete flow:
-1. **Auto Version Bump**: Creates a PR with version changes
+1. **Version Bump**: Analyzes commits (or uses manual input) and creates a PR with version changes
 2. **PR Review**: Human or automated review/merge of the PR
 3. **Create Version Tag**: Automatically creates tag after PR merge
 4. **Release Workflow**: Builds, publishes, and creates GitHub release
@@ -248,15 +246,18 @@ The CI workflow runs on:
 - Pull requests (before merge)
 - Pushes to any branch
 
-Auto version bump runs:
-- Only on pushes to main/master
-- After PR is merged
+Version bump workflow runs:
+- Automatically on pushes to main/master (analyzes commits)
+- Manually via workflow dispatch (specify bump type)
+- After PR is merged to main/master
 
 ## Configuration
 
 ### Workflow File
 
-Location: `.github/workflows/auto-version-bump.yml`
+Location: `.github/workflows/version-bump.yml`
+
+This consolidated workflow handles both automatic (conventional commits) and manual version bumping.
 
 ### Customization
 
@@ -372,7 +373,6 @@ If you're used to manual version bumping:
 - [VERSION_MANAGEMENT.md](../VERSION_MANAGEMENT.md) - Version synchronization details
 - [Conventional Commits](https://www.conventionalcommits.org/) - Official specification
 - [Semantic Versioning](https://semver.org/) - SemVer specification
-- `.github/workflows/version-bump.yml` - Manual version bump workflow
-- `.github/workflows/auto-version-bump.yml` - Automatic version bump workflow
+- `.github/workflows/version-bump.yml` - Consolidated version bump workflow (automatic and manual)
 - `.github/workflows/create-version-tag.yml` - Tag creation after PR merge
 - `.github/workflows/release.yml` - Release workflow
