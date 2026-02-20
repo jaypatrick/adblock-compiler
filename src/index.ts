@@ -78,7 +78,14 @@ export {
     CompileRequestSchema,
     ConfigurationSchema,
     ConfigurationValidator,
+    HttpFetcherOptionsSchema,
+    PlatformCompilerOptionsSchema,
     SourceSchema,
+    ValidationErrorSchema,
+    ValidationErrorTypeSchema,
+    ValidationReportSchema,
+    ValidationResultSchema,
+    ValidationSeveritySchema,
 } from './configuration/index.ts';
 
 // Transformations

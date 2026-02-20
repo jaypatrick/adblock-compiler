@@ -112,3 +112,93 @@ export const BatchRequestAsyncSchema = BatchRequestSchema.refine(
         path: ['requests'],
     },
 );
+
+// ============================================================================
+// Platform Type Schemas
+// ============================================================================
+
+/**
+ * Schema for HTTP fetcher options
+ */
+export const HttpFetcherOptionsSchema = z.object({
+    timeout: z.number().int().positive().optional(),
+    userAgent: z.string().optional(),
+    allowEmptyResponse: z.boolean().optional(),
+    headers: z.record(z.string(), z.string()).optional(),
+});
+
+/**
+ * Schema for platform compiler options
+ * Note: preFetchedContent and customFetcher are not validated as they are runtime objects
+ */
+export const PlatformCompilerOptionsSchema = z.object({
+    preFetchedContent: z.union([
+        z.map(z.string(), z.string()),
+        z.record(z.string(), z.string()),
+    ]).optional(),
+    httpOptions: HttpFetcherOptionsSchema.optional(),
+}).passthrough(); // Allow customFetcher which is not serializable
+
+// ============================================================================
+// Validation Error Schemas
+// ============================================================================
+
+/**
+ * Schema for validation error type enum
+ */
+export const ValidationErrorTypeSchema = z.enum([
+    'parse_error',
+    'syntax_error',
+    'unsupported_modifier',
+    'invalid_hostname',
+    'ip_not_allowed',
+    'pattern_too_short',
+    'public_suffix_match',
+    'invalid_characters',
+    'cosmetic_not_supported',
+    'modifier_validation_failed',
+]);
+
+/**
+ * Schema for validation severity enum
+ */
+export const ValidationSeveritySchema = z.enum([
+    'error',
+    'warning',
+    'info',
+]);
+
+/**
+ * Schema for a single validation error
+ */
+export const ValidationErrorSchema = z.object({
+    type: ValidationErrorTypeSchema,
+    severity: ValidationSeveritySchema,
+    ruleText: z.string(),
+    lineNumber: z.number().int().positive().optional(),
+    message: z.string(),
+    details: z.string().optional(),
+    ast: z.unknown().optional(), // AST node - not validated as it's complex
+    sourceName: z.string().optional(),
+});
+
+/**
+ * Schema for validation report
+ */
+export const ValidationReportSchema = z.object({
+    errorCount: z.number().int().nonnegative(),
+    warningCount: z.number().int().nonnegative(),
+    infoCount: z.number().int().nonnegative(),
+    errors: z.array(ValidationErrorSchema),
+    totalRules: z.number().int().nonnegative(),
+    validRules: z.number().int().nonnegative(),
+    invalidRules: z.number().int().nonnegative(),
+});
+
+/**
+ * Schema for validation result (compilation result with validation report)
+ */
+export const ValidationResultSchema = z.object({
+    rules: z.array(z.string()),
+    validation: ValidationReportSchema,
+});

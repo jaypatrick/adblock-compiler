@@ -7,5 +7,12 @@ export {
     BatchRequestSyncSchema,
     CompileRequestSchema,
     ConfigurationSchema,
+    HttpFetcherOptionsSchema,
+    PlatformCompilerOptionsSchema,
     SourceSchema,
+    ValidationErrorSchema,
+    ValidationErrorTypeSchema,
+    ValidationReportSchema,
+    ValidationResultSchema,
+    ValidationSeveritySchema,
 } from './schemas.ts';
