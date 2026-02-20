@@ -38,11 +38,9 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 - [Cloudflare D1](CLOUDFLARE_D1.md) - Edge database integration
 - [Prisma Evaluation](PRISMA_EVALUATION.md) - Storage backend comparison
 
-### Reliability & Validation
+### Reliability
 
 - [Circuit Breaker](CIRCUIT_BREAKER.md) - Fault-tolerant source downloads with automatic recovery
-- [Zod Validation](ZOD_VALIDATION.md) - Schema validation for configuration and API requests
-- [Validation Errors](VALIDATION_ERRORS.md) - Rule validation error tracking and display
 
 ### Development
 
