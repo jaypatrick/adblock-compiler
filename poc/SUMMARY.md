@@ -40,13 +40,13 @@ This document summarizes the proof-of-concept implementations created for evalua
 - ✅ Component-based architecture
 - ✅ Dark/light theme with watchers
 
-### 3. Angular 17+ PoC (Full TypeScript project)
+### 3. Angular 19 PoC (Full TypeScript project)
 
 **Files Created:**
 
 #### Configuration Files
 
-- `poc/angular/package.json` - Dependencies (Angular 17, RxJS, etc.)
+- `poc/angular/package.json` - Dependencies (Angular 19.2.18, RxJS, etc.)
 - `poc/angular/angular.json` - Angular CLI workspace configuration
 - `poc/angular/tsconfig.json` - TypeScript compiler options
 - `poc/angular/tsconfig.app.json` - App-specific TypeScript config

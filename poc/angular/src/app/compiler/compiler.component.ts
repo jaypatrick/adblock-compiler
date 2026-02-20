@@ -5,9 +5,11 @@
  * Demonstrates form state management, validation, and API integration
  */
 
-import { Component, OnInit } from '@angular/core';
+import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Subject } from 'rxjs';
+import { takeUntil } from 'rxjs/operators';
 import { CompileResponse, CompilerService } from '../services/compiler.service';
 
 /**
@@ -302,12 +304,14 @@ import { CompileResponse, CompilerService } from '../services/compiler.service';
     .mt-2 { margin-top: 20px; }
   `],
 })
-export class CompilerComponent implements OnInit {
+export class CompilerComponent implements OnInit, OnDestroy {
     /**
      * Component Properties
      */
     // URL validation pattern constant
     private readonly URL_PATTERN = 'https?://.+';
+    // Subject used to signal component destruction for takeUntil
+    private readonly destroy$ = new Subject<void>();
 
     compilerForm!: FormGroup;
     availableTransformations: string[] = [];
@@ -335,6 +339,15 @@ export class CompilerComponent implements OnInit {
 
         // Initialize reactive form
         this.initializeForm();
+    }
+
+    /**
+     * Lifecycle Hook: OnDestroy
+     * Complete the destroy$ subject to automatically unsubscribe all takeUntil pipelines
+     */
+    ngOnDestroy(): void {
+        this.destroy$.next();
+        this.destroy$.complete();
     }
 
     /**
@@ -413,8 +426,8 @@ export class CompilerComponent implements OnInit {
         this.results = null;
 
         // Subscribe to Observable
-        // Pattern: RxJS subscription for async operations
-        this.compilerService.compile(urls, selectedTransformations).subscribe({
+        // Pattern: takeUntil(destroy$) prevents memory leaks if component is destroyed mid-request
+        this.compilerService.compile(urls, selectedTransformations).pipe(takeUntil(this.destroy$)).subscribe({
             next: (response) => {
                 this.results = response;
                 this.loading = false;

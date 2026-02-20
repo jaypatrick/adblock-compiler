@@ -1,12 +1,12 @@
 # Angular PoC - Adblock Compiler Frontend
 
-This is a proof-of-concept implementation of the Adblock Compiler frontend using **Angular 17+** with standalone components.
+This is a proof-of-concept implementation of the Adblock Compiler frontend using **Angular 19** (tested with 19.2.18) with standalone components.
 
 ## 🏗️ Architecture Overview
 
 ### Key Angular Patterns Demonstrated
 
-1. **Standalone Components** (Angular 17+)
+1. **Standalone Components** (Angular 19)
    - No NgModules required
    - Components are self-contained with their own imports
    - Simpler application structure
@@ -60,7 +60,7 @@ src/
 ### Prerequisites
 
 - Node.js 18+ and npm
-- Angular CLI 17+ (will be installed as dev dependency)
+- Angular CLI 19+ (will be installed as dev dependency)
 
 ### Installation
 

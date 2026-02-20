@@ -5,7 +5,13 @@
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <title>React PoC - Adblock Compiler</title>
 
-        <!-- React 18 + React Router v6 via CDN -->
+        <!-- React 18 + React Router v6 via CDN (development builds for PoC only)
+             NOTE: These are *.development.js builds which include additional debugging code,
+             are larger, and may expose internal details. For ANY production deployment these
+             MUST be replaced with the corresponding *.production.min.js builds:
+               react.production.min.js
+               react-dom.production.min.js
+               react-router-dom.production.min.js -->
         <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
         <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
         <script src="https://unpkg.com/react-router-dom@6.21.0/dist/umd/react-router-dom.development.js"></script>
