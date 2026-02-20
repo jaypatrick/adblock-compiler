@@ -7,7 +7,7 @@ The adblock-compiler includes a circuit breaker pattern for fault-tolerant filte
 Each remote source URL gets its own circuit breaker that transitions through three states:
 
 1. **CLOSED** — Normal operation. Requests pass through. Consecutive failures are counted.
-2. **OPEN** — Failure threshold reached. All requests are immediately rejected with a `CircuitBreakerOpenError`. After a timeout period the breaker moves to HALF_OPEN.
+2. **OPEN** — Failure threshold reached. All requests are immediately rejected. When using the `CircuitBreaker` directly this surfaces as a `CircuitBreakerOpenError`; when using `FilterDownloader`, the open breaker is exposed as a `NetworkError`. After a timeout period the breaker moves to HALF_OPEN.
 3. **HALF_OPEN** — Recovery probe. The next request is allowed through. If it succeeds the breaker returns to CLOSED; if it fails the breaker reopens.
 
 ```
@@ -41,13 +41,13 @@ import { FilterDownloader } from '@jk-com/adblock-compiler';
 const downloader = new FilterDownloader();
 
 // Override circuit breaker settings
-const downloader = new FilterDownloader({
+const customDownloader = new FilterDownloader({
     enableCircuitBreaker: true,
     circuitBreakerThreshold: 3,    // open after 3 failures
     circuitBreakerTimeout: 120000, // wait 2 minutes before recovery
 });
 
-const rules = await downloader.download('https://example.com/filters.txt');
+const rules = await customDownloader.download('https://example.com/filters.txt');
 ```
 
 ### Disabling the Circuit Breaker
