@@ -125,7 +125,7 @@ const downloader = new FilterDownloader({
 
 ### Source permanently failing
 
-If a source is permanently unavailable, the circuit breaker will continue cycling between OPEN and HALF_OPEN. Consider removing the source from your configuration or adding it to `exclusions_sources`.
+If a source is permanently unavailable, the circuit breaker will continue cycling between OPEN and HALF_OPEN. Consider removing or disabling the source in your `sources` configuration. If you only need to exclude specific rules from an otherwise healthy source, use `exclusions_sources` to point to files containing rule exclusion patterns.
 
 ## Related Documentation
 

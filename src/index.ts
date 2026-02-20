@@ -92,14 +92,6 @@ export {
     ValidationSeveritySchema,
 } from './configuration/index.ts';
 
-// Zod schemas for runtime validation
-export {
-    BatchRequestAsyncSchema,
-    BatchRequestSyncSchema,
-    CompileRequestSchema,
-    ConfigurationSchema,
-    SourceSchema,
-} from './configuration/index.ts';
 
 // Transformations
 export {
