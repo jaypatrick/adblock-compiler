@@ -68,3 +68,6 @@ data/
 *.db-journal
 *.db-wal
 *.db-shm
+
+# Generated CSS (Tailwind build output)
+public/tailwind.css
