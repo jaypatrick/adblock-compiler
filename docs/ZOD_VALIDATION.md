@@ -108,7 +108,7 @@ Zod validation errors are formatted as `path: message` lines. Examples:
 
 ## Extending Schemas
 
-To add custom validation rules, extend the existing schemas:
+The Zod schemas are exported from the main package and can be extended with custom validation rules:
 
 ```typescript
 import { ConfigurationSchema } from '@jk-com/adblock-compiler';
