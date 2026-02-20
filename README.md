@@ -413,6 +413,7 @@ if (!parseResult.success) {
 ```
 
 **Available Schemas:**
+
 - `ConfigurationSchema` - Main configuration validation
 - `SourceSchema` - Individual source validation
 - `CompileRequestSchema` - Worker compilation request

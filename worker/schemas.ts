@@ -4,7 +4,6 @@
  */
 
 import { z } from 'zod';
-import type { IConfiguration } from '../src/types/index.ts';
 import { ConfigurationSchema } from '../src/configuration/schemas.ts';
 
 // ============================================================================
