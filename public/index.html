@@ -6,8 +6,8 @@
     <title>Adblock Compiler - Admin Dashboard</title>
     <!-- Cloudflare Web Analytics -->
     <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "8771568d1cde4005bb60c5767d0969c4"}'></script>
-    <!-- Chart.js for visualizations -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Chart.js (bundled via Vite) -->
+    <script type="module" src="/js/chart-setup.ts"></script>
     <!-- Shared styles -->
     <link rel="stylesheet" href="/shared-styles.css">
     <style>
@@ -800,8 +800,8 @@
         </footer>
     </div>
 
-    <!-- Shared theme script -->
-    <script src="/shared-theme.js"></script>
+    <!-- Shared theme (bundled via Vite) -->
+    <script type="module" src="/js/theme.ts"></script>
     <script>
         // Dashboard state management
         const DashboardState = {

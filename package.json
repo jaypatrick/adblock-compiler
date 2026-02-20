@@ -9,11 +9,16 @@
         "tail": "wrangler tail",
         "tail:deploy": "wrangler deploy --config wrangler.tail.toml",
         "tail:dev": "wrangler dev --config wrangler.tail.toml",
-        "tail:logs": "wrangler tail adblock-compiler-tail"
+        "tail:logs": "wrangler tail adblock-compiler-tail",
+        "ui:dev": "vite",
+        "ui:build": "vite build",
+        "ui:preview": "vite preview"
     },
     "devDependencies": {
         "@cloudflare/playwright-mcp": "^0.0.5",
         "@cloudflare/workers-types": "^4.20260207.0",
+        "chart.js": "^4.5.1",
+        "vite": "^7.3.1",
         "wrangler": "^4.63.0"
     },
     "dependencies": {
