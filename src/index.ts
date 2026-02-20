@@ -70,8 +70,16 @@ export type {
 export { FilterDownloader } from './downloader/index.ts';
 export type { DownloaderOptions } from './downloader/index.ts';
 
-// Configuration
-export { ConfigurationValidator } from './configuration/index.ts';
+// Configuration and Validation Schemas
+export {
+    BatchRequestAsyncSchema,
+    BatchRequestSchema,
+    BatchRequestSyncSchema,
+    CompileRequestSchema,
+    ConfigurationSchema,
+    ConfigurationValidator,
+    SourceSchema,
+} from './configuration/index.ts';
 
 // Transformations
 export {
