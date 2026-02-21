@@ -83,6 +83,11 @@ wrangler deploy
 # ↳ deploys Worker + static assets from dist/
 ```
 
+> **Note:** Tailwind CSS is bundled by Vite during `npm run ui:build` via the PostCSS
+> plugin. You do not need to run `npm run build:css` separately before deploying.
+> Run `npm run build:css` (or `build:css:watch`) only when working outside of the Vite
+> dev server (e.g., previewing raw files directly in a browser).
+
 ## What Was Migrated
 
 | Before | After |

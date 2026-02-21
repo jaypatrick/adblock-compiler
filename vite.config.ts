@@ -39,6 +39,7 @@ export default defineConfig({
                 'e2e-tests': resolve(__dirname, 'public/e2e-tests.html'),
                 'validation-demo': resolve(__dirname, 'public/validation-demo.html'),
                 'websocket-test': resolve(__dirname, 'public/websocket-test.html'),
+                'tailwind-test': resolve(__dirname, 'public/tailwind-test.html'),
             },
         },
     },
