@@ -1,0 +1,13 @@
+/**
+ * Tailwind CSS Input File
+ * This file imports Tailwind's base, components, and utilities
+ */
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * Custom CSS can be added here for additional styling
+ * or overrides that complement Tailwind
+ */
