@@ -121,6 +121,8 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/CompileResponse'
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
                 '429':
                     $ref: '#/components/responses/RateLimitError'
                 '500':
@@ -192,6 +194,8 @@ paths:
                                     value: |
                                         event: metric
                                         data: {"metric":"download_speed","value":218.5,"unit":"KB/s"}
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
                 '429':
                     $ref: '#/components/responses/RateLimitError'
 
@@ -215,7 +219,7 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/BatchCompileResponse'
                 '400':
-                    description: Invalid batch request
+                    $ref: '#/components/responses/BadRequestError'
                 '429':
                     $ref: '#/components/responses/RateLimitError'
 
@@ -240,8 +244,10 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/QueueResponse'
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
                 '500':
-                    description: Queue not available
+                    $ref: '#/components/responses/ServiceUnavailable'
 
     /compile/batch/async:
         post:
@@ -262,6 +268,10 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/QueueResponse'
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
+                '500':
+                    $ref: '#/components/responses/ServiceUnavailable'
 
     /ws/compile:
         get:
@@ -390,7 +400,10 @@ paths:
                   in: query
                   schema:
                       type: integer
+                      format: int32
                       default: 50
+                      minimum: 1
+                      maximum: 1000
                   description: Maximum number of records to return
                 - name: version
                   in: query
@@ -675,6 +688,8 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/WorkflowStartResponse'
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
 
@@ -698,7 +713,7 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/WorkflowStartResponse'
                 '400':
-                    description: Invalid batch request
+                    $ref: '#/components/responses/BadRequestError'
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
 
@@ -721,6 +736,8 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/WorkflowStartResponse'
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
 
@@ -743,6 +760,8 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/WorkflowStartResponse'
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
 
@@ -871,6 +890,7 @@ components:
             properties:
                 name:
                     type: string
+                    minLength: 1
                     description: Name of the compiled list
                 description:
                     type: string
@@ -1444,17 +1464,11 @@ components:
                     type: integer
                     description: Number of items in the batch (batch workflows only)
                 configurationsCount:
-                    description: Number of configurations to warm, or 'all' for all default configurations (cache-warming only)
-                    oneOf:
-                        - type: integer
-                        - type: string
-                          enum: [all]
+                    type: string
+                    description: Number of configurations to warm, or 'default' for all default configurations (cache-warming only)
                 sourcesCount:
-                    description: Number of sources to check, or 'all' for all default sources (health-monitoring only)
-                    oneOf:
-                        - type: integer
-                        - type: string
-                          enum: [all]
+                    type: string
+                    description: Number of sources to check, or 'default' for all default sources (health-monitoring only)
 
         CacheWarmRequest:
             type: object
@@ -1772,6 +1786,20 @@ components:
                     type: object
 
     responses:
+        BadRequestError:
+            description: Bad request - request body failed schema validation
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
+                                example: Invalid request body
+
         RateLimitError:
             description: Rate limit exceeded
             headers:
@@ -1842,5 +1870,4 @@ components:
             name: X-Admin-Key
             description: Admin API key for protected admin endpoints
 
-security:
-    - Turnstile: []
+security: []
