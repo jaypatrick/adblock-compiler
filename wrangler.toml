@@ -83,6 +83,7 @@ database_id = "3e8e7dfe-3213-452a-a671-6c18e6e74ce5"
 [assets]
 directory = "./dist"
 binding = "ASSETS"
+html_handling = "auto-trailing-slash"
 
 # Tail Workers - uncomment after creating the tail worker service
 [[tail_consumers]]

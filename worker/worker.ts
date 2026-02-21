@@ -3522,6 +3522,18 @@ export default {
                     if (response.ok) {
                         return response;
                     }
+
+                    // Directory index fallback: for paths without a file extension (e.g. /poc, /poc/),
+                    // try serving {path}/index.html so that directory-based routes work correctly.
+                    // The regex checks for a dot followed by non-slash chars at the end, indicating a file extension.
+                    if (!pathname.match(/\.[^/]+$/)) {
+                        const normalizedPath = pathname.replace(/\/$/, '');
+                        const indexUrl = new URL(`${normalizedPath}/index.html`, 'http://assets');
+                        const indexResponse = await env.ASSETS.fetch(indexUrl);
+                        if (indexResponse.ok) {
+                            return indexResponse;
+                        }
+                    }
                 } catch (error) {
                     // deno-lint-ignore no-console
                     console.error('Asset fetch error:', error);
