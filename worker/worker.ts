@@ -3510,8 +3510,8 @@ export default {
                     );
                     let response = await env.ASSETS.fetch(assetUrl);
 
-                    // Follow redirects for .html files (ASSETS automatically redirects .html to extensionless)
-                    if (response.status === 307 || response.status === 308) {
+                    // Follow redirects for .html files and directory indexes (ASSETS may redirect to extensionless or trailing-slash paths)
+                    if (response.status === 301 || response.status === 302 || response.status === 307 || response.status === 308) {
                         const location = response.headers.get('Location');
                         if (location) {
                             const redirectUrl = new URL(location, assetUrl);
