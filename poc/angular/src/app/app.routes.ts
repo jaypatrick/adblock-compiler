@@ -46,6 +46,12 @@ export const routes: Routes = [
         data: { description: 'Angular Signals - modern reactive state management' },
     },
     {
+        path: 'benchmark',
+        loadComponent: () => import('./benchmark/benchmark.component').then((m) => m.BenchmarkComponent),
+        title: 'Benchmark - Adblock Compiler',
+        data: { description: 'Measure compilation API performance' },
+    },
+    {
         // Wildcard route: redirects any unknown path back to home.
         // Always place this last – routes are matched top-to-bottom.
         path: '**',
