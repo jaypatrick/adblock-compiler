@@ -28,6 +28,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve Deno-native architecture by reducing npm dependencies where JSR alternatives are available
 - Replace `console.*` calls in `EventEmitter`, `AnalyticsService`, and `CloudflareQueueProvider` with `IBasicLogger` dependency injection, defaulting to `silentLogger` for backward compatibility
 
+
+## [0.21.2] - 2026-02-21
+
+### Added### Fixed
+
+- split malformed markdown headers in CHANGELOG.md 0.21.1 and 0.21.0 sections
+- remove double blank lines in CHANGELOG.md to pass deno fmt check
+
+
 ## [0.21.1] - 2026-02-21
 
 ### Added
