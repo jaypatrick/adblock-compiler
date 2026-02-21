@@ -375,6 +375,100 @@
             .mt-2 {
                 margin-top: 20px;
             }
+
+            /* About Page - Vue Router Feature Grid */
+            .feature-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 16px;
+                margin: 20px 0;
+            }
+
+            .feature-card {
+                background: var(--section-bg);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                padding: 20px;
+            }
+
+            .feature-card h4 {
+                color: var(--primary);
+                margin-bottom: 8px;
+                font-size: 15px;
+            }
+
+            .feature-card p {
+                color: var(--text-muted);
+                font-size: 13px;
+                line-height: 1.6;
+            }
+
+            /* Route Info Box */
+            .route-info {
+                background: var(--section-bg);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                padding: 16px;
+                margin: 20px 0;
+                font-family: 'Courier New', monospace;
+                font-size: 13px;
+            }
+
+            .route-info div {
+                margin-bottom: 6px;
+                color: var(--text-muted);
+            }
+
+            .route-info span {
+                color: var(--primary);
+                font-weight: 600;
+            }
+
+            /* Preset Buttons */
+            .preset-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 12px;
+                margin: 20px 0;
+            }
+
+            .preset-card {
+                background: var(--section-bg);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                padding: 16px;
+                cursor: pointer;
+                transition: all 0.3s ease;
+                text-align: left;
+            }
+
+            .preset-card:hover {
+                border-color: var(--primary);
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+            }
+
+            .preset-card h4 {
+                color: var(--text-color);
+                margin-bottom: 6px;
+                font-size: 14px;
+            }
+
+            .preset-card p {
+                color: var(--text-muted);
+                font-size: 12px;
+            }
+
+            /* Active preset indicator */
+            .preset-badge {
+                display: inline-block;
+                padding: 4px 12px;
+                background: var(--primary);
+                color: white;
+                border-radius: 20px;
+                font-size: 12px;
+                margin-bottom: 16px;
+            }
         </style>
     </head>
     <body>
@@ -426,7 +520,47 @@
              */
 
             const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
-            const { createRouter, createWebHashHistory } = VueRouter;
+            const { createRouter, createWebHashHistory, useRoute, useRouter } = VueRouter;
+
+            /* ===================================================================
+           PRESET CONFIGURATIONS
+           Vue Pattern: Shared constant for reusable data
+           Centralizes preset definitions used across HomePage and CompilerPage
+           =================================================================== */
+            const PRESET_CONFIGS = {
+                dns: {
+                    id: 'dns',
+                    icon: '🛡️',
+                    name: 'DNS Safe',
+                    description: 'Remove comments, deduplicate, validate for DNS-level blocking.',
+                    transformations: {
+                        RemoveComments: true,
+                        Deduplicate: true,
+                        Validate: true,
+                    },
+                },
+                clean: {
+                    id: 'clean',
+                    icon: '🧹',
+                    name: 'Clean & Trim',
+                    description: 'Remove comments, trim lines, and remove empty lines.',
+                    transformations: {
+                        RemoveComments: true,
+                        TrimLines: true,
+                        RemoveEmptyLines: true,
+                    },
+                },
+                minimal: {
+                    id: 'minimal',
+                    icon: '⚡',
+                    name: 'Minimal',
+                    description: 'Deduplicate and insert a final newline only.',
+                    transformations: {
+                        Deduplicate: true,
+                        InsertFinalNewLine: true,
+                    },
+                },
+            };
 
             /* ===================================================================
            COMPOSABLE - Theme Management
@@ -491,6 +625,11 @@
                                 ⚙️ Compiler
                             </router-link>
                         </li>
+                        <li>
+                            <router-link to="/about" class="nav-link">
+                                ℹ️ About Vue Router
+                            </router-link>
+                        </li>
                     </ul>
                     <theme-toggle />
                 </nav>
@@ -523,14 +662,36 @@
                             <div class="stat-value">{{ stat.value }}</div>
                         </div>
                     </div>
+
+                    <!-- Quick Start with Presets - demonstrates programmatic navigation -->
+                    <h2 style="margin: 24px 0 8px;">Quick Start with a Preset</h2>
+                    <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 14px;">
+                        Click a preset to open the Compiler with transformations pre-selected.
+                        Uses <code>router.push('/compiler/:preset')</code> — programmatic navigation.
+                    </p>
+                    <div class="preset-grid">
+                        <div 
+                            v-for="preset in presets" 
+                            :key="preset.id" 
+                            class="preset-card" 
+                            @click="launchPreset(preset.id)"
+                        >
+                            <h4>{{ preset.icon }} {{ preset.name }}</h4>
+                            <p>{{ preset.description }}</p>
+                        </div>
+                    </div>
                     
                     <div class="alert alert-info mt-2">
-                        <strong>ℹ️ Vue Pattern:</strong> This page demonstrates the Composition API, 
-                        v-for directive for list rendering, and reactive data binding.
+                        <strong>ℹ️ Vue Router Pattern:</strong> The preset cards above call
+                        <code>router.push(\`/compiler/\${presetId}\`)</code>. The Compiler page reads
+                        <code>route.params.preset</code> and pre-selects the appropriate transformations —
+                        demonstrating how route parameters enable shareable, bookmarkable application states.
                     </div>
                 </div>
             `,
                 setup() {
+                    const router = useRouter();
+
                     /** @type {import('vue').Ref<Stat[]>} */
                     const stats = ref([
                         { label: 'Filter Lists Compiled', value: '1,234' },
@@ -539,14 +700,26 @@
                         { label: 'Cache Hit Rate', value: '89%' },
                     ]);
 
-                    return { stats };
+                    const presets = ref([
+                        PRESET_CONFIGS.dns,
+                        PRESET_CONFIGS.clean,
+                        PRESET_CONFIGS.minimal,
+                    ]);
+
+                    // Programmatic navigation with route parameter
+                    const launchPreset = (presetId) => {
+                        router.push(`/compiler/${presetId}`);
+                    };
+
+                    return { stats, presets, launchPreset };
                 },
             };
 
             /* ===================================================================
            COMPONENT - Compiler Form
            Vue Pattern: Complex form with reactive state and v-model binding
-           Demonstrates two-way data binding, computed properties, and async methods
+           Demonstrates two-way data binding, computed properties, async methods,
+           and reading URL route parameters with useRoute()
            =================================================================== */
             const CompilerPage = {
                 template: `
@@ -555,6 +728,11 @@
                     <p class="mb-2" style="color: var(--text-muted)">
                         Configure and compile your filter lists
                     </p>
+
+                    <!-- Active Preset Badge - shown when loaded via route param -->
+                    <div v-if="activePreset" class="preset-badge">
+                        🎯 Preset loaded: {{ activePreset }}
+                    </div>
                     
                     <form @submit.prevent="handleCompile">
                         <!-- URL Inputs Section -->
@@ -639,13 +817,16 @@
                     </div>
                     
                     <div class="alert alert-info mt-2">
-                        <strong>ℹ️ Vue Pattern:</strong> This form demonstrates v-model for two-way 
-                        data binding, v-for for dynamic lists, computed properties, and async methods 
-                        with loading/error state management.
+                        <strong>ℹ️ Vue Router Pattern:</strong> When this page is opened via a preset link
+                        (e.g. <code>#/compiler/dns</code>), <code>useRoute().params.preset</code> is read
+                        in <code>onMounted</code> to pre-select the matching transformations. This makes the
+                        URL a shareable, bookmarkable representation of application state.
                     </div>
                 </div>
             `,
                 setup() {
+                    const route = useRoute();
+
                     // Reactive State - Vue's reactivity system
                     /** @type {import('vue').Ref<string[]>} */
                     const urls = ref(['']);
@@ -670,10 +851,45 @@
                     /** @type {import('vue').Ref<CompilationResult | null>} */
                     const results = ref(null);
 
-                    // Computed property for transformation names
-                    const transformationNames = computed(() => {
-                        return Object.keys(transformations);
+                    // Read preset name from route params (useRoute)
+                    const activePreset = computed(() => route.params.preset || null);
+
+                    // Apply preset transformations when route param changes
+                    const applyPreset = (presetId) => {
+                        // Reset all transformations first
+                        Object.keys(transformations).forEach((key) => (transformations[key] = false));
+                        
+                        // If preset exists in config, apply its transformations
+                        if (presetId && PRESET_CONFIGS[presetId]) {
+                            const presetTransformations = PRESET_CONFIGS[presetId].transformations;
+                            Object.entries(presetTransformations).forEach(([key, value]) => {
+                                if (key in transformations) {
+                                    transformations[key] = value;
+                                }
+                            });
+                        } else if (presetId) {
+                            // Unknown preset - log warning for debugging (PoC demo feature)
+                            console.warn(`[Vue Router] Unknown preset "${presetId}" (available: ${Object.keys(PRESET_CONFIGS).join(', ')}). Applying default transformations.`);
+                            // Apply default transformations as fallback
+                            transformations.RemoveComments = true;
+                            transformations.Deduplicate = true;
+                        }
+                        // If no presetId, leave all transformations disabled
+                    };
+
+                    // Apply preset on mount and whenever the route param changes
+                    onMounted(() => {
+                        if (route.params.preset) {
+                            applyPreset(route.params.preset);
+                        }
                     });
+
+                    watch(() => route.params.preset, (newPreset) => {
+                        applyPreset(newPreset);
+                    });
+
+                    // Computed property for transformation names
+                    const transformationNames = computed(() => Object.keys(transformations));
 
                     // Methods
                     /** @returns {void} */
@@ -690,19 +906,16 @@
 
                     /** @returns {Promise<void>} */
                     const handleCompile = async () => {
-                        // Validation
                         const validUrls = urls.value.filter((url) => url.trim() !== '');
                         if (validUrls.length === 0) {
                             error.value = 'Please enter at least one URL';
                             return;
                         }
 
-                        // Get selected transformations
                         const selectedTransformations = Object.entries(transformations)
-                            .filter(([name, enabled]) => enabled)
+                            .filter(([, enabled]) => enabled)
                             .map(([name]) => name);
 
-                        // Prepare request payload
                         const payload = {
                             configuration: {
                                 name: 'Vue PoC Compilation',
@@ -712,18 +925,14 @@
                             benchmark: true,
                         };
 
-                        // API Call with loading/error handling
                         loading.value = true;
                         error.value = null;
                         results.value = null;
 
                         try {
-                            // In production, use actual API endpoint
                             const response = await fetch('/api/compile', {
                                 method: 'POST',
-                                headers: {
-                                    'Content-Type': 'application/json',
-                                },
+                                headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify(payload),
                             });
 
@@ -731,10 +940,8 @@
                                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                             }
 
-                            const data = await response.json();
-                            results.value = data;
+                            results.value = await response.json();
                         } catch (err) {
-                            // Mock success for demo purposes (API might not be available)
                             console.log('API call failed (expected in PoC), showing mock data:', err);
                             results.value = {
                                 success: true,
@@ -742,10 +949,7 @@
                                 sources: validUrls.length,
                                 transformations: selectedTransformations,
                                 message: 'Mock compilation result (API not available in PoC)',
-                                benchmark: {
-                                    duration: '123ms',
-                                    rulesPerSecond: 10000,
-                                },
+                                benchmark: { duration: '123ms', rulesPerSecond: 10000 },
                             };
                         } finally {
                             loading.value = false;
@@ -759,6 +963,7 @@
                         loading,
                         error,
                         results,
+                        activePreset,
                         addUrl,
                         removeUrl,
                         handleCompile,
@@ -768,17 +973,192 @@
             };
 
             /* ===================================================================
+           COMPONENT - About / Vue Router Features Page
+           Vue Pattern: Demonstrates useRoute(), route metadata, and
+           serves as documentation for WHY Vue Router is worth using
+           =================================================================== */
+            const AboutPage = {
+                template: `
+                <div>
+                    <h1>About Vue Router</h1>
+                    <p class="mb-2" style="color: var(--text-muted)">
+                        Vue Router is the official, first-party router for Vue.js. It deeply integrates
+                        with Vue's reactivity system, making it the natural choice for any Vue SPA.
+                    </p>
+
+                    <!-- Live Route Inspector - demonstrates useRoute() -->
+                    <div class="route-info">
+                        <div>📍 <strong>Current path:</strong> <span>{{ route.path }}</span></div>
+                        <div>🏷️  <strong>Route name:</strong> <span>{{ route.name }}</span></div>
+                        <div>📄 <strong>Page title:</strong> <span>{{ route.meta.title }}</span></div>
+                    </div>
+
+                    <div class="alert alert-info mb-2">
+                        <strong>ℹ️ Vue Pattern:</strong> The live inspector above uses <code>useRoute()</code>
+                        to reactively read the current route's path, name, and custom metadata — all updated
+                        automatically when navigation occurs.
+                    </div>
+
+                    <!-- Feature grid: WHY Vue Router -->
+                    <h2 style="margin-bottom: 16px;">Why Vue Router?</h2>
+                    <div class="feature-grid">
+                        <div class="feature-card">
+                            <h4>🔗 Declarative Navigation</h4>
+                            <p>
+                                Replace brittle <code>&lt;a href&gt;</code> tags with
+                                <code>&lt;router-link&gt;</code>. Links automatically receive an
+                                <code>router-link-active</code> class when their route is current — no manual
+                                class toggling required.
+                            </p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>🧭 Programmatic Navigation</h4>
+                            <p>
+                                Navigate from JavaScript with <code>router.push()</code>,
+                                <code>router.replace()</code>, and <code>router.go()</code>. Pass
+                                route params, query strings, and state objects for rich navigation patterns.
+                            </p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>🛡️ Navigation Guards</h4>
+                            <p>
+                                Intercept every navigation with <code>router.beforeEach()</code> to enforce
+                                authentication, confirm unsaved changes, or track analytics — without
+                                scattering that logic across components.
+                            </p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>📦 Route Parameters</h4>
+                            <p>
+                                Embed data directly in URLs with <code>/compiler/:preset</code>. Parameters
+                                are exposed via <code>useRoute().params</code> and trigger computed properties
+                                automatically when the URL changes.
+                            </p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>🗂️ Route Metadata</h4>
+                            <p>
+                                Attach arbitrary data to routes with the <code>meta</code> field (e.g., page
+                                title, required roles, breadcrumb labels). Guards and components can read this
+                                metadata at any time via <code>route.meta</code>.
+                            </p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>⚡ Lazy-Loaded Routes</h4>
+                            <p>
+                                In a Vite/webpack build, define routes as
+                                <code>component: () => import('./Page.vue')</code> to split each route into
+                                its own chunk — keeping the initial bundle small and first-load fast.
+                            </p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>🔄 Nested Routes</h4>
+                            <p>
+                                Build complex layouts with nested <code>&lt;router-view&gt;</code> outlets.
+                                Parent routes provide shared UI (headers, sidebars) while child routes swap
+                                only the inner content.
+                            </p>
+                        </div>
+                        <div class="feature-card">
+                            <h4>🏗️ Named Routes & Views</h4>
+                            <p>
+                                Give routes stable names to decouple navigation from URL structure.
+                                Named views allow multiple <code>&lt;router-view name="..."&gt;</code>
+                                outlets in the same layout for sidebar/main-content patterns.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Navigation guard note -->
+                    <div class="alert alert-success">
+                        <strong>✅ Live guard active:</strong> A <code>router.beforeEach()</code> guard is
+                        running on every navigation in this PoC. Open the browser console to see it log each
+                        route transition — demonstrating how cross-cutting concerns (auth, analytics, titles)
+                        are handled in one place rather than in every component.
+                    </div>
+                </div>
+            `,
+                setup() {
+                    const route = useRoute();
+                    return { route };
+                },
+            };
+
+            /* ===================================================================
+           COMPONENT - 404 Not Found Page
+           Vue Pattern: Catch-all route for invalid paths
+           =================================================================== */
+            const NotFoundPage = {
+                template: `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <div style="font-size: 80px; margin-bottom: 20px;">🔍</div>
+                    <h1 style="margin-bottom: 12px;">404 - Page Not Found</h1>
+                    <p class="mb-2" style="color: var(--text-muted)">
+                        The page <code>{{ route.path }}</code> does not exist.
+                    </p>
+                    <button class="btn btn-primary" @click="router.push('/')">Go Home</button>
+                </div>
+            `,
+                setup() {
+                    const route = useRoute();
+                    const router = useRouter();
+                    return { route, router };
+                },
+            };
+
+            /* ===================================================================
            ROUTER CONFIGURATION
            Vue Pattern: Declarative routing with Vue Router 4
+           Demonstrates: named routes, route metadata, params, and catch-all
            =================================================================== */
             const routes = [
-                { path: '/', component: HomePage },
-                { path: '/compiler', component: CompilerPage },
+                {
+                    path: '/',
+                    name: 'home',
+                    component: HomePage,
+                    meta: { title: 'Dashboard' },
+                },
+                {
+                    path: '/compiler/:preset?',
+                    name: 'compiler',
+                    component: CompilerPage,
+                    meta: { title: 'Compiler' },
+                },
+                {
+                    path: '/about',
+                    name: 'about',
+                    component: AboutPage,
+                    meta: { title: 'About Vue Router' },
+                },
+                {
+                    // Catch-all 404 route — must be last
+                    path: '/:pathMatch(.*)*',
+                    name: 'not-found',
+                    component: NotFoundPage,
+                    meta: { title: '404 Not Found' },
+                },
             ];
 
             const router = createRouter({
                 history: createWebHashHistory(),
                 routes,
+            });
+
+            /* ===================================================================
+           NAVIGATION GUARD
+           Vue Pattern: router.beforeEach() for cross-cutting concerns.
+           Why it's worth using: centralises auth checks, analytics, and
+           document-title updates in ONE place instead of every component.
+           =================================================================== */
+            router.beforeEach((to, from) => {
+                // Update document title from route metadata
+                if (to.meta && to.meta.title) {
+                    document.title = `${to.meta.title} — Adblock Compiler`;
+                }
+                // PoC demo: in production, use a logging service or analytics SDK
+                console.log(`[Vue Router] Navigating: ${from.path} → ${to.path} (name: "${to.name}")`);
+                // Return true (or nothing) to allow navigation; return false to cancel
+                return true;
             });
 
             /* ===================================================================
