@@ -1,6 +1,6 @@
 # Frontend Framework Migration - Proof of Concept
 
-This directory contains proof-of-concept implementations of the Adblock Compiler frontend in three popular JavaScript frameworks: **React**, **Vue 3**, and **Angular 17+**.
+This directory contains proof-of-concept implementations of the Adblock Compiler frontend in four popular JavaScript frameworks: **React**, **Vue 3**, **Angular 19+**, and **Svelte 5**.
 
 ## 📋 Overview
 
@@ -211,22 +211,82 @@ npm start
 
 ---
 
+### 4. Svelte 5 PoC ([svelte/](./svelte/))
+
+**Technology Stack:**
+
+- Svelte 5 (via Vite)
+- @sveltejs/vite-plugin-svelte
+- Hash-based routing (no external router)
+- Runes reactivity system
+
+**Key Patterns:**
+
+- **`$state()`** — Mutable reactive state that replaces `let` reactive variables
+- **`$derived()`** — Computed values that replace `$:` reactive declarations
+- **`$effect()`** — Side effects that replace `onMount` / reactive statements
+- No virtual DOM — Svelte compiles components to vanilla JavaScript
+- Hash-based client-side routing without external dependencies
+- CSS custom properties for theming with `localStorage` persistence
+
+**Modern Reactivity with Runes:**
+
+Svelte 5 introduces **runes** — explicit reactive primitives that make reactivity transparent:
+
+| Svelte 4 | Svelte 5 Runes |
+| -------- | -------------- |
+| `let count = 0` (magic reactive) | `let count = $state(0)` (explicit) |
+| `$: doubled = count * 2` | `let doubled = $derived(count * 2)` |
+| `$: { sideEffect() }` | `$effect(() => { sideEffect() })` |
+
+See [svelte/README.md](./svelte/README.md) for the full setup guide.
+
+**Benchmark:**
+
+The `#/benchmark` route measures compilation API performance across multiple runs using `performance.now()` for accurate timing, a live progress bar, a per-run results table, and `$derived()` computed summary statistics (min, max, avg). Demonstrates how `$state` and `$derived` keep the UI reactive with minimal code.
+
+**How to Run:**
+
+```bash
+cd poc/svelte
+npm install
+npm run dev
+# Visit: http://localhost:4201
+```
+
+**Advantages:**
+
+- 🚀 No virtual DOM — compiled to vanilla JS
+- 📦 Tiny runtime (~5 KB vs React's ~40 KB)
+- ⚡ Fine-grained reactivity, only affected nodes update
+- 🧹 Less boilerplate than React or Angular
+- 🔒 Runes make reactive dependencies explicit and visible
+
+**Considerations:**
+
+- Requires Node.js and build tools
+- Smaller ecosystem than React
+- Svelte 5 runes are a breaking change from Svelte 4
+- Less enterprise adoption than Angular
+
+---
+
 ## 🔍 Feature Comparison
 
-| Feature               | React                     | Vue                  | Angular              |
-| --------------------- | ------------------------- | -------------------- | -------------------- |
-| **Learning Curve**    | Medium                    | Easy                 | Steep                |
-| **Bundle Size**       | Small-Medium              | Small                | Large                |
-| **Performance**       | Excellent                 | Excellent            | Very Good            |
-| **TypeScript**        | Optional                  | Optional             | Required             |
-| **State Management**  | External (Redux, Zustand) | **Pinia** (Official) | Services + RxJS + Signals |
-| **Form Handling**     | Manual / Libraries        | v-model + validation | Reactive Forms       |
-| **Routing**           | React Router              | Vue Router           | Angular Router       |
-| **Build Setup**       | Vite / CRA                | Vite / Vue CLI       | Angular CLI          |
-| **Testing**           | Jest + Testing Library    | Vitest / Jest        | Jasmine + Karma      |
-| **Mobile**            | React Native              | Native options       | Ionic / NativeScript |
-| **Community**         | Very Large                | Large                | Large                |
-| **Corporate Backing** | Meta                      | Independent          | Google               |
+| Feature               | React                     | Vue                  | Angular              | Svelte               |
+| --------------------- | ------------------------- | -------------------- | -------------------- | -------------------- |
+| **Learning Curve**    | Medium                    | Easy                 | Steep                | Easy                 |
+| **Bundle Size**       | Small-Medium              | Small                | Large                | Tiny (~5 KB)         |
+| **Performance**       | Excellent                 | Excellent            | Very Good            | Excellent            |
+| **TypeScript**        | Optional                  | Optional             | Required             | Optional             |
+| **State Management**  | External (Redux, Zustand) | **Pinia** (Official) | Services + RxJS + Signals | **Runes** (Built-in) |
+| **Form Handling**     | Manual / Libraries        | v-model + validation | Reactive Forms       | bind: directive      |
+| **Routing**           | React Router              | Vue Router           | Angular Router       | Hash / SvelteKit     |
+| **Build Setup**       | Vite / CRA                | Vite / Vue CLI       | Angular CLI          | Vite + plugin        |
+| **Testing**           | Jest + Testing Library    | Vitest / Jest        | Jasmine + Karma      | Vitest               |
+| **Mobile**            | React Native              | Native options       | Ionic / NativeScript | Native options       |
+| **Community**         | Very Large                | Large                | Large                | Growing              |
+| **Corporate Backing** | Meta                      | Independent          | Google               | Independent          |
 
 ## 🎨 Visual Comparison
 
@@ -294,6 +354,14 @@ All three PoCs implement the same design using the existing color scheme:
 - ✅ You want a complete solution
 - ✅ Team consistency is critical
 - ✅ You're building a large-scale app
+
+### Choose **Svelte** if:
+
+- ✅ You want the smallest possible bundle size
+- ✅ No virtual DOM overhead is important
+- ✅ You prefer explicit reactive primitives (runes)
+- ✅ You value minimal boilerplate
+- ✅ You want a gentle learning curve
 
 ## 📈 Existing App Analysis
 
@@ -413,6 +481,12 @@ All PoCs use the same API contract:
 2. Run dev server: `npm start`
 3. Build for production: `npm run build`
 
+### Svelte
+
+1. Install dependencies: `npm install`
+2. Run dev server: `npm run dev`
+3. Build for production: `npm run build`
+
 ## 🎓 Learning Resources
 
 ### React
@@ -435,6 +509,13 @@ All PoCs use the same API contract:
 - [Official Angular Docs](https://angular.io/docs)
 - [Standalone Components](https://angular.io/guide/standalone-components)
 - [Reactive Forms](https://angular.io/guide/reactive-forms)
+
+### Svelte
+
+- [Official Svelte Docs](https://svelte.dev/)
+- [Svelte 5 Runes](https://svelte.dev/docs/svelte/what-are-runes)
+- [SvelteKit (full-stack)](https://kit.svelte.dev/)
+- [Why Svelte? (Rich Harris)](https://www.youtube.com/watch?v=AdNJ3fydeao)
 
 ## 📞 Next Steps
 

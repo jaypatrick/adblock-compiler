@@ -93,7 +93,23 @@ This document summarizes the proof-of-concept implementations created for evalua
 - `poc/angular/README.md` (250 lines) - Detailed setup and architecture guide
 - `poc/angular/ANGULAR_SIGNALS.md` (400+ lines) - Comprehensive Angular Signals guide
 
-### 4. Main Documentation
+### 5. Svelte 5 PoC (Vite-based project)
+
+- **Files**: `poc/svelte/` (6 files)
+- **Technology**: Svelte 5 + Vite + @sveltejs/vite-plugin-svelte
+- **Approach**: Minimal Vite project with a single App.svelte component
+
+**Key Features Demonstrated:**
+
+- ✅ **Svelte 5 Runes** — $state(), $derived(), $effect() in action
+- ✅ Hash-based client-side routing (no external router)
+- ✅ Dark/light theme toggle with localStorage persistence
+- ✅ Compiler form with async API call and mock fallback
+- ✅ Benchmark page with $derived() for computed statistics
+- ✅ Runes Demo page with interactive examples
+- ✅ No virtual DOM — compiled to vanilla JavaScript
+
+### 6. Main Documentation
 
 - **File**: `poc/README.md` (386 lines)
 - **Contents**:
@@ -173,16 +189,16 @@ All three PoCs implement:
 
 ## 📊 Comparison Summary
 
-| Aspect               | React           | Vue          | Angular         |
-| -------------------- | --------------- | ------------ | --------------- |
-| **Files**            | 1 HTML          | 1 HTML       | 15 files        |
-| **Lines of Code**    | ~780            | ~1,400       | ~2,000          |
-| **Setup Time**       | 0 min           | 0 min        | 5 min           |
-| **Build Required**   | No (CDN)        | No (CDN)     | Yes (npm)       |
-| **Learning Curve**   | Medium          | Easy         | Steep           |
-| **Type Safety**      | No (can add)    | No (can add) | Yes (required)  |
-| **Form Handling**    | Manual          | v-model      | Reactive Forms  |
-| **State Management** | Hooks + Context | **Pinia**    | Services + RxJS + **Signals** |
+| Aspect               | React           | Vue          | Angular         | Svelte          |
+| -------------------- | --------------- | ------------ | --------------- | --------------- |
+| **Files**            | 1 HTML          | 1 HTML       | 15 files        | 6 files         |
+| **Lines of Code**    | ~780            | ~1,400       | ~2,000          | ~600            |
+| **Setup Time**       | 0 min           | 0 min        | 5 min           | 2 min           |
+| **Build Required**   | No (CDN)        | No (CDN)     | Yes (npm)       | Yes (npm)       |
+| **Learning Curve**   | Medium          | Easy         | Steep           | Easy            |
+| **Type Safety**      | No (can add)    | No (can add) | Yes (required)  | No (can add)    |
+| **Form Handling**    | Manual          | v-model      | Reactive Forms  | bind: directive |
+| **State Management** | Hooks + Context | **Pinia**    | Services + RxJS + **Signals** | **Runes** |
 
 ## 🚀 How to Test
 
