@@ -370,7 +370,7 @@ If you're used to manual version bumping:
 
 ## Related Documentation
 
-- [VERSION_MANAGEMENT.md](../VERSION_MANAGEMENT.md) - Version synchronization details
+- [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md) - Version synchronization details
 - [Conventional Commits](https://www.conventionalcommits.org/) - Official specification
 - [Semantic Versioning](https://semver.org/) - SemVer specification
 - `.github/workflows/version-bump.yml` - Consolidated version bump workflow (automatic and manual)
