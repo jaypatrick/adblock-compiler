@@ -122,10 +122,10 @@ These workflows had overlapping functionality:
 
 ## Documentation Updates
 
-The following documentation files were updated:
+The following documentation files were updated during the workflow cleanup:
 
 1. **.github/workflows/README.md** - Complete rewrite to reflect new workflow structure
-2. **.github/WORKFLOWS.md** - Updated to remove AI agent references and consolidate version bump info
+2. **.github/WORKFLOWS.md** (now at **docs/WORKFLOWS.md**) - Updated to remove AI agent references and consolidate version bump info
 3. **docs/AUTO_VERSION_BUMP.md** - Updated to reference consolidated `version-bump.yml` workflow
 
 ## Testing Recommendations
