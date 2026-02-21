@@ -33,6 +33,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - add validation for changelog line number in version-bump workflow
 - make changelog insertion more robust in version-bump workflow
 
+## [0.16.2] - 2026-02-18
+
+### Notes
+
+- No user-facing changes. Internal release and tooling updates only.
+
 ## [0.16.1] - 2026-02-16
 
 ### Fixed
