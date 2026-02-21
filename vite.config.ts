@@ -1,11 +1,19 @@
 import { defineConfig } from 'vite';
 import { resolve } from 'path';
+import vue from '@vitejs/plugin-vue';
+import vueJsx from '@vitejs/plugin-vue-jsx';
+import react from '@vitejs/plugin-react';
 
 /**
  * Vite configuration for the Adblock Compiler frontend UI.
  *
  * Multi-page app setup — each HTML file in public/ is an independent entry point.
  * Dev server proxies API and WebSocket calls to the local Cloudflare Worker (port 8787).
+ *
+ * Plugins:
+ *   @vitejs/plugin-vue     — Vue 3 Single-File Component support (.vue files)
+ *   @vitejs/plugin-vue-jsx — Vue 3 JSX / TSX support
+ *   @vitejs/plugin-react   — React JSX / TSX support with Fast Refresh
  *
  * Scripts:
  *   npm run ui:dev      — Start Vite dev server with HMR on http://localhost:5173
@@ -17,6 +25,7 @@ import { resolve } from 'path';
  *   npm run ui:dev      (Vite on :5173 → proxies /api, /sse, /ws to :8787)
  */
 export default defineConfig({
+    plugins: [vue(), vueJsx(), react()],
     // Use public/ as the project root so HTML files resolve assets correctly.
     root: 'public',
 

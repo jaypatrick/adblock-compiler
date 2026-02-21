@@ -11,9 +11,23 @@ Vite processes all HTML pages in `public/` as a **multi-page application**:
 - Extracts and optimises CSS (including the shared design-system styles)
 - Replaces CDN Chart.js with a tree-shaken npm bundle
 - Outputs production-ready assets to `dist/`
+- Supports Vue 3 Single-File Components (`.vue` files) via `@vitejs/plugin-vue`
+- Supports Vue 3 JSX/TSX via `@vitejs/plugin-vue-jsx`
+- Supports React JSX/TSX with Fast Refresh via `@vitejs/plugin-react`
 
 External scripts that must stay as CDN references (Cloudflare Web Analytics, Cloudflare
 Turnstile) are left untouched by Vite.
+
+## Plugins
+
+| Plugin | Version | Purpose |
+|---|---|---|
+| `@vitejs/plugin-vue` | `^6.0.4` | Vue 3 Single-File Component (`.vue`) support |
+| `@vitejs/plugin-vue-jsx` | `^5.1.4` | Vue 3 JSX and TSX transform support |
+| `@vitejs/plugin-react` | `^5.1.4` | React JSX/TSX transform with Babel Fast Refresh |
+
+All three plugins are active for every build and dev-server session. They have no impact
+on pages that do not import Vue or React components.
 
 ## Directory Structure
 
@@ -100,6 +114,7 @@ wrangler deploy
 | `validation-ui.js` (no exports) | `validation-ui.js` (adds `export { ValidationUI }`) |
 | Empty `[build]` in `wrangler.toml` | `npm run ui:build` wires Vite into the deploy pipeline |
 | Assets served from `./public` | Assets served from `./dist` (Vite output) |
+| No Vue/React plugin support | `@vitejs/plugin-vue`, `@vitejs/plugin-vue-jsx`, `@vitejs/plugin-react` integrated |
 
 ## Proxy Configuration
 
