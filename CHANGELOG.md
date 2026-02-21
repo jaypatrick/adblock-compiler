@@ -19,6 +19,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrate `@opentelemetry/api` from npm to JSR (`jsr:@opentelemetry/api@^1.9.0`)
 - Improve Deno-native architecture by reducing npm dependencies where JSR alternatives are available
 
+
+## [0.18.0] - 2026-02-21
+
+### Added- centralize version management with scripts/sync-version.ts
+
+### Fixed
+
+- use single quotes in sync-version.ts to pass deno fmt check
+
+
 ## [0.17.0] - 2026-02-20
 
 ### Added
