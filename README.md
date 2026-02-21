@@ -1356,7 +1356,7 @@ The `poc/` directory contains proof-of-concept implementations of the Adblock Co
 
 Each PoC demonstrates component-based architecture, client-side routing, theme management, API integration, form validation, and performance benchmarking using the project's existing design system.
 
-📚 **[Framework PoC Documentation](poc/README.md)** - Comparison guide with migration recommendations  
+📚 **[Framework PoC Documentation](poc/README.md)** - Comparison guide with migration recommendations
 📄 **[SPA Benefits Analysis](docs/SPA_BENEFITS.md)** - Detailed analysis of SPA benefits for this application
 
 ### Project structure
