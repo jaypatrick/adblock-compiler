@@ -1,6 +1,6 @@
 import { assertEquals, assertThrows } from '@std/assert';
-import { ConfigurationValidator } from '../../src/configuration/ConfigurationValidator.ts';
-import { IConfiguration, SourceType, TransformationType } from '../../src/types/index.ts';
+import { ConfigurationValidator } from './ConfigurationValidator.ts';
+import { IConfiguration, SourceType, TransformationType } from '../types/index.ts';
 
 // validate tests
 Deno.test('ConfigurationValidator.validate - should validate minimal valid configuration', () => {

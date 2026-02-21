@@ -377,6 +377,80 @@
                 border: 1px solid #bfdbfe;
             }
 
+            /* Server Components Demo */
+            .rsc-server-component,
+            .rsc-client-component {
+                border-radius: 8px;
+                padding: 20px;
+                position: relative;
+                margin-bottom: 10px;
+            }
+
+            .rsc-server-component {
+                border: 2px solid #10b981;
+            }
+
+            .rsc-client-component {
+                border: 2px solid #3b82f6;
+            }
+
+            .rsc-badge {
+                display: inline-block;
+                padding: 4px 10px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 600;
+                margin-bottom: 12px;
+            }
+
+            .rsc-badge-server {
+                background: #d1fae5;
+                color: #065f46;
+            }
+
+            .rsc-badge-client {
+                background: #dbeafe;
+                color: #1e40af;
+            }
+
+            .rsc-concept-box {
+                background: var(--section-bg);
+                border: 1px solid var(--border-color);
+                border-radius: 8px;
+                padding: 20px;
+            }
+
+            .rsc-concept-card {
+                padding: 15px;
+                border-radius: 6px;
+                font-size: 14px;
+            }
+
+            .rsc-concept-server {
+                background: #d1fae5;
+                color: #065f46;
+                border: 1px solid #a7f3d0;
+            }
+
+            .rsc-concept-client {
+                background: #dbeafe;
+                color: #1e40af;
+                border: 1px solid #bfdbfe;
+            }
+
+            .rsc-code-example {
+                margin-top: 30px;
+                padding: 20px;
+                background: var(--section-bg);
+                border-radius: 8px;
+                border: 1px solid var(--border-color);
+            }
+
+            .rsc-code-example h3 {
+                margin-bottom: 15px;
+                color: var(--text-color);
+            }
+
             /* Utility Classes */
             .mb-2 {
                 margin-bottom: 20px;
@@ -389,14 +463,14 @@
     <body>
         <div id="root"></div>
 
-        <script type="text/babel">
+        <script type="text/babel" data-presets="react,typescript">
             /* ===================================================================
            React PoC - Adblock Compiler Frontend
 
            ARCHITECTURE OVERVIEW:
            - Component-based architecture with functional components
            - React Hooks for state management (useState, useEffect)
-           - React Router for client-side navigation
+           - React Router v6 for client-side navigation (see poc/react/REACT_ROUTER.md)
            - Context API for theme management (could use Redux/Zustand in production)
            - Controlled components for forms
            - Separation of concerns (presentation vs logic)
@@ -408,20 +482,73 @@
            4. Event Handling: Form submissions, input changes
            5. Conditional Rendering: Loading states, error states, results
            6. API Integration: Fetch API with async/await
+           7. Client-Side Routing: BrowserRouter, Routes, Route, Link, useLocation
+           8. React Server Components: RSC pattern simulation demonstrating server/client component split
+              (not a real RSC implementation — requires Next.js; see poc/react/REACT_SERVER_COMPONENTS.md)
+
+           WHY REACT ROUTER?
+           React Router intercepts link clicks and renders the correct component
+           without a full browser reload, preserving in-memory state (form data,
+           results) and providing instant transitions. It keeps the browser URL in
+           sync so deep links, bookmarks, and the Back/Forward buttons all work
+           as users expect. See poc/react/REACT_ROUTER.md for the full rationale.
            =================================================================== */
 
             const { useState, useEffect, createContext, useContext } = React;
             const { BrowserRouter, Routes, Route, Link, useLocation } = ReactRouterDOM;
 
             /* ===================================================================
+           TYPE DEFINITIONS
+           TypeScript interfaces for type safety across components
+           =================================================================== */
+
+            interface Stat {
+                label: string;
+                value: string;
+            }
+
+            interface TransformationMap {
+                RemoveComments: boolean;
+                Deduplicate: boolean;
+                TrimLines: boolean;
+                RemoveEmptyLines: boolean;
+                Compress: boolean;
+                RemoveModifiers: boolean;
+                Validate: boolean;
+                ValidateAllowIp: boolean;
+                InvertAllow: boolean;
+                InsertFinalNewLine: boolean;
+                ConvertToAscii: boolean;
+            }
+
+            interface BenchmarkResult {
+                duration: string;
+                rulesPerSecond: number;
+            }
+
+            interface CompilationResult {
+                success: boolean;
+                ruleCount: number;
+                sources: number;
+                transformations: string[];
+                message?: string;
+                benchmark: BenchmarkResult;
+            }
+
+            interface ThemeContextType {
+                theme: string;
+                toggleTheme: () => void;
+            }
+
+            /* ===================================================================
            CONTEXT - Theme Management
            Pattern: Global state management using Context API
            In production, consider Redux, Zustand, or Jotai for complex state
            =================================================================== */
-            const ThemeContext = createContext();
+            const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-            function ThemeProvider({ children }) {
-                const [theme, setTheme] = useState(() => {
+            function ThemeProvider({ children }: { children: React.ReactNode }) {
+                const [theme, setTheme] = useState<string>(() => {
                     return localStorage.getItem('theme') || 'light';
                 });
 
@@ -441,8 +568,12 @@
                 );
             }
 
-            function useTheme() {
-                return useContext(ThemeContext);
+            function useTheme(): ThemeContextType {
+                const context = useContext(ThemeContext);
+                if (!context) {
+                    throw new Error('useTheme must be used within a ThemeProvider');
+                }
+                return context;
             }
 
             /* ===================================================================
@@ -461,13 +592,20 @@
 
             /* ===================================================================
            COMPONENT - Navigation
-           Pattern: Declarative routing with React Router
-           Uses Link for client-side navigation without page reload
+           Pattern: Declarative routing with React Router v6
+
+           WHY REACT ROUTER HERE:
+           - <Link> renders a normal <a> tag but intercepts the click, pushing a
+             new history entry instead of reloading the page. This preserves all
+             React state (form inputs, compiled results, theme) across navigations.
+           - useLocation() gives reactive access to the current URL so the active
+             link can be highlighted without any manual DOM queries or event listeners.
+             React Router updates the component automatically on every navigation.
            =================================================================== */
             function Navigation() {
                 const location = useLocation();
 
-                const isActive = (path) => location.pathname === path;
+                const isActive = (path: string): boolean => location.pathname === path;
 
                 return (
                     <nav className='nav'>
@@ -488,6 +626,14 @@
                                     ⚙️ Compiler
                                 </Link>
                             </li>
+                            <li>
+                                <Link
+                                    to='/server-components'
+                                    className={`nav-link ${isActive('/server-components') ? 'active' : ''}`}
+                                >
+                                    🖥️ Server Components
+                                </Link>
+                            </li>
                         </ul>
                         <ThemeToggle />
                     </nav>
@@ -500,7 +646,7 @@
            In production, fetch real stats from API
            =================================================================== */
             function HomePage() {
-                const stats = [
+                const stats: Stat[] = [
                     { label: 'Filter Lists Compiled', value: '1,234' },
                     { label: 'Total Rules Processed', value: '456K' },
                     { label: 'Active Transformations', value: '12' },
@@ -539,8 +685,8 @@
            =================================================================== */
             function CompilerPage() {
                 // State Management - Multiple pieces of local state
-                const [urls, setUrls] = useState(['']);
-                const [transformations, setTransformations] = useState({
+                const [urls, setUrls] = useState<string[]>(['']);
+                const [transformations, setTransformations] = useState<TransformationMap>({
                     RemoveComments: true,
                     Deduplicate: true,
                     TrimLines: false,
@@ -553,37 +699,37 @@
                     InsertFinalNewLine: false,
                     ConvertToAscii: false,
                 });
-                const [loading, setLoading] = useState(false);
-                const [error, setError] = useState(null);
-                const [results, setResults] = useState(null);
+                const [loading, setLoading] = useState<boolean>(false);
+                const [error, setError] = useState<string | null>(null);
+                const [results, setResults] = useState<CompilationResult | null>(null);
 
                 // URL Management Handlers
-                const addUrl = () => {
+                const addUrl = (): void => {
                     setUrls([...urls, '']);
                 };
 
-                const updateUrl = (index, value) => {
+                const updateUrl = (index: number, value: string): void => {
                     const newUrls = [...urls];
                     newUrls[index] = value;
                     setUrls(newUrls);
                 };
 
-                const removeUrl = (index) => {
+                const removeUrl = (index: number): void => {
                     if (urls.length > 1) {
-                        setUrls(urls.filter((_, i) => i !== index));
+                        setUrls(urls.filter((_: string, i: number) => i !== index));
                     }
                 };
 
                 // Transformation Checkbox Handler
-                const toggleTransformation = (name) => {
-                    setTransformations((prev) => ({
+                const toggleTransformation = (name: keyof TransformationMap): void => {
+                    setTransformations((prev: TransformationMap) => ({
                         ...prev,
                         [name]: !prev[name],
                     }));
                 };
 
                 // API Call Handler
-                const handleCompile = async (e) => {
+                const handleCompile = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
                     e.preventDefault();
 
                     // Validation
@@ -629,7 +775,7 @@
 
                         const data = await response.json();
                         setResults(data);
-                    } catch (err) {
+                    } catch (err: unknown) {
                         // Mock success for demo purposes (API might not be available)
                         console.log('API call failed (expected in PoC), showing mock data:', err);
                         setResults({
@@ -694,7 +840,7 @@
                             <div className='form-section'>
                                 <h3>Transformations</h3>
                                 <div className='transformations-grid'>
-                                    {Object.entries(transformations).map(([name, checked]) => (
+                                    {(Object.entries(transformations) as [keyof TransformationMap, boolean][]).map(([name, checked]) => (
                                         <label key={name} className='checkbox-label'>
                                             <input
                                                 type='checkbox'
@@ -752,9 +898,272 @@
             }
 
             /* ===================================================================
+           PAGE - Server Components Demo
+           Pattern: React Server Components (RSC) simulation
+
+           NOTE: True React Server Components require a framework like Next.js 14+
+           (App Router). This page SIMULATES the RSC pattern to demonstrate the
+           architecture and show why RSC would benefit the Adblock Compiler.
+           See poc/react/REACT_SERVER_COMPONENTS.md for the full rationale.
+
+           WHAT THIS PAGE DEMONSTRATES:
+           1. Server Components: async, no hooks/events, fetch data directly
+           2. Client Components: 'use client' directive, hooks and event handlers
+           3. Composition: server components pass data as props to client components
+           4. Streaming: data arrives after a simulated server delay
+           =================================================================== */
+
+            interface ServerStats {
+                totalRules: number;
+                activeSources: number;
+                lastCompiled: string;
+                transformations: string[];
+                cacheSize: string;
+            }
+
+            // Simulates a server-side data fetch.
+            // In a real Next.js RSC this would be a top-level `await` inside an
+            // async Server Component — no useEffect, no useState.
+            function fetchServerStats(): Promise<ServerStats> {
+                return new Promise((resolve) => {
+                    setTimeout(() => {
+                        resolve({
+                            totalRules: 847293,
+                            activeSources: 42,
+                            lastCompiled: new Date().toISOString(),
+                            transformations: ['RemoveComments', 'Deduplicate', 'TrimLines'],
+                            cacheSize: '12.4 MB',
+                        });
+                    }, 1200);
+                });
+            }
+
+            /* ===================================================================
+           SIMULATED SERVER COMPONENT - StatsPanel
+           In Next.js 14 (App Router) this would be an async function with no
+           'use client' directive. It would await data directly and ship zero
+           JavaScript to the browser — only the rendered HTML is sent.
+
+           Constraints enforced here to match a real Server Component:
+             ✅ No useState / useEffect
+             ✅ No event handlers (onClick, onChange, etc.)
+             ✅ Receives data as props (as if pre-fetched on the server)
+           =================================================================== */
+            function StatsPanel({ stats }: { stats: ServerStats }) {
+                return (
+                    <div className='rsc-server-component'>
+                        <div className='rsc-badge rsc-badge-server'>🖥️ Server Component</div>
+                        <h3>Live Compilation Stats</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '15px' }}>
+                            In production (Next.js), this data is fetched <em>server-side</em> — no client JavaScript required, no loading flash.
+                        </p>
+                        <div className='stats-grid'>
+                            <div className='stat-card'>
+                                <div className='stat-label'>Total Rules</div>
+                                <div className='stat-value'>{stats.totalRules.toLocaleString()}</div>
+                            </div>
+                            <div className='stat-card'>
+                                <div className='stat-label'>Active Sources</div>
+                                <div className='stat-value'>{stats.activeSources}</div>
+                            </div>
+                            <div className='stat-card'>
+                                <div className='stat-label'>Cache Size</div>
+                                <div className='stat-value'>{stats.cacheSize}</div>
+                            </div>
+                        </div>
+                        <p style={{ marginTop: '15px', fontSize: '13px', color: 'var(--text-muted)' }}>
+                            Last compiled: {new Date(stats.lastCompiled).toLocaleString()}
+                        </p>
+                    </div>
+                );
+            }
+
+            /* ===================================================================
+           SIMULATED CLIENT COMPONENT - TransformationPicker
+           In Next.js 14 this file would begin with 'use client'.
+           Client Components retain full Hook and event-handler support.
+           They receive server-fetched data as props from the Server Component.
+
+           Constraints that justify 'use client':
+             ✅ Uses useState (interactive toggle)
+             ✅ Uses onClick event handler
+             ✅ Receives initial data as props from StatsPanel's parent
+           =================================================================== */
+            function TransformationPicker({ initialList }: { initialList: string[] }) {
+                // In Next.js this would have 'use client' directive — this component uses state and event handlers
+                const [selected, setSelected] = useState<string[]>(initialList);
+                const [saved, setSaved] = useState<boolean>(false);
+
+                const allTransformations: string[] = [
+                    'RemoveComments', 'Deduplicate', 'TrimLines',
+                    'RemoveEmptyLines', 'Compress', 'Validate',
+                ];
+
+                const toggle = (name: string): void => {
+                    setSaved(false);
+                    setSelected((prev: string[]) =>
+                        prev.includes(name) ? prev.filter((t: string) => t !== name) : [...prev, name],
+                    );
+                };
+
+                const handleSave = (): void => {
+                    setSaved(true);
+                    setTimeout(() => setSaved(false), 2000);
+                };
+
+                return (
+                    <div className='rsc-client-component'>
+                        <div className='rsc-badge rsc-badge-client'>⚡ Client Component</div>
+                        <h3>Transformation Picker</h3>
+                        <p style={{ color: 'var(--text-muted)', fontSize: '13px', marginBottom: '15px' }}>
+                            This component uses <code>useState</code> for interactivity — it must be a Client Component.
+                            It receives its initial list as a prop from the Server Component above.
+                        </p>
+                        <div className='transformations-grid'>
+                            {allTransformations.map((name: string) => (
+                                <label key={name} className='checkbox-label'>
+                                    <input
+                                        type='checkbox'
+                                        checked={selected.includes(name)}
+                                        onChange={() => toggle(name)}
+                                    />
+                                    <span>{name}</span>
+                                </label>
+                            ))}
+                        </div>
+                        <button
+                            className='btn btn-primary'
+                            style={{ marginTop: '15px' }}
+                            onClick={handleSave}
+                        >
+                            {saved ? '✅ Saved!' : '💾 Save Preferences'}
+                        </button>
+                    </div>
+                );
+            }
+
+            /* ===================================================================
+           PAGE - Server Components Demo
+           Composes StatsPanel (server) and TransformationPicker (client).
+           The useEffect here simulates what Next.js does automatically when
+           an async Server Component awaits data before streaming its HTML.
+           =================================================================== */
+            function ServerComponentsPage() {
+                const [stats, setStats] = useState<ServerStats | null>(null);
+                const [loading, setLoading] = useState<boolean>(true);
+
+                useEffect(() => {
+                    fetchServerStats().then((data: ServerStats) => {
+                        setStats(data);
+                        setLoading(false);
+                    });
+                }, []);
+
+                return (
+                    <div>
+                        <h1>React Server Components</h1>
+                        <p className='mb-2' style={{ color: 'var(--text-muted)' }}>
+                            Demonstrating the RSC architecture pattern and why it benefits the Adblock Compiler.
+                            See <strong>poc/react/REACT_SERVER_COMPONENTS.md</strong> for the full rationale.
+                        </p>
+
+                        {/* Concept explanation */}
+                        <div className='rsc-concept-box'>
+                            <h3>🏗️ How RSC Works</h3>
+                            <p>React Server Components split the component tree into two rendering environments:</p>
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginTop: '15px' }}>
+                                <div className='rsc-concept-card rsc-concept-server'>
+                                    <strong>🖥️ Server Components</strong>
+                                    <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '13px' }}>
+                                        <li>Render on the server</li>
+                                        <li><code>async</code> by default — <code>await</code> data directly</li>
+                                        <li>Zero JS shipped to the browser</li>
+                                        <li>Can access databases and secrets</li>
+                                        <li>No useState / useEffect</li>
+                                    </ul>
+                                </div>
+                                <div className='rsc-concept-card rsc-concept-client'>
+                                    <strong>⚡ Client Components</strong>
+                                    <ul style={{ marginTop: '8px', paddingLeft: '20px', fontSize: '13px' }}>
+                                        <li>Render in the browser</li>
+                                        <li>Full React Hook support</li>
+                                        <li>Event handlers and interactivity</li>
+                                        <li>Browser API access</li>
+                                        <li>Marked with <code>'use client'</code></li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Live demo */}
+                        <div style={{ marginTop: '30px' }}>
+                            <h2 style={{ marginBottom: '20px' }}>📡 Live Demo (Simulated)</h2>
+                            {loading ? (
+                                <div className='loading'>
+                                    <div className='spinner'></div>
+                                    <p>Server component fetching data...</p>
+                                </div>
+                            ) : stats ? (
+                                <>
+                                    <StatsPanel stats={stats} />
+                                    <div style={{ marginTop: '20px' }}>
+                                        <TransformationPicker initialList={stats.transformations} />
+                                    </div>
+                                </>
+                            ) : null}
+                        </div>
+
+                        {/* Code example */}
+                        <div className='rsc-code-example'>
+                            <h3>📝 Real RSC Code (Next.js 14 App Router)</h3>
+                            <pre className='results-code'>{`// app/dashboard/page.tsx — Server Component (no 'use client')
+import { TransformationPicker } from './TransformationPicker';
+
+async function DashboardPage() {
+    // Runs on the server — can await DB/API calls directly
+    const stats = await fetchCompilerStats();
+    return (
+        <main>
+            <StatsPanel stats={stats} />
+            {/* Pass server data as props to the interactive Client Component */}
+            <TransformationPicker initialList={stats.transformations} />
+        </main>
+    );
+}
+
+// components/TransformationPicker.tsx — Client Component
+'use client';
+
+import { useState } from 'react';
+
+function TransformationPicker({ initialList }) {
+    const [selected, setSelected] = useState(initialList);
+    // ... interactive logic with useState and event handlers
+}`}</pre>
+                        </div>
+
+                        <div className='alert alert-info mt-2'>
+                            <strong>ℹ️ React Pattern:</strong>{' '}
+                            This page simulates RSC behaviour using <code>useEffect</code> (a Client Component approach).
+                            In a real Next.js 14 application, <code>StatsPanel</code> would be a genuine Server
+                            Component — an <code>async</code> function that <code>await</code>s data and ships{' '}
+                            <strong>zero JavaScript</strong> to the client.
+                            See <strong>poc/react/REACT_SERVER_COMPONENTS.md</strong> for detailed integration guidance.
+                        </div>
+                    </div>
+                );
+            }
+
+            /* ===================================================================
            COMPONENT - App Shell
            Pattern: Layout component with client-side routing
-           React Router provides declarative routing with nested Routes
+
+           WHY REACT ROUTER HERE:
+           - <Routes> + <Route> declare all pages in one readable place. Adding a
+             new page is a one-line change; no event listeners or switch statements.
+           - Only the inner <Routes> re-renders on navigation; the surrounding
+             <Navigation /> never unmounts, so its state (e.g., scroll position)
+             is preserved. This is equivalent to a nested-route layout pattern.
            =================================================================== */
             function AppShell() {
                 return (
@@ -764,6 +1173,7 @@
                             <Routes>
                                 <Route path='/' element={<HomePage />} />
                                 <Route path='/compiler' element={<CompilerPage />} />
+                                <Route path='/server-components' element={<ServerComponentsPage />} />
                             </Routes>
                         </main>
                     </div>
@@ -773,6 +1183,12 @@
             /* ===================================================================
            ROOT COMPONENT - Application Entry Point
            Pattern: Provider wrapping for global state and routing
+
+           WHY BROWSERROUTER AT THE ROOT:
+           - <BrowserRouter> must wrap the entire application so that all
+             components (Navigation, AppShell, etc.) share the same router context.
+           - It uses the HTML5 History API (pushState/replaceState) to manage the
+             URL, providing clean URLs like /compiler instead of hash-based /#/compiler.
            =================================================================== */
             function App() {
                 return (

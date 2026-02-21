@@ -8,6 +8,7 @@
 import { Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { CompileResponse, CompilerService } from '../services/compiler.service';
@@ -16,6 +17,10 @@ import { CompileResponse, CompilerService } from '../services/compiler.service';
  * CompilerComponent
  * Pattern: Complex form with reactive forms approach
  * Uses FormBuilder for creating form controls and FormArray for dynamic lists
+ *
+ * ANGULAR ROUTER PATTERNS DEMONSTRATED:
+ * - ActivatedRoute: Read query parameters from the current URL
+ * - Router service: Programmatic navigation and URL state management
  */
 @Component({
     selector: 'app-compiler',
@@ -114,12 +119,28 @@ import { CompileResponse, CompilerService } from '../services/compiler.service';
         <div class="results-code">
           <pre>{{ results | json }}</pre>
         </div>
+        
+        <!-- Angular Router Pattern: Programmatic navigation after action -->
+        <div class="post-results-actions">
+          <p class="bookmark-hint">
+            💡 <strong>Angular Router:</strong> The URL above now includes a
+            <code>?url=</code> query parameter so this compilation can be bookmarked
+            or shared. Angular Router keeps the URL in sync with app state automatically.
+          </p>
+          <button class="btn btn-secondary" (click)="goHome()">
+            ← Back to Dashboard
+          </button>
+        </div>
       </div>
       
       <div class="alert alert-info mt-2">
         <strong>ℹ️ Angular Pattern:</strong> This form demonstrates Reactive Forms with 
         FormBuilder, FormArray for dynamic controls, FormGroup for nested forms, 
         async service calls with RxJS Observables, and conditional rendering with *ngIf.
+        <br><br>
+        <strong>🗺️ Angular Router:</strong> Try navigating here with
+        <code>?url=https://example.com/filters.txt</code> in the URL bar — the first
+        URL input will be pre-populated automatically via <code>ActivatedRoute.queryParamMap</code>.
       </div>
     </div>
   `,
@@ -282,6 +303,28 @@ import { CompileResponse, CompilerService } from '../services/compiler.service';
       overflow-y: auto;
     }
     
+    .post-results-actions {
+      margin-top: 20px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    
+    .bookmark-hint {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin: 0;
+    }
+    
+    .bookmark-hint code {
+      background: var(--input-bg);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
+    }
+    
     .alert {
       padding: 16px;
       border-radius: 6px;
@@ -298,6 +341,13 @@ import { CompileResponse, CompilerService } from '../services/compiler.service';
       background: #dbeafe;
       color: #1e40af;
       border: 1px solid #bfdbfe;
+    }
+    
+    .alert-info code {
+      background: rgba(0, 0, 0, 0.1);
+      padding: 2px 6px;
+      border-radius: 4px;
+      font-family: 'Courier New', monospace;
     }
     
     .mb-2 { margin-bottom: 20px; }
@@ -321,11 +371,17 @@ export class CompilerComponent implements OnInit, OnDestroy {
 
     /**
      * Constructor with Dependency Injection
-     * Angular's DI provides FormBuilder and CompilerService instances
+     * Angular's DI provides FormBuilder, CompilerService, ActivatedRoute, and Router instances
+     *
+     * ANGULAR ROUTER DI:
+     * - ActivatedRoute: Provides access to the current route's URL, params, and query params
+     * - Router: Service for imperative (programmatic) navigation between routes
      */
     constructor(
         private fb: FormBuilder,
         private compilerService: CompilerService,
+        private route: ActivatedRoute,
+        private router: Router,
     ) {}
 
     /**
@@ -339,6 +395,19 @@ export class CompilerComponent implements OnInit, OnDestroy {
 
         // Initialize reactive form
         this.initializeForm();
+
+        // ANGULAR ROUTER PATTERN: Read query parameters with ActivatedRoute
+        // This allows the compiler page to be bookmarked or linked to with a pre-filled URL.
+        // Example: /compiler?url=https://easylist.to/easylist/easylist.txt
+        this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+            const urlParam = params.get('url');
+            if (urlParam) {
+                // Pre-populate the first URL input from the query parameter.
+                // This makes the page deep-linkable – another app or email can link
+                // directly to a pre-configured compilation.
+                this.urlsArray.at(0).setValue(urlParam);
+            }
+        });
     }
 
     /**
@@ -398,6 +467,16 @@ export class CompilerComponent implements OnInit, OnDestroy {
     }
 
     /**
+     * Navigate back to the Home/Dashboard page
+     * ANGULAR ROUTER PATTERN: Programmatic navigation with Router.navigate()
+     * This is useful when navigation needs to happen as a result of logic
+     * (e.g., after a form submission or when a button is clicked programmatically).
+     */
+    goHome(): void {
+        this.router.navigate(['/']);
+    }
+
+    /**
      * Form Submit Handler
      * Pattern: Reactive form submission with service call
      */
@@ -431,6 +510,18 @@ export class CompilerComponent implements OnInit, OnDestroy {
             next: (response) => {
                 this.results = response;
                 this.loading = false;
+
+                // ANGULAR ROUTER PATTERN: Update URL query params to reflect app state.
+                // This makes the current compilation result bookmarkable and shareable.
+                // navigate([]) with no path segments means "stay on current route".
+                // queryParamsHandling: 'merge' preserves any existing query params.
+                if (urls.length > 0) {
+                    this.router.navigate([], {
+                        relativeTo: this.route,
+                        queryParams: { url: urls[0] },
+                        queryParamsHandling: 'merge',
+                    });
+                }
             },
             error: (err) => {
                 this.error = err.message || 'An error occurred during compilation';

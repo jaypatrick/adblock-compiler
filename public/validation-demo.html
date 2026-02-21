@@ -4,6 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Validation Error Display - Demo</title>
+    <!-- Tailwind CSS -->
+    <link rel="stylesheet" href="/tailwind.css">
     <style>
         :root {
             --bg-gradient-start: #667eea;
@@ -166,7 +168,10 @@
         <header>
             <h1>🔍 Validation Error Display</h1>
             <p>AGTree-powered validation with color-coded AST visualization</p>
-            <button class="theme-toggle" id="theme-toggle">🌙 Toggle Dark Mode</button>
+            <button class="theme-toggle" id="theme-toggle" aria-label="Toggle theme">
+                <span id="theme-icon">🌙</span>
+                <span id="theme-label">Dark Mode</span>
+            </button>
         </header>
 
         <div class="content">
@@ -253,17 +258,9 @@
         </div>
     </div>
 
-    <script src="validation-ui.js"></script>
+    <script type="module" src="validation-ui.js"></script>
+    <script type="module" src="/js/theme.ts"></script>
     <script>
-        // Theme toggle
-        const themeToggle = document.getElementById('theme-toggle');
-        themeToggle.addEventListener('click', () => {
-            const current = document.documentElement.getAttribute('data-theme');
-            const next = current === 'dark' ? 'light' : 'dark';
-            document.documentElement.setAttribute('data-theme', next);
-            themeToggle.textContent = next === 'dark' ? '☀️ Toggle Light Mode' : '🌙 Toggle Dark Mode';
-        });
-
         // Sample validation report
         function loadSampleReport() {
             const report = {

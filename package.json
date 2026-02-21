@@ -9,11 +9,27 @@
         "tail": "wrangler tail",
         "tail:deploy": "wrangler deploy --config wrangler.tail.toml",
         "tail:dev": "wrangler dev --config wrangler.tail.toml",
-        "tail:logs": "wrangler tail adblock-compiler-tail"
+        "tail:logs": "wrangler tail adblock-compiler-tail",
+        "build:css": "npx tailwindcss -i ./public/input.css -o ./public/tailwind.css",
+        "build:css:watch": "npx tailwindcss -i ./public/input.css -o ./public/tailwind.css --watch",
+        "build:css:prod": "npx tailwindcss -i ./public/input.css -o ./public/tailwind.css --minify",
+        "ui:dev": "vite",
+        "ui:build": "npm run build:css:prod && vite build && npm run ui:copy-static",
+        "ui:copy-static": "cp public/tailwind.css public/shared-styles.css public/shared-theme.js public/compiler-worker.js dist/ && cp -r public/docs dist/",
+        "ui:preview": "vite preview"
     },
     "devDependencies": {
         "@cloudflare/playwright-mcp": "^0.0.5",
         "@cloudflare/workers-types": "^4.20260207.0",
+        "@types/node": "^22.19.11",
+        "@vitejs/plugin-react": "^5.1.4",
+        "@vitejs/plugin-vue": "^6.0.4",
+        "@vitejs/plugin-vue-jsx": "^5.1.4",
+        "autoprefixer": "^10.4.24",
+        "chart.js": "^4.5.1",
+        "postcss": "^8.5.6",
+        "tailwindcss": "^3.4.19",
+        "vite": "^7.3.1",
         "wrangler": "^4.63.0"
     },
     "dependencies": {

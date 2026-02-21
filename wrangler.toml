@@ -6,16 +6,10 @@ compatibility_date = "2024-01-01"
 workers_dev = true
 
 # Build configuration
-# For Cloudflare Workers deployment, no build command is needed.
-# Wrangler handles TypeScript compilation automatically.
-# If deploying the static UI to Cloudflare Pages, use: wrangler pages deploy public --project-name=adblock-compiler-ui
+# Run `npm run ui:build` (Vite) before deploying to generate ./dist.
+# Wrangler calls this command automatically on `wrangler deploy`.
 [build]
-# Leave command empty for Workers - wrangler handles TS compilation
-command = ""
-# For Pages deployment, configure in dashboard:
-# Build command: npm install
-# Build output directory: public
-# Root directory: (leave empty)
+command = "npm run ui:build"
 
 [browser]
 binding = "BROWSER"
@@ -82,9 +76,12 @@ binding = "DB"
 database_name = "adblock-compiler-d1-database"
 database_id = "3e8e7dfe-3213-452a-a671-6c18e6e74ce5"
 
-# Static assets configuration using modern assets
+# Static assets — served from the Vite production build output.
+# Run `npm run ui:build` to generate ./dist before deploying.
+# For local Wrangler dev without Vite: `npm run ui:build` once, then `wrangler dev`.
+# For full hot-reload dev: run `wrangler dev` and `npm run ui:dev` in parallel.
 [assets]
-directory = "./public"
+directory = "./dist"
 binding = "ASSETS"
 
 # Tail Workers - uncomment after creating the tail worker service

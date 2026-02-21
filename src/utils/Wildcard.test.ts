@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from '@std/assert';
-import { Wildcard } from '../../src/utils/Wildcard.ts';
+import { Wildcard } from './Wildcard.ts';
 
 // Constructor tests
 Deno.test('Wildcard.constructor - should throw error for empty pattern', () => {

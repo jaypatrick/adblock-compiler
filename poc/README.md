@@ -32,6 +32,15 @@ Each PoC demonstrates how the existing vanilla HTML/CSS/JS frontend would be imp
 - Context API for theme management
 - Controlled components for forms
 - Custom hooks for reusable logic
+- React Server Components (simulated) — server/client component split
+
+**Routing:**
+
+React Router v6 is used for client-side navigation. It provides instant page transitions without full browser reloads, keeps the browser URL in sync with the rendered view, and enables deep linking, bookmarking, and proper browser history support. See [react/REACT_ROUTER.md](./react/REACT_ROUTER.md) for a detailed explanation of why React Router is the right choice for this project.
+
+**Server Components:**
+
+The `/server-components` route demonstrates the React Server Components architecture pattern: how the component tree splits into server-rendered (data-fetching, zero client JS) and client-rendered (interactive, hooks) parts, and why this benefits the Adblock Compiler. See [react/REACT_SERVER_COMPONENTS.md](./react/REACT_SERVER_COMPONENTS.md) for the full rationale.
 
 **How to Run:**
 
@@ -69,6 +78,10 @@ python3 -m http.server 8000
 
 **Key Patterns:**
 
+- Vue Router for declarative routing, named routes, and route metadata
+- Route parameters with `useRoute()` for bookmarkable application states
+- Programmatic navigation with `useRouter().push()`
+- Navigation guards with `router.beforeEach()` for cross-cutting concerns
 - Composition API with `setup()`
 - `ref()` and `reactive()` for reactive state
 - `computed()` for derived state
@@ -76,6 +89,24 @@ python3 -m http.server 8000
 - Template-based declarative rendering
 - Two-way data binding with `v-model`
 - Composables for reusable logic
+
+**Why Vue Router Is Worth Using:**
+
+Vue Router is not just a convenience layer — it enables architectural patterns that would be
+painful to implement by hand:
+
+| Benefit | What it Gives You |
+| --- | --- |
+| **Declarative links** | `<router-link>` auto-applies active classes; no DOM querying needed |
+| **Programmatic navigation** | `router.push('/compiler/dns')` from any component or service |
+| **Route parameters** | `/compiler/:preset` makes URLs shareable and bookmarkable |
+| **Navigation guards** | `router.beforeEach()` centralises auth, analytics, and title updates |
+| **Route metadata** | Attach arbitrary data (`meta.title`, `meta.requiresAuth`) to routes |
+| **Lazy loading** | `component: () => import('./Page.vue')` splits routes into separate chunks |
+| **Nested routes** | Multi-level `<router-view>` outlets for complex layouts |
+| **Named routes** | Stable names decouple navigation code from URL structure |
+
+The Vue PoC demonstrates the first five of these benefits in a single CDN-based HTML file.
 
 **How to Run:**
 
@@ -359,6 +390,9 @@ All PoCs use the same API contract:
 - [Official React Docs](https://react.dev/)
 - [React Router](https://reactrouter.com/)
 - [React Hooks](https://react.dev/reference/react)
+- [Why React Router? (PoC documentation)](./react/REACT_ROUTER.md)
+- [React Server Components (PoC documentation)](./react/REACT_SERVER_COMPONENTS.md)
+- [Next.js App Router](https://nextjs.org/docs/app/building-your-application/rendering/server-components)
 
 ### Vue
 

@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { ConvertToAsciiTransformation } from '../../src/transformations/ConvertToAsciiTransformation.ts';
+import { ConvertToAsciiTransformation } from './ConvertToAsciiTransformation.ts';
 
 Deno.test('ConvertToAsciiTransformation - should convert non-ASCII domain to punycode', () => {
     const transformation = new ConvertToAsciiTransformation();

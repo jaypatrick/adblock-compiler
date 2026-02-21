@@ -20,6 +20,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - add validation for changelog line number in version-bump workflow
 - make changelog insertion more robust in version-bump workflow
 
+## [Unreleased]
+
+### Added
+
+- Documentation: Add missing v0.16.0 release notes for centralized error reporting (Sentry, Cloudflare Analytics Engine, and console backends)
+- Documentation: Add missing v0.16.0 release notes for Zod schema validation for configuration objects and API request bodies
+- Documentation: Add missing v0.16.0 release notes for ConfigurationValidator refactor to use Zod
+
+### Changed
+
+- Migrate `zod` from npm to JSR (`jsr:@zod/zod@^4.3.6`)
+- Migrate `@opentelemetry/api` from npm to JSR (`jsr:@opentelemetry/api@^1.9.0`)
+- Improve Deno-native architecture by reducing npm dependencies where JSR alternatives are available
 
 ## [0.16.1] - 2026-02-16
 

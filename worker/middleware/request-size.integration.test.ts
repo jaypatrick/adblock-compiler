@@ -26,116 +26,101 @@ function createMockEnv(maxRequestBodyMB?: string): Env {
     };
 }
 
-Deno.test({
-    name: 'Integration: validateRequestSize function exists and is callable',
-    fn: async () => {
-        // Import the module to ensure it compiles
-        const { validateRequestSize, getMaxRequestBodySize } = await import('./index.ts');
+Deno.test('Integration: validateRequestSize function exists and is callable', async () => {
+    // Import the module to ensure it compiles
+    const { validateRequestSize, getMaxRequestBodySize } = await import('./index.ts');
 
-        // Verify functions exist
-        assertEquals(typeof validateRequestSize, 'function');
-        assertEquals(typeof getMaxRequestBodySize, 'function');
+    // Verify functions exist
+    assertEquals(typeof validateRequestSize, 'function');
+    assertEquals(typeof getMaxRequestBodySize, 'function');
 
-        // Verify getMaxRequestBodySize returns correct default
-        const env = createMockEnv();
-        const maxSize = getMaxRequestBodySize(env);
-        assertEquals(maxSize, 1024 * 1024);
-    },
+    // Verify getMaxRequestBodySize returns correct default
+    const env = createMockEnv();
+    const maxSize = getMaxRequestBodySize(env);
+    assertEquals(maxSize, 1024 * 1024);
 });
 
-Deno.test({
-    name: 'Integration: validateRequestSize with small request',
-    fn: async () => {
-        const { validateRequestSize } = await import('./index.ts');
-        const env = createMockEnv();
+Deno.test('Integration: validateRequestSize with small request', async () => {
+    const { validateRequestSize } = await import('./index.ts');
+    const env = createMockEnv();
 
-        const request = new Request('https://example.com/compile', {
-            method: 'POST',
-            headers: {
-                'content-type': 'application/json',
-                'content-length': '100',
-            },
-            body: JSON.stringify({ test: 'data' }),
-        });
+    const request = new Request('https://example.com/compile', {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            'content-length': '100',
+        },
+        body: JSON.stringify({ test: 'data' }),
+    });
 
-        const result = await validateRequestSize(request, env);
-        assertEquals(result.valid, true);
-        assertEquals(result.maxBytes, 1024 * 1024);
-    },
+    const result = await validateRequestSize(request, env);
+    assertEquals(result.valid, true);
+    assertEquals(result.maxBytes, 1024 * 1024);
 });
 
-Deno.test({
-    name: 'Integration: validateRequestSize with large request',
-    fn: async () => {
-        const { validateRequestSize } = await import('./index.ts');
-        const env = createMockEnv();
+Deno.test('Integration: validateRequestSize with large request', async () => {
+    const { validateRequestSize } = await import('./index.ts');
+    const env = createMockEnv();
 
-        // Create a request claiming to be 2MB
-        const request = new Request('https://example.com/compile', {
-            method: 'POST',
-            headers: {
-                'content-type': 'application/json',
-                'content-length': String(2 * 1024 * 1024),
-            },
-            body: 'x'.repeat(2 * 1024 * 1024),
-        });
+    // Create a request claiming to be 2MB
+    const request = new Request('https://example.com/compile', {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            'content-length': String(2 * 1024 * 1024),
+        },
+        body: 'x'.repeat(2 * 1024 * 1024),
+    });
 
-        const result = await validateRequestSize(request, env);
-        assertEquals(result.valid, false);
-        assertEquals(typeof result.error, 'string');
-        assertEquals(result.error?.includes('exceeds maximum allowed size'), true);
-    },
+    const result = await validateRequestSize(request, env);
+    assertEquals(result.valid, false);
+    assertEquals(typeof result.error, 'string');
+    assertEquals(result.error?.includes('exceeds maximum allowed size'), true);
 });
 
-Deno.test({
-    name: 'Integration: custom limit via environment variable',
-    fn: async () => {
-        const { validateRequestSize, getMaxRequestBodySize } = await import('./index.ts');
-        const env = createMockEnv('2'); // 2MB limit
+Deno.test('Integration: custom limit via environment variable', async () => {
+    const { validateRequestSize, getMaxRequestBodySize } = await import('./index.ts');
+    const env = createMockEnv('2'); // 2MB limit
 
-        // Verify the limit is set correctly
-        const maxSize = getMaxRequestBodySize(env);
-        assertEquals(maxSize, 2 * 1024 * 1024);
+    // Verify the limit is set correctly
+    const maxSize = getMaxRequestBodySize(env);
+    assertEquals(maxSize, 2 * 1024 * 1024);
 
-        // Test with 1MB request (should pass)
-        const smallRequest = new Request('https://example.com/compile', {
-            method: 'POST',
-            headers: {
-                'content-type': 'application/json',
-                'content-length': String(1024 * 1024),
-            },
-            body: 'x'.repeat(1024 * 1024),
-        });
+    // Test with 1MB request (should pass)
+    const smallRequest = new Request('https://example.com/compile', {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            'content-length': String(1024 * 1024),
+        },
+        body: 'x'.repeat(1024 * 1024),
+    });
 
-        const smallResult = await validateRequestSize(smallRequest, env);
-        assertEquals(smallResult.valid, true);
+    const smallResult = await validateRequestSize(smallRequest, env);
+    assertEquals(smallResult.valid, true);
 
-        // Test with 3MB request (should fail)
-        const largeRequest = new Request('https://example.com/compile', {
-            method: 'POST',
-            headers: {
-                'content-type': 'application/json',
-                'content-length': String(3 * 1024 * 1024),
-            },
-            body: 'x'.repeat(3 * 1024 * 1024),
-        });
+    // Test with 3MB request (should fail)
+    const largeRequest = new Request('https://example.com/compile', {
+        method: 'POST',
+        headers: {
+            'content-type': 'application/json',
+            'content-length': String(3 * 1024 * 1024),
+        },
+        body: 'x'.repeat(3 * 1024 * 1024),
+    });
 
-        const largeResult = await validateRequestSize(largeRequest, env);
-        assertEquals(largeResult.valid, false);
-    },
+    const largeResult = await validateRequestSize(largeRequest, env);
+    assertEquals(largeResult.valid, false);
 });
 
-Deno.test({
-    name: 'Integration: router imports validateRequestSize successfully',
-    fn: async () => {
-        // This test verifies that router.ts can be imported and has the correct imports
-        try {
-            // Just importing the module verifies that all dependencies resolve correctly
-            await import('../router.ts');
-            // If we get here, the import succeeded - no explicit assertion needed
-        } catch (error) {
-            // Fail the test if import fails
-            throw new Error(`Router import failed: ${error instanceof Error ? error.message : String(error)}`);
-        }
-    },
+Deno.test('Integration: router imports validateRequestSize successfully', async () => {
+    // This test verifies that router.ts can be imported and has the correct imports
+    try {
+        // Just importing the module verifies that all dependencies resolve correctly
+        await import('../router.ts');
+        // If we get here, the import succeeded - no explicit assertion needed
+    } catch (error) {
+        // Fail the test if import fails
+        throw new Error(`Router import failed: ${error instanceof Error ? error.message : String(error)}`);
+    }
 });
