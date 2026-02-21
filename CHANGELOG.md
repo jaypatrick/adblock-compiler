@@ -22,7 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.18.0] - 2026-02-21
 
-### Added- centralize version management with scripts/sync-version.ts
+### Added
+
+- centralize version management with scripts/sync-version.ts
 
 ### Fixed
 
