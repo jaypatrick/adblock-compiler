@@ -389,7 +389,7 @@
     <body>
         <div id="root"></div>
 
-        <script type="text/babel">
+        <script type="text/babel" data-presets="react,typescript">
             /* ===================================================================
            React PoC - Adblock Compiler Frontend
 
@@ -422,14 +422,57 @@
             const { BrowserRouter, Routes, Route, Link, useLocation } = ReactRouterDOM;
 
             /* ===================================================================
+           TYPE DEFINITIONS
+           TypeScript interfaces for type safety across components
+           =================================================================== */
+
+            interface Stat {
+                label: string;
+                value: string;
+            }
+
+            interface TransformationMap {
+                RemoveComments: boolean;
+                Deduplicate: boolean;
+                TrimLines: boolean;
+                RemoveEmptyLines: boolean;
+                Compress: boolean;
+                RemoveModifiers: boolean;
+                Validate: boolean;
+                ValidateAllowIp: boolean;
+                InvertAllow: boolean;
+                InsertFinalNewLine: boolean;
+                ConvertToAscii: boolean;
+            }
+
+            interface BenchmarkResult {
+                duration: string;
+                rulesPerSecond: number;
+            }
+
+            interface CompilationResult {
+                success: boolean;
+                ruleCount: number;
+                sources: number;
+                transformations: string[];
+                message?: string;
+                benchmark: BenchmarkResult;
+            }
+
+            interface ThemeContextType {
+                theme: string;
+                toggleTheme: () => void;
+            }
+
+            /* ===================================================================
            CONTEXT - Theme Management
            Pattern: Global state management using Context API
            In production, consider Redux, Zustand, or Jotai for complex state
            =================================================================== */
-            const ThemeContext = createContext();
+            const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-            function ThemeProvider({ children }) {
-                const [theme, setTheme] = useState(() => {
+            function ThemeProvider({ children }: { children: React.ReactNode }) {
+                const [theme, setTheme] = useState<string>(() => {
                     return localStorage.getItem('theme') || 'light';
                 });
 
@@ -449,8 +492,12 @@
                 );
             }
 
-            function useTheme() {
-                return useContext(ThemeContext);
+            function useTheme(): ThemeContextType {
+                const context = useContext(ThemeContext);
+                if (!context) {
+                    throw new Error('useTheme must be used within a ThemeProvider');
+                }
+                return context;
             }
 
             /* ===================================================================
@@ -482,7 +529,7 @@
             function Navigation() {
                 const location = useLocation();
 
-                const isActive = (path) => location.pathname === path;
+                const isActive = (path: string): boolean => location.pathname === path;
 
                 return (
                     <nav className='nav'>
@@ -515,7 +562,7 @@
            In production, fetch real stats from API
            =================================================================== */
             function HomePage() {
-                const stats = [
+                const stats: Stat[] = [
                     { label: 'Filter Lists Compiled', value: '1,234' },
                     { label: 'Total Rules Processed', value: '456K' },
                     { label: 'Active Transformations', value: '12' },
@@ -554,8 +601,8 @@
            =================================================================== */
             function CompilerPage() {
                 // State Management - Multiple pieces of local state
-                const [urls, setUrls] = useState(['']);
-                const [transformations, setTransformations] = useState({
+                const [urls, setUrls] = useState<string[]>(['']);
+                const [transformations, setTransformations] = useState<TransformationMap>({
                     RemoveComments: true,
                     Deduplicate: true,
                     TrimLines: false,
@@ -568,37 +615,37 @@
                     InsertFinalNewLine: false,
                     ConvertToAscii: false,
                 });
-                const [loading, setLoading] = useState(false);
-                const [error, setError] = useState(null);
-                const [results, setResults] = useState(null);
+                const [loading, setLoading] = useState<boolean>(false);
+                const [error, setError] = useState<string | null>(null);
+                const [results, setResults] = useState<CompilationResult | null>(null);
 
                 // URL Management Handlers
-                const addUrl = () => {
+                const addUrl = (): void => {
                     setUrls([...urls, '']);
                 };
 
-                const updateUrl = (index, value) => {
+                const updateUrl = (index: number, value: string): void => {
                     const newUrls = [...urls];
                     newUrls[index] = value;
                     setUrls(newUrls);
                 };
 
-                const removeUrl = (index) => {
+                const removeUrl = (index: number): void => {
                     if (urls.length > 1) {
-                        setUrls(urls.filter((_, i) => i !== index));
+                        setUrls(urls.filter((_: string, i: number) => i !== index));
                     }
                 };
 
                 // Transformation Checkbox Handler
-                const toggleTransformation = (name) => {
-                    setTransformations((prev) => ({
+                const toggleTransformation = (name: keyof TransformationMap): void => {
+                    setTransformations((prev: TransformationMap) => ({
                         ...prev,
                         [name]: !prev[name],
                     }));
                 };
 
                 // API Call Handler
-                const handleCompile = async (e) => {
+                const handleCompile = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
                     e.preventDefault();
 
                     // Validation
@@ -644,7 +691,7 @@
 
                         const data = await response.json();
                         setResults(data);
-                    } catch (err) {
+                    } catch (err: unknown) {
                         // Mock success for demo purposes (API might not be available)
                         console.log('API call failed (expected in PoC), showing mock data:', err);
                         setResults({
@@ -709,7 +756,7 @@
                             <div className='form-section'>
                                 <h3>Transformations</h3>
                                 <div className='transformations-grid'>
-                                    {Object.entries(transformations).map(([name, checked]) => (
+                                    {(Object.entries(transformations) as [keyof TransformationMap, boolean][]).map(([name, checked]) => (
                                         <label key={name} className='checkbox-label'>
                                             <input
                                                 type='checkbox'
