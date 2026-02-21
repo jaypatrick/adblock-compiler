@@ -3,6 +3,7 @@
  */
 
 import { assertEquals } from '@std/assert';
+import type { IBasicLogger } from '../types/index.ts';
 import {
     AnalyticsEngineDataPoint,
     AnalyticsEngineDataset,
@@ -408,4 +409,24 @@ Deno.test('AnalyticsService - edge cases', async (t) => {
 
         assertEquals(dataset.dataPoints.length, 1);
     });
+});
+
+Deno.test('AnalyticsService - should log warning via logger when dataset throws', () => {
+    const warnings: string[] = [];
+    const testLogger: IBasicLogger = {
+        info: () => {},
+        warn: (message: string) => warnings.push(message),
+        error: () => {},
+    };
+    const faultyDataset: AnalyticsEngineDataset = {
+        writeDataPoint: () => {
+            throw new Error('Dataset write error');
+        },
+    };
+    const service = new AnalyticsService(faultyDataset, testLogger);
+
+    service.writeDataPoint('compilation_request', {});
+
+    assertEquals(warnings.length, 1);
+    assertEquals(warnings[0].includes('Dataset write error'), true);
 });
