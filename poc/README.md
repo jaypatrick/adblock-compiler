@@ -32,10 +32,15 @@ Each PoC demonstrates how the existing vanilla HTML/CSS/JS frontend would be imp
 - Context API for theme management
 - Controlled components for forms
 - Custom hooks for reusable logic
+- React Server Components (simulated) — server/client component split
 
 **Routing:**
 
 React Router v6 is used for client-side navigation. It provides instant page transitions without full browser reloads, keeps the browser URL in sync with the rendered view, and enables deep linking, bookmarking, and proper browser history support. See [react/REACT_ROUTER.md](./react/REACT_ROUTER.md) for a detailed explanation of why React Router is the right choice for this project.
+
+**Server Components:**
+
+The `/server-components` route demonstrates the React Server Components architecture pattern: how the component tree splits into server-rendered (data-fetching, zero client JS) and client-rendered (interactive, hooks) parts, and why this benefits the Adblock Compiler. See [react/REACT_SERVER_COMPONENTS.md](./react/REACT_SERVER_COMPONENTS.md) for the full rationale.
 
 **How to Run:**
 
@@ -386,6 +391,8 @@ All PoCs use the same API contract:
 - [React Router](https://reactrouter.com/)
 - [React Hooks](https://react.dev/reference/react)
 - [Why React Router? (PoC documentation)](./react/REACT_ROUTER.md)
+- [React Server Components (PoC documentation)](./react/REACT_SERVER_COMPONENTS.md)
+- [Next.js App Router](https://nextjs.org/docs/app/building-your-application/rendering/server-components)
 
 ### Vue
 
