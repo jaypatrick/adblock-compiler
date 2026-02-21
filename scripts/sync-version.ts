@@ -19,7 +19,7 @@ async function readVersionFromSource(): Promise<string> {
     const content = await Deno.readTextFile('src/version.ts');
     const match = content.match(/export const VERSION = '([^']+)'/);
     if (!match) {
-        console.error("Could not find VERSION constant in src/version.ts");
+        console.error('Could not find VERSION constant in src/version.ts');
         Deno.exit(1);
     }
     return match[1];
