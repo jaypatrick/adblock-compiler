@@ -33,6 +33,10 @@ Each PoC demonstrates how the existing vanilla HTML/CSS/JS frontend would be imp
 - Controlled components for forms
 - Custom hooks for reusable logic
 
+**Routing:**
+
+React Router v6 is used for client-side navigation. It provides instant page transitions without full browser reloads, keeps the browser URL in sync with the rendered view, and enables deep linking, bookmarking, and proper browser history support. See [react/REACT_ROUTER.md](./react/REACT_ROUTER.md) for a detailed explanation of why React Router is the right choice for this project.
+
 **How to Run:**
 
 ```bash
@@ -359,6 +363,7 @@ All PoCs use the same API contract:
 - [Official React Docs](https://react.dev/)
 - [React Router](https://reactrouter.com/)
 - [React Hooks](https://react.dev/reference/react)
+- [Why React Router? (PoC documentation)](./react/REACT_ROUTER.md)
 
 ### Vue
 

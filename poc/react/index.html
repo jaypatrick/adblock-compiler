@@ -396,7 +396,7 @@
            ARCHITECTURE OVERVIEW:
            - Component-based architecture with functional components
            - React Hooks for state management (useState, useEffect)
-           - React Router for client-side navigation
+           - React Router v6 for client-side navigation (see poc/react/REACT_ROUTER.md)
            - Context API for theme management (could use Redux/Zustand in production)
            - Controlled components for forms
            - Separation of concerns (presentation vs logic)
@@ -408,6 +408,14 @@
            4. Event Handling: Form submissions, input changes
            5. Conditional Rendering: Loading states, error states, results
            6. API Integration: Fetch API with async/await
+           7. Client-Side Routing: BrowserRouter, Routes, Route, Link, useLocation
+
+           WHY REACT ROUTER?
+           React Router intercepts link clicks and renders the correct component
+           without a full browser reload, preserving in-memory state (form data,
+           results) and providing instant transitions. It keeps the browser URL in
+           sync so deep links, bookmarks, and the Back/Forward buttons all work
+           as users expect. See poc/react/REACT_ROUTER.md for the full rationale.
            =================================================================== */
 
             const { useState, useEffect, createContext, useContext } = React;
@@ -461,8 +469,15 @@
 
             /* ===================================================================
            COMPONENT - Navigation
-           Pattern: Declarative routing with React Router
-           Uses Link for client-side navigation without page reload
+           Pattern: Declarative routing with React Router v6
+
+           WHY REACT ROUTER HERE:
+           - <Link> renders a normal <a> tag but intercepts the click, pushing a
+             new history entry instead of reloading the page. This preserves all
+             React state (form inputs, compiled results, theme) across navigations.
+           - useLocation() gives reactive access to the current URL so the active
+             link can be highlighted without any manual DOM queries or event listeners.
+             React Router updates the component automatically on every navigation.
            =================================================================== */
             function Navigation() {
                 const location = useLocation();
@@ -754,7 +769,13 @@
             /* ===================================================================
            COMPONENT - App Shell
            Pattern: Layout component with client-side routing
-           React Router provides declarative routing with nested Routes
+
+           WHY REACT ROUTER HERE:
+           - <Routes> + <Route> declare all pages in one readable place. Adding a
+             new page is a one-line change; no event listeners or switch statements.
+           - Only the inner <Routes> re-renders on navigation; the surrounding
+             <Navigation /> never unmounts, so its state (e.g., scroll position)
+             is preserved. This is equivalent to a nested-route layout pattern.
            =================================================================== */
             function AppShell() {
                 return (
@@ -773,6 +794,12 @@
             /* ===================================================================
            ROOT COMPONENT - Application Entry Point
            Pattern: Provider wrapping for global state and routing
+
+           WHY BROWSERROUTER AT THE ROOT:
+           - <BrowserRouter> must wrap the entire application so that all
+             components (Navigation, AppShell, etc.) share the same router context.
+           - It uses the HTML5 History API (pushState/replaceState) to manage the
+             URL, providing clean URLs like /compiler instead of hash-based /#/compiler.
            =================================================================== */
             function App() {
                 return (
