@@ -8,7 +8,8 @@
 
 ### Vue PoC
 
-- [x] `poc/vue/index.html` - Complete single-file Vue app (766 lines)
+- [x] `poc/vue/index.html` - Complete single-file Vue app (1,400+ lines)
+- [x] `poc/vue/VUE_PINIA.md` - Pinia state management guide
 
 ### Angular PoC
 
@@ -23,7 +24,9 @@
 - [x] `poc/angular/src/app/app.routes.ts` - Routes
 - [x] `poc/angular/src/app/home/home.component.ts` - Home page
 - [x] `poc/angular/src/app/compiler/compiler.component.ts` - Compiler page
+- [x] `poc/angular/src/app/signals/signals.component.ts` - Signals demo page
 - [x] `poc/angular/src/app/services/compiler.service.ts` - API service
+- [x] `poc/angular/ANGULAR_SIGNALS.md` - Angular Signals guide
 
 ### Documentation
 
@@ -43,6 +46,20 @@
 - [x] Navigation with active link highlighting
 - [x] Home/Dashboard page with stats cards
 - [x] Compiler form page
+
+### Vue-Specific Features
+
+- [x] Pinia state management store
+- [x] StoreInspectorPage component
+- [x] Store route (`/store`)
+- [x] CompilerPage using Pinia store
+
+### Angular-Specific Features
+
+- [x] Signals component (`/signals`)
+- [x] signal(), computed(), effect() demonstrations
+- [x] New @if/@for/@switch template syntax
+- [x] Conversion of all components to new syntax
 
 ### Compiler Form Features
 

@@ -26,12 +26,15 @@ This document summarizes the proof-of-concept implementations created for evalua
 
 ### 2. Vue 3 PoC (CDN-based, no build step)
 
-- **File**: `poc/vue/index.html` (766 lines)
-- **Technology**: Vue 3 + Vue Router 4 + Composition API
+- **File**: `poc/vue/index.html` (1,400+ lines)
+- **Technology**: Vue 3 + Vue Router 4 + Pinia 2 + Composition API
 - **Approach**: Single HTML file with Vue templates
 
 **Key Features Demonstrated:**
 
+- ✅ **Pinia** for centralized state management (official library)
+- ✅ Store with state, getters, and actions
+- ✅ StoreInspectorPage for live state inspection
 - ✅ Composition API (setup, ref, reactive, computed)
 - ✅ Composable functions (useTheme)
 - ✅ Vue Router for declarative routing
@@ -41,6 +44,10 @@ This document summarizes the proof-of-concept implementations created for evalua
 - ✅ Component-based architecture
 - ✅ Dark/light theme with watchers
 - ✅ Type safety via JSDoc type annotations with `@ts-check` (compatible with VS Code TypeScript checking)
+
+**Documentation:**
+
+- `poc/vue/VUE_PINIA.md` - Comprehensive Pinia state management guide
 
 ### 3. Angular 19 PoC (Full TypeScript project)
 
@@ -61,26 +68,30 @@ This document summarizes the proof-of-concept implementations created for evalua
 
 #### Application Components
 
-- `poc/angular/src/app/app.component.ts` (133 lines) - Root component with navigation
+- `poc/angular/src/app/app.component.ts` (140+ lines) - Root component with navigation
 - `poc/angular/src/app/app.routes.ts` - Router configuration
-- `poc/angular/src/app/home/home.component.ts` (112 lines) - Home/Dashboard component
-- `poc/angular/src/app/compiler/compiler.component.ts` (425 lines) - Compiler form component
+- `poc/angular/src/app/home/home.component.ts` (115+ lines) - Home/Dashboard component
+- `poc/angular/src/app/compiler/compiler.component.ts` (430+ lines) - Compiler form component
+- `poc/angular/src/app/signals/signals.component.ts` (500+ lines) - Signals demonstration
 - `poc/angular/src/app/services/compiler.service.ts` (126 lines) - API service
 
 **Key Features Demonstrated:**
 
 - ✅ Standalone components (no NgModules)
+- ✅ **Angular Signals** - signal(), computed(), effect()
+- ✅ **New @if/@for/@switch template syntax** (replaces *ngIf/*ngFor)
+- ✅ **Functional DI with inject()**
 - ✅ Dependency Injection
 - ✅ Reactive Forms (FormBuilder, FormArray, FormGroup)
 - ✅ RxJS Observables for async operations
 - ✅ TypeScript interfaces for type safety
 - ✅ Services for business logic
-- ✅ Structural directives (*ngIf, *ngFor)
 - ✅ Component-scoped styles
 
 #### Documentation
 
 - `poc/angular/README.md` (250 lines) - Detailed setup and architecture guide
+- `poc/angular/ANGULAR_SIGNALS.md` (400+ lines) - Comprehensive Angular Signals guide
 
 ### 4. Main Documentation
 
@@ -164,14 +175,14 @@ All three PoCs implement:
 
 | Aspect               | React           | Vue          | Angular         |
 | -------------------- | --------------- | ------------ | --------------- |
-| **Files**            | 1 HTML          | 1 HTML       | 14 files        |
-| **Lines of Code**    | ~780            | ~766         | ~1,500          |
+| **Files**            | 1 HTML          | 1 HTML       | 15 files        |
+| **Lines of Code**    | ~780            | ~1,400       | ~2,000          |
 | **Setup Time**       | 0 min           | 0 min        | 5 min           |
 | **Build Required**   | No (CDN)        | No (CDN)     | Yes (npm)       |
 | **Learning Curve**   | Medium          | Easy         | Steep           |
 | **Type Safety**      | No (can add)    | No (can add) | Yes (required)  |
 | **Form Handling**    | Manual          | v-model      | Reactive Forms  |
-| **State Management** | Hooks + Context | Composables  | Services + RxJS |
+| **State Management** | Hooks + Context | **Pinia**    | Services + RxJS + **Signals** |
 
 ## 🚀 How to Test
 
