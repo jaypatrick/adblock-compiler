@@ -28,6 +28,7 @@ The following files are **read-only** (do not edit their version strings directl
 
 - **`deno.json`** - Synced by `version:sync` (required for JSR publishing)
 - **`package.json`** - Synced by `version:sync` (required for npm compatibility)
+- **`package-lock.json`** - **not** modified by `version:sync`; it is updated automatically by npm when `npm install` is run after `package.json` has been synced
 - **`wrangler.toml`** - Synced by `version:sync` (COMPILER_VERSION env var)
 
 ### 2. Worker Code (Automatic)
