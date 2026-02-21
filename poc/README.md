@@ -520,12 +520,13 @@ All PoCs use the same API contract:
 ## 📞 Next Steps
 
 1. **Review each PoC** - Test functionality and developer experience
-2. **Gather team feedback** - Which framework feels most intuitive?
-3. **Consider requirements** - Project size, timeline, team skills
-4. **Prototype further** - Implement more complex features
-5. **Make decision** - Choose framework and plan migration
-6. **Set up tooling** - Configure build process, linting, testing
-7. **Migrate incrementally** - Start with one page/feature
+2. **Read the SPA Benefits Analysis** - See [docs/SPA_BENEFITS.md](../docs/SPA_BENEFITS.md) for a full analysis
+3. **Gather team feedback** - Which framework feels most intuitive?
+4. **Consider requirements** - Project size, timeline, team skills
+5. **Prototype further** - Implement more complex features
+6. **Make decision** - Choose framework and plan migration
+7. **Set up tooling** - Configure build process, linting, testing
+8. **Migrate incrementally** - Start with one page/feature
 
 ## 🤝 Contributing
 
