@@ -74,19 +74,22 @@ Open `http://localhost:8787` in the browser.
 
 ## Production Deployment
 
-Wrangler's `[build]` configuration calls `npm run ui:build` automatically before every
-`wrangler deploy`, so no extra steps are needed:
+`npm run ui:build` orchestrates a 3-step pipeline. Wrangler's `[build]` config invokes it
+automatically before every `wrangler deploy`:
 
 ```bash
 wrangler deploy
-# ↳ runs: npm run ui:build (Vite builds dist/)
+# ↳ runs: npm run ui:build
+#         1. npm run build:css:prod  → generates public/tailwind.css (minified)
+#         2. vite build              → bundles JS/TS modules, extracts CSS → dist/
+#         3. npm run ui:copy-static  → copies tailwind.css, shared-styles.css,
+#                                      shared-theme.js, compiler-worker.js, docs/ → dist/
 # ↳ deploys Worker + static assets from dist/
 ```
 
-> **Note:** Tailwind CSS is bundled by Vite during `npm run ui:build` via the PostCSS
-> plugin. You do not need to run `npm run build:css` separately before deploying.
-> Run `npm run build:css` (or `build:css:watch`) only when working outside of the Vite
-> dev server (e.g., previewing raw files directly in a browser).
+> **Note:** `npm run build:css` / `npm run build:css:watch` are still useful during
+> development when working outside the Vite dev server (e.g. previewing raw HTML files
+> directly in a browser without running `npm run ui:dev`).
 
 ## What Was Migrated
 

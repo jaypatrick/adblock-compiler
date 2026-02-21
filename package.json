@@ -14,9 +14,9 @@
         "build:css:watch": "npx tailwindcss -i ./public/input.css -o ./public/tailwind.css --watch",
         "build:css:prod": "npx tailwindcss -i ./public/input.css -o ./public/tailwind.css --minify",
         "ui:dev": "vite",
-        "ui:build": "vite build",
+        "ui:build": "npm run build:css:prod && vite build && npm run ui:copy-static",
+        "ui:copy-static": "cp public/tailwind.css public/shared-styles.css public/shared-theme.js public/compiler-worker.js dist/ && cp -r public/docs dist/",
         "ui:preview": "vite preview"
-        "build:css:prod": "npx tailwindcss -i ./public/input.css -o ./public/tailwind.css --minify"
     },
     "devDependencies": {
         "@cloudflare/playwright-mcp": "^0.0.5",
@@ -27,9 +27,6 @@
         "postcss": "^8.5.6",
         "tailwindcss": "^3.4.19",
         "vite": "^7.3.1",
-        "autoprefixer": "^10.4.24",
-        "postcss": "^8.5.6",
-        "tailwindcss": "^3.4.19",
         "wrangler": "^4.63.0"
     },
     "dependencies": {

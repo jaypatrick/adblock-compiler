@@ -18,7 +18,7 @@ function getStoredTheme(): Theme {
     if (stored === DARK_THEME || stored === LIGHT_THEME) {
         return stored;
     }
-    if (window.matchMedia?.('(prefers-color-scheme: dark)').matches) {
+    if (window.matchMedia?.('(prefers-color-scheme: dark)')?.matches) {
         return DARK_THEME;
     }
     return LIGHT_THEME;
@@ -73,7 +73,7 @@ function initTheme(): void {
 
     document.getElementById('theme-toggle')?.addEventListener('click', toggleTheme);
 
-    window.matchMedia?.('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+    window.matchMedia?.('(prefers-color-scheme: dark)')?.addEventListener('change', (e) => {
         // Only follow the system preference when the user hasn't set an explicit choice.
         if (!localStorage.getItem(STORAGE_KEY)) {
             applyTheme(e.matches ? DARK_THEME : LIGHT_THEME);

@@ -20,9 +20,9 @@ export default defineConfig({
     // Use public/ as the project root so HTML files resolve assets correctly.
     root: 'public',
 
-    // Vite's own "publicDir" concept (files copied verbatim to dist) is
-    // disabled here because public/ IS the root; static assets are already
-    // co-located with the HTML entry points.
+    // TS/JS modules in public/js/ are entry points processed by Vite (bundled, hashed).
+    // Root-relative static assets (tailwind.css, shared-styles.css, docs/, etc.) are
+    // copied to dist/ explicitly by the ui:build script, not via publicDir.
     publicDir: false,
 
     build: {
