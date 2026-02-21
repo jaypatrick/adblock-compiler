@@ -163,31 +163,13 @@ jobs:
                   echo "new=$NEW" >> "$GITHUB_OUTPUT"
                   echo "Bumping version: $OLD → $NEW ($BUMP_TYPE)"
 
-                  # Update deno.json
-                  deno eval "
-                    const config = JSON.parse(Deno.readTextFileSync('deno.json'));
-                    config.version = '${NEW}';
-                    Deno.writeTextFileSync('deno.json', JSON.stringify(config, null, 4) + '\n');
-                  "
-
-                  # Update package.json
-                  if [ -f package.json ]; then
-                    deno eval "
-                      const pkg = JSON.parse(Deno.readTextFileSync('package.json'));
-                      pkg.version = '${NEW}';
-                      Deno.writeTextFileSync('package.json', JSON.stringify(pkg, null, 4) + '\n');
-                    "
-                  fi
-
-                  # Update src/version.ts
+                  # Update the single source of truth
                   if [ -f src/version.ts ]; then
                     sed -i "s/VERSION = '[^']*'/VERSION = '$NEW'/" src/version.ts
                   fi
 
-                  # Update wrangler.toml
-                  if [ -f wrangler.toml ]; then
-                    sed -i "s/COMPILER_VERSION = \"[^\"]*\"/COMPILER_VERSION = \"$NEW\"/" wrangler.toml
-                  fi
+                  # Propagate to all other version files via sync script
+                  deno run --allow-read --allow-write scripts/sync-version.ts
 
                   echo "Version bumped successfully: $OLD → $NEW"
 

@@ -16,12 +16,20 @@ All version strings flow from `src/version.ts`:
 
 ### 1. Package Metadata
 
-These files must be manually updated together:
+`src/version.ts` is the **only writable** version file. All other files are synced
+from it automatically by the `scripts/sync-version.ts` script:
 
-- **`src/version.ts`** - The VERSION constant (primary source)
-- **`deno.json`** - Package version for JSR publishing
-- **`package.json`** - Package version for npm compatibility
-- **`wrangler.toml`** - COMPILER_VERSION environment variable
+```bash
+# After editing src/version.ts, propagate to all other files:
+deno task version:sync
+```
+
+The following files are **read-only** (do not edit their version strings directly):
+
+- **`deno.json`** - Synced by `version:sync` (required for JSR publishing)
+- **`package.json`** - Synced by `version:sync` (required for npm compatibility)
+- **`package-lock.json`** - **not** modified by `version:sync`; it is updated automatically by npm when `npm install` is run after `package.json` has been synced
+- **`wrangler.toml`** - Synced by `version:sync` (COMPILER_VERSION env var)
 
 ### 2. Worker Code (Automatic)
 
@@ -78,13 +86,11 @@ git commit -m "feat!: change API interface"
 
 If you need to manually bump the version:
 
-1. ✅ Update `src/version.ts` - Change the VERSION constant
-2. ✅ Update `deno.json` - Change the "version" field
-3. ✅ Update `package.json` - Change the "version" field
-4. ✅ Update `wrangler.toml` - Change COMPILER_VERSION in [vars] section
-5. ⚠️ Optional: Update HTML fallback versions in `public/index.html` and `public/compiler.html` (they will be overridden by API)
-6. ✅ Update `CHANGELOG.md` - Document the changes
-7. ✅ Commit with message: `chore: bump version to X.Y.Z [skip ci]`
+1. ✅ Update `src/version.ts` - Change the VERSION constant (only writable source)
+2. ✅ Run `deno task version:sync` - Propagates to `deno.json`, `package.json`, `wrangler.toml`
+3. ⚠️ Optional: Update HTML fallback versions in `public/index.html` and `public/compiler.html` (they will be overridden by API)
+4. ✅ Update `CHANGELOG.md` - Document the changes
+5. ✅ Commit with message: `chore: bump version to X.Y.Z [skip ci]`
 
 Or use the GitHub Actions workflow: Actions → Version Bump → Run workflow
 
@@ -98,11 +104,11 @@ Or use the GitHub Actions workflow: Actions → Version Bump → Run workflow
 
 ### After (Single Source of Truth)
 
-- One canonical source: `src/version.ts`
+- One canonical **writable** source: `src/version.ts`
+- All other version files (`deno.json`, `package.json`, `wrangler.toml`) are **read-only** – synced via `deno task version:sync`
 - Worker imports and uses it automatically
 - Web UI loads it dynamically from API
-- Only 4 files need manual sync (src/version.ts, deno.json, package.json, wrangler.toml)
-- Clear documentation prevents future drift
+- CI/CD version-bump workflow updates only `src/version.ts` then runs the sync script
 
 ## Version Flow Diagram
 
@@ -173,7 +179,8 @@ This ensures:
 
 ### Versions out of sync
 
-- Follow the Version Update Checklist above
+- Check `src/version.ts` is the intended version
+- Run `deno task version:sync` to propagate to all other files
 - Use grep to find any remaining hardcoded version strings:
   ```bash
   grep -r "0\.11\." --include="*.ts" --include="*.html" --include="*.toml"
