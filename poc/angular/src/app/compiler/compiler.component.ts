@@ -28,122 +28,130 @@ import { CompileResponse, CompilerService } from '../services/compiler.service';
     imports: [CommonModule, ReactiveFormsModule], // Import FormsModule for template-driven forms
     template: `
     <div>
-      <h1>Compiler</h1>
-      <p class="mb-2" style="color: var(--text-muted)">
-        Configure and compile your filter lists
-      </p>
-      
-      <!-- Angular Pattern: Reactive Forms with [formGroup] -->
-      <form [formGroup]="compilerForm" (ngSubmit)="onSubmit()">
+        <h1>Compiler</h1>
+        <p class="mb-2" style="color: var(--text-muted)">
+            Configure and compile your filter lists
+        </p>
         
-        <!-- URL Inputs Section -->
-        <div class="form-section">
-          <h3>Filter List URLs</h3>
-          
-          <!-- Angular Pattern: FormArray for dynamic form controls -->
-          <div formArrayName="urls" class="url-list">
-            <div 
-              *ngFor="let url of urlsArray.controls; let i = index" 
-              class="url-input-row"
-            >
-              <input
-                type="url"
-                class="input"
-                placeholder="https://example.com/filters.txt"
-                [formControlName]="i"
-              />
-              <button
-                *ngIf="urlsArray.length > 1"
-                type="button"
-                class="btn btn-danger"
-                (click)="removeUrl(i)"
-              >
-                Remove
-              </button>
+        <!-- Angular Pattern: Reactive Forms with [formGroup] -->
+        <form [formGroup]="compilerForm" (ngSubmit)="onSubmit()">
+            
+            <!-- URL Inputs Section -->
+            <div class="form-section">
+                <h3>Filter List URLs</h3>
+                
+                <!-- Angular Pattern: FormArray for dynamic form controls -->
+                <!-- NEW: @for syntax instead of *ngFor -->
+                <div formArrayName="urls" class="url-list">
+                    @for (url of urlsArray.controls; track $index; let i = $index) {
+                        <div class="url-input-row">
+                            <input
+                                type="url"
+                                class="input"
+                                placeholder="https://example.com/filters.txt"
+                                [formControlName]="i"
+                            />
+                            @if (urlsArray.length > 1) {
+                                <button
+                                    type="button"
+                                    class="btn btn-danger"
+                                    (click)="removeUrl(i)"
+                                >
+                                    Remove
+                                </button>
+                            }
+                        </div>
+                    }
+                </div>
+                
+                <button
+                    type="button"
+                    class="btn btn-secondary"
+                    (click)="addUrl()"
+                >
+                    + Add URL
+                </button>
             </div>
-          </div>
-          
-          <button
-            type="button"
-            class="btn btn-secondary"
-            (click)="addUrl()"
-          >
-            + Add URL
-          </button>
-        </div>
-        
-        <!-- Transformations Section -->
-        <div class="form-section">
-          <h3>Transformations</h3>
-          
-          <!-- Angular Pattern: FormGroup for checkbox group -->
-          <div formGroupName="transformations" class="transformations-grid">
-            <label 
-              *ngFor="let trans of availableTransformations" 
-              class="checkbox-label"
+            
+            <!-- Transformations Section -->
+            <div class="form-section">
+                <h3>Transformations</h3>
+                
+                <!-- Angular Pattern: FormGroup for checkbox group -->
+                <!-- NEW: @for syntax instead of *ngFor -->
+                <div formGroupName="transformations" class="transformations-grid">
+                    @for (trans of availableTransformations; track trans) {
+                        <label class="checkbox-label">
+                            <input
+                                type="checkbox"
+                                [formControlName]="trans"
+                            />
+                            <span>{{ trans }}</span>
+                        </label>
+                    }
+                </div>
+            </div>
+            
+            <!-- Submit Button -->
+            <button
+                type="submit"
+                class="btn btn-primary"
+                [disabled]="loading || compilerForm.invalid"
             >
-              <input
-                type="checkbox"
-                [formControlName]="trans"
-              />
-              <span>{{ trans }}</span>
-            </label>
-          </div>
-        </div>
+                {{ loading ? 'Compiling...' : '🚀 Compile' }}
+            </button>
+        </form>
         
-        <!-- Submit Button -->
-        <button
-          type="submit"
-          class="btn btn-primary"
-          [disabled]="loading || compilerForm.invalid"
-        >
-          {{ loading ? 'Compiling...' : '🚀 Compile' }}
-        </button>
-      </form>
-      
-      <!-- Loading State -->
-      <!-- Angular Pattern: *ngIf directive for conditional rendering -->
-      <div *ngIf="loading" class="loading">
-        <div class="spinner"></div>
-        <p>Compiling filter lists...</p>
-      </div>
-      
-      <!-- Error State -->
-      <div *ngIf="error" class="alert alert-error mt-2">
-        <strong>❌ Error:</strong> {{ error }}
-      </div>
-      
-      <!-- Results Display -->
-      <div *ngIf="results" class="results-container">
-        <h3>✅ Compilation Results</h3>
-        <div class="results-code">
-          <pre>{{ results | json }}</pre>
-        </div>
+        <!-- Loading State -->
+        <!-- Angular Pattern: @if directive for conditional rendering (NEW SYNTAX) -->
+        @if (loading) {
+            <div class="loading">
+                <div class="spinner"></div>
+                <p>Compiling filter lists...</p>
+            </div>
+        }
         
-        <!-- Angular Router Pattern: Programmatic navigation after action -->
-        <div class="post-results-actions">
-          <p class="bookmark-hint">
-            💡 <strong>Angular Router:</strong> The URL above now includes a
-            <code>?url=</code> query parameter so this compilation can be bookmarked
-            or shared. Angular Router keeps the URL in sync with app state automatically.
-          </p>
-          <button class="btn btn-secondary" (click)="goHome()">
-            ← Back to Dashboard
-          </button>
+        <!-- Error State -->
+        @if (error) {
+            <div class="alert alert-error mt-2">
+                <strong>❌ Error:</strong> {{ error }}
+            </div>
+        }
+        
+        <!-- Results Display -->
+        @if (results) {
+            <div class="results-container">
+                <h3>✅ Compilation Results</h3>
+                <div class="results-code">
+                    <pre>{{ results | json }}</pre>
+                </div>
+                
+                <!-- Angular Router Pattern: Programmatic navigation after action -->
+                <div class="post-results-actions">
+                    <p class="bookmark-hint">
+                        💡 <strong>Angular Router:</strong> The URL above now includes a
+                        <code>?url=</code> query parameter so this compilation can be bookmarked
+                        or shared. Angular Router keeps the URL in sync with app state automatically.
+                    </p>
+                    <button class="btn btn-secondary" (click)="goHome()">
+                        ← Back to Dashboard
+                    </button>
+                </div>
+            </div>
+        }
+        
+        <div class="alert alert-info mt-2">
+            <strong>ℹ️ Angular Pattern:</strong> This form demonstrates Reactive Forms with 
+            FormBuilder, FormArray for dynamic controls, FormGroup for nested forms, 
+            async service calls with RxJS Observables, and the new <code>@if/@for</code>
+            control flow syntax for better performance and type inference.
+            <br><br>
+            <strong>🗺️ Angular Router:</strong> Try navigating here with
+            <code>?url=https://example.com/filters.txt</code> in the URL bar — the first
+            URL input will be pre-populated automatically via <code>ActivatedRoute.queryParamMap</code>.
         </div>
-      </div>
-      
-      <div class="alert alert-info mt-2">
-        <strong>ℹ️ Angular Pattern:</strong> This form demonstrates Reactive Forms with 
-        FormBuilder, FormArray for dynamic controls, FormGroup for nested forms, 
-        async service calls with RxJS Observables, and conditional rendering with *ngIf.
-        <br><br>
-        <strong>🗺️ Angular Router:</strong> Try navigating here with
-        <code>?url=https://example.com/filters.txt</code> in the URL bar — the first
-        URL input will be pre-populated automatically via <code>ActivatedRoute.queryParamMap</code>.
-      </div>
     </div>
-  `,
+    `,
     styles: [`
     /* Component-scoped styles */
     

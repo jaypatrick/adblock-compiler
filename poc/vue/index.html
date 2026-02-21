@@ -9,6 +9,8 @@
         <script src="https://unpkg.com/vue@3.4.15/dist/vue.global.js"></script>
         <!-- Vue Router 4 via CDN -->
         <script src="https://unpkg.com/vue-router@4.2.5/dist/vue-router.global.js"></script>
+        <!-- Pinia via CDN - Modern Vue 3 state management -->
+        <script src="https://unpkg.com/pinia@2.1.7/dist/pinia.iife.js"></script>
 
         <style>
             /* =================================================================
@@ -521,6 +523,7 @@
 
             const { createApp, ref, reactive, computed, onMounted, watch } = Vue;
             const { createRouter, createWebHashHistory, useRoute, useRouter } = VueRouter;
+            const { createPinia, defineStore } = Pinia;
 
             /* ===================================================================
            PRESET CONFIGURATIONS
@@ -561,6 +564,140 @@
                     },
                 },
             };
+
+            /* ===================================================================
+           PINIA STORE - Centralized State Management
+           Vue Pattern: Pinia store for reactive, shareable application state
+           
+           WHY PINIA?
+           - Pinia is the official state management library for Vue 3
+           - Replaces Vuex with a simpler, more intuitive API
+           - Built for Composition API and TypeScript from the ground up
+           - Provides centralized state with better DevTools integration
+           - Enables state persistence, time-travel debugging, and SSR support
+           
+           WHEN TO USE PINIA vs COMPOSABLES:
+           - Use Pinia when state needs to be shared across MANY components
+           - Use Pinia when you need DevTools integration for debugging
+           - Use Pinia when state should persist across route changes
+           - Use composables for component-specific logic or utilities
+           
+           PINIA CONCEPTS:
+           - State: Reactive data that can be accessed from any component
+           - Getters: Computed properties derived from state (like computed())
+           - Actions: Methods that can mutate state and contain business logic
+           =================================================================== */
+            const useCompilerStore = defineStore('compiler', {
+                // STATE: Define reactive data
+                // Pattern: Function that returns initial state object
+                state: () => ({
+                    /** @type {string[]} */
+                    urls: [''],
+                    /** @type {string[]} */
+                    selectedTransformations: [],
+                    /** @type {boolean} */
+                    isLoading: false,
+                    /** @type {CompilationResult | null} */
+                    result: null,
+                    /** @type {string | null} */
+                    error: null,
+                }),
+                
+                // GETTERS: Computed properties derived from state
+                // Pattern: Similar to computed() but with automatic caching
+                getters: {
+                    /**
+                     * Count of compiled rules (from latest result)
+                     * @returns {number}
+                     */
+                    compiledCount(state) {
+                        return state.result ? state.result.ruleCount : 0;
+                    },
+                    
+                    /**
+                     * Check if form is ready to compile
+                     * @returns {boolean}
+                     */
+                    canCompile(state) {
+                        return state.urls.some(url => url.trim() !== '') && !state.isLoading;
+                    },
+                },
+                
+                // ACTIONS: Methods that mutate state
+                // Pattern: Can be async, contain business logic, call other actions
+                actions: {
+                    /**
+                     * Add a new URL input field
+                     */
+                    addUrl() {
+                        this.urls.push('');
+                    },
+                    
+                    /**
+                     * Remove a URL by index
+                     * @param {number} index
+                     */
+                    removeUrl(index) {
+                        if (this.urls.length > 1) {
+                            this.urls.splice(index, 1);
+                        }
+                    },
+                    
+                    /**
+                     * Toggle a transformation on/off
+                     * @param {string} transformationName
+                     */
+                    toggleTransformation(transformationName) {
+                        const index = this.selectedTransformations.indexOf(transformationName);
+                        if (index > -1) {
+                            this.selectedTransformations.splice(index, 1);
+                        } else {
+                            this.selectedTransformations.push(transformationName);
+                        }
+                    },
+                    
+                    /**
+                     * Reset compilation state (for new compilation)
+                     */
+                    resetCompilation() {
+                        this.result = null;
+                        this.error = null;
+                    },
+                    
+                    /**
+                     * Set loading state
+                     * @param {boolean} loading
+                     */
+                    setLoading(loading) {
+                        this.isLoading = loading;
+                    },
+                    
+                    /**
+                     * Set error message
+                     * @param {string | null} error
+                     */
+                    setError(error) {
+                        this.error = error;
+                    },
+                    
+                    /**
+                     * Set compilation result
+                     * @param {CompilationResult} result
+                     */
+                    setResult(result) {
+                        this.result = result;
+                    },
+                    
+                    /**
+                     * Set selected transformations (replaces entire array)
+                     * More efficient than multiple toggleTransformation calls
+                     * @param {string[]} transformations - Array of transformation names to enable
+                     */
+                    setTransformations(transformations) {
+                        this.selectedTransformations = transformations;
+                    },
+                },
+            });
 
             /* ===================================================================
            COMPOSABLE - Theme Management
@@ -623,6 +760,11 @@
                         <li>
                             <router-link to="/compiler" class="nav-link">
                                 ⚙️ Compiler
+                            </router-link>
+                        </li>
+                        <li>
+                            <router-link to="/store" class="nav-link">
+                                🍍 Pinia Store
                             </router-link>
                         </li>
                         <li>
@@ -740,21 +882,21 @@
                             <h3>Filter List URLs</h3>
                             <div class="url-list">
                                 <div 
-                                    v-for="(url, index) in urls" 
+                                    v-for="(url, index) in store.urls" 
                                     :key="index" 
                                     class="url-input-row"
                                 >
                                     <input
-                                        v-model="urls[index]"
+                                        v-model="store.urls[index]"
                                         type="url"
                                         class="input"
                                         placeholder="https://example.com/filters.txt"
                                     />
                                     <button
-                                        v-if="urls.length > 1"
+                                        v-if="store.urls.length > 1"
                                         type="button"
                                         class="btn btn-danger"
-                                        @click="removeUrl(index)"
+                                        @click="store.removeUrl(index)"
                                     >
                                         Remove
                                     </button>
@@ -763,7 +905,7 @@
                             <button
                                 type="button"
                                 class="btn btn-secondary"
-                                @click="addUrl"
+                                @click="store.addUrl()"
                             >
                                 + Add URL
                             </button>
@@ -779,8 +921,9 @@
                                     class="checkbox-label"
                                 >
                                     <input
-                                        v-model="transformations[name]"
                                         type="checkbox"
+                                        :checked="store.selectedTransformations.includes(name)"
+                                        @change="store.toggleTransformation(name)"
                                     />
                                     <span>{{ name }}</span>
                                 </label>
@@ -791,32 +934,37 @@
                         <button
                             type="submit"
                             class="btn btn-primary"
-                            :disabled="loading"
+                            :disabled="store.isLoading"
                         >
-                            {{ loading ? 'Compiling...' : '🚀 Compile' }}
+                            {{ store.isLoading ? 'Compiling...' : '🚀 Compile' }}
                         </button>
                     </form>
                     
                     <!-- Loading State -->
-                    <div v-if="loading" class="loading">
+                    <div v-if="store.isLoading" class="loading">
                         <div class="spinner"></div>
                         <p>Compiling filter lists...</p>
                     </div>
                     
                     <!-- Error State -->
-                    <div v-if="error" class="alert alert-error mt-2">
-                        <strong>❌ Error:</strong> {{ error }}
+                    <div v-if="store.error" class="alert alert-error mt-2">
+                        <strong>❌ Error:</strong> {{ store.error }}
                     </div>
                     
                     <!-- Results Display -->
-                    <div v-if="results" class="results-container">
+                    <div v-if="store.result" class="results-container">
                         <h3>✅ Compilation Results</h3>
                         <div class="results-code">
-                            <pre>{{ JSON.stringify(results, null, 2) }}</pre>
+                            <pre>{{ JSON.stringify(store.result, null, 2) }}</pre>
                         </div>
                     </div>
                     
                     <div class="alert alert-info mt-2">
+                        <strong>🍍 Pinia Store Pattern:</strong> This component uses the Pinia store for
+                        state management. URLs, transformations, loading state, and results are all
+                        managed in the centralized <code>useCompilerStore()</code>. Visit the
+                        <router-link to="/store">🍍 Pinia Store</router-link> page to inspect the live state.
+                        <br><br>
                         <strong>ℹ️ Vue Router Pattern:</strong> When this page is opened via a preset link
                         (e.g. <code>#/compiler/dns</code>), <code>useRoute().params.preset</code> is read
                         in <code>onMounted</code> to pre-select the matching transformations. This makes the
@@ -826,10 +974,16 @@
             `,
                 setup() {
                     const route = useRoute();
+                    const store = useCompilerStore();
 
-                    // Reactive State - Vue's reactivity system
-                    /** @type {import('vue').Ref<string[]>} */
-                    const urls = ref(['']);
+                    // DESIGN NOTE: Local vs Store State
+                    // --------------------------------
+                    // This component uses BOTH local transformations AND Pinia store:
+                    // - LOCAL transformations (below): Manages UI checkboxes, preset loading from route params
+                    // - STORE selectedTransformations: Global state accessible across components
+                    // The local transformations sync TO the store when changed via v-model
+                    // This pattern keeps route-specific preset logic separate from global app state
+                    
                     /** @type {TransformationMap} */
                     const transformations = reactive({
                         RemoveComments: true,
@@ -844,12 +998,6 @@
                         InsertFinalNewLine: false,
                         ConvertToAscii: false,
                     });
-                    /** @type {import('vue').Ref<boolean>} */
-                    const loading = ref(false);
-                    /** @type {import('vue').Ref<string | null>} */
-                    const error = ref(null);
-                    /** @type {import('vue').Ref<CompilationResult | null>} */
-                    const results = ref(null);
 
                     // Read preset name from route params (useRoute)
                     const activePreset = computed(() => route.params.preset || null);
@@ -874,7 +1022,12 @@
                             transformations.RemoveComments = true;
                             transformations.Deduplicate = true;
                         }
-                        // If no presetId, leave all transformations disabled
+                        
+                        // Sync local preset transformations to Pinia store (efficient batch update)
+                        const enabledTransformations = Object.entries(transformations)
+                            .filter(([, value]) => value)
+                            .map(([key]) => key);
+                        store.setTransformations(enabledTransformations);
                     };
 
                     // Apply preset on mount and whenever the route param changes
@@ -891,43 +1044,25 @@
                     // Computed property for transformation names
                     const transformationNames = computed(() => Object.keys(transformations));
 
-                    // Methods
-                    /** @returns {void} */
-                    const addUrl = () => {
-                        urls.value.push('');
-                    };
-
-                    /** @param {number} index @returns {void} */
-                    const removeUrl = (index) => {
-                        if (urls.value.length > 1) {
-                            urls.value.splice(index, 1);
-                        }
-                    };
-
                     /** @returns {Promise<void>} */
                     const handleCompile = async () => {
-                        const validUrls = urls.value.filter((url) => url.trim() !== '');
+                        const validUrls = store.urls.filter((url) => url.trim() !== '');
                         if (validUrls.length === 0) {
-                            error.value = 'Please enter at least one URL';
+                            store.setError('Please enter at least one URL');
                             return;
                         }
-
-                        const selectedTransformations = Object.entries(transformations)
-                            .filter(([, enabled]) => enabled)
-                            .map(([name]) => name);
 
                         const payload = {
                             configuration: {
                                 name: 'Vue PoC Compilation',
                                 sources: validUrls.map((url) => ({ source: url })),
-                                transformations: selectedTransformations,
+                                transformations: store.selectedTransformations,
                             },
                             benchmark: true,
                         };
 
-                        loading.value = true;
-                        error.value = null;
-                        results.value = null;
+                        store.setLoading(true);
+                        store.resetCompilation();
 
                         try {
                             const response = await fetch('/api/compile', {
@@ -940,32 +1075,28 @@
                                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                             }
 
-                            results.value = await response.json();
+                            const result = await response.json();
+                            store.setResult(result);
                         } catch (err) {
                             console.log('API call failed (expected in PoC), showing mock data:', err);
-                            results.value = {
+                            const mockResult = {
                                 success: true,
                                 ruleCount: 1234,
                                 sources: validUrls.length,
-                                transformations: selectedTransformations,
+                                transformations: store.selectedTransformations,
                                 message: 'Mock compilation result (API not available in PoC)',
                                 benchmark: { duration: '123ms', rulesPerSecond: 10000 },
                             };
+                            store.setResult(mockResult);
                         } finally {
-                            loading.value = false;
+                            store.setLoading(false);
                         }
                     };
 
                     return {
-                        urls,
-                        transformations,
+                        store,
                         transformationNames,
-                        loading,
-                        error,
-                        results,
                         activePreset,
-                        addUrl,
-                        removeUrl,
                         handleCompile,
                         JSON,
                     };
@@ -1085,6 +1216,175 @@
             };
 
             /* ===================================================================
+           COMPONENT - Pinia Store Inspector Page
+           Vue Pattern: Interactive demonstration of Pinia state management
+           Shows live store state and provides buttons to test store actions
+           =================================================================== */
+            const StoreInspectorPage = {
+                template: `
+                <div>
+                    <h1>🍍 Pinia Store Inspector</h1>
+                    <p class="mb-2" style="color: var(--text-muted)">
+                        Live inspection of centralized application state managed by Pinia
+                    </p>
+                    
+                    <!-- Live State Display -->
+                    <div class="form-section">
+                        <h3>📊 Current State</h3>
+                        <div class="feature-card">
+                            <h4>URLs Array</h4>
+                            <div class="state-display">
+                                <pre>{{ JSON.stringify(store.urls, null, 2) }}</pre>
+                            </div>
+                            <p style="color: var(--text-muted); font-size: 14px; margin-top: 8px;">
+                                <strong>Length:</strong> {{ store.urls.length }} URL(s)
+                            </p>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <h4>Selected Transformations</h4>
+                            <div class="state-display">
+                                <pre>{{ JSON.stringify(store.selectedTransformations, null, 2) }}</pre>
+                            </div>
+                            <p style="color: var(--text-muted); font-size: 14px; margin-top: 8px;">
+                                <strong>Count:</strong> {{ store.selectedTransformations.length }} transformation(s)
+                            </p>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <h4>Loading State</h4>
+                            <div class="state-display">
+                                <strong>isLoading:</strong> <code>{{ store.isLoading }}</code>
+                            </div>
+                        </div>
+                        
+                        <div class="feature-card">
+                            <h4>Compiled Count (Getter)</h4>
+                            <div class="state-display">
+                                <strong>compiledCount:</strong> <code>{{ store.compiledCount }}</code>
+                            </div>
+                            <p style="color: var(--text-muted); font-size: 14px; margin-top: 8px;">
+                                This is a <strong>Pinia getter</strong> — a computed property derived from state.
+                                It automatically updates when <code>store.result</code> changes.
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Action Test Buttons -->
+                    <div class="form-section">
+                        <h3>🎮 Test Actions</h3>
+                        <p style="color: var(--text-muted); margin-bottom: 16px; font-size: 14px;">
+                            Click the buttons below to test Pinia store actions. Watch the state update
+                            in real-time above!
+                        </p>
+                        
+                        <div class="action-buttons">
+                            <button class="btn btn-primary" @click="store.addUrl()">
+                                ➕ Add URL
+                            </button>
+                            <button 
+                                class="btn btn-danger" 
+                                @click="testRemoveLastUrl"
+                                :disabled="store.urls.length <= 1"
+                            >
+                                ➖ Remove Last URL
+                            </button>
+                            <button class="btn btn-secondary" @click="store.toggleTransformation('RemoveComments')">
+                                🔄 Toggle RemoveComments
+                            </button>
+                            <button class="btn btn-secondary" @click="store.toggleTransformation('Compress')">
+                                🔄 Toggle Compress
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Educational Content -->
+                    <div class="alert alert-info">
+                        <strong>🍍 What is Pinia?</strong>
+                        <p style="margin: 8px 0;">
+                            Pinia is the <strong>official state management library</strong> for Vue 3.
+                            It provides a centralized store where application state lives, making it
+                            easy to share data between components without prop drilling.
+                        </p>
+                    </div>
+                    
+                    <div class="form-section">
+                        <h3>📚 Key Pinia Concepts</h3>
+                        <div class="feature-grid">
+                            <div class="feature-card">
+                                <h4>🗄️ State</h4>
+                                <p>
+                                    The single source of truth. Defined as a function returning an object:
+                                    <code>state: () => ({ urls: [''], isLoading: false })</code>
+                                </p>
+                            </div>
+                            <div class="feature-card">
+                                <h4>🧮 Getters</h4>
+                                <p>
+                                    Computed properties derived from state. Automatically cached and reactive:
+                                    <code>compiledCount(state) { return state.result?.ruleCount || 0 }</code>
+                                </p>
+                            </div>
+                            <div class="feature-card">
+                                <h4>⚡ Actions</h4>
+                                <p>
+                                    Methods that mutate state. Can be synchronous or async:
+                                    <code>addUrl() { this.urls.push('') }</code>
+                                </p>
+                            </div>
+                            <div class="feature-card">
+                                <h4>🔌 Usage in Components</h4>
+                                <p>
+                                    Import and use the store in any component:
+                                    <code>const store = useCompilerStore()</code>
+                                    then access state/getters/actions directly.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="alert alert-success">
+                        <strong>✅ Why Pinia over Composables?</strong>
+                        <p style="margin: 8px 0;">
+                            While Vue's Composition API offers <code>ref()</code> and <code>reactive()</code>
+                            for local state, Pinia provides:
+                        </p>
+                        <ul style="margin: 8px 0 8px 20px;">
+                            <li><strong>Centralized state</strong> shared across all components</li>
+                            <li><strong>DevTools integration</strong> for time-travel debugging</li>
+                            <li><strong>Type safety</strong> with TypeScript auto-completion</li>
+                            <li><strong>Server-Side Rendering</strong> support out of the box</li>
+                            <li><strong>Plugin system</strong> for extending functionality</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="alert alert-info">
+                        <strong>🔗 Try it yourself:</strong> Navigate to the
+                        <router-link to="/compiler">⚙️ Compiler</router-link> page, change some URLs or
+                        transformations, then come back here. The state will persist because it's stored
+                        in the Pinia store, not in component-local state!
+                    </div>
+                </div>
+            `,
+                setup() {
+                    const store = useCompilerStore();
+                    
+                    // Helper method to remove the last URL
+                    const testRemoveLastUrl = () => {
+                        if (store.urls.length > 1) {
+                            store.removeUrl(store.urls.length - 1);
+                        }
+                    };
+                    
+                    return {
+                        store,
+                        testRemoveLastUrl,
+                        JSON,
+                    };
+                },
+            };
+
+            /* ===================================================================
            COMPONENT - 404 Not Found Page
            Vue Pattern: Catch-all route for invalid paths
            =================================================================== */
@@ -1123,6 +1423,12 @@
                     name: 'compiler',
                     component: CompilerPage,
                     meta: { title: 'Compiler' },
+                },
+                {
+                    path: '/store',
+                    name: 'store',
+                    component: StoreInspectorPage,
+                    meta: { title: 'Pinia Store Inspector' },
                 },
                 {
                     path: '/about',
@@ -1181,8 +1487,11 @@
 
             /* ===================================================================
            BOOTSTRAP - Create and Mount Vue App
+           Vue Pattern: Install plugins (Pinia, Vue Router) before mounting
            =================================================================== */
+            const pinia = createPinia();
             const app = createApp(App);
+            app.use(pinia);
             app.use(router);
             app.mount('#app');
         </script>

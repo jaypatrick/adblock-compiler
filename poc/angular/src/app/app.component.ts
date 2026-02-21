@@ -47,6 +47,15 @@ import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
               ⚙️ Compiler
             </a>
           </li>
+          <li>
+            <a 
+              routerLink="/signals" 
+              routerLinkActive="active"
+              class="nav-link"
+            >
+              ⚡ Signals
+            </a>
+          </li>
         </ul>
         
         <!-- Theme Toggle Button -->
