@@ -74,10 +74,14 @@ python3 -m http.server 8000
 
 - Vue 3 (via CDN)
 - Vue Router 4 (via CDN)
+- Pinia 2 (via CDN) - Official state management
 - Composition API
 
 **Key Patterns:**
 
+- **Pinia** for centralized state management (replaces Vuex)
+- Store with state, getters, and actions
+- Reactive store accessible from any component
 - Vue Router for declarative routing, named routes, and route metadata
 - Route parameters with `useRoute()` for bookmarkable application states
 - Programmatic navigation with `useRouter().push()`
@@ -89,6 +93,10 @@ python3 -m http.server 8000
 - Template-based declarative rendering
 - Two-way data binding with `v-model`
 - Composables for reusable logic
+
+**State Management:**
+
+The Vue PoC demonstrates **Pinia**, the official state management library for Vue 3. Pinia provides a centralized store where application state lives, making it easy to share data between components without prop drilling. See [vue/VUE_PINIA.md](./vue/VUE_PINIA.md) for a detailed explanation of why Pinia is the modern choice for Vue 3 state management.
 
 **Why Vue Router Is Worth Using:**
 
@@ -139,20 +147,27 @@ python3 -m http.server 8001
 
 **Technology Stack:**
 
-- Angular 17+ (Standalone Components)
+- Angular 19+ (Standalone Components)
 - TypeScript
 - RxJS
 - Reactive Forms
+- **Signals** - Modern reactive state management
 
 **Key Patterns:**
 
 - Standalone components (no NgModules)
+- **Angular Signals** - `signal()`, `computed()`, `effect()`
+- **New `@if` / `@for` / `@switch` template syntax** (replaces `*ngIf/*ngFor/*ngSwitch`)
+- **Functional DI with `inject()`** - No constructor needed
 - Dependency Injection
 - Reactive Forms with FormBuilder
 - RxJS Observables for async operations
 - Services for business logic
-- Structural directives (`*ngIf`, `*ngFor`)
 - Component-scoped styles
+
+**Modern Reactivity:**
+
+The Angular PoC demonstrates **Angular Signals**, a revolutionary reactive primitive that enables fine-grained reactivity and better performance than traditional Zone.js change detection. Signals provide explicit dependencies, simpler mental models, and seamless interop with RxJS. See [angular/ANGULAR_SIGNALS.md](./angular/ANGULAR_SIGNALS.md) for a comprehensive guide.
 
 **How to Run:**
 
@@ -171,6 +186,8 @@ npm start
 - 🔒 Strong typing and interfaces
 - 🎓 Opinionated architecture (consistency)
 - 💼 Popular in enterprise environments
+- ⚡ Modern signals for fine-grained reactivity
+- 🚀 New template syntax for better performance
 
 **Considerations:**
 
@@ -189,7 +206,7 @@ npm start
 | **Bundle Size**       | Small-Medium              | Small                | Large                |
 | **Performance**       | Excellent                 | Excellent            | Very Good            |
 | **TypeScript**        | Optional                  | Optional             | Required             |
-| **State Management**  | External (Redux, Zustand) | Built-in (Pinia)     | Services + RxJS      |
+| **State Management**  | External (Redux, Zustand) | **Pinia** (Official) | Services + RxJS + Signals |
 | **Form Handling**     | Manual / Libraries        | v-model + validation | Reactive Forms       |
 | **Routing**           | React Router              | Vue Router           | Angular Router       |
 | **Build Setup**       | Vite / CRA                | Vite / Vue CLI       | Angular CLI          |

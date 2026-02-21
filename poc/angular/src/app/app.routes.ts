@@ -39,6 +39,13 @@ export const routes: Routes = [
         data: { description: 'Configure and run filter list compilations' },
     },
     {
+        path: 'signals',
+        // Lazy load: SignalsComponent demonstrates Angular's modern reactive state
+        loadComponent: () => import('./signals/signals.component').then(m => m.SignalsComponent),
+        title: 'Signals - Adblock Compiler',
+        data: { description: 'Angular Signals - modern reactive state management' },
+    },
+    {
         // Wildcard route: redirects any unknown path back to home.
         // Always place this last – routes are matched top-to-bottom.
         path: '**',

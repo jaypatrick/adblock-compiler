@@ -33,66 +33,66 @@ interface StatCard {
     imports: [CommonModule, RouterLink], // RouterLink enables the routerLink directive in the template
     template: `
     <div>
-      <h1>Adblock Compiler Dashboard</h1>
-      <p class="mb-2" style="color: var(--text-muted)">
-        Welcome to the Adblock Compiler. Compile and transform filter lists with ease.
-      </p>
-      
-      <!-- Stats Grid -->
-      <!-- Angular Pattern: *ngFor directive for list rendering -->
-      <div class="stats-grid">
-        <div 
-          *ngFor="let stat of stats" 
-          class="stat-card"
-        >
-          <div class="stat-label">{{ stat.label }}</div>
-          <div class="stat-value">{{ stat.value }}</div>
-        </div>
-      </div>
-
-      <!-- Angular Router: Two Ways to Navigate -->
-      <!-- Demonstrating both programmatic and declarative navigation patterns -->
-      <div class="action-section">
-        <h3>Get Started</h3>
-        <div class="action-buttons">
-          <!--
-            ANGULAR ROUTER PATTERN 1: Programmatic Navigation
-            Router.navigate() is called from component code — ideal when navigation
-            depends on logic (e.g. after validation, after a timer, or in response to
-            an event not triggered by a direct user click on a link).
-          -->
-          <button class="btn btn-primary" (click)="goToCompiler()">
-            ⚙️ Start Compiling →
-          </button>
-
-          <!--
-            ANGULAR ROUTER PATTERN 2: Declarative Navigation
-            routerLink is an Angular directive that converts an anchor tag into
-            a router-aware link. It prevents full page reloads and integrates
-            with the browser history API — same behaviour as clicking the nav links above.
-          -->
-          <a routerLink="/compiler" class="btn btn-secondary">
-            🔗 Open Compiler
-          </a>
+        <h1>Adblock Compiler Dashboard</h1>
+        <p class="mb-2" style="color: var(--text-muted)">
+            Welcome to the Adblock Compiler. Compile and transform filter lists with ease.
+        </p>
+        
+        <!-- Stats Grid -->
+        <!-- Angular Pattern: @for directive for list rendering (NEW SYNTAX) -->
+        <div class="stats-grid">
+            @for (stat of stats; track stat.label) {
+                <div class="stat-card">
+                    <div class="stat-label">{{ stat.label }}</div>
+                    <div class="stat-value">{{ stat.value }}</div>
+                </div>
+            }
         </div>
 
+        <!-- Angular Router: Two Ways to Navigate -->
+        <!-- Demonstrating both programmatic and declarative navigation patterns -->
+        <div class="action-section">
+            <h3>Get Started</h3>
+            <div class="action-buttons">
+                <!--
+                    ANGULAR ROUTER PATTERN 1: Programmatic Navigation
+                    Router.navigate() is called from component code — ideal when navigation
+                    depends on logic (e.g. after validation, after a timer, or in response to
+                    an event not triggered by a direct user click on a link).
+                -->
+                <button class="btn btn-primary" (click)="goToCompiler()">
+                    ⚙️ Start Compiling →
+                </button>
+
+                <!--
+                    ANGULAR ROUTER PATTERN 2: Declarative Navigation
+                    routerLink is an Angular directive that converts an anchor tag into
+                    a router-aware link. It prevents full page reloads and integrates
+                    with the browser history API — same behaviour as clicking the nav links above.
+                -->
+                <a routerLink="/compiler" class="btn btn-secondary">
+                    🔗 Open Compiler
+                </a>
+            </div>
+
+            <div class="alert alert-info mt-2">
+                <strong>🗺️ Angular Router:</strong> Both buttons navigate to the same route
+                (<code>/compiler</code>). The first uses <strong>programmatic navigation</strong>
+                (<code>Router.navigate()</code>) — useful when navigation is the result of
+                application logic. The second uses a <strong>declarative</strong>
+                <code>routerLink</code> directive — the idiomatic way to create navigation links
+                in templates. Neither triggers a full page reload.
+            </div>
+        </div>
+        
+        <!-- Info Alert -->
         <div class="alert alert-info mt-2">
-          <strong>🗺️ Angular Router:</strong> Both buttons navigate to the same route
-          (<code>/compiler</code>). The first uses <strong>programmatic navigation</strong>
-          (<code>Router.navigate()</code>) — useful when navigation is the result of
-          application logic. The second uses a <strong>declarative</strong>
-          <code>routerLink</code> directive — the idiomatic way to create navigation links
-          in templates. Neither triggers a full page reload.
+            <strong>ℹ️ Angular Pattern:</strong> This page demonstrates standalone components
+            and the new <code>@for</code> control flow syntax (replaces <code>*ngFor</code>).
+            The new syntax provides better type inference and performance.
         </div>
-      </div>
-      
-      <!-- Info Alert -->
-      <div class="alert alert-info mt-2">
-        <strong>ℹ️ Angular Pattern:</strong> This page demonstrates standalone components,
-        structural directives (*ngFor), and interpolation binding (double curly braces).
-      </div>
     </div>
-  `,
+    `,
     styles: [`
     /* Component-scoped styles */
     /* These styles are encapsulated to this component only */
