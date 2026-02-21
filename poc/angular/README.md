@@ -206,6 +206,147 @@ export const routes: Routes = [
 - `*ngFor` for list rendering
 - `*ngSwitch` for multi-conditional rendering
 
+## 🗺️ Angular Router Deep Dive
+
+Angular Router is a first-party, full-featured client-side routing library built into
+Angular. Below is a summary of the features demonstrated in this PoC and why each one
+is worth using.
+
+### Why Angular Router Instead of Vanilla Multi-Page Navigation?
+
+| Problem (Vanilla MPA)                              | Solution (Angular Router SPA)                               |
+| -------------------------------------------------- | ----------------------------------------------------------- |
+| Every link triggers a full page reload             | Navigation happens in-memory – no reload, no flash          |
+| Browser fetches a new HTML document per page       | Only data changes; the shell (nav, theme) persists          |
+| Form state is lost when navigating away            | Component state survives in-memory navigation               |
+| No concept of active-link highlighting             | `routerLinkActive` adds CSS class automatically             |
+| Deep-linking requires server-side rendering        | Every URL maps to a component; the server serves `index.html` |
+| Code splitting requires manual effort              | `loadComponent` splits bundles automatically by route       |
+
+---
+
+### Features Demonstrated in This PoC
+
+#### 1. Lazy Loading with `loadComponent`
+
+```typescript
+// app.routes.ts
+{
+    path: 'compiler',
+    loadComponent: () =>
+        import('./compiler/compiler.component').then((m) => m.CompilerComponent),
+}
+```
+
+Angular compiles each lazily-loaded component into a **separate JavaScript chunk**.
+The browser only downloads that chunk when the user navigates to the route for the
+first time. This reduces the **initial bundle size** and improves **Time-to-Interactive**.
+
+#### 2. Route Titles
+
+```typescript
+{ path: '', ..., title: 'Home - Adblock Compiler' }
+```
+
+The `title` property automatically updates `document.title` (the browser tab label)
+when the route changes — no manual `document.title = '...'` calls needed.
+
+#### 3. Route Data (Static Metadata)
+
+```typescript
+{
+    path: 'compiler',
+    data: { description: 'Configure and run filter list compilations' },
+}
+```
+
+Attach arbitrary metadata to a route. Components read it via `ActivatedRoute.snapshot.data`.
+Useful for breadcrumbs, page descriptions, role-based access hints, and more.
+
+#### 4. Declarative Navigation with `routerLink`
+
+```html
+<!-- home.component.ts template -->
+<a routerLink="/compiler" class="btn btn-secondary">Open Compiler</a>
+```
+
+The `routerLink` directive converts an `<a>` or `<button>` into a router-aware link.
+Clicking it uses `History.pushState` — **no full page reload**.
+
+#### 5. Active-Link Highlighting with `routerLinkActive`
+
+```html
+<!-- app.component.ts template -->
+<a routerLink="/compiler" routerLinkActive="active">⚙️ Compiler</a>
+```
+
+`routerLinkActive` adds the given CSS class when the route is active, enabling
+**automatic active-link highlighting** without any imperative code.
+
+#### 6. Programmatic Navigation with `Router.navigate()`
+
+```typescript
+// home.component.ts
+constructor(private router: Router) {}
+
+goToCompiler(): void {
+    this.router.navigate(['/compiler']);
+}
+```
+
+Use `Router.navigate()` when navigation must happen as a result of **application logic**
+rather than a direct user click — e.g., redirect after login, navigate after a form save,
+or respond to a timer.
+
+#### 7. Reading Query Parameters with `ActivatedRoute`
+
+```typescript
+// compiler.component.ts
+constructor(private route: ActivatedRoute) {}
+
+ngOnInit(): void {
+    this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+        const urlParam = params.get('url');
+        if (urlParam) {
+            this.urlsArray.at(0).setValue(urlParam);
+        }
+    });
+}
+```
+
+`ActivatedRoute.queryParamMap` is an Observable that emits whenever the query string
+changes. This makes the page **deep-linkable**: another app can link to
+`/compiler?url=https://easylist.to/easylist/easylist.txt` and the first URL input will
+be pre-populated automatically.
+
+#### 8. Updating the URL Without Navigating Away
+
+```typescript
+// compiler.component.ts — after successful compile
+this.router.navigate([], {
+    relativeTo: this.route,
+    queryParams: { url: urls[0] },
+    queryParamsHandling: 'merge',
+});
+```
+
+Passing an empty commands array (`[]`) with `relativeTo: this.route` updates **only the
+query string** of the current URL. This makes the compilation result **bookmarkable and
+shareable** without navigating to a different page.
+
+---
+
+### What Is Not Yet Demonstrated (Recommended Next Steps)
+
+| Feature              | When to Add It                                              |
+| -------------------- | ----------------------------------------------------------- |
+| **Route Guards**     | Add authentication; protect `/admin` routes with `canActivate` |
+| **Route Resolvers**  | Pre-fetch data before a component renders (eliminates loading spinners) |
+| **Lazy Modules**     | Group related routes into a feature module with `loadChildren` |
+| **Route Animations** | Animate page transitions via `RouterOutlet` + Angular Animations |
+| **Child Routes**     | Nest routes inside a parent layout component               |
+| **Route Parameters** | Dynamic segments like `/filter/:id` for detail views        |
+
 ## 📊 Comparison with Existing Stack
 
 | Feature              | Current (Vanilla)        | Angular                 |
