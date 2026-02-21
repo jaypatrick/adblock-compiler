@@ -7,8 +7,8 @@
  * Uses Redoc for rendering.
  */
 
-import { parse } from 'https://deno.land/std@0.224.0/yaml/mod.ts';
-import { ensureDir } from 'https://deno.land/std@0.224.0/fs/mod.ts';
+import { parse } from '@std/yaml';
+import { ensureDir } from '@std/fs';
 
 const OPENAPI_PATH = './docs/api/openapi.yaml';
 const OUTPUT_DIR = './docs/api';

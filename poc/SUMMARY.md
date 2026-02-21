@@ -22,6 +22,7 @@ This document summarizes the proof-of-concept implementations created for evalua
 - ✅ Async API calls with fetch
 - ✅ Loading/error state management
 - ✅ Dark/light theme toggle with localStorage persistence
+- ✅ TypeScript type safety via Babel Standalone TypeScript preset (interfaces, typed state, typed event handlers)
 
 ### 2. Vue 3 PoC (CDN-based, no build step)
 
@@ -39,6 +40,7 @@ This document summarizes the proof-of-concept implementations created for evalua
 - ✅ Reactive state management
 - ✅ Component-based architecture
 - ✅ Dark/light theme with watchers
+- ✅ Type safety via JSDoc type annotations with `@ts-check` (compatible with VS Code TypeScript checking)
 
 ### 3. Angular 19 PoC (Full TypeScript project)
 
