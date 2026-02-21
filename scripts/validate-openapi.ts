@@ -7,8 +7,8 @@
  * Also performs additional checks for consistency and best practices.
  */
 
-import { parse } from 'https://deno.land/std@0.224.0/yaml/mod.ts';
-import { existsSync } from 'https://deno.land/std@0.224.0/fs/mod.ts';
+import { parse } from '@std/yaml';
+import { existsSync } from '@std/fs';
 
 interface ValidationResult {
     valid: boolean;

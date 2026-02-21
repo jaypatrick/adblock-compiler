@@ -9,7 +9,7 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import { parse } from 'https://deno.land/std@0.224.0/yaml/mod.ts';
+import { parse } from '@std/yaml';
 import type { ApiInfo, BatchCompileResponse, CompileResponse, MetricsResponse, QueueResponse, QueueStats } from './openapi-types.ts';
 
 const BASE_URL = Deno.env.get('API_BASE_URL') || 'http://localhost:8787';
