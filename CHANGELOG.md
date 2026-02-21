@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Documentation: Add missing v0.16.0 release notes for centralized error reporting (Sentry, Cloudflare Analytics Engine, and console backends)
+- Documentation: Add missing v0.16.0 release notes for Zod schema validation for configuration objects and API request bodies
+- Documentation: Add missing v0.16.0 release notes for ConfigurationValidator refactor to use Zod
+
 ### Changed
 
 - Migrate `zod` from npm to JSR (`jsr:@zod/zod@^4.3.6`)

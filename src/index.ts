@@ -31,6 +31,10 @@ export type { LoggerOptions, ModuleOverrides } from './utils/index.ts';
 // Error utilities
 export { BaseError, CompilationError, ErrorUtils, NetworkError, SourceError, ValidationError } from './utils/index.ts';
 
+// Circuit breaker for resilience
+export { CircuitBreaker, CircuitBreakerOpenError, CircuitBreakerState } from './utils/index.ts';
+export type { CircuitBreakerOptions } from './utils/index.ts';
+
 // Boolean expression parser
 export { evaluateBooleanExpression, getKnownPlatforms, isKnownPlatform } from './utils/index.ts';
 
