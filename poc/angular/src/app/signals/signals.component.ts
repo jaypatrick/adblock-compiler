@@ -117,7 +117,7 @@ interface CompilationHistoryItem {
 
         <!-- NEW TEMPLATE SYNTAX: @if (replaces *ngIf) -->
         <div class="form-section">
-            <h3>📋 Compilation History (New @for syntax)</h3>
+            <h3>📋 Compilation History (New &#64;for syntax)</h3>
             
             <!-- NEW: @if syntax instead of *ngIf -->
             @if (compilationHistory().length === 0) {
@@ -156,17 +156,17 @@ interface CompilationHistoryItem {
             </button>
             
             <div class="code-explanation">
-                <pre>@if (condition) {{ '{' }}
+                <pre>&#64;if (condition) {{ '{' }}
   &lt;div&gt;Content when true&lt;/div&gt;
-{{ '}' }} @else {{ '{' }}
+{{ '}' }} &#64;else {{ '{' }}
   &lt;div&gt;Content when false&lt;/div&gt;
 {{ '}' }}
 
-@for (item of items(); track item.id) {{ '{' }}
+&#64;for (item of items(); track item.id) {{ '{' }}
   &lt;div&gt;{{ '{{' }} item.name {{ '}}' }}&lt;/div&gt;
 {{ '}' }}</pre>
                 <p>
-                    Angular's <strong>new control flow syntax</strong> (@if/@for/@switch) is:
+                    Angular's <strong>new control flow syntax</strong> (&#64;if/&#64;for/&#64;switch) is:
                     • More readable than *ngIf/*ngFor
                     • Better type inference
                     • Better performance (no structural directives overhead)
@@ -209,7 +209,7 @@ interface CompilationHistoryItem {
                 <li><strong>signal()</strong> - Writable reactive state</li>
                 <li><strong>computed()</strong> - Derived values that auto-update</li>
                 <li><strong>effect()</strong> - Side effects that run on signal changes</li>
-                <li><strong>@if/@for</strong> - New template syntax for better performance</li>
+                <li><strong>&#64;if/&#64;for</strong> - New template syntax for better performance</li>
                 <li><strong>inject()</strong> - Functional DI (no constructor needed)</li>
             </ul>
         </div>
