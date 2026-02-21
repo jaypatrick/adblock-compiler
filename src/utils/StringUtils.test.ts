@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { StringUtils } from '../../src/utils/StringUtils.ts';
+import { StringUtils } from './StringUtils.ts';
 
 Deno.test('StringUtils.substringBetween - should extract substring between tags', () => {
     assertEquals(StringUtils.substringBetween('||example.org^', '||', '^'), 'example.org');

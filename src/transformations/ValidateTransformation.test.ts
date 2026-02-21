@@ -1,6 +1,6 @@
 import { assertEquals, assertExists } from '@std/assert';
 import { ValidationSeverity } from '../types/index.ts';
-import { ValidateAllowIpTransformation, ValidateTransformation } from '../../src/transformations/ValidateTransformation.ts';
+import { ValidateAllowIpTransformation, ValidateTransformation } from './ValidateTransformation.ts';
 
 // ValidateTransformation - valid rules
 Deno.test('ValidateTransformation - should keep valid domain rules', () => {

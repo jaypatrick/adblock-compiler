@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { CompressTransformation } from '../../src/transformations/CompressTransformation.ts';
+import { CompressTransformation } from './CompressTransformation.ts';
 
 Deno.test('CompressTransformation - should convert hosts rules to adblock format', () => {
     const transformation = new CompressTransformation();

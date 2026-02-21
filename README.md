@@ -1311,6 +1311,30 @@ npm run build:css:prod
 
 For more details, see [Tailwind CSS Integration Guide](docs/TAILWIND_CSS.md).
 
+### Frontend Development (Vite)
+
+The frontend UI is built with Vite. Run the following to work on the UI:
+
+```bash
+# Start Vite dev server with HMR (proxies API calls to Wrangler on :8787)
+npm run ui:dev
+
+# Production build → dist/
+npm run ui:build
+
+# Preview the production build locally
+npm run ui:preview
+```
+
+For full-stack local development, run both in parallel:
+
+```bash
+wrangler dev        # Worker on :8787
+npm run ui:dev      # Vite on :5173 → proxies /api, /compile, /ws to :8787
+```
+
+For more details, see [Vite Integration Guide](docs/VITE.md).
+
 ### Project structure
 
 ```
