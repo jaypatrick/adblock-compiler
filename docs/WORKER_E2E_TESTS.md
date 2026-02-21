@@ -385,10 +385,10 @@ curl -i -N \
 
 ## Related Documentation
 
-- [E2E Testing Guide](../docs/E2E_TESTING.md) - HTML dashboard documentation
-- [OpenAPI Contract Tests](./openapi-contract.test.ts) - API contract validation
-- [Integration Tests](./sse.integration.test.ts) - SSE and Queue integration tests
-- [Worker README](./README.md) - Worker deployment documentation
+- [E2E Testing Guide](E2E_TESTING.md) - HTML dashboard documentation
+- [OpenAPI Contract Tests](../worker/openapi-contract.test.ts) - API contract validation
+- [Integration Tests](../worker/sse.integration.test.ts) - SSE and Queue integration tests
+- [Worker README](../worker/README.md) - Worker deployment documentation
 
 ## Support
 

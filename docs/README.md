@@ -26,6 +26,7 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 
 ### Cloudflare Worker
 
+- [Worker Overview](../worker/README.md) - Worker implementation and API endpoints
 - [Admin Dashboard](ADMIN_DASHBOARD.md) - Real-time metrics, queue monitoring, and system health
 - [Queue Support](QUEUE_SUPPORT.md) - Async compilation via Cloudflare Queues
 - [Queue Diagnostics](QUEUE_DIAGNOSTICS.md) - Diagnostic events for queue-based compilation
@@ -36,6 +37,7 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 - [Cloudflare Analytics Engine](CLOUDFLARE_ANALYTICS.md) - High-cardinality metrics and telemetry
 - [Tail Worker](../worker/TAIL_WORKER.md) - Observability and logging
 - [Tail Worker Quick Start](../worker/QUICKSTART.md) - Get tail worker running in 5 minutes
+- [Worker E2E Tests](WORKER_E2E_TESTS.md) - Automated end-to-end test suite
 
 ### Storage
 
@@ -55,6 +57,7 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 - [SPA Benefits Analysis](SPA_BENEFITS.md) - Analysis of SPA benefits and migration recommendations
 - [Framework PoCs](../poc/README.md) - React, Vue 3, Angular, and Svelte 5 proof-of-concept implementations
 - [Framework PoCs (Alpha)](FRAMEWORK_POCS.md) - React, Vue 3, Angular, and Svelte proof-of-concept implementations
+- [Validation UI](VALIDATION_UI.md) - Color-coded validation error UI component
 
 ### Development
 
@@ -78,6 +81,14 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 - [Production Readiness](PRODUCTION_READINESS.md) - Production readiness assessment and recommendations
 - [Bugs and Features](BUGS_AND_FEATURES.md) - Known bugs and feature requests
 - [GitHub Issue Templates](GITHUB_ISSUE_TEMPLATES.md) - Ready-to-use GitHub issue templates
+
+### CI/CD & Workflows
+
+- [GitHub Actions Workflows](WORKFLOWS.md) - CI/CD workflow documentation and best practices
+- [Workflow Improvements](WORKFLOW_IMPROVEMENTS.md) - Summary of workflow parallelization improvements
+- [GitHub Actions Environment Setup](ENV_SETUP.md) - Layered environment configuration for CI
+- [Workflow Cleanup Summary](WORKFLOW_CLEANUP_SUMMARY.md) - Summary of workflow consolidation changes
+- [Workflows Reference](../.github/workflows/README.md) - Detailed CI/CD workflow reference
 
 ## Contributing
 
