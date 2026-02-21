@@ -19,6 +19,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Migrate `@opentelemetry/api` from npm to JSR (`jsr:@opentelemetry/api@^1.9.0`)
 - Improve Deno-native architecture by reducing npm dependencies where JSR alternatives are available
 
+## [0.17.0] - 2026-02-20
+
+### Added
+
+- create proof of concept for React, Vue, and Angular framework evaluation
+
+### Fixed
+
+- address PR review comments - Angular 19 naming, RxJS leak, missing files, React CDN warning
+- apply deno fmt to fix CI format check failure (18 files)
+- upgrade Angular PoC deps from 17.1.0 to 19.2.18 to fix security vulnerabilities
+- add validation for changelog line number in version-bump workflow
+- make changelog insertion more robust in version-bump workflow
+
+## [0.16.2] - 2026-02-18
+
+### Notes
+
+- No user-facing changes. Internal release and tooling updates only.
+
 ## [0.16.1] - 2026-02-16
 
 ### Fixed
