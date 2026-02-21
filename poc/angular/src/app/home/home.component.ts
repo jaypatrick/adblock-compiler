@@ -88,7 +88,7 @@ interface StatCard {
         <!-- Info Alert -->
         <div class="alert alert-info mt-2">
             <strong>ℹ️ Angular Pattern:</strong> This page demonstrates standalone components
-            and the new <code>@for</code> control flow syntax (replaces <code>*ngFor</code>).
+            and the new <code>&#64;for</code> control flow syntax (replaces <code>*ngFor</code>).
             The new syntax provides better type inference and performance.
         </div>
     </div>

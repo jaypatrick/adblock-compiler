@@ -143,7 +143,7 @@ import { CompileResponse, CompilerService } from '../services/compiler.service';
         <div class="alert alert-info mt-2">
             <strong>ℹ️ Angular Pattern:</strong> This form demonstrates Reactive Forms with 
             FormBuilder, FormArray for dynamic controls, FormGroup for nested forms, 
-            async service calls with RxJS Observables, and the new <code>@if/@for</code>
+            async service calls with RxJS Observables, and the new <code>&#64;if/&#64;for</code>
             control flow syntax for better performance and type inference.
             <br><br>
             <strong>🗺️ Angular Router:</strong> Try navigating here with
