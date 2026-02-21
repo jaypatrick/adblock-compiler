@@ -4,12 +4,100 @@
  */
 
 import { z } from 'zod';
-import { SourceType, TransformationType } from '../types/index.ts';
+import { type IConfiguration, type ISource, SourceType, TransformationType } from '../types/index.ts';
+
+// ============================================================================
+// Output types for schemas without matching public interfaces
+// ============================================================================
+
+type Priority = 'standard' | 'high';
+
+type CompileRequestOutput = {
+    configuration: IConfiguration;
+    preFetchedContent?: Record<string, string>;
+    benchmark?: boolean;
+    priority?: Priority;
+    turnstileToken?: string;
+};
+
+type BatchRequestItem = {
+    id: string;
+    configuration: IConfiguration;
+    preFetchedContent?: Record<string, string>;
+    benchmark?: boolean;
+};
+
+type BatchRequestOutput = {
+    requests: [BatchRequestItem, ...BatchRequestItem[]];
+    priority?: Priority;
+};
+
+type HttpFetcherOptionsOutput = {
+    timeout?: number;
+    userAgent?: string;
+    allowEmptyResponse?: boolean;
+    headers?: Record<string, string>;
+};
+
+type PlatformCompilerOptionsOutput = {
+    preFetchedContent?: Map<string, string> | Record<string, string>;
+    httpOptions?: HttpFetcherOptionsOutput;
+    [key: string]: unknown;
+};
+
+type ValidationErrorType =
+    | 'parse_error'
+    | 'syntax_error'
+    | 'unsupported_modifier'
+    | 'invalid_hostname'
+    | 'ip_not_allowed'
+    | 'pattern_too_short'
+    | 'public_suffix_match'
+    | 'invalid_characters'
+    | 'cosmetic_not_supported'
+    | 'modifier_validation_failed';
+
+type ValidationSeverity = 'error' | 'warning' | 'info';
+
+type ValidationErrorOutput = {
+    type: ValidationErrorType;
+    severity: ValidationSeverity;
+    ruleText: string;
+    lineNumber?: number;
+    message: string;
+    details?: string;
+    ast?: unknown;
+    sourceName?: string;
+};
+
+type ValidationReportOutput = {
+    errorCount: number;
+    warningCount: number;
+    infoCount: number;
+    errors: ValidationErrorOutput[];
+    totalRules: number;
+    validRules: number;
+    invalidRules: number;
+};
+
+type ValidationResultOutput = {
+    rules: string[];
+    validation: ValidationReportOutput;
+};
+
+// ============================================================================
+// Private helper schemas
+// ============================================================================
 
 /**
  * Schema for filterable properties (exclusions/inclusions)
  */
-const FilterableSchema = z.object({
+const FilterableSchema: z.ZodObject<{
+    exclusions: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    exclusions_sources: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    inclusions: z.ZodOptional<z.ZodArray<z.ZodString>>;
+    inclusions_sources: z.ZodOptional<z.ZodArray<z.ZodString>>;
+}> = z.object({
     exclusions: z.array(z.string()).optional(),
     exclusions_sources: z.array(z.string()).optional(),
     inclusions: z.array(z.string()).optional(),
@@ -19,19 +107,25 @@ const FilterableSchema = z.object({
 /**
  * Schema for transformable properties
  */
-const TransformableSchema = z.object({
+const TransformableSchema: z.ZodObject<{
+    transformations: z.ZodOptional<z.ZodArray<z.ZodNativeEnum<typeof TransformationType>>>;
+}> = z.object({
     transformations: z.array(z.nativeEnum(TransformationType)).optional(),
 });
 
 /**
  * Schema for source type validation
  */
-const SourceTypeSchema = z.nativeEnum(SourceType);
+const SourceTypeSchema: z.ZodNativeEnum<typeof SourceType> = z.nativeEnum(SourceType);
+
+// ============================================================================
+// Public schemas
+// ============================================================================
 
 /**
  * Schema for ISource validation
  */
-export const SourceSchema = z.object({
+export const SourceSchema: z.ZodType<ISource> = z.object({
     source: z.string().min(1, 'source is required and must be a non-empty string'),
     name: z.string().min(1, 'name must be a non-empty string').optional(),
     type: SourceTypeSchema.optional(),
@@ -40,7 +134,7 @@ export const SourceSchema = z.object({
 /**
  * Schema for IConfiguration validation
  */
-export const ConfigurationSchema = z.object({
+export const ConfigurationSchema: z.ZodType<IConfiguration> = z.object({
     name: z.string().min(1, 'name is required and must be a non-empty string'),
     description: z.string().optional(),
     homepage: z.string().optional(),
@@ -52,7 +146,7 @@ export const ConfigurationSchema = z.object({
 /**
  * Schema for CompileRequest validation (worker)
  */
-export const CompileRequestSchema = z.object({
+export const CompileRequestSchema: z.ZodType<CompileRequestOutput> = z.object({
     configuration: ConfigurationSchema,
     preFetchedContent: z.record(z.string(), z.string()).optional(),
     benchmark: z.boolean().optional(),
@@ -63,7 +157,7 @@ export const CompileRequestSchema = z.object({
 /**
  * Schema for BatchRequest validation (worker)
  */
-export const BatchRequestSchema = z.object({
+export const BatchRequestSchema: z.ZodType<BatchRequestOutput> = z.object({
     requests: z.array(
         z.object({
             id: z.string().min(1, 'id is required and must be a non-empty string'),
@@ -94,7 +188,7 @@ export const BatchRequestSchema = z.object({
 /**
  * Schema for sync batch requests (max 10 items)
  */
-export const BatchRequestSyncSchema = BatchRequestSchema.refine(
+export const BatchRequestSyncSchema: z.ZodType<BatchRequestOutput> = BatchRequestSchema.refine(
     (data) => data.requests.length <= 10,
     {
         message: 'Batch request limited to 10 requests maximum',
@@ -105,7 +199,7 @@ export const BatchRequestSyncSchema = BatchRequestSchema.refine(
 /**
  * Schema for async batch requests (max 100 items)
  */
-export const BatchRequestAsyncSchema = BatchRequestSchema.refine(
+export const BatchRequestAsyncSchema: z.ZodType<BatchRequestOutput> = BatchRequestSchema.refine(
     (data) => data.requests.length <= 100,
     {
         message: 'Batch request limited to 100 requests maximum',
@@ -120,7 +214,7 @@ export const BatchRequestAsyncSchema = BatchRequestSchema.refine(
 /**
  * Schema for HTTP fetcher options
  */
-export const HttpFetcherOptionsSchema = z.object({
+export const HttpFetcherOptionsSchema: z.ZodType<HttpFetcherOptionsOutput> = z.object({
     timeout: z.number().int().positive().optional(),
     userAgent: z.string().optional(),
     allowEmptyResponse: z.boolean().optional(),
@@ -131,7 +225,7 @@ export const HttpFetcherOptionsSchema = z.object({
  * Schema for platform compiler options
  * Note: preFetchedContent and customFetcher are not validated as they are runtime objects
  */
-export const PlatformCompilerOptionsSchema = z.object({
+export const PlatformCompilerOptionsSchema: z.ZodType<PlatformCompilerOptionsOutput> = z.object({
     preFetchedContent: z.union([
         z.map(z.string(), z.string()),
         z.record(z.string(), z.string()),
@@ -146,7 +240,18 @@ export const PlatformCompilerOptionsSchema = z.object({
 /**
  * Schema for validation error type enum
  */
-export const ValidationErrorTypeSchema = z.enum([
+export const ValidationErrorTypeSchema: z.ZodEnum<[
+    'parse_error',
+    'syntax_error',
+    'unsupported_modifier',
+    'invalid_hostname',
+    'ip_not_allowed',
+    'pattern_too_short',
+    'public_suffix_match',
+    'invalid_characters',
+    'cosmetic_not_supported',
+    'modifier_validation_failed',
+]> = z.enum([
     'parse_error',
     'syntax_error',
     'unsupported_modifier',
@@ -162,7 +267,7 @@ export const ValidationErrorTypeSchema = z.enum([
 /**
  * Schema for validation severity enum
  */
-export const ValidationSeveritySchema = z.enum([
+export const ValidationSeveritySchema: z.ZodEnum<['error', 'warning', 'info']> = z.enum([
     'error',
     'warning',
     'info',
@@ -171,7 +276,7 @@ export const ValidationSeveritySchema = z.enum([
 /**
  * Schema for a single validation error
  */
-export const ValidationErrorSchema = z.object({
+export const ValidationErrorSchema: z.ZodType<ValidationErrorOutput> = z.object({
     type: ValidationErrorTypeSchema,
     severity: ValidationSeveritySchema,
     ruleText: z.string(),
@@ -185,7 +290,7 @@ export const ValidationErrorSchema = z.object({
 /**
  * Schema for validation report
  */
-export const ValidationReportSchema = z.object({
+export const ValidationReportSchema: z.ZodType<ValidationReportOutput> = z.object({
     errorCount: z.number().int().nonnegative(),
     warningCount: z.number().int().nonnegative(),
     infoCount: z.number().int().nonnegative(),
@@ -198,7 +303,7 @@ export const ValidationReportSchema = z.object({
 /**
  * Schema for validation result (compilation result with validation report)
  */
-export const ValidationResultSchema = z.object({
+export const ValidationResultSchema: z.ZodType<ValidationResultOutput> = z.object({
     rules: z.array(z.string()),
     validation: ValidationReportSchema,
 });
