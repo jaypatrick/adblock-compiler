@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { DeduplicateTransformation } from '../../src/transformations/DeduplicateTransformation.ts';
+import { DeduplicateTransformation } from './DeduplicateTransformation.ts';
 
 Deno.test('DeduplicateTransformation - should remove duplicate rules', () => {
     const transformation = new DeduplicateTransformation();

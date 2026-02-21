@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { InsertFinalNewLineTransformation } from '../../src/transformations/InsertFinalNewLineTransformation.ts';
+import { InsertFinalNewLineTransformation } from './InsertFinalNewLineTransformation.ts';
 
 Deno.test('InsertFinalNewLineTransformation - should add newline to non-empty list', () => {
     const transformation = new InsertFinalNewLineTransformation();

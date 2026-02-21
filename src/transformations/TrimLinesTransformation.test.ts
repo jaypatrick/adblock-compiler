@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { TrimLinesTransformation } from '../../src/transformations/TrimLinesTransformation.ts';
+import { TrimLinesTransformation } from './TrimLinesTransformation.ts';
 
 Deno.test('TrimLinesTransformation - should trim leading spaces', () => {
     const transformation = new TrimLinesTransformation();

@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { RemoveCommentsTransformation } from '../../src/transformations/RemoveCommentsTransformation.ts';
+import { RemoveCommentsTransformation } from './RemoveCommentsTransformation.ts';
 
 Deno.test('RemoveCommentsTransformation - should remove ! comments', () => {
     const transformation = new RemoveCommentsTransformation();

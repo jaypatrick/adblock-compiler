@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { RemoveEmptyLinesTransformation } from '../../src/transformations/RemoveEmptyLinesTransformation.ts';
+import { RemoveEmptyLinesTransformation } from './RemoveEmptyLinesTransformation.ts';
 
 Deno.test('RemoveEmptyLinesTransformation - should remove empty lines', () => {
     const transformation = new RemoveEmptyLinesTransformation();
