@@ -29,11 +29,15 @@
 
 > **Note:** This is a Deno-native rewrite of the original [@adguard/hostlist-compiler](https://www.npmjs.com/package/@adguard/hostlist-compiler). The package provides more functionality with improved performance and no Node.js dependencies.
 
-## 🎉 New in v0.11.3
+## 🎉 New in v0.16.x
 
-- **🔧 Version Management** - Version consistency across all configuration files
-- **📦 Synchronization** - All version references now properly synchronized
-- **✅ Maintenance** - Regular version bump and maintenance update
+- **🔄 Circuit Breaker** - Fault-tolerant source downloads with automatic recovery ([docs](docs/CIRCUIT_BREAKER.md))
+- **✅ Zod Validation** - Runtime schema validation for configuration objects and API request bodies ([docs](docs/ZOD_VALIDATION.md))
+- **🚨 Error Reporting** - Centralized error tracking with Sentry, Cloudflare Analytics Engine, and console backends
+- **🌐 Vite Frontend** - Modern build pipeline with HMR, React/Vue plugin support, and Tailwind CSS ([docs](docs/VITE.md))
+- **🎨 Tailwind CSS** - Utility-first CSS framework integrated across all frontend pages ([docs](docs/TAILWIND_CSS.md))
+- **🧩 AGTree Integration** - AST-based adblock rule parsing with @adguard/agtree replacing regex-based parsing ([docs](docs/AGTREE_INTEGRATION.md))
+- **📐 Framework PoCs** - React, Vue 3, and Angular proof-of-concept implementations for the frontend ([docs](poc/README.md))
 
 ## ✨ Features
 
@@ -50,6 +54,9 @@
 - **🎨 11 Transformations** - Deduplicate, compress, validate, and more
 - **📝 Structured Logging** - Production-ready JSON logs for observability (CloudWatch, Datadog, Splunk)
 - **🚨 Error Reporting** - Centralized error tracking with Sentry and Cloudflare Analytics Engine
+- **✅ Zod Validation** - Runtime schema validation for all configurations and API inputs
+- **🧩 AST Rule Parsing** - Full abstract syntax tree parsing via @adguard/agtree
+- **⚙️ Cloudflare Workflows** - Durable execution for long-running and background compilations
 
 - [Installation](#installation)
 - [Usage](#usage)
@@ -73,6 +80,9 @@
   - [ConvertToAscii](#convert-to-ascii)
 - [Extensibility](#extensibility)
 - [Development](#development)
+  - [Frontend Development (Tailwind CSS)](#frontend-development-tailwind-css)
+  - [Frontend Development (Vite)](#frontend-development-vite)
+  - [Framework PoCs](#framework-pocs)
 - [Platform Support](#platform-support)
   - [Edge Runtimes (Generic)](#edge-runtimes)
   - [Cloudflare Workers](#cloudflare-workers)
@@ -1334,6 +1344,18 @@ npm run ui:dev      # Vite on :5173 → proxies /api, /compile, /ws to :8787
 ```
 
 For more details, see [Vite Integration Guide](docs/VITE.md).
+
+### Framework PoCs
+
+The `poc/` directory contains proof-of-concept implementations of the Adblock Compiler frontend in three popular JavaScript frameworks:
+
+- **[React PoC](poc/react/index.html)** - React 18 with hooks, Context API, React Router v6, and React Server Components pattern
+- **[Vue 3 PoC](poc/vue/index.html)** - Vue 3 Composition API with Vue Router 4, reactive state, and composables
+- **[Angular PoC](poc/angular/)** - Angular 17+ standalone components, RxJS, reactive forms, and TypeScript
+
+Each PoC demonstrates component-based architecture, client-side routing, theme management, API integration, and form validation using the project's existing design system.
+
+📚 **[Framework PoC Documentation](poc/README.md)** - Comparison guide with migration recommendations
 
 ### Project structure
 
