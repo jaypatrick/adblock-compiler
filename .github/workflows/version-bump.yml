@@ -247,17 +247,17 @@ jobs:
 
                   # Prepend to CHANGELOG.md
                   if [ -f CHANGELOG.md ]; then
-                    # Find the first version header line (starts with "## [")
-                    # Insert new entry before it
+                    # Find the first versioned release header (starts with "## [" but NOT "## [Unreleased]")
+                    # Insert new entry before it to preserve [Unreleased] as the topmost section
                     if grep -q "^## \[" CHANGELOG.md; then
-                      # Get line number of first version entry
-                      FIRST_VERSION_LINE=$(grep -n "^## \[" CHANGELOG.md | head -1 | cut -d: -f1)
+                      # Get line number of first released version entry (skip [Unreleased])
+                      FIRST_VERSION_LINE=$(grep -n "^## \[" CHANGELOG.md | grep -v "## \[Unreleased\]" | head -1 | cut -d: -f1)
                       
                       # Verify we got a valid line number
                       if [ -n "$FIRST_VERSION_LINE" ] && [ "$FIRST_VERSION_LINE" -gt 0 ]; then
-                        # Create temporary file with new entry inserted
+                        # Create temporary file with new entry inserted before the first versioned release
                         {
-                          head -n $((FIRST_VERSION_LINE - 1)) CHANGELOG.md  # Keep header up to first version
+                          head -n $((FIRST_VERSION_LINE - 1)) CHANGELOG.md  # Keep header (including [Unreleased]) up to first versioned release
                           echo "$CHANGELOG_ENTRY"
                           tail -n +$FIRST_VERSION_LINE CHANGELOG.md  # Keep rest of changelog
                         } > CHANGELOG.md.tmp
