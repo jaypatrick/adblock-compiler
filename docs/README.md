@@ -14,7 +14,8 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 - [Quick Start Guide](guides/quick-start.md) - Get up and running with Docker in minutes
 - [API Documentation](api/README.md) - REST API reference and examples
 - [Client Libraries](guides/clients.md) - Client examples for Python, TypeScript, and Go
-- [**Zod Validation Guide**](ZOD_VALIDATION.md) - 🆕 Runtime validation with Zod schemas
+- [Zod Validation Guide](ZOD_VALIDATION.md) - Runtime validation with Zod schemas
+- [AGTree Integration](AGTREE_INTEGRATION.md) - AST-based adblock rule parsing with @adguard/agtree
 
 ### Deployment
 
@@ -24,10 +25,14 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 
 ### Cloudflare Worker
 
+- [Admin Dashboard](ADMIN_DASHBOARD.md) - Real-time metrics, queue monitoring, and system health
 - [Queue Support](QUEUE_SUPPORT.md) - Async compilation via Cloudflare Queues
+- [Queue Diagnostics](QUEUE_DIAGNOSTICS.md) - Diagnostic events for queue-based compilation
+- [Cloudflare Workflows](CLOUDFLARE_WORKFLOWS.md) - Durable execution for long-running compilations
 - [**Batch API Guide** (Visual Learning Edition)](BATCH_API_GUIDE.md) - 📊 Comprehensive guide with diagrams
 - [Workflow Diagrams](WORKFLOW_DIAGRAMS.md) - System architecture and flow diagrams
 - [Streaming API](STREAMING_API.md) - Real-time event streaming via SSE and WebSocket
+- [Cloudflare Analytics Engine](CLOUDFLARE_ANALYTICS.md) - High-cardinality metrics and telemetry
 - [Tail Worker](../worker/TAIL_WORKER.md) - Observability and logging
 - [Tail Worker Quick Start](../worker/QUICKSTART.md) - Get tail worker running in 5 minutes
 
@@ -42,9 +47,16 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 
 - [Circuit Breaker](CIRCUIT_BREAKER.md) - Fault-tolerant source downloads with automatic recovery
 
+### Frontend Development
+
+- [Vite Integration](VITE.md) - Frontend build pipeline with HMR, multi-page app, and React/Vue support
+- [Tailwind CSS](TAILWIND_CSS.md) - Utility-first CSS framework integration with PostCSS
+- [Framework PoCs](../poc/README.md) - React, Vue 3, and Angular proof-of-concept implementations
+
 ### Development
 
 - [Testing Guide](testing.md) - How to run and write tests
+- [E2E Testing](E2E_TESTING.md) - End-to-end integration testing dashboard
 - [Benchmarks](benchmarks.md) - Performance benchmarking guide
 - [Extensibility](EXTENSIBILITY.md) - Custom transformations and extensions
 - [Diagnostics](DIAGNOSTICS.md) - Event emission and tracing
@@ -55,6 +67,7 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 - [OpenAPI Tooling](OPENAPI_TOOLING.md) - API specification validation and testing
 - [Postman Testing](POSTMAN_TESTING.md) - Import and test with Postman collections
 - [Migration Guide](MIGRATION.md) - Migrating from @adguard/hostlist-compiler
+- [Auto Version Bump](AUTO_VERSION_BUMP.md) - Automatic versioning via Conventional Commits
 - [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
 - [AI Assistant Guide](claude.md) - Context for AI assistants working with this codebase
 
