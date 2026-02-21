@@ -8,7 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.17.0] - 2026-02-20
 
-### Added- create proof of concept for React, Vue, and Angular framework evaluation
+### Added
+
+- create proof of concept for React, Vue, and Angular framework evaluation
 
 ### Fixed
 
