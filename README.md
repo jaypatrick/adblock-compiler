@@ -37,7 +37,7 @@
 - **🌐 Vite Frontend** - Modern build pipeline with HMR, React/Vue plugin support, and Tailwind CSS ([docs](docs/VITE.md))
 - **🎨 Tailwind CSS** - Utility-first CSS framework integrated across all frontend pages ([docs](docs/TAILWIND_CSS.md))
 - **🧩 AGTree Integration** - AST-based adblock rule parsing with @adguard/agtree replacing regex-based parsing ([docs](docs/AGTREE_INTEGRATION.md))
-- **📐 Framework PoCs** - React, Vue 3, and Angular proof-of-concept implementations for the frontend ([docs](poc/README.md))
+- **📐 Framework PoCs** - React, Vue 3, Angular, and Svelte 5 proof-of-concept implementations demonstrating SPA benefits ([docs](poc/README.md))
 
 ## ✨ Features
 
@@ -1347,15 +1347,17 @@ For more details, see [Vite Integration Guide](docs/VITE.md).
 
 ### Framework PoCs
 
-The `poc/` directory contains proof-of-concept implementations of the Adblock Compiler frontend in three popular JavaScript frameworks:
+The `poc/` directory contains proof-of-concept implementations of the Adblock Compiler frontend in four popular JavaScript frameworks, answering the question: **would this app benefit from being an SPA?**
 
 - **[React PoC](poc/react/index.html)** - React 18 with hooks, Context API, React Router v6, and React Server Components pattern
-- **[Vue 3 PoC](poc/vue/index.html)** - Vue 3 Composition API with Vue Router 4, reactive state, and composables
-- **[Angular PoC](poc/angular/)** - Angular 17+ standalone components, RxJS, reactive forms, and TypeScript
+- **[Vue 3 PoC](poc/vue/index.html)** - Vue 3 Composition API with Vue Router 4, Pinia state management, and composables
+- **[Angular PoC](poc/angular/)** - Angular 19 standalone components, RxJS, reactive forms, and Angular Signals
+- **[Svelte 5 PoC](poc/svelte/)** - Svelte 5 runes ($state, $derived, $effect) with hash-based routing and no virtual DOM
 
-Each PoC demonstrates component-based architecture, client-side routing, theme management, API integration, and form validation using the project's existing design system.
+Each PoC demonstrates component-based architecture, client-side routing, theme management, API integration, form validation, and performance benchmarking using the project's existing design system.
 
-📚 **[Framework PoC Documentation](poc/README.md)** - Comparison guide with migration recommendations
+📚 **[Framework PoC Documentation](poc/README.md)** - Comparison guide with migration recommendations  
+📄 **[SPA Benefits Analysis](docs/SPA_BENEFITS.md)** - Detailed analysis of SPA benefits for this application
 
 ### Project structure
 
