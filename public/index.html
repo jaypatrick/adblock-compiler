@@ -135,11 +135,20 @@
         .tag-success { background: var(--success-light); color: var(--success-dark); }
         .tag-warning { background: var(--warning-light); color: var(--warning-dark); }
         .tag-info { background: var(--event-info-bg); color: var(--info); }
+        .tag-alpha { background: rgba(245, 158, 11, 0.12); color: #b45309; border: 1px solid rgba(245, 158, 11, 0.3); }
 
         [data-theme="dark"] .tag-primary { background: rgba(59, 130, 246, 0.2); }
         [data-theme="dark"] .tag-success { background: rgba(16, 185, 129, 0.2); }
         [data-theme="dark"] .tag-warning { background: rgba(245, 158, 11, 0.2); }
         [data-theme="dark"] .tag-info { background: rgba(99, 102, 241, 0.2); }
+        [data-theme="dark"] .tag-alpha { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border-color: rgba(245, 158, 11, 0.4); }
+
+        .section-alpha-note {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            padding: 0 8px;
+        }
 
         .arrow {
             color: var(--primary);
@@ -709,54 +718,58 @@
 
         <!-- Framework PoCs -->
         <section class="nav-section">
-            <h2 class="section-title">🧪 Framework PoCs</h2>
+            <h2 class="section-title">⚗️ Framework PoCs <span style="font-size: 13px; font-weight: 400; opacity: 0.75;">(Alpha)</span></h2>
+            <p class="section-alpha-note">
+                These are incubator-stage experiments exploring React, Vue, Angular, and Svelte as potential frontend migration targets.
+                They are <strong>not production code</strong> — APIs and UIs may change without notice.
+            </p>
             <div class="nav-grid">
-                <a href="../poc/index.html" class="nav-card">
+                <a href="/poc/index.html" class="nav-card">
                     <div class="nav-card-icon">📊</div>
                     <h3>Framework Comparison</h3>
                     <p>Side-by-side overview of React, Vue, Angular, and Svelte PoC implementations — routing, state management, theme toggling, and API integration.</p>
                     <div class="nav-card-footer">
-                        <span class="nav-card-tag tag-info">Compare All</span>
+                        <span class="nav-card-tag tag-alpha">⚗️ Alpha</span>
                         <span class="arrow">→</span>
                     </div>
                 </a>
 
-                <a href="../poc/react/index.html" class="nav-card">
+                <a href="/poc/react/index.html" class="nav-card">
                     <div class="nav-card-icon">⚛️</div>
                     <h3>React PoC</h3>
                     <p>React 18 with functional components, Hooks, Context API for theming, React Router v6, and a simulated Server Components pattern.</p>
                     <div class="nav-card-footer">
-                        <span class="nav-card-tag tag-success">CDN — No Build</span>
+                        <span class="nav-card-tag tag-alpha">⚗️ Alpha · CDN</span>
                         <span class="arrow">→</span>
                     </div>
                 </a>
 
-                <a href="../poc/vue/index.html" class="nav-card">
+                <a href="/poc/vue/index.html" class="nav-card">
                     <div class="nav-card-icon">💚</div>
                     <h3>Vue 3 PoC</h3>
                     <p>Vue 3 Composition API with Vue Router 4, Pinia state management, named routes, navigation guards, and two-way data binding.</p>
                     <div class="nav-card-footer">
-                        <span class="nav-card-tag tag-success">CDN — No Build</span>
+                        <span class="nav-card-tag tag-alpha">⚗️ Alpha · CDN</span>
                         <span class="arrow">→</span>
                     </div>
                 </a>
 
-                <a href="../poc/angular/" class="nav-card">
+                <a href="/poc/angular/" class="nav-card">
                     <div class="nav-card-icon">🅰️</div>
                     <h3>Angular PoC</h3>
                     <p>Angular 19 standalone components, TypeScript, Reactive Forms, RxJS, and Angular Signals for fine-grained reactivity.</p>
                     <div class="nav-card-footer">
-                        <span class="nav-card-tag tag-warning">npm install &amp;&amp; npm start</span>
+                        <span class="nav-card-tag tag-alpha">⚗️ Alpha · npm start</span>
                         <span class="arrow">→</span>
                     </div>
                 </a>
 
-                <a href="../poc/svelte/" class="nav-card">
+                <a href="/poc/svelte/" class="nav-card">
                     <div class="nav-card-icon">🔥</div>
                     <h3>Svelte PoC</h3>
                     <p>Svelte 5 with runes ($state, $derived, $effect) — the compiler-first framework with no virtual DOM and minimal boilerplate.</p>
                     <div class="nav-card-footer">
-                        <span class="nav-card-tag tag-warning">npm install &amp;&amp; npm run dev</span>
+                        <span class="nav-card-tag tag-alpha">⚗️ Alpha · npm run dev</span>
                         <span class="arrow">→</span>
                     </div>
                 </a>

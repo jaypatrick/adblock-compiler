@@ -278,6 +278,27 @@
                 color: white;
             }
 
+            .alpha-banner {
+                display: inline-flex;
+                align-items: center;
+                gap: 0.5rem;
+                background: rgba(245, 158, 11, 0.15);
+                border: 1px solid rgba(245, 158, 11, 0.4);
+                color: #f59e0b;
+                padding: 0.4rem 1rem;
+                border-radius: 20px;
+                font-size: 0.8rem;
+                font-weight: 600;
+                margin-bottom: 1rem;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+            }
+
+            [data-theme='dark'] .alpha-banner {
+                background: rgba(245, 158, 11, 0.2);
+                border-color: rgba(245, 158, 11, 0.5);
+            }
+
             @media (max-width: 600px) {
                 .app-header {
                     flex-direction: column;
@@ -306,11 +327,13 @@
 
         <main class="main-content">
             <div class="hero">
+                <div class="alpha-banner">⚗️ Alpha — Experimental Code</div>
                 <h2>Frontend Framework Proofs of Concept</h2>
                 <p>
-                    Explore how the Adblock Compiler frontend can be implemented in three popular
+                    Explore how the Adblock Compiler frontend can be implemented in four popular
                     JavaScript frameworks. Each PoC demonstrates routing, state management, theme
-                    toggling, and API integration.
+                    toggling, and API integration. These implementations are <strong>incubator-stage
+                    experiments</strong> — not yet part of the production UI.
                 </p>
             </div>
 
@@ -416,7 +439,7 @@ npm install &amp;&amp; npm run dev</code>
                 </div>
             </div>
 
-            <a href="../public/index.html" class="back-link">← Back to main app</a>
+            <a href="../index.html" class="back-link">← Back to main app</a>
         </main>
 
         <script>
