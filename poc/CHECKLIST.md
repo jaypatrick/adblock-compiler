@@ -25,6 +25,7 @@
 - [x] `poc/angular/src/app/home/home.component.ts` - Home page
 - [x] `poc/angular/src/app/compiler/compiler.component.ts` - Compiler page
 - [x] `poc/angular/src/app/signals/signals.component.ts` - Signals demo page
+- [x] `poc/angular/src/app/benchmark/benchmark.component.ts` - Benchmark page
 - [x] `poc/angular/src/app/services/compiler.service.ts` - API service
 - [x] `poc/angular/ANGULAR_SIGNALS.md` - Angular Signals guide
 
@@ -46,6 +47,7 @@
 - [x] Navigation with active link highlighting
 - [x] Home/Dashboard page with stats cards
 - [x] Compiler form page
+- [x] Benchmark page (`/benchmark` route) with `performance.now()` timing, progress bar, results table, and summary statistics (min/max/avg)
 
 ### Vue-Specific Features
 
