@@ -30,6 +30,7 @@
 - [x] `poc/README.md` - Main overview (363 lines)
 - [x] `poc/SUMMARY.md` - Implementation summary (245 lines)
 - [x] `poc/angular/README.md` - Angular setup guide (265 lines)
+- [x] `poc/react/REACT_ROUTER.md` - Why React Router is worth using
 
 ## Features Implemented
 
