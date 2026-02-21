@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { InvertAllowTransformation } from '../../src/transformations/InvertAllowTransformation.ts';
+import { InvertAllowTransformation } from './InvertAllowTransformation.ts';
 
 Deno.test('InvertAllowTransformation - should invert blocking rules', () => {
     const transformation = new InvertAllowTransformation();

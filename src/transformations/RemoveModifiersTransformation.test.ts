@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { RemoveModifiersTransformation } from '../../src/transformations/RemoveModifiersTransformation.ts';
+import { RemoveModifiersTransformation } from './RemoveModifiersTransformation.ts';
 
 Deno.test('RemoveModifiersTransformation - should remove third-party modifier', () => {
     const transformation = new RemoveModifiersTransformation();
