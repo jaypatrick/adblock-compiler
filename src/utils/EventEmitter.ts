@@ -1,4 +1,3 @@
-// deno-lint-ignore-file no-console
 /**
  * Lightweight event emitter for compiler observability.
  * Provides a type-safe callback-based event system without external dependencies.
@@ -6,6 +5,7 @@
  */
 
 import type {
+    IBasicLogger,
     ICompilationCompleteEvent,
     ICompilerEvents,
     IProgressEvent,
@@ -15,6 +15,7 @@ import type {
     ITransformationCompleteEvent,
     ITransformationStartEvent,
 } from '../types/index.ts';
+import { silentLogger } from './logger.ts';
 
 /**
  * Type-safe event name to event data mapping
@@ -35,17 +36,20 @@ type EventMap = {
  *
  * @remarks
  * All event emissions are wrapped in try-catch to prevent user code from
- * breaking the compilation process. Errors are logged to console.
+ * breaking the compilation process. Errors are logged to logger.
  */
 export class CompilerEventEmitter {
     private readonly events: Readonly<ICompilerEvents>;
+    private readonly logger: IBasicLogger;
 
     /**
      * Creates a new CompilerEventEmitter
      * @param events - Optional event handlers
+     * @param logger - Optional logger instance for error handling
      */
-    constructor(events?: ICompilerEvents) {
+    constructor(events?: ICompilerEvents, logger?: IBasicLogger) {
         this.events = Object.freeze(events ?? {});
+        this.logger = logger ?? silentLogger;
     }
 
     /**
@@ -114,7 +118,7 @@ export class CompilerEventEmitter {
      * @param event - Event data to pass to the handler
      *
      * @remarks
-     * Errors thrown by event handlers are caught and logged to console.
+     * Errors thrown by event handlers are caught and logged to logger.
      * The compilation process continues even if a handler throws.
      */
     private safeEmit<K extends keyof EventMap>(
@@ -129,9 +133,8 @@ export class CompilerEventEmitter {
         } catch (error) {
             // Log but don't throw - event handlers shouldn't break compilation
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(
+            this.logger.error(
                 `Error in event handler '${String(eventName)}': ${errorMessage}`,
-                error,
             );
         }
     }
@@ -146,7 +149,7 @@ export class NoOpEventEmitter extends CompilerEventEmitter {
     private static readonly INSTANCE = new NoOpEventEmitter();
 
     private constructor() {
-        super(Object.freeze({}));
+        super(Object.freeze({}), silentLogger);
     }
 
     /**
@@ -173,6 +176,7 @@ export class NoOpEventEmitter extends CompilerEventEmitter {
  * Returns a singleton NoOpEventEmitter if no handlers are provided for efficiency.
  *
  * @param events - Optional event handlers configuration
+ * @param logger - Optional logger instance for error handling
  * @returns CompilerEventEmitter instance (NoOp if no handlers)
  *
  * @example
@@ -183,9 +187,9 @@ export class NoOpEventEmitter extends CompilerEventEmitter {
  * });
  * ```
  */
-export function createEventEmitter(events?: ICompilerEvents): CompilerEventEmitter {
+export function createEventEmitter(events?: ICompilerEvents, logger?: IBasicLogger): CompilerEventEmitter {
     if (!events || Object.keys(events).length === 0) {
         return NoOpEventEmitter.getInstance();
     }
-    return new CompilerEventEmitter(events);
+    return new CompilerEventEmitter(events, logger);
 }

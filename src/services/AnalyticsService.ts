@@ -27,6 +27,9 @@
  * - `workflow_failed` - A workflow failed
  */
 
+import type { IBasicLogger } from '../types/index.ts';
+import { silentLogger } from '../utils/logger.ts';
+
 /**
  * Interface for Analytics Engine dataset binding.
  * Matches the Cloudflare Workers Analytics Engine binding type.
@@ -225,16 +228,19 @@ export type AnalyticsEventData =
 export class AnalyticsService {
     private readonly dataset: AnalyticsEngineDataset | undefined;
     private readonly enabled: boolean;
+    private readonly logger: IBasicLogger;
 
     /**
      * Creates a new AnalyticsService instance.
      *
      * @param dataset - The Analytics Engine dataset binding from the environment.
      *                  If undefined, the service will operate in no-op mode.
+     * @param logger - Optional logger instance for error handling
      */
-    constructor(dataset?: AnalyticsEngineDataset) {
+    constructor(dataset?: AnalyticsEngineDataset, logger?: IBasicLogger) {
         this.dataset = dataset;
         this.enabled = dataset !== undefined;
+        this.logger = logger ?? silentLogger;
     }
 
     /**
@@ -262,7 +268,7 @@ export class AnalyticsService {
         } catch (error) {
             // Silently ignore errors to prevent analytics from affecting main flow
             // In production, you might want to log this to a separate error tracking system
-            console.warn('[AnalyticsService] Failed to write data point:', error);
+            this.logger.warn(`[AnalyticsService] Failed to write data point: ${error instanceof Error ? error.message : String(error)}`);
         }
     }
 

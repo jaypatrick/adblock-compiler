@@ -13,11 +13,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Documentation: Add missing v0.16.0 release notes for Zod schema validation for configuration objects and API request bodies
 - Documentation: Add missing v0.16.0 release notes for ConfigurationValidator refactor to use Zod
 
+### Added
+
+- Inject optional `IBasicLogger` into `CompilerEventEmitter` / `createEventEmitter` for structured error logging when event handlers throw
+- Inject optional `IBasicLogger` into `AnalyticsService` to route Analytics Engine write failures through the logger instead of `console.warn`
+- Inject optional `IBasicLogger` into `CloudflareQueueProvider` / `createCloudflareQueueProvider` to route queue processing errors through the logger instead of `console.error`
+- Add `CloudflareQueueProvider.test.ts` with full test coverage including logger injection tests
+
 ### Changed
 
 - Migrate `zod` from npm to JSR (`jsr:@zod/zod@^4.3.6`)
 - Migrate `@opentelemetry/api` from npm to JSR (`jsr:@opentelemetry/api@^1.9.0`)
 - Improve Deno-native architecture by reducing npm dependencies where JSR alternatives are available
+- Replace `console.*` calls in `EventEmitter`, `AnalyticsService`, and `CloudflareQueueProvider` with `IBasicLogger` dependency injection, defaulting to `silentLogger` for backward compatibility
 
 ## [0.18.0] - 2026-02-21
 

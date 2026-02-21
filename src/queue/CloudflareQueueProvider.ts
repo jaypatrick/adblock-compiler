@@ -3,6 +3,8 @@
  * Uses Cloudflare's Queue binding for async message processing.
  */
 
+import type { IBasicLogger } from '../types/index.ts';
+import { silentLogger } from '../utils/logger.ts';
 import type { AnyQueueMessage, IQueueProvider, QueueProviderOptions, ReceivedMessage, ReceiveResult, SendResult } from './IQueueProvider.ts';
 
 /**
@@ -40,14 +42,16 @@ export class CloudflareQueueProvider implements IQueueProvider {
     private queue: CloudflareQueue | null = null;
     private options: Required<QueueProviderOptions>;
     private pendingMessages: Map<string, CloudflareMessageBatch<unknown>['messages'][0]> = new Map();
+    private readonly logger: IBasicLogger;
 
-    constructor(options?: QueueProviderOptions) {
+    constructor(options?: QueueProviderOptions, logger?: IBasicLogger) {
         this.options = {
             maxBatchSize: options?.maxBatchSize ?? 100,
             visibilityTimeoutSeconds: options?.visibilityTimeoutSeconds ?? 30,
             maxRetries: options?.maxRetries ?? 3,
             deadLetterQueue: options?.deadLetterQueue ?? '',
         };
+        this.logger = logger ?? silentLogger;
     }
 
     /**
@@ -145,9 +149,8 @@ export class CloudflareQueueProvider implements IQueueProvider {
                 } else {
                     // Max retries exceeded - message will be dropped or sent to DLQ
                     msg.ack();
-                    console.error(
-                        `Message ${msg.id} failed after ${msg.attempts} attempts:`,
-                        error,
+                    this.logger.error(
+                        `Message ${msg.id} failed after ${msg.attempts} attempts: ${error instanceof Error ? error.message : String(error)}`,
                     );
                 }
                 failed++;
@@ -180,7 +183,7 @@ export class CloudflareQueueProvider implements IQueueProvider {
                     this.pendingMessages.delete(msg.id);
                 },
                 fail: async (reason: string) => {
-                    console.error(`Message ${msg.id} failed: ${reason}`);
+                    this.logger.error(`Message ${msg.id} failed: ${reason}`);
                     // In Cloudflare, we ack to remove from queue
                     // DLQ handling would need to be implemented separately
                     msg.ack();
@@ -228,8 +231,9 @@ export class CloudflareQueueProvider implements IQueueProvider {
 export function createCloudflareQueueProvider(
     binding?: CloudflareQueue,
     options?: QueueProviderOptions,
+    logger?: IBasicLogger,
 ): CloudflareQueueProvider {
-    const provider = new CloudflareQueueProvider(options);
+    const provider = new CloudflareQueueProvider(options, logger);
     if (binding) {
         provider.setBinding(binding);
     }

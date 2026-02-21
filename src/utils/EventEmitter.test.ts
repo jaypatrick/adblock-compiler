@@ -1,6 +1,7 @@
 import { assertEquals, assertExists } from '@std/assert';
 import { CompilerEventEmitter, createEventEmitter, NoOpEventEmitter } from './EventEmitter.ts';
 import {
+    IBasicLogger,
     ICompilationCompleteEvent,
     ICompilerEvents,
     IProgressEvent,
@@ -332,4 +333,44 @@ Deno.test('CompilerEventEmitter - should track full compilation lifecycle', () =
     assertEquals(eventLog[7], 'progress:transformations:1/1');
     assertEquals(eventLog[8], 'transform-complete:Deduplicate:700');
     assertEquals(eventLog[9], 'complete:700');
+});
+
+Deno.test('CompilerEventEmitter - should log error via logger when handler throws', () => {
+    const errors: string[] = [];
+    const testLogger: IBasicLogger = {
+        info: () => {},
+        warn: () => {},
+        error: (message: string) => errors.push(message),
+    };
+    const events: ICompilerEvents = {
+        onSourceStart: () => {
+            throw new Error('Handler error');
+        },
+    };
+    const emitter = new CompilerEventEmitter(events, testLogger);
+
+    emitter.emitSourceStart({ source: createTestSource(), sourceIndex: 0, totalSources: 1 });
+
+    assertEquals(errors.length, 1);
+    assertEquals(errors[0].includes('Handler error'), true);
+});
+
+Deno.test('createEventEmitter - should pass logger to CompilerEventEmitter', () => {
+    const errors: string[] = [];
+    const testLogger: IBasicLogger = {
+        info: () => {},
+        warn: () => {},
+        error: (message: string) => errors.push(message),
+    };
+    const events: ICompilerEvents = {
+        onSourceStart: () => {
+            throw new Error('Factory logger test');
+        },
+    };
+    const emitter = createEventEmitter(events, testLogger);
+
+    emitter.emitSourceStart({ source: createTestSource(), sourceIndex: 0, totalSources: 1 });
+
+    assertEquals(errors.length, 1);
+    assertEquals(errors[0].includes('Factory logger test'), true);
 });
