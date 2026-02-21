@@ -1332,7 +1332,7 @@ function TransformationPicker({ initialList }) {
                                 }),
                             });
 
-                            durationMs = performance.now() - start;
+                            durationMs = Math.round(performance.now() - start);
 
                             if (!response.ok) {
                                 throw new Error(`HTTP ${response.status}`);

@@ -13,6 +13,7 @@ Each PoC demonstrates how the existing vanilla HTML/CSS/JS frontend would be imp
 - ✅ API integration pattern
 - ✅ Loading and error states
 - ✅ Form validation
+- ✅ Benchmarking — measure compilation API performance across multiple runs
 
 ## 🎯 PoC Implementations
 
@@ -41,6 +42,10 @@ React Router v6 is used for client-side navigation. It provides instant page tra
 **Server Components:**
 
 The `/server-components` route demonstrates the React Server Components architecture pattern: how the component tree splits into server-rendered (data-fetching, zero client JS) and client-rendered (interactive, hooks) parts, and why this benefits the Adblock Compiler. See [react/REACT_SERVER_COMPONENTS.md](./react/REACT_SERVER_COMPONENTS.md) for the full rationale.
+
+**Benchmark:**
+
+The `/benchmark` route measures compilation API performance across multiple runs. It uses `performance.now()` for accurate wall-clock timing, shows a live progress bar and per-run results table, and computes summary statistics (min, max, avg) when all runs complete. Demonstrates `useState` with functional updates for safe async state accumulation.
 
 **How to Run:**
 
@@ -116,6 +121,10 @@ painful to implement by hand:
 
 The Vue PoC demonstrates the first five of these benefits in a single CDN-based HTML file.
 
+**Benchmark:**
+
+The `/benchmark` route measures compilation API performance across multiple runs. It uses `performance.now()` for accurate wall-clock timing, shows a live progress bar and per-run results table, and exposes computed summary statistics (min, max, avg) via `computed()`. Demonstrates `ref()`, `reactive()`, `computed()`, and sequential `async/await` in a Composition API `setup()`.
+
 **How to Run:**
 
 ```bash
@@ -168,6 +177,10 @@ python3 -m http.server 8001
 **Modern Reactivity:**
 
 The Angular PoC demonstrates **Angular Signals**, a revolutionary reactive primitive that enables fine-grained reactivity and better performance than traditional Zone.js change detection. Signals provide explicit dependencies, simpler mental models, and seamless interop with RxJS. See [angular/ANGULAR_SIGNALS.md](./angular/ANGULAR_SIGNALS.md) for a comprehensive guide.
+
+**Benchmark:**
+
+The `/benchmark` route measures compilation API performance across multiple runs. It uses `performance.now()` for accurate wall-clock timing and showcases Angular Signals throughout: `signal()` for mutable state (run count, running flag, accumulated results), `computed()` for derived progress percentage and summary statistics, and `inject()` for functional dependency injection. Results update reactively after each run.
 
 **How to Run:**
 
