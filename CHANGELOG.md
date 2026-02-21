@@ -28,12 +28,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve Deno-native architecture by reducing npm dependencies where JSR alternatives are available
 - Replace `console.*` calls in `EventEmitter`, `AnalyticsService`, and `CloudflareQueueProvider` with `IBasicLogger` dependency injection, defaulting to `silentLogger` for backward compatibility
 
-
 ## [0.22.0] - 2026-02-21
 
-### Added- improve openapi.yaml for Cloudflare Web Assets Schema Validation
-- update openapi.yaml - add all missing endpoints and custom domain server
+### Added
 
+- Improve openapi.yaml for Cloudflare Web Assets Schema Validation
+- Update openapi.yaml - add all missing endpoints and custom domain server
 
 ## [0.21.2] - 2026-02-21
 
