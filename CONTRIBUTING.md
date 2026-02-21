@@ -187,7 +187,7 @@ By contributing, you agree that your contributions will be licensed under the sa
 
 ## Additional Resources
 
-- [VERSION_MANAGEMENT.md](VERSION_MANAGEMENT.md) - Version synchronization details
+- [VERSION_MANAGEMENT.md](docs/VERSION_MANAGEMENT.md) - Version synchronization details
 - [docs/AUTO_VERSION_BUMP.md](docs/AUTO_VERSION_BUMP.md) - Automatic version bumping
 - [Conventional Commits](https://www.conventionalcommits.org/) - Official specification
 - [Semantic Versioning](https://semver.org/) - SemVer specification

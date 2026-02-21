@@ -124,10 +124,7 @@
             ".pnp.*",
             "*.lock",
             "*.lcov",
-            "*.d.ts",
-            "BUGS_AND_FEATURES.md",
-            "PRODUCTION_READINESS.md",
-            "GITHUB_ISSUE_TEMPLATES.md"
+            "*.d.ts"
         ]
     },
     "test": {
