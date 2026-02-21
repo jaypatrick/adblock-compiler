@@ -67,7 +67,7 @@ The project uses **automatic version bumping** based on Conventional Commits:
 - **Changelog generation**: CHANGELOG.md is updated automatically
 - **Release creation**: GitHub releases are created automatically
 
-See [docs/AUTO_VERSION_BUMP.md](docs/AUTO_VERSION_BUMP.md) for complete details.
+See [AUTO_VERSION_BUMP.md](AUTO_VERSION_BUMP.md) for complete details.
 
 **Quick Guide:**
 

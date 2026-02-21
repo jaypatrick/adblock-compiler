@@ -20,6 +20,7 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 ### Deployment
 
 - [Docker Deployment](deployment/docker.md) - Complete Docker guide with Kubernetes examples
+- [Docker Configuration](DOCKER.md) - Docker Compose with layered environment configuration
 - [Cloudflare Containers](deployment/cloudflare-containers.md) - Deploy to Cloudflare edge network
 - [Deployment Versioning](DEPLOYMENT_VERSIONING.md) - Automated deployment tracking and versioning
 
@@ -67,9 +68,14 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 - [OpenAPI Tooling](OPENAPI_TOOLING.md) - API specification validation and testing
 - [Postman Testing](POSTMAN_TESTING.md) - Import and test with Postman collections
 - [Migration Guide](MIGRATION.md) - Migrating from @adguard/hostlist-compiler
+- [Version Management](VERSION_MANAGEMENT.md) - Version synchronization details
 - [Auto Version Bump](AUTO_VERSION_BUMP.md) - Automatic versioning via Conventional Commits
 - [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
 - [AI Assistant Guide](claude.md) - Context for AI assistants working with this codebase
+- [Environment Configuration](ENV_CONFIGURATION.md) - Environment variables and layered config system
+- [Production Readiness](PRODUCTION_READINESS.md) - Production readiness assessment and recommendations
+- [Bugs and Features](BUGS_AND_FEATURES.md) - Known bugs and feature requests
+- [GitHub Issue Templates](GITHUB_ISSUE_TEMPLATES.md) - Ready-to-use GitHub issue templates
 
 ## Contributing
 
