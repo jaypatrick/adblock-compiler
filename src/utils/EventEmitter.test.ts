@@ -1,5 +1,5 @@
 import { assertEquals, assertExists } from '@std/assert';
-import { CompilerEventEmitter, createEventEmitter, NoOpEventEmitter } from '../../src/utils/EventEmitter.ts';
+import { CompilerEventEmitter, createEventEmitter, NoOpEventEmitter } from './EventEmitter.ts';
 import {
     ICompilationCompleteEvent,
     ICompilerEvents,
@@ -11,7 +11,7 @@ import {
     ITransformationStartEvent,
     SourceType,
     TransformationType,
-} from '../../src/types/index.ts';
+} from '../types/index.ts';
 
 // Helper to create test source
 function createTestSource() {

@@ -1,5 +1,5 @@
 import { assertEquals, assertThrows } from '@std/assert';
-import { RuleUtils } from '../../src/utils/RuleUtils.ts';
+import { RuleUtils } from './RuleUtils.ts';
 
 // isComment tests
 Deno.test('RuleUtils.isComment - should identify ! comments', () => {

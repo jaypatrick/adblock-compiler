@@ -1,7 +1,7 @@
 import { assertEquals, assertExists, assertRejects } from '@std/assert';
-import { compile, FilterCompiler } from '../../src/compiler/FilterCompiler.ts';
-import { IConfiguration, SourceType, TransformationType } from '../../src/types/index.ts';
-import { silentLogger } from '../../src/utils/index.ts';
+import { compile, FilterCompiler } from './FilterCompiler.ts';
+import { IConfiguration, SourceType, TransformationType } from '../types/index.ts';
+import { silentLogger } from '../utils/index.ts';
 import { fromFileUrl } from '@std/path';
 
 // Get the test resource file path in a cross-platform way
