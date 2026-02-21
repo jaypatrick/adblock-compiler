@@ -752,3 +752,5 @@ const ValidationUI = {
 if (typeof window !== 'undefined') {
     window.ValidationUI = ValidationUI;
 }
+
+export { ValidationUI };

@@ -6,8 +6,8 @@
     <title>Hostlist Compiler</title>
     <!-- Cloudflare Web Analytics -->
     <script defer src='https://static.cloudflareinsights.com/beacon.min.js' data-cf-beacon='{"token": "8771568d1cde4005bb60c5767d0969c4"}'></script>
-    <!-- Chart.js for queue visualization -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <!-- Chart.js (bundled via Vite) -->
+    <script type="module" src="/js/chart-setup.ts"></script>
     <!-- Cloudflare Turnstile -->
     <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
     <!-- Tailwind CSS -->
@@ -1509,107 +1509,33 @@ eventSource.addEventListener('result', (e) => {
         </footer>
     </div>
 
+    <script type="module" src="/js/theme.ts"></script>
     <script>
-        // Dark Mode Management
-        const ThemeManager = {
-            STORAGE_KEY: 'theme-preference',
-
-            init() {
-                // Check for saved preference or system preference
-                const savedTheme = localStorage.getItem(this.STORAGE_KEY);
-                if (savedTheme) {
-                    this.setTheme(savedTheme);
-                } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                    this.setTheme('dark');
-                }
-
-                // Listen for system theme changes
-                window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
-                    if (!localStorage.getItem(this.STORAGE_KEY)) {
-                        this.setTheme(e.matches ? 'dark' : 'light');
-                    }
-                });
-
-                // Setup toggle button
-                const toggleBtn = document.getElementById('theme-toggle');
-                if (toggleBtn) {
-                    toggleBtn.addEventListener('click', () => this.toggle());
-                }
-            },
-
-            getTheme() {
-                return document.documentElement.getAttribute('data-theme') || 'light';
-            },
-
-            setTheme(theme) {
-                document.documentElement.setAttribute('data-theme', theme);
-                localStorage.setItem(this.STORAGE_KEY, theme);
-                this.updateToggleButton(theme);
-                this.updateTurnstileTheme(theme);
-            },
-
-            toggle() {
-                const currentTheme = this.getTheme();
-                const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
-                this.setTheme(newTheme);
-            },
-
-            updateToggleButton(theme) {
-                const icon = document.getElementById('theme-icon');
-                const label = document.getElementById('theme-label');
-                if (icon && label) {
-                    if (theme === 'dark') {
-                        icon.textContent = '☀️';
-                        label.textContent = 'Light Mode';
-                    } else {
-                        icon.textContent = '🌙';
-                        label.textContent = 'Dark Mode';
-                    }
-                }
-
-                const toggleButton = document.getElementById('theme-toggle');
-                if (toggleButton) {
-                    const ariaLabel = theme === 'dark'
-                        ? 'Switch to light mode'
-                        : 'Switch to dark mode';
-                    toggleButton.setAttribute('aria-label', ariaLabel);
-                }
-            },
-
-            updateTurnstileTheme(theme) {
-                // Re-render Turnstile widgets with new theme
-                if (window.turnstile && turnstileSiteKey) {
-                    document.querySelectorAll('.cf-turnstile').forEach(widget => {
-                        // Remove existing widget content, if it has been rendered
-                        if (typeof window.turnstile.remove === 'function' && widget.firstChild) {
-                            try {
-                                window.turnstile.remove(widget);
-                            } catch (error) {
-                                console.error(
-                                    'Failed to remove Turnstile widget:',
-                                    error instanceof Error ? error.message : String(error),
-                                );
-                            }
+        // Re-render Turnstile widgets when the theme changes
+        new MutationObserver(() => {
+            if (window.turnstile && turnstileSiteKey) {
+                const theme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
+                document.querySelectorAll('.cf-turnstile').forEach((widget) => {
+                    if (typeof window.turnstile.remove === 'function' && widget.firstChild) {
+                        try {
+                            window.turnstile.remove(widget);
+                        } catch (error) {
+                            console.error(
+                                'Failed to remove Turnstile widget:',
+                                error instanceof Error ? error.message : String(error),
+                            );
                         }
-                        // Re-render with new theme
-                        window.turnstile.render(widget, {
-                            sitekey: turnstileSiteKey,
-                            theme: theme === 'dark' ? 'dark' : 'light',
-                            callback: onTurnstileSuccess,
-                            'expired-callback': onTurnstileExpired,
-                            'error-callback': onTurnstileError
-                        });
+                    }
+                    window.turnstile.render(widget, {
+                        sitekey: turnstileSiteKey,
+                        theme: theme,
+                        callback: onTurnstileSuccess,
+                        'expired-callback': onTurnstileExpired,
+                        'error-callback': onTurnstileError
                     });
-                }
-            },
-
-            getTurnstileTheme() {
-                return this.getTheme() === 'dark' ? 'dark' : 'light';
+                });
             }
-        };
-
-        // Initialize theme manager immediately
-        ThemeManager.init();
+        }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
 
         // Fetch compiler version from API
         async function fetchCompilerVersion() {
@@ -1870,7 +1796,7 @@ eventSource.addEventListener('result', (e) => {
                         });
                         // Re-render Turnstile widgets with appropriate theme
                         if (window.turnstile) {
-                            const turnstileTheme = ThemeManager.getTurnstileTheme();
+                            const turnstileTheme = document.documentElement.getAttribute('data-theme') === 'dark' ? 'dark' : 'light';
                             document.querySelectorAll('.cf-turnstile').forEach(widget => {
                                 window.turnstile.render(widget, {
                                     sitekey: data.siteKey,
