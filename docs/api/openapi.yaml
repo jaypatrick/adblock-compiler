@@ -29,6 +29,8 @@ info:
 servers:
     - url: https://adblock-compiler.jayson-knight.workers.dev
       description: Production server
+    - url: https://adblock.jaysonknight.com
+      description: Custom domain server
     - url: http://localhost:8787
       description: Local development server
 
@@ -43,6 +45,12 @@ tags:
       description: Performance metrics and statistics
     - name: WebSocket
       description: Bidirectional real-time communication
+    - name: Admin
+      description: Storage administration endpoints (require X-Admin-Key header)
+    - name: Workflow
+      description: Durable execution workflow endpoints
+    - name: Health
+      description: Health monitoring endpoints
 
 paths:
     /api:
@@ -355,6 +363,478 @@ paths:
                 '404':
                     description: Job not found
 
+    /api/version:
+        get:
+            tags: [Metrics]
+            summary: Get latest deployment version
+            description: Returns the current version from deployment history
+            operationId: getApiVersion
+            responses:
+                '200':
+                    description: Version information
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/VersionResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /api/deployments:
+        get:
+            tags: [Metrics]
+            summary: Get deployment history
+            description: Returns deployment history records
+            operationId: getDeployments
+            parameters:
+                - name: limit
+                  in: query
+                  schema:
+                      type: integer
+                      default: 50
+                  description: Maximum number of records to return
+                - name: version
+                  in: query
+                  schema:
+                      type: string
+                  description: Filter by version
+                - name: status
+                  in: query
+                  schema:
+                      type: string
+                  description: Filter by deployment status
+                - name: branch
+                  in: query
+                  schema:
+                      type: string
+                  description: Filter by branch name
+            responses:
+                '200':
+                    description: Deployment history
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DeploymentHistoryResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /api/deployments/stats:
+        get:
+            tags: [Metrics]
+            summary: Get deployment statistics
+            description: Returns aggregated deployment statistics
+            operationId: getDeploymentStats
+            responses:
+                '200':
+                    description: Deployment statistics
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/DeploymentStatsResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /api/turnstile-config:
+        get:
+            tags: [Metrics]
+            summary: Get Turnstile configuration
+            description: Returns the Cloudflare Turnstile site key and whether it is enabled
+            operationId: getTurnstileConfig
+            responses:
+                '200':
+                    description: Turnstile configuration
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/TurnstileConfigResponse'
+
+    /queue/history:
+        get:
+            tags: [Queue]
+            summary: Get queue job history
+            description: Returns job history and queue depth over time
+            operationId: getQueueHistory
+            responses:
+                '200':
+                    description: Queue history
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/QueueHistoryResponse'
+
+    /queue/cancel/{requestId}:
+        post:
+            tags: [Queue]
+            summary: Cancel a queued job
+            description: Marks a pending queue job as cancelled
+            operationId: cancelQueueJob
+            parameters:
+                - name: requestId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                  description: Request ID of the job to cancel
+            responses:
+                '200':
+                    description: Job cancelled
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/CancelJobResponse'
+                '400':
+                    description: Invalid request ID
+
+    /ast/parse:
+        post:
+            tags: [Compilation]
+            summary: Parse filter rules into AST
+            description: Parses adblock filter rules into an Abstract Syntax Tree representation
+            operationId: parseAST
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ASTParseRequest'
+            responses:
+                '200':
+                    description: Parsed AST
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ASTParseResponse'
+                '400':
+                    description: Invalid request (must provide rules or text)
+                '500':
+                    description: Parse error
+
+    /admin/storage/stats:
+        get:
+            tags: [Admin]
+            summary: Get storage statistics
+            description: Returns database table counts and expired entry counts
+            operationId: getAdminStorageStats
+            security:
+                - AdminKey: []
+            responses:
+                '200':
+                    description: Storage statistics
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminStorageStatsResponse'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /admin/storage/clear-expired:
+        post:
+            tags: [Admin]
+            summary: Clear expired entries
+            description: Deletes all expired entries from storage tables
+            operationId: clearExpiredEntries
+            security:
+                - AdminKey: []
+            responses:
+                '200':
+                    description: Entries cleared
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminOperationResponse'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /admin/storage/clear-cache:
+        post:
+            tags: [Admin]
+            summary: Clear cache entries
+            description: Deletes all cache entries from storage tables
+            operationId: clearCacheEntries
+            security:
+                - AdminKey: []
+            responses:
+                '200':
+                    description: Cache cleared
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminOperationResponse'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /admin/storage/export:
+        get:
+            tags: [Admin]
+            summary: Export storage data
+            description: Exports storage entries as JSON (includes storage entries, filter cache, and compilation metadata; returned amounts subject to implementation limits)
+            operationId: exportStorage
+            security:
+                - AdminKey: []
+            responses:
+                '200':
+                    description: Storage export
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminExportResponse'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /admin/storage/vacuum:
+        post:
+            tags: [Admin]
+            summary: Vacuum database
+            description: Runs VACUUM on the D1 database to reclaim space
+            operationId: vacuumDatabase
+            security:
+                - AdminKey: []
+            responses:
+                '200':
+                    description: Vacuum completed
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminOperationResponse'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /admin/storage/tables:
+        get:
+            tags: [Admin]
+            summary: List database tables
+            description: Returns all tables and indexes in the D1 database
+            operationId: listStorageTables
+            security:
+                - AdminKey: []
+            responses:
+                '200':
+                    description: Table listing
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminTablesResponse'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /admin/storage/query:
+        post:
+            tags: [Admin]
+            summary: Execute read-only SQL query
+            description: Executes a SELECT-only SQL query against the D1 database for debugging
+            operationId: queryStorage
+            security:
+                - AdminKey: []
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AdminQueryRequest'
+            responses:
+                '200':
+                    description: Query results
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminQueryResponse'
+                '400':
+                    description: Invalid or disallowed SQL
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /workflow/compile:
+        post:
+            tags: [Workflow]
+            summary: Start async compilation workflow
+            description: Creates a durable Cloudflare Workflow instance for compilation
+            operationId: startWorkflowCompile
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CompileRequest'
+            responses:
+                '202':
+                    description: Workflow started
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/WorkflowStartResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /workflow/batch:
+        post:
+            tags: [Workflow]
+            summary: Start async batch compilation workflow
+            description: Creates a durable Cloudflare Workflow instance for batch compilation
+            operationId: startWorkflowBatch
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/BatchCompileRequest'
+            responses:
+                '202':
+                    description: Workflow started
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/WorkflowStartResponse'
+                '400':
+                    description: Invalid batch request
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /workflow/cache-warm:
+        post:
+            tags: [Workflow]
+            summary: Start cache warming workflow
+            description: Triggers manual cache warming for specified configurations
+            operationId: startWorkflowCacheWarm
+            requestBody:
+                required: false
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/CacheWarmRequest'
+            responses:
+                '202':
+                    description: Workflow started
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/WorkflowStartResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /workflow/health-check:
+        post:
+            tags: [Workflow]
+            summary: Start health monitoring workflow
+            description: Triggers manual health check for specified filter list sources
+            operationId: startWorkflowHealthCheck
+            requestBody:
+                required: false
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/HealthCheckRequest'
+            responses:
+                '202':
+                    description: Workflow started
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/WorkflowStartResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /workflow/status/{workflowType}/{instanceId}:
+        get:
+            tags: [Workflow]
+            summary: Get workflow instance status
+            description: Returns the current status and output of a workflow instance
+            operationId: getWorkflowStatus
+            parameters:
+                - name: workflowType
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                      enum: [compilation, batch-compilation, cache-warming, health-monitoring]
+                  description: Type of workflow
+                - name: instanceId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                  description: Workflow instance ID
+            responses:
+                '200':
+                    description: Workflow status
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/WorkflowStatusResponse'
+                '400':
+                    description: Unknown workflow type
+                '404':
+                    description: Workflow instance not found
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /workflow/metrics:
+        get:
+            tags: [Workflow]
+            summary: Get workflow metrics
+            description: Returns aggregated metrics for all workflow types
+            operationId: getWorkflowMetrics
+            responses:
+                '200':
+                    description: Workflow metrics
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/WorkflowMetricsResponse'
+
+    /workflow/events/{workflowId}:
+        get:
+            tags: [Workflow]
+            summary: Get workflow events
+            description: Returns progress events for a specific workflow instance
+            operationId: getWorkflowEvents
+            parameters:
+                - name: workflowId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                  description: Workflow instance ID
+                - name: since
+                  in: query
+                  schema:
+                      type: string
+                      format: date-time
+                  description: Return only events after this timestamp
+            responses:
+                '200':
+                    description: Workflow events
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/WorkflowEventsResponse'
+
+    /health/latest:
+        get:
+            tags: [Health]
+            summary: Get latest health check results
+            description: Returns the results of the most recent health monitoring workflow run
+            operationId: getLatestHealth
+            responses:
+                '200':
+                    description: Latest health check data
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/HealthLatestResponse'
+
 components:
     schemas:
         # Request Schemas
@@ -377,6 +857,11 @@ components:
                 turnstileToken:
                     type: string
                     description: Cloudflare Turnstile token (if enabled)
+                priority:
+                    type: string
+                    enum: [standard, high]
+                    default: standard
+                    description: Job processing priority (used for async compilation)
 
         Configuration:
             type: object
@@ -614,6 +1099,12 @@ components:
                 priority:
                     type: string
                     enum: [standard, high]
+                note:
+                    type: string
+                    description: Informational note about the queued job
+                batchSize:
+                    type: integer
+                    description: Number of items in the batch (only for batch async requests)
 
         QueueJobStatus:
             type: object
@@ -731,6 +1222,386 @@ components:
                         type: string
                 example:
                     type: object
+
+        # Version and Deployment Schemas
+        VersionResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                data:
+                    type: object
+                    description: Latest deployment record from history, or fallback version information if no deployment history exists
+                    additionalProperties: true
+
+        DeploymentHistoryResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                data:
+                    type: array
+                    items:
+                        type: object
+
+        DeploymentStatsResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                data:
+                    type: object
+                    description: Aggregated deployment statistics (structure varies by implementation)
+                    additionalProperties: true
+
+        TurnstileConfigResponse:
+            type: object
+            properties:
+                siteKey:
+                    type: string
+                    nullable: true
+                    description: Cloudflare Turnstile site key
+                enabled:
+                    type: boolean
+                    description: Whether Turnstile verification is enabled
+
+        # Queue History Schemas
+        QueueHistoryResponse:
+            type: object
+            properties:
+                history:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/JobHistoryEntry'
+                depthHistory:
+                    type: array
+                    items:
+                        type: object
+                        properties:
+                            timestamp:
+                                type: string
+                            pending:
+                                type: integer
+
+        CancelJobResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                message:
+                    type: string
+                note:
+                    type: string
+                    description: Note that job may still process if already started
+
+        # AST Parse Schemas
+        ASTParseRequest:
+            type: object
+            properties:
+                rules:
+                    type: array
+                    items:
+                        type: string
+                    description: Array of filter rule strings to parse
+                text:
+                    type: string
+                    description: Raw text containing filter rules (newline-separated)
+            description: Either 'rules' or 'text' must be provided
+
+        ASTParseResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                parsedRules:
+                    type: array
+                    items:
+                        type: object
+                        additionalProperties: true
+                    description: Array of parsed rule AST objects
+                summary:
+                    type: object
+                    description: Summary statistics about the parsed rules (e.g., total rules, rule types, parse errors)
+                    additionalProperties: true
+
+        # Admin Schemas
+        AdminStorageStatsResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                stats:
+                    $ref: '#/components/schemas/StorageStats'
+                timestamp:
+                    type: string
+                    format: date-time
+
+        StorageStats:
+            type: object
+            properties:
+                storage_entries:
+                    type: integer
+                filter_cache:
+                    type: integer
+                compilation_metadata:
+                    type: integer
+                expired_storage:
+                    type: integer
+                expired_cache:
+                    type: integer
+
+        AdminOperationResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                deleted:
+                    type: integer
+                    description: Number of entries deleted (for clear operations)
+                message:
+                    type: string
+
+        AdminExportResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                exportedAt:
+                    type: string
+                    format: date-time
+                storage_entries:
+                    type: array
+                    items:
+                        type: object
+                filter_cache:
+                    type: array
+                    items:
+                        type: object
+                compilation_metadata:
+                    type: array
+                    items:
+                        type: object
+
+        AdminTablesResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                tables:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/TableInfo'
+
+        TableInfo:
+            type: object
+            properties:
+                name:
+                    type: string
+                type:
+                    type: string
+                    enum: [table, index]
+
+        AdminQueryRequest:
+            type: object
+            required:
+                - sql
+            properties:
+                sql:
+                    type: string
+                    description: SELECT-only SQL query to execute
+
+        AdminQueryResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                rows:
+                    type: array
+                    items:
+                        type: object
+                        additionalProperties: true
+                rowCount:
+                    type: integer
+                meta:
+                    type: object
+                    description: Query metadata (e.g., column names, types, execution time)
+                    additionalProperties: true
+
+        # Workflow Schemas
+        WorkflowStartResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                message:
+                    type: string
+                workflowId:
+                    type: string
+                workflowType:
+                    type: string
+                    enum: [compilation, batch-compilation, cache-warming, health-monitoring]
+                batchSize:
+                    type: integer
+                    description: Number of items in the batch (batch workflows only)
+                configurationsCount:
+                    description: Number of configurations to warm, or 'all' for all default configurations (cache-warming only)
+                    oneOf:
+                        - type: integer
+                        - type: string
+                          enum: [all]
+                sourcesCount:
+                    description: Number of sources to check, or 'all' for all default sources (health-monitoring only)
+                    oneOf:
+                        - type: integer
+                        - type: string
+                          enum: [all]
+
+        CacheWarmRequest:
+            type: object
+            properties:
+                configurations:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/Configuration'
+                    description: Configurations to warm (uses defaults if empty)
+
+        HealthCheckRequest:
+            type: object
+            properties:
+                sources:
+                    type: array
+                    items:
+                        type: object
+                        required:
+                            - name
+                            - url
+                        properties:
+                            name:
+                                type: string
+                            url:
+                                type: string
+                                format: uri
+                            expectedMinRules:
+                                type: integer
+                    description: Sources to health-check (uses defaults if empty)
+                alertOnFailure:
+                    type: boolean
+                    default: true
+
+        WorkflowStatusResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                workflowId:
+                    type: string
+                workflowType:
+                    type: string
+                status:
+                    type: string
+                    enum: [queued, running, completed, failed, paused, terminated]
+                output:
+                    type: object
+                    nullable: true
+                error:
+                    type: string
+                    nullable: true
+
+        WorkflowMetricsResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                timestamp:
+                    type: string
+                    format: date-time
+                workflows:
+                    type: object
+                    description: Metrics grouped by workflow type
+                    properties:
+                        compilation:
+                            type: object
+                            description: Compilation workflow metrics (e.g., count, success rate, avg duration)
+                            additionalProperties: true
+                        batchCompilation:
+                            type: object
+                            description: Batch compilation workflow metrics
+                            additionalProperties: true
+                        cacheWarming:
+                            type: object
+                            description: Cache warming workflow metrics
+                            additionalProperties: true
+                        healthMonitoring:
+                            type: object
+                            description: Health monitoring workflow metrics
+                            additionalProperties: true
+
+        WorkflowEventsResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                workflowId:
+                    type: string
+                workflowType:
+                    type: string
+                startedAt:
+                    type: string
+                    format: date-time
+                completedAt:
+                    type: string
+                    format: date-time
+                    nullable: true
+                progress:
+                    type: number
+                    minimum: 0
+                    maximum: 100
+                isComplete:
+                    type: boolean
+                events:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/WorkflowEvent'
+
+        WorkflowEvent:
+            type: object
+            properties:
+                type:
+                    type: string
+                workflowId:
+                    type: string
+                workflowType:
+                    type: string
+                timestamp:
+                    type: string
+                    format: date-time
+                step:
+                    type: string
+                progress:
+                    type: number
+                    minimum: 0
+                    maximum: 100
+                message:
+                    type: string
+                data:
+                    type: object
+                    description: Step-specific data (structure varies by workflow type and step)
+                    additionalProperties: true
+
+        # Health Schemas
+        HealthLatestResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                message:
+                    type: string
+                    description: Present when no health data is available
+                data:
+                    type: object
+                    nullable: true
+                    description: Latest health monitoring results (includes source status, timestamps, error details, rule counts)
+                    additionalProperties: true
 
         # WebSocket Message Schemas
         WsCompileRequest:
@@ -933,12 +1804,43 @@ components:
                             error:
                                 type: string
 
+        UnauthorizedError:
+            description: Unauthorized - missing or invalid admin key
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
+
+        ServiceUnavailable:
+            description: Service unavailable - required binding not configured
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
+
     securitySchemes:
         Turnstile:
             type: apiKey
             in: header
             name: turnstileToken
             description: Cloudflare Turnstile token (if enabled on the server)
+        AdminKey:
+            type: apiKey
+            in: header
+            name: X-Admin-Key
+            description: Admin API key for protected admin endpoints
 
 security:
     - Turnstile: []
