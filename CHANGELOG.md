@@ -28,6 +28,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Improve Deno-native architecture by reducing npm dependencies where JSR alternatives are available
 - Replace `console.*` calls in `EventEmitter`, `AnalyticsService`, and `CloudflareQueueProvider` with `IBasicLogger` dependency injection, defaulting to `silentLogger` for backward compatibility
 
+
+## [0.22.1] - 2026-02-22
+
+### Added### Fixed
+
+- correct Zod v4 type annotations in schemas.ts to fix CI type check failures
+- add explicit type annotations to all Zod schemas to fix JSR slow types error
+- add --allow-slow-types to deno publish to fix JSR deployment error
+
+
 ## [0.22.0] - 2026-02-21
 
 ### Added
