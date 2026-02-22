@@ -1,190 +1,201 @@
 /**
  * Angular PoC - App Component (Root Component)
  *
- * ANGULAR PATTERN: Root component with router outlet
- * This is the entry point component that contains the app shell
+ * Angular 21 + Material Pattern: Root component with Material toolbar and sidenav
+ * Uses Angular Material for the app shell navigation
  */
 
-import { Component, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnInit, signal, inject } from '@angular/core';
 import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { MatToolbarModule } from '@angular/material/toolbar';
+import { MatSidenavModule } from '@angular/material/sidenav';
+import { MatListModule } from '@angular/material/list';
+import { MatIconModule } from '@angular/material/icon';
+import { MatButtonModule } from '@angular/material/button';
+import { MatTooltipModule } from '@angular/material/tooltip';
+import { DOCUMENT } from '@angular/common';
+
+/**
+ * Navigation item interface
+ */
+interface NavItem {
+    readonly path: string;
+    readonly label: string;
+    readonly icon: string;
+}
 
 /**
  * AppComponent
- * Pattern: Standalone component that serves as the app shell
- * Contains navigation and router outlet for nested routes
+ * Pattern: Standalone component with Angular Material toolbar and sidenav
+ * Uses inject() for functional dependency injection (Angular 21 pattern)
  */
 @Component({
     selector: 'app-root',
     standalone: true,
     imports: [
-        CommonModule,
         RouterOutlet,
         RouterLink,
         RouterLinkActive,
+        MatToolbarModule,
+        MatSidenavModule,
+        MatListModule,
+        MatIconModule,
+        MatButtonModule,
+        MatTooltipModule,
     ],
     template: `
-    <div class="app-container">
-      <!-- Navigation -->
-      <nav class="nav">
-        <ul class="nav-links">
-          <li>
-            <a 
-              routerLink="/" 
-              routerLinkActive="active"
-              [routerLinkActiveOptions]="{exact: true}"
-              class="nav-link"
+    <mat-sidenav-container class="app-container">
+      <!-- Sidenav for navigation -->
+      <mat-sidenav
+        #sidenav
+        mode="side"
+        [opened]="sidenavOpen()"
+        class="app-sidenav"
+      >
+        <mat-toolbar color="primary" class="sidenav-header">
+          <span>Adblock Compiler</span>
+        </mat-toolbar>
+        <mat-nav-list>
+          @for (item of navItems; track item.path) {
+            <a
+              mat-list-item
+              [routerLink]="item.path"
+              routerLinkActive="active-nav-item"
+              [routerLinkActiveOptions]="item.path === '/' ? { exact: true } : {}"
             >
-              🏠 Home
+              <mat-icon matListItemIcon>{{ item.icon }}</mat-icon>
+              <span matListItemTitle>{{ item.label }}</span>
             </a>
-          </li>
-          <li>
-            <a 
-              routerLink="/compiler" 
-              routerLinkActive="active"
-              class="nav-link"
-            >
-              ⚙️ Compiler
-            </a>
-          </li>
-          <li>
-            <a 
-              routerLink="/signals" 
-              routerLinkActive="active"
-              class="nav-link"
-            >
-              ⚡ Signals
-            </a>
-          </li>
-          <li>
-            <a 
-              routerLink="/benchmark" 
-              routerLinkActive="active"
-              class="nav-link"
-            >
-              📊 Benchmark
-            </a>
-          </li>
-        </ul>
-        
-        <!-- Theme Toggle Button -->
-        <button class="theme-toggle" (click)="toggleTheme()">
-          {{ theme === 'light' ? '🌙 Dark Mode' : '☀️ Light Mode' }}
-        </button>
-      </nav>
-      
-      <!-- Main Content Area -->
-      <!-- Angular Pattern: router-outlet renders matched route component -->
-      <main class="main-content">
-        <router-outlet />
-      </main>
-    </div>
+          }
+        </mat-nav-list>
+      </mat-sidenav>
+
+      <!-- Main content -->
+      <mat-sidenav-content>
+        <!-- Top toolbar -->
+        <mat-toolbar color="primary" class="app-toolbar">
+          <button
+            mat-icon-button
+            (click)="toggleSidenav()"
+            matTooltip="Toggle navigation"
+            aria-label="Toggle navigation"
+          >
+            <mat-icon>menu</mat-icon>
+          </button>
+          <span class="toolbar-title">Adblock Compiler</span>
+          <span class="toolbar-spacer"></span>
+          <button
+            mat-icon-button
+            (click)="toggleTheme()"
+            [matTooltip]="isDarkTheme() ? 'Switch to light mode' : 'Switch to dark mode'"
+            aria-label="Toggle theme"
+          >
+            <mat-icon>{{ isDarkTheme() ? 'light_mode' : 'dark_mode' }}</mat-icon>
+          </button>
+        </mat-toolbar>
+
+        <!-- Page content with router outlet -->
+        <main class="app-main">
+          <router-outlet />
+        </main>
+      </mat-sidenav-content>
+    </mat-sidenav-container>
   `,
     styles: [`
-    /* App-level styles */
-    
     .app-container {
+      height: 100vh;
+    }
+
+    .app-sidenav {
+      width: 240px;
+    }
+
+    .sidenav-header {
+      position: sticky;
+      top: 0;
+      z-index: 1;
+    }
+
+    .app-toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .toolbar-title {
+      margin-left: 8px;
+      font-size: 1.1rem;
+      font-weight: 500;
+    }
+
+    .toolbar-spacer {
+      flex: 1 1 auto;
+    }
+
+    .app-main {
+      padding: 24px;
       max-width: 1200px;
       margin: 0 auto;
-      padding: 20px;
     }
-    
-    .nav {
-      background: var(--container-bg);
-      border-radius: 12px;
-      padding: 20px;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+
+    .active-nav-item {
+      background: rgba(var(--mat-sys-primary), 0.12);
     }
-    
-    .nav-links {
-      display: flex;
-      gap: 20px;
-      list-style: none;
-      margin: 0;
-      padding: 0;
-    }
-    
-    .nav-link {
-      color: var(--text-muted);
-      text-decoration: none;
-      padding: 8px 16px;
-      border-radius: 6px;
-      transition: all 0.3s ease;
-      font-weight: 500;
-      display: block;
-    }
-    
-    .nav-link:hover {
-      background: var(--button-hover);
-      color: var(--primary);
-    }
-    
-    /* Angular Pattern: routerLinkActive adds 'active' class */
-    .nav-link.active {
-      background: var(--primary);
-      color: white;
-    }
-    
-    .theme-toggle {
-      background: var(--section-bg);
-      border: 1px solid var(--border-color);
-      color: var(--text-color);
-      padding: 8px 16px;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 14px;
-      transition: all 0.3s ease;
-    }
-    
-    .theme-toggle:hover {
-      background: var(--button-hover);
-      transform: translateY(-2px);
-    }
-    
-    .main-content {
-      background: var(--container-bg);
-      border-radius: 12px;
-      padding: 30px;
-      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-      min-height: 400px;
+
+    :host ::ng-deep .mat-mdc-list-item.active-nav-item {
+      background-color: var(--mat-sys-primary-container);
+      color: var(--mat-sys-on-primary-container);
     }
   `],
 })
 export class AppComponent implements OnInit {
-    theme: 'light' | 'dark' = 'light';
+    /** Navigation items */
+    readonly navItems: NavItem[] = [
+        { path: '/', label: 'Home', icon: 'home' },
+        { path: '/compiler', label: 'Compiler', icon: 'settings' },
+        { path: '/signals', label: 'Signals', icon: 'bolt' },
+        { path: '/benchmark', label: 'Benchmark', icon: 'bar_chart' },
+    ];
 
-    /**
-     * Lifecycle Hook: OnInit
-     * Initialize theme from localStorage
-     */
+    /** Signal for sidenav open state */
+    readonly sidenavOpen = signal(true);
+
+    /** Signal for dark theme state */
+    readonly isDarkTheme = signal(false);
+
+    /** Inject DOCUMENT for SSR-safe DOM access */
+    private readonly document = inject(DOCUMENT);
+
     ngOnInit(): void {
-        // Load theme from localStorage
-        const savedTheme = localStorage.getItem('theme') as 'light' | 'dark' | null;
-        if (savedTheme) {
-            this.theme = savedTheme;
-            this.applyTheme();
+        // Only access localStorage in browser context
+        if (typeof localStorage !== 'undefined') {
+            const savedTheme = localStorage.getItem('theme');
+            if (savedTheme === 'dark') {
+                this.isDarkTheme.set(true);
+                this.applyTheme(true);
+            }
         }
     }
 
-    /**
-     * Toggle Theme Handler
-     * Pattern: Event handler method that updates state and DOM
-     */
-    toggleTheme(): void {
-        this.theme = this.theme === 'light' ? 'dark' : 'light';
-        this.applyTheme();
-        localStorage.setItem('theme', this.theme);
+    toggleSidenav(): void {
+        this.sidenavOpen.update(open => !open);
     }
 
-    /**
-     * Apply Theme to DOM
-     * Pattern: Direct DOM manipulation for theme attribute
-     */
-    private applyTheme(): void {
-        document.documentElement.setAttribute('data-theme', this.theme);
+    toggleTheme(): void {
+        const newDark = !this.isDarkTheme();
+        this.isDarkTheme.set(newDark);
+        this.applyTheme(newDark);
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('theme', newDark ? 'dark' : 'light');
+        }
+    }
+
+    private applyTheme(dark: boolean): void {
+        const body = this.document.body;
+        if (dark) {
+            body.classList.add('dark-theme');
+        } else {
+            body.classList.remove('dark-theme');
+        }
     }
 }

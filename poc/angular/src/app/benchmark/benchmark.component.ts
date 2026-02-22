@@ -1,358 +1,272 @@
 /**
  * Angular PoC - Benchmark Component
  *
- * ANGULAR PATTERN: Standalone component with Signals
- * Measures compilation API performance across multiple runs using
- * performance.now() for accurate wall-clock timing.
- *
- * PATTERNS DEMONSTRATED:
- * 1. signal() - Writable reactive state
- * 2. computed() - Derived reactive values (summary statistics)
- * 3. inject() - Functional dependency injection
- * 4. New @if/@for template syntax
- * 5. async/await with sequential API calls
+ * Angular 21 + Material Pattern: Performance benchmarking with Material table
+ * Uses inject() for functional dependency injection
  */
 
 import { Component, computed, inject, signal } from '@angular/core';
-import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { DecimalPipe } from '@angular/common';
 import { CompilerService } from '../services/compiler.service';
+import { MatCardModule } from '@angular/material/card';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatSelectModule } from '@angular/material/select';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatProgressBarModule } from '@angular/material/progress-bar';
+import { MatTableModule } from '@angular/material/table';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDividerModule } from '@angular/material/divider';
+import { MatBadgeModule } from '@angular/material/badge';
 
 /**
  * Interface for an individual benchmark run result
  */
 interface BenchmarkRun {
-    run: number;
-    durationMs: number;
-    ruleCount: number;
-    status: 'success' | 'error';
+    readonly run: number;
+    readonly durationMs: number;
+    readonly ruleCount: number;
+    readonly status: 'success' | 'error';
 }
 
 /**
  * BenchmarkComponent
- * Runs N sequential compilations and measures each one with performance.now()
+ * Uses Material table and progress bar for benchmark visualization
  */
 @Component({
     selector: 'app-benchmark',
     standalone: true,
-    imports: [CommonModule, FormsModule],
+    imports: [
+        FormsModule,
+        DecimalPipe,
+        MatCardModule,
+        MatButtonModule,
+        MatIconModule,
+        MatSelectModule,
+        MatFormFieldModule,
+        MatCheckboxModule,
+        MatProgressBarModule,
+        MatTableModule,
+        MatChipsModule,
+        MatDividerModule,
+        MatBadgeModule,
+    ],
     template: `
-    <div>
-        <h1>📊 Benchmark</h1>
-        <p class="mb-2" style="color: var(--text-muted)">
-            Measure compilation API performance across multiple runs using <code>performance.now()</code>
+    <div class="page-content">
+        <h1 class="mat-headline-4">📊 Benchmark</h1>
+        <p class="subtitle mat-body-1">
+            Measure compilation API performance using <code>performance.now()</code>
         </p>
 
         <!-- Configuration -->
-        <div class="form-section">
-            <h3>Configuration</h3>
-            <div class="benchmark-config">
-                <div class="benchmark-config-group">
-                    <label for="run-count">Number of runs</label>
-                    <select
-                        id="run-count"
-                        class="select"
-                        [ngModel]="runCount()"
-                        (ngModelChange)="runCount.set($event)"
-                        [disabled]="running()"
-                    >
-                        <option [value]="1">1 run</option>
-                        <option [value]="5">5 runs</option>
-                        <option [value]="10">10 runs</option>
-                        <option [value]="20">20 runs</option>
-                    </select>
+        <mat-card appearance="outlined" class="mb-2">
+            <mat-card-header>
+                <mat-icon mat-card-avatar>tune</mat-icon>
+                <mat-card-title>Configuration</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+                <div class="config-row">
+                    <mat-form-field appearance="outline">
+                        <mat-label>Number of runs</mat-label>
+                        <mat-select
+                            [ngModel]="runCount()"
+                            (ngModelChange)="runCount.set($event)"
+                            [disabled]="running()"
+                        >
+                            <mat-option [value]="1">1 run</mat-option>
+                            <mat-option [value]="5">5 runs</mat-option>
+                            <mat-option [value]="10">10 runs</mat-option>
+                            <mat-option [value]="20">20 runs</mat-option>
+                        </mat-select>
+                    </mat-form-field>
                 </div>
-                <div class="benchmark-config-group">
-                    <label>Transformations</label>
-                    <div class="transformations-grid">
-                        @for (name of transformationNames; track name) {
-                            <label class="checkbox-label">
-                                <input
-                                    type="checkbox"
-                                    [checked]="selectedTransformations().includes(name)"
-                                    (change)="toggleTransformation(name)"
-                                    [disabled]="running()"
-                                />
-                                <span>{{ name }}</span>
-                            </label>
-                        }
-                    </div>
+
+                <div class="transformations-grid mt-2">
+                    @for (name of transformationNames; track name) {
+                        <mat-checkbox
+                            [checked]="selectedTransformations().includes(name)"
+                            (change)="toggleTransformation(name)"
+                            [disabled]="running()"
+                        >
+                            {{ name }}
+                        </mat-checkbox>
+                    }
                 </div>
-            </div>
+            </mat-card-content>
+            <mat-card-actions>
+                <button
+                    mat-raised-button
+                    color="primary"
+                    (click)="handleRunBenchmark()"
+                    [disabled]="running()"
+                >
+                    @if (running()) {
+                        <mat-icon>hourglass_empty</mat-icon>
+                        Running... ({{ runs().length }}/{{ runCount() }})
+                    } @else {
+                        <mat-icon>play_arrow</mat-icon>
+                        Run Benchmark
+                    }
+                </button>
+            </mat-card-actions>
+        </mat-card>
 
-            <button
-                class="btn btn-primary"
-                (click)="handleRunBenchmark()"
-                [disabled]="running()"
-            >
-                {{ running() ? 'Running… (' + runs().length + '/' + runCount() + ')' : '▶ Run Benchmark' }}
-            </button>
-        </div>
-
-        <!-- Progress bar -->
+        <!-- Progress Bar -->
         @if (running()) {
-            <div class="progress-bar">
-                <div class="progress-fill" [style.width]="progressPercent() + '%'"></div>
-            </div>
+            <mat-progress-bar
+                mode="determinate"
+                [value]="progressPercent()"
+                class="mb-2"
+            ></mat-progress-bar>
         }
 
-        <!-- Results table -->
+        <!-- Results Table -->
         @if (runs().length > 0) {
-            <div class="form-section">
-                <h3>Results</h3>
-                <table class="benchmark-table">
-                    <thead>
-                        <tr>
-                            <th>Run #</th>
-                            <th>Duration (ms)</th>
-                            <th>Rules/sec</th>
-                            <th>Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        @for (r of runs(); track r.run) {
-                            <tr>
-                                <td>{{ r.run }}</td>
-                                <td>{{ r.durationMs }} ms</td>
-                                <td>{{ r.durationMs > 0 ? ((r.ruleCount / r.durationMs) * 1000 | number:'1.0-0') : '—' }}</td>
-                                <td [class]="r.status === 'success' ? 'status-success' : 'status-error'">
-                                    {{ r.status === 'success' ? '✅ success' : '❌ error' }}
-                                </td>
-                            </tr>
-                        }
-                    </tbody>
-                </table>
+            <mat-card appearance="outlined" class="mb-2">
+                <mat-card-header>
+                    <mat-icon mat-card-avatar>table_chart</mat-icon>
+                    <mat-card-title>Results</mat-card-title>
+                    <mat-card-subtitle>{{ runs().length }} runs completed</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+                    <table mat-table [dataSource]="runs()" class="benchmark-table w-full">
+                        <!-- Run column -->
+                        <ng-container matColumnDef="run">
+                            <th mat-header-cell *matHeaderCellDef>Run #</th>
+                            <td mat-cell *matCellDef="let row">{{ row.run }}</td>
+                        </ng-container>
 
-                <!-- Summary statistics -->
-                @if (!running()) {
-                    <div class="summary-grid">
-                        <div class="summary-card">
-                            <div class="summary-label">Min</div>
-                            <div class="summary-value">{{ summary().min }} ms</div>
+                        <!-- Duration column -->
+                        <ng-container matColumnDef="duration">
+                            <th mat-header-cell *matHeaderCellDef>Duration (ms)</th>
+                            <td mat-cell *matCellDef="let row">{{ row.durationMs }} ms</td>
+                        </ng-container>
+
+                        <!-- Rules/sec column -->
+                        <ng-container matColumnDef="rulesPerSec">
+                            <th mat-header-cell *matHeaderCellDef>Rules/sec</th>
+                            <td mat-cell *matCellDef="let row">
+                                {{ row.durationMs > 0 ? ((row.ruleCount / row.durationMs) * 1000 | number:'1.0-0') : '—' }}
+                            </td>
+                        </ng-container>
+
+                        <!-- Status column -->
+                        <ng-container matColumnDef="status">
+                            <th mat-header-cell *matHeaderCellDef>Status</th>
+                            <td mat-cell *matCellDef="let row">
+                                <mat-icon [color]="row.status === 'success' ? 'primary' : 'warn'">
+                                    {{ row.status === 'success' ? 'check_circle' : 'error' }}
+                                </mat-icon>
+                            </td>
+                        </ng-container>
+
+                        <tr mat-header-row *matHeaderRowDef="displayedColumns"></tr>
+                        <tr mat-row *matRowDef="let row; columns: displayedColumns;"></tr>
+                    </table>
+
+                    <!-- Summary Statistics -->
+                    @if (!running()) {
+                        <mat-divider class="mt-2 mb-2"></mat-divider>
+                        <div class="summary-grid">
+                            <div class="summary-item">
+                                <div class="summary-value">{{ summary().min }} ms</div>
+                                <div class="summary-label mat-caption">Min</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-value">{{ summary().max }} ms</div>
+                                <div class="summary-label mat-caption">Max</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-value">{{ summary().avg }} ms</div>
+                                <div class="summary-label mat-caption">Avg</div>
+                            </div>
+                            <div class="summary-item">
+                                <div class="summary-value">{{ runs().length }}</div>
+                                <div class="summary-label mat-caption">Runs</div>
+                            </div>
                         </div>
-                        <div class="summary-card">
-                            <div class="summary-label">Max</div>
-                            <div class="summary-value">{{ summary().max }} ms</div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="summary-label">Avg</div>
-                            <div class="summary-value">{{ summary().avg }} ms</div>
-                        </div>
-                        <div class="summary-card">
-                            <div class="summary-label">Runs</div>
-                            <div class="summary-value">{{ runs().length }}</div>
-                        </div>
-                    </div>
-                }
-            </div>
+                    }
+                </mat-card-content>
+            </mat-card>
         }
 
-        <div class="alert alert-info mt-2">
-            <strong>⚡ Angular Signals Pattern:</strong> This component uses
-            <code>signal()</code> for mutable reactive state and <code>computed()</code>
-            for derived summary statistics that update automatically when the
-            <code>runs</code> signal changes. Each run's wall-clock duration is measured
-            with <code>performance.now()</code> — the highest-resolution timer available
-            in browsers.
-        </div>
+        <!-- Info Card -->
+        <mat-card appearance="outlined" class="info-card">
+            <mat-card-header>
+                <mat-icon mat-card-avatar>info</mat-icon>
+                <mat-card-title>Angular 21 Signals Pattern</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+                <p class="mat-body-1">
+                    This component uses <code>signal()</code> for mutable reactive state and
+                    <code>computed()</code> for derived summary statistics that update automatically.
+                    Each run's wall-clock duration is measured with <code>performance.now()</code>.
+                </p>
+            </mat-card-content>
+        </mat-card>
     </div>
     `,
     styles: [`
-    .form-section {
-        margin-bottom: 30px;
+    .page-content {
+        padding: 0;
     }
 
-    .form-section h3 {
-        margin-bottom: 15px;
-        color: var(--text-color);
+    .subtitle {
+        color: var(--mat-sys-on-surface-variant, #666);
+        margin-bottom: 24px;
     }
 
-    .benchmark-config {
+    .config-row {
         display: flex;
-        flex-wrap: wrap;
-        gap: 20px;
-        margin-bottom: 20px;
-    }
-
-    .benchmark-config-group {
-        flex: 1;
-        min-width: 200px;
-    }
-
-    .benchmark-config-group label:first-child {
-        display: block;
-        font-weight: 600;
-        margin-bottom: 8px;
-        color: var(--text-color);
-    }
-
-    .select {
-        width: 100%;
-        padding: 10px;
-        border: 1px solid var(--border-color);
-        border-radius: 6px;
-        background: var(--input-bg);
-        color: var(--text-color);
-        font-size: 14px;
-    }
-
-    .progress-bar {
-        height: 8px;
-        background: var(--border-color);
-        border-radius: 4px;
-        margin: 16px 0;
-        overflow: hidden;
-    }
-
-    .progress-fill {
-        height: 100%;
-        background: var(--primary);
-        border-radius: 4px;
-        transition: width 0.3s ease;
-    }
-
-    .benchmark-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 16px;
-        font-size: 14px;
-    }
-
-    .benchmark-table th,
-    .benchmark-table td {
-        padding: 10px 14px;
-        text-align: left;
-        border-bottom: 1px solid var(--border-color);
-    }
-
-    .benchmark-table th {
-        background: var(--section-bg);
-        font-weight: 600;
-        color: var(--text-color);
-    }
-
-    .benchmark-table tr:hover td {
-        background: var(--button-hover);
-    }
-
-    .status-success {
-        color: var(--success);
-        font-weight: 600;
-    }
-
-    .status-error {
-        color: var(--danger);
-        font-weight: 600;
-    }
-
-    .summary-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
         gap: 16px;
-        margin-top: 20px;
-    }
-
-    .summary-card {
-        background: var(--section-bg);
-        border: 1px solid var(--border-color);
-        border-radius: 8px;
-        padding: 16px;
-        text-align: center;
-    }
-
-    .summary-card .summary-label {
-        font-size: 12px;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-        margin-bottom: 8px;
-    }
-
-    .summary-card .summary-value {
-        font-size: 22px;
-        font-weight: 700;
-        color: var(--primary);
+        align-items: flex-start;
+        flex-wrap: wrap;
     }
 
     .transformations-grid {
         display: grid;
         grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
         gap: 12px;
-        margin-top: 8px;
     }
 
-    .checkbox-label {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-        padding: 10px;
-        background: var(--section-bg);
-        border-radius: 6px;
-        cursor: pointer;
-        transition: background 0.3s ease;
+    .benchmark-table {
+        width: 100%;
     }
 
-    .checkbox-label:hover {
-        background: var(--button-hover);
+    .summary-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        gap: 16px;
     }
 
-    .checkbox-label input[type="checkbox"] {
-        width: 18px;
-        height: 18px;
-        cursor: pointer;
-    }
-
-    .btn {
-        padding: 12px 24px;
-        border: none;
-        border-radius: 6px;
-        font-size: 14px;
-        font-weight: 600;
-        cursor: pointer;
-        transition: all 0.3s ease;
-    }
-
-    .btn-primary {
-        background: var(--primary);
-        color: white;
-    }
-
-    .btn-primary:hover:not(:disabled) {
-        background: var(--primary-dark);
-        transform: translateY(-2px);
-        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-
-    .btn:disabled {
-        opacity: 0.5;
-        cursor: not-allowed;
-    }
-
-    .alert {
+    .summary-item {
+        text-align: center;
         padding: 16px;
-        border-radius: 6px;
-        margin-bottom: 20px;
+        background: var(--mat-sys-surface-variant, #f5f5f5);
+        border-radius: 8px;
     }
 
-    .alert-info {
-        background: #dbeafe;
-        color: #1e40af;
-        border: 1px solid #bfdbfe;
+    .summary-value {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--mat-sys-primary, #1976d2);
     }
 
-    .alert-info code {
-        background: rgba(0, 0, 0, 0.1);
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-family: 'Courier New', monospace;
+    .summary-label {
+        color: var(--mat-sys-on-surface-variant, #666);
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        margin-top: 4px;
     }
 
-    .mb-2 { margin-bottom: 20px; }
-    .mt-2 { margin-top: 20px; }
-    `],
+    .info-card {
+        background-color: var(--mat-sys-surface-variant, #f5f5f5);
+    }
+  `],
 })
 export class BenchmarkComponent {
-    /** Available transformation options shown as checkboxes */
     readonly transformationNames: string[] = [
         'RemoveComments',
         'Deduplicate',
@@ -360,26 +274,18 @@ export class BenchmarkComponent {
         'RemoveEmptyLines',
     ];
 
-    /** Writable signal: number of benchmark runs to execute */
+    readonly displayedColumns: string[] = ['run', 'duration', 'rulesPerSec', 'status'];
     readonly runCount = signal<number>(5);
-
-    /** Writable signal: whether a benchmark is currently running */
     readonly running = signal<boolean>(false);
-
-    /** Writable signal: accumulated results for each run */
     readonly runs = signal<BenchmarkRun[]>([]);
-
-    /** Writable signal: set of currently selected transformation names */
     readonly selectedTransformations = signal<string[]>(['RemoveComments', 'Deduplicate']);
 
-    /** Computed signal: progress percentage (0–100) */
     readonly progressPercent = computed(() =>
         this.runCount() > 0
             ? Math.round((this.runs().length / this.runCount()) * 100)
             : 0,
     );
 
-    /** Computed signal: summary statistics derived from runs */
     readonly summary = computed(() => {
         const r = this.runs();
         if (r.length === 0) return { min: 0, max: 0, avg: 0 };
@@ -391,22 +297,14 @@ export class BenchmarkComponent {
         };
     });
 
-    /** Inject CompilerService using the modern functional injection pattern */
     private readonly compilerService = inject(CompilerService);
 
-    /**
-     * Toggle a transformation in/out of the selected set
-     */
     toggleTransformation(name: string): void {
         this.selectedTransformations.update((prev) =>
             prev.includes(name) ? prev.filter((t) => t !== name) : [...prev, name],
         );
     }
 
-    /**
-     * Run the benchmark: execute runCount sequential compilations and
-     * measure wall-clock time for each with performance.now()
-     */
     async handleRunBenchmark(): Promise<void> {
         this.running.set(true);
         this.runs.set([]);
@@ -441,7 +339,8 @@ export class BenchmarkComponent {
                 ruleCount = data.ruleCount ?? 0;
             } catch {
                 durationMs = Math.round(performance.now() - start);
-                ruleCount = 1234; // Mock fallback for PoC demo
+                ruleCount = 1234;
+                status = 'error';
             }
 
             this.runs.update((prev) => [...prev, { run: i, durationMs, ruleCount, status }]);
