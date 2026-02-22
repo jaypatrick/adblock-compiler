@@ -29,6 +29,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replace `console.*` calls in `EventEmitter`, `AnalyticsService`, and `CloudflareQueueProvider` with `IBasicLogger` dependency injection, defaulting to `silentLogger` for backward compatibility
 
 
+
+## [0.24.0] - 2026-02-22
+
+### Added- generate Cloudflare Web Assets schema from OpenAPI spec
+
+
 ## [0.23.2] - 2026-02-22
 
 ### Added### Fixed
