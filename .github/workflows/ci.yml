@@ -179,11 +179,50 @@ jobs:
               with:
                   sarif_file: trivy-results.sarif
 
+    validate-cloudflare-schema:
+        name: Validate Cloudflare Schema
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@v4
+
+            - name: Setup Deno
+              uses: denoland/setup-deno@v2
+              with:
+                  deno-version: ${{ env.DENO_VERSION }}
+
+            - name: Cache Deno dependencies
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cache/deno
+                      ~/.deno
+                  key: deno-${{ runner.os }}-${{ hashFiles('deno.json', 'deno.lock') }}
+                  restore-keys: |
+                      deno-${{ runner.os }}-
+
+            - name: Generate Cloudflare schema
+              run: deno task schema:cloudflare
+
+            - name: Check schema is up to date
+              run: |
+                  if ! git diff --quiet docs/api/cloudflare-schema.yaml; then
+                      echo "❌ docs/api/cloudflare-schema.yaml is out of date!"
+                      echo "The generated schema does not match the committed file."
+                      echo "Run 'deno task schema:cloudflare' locally and commit the updated docs/api/cloudflare-schema.yaml."
+                      echo ""
+                      echo "Diff:"
+                      git diff docs/api/cloudflare-schema.yaml
+                      exit 1
+                  fi
+                  echo "✅ Cloudflare schema is up to date"
+
     # Only publish on main pushes, and gate on all checks
     publish:
         name: Publish to JSR
         runs-on: ubuntu-latest
-        needs: [lint, format, typecheck, test, security]
+        needs: [lint, format, typecheck, test, security, validate-cloudflare-schema]
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         permissions:
             contents: read
@@ -230,7 +269,7 @@ jobs:
     deploy:
         name: Deploy to Cloudflare
         runs-on: ubuntu-latest
-        needs: [lint, format, typecheck, test, security]
+        needs: [lint, format, typecheck, test, security, validate-cloudflare-schema]
         if: |
             github.event_name == 'push' &&
             github.ref == 'refs/heads/main' &&
