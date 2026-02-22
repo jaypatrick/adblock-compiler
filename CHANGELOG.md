@@ -31,7 +31,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.22.1] - 2026-02-22
 
-### Added### Fixed
+### Added
+
+### Fixed
 
 - correct Zod v4 type annotations in schemas.ts to fix CI type check failures
 - add explicit type annotations to all Zod schemas to fix JSR slow types error
