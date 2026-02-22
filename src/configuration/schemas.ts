@@ -28,7 +28,7 @@ type BatchRequestItem = {
 };
 
 type BatchRequestOutput = {
-    requests: [BatchRequestItem, ...BatchRequestItem[]];
+    requests: BatchRequestItem[];
     priority?: Priority;
 };
 
@@ -108,7 +108,7 @@ const FilterableSchema: z.ZodObject<{
  * Schema for transformable properties
  */
 const TransformableSchema: z.ZodObject<{
-    transformations: z.ZodOptional<z.ZodArray<z.ZodNativeEnum<typeof TransformationType>>>;
+    transformations: z.ZodOptional<z.ZodArray<z.ZodEnum<typeof TransformationType>>>;
 }> = z.object({
     transformations: z.array(z.nativeEnum(TransformationType)).optional(),
 });
@@ -116,7 +116,7 @@ const TransformableSchema: z.ZodObject<{
 /**
  * Schema for source type validation
  */
-const SourceTypeSchema: z.ZodNativeEnum<typeof SourceType> = z.nativeEnum(SourceType);
+const SourceTypeSchema: z.ZodEnum<typeof SourceType> = z.nativeEnum(SourceType);
 
 // ============================================================================
 // Public schemas
@@ -240,18 +240,7 @@ export const PlatformCompilerOptionsSchema: z.ZodType<PlatformCompilerOptionsOut
 /**
  * Schema for validation error type enum
  */
-export const ValidationErrorTypeSchema: z.ZodEnum<[
-    'parse_error',
-    'syntax_error',
-    'unsupported_modifier',
-    'invalid_hostname',
-    'ip_not_allowed',
-    'pattern_too_short',
-    'public_suffix_match',
-    'invalid_characters',
-    'cosmetic_not_supported',
-    'modifier_validation_failed',
-]> = z.enum([
+export const ValidationErrorTypeSchema: z.ZodType<ValidationErrorType> = z.enum([
     'parse_error',
     'syntax_error',
     'unsupported_modifier',
@@ -267,7 +256,7 @@ export const ValidationErrorTypeSchema: z.ZodEnum<[
 /**
  * Schema for validation severity enum
  */
-export const ValidationSeveritySchema: z.ZodEnum<['error', 'warning', 'info']> = z.enum([
+export const ValidationSeveritySchema: z.ZodType<ValidationSeverity> = z.enum([
     'error',
     'warning',
     'info',
