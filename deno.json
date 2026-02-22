@@ -124,7 +124,8 @@
             ".pnp.*",
             "*.lock",
             "*.lcov",
-            "*.d.ts"
+            "*.d.ts",
+            "CHANGELOG.md"
         ]
     },
     "test": {
