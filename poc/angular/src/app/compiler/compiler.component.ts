@@ -1,374 +1,272 @@
 /**
  * Angular PoC - Compiler Form Component
  *
- * ANGULAR PATTERN: Reactive Forms with FormBuilder
- * Demonstrates form state management, validation, and API integration
+ * Angular 21 + Material Pattern: Reactive Forms with Material form fields
+ * Demonstrates Material form inputs, buttons, and progress indicators
  */
 
-import { Component, OnDestroy, OnInit } from '@angular/core';
-import { CommonModule } from '@angular/common';
+import { Component, OnDestroy, OnInit, inject } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Subject } from 'rxjs';
 import { takeUntil } from 'rxjs/operators';
 import { CompileResponse, CompilerService } from '../services/compiler.service';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { MatButtonModule } from '@angular/material/button';
+import { MatIconModule } from '@angular/material/icon';
+import { MatCheckboxModule } from '@angular/material/checkbox';
+import { MatCardModule } from '@angular/material/card';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { MatChipsModule } from '@angular/material/chips';
+import { MatDividerModule } from '@angular/material/divider';
+import { JsonPipe } from '@angular/common';
 
 /**
  * CompilerComponent
- * Pattern: Complex form with reactive forms approach
- * Uses FormBuilder for creating form controls and FormArray for dynamic lists
- *
- * ANGULAR ROUTER PATTERNS DEMONSTRATED:
- * - ActivatedRoute: Read query parameters from the current URL
- * - Router service: Programmatic navigation and URL state management
+ * Pattern: Complex form with Angular Material form components
+ * Uses inject() for functional dependency injection (Angular 21 pattern)
  */
 @Component({
     selector: 'app-compiler',
     standalone: true,
-    imports: [CommonModule, ReactiveFormsModule], // Import FormsModule for template-driven forms
+    imports: [
+        ReactiveFormsModule,
+        JsonPipe,
+        MatFormFieldModule,
+        MatInputModule,
+        MatButtonModule,
+        MatIconModule,
+        MatCheckboxModule,
+        MatCardModule,
+        MatProgressSpinnerModule,
+        MatChipsModule,
+        MatDividerModule,
+    ],
     template: `
-    <div>
-        <h1>Compiler</h1>
-        <p class="mb-2" style="color: var(--text-muted)">
-            Configure and compile your filter lists
-        </p>
-        
-        <!-- Angular Pattern: Reactive Forms with [formGroup] -->
+    <div class="page-content">
+        <h1 class="mat-headline-4">Compiler</h1>
+        <p class="subtitle mat-body-1">Configure and compile your filter lists</p>
+
+        <!-- Reactive Form with Material Components -->
         <form [formGroup]="compilerForm" (ngSubmit)="onSubmit()">
-            
+
             <!-- URL Inputs Section -->
-            <div class="form-section">
-                <h3>Filter List URLs</h3>
-                
-                <!-- Angular Pattern: FormArray for dynamic form controls -->
-                <!-- NEW: @for syntax instead of *ngFor -->
-                <div formArrayName="urls" class="url-list">
-                    @for (url of urlsArray.controls; track $index; let i = $index) {
-                        <div class="url-input-row">
-                            <input
-                                type="url"
-                                class="input"
-                                placeholder="https://example.com/filters.txt"
-                                [formControlName]="i"
-                            />
-                            @if (urlsArray.length > 1) {
-                                <button
-                                    type="button"
-                                    class="btn btn-danger"
-                                    (click)="removeUrl(i)"
-                                >
-                                    Remove
-                                </button>
-                            }
-                        </div>
-                    }
-                </div>
-                
-                <button
-                    type="button"
-                    class="btn btn-secondary"
-                    (click)="addUrl()"
-                >
-                    + Add URL
-                </button>
-            </div>
-            
+            <mat-card appearance="outlined" class="mb-2">
+                <mat-card-header>
+                    <mat-card-title>Filter List URLs</mat-card-title>
+                    <mat-card-subtitle>Add one or more filter list URLs to compile</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+                    <div formArrayName="urls" class="url-list">
+                        @for (url of urlsArray.controls; track $index; let i = $index) {
+                            <div class="url-input-row">
+                                <mat-form-field appearance="outline" class="url-field">
+                                    <mat-label>Filter List URL {{ i + 1 }}</mat-label>
+                                    <input
+                                        matInput
+                                        type="url"
+                                        placeholder="https://example.com/filters.txt"
+                                        [formControlName]="i"
+                                    />
+                                    <mat-icon matSuffix>link</mat-icon>
+                                    @if (urlsArray.at(i).hasError('required')) {
+                                        <mat-error>URL is required</mat-error>
+                                    }
+                                    @if (urlsArray.at(i).hasError('pattern')) {
+                                        <mat-error>Please enter a valid URL (http:// or https://)</mat-error>
+                                    }
+                                </mat-form-field>
+                                @if (urlsArray.length > 1) {
+                                    <button
+                                        mat-icon-button
+                                        color="warn"
+                                        type="button"
+                                        (click)="removeUrl(i)"
+                                        aria-label="Remove URL"
+                                    >
+                                        <mat-icon>delete</mat-icon>
+                                    </button>
+                                }
+                            </div>
+                        }
+                    </div>
+                    <button
+                        mat-stroked-button
+                        type="button"
+                        (click)="addUrl()"
+                    >
+                        <mat-icon>add</mat-icon>
+                        Add URL
+                    </button>
+                </mat-card-content>
+            </mat-card>
+
             <!-- Transformations Section -->
-            <div class="form-section">
-                <h3>Transformations</h3>
-                
-                <!-- Angular Pattern: FormGroup for checkbox group -->
-                <!-- NEW: @for syntax instead of *ngFor -->
-                <div formGroupName="transformations" class="transformations-grid">
-                    @for (trans of availableTransformations; track trans) {
-                        <label class="checkbox-label">
-                            <input
-                                type="checkbox"
-                                [formControlName]="trans"
-                            />
-                            <span>{{ trans }}</span>
-                        </label>
-                    }
-                </div>
-            </div>
-            
-            <!-- Submit Button -->
+            <mat-card appearance="outlined" class="mb-2">
+                <mat-card-header>
+                    <mat-card-title>Transformations</mat-card-title>
+                    <mat-card-subtitle>Select which transformations to apply</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+                    <div formGroupName="transformations" class="transformations-grid">
+                        @for (trans of availableTransformations; track trans) {
+                            <mat-checkbox [formControlName]="trans">
+                                {{ trans }}
+                            </mat-checkbox>
+                        }
+                    </div>
+                </mat-card-content>
+            </mat-card>
+
+            <!-- Submit -->
             <button
+                mat-raised-button
+                color="primary"
                 type="submit"
-                class="btn btn-primary"
                 [disabled]="loading || compilerForm.invalid"
             >
-                {{ loading ? 'Compiling...' : '🚀 Compile' }}
+                @if (loading) {
+                    <mat-progress-spinner diameter="20" mode="indeterminate" color="accent"></mat-progress-spinner>
+                    Compiling...
+                } @else {
+                    <mat-icon>play_arrow</mat-icon>
+                    Compile
+                }
             </button>
         </form>
-        
-        <!-- Loading State -->
-        <!-- Angular Pattern: @if directive for conditional rendering (NEW SYNTAX) -->
-        @if (loading) {
-            <div class="loading">
-                <div class="spinner"></div>
-                <p>Compiling filter lists...</p>
-            </div>
-        }
-        
+
         <!-- Error State -->
         @if (error) {
-            <div class="alert alert-error mt-2">
-                <strong>❌ Error:</strong> {{ error }}
-            </div>
+            <mat-card appearance="outlined" class="error-card mt-2">
+                <mat-card-content>
+                    <div class="error-content">
+                        <mat-icon color="warn">error</mat-icon>
+                        <span>{{ error }}</span>
+                    </div>
+                </mat-card-content>
+            </mat-card>
         }
-        
+
         <!-- Results Display -->
         @if (results) {
-            <div class="results-container">
-                <h3>✅ Compilation Results</h3>
-                <div class="results-code">
-                    <pre>{{ results | json }}</pre>
-                </div>
-                
-                <!-- Angular Router Pattern: Programmatic navigation after action -->
-                <div class="post-results-actions">
-                    <p class="bookmark-hint">
-                        💡 <strong>Angular Router:</strong> The URL above now includes a
-                        <code>?url=</code> query parameter so this compilation can be bookmarked
-                        or shared. Angular Router keeps the URL in sync with app state automatically.
-                    </p>
-                    <button class="btn btn-secondary" (click)="goHome()">
-                        ← Back to Dashboard
+            <mat-card appearance="outlined" class="results-card mt-2">
+                <mat-card-header>
+                    <mat-icon mat-card-avatar color="primary">check_circle</mat-icon>
+                    <mat-card-title>Compilation Results</mat-card-title>
+                    <mat-card-subtitle>Compilation completed successfully</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+                    <!-- Stats chips -->
+                    <mat-chip-set class="mb-2">
+                        <mat-chip highlighted color="primary">{{ results.ruleCount }} rules</mat-chip>
+                        <mat-chip>{{ results.sources }} sources</mat-chip>
+                        @if (results.benchmark) {
+                            <mat-chip>{{ results.benchmark.duration }}</mat-chip>
+                        }
+                    </mat-chip-set>
+                    <!-- Raw JSON output -->
+                    <pre class="results-json">{{ results | json }}</pre>
+                </mat-card-content>
+                <mat-card-actions>
+                    <button mat-button (click)="goHome()">
+                        <mat-icon>arrow_back</mat-icon>
+                        Back to Dashboard
                     </button>
-                </div>
-            </div>
+                </mat-card-actions>
+            </mat-card>
         }
-        
-        <div class="alert alert-info mt-2">
-            <strong>ℹ️ Angular Pattern:</strong> This form demonstrates Reactive Forms with 
-            FormBuilder, FormArray for dynamic controls, FormGroup for nested forms, 
-            async service calls with RxJS Observables, and the new <code>&#64;if/&#64;for</code>
-            control flow syntax for better performance and type inference.
-            <br><br>
-            <strong>🗺️ Angular Router:</strong> Try navigating here with
-            <code>?url=https://example.com/filters.txt</code> in the URL bar — the first
-            URL input will be pre-populated automatically via <code>ActivatedRoute.queryParamMap</code>.
-        </div>
+
+        <!-- Info Card -->
+        <mat-card appearance="outlined" class="info-card mt-2">
+            <mat-card-header>
+                <mat-icon mat-card-avatar>info</mat-icon>
+                <mat-card-title>Angular 21 Patterns</mat-card-title>
+            </mat-card-header>
+            <mat-card-content>
+                <p class="mat-body-1">
+                    This form demonstrates <strong>Reactive Forms</strong> with Material form fields,
+                    <code>FormBuilder</code>, <code>FormArray</code> for dynamic controls,
+                    <code>inject()</code> for functional DI, and the new
+                    <code>&#64;if/&#64;for</code> control flow syntax.
+                </p>
+                <p class="mat-body-1">
+                    <strong>🗺️ Angular Router:</strong> Try navigating here with
+                    <code>?url=https://example.com/filters.txt</code> — the first URL input
+                    will be pre-populated via <code>ActivatedRoute.queryParamMap</code>.
+                </p>
+            </mat-card-content>
+        </mat-card>
     </div>
     `,
     styles: [`
-    /* Component-scoped styles */
-    
-    .form-section {
-      margin-bottom: 30px;
+    .page-content {
+        padding: 0;
     }
-    
-    .form-section h3 {
-      margin-bottom: 15px;
-      color: var(--text-color);
+
+    .subtitle {
+        color: var(--mat-sys-on-surface-variant, #666);
+        margin-bottom: 24px;
     }
-    
+
     .url-list {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      margin-bottom: 15px;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        margin-bottom: 16px;
     }
-    
+
     .url-input-row {
-      display: flex;
-      gap: 10px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
     }
-    
-    .input {
-      flex: 1;
-      padding: 12px;
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
-      background: var(--input-bg);
-      color: var(--text-color);
-      font-size: 14px;
-      transition: border-color 0.3s ease;
+
+    .url-field {
+        flex: 1;
     }
-    
-    .input:focus {
-      outline: none;
-      border-color: var(--primary);
-    }
-    
-    .btn {
-      padding: 12px 24px;
-      border: none;
-      border-radius: 6px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-    
-    .btn-primary {
-      background: var(--primary);
-      color: white;
-    }
-    
-    .btn-primary:hover:not(:disabled) {
-      background: var(--primary-dark);
-      transform: translateY(-2px);
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-    }
-    
-    .btn-secondary {
-      background: var(--section-bg);
-      color: var(--text-color);
-      border: 1px solid var(--border-color);
-    }
-    
-    .btn-secondary:hover {
-      background: var(--button-hover);
-    }
-    
-    .btn-danger {
-      background: var(--danger);
-      color: white;
-    }
-    
-    .btn-danger:hover {
-      opacity: 0.9;
-    }
-    
-    .btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    
+
     .transformations-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-      gap: 12px;
-      margin-top: 15px;
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+        gap: 12px;
+        margin-top: 8px;
     }
-    
-    .checkbox-label {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px;
-      background: var(--section-bg);
-      border-radius: 6px;
-      cursor: pointer;
-      transition: background 0.3s ease;
+
+    .error-card {
+        border-color: var(--mat-sys-error, #f44336);
     }
-    
-    .checkbox-label:hover {
-      background: var(--button-hover);
+
+    .error-content {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: var(--mat-sys-error, #f44336);
     }
-    
-    .checkbox-label input[type="checkbox"] {
-      width: 18px;
-      height: 18px;
-      cursor: pointer;
+
+    .results-card {
+        border-color: var(--mat-sys-primary, #1976d2);
     }
-    
-    .loading {
-      text-align: center;
-      padding: 40px;
-      color: var(--text-muted);
+
+    .results-json {
+        background: var(--mat-sys-surface-variant, #f5f5f5);
+        padding: 16px;
+        border-radius: 8px;
+        font-family: 'Courier New', monospace;
+        font-size: 13px;
+        overflow-x: auto;
+        max-height: 400px;
+        overflow-y: auto;
+        margin: 0;
     }
-    
-    .spinner {
-      border: 3px solid var(--border-color);
-      border-top: 3px solid var(--primary);
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 1s linear infinite;
-      margin: 0 auto 20px;
+
+    .info-card {
+        background-color: var(--mat-sys-surface-variant, #f5f5f5);
     }
-    
-    @keyframes spin {
-      0% { transform: rotate(0deg); }
-      100% { transform: rotate(360deg); }
-    }
-    
-    .results-container {
-      margin-top: 30px;
-      padding: 20px;
-      background: var(--section-bg);
-      border-radius: 8px;
-      border: 1px solid var(--border-color);
-    }
-    
-    .results-container h3 {
-      margin-bottom: 15px;
-      color: var(--text-color);
-    }
-    
-    .results-code {
-      background: var(--input-bg);
-      padding: 15px;
-      border-radius: 6px;
-      overflow-x: auto;
-      font-family: 'Courier New', monospace;
-      font-size: 13px;
-      color: var(--text-color);
-      max-height: 400px;
-      overflow-y: auto;
-    }
-    
-    .post-results-actions {
-      margin-top: 20px;
-      padding-top: 16px;
-      border-top: 1px solid var(--border-color);
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-    }
-    
-    .bookmark-hint {
-      color: var(--text-muted);
-      font-size: 14px;
-      margin: 0;
-    }
-    
-    .bookmark-hint code {
-      background: var(--input-bg);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: 'Courier New', monospace;
-    }
-    
-    .alert {
-      padding: 16px;
-      border-radius: 6px;
-      margin-bottom: 20px;
-    }
-    
-    .alert-error {
-      background: #fee2e2;
-      color: #991b1b;
-      border: 1px solid #fecaca;
-    }
-    
-    .alert-info {
-      background: #dbeafe;
-      color: #1e40af;
-      border: 1px solid #bfdbfe;
-    }
-    
-    .alert-info code {
-      background: rgba(0, 0, 0, 0.1);
-      padding: 2px 6px;
-      border-radius: 4px;
-      font-family: 'Courier New', monospace;
-    }
-    
-    .mb-2 { margin-bottom: 20px; }
-    .mt-2 { margin-top: 20px; }
   `],
 })
 export class CompilerComponent implements OnInit, OnDestroy {
-    /**
-     * Component Properties
-     */
-    // URL validation pattern constant
     private readonly URL_PATTERN = 'https?://.+';
-    // Subject used to signal component destruction for takeUntil
     private readonly destroy$ = new Subject<void>();
 
     compilerForm!: FormGroup;
@@ -378,68 +276,36 @@ export class CompilerComponent implements OnInit, OnDestroy {
     results: CompileResponse | null = null;
 
     /**
-     * Constructor with Dependency Injection
-     * Angular's DI provides FormBuilder, CompilerService, ActivatedRoute, and Router instances
-     *
-     * ANGULAR ROUTER DI:
-     * - ActivatedRoute: Provides access to the current route's URL, params, and query params
-     * - Router: Service for imperative (programmatic) navigation between routes
+     * Functional dependency injection using inject() (Angular 21 pattern)
      */
-    constructor(
-        private fb: FormBuilder,
-        private compilerService: CompilerService,
-        private route: ActivatedRoute,
-        private router: Router,
-    ) {}
+    private readonly fb = inject(FormBuilder);
+    private readonly compilerService = inject(CompilerService);
+    private readonly route = inject(ActivatedRoute);
+    private readonly router = inject(Router);
 
-    /**
-     * Lifecycle Hook: OnInit
-     * Called after component initialization
-     * Pattern: Initialize form and load data
-     */
     ngOnInit(): void {
-        // Get available transformations from service
         this.availableTransformations = this.compilerService.getAvailableTransformations();
-
-        // Initialize reactive form
         this.initializeForm();
 
-        // ANGULAR ROUTER PATTERN: Read query parameters with ActivatedRoute
-        // This allows the compiler page to be bookmarked or linked to with a pre-filled URL.
-        // Example: /compiler?url=https://easylist.to/easylist/easylist.txt
         this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
             const urlParam = params.get('url');
             if (urlParam) {
-                // Pre-populate the first URL input from the query parameter.
-                // This makes the page deep-linkable – another app or email can link
-                // directly to a pre-configured compilation.
                 this.urlsArray.at(0).setValue(urlParam);
             }
         });
     }
 
-    /**
-     * Lifecycle Hook: OnDestroy
-     * Complete the destroy$ subject to automatically unsubscribe all takeUntil pipelines
-     */
     ngOnDestroy(): void {
         this.destroy$.next();
         this.destroy$.complete();
     }
 
-    /**
-     * Initialize Reactive Form
-     * Pattern: FormBuilder for creating form structure
-     */
     private initializeForm(): void {
-        // Create transformations form group with all checkboxes
         const transformationsGroup: { [key: string]: boolean } = {};
         this.availableTransformations.forEach((trans, index) => {
-            // Default first two to checked
             transformationsGroup[trans] = index < 2;
         });
 
-        // Build form with FormBuilder
         this.compilerForm = this.fb.group({
             urls: this.fb.array([
                 this.fb.control('', [Validators.required, Validators.pattern(this.URL_PATTERN)]),
@@ -448,56 +314,33 @@ export class CompilerComponent implements OnInit, OnDestroy {
         });
     }
 
-    /**
-     * Getter for URLs FormArray
-     * Pattern: Convenient access to form array
-     */
     get urlsArray(): FormArray {
         return this.compilerForm.get('urls') as FormArray;
     }
 
-    /**
-     * Add URL input field
-     */
     addUrl(): void {
         this.urlsArray.push(
             this.fb.control('', [Validators.required, Validators.pattern(this.URL_PATTERN)]),
         );
     }
 
-    /**
-     * Remove URL input field
-     */
     removeUrl(index: number): void {
         if (this.urlsArray.length > 1) {
             this.urlsArray.removeAt(index);
         }
     }
 
-    /**
-     * Navigate back to the Home/Dashboard page
-     * ANGULAR ROUTER PATTERN: Programmatic navigation with Router.navigate()
-     * This is useful when navigation needs to happen as a result of logic
-     * (e.g., after a form submission or when a button is clicked programmatically).
-     */
     goHome(): void {
         this.router.navigate(['/']);
     }
 
-    /**
-     * Form Submit Handler
-     * Pattern: Reactive form submission with service call
-     */
     onSubmit(): void {
         if (this.compilerForm.invalid) {
             this.error = 'Please fill in all required fields';
             return;
         }
 
-        // Get form values
         const urls: string[] = this.compilerForm.value.urls.filter((url: string) => url.trim() !== '');
-
-        // Get selected transformations
         const transformationsObj = this.compilerForm.value.transformations;
         const selectedTransformations = Object.keys(transformationsObj)
             .filter((key) => transformationsObj[key]);
@@ -507,22 +350,15 @@ export class CompilerComponent implements OnInit, OnDestroy {
             return;
         }
 
-        // Call API through service
         this.loading = true;
         this.error = null;
         this.results = null;
 
-        // Subscribe to Observable
-        // Pattern: takeUntil(destroy$) prevents memory leaks if component is destroyed mid-request
         this.compilerService.compile(urls, selectedTransformations).pipe(takeUntil(this.destroy$)).subscribe({
             next: (response) => {
                 this.results = response;
                 this.loading = false;
 
-                // ANGULAR ROUTER PATTERN: Update URL query params to reflect app state.
-                // This makes the current compilation result bookmarkable and shareable.
-                // navigate([]) with no path segments means "stay on current route".
-                // queryParamsHandling: 'merge' preserves any existing query params.
                 if (urls.length > 0) {
                     this.router.navigate([], {
                         relativeTo: this.route,

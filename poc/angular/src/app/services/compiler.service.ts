@@ -1,20 +1,15 @@
 /**
  * Angular PoC - Compiler API Service
  *
- * ANGULAR PATTERN: Service with Dependency Injection
+ * Angular 21 Pattern: Service with functional DI using inject()
  * Services are singleton instances that handle business logic and API calls
- * Injectable decorator makes this service available throughout the app
  */
 
-import { Injectable } from '@angular/core';
+import { Injectable, inject } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, delay } from 'rxjs/operators';
 
-/**
- * Interface: API Request Payload
- * TypeScript interfaces provide type safety for API contracts
- */
 export interface CompileRequest {
     configuration: {
         name: string;
@@ -24,10 +19,6 @@ export interface CompileRequest {
     benchmark?: boolean;
 }
 
-/**
- * Interface: API Response
- * Defines the structure of the compilation result
- */
 export interface CompileResponse {
     success: boolean;
     ruleCount: number;
@@ -42,29 +33,20 @@ export interface CompileResponse {
 
 /**
  * CompilerService
- * Pattern: Angular service with HttpClient for API communication
- * Uses RxJS Observables for reactive data streams
+ * Angular 21 Pattern: Injectable service using inject() for HttpClient DI
  */
 @Injectable({
-    providedIn: 'root', // Service is available app-wide (singleton)
+    providedIn: 'root',
 })
 export class CompilerService {
-    private apiUrl = '/api/compile';
+    private readonly apiUrl = '/api/compile';
 
     /**
-     * Constructor with Dependency Injection
-     * Angular's DI system automatically provides HttpClient instance
+     * Functional dependency injection using inject() (Angular 21 pattern)
+     * Can be used in services, components, directives, and pipes
      */
-    constructor(private http: HttpClient) {}
+    private readonly http = inject(HttpClient);
 
-    /**
-     * Compile filter lists
-     * Returns an Observable that components can subscribe to
-     *
-     * @param urls - Array of filter list URLs
-     * @param transformations - Array of transformation names
-     * @returns Observable<CompileResponse>
-     */
     compile(urls: string[], transformations: string[]): Observable<CompileResponse> {
         const payload: CompileRequest = {
             configuration: {
@@ -79,13 +61,9 @@ export class CompilerService {
             'Content-Type': 'application/json',
         });
 
-        // Make HTTP POST request
         return this.http.post<CompileResponse>(this.apiUrl, payload, { headers }).pipe(
-            // Error handling with RxJS operators
             catchError((error) => {
                 console.log('API call failed (expected in PoC), returning mock data:', error);
-
-                // Return mock data for demo purposes
                 return of({
                     success: true,
                     ruleCount: 1234,
@@ -96,15 +74,11 @@ export class CompilerService {
                         duration: '123ms',
                         rulesPerSecond: 10000,
                     },
-                }).pipe(delay(1000)); // Simulate network delay
+                }).pipe(delay(1000));
             }),
         );
     }
 
-    /**
-     * Get available transformations
-     * In production, this might fetch from an API
-     */
     getAvailableTransformations(): string[] {
         return [
             'RemoveComments',
