@@ -5,7 +5,7 @@
  *
  * This script makes src/version.ts the single source of writable truth.
  * Run this after updating the VERSION constant in src/version.ts to propagate
- * the version to deno.json, package.json, and wrangler.toml.
+ * the version to deno.json, package.json, wrangler.toml, and HTML fallback spans.
  *
  * Usage:
  *   deno task version:sync
@@ -50,6 +50,34 @@ async function syncJsonFile(path: string, version: string): Promise<void> {
 }
 
 /**
+ * Update version fallback strings inside <span> elements in an HTML file.
+ * Handles both plain version spans (id="version") and prefixed spans
+ * (id="header-version", id="footer-version") that display "vX.Y.Z".
+ */
+async function syncHtmlFile(path: string, version: string): Promise<void> {
+    try {
+        const content = await Deno.readTextFile(path);
+        // Replace <span id="version">OLD</span> (no "v" prefix in content)
+        let updated = content.replace(/(<span id="version">)[^<>]*(<\/span>)/g, `$1${version}$2`);
+        // Replace <span id="header-version">vOLD</span> and <span id="footer-version">vOLD</span>
+        // Always ensures the "v" prefix is present in the replacement
+        updated = updated.replace(/(<span id="(?:header-version|footer-version)">)v?[^<>]*(<\/span>)/g, `$1v${version}$2`);
+        if (updated === content) {
+            console.log(`  ${path}: no version spans found, skipping`);
+            return;
+        }
+        await Deno.writeTextFile(path, updated);
+        console.log(`  ${path}: updated to ${version}`);
+    } catch (error) {
+        if (error instanceof Deno.errors.NotFound) {
+            console.warn(`  ${path}: not found, skipping`);
+        } else {
+            throw error;
+        }
+    }
+}
+
+/**
  * Update COMPILER_VERSION in wrangler.toml.
  * Anchors to start of line to avoid matching occurrences in comments.
  */
@@ -81,6 +109,8 @@ async function main(): Promise<void> {
     await syncJsonFile('deno.json', version);
     await syncJsonFile('package.json', version);
     await syncWranglerToml('wrangler.toml', version);
+    await syncHtmlFile('public/index.html', version);
+    await syncHtmlFile('public/compiler.html', version);
 
     console.log('Done.');
 }

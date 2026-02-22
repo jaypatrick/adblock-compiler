@@ -87,10 +87,9 @@ git commit -m "feat!: change API interface"
 If you need to manually bump the version:
 
 1. ✅ Update `src/version.ts` - Change the VERSION constant (only writable source)
-2. ✅ Run `deno task version:sync` - Propagates to `deno.json`, `package.json`, `wrangler.toml`
-3. ⚠️ Optional: Update HTML fallback versions in `public/index.html` and `public/compiler.html` (they will be overridden by API)
-4. ✅ Update `CHANGELOG.md` - Document the changes
-5. ✅ Commit with message: `chore: bump version to X.Y.Z [skip ci]`
+2. ✅ Run `deno task version:sync` - Propagates to `deno.json`, `package.json`, `wrangler.toml`, and HTML fallback spans in `public/index.html` and `public/compiler.html`
+3. ✅ Update `CHANGELOG.md` - Document the changes
+4. ✅ Commit with message: `chore: bump version to X.Y.Z [skip ci]`
 
 Or use the GitHub Actions workflow: Actions → Version Bump → Run workflow
 
@@ -192,5 +191,7 @@ This ensures:
 - `deno.json` - Package version
 - `package.json` - Package version
 - `wrangler.toml` - Worker environment variable
+- `public/index.html` - HTML fallback version span (auto-synced by `version:sync`)
+- `public/compiler.html` - HTML fallback version spans (auto-synced by `version:sync`)
 - `CHANGELOG.md` - Version history
 - `.github/copilot-instructions.md` - Contains version sync instructions for AI assistance
