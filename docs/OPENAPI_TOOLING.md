@@ -103,6 +103,31 @@ deno task openapi:docs
 - `docs/api/index.html` - Interactive HTML documentation (Redoc)
 - `docs/api/README.md` - Markdown reference documentation
 
+### Generate Cloudflare API Shield Schema
+
+Generate a Cloudflare-compatible schema for use with Cloudflare's API Shield Schema Validation:
+
+```bash
+# Generate Cloudflare schema
+deno task schema:cloudflare
+
+# Or directly
+./scripts/generate-cloudflare-schema.ts
+```
+
+**What it does:**
+- ✅ Filters out localhost servers (keeps only production/staging URLs)
+- ✅ Removes non-standard `x-*` extension fields from operations
+- ✅ Generates `docs/api/cloudflare-schema.yaml` ready for API Shield
+
+**Why use this:**
+Cloudflare's API Shield Schema Validation provides request/response validation at the edge. The generated schema is optimized for Cloudflare's parser by removing development servers and custom extensions that may not be compatible.
+
+Learn more: [Cloudflare API Shield Schema Validation](https://developers.cloudflare.com/security/web-assets/)
+
+**CI/CD Integration:**
+The schema generation is validated in CI to ensure it stays in sync with the main OpenAPI spec. If you update `docs/api/openapi.yaml`, you must regenerate the Cloudflare schema by running `deno task schema:cloudflare` and committing the result.
+
 ### View Documentation
 
 ```bash
@@ -287,6 +312,23 @@ jobs:
       - name: Validate OpenAPI spec
         run: deno task openapi:validate
 
+  validate-cloudflare-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: denoland/setup-deno@v1
+      
+      - name: Generate Cloudflare schema
+        run: deno task schema:cloudflare
+      
+      - name: Check schema is up to date
+        run: |
+          if ! git diff --quiet docs/api/cloudflare-schema.yaml; then
+            echo "❌ Cloudflare schema is out of date!"
+            echo "Run 'deno task schema:cloudflare' and commit the result."
+            exit 1
+          fi
+
   generate-docs:
     needs: validate
     runs-on: ubuntu-latest
@@ -349,6 +391,9 @@ jobs:
 
 echo "🔍 Validating OpenAPI spec..."
 deno task openapi:validate || exit 1
+
+echo "☁️  Generating Cloudflare schema..."
+deno task schema:cloudflare || exit 1
 
 echo "📚 Generating documentation..."
 deno task openapi:docs || exit 1
@@ -537,8 +582,9 @@ The OpenAPI tooling provides:
 
 1. **Validation** - Ensure spec quality (`openapi:validate`)
 2. **Documentation** - Generate beautiful docs (`openapi:docs`)
-3. **Contract Tests** - Verify API compliance (`test:contract`)
-4. **Postman** - Interactive testing (`postman-collection.json`)
-5. **Queue Support** - Async operations via Cloudflare Queues
+3. **Cloudflare Schema** - Generate API Shield schema (`schema:cloudflare`)
+4. **Contract Tests** - Verify API compliance (`test:contract`)
+5. **Postman** - Interactive testing (`postman-collection.json`)
+6. **Queue Support** - Async operations via Cloudflare Queues
 
 All tools are designed to work together in a continuous integration pipeline, ensuring your API stays consistent, well-documented, and reliable.
