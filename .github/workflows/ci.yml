@@ -295,17 +295,14 @@ jobs:
                   node-version: '22'
                   cache: 'npm'
 
-            - name: Install Wrangler
-              run: npm install -g wrangler
-
             - name: Install project dependencies
-              run: npm install
+              run: npm ci
 
             - name: Run database migrations
               run: |
                   echo "Running D1 migrations..."
-                  wrangler d1 execute adblock-compiler-d1-database --file=migrations/0001_init.sql --remote || echo "Migration 0001 already applied or failed"
-                  wrangler d1 execute adblock-compiler-d1-database --file=migrations/0002_deployment_history.sql --remote || echo "Migration 0002 already applied or failed"
+                  npx wrangler d1 execute adblock-compiler-d1-database --file=migrations/0001_init.sql --remote || echo "Migration 0001 already applied or failed"
+                  npx wrangler d1 execute adblock-compiler-d1-database --file=migrations/0002_deployment_history.sql --remote || echo "Migration 0002 already applied or failed"
 
             - name: Generate deployment version
               id: version
@@ -315,16 +312,16 @@ jobs:
             - name: Setup Cloudflare resources
               run: |
                   echo "Creating Cloudflare resources..."
-                  wrangler queues create adblock-compiler-worker-queue 2>/dev/null || echo "Queue already exists"
-                  wrangler queues create adblock-compiler-worker-queue-high-priority 2>/dev/null || echo "High priority queue already exists"
-                  wrangler queues create adblock-compiler-dlq 2>/dev/null || echo "DLQ already exists"
-                  wrangler r2 bucket create adblock-compiler-r2-storage 2>/dev/null || echo "R2 bucket already exists"
+                  npx wrangler queues create adblock-compiler-worker-queue 2>/dev/null || echo "Queue already exists"
+                  npx wrangler queues create adblock-compiler-worker-queue-high-priority 2>/dev/null || echo "High priority queue already exists"
+                  npx wrangler queues create adblock-compiler-dlq 2>/dev/null || echo "DLQ already exists"
+                  npx wrangler r2 bucket create adblock-compiler-r2-storage 2>/dev/null || echo "R2 bucket already exists"
 
             - name: Deploy Worker
               id: deploy
               run: |
                   echo "Deploying version: ${{ steps.version.outputs.full_version }}"
-                  wrangler deploy
+                  npx wrangler deploy
 
             - name: Record deployment
               if: success()
