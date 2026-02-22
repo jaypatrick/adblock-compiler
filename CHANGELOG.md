@@ -30,7 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.23.0] - 2026-02-22
 
-### Added- add PoC Overview back-navigation links to React and Vue PoC pages
+### Added
+
+- add PoC Overview back-navigation links to React and Vue PoC pages
 
 ### Fixed
 
