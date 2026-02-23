@@ -330,7 +330,7 @@ jobs:
                   deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts --status=success
 
             - name: Record failed deployment
-              if: failure()
+              if: failure() && env.CLOUDFLARE_API_TOKEN != ''
               run: |
                   deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts --status=failed || true
 
