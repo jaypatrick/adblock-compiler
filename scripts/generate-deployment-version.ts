@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-net --allow-env
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-env
 
 /**
  * Generate deployment version before deploying to Cloudflare Workers
@@ -11,7 +11,7 @@
  * 5. Outputs version info for CI/CD to use
  *
  * Usage:
- *   deno run --allow-read --allow-net --allow-env scripts/generate-deployment-version.ts
+ *   deno run --allow-read --allow-write --allow-net --allow-env scripts/generate-deployment-version.ts
  *
  * Environment variables:
  *   CLOUDFLARE_ACCOUNT_ID - Cloudflare account ID

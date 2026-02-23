@@ -307,7 +307,7 @@ jobs:
             - name: Generate deployment version
               id: version
               run: |
-                  deno run --allow-read --allow-net --allow-env scripts/generate-deployment-version.ts
+                  deno run --allow-read --allow-write --allow-net --allow-env scripts/generate-deployment-version.ts
 
             - name: Setup Cloudflare resources
               run: |
