@@ -319,12 +319,13 @@ jobs:
 
             - name: Deploy Worker
               id: deploy
+              if: env.CLOUDFLARE_API_TOKEN != ''
               run: |
                   echo "Deploying version: ${{ steps.version.outputs.full_version }}"
                   npx wrangler deploy
 
             - name: Record deployment
-              if: success()
+              if: success() && env.CLOUDFLARE_API_TOKEN != ''
               run: |
                   deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts --status=success
 
@@ -334,6 +335,7 @@ jobs:
                   deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts --status=failed || true
 
             - name: Deploy Pages
+              if: env.CLOUDFLARE_API_TOKEN != ''
               uses: cloudflare/wrangler-action@v3
               with:
                   apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
