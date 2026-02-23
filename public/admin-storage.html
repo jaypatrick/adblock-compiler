@@ -516,7 +516,7 @@
                 <button class="preset-btn" onclick="setQuery('SELECT * FROM compilation_metadata ORDER BY timestamp DESC LIMIT 20')">Compilations</button>
                 <button class="preset-btn" onclick="setQuery('SELECT * FROM source_health ORDER BY status')">Source Health</button>
                 <button class="preset-btn" onclick="setQuery('SELECT * FROM source_snapshots WHERE isCurrent = 1')">Current Snapshots</button>
-                <button class="preset-btn" onclick="setQuery('SELECT COUNT(*) as count, substr(key, 1, instr(key, \"/\") - 1) as prefix FROM storage_entries GROUP BY prefix')">Entry Stats</button>
+                <button class="preset-btn" onclick="setQuery('SELECT COUNT(*) as count, substr(key, 1, instr(key, &quot;/&quot;) - 1) as prefix FROM storage_entries GROUP BY prefix')">Entry Stats</button>
             </div>
             <textarea
                 id="sqlQuery"
