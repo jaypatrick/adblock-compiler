@@ -215,7 +215,7 @@ The scripts require the following environment variables:
 ### Generate Deployment Version
 
 ```bash
-deno run --allow-read --allow-net --allow-env \
+deno run --allow-read --allow-write --allow-net --allow-env \
   scripts/generate-deployment-version.ts
 ```
 
