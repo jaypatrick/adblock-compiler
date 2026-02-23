@@ -95,6 +95,7 @@
             "prisma/",
             "docs/",
             ".github/",
+            ".agents/",
             ".yarn/",
             ".pnp.*",
             "*.lock",
@@ -121,12 +122,14 @@
             "prisma/",
             "docs/",
             ".github/",
+            ".agents/",
             ".yarn/",
             ".pnp.*",
             "*.lock",
             "*.lcov",
             "*.d.ts",
-            "CHANGELOG.md"
+            "CHANGELOG.md",
+            "MEMORY.md"
         ]
     },
     "test": {
