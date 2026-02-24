@@ -3,13 +3,16 @@
  *
  * Angular 21 + Material Pattern: Reactive Forms with Material form fields
  * Demonstrates Material form inputs, buttons, and progress indicators
+ *
+ * Zoneless Pattern: all mutable state uses signal() so Angular's scheduler
+ * can track changes without Zone.js.  takeUntilDestroyed() replaces the
+ * manual Subject<void> + ngOnDestroy teardown pattern.
  */
 
-import { Component, OnDestroy, OnInit, inject } from '@angular/core';
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
-import { Subject } from 'rxjs';
-import { takeUntil } from 'rxjs/operators';
 import { CompileResponse, CompilerService } from '../services/compiler.service';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -124,9 +127,9 @@ import { JsonPipe } from '@angular/common';
                 mat-raised-button
                 color="primary"
                 type="submit"
-                [disabled]="loading || compilerForm.invalid"
+                [disabled]="loading() || compilerForm.invalid"
             >
-                @if (loading) {
+                @if (loading()) {
                     <mat-progress-spinner diameter="20" mode="indeterminate" color="accent"></mat-progress-spinner>
                     Compiling...
                 } @else {
@@ -137,19 +140,19 @@ import { JsonPipe } from '@angular/common';
         </form>
 
         <!-- Error State -->
-        @if (error) {
+        @if (error(); as e) {
             <mat-card appearance="outlined" class="error-card mt-2">
                 <mat-card-content>
                     <div class="error-content">
                         <mat-icon color="warn">error</mat-icon>
-                        <span>{{ error }}</span>
+                        <span>{{ e }}</span>
                     </div>
                 </mat-card-content>
             </mat-card>
         }
 
         <!-- Results Display -->
-        @if (results) {
+        @if (results(); as r) {
             <mat-card appearance="outlined" class="results-card mt-2">
                 <mat-card-header>
                     <mat-icon mat-card-avatar color="primary">check_circle</mat-icon>
@@ -159,14 +162,14 @@ import { JsonPipe } from '@angular/common';
                 <mat-card-content>
                     <!-- Stats chips -->
                     <mat-chip-set class="mb-2">
-                        <mat-chip highlighted color="primary">{{ results.ruleCount }} rules</mat-chip>
-                        <mat-chip>{{ results.sources }} sources</mat-chip>
-                        @if (results.benchmark) {
-                            <mat-chip>{{ results.benchmark.duration }}</mat-chip>
+                        <mat-chip highlighted color="primary">{{ r.ruleCount }} rules</mat-chip>
+                        <mat-chip>{{ r.sources }} sources</mat-chip>
+                        @if (r.benchmark) {
+                            <mat-chip>{{ r.benchmark.duration }}</mat-chip>
                         }
                     </mat-chip-set>
                     <!-- Raw JSON output -->
-                    <pre class="results-json">{{ results | json }}</pre>
+                    <pre class="results-json">{{ r | json }}</pre>
                 </mat-card-content>
                 <mat-card-actions>
                     <button mat-button (click)="goHome()">
@@ -265,15 +268,16 @@ import { JsonPipe } from '@angular/common';
     }
   `],
 })
-export class CompilerComponent implements OnInit, OnDestroy {
+export class CompilerComponent {
     private readonly URL_PATTERN = 'https?://.+';
-    private readonly destroy$ = new Subject<void>();
+
+    /** Mutable state as signals — required for zoneless change detection */
+    readonly loading = signal(false);
+    readonly error = signal<string | null>(null);
+    readonly results = signal<CompileResponse | null>(null);
 
     compilerForm!: FormGroup;
-    availableTransformations: string[] = [];
-    loading = false;
-    error: string | null = null;
-    results: CompileResponse | null = null;
+    readonly availableTransformations: readonly string[];
 
     /**
      * Functional dependency injection using inject() (Angular 21 pattern)
@@ -282,22 +286,22 @@ export class CompilerComponent implements OnInit, OnDestroy {
     private readonly compilerService = inject(CompilerService);
     private readonly route = inject(ActivatedRoute);
     private readonly router = inject(Router);
+    /** DestroyRef allows takeUntilDestroyed() outside the constructor */
+    private readonly destroyRef = inject(DestroyRef);
 
-    ngOnInit(): void {
+    constructor() {
         this.availableTransformations = this.compilerService.getAvailableTransformations();
         this.initializeForm();
 
-        this.route.queryParamMap.pipe(takeUntil(this.destroy$)).subscribe((params) => {
+        // takeUntilDestroyed() with the injected DestroyRef tears down the
+        // subscription when the component is destroyed — no manual Subject<void>
+        // or ngOnDestroy needed.
+        this.route.queryParamMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe((params) => {
             const urlParam = params.get('url');
             if (urlParam) {
                 this.urlsArray.at(0).setValue(urlParam);
             }
         });
-    }
-
-    ngOnDestroy(): void {
-        this.destroy$.next();
-        this.destroy$.complete();
     }
 
     private initializeForm(): void {
@@ -336,7 +340,7 @@ export class CompilerComponent implements OnInit, OnDestroy {
 
     onSubmit(): void {
         if (this.compilerForm.invalid) {
-            this.error = 'Please fill in all required fields';
+            this.error.set('Please fill in all required fields');
             return;
         }
 
@@ -346,18 +350,18 @@ export class CompilerComponent implements OnInit, OnDestroy {
             .filter((key) => transformationsObj[key]);
 
         if (urls.length === 0) {
-            this.error = 'Please enter at least one URL';
+            this.error.set('Please enter at least one URL');
             return;
         }
 
-        this.loading = true;
-        this.error = null;
-        this.results = null;
+        this.loading.set(true);
+        this.error.set(null);
+        this.results.set(null);
 
-        this.compilerService.compile(urls, selectedTransformations).pipe(takeUntil(this.destroy$)).subscribe({
+        this.compilerService.compile(urls, selectedTransformations).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: (response) => {
-                this.results = response;
-                this.loading = false;
+                this.results.set(response);
+                this.loading.set(false);
 
                 if (urls.length > 0) {
                     this.router.navigate([], {
@@ -367,9 +371,10 @@ export class CompilerComponent implements OnInit, OnDestroy {
                     });
                 }
             },
-            error: (err) => {
-                this.error = err.message || 'An error occurred during compilation';
-                this.loading = false;
+            error: (err: unknown) => {
+                const message = err instanceof Error ? err.message : String(err);
+                this.error.set(message || 'An error occurred during compilation');
+                this.loading.set(false);
             },
         });
     }
