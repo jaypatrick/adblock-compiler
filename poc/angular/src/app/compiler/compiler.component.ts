@@ -140,12 +140,12 @@ import { JsonPipe } from '@angular/common';
         </form>
 
         <!-- Error State -->
-        @if (error()) {
+        @if (error(); as e) {
             <mat-card appearance="outlined" class="error-card mt-2">
                 <mat-card-content>
                     <div class="error-content">
                         <mat-icon color="warn">error</mat-icon>
-                        <span>{{ error() }}</span>
+                        <span>{{ e }}</span>
                     </div>
                 </mat-card-content>
             </mat-card>
@@ -277,7 +277,7 @@ export class CompilerComponent {
     readonly results = signal<CompileResponse | null>(null);
 
     compilerForm!: FormGroup;
-    availableTransformations: string[] = [];
+    readonly availableTransformations: readonly string[];
 
     /**
      * Functional dependency injection using inject() (Angular 21 pattern)
