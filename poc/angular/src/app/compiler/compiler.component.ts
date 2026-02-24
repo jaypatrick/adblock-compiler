@@ -152,7 +152,7 @@ import { JsonPipe } from '@angular/common';
         }
 
         <!-- Results Display -->
-        @if (results()) {
+        @if (results(); as r) {
             <mat-card appearance="outlined" class="results-card mt-2">
                 <mat-card-header>
                     <mat-icon mat-card-avatar color="primary">check_circle</mat-icon>
@@ -162,14 +162,14 @@ import { JsonPipe } from '@angular/common';
                 <mat-card-content>
                     <!-- Stats chips -->
                     <mat-chip-set class="mb-2">
-                        <mat-chip highlighted color="primary">{{ results()!.ruleCount }} rules</mat-chip>
-                        <mat-chip>{{ results()!.sources }} sources</mat-chip>
-                        @if (results()!.benchmark) {
-                            <mat-chip>{{ results()!.benchmark!.duration }}</mat-chip>
+                        <mat-chip highlighted color="primary">{{ r.ruleCount }} rules</mat-chip>
+                        <mat-chip>{{ r.sources }} sources</mat-chip>
+                        @if (r.benchmark) {
+                            <mat-chip>{{ r.benchmark.duration }}</mat-chip>
                         }
                     </mat-chip-set>
                     <!-- Raw JSON output -->
-                    <pre class="results-json">{{ results() | json }}</pre>
+                    <pre class="results-json">{{ r | json }}</pre>
                 </mat-card-content>
                 <mat-card-actions>
                     <button mat-button (click)="goHome()">
@@ -371,8 +371,9 @@ export class CompilerComponent {
                     });
                 }
             },
-            error: (err: Error) => {
-                this.error.set(err.message || 'An error occurred during compilation');
+            error: (err: unknown) => {
+                const message = err instanceof Error ? err.message : String(err);
+                this.error.set(message || 'An error occurred during compilation');
                 this.loading.set(false);
             },
         });
