@@ -25,9 +25,7 @@
                         "ssr": {
                             "entry": "server.ts"
                         },
-                        "polyfills": [
-                            "zone.js"
-                        ],
+                        "polyfills": [],
                         "tsConfig": "tsconfig.app.json",
                         "assets": [
                             "src/assets"

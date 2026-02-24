@@ -1,16 +1,18 @@
 # Angular 21 PoC - Adblock Compiler
 
-A proof-of-concept Angular 21 application demonstrating modern Angular features with Angular Material and Server-Side Rendering (SSR).
+A proof-of-concept Angular 21 application demonstrating modern Angular features with Angular Material, **zoneless change detection**, and Server-Side Rendering (SSR).
 
 ## Features
 
 ### Angular 21 Modern Patterns
 - **Standalone Components** - No NgModule required
-- **Signals** (`signal()`, `computed()`, `effect()`) - Fine-grained reactivity
+- **Zoneless Change Detection** (`provideZonelessChangeDetection()`) - No Zone.js; scheduling driven entirely by signal notifications
+- **Signals** (`signal()`, `computed()`, `effect()`) - Fine-grained reactivity, required for zoneless correctness
 - **Functional DI** (`inject()`) - Clean, composable dependency injection
 - **New Control Flow** (`@if`, `@for`, `@switch`) - Better performance and type inference
 - **View Transitions API** - Smooth page transitions via `withViewTransitions()`
 - **Component Input Binding** - Map route params to component inputs via `withComponentInputBinding()`
+- **`takeUntilDestroyed()`** - Declarative subscription teardown via `DestroyRef`; replaces `Subject<void>` + `ngOnDestroy`
 
 ### Angular Material (Material Design 3)
 - `MatToolbarModule` - App toolbar
@@ -88,5 +90,7 @@ npm test
 | SSR | Not configured | `@angular/ssr` + Express server |
 | UI | Custom CSS | Angular Material 3 |
 | Theme | CSS variables | Material Design 3 tokens |
-| Change detection | `provideZoneChangeDetection()` | `{ eventCoalescing: true }` |
+| Change detection | `provideZoneChangeDetection()` with Zone.js | `provideZonelessChangeDetection()` — no Zone.js |
+| Subscription teardown | `Subject<void>` + `ngOnDestroy` | `takeUntilDestroyed(destroyRef)` |
+| Mutable state | Plain class fields | `signal()` for zoneless reactivity |
 | HTTP | `withFetch()` | `withFetch()` for SSR compatibility |
