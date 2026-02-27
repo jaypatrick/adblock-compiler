@@ -12,36 +12,28 @@
 
 import {
     Chart,
-    ArcElement,
-    BarElement,
     CategoryScale,
-    DoughnutController,
     Filler,
     Legend,
     LinearScale,
     LineController,
     LineElement,
-    PieController,
     PointElement,
-    TimeScale,
     Title,
     Tooltip,
 } from 'chart.js';
 
-// Register all components used across the UI.
+// Register only components actually used by the UI (line charts only).
+// ArcElement, BarElement, DoughnutController, PieController, and TimeScale
+// were removed — no page uses bar, pie, doughnut, or time-axis charts.
 Chart.register(
-    ArcElement,
-    BarElement,
     CategoryScale,
-    DoughnutController,
     Filler,
     Legend,
     LinearScale,
     LineController,
     LineElement,
-    PieController,
     PointElement,
-    TimeScale,
     Title,
     Tooltip,
 );
