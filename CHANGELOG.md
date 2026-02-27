@@ -29,6 +29,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Replace `console.*` calls in `EventEmitter`, `AnalyticsService`, and `CloudflareQueueProvider` with `IBasicLogger` dependency injection, defaulting to `silentLogger` for backward compatibility
 
 
+
+## [0.25.3] - 2026-02-27
+
+### Added### Performance
+
+- web performance audit improvements
+
+
 ## [0.25.2] - 2026-02-24
 
 ### Added### Fixed
