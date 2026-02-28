@@ -1,6 +1,6 @@
 {
     "name": "adblock-compiler",
-    "version": "0.25.2",
+    "version": "0.25.3",
     "description": "Compiler-as-a-Service for adblock filter lists",
     "type": "module",
     "scripts": {
@@ -15,7 +15,7 @@
         "build:css:prod": "npx tailwindcss -i ./public/input.css -o ./public/tailwind.css --minify",
         "ui:dev": "vite",
         "ui:build": "npm run build:css:prod && vite build && npm run ui:copy-static",
-        "ui:copy-static": "cp public/tailwind.css public/shared-styles.css public/shared-theme.js public/compiler-worker.js dist/ && cp -r public/docs dist/ && cp -r poc dist/poc",
+        "ui:copy-static": "cp public/tailwind.css public/shared-styles.css public/compiler-worker.js dist/ && cp -r public/docs dist/ && cp -r poc dist/poc",
         "ui:preview": "vite preview"
     },
     "devDependencies": {
