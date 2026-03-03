@@ -36,6 +36,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.30.0] - 2026-03-03
+
+### Added- **frontend**: implement 14 enhancement items with CI/Docker updates
+- complete Angular migration gaps - MetricsService, a11y, animations, cleanup
+- **frontend**: Phases 3-7 — additional pages, services, responsive sidenav, CI, docs
+- **frontend**: Phase 2 — core pages with live data, SSE streaming, drag-and-drop
+- Phase 1 - scaffold Angular frontend migration (#559)
+
+### Fixed
+
+- exclude frontend/ from deno lint/fmt, remove missing public/ from Dockerfile
+- resolve all CI failures — exclude frontend from deno lint/fmt, fix Dockerfile, sync package-lock, add cov_profile to gitignore
+- remove cov_profile artifacts and fix Dockerfile .npmrc baking
+
+
 ## [0.29.2] - 2026-03-03
 
 ### Added### Fixed
