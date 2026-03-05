@@ -46,6 +46,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.33.2] - 2026-03-05
+
+### Added### Fixed
+
+- add tests for API_BASE_URL factory and extract hasFileExtension helper
+- address review comments on SPA fallback and SSR API base URL
+- restore Angular routing on Cloudflare Workers deployment
+
+
 ## [0.33.1] - 2026-03-04
 
 ### Fixed
