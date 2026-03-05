@@ -56,6 +56,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.33.3] - 2026-03-05
+
+### Added### Fixed
+
+- **tests**: align SSE spec API_BASE_URL with production browser config ('/api')
+- **tests**: clear fake timers before restoring real timers in sse.service.spec afterEach
+- address test mock/timer leaks and SSE URL contract issues
+- use RenderMode.Client for home and compiler routes to prevent SSR crash
+
+
 ## [0.33.2] - 2026-03-05
 
 ### Added### Fixed
