@@ -57,6 +57,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.34.1] - 2026-03-05
+
+### Added### Fixed
+
+- **frontend**: resolve all Angular ESLint warnings for architecture modernization
+
+
 ## [0.34.0] - 2026-03-05
 
 ### Added
