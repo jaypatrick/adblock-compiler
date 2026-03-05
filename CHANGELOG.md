@@ -56,6 +56,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.33.3] - 2026-03-05
+
+### Added### Fixed
+
+- use RenderMode.Client for home and compiler routes to prevent SSR crash
+
+
 ## [0.33.2] - 2026-03-05
 
 ### Added### Fixed
