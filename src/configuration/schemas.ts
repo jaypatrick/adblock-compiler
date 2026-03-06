@@ -85,6 +85,67 @@ type ValidationResultOutput = {
     validation: ValidationReportOutput;
 };
 
+type CompilationResultBaseOutput = {
+    rules: string[];
+    ruleCount: number;
+};
+
+export type CompilationResultOutput = CompilationResultBaseOutput;
+
+export type BenchmarkMetrics = {
+    totalDurationMs: number;
+    stages: {
+        name: string;
+        durationMs: number;
+        itemCount?: number;
+        itemsPerSecond?: number;
+    }[];
+    sourceCount: number;
+    ruleCount: number;
+    outputRuleCount: number;
+};
+
+export type WorkerCompilationResultOutput = CompilationResultBaseOutput & {
+    metrics?: BenchmarkMetrics;
+};
+
+export type CliArguments = {
+    config?: string;
+    input?: string[];
+    inputType?: 'adblock' | 'hosts';
+    output?: string;
+    verbose?: boolean;
+    benchmark?: boolean;
+    useQueue?: boolean;
+    priority?: 'standard' | 'high';
+    help?: boolean;
+    version?: boolean;
+};
+
+export type Environment = {
+    TURNSTILE_SECRET_KEY?: string;
+    RATE_LIMIT_MAX_REQUESTS?: number;
+    RATE_LIMIT_WINDOW_MS?: number;
+    CACHE_TTL?: number;
+    LOG_LEVEL?: 'trace' | 'debug' | 'info' | 'warn' | 'error';
+    [key: string]: unknown;
+};
+
+export type AdblockRule = {
+    ruleText: string;
+    pattern: string;
+    whitelist: boolean;
+    options: { name: string; value: string | null }[] | null;
+    hostname: string | null;
+};
+
+export type EtcHostsRule = {
+    ruleText: string;
+    // Note: @zod/zod@^4 nonempty() enforces non-empty at runtime but outputs string[] statically.
+    // The non-empty constraint is validated by EtcHostsRuleSchema at runtime.
+    hostnames: string[];
+};
+
 // ============================================================================
 // Private helper schemas
 // ============================================================================
@@ -342,7 +403,10 @@ export const ValidationResultSchema: z.ZodType<ValidationResultOutput> = z.objec
 /**
  * Base compilation result object schema (used internally for extension)
  */
-const compilationResultBase = z.object({
+const compilationResultBase: z.ZodObject<{
+    rules: z.ZodArray<z.ZodString>;
+    ruleCount: z.ZodNumber;
+}> = z.object({
     rules: z.array(z.string()),
     ruleCount: z.number().int().nonnegative(),
 });
@@ -350,14 +414,13 @@ const compilationResultBase = z.object({
 /**
  * Schema for compilation result output
  */
-export const CompilationResultSchema = compilationResultBase;
-export type CompilationResultOutput = z.infer<typeof CompilationResultSchema>;
+export const CompilationResultSchema: z.ZodType<CompilationResultOutput> = compilationResultBase;
 
 /**
  * Schema for benchmark metrics that matches the CompilationMetrics interface.
  * Present when benchmark mode is enabled during compilation.
  */
-export const BenchmarkMetricsSchema = z.object({
+export const BenchmarkMetricsSchema: z.ZodType<BenchmarkMetrics> = z.object({
     totalDurationMs: z.number().nonnegative(),
     stages: z.array(z.object({
         name: z.string(),
@@ -369,15 +432,13 @@ export const BenchmarkMetricsSchema = z.object({
     ruleCount: z.number().int().nonnegative(),
     outputRuleCount: z.number().int().nonnegative(),
 });
-export type BenchmarkMetrics = z.infer<typeof BenchmarkMetricsSchema>;
 
 /**
  * Schema for worker compilation result (extends CompilationResultSchema with optional metrics)
  */
-export const WorkerCompilationResultSchema = compilationResultBase.extend({
+export const WorkerCompilationResultSchema: z.ZodType<WorkerCompilationResultOutput> = compilationResultBase.extend({
     metrics: BenchmarkMetricsSchema.optional(),
 });
-export type WorkerCompilationResultOutput = z.infer<typeof WorkerCompilationResultSchema>;
 
 // ============================================================================
 // CLI and Environment Schemas
@@ -386,7 +447,7 @@ export type WorkerCompilationResultOutput = z.infer<typeof WorkerCompilationResu
 /**
  * Schema for CLI arguments (matches ParsedArguments interface in ArgumentParser.ts)
  */
-export const CliArgumentsSchema = z.object({
+export const CliArgumentsSchema: z.ZodType<CliArguments> = z.object({
     config: z.string().optional(),
     input: z.array(z.string()).optional(),
     inputType: z.enum(['adblock', 'hosts']).optional(),
@@ -416,19 +477,17 @@ export const CliArgumentsSchema = z.object({
         path: ['config'],
     },
 );
-export type CliArguments = z.infer<typeof CliArgumentsSchema>;
 
 /**
  * Schema for Worker environment bindings and runtime env vars
  */
-export const EnvironmentSchema = z.object({
+export const EnvironmentSchema: z.ZodType<Environment> = z.object({
     TURNSTILE_SECRET_KEY: z.string().optional(),
     RATE_LIMIT_MAX_REQUESTS: z.coerce.number().int().positive().optional(),
     RATE_LIMIT_WINDOW_MS: z.coerce.number().int().positive().optional(),
     CACHE_TTL: z.coerce.number().int().positive().optional(),
     LOG_LEVEL: z.enum(['trace', 'debug', 'info', 'warn', 'error']).optional(),
 }).passthrough(); // Allow additional worker bindings
-export type Environment = z.infer<typeof EnvironmentSchema>;
 
 // ============================================================================
 // Filter Rule Schemas
@@ -437,7 +496,7 @@ export type Environment = z.infer<typeof EnvironmentSchema>;
 /**
  * Schema for a parsed adblock-syntax rule
  */
-export const AdblockRuleSchema = z.object({
+export const AdblockRuleSchema: z.ZodType<AdblockRule> = z.object({
     ruleText: z.string().min(1),
     pattern: z.string(),
     whitelist: z.boolean(),
@@ -447,13 +506,11 @@ export const AdblockRuleSchema = z.object({
     })).nullable(),
     hostname: z.string().nullable(),
 });
-export type AdblockRule = z.infer<typeof AdblockRuleSchema>;
 
 /**
  * Schema for a parsed /etc/hosts-syntax rule
  */
-export const EtcHostsRuleSchema = z.object({
+export const EtcHostsRuleSchema: z.ZodType<EtcHostsRule> = z.object({
     ruleText: z.string().min(1),
     hostnames: z.array(z.string()).nonempty(),
 });
-export type EtcHostsRule = z.infer<typeof EtcHostsRuleSchema>;
