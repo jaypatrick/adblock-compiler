@@ -66,6 +66,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.37.1] - 2026-03-06
+
+### Added### Fixed
+
+- address code review feedback and prevent recurring Cloudflare deploy failure
+- add explicit JSR type annotations to schemas to resolve slow types errors
+
+
 ## [0.37.0] - 2026-03-06
 
 ### Added
