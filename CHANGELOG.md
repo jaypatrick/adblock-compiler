@@ -72,6 +72,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.38.0] - 2026-03-07
+
+### Added- integrate Codecov for frontend vitest coverage
+
+### Fixed
+
+- gate frontend Codecov upload to main pushes only
+
+
 ## [0.37.6] - 2026-03-07
 
 ### Added### Fixed
