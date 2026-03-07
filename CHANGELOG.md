@@ -77,6 +77,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.41.1] - 2026-03-07
+
+### Added### Fixed
+
+- derive curl example URL from request origin in fallback HTML pages
+
+
 ## [0.41.0] - 2026-03-07
 
 ### Added- integrate Cloudflare Tail Worker (adblock-compiler-tail) into CI deploy pipeline
