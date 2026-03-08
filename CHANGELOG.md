@@ -82,6 +82,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.45.0] - 2026-03-08
+
+### Added- add OpenAPI specs and Postman workspace configuration
+
+### Fixed
+
+- guard against non-DO bindings and NaN limit in deployment history
+- address Postman collection review feedback (pullrequestreview-3910962231)
+- apply review feedback - fix invalid URLs, placeholders, spelling, and script format
+- redact private keys and JWT tokens in cloudflare-openapi.json to fix Trivy security scan
+- apply review feedback to Postman/OpenAPI collection files
+
+
 ## [0.44.1] - 2026-03-08
 
 ### Added### Fixed
