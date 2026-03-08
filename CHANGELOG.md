@@ -80,6 +80,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.44.0] - 2026-03-08
+
+### Added- **worker**: add Playwright MCP agent via @cloudflare/playwright-mcp (#760)
+
+
 ## [0.43.1] - 2026-03-08
 
 ### Added### Fixed
