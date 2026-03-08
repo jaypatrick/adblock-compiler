@@ -78,6 +78,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.42.1] - 2026-03-08
+
+### Added### Fixed
+
+- exclude pnpm-lock.yaml from deno fmt check
+- clean up wrangler.toml build comment per code review
+- use pnpm run build:worker in wrangler.toml to fix Cloudflare Workers build
+- add --legacy-peer-deps to wrangler.toml frontend npm ci to fix Cloudflare Workers build
+- add pnpm-lock.yaml to fix frontend/worker builds in CI
+
+
 ## [0.42.0] - 2026-03-07
 
 ### Added- replace npm/npx with pnpm/deno-native equivalents in deno.json and CI deploy
