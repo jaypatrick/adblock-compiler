@@ -85,6 +85,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.45.2] - 2026-03-08
+
+### Added### Fixed
+
+- exclude postman/ from deno fmt to fix slow Format Check CI job
+- ci-gate condition to always() && !cancelled()
+- ci-gate - handle cancelled workflow runs gracefully
+
+
 ## [0.45.1] - 2026-03-08
 
 ### Added### Fixed
