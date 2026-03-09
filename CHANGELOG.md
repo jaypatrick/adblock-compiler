@@ -93,6 +93,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.48.2] - 2026-03-09
+
+### Added### Fixed
+
+- address reviewer feedback on CLI gaps and transformation ordering
+- reconcile CLI args, transformation types, and API documentation gaps
+
+
 ## [0.48.1] - 2026-03-09
 
 ### Added### Fixed
