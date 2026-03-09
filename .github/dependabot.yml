@@ -1,19 +1,25 @@
-# Basic `dependabot.yml` file with
-# minimum configuration for three package managers
+# `dependabot.yml` file with
+# configuration for four package managers
 
 version: 2
 updates:
-  # Enable version updates for npm
-  - package-ecosystem: "pnpm"
-    # Look for `package.json` and `lock` files in the `root` directory
+  # Enable version updates for pnpm (root workspace, covers frontend/)
+  - package-ecosystem: "npm"
     directory: "/"
-    # Check the npm registry for updates every day (weekdays)
     schedule:
       interval: "daily"
 
+  # Enable version updates for npm in examples/cloudflare-worker
+  # (this directory uses npm with its own package-lock.json,
+  # separate from the root pnpm workspace)
+  - package-ecosystem: "npm"
+    directory: "/examples/cloudflare-worker"
+    schedule:
+      interval: "weekly"
+
   # Enable version updates for Docker
   - package-ecosystem: "docker"
-    # Look for a `Dockerfile` in the `root` directory
+    # Look for `Dockerfile` and `Dockerfile.container` in the `root` directory
     directory: "/"
     # Check for updates once a week
     schedule:
