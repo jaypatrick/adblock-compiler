@@ -91,6 +91,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.48.0] - 2026-03-09
+
+### Added- auto-generate Postman collection from OpenAPI spec with CI sync enforcement
+
+### Fixed
+
+- add query param support and bound $ref recursion depth in Postman generator
+- consolidate OpenAPI specs and update documentation references
+
+
 ## [0.47.2] - 2026-03-09
 
 ### Added### Fixed
