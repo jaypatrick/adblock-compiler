@@ -149,7 +149,6 @@ Deno.test({
         assertEquals(body.success, true);
         assertExists(body.canonical);
         assertEquals(typeof body.canonical, 'string');
-        assertExists(body.hops !== undefined);
         assertEquals(typeof body.hops, 'number');
     },
 });

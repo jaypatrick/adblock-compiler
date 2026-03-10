@@ -45,6 +45,20 @@ import type { IContentFetcher } from './types.ts';
 import { NetworkError } from '../utils/ErrorUtils.ts';
 
 /**
+ * JavaScript snippet executed inside the browser page to extract plain text.
+ * Prefers the first `<pre>` element (standard filter list delivery), then
+ * falls back to the full `<body>` text.  Always returns a string.
+ */
+const EXTRACT_TEXT_SCRIPT = `
+    (() => {
+        const pre = document.querySelector('pre');
+        if (pre) return pre.innerText || '';
+        const body = document.body;
+        return body ? (body.innerText || '') : (document.documentElement.innerText || '');
+    })()
+`;
+
+/**
  * Options for controlling browser-based content fetching.
  */
 export interface BrowserFetcherOptions {
@@ -166,16 +180,10 @@ export class BrowserFetcher implements IContentFetcher {
 
             // Extract plain text: prefer <pre> blocks (standard filter list delivery),
             // fall back to the full body text for pages that render rules inline.
-            const text = await page.evaluate(`
-                (() => {
-                    const pre = document.querySelector('pre');
-                    if (pre) return pre.innerText;
-                    const body = document.body;
-                    return body ? body.innerText : document.documentElement.innerText;
-                })()
-            `) as string;
+            // The script always returns a string so no nullish coalescing is needed.
+            const text = await page.evaluate(EXTRACT_TEXT_SCRIPT) as string;
 
-            return text ?? '';
+            return text;
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             const isTimeout = message.toLowerCase().includes('timeout');

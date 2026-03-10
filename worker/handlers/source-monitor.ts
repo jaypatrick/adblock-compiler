@@ -90,6 +90,8 @@ export async function handleSourceMonitor(
     };
 
     // Persist health summary to KV in the background so the response is not delayed.
+    // The KV record includes a `checkedAt` timestamp for dashboard display; the HTTP
+    // response intentionally omits it to keep the response shape minimal.
     ctx.waitUntil(
         env.COMPILATION_CACHE.put(SOURCE_MONITOR_KV_KEY, JSON.stringify({
             ...response,

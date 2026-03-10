@@ -18,6 +18,40 @@ import { chromium } from 'playwright-core';
 import type { BrowserWorker } from '../cloudflare-workers-shim.ts';
 
 // ============================================================================
+// Shared helpers
+// ============================================================================
+
+/**
+ * Extracts plain-text content from a rendered page.
+ * Prefers the first `<pre>` element (standard filter list delivery),
+ * then falls back to the full `<body>` text.
+ *
+ * Defined as a constant so both `fetchWithBrowser` and `BrowserFetcher` use
+ * the same extraction script without duplication.
+ */
+const EXTRACT_TEXT_SCRIPT = `
+    (() => {
+        const pre = document.querySelector('pre');
+        if (pre) return pre.innerText || '';
+        const body = document.body;
+        return body ? (body.innerText || '') : (document.documentElement.innerText || '');
+    })()
+`;
+
+/**
+ * Converts a Uint8Array to a Base-64 string using a chunked approach to avoid
+ * stack overflows that occur when spreading large arrays into String.fromCharCode.
+ */
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+    const CHUNK_SIZE = 8192;
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += CHUNK_SIZE) {
+        binary += String.fromCharCode(...bytes.subarray(i, i + CHUNK_SIZE));
+    }
+    return btoa(binary);
+}
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -93,21 +127,15 @@ export async function resolveCanonicalUrl(
 ): Promise<CanonicalUrlResult> {
     const browser = await acquireBrowser(binding, timeout);
     const page = await browser.newPage();
-    let hops = 0;
-    let lastUrl = url;
 
     try {
         await page.goto(url, { waitUntil: 'networkidle', timeout });
 
         const finalUrl = page.url();
-        // Count distinct URL changes as hops
-        if (finalUrl !== lastUrl) {
-            // Simple hop count: compare initial vs final (deeper tracking would
-            // require a request interception hook, which adds complexity for
-            // marginal value in this use case).
-            hops = finalUrl === url ? 0 : 1;
-            lastUrl = finalUrl;
-        }
+        // Hops: 0 if the final URL matches the input, 1 if it changed.
+        // (Deep hop counting would require request interception, which adds
+        //  complexity for marginal value in this use case.)
+        const hops = finalUrl === url ? 0 : 1;
 
         return { canonical: finalUrl, hops };
     } finally {
@@ -146,7 +174,7 @@ export async function takeSourceScreenshot(
         await page.goto(url, { waitUntil: 'networkidle', timeout });
 
         const screenshotBytes = await page.screenshot({ fullPage: true, type: 'png' });
-        const screenshotBase64 = btoa(String.fromCharCode(...screenshotBytes));
+        const screenshotBase64 = uint8ArrayToBase64(screenshotBytes);
 
         let storedKey: string | undefined;
         if (r2Bucket) {
@@ -204,16 +232,9 @@ export async function fetchWithBrowser(
             return await page.content();
         }
 
-        const text = await page.evaluate(`
-            (() => {
-                const pre = document.querySelector('pre');
-                if (pre) return pre.innerText;
-                const body = document.body;
-                return body ? body.innerText : document.documentElement.innerText;
-            })()
-        `) as string;
+        const text = await page.evaluate(EXTRACT_TEXT_SCRIPT) as string;
 
-        return text ?? '';
+        return text;
     } finally {
         await browser.close();
     }
