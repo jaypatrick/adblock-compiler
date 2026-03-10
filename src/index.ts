@@ -187,10 +187,13 @@ export type { CompilationResult, FilterCompilerOptions } from './compiler/index.
 // Platform abstraction layer (for Web Workers, Cloudflare Workers, browsers)
 export { BrowserFetcher, CompositeFetcher, HttpFetcher, PlatformDownloader, PreFetchedContentFetcher, WorkerCompiler } from './platform/index.ts';
 export type {
+    BrowserConnector,
     BrowserFetcherOptions,
     IContentFetcher,
     IHttpFetcherOptions,
     IPlatformCompilerOptions,
+    IPlaywrightBrowser,
+    IPlaywrightPage,
     PlatformDownloaderOptions,
     PreFetchedContent,
     WorkerCompilationResult,

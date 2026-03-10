@@ -8,12 +8,19 @@
  * Rendering).  Callers are responsible for checking that the binding exists
  * before invoking these utilities.
  *
+ * IMPORTANT — playwright-core dependency:
+ * playwright-core is managed via PNPM (package.json devDependencies) and is
+ * NOT in deno.json's import map.  It is imported DYNAMICALLY inside
+ * acquireBrowser() so that Deno's module graph never eagerly loads it during
+ * type-checking or test runs (playwright-core calls os.release() at module
+ * initialisation, which requires --allow-sys).  The wrangler/esbuild bundle
+ * step resolves the dynamic import from node_modules at build time.
+ *
  * @see worker/handlers/url-resolver.ts — POST /browser/resolve-url
  * @see worker/handlers/source-monitor.ts — POST /browser/monitor
  * @see https://developers.cloudflare.com/browser-rendering/platform/playwright/
  */
 
-import { chromium } from 'playwright-core';
 import type { BrowserWorker } from '../cloudflare-workers-shim.ts';
 
 // ============================================================================
@@ -80,6 +87,23 @@ export interface ScreenshotResult {
     storedKey?: string;
 }
 
+// Minimal Playwright interfaces used by this module.
+// playwright-core is imported dynamically to avoid Deno's module graph
+// loading it at require-time (playwright-core calls os.release() on load).
+interface IPlaywrightPage {
+    goto(url: string, opts?: { waitUntil?: string; timeout?: number }): Promise<unknown>;
+    url(): string;
+    content(): Promise<string>;
+    evaluate(script: string): Promise<unknown>;
+    screenshot(opts: { fullPage?: boolean; type?: string }): Promise<Uint8Array>;
+    close(): Promise<void>;
+}
+
+interface IPlaywrightBrowser {
+    newPage(): Promise<IPlaywrightPage>;
+    close(): Promise<void>;
+}
+
 // ============================================================================
 // Internal helpers
 // ============================================================================
@@ -87,16 +111,33 @@ export interface ScreenshotResult {
 /**
  * Acquires a Playwright Browser by connecting over CDP to the Browser Rendering
  * session obtained from the `BROWSER` binding's acquire endpoint.
+ *
+ * playwright-core is loaded via dynamic import so that Deno's static module
+ * graph never includes it (avoids the os.release() initialisation side-effect
+ * that fails without --allow-sys).  The wrangler esbuild bundler resolves the
+ * dynamic import from PNPM's node_modules at Worker build time.
  */
-async function acquireBrowser(binding: BrowserWorker, timeout: number) {
+async function acquireBrowser(binding: BrowserWorker, timeout: number): Promise<IPlaywrightBrowser> {
     const sessionResp = await binding.fetch(
         new Request('https://workers-binding.browser/acquire', { method: 'POST' }),
     );
     if (!sessionResp.ok) {
         throw new Error(`Browser Rendering acquire failed with status ${sessionResp.status}`);
     }
-    const { webSocketDebuggerUrl } = await sessionResp.json() as { webSocketDebuggerUrl: string };
-    return await chromium.connectOverCDP(webSocketDebuggerUrl, { timeout });
+    const { webSocketDebuggerUrl } = (await sessionResp.json()) as { webSocketDebuggerUrl: string };
+
+    // Dynamic import: evaluated only at call time, not at module load time.
+    // playwright-core is a PNPM devDependency; esbuild bundles it into the Worker.
+    // The `as unknown as` double-assertion is intentional: playwright-core is NOT
+    // in deno.json (removed to prevent the package's os.release() side-effect from
+    // failing Deno tests), so its static types are unavailable to the Deno compiler.
+    // The local IPlaywrightBrowser interface defines the exact surface we use.
+    const { chromium } = (await import('playwright-core')) as unknown as {
+        chromium: {
+            connectOverCDP(url: string, opts: { timeout: number }): Promise<IPlaywrightBrowser>;
+        };
+    };
+    return chromium.connectOverCDP(webSocketDebuggerUrl, { timeout });
 }
 
 // ============================================================================
@@ -231,7 +272,7 @@ export async function fetchWithBrowser(
             return await page.content();
         }
 
-        const text = await page.evaluate(EXTRACT_TEXT_SCRIPT) as string;
+        const text = (await page.evaluate(EXTRACT_TEXT_SCRIPT)) as string;
 
         return text;
     } finally {

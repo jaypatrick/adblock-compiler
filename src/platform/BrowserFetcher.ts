@@ -34,12 +34,17 @@
  * canHandle() returns true only for http/https URLs to avoid accidentally
  * launching a browser for local file paths.
  *
+ * The `playwright-core` package is NOT imported here because it is a Node.js
+ * runtime package that cannot be used in JSR-published Deno code (it requires
+ * --allow-sys and native OS APIs).  Instead, callers pass a `connector`
+ * function that wraps `chromium.connectOverCDP` from their own environment
+ * (typically the Cloudflare Worker where playwright-core is a PNPM dep).
+ *
  * @see https://developers.cloudflare.com/browser-rendering/platform/playwright/
  * @see src/platform/types.ts — IContentFetcher
  * @see src/platform/CompositeFetcher.ts — chain this after HttpFetcher for fallback
  */
 
-import { chromium } from 'playwright-core';
 import type { IContentFetcher } from './types.ts';
 import { NetworkError } from '../utils/ErrorUtils.ts';
 
@@ -92,6 +97,45 @@ interface IBrowserWorker {
     fetch: typeof fetch;
 }
 
+/**
+ * Minimal interface for a Playwright Page, covering only the operations used
+ * by BrowserFetcher.  Defined locally so the JSR-published library has no
+ * dependency on the `playwright-core` npm package.
+ */
+export interface IPlaywrightPage {
+    goto(url: string, options?: { waitUntil?: string; timeout?: number }): Promise<unknown>;
+    content(): Promise<string>;
+    evaluate(script: string): Promise<unknown>;
+    close(): Promise<void>;
+}
+
+/**
+ * Minimal interface for a Playwright Browser, covering only the operations used
+ * by BrowserFetcher.
+ */
+export interface IPlaywrightBrowser {
+    newPage(): Promise<IPlaywrightPage>;
+    close(): Promise<void>;
+}
+
+/**
+ * A function that connects to a Cloudflare Browser Rendering CDP endpoint and
+ * returns a Playwright-compatible browser instance.
+ *
+ * In the Cloudflare Worker runtime this is `chromium.connectOverCDP` from
+ * `playwright-core` (managed by PNPM, never imported in the Deno/JSR src/).
+ *
+ * @example
+ * ```ts
+ * import { chromium } from 'playwright-core';
+ * const fetcher = new BrowserFetcher(env.BROWSER, {}, chromium.connectOverCDP.bind(chromium));
+ * ```
+ */
+export type BrowserConnector = (
+    endpointURL: string,
+    options: { timeout: number },
+) => Promise<IPlaywrightBrowser>;
+
 const DEFAULT_OPTIONS: Required<BrowserFetcherOptions> = {
     timeout: 30_000,
     waitUntil: 'networkidle',
@@ -107,27 +151,34 @@ const DEFAULT_OPTIONS: Required<BrowserFetcherOptions> = {
  *
  * @example
  * ```ts
+ * import { chromium } from 'playwright-core'; // worker-only PNPM dep
  * import { CompositeFetcher, HttpFetcher, BrowserFetcher } from '@jk-com/adblock-compiler';
  *
  * const fetcher = new CompositeFetcher([
  *     new HttpFetcher(),
- *     new BrowserFetcher(env.BROWSER, { timeout: 30_000 }),
+ *     new BrowserFetcher(env.BROWSER, { timeout: 30_000 }, chromium.connectOverCDP.bind(chromium)),
  * ]);
  * ```
  */
 export class BrowserFetcher implements IContentFetcher {
     private readonly binding: IBrowserWorker;
     private readonly options: Required<BrowserFetcherOptions>;
+    private readonly connector: BrowserConnector;
 
     /**
      * Creates a new BrowserFetcher.
      *
      * @param binding - The Cloudflare `BROWSER` binding from the Worker env.
      * @param options - Optional configuration for navigation behaviour.
+     * @param connector - Function that connects to a CDP endpoint.
+     *   Required when calling `fetch()`.  `canHandle()` works without it.
+     *   In a Cloudflare Worker: `chromium.connectOverCDP.bind(chromium)`
+     *   (where `chromium` is from `playwright-core`, a PNPM devDependency).
      */
-    constructor(binding: IBrowserWorker, options?: BrowserFetcherOptions) {
+    constructor(binding: IBrowserWorker, options?: BrowserFetcherOptions, connector?: BrowserConnector) {
         this.binding = binding;
         this.options = { ...DEFAULT_OPTIONS, ...options };
+        this.connector = connector ?? BrowserFetcher.missingConnector;
     }
 
     /**
@@ -154,7 +205,7 @@ export class BrowserFetcher implements IContentFetcher {
      * @throws {NetworkError} On navigation timeout or failure.
      */
     public async fetch(source: string): Promise<string> {
-        let browser;
+        let browser: IPlaywrightBrowser;
         try {
             browser = await this.acquireBrowser();
         } catch (err) {
@@ -180,7 +231,7 @@ export class BrowserFetcher implements IContentFetcher {
             // Extract plain text: prefer <pre> blocks (standard filter list delivery),
             // fall back to the full body text for pages that render rules inline.
             // The script always returns a string so no nullish coalescing is needed.
-            const text = await page.evaluate(EXTRACT_TEXT_SCRIPT) as string;
+            const text = (await page.evaluate(EXTRACT_TEXT_SCRIPT)) as string;
 
             return text;
         } catch (err) {
@@ -201,9 +252,9 @@ export class BrowserFetcher implements IContentFetcher {
      * Acquires a CDP-accessible browser via the Cloudflare Browser Rendering binding.
      *
      * Calls the binding's fetch endpoint to obtain the WebSocket debugger URL,
-     * then uses Playwright's connectOverCDP to create a Browser instance.
+     * then uses the injected connector to create a Browser instance.
      */
-    private async acquireBrowser() {
+    private async acquireBrowser(): Promise<IPlaywrightBrowser> {
         // The BROWSER binding exposes a Fetcher whose fetch() returns the
         // CDP WebSocket endpoint for a browser session.
         const sessionResp = await this.binding.fetch(
@@ -212,9 +263,20 @@ export class BrowserFetcher implements IContentFetcher {
         if (!sessionResp.ok) {
             throw new Error(`Browser Rendering acquire failed with status ${sessionResp.status}`);
         }
-        const { webSocketDebuggerUrl } = await sessionResp.json() as { webSocketDebuggerUrl: string };
-        return await chromium.connectOverCDP(webSocketDebuggerUrl, {
-            timeout: this.options.timeout,
-        });
+        const { webSocketDebuggerUrl } = (await sessionResp.json()) as { webSocketDebuggerUrl: string };
+        return await this.connector(webSocketDebuggerUrl, { timeout: this.options.timeout });
+    }
+
+    /**
+     * Default connector that throws if no connector was injected.
+     * Prevents silent failures when BrowserFetcher is constructed without a connector
+     * and `fetch()` is called.
+     */
+    private static missingConnector(_url: string, _opts: { timeout: number }): Promise<IPlaywrightBrowser> {
+        return Promise.reject(
+            new Error(
+                'BrowserFetcher: no connector provided. Pass chromium.connectOverCDP.bind(chromium) as the third constructor argument.',
+            ),
+        );
     }
 }

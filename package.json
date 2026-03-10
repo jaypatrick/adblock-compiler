@@ -21,6 +21,11 @@
     "devDependencies": {
         "@cloudflare/containers": "^0.1.1",
         "@cloudflare/playwright-mcp": "^0.0.5",
+        "playwright-core": "^1.52.0",
         "wrangler": "^4.71.0"
+    },
+    "browser": {
+        "chromium-bidi/lib/cjs/bidiMapper/BidiMapper": false,
+        "chromium-bidi/lib/cjs/cdp/CdpConnection": false
     }
 }

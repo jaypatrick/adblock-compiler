@@ -93,10 +93,13 @@ export async function handleSourceMonitor(
     // The KV record includes a `checkedAt` timestamp for dashboard display; the HTTP
     // response intentionally omits it to keep the response shape minimal.
     ctx.waitUntil(
-        env.COMPILATION_CACHE.put(SOURCE_MONITOR_KV_KEY, JSON.stringify({
-            ...response,
-            checkedAt: new Date().toISOString(),
-        })).catch((err) => {
+        env.COMPILATION_CACHE.put(
+            SOURCE_MONITOR_KV_KEY,
+            JSON.stringify({
+                ...response,
+                checkedAt: new Date().toISOString(),
+            }),
+        ).catch((err) => {
             // deno-lint-ignore no-console
             console.warn('[source-monitor] Failed to persist results to KV:', err instanceof Error ? err.message : String(err));
         }),

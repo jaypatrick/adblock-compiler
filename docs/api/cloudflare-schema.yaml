@@ -45,7 +45,7 @@ tags:
         description: Health monitoring endpoints
     -
         name: Browser Rendering
-        description: Cloudflare Browser Rendering endpoints for JS-rendered sources, URL resolution, and source health monitoring
+        description: 'Cloudflare Browser Rendering endpoints for JS-rendered sources, URL resolution, and source health monitoring'
 paths:
     /api:
         get:
@@ -868,11 +868,15 @@ paths:
             tags:
                 - Browser Rendering
             summary: Resolve canonical URL
-            description: "Resolves the canonical URL of a given address by following all redirects,\
-                \ including JavaScript-triggered ones, using a headless Chromium browser via\
-                \ Cloudflare Browser Rendering.\n\nUseful for determining the final destination\
-                \ of short links, CDN redirects, or mirror systems before caching filter list\
-                \ metadata.\n\nReturns **503** if the `BROWSER` binding is not configured.\n"
+            description: |
+                Resolves the canonical URL of a given address by following all redirects,
+                including JavaScript-triggered ones, using a headless Chromium browser via
+                Cloudflare Browser Rendering.
+
+                Useful for determining the final destination of short links, CDN redirects,
+                or mirror systems before caching filter list metadata.
+
+                Returns **503** if the `BROWSER` binding is not configured.
             operationId: resolveCanonicalUrl
             requestBody:
                 required: true
@@ -880,6 +884,11 @@ paths:
                     application/json:
                         schema:
                             $ref: '#/components/schemas/UrlResolveRequest'
+                        examples:
+                            shortLink:
+                                summary: Resolve a short link
+                                value:
+                                    url: 'https://short.link/abc'
             responses:
                 '200':
                     description: Canonical URL resolved successfully
@@ -890,7 +899,7 @@ paths:
                 '400':
                     $ref: '#/components/responses/BadRequestError'
                 '502':
-                    description: Navigation failed (unreachable URL, DNS error, etc.)
+                    description: 'Navigation failed (unreachable URL, DNS error, etc.)'
                     content:
                         application/json:
                             schema:
@@ -908,12 +917,15 @@ paths:
             tags:
                 - Browser Rendering
             summary: Monitor filter list source health
-            description: "Screenshots one or more filter-list source URLs using Cloudflare\
-                \ Browser Rendering and returns a health summary. Optionally stores screenshots\
-                \ to R2.\n\nThe health summary is also written to KV (`SOURCE_MONITOR_RESULTS`\
-                \ key) via `ctx.waitUntil()` so the Worker responds immediately while the\
-                \ KV write completes in the background.\n\nReturns **503** if the `BROWSER`\
-                \ binding is not configured.\n"
+            description: |
+                Screenshots one or more filter-list source URLs using Cloudflare Browser
+                Rendering and returns a health summary. Optionally stores screenshots to R2.
+
+                The health summary is also written to KV (`SOURCE_MONITOR_RESULTS` key)
+                via `ctx.waitUntil()` so the Worker responds immediately while the KV
+                write completes in the background.
+
+                Returns **503** if the `BROWSER` binding is not configured.
             operationId: monitorSources
             requestBody:
                 required: true
@@ -921,6 +933,20 @@ paths:
                     application/json:
                         schema:
                             $ref: '#/components/schemas/SourceMonitorRequest'
+                        examples:
+                            basic:
+                                summary: Check two sources without storing screenshots
+                                value:
+                                    urls:
+                                        - 'https://easylist.to/easylist/easylist.txt'
+                                        - 'https://filters.adtidy.org/extension/ublock/filters/2.txt'
+                                    storeScreenshots: false
+                            withStorage:
+                                summary: Check a source and store its screenshot to R2
+                                value:
+                                    urls:
+                                        - 'https://easylist.to/easylist/easylist.txt'
+                                    storeScreenshots: true
             responses:
                 '200':
                     description: Source health check completed
@@ -2187,7 +2213,7 @@ components:
                     type: string
                     format: uri
                     description: The URL to resolve (follows all redirects including JS-triggered ones)
-                    example: https://short.link/abc
+                    example: 'https://short.link/abc'
         UrlResolveResponse:
             type: object
             properties:
@@ -2198,7 +2224,7 @@ components:
                     type: string
                     format: uri
                     description: The final canonical URL after all redirects
-                    example: https://example.com/filters/list.txt
+                    example: 'https://example.com/filters/list.txt'
                 hops:
                     type: integer
                     description: Number of URL changes observed during navigation
@@ -2215,10 +2241,12 @@ components:
                         format: uri
                     minItems: 1
                     description: List of filter-list source URLs to check
+                    example:
+                        - 'https://easylist.to/easylist/easylist.txt'
                 storeScreenshots:
                     type: boolean
                     default: false
-                    description: When true, screenshots are stored to R2 (requires FILTER_STORAGE binding)
+                    description: 'When true, screenshots are stored to R2 (requires FILTER_STORAGE binding)'
         SourceMonitorResult:
             type: object
             required:
