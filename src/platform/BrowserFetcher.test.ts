@@ -119,7 +119,7 @@ Deno.test({
     async fn() {
         // This test would run inside a Cloudflare Worker where env.BROWSER is available.
         // It's kept here as documentation of the expected runtime behaviour.
-        const { env } = await import('cloudflare:workers') as { env: { BROWSER: { fetch: typeof fetch } } };
+        const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
         const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 30_000 });
 
         const content = await fetcher.fetch('https://easylist.to/easylist/easylist.txt');
@@ -132,7 +132,7 @@ Deno.test({
     name: 'BrowserFetcher - fetch throws NetworkError on navigation failure',
     ignore: true, // Requires Cloudflare Workers runtime with BROWSER binding
     async fn() {
-        const { env } = await import('cloudflare:workers') as { env: { BROWSER: { fetch: typeof fetch } } };
+        const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
         const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 5_000 });
 
         await assertRejects(
@@ -147,7 +147,7 @@ Deno.test({
     name: 'BrowserFetcher - fetch respects timeout option',
     ignore: true, // Requires Cloudflare Workers runtime with BROWSER binding
     async fn() {
-        const { env } = await import('cloudflare:workers') as { env: { BROWSER: { fetch: typeof fetch } } };
+        const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
         const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 1 }); // 1ms — should always timeout
 
         await assertRejects(
@@ -161,7 +161,7 @@ Deno.test({
     name: 'BrowserFetcher - extractFullHtml returns HTML content',
     ignore: true, // Requires Cloudflare Workers runtime with BROWSER binding
     async fn() {
-        const { env } = await import('cloudflare:workers') as { env: { BROWSER: { fetch: typeof fetch } } };
+        const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
         const fetcher = new BrowserFetcher(env.BROWSER, { extractFullHtml: true });
 
         const content = await fetcher.fetch('https://example.com');

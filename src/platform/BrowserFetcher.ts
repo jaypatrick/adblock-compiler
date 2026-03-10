@@ -39,7 +39,6 @@
  * @see src/platform/CompositeFetcher.ts — chain this after HttpFetcher for fallback
  */
 
-// @deno-types="./playwright-core-types.d.ts"
 import { chromium } from 'playwright-core';
 import type { IContentFetcher } from './types.ts';
 import { NetworkError } from '../utils/ErrorUtils.ts';

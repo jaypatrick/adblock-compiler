@@ -13,7 +13,6 @@
  * @see https://developers.cloudflare.com/browser-rendering/platform/playwright/
  */
 
-// @deno-types="../cloudflare-playwright-types.d.ts"
 import { chromium } from 'playwright-core';
 import type { BrowserWorker } from '../cloudflare-workers-shim.ts';
 
