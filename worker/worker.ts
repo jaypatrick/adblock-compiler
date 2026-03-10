@@ -61,6 +61,8 @@ import { AnalyticsService } from '../src/services/AnalyticsService.ts';
 import { getDeploymentHistory, getDeploymentStats, getLatestDeployment } from '../src/deployment/version.ts';
 import { validateRequestSize } from './middleware/index.ts';
 import { API_DOCS_REDIRECT } from './utils/constants.ts';
+import { handleResolveUrl } from './handlers/url-resolver.ts';
+import { handleSourceMonitor } from './handlers/source-monitor.ts';
 
 // Import Workflow classes and types
 import {
@@ -3148,6 +3150,15 @@ export default {
         // Note: the native /api, /api/version, /api/deployments, /api/turnstile-config
         // routes above are already handled before this point.
         const routePath = pathname.startsWith('/api/') ? pathname.slice(4) : pathname;
+
+        // Handle Browser Rendering endpoints
+        if (routePath === '/browser/resolve-url' && request.method === 'POST') {
+            return handleResolveUrl(request, env);
+        }
+
+        if (routePath === '/browser/monitor' && request.method === 'POST') {
+            return handleSourceMonitor(request, env);
+        }
 
         // Handle metrics endpoint
         if (routePath === '/metrics' && request.method === 'GET') {

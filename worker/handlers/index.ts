@@ -11,6 +11,10 @@ export { handleASTParseRequest, handleCompileAsync, handleCompileBatch, handleCo
 // Metrics handlers
 export { handleMetrics, recordMetric } from './metrics.ts';
 
+// Browser Rendering handlers
+export { handleResolveUrl } from './url-resolver.ts';
+export { handleSourceMonitor } from './source-monitor.ts';
+
 // Queue handlers
 export {
     compress,
