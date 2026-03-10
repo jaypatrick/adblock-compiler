@@ -6,6 +6,7 @@
     "publish": {
         "include": [
             "src/**/*.ts",
+            "src/**/*.d.ts",
             "README.md",
             "LICENSE"
         ],
@@ -73,6 +74,7 @@
         "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20260307.1",
         "@cloudflare/containers": "npm:@cloudflare/containers@^0.1.1",
         "@cloudflare/playwright-mcp": "npm:@cloudflare/playwright-mcp@^0.0.5",
+        "playwright-core": "npm:playwright-core@^1.52.0",
         "cloudflare:workers": "./worker/cloudflare-workers-shim.ts",
         "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.4.2",
         "@prisma/client": "npm:@prisma/client@^7.4.2",

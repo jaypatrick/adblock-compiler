@@ -148,6 +148,8 @@ export interface Env {
     ERROR_REPORTER_VERBOSE?: string; // 'true' or 'false' for verbose console logging
     // Browser Rendering binding (for Cloudflare Browser Rendering / Playwright MCP)
     BROWSER?: BrowserWorker;
+    // R2 bucket for filter list storage and screenshots (optional)
+    FILTER_STORAGE?: R2Bucket;
     // Playwright MCP Agent Durable Object namespace
     MCP_AGENT?: DurableObjectNamespace;
     // Adblock Compiler container Durable Object namespace
@@ -495,4 +497,62 @@ export interface WorkflowMetrics {
     totalBatches?: number;
     totalRuns?: number;
     totalChecks?: number;
+}
+
+// ============================================================================
+// Browser Rendering Types
+// ============================================================================
+
+/**
+ * Request body for POST /browser/monitor
+ */
+export interface SourceMonitorRequest {
+    /** List of filter-list source URLs to check. */
+    urls: string[];
+    /** When true, screenshots are stored to R2 (requires FILTER_STORAGE binding). */
+    storeScreenshots?: boolean;
+}
+
+/**
+ * Per-URL result from the source monitor.
+ */
+export interface SourceMonitorResult {
+    /** The URL that was checked. */
+    url: string;
+    /** 'ok' if the screenshot succeeded, 'error' otherwise. */
+    status: 'ok' | 'error';
+    /** R2 object key where the screenshot was stored (when storeScreenshots is true and FILTER_STORAGE is set). */
+    screenshotKey?: string;
+    /** Base-64 encoded PNG screenshot (when storeScreenshots is true but FILTER_STORAGE is absent). */
+    screenshotBase64?: string;
+    /** Error message when status is 'error'. */
+    error?: string;
+}
+
+/**
+ * Response body for POST /browser/monitor
+ */
+export interface SourceMonitorResponse {
+    /** Total number of URLs checked. */
+    checked: number;
+    /** Per-URL results. */
+    results: SourceMonitorResult[];
+}
+
+/**
+ * Request body for POST /browser/resolve-url
+ */
+export interface UrlResolveRequest {
+    /** The URL to resolve (follows all redirects including JS-triggered ones). */
+    url: string;
+}
+
+/**
+ * Response body for POST /browser/resolve-url
+ */
+export interface UrlResolveResponse {
+    /** The final canonical URL after all redirects. */
+    canonical: string;
+    /** Number of URL changes observed during navigation. */
+    hops: number;
 }

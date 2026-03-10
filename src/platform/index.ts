@@ -7,6 +7,8 @@ export type { IContentFetcher, IHttpFetcherOptions, IPlatformCompilerOptions, Pr
 export { HttpFetcher } from './HttpFetcher.ts';
 export { PreFetchedContentFetcher } from './PreFetchedContentFetcher.ts';
 export { CompositeFetcher } from './CompositeFetcher.ts';
+export { BrowserFetcher } from './BrowserFetcher.ts';
+export type { BrowserFetcherOptions } from './BrowserFetcher.ts';
 export { PlatformDownloader } from './PlatformDownloader.ts';
 export type { PlatformDownloaderOptions } from './PlatformDownloader.ts';
 export { WorkerCompiler } from './WorkerCompiler.ts';

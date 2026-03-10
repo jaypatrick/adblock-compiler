@@ -185,8 +185,9 @@ export { compile, FilterCompiler, SourceCompiler } from './compiler/index.ts';
 export type { CompilationResult, FilterCompilerOptions } from './compiler/index.ts';
 
 // Platform abstraction layer (for Web Workers, Cloudflare Workers, browsers)
-export { CompositeFetcher, HttpFetcher, PlatformDownloader, PreFetchedContentFetcher, WorkerCompiler } from './platform/index.ts';
+export { BrowserFetcher, CompositeFetcher, HttpFetcher, PlatformDownloader, PreFetchedContentFetcher, WorkerCompiler } from './platform/index.ts';
 export type {
+    BrowserFetcherOptions,
     IContentFetcher,
     IHttpFetcherOptions,
     IPlatformCompilerOptions,

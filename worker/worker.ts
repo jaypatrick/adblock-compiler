@@ -78,6 +78,10 @@ import {
 import { routeAgentRequest } from './agent-routing.ts';
 import { PlaywrightMcpAgent } from './mcp-agent.ts';
 
+// Import Browser Rendering handlers
+import { handleSourceMonitor } from './handlers/source-monitor.ts';
+import { handleUrlResolve } from './handlers/url-resolver.ts';
+
 // Re-export Env for compatibility with existing imports
 export type { Env };
 
@@ -2978,7 +2982,7 @@ async function handleHealthLatest(env: Env): Promise<Response> {
  * Main fetch handler for the Cloudflare Worker.
  */
 export default {
-    async fetch(request: Request, env: Env): Promise<Response> {
+    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         const requestId = generateRequestId('api');
         const url = new URL(request.url);
         const { pathname } = url;
@@ -3691,6 +3695,16 @@ export default {
                 { success: false, error: 'Invalid workflow events path. Use /workflow/events/:workflowId' },
                 { status: 400, headers: { 'Access-Control-Allow-Origin': '*' } },
             );
+        }
+
+        // Browser Rendering: resolve canonical URL (follows JS-triggered redirects)
+        if (routePath === '/browser/resolve-url' && request.method === 'POST') {
+            return handleUrlResolve(request, env);
+        }
+
+        // Browser Rendering: screenshot source URLs for health monitoring
+        if (routePath === '/browser/monitor' && request.method === 'POST') {
+            return handleSourceMonitor(request, env, ctx);
         }
 
         // Health check — returns current service health status

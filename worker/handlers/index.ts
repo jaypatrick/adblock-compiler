@@ -26,3 +26,7 @@ export {
     QUEUE_BINDINGS_NOT_AVAILABLE_ERROR,
     updateQueueStats,
 } from './queue.ts';
+
+// Browser Rendering handlers
+export { handleSourceMonitor } from './source-monitor.ts';
+export { handleUrlResolve } from './url-resolver.ts';
