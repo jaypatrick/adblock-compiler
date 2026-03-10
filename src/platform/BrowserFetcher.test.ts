@@ -107,7 +107,7 @@ Deno.test('BrowserFetcher - accepts explicit options', () => {
 
 Deno.test('BrowserFetcher - fetch throws NetworkError when connector throws', async () => {
     const connector = makeMockConnector({ throws: 'connection refused' });
-    const fetcher = new BrowserFetcher(makeMockBinding(), {}, connector as unknown as Parameters<typeof BrowserFetcher>[2]);
+    const fetcher = new BrowserFetcher(makeMockBinding(), {}, connector as unknown as ConstructorParameters<typeof BrowserFetcher>[2]);
 
     await assertRejects(
         () => fetcher.fetch('https://example.com/list.txt'),
@@ -128,7 +128,7 @@ Deno.test('BrowserFetcher - fetch throws NetworkError when no connector provided
 
 Deno.test('BrowserFetcher - fetch returns page text via connector', async () => {
     const connector = makeMockConnector({ pageText: '||example.com^' });
-    const fetcher = new BrowserFetcher(makeMockBinding(), {}, connector as unknown as Parameters<typeof BrowserFetcher>[2]);
+    const fetcher = new BrowserFetcher(makeMockBinding(), {}, connector as unknown as ConstructorParameters<typeof BrowserFetcher>[2]);
 
     const result = await fetcher.fetch('https://example.com/list.txt');
     assertEquals(result, '||example.com^');
@@ -136,7 +136,7 @@ Deno.test('BrowserFetcher - fetch returns page text via connector', async () => 
 
 Deno.test('BrowserFetcher - fetch returns full HTML when extractFullHtml is true', async () => {
     const connector = makeMockConnector({ pageHtml: '<html><body>filter</body></html>' });
-    const fetcher = new BrowserFetcher(makeMockBinding(), { extractFullHtml: true }, connector as unknown as Parameters<typeof BrowserFetcher>[2]);
+    const fetcher = new BrowserFetcher(makeMockBinding(), { extractFullHtml: true }, connector as unknown as ConstructorParameters<typeof BrowserFetcher>[2]);
 
     const result = await fetcher.fetch('https://example.com/list.txt');
     assertEquals(result, '<html><body>filter</body></html>');
@@ -144,7 +144,7 @@ Deno.test('BrowserFetcher - fetch returns full HTML when extractFullHtml is true
 
 Deno.test('BrowserFetcher - fetch throws NetworkError on navigation failure', async () => {
     const connector = makeMockConnector({ gotoThrows: 'Navigation timeout of 30000 ms exceeded' });
-    const fetcher = new BrowserFetcher(makeMockBinding(), {}, connector as unknown as Parameters<typeof BrowserFetcher>[2]);
+    const fetcher = new BrowserFetcher(makeMockBinding(), {}, connector as unknown as ConstructorParameters<typeof BrowserFetcher>[2]);
 
     await assertRejects(
         () => fetcher.fetch('https://example.com/list.txt'),
@@ -165,7 +165,7 @@ Deno.test({
         // It's kept here as documentation of the expected runtime behaviour.
         const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
         const { launch } = await import('@cloudflare/playwright') as unknown as { launch: (b: unknown) => Promise<unknown> };
-        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 30_000 }, launch as unknown as Parameters<typeof BrowserFetcher>[2]);
+        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 30_000 }, launch as unknown as ConstructorParameters<typeof BrowserFetcher>[2]);
 
         const content = await fetcher.fetch('https://easylist.to/easylist/easylist.txt');
         assertEquals(typeof content, 'string');
@@ -179,7 +179,7 @@ Deno.test({
     async fn() {
         const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
         const { launch } = await import('@cloudflare/playwright') as unknown as { launch: (b: unknown) => Promise<unknown> };
-        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 5_000 }, launch as unknown as Parameters<typeof BrowserFetcher>[2]);
+        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 5_000 }, launch as unknown as ConstructorParameters<typeof BrowserFetcher>[2]);
 
         await assertRejects(
             () => fetcher.fetch('https://this-domain-does-not-exist.invalid/list.txt'),
@@ -195,7 +195,7 @@ Deno.test({
     async fn() {
         const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
         const { launch } = await import('@cloudflare/playwright') as unknown as { launch: (b: unknown) => Promise<unknown> };
-        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 1 }, launch as unknown as Parameters<typeof BrowserFetcher>[2]);
+        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 1 }, launch as unknown as ConstructorParameters<typeof BrowserFetcher>[2]);
 
         await assertRejects(
             () => fetcher.fetch('https://easylist.to/easylist/easylist.txt'),
@@ -210,7 +210,7 @@ Deno.test({
     async fn() {
         const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
         const { launch } = await import('@cloudflare/playwright') as unknown as { launch: (b: unknown) => Promise<unknown> };
-        const fetcher = new BrowserFetcher(env.BROWSER, { extractFullHtml: true }, launch as unknown as Parameters<typeof BrowserFetcher>[2]);
+        const fetcher = new BrowserFetcher(env.BROWSER, { extractFullHtml: true }, launch as unknown as ConstructorParameters<typeof BrowserFetcher>[2]);
 
         const content = await fetcher.fetch('https://example.com');
         assertEquals(content.includes('<html'), true);

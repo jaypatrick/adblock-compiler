@@ -18,13 +18,12 @@
     "jsr:@zod/zod@^4.3.6": "4.3.6",
     "npm:@adguard/agtree@^4.0.1": "4.0.1",
     "npm:@cloudflare/containers@~0.1.1": "0.1.1",
-    "npm:@cloudflare/playwright@^0.0.11": "0.0.11",
     "npm:@cloudflare/playwright-mcp@^0.0.5": "0.0.5_@cloudflare+workers-types@4.20260310.1_react@19.2.4_zod@4.3.6",
+    "npm:@cloudflare/playwright@^0.0.11": "0.0.11",
     "npm:@cloudflare/workers-types@^4.20260307.1": "4.20260310.1",
     "npm:@opentelemetry/api@^1.9.0": "1.9.0",
     "npm:@prisma/adapter-pg@^7.4.2": "7.4.2",
     "npm:@prisma/client@^7.4.2": "7.4.2_prisma@7.4.2__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
-    "npm:playwright-core@^1.52.0": "1.58.2",
     "npm:prisma@^7.4.2": "7.4.2_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
     "npm:wrangler@^4.71.0": "4.71.0_@cloudflare+workers-types@4.20260310.1",
     "npm:zod@^4.3.6": "4.3.6"
@@ -1556,10 +1555,6 @@
         "pathe"
       ]
     },
-    "playwright-core@1.58.2": {
-      "integrity": "sha512-yZkEtftgwS8CsfYo7nm0KE8jsvm6i/PTgVtB8DL726wNf6H2IMsDuxCpJj59KDaxCtSnrWan2AeDqM7JBaultg==",
-      "bin": true
-    },
     "postgres-array@2.0.0": {
       "integrity": "sha512-VpZrUqU5A69eQyW2c5CA1jtLecCsN2U/bD6VilrFDWq5+5UIEVO7nazS3TEcHf1zuPYO/sqGvUvW62g86RXZuA=="
     },
@@ -2003,8 +1998,8 @@
       "jsr:@zod/zod@^4.3.6",
       "npm:@adguard/agtree@^4.0.1",
       "npm:@cloudflare/containers@~0.1.1",
-      "npm:@cloudflare/playwright@^0.0.11",
       "npm:@cloudflare/playwright-mcp@^0.0.5",
+      "npm:@cloudflare/playwright@^0.0.11",
       "npm:@cloudflare/workers-types@^4.20260307.1",
       "npm:@prisma/adapter-pg@^7.4.2",
       "npm:@prisma/client@^7.4.2",
@@ -2015,10 +2010,9 @@
       "dependencies": [
         "npm:@adguard/agtree@^4.0.1",
         "npm:@cloudflare/containers@~0.1.1",
-        "npm:@cloudflare/playwright@^0.0.11",
         "npm:@cloudflare/playwright-mcp@^0.0.5",
+        "npm:@cloudflare/playwright@^0.0.11",
         "npm:@opentelemetry/api@^1.9.0",
-        "npm:playwright-core@^1.52.0",
         "npm:wrangler@^4.71.0",
         "npm:zod@^4.3.6"
       ]
