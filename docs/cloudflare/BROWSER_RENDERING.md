@@ -30,16 +30,22 @@ The codebase already has `@cloudflare/playwright-mcp` as a dependency (for the M
 
 ## Architecture
 
-```
-PlatformDownloader
-  └── CompositeFetcher
-        ├── PreFetchedContentFetcher   (highest priority — content supplied directly)
-        ├── HttpFetcher                (static .txt/.dat URLs — fast, cheap)
-        └── BrowserFetcher             (JS-rendered / redirect-heavy URLs — fallback)
-                    │
-                    └── playwright-core connectOverCDP
-                                │
-                                └── BROWSER binding (Cloudflare Browser Rendering)
+```mermaid
+flowchart TD
+    PD["PlatformDownloader"]
+    CF["CompositeFetcher"]
+    PF["PreFetchedContentFetcher\n(highest priority — content supplied directly)"]
+    HF["HttpFetcher\n(static .txt/.dat URLs — fast, cheap)"]
+    BF["BrowserFetcher\n(JS-rendered / redirect-heavy URLs — fallback)"]
+    PW["playwright-core\nconnectOverCDP"]
+    BR["BROWSER binding\n(Cloudflare Browser Rendering)"]
+
+    PD --> CF
+    CF --> PF
+    CF --> HF
+    CF --> BF
+    BF --> PW
+    PW --> BR
 ```
 
 `BrowserFetcher` implements `IContentFetcher` so it plugs directly into the existing `CompositeFetcher` / `PlatformDownloader` dependency-injection slot. No changes to the compilation pipeline are needed.
@@ -48,13 +54,20 @@ PlatformDownloader
 
 The Cloudflare `BROWSER` binding is a `Fetcher`. Calling its `fetch('https://workers-binding.browser/acquire')` endpoint returns a JSON body with a `webSocketDebuggerUrl`. Playwright's `chromium.connectOverCDP(url)` uses that WebSocket to drive a real Chromium instance:
 
-```
-POST https://workers-binding.browser/acquire
-← { "webSocketDebuggerUrl": "ws://..." }
-→ chromium.connectOverCDP("ws://...")
-→ page.goto(sourceUrl, { waitUntil: 'networkidle' })
-→ extract <pre> text / body innerText / full HTML
-→ browser.close()
+```mermaid
+sequenceDiagram
+    participant W as Worker
+    participant B as BROWSER binding
+    participant C as Chromium
+    participant S as Source URL
+
+    W->>B: POST /acquire
+    B-->>W: webSocketDebuggerUrl
+    W->>C: chromium.connectOverCDP(wsUrl)
+    W->>S: page.goto(sourceUrl, waitUntil networkidle)
+    S-->>W: page loaded
+    Note over W: extract pre / body innerText / full HTML
+    W->>C: browser.close()
 ```
 
 ---
