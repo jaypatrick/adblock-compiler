@@ -98,6 +98,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.50.2] - 2026-03-10
+
+### Added### Fixed
+
+- **ci**: use single quotes in codecov.yml to pass deno fmt check
+- **ci**: add codecov.yml and expand turnstile coverage tests
+- **turnstile**: add load-error fallback, gating unit tests, and refine constants
+- **turnstile**: add platform guard and timeout to app initializer
+- **turnstile**: use correct ToastType 'warning' instead of 'warn'
+- **turnstile**: async bootstrap, submit guard, and reactive disabled binding
+- **frontend**: remove stale getRouteAnimationData test from app.component.spec.ts
+- **frontend**: eliminate navigation flicker on tab switch (#942)
+
+
 ## [0.50.1] - 2026-03-10
 
 ### Added### Fixed
