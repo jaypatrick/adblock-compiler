@@ -2,11 +2,11 @@
  * ApiDocsComponent — API reference page.
  *
  * Displays available endpoints, request/response examples, and
- * live service info from /api/version. Code samples use inline JSON
+ * live service info from the version endpoint at `${apiBaseUrl}/version`. Code samples use inline JSON
  * syntax highlighting via highlightJson() / highlightJsonString().
  */
 
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, SecurityContext, signal } from '@angular/core';
 import { HttpClient, httpResource } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
@@ -19,7 +19,7 @@ import { MatInputModule } from '@angular/material/input';
 import { MatSelectModule } from '@angular/material/select';
 import { MatButtonModule } from '@angular/material/button';
 import { FormsModule } from '@angular/forms';
-import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
+import { DomSanitizer } from '@angular/platform-browser';
 import { API_BASE_URL } from '../tokens';
 
 interface VersionInfo {
@@ -159,7 +159,7 @@ interface Endpoint {
           <mat-card-content>
             <mat-form-field appearance="outline" class="full-width">
               <mat-label>Endpoint</mat-label>
-              <mat-select [value]="selectedEndpoint()" (selectionChange)="selectedEndpoint.set($event.value)">
+              <mat-select [value]="selectedEndpoint()" (selectionChange)="onEndpointChange($event.value)">
                 <mat-option value="/compile">POST /compile</mat-option>
                 <mat-option value="/compile/async">POST /compile/async</mat-option>
                 <mat-option value="/validate">POST /validate</mat-option>
@@ -346,22 +346,35 @@ export class ApiDocsComponent {
         example: "const ws = new WebSocket('wss://adblock-compiler.jayson-knight.workers.dev/ws/compile');\nws.onopen = () => ws.send(JSON.stringify({ configuration: { sources: [...] } }));\nws.onmessage = ({ data }) => console.log(JSON.parse(data));",
     };
 
+    private readonly endpointDefaultBodies: Record<string, unknown> = {
+        '/compile':       this.exampleRequest,
+        '/compile/async': this.exampleRequest,
+        '/validate':      this.exampleValidateRequest,
+        '/validate-rule': this.exampleValidateRuleRequest,
+    };
+
     readonly selectedEndpoint = signal('/compile');
     readonly requestBodyJson = signal(JSON.stringify(this.exampleRequest, null, 2));
     readonly testerResponse = signal<string | null>(null);
     readonly testerLoading = signal(false);
 
     /** Returns syntax-highlighted HTML for any JSON-serialisable value. */
-    highlightJson(value: unknown): SafeHtml {
+    highlightJson(value: unknown): string {
         return this.highlightJsonString(JSON.stringify(value, null, 2));
     }
 
+    private static readonly HIGHLIGHT_SIZE_LIMIT = 50_000;
+
     /** Returns syntax-highlighted HTML for a raw JSON string. */
-    highlightJsonString(json: string): SafeHtml {
+    highlightJsonString(json: string): string {
         const escaped = json
             .replace(/&/g, '&amp;')
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
+
+        if (json.length > ApiDocsComponent.HIGHLIGHT_SIZE_LIMIT) {
+            return escaped;
+        }
 
         const highlighted = escaped.replace(
             /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][-+]?\d+)?)/g,
@@ -377,7 +390,12 @@ export class ApiDocsComponent {
                 return `<span class="${cls}">${match}</span>`;
             },
         );
-        return this.sanitizer.bypassSecurityTrustHtml(highlighted);
+        return this.sanitizer.sanitize(SecurityContext.HTML, highlighted) ?? escaped;
+    }
+
+    onEndpointChange(endpoint: string): void {
+        this.selectedEndpoint.set(endpoint);
+        this.requestBodyJson.set(JSON.stringify(this.endpointDefaultBodies[endpoint] ?? {}, null, 2));
     }
 
     sendTestRequest(): void {
