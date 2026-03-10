@@ -34,11 +34,10 @@
  * canHandle() returns true only for http/https URLs to avoid accidentally
  * launching a browser for local file paths.
  *
- * The `playwright-core` package is NOT imported here because it is a Node.js
- * runtime package that cannot be used in JSR-published Deno code (it requires
- * --allow-sys and native OS APIs).  Instead, callers pass a `connector`
- * function that wraps `chromium.connectOverCDP` from their own environment
- * (typically the Cloudflare Worker where playwright-core is a PNPM dep).
+ * The `@cloudflare/playwright` package is NOT imported directly here because it
+ * is a Worker-specific runtime package that cannot be used in JSR-published Deno
+ * code.  Instead, callers pass a `connector` function that wraps `launch` from
+ * `@cloudflare/playwright` (their own environment where it is a PNPM dep).
  *
  * @see https://developers.cloudflare.com/browser-rendering/platform/playwright/
  * @see src/platform/types.ts — IContentFetcher
@@ -100,7 +99,7 @@ interface IBrowserWorker {
 /**
  * Minimal interface for a Playwright Page, covering only the operations used
  * by BrowserFetcher.  Defined locally so the JSR-published library has no
- * dependency on the `playwright-core` npm package.
+ * dependency on the `@cloudflare/playwright` npm package.
  */
 export interface IPlaywrightPage {
     goto(url: string, options?: { waitUntil?: string; timeout?: number }): Promise<unknown>;
@@ -119,21 +118,21 @@ export interface IPlaywrightBrowser {
 }
 
 /**
- * A function that connects to a Cloudflare Browser Rendering CDP endpoint and
- * returns a Playwright-compatible browser instance.
+ * A function that launches a browser via the Cloudflare Browser Rendering
+ * binding and returns a Playwright-compatible browser instance.
  *
- * In the Cloudflare Worker runtime this is `chromium.connectOverCDP` from
- * `playwright-core` (managed by PNPM, never imported in the Deno/JSR src/).
+ * In the Cloudflare Worker runtime this is `launch` from
+ * `@cloudflare/playwright` (a PNPM devDependency, never imported in the
+ * Deno/JSR src/).
  *
  * @example
  * ```ts
- * import { chromium } from 'playwright-core';
- * const fetcher = new BrowserFetcher(env.BROWSER, {}, chromium.connectOverCDP.bind(chromium));
+ * import { launch } from '@cloudflare/playwright';
+ * const fetcher = new BrowserFetcher(env.BROWSER, {}, launch);
  * ```
  */
 export type BrowserConnector = (
-    endpointURL: string,
-    options: { timeout: number },
+    binding: IBrowserWorker,
 ) => Promise<IPlaywrightBrowser>;
 
 const DEFAULT_OPTIONS: Required<BrowserFetcherOptions> = {
@@ -151,12 +150,12 @@ const DEFAULT_OPTIONS: Required<BrowserFetcherOptions> = {
  *
  * @example
  * ```ts
- * import { chromium } from 'playwright-core'; // worker-only PNPM dep
+ * import { launch } from '@cloudflare/playwright'; // worker-only PNPM dep
  * import { CompositeFetcher, HttpFetcher, BrowserFetcher } from '@jk-com/adblock-compiler';
  *
  * const fetcher = new CompositeFetcher([
  *     new HttpFetcher(),
- *     new BrowserFetcher(env.BROWSER, { timeout: 30_000 }, chromium.connectOverCDP.bind(chromium)),
+ *     new BrowserFetcher(env.BROWSER, { timeout: 30_000 }, launch),
  * ]);
  * ```
  */
@@ -170,10 +169,10 @@ export class BrowserFetcher implements IContentFetcher {
      *
      * @param binding - The Cloudflare `BROWSER` binding from the Worker env.
      * @param options - Optional configuration for navigation behaviour.
-     * @param connector - Function that connects to a CDP endpoint.
+     * @param connector - Function that launches a browser via the BROWSER binding.
      *   Required when calling `fetch()`.  `canHandle()` works without it.
-     *   In a Cloudflare Worker: `chromium.connectOverCDP.bind(chromium)`
-     *   (where `chromium` is from `playwright-core`, a PNPM devDependency).
+     *   In a Cloudflare Worker: `launch` from `@cloudflare/playwright`
+     *   (a PNPM devDependency).
      */
     constructor(binding: IBrowserWorker, options?: BrowserFetcherOptions, connector?: BrowserConnector) {
         this.binding = binding;
@@ -249,22 +248,13 @@ export class BrowserFetcher implements IContentFetcher {
     }
 
     /**
-     * Acquires a CDP-accessible browser via the Cloudflare Browser Rendering binding.
+     * Acquires a browser via the Cloudflare Browser Rendering binding.
      *
-     * Calls the binding's fetch endpoint to obtain the WebSocket debugger URL,
-     * then uses the injected connector to create a Browser instance.
+     * Delegates entirely to the injected connector (e.g. `launch` from
+     * `@cloudflare/playwright`), which handles session acquisition internally.
      */
     private async acquireBrowser(): Promise<IPlaywrightBrowser> {
-        // The BROWSER binding exposes a Fetcher whose fetch() returns the
-        // CDP WebSocket endpoint for a browser session.
-        const sessionResp = await this.binding.fetch(
-            new Request('https://workers-binding.browser/acquire', { method: 'POST' }),
-        );
-        if (!sessionResp.ok) {
-            throw new Error(`Browser Rendering acquire failed with status ${sessionResp.status}`);
-        }
-        const { webSocketDebuggerUrl } = (await sessionResp.json()) as { webSocketDebuggerUrl: string };
-        return await this.connector(webSocketDebuggerUrl, { timeout: this.options.timeout });
+        return await this.connector(this.binding);
     }
 
     /**
@@ -272,10 +262,10 @@ export class BrowserFetcher implements IContentFetcher {
      * Prevents silent failures when BrowserFetcher is constructed without a connector
      * and `fetch()` is called.
      */
-    private static missingConnector(_url: string, _opts: { timeout: number }): Promise<IPlaywrightBrowser> {
+    private static missingConnector(_binding: IBrowserWorker): Promise<IPlaywrightBrowser> {
         return Promise.reject(
             new Error(
-                'BrowserFetcher: no connector provided. Pass chromium.connectOverCDP.bind(chromium) as the third constructor argument.',
+                'BrowserFetcher: no connector provided. Pass `launch` from `@cloudflare/playwright` as the third constructor argument.',
             ),
         );
     }

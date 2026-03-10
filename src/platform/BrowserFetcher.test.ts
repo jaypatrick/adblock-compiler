@@ -5,37 +5,51 @@ import { BrowserFetcher } from './BrowserFetcher.ts';
 // Mock helpers
 // ============================================================================
 
+/** A minimal mock IBrowserWorker binding (opaque — passed through to connector). */
+function makeMockBinding(): { fetch: typeof fetch } {
+    return { fetch: (() => Promise.resolve(new Response())) as unknown as typeof fetch };
+}
+
 /**
- * Creates a minimal mock BrowserWorker binding whose acquire call returns
- * the given wsUrl, and whose browser navigation produces the given page text.
+ * Creates a mock connector that returns a browser whose single page produces
+ * the given text/html content.
  */
-function makeMockBinding(options: {
-    wsUrl?: string;
+function makeMockConnector(options: {
     pageText?: string;
     pageHtml?: string;
-    pageUrl?: string;
-    acquireStatus?: number;
     gotoThrows?: string;
-}): { fetch: typeof fetch } {
-    const wsUrl = options.wsUrl ?? 'ws://mock-browser/devtools/browser/abc';
-
-    // Intercept the acquire call
-    const bindingFetch = async (input: Request | URL | string): Promise<Response> => {
-        const url = typeof input === 'string' ? input : input instanceof Request ? input.url : input.toString();
-        if (url.includes('workers-binding.browser')) {
-            if (options.acquireStatus && options.acquireStatus !== 200) {
-                return new Response('error', { status: options.acquireStatus });
-            }
-            return Response.json({ webSocketDebuggerUrl: wsUrl });
+    throws?: string;
+}): (binding: { fetch: typeof fetch }) => Promise<{
+    newPage(): Promise<{
+        goto(url: string, opts?: unknown): Promise<unknown>;
+        content(): Promise<string>;
+        evaluate(script: string): Promise<unknown>;
+        close(): Promise<void>;
+    }>;
+    close(): Promise<void>;
+}> {
+    return async (_binding) => {
+        if (options.throws) {
+            throw new Error(options.throws);
         }
-        return new Response('unexpected fetch', { status: 500 });
+        return {
+            async newPage() {
+                return {
+                    async goto(_url: string, _opts?: unknown) {
+                        if (options.gotoThrows) throw new Error(options.gotoThrows);
+                    },
+                    async content() {
+                        return options.pageHtml ?? '<html><body>mock</body></html>';
+                    },
+                    async evaluate(_script: string) {
+                        return options.pageText ?? 'mock filter list content';
+                    },
+                    async close() {},
+                };
+            },
+            async close() {},
+        };
     };
-
-    // Patch chromium.connectOverCDP at module level is not easily done without
-    // a proper mock framework, so we verify the integration boundary via the
-    // public API contract below.  The tests that exercise real navigation are
-    // marked ignore (require Cloudflare Workers runtime).
-    return { fetch: bindingFetch as unknown as typeof fetch };
 }
 
 // ============================================================================
@@ -43,34 +57,29 @@ function makeMockBinding(options: {
 // ============================================================================
 
 Deno.test('BrowserFetcher - canHandle returns true for http URLs', () => {
-    const binding = makeMockBinding({});
-    const fetcher = new BrowserFetcher(binding);
+    const fetcher = new BrowserFetcher(makeMockBinding());
     assertEquals(fetcher.canHandle('http://example.com/list.txt'), true);
 });
 
 Deno.test('BrowserFetcher - canHandle returns true for https URLs', () => {
-    const binding = makeMockBinding({});
-    const fetcher = new BrowserFetcher(binding);
+    const fetcher = new BrowserFetcher(makeMockBinding());
     assertEquals(fetcher.canHandle('https://example.com/filters/list.txt'), true);
 });
 
 Deno.test('BrowserFetcher - canHandle returns false for file paths', () => {
-    const binding = makeMockBinding({});
-    const fetcher = new BrowserFetcher(binding);
+    const fetcher = new BrowserFetcher(makeMockBinding());
     assertEquals(fetcher.canHandle('/path/to/list.txt'), false);
     assertEquals(fetcher.canHandle('./relative/list.txt'), false);
     assertEquals(fetcher.canHandle('list.txt'), false);
 });
 
 Deno.test('BrowserFetcher - canHandle returns false for file:// URLs', () => {
-    const binding = makeMockBinding({});
-    const fetcher = new BrowserFetcher(binding);
+    const fetcher = new BrowserFetcher(makeMockBinding());
     assertEquals(fetcher.canHandle('file:///path/to/list.txt'), false);
 });
 
 Deno.test('BrowserFetcher - canHandle returns false for ftp:// URLs', () => {
-    const binding = makeMockBinding({});
-    const fetcher = new BrowserFetcher(binding);
+    const fetcher = new BrowserFetcher(makeMockBinding());
     assertEquals(fetcher.canHandle('ftp://example.com/list.txt'), false);
 });
 
@@ -79,14 +88,12 @@ Deno.test('BrowserFetcher - canHandle returns false for ftp:// URLs', () => {
 // ============================================================================
 
 Deno.test('BrowserFetcher - accepts default options', () => {
-    const binding = makeMockBinding({});
-    const fetcher = new BrowserFetcher(binding);
+    const fetcher = new BrowserFetcher(makeMockBinding());
     assertEquals(fetcher.canHandle('https://example.com'), true);
 });
 
 Deno.test('BrowserFetcher - accepts explicit options', () => {
-    const binding = makeMockBinding({});
-    const fetcher = new BrowserFetcher(binding, {
+    const fetcher = new BrowserFetcher(makeMockBinding(), {
         timeout: 10_000,
         waitUntil: 'load',
         extractFullHtml: true,
@@ -95,17 +102,54 @@ Deno.test('BrowserFetcher - accepts explicit options', () => {
 });
 
 // ============================================================================
-// Fetch — acquire failure (does not need real browser runtime)
+// Fetch — connector failure (does not need real browser runtime)
 // ============================================================================
 
-Deno.test('BrowserFetcher - fetch throws NetworkError when binding acquire returns non-200', async () => {
-    const binding = makeMockBinding({ acquireStatus: 503 });
-    const fetcher = new BrowserFetcher(binding);
+Deno.test('BrowserFetcher - fetch throws NetworkError when connector throws', async () => {
+    const connector = makeMockConnector({ throws: 'connection refused' });
+    const fetcher = new BrowserFetcher(makeMockBinding(), {}, connector as unknown as Parameters<typeof BrowserFetcher>[2]);
 
     await assertRejects(
         () => fetcher.fetch('https://example.com/list.txt'),
         Error,
         'Browser Rendering: failed to acquire browser session',
+    );
+});
+
+Deno.test('BrowserFetcher - fetch throws NetworkError when no connector provided', async () => {
+    const fetcher = new BrowserFetcher(makeMockBinding());
+
+    await assertRejects(
+        () => fetcher.fetch('https://example.com/list.txt'),
+        Error,
+        'BrowserFetcher: no connector provided',
+    );
+});
+
+Deno.test('BrowserFetcher - fetch returns page text via connector', async () => {
+    const connector = makeMockConnector({ pageText: '||example.com^' });
+    const fetcher = new BrowserFetcher(makeMockBinding(), {}, connector as unknown as Parameters<typeof BrowserFetcher>[2]);
+
+    const result = await fetcher.fetch('https://example.com/list.txt');
+    assertEquals(result, '||example.com^');
+});
+
+Deno.test('BrowserFetcher - fetch returns full HTML when extractFullHtml is true', async () => {
+    const connector = makeMockConnector({ pageHtml: '<html><body>filter</body></html>' });
+    const fetcher = new BrowserFetcher(makeMockBinding(), { extractFullHtml: true }, connector as unknown as Parameters<typeof BrowserFetcher>[2]);
+
+    const result = await fetcher.fetch('https://example.com/list.txt');
+    assertEquals(result, '<html><body>filter</body></html>');
+});
+
+Deno.test('BrowserFetcher - fetch throws NetworkError on navigation failure', async () => {
+    const connector = makeMockConnector({ gotoThrows: 'Navigation timeout of 30000 ms exceeded' });
+    const fetcher = new BrowserFetcher(makeMockBinding(), {}, connector as unknown as Parameters<typeof BrowserFetcher>[2]);
+
+    await assertRejects(
+        () => fetcher.fetch('https://example.com/list.txt'),
+        Error,
+        'Browser Rendering: navigation failed',
     );
 });
 
@@ -120,7 +164,8 @@ Deno.test({
         // This test would run inside a Cloudflare Worker where env.BROWSER is available.
         // It's kept here as documentation of the expected runtime behaviour.
         const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
-        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 30_000 });
+        const { launch } = await import('@cloudflare/playwright') as unknown as { launch: (b: unknown) => Promise<unknown> };
+        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 30_000 }, launch as unknown as Parameters<typeof BrowserFetcher>[2]);
 
         const content = await fetcher.fetch('https://easylist.to/easylist/easylist.txt');
         assertEquals(typeof content, 'string');
@@ -133,7 +178,8 @@ Deno.test({
     ignore: true, // Requires Cloudflare Workers runtime with BROWSER binding
     async fn() {
         const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
-        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 5_000 });
+        const { launch } = await import('@cloudflare/playwright') as unknown as { launch: (b: unknown) => Promise<unknown> };
+        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 5_000 }, launch as unknown as Parameters<typeof BrowserFetcher>[2]);
 
         await assertRejects(
             () => fetcher.fetch('https://this-domain-does-not-exist.invalid/list.txt'),
@@ -148,7 +194,8 @@ Deno.test({
     ignore: true, // Requires Cloudflare Workers runtime with BROWSER binding
     async fn() {
         const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
-        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 1 }); // 1ms — should always timeout
+        const { launch } = await import('@cloudflare/playwright') as unknown as { launch: (b: unknown) => Promise<unknown> };
+        const fetcher = new BrowserFetcher(env.BROWSER, { timeout: 1 }, launch as unknown as Parameters<typeof BrowserFetcher>[2]);
 
         await assertRejects(
             () => fetcher.fetch('https://easylist.to/easylist/easylist.txt'),
@@ -162,7 +209,8 @@ Deno.test({
     ignore: true, // Requires Cloudflare Workers runtime with BROWSER binding
     async fn() {
         const { env } = await import('cloudflare:workers') as unknown as { env: { BROWSER: { fetch: typeof fetch } } };
-        const fetcher = new BrowserFetcher(env.BROWSER, { extractFullHtml: true });
+        const { launch } = await import('@cloudflare/playwright') as unknown as { launch: (b: unknown) => Promise<unknown> };
+        const fetcher = new BrowserFetcher(env.BROWSER, { extractFullHtml: true }, launch as unknown as Parameters<typeof BrowserFetcher>[2]);
 
         const content = await fetcher.fetch('https://example.com');
         assertEquals(content.includes('<html'), true);

@@ -12,6 +12,7 @@
     "jsr:@zod/zod@^4.3.6": "4.3.6",
     "npm:@adguard/agtree@^4.0.1": "4.0.1",
     "npm:@cloudflare/containers@~0.1.1": "0.1.1",
+    "npm:@cloudflare/playwright@^0.0.11": "0.0.11",
     "npm:@cloudflare/playwright-mcp@^0.0.5": "0.0.5_@cloudflare+workers-types@4.20260310.1_react@19.2.4_zod@4.3.6",
     "npm:@cloudflare/workers-types@^4.20260307.1": "4.20260310.1",
     "npm:@opentelemetry/api@^1.9.0": "1.9.0",
@@ -1970,6 +1971,7 @@
       "jsr:@zod/zod@^4.3.6",
       "npm:@adguard/agtree@^4.0.1",
       "npm:@cloudflare/containers@~0.1.1",
+      "npm:@cloudflare/playwright@^0.0.11",
       "npm:@cloudflare/playwright-mcp@^0.0.5",
       "npm:@cloudflare/workers-types@^4.20260307.1",
       "npm:@prisma/adapter-pg@^7.4.2",
@@ -1981,6 +1983,7 @@
       "dependencies": [
         "npm:@adguard/agtree@^4.0.1",
         "npm:@cloudflare/containers@~0.1.1",
+        "npm:@cloudflare/playwright@^0.0.11",
         "npm:@cloudflare/playwright-mcp@^0.0.5",
         "npm:@opentelemetry/api@^1.9.0",
         "npm:wrangler@^4.71.0",

@@ -8,13 +8,13 @@
  * Rendering).  Callers are responsible for checking that the binding exists
  * before invoking these utilities.
  *
- * IMPORTANT — playwright-core dependency:
- * playwright-core is managed via PNPM (package.json devDependencies) and is
- * NOT in deno.json's import map.  It is imported DYNAMICALLY inside
+ * IMPORTANT — @cloudflare/playwright dependency:
+ * @cloudflare/playwright is managed via PNPM (package.json devDependencies) and
+ * is also in deno.json's import map.  It is imported DYNAMICALLY inside
  * acquireBrowser() so that Deno's module graph never eagerly loads it during
- * type-checking or test runs (playwright-core calls os.release() at module
- * initialisation, which requires --allow-sys).  The wrangler/esbuild bundle
- * step resolves the dynamic import from node_modules at build time.
+ * type-checking or test runs (the package imports `cloudflare:*` Worker-only
+ * modules).  The wrangler/esbuild bundle step resolves the dynamic import from
+ * node_modules at build time.
  *
  * @see worker/handlers/url-resolver.ts — POST /browser/resolve-url
  * @see worker/handlers/source-monitor.ts — POST /browser/monitor
@@ -88,8 +88,8 @@ export interface ScreenshotResult {
 }
 
 // Minimal Playwright interfaces used by this module.
-// playwright-core is imported dynamically to avoid Deno's module graph
-// loading it at require-time (playwright-core calls os.release() on load).
+// @cloudflare/playwright is imported dynamically to avoid Deno's module graph
+// loading it at require-time (the package imports cloudflare:* Worker-only modules).
 interface IPlaywrightPage {
     goto(url: string, opts?: { waitUntil?: string; timeout?: number }): Promise<unknown>;
     url(): string;
@@ -109,35 +109,22 @@ interface IPlaywrightBrowser {
 // ============================================================================
 
 /**
- * Acquires a Playwright Browser by connecting over CDP to the Browser Rendering
- * session obtained from the `BROWSER` binding's acquire endpoint.
+ * Acquires a Playwright Browser using the Cloudflare Browser Rendering binding
+ * via `@cloudflare/playwright`'s `launch()` function.
  *
- * playwright-core is loaded via dynamic import so that Deno's static module
- * graph never includes it (avoids the os.release() initialisation side-effect
- * that fails without --allow-sys).  The wrangler esbuild bundler resolves the
- * dynamic import from PNPM's node_modules at Worker build time.
+ * @cloudflare/playwright is loaded via dynamic import so that Deno's static
+ * module graph never includes it (the package imports cloudflare:* Worker-only
+ * modules that are unavailable in Deno's test runtime).  The wrangler esbuild
+ * bundler resolves the dynamic import from PNPM's node_modules at Worker build
+ * time.
  */
-async function acquireBrowser(binding: BrowserWorker, timeout: number): Promise<IPlaywrightBrowser> {
-    const sessionResp = await binding.fetch(
-        new Request('https://workers-binding.browser/acquire', { method: 'POST' }),
-    );
-    if (!sessionResp.ok) {
-        throw new Error(`Browser Rendering acquire failed with status ${sessionResp.status}`);
-    }
-    const { webSocketDebuggerUrl } = (await sessionResp.json()) as { webSocketDebuggerUrl: string };
-
+async function acquireBrowser(binding: BrowserWorker): Promise<IPlaywrightBrowser> {
     // Dynamic import: evaluated only at call time, not at module load time.
-    // playwright-core is a PNPM devDependency; esbuild bundles it into the Worker.
-    // The `as unknown as` double-assertion is intentional: playwright-core is NOT
-    // in deno.json (removed to prevent the package's os.release() side-effect from
-    // failing Deno tests), so its static types are unavailable to the Deno compiler.
-    // The local IPlaywrightBrowser interface defines the exact surface we use.
-    const { chromium } = (await import('playwright-core')) as unknown as {
-        chromium: {
-            connectOverCDP(url: string, opts: { timeout: number }): Promise<IPlaywrightBrowser>;
-        };
+    // @cloudflare/playwright is a PNPM devDependency; esbuild bundles it into the Worker.
+    const { launch } = (await import('@cloudflare/playwright')) as unknown as {
+        launch(binding: BrowserWorker): Promise<IPlaywrightBrowser>;
     };
-    return chromium.connectOverCDP(webSocketDebuggerUrl, { timeout });
+    return launch(binding);
 }
 
 // ============================================================================
@@ -165,7 +152,7 @@ export async function resolveCanonicalUrl(
     url: string,
     timeout = 30_000,
 ): Promise<CanonicalUrlResult> {
-    const browser = await acquireBrowser(binding, timeout);
+    const browser = await acquireBrowser(binding);
     const page = await browser.newPage();
 
     try {
@@ -207,7 +194,7 @@ export async function takeSourceScreenshot(
     r2Bucket?: R2Bucket,
     timeout = 30_000,
 ): Promise<ScreenshotResult> {
-    const browser = await acquireBrowser(binding, timeout);
+    const browser = await acquireBrowser(binding);
     const page = await browser.newPage();
 
     try {
@@ -262,7 +249,7 @@ export async function fetchWithBrowser(
     const waitUntil = options.waitUntil ?? 'networkidle';
     const extractFullHtml = options.extractFullHtml ?? false;
 
-    const browser = await acquireBrowser(binding, timeout);
+    const browser = await acquireBrowser(binding);
     const page = await browser.newPage();
 
     try {

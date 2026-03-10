@@ -23,8 +23,8 @@ The codebase already has `@cloudflare/playwright-mcp` as a dependency (for the M
 | Layer | What uses it |
 |---|---|
 | MCP Agent (`worker/mcp-agent.ts`) | `@cloudflare/playwright-mcp` (Playwright under the hood) |
-| `BrowserFetcher` | `playwright-core` via CDP |
-| `browser.ts` utilities | `playwright-core` via CDP |
+| `BrowserFetcher` | `@cloudflare/playwright` via `launch()` |
+| `browser.ts` utilities | `@cloudflare/playwright` via `launch()` |
 
 ---
 
@@ -37,7 +37,7 @@ flowchart TD
     PF["PreFetchedContentFetcher\n(highest priority — content supplied directly)"]
     HF["HttpFetcher\n(static .txt/.dat URLs — fast, cheap)"]
     BF["BrowserFetcher\n(JS-rendered / redirect-heavy URLs — fallback)"]
-    PW["playwright-core\nconnectOverCDP"]
+    PW["@cloudflare/playwright\nlaunch(binding)"]
     BR["BROWSER binding\n(Cloudflare Browser Rendering)"]
 
     PD --> CF
@@ -50,9 +50,9 @@ flowchart TD
 
 `BrowserFetcher` implements `IContentFetcher` so it plugs directly into the existing `CompositeFetcher` / `PlatformDownloader` dependency-injection slot. No changes to the compilation pipeline are needed.
 
-### How the CDP Connection Works
+### How `launch()` Works
 
-The Cloudflare `BROWSER` binding is a `Fetcher`. Calling its `fetch('https://workers-binding.browser/acquire')` endpoint returns a JSON body with a `webSocketDebuggerUrl`. Playwright's `chromium.connectOverCDP(url)` uses that WebSocket to drive a real Chromium instance:
+`@cloudflare/playwright`'s `launch(binding)` takes the `BROWSER` binding directly and manages the browser session acquisition internally — no manual CDP URL fetching needed:
 
 ```mermaid
 sequenceDiagram
@@ -61,9 +61,8 @@ sequenceDiagram
     participant C as Chromium
     participant S as Source URL
 
-    W->>B: POST /acquire
-    B-->>W: webSocketDebuggerUrl
-    W->>C: chromium.connectOverCDP(wsUrl)
+    W->>B: launch(binding)
+    B-->>W: Browser instance
     W->>S: page.goto(sourceUrl, waitUntil networkidle)
     S-->>W: page loaded
     Note over W: extract pre / body innerText / full HTML
@@ -103,11 +102,12 @@ export interface BrowserFetcherOptions {
 
 ```typescript
 import { BrowserFetcher, CompositeFetcher, HttpFetcher } from '@jk-com/adblock-compiler';
+import { launch } from '@cloudflare/playwright';
 
 // env.BROWSER is the Cloudflare BROWSER binding
 const fetcher = new CompositeFetcher([
     new HttpFetcher(),
-    new BrowserFetcher(env.BROWSER, { timeout: 30_000 }),
+    new BrowserFetcher(env.BROWSER, { timeout: 30_000 }, launch),
 ]);
 
 // BrowserFetcher is only invoked if HttpFetcher.canHandle() returns false
@@ -118,11 +118,12 @@ const fetcher = new CompositeFetcher([
 
 ```typescript
 import { BrowserFetcher } from '@jk-com/adblock-compiler';
+import { launch } from '@cloudflare/playwright';
 
 const fetcher = new BrowserFetcher(env.BROWSER, {
     timeout: 45_000,
     waitUntil: 'networkidle',
-});
+}, launch);
 
 const rules = await fetcher.fetch('https://some-js-rendered-dashboard.example.com/list');
 ```
@@ -130,7 +131,10 @@ const rules = await fetcher.fetch('https://some-js-rendered-dashboard.example.co
 #### Extract full HTML from a page
 
 ```typescript
-const fetcher = new BrowserFetcher(env.BROWSER, { extractFullHtml: true });
+import { BrowserFetcher } from '@jk-com/adblock-compiler';
+import { launch } from '@cloudflare/playwright';
+
+const fetcher = new BrowserFetcher(env.BROWSER, { extractFullHtml: true }, launch);
 const html = await fetcher.fetch('https://example.com/filter-page');
 // Parse html with your own DOM parser to find download links
 ```
