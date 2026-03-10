@@ -98,6 +98,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.50.2] - 2026-03-10
+
+### Added### Fixed
+
+- **frontend**: remove stale getRouteAnimationData test from app.component.spec.ts
+- **frontend**: eliminate navigation flicker on tab switch (#942)
+
+
 ## [0.50.1] - 2026-03-10
 
 ### Added### Fixed
