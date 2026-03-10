@@ -252,6 +252,8 @@ export class BrowserFetcher implements IContentFetcher {
      *
      * Delegates entirely to the injected connector (e.g. `launch` from
      * `@cloudflare/playwright`), which handles session acquisition internally.
+     *
+     * @returns A Playwright-compatible browser instance.
      */
     private async acquireBrowser(): Promise<IPlaywrightBrowser> {
         return await this.connector(this.binding);

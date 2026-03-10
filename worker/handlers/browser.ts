@@ -117,6 +117,9 @@ interface IPlaywrightBrowser {
  * modules that are unavailable in Deno's test runtime).  The wrangler esbuild
  * bundler resolves the dynamic import from PNPM's node_modules at Worker build
  * time.
+ *
+ * @param binding - The Cloudflare `BROWSER` binding from the Worker env.
+ * @returns A Playwright Browser instance connected to the Cloudflare-managed Chromium.
  */
 async function acquireBrowser(binding: BrowserWorker): Promise<IPlaywrightBrowser> {
     // Dynamic import: evaluated only at call time, not at module load time.
