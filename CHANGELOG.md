@@ -104,6 +104,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.54.2] - 2026-03-12
+
+### Added### Fixed
+
+- correct deno fmt issues in PULL_REQUESTS/996/body.md (20 trailing spaces on row 12, add trailing newline)
+- apply deno fmt to PULL_REQUESTS/996/body.md (table padding, italic syntax)
+
+
 ## [0.54.1] - 2026-03-11
 
 ### Added### Fixed
