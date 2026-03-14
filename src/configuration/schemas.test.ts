@@ -988,3 +988,56 @@ Deno.test('EtcHostsRuleSchema - should reject rule with empty ruleText', () => {
     const result = EtcHostsRuleSchema.safeParse(rule);
     assertEquals(result.success, false);
 });
+
+// CliArgumentsSchema - auth field validation tests
+Deno.test('CliArgumentsSchema - should validate with valid apiKey (abc_ prefix)', () => {
+    const args = { config: 'config.json', output: 'out.txt', apiKey: 'abc_validkey123' };
+    const result = CliArgumentsSchema.safeParse(args);
+    assertEquals(result.success, true);
+});
+
+Deno.test('CliArgumentsSchema - should reject apiKey without abc_ prefix', () => {
+    const args = { config: 'config.json', output: 'out.txt', apiKey: 'invalid_key_no_prefix' };
+    const result = CliArgumentsSchema.safeParse(args);
+    assertEquals(result.success, false);
+    if (!result.success) {
+        const messages = result.error.issues.map((i) => i.message);
+        assertEquals(messages.some((m) => m.includes('abc_')), true);
+    }
+});
+
+Deno.test('CliArgumentsSchema - should reject apiKey with wrong prefix (key_ instead of abc_)', () => {
+    const args = { config: 'config.json', output: 'out.txt', apiKey: 'key_somevalue' };
+    const result = CliArgumentsSchema.safeParse(args);
+    assertEquals(result.success, false);
+});
+
+Deno.test('CliArgumentsSchema - should validate with valid apiUrl', () => {
+    const args = { config: 'config.json', output: 'out.txt', apiUrl: 'https://api.example.com' };
+    const result = CliArgumentsSchema.safeParse(args);
+    assertEquals(result.success, true);
+});
+
+Deno.test('CliArgumentsSchema - should validate with localhost apiUrl', () => {
+    const args = { config: 'config.json', output: 'out.txt', apiUrl: 'http://localhost:8787' };
+    const result = CliArgumentsSchema.safeParse(args);
+    assertEquals(result.success, true);
+});
+
+Deno.test('CliArgumentsSchema - should reject non-URL string for apiUrl', () => {
+    const args = { config: 'config.json', output: 'out.txt', apiUrl: 'not-a-url' };
+    const result = CliArgumentsSchema.safeParse(args);
+    assertEquals(result.success, false);
+});
+
+Deno.test('CliArgumentsSchema - should reject relative path for apiUrl', () => {
+    const args = { config: 'config.json', output: 'out.txt', apiUrl: '/relative/path' };
+    const result = CliArgumentsSchema.safeParse(args);
+    assertEquals(result.success, false);
+});
+
+Deno.test('CliArgumentsSchema - should allow omitting optional auth fields', () => {
+    const args = { config: 'config.json', output: 'out.txt' };
+    const result = CliArgumentsSchema.safeParse(args);
+    assertEquals(result.success, true);
+});

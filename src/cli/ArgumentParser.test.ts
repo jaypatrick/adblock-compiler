@@ -1,5 +1,5 @@
 import { assertEquals } from '@std/assert';
-import { ArgumentParser } from './ArgumentParser.ts';
+import { ArgumentParser, type ParsedArguments } from './ArgumentParser.ts';
 
 Deno.test('ArgumentParser - should parse config argument', () => {
     const parser = new ArgumentParser();
@@ -435,4 +435,43 @@ Deno.test('ArgumentParser - auth flags combined with other flags', () => {
     assertEquals(result.output, 'output.txt');
     assertEquals(result.apiKey, 'abc_test');
     assertEquals(result.useQueue, true);
+});
+
+// ============================================================================
+// validate() Zod schema constraint tests
+// ============================================================================
+
+Deno.test('ArgumentParser.validate - should pass with valid abc_ api key', () => {
+    const parser = new ArgumentParser();
+    const parsed = parser.parse(['-i', 'source.txt', '-o', 'out.txt', '--api-key', 'abc_validkey']);
+    const error = parser.validate(parsed);
+    assertEquals(error, null);
+});
+
+Deno.test('ArgumentParser.validate - should fail with api key missing abc_ prefix', () => {
+    const parser = new ArgumentParser();
+    const parsed = parser.parse(['-i', 'source.txt', '-o', 'out.txt', '--api-key', 'invalid_key']);
+    const error = parser.validate(parsed);
+    assertEquals(typeof error, 'string');
+    assertEquals(error !== null && error.includes('abc_'), true);
+});
+
+Deno.test('ArgumentParser.validate - should pass with valid https apiUrl', () => {
+    const parser = new ArgumentParser();
+    const parsed = parser.parse(['-i', 'source.txt', '-o', 'out.txt', '--api-url', 'https://api.example.com']);
+    const error = parser.validate(parsed);
+    assertEquals(error, null);
+});
+
+Deno.test('ArgumentParser.validate - should fail with non-URL apiUrl', () => {
+    const parser = new ArgumentParser();
+    // Directly construct ParsedArguments to bypass the default fallback
+    const fakeArgs: ParsedArguments = {
+        input: ['source.txt'],
+        output: 'out.txt',
+        apiUrl: 'not-a-valid-url',
+    };
+    const error = parser.validate(fakeArgs);
+    assertEquals(typeof error, 'string');
+    assertEquals(error !== null, true);
 });

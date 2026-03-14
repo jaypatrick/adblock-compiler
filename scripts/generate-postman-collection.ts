@@ -292,6 +292,29 @@ function requiresAdminKey(operation: OAOperation): boolean {
 }
 
 /**
+ * Determine whether an operation requires Clerk JWT Bearer authentication.
+ */
+function requiresClerkJWT(operation: OAOperation): boolean {
+    if (!operation.security) return false;
+    return operation.security.some((scheme) => Object.keys(scheme).includes('ClerkJWT'));
+}
+
+/**
+ * Determine whether an operation requires a User API key Bearer token.
+ */
+function requiresUserApiKey(operation: OAOperation): boolean {
+    if (!operation.security) return false;
+    return operation.security.some((scheme) => Object.keys(scheme).includes('UserApiKey'));
+}
+
+/**
+ * Extract required header parameters (e.g. svix-* headers) from an operation.
+ */
+function getRequiredHeaderParams(operation: OAOperation): Array<{ name: string; description?: string }> {
+    return (operation.parameters ?? []).filter((p) => p.in === 'header' && p.required);
+}
+
+/**
  * Build test script lines for an operation.
  */
 function buildTestScript(operation: OAOperation): string[] {
@@ -340,6 +363,34 @@ function buildRequestItem(path: string, method: HttpMethod, operation: OAOperati
     // AdminKey header
     if (requiresAdminKey(operation)) {
         headers.push({ key: 'X-Admin-Key', value: '{{adminKey}}', type: 'text', description: 'Admin API key' });
+    }
+
+    // Clerk JWT Bearer token header (takes priority over UserApiKey)
+    if (requiresClerkJWT(operation)) {
+        headers.push({
+            key: 'Authorization',
+            value: 'Bearer {{clerkToken}}',
+            type: 'text',
+            description: 'Clerk JWT Bearer token',
+        });
+    } else if (requiresUserApiKey(operation)) {
+        headers.push({
+            key: 'Authorization',
+            value: 'Bearer {{userApiKey}}',
+            type: 'text',
+            description: 'User API key (abc_ prefix) as Bearer token',
+        });
+    }
+
+    // Required header parameters (e.g. svix-id, svix-timestamp, svix-signature)
+    for (const param of getRequiredHeaderParams(operation)) {
+        const varName = param.name.replace(/-/g, '_');
+        headers.push({
+            key: param.name,
+            value: `{{${varName}}}`,
+            type: 'text',
+            description: param.description ?? param.name,
+        });
     }
 
     // Request body
@@ -476,6 +527,9 @@ async function generatePostmanCollection(): Promise<void> {
             { key: 'userApiKey', value: '', type: 'string', description: 'User API key with abc_ prefix for API key authentication' },
             { key: 'userId', value: '', type: 'string', description: 'User ID captured from Create User response' },
             { key: 'apiKeyPrefix', value: '', type: 'string', description: 'API key prefix captured from Create API Key response' },
+            { key: 'svix_id', value: '', type: 'string', description: 'Svix webhook ID header (svix-id)' },
+            { key: 'svix_timestamp', value: '', type: 'string', description: 'Svix webhook timestamp header (svix-timestamp)' },
+            { key: 'svix_signature', value: '', type: 'string', description: 'Svix webhook HMAC signature header (svix-signature)' },
         ],
         item: folderItems,
     };

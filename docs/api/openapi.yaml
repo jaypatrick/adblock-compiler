@@ -1049,6 +1049,10 @@ paths:
                     $ref: '#/components/responses/BadRequestError'
                 '401':
                     $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
         get:
             tags: [Authentication]
             summary: List user's API keys
@@ -1068,6 +1072,10 @@ paths:
                                 $ref: '#/components/schemas/UserListApiKeysResponse'
                 '401':
                     $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
 
     /api/keys/{keyId}:
         delete:
@@ -1102,8 +1110,12 @@ paths:
                                         type: string
                 '401':
                     $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
                 '404':
                     description: API key not found or already revoked
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
         patch:
             tags: [Authentication]
             summary: Update API key
@@ -1138,8 +1150,12 @@ paths:
                     $ref: '#/components/responses/BadRequestError'
                 '401':
                     $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
                 '404':
                     description: API key not found or already revoked
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
 
     /api/webhooks/clerk:
         post:
@@ -1192,16 +1208,48 @@ paths:
                     content:
                         application/json:
                             schema:
-                                type: object
-                                properties:
-                                    success:
-                                        type: boolean
-                                    message:
-                                        type: string
+                                oneOf:
+                                    - type: object
+                                      description: user.created or user.updated event
+                                      properties:
+                                          success:
+                                              type: boolean
+                                          event:
+                                              type: string
+                                              example: user.created
+                                          userId:
+                                              type: string
+                                              description: Internal database user ID
+                                      required: [success, event, userId]
+                                    - type: object
+                                      description: user.deleted event
+                                      properties:
+                                          success:
+                                              type: boolean
+                                          event:
+                                              type: string
+                                              example: user.deleted
+                                          deleted:
+                                              type: boolean
+                                              description: Whether a record was found and removed
+                                      required: [success, event, deleted]
+                                    - type: object
+                                      description: Unhandled event type (acknowledged gracefully)
+                                      properties:
+                                          success:
+                                              type: boolean
+                                          event:
+                                              type: string
+                                          message:
+                                              type: string
+                                              example: Event type not handled
+                                      required: [success, event, message]
                 '400':
                     description: Invalid webhook signature or payload
                 '401':
                     description: Webhook signature verification failed
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
 
     /admin/migrate/d1-to-pg:
         post:
@@ -2773,13 +2821,13 @@ components:
                     items:
                         type: string
                         enum: [compile, rules, admin]
-                    minItems: 1
                     default: [compile]
-                    description: Permissions granted to this key (defaults to ["compile"])
+                    description: Permissions granted to this key (defaults to ["compile"] when omitted)
                 expiresInDays:
                     type: integer
                     minimum: 1
                     maximum: 365
+                    example: 30
                     description: Days until expiration (omit for no expiry)
 
         UserCreateApiKeyResponse:
@@ -2876,7 +2924,6 @@ components:
                     items:
                         type: string
                         enum: [compile, rules, admin]
-                    minItems: 1
                     description: New scopes for the key
             description: At least one of `name` or `scopes` must be provided.
 
@@ -3367,6 +3414,19 @@ components:
 
         UnauthorizedError:
             description: Unauthorized - missing or invalid admin key
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
+
+        ForbiddenError:
+            description: Forbidden - authenticated but not permitted (e.g. API key cannot manage API keys; use Clerk JWT)
             content:
                 application/json:
                     schema:

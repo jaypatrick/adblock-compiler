@@ -216,11 +216,12 @@ Networking:
       --retries <n>            Number of HTTP retry attempts
       --user-agent <string>    Custom HTTP User-Agent header
 
-Authentication:
+Authentication (planned — not yet active in standalone mode):
       --api-key <key>          API key for authenticated worker API requests (abc_ prefix)
       --bearer-token <token>   Clerk JWT bearer token for authenticated requests
       --api-url <url>          Base URL for the worker API [default: http://localhost:8787]
-                               Used with --use-queue for remote compilation
+                               These flags are reserved for future remote compilation support
+                               via the worker API and have no effect in standalone mode.
 
 Examples:
   adblock-compiler -c config.json -o output.txt
@@ -237,15 +238,6 @@ Examples:
 
   adblock-compiler -c config.json -o output.txt --benchmark
       compile and show performance metrics
-
-  adblock-compiler -c config.json -o output.txt --use-queue --priority high
-      queue a compilation job with high priority (async processing)
-
-  adblock-compiler -c config.json -o output.txt --use-queue --api-key abc_mykey123
-      queue a compilation using API key authentication
-
-  adblock-compiler -c config.json -o output.txt --use-queue --bearer-token eyJhbG...
-      queue a compilation using Clerk JWT bearer token
 `);
     }
 

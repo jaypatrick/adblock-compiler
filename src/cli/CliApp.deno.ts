@@ -270,11 +270,12 @@ Networking:
       --retries <n>            Number of HTTP retry attempts
       --user-agent <string>    Custom HTTP User-Agent header
 
-Authentication:
+Authentication (planned — not yet active in standalone mode):
       --api-key <key>          API key for authenticated worker API requests (abc_ prefix)
       --bearer-token <token>   Clerk JWT bearer token for authenticated requests
       --api-url <url>          Base URL for the worker API [default: http://localhost:8787]
-                               Used with --use-queue for remote compilation
+                               These flags are reserved for future remote compilation support
+                               via the worker API and have no effect in standalone mode.
 
 Examples:
   adblock-compiler -c config.json -o output.txt
@@ -291,9 +292,6 @@ Examples:
 
   adblock-compiler -c config.json -o output.txt --benchmark
       compile and show performance metrics
-
-  adblock-compiler -c config.json -o output.txt --use-queue --api-key abc_mykey123
-      queue a compilation using API key authentication
 `);
     }
 
@@ -593,7 +591,19 @@ Examples:
             }
 
             if (this.args['use-queue']) {
-                this.logger.warn('--use-queue is only supported via the worker API and will be ignored in standalone CLI mode');
+                const authFlagsUsed =
+                    this.args['api-key'] || this.args['bearer-token'] || this.args['api-url'] !== 'http://localhost:8787';
+                if (authFlagsUsed) {
+                    this.logger.warn(
+                        '--use-queue, --api-key, --bearer-token, and --api-url are not yet implemented in standalone CLI mode and will be ignored. ' +
+                            'Remote compilation via the worker API is not yet supported.',
+                    );
+                } else {
+                    this.logger.warn(
+                        '--use-queue is not yet implemented in standalone CLI mode and will be ignored. ' +
+                            'Remote compilation via the worker API is not yet supported.',
+                    );
+                }
             }
 
             if (this.args.priority) {
@@ -601,7 +611,7 @@ Examples:
             }
 
             if ((this.args['api-key'] || this.args['bearer-token'] || this.args['api-url'] !== 'http://localhost:8787') && !this.args['use-queue']) {
-                this.logger.warn('--api-key, --bearer-token, and --api-url require --use-queue to take effect');
+                this.logger.warn('--api-key, --bearer-token, and --api-url are only used with --use-queue for remote compilation (not yet implemented in standalone mode)');
             }
 
             this.logger.info(`Starting @jk-com/adblock-compiler v${VERSION}`);

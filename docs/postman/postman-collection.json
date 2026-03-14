@@ -51,6 +51,24 @@
       "value": "",
       "type": "string",
       "description": "API key prefix captured from Create API Key response"
+    },
+    {
+      "key": "svix_id",
+      "value": "",
+      "type": "string",
+      "description": "Svix webhook ID header (svix-id)"
+    },
+    {
+      "key": "svix_timestamp",
+      "value": "",
+      "type": "string",
+      "description": "Svix webhook timestamp header (svix-timestamp)"
+    },
+    {
+      "key": "svix_signature",
+      "value": "",
+      "type": "string",
+      "description": "Svix webhook HMAC signature header (svix-signature)"
     }
   ],
   "item": [
@@ -2370,7 +2388,14 @@
           ],
           "request": {
             "method": "GET",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clerkToken}}",
+                "type": "text",
+                "description": "Clerk JWT Bearer token"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/keys",
               "host": [
@@ -2411,6 +2436,12 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clerkToken}}",
+                "type": "text",
+                "description": "Clerk JWT Bearer token"
               }
             ],
             "url": {
@@ -2425,7 +2456,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{\n    \"name\": \"string\",\n    \"scopes\": [\n        \"compile\"\n    ],\n    \"expiresInDays\": 0\n}",
+              "raw": "{\n    \"name\": \"string\",\n    \"scopes\": [\n        \"compile\"\n    ],\n    \"expiresInDays\": 30\n}",
               "options": {
                 "raw": {
                   "language": "json"
@@ -2462,6 +2493,12 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clerkToken}}",
+                "type": "text",
+                "description": "Clerk JWT Bearer token"
               }
             ],
             "url": {
@@ -2516,7 +2553,14 @@
           ],
           "request": {
             "method": "DELETE",
-            "header": [],
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{clerkToken}}",
+                "type": "text",
+                "description": "Clerk JWT Bearer token"
+              }
+            ],
             "url": {
               "raw": "{{baseUrl}}/api/keys/:keyId",
               "host": [
@@ -2565,6 +2609,24 @@
                 "key": "Content-Type",
                 "value": "application/json",
                 "type": "text"
+              },
+              {
+                "key": "svix-id",
+                "value": "{{svix_id}}",
+                "type": "text",
+                "description": "Svix webhook ID"
+              },
+              {
+                "key": "svix-timestamp",
+                "value": "{{svix_timestamp}}",
+                "type": "text",
+                "description": "Svix webhook timestamp"
+              },
+              {
+                "key": "svix-signature",
+                "value": "{{svix_signature}}",
+                "type": "text",
+                "description": "Svix webhook signature"
               }
             ],
             "url": {
