@@ -27,5 +27,6 @@
         "@cloudflare/playwright": "^0.0.11",
         "@cloudflare/playwright-mcp": "^0.0.5",
         "wrangler": "^4.71.0"
-    }
+    },
+    "license": "SEE LICENSE IN LICENSE"
 }
