@@ -112,6 +112,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.58.0] - 2026-03-14
+
+### Added- **plugins**: Phase 4 — dependency resolution, topological sort, plugin discovery
+- **plugins**: Phase 3 — AGTree parser plugin adapter (#992)
+- **plugins**: add SubsystemBridge for Phase 2 wiring (#992)
+- **plugins**: unified plugin architecture — Phase 1 core API (#992)
+
+### Fixed
+
+- **ci**: remove Deno-only discoverPlugins from publish exports
+- address all 5 PR review comments on plugin architecture (#1037)
+- add unregisterTransformation to SubsystemBridge for full rollback
+- address code review findings on plugin architecture (#1037)
+
+
 ## [0.57.0] - 2026-03-14
 
 ### Added- add Zod runtime validation to Clerk auth trust boundaries (#1012)
