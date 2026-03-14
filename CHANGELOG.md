@@ -114,6 +114,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.59.1] - 2026-03-14
+
+### Added### Fixed
+
+- narrow D1 transient error detection, accurate router comment, add retry semantics tests
+- apply deno fmt to clerk-webhook.ts (CI format check)
+- address review comments - scope catchError, transient D1 retry, zero-delay test
+- harden Clerk auth subsystem (6 issues)
+- **frontend**: Clerk auth links not visible & /log-in blank page (#1047)
+
+
 ## [0.59.0] - 2026-03-14
 
 ### Added- **auth**: add CLI auth switches, OpenAPI endpoints, and Postman collection (#1002)
