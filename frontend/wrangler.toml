@@ -12,7 +12,7 @@
 #
 #   Local dev  →  `npm run preview`  (runs `wrangler dev` in this directory)
 #                 Angular dev server: `npm run start`  (port 4200, HMR)
-#                 Secrets loaded from frontend/.dev.vars (gitignored).
+#                 No .dev.vars needed — this worker owns no secrets.
 #
 #   Production →  `npm run build && npm run deploy`
 #                 This file IS the production configuration.
