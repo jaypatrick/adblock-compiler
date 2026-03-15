@@ -37,70 +37,41 @@ npm run deploy         # Deploy to Cloudflare Workers (after npm run build)
 
 ## Project Structure
 
-```
-src/
-├── app/
-│   ├── app.component.ts            # Root shell — viewChild(), ThemeService, ErrorBoundary
-│   ├── app.config.ts               # Browser providers — provideAppInitializer(), GlobalErrorHandler, ServiceWorker
-│   ├── app.config.server.ts        # SSR providers — mergeApplicationConfig()
-│   ├── app.routes.ts               # Lazy-loaded routes with titles
-│   ├── app.routes.server.ts        # Per-route SSR mode (Prerender / Server)
-│   │
-│   ├── compiler/
-│   │   └── compiler.component.ts   # rxResource(), linkedSignal(), Turnstile, CDK Virtual Scroll, signal form wrappers
-│   ├── home/
-│   │   └── home.component.ts       # MetricsStore, @defer prefetch on hover, skeleton loading
-│   ├── performance/
-│   │   └── performance.component.ts  # httpResource(), MetricsStore, sparkline charts
-│   ├── admin/
-│   │   └── admin.component.ts      # CDK Virtual Scrolling, skeleton loading
-│   ├── api-docs/
-│   │   └── api-docs.component.ts   # httpResource() for version endpoint
-│   ├── validation/
-│   │   └── validation.component.ts # Rule validation with color-coded output
-│   │
-│   ├── error/
-│   │   ├── global-error-handler.ts  # Custom ErrorHandler with signal-based state
-│   │   └── error-boundary.component.ts  # Dismissible error overlay
-│   ├── skeleton/
-│   │   ├── skeleton-card.component.ts   # Shimmer card placeholder
-│   │   └── skeleton-table.component.ts  # Shimmer table placeholder
-│   ├── sparkline/
-│   │   └── sparkline.component.ts  # Canvas 2D mini chart (zero deps)
-│   ├── turnstile/
-│   │   └── turnstile.component.ts  # Cloudflare Turnstile CAPTCHA widget
-│   ├── store/
-│   │   └── metrics.store.ts        # Shared singleton signal store with SWR
-│   │
-│   ├── services/
-│   │   ├── compiler.service.ts     # Injectable with inject(), Observable HTTP
-│   │   ├── theme.service.ts        # ThemeService — signal state, SSR-safe
-│   │   ├── turnstile.service.ts    # Cloudflare Turnstile token management
-│   │   ├── filter-parser.service.ts  # Web Worker bridge for filter parsing
-│   │   └── swr-cache.service.ts    # Generic stale-while-revalidate signal cache
-│   │
-│   ├── workers/
-│   │   └── filter-parser.worker.ts # Off-thread filter list parsing
-│   │
-│   └── stat-card/
-│       ├── stat-card.component.ts  # input(), output(), model() signal APIs
-│       └── stat-card.component.spec.ts  # Zoneless unit test with Vitest
-│
-├── e2e/                 # Playwright E2E tests
-│   ├── playwright.config.ts
-│   ├── home.spec.ts
-│   ├── compiler.spec.ts
-│   └── navigation.spec.ts
-├── index.html           # Turnstile script, fonts loaded from npm
-├── main.ts              # bootstrapApplication()
-├── main.server.ts       # Server bootstrap
-├── test-setup.ts        # Vitest global setup — imports @angular/compiler
-└── styles.css           # @fontsource/roboto + material-symbols imports
-server.ts                # Cloudflare Workers fetch handler + CSP security headers
-ngsw-config.json         # Angular Service Worker / PWA config
-wrangler.toml            # Cloudflare Workers deployment config
-vitest.config.ts         # Vitest + @analogjs/vitest-angular configuration
-tsconfig.spec.json       # TypeScript config for spec files (vitest/globals types)
+```mermaid
+mindmap
+  root((frontend/))
+    src["src/"]
+      app["app/"]
+        appComponent["app.component.ts — Root shell with viewChild(), ThemeService, and ErrorBoundary"]
+        appConfig["app.config.ts — Browser providers with provideAppInitializer(), GlobalErrorHandler, and ServiceWorker"]
+        appConfigServer["app.config.server.ts — SSR providers via mergeApplicationConfig()"]
+        appRoutes["app.routes.ts — Lazy-loaded routes with titles"]
+        appRoutesServer["app.routes.server.ts — Per-route SSR mode (Prerender / Server)"]
+        compiler["compiler/compiler.component.ts — rxResource(), linkedSignal(), Turnstile, CDK Virtual Scroll, signal form wrappers"]
+        home["home/home.component.ts — MetricsStore, @defer prefetch on hover, skeleton loading"]
+        performance["performance/performance.component.ts — httpResource(), MetricsStore, sparkline charts"]
+        admin["admin/admin.component.ts — CDK Virtual Scrolling and skeleton loading"]
+        apiDocs["api-docs/api-docs.component.ts — httpResource() for version endpoint"]
+        validation["validation/validation.component.ts — Rule validation with color-coded output"]
+        error["error/ — global-error-handler.ts and error-boundary.component.ts"]
+        skeleton["skeleton/ — shimmer card and table placeholders"]
+        sparkline["sparkline/sparkline.component.ts — Canvas 2D mini chart (zero deps)"]
+        turnstile["turnstile/turnstile.component.ts — Cloudflare Turnstile CAPTCHA widget"]
+        store["store/metrics.store.ts — Shared singleton signal store with SWR"]
+        services["services/ — compiler, theme, turnstile, filter-parser, and SWR cache services"]
+        workers["workers/filter-parser.worker.ts — Off-thread filter list parsing"]
+        statCard["stat-card/ — stat-card component and zoneless Vitest spec"]
+      e2e["e2e/ — Playwright config and navigation/home/compiler specs"]
+      indexHtml["index.html — Turnstile script and fonts loaded from npm"]
+      mainTs["main.ts — bootstrapApplication()"]
+      mainServer["main.server.ts — Server bootstrap"]
+      testSetup["test-setup.ts — Vitest global setup with @angular/compiler"]
+      styles["styles.css — @fontsource/roboto + material-symbols imports"]
+    server["server.ts — Cloudflare Workers fetch handler"]
+    ngsw["ngsw-config.json — Angular Service Worker / PWA config"]
+    wrangler["wrangler.toml — Cloudflare Workers deployment config"]
+    vitest["vitest.config.ts — Vitest + @analogjs/vitest-angular configuration"]
+    tsconfigSpec["tsconfig.spec.json — TypeScript config for spec files"]
 ```
 
 ---

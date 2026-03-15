@@ -174,46 +174,47 @@ Run `deno task fmt` to automatically format your code.
 - Update relevant docs in `docs/` directory
 - Add JSDoc comments to public APIs
 - Include examples for complex features
+- Use Mermaid fences (` ```mermaid`) for every chart, architecture diagram, flow, and directory layout in documentation
+- Use Markdown tables for tabular data instead of ASCII-art tables
 
 ## Project Structure
 
-```
-src/
-├── cli/              # Command-line interface
-├── compiler/         # Core compilation logic
-├── configuration/    # Configuration validation
-├── downloader/       # Filter list downloading
-├── platform/         # Platform abstraction (Worker, Node)
-├── transformations/  # Rule transformation implementations
-├── types/            # TypeScript type definitions
-└── utils/            # Utility functions
-
-worker/               # Cloudflare Worker implementation
-frontend/             # Angular 21 frontend (Material Design 3, SSR, Zoneless)
-├── src/app/
-│   ├── home/         # Dashboard with rxResource-based live stats
-│   ├── compiler/     # Compiler form (SSE streaming, linkedSignal presets)
-│   ├── performance/  # Metrics & endpoint breakdown
-│   ├── validation/   # Filter rule validation
-│   ├── api-docs/     # API reference
-│   ├── admin/        # Storage admin (auth-gated)
-│   ├── services/     # MetricsService, SseService, CompilerService, etc.
-│   ├── interceptors/ # HTTP error interceptor (401/429/5xx)
-│   └── guards/       # Admin route guard
-docs/                 # Documentation (organized by category)
-├── api/              # REST API reference, OpenAPI, streaming, validation
-├── cloudflare/       # Cloudflare-specific features (Queues, D1, Workflows)
-├── database-setup/   # Database architecture and local dev setup
-├── deployment/       # Docker and Cloudflare deployment guides
-├── development/      # Architecture, extensibility, diagnostics
-├── frontend/         # Angular SPA, Vite, Tailwind CSS
-├── guides/           # Getting started, migration, troubleshooting
-├── postman/          # Postman collection and environment files
-├── reference/        # Version management, environment config
-├── releases/         # Release notes and announcements
-├── testing/          # Testing guides and E2E documentation
-└── workflows/        # GitHub Actions CI/CD workflows
-examples/             # Example implementations
+```mermaid
+mindmap
+  root((Repository structure))
+    src["src/"]
+      cli["cli/ — Command-line interface"]
+      compiler["compiler/ — Core compilation logic"]
+      configuration["configuration/ — Configuration validation"]
+      downloader["downloader/ — Filter list downloading"]
+      platform["platform/ — Platform abstraction (Worker, Node)"]
+      transformations["transformations/ — Rule transformation implementations"]
+      types["types/ — TypeScript type definitions"]
+      utils["utils/ — Utility functions"]
+    worker["worker/ — Cloudflare Worker implementation"]
+    frontend["frontend/ — Angular 21 frontend (Material Design 3, SSR, Zoneless)"]
+      home["src/app/home/ — Dashboard with rxResource-based live stats"]
+      compilerApp["src/app/compiler/ — Compiler form (SSE streaming, linkedSignal presets)"]
+      performance["src/app/performance/ — Metrics and endpoint breakdown"]
+      validation["src/app/validation/ — Filter rule validation"]
+      apiDocs["src/app/api-docs/ — API reference"]
+      admin["src/app/admin/ — Storage admin (auth-gated)"]
+      services["src/app/services/ — MetricsService, SseService, CompilerService, and more"]
+      interceptors["src/app/interceptors/ — HTTP error interceptor (401/429/5xx)"]
+      guards["src/app/guards/ — Admin route guard"]
+    docs["docs/ — Documentation organized by category"]
+      api["api/ — REST API reference, OpenAPI, streaming, validation"]
+      cloudflare["cloudflare/ — Cloudflare-specific features (Queues, D1, Workflows)"]
+      databaseSetup["database-setup/ — Database architecture and local dev setup"]
+      deployment["deployment/ — Docker and Cloudflare deployment guides"]
+      development["development/ — Architecture, extensibility, diagnostics"]
+      frontendDocs["frontend/ — Angular SPA, Vite, Tailwind CSS"]
+      guides["guides/ — Getting started, migration, troubleshooting"]
+      postman["postman/ — Postman collection and environment files"]
+      reference["reference/ — Version management, environment config"]
+      releases["releases/ — Release notes and announcements"]
+      testing["testing/ — Testing guides and E2E documentation"]
+      workflows["workflows/ — GitHub Actions CI/CD workflows"]
 ```
 
 ## Angular Frontend Development
@@ -276,7 +277,7 @@ flowchart TD
 | Left-to-right pipeline       | `flowchart LR`                                     |
 | Static KPI / metrics data    | Regular markdown table (no Mermaid type available) |
 
-> **Note:** Directory/file tree listings using `├──`, `└──`, `│` are acceptable as-is and must **not** be converted to Mermaid.
+> **Note:** Directory/file tree listings are documentation diagrams too. Convert them to Mermaid mindmaps or flowcharts instead of using ASCII trees.
 
 ## Environment Variables
 

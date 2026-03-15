@@ -80,42 +80,29 @@ ValidationUI.showReport(report);
 Rules are automatically syntax-highlighted:
 
 #### Network Rules
-```
-||example.com^$third-party
-  ││          │ │
-  │└──────────┘ │
-  │   Domain    │
-  │  (blue)     │
-  └─────────────┘
-    Separators
-     (gray)
-       └──────────────┘
-          Modifiers
-          (orange)
+```mermaid
+flowchart LR
+    separators["||
+Separators (gray)"] --> domain["example.com
+Domain (blue)"] --> terminator["^
+Separator (gray)"] --> modifiers["$third-party
+Modifiers (orange)"]
 ```
 
 #### Exception Rules
-```
-@@||example.com^
-││
-│└─────────────────┘
-│      Pattern
-│      (blue)
-└──────────────────┘
-  Exception marker
-     (green)
+```mermaid
+flowchart LR
+    exception["@@
+Exception marker (green)"] --> pattern["||example.com^
+Pattern (blue)"]
 ```
 
 #### Host Rules
-```
-0.0.0.0 example.com
-│       │
-│       └──────────┘
-│         Domain
-│         (blue)
-└──────────────────┘
-   IP Address
-   (purple)
+```mermaid
+flowchart LR
+    ip["0.0.0.0
+IP address (purple)"] --> domain["example.com
+Domain (blue)"]
 ```
 
 ## API Reference
@@ -239,48 +226,47 @@ enum ValidationSeverity {
 
 The UI displays summary statistics in color-coded cards:
 
-```
-┌─────────────────┐ ┌─────────────────┐ ┌─────────────────┐
-│  Total Rules    │ │   Valid Rules   │ │  Invalid Rules  │
-│      1000       │ │       950       │ │       50        │
-│    (purple)     │ │     (green)     │ │      (red)      │
-└─────────────────┘ └─────────────────┘ └─────────────────┘
+```mermaid
+flowchart LR
+    total["Total Rules
+1000
+(purple)"] --> valid["Valid Rules
+950
+(green)"] --> invalid["Invalid Rules
+50
+(red)"]
 ```
 
 ### Error List Item
 
 Each error is displayed with:
 
-```
-┌────────────────────────────────────────────────────────┐
-│ [ERROR]  Unsupported Modifier  (Line 42) [Custom Filter] │
-│                                                          │
-│ Unsupported modifier: popup                             │
-│ Supported modifiers: important, ctag, dnstype...        │
-│                                                          │
-│ ┌────────────────────────────────────────────────────┐ │
-│ │ ||example.com^$popup                                │ │
-│ │   └──────────┘ └─────┘                              │ │
-│ │     domain   modifier (highlighted in red)          │ │
-│ └────────────────────────────────────────────────────┘ │
-│                                                          │
-│ [🔍 Show AST]                                            │
-└────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    header["[ERROR] Unsupported Modifier (Line 42) [Custom Filter]"] --> detail["Unsupported modifier: popup"]
+    detail --> supported["Supported modifiers: important, ctag, dnstype..."]
+    supported --> rule["||example.com^$popup
+Domain and modifier highlighted in red"]
+    rule --> action["Show AST"]
 ```
 
 ### AST Visualization
 
 Expandable AST tree with color-coded nodes:
 
-```
-[NetworkRule]  (light blue badge)
-  pattern: ||example.com^ (blue text)
-  exception: false (red text)
-  modifiers:
-    [ModifierList] (orange badge)
-      [0] [Modifier] (orange badge)
-        name: popup (blue text)
-        value: null (gray text)
+```mermaid
+flowchart TD
+    rule["NetworkRule
+(light blue badge)"] --> pattern["pattern: ||example.com^
+(blue text)"]
+    rule --> exception["exception: false
+(red text)"]
+    rule --> modifiers["ModifierList
+(orange badge)"]
+    modifiers --> modifier["Modifier[0]
+(orange badge)"]
+    modifier --> name["name: popup
+(blue text)"]
 ```
 
 ## Integration with Compiler

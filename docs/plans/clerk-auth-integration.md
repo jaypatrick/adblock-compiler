@@ -21,43 +21,28 @@ The adblock-compiler currently has only static admin key auth and Turnstile bot 
 
 ### Architecture Overview
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Angular 21 Frontend                                         │
-│  ┌──────────┐  ┌───────────┐  ┌──────────┐  ┌───────────┐  │
-│  │ClerkSvc  │  │AuthGuard  │  │AuthIntcpt│  │UserButton │  │
-│  │(signals) │  │(functional)│  │(bearer)  │  │(mounted)  │  │
-│  └────┬─────┘  └─────┬─────┘  └────┬─────┘  └───────────┘  │
-│       │               │              │                        │
-│       └───────────────┼──────────────┘                        │
-│                       │  Bearer JWT                           │
-└───────────────────────┼───────────────────────────────────────┘
-                        ▼
-┌───────────────────────────────────────────────────────────────┐
-│  Cloudflare Worker                                            │
-│  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐  │
-│  │JWT Middleware │  │API Key Auth  │  │CF Access Validator │  │
-│  │(jose/JWKS)   │  │(existing)    │  │(admin routes)      │  │
-│  └──────┬───────┘  └──────┬───────┘  └────────┬───────────┘  │
-│         │                  │                    │              │
-│         └──────────────────┼────────────────────┘              │
-│                            ▼                                   │
-│                   ┌─────────────────┐                          │
-│                   │  AuthContext     │                          │
-│                   │  (userId, role, │                          │
-│                   │   tier, apiKey)  │                          │
-│                   └────────┬────────┘                          │
-│                            ▼                                   │
-│               ┌─────────────────────────┐                      │
-│               │  Route Handlers         │                      │
-│               │  (rate limits by tier)  │                      │
-│               └────────────┬────────────┘                      │
-│                            ▼                                   │
-│            ┌────────────────────────────┐                      │
-│            │  PostgreSQL (Hyperdrive)   │                      │
-│            │  User, ApiKey, Session     │                      │
-│            └────────────────────────────┘                      │
-└───────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    subgraph frontend[Angular 21 Frontend]
+        clerkSvc["ClerkSvc (signals)"]
+        authGuard["AuthGuard (functional)"]
+        authInterceptor["AuthInterceptor (bearer JWT)"]
+        userButton["UserButton (mounted UI)"]
+    end
+
+    subgraph worker[Cloudflare Worker]
+        jwt["JWT middleware (jose / JWKS)"]
+        apiKey["API key auth (existing)"]
+        access["CF Access validator (admin routes)"]
+    end
+
+    clerkSvc --> authGuard
+    clerkSvc --> authInterceptor
+    authGuard --> jwt
+    authInterceptor --> jwt
+    userButton --> clerkSvc
+    jwt --> apiKey
+    jwt --> access
 ```
 
 ### User Tiers & Rate Limits

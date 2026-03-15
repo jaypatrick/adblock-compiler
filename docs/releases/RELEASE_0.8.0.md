@@ -88,40 +88,32 @@ POST /compile/async   → Queue for background
 ### Root Directory Cleanup
 
 **Before:**
-```
-.
-├── CODE_REVIEW.old.md         ❌ Removed (outdated)
-├── REVIEW_SUMMARY.md          ❌ Removed (outdated)
-├── coverage.lcov              ❌ Removed (build artifact)
-├── postman-collection.json    ❌ Moved to docs/tools/
-├── postman-environment.json   ❌ Moved to docs/tools/
-├── prisma.config.ts           ❌ Moved to prisma/
-└── ... (other files)
+```mermaid
+mindmap
+  root((Root directory before cleanup))
+    oldReview["CODE_REVIEW.old.md — removed (outdated)"]
+    oldSummary["REVIEW_SUMMARY.md — removed (outdated)"]
+    lcov["coverage.lcov — removed (build artifact)"]
+    postmanCollection["postman-collection.json — moved to docs/tools/"]
+    postmanEnv["postman-environment.json — moved to docs/tools/"]
+    prismaConfig["prisma.config.ts — moved to prisma/"]
+    other["Other root-level files"]
 ```
 
 **After:**
-```
-.
-├── CHANGELOG.md              ✅ Updated for v0.8.0
-├── README.md                 ✅ Enhanced with v0.8.0 features
-├── deno.json                 ✅ Version 0.8.0
-├── package.json              ✅ Version 0.8.0
-├── docs/
-│   ├── ADMIN_DASHBOARD.md    ✅ New comprehensive guide
-│   ├── tools/
-│   │   ├── postman-collection.json
-│   │   └── postman-environment.json
-│   └── ... (other docs)
-├── prisma/
-│   └── prisma.config.ts      ✅ Moved from root
-├── public/
-│   ├── index.html            ✅ New admin dashboard
-│   ├── compiler.html         ✅ Renamed from index.html
-│   ├── test.html
-│   ├── e2e-tests.html
-│   └── websocket-test.html
-└── src/
-    └── version.ts            ✅ Version 0.8.0
+```mermaid
+mindmap
+  root((Root directory after cleanup))
+    changelog["CHANGELOG.md — updated for v0.8.0"]
+    readme["README.md — enhanced with v0.8.0 features"]
+    denoJson["deno.json — version 0.8.0"]
+    packageJson["package.json — version 0.8.0"]
+    docs["docs/"]
+      adminGuide["ADMIN_DASHBOARD.md — new comprehensive guide"]
+      tools["tools/ — postman collection and environment"]
+    prisma["prisma/prisma.config.ts — moved from root"]
+    public["public/ — index, compiler, test, e2e-tests, websocket-test"]
+    src["src/version.ts — version 0.8.0"]
 ```
 
 ---
@@ -138,14 +130,15 @@ POST /compile/async   → Queue for background
 
 ### Intuitive Navigation
 
-```
-Dashboard (/)
-├── 🔧 Compiler UI (/compiler.html)
-├── 🧪 API Test Suite (/test.html)
-├── 🔬 E2E Tests (/e2e-tests.html)
-├── 🔌 WebSocket Demo (/websocket-test.html)
-├── 📖 API Documentation (/docs/api/index.html)
-└── 📊 Metrics & Stats
+```mermaid
+mindmap
+  root((Dashboard /))
+    compiler["Compiler UI (/compiler.html)"]
+    test["API Test Suite (/test.html)"]
+    e2e["E2E Tests (/e2e-tests.html)"]
+    websocket["WebSocket Demo (/websocket-test.html)"]
+    docs["API Documentation (/docs/api/index.html)"]
+    metrics["Metrics and stats"]
 ```
 
 ### Smart Features

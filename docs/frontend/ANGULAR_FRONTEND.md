@@ -144,83 +144,31 @@ sequenceDiagram
 
 ## Project Structure
 
-```
-frontend/
-├── src/
-│   ├── app/
-│   │   ├── app.component.ts            # Root shell: sidenav, toolbar, theme toggle
-│   │   ├── app.config.ts               # Browser providers: zoneless, router, HTTP, SSR hydration
-│   │   ├── app.config.server.ts        # SSR providers: mergeApplicationConfig(), absolute API URL
-│   │   ├── app.routes.ts               # Lazy-loaded routes with titles + route data
-│   │   ├── app.routes.server.ts        # Per-route render mode (Server / Prerender / Client)
-│   │   ├── tokens.ts                   # InjectionToken declarations (API_BASE_URL, TURNSTILE_SITE_KEY)
-│   │   ├── route-animations.ts         # Angular Animations trigger for route transitions
-│   │   │
-│   │   ├── compiler/
-│   │   │   └── compiler.component.ts   # rxResource(), linkedSignal(), SSE streaming, Turnstile, CDK Virtual Scroll
-│   │   ├── home/
-│   │   │   └── home.component.ts       # MetricsStore, @defer on viewport, skeleton loading
-│   │   ├── performance/
-│   │   │   └── performance.component.ts  # httpResource(), MetricsStore, SparklineComponent
-│   │   ├── admin/
-│   │   │   └── admin.component.ts      # Auth guard, rxResource(), CDK Virtual Scroll, SQL console
-│   │   ├── api-docs/
-│   │   │   └── api-docs.component.ts   # httpResource() for /api/version endpoint
-│   │   ├── validation/
-│   │   │   └── validation.component.ts # Rule validation, color-coded output
-│   │   │
-│   │   ├── error/
-│   │   │   ├── global-error-handler.ts         # Custom ErrorHandler with signal state
-│   │   │   └── error-boundary.component.ts     # Dismissible error overlay
-│   │   ├── guards/
-│   │   │   └── admin.guard.ts          # Functional CanActivateFn for admin route
-│   │   ├── interceptors/
-│   │   │   └── error.interceptor.ts    # Functional HttpInterceptorFn (401, 429, 5xx)
-│   │   ├── skeleton/
-│   │   │   ├── skeleton-card.component.ts      # mat-card (outlined) + mat-progress-bar buffer + shimmer card placeholder
-│   │   │   └── skeleton-table.component.ts     # mat-card (outlined) + mat-progress-bar buffer + shimmer table placeholder
-│   │   ├── sparkline/
-│   │   │   └── sparkline.component.ts  # mat-card (outlined) wrapper, Canvas 2D mini chart (zero dependencies)
-│   │   ├── stat-card/
-│   │   │   ├── stat-card.component.ts  # input() / output() / model() demo component
-│   │   │   └── stat-card.component.spec.ts
-│   │   ├── store/
-│   │   │   └── metrics.store.ts        # Shared singleton signal store with SWR cache
-│   │   ├── turnstile/
-│   │   │   └── turnstile.component.ts  # mat-card (outlined) wrapper, Cloudflare Turnstile CAPTCHA widget
-│   │   ├── services/
-│   │   │   ├── auth.service.ts         # Admin key management (sessionStorage)
-│   │   │   ├── compiler.service.ts     # POST /api/compile — Observable HTTP
-│   │   │   ├── filter-parser.service.ts  # Web Worker bridge for off-thread parsing
-│   │   │   ├── metrics.service.ts      # GET /api/metrics, /api/health
-│   │   │   ├── sse.service.ts          # Generic fetch-based SSE client returning signals
-│   │   │   ├── storage.service.ts      # Admin R2/D1 storage endpoints
-│   │   │   ├── swr-cache.service.ts    # Generic stale-while-revalidate signal cache
-│   │   │   ├── theme.service.ts        # Dark/light theme signal state, SSR-safe
-│   │   │   ├── turnstile.service.ts    # Turnstile widget lifecycle + token signal
-│   │   │   └── validation.service.ts   # POST /api/validate
-│   │   └── workers/
-│   │       └── filter-parser.worker.ts # Off-thread Web Worker: filter list parsing
-│   │
-│   ├── e2e/                            # Playwright E2E tests
-│   │   ├── playwright.config.ts
-│   │   ├── home.spec.ts
-│   │   ├── compiler.spec.ts
-│   │   └── navigation.spec.ts
-│   ├── index.html                      # App shell: Turnstile script tag, npm fonts
-│   ├── main.ts                         # bootstrapApplication()
-│   ├── main.server.ts                  # Server bootstrap (imported by server.ts)
-│   ├── styles.css                      # @fontsource/roboto + material-symbols imports
-│   └── test-setup.ts                   # Vitest global setup: imports @angular/compiler
-│
-├── server.ts                           # Cloudflare Workers fetch handler + CSP headers
-├── ngsw-config.json                    # PWA / Service Worker cache config
-├── angular.json                        # Angular CLI workspace configuration
-├── vitest.config.ts                    # Vitest + @analogjs/vitest-angular configuration
-├── wrangler.toml                       # Cloudflare Workers deployment configuration
-├── tsconfig.json                       # Base TypeScript config
-├── tsconfig.app.json                   # App-specific TS config
-└── tsconfig.spec.json                  # Spec-specific TS config (vitest/globals types)
+```mermaid
+mindmap
+  root((frontend/))
+    src["src/"]
+      app["app/"]
+        core["app.component.ts, app.config.ts, app.config.server.ts, app.routes.ts, app.routes.server.ts, tokens.ts, route-animations.ts"]
+        compiler["compiler/ — compiler.component.ts with rxResource(), linkedSignal(), SSE streaming, Turnstile, CDK Virtual Scroll"]
+        home["home/ — home.component.ts with MetricsStore, @defer on viewport, skeleton loading"]
+        performance["performance/ — performance.component.ts with httpResource(), MetricsStore, SparklineComponent"]
+        admin["admin/ — admin.component.ts with Auth guard, rxResource(), CDK Virtual Scroll, SQL console"]
+        apiDocs["api-docs/ — api-docs.component.ts for /api/version"]
+        validation["validation/ — validation.component.ts with color-coded output"]
+        error["error/ — global error handler and dismissible error boundary"]
+        guards["guards/ — admin.guard.ts (functional CanActivateFn)"]
+        interceptors["interceptors/ — error.interceptor.ts (functional HttpInterceptorFn)"]
+        skeleton["skeleton/ — skeleton-card and skeleton-table placeholders"]
+        sparkline["sparkline/ — sparkline.component.ts (Canvas 2D mini chart)"]
+        statCard["stat-card/ — stat-card component and spec"]
+        store["store/ — metrics.store.ts"]
+        turnstile["turnstile/ — turnstile.component.ts"]
+        services["services/ — auth, compiler, filter-parser, metrics, SSE, storage, SWR, theme, turnstile, validation"]
+        workers["workers/ — filter-parser.worker.ts"]
+      e2e["e2e/ — Playwright config plus home, compiler, and navigation specs"]
+      appShell["index.html, main.ts, main.server.ts, styles.css, test-setup.ts"]
+    runtime["server.ts, ngsw-config.json, angular.json, vitest.config.ts, wrangler.toml, tsconfig.json, tsconfig.app.json, tsconfig.spec.json"]
 ```
 
 ---

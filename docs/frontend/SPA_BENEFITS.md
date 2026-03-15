@@ -13,15 +13,16 @@ improve the user experience, developer experience, and long-term maintainability
 
 ## Current Architecture (Multi-Page)
 
-```
-public/
-├── index.html          ← Admin dashboard
-├── compiler.html       ← Compiler UI
-├── admin-storage.html  ← Storage admin
-├── test.html           ← API tester
-├── e2e-tests.html      ← E2E test runner
-├── validation-demo.html
-└── websocket-test.html
+```mermaid
+mindmap
+  root((public/))
+    index["index.html — Admin dashboard"]
+    compiler["compiler.html — Compiler UI"]
+    adminStorage["admin-storage.html — Storage admin"]
+    test["test.html — API tester"]
+    e2e["e2e-tests.html — E2E test runner"]
+    validation["validation-demo.html"]
+    websocket["websocket-test.html"]
 ```
 
 **Each page is isolated.** Navigation between them triggers a full browser reload,

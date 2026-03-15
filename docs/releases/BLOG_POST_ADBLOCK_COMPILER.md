@@ -376,18 +376,13 @@ export default async function handler(request: Request) {
 
 Automatic retry logic for unreliable sources:
 
-```
-Request fails
-      ↓
-Retry after 1s (2^0)
-      ↓
-Retry after 2s (2^1)
-      ↓
-Retry after 4s (2^2)
-      ↓
-Retry after 8s (2^3)
-      ↓
-Max retries exceeded → Fallback or error
+```mermaid
+flowchart TD
+    fail["Request fails"] --> retry1["Retry after 1s (2^0)"]
+    retry1 --> retry2["Retry after 2s (2^1)"]
+    retry2 --> retry3["Retry after 4s (2^2)"]
+    retry3 --> retry4["Retry after 8s (2^3)"]
+    retry4 --> maxed["Max retries exceeded -> fallback or error"]
 ```
 
 ### Preprocessor Directives

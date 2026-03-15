@@ -355,10 +355,11 @@ sequenceDiagram
 
 ### Key Format
 
-```
-abc_<32-random-bytes-base64url>
- │
- └── Prefix identifies token type (vs. Clerk JWT)
+```mermaid
+flowchart LR
+    prefix["abc_
+Prefix identifies token type"] --> random["<32-random-bytes-base64url>
+Random body"]
 ```
 
 - **Total length**: ~47 characters

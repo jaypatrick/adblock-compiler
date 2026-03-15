@@ -46,12 +46,14 @@ Prisma is a next-generation ORM for Node.js and TypeScript that supports the fol
 
 The project uses **Prisma ORM with SQLite** as the default storage backend:
 
-```
-PrismaStorageAdapter (SQLite/PostgreSQL/MySQL)
-├── CachingDownloader
-│   ├── ChangeDetector
-│   └── SourceHealthMonitor
-└── IncrementalCompiler (MemoryCacheStorage)
+```mermaid
+flowchart TD
+    adapter["PrismaStorageAdapter
+(SQLite / PostgreSQL / MySQL)"] --> caching["CachingDownloader"]
+    caching --> detector["ChangeDetector"]
+    caching --> health["SourceHealthMonitor"]
+    adapter --> incremental["IncrementalCompiler"]
+    incremental --> memory["MemoryCacheStorage"]
 ```
 
 **Key Characteristics:**

@@ -122,167 +122,19 @@ flowchart LR
 
 ## Module Map
 
-```
-src/
-├── index.ts                    # Library entry point (all public exports)
-├── version.ts                  # Canonical VERSION constant
-├── cli.ts / cli.deno.ts        # CLI entry points
-│
-├── compiler/                   # 🔧 Core compilation orchestration
-│   ├── FilterCompiler.ts       #    Main compiler (file system access)
-│   ├── SourceCompiler.ts       #    Per-source compilation
-│   ├── IncrementalCompiler.ts  #    Incremental (delta) compilation
-│   ├── HeaderGenerator.ts      #    Filter list header generation
-│   └── index.ts
-│
-├── platform/                   # 🌐 Platform abstraction layer
-│   ├── WorkerCompiler.ts       #    Edge/Worker compiler (no FS)
-│   ├── HttpFetcher.ts          #    HTTP content fetcher
-│   ├── PreFetchedContentFetcher.ts  # In-memory content provider
-│   ├── CompositeFetcher.ts     #    Chain-of-responsibility fetcher
-│   ├── PlatformDownloader.ts   #    Platform-agnostic downloader
-│   ├── types.ts                #    IContentFetcher interface
-│   └── index.ts
-│
-├── transformations/            # ⚙️ Rule transformation pipeline
-│   ├── base/Transformation.ts  #    Abstract base classes
-│   ├── TransformationRegistry.ts  # Registry + Pipeline
-│   ├── CompressTransformation.ts
-│   ├── DeduplicateTransformation.ts
-│   ├── ValidateTransformation.ts
-│   ├── RemoveCommentsTransformation.ts
-│   ├── RemoveModifiersTransformation.ts
-│   ├── ConvertToAsciiTransformation.ts
-│   ├── InvertAllowTransformation.ts
-│   ├── TrimLinesTransformation.ts
-│   ├── RemoveEmptyLinesTransformation.ts
-│   ├── InsertFinalNewLineTransformation.ts
-│   ├── ExcludeTransformation.ts
-│   ├── IncludeTransformation.ts
-│   ├── ConflictDetectionTransformation.ts
-│   ├── RuleOptimizerTransformation.ts
-│   ├── TransformationHooks.ts
-│   └── index.ts
-│
-├── downloader/                 # 📥 Filter list downloading
-│   ├── FilterDownloader.ts     #    Deno-native downloader with retries
-│   ├── ContentFetcher.ts       #    File system + HTTP abstraction
-│   ├── PreprocessorEvaluator.ts  # !#if / !#include directives
-│   ├── ConditionalEvaluator.ts #    Boolean expression evaluator
-│   └── index.ts
-│
-├── configuration/              # ✅ Configuration validation
-│   ├── ConfigurationValidator.ts  # Zod-based validator
-│   ├── schemas.ts              #    Zod schemas for all request types
-│   └── index.ts
-│
-├── config/                     # ⚡ Centralized constants & defaults
-│   └── defaults.ts             #    NETWORK, WORKER, STORAGE defaults
-│
-├── storage/                    # 💾 Persistence & caching
-│   ├── IStorageAdapter.ts      #    Abstract storage interface
-│   ├── PrismaStorageAdapter.ts #    Prisma ORM adapter (SQLite default)
-│   ├── D1StorageAdapter.ts     #    Cloudflare D1 adapter
-│   ├── CachingDownloader.ts    #    Intelligent caching downloader
-│   ├── ChangeDetector.ts       #    Content change detection
-│   ├── SourceHealthMonitor.ts  #    Source health tracking
-│   └── types.ts                #    StorageEntry, CacheEntry, etc.
-│
-├── services/                   # 🛠️ Business logic services
-│   ├── FilterService.ts        #    Filter wildcard preparation
-│   ├── ASTViewerService.ts     #    Rule AST parsing & display
-│   ├── AnalyticsService.ts     #    Cloudflare Analytics Engine
-│   └── index.ts
-│
-├── queue/                      # 📬 Async job queue
-│   ├── IQueueProvider.ts       #    Abstract queue interface
-│   ├── CloudflareQueueProvider.ts  # Cloudflare Queues impl
-│   └── index.ts
-│
-├── diagnostics/                # 🔍 Observability & tracing
-│   ├── DiagnosticsCollector.ts #    Event aggregation
-│   ├── TracingContext.ts       #    Correlation & span management
-│   ├── OpenTelemetryExporter.ts  # OTel bridge
-│   ├── types.ts                #    DiagnosticEvent, TraceSeverity
-│   └── index.ts
-│
-├── filters/                    # 🔍 Rule filtering
-│   ├── RuleFilter.ts           #    Exclusion/inclusion pattern matching
-│   └── index.ts
-│
-├── formatters/                 # 📄 Output formatting
-│   ├── OutputFormatter.ts      #    Adblock, hosts, dnsmasq, etc.
-│   └── index.ts
-│
-├── diff/                       # 📊 Diff reporting
-│   ├── DiffReport.ts           #    Compilation diff generation
-│   └── index.ts
-│
-├── plugins/                    # 🔌 Plugin system
-│   ├── PluginSystem.ts         #    Plugin registry & loading
-│   └── index.ts
-│
-├── deployment/                 # 🚀 Deployment tracking
-│   └── version.ts              #    Deployment history & records
-│
-├── schemas/                    # 📋 JSON schemas
-│   └── configuration.schema.json
-│
-├── types/                      # 📐 Core type definitions
-│   ├── index.ts                #    IConfiguration, ISource, enums
-│   ├── validation.ts           #    Validation-specific types
-│   └── websocket.ts            #    WebSocket message types
-│
-├── utils/                      # 🧰 Shared utilities
-│   ├── RuleUtils.ts            #    Rule parsing & classification
-│   ├── StringUtils.ts          #    String manipulation
-│   ├── TldUtils.ts             #    Top-level domain utilities
-│   ├── Wildcard.ts             #    Glob/wildcard pattern matching
-│   ├── CircuitBreaker.ts       #    Circuit breaker pattern
-│   ├── AsyncRetry.ts           #    Retry with exponential backoff
-│   ├── ErrorUtils.ts           #    Typed error hierarchy
-│   ├── EventEmitter.ts         #    CompilerEventEmitter
-│   ├── Benchmark.ts            #    Performance benchmarking
-│   ├── BooleanExpressionParser.ts  # Boolean expression evaluation
-│   ├── AGTreeParser.ts         #    AdGuard rule AST parser
-│   ├── ErrorReporter.ts        #    Multi-target error reporting
-│   ├── logger.ts               #    Logger, StructuredLogger
-│   ├── checksum.ts             #    Filter list checksums
-│   ├── headerFilter.ts         #    Header stripping utilities
-│   └── PathUtils.ts            #    Safe path resolution
-│
-└── cli/                        # 💻 CLI application
-    ├── CliApp.deno.ts          #    Main CLI app (Deno-specific)
-    ├── ArgumentParser.ts       #    CLI argument parsing
-    ├── ConfigurationLoader.ts  #    Config file loading
-    ├── OutputWriter.ts         #    File output writing
-    └── index.ts
-
-worker/                         # ☁️ Cloudflare Worker
-├── worker.ts                   #    Worker entry point
-├── router.ts                   #    Modular request router
-├── websocket.ts                #    WebSocket handler
-├── html.ts                     #    Static HTML serving
-├── schemas.ts                  #    API request validation
-├── types.ts                    #    Env bindings, request/response types
-├── tail.ts                     #    Tail worker (log consumer)
-├── handlers/                   #    Route handlers
-│   ├── compile.ts              #    Compilation endpoints
-│   ├── metrics.ts              #    Metrics endpoints
-│   ├── queue.ts                #    Queue management
-│   └── admin.ts                #    Admin/D1 endpoints
-├── middleware/                  #    Request middleware
-│   └── index.ts                #    Rate limit, auth, size validation
-├── workflows/                  #    Durable execution workflows
-│   ├── CompilationWorkflow.ts
-│   ├── BatchCompilationWorkflow.ts
-│   ├── CacheWarmingWorkflow.ts
-│   ├── HealthMonitoringWorkflow.ts
-│   ├── WorkflowEvents.ts
-│   └── types.ts
-└── utils/                      #    Worker utilities
-    ├── response.ts             #    JsonResponse helper
-    └── errorReporter.ts        #    Worker error reporter
+```mermaid
+mindmap
+  root((src/))
+    entry["index.ts / version.ts / cli.ts / cli.deno.ts"]
+    compiler["compiler/ — FilterCompiler, SourceCompiler, IncrementalCompiler, HeaderGenerator"]
+    platform["platform/ — WorkerCompiler, HttpFetcher, CompositeFetcher, PlatformDownloader, shared types"]
+    transformations["transformations/ — registry, pipeline, and rule transformation implementations"]
+    downloader["downloader/ — FilterDownloader, ContentFetcher, PreprocessorEvaluator, ConditionalEvaluator"]
+    configuration["configuration/ — Zod-based validation"]
+    storage["storage/ — caching and health monitoring"]
+    filters["filters/ — rule filtering utilities"]
+    utils["utils/ — shared helpers and checksum utilities"]
+    types["types/ — public interfaces and contracts"]
 ```
 
 ---

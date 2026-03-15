@@ -31,22 +31,22 @@ on pages that do not import Vue or React components.
 
 ## Directory Structure
 
-```
-public/                     ← Vite root (source files)
-├── js/
-│   ├── theme.ts            ← Dark/light mode toggle (ES module)
-│   └── chart.ts            ← Chart.js npm import + global registration
-├── shared-styles.css       ← Design-system CSS variables
-├── validation-ui.js        ← Validation UI component (ES module)
-├── index.html              ← Admin dashboard
-├── compiler.html           ← Main compiler UI
-├── test.html               ← API tester
-├── admin-storage.html      ← Storage admin
-├── e2e-tests.html          ← E2E test runner
-├── validation-demo.html    ← Validation demo
-└── websocket-test.html     ← WebSocket tester
-
-dist/                       ← Vite build output (git-ignored)
+```mermaid
+mindmap
+  root((public/))
+    js["js/"]
+      theme["theme.ts — Dark/light mode toggle (ES module)"]
+      chart["chart.ts — Chart.js npm import + global registration"]
+    styles["shared-styles.css — Design-system CSS variables"]
+    validationUi["validation-ui.js — Validation UI component (ES module)"]
+    index["index.html — Admin dashboard"]
+    compiler["compiler.html — Main compiler UI"]
+    test["test.html — API tester"]
+    adminStorage["admin-storage.html — Storage admin"]
+    e2e["e2e-tests.html — E2E test runner"]
+    validationDemo["validation-demo.html — Validation demo"]
+    websocket["websocket-test.html — WebSocket tester"]
+    dist["dist/ — Vite build output (git-ignored)"]
 ```
 
 ## Scripts

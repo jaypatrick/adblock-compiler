@@ -306,34 +306,30 @@ The `public/` directory contains the original vanilla HTML frontend. It will be 
 
 ### Project structure
 
-```
-src/
-├── cli/           # Command-line interface (with *.test.ts files)
-├── compiler/      # Core compilation logic (with *.test.ts files)
-├── configuration/ # Configuration validation (with *.test.ts files)
-├── downloader/    # Filter list downloading (with *.test.ts files)
-├── platform/      # Platform abstraction layer (with *.test.ts files)
-├── transformations/ # Rule transformations (with *.test.ts files)
-├── types/         # TypeScript type definitions
-├── utils/         # Utility functions (with *.test.ts files)
-├── index.ts       # Main library exports
-└── mod.ts         # Deno module exports
-
-Note: All tests are co-located with source files (*.test.ts next to *.ts)
-
-worker/            # Cloudflare Worker implementation (production-ready)
-├── worker.ts      # Main worker with API endpoints
-└── html.ts        # Fallback HTML templates
-
-frontend/          # Angular 21 SPA (replaces public/)
-├── src/app/       # Components, services, guards, interceptors
-├── src/index.html # Root HTML with Cloudflare analytics
-└── angular.json   # Build configuration (SSR + browser)
-
-public/            # Legacy static web UI (to be removed)
-
-examples/
-└── cloudflare-worker/  # Legacy deployment reference
+```mermaid
+mindmap
+  root((Project structure))
+    src["src/"]
+      cli["cli/ — Command-line interface (with *.test.ts files)"]
+      compiler["compiler/ — Core compilation logic (with *.test.ts files)"]
+      configuration["configuration/ — Configuration validation (with *.test.ts files)"]
+      downloader["downloader/ — Filter list downloading (with *.test.ts files)"]
+      platform["platform/ — Platform abstraction layer (with *.test.ts files)"]
+      transformations["transformations/ — Rule transformations (with *.test.ts files)"]
+      types["types/ — TypeScript type definitions"]
+      utils["utils/ — Utility functions (with *.test.ts files)"]
+      indexTs["index.ts — Main library exports"]
+      modTs["mod.ts — Deno module exports"]
+    worker["worker/ — Cloudflare Worker implementation (production-ready)"]
+      workerTs["worker.ts — Main worker with API endpoints"]
+      htmlTs["html.ts — Fallback HTML templates"]
+    frontend["frontend/ — Angular 21 SPA (replaces public/)"]
+      app["src/app/ — Components, services, guards, interceptors"]
+      indexHtml["src/index.html — Root HTML with Cloudflare analytics"]
+      angularJson["angular.json — Build configuration (SSR + browser)"]
+    public["public/ — Legacy static web UI (to be removed)"]
+    examples["examples/"]
+      cloudflareWorker["cloudflare-worker/ — Legacy deployment reference"]
 ```
 
 ### Publishing to JSR

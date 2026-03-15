@@ -17,17 +17,15 @@ The existing `adblock-db` database on PlanetScale is already linked to the Cloud
 
 ## Architecture
 
-```
-                        Cloudflare Worker
-                              |
-            +--------+--------+--------+--------+
-            |        |        |        |        |
-         [D1]    [Hyperdrive] [R2]    [KV]    [Queue]
-          L1       |          Blobs   Cache   Async
-         cache     |
-                   |
-            PlanetScale PostgreSQL
-              (Source of truth)
+```mermaid
+flowchart TD
+    worker["Cloudflare Worker"] --> d1["D1 — L1 cache"]
+    worker --> hyperdrive["Hyperdrive"]
+    worker --> r2["R2 — blobs"]
+    worker --> kv["KV — cache"]
+    worker --> queue["Queue — async"]
+    hyperdrive --> planetscale["PlanetScale PostgreSQL
+(source of truth)"]
 ```
 
 ### Storage Tiers
@@ -73,12 +71,12 @@ PlanetScale supports database branches that map to git branches:
 
 Prisma is the single source of truth for schema. The `prisma/schema.prisma` file defines all models, and `npx prisma migrate` generates SQL migrations that are applied to PlanetScale.
 
-```
-Developer edits schema.prisma
-    -> npx prisma migrate dev (local)
-    -> git push (commit migration SQL)
-    -> CI applies migration to PlanetScale dev branch
-    -> Deploy request merges to main
+```mermaid
+flowchart TD
+    edit["Developer edits schema.prisma"] --> migrate["npx prisma migrate dev (local)"]
+    migrate --> push["git push (commit migration SQL)"]
+    push --> ci["CI applies migration to PlanetScale dev branch"]
+    ci --> deploy["Deploy request merges to main"]
 ```
 
 ### Data sync: D1 <-> PlanetScale

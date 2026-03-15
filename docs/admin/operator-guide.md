@@ -70,15 +70,11 @@ wrangler d1 execute adblock-compiler-admin-d1 --remote \
 
 Expected output:
 
-```
-┌──────────────┬─────────────┐
-│ role_name    │ display_name│
-├──────────────┼─────────────┤
-│ viewer       │ Viewer      │
-│ editor       │ Editor      │
-│ super-admin  │ Super Admin │
-└──────────────┴─────────────┘
-```
+| role_name | display_name |
+| --- | --- |
+| `viewer` | `Viewer` |
+| `editor` | `Editor` |
+| `super-admin` | `Super Admin` |
 
 ## 3. Assign the First Super-Admin
 

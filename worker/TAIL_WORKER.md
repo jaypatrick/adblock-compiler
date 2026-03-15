@@ -180,27 +180,24 @@ Log keys are in the format `log:{timestamp}` where timestamp is the event's Unix
 
 ## Architecture
 
-```
-┌─────────────────────┐
-│  Main Worker        │
-│  (worker.ts)        │
-│                     │
-│  - Handles requests │
-│  - Emits logs       │
-│  - May throw errors │
-└──────────┬──────────┘
-           │
-           │ Events, Logs, Exceptions
-           │
-           ▼
-┌─────────────────────┐
-│  Tail Worker        │
-│  (tail.ts)          │
-│                     │
-│  - Receives events  │
-│  - Stores logs      │────► KV Storage (optional)
-│  - Forwards errors  │────► Webhook (optional)
-└─────────────────────┘
+```mermaid
+flowchart TD
+    main["Main Worker
+(worker.ts)
+- Handles requests
+- Emits logs
+- May throw errors"]
+    tail["Tail Worker
+(tail.ts)
+- Receives events
+- Stores logs
+- Forwards errors"]
+    kv["KV Storage (optional)"]
+    webhook["Webhook (optional)"]
+
+    main -->|Events, logs, exceptions| tail
+    tail --> kv
+    tail --> webhook
 ```
 
 ## Best Practices
