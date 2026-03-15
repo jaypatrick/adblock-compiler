@@ -121,6 +121,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.62.5] - 2026-03-15
+
+### Added### Performance
+
+- fix CLS, font preloads, immutable cache headers, browserslist (#1113)
+
+
 ## [0.62.4] - 2026-03-15
 
 ### Added### Fixed
