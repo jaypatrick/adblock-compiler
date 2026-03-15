@@ -3,7 +3,7 @@
 `adblock-compiler` integrates [Sentry for Cloudflare Workers](https://docs.sentry.io/platforms/javascript/guides/cloudflare/) (`@sentry/cloudflare`) for automatic error capture, performance tracing, and release tracking.
 
 The integration is **additive and opt-in**: when `SENTRY_DSN` is absent the worker
-runs identically to before. No error is thrown; no overhead is incurred.
+runs identically to before — no SDK is imported and no events are captured.
 
 ---
 
@@ -27,7 +27,7 @@ runs identically to before. No error is thrown; no overhead is incurred.
 ```mermaid
 flowchart TD
     worker["worker/worker.ts"] --> wrapper["withSentryWorker(handler, cfg)"]
-    wrapper --> noDsn["No DSN -> pass-through (zero cost)"]
+    wrapper --> noDsn["No DSN -> pass-through (minimal overhead)"]
     wrapper --> withDsn["DSN set -> Sentry.withSentry(cfg, handler)"]
     withDsn --> capture["captureException() on unhandled throws"]
     provider["src/diagnostics/SentryDiagnosticsProvider"] --> captureError["captureError() -> Sentry.captureException()"]
@@ -112,58 +112,27 @@ SENTRY_DSN=https://your-key@oNNNNNN.ingest.sentry.io/your-project-id
 
 ---
 
-## 5. Activate the Worker wrapper
+## 5. Worker wrapper
 
-`worker/services/sentry-init.ts` exports `withSentryWorker()`. This wrapper is
-**not yet wired into `worker/worker.ts`** — you need to add the wrapping
-after installing the SDK.
-
-**Step 1 — Ensure the SDK is installed:**
-
-```bash
-# Package is already in deno.json imports map; just refresh the lockfile
-deno install
-```
-
-**Step 2 — (Already done) The export default in `worker/worker.ts` is wrapped:**
+`worker/services/sentry-init.ts` exports `withSentryWorker()`. The wrapper is
+**already active** — `worker/worker.ts` exports the handler through it:
 
 ```typescript
 import { withSentryWorker } from './services/sentry-init.ts';
 
-// Replace the existing `export default workerHandler;` with:
 export default withSentryWorker(workerHandler, (env) => ({
     dsn: env.SENTRY_DSN,
-    release: env.COMPILER_VERSION,
-    tracesSampleRate: 0.1,
+    release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
 }));
 ```
 
-**Step 3 — Uncomment the Sentry path in `worker/services/sentry-init.ts`:**
+When `SENTRY_DSN` is **absent** the wrapper is a minimal-overhead pass-through — the
+Sentry SDK is not imported and no events are captured. To enable error capture,
+set the secret (see [§4](#4-environment-variables-and-secrets)).
 
-```typescript
-// Before (stub — active until SDK installed):
-try {
-    return await handler.fetch!(request, env, ctx);
-} catch (error) {
-    console.error(JSON.stringify({ ... }));
-    throw error;
-}
-
-// After (full Sentry integration):
-const Sentry = await import('@sentry/cloudflare');
-return Sentry.withSentry(
-    () => ({
-        dsn: config.dsn!,
-        release: config.release,
-        environment: config.environment ?? 'production',
-        tracesSampleRate: config.tracesSampleRate ?? 0.1,
-    }),
-    handler,
-).fetch(request, env, ctx);
-```
-
-> **`tracesSampleRate`** — start at `0.1` (10 %) in production to stay within
-> Sentry's free quota. Use `1.0` in staging.
+> **`tracesSampleRate`** — `withSentryWorker()` applies a default sample rate. Override
+> it in the config callback (e.g. `tracesSampleRate: 0.1`) to stay within Sentry's
+> free quota in production; use `1.0` in staging.
 
 ---
 
