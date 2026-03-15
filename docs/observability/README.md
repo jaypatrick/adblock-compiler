@@ -47,6 +47,7 @@ Inbound Request
 | Variable | Layer | Required | Set via |
 |----------|-------|----------|---------|
 | `SENTRY_DSN` | Worker + Tail + Frontend RUM | Optional | `wrangler secret put SENTRY_DSN` |
+| `SENTRY_RELEASE` | Worker (deploy-time var) | Optional (source map linking) | `wrangler deploy --var SENTRY_RELEASE:$(git rev-parse HEAD)` |
 | `ANALYTICS_ACCOUNT_ID` | Worker | Optional (Prometheus) | `wrangler secret put ANALYTICS_ACCOUNT_ID` |
 | `ANALYTICS_API_TOKEN` | Worker | Optional (Prometheus) | `wrangler secret put ANALYTICS_API_TOKEN` |
 | `SLACK_WEBHOOK_URL` | Tail Worker | Optional | `wrangler secret put SLACK_WEBHOOK_URL` (tail worker) |

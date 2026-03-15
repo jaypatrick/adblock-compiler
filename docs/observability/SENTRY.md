@@ -387,9 +387,20 @@ no-op and the app boots normally.
 | Name | Where | Description |
 |------|-------|-------------|
 | `SENTRY_DSN` | Cloudflare Worker Secret | Public DSN — safe to send to the browser |
+| `SENTRY_RELEASE` | Cloudflare Worker var (deploy-time) | Git SHA — links events to uploaded source maps |
 | `SENTRY_AUTH_TOKEN` | GitHub secret | CI-only — used by `@sentry/cli` to upload source maps |
 | `SENTRY_ORG` | GitHub variable (`vars.`) | Your Sentry organisation slug |
 | `SENTRY_PROJECT` | GitHub variable (`vars.`) | Your Sentry project slug |
+
+> **Source map association**: `SENTRY_RELEASE` must match the `--release` value used by the
+> `sentry-sourcemaps.yml` CI workflow (which uses `${{ github.sha }}`). Set it at deploy time:
+>
+> ```bash
+> wrangler deploy --var SENTRY_RELEASE:$(git rev-parse HEAD)
+> ```
+>
+> Without a matching `release`, Sentry will capture errors correctly but stack traces will
+> remain minified. The `SENTRY_DSN` alone is sufficient for error capture.
 
 ### Session Replay
 
