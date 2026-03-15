@@ -70,6 +70,7 @@ import { handleNotify } from './handlers/webhook.ts';
 import { handleClerkWebhook } from './handlers/clerk-webhook.ts';
 import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdateApiKey } from './handlers/api-keys.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
+import { handleSentryConfig } from './handlers/sentry-config.ts';
 import { createDiagnosticsProvider } from './services/diagnostics-factory.ts';
 import { verifyCfAccessJwt } from './middleware/cf-access.ts';
 
@@ -3197,11 +3198,16 @@ export default {
             );
         }
 
+        // Handle Sentry config endpoint (provides public DSN for frontend RUM)
+        if (pathname === '/api/sentry-config' && request.method === 'GET') {
+            return handleSentryConfig(env);
+        }
+
         // The Angular frontend uses API_BASE_URL = '/api', so functional calls
         // arrive as /api/compile, /api/metrics, /api/validate, etc.
         // Strip the /api prefix so they reach the root-level handlers below.
         // Note: the native /api, /api/version, /api/deployments, /api/turnstile-config,
-        // and /api/clerk-config routes above are already handled before this point.
+        // /api/clerk-config, and /api/sentry-config routes above are already handled before this point.
         const routePath = pathname.startsWith('/api/') ? pathname.slice(4) : pathname;
 
         // ── Unified Authentication ──────────────────────────────────────
