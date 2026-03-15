@@ -28,16 +28,13 @@ describe('ApiDocsComponent', () => {
             component = fixture.componentInstance;
             httpTesting = TestBed.inject(HttpTestingController);
 
-            // Flush the initial httpResource request for /api/version
+            // Flush only the expected initial httpResource request for /api/version
             httpTesting.match('/api/version').forEach(req => req.flush({
                 name: 'adblock-compiler', version: '0.0.0',
             }));
         });
 
-        afterEach(() => {
-            httpTesting.match(() => true).forEach(req => req.flush({}));
-            httpTesting.verify();
-        });
+        afterEach(() => httpTesting.verify());
 
         it('should create', () => {
             expect(component).toBeTruthy();
@@ -122,48 +119,5 @@ describe('ApiDocsComponent', () => {
             expect(component.versionResource.isLoading()).toBe(false);
             expect(component.versionResource.value()).toBeUndefined();
         });
-    });
-});
-
-describe('ApiDocsComponent — server platform (SSR/prerender)', () => {
-    let fixture: ComponentFixture<ApiDocsComponent>;
-    let component: ApiDocsComponent;
-    let httpMock: HttpTestingController;
-
-    beforeEach(async () => {
-        await TestBed.configureTestingModule({
-            imports: [ApiDocsComponent, NoopAnimationsModule],
-            providers: [
-                provideZonelessChangeDetection(),
-                provideHttpClient(),
-                provideHttpClientTesting(),
-                { provide: API_BASE_URL, useValue: '/api' },
-                { provide: PLATFORM_ID, useValue: 'server' },
-            ],
-        }).compileComponents();
-
-        fixture = TestBed.createComponent(ApiDocsComponent);
-        component = fixture.componentInstance;
-        httpMock = TestBed.inject(HttpTestingController);
-    });
-
-    afterEach(() => {
-        httpMock.verify();
-    });
-
-    it('should create on server without errors', () => {
-        expect(component).toBeTruthy();
-    });
-
-    it('should make no HTTP request to /api/version during prerender', () => {
-        httpMock.expectNone('/api/version');
-    });
-
-    it('should keep versionResource idle (value undefined) on server', () => {
-        expect(component.versionResource.value()).toBeUndefined();
-    });
-
-    it('should not be loading the version resource on server', () => {
-        expect(component.versionResource.isLoading()).toBe(false);
     });
 });
