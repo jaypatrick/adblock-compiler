@@ -119,6 +119,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.62.3] - 2026-03-15
+
+### Added### Fixed
+
+- guard MetricsStore and httpResource() against SSR prerender crash (#1099)
+
+
 ## [0.62.2] - 2026-03-15
 
 ### Added### Fixed
