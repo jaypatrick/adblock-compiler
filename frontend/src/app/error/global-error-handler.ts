@@ -11,6 +11,7 @@
 
 import { ErrorHandler, Injectable, signal, computed, inject } from '@angular/core';
 import { LogService } from '../services/log.service';
+import { Sentry } from '../sentry';
 
 export interface AppError {
     readonly message: string;
@@ -56,6 +57,15 @@ export class GlobalErrorHandler extends ErrorHandler {
             stack: appError.stack,
             context: appError.context,
         });
+
+        // Forward to Sentry if initialised (non-fatal)
+        try {
+            if (Sentry.getClient() !== undefined) {
+                Sentry.captureException(error);
+            }
+        } catch {
+            // Non-fatal: Sentry capture failure must not disrupt the error handler
+        }
     }
 
     /** Clear the current error (e.g. user clicks "Dismiss") */
