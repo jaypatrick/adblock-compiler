@@ -89,17 +89,17 @@ flowchart LR
 
 ## Cloudflare Services Used by Clerk Auth
 
-| Cloudflare Service | Binding | Purpose in Auth |
-|---|---|---|
-| **Workers** | (runtime) | Hosts all auth middleware and handlers |
-| **KV** | `RATE_LIMIT` | Tier-based rate limiting counters |
-| **D1** | `DB` | Primary user record storage — synced from Clerk webhooks via Prisma D1 adapter |
-| **Hyperdrive** | `HYPERDRIVE` | Connection pooling to PostgreSQL for API key storage |
-| **Turnstile** | `TURNSTILE_SECRET_KEY` | Bot protection on compilation endpoints |
-| **Analytics Engine** | `ANALYTICS_ENGINE` | Operational metrics (no dedicated auth events yet) |
-| **Queues** | `ADBLOCK_COMPILER_QUEUE` | Async compilation (auth applied before queueing) |
-| **Worker Secrets** | (runtime) | Stores `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`, etc. |
-| **Worker Assets** | `ASSETS` | Serves the Angular frontend (which loads Clerk JS) |
+| Cloudflare Service   | Binding                  | Purpose in Auth                                                                |
+| -------------------- | ------------------------ | ------------------------------------------------------------------------------ |
+| **Workers**          | (runtime)                | Hosts all auth middleware and handlers                                         |
+| **KV**               | `RATE_LIMIT`             | Tier-based rate limiting counters                                              |
+| **D1**               | `DB`                     | Primary user record storage — synced from Clerk webhooks via Prisma D1 adapter |
+| **Hyperdrive**       | `HYPERDRIVE`             | Connection pooling to PostgreSQL for API key storage                           |
+| **Turnstile**        | `TURNSTILE_SECRET_KEY`   | Bot protection on compilation endpoints                                        |
+| **Analytics Engine** | `ANALYTICS_ENGINE`       | Operational metrics (no dedicated auth events yet)                             |
+| **Queues**           | `ADBLOCK_COMPILER_QUEUE` | Async compilation (auth applied before queueing)                               |
+| **Worker Secrets**   | (runtime)                | Stores `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`, etc.                        |
+| **Worker Assets**    | `ASSETS`                 | Serves the Angular frontend (which loads Clerk JS)                             |
 
 ---
 
@@ -116,12 +116,12 @@ Clerk JWTs are verified inside the Cloudflare Worker using the `jose` library (`
 const jwksCache = new Map<string, JWTVerifyGetKey>();
 
 function getJwksResolver(jwksUrl: string): JWTVerifyGetKey {
-    let resolver = jwksCache.get(jwksUrl);
-    if (!resolver) {
-        resolver = createRemoteJWKSet(new URL(jwksUrl));
-        jwksCache.set(jwksUrl, resolver);
-    }
-    return resolver;
+  let resolver = jwksCache.get(jwksUrl);
+  if (!resolver) {
+    resolver = createRemoteJWKSet(new URL(jwksUrl));
+    jwksCache.set(jwksUrl, resolver);
+  }
+  return resolver;
 }
 ```
 
@@ -141,12 +141,13 @@ The middleware checks two locations for the Clerk JWT:
 
 ```typescript
 const { payload } = await jwtVerify(token, jwks, {
-    algorithms: ['RS256'],   // Clerk uses RS256
-    clockTolerance: 5,       // 5-second skew tolerance
+  algorithms: ["RS256"], // Clerk uses RS256
+  clockTolerance: 5, // 5-second skew tolerance
 });
 ```
 
 Validation checks:
+
 - **Signature** — RS256 via JWKS
 - **Issuer** — must match Clerk domain pattern
 - **Authorized party (azp)** — validated against `Origin` header when present
@@ -193,19 +194,20 @@ CLERK_SECRET_KEY=sk_test_abc123...
 CLERK_PUBLISHABLE_KEY=pk_test_abc123...
 CLERK_JWKS_URL=https://your-instance.clerk.accounts.dev/.well-known/jwks.json
 CLERK_WEBHOOK_SECRET=whsec_abc123...
-TURNSTILE_SITE_KEY=0x4AAAAAAA...
-TURNSTILE_SECRET_KEY=0x4AAAAAAA...
+# Turnstile test keys — always pass locally
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 ADMIN_KEY=your-local-admin-key
 ```
 
 ### Complete Clerk Environment Variables
 
-| Variable | Type | Secret? | Description |
-|---|---|---|---|
-| `CLERK_SECRET_KEY` | `string` | **Yes** | Backend API key for Clerk SDK calls |
-| `CLERK_PUBLISHABLE_KEY` | `string` | No | Frontend key — served via `/api/clerk-config` |
-| `CLERK_JWKS_URL` | `string` | No | JWKS endpoint for JWT verification |
-| `CLERK_WEBHOOK_SECRET` | `string` | **Yes** | Svix signing key for webhook verification |
+| Variable                | Type     | Secret? | Description                                   |
+| ----------------------- | -------- | ------- | --------------------------------------------- |
+| `CLERK_SECRET_KEY`      | `string` | **Yes** | Backend API key for Clerk SDK calls           |
+| `CLERK_PUBLISHABLE_KEY` | `string` | No      | Frontend key — served via `/api/clerk-config` |
+| `CLERK_JWKS_URL`        | `string` | No      | JWKS endpoint for JWT verification            |
+| `CLERK_WEBHOOK_SECRET`  | `string` | **Yes** | Svix signing key for webhook verification     |
 
 ---
 
@@ -226,12 +228,12 @@ id = "5dc36da36d9142cc9ced6c56328898ee"
 
 ### Tier Limits
 
-| Tier | Requests/Minute | Identification |
-|---|---|---|
-| **Anonymous** | 10 | IP address (no Clerk JWT) |
-| **Free** | 60 | Clerk user ID |
-| **Pro** | 300 | Clerk user ID |
-| **Admin** | ∞ (unlimited) | Clerk user ID — bypasses KV entirely |
+| Tier          | Requests/Minute | Identification                       |
+| ------------- | --------------- | ------------------------------------ |
+| **Anonymous** | 10              | IP address (no Clerk JWT)            |
+| **Free**      | 60              | Clerk user ID                        |
+| **Pro**       | 300             | Clerk user ID                        |
+| **Admin**     | ∞ (unlimited)   | Clerk user ID — bypasses KV entirely |
 
 ### Key Strategy
 
@@ -289,9 +291,9 @@ Every webhook from Clerk is signed using [Svix](https://www.svix.com/). The Work
 ```typescript
 const wh = new Webhook(env.CLERK_WEBHOOK_SECRET);
 const event = wh.verify(rawBody, {
-    'svix-id': request.headers.get('svix-id'),
-    'svix-timestamp': request.headers.get('svix-timestamp'),
-    'svix-signature': request.headers.get('svix-signature'),
+  "svix-id": request.headers.get("svix-id"),
+  "svix-timestamp": request.headers.get("svix-timestamp"),
+  "svix-signature": request.headers.get("svix-signature"),
 }) as ClerkWebhookEvent;
 ```
 
@@ -333,11 +335,11 @@ const prisma = new PrismaClient({ adapter });
 
 ### Webhook Event Handling
 
-| Clerk Event | Action | Method |
-|---|---|---|
-| `user.created` | Insert/upsert user record | `upsertUserFromClerk()` |
+| Clerk Event    | Action                         | Method                  |
+| -------------- | ------------------------------ | ----------------------- |
+| `user.created` | Insert/upsert user record      | `upsertUserFromClerk()` |
 | `user.updated` | Update user fields, tier, role | `upsertUserFromClerk()` |
-| `user.deleted` | Hard-delete user record | `deleteUserByClerkId()` |
+| `user.deleted` | Hard-delete user record        | `deleteUserByClerkId()` |
 
 **Tier and role mapping** from Clerk metadata:
 
@@ -349,10 +351,11 @@ role: typeof meta.role === 'string' ? meta.role : undefined,
 ```
 
 Set these in the Clerk Dashboard under **Users → [user] → Public Metadata**:
+
 ```json
 {
-    "tier": "pro",
-    "role": "admin"
+  "tier": "pro",
+  "role": "admin"
 }
 ```
 
@@ -405,30 +408,34 @@ When a request uses an API key:
 
 Cloudflare Turnstile and Clerk auth are **independent, complementary layers**:
 
-| Layer | Purpose | Checks |
-|---|---|---|
+| Layer         | Purpose        | Checks                        |
+| ------------- | -------------- | ----------------------------- |
 | **Turnstile** | Bot protection | Is this a real human/browser? |
-| **Clerk JWT** | Identity | Who is this user? What tier? |
+| **Clerk JWT** | Identity       | Who is this user? What tier?  |
 
 ### Endpoints with Turnstile
 
-| Endpoint | Turnstile | Clerk Auth |
-|---|---|---|
-| `POST /api/compile` | ✅ | ✅ |
-| `POST /api/compile/batch` | ✅ | ✅ |
-| `POST /api/compile/async` | ✅ | ✅ |
-| `POST /api/webhooks/clerk` | ❌ | ❌ (Svix verified) |
-| `GET /api/version` | ❌ | ❌ (public) |
-| `GET /admin/storage/*` | ❌ | ❌ (admin key + CF Access) |
+| Endpoint                   | Turnstile | Clerk Auth                 |
+| -------------------------- | --------- | -------------------------- |
+| `POST /api/compile`        | ✅        | ✅                         |
+| `POST /api/compile/batch`  | ✅        | ✅                         |
+| `POST /api/compile/async`  | ✅        | ✅                         |
+| `POST /api/webhooks/clerk` | ❌        | ❌ (Svix verified)         |
+| `GET /api/version`         | ❌        | ❌ (public)                |
+| `GET /admin/storage/*`     | ❌        | ❌ (admin key + CF Access) |
 
 A Clerk-authenticated user **still receives a Turnstile check** on compilation endpoints — being authenticated doesn't bypass bot protection.
 
 ### Turnstile Configuration
 
+The **site key** is a non-secret and lives in `wrangler.toml [vars]` for production (and is overridden in `.dev.vars` with the always-pass test key for local dev). The **secret key** is a real secret and must be set via `wrangler secret put`:
+
 ```bash
-# Wrangler secrets
-wrangler secret put TURNSTILE_SITE_KEY    # Public key for the frontend widget
-wrangler secret put TURNSTILE_SECRET_KEY  # Secret for server-side verification
+# Non-secret — committed to wrangler.toml [vars]:
+#   TURNSTILE_SITE_KEY = "0x4AAAAAACMKiP..."
+
+# Secret — must be set via Wrangler secret management:
+wrangler secret put TURNSTILE_SECRET_KEY  # Server-side verification key
 ```
 
 Create a Turnstile widget at [Cloudflare Dashboard → Turnstile](https://dash.cloudflare.com/?to=/:account/turnstile):
@@ -439,6 +446,7 @@ Create a Turnstile widget at [Cloudflare Dashboard → Turnstile](https://dash.c
 4. Copy the site key and secret key
 
 The frontend serves the Turnstile config via:
+
 ```
 GET /api/turnstile-config → { siteKey: "...", enabled: true }
 ```
@@ -461,6 +469,7 @@ not_found_handling = "single-page-application"  # SPA fallback for Angular route
 ```
 
 The build process (`scripts/build-worker.sh`):
+
 1. Builds the Angular app with SSR (`ng build`)
 2. Copies the browser output to the assets directory
 3. Replaces `{{CF_WEB_ANALYTICS_TOKEN}}` in `index.html` if set
@@ -472,27 +481,27 @@ The build process (`scripts/build-worker.sh`):
 The Angular app uses `@clerk/clerk-js` (vanilla JS SDK) wrapped in a signal-based Angular service:
 
 ```typescript
-@Injectable({ providedIn: 'root' })
+@Injectable({ providedIn: "root" })
 export class ClerkService {
-    private readonly _user = signal<ClerkUser | null>(null);
-    private readonly _session = signal<ClerkSession | null>(null);
-    readonly isSignedIn = computed(() => !!this._user());
-    readonly user = this._user.asReadonly();
+  private readonly _user = signal<ClerkUser | null>(null);
+  private readonly _session = signal<ClerkSession | null>(null);
+  readonly isSignedIn = computed(() => !!this._user());
+  readonly user = this._user.asReadonly();
 
-    async initialize(publishableKey: string): Promise<void> {
-        const { default: ClerkJS } = await import('@clerk/clerk-js');
-        this.clerkInstance = new ClerkJS(publishableKey);
-        await this.clerkInstance.load();
+  async initialize(publishableKey: string): Promise<void> {
+    const { default: ClerkJS } = await import("@clerk/clerk-js");
+    this.clerkInstance = new ClerkJS(publishableKey);
+    await this.clerkInstance.load();
 
-        this.clerkInstance.addListener((state) => {
-            this._user.set(state.user ?? null);
-            this._session.set(state.session ?? null);
-        });
-    }
+    this.clerkInstance.addListener((state) => {
+      this._user.set(state.user ?? null);
+      this._session.set(state.session ?? null);
+    });
+  }
 
-    async getToken(): Promise<string | null> {
-        return (await this.clerkInstance?.session?.getToken()) ?? null;
-    }
+  async getToken(): Promise<string | null> {
+    return (await this.clerkInstance?.session?.getToken()) ?? null;
+  }
 }
 ```
 
@@ -508,25 +517,27 @@ The Angular `authInterceptor` automatically attaches Clerk JWTs to API requests:
 
 ```typescript
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-    const clerk = inject(ClerkService);
+  const clerk = inject(ClerkService);
 
-    if (!clerk.isSignedIn()) return next(req);
+  if (!clerk.isSignedIn()) return next(req);
 
-    // Skip public endpoints
-    const PUBLIC_PATHS = ['/api/version', '/api/health', '/api/turnstile-config'];
-    if (PUBLIC_PATHS.some((p) => req.url.includes(p))) return next(req);
+  // Skip public endpoints
+  const PUBLIC_PATHS = ["/api/version", "/api/health", "/api/turnstile-config"];
+  if (PUBLIC_PATHS.some((p) => req.url.includes(p))) return next(req);
 
-    // Attach Bearer token
-    return from(clerk.getToken()).pipe(
-        switchMap((token) => {
-            if (token) {
-                return next(req.clone({
-                    setHeaders: { Authorization: `Bearer ${token}` },
-                }));
-            }
-            return next(req);
-        }),
-    );
+  // Attach Bearer token
+  return from(clerk.getToken()).pipe(
+    switchMap((token) => {
+      if (token) {
+        return next(
+          req.clone({
+            setHeaders: { Authorization: `Bearer ${token}` },
+          }),
+        );
+      }
+      return next(req);
+    }),
+  );
 };
 ```
 
@@ -545,6 +556,7 @@ This allows the frontend to initialize Clerk without hardcoding the key. The pub
 ## Cloudflare Queues and Auth
 
 **Bindings:**
+
 - `ADBLOCK_COMPILER_QUEUE` — standard priority
 - `ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY` — priority compilations
 
@@ -568,16 +580,16 @@ The Analytics Engine currently tracks operational metrics (compilation, cache, w
 
 ```typescript
 type AnalyticsEventType =
-    | 'compilation_request'
-    | 'compilation_success'
-    | 'compilation_error'
-    | 'cache_hit'
-    | 'cache_miss'
-    | 'rate_limit_exceeded'
-    | 'source_fetch'
-    | 'workflow_started'
-    | 'api_request'
-    // ... no 'user_authenticated', 'auth_failure', etc.
+  | "compilation_request"
+  | "compilation_success"
+  | "compilation_error"
+  | "cache_hit"
+  | "cache_miss"
+  | "rate_limit_exceeded"
+  | "source_fetch"
+  | "workflow_started"
+  | "api_request";
+// ... no 'user_authenticated', 'auth_failure', etc.
 ```
 
 `rate_limit_exceeded` events are tracked, which indirectly captures auth-related activity since rate limits are tier-based.
@@ -707,6 +719,7 @@ wrangler hyperdrive create adblock-compiler-db \
 ```
 
 Add to `wrangler.toml`:
+
 ```toml
 [[hyperdrive]]
 binding = "HYPERDRIVE"
@@ -714,6 +727,7 @@ id = "<returned-id>"
 ```
 
 Run the PostgreSQL schema migrations (creates the `api_keys` table):
+
 ```bash
 deno task db:migrate
 ```
@@ -762,6 +776,7 @@ done
 **Cause:** The Worker cannot reach Clerk's JWKS endpoint.
 
 **Fix:**
+
 - Verify `CLERK_JWKS_URL` is correct: `https://<your-instance>.clerk.accounts.dev/.well-known/jwks.json`
 - Test the URL in a browser — it should return a JSON object with `keys` array
 - Check for typos in the instance name
@@ -771,6 +786,7 @@ done
 **Cause:** The user's tier isn't set in Clerk metadata.
 
 **Fix:**
+
 - In Clerk Dashboard → Users → [user] → Metadata
 - Set `public_metadata`: `{ "tier": "pro" }`
 - Trigger a `user.updated` webhook (or wait for the next sign-in)
@@ -781,6 +797,7 @@ done
 **Cause:** Webhook URL misconfigured in Clerk.
 
 **Fix:**
+
 - In Clerk Dashboard → Webhooks, verify the endpoint URL is exactly: `https://your-worker.workers.dev/api/webhooks/clerk`
 - Check that `user.created`, `user.updated`, `user.deleted` events are enabled
 - Use **Send Test Event** to verify connectivity
@@ -791,6 +808,7 @@ done
 **Cause:** `CLERK_WEBHOOK_SECRET` doesn't match the Clerk webhook endpoint.
 
 **Fix:**
+
 - Each webhook endpoint in Clerk has its own signing secret
 - Go to Clerk Dashboard → Webhooks → [your endpoint] → Signing Secret
 - Re-set the secret: `wrangler secret put CLERK_WEBHOOK_SECRET`
@@ -807,6 +825,7 @@ done
 **Cause:** Publishable key not available.
 
 **Fix:**
+
 - Verify `/api/clerk-config` returns `{ publishableKey: "pk_..." }`
 - Check `CLERK_PUBLISHABLE_KEY` is set in `wrangler.toml` `[vars]` section (not as a secret)
 - In local dev, check `.dev.vars` has the key

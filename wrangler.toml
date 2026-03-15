@@ -93,6 +93,9 @@ ENVIRONMENT = "production"
 # Update to pk_live_... when you go live.
 CLERK_PUBLISHABLE_KEY = "pk_test_bWF0dXJlLWxhbXByZXktNzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
 CLERK_JWKS_URL = "https://mature-lamprey-73.accounts.dev/.well-known/jwks.json"
+# Public Turnstile site key — not a secret; safe to commit.
+# For local dev, .dev.vars overrides this with the always-pass test key (1x000...AA).
+TURNSTILE_SITE_KEY = "0x4AAAAAACMKiPZdJh8I8IEM"
 
 # ─── KV Namespaces ───────────────────────────────────────────────────────────
 # `wrangler dev` binds to these live namespaces by default.

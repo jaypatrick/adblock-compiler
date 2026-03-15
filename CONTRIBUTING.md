@@ -10,6 +10,7 @@ Thank you for your interest in contributing to the Adblock Compiler project! Thi
    - Git
 
 2. **Clone and Setup**
+
    ```bash
    git clone https://github.com/jaypatrick/adblock-compiler.git
    cd adblock-compiler
@@ -94,6 +95,7 @@ update code                # Too vague, missing type
 ## Pull Request Process
 
 1. **Create a Branch**
+
    ```bash
    git checkout -b feature/your-feature-name
    # or
@@ -106,6 +108,7 @@ update code                # Too vague, missing type
    - Update documentation as needed
 
 3. **Test Your Changes**
+
    ```bash
    # Quick preflight check (runs fmt, lint, type check, schema generation drift check)
    deno task preflight
@@ -129,15 +132,18 @@ update code                # Too vague, missing type
    > check for schema drift and formatting issues before every push, catching CI failures locally.
 
 4. **Commit with Conventional Format**
+
    ```bash
    git add .
    git commit -m "feat: add new transformation for rule validation"
    ```
 
 5. **Push and Create PR**
+
    ```bash
    git push origin feature/your-feature-name
    ```
+
    Then create a Pull Request on GitHub
 
 6. **Automatic Version Bump**
@@ -174,7 +180,7 @@ Run `deno task fmt` to automatically format your code.
 - Update relevant docs in `docs/` directory
 - Add JSDoc comments to public APIs
 - Include examples for complex features
-- Use Mermaid fences (`` ```mermaid ``) for every chart, architecture diagram, flow, and directory layout in documentation
+- Use Mermaid fences (` ```mermaid `) for every chart, architecture diagram, flow, and directory layout in documentation
 - Use Markdown tables for tabular data instead of ASCII-art tables
 
 ## Project Structure
@@ -247,7 +253,7 @@ The compiler supports real-time Server-Sent Events (SSE) streaming. The `SseServ
 //   .isActive() — Signal<boolean>
 //   .close()    — Closes the EventSource
 
-const conn = this.sseService.connect('/compile/stream', request);
+const conn = this.sseService.connect("/compile/stream", request);
 this.sseConnection.set(conn);
 
 // In the template, consume signals directly:
@@ -283,26 +289,40 @@ flowchart TD
 
 This project uses **direnv** + `.envrc` for all local environment management. Variables are loaded automatically when you enter the project directory.
 
-### The Rule
+### The Two-Track Rule
 
-> **Always add new environment variables to `.env.example` with a comment stub.** Do NOT add them to `wrangler.toml [vars]` — that file is reserved for Cloudflare-specific runtime bindings and static non-secret constants only.
+Variables belong to one of two tracks:
+
+- **Shell tooling track** — used by Prisma CLI, Deno tasks, scripts. Lives in `.env*` files.
+- **Wrangler Worker track** — read by the Cloudflare Worker at runtime. Lives in `.dev.vars` (local) or `wrangler.toml [vars]` / `wrangler secret put` (production).
+
+> If `worker/types.ts` `Env` interface has the variable → it belongs to the Wrangler track and must go in `.dev.vars`, not `.env*` files.
 
 ### Quick Setup
 
 ```bash
-cp .env.example .env.local   # create your local secrets file
-direnv allow                  # activate auto-loading
+cp .dev.vars.example .dev.vars   # Worker runtime secrets (primary)
+direnv allow                      # activate auto-loading
+
+# Optional: only needed if you want to override shell-tooling vars (e.g. Prisma DB)
+# cp .env.example .env.local
 ```
 
 ### Where Variables Live
 
-| File               | Purpose                                                      | Committed? |
-| ------------------ | ------------------------------------------------------------ | ---------- |
-| `.env`             | Non-secret base defaults (PORT, COMPILER_VERSION)            | ✅ Yes     |
-| `.env.development` | Dev-specific defaults (Turnstile test keys, LOG_LEVEL=debug) | ✅ Yes     |
-| `.env.production`  | Prod-specific placeholder values                             | ✅ Yes     |
-| `.env.local`       | Your personal secrets and overrides                          | ❌ No      |
-| `.env.example`     | Template with all available variables + comments             | ✅ Yes     |
+| File                   | Track  | Purpose                                                  | Committed? |
+| ---------------------- | ------ | -------------------------------------------------------- | ---------- |
+| `.env`                 | Shell  | Non-secret base defaults (`PORT`, `COMPILER_VERSION`)    | ✅ Yes     |
+| `.env.development`     | Shell  | Dev shell defaults (`DATABASE_URL`, `LOG_LEVEL=debug`)   | ✅ Yes     |
+| `.env.production`      | Shell  | Intentionally empty (prod Worker vars live in wrangler)  | ✅ Yes     |
+| `.env.local`           | Shell  | Personal shell overrides                                 | ❌ No      |
+| `.env.example`         | Shell  | Template for shell-track variables                       | ✅ Yes     |
+| `.dev.vars`            | Worker | All Worker runtime vars: Clerk, Turnstile, CORS, secrets | ❌ No      |
+| `.dev.vars.example`    | Worker | Template for all Worker-track variables                  | ✅ Yes     |
+| `wrangler.toml [vars]` | Worker | Non-secret Worker vars for production                    | ✅ Yes     |
+
+> direnv loads `.dev.vars` last (highest precedence), so Worker vars are also available
+> in your shell — no need to declare them twice.
 
 See [docs/reference/ENV_CONFIGURATION.md](docs/reference/ENV_CONFIGURATION.md) for the full reference.
 
