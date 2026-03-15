@@ -6,7 +6,8 @@
  * syntax highlighting via highlightJson() / highlightJsonString().
  */
 
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, inject, signal, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { HttpClient, httpResource } from '@angular/common/http';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { MatCardModule } from '@angular/material/card';
@@ -222,13 +223,19 @@ export class ApiDocsComponent {
     private readonly http = inject(HttpClient);
     private readonly destroyRef = inject(DestroyRef);
     private readonly sanitizer = inject(DomSanitizer);
+    private readonly platformId = inject(PLATFORM_ID);
 
     /**
      * Item 7: httpResource() — Angular 21 signal-native HTTP primitive.
      * Replaces rxResource + HttpClient. Automatically manages loading/error/value
      * as signals. No manual catchError/subscribe needed.
+     *
+     * URL is suppressed during SSR/prerender (undefined → no request) to prevent
+     * [unhandled-error] crashes when ng-localhost is unreachable at build time.
      */
-    readonly versionResource = httpResource<VersionInfo>(() => `${this.apiBaseUrl}/version`);
+    readonly versionResource = httpResource<VersionInfo>(() =>
+        isPlatformBrowser(this.platformId) ? `${this.apiBaseUrl}/version` : undefined,
+    );
 
     readonly endpointGroups: { title: string; icon: string; description?: string; endpoints: Endpoint[] }[] = [
         {
