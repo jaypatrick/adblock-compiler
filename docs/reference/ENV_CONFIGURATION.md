@@ -1,196 +1,195 @@
 # Environment Configuration
 
-This project uses a layered environment configuration system powered by `.envrc` and `direnv`.
+This project uses a two-track layered environment system. Understanding which track a variable belongs to is the most important concept in this document.
 
-## How It Works
+## The Two Tracks
 
-Environment variables are loaded in the following order (later files override earlier ones):
-
-1. **`.env`** - Base configuration shared across all environments (committed to git)
-2. **`.env.$ENV`** - Environment-specific configuration (committed to git)
-3. **`.env.local`** - Local overrides and secrets (NOT committed to git)
-
-The `$ENV` variable is automatically determined by your current git branch:
-
-| Git Branch              | Environment   | Loaded File         |
-| ----------------------- | ------------- | ------------------- |
-| `main`                  | `production`  | `.env.production`   |
-| `dev` or `develop`      | `development` | `.env.development`  |
-| Other branches          | `local`       | `.env.local`        |
-| Custom branch with file | Custom        | `.env.$BRANCH_NAME` |
-
-## File Structure
-
-```
-.env                  # Base config (PORT, COMPILER_VERSION, etc.)
-.env.development      # Development-specific (test API keys, local DB)
-.env.production       # Production-specific (placeholder values)
-.env.local            # Your personal secrets (NEVER commit this!)
-.env.example          # Template showing all available variables
+```mermaid
+flowchart LR
+    subgraph shell ["Shell tooling track (.env* files)"]
+        direction TB
+        E1[".env"] --> E2[".env.$ENV"]
+        E2 --> E3[".env.local"]
+    end
+    subgraph worker ["Wrangler Worker track (.dev.vars)"]
+        direction TB
+        W1["wrangler.toml [vars]\n(non-secrets)"]
+        W2[".dev.vars\n(local overrides + secrets)"]
+    end
+    shell -->|"direnv loads .dev.vars last\n(highest precedence)"| worker
 ```
 
-## Setup Instructions
+| Track               | Read by                         | Files                                                       | Tools    |
+| ------------------- | ------------------------------- | ----------------------------------------------------------- | -------- |
+| **Shell tooling**   | Prisma CLI, Deno tasks, scripts | `.env`, `.env.development`, `.env.production`, `.env.local` | direnv   |
+| **Wrangler Worker** | Cloudflare Worker runtime       | `wrangler.toml [vars]` + `.dev.vars`                        | wrangler |
 
-### 1. Enable direnv (if not already installed)
+**The key rule:** if `worker/types.ts` `Env` interface has the variable, it belongs to the Wrangler track. If only shell scripts use it, it belongs to the shell track. A small set of non-secret vars (e.g. `COMPILER_VERSION`) appears in **both** tracks — in `.env` for shell tooling/CI and in `wrangler.toml [vars]` for the Worker runtime — which is intentional and acceptable.
+
+## Load Order
+
+direnv loads files in this order — later files override earlier ones:
+
+| Order | File         | Committed | Purpose                                                     |
+| ----- | ------------ | --------- | ----------------------------------------------------------- |
+| 1     | `.env`       | ✅ Yes    | Non-secret base defaults: `PORT`, `COMPILER_VERSION`        |
+| 2     | `.env.$ENV`  | ✅ Yes    | Branch-specific shell defaults: `DATABASE_URL`, `LOG_LEVEL` |
+| 3     | `.env.local` | ❌ No     | Personal shell overrides                                    |
+| 4     | `.dev.vars`  | ❌ No     | Wrangler Worker secrets + public vars (highest precedence)  |
+
+`$ENV` is determined by your current git branch:
+
+| Git branch         | `$ENV`        | Shell file loaded  |
+| ------------------ | ------------- | ------------------ |
+| `main`             | `production`  | `.env.production`  |
+| `dev` or `develop` | `development` | `.env.development` |
+| Any other branch   | `local`       | `.env.local` only  |
+
+## File Purposes
+
+### `.env` — Shell base defaults (committed)
+
+Non-secret constants used by shell tooling on every branch: `PORT`, `COMPILER_VERSION`.
+
+**Never put Worker runtime vars here.** `CLERK_*`, `TURNSTILE_*`, `CORS_*`, and `ENVIRONMENT` all belong in `.dev.vars` or `wrangler.toml [vars]`.
+
+### `.env.development` — Dev shell defaults (committed)
+
+Shell-tooling vars that differ in development: `DATABASE_URL` (SQLite path), `LOG_LEVEL=debug`.
+
+Worker vars formerly here (`TURNSTILE_SITE_KEY`, `CLERK_*`) have been removed — they now live exclusively in `.dev.vars`.
+
+### `.env.production` — Production shell scope (committed, intentionally minimal)
+
+This file intentionally contains no active variables. The production Worker gets all its config from `wrangler.toml [vars]` and `wrangler secret put`. There are no shell-tooling production vars that need to be committed.
+
+### `.env.local` — Personal shell overrides (gitignored)
+
+Your local override for shell-tooling vars only (e.g., pointing `DATABASE_URL` at a local PostgreSQL instance instead of the SQLite default). Use `.dev.vars` for Worker secrets.
+
+### `.dev.vars` — Wrangler Worker runtime (gitignored)
+
+The single source of truth for everything the Worker reads at runtime during `wrangler dev`. Loaded automatically by both `wrangler dev` and direnv, so Worker vars are also available in your shell without duplication.
+
+See `.dev.vars.example` for the full annotated template.
+
+### `wrangler.toml [vars]` — Production Worker non-secrets (committed)
+
+Non-secret Worker runtime vars deployed to Cloudflare production: `COMPILER_VERSION`, `ENVIRONMENT`, `CLERK_PUBLISHABLE_KEY`, `CLERK_JWKS_URL`, `TURNSTILE_SITE_KEY`. `.dev.vars` overrides these during `wrangler dev`.
+
+## Setup
+
+### 1. Install direnv (one-time)
 
 ```bash
 # macOS
 brew install direnv
 
-# Add to your shell config (~/.zshrc)
+# Add to ~/.zshrc
 eval "$(direnv hook zsh)"
 ```
 
-### 2. Allow the .envrc file
+### 2. Allow the .envrc
 
 ```bash
 direnv allow
 ```
 
-You should see: `✅ Loaded environment: development (branch: dev)`
-
-### 3. Create your .env.local file
+### 3. Create .dev.vars from the example
 
 ```bash
-cp .env.example .env.local
+cp .dev.vars.example .dev.vars
+# Edit .dev.vars with your real Clerk keys, DB connection string, etc.
 ```
 
-Then edit `.env.local` with your actual secrets and API keys.
+`.dev.vars` is your primary secrets file. You should not need `.env.local` unless you are overriding shell-tooling vars like `DATABASE_URL` for Prisma.
 
-## What Goes Where?
+### 4. (Optional) Create .env.local
 
-### `.env` (Committed)
-
-- Non-sensitive defaults
-- Port numbers
-- Version numbers
-- Public configuration
-
-### `.env.development` / `.env.production` (Committed)
-
-- Environment-specific defaults
-- Test API keys (development only)
-- Environment-specific feature flags
-- Non-secret configuration
-
-### `.env.local` (NOT Committed)
-
-- **ALL secrets and API keys**
-- Database connection strings
-- Authentication tokens
-- Personal overrides
-
-## Wrangler Integration
-
-> **Rule:** Use `.envrc`/`.env.local` for ALL local development. Do **not** add new variables to `wrangler.toml [vars]` — that section is reserved for Cloudflare-specific runtime bindings (KV namespace IDs, D1 IDs, queue names, etc.) and truly static non-secret constants like `COMPILER_VERSION`.
-
-The `wrangler.toml` configuration supports environment-based deployments. Production is the default (top-level) environment; there is no `--env production` flag:
+Only needed if you want to override a shell-tooling var (e.g. point Prisma at a local PostgreSQL database instead of SQLite):
 
 ```bash
-# Development deployment (uses [env.development] overrides in wrangler.toml)
-wrangler deploy --env development
-
-# Production deployment (uses top-level wrangler.toml config — no --env flag needed)
-wrangler deploy
+# .env.local — NOT committed to git
+DATABASE_URL=postgresql://user:password@localhost:5432/adblock_dev
+DIRECT_DATABASE_URL=postgresql://user:password@localhost:5432/adblock_dev
 ```
 
-Environment variables from `.env.local` are automatically available during local development (`wrangler dev`).
+## Variable Ownership Reference
 
-For production deployments, all runtime secrets and configuration should be set using:
+| Variable                      | Worker `Env`?      | Local file                        | Production             |
+| ----------------------------- | ------------------ | --------------------------------- | ---------------------- |
+| `COMPILER_VERSION`            | ✅                 | `.env`                            | `wrangler.toml [vars]` |
+| `PORT`                        | ❌                 | `.env`                            | N/A                    |
+| `DATABASE_URL`                | ❌                 | `.env.development` / `.env.local` | Hyperdrive binding     |
+| `DIRECT_DATABASE_URL`         | ❌                 | `.env.local`                      | N/A                    |
+| `ENVIRONMENT`                 | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
+| `CLERK_PUBLISHABLE_KEY`       | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
+| `CLERK_JWKS_URL`              | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
+| `CLERK_SECRET_KEY`            | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `CLERK_WEBHOOK_SECRET`        | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `ADMIN_KEY`                   | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `TURNSTILE_SITE_KEY`          | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
+| `TURNSTILE_SECRET_KEY`        | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `CORS_ALLOWED_ORIGINS`        | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `WRANGLER_HYPERDRIVE_LOCAL_*` | ✅ (wrangler only) | `.dev.vars`                       | N/A                    |
+| `CF_ACCESS_TEAM_DOMAIN`       | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `CF_ACCESS_AUD`               | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `SENTRY_DSN`                  | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `ANALYTICS_ACCOUNT_ID`        | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `ANALYTICS_API_TOKEN`         | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `LOG_LEVEL`                   | ❌                 | `.env.development`                | N/A                    |
+| `LOG_STRUCTURED`              | ❌                 | `.env.development`                | N/A                    |
 
-```bash
-wrangler secret put CLERK_SECRET_KEY
-wrangler secret put CLERK_WEBHOOK_SECRET
-wrangler secret put TURNSTILE_SECRET_KEY
-wrangler secret put ADMIN_KEY
-wrangler secret put DATABASE_URL
-# ... see docs/auth/configuration.md for the full list
-```
+## Adding a New Variable
 
-## Troubleshooting
-
-### Environment not loading?
-
-```bash
-# Re-allow the .envrc
-direnv allow
-
-# Check what's loaded
-direnv exec . env | grep DATABASE_URL
-```
-
-### Wrong environment?
-
-Check your git branch:
-
-```bash
-git branch --show-current
-```
-
-The `.envrc` automatically maps your branch to an environment.
-
-### Variables not available?
-
-Make sure:
-
-1. You've created `.env.local` from `.env.example`
-2. You've run `direnv allow`
-3. The variable exists in one of the .env files
-
-## Security Best Practices
-
-- ✅ **DO** commit `.env`, `.env.development`, `.env.production`
-- ✅ **DO** use test/dummy values in committed files
-- ✅ **DO** put all secrets in `.env.local`
-- ✅ **DO** add every new variable to `.env.example` with a comment stub before merging
-- ❌ **DON'T** commit `.env.local`
-- ⚠️ **BE CAREFUL** with `.envrc` — it is committed as part of the env-loading system, so never put secrets or credentials in it
-- ❌ **DON'T** put real secrets in any committed file
-- ❌ **DON'T** commit production credentials
-- ❌ **DON'T** add new environment variables to `wrangler.toml [vars]` — use `.env.example` + `.env.local` instead
+1. Determine the track: does the Worker read it? → Wrangler track. Shell tooling only? → shell track.
+2. **Wrangler track:**
+   - Add to `.dev.vars.example` with a comment
+   - If non-secret, add to `wrangler.toml [vars]` for production
+   - If secret, add `wrangler secret put VAR_NAME` to the deployment checklist in `docs/auth/configuration.md`
+   - Add to `worker/types.ts` `Env` interface
+3. **Shell track:**
+   - Add to `.env.example` with a comment stub
+   - Add default to `.env` or `.env.development` as appropriate
+4. Do **not** add Worker vars to `.env*` files or shell vars to `.dev.vars`.
 
 ## GitHub Actions Integration
 
-This environment system works seamlessly in GitHub Actions workflows. See [ENV_SETUP.md](../workflows/ENV_SETUP.md) for detailed documentation.
+GitHub Actions does not use direnv. The `.github/actions/setup-env` composite action mirrors the shell track only (`.env` + `.env.$ENV`). Worker runtime vars are managed as Cloudflare Worker Secrets (`wrangler secret put`) and `wrangler.toml [vars]` — they are **not** loaded by `.github/actions/setup-env` and should **not** be stored as GitHub Secrets.
 
-### Quick Start
+See [ENV_SETUP.md](../workflows/ENV_SETUP.md) for full CI reference.
 
-```yaml
-steps:
-    - uses: actions/checkout@v4
+## Troubleshooting
 
-    - name: Load environment variables
-      uses: ./.github/actions/setup-env
+### `direnv: error .envrc is blocked`
 
-    - name: Use environment variables
-      run: echo "Version: $COMPILER_VERSION"
+```bash
+direnv allow
 ```
 
-The action automatically:
+### Variable available in shell but not in Worker
 
-- Detects environment from branch name
-- Loads `.env` and `.env.$ENV` files
-- Exports variables to workflow
+Worker vars must be in `.dev.vars`, not in `.env*` files. `wrangler dev` only reads `.dev.vars` and `wrangler.toml` — it does not read shell env files.
 
-## Environment Variables Reference
+### Variable available in Worker but not in shell scripts
 
-See `.env.example` for a complete list of available variables and their purposes.
+Add `dotenv_if_exists ".dev.vars"` is already in `.envrc` — run `direnv reload` to pick up new entries.
 
-### Key Variables by Category
+### Wrong environment loaded
 
-| Category | Variables | Where to set locally |
-|----------|-----------|---------------------|
-| Core | `PORT`, `COMPILER_VERSION` | `.env` (committed defaults) |
-| Database | `DATABASE_URL`, `DIRECT_DATABASE_URL` | `.env.local` |
-| Clerk Auth | `CLERK_PUBLISHABLE_KEY`, `CLERK_SECRET_KEY`, `CLERK_JWKS_URL`, `CLERK_WEBHOOK_SECRET` | `.env.local` |
-| CF Access | `CF_ACCESS_TEAM_DOMAIN`, `CF_ACCESS_AUD` | `.env.local` |
-| Turnstile | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | `.env.development` (test keys) / `.env.local` (prod keys) |
-| Logging | `LOG_LEVEL`, `LOG_STRUCTURED`, `LOG_SINK_URL`, `LOG_SINK_TOKEN` | `.env.local` or `.env.development` |
-| Error reporting | `ERROR_REPORTER_TYPE`, `SENTRY_DSN`, `DATADOG_API_KEY` | `.env.local` |
-| Observability (secrets) | `OTEL_EXPORTER_OTLP_ENDPOINT`, `ANALYTICS_ACCOUNT_ID`, `ANALYTICS_API_TOKEN` | `wrangler secret put` |
-| Observability (deploy-time) | `SENTRY_RELEASE` | `wrangler deploy --var SENTRY_RELEASE:$(git rev-parse HEAD)` |
-| Notifications | `WEBHOOK_URL`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL` | `.env.local` |
-| Cloudflare API | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | `.env.local` |
-| Testing | `E2E_BASE_URL`, `SKIP_CONTRACT_TESTS`, `STORAGE_BACKEND` | `.env.local` or CI secrets |
+```bash
+git branch --show-current   # verify branch maps to expected $ENV
+direnv reload
+```
+
+## Security Guidelines
+
+- ✅ Commit `.env`, `.env.development`, `.env.production` — they must never contain secrets
+- ✅ `.dev.vars` is gitignored — never force-add it
+- ✅ Add every new variable to the appropriate sample file before merging
+- ❌ Never put Worker secrets (`CLERK_SECRET_KEY`, `TURNSTILE_SECRET_KEY`, etc.) in any `.env*` file
+- ❌ Never put production secrets in `wrangler.toml [vars]`
+- ❌ Never commit `.env.local` or `.dev.vars`
 
 For auth-specific variables, see [docs/auth/configuration.md](../auth/configuration.md).

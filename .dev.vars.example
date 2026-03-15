@@ -1,44 +1,83 @@
 # ============================================================================
-# .dev.vars.example — Local dev secrets template
+# .dev.vars.example — Wrangler Worker runtime template
 # ============================================================================
 # Copy this file to .dev.vars and fill in your values.
-# .dev.vars is loaded AUTOMATICALLY by `wrangler dev` and is gitignored.
-# It is the Wrangler-native equivalent of .env.local for Worker secrets.
-#
+# .dev.vars is loaded automatically by both `wrangler dev` and direnv.
 # Do NOT commit .dev.vars — it contains real credentials.
-# See docs/auth/configuration.md for details on each variable.
+#
+# SCOPE: Everything the Worker reads at runtime — non-secrets (publishable
+#        keys, public URLs) AND secrets. This is the single source of truth
+#        for what the Worker sees during `wrangler dev`.
+#
+# Production equivalents:
+#   Non-secrets  → wrangler.toml [vars]          (committed, this repo)
+#   Secrets      → `wrangler secret put <KEY>`   (Cloudflare dashboard)
+#
+# See docs/auth/configuration.md for per-variable guidance.
 # ============================================================================
 
 # ─── Environment flag ────────────────────────────────────────────────────────
-# Overrides ENVIRONMENT = "production" from wrangler.toml [vars] during local dev.
+# Overrides ENVIRONMENT="production" from wrangler.toml [vars] during local dev.
 ENVIRONMENT=development
 
 # ─── Clerk Authentication ────────────────────────────────────────────────────
 # Get keys from https://dashboard.clerk.com → API Keys
+# Publishable key (non-secret — production value lives in wrangler.toml [vars])
 CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
+# JWKS URL (non-secret — production value lives in wrangler.toml [vars])
 CLERK_JWKS_URL=https://your-instance.clerk.accounts.dev/.well-known/jwks.json
+# Secret key (secret — production: `wrangler secret put CLERK_SECRET_KEY`)
+CLERK_SECRET_KEY=sk_test_...
+# Webhook signing secret (secret — production: `wrangler secret put CLERK_WEBHOOK_SECRET`)
 CLERK_WEBHOOK_SECRET=whsec_...
 
 # ─── Admin ───────────────────────────────────────────────────────────────────
+# Legacy admin key (secret — production: `wrangler secret put ADMIN_KEY`)
 ADMIN_KEY=your-local-admin-key
 
 # ─── Cloudflare Turnstile ────────────────────────────────────────────────────
-# These test keys always pass — safe for local dev.
+# Site key (non-secret — production value lives in wrangler.toml [vars])
+# Test keys below always pass verification — safe for local dev.
 # Get real keys from https://dash.cloudflare.com/?to=/:account/turnstile
-TURNSTILE_SITE_KEY=1x000000000000000000000AA
+TURNSTILE_SITE_KEY=1x00000000000000000000AA
+# Secret key (secret — production: `wrangler secret put TURNSTILE_SECRET_KEY`)
 TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 
 # ─── CORS ────────────────────────────────────────────────────────────────────
+# Comma-separated origin allowlist (secret — production: `wrangler secret put CORS_ALLOWED_ORIGINS`)
 CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8787
 
 # ─── Hyperdrive (local PostgreSQL override) ───────────────────────────────────
-# Overrides the Hyperdrive binding to point at your local PostgreSQL instance.
+# Overrides the Hyperdrive binding for `wrangler dev` with a direct connection.
 # See: https://developers.cloudflare.com/hyperdrive/configuration/local-development/
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev
+WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:password@127.0.0.1:5432/adblock_dev?sslmode=verify-full&sslrootcert=system
+
+# ─── Cloudflare Access (optional — admin route defense-in-depth) ─────────────
+# Get from Zero Trust Dashboard → Access → Applications
+# CF_ACCESS_TEAM_DOMAIN=your-team-name
+# CF_ACCESS_AUD=your-audience-tag-here
+
+# ─── Request Limits (optional) ───────────────────────────────────────────────
+# Max request body in MB; Worker defaults to 1 if unset.
+# MAX_REQUEST_BODY_MB=10
 
 # ─── Observability (all optional) ────────────────────────────────────────────
+# Sentry DSN (secret — production: `wrangler secret put SENTRY_DSN`)
 # SENTRY_DSN=https://...@sentry.io/...
+# Git SHA / release tag for Sentry source map association
+# SENTRY_RELEASE=
+# Cloudflare Analytics Engine SQL API credentials
+# (secrets — production: `wrangler secret put ANALYTICS_ACCOUNT_ID`)
 # ANALYTICS_ACCOUNT_ID=your-cf-account-id
 # ANALYTICS_API_TOKEN=your-cf-api-token
+# OpenTelemetry OTLP collector endpoint
+# (secret — production: `wrangler secret put OTEL_EXPORTER_OTLP_ENDPOINT`)
 # OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.grafana.net/otlp
+# Error reporter type: console | cloudflare | sentry | composite
+# ERROR_REPORTER_TYPE=composite
+
+# ─── Optional integrations ───────────────────────────────────────────────────
+# Generic webhook target for POST /api/notify
+# WEBHOOK_URL=https://your-webhook-endpoint.example.com/hook
+# Datadog API key for POST /api/notify
+# DATADOG_API_KEY=your-datadog-api-key

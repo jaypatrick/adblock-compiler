@@ -13,12 +13,12 @@ The `.github/actions/setup-env` composite action mimics the behavior of `.envrc`
 
 ## Branch to Environment Mapping
 
-| Branch Pattern              | Environment   | Loaded Files                        |
-|-----------------------------|---------------|-------------------------------------|
-| `main`                     | `production`  | `.env`, `.env.production`           |
-| `dev`, `develop`           | `development` | `.env`, `.env.development`          |
-| Other branches (with file) | Custom        | `.env`, `.env.$BRANCH_NAME`         |
-| Other branches (no file)   | Default       | `.env`                              |
+| Branch Pattern             | Environment   | Loaded Files                |
+| -------------------------- | ------------- | --------------------------- |
+| `main`                     | `production`  | `.env`, `.env.production`   |
+| `dev`, `develop`           | `development` | `.env`, `.env.development`  |
+| Other branches (with file) | Custom        | `.env`, `.env.$BRANCH_NAME` |
+| Other branches (no file)   | Default       | `.env`                      |
 
 ## Usage in Workflows
 
@@ -27,10 +27,10 @@ The `.github/actions/setup-env` composite action mimics the behavior of `.envrc`
 ```yaml
 steps:
   - uses: actions/checkout@v4
-  
+
   - name: Load environment variables
     uses: ./.github/actions/setup-env
-  
+
   - name: Use environment variables
     run: |
       echo "Compiler version: $COMPILER_VERSION"
@@ -43,7 +43,7 @@ steps:
 - name: Load environment variables for specific branch
   uses: ./.github/actions/setup-env
   with:
-    branch: 'staging'
+    branch: "staging"
 ```
 
 ### Access Detected Environment
@@ -59,42 +59,46 @@ steps:
 
 ## Environment Variables Available
 
-After loading, the following variables are available:
+The `.env*` files cover **shell-tooling variables only**. Worker runtime variables
+(`CLERK_*`, `TURNSTILE_*`, `CORS_*`, `ENVIRONMENT`, etc.) live in `.dev.vars` locally
+and are injected as Worker Secrets / `wrangler.toml [vars]` in production — they are
+not exported from `.env*` files and are not loaded by this action.
 
 ### From `.env` (all environments)
-- `COMPILER_VERSION` - Current compiler version
-- `PORT` - Server port (default: 8787)
-- `DENO_DIR` - Deno cache directory
+
+- `COMPILER_VERSION` — Current compiler version
+- `PORT` — Server port (default: 8787)
 
 ### From `.env.development` (dev/develop branches)
-- `DATABASE_URL` - Local SQLite database path
-- `TURNSTILE_SITE_KEY` - Test Turnstile site key (always passes)
-- `TURNSTILE_SECRET_KEY` - Test Turnstile secret key
+
+- `DATABASE_URL` — Local SQLite database path (`file:./data/adblock.db`)
+- `LOG_LEVEL` — `debug`
+- `LOG_STRUCTURED` — `false`
 
 ### From `.env.production` (main branch)
-- `DATABASE_URL` - Production database URL (placeholder)
-- `TURNSTILE_SITE_KEY` - Production site key (placeholder)
-- `TURNSTILE_SECRET_KEY` - Production secret key (placeholder)
 
-**Note**: Production secrets should be set using GitHub Secrets, not loaded from files.
+This file is intentionally empty — production Worker vars come from
+`wrangler.toml [vars]` and `wrangler secret put`, not from `.env` files.
+
+**Note**: Never put `CLERK_*`, `TURNSTILE_*`, or other Worker runtime vars into `.env.*`
+files or this action. Use GitHub Secrets → Worker Secrets for those.
 
 ## Setting Production Secrets
 
-For production deployments, set secrets in GitHub repository settings:
+Two distinct secret stores are used — keep them separate:
 
-```yaml
-env:
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-  TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
-```
+- **GitHub Secrets** (repository settings) — CI/CD tooling only: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+- **Cloudflare Worker Secrets** (`wrangler secret put`) — Worker runtime: `CLERK_SECRET_KEY`, `TURNSTILE_SECRET_KEY`, `ADMIN_KEY`, etc.
 
-Required secrets for production:
-- `CLOUDFLARE_API_TOKEN` - Cloudflare API token
-- `CLOUDFLARE_ACCOUNT_ID` - Cloudflare account ID
-- `ADMIN_KEY` - Admin API key
-- `TURNSTILE_SITE_KEY` - Production Turnstile site key
-- `TURNSTILE_SECRET_KEY` - Production Turnstile secret key
+Required GitHub Secrets for CI/CD (shell tooling only):
+
+- `CLOUDFLARE_API_TOKEN` — Cloudflare API token for `wrangler deploy`
+- `CLOUDFLARE_ACCOUNT_ID` — Cloudflare account ID
+
+Worker runtime secrets (`CLERK_SECRET_KEY`, `TURNSTILE_SECRET_KEY`, `ADMIN_KEY`, etc.)
+are **not** GitHub Secrets — they are Cloudflare Worker Secrets set via
+`wrangler secret put` and are never injected through this action.
+See [docs/auth/configuration.md](../auth/configuration.md) for the full list.
 
 ## Example: Deploy Workflow
 
@@ -104,11 +108,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Load environment variables
         id: env
         uses: ./.github/actions/setup-env
-      
+
       - name: Deploy to environment
         run: |
           if [ "${{ steps.env.outputs.environment }}" = "production" ]; then
@@ -117,19 +121,19 @@ jobs:
             wrangler deploy --env development
           fi
         env:
-          # Production secrets override file-based config
+          # CI tooling secrets only — Worker runtime secrets are managed via wrangler secret put
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
 ```
 
 ## Comparison: Local vs CI
 
-| Aspect | Local Development | GitHub Actions |
-|--------|------------------|----------------|
-| Loader | `.envrc` + `direnv` | `.github/actions/setup-env` |
-| Detection | Git branch (real-time) | `github.ref_name` |
-| Secrets | `.env.local` (not committed) | GitHub Secrets |
-| Override | `.env.local` overrides all | GitHub env vars override files |
+| Aspect               | Local Development                     | GitHub Actions              |
+| -------------------- | ------------------------------------- | --------------------------- |
+| Shell-tooling loader | `.envrc` + `direnv`                   | `.github/actions/setup-env` |
+| Branch detection     | Git branch (real-time)                | `github.ref_name`           |
+| Shell secrets        | `.env.local` (gitignored)             | GitHub Secrets              |
+| Worker runtime vars  | `.dev.vars` (gitignored)              | Cloudflare Worker Secrets   |
+| Highest precedence   | `.dev.vars` (loaded last by `.envrc`) | `wrangler secret put`       |
 
 ## Debugging
 
