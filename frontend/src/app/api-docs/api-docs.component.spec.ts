@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, PLATFORM_ID } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
@@ -81,5 +81,48 @@ describe('ApiDocsComponent', () => {
         fixture.detectChanges();
         const el: HTMLElement = fixture.nativeElement;
         expect(el.querySelector('h1')?.textContent).toContain('API Reference');
+    });
+});
+
+describe('ApiDocsComponent — server platform (SSR/prerender)', () => {
+    let fixture: ComponentFixture<ApiDocsComponent>;
+    let component: ApiDocsComponent;
+    let httpMock: HttpTestingController;
+
+    beforeEach(async () => {
+        await TestBed.configureTestingModule({
+            imports: [ApiDocsComponent, NoopAnimationsModule],
+            providers: [
+                provideZonelessChangeDetection(),
+                provideHttpClient(),
+                provideHttpClientTesting(),
+                { provide: API_BASE_URL, useValue: '/api' },
+                { provide: PLATFORM_ID, useValue: 'server' },
+            ],
+        }).compileComponents();
+
+        fixture = TestBed.createComponent(ApiDocsComponent);
+        component = fixture.componentInstance;
+        httpMock = TestBed.inject(HttpTestingController);
+    });
+
+    afterEach(() => {
+        httpMock.verify();
+    });
+
+    it('should create on server without errors', () => {
+        expect(component).toBeTruthy();
+    });
+
+    it('should make no HTTP request to /api/version during prerender', () => {
+        httpMock.expectNone('/api/version');
+    });
+
+    it('should keep versionResource idle (value undefined) on server', () => {
+        expect(component.versionResource.value()).toBeUndefined();
+    });
+
+    it('should not be loading the version resource on server', () => {
+        expect(component.versionResource.isLoading()).toBe(false);
     });
 });
