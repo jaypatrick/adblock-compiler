@@ -13,7 +13,7 @@ function flushInitialRequests(httpMock: HttpTestingController): void {
         r.flush({ status: 'healthy', version: '1.0' }),
     );
     httpMock.match('/api/queue/stats').forEach(r =>
-        r.flush({ depth: 0, processing: 0, completed: 0, failed: 0, depthHistory: [] }),
+        r.flush({ currentDepth: 0, pending: 0, completed: 0, failed: 0, processingRate: 0, lag: 0, depthHistory: [] }),
     );
 }
 
@@ -33,17 +33,8 @@ describe('MetricsStore', () => {
             });
             store = TestBed.inject(MetricsStore);
             httpMock = TestBed.inject(HttpTestingController);
-
             // Flush initial SWR fetches triggered on browser init
-            httpMock.match('/api/metrics').forEach(r =>
-                r.flush({ totalRequests: 100, averageDuration: 50, cacheHitRate: 80, successRate: 99 }),
-            );
-            httpMock.match('/api/health').forEach(r =>
-                r.flush({ status: 'healthy', version: '1.0' }),
-            );
-            httpMock.match('/api/queue/stats').forEach(r =>
-                r.flush({ depth: 0, processed: 0, failed: 0, depthHistory: [] }),
-            );
+            flushInitialRequests(httpMock);
         });
 
         afterEach(() => httpMock.verify());
@@ -81,7 +72,7 @@ describe('MetricsStore', () => {
         });
     });
 
-    describe('on server platform (SSR / prerender)', () => {
+    describe('on server platform — prerender (no REQUEST token)', () => {
         let store: MetricsStore;
         let httpMock: HttpTestingController;
 
@@ -92,6 +83,7 @@ describe('MetricsStore', () => {
                     provideHttpClient(),
                     provideHttpClientTesting(),
                     { provide: PLATFORM_ID, useValue: 'server' },
+                    // REQUEST intentionally omitted — simulates build-time prerender
                 ],
             });
             store = TestBed.inject(MetricsStore);
@@ -100,7 +92,7 @@ describe('MetricsStore', () => {
 
         afterEach(() => httpMock.verify());
 
-        it('should be created', () => {
+        it('should be created with inert stubs', () => {
             expect(store).toBeTruthy();
         });
 
@@ -137,117 +129,11 @@ describe('MetricsStore', () => {
             expect(() => store.refreshQueue()).not.toThrow();
         });
     });
-});
 
-describe('MetricsStore — server platform (SSR/prerender)', () => {
-    let store: MetricsStore;
-    let httpMock: HttpTestingController;
+    describe('on server platform — SSR per-request (REQUEST token present)', () => {
+        let store: MetricsStore;
+        let httpMock: HttpTestingController;
 
-    describe('browser platform', () => {
-        beforeEach(() => {
-            TestBed.configureTestingModule({
-                providers: [
-                    provideZonelessChangeDetection(),
-                    provideHttpClient(),
-                    provideHttpClientTesting(),
-                    { provide: PLATFORM_ID, useValue: 'browser' },
-                ],
-            });
-            store = TestBed.inject(MetricsStore);
-            httpMock = TestBed.inject(HttpTestingController);
-        });
-
-        afterEach(() => httpMock.verify());
-
-        it('should be created', () => {
-            expect(store).toBeTruthy();
-            flushInitialRequests(httpMock);
-        });
-
-        it('should expose metrics signal', () => {
-            expect(store.metrics).toBeDefined();
-            flushInitialRequests(httpMock);
-        });
-
-        it('should expose health signal', () => {
-            expect(store.health).toBeDefined();
-            flushInitialRequests(httpMock);
-        });
-
-        it('should be loading before initial fetches complete', () => {
-            // SWR starts loading immediately — signal is true before fetches complete
-            expect(store.isLoading()).toBe(true);
-            flushInitialRequests(httpMock);
-        });
-
-        it('should expose isStale signal', () => {
-            expect(store.isStale).toBeDefined();
-            flushInitialRequests(httpMock);
-        });
-
-        it('should have a refresh method', () => {
-            expect(typeof store.refresh).toBe('function');
-            flushInitialRequests(httpMock);
-        });
-
-        it('should have refreshMetrics method', () => {
-            expect(typeof store.refreshMetrics).toBe('function');
-            flushInitialRequests(httpMock);
-        });
-
-        it('should have refreshHealth method', () => {
-            expect(typeof store.refreshHealth).toBe('function');
-            flushInitialRequests(httpMock);
-        });
-    });
-
-    describe('prerender (server platform, no REQUEST token)', () => {
-        beforeEach(() => {
-            TestBed.configureTestingModule({
-                providers: [
-                    provideZonelessChangeDetection(),
-                    provideHttpClient(),
-                    provideHttpClientTesting(),
-                    { provide: PLATFORM_ID, useValue: 'server' },
-                    // REQUEST intentionally omitted — simulates build-time prerender
-                ],
-            });
-            store = TestBed.inject(MetricsStore);
-            httpMock = TestBed.inject(HttpTestingController);
-        });
-
-        afterEach(() => httpMock.verify());
-
-        it('should be created with inert stubs', () => {
-            expect(store).toBeTruthy();
-        });
-
-        it('should make no HTTP requests to /api/metrics during prerender', () => {
-            httpMock.expectNone('/api/metrics');
-        });
-
-        it('should make no HTTP requests to /api/health during prerender', () => {
-            httpMock.expectNone('/api/health');
-        });
-
-        it('should make no HTTP requests to /api/queue/stats during prerender', () => {
-            httpMock.expectNone('/api/queue/stats');
-        });
-
-        it('should expose undefined metrics signal (no data during prerender)', () => {
-            expect(store.metrics()).toBeUndefined();
-        });
-
-        it('should not be revalidating during prerender', () => {
-            expect(store.isLoading()).toBe(false);
-        });
-
-        it('should not be stale during prerender', () => {
-            expect(store.isStale()).toBe(false);
-        });
-    });
-
-    describe('SSR per-request (server platform, REQUEST token present)', () => {
         beforeEach(() => {
             TestBed.configureTestingModule({
                 providers: [
@@ -281,7 +167,10 @@ describe('MetricsStore — server platform (SSR/prerender)', () => {
         });
 
         it('should have initiated SWR fetches for queue stats on SSR per-request render', () => {
-            expect(store.queueStats()?.depth).toBe(0);
+            const stats = store.queueStats();
+            expect(stats?.currentDepth).toBe(0);
+            expect(stats?.processingRate).toBe(0);
+            expect(stats?.lag).toBe(0);
         });
 
         it('should settle to not-loading after initial fetches complete', () => {
