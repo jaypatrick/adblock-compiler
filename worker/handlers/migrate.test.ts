@@ -85,6 +85,7 @@ function makeEnv(db?: D1Database): Env {
         COMPILATION_CACHE: {} as KVNamespace,
         RATE_LIMIT: {} as KVNamespace,
         METRICS: {} as KVNamespace,
+        ASSETS: {} as unknown as Fetcher,
         DB: db,
     };
 }

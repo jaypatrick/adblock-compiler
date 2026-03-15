@@ -398,7 +398,17 @@ jobs:
                   path: frontend/dist/
 
             - name: Verify worker build (dry run)
-              run: deno task wrangler:verify
+              run: |
+                  for i in 1 2 3; do
+                      deno task wrangler:verify && break
+                      if [ "$i" -lt 3 ]; then
+                          echo "Attempt $i failed, retrying in 15s..."
+                          sleep 15
+                      else
+                          echo "All 3 attempts failed."
+                          exit 1
+                      fi
+                  done
 
     # Deploy jobs only run on main pushes
     deploy:
