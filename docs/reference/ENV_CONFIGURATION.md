@@ -24,7 +24,7 @@ flowchart LR
 | **Shell tooling**   | Prisma CLI, Deno tasks, scripts | `.env`, `.env.development`, `.env.production`, `.env.local` | direnv   |
 | **Wrangler Worker** | Cloudflare Worker runtime       | `wrangler.toml [vars]` + `.dev.vars`                        | wrangler |
 
-**The key rule:** if `worker/types.ts` `Env` interface has the variable, it belongs to the Wrangler track. If only shell scripts use it, it belongs to the shell track.
+**The key rule:** if `worker/types.ts` `Env` interface has the variable, it belongs to the Wrangler track. If only shell scripts use it, it belongs to the shell track. A small set of non-secret vars (e.g. `COMPILER_VERSION`) appears in **both** tracks — in `.env` for shell tooling/CI and in `wrangler.toml [vars]` for the Worker runtime — which is intentional and acceptable.
 
 ## Load Order
 
@@ -156,7 +156,7 @@ DIRECT_DATABASE_URL=postgresql://user:password@localhost:5432/adblock_dev
 
 ## GitHub Actions Integration
 
-GitHub Actions does not use direnv. The `.github/actions/setup-env` composite action mirrors the shell track only (`.env` + `.env.$ENV`). Worker runtime vars are injected as GitHub Secrets in deployment workflows.
+GitHub Actions does not use direnv. The `.github/actions/setup-env` composite action mirrors the shell track only (`.env` + `.env.$ENV`). Worker runtime vars are managed as Cloudflare Worker Secrets (`wrangler secret put`) and `wrangler.toml [vars]` — they are **not** loaded by `.github/actions/setup-env` and should **not** be stored as GitHub Secrets.
 
 See [ENV_SETUP.md](../workflows/ENV_SETUP.md) for full CI reference.
 

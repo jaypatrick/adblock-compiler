@@ -33,11 +33,13 @@ Complete reference for all environment variables and configuration needed to run
 | `TURNSTILE_SITE_KEY`   | Optional | Cloudflare Dashboard → Turnstile | Public site key for frontend widget. Returned to clients via `/api/turnstile-config`. |
 | `TURNSTILE_SECRET_KEY` | Optional | Cloudflare Dashboard → Turnstile | Secret key for server-side token verification. If not set, Turnstile is disabled.     |
 
-### Database (Required)
+### Database
 
-| Variable       | Required | Source                       | Description                                                                                                                                                   |
-| -------------- | -------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL` | **Yes**  | PostgreSQL connection string | Hyperdrive connection URL in production; local PostgreSQL URL in development. Used for **API keys** (PostgreSQL) only — user sync uses Cloudflare D1 instead. |
+| Variable       | Required | Source                       | Description                                                                                                                                                                                                               |
+| -------------- | -------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `DATABASE_URL` | **Yes**  | PostgreSQL connection string | **Shell / Prisma tooling only** — used by Prisma CLI for migrations and schema introspection (`file:./data/adblock.db` in development, a direct Postgres URL otherwise). The Worker itself does **not** read this var. |
+
+> **Worker database binding:** The Cloudflare Worker connects to PostgreSQL via the **`HYPERDRIVE`** binding (configured in `wrangler.toml`), not via `DATABASE_URL`. For local `wrangler dev`, override the binding with `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.dev.vars`.
 
 ## Local Development Setup
 
@@ -197,7 +199,7 @@ Defined in `frontend/src/app/tokens.ts`:
 The auth system uses a **split database architecture**:
 
 - **Cloudflare D1 (SQLite)** — stores user records, synced from Clerk webhooks. Binding: `env.DB`.
-- **PostgreSQL via Hyperdrive** — stores API keys. Connection: `DATABASE_URL` environment variable.
+- **PostgreSQL via Hyperdrive** — stores API keys. Worker binding: `env.HYPERDRIVE` (configured in `wrangler.toml`). For local dev, override with `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.dev.vars`.
 
 ### `users` Table (Cloudflare D1)
 

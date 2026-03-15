@@ -96,7 +96,7 @@ flowchart LR
 | **D1**               | `DB`                     | Primary user record storage — synced from Clerk webhooks via Prisma D1 adapter |
 | **Hyperdrive**       | `HYPERDRIVE`             | Connection pooling to PostgreSQL for API key storage                           |
 | **Turnstile**        | `TURNSTILE_SECRET_KEY`   | Bot protection on compilation endpoints                                        |
-| **Analytics Engine** | `ANALYTICS_ENGINE`       | Operational metrics (no dedicated auth events yet)                             |
+| **Analytics Engine** | `ANALYTICS_ENGINE`       | Operational metrics and security events — auth failures, rate limit hits, and CF Access denials are tracked via `AnalyticsService.trackSecurityEvent()` |
 | **Queues**           | `ADBLOCK_COMPILER_QUEUE` | Async compilation (auth applied before queueing)                               |
 | **Worker Secrets**   | (runtime)                | Stores `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`, etc.                        |
 | **Worker Assets**    | `ASSETS`                 | Serves the Angular frontend (which loads Clerk JS)                             |
