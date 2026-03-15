@@ -28,6 +28,7 @@
     "npm:@prisma/adapter-d1@^7.5.0": "7.5.0",
     "npm:@prisma/adapter-pg@^7.5.0": "7.5.0",
     "npm:@prisma/client@^7.5.0": "7.5.0_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
+    "npm:@sentry/cloudflare@^10.43.0": "10.43.0_@cloudflare+workers-types@4.20260307.1",
     "npm:jose@^6.2.1": "6.2.1",
     "npm:prisma@*": "7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
     "npm:prisma@^7.5.0": "7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
@@ -770,6 +771,20 @@
         "react",
         "react-dom"
       ]
+    },
+    "@sentry/cloudflare@10.43.0_@cloudflare+workers-types@4.20260307.1": {
+      "integrity": "sha512-l0IuXDSLzck++Qyl4IlxrpKO7NVEe0zHXazrnHUAvwM+WPbo1XQ7RwArD67LVTkLmjZjrAc4GZ9gieUkaZWYfg==",
+      "dependencies": [
+        "@cloudflare/workers-types",
+        "@opentelemetry/api",
+        "@sentry/core"
+      ],
+      "optionalPeers": [
+        "@cloudflare/workers-types"
+      ]
+    },
+    "@sentry/core@10.43.0": {
+      "integrity": "sha512-l0SszQAPiQGWl/ferw8GP3ALyHXiGiRKJaOvNmhGO+PrTQyZTZ6OYyPnGijAFRg58dE1V3RCH/zw5d2xSUIiNg=="
     },
     "@sindresorhus/is@7.2.0": {
       "integrity": "sha512-P1Cz1dWaFfR4IR+U13mqqiGsLFf1KbayybWwdd2vfctdV6hDpUkgCY0nKOLLTMSoRd/jJNjtbqzf13K8DCCXQw=="
@@ -2246,6 +2261,7 @@
       "npm:@prisma/adapter-d1@^7.5.0",
       "npm:@prisma/adapter-pg@^7.5.0",
       "npm:@prisma/client@^7.5.0",
+      "npm:@sentry/cloudflare@^10.43.0",
       "npm:prisma@^7.5.0",
       "npm:svix@^1.62.0",
       "npm:wrangler@^4.71.0"

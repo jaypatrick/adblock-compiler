@@ -19,6 +19,7 @@
   - [Cloudflare Native Observability](observability/CLOUDFLARE_OBSERVABILITY.md)
   - [Prometheus Metrics](observability/PROMETHEUS.md)
   - [Logpush → R2](observability/LOGPUSH.md)
+  - [Custom Providers](observability/PROVIDERS.md)
 - [Cloudflare Integration](cloudflare/README.md)
   - [Services Overview](cloudflare/CLOUDFLARE_SERVICES.md)
   - [Admin Dashboard](cloudflare/ADMIN_DASHBOARD.md)

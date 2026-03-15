@@ -53,39 +53,30 @@ export function withSentryWorker<T extends ExportedHandler<Env>>(
         ...handler,
         async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
             const config = configFn(env);
+            // The Cloudflare workers-types Request generic parameter diverges between
+            // CfProperties (used by the runtime) and IncomingRequestCfProperties (used
+            // by the handler signature).  Cast to satisfy the stricter type expected by
+            // handler.fetch and Sentry.withSentry without altering runtime behaviour.
+            const cfRequest = request as unknown as Request<
+                unknown,
+                IncomingRequestCfProperties<unknown>
+            >;
 
             if (!config.dsn) {
                 // Sentry not configured — pass through directly
-                return handler.fetch!(request, env, ctx);
+                return handler.fetch!(cfRequest, env, ctx);
             }
 
-            // TODO(#sentry-cf): Uncomment once @sentry/cloudflare is installed:
-            // const Sentry = await import('@sentry/cloudflare');
-            // return Sentry.withSentry(
-            //     () => ({
-            //         dsn: config.dsn!,
-            //         release: config.release,
-            //         environment: config.environment ?? 'production',
-            //         tracesSampleRate: config.tracesSampleRate ?? 0.1,
-            //     }),
-            //     handler,
-            // ).fetch(request, env, ctx);
-
-            // Fallback: manual try/catch until @sentry/cloudflare is installed
-            try {
-                return await handler.fetch!(request, env, ctx);
-            } catch (error) {
-                // deno-lint-ignore no-console
-                console.error(JSON.stringify({
-                    level: 'error',
-                    message: 'Unhandled worker exception',
-                    error: error instanceof Error ? error.message : String(error),
-                    stack: error instanceof Error ? error.stack : undefined,
-                    url: request.url,
-                    method: request.method,
-                }));
-                throw error;
-            }
+            const Sentry = await import('@sentry/cloudflare');
+            return Sentry.withSentry(
+                () => ({
+                    dsn: config.dsn!,
+                    release: config.release,
+                    environment: config.environment ?? 'production',
+                    tracesSampleRate: config.tracesSampleRate ?? 0.1,
+                }),
+                handler as unknown as ExportedHandler<unknown, unknown, unknown>,
+            ).fetch!(cfRequest, env, ctx);
         },
     } as T;
 }
