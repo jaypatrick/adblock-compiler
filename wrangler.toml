@@ -87,7 +87,7 @@ persist = true
 #       All secrets use `wrangler secret put`.
 [vars]
 # Keep in sync with VERSION in src/version.ts. Run `deno task version:sync` to propagate.
-COMPILER_VERSION = "0.62.3"
+COMPILER_VERSION = "0.62.4"
 ENVIRONMENT = "production"
 # Clerk publishable key — not a secret; safe to commit.
 # Update to pk_live_... when you go live.
