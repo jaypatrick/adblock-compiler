@@ -2977,7 +2977,7 @@ async function handleHealthLatest(env: Env): Promise<Response> {
  * Main fetch handler for the Cloudflare Worker.
  */
 const workerHandler: ExportedHandler<Env> = {
-    async fetch(request: Request, env: Env): Promise<Response> {
+    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         const url = new URL(request.url);
         const { pathname } = url;
 
@@ -3013,6 +3013,10 @@ const workerHandler: ExportedHandler<Env> = {
             throw err;
         } finally {
             requestSpan.end();
+            // Flush buffered observability events (e.g. Sentry) before the
+            // Worker context closes. waitUntil() keeps the Worker alive until
+            // the promise settles without blocking the response.
+            ctx.waitUntil(diagnostics.flush());
         }
 
         // WebSocket upgrade responses (101) must be returned as-is — constructing a new
@@ -4062,7 +4066,7 @@ const workerHandler: ExportedHandler<Env> = {
 // handler is returned unchanged — zero overhead in local development.
 export default withSentryWorker(workerHandler, (env) => ({
     dsn: env.SENTRY_DSN,
-    release: env.COMPILER_VERSION,
+    release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
 }));
 
 // ============================================================================

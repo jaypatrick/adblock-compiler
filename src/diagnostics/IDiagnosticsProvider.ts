@@ -16,7 +16,7 @@
  * 2. Register a builder with the factory (register once at module load):
  *
  * ```typescript
- * import { registerDiagnosticsProvider } from '../worker/services/diagnostics-factory.ts';
+ * import { registerDiagnosticsProvider } from '../../worker/services/diagnostics-factory.ts';
  * import { MyCustomProvider } from './my-custom-provider.ts';
  *
  * registerDiagnosticsProvider((env) =>
