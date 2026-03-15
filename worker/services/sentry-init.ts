@@ -11,10 +11,7 @@
  *       tracesSampleRate: 0.1,
  *   }));
  *
- * TODO: Install @sentry/cloudflare:
- *   npm install @sentry/cloudflare
- *
- * TODO: Add SENTRY_DSN as a Worker secret:
+ * Add SENTRY_DSN as a Worker secret:
  *   wrangler secret put SENTRY_DSN
  */
 

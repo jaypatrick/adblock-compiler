@@ -20,6 +20,9 @@ importers:
       '@prisma/client':
         specifier: ^7.5.0
         version: 7.5.0(typescript@5.9.3)
+      '@sentry/cloudflare':
+        specifier: 10.43.0
+        version: 10.43.0(@cloudflare/workers-types@4.20260307.1)
       jose:
         specifier: ^6.2.1
         version: 6.2.1
@@ -2906,6 +2909,15 @@ packages:
     resolution: {integrity: sha512-tavJ7yGUZV+z3Ct2/ZB6mg339i08sAk6HDkgqmSRuQEu2iLS5sl9HIvuXfM6xjv8fwlgFOSy++WNABNAcGHUbg==}
     engines: {node: '>= 10'}
     hasBin: true
+
+  '@sentry/cloudflare@10.43.0':
+    resolution: {integrity: sha512-l0IuXDSLzck++Qyl4IlxrpKO7NVEe0zHXazrnHUAvwM+WPbo1XQ7RwArD67LVTkLmjZjrAc4GZ9gieUkaZWYfg==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@cloudflare/workers-types': ^4.x
+    peerDependenciesMeta:
+      '@cloudflare/workers-types':
+        optional: true
 
   '@sentry/core@10.43.0':
     resolution: {integrity: sha512-l0SszQAPiQGWl/ferw8GP3ALyHXiGiRKJaOvNmhGO+PrTQyZTZ6OYyPnGijAFRg58dE1V3RCH/zw5d2xSUIiNg==}
@@ -10144,6 +10156,13 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+
+  '@sentry/cloudflare@10.43.0(@cloudflare/workers-types@4.20260307.1)':
+    dependencies:
+      '@opentelemetry/api': 1.9.0
+      '@sentry/core': 10.43.0
+    optionalDependencies:
+      '@cloudflare/workers-types': 4.20260307.1
 
   '@sentry/core@10.43.0': {}
 

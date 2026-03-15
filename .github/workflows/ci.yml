@@ -270,7 +270,7 @@ jobs:
                   deno-version: ${{ env.DENO_VERSION }}
 
             - name: Check for slow types
-              run: deno publish --dry-run
+              run: deno publish --dry-run --allow-dirty
 
     ci-gate:
         name: CI Gate
