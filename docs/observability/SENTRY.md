@@ -25,6 +25,11 @@ runs identically to before. No error is thrown; no overhead is incurred.
 ## 1. Architecture overview
 
 ```
+Angular Admin UI (browser)
+└── sentry.ts initSentry(dsn)              ← browser SDK — RUM, replay, errors
+       └── GET /api/sentry-config → DSN    ← DSN fetched at runtime, never baked in
+       └── GlobalErrorHandler              ← forwards unhandled JS errors to Sentry
+
 worker/worker.ts
 └── withSentryWorker(handler, cfg)          ← wraps the fetch handler
        │
@@ -41,6 +46,10 @@ src/diagnostics/SentryDiagnosticsProvider   ← fine-grained spans / errors
 worker/tail.ts                               ← tail worker (separate deploy)
        └── SENTRY_DSN binding               ← available for future capture
 ```
+
+All three layers use the **same `SENTRY_DSN` secret** — set once via
+`wrangler secret put SENTRY_DSN` and both the Worker and the Angular frontend
+(via `/api/sentry-config`) pick it up automatically.
 
 ---
 
@@ -293,11 +302,69 @@ wrangler dev
 
 ---
 
+## 9. Troubleshooting
+
+| Symptom | Likely cause | Fix |
+|---------|-------------|-----|
+| Build fails: `Could not resolve "@sentry/cloudflare"` | SDK not installed | `npm install @sentry/cloudflare` |
+| No events in Sentry | `SENTRY_DSN` secret not set | `wrangler secret put SENTRY_DSN` |
+| Quota exceeded | `tracesSampleRate` too high | Lower to `0.05` or `0.01` in production |
+| SDK version conflicts | `@sentry/cloudflare` incompatibility | Check `package.json` lockfile; pin to a tested version |
+| Worker size exceeds 1 MB | Sentry SDK is large | Enable `--minify` in wrangler, or use `ConsoleDiagnosticsProvider` only |
+
+### Relevant files
+
+| File | Role |
+|------|------|
+| `worker/services/sentry-init.ts` | `withSentryWorker()` — wraps the main handler |
+| `worker/handlers/sentry-config.ts` | `GET /api/sentry-config` — exposes public DSN to the frontend |
+| `src/diagnostics/SentryDiagnosticsProvider.ts` | Fine-grained span / error capture |
+| `src/diagnostics/IDiagnosticsProvider.ts` | `IDiagnosticsProvider` interface (NoOp + Console) |
+| `worker/tail.ts` | Tail worker — `TailEnv.SENTRY_DSN` binding |
+| `frontend/src/app/sentry.ts` | `initSentry()` — browser SDK init helper |
+| `frontend/src/app/error/global-error-handler.ts` | Forwards Angular errors to Sentry via `captureException` |
+| `.github/workflows/sentry-sourcemaps.yml` | Source map upload CI workflow |
+| `.env.example` | `SENTRY_DSN` stub (search `Error Reporting`) |
+
+---
+
 ## 10. Frontend RUM (Phase 3)
 
 The Angular admin UI ships with **Sentry Browser SDK** (`@sentry/angular` v9)
 for real-user monitoring — unhandled JS errors, browser performance tracing,
 and session replay.
+
+### Quick start — enable RUM in 3 steps
+
+**Step 1 — Create a Sentry project (or reuse the existing one)**
+
+If you already have a Sentry project from §2, skip this step.
+If not, create one at [sentry.io](https://sentry.io): **Projects → Create Project → JavaScript → Browser**.
+
+**Step 2 — Set the `SENTRY_DSN` Worker secret**
+
+```bash
+# This single secret enables BOTH the Worker backend Sentry capture (§5)
+# AND the Angular frontend RUM — they share the same DSN.
+wrangler secret put SENTRY_DSN
+# Paste your DSN, e.g.: https://abc123@o999.ingest.sentry.io/12345
+```
+
+After deploying the Worker, the Angular app fetches the DSN from
+`GET /api/sentry-config` at boot and initialises Sentry automatically.
+No rebuild is required — the same artifact works in any environment.
+
+**Step 3 — (Optional) Enable source map uploads for readable stack traces**
+
+```bash
+# GitHub Actions secrets and variables — needed for .github/workflows/sentry-sourcemaps.yml
+gh secret set SENTRY_AUTH_TOKEN        # from Sentry → Settings → Auth Tokens
+gh variable set SENTRY_ORG --body "your-sentry-org-slug"
+gh variable set SENTRY_PROJECT --body "adblock-compiler"
+```
+
+The workflow runs automatically on every push to `main` and on `v*` release tags.
+It skips silently if `SENTRY_ORG` is not set, so it is safe to skip this step initially.
 
 ### How RUM is initialised
 
@@ -315,7 +382,7 @@ Angular app boots
 If the endpoint is unreachable or `SENTRY_DSN` is unset, `initSentry()` is a
 no-op and the app boots normally.
 
-### Required secrets and variables
+### All required secrets and variables
 
 | Name | Where | Description |
 |------|-------|-------------|
@@ -323,16 +390,6 @@ no-op and the app boots normally.
 | `SENTRY_AUTH_TOKEN` | GitHub secret | CI-only — used by `@sentry/cli` to upload source maps |
 | `SENTRY_ORG` | GitHub variable (`vars.`) | Your Sentry organisation slug |
 | `SENTRY_PROJECT` | GitHub variable (`vars.`) | Your Sentry project slug |
-
-```bash
-# Worker secret (exposes DSN to the Angular frontend at runtime)
-wrangler secret put SENTRY_DSN
-
-# GitHub Actions secrets / variables (for source map upload)
-gh secret set SENTRY_AUTH_TOKEN
-gh variable set SENTRY_ORG --body "your-org-slug"
-gh variable set SENTRY_PROJECT --body "adblock-compiler"
-```
 
 ### Session Replay
 
@@ -371,25 +428,11 @@ condition), so it is safe to merge before Sentry is set up.
 3. Open **Sentry → Replays** — session recordings appear based on the
    sample rates configured in `frontend/src/app/sentry.ts`.
 
+### RUM Troubleshooting
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| Build fails: `Could not resolve "@sentry/cloudflare"` | SDK not installed | `npm install @sentry/cloudflare` |
-| No events in Sentry | `SENTRY_DSN` secret not set | `wrangler secret put SENTRY_DSN` |
-| Quota exceeded | `tracesSampleRate` too high | Lower to `0.05` or `0.01` in production |
-| SDK version conflicts | `@sentry/cloudflare` incompatibility | Check `package.json` lockfile; pin to a tested version |
-| Worker size exceeds 1 MB | Sentry SDK is large | Enable `--minify` in wrangler, or use `ConsoleDiagnosticsProvider` only |
-
-### Relevant files
-
-| File | Role |
-|------|------|
-| `worker/services/sentry-init.ts` | `withSentryWorker()` — wraps the main handler |
-| `worker/handlers/sentry-config.ts` | `GET /api/sentry-config` — exposes public DSN to the frontend |
-| `src/diagnostics/SentryDiagnosticsProvider.ts` | Fine-grained span / error capture |
-| `src/diagnostics/IDiagnosticsProvider.ts` | `IDiagnosticsProvider` interface (NoOp + Console) |
-| `worker/tail.ts` | Tail worker — `TailEnv.SENTRY_DSN` binding |
-| `frontend/src/app/sentry.ts` | `initSentry()` — browser SDK init helper |
-| `frontend/src/app/error/global-error-handler.ts` | Forwards Angular errors to Sentry via `captureException` |
-| `.github/workflows/sentry-sourcemaps.yml` | Source map upload CI workflow |
-| `.env.example` | `SENTRY_DSN` stub (search `Error Reporting`) |
+| No RUM events in Sentry | `SENTRY_DSN` not set or `/api/sentry-config` unreachable | Check `wrangler secret put SENTRY_DSN`; verify the Worker is deployed |
+| Browser console: `TypeError: Sentry is not a function` | `@sentry/angular` not installed | Run `pnpm install` from the repo root |
+| No replays visible | `replaysSessionSampleRate` too low or DSN wrong | Verify DSN in the Network tab (GET `/api/sentry-config` should return a non-null DSN) |
+| Source maps not resolving | `SENTRY_AUTH_TOKEN` / `SENTRY_ORG` / `SENTRY_PROJECT` not configured | Set all three in GitHub secrets/vars and re-run the `sentry-sourcemaps.yml` workflow |
