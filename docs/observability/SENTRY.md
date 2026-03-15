@@ -112,25 +112,14 @@ SENTRY_DSN=https://your-key@oNNNNNN.ingest.sentry.io/your-project-id
 
 ---
 
-## 5. Activate the Worker wrapper
+## 5. Worker wrapper
 
-`worker/services/sentry-init.ts` exports `withSentryWorker()`. This wrapper is
-**not yet wired into `worker/worker.ts`** — you need to add the wrapping
-after installing the SDK.
-
-**Step 1 — Ensure the SDK is installed:**
-
-```bash
-# Package is already in deno.json imports map; just refresh the lockfile
-deno install
-```
-
-**Step 2 — (Already done) The export default in `worker/worker.ts` is wrapped:**
+`worker/services/sentry-init.ts` exports `withSentryWorker()`. The wrapper is
+**already active** — `worker/worker.ts` exports the handler through it:
 
 ```typescript
 import { withSentryWorker } from './services/sentry-init.ts';
 
-// Replace the existing `export default workerHandler;` with:
 export default withSentryWorker(workerHandler, (env) => ({
     dsn: env.SENTRY_DSN,
     release: env.COMPILER_VERSION,
@@ -138,29 +127,9 @@ export default withSentryWorker(workerHandler, (env) => ({
 }));
 ```
 
-**Step 3 — Uncomment the Sentry path in `worker/services/sentry-init.ts`:**
-
-```typescript
-// Before (stub — active until SDK installed):
-try {
-    return await handler.fetch!(request, env, ctx);
-} catch (error) {
-    console.error(JSON.stringify({ ... }));
-    throw error;
-}
-
-// After (full Sentry integration):
-const Sentry = await import('@sentry/cloudflare');
-return Sentry.withSentry(
-    () => ({
-        dsn: config.dsn!,
-        release: config.release,
-        environment: config.environment ?? 'production',
-        tracesSampleRate: config.tracesSampleRate ?? 0.1,
-    }),
-    handler,
-).fetch(request, env, ctx);
-```
+When `SENTRY_DSN` is **absent** the wrapper is a zero-cost pass-through — no
+Sentry SDK is loaded and no overhead is incurred. To enable error capture,
+set the secret (see [§4](#4-environment-variables-and-secrets)).
 
 > **`tracesSampleRate`** — start at `0.1` (10 %) in production to stay within
 > Sentry's free quota. Use `1.0` in staging.
