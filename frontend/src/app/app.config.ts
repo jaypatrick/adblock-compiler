@@ -98,9 +98,14 @@ export const appConfig: ApplicationConfig = {
 
             inject(ThemeService).loadPreferences();
 
+            // ⚠️  ALL inject() calls MUST be in this synchronous block, BEFORE any
+            // `await`.  After the first `await` the injection context is gone and
+            // inject() will throw NG0203 ("inject() must be called from an
+            // injection context").  Do NOT move inject() calls below an await.
             const http = inject(HttpClient);
             const turnstileService = inject(TurnstileService);
             const apiBaseUrl = inject(API_BASE_URL);
+            const clerkService = inject(ClerkService);
 
             try {
                 const config = await firstValueFrom(
@@ -120,7 +125,6 @@ export const appConfig: ApplicationConfig = {
             // IMPORTANT: Always call initialize() even when the key is missing/null —
             // this sets isLoaded=true so the header shows auth links (or an appropriate
             // fallback) instead of rendering nothing.
-            const clerkService = inject(ClerkService);
             try {
                 const clerkConfig = await firstValueFrom(
                     http.get<{ publishableKey: string | null }>(`${apiBaseUrl}/clerk-config`)
