@@ -1,6 +1,10 @@
 /**
  * Sentry initialisation helpers for Cloudflare Workers.
  *
+ * Uses the Deno-native Sentry SDK (`@sentry/deno`), registered in the
+ * `deno.json` imports map as:
+ *   "@sentry/deno": "npm:@sentry/deno@^9"
+ *
  * Usage in worker/worker.ts:
  *
  *   import { withSentryWorker } from './services/sentry-init.ts';
@@ -11,16 +15,17 @@
  *       tracesSampleRate: 0.1,
  *   }));
  *
- * TODO: Install @sentry/cloudflare:
- *   npm install @sentry/cloudflare
- *
  * TODO: Add SENTRY_DSN as a Worker secret:
  *   wrangler secret put SENTRY_DSN
  */
 
 /// <reference types="@cloudflare/workers-types" />
 
+import * as Sentry from '@sentry/deno';
 import type { Env } from '../types';
+
+// Guard so Sentry.init() is called only once per worker isolate lifecycle.
+let sentryInitialised = false;
 
 export interface SentryWorkerConfig {
     /** Sentry DSN. Leave undefined to disable Sentry (e.g., local dev). */
@@ -59,31 +64,34 @@ export function withSentryWorker<T extends ExportedHandler<Env>>(
                 return handler.fetch!(request, env, ctx);
             }
 
-            // TODO(#sentry-cf): Uncomment once @sentry/cloudflare is installed:
-            // const Sentry = await import('@sentry/cloudflare');
-            // return Sentry.withSentry(
-            //     () => ({
-            //         dsn: config.dsn!,
-            //         release: config.release,
-            //         environment: config.environment ?? 'production',
-            //         tracesSampleRate: config.tracesSampleRate ?? 0.1,
-            //     }),
-            //     handler,
-            // ).fetch(request, env, ctx);
+            // Cloudflare Workers run a single JS isolate (single-threaded event loop),
+            // so checking and setting sentryInitialised here is race-free.
+            if (!sentryInitialised) {
+                Sentry.init({
+                    dsn: config.dsn!,
+                    release: config.release,
+                    environment: config.environment ?? 'production',
+                    tracesSampleRate: config.tracesSampleRate ?? 0.1,
+                });
+                sentryInitialised = true;
+            }
 
-            // Fallback: manual try/catch until @sentry/cloudflare is installed
             try {
                 return await handler.fetch!(request, env, ctx);
             } catch (error) {
-                // deno-lint-ignore no-console
-                console.error(JSON.stringify({
-                    level: 'error',
-                    message: 'Unhandled worker exception',
-                    error: error instanceof Error ? error.message : String(error),
-                    stack: error instanceof Error ? error.stack : undefined,
-                    url: request.url,
-                    method: request.method,
-                }));
+                try {
+                    Sentry.captureException(error);
+                } catch {
+                    // deno-lint-ignore no-console
+                    console.error(JSON.stringify({
+                        level: 'error',
+                        message: 'Unhandled worker exception (Sentry capture failed)',
+                        error: error instanceof Error ? error.message : String(error),
+                        stack: error instanceof Error ? error.stack : undefined,
+                        url: request.url,
+                        method: request.method,
+                    }));
+                }
                 throw error;
             }
         },

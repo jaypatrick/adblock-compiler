@@ -1,6 +1,6 @@
 # Sentry Integration
 
-`adblock-compiler` integrates [Sentry for Cloudflare Workers](https://docs.sentry.io/platforms/javascript/guides/cloudflare/) (`@sentry/cloudflare`) for automatic error capture, performance tracing, and release tracking.
+`adblock-compiler` integrates [Sentry for Deno](https://docs.sentry.io/platforms/javascript/guides/deno/) (`@sentry/deno`) for automatic error capture, performance tracing, and release tracking.
 
 The integration is **additive and opt-in**: when `SENTRY_DSN` is absent the worker
 runs identically to before. No error is thrown; no overhead is incurred.
@@ -28,7 +28,7 @@ worker/worker.ts
 └── withSentryWorker(handler, cfg)          ← wraps the fetch handler
        │
        ├── no DSN → pass-through (zero cost)
-       └── DSN set → Sentry.withSentry(cfg, handler)
+       └── DSN set → Sentry.init(cfg) + try/catch
                         │
                         └── captureException() on unhandled throws
 
@@ -58,14 +58,14 @@ worker/tail.ts                               ← tail worker (separate deploy)
 
 ## 3. Install the SDK
 
-The SDK is a **production** dependency of the Worker bundle:
+The SDK is resolved via Deno's import map — no separate install step is needed.
+Add the following entry to the `"imports"` section of `deno.json`:
 
-```bash
-# From the repo root
-npm install @sentry/cloudflare
+```json
+"@sentry/deno": "npm:@sentry/deno@^9"
 ```
 
-After installing, activate the commented-out code in two files (see §5 and §7 below).
+After adding the import map entry, activate the Sentry integration (see §5 and §7 below).
 
 ---
 
@@ -113,12 +113,12 @@ SENTRY_DSN=https://your-key@oNNNNNN.ingest.sentry.io/your-project-id
 
 `worker/services/sentry-init.ts` exports `withSentryWorker()`. This wrapper is
 **not yet wired into `worker/worker.ts`** — you need to add the wrapping
-after installing the SDK.
+after adding the SDK to the import map.
 
-**Step 1 — Install the SDK:**
+**Step 1 — Add `@sentry/deno` to `deno.json` imports (already done if you followed §3):**
 
-```bash
-npm install @sentry/cloudflare
+```json
+"@sentry/deno": "npm:@sentry/deno@^9"
 ```
 
 **Step 2 — Wrap the export default in `worker/worker.ts`:**
@@ -134,28 +134,25 @@ export default withSentryWorker(workerHandler, (env) => ({
 }));
 ```
 
-**Step 3 — Uncomment the Sentry path in `worker/services/sentry-init.ts`:**
+**Step 3 — The activated pattern in `worker/services/sentry-init.ts`:**
 
 ```typescript
-// Before (stub — active until SDK installed):
+import * as Sentry from '@sentry/deno';
+
+// Inside the fetch handler, when DSN is set:
+Sentry.init({
+    dsn: config.dsn!,
+    release: config.release,
+    environment: config.environment ?? 'production',
+    tracesSampleRate: config.tracesSampleRate ?? 0.1,
+});
+
 try {
     return await handler.fetch!(request, env, ctx);
 } catch (error) {
-    console.error(JSON.stringify({ ... }));
+    Sentry.captureException(error);
     throw error;
 }
-
-// After (full Sentry integration):
-const Sentry = await import('@sentry/cloudflare');
-return Sentry.withSentry(
-    () => ({
-        dsn: config.dsn!,
-        release: config.release,
-        environment: config.environment ?? 'production',
-        tracesSampleRate: config.tracesSampleRate ?? 0.1,
-    }),
-    handler,
-).fetch(request, env, ctx);
 ```
 
 > **`tracesSampleRate`** — start at `0.1` (10 %) in production to stay within
@@ -296,10 +293,10 @@ wrangler dev
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| Build fails: `Could not resolve "@sentry/cloudflare"` | SDK not installed | `npm install @sentry/cloudflare` |
+| Build fails: `Could not resolve "@sentry/deno"` | Import map entry missing | Add `"@sentry/deno": "npm:@sentry/deno@^9"` to `deno.json` imports |
 | No events in Sentry | `SENTRY_DSN` secret not set | `wrangler secret put SENTRY_DSN` |
 | Quota exceeded | `tracesSampleRate` too high | Lower to `0.05` or `0.01` in production |
-| SDK version conflicts | `@sentry/cloudflare` incompatibility | Check `package.json` lockfile; pin to a tested version |
+| SDK version conflicts | `@sentry/deno` incompatibility | Check `deno.lock`; pin to a tested version |
 | Worker size exceeds 1 MB | Sentry SDK is large | Enable `--minify` in wrangler, or use `ConsoleDiagnosticsProvider` only |
 
 ### Relevant files

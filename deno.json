@@ -97,7 +97,8 @@
         "@opentelemetry/api": "jsr:@opentelemetry/api@^1.9.0",
         "jose": "jsr:@panva/jose@^6.2.1",
         "svix": "npm:svix@^1.62.0",
-        "zod": "jsr:@zod/zod@^4.3.6"
+        "zod": "jsr:@zod/zod@^4.3.6",
+        "@sentry/deno": "npm:@sentry/deno@^9"
     },
     "lint": {
         "rules": {

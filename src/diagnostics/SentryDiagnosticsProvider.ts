@@ -1,34 +1,19 @@
 /**
  * SentryDiagnosticsProvider — routes errors and performance spans to Sentry.
  *
- * Requires @sentry/cloudflare to be installed:
- *   npm install @sentry/cloudflare
+ * Uses the Deno-native Sentry SDK (`@sentry/deno`), registered in the
+ * `deno.json` imports map as:
+ *   "@sentry/deno": "npm:@sentry/deno@^9"
  *
  * TODO: Add SENTRY_DSN to your Cloudflare Worker environment secrets:
  *   wrangler secret put SENTRY_DSN
  *
  * Initialise once at the worker entry point (worker/worker.ts) using
- * Sentry.withSentry() wrapping the export default handler.
+ * withSentryWorker() from worker/services/sentry-init.ts.
  */
 
+import * as Sentry from '@sentry/deno';
 import type { IDiagnosticsProvider, ISpan } from './IDiagnosticsProvider.ts';
-
-// Dynamic import so the module graph doesn't break in environments where
-// @sentry/cloudflare is not available (e.g., Deno unit tests).
-// The module specifier is kept in a variable so that bundlers (esbuild/wrangler)
-// do not attempt to statically resolve '@sentry/cloudflare' at build time.
-// deno-lint-ignore no-explicit-any
-let SentryModule: any = null;
-
-// deno-lint-ignore no-explicit-any
-async function getSentry(): Promise<any> {
-    if (!SentryModule) {
-        // deno-lint-ignore no-explicit-any
-        const mod = '@sentry/cloudflare' as any;
-        SentryModule = await import(mod);
-    }
-    return SentryModule;
-}
 
 /**
  * Options for the Sentry diagnostics provider.
@@ -49,8 +34,7 @@ export interface SentryDiagnosticsProviderOptions {
 
 export class SentryDiagnosticsProvider implements IDiagnosticsProvider {
     private readonly options: Required<SentryDiagnosticsProviderOptions>;
-    // Shared init promise prevents multiple concurrent Sentry.init() calls
-    // if captureError() is invoked before the first init resolves.
+    // Guard flag to ensure Sentry.init() is called at most once per instance.
     private initPromise: Promise<void> | null = null;
 
     constructor(options: SentryDiagnosticsProviderOptions) {
@@ -62,44 +46,44 @@ export class SentryDiagnosticsProvider implements IDiagnosticsProvider {
         };
     }
 
-    private ensureInit(): Promise<void> {
-        if (!this.initPromise) {
-            this.initPromise = getSentry().then((Sentry) => {
-                Sentry.init({
-                    dsn: this.options.dsn,
-                    tracesSampleRate: this.options.tracesSampleRate,
-                    release: this.options.release,
-                    environment: this.options.environment,
-                });
-            }).catch((err) => {
-                // Log the failure so operators know Sentry is not capturing events,
-                // then allow a retry on the next captureError/startSpan call.
-                // deno-lint-ignore no-console
-                console.warn(
-                    '[SentryDiagnosticsProvider] Sentry.init failed — error capture disabled:',
-                    err instanceof Error ? err.message : String(err),
-                );
-                this.initPromise = null;
+    private ensureInit(): void {
+        if (this.initPromise !== null) return;
+        // Mark as initialised immediately (single-threaded event loop — no race).
+        this.initPromise = Promise.resolve();
+        try {
+            Sentry.init({
+                dsn: this.options.dsn,
+                tracesSampleRate: this.options.tracesSampleRate,
+                release: this.options.release,
+                environment: this.options.environment,
             });
+        } catch (err) {
+            // Log the failure so operators know Sentry is not capturing events,
+            // then allow a retry on the next captureError/startSpan call.
+            // deno-lint-ignore no-console
+            console.warn(
+                '[SentryDiagnosticsProvider] Sentry.init failed — error capture disabled:',
+                err instanceof Error ? err.message : String(err),
+            );
+            this.initPromise = null;
         }
-        return this.initPromise;
     }
 
     captureError(error: Error, context?: Record<string, unknown>): void {
-        this.ensureInit().then(async () => {
-            const Sentry = await getSentry();
+        this.ensureInit();
+        try {
             Sentry.withScope((scope: { setExtras: (extras: Record<string, unknown>) => void }) => {
                 if (context) scope.setExtras(context);
                 Sentry.captureException(error);
             });
-        }).catch(() => {
+        } catch {
             // Never propagate errors from the diagnostics layer
-        });
+        }
     }
 
     startSpan(name: string, _attributes?: Record<string, string | number>): ISpan {
-        // TODO(#sentry-cf): Replace with Sentry.startSpan() once @sentry/cloudflare is installed
-        // and the worker handler is wrapped with Sentry.withSentry().
+        // TODO(#sentry-deno): Replace with Sentry.startSpan() once @sentry/deno tracing is
+        // fully configured via withSentryWorker().
         // For now this returns a lightweight span that records the exception to Sentry
         // on recordException().
         const recordException = (error: Error) => {
