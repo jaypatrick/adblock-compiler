@@ -61,7 +61,7 @@ graph TD
 
     subgraph EW["🌐 External World"]
         FLS["Filter List Sources\n(EasyList, uBlock, AdGuard URLs)"]:::external
-        WB["Browser\n(Angular 19 SPA/SSR)"]:::client
+        WB["Browser\n(Angular 21 SPA/SSR)"]:::client
         AC["API Consumers\n(CI/CD, curl, scripts)"]:::client
         CLIA["CLI User\n(Deno)"]:::client
         AIAG["AI Agent / MCP Client\n(GitHub Copilot, etc.)"]:::client
@@ -681,11 +681,11 @@ Long-running, crash-resistant compilation pipelines using Cloudflare Workflows:
 
 ## Angular Frontend (`frontend/`)
 
-A full **Angular 19** Single-Page Application with Server-Side Rendering (SSR), deployed to Cloudflare Pages via `wrangler.toml`.
+A full **Angular 21** Single-Page Application with Server-Side Rendering (SSR), deployed to Cloudflare Pages via `wrangler.toml`.
 
 | Technology | Detail |
 |-----------|--------|
-| Framework | Angular 19 with Signals |
+| Framework | Angular 21 with Signals + Zoneless Change Detection |
 | Rendering | SSR (`main.server.ts`) + hydration |
 | PWA | `@angular/service-worker` (`ngsw-config.json`) |
 | Styling | PostCSS + TailwindCSS (`postcssrc.json`) |
@@ -846,7 +846,7 @@ graph TD
     classDef external fill:#f1f5f9,stroke:#64748b,color:#1e293b
 
     subgraph CLIENTS["👥 Clients"]
-        BROWSER["Browser\n(Angular 19 SSR/PWA)"]:::client
+        BROWSER["Browser\n(Angular 21 SSR/PWA)"]:::client
         CICD["CI/CD Systems\n(GitHub Actions)"]:::client
         CLIUSER["CLI User\n(Deno)"]:::client
         AICLIENT["AI Agent\n(MCP Client)"]:::client
@@ -914,22 +914,22 @@ graph TD
 
 | Layer | Technology |
 |-------|-----------|
-| **Runtime** | Deno 2.6.7+ |
-| **Language** | TypeScript (strict mode) |
+| **Runtime** | Deno 2.x |
+| **Language** | TypeScript 5.9 (strict mode) |
 | **Package Registry** | JSR (`@jk-com/adblock-compiler`) |
 | **Edge Runtime** | Cloudflare Workers |
-| **Validation** | Zod |
+| **Validation** | Zod 4 |
 | **Rule Parsing** | `@adguard/agtree` |
-| **ORM** | Prisma (optional, for local storage) |
+| **ORM** | Prisma 7 (optional, for local storage) |
 | **Database** | SQLite (local), Cloudflare D1 (edge), PostgreSQL (via Hyperdrive) |
 | **Caching** | Cloudflare KV |
 | **Queue** | Cloudflare Queues |
 | **Analytics** | Cloudflare Analytics Engine |
 | **Observability** | OpenTelemetry (optional), DiagnosticsCollector, Sentry, Prometheus |
 | **Auth** | Clerk (users + JWTs), Cloudflare Access (ZTA), API Keys |
-| **Frontend** | Angular 19 (SSR + PWA + Signals), PostCSS, TailwindCSS |
+| **Frontend** | Angular 21 (SSR + PWA + Signals + Zoneless), PostCSS, TailwindCSS |
 | **AI / MCP** | `@cloudflare/playwright-mcp`, Cloudflare Browser Rendering |
 | **CI/CD** | GitHub Actions |
 | **Containerization** | Docker + Docker Compose |
 | **Formatting** | Deno built-in formatter |
-| **Testing** | Deno built-in test framework + `@std/assert`, Vitest (frontend) |
+| **Testing** | Deno built-in test framework + `@std/assert`, Vitest 4 (frontend) |
