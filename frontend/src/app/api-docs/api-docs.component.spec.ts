@@ -28,7 +28,7 @@ describe('ApiDocsComponent', () => {
             component = fixture.componentInstance;
             httpTesting = TestBed.inject(HttpTestingController);
 
-            // Flush the initial rxResource request for /api/version
+            // Flush the initial httpResource request for /api/version
             httpTesting.match('/api/version').forEach(req => req.flush({
                 name: 'adblock-compiler', version: '0.0.0',
             }));
