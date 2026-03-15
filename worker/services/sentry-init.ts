@@ -53,10 +53,18 @@ export function withSentryWorker<T extends ExportedHandler<Env>>(
         ...handler,
         async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
             const config = configFn(env);
+            // The Cloudflare workers-types Request generic parameter diverges between
+            // CfProperties (used by the runtime) and IncomingRequestCfProperties (used
+            // by the handler signature).  Cast to satisfy the stricter type expected by
+            // handler.fetch and Sentry.withSentry without altering runtime behaviour.
+            const cfRequest = request as unknown as Request<
+                unknown,
+                IncomingRequestCfProperties<unknown>
+            >;
 
             if (!config.dsn) {
                 // Sentry not configured — pass through directly
-                return handler.fetch!(request, env, ctx);
+                return handler.fetch!(cfRequest, env, ctx);
             }
 
             const Sentry = await import('@sentry/cloudflare');
@@ -67,8 +75,8 @@ export function withSentryWorker<T extends ExportedHandler<Env>>(
                     environment: config.environment ?? 'production',
                     tracesSampleRate: config.tracesSampleRate ?? 0.1,
                 }),
-                handler,
-            ).fetch!(request, env, ctx);
+                handler as unknown as ExportedHandler<unknown, unknown, unknown>,
+            ).fetch!(cfRequest, env, ctx);
         },
     } as T;
 }
