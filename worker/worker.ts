@@ -2974,9 +2974,21 @@ async function handleHealthLatest(env: Env): Promise<Response> {
 }
 
 /**
+ * Extended Worker handler type that adds the internal `_handleRequest` helper
+ * used to split request routing from CORS/observability wrapping in `fetch()`.
+ *
+ * @internal This method is intentionally prefixed with `_` to signal that it is
+ * not part of the public Cloudflare `ExportedHandler` contract and must not be
+ * called from outside the `workerHandler` object itself.
+ */
+interface WorkerHandler extends ExportedHandler<Env> {
+    _handleRequest(request: Request, env: Env, url: URL, pathname: string): Promise<Response>;
+}
+
+/**
  * Main fetch handler for the Cloudflare Worker.
  */
-const workerHandler: ExportedHandler<Env> = {
+const workerHandler: WorkerHandler = {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         const url = new URL(request.url);
         const { pathname } = url;
@@ -3999,8 +4011,11 @@ const workerHandler: ExportedHandler<Env> = {
     /**
      * Queue consumer handler for processing compilation jobs
      */
-    async queue(batch: MessageBatch<QueueMessage>, env: Env): Promise<void> {
-        await handleQueue(batch, env);
+    async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
+        // The Cloudflare Workers runtime passes MessageBatch<unknown> at the
+        // ExportedHandler boundary; handleQueue performs structural type-guard
+        // dispatching (msg.body.type) on every message before use.
+        await handleQueue(batch as MessageBatch<QueueMessage>, env);
     },
 
     /**
@@ -4010,8 +4025,8 @@ const workerHandler: ExportedHandler<Env> = {
      * - "0 *\/6 * * *" - Cache warming every 6 hours
      * - "0 * * * *"    - Health monitoring every hour
      */
-    async scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
-        const cronPattern = event.cron;
+    async scheduled(controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+        const cronPattern = controller.cron;
         const runId = `scheduled-${Date.now()}`;
 
         // deno-lint-ignore no-console
