@@ -167,6 +167,7 @@
             "*.lcov",
             "*.d.ts",
             "CHANGELOG.md",
+            "DEPENDENCIES.md",
             "MEMORY.md",
             "README.md",
             "issues/",
