@@ -113,7 +113,7 @@
 @import '@fontsource/ibm-plex-sans/latin-500.css';
 @import '@fontsource/jetbrains-mono/latin-400.css';
 @import '@fontsource/jetbrains-mono/latin-700.css';
-@import 'material-symbols/outlined.css';
+@import './material-symbols-outlined.css'; /* local copy with font-display: swap (upstream uses block → causes CLS) */
 
 /* =================================================================
    CSS Custom Properties — Light Theme (Default)

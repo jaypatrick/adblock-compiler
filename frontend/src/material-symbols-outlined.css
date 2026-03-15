@@ -1,0 +1,38 @@
+/*
+ * Local copy of material-symbols/outlined.css with font-display: swap.
+ *
+ * The upstream package uses font-display: block, which causes FOIT (Flash Of
+ * Invisible Text) and is the largest contributor to our CLS score (0.059 of
+ * 0.114 total). Switching to swap lets icon glyphs render with the fallback
+ * font immediately, eliminating the invisible-text window.
+ *
+ * Maintenance: When upgrading the `material-symbols` npm package, compare
+ * this file against node_modules/material-symbols/outlined.css to ensure
+ * the @font-face src and .material-symbols-outlined rules stay in sync.
+ * Only the `font-display` value differs from the original.
+ */
+@font-face {
+    font-family: "Material Symbols Outlined";
+    font-style: normal;
+    font-weight: 100 700;
+    font-display: swap;
+    src: url("../node_modules/material-symbols/material-symbols-outlined.woff2") format("woff2");
+}
+
+.material-symbols-outlined {
+    font-family: "Material Symbols Outlined";
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    font-feature-settings: "liga";
+}

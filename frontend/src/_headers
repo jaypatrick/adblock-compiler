@@ -1,0 +1,19 @@
+# Cloudflare Workers Static Assets — custom response headers.
+# See: https://developers.cloudflare.com/workers/static-assets/headers/
+#
+# Strategy:
+#   Content-hashed assets (JS chunks, fonts, images in /media/) are safe to
+#   cache forever because their filenames change whenever the content changes.
+#   Use `immutable` to skip conditional revalidation on repeat visits.
+#
+#   index.html and other unhashed entry points must always revalidate so users
+#   pick up new deployments immediately.
+
+/media/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/*.js
+  Cache-Control: public, max-age=31536000, immutable
+
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
