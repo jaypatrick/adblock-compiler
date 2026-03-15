@@ -116,6 +116,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.62.0] - 2026-03-15
+
+### Added- **observability**: extensible IDiagnosticsProvider registry + Sentry CF Worker wiring
+
+### Fixed
+
+- **ci**: resolve lint, format, and type-check failures from observability PR
+- deno fmt formatting in CompositeDiagnosticsProvider.test.ts
+- **observability**: address review comments - SENTRY_RELEASE, flush guard, ctx.waitUntil, tests, docs
+
+
 ## [0.61.0] - 2026-03-15
 
 ### Added- Phase 3 observability — Sentry RUM, source map CI, Logpush docs (#1071)"
