@@ -35,12 +35,13 @@ The backend worker is the **compilation engine**. It:
 
 ### Source
 
-```
-adblock-compiler/
-├── worker/
-│   └── worker.ts          ← entry point
-├── src/                   ← core compiler logic (forked from AdGuard HostlistCompiler)
-└── wrangler.toml          ← deployment configuration (name = "adblock-compiler-backend")
+```mermaid
+mindmap
+  root((adblock-compiler-backend))
+    worker["worker/"]
+      workerTs["worker.ts — Cloudflare Workers fetch handler"]
+    src["src/ — core compilation logic"]
+    wrangler["wrangler.toml — deployment configuration (name = adblock-compiler-backend)"]
 ```
 
 ### Key Bindings
@@ -72,12 +73,13 @@ The frontend worker is the **Angular 21 SSR application**. It:
 
 ### Source
 
-```
-adblock-compiler/
-└── frontend/
-    ├── src/               ← Angular 21 application source
-    ├── server.ts          ← Cloudflare Workers fetch handler (AngularAppEngine)
-    └── wrangler.toml      ← deployment configuration (name = "adblock-compiler-frontend")
+```mermaid
+mindmap
+  root((adblock-compiler-frontend))
+    frontend["frontend/"]
+      src["src/ — Angular 21 application source"]
+      server["server.ts — Cloudflare Workers fetch handler (AngularAppEngine)"]
+      wrangler["wrangler.toml — deployment configuration (name = adblock-compiler-frontend)"]
 ```
 
 ### Key Bindings

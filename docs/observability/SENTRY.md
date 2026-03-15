@@ -24,27 +24,15 @@ runs identically to before. No error is thrown; no overhead is incurred.
 
 ## 1. Architecture overview
 
-```
-Angular Admin UI (browser)
-└── sentry.ts initSentry(dsn)              ← browser SDK — RUM, replay, errors
-       └── GET /api/sentry-config → DSN    ← DSN fetched at runtime, never baked in
-       └── GlobalErrorHandler              ← forwards unhandled JS errors to Sentry
-
-worker/worker.ts
-└── withSentryWorker(handler, cfg)          ← wraps the fetch handler
-       │
-       ├── no DSN → pass-through (zero cost)
-       └── DSN set → Sentry.withSentry(cfg, handler)
-                        │
-                        └── captureException() on unhandled throws
-
-src/diagnostics/SentryDiagnosticsProvider   ← fine-grained spans / errors
-       │
-       └── captureError()  → Sentry.captureException()
-       └── startSpan()     → TODO: Sentry.startSpan() (after SDK install)
-
-worker/tail.ts                               ← tail worker (separate deploy)
-       └── SENTRY_DSN binding               ← available for future capture
+```mermaid
+flowchart TD
+    worker["worker/worker.ts"] --> wrapper["withSentryWorker(handler, cfg)"]
+    wrapper --> noDsn["No DSN -> pass-through (zero cost)"]
+    wrapper --> withDsn["DSN set -> Sentry.withSentry(cfg, handler)"]
+    withDsn --> capture["captureException() on unhandled throws"]
+    provider["src/diagnostics/SentryDiagnosticsProvider"] --> captureError["captureError() -> Sentry.captureException()"]
+    provider --> startSpan["startSpan() -> TODO: Sentry.startSpan() after SDK install"]
+    tail["worker/tail.ts"] --> tailDsn["SENTRY_DSN binding available for future capture"]
 ```
 
 All three layers use the **same `SENTRY_DSN` secret** — set once via

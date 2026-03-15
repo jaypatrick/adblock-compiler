@@ -111,17 +111,15 @@ Or use the GitHub Actions workflow: Actions → Version Bump → Run workflow
 
 ## Version Flow Diagram
 
-```
-src/version.ts (VERSION = '0.12.0')
-    ↓
-    ├─→ worker/worker.ts (import VERSION)
-    │   └─→ API endpoints (/api, /api/version)
-    │       └─→ public/index.html (loadVersion())
-    │       └─→ public/compiler.html (fetchCompilerVersion())
-    │
-    ├─→ worker/router.ts (import VERSION)
-    ├─→ worker/websocket.ts (import VERSION)
-    └─→ worker/queue.integration.test.ts (import VERSION)
+```mermaid
+flowchart TD
+    version["src/version.ts<br/>(VERSION = 0.12.0)"] --> workerMain["worker/worker.ts"]
+    workerMain --> api["API endpoints (/api, /api/version)"]
+    api --> publicIndex["public/index.html -> loadVersion()"]
+    api --> publicCompiler["public/compiler.html -> fetchCompilerVersion()"]
+    version --> router["worker/router.ts"]
+    version --> websocket["worker/websocket.ts"]
+    version --> queueTest["worker/queue.integration.test.ts"]
 ```
 
 ## Implementation Details

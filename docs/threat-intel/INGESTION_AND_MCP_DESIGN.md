@@ -42,22 +42,14 @@ Build a **real-time threat/nuisance/ad domain intelligence platform** on top of 
 
 ## 2. Architecture Overview
 
-```
-Signal Sources (Cloudflare Radar, CT Logs future, blocklist diffs)
-    |
-    | Cron Worker every 15 min
-    v
-Ingestion Worker (worker/handlers/threat-intel.ts)
-    CloudflareRadarFetcher -> normalize -> score -> dedup -> D1 + Queue
-    |
-    | THREAT_INTEL_QUEUE messages
-    v
-Rule Generation Worker (existing AGTree pipeline)
-    High-confidence domains -> AGTree AST -> all formats -> R2 + D1
-    |
-    +---> MCP Server (/mcp/*)
-    |
-    +---> Distribution Layer (R2 hosted URLs, provider push APIs, webhooks)
+```mermaid
+flowchart TD
+    sources["Signal Sources<br/>(Cloudflare Radar, CT Logs future, blocklist diffs)"] -->|Cron worker every 15 min| ingestion["Ingestion Worker<br/>(worker/handlers/threat-intel.ts)"]
+    ingestion --> normalize["CloudflareRadarFetcher -> normalize -> score -> dedup -> D1 + Queue"]
+    normalize -->|THREAT_INTEL_QUEUE messages| ruleGen["Rule Generation Worker<br/>(existing AGTree pipeline)"]
+    ruleGen --> outputs["High-confidence domains -> AGTree AST -> all formats -> R2 + D1"]
+    outputs --> mcp["MCP Server (/mcp/*)"]
+    outputs --> distribution["Distribution layer<br/>(R2 hosted URLs, provider push APIs, webhooks)"]
 ```
 
 **Existing infrastructure this builds on:**
@@ -443,24 +435,17 @@ CREATE INDEX IF NOT EXISTS idx_gr_domain ON generated_rules(domain);
 
 ### 4.5 Queue Message Flow
 
-```
-CloudflareRadarFetcher (cron every 15 min OR manual POST)
-    |
-    v
-handleThreatIntelIngestion()
-    | -- upsert all signals to D1 threat_signals
-    |
-    | [confidenceScore >= 0.80]
-    v
-THREAT_INTEL_QUEUE.send(IThreatIntelQueueMessage)
-    |
-    v
-handleThreatIntelQueue()  <-- Cloudflare Queue consumer
-    |
-    +-- Build AGTree AST block-rule node for domain
-    +-- Emit: AdGuard, uBlock, hosts, RPZ formats via TranslatorPlugin chain
-    +-- Write to generated_rules (status='approved' if score >= 0.95, else 'pending')
-    +-- Flush approved rules to R2 as compiled list fragments
+```mermaid
+flowchart TD
+    fetcher["CloudflareRadarFetcher<br/>(cron every 15 min or manual POST)"] --> ingest["handleThreatIntelIngestion()"]
+    ingest --> upsert["Upsert all signals to D1 threat_signals"]
+    upsert --> decision{"confidenceScore >= 0.80"}
+    decision -->|yes| queue["THREAT_INTEL_QUEUE.send(IThreatIntelQueueMessage)"]
+    queue --> consumer["handleThreatIntelQueue()<br/>Cloudflare Queue consumer"]
+    consumer --> ast["Build AGTree AST block-rule node for domain"]
+    ast --> emit["Emit AdGuard, uBlock, hosts, and RPZ formats via TranslatorPlugin chain"]
+    emit --> db["Write to generated_rules<br/>approved if score >= 0.95, otherwise pending"]
+    db --> r2["Flush approved rules to R2 as compiled list fragments"]
 ```
 
 New type to add in worker/types.ts:

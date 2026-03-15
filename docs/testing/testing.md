@@ -10,12 +10,13 @@ Tests follow the pattern: `*.test.ts` files are placed next to their correspondi
 
 Example:
 
-```
-src/cli/
-├── ArgumentParser.ts
-├── ArgumentParser.test.ts  ← Test file
-├── ConfigurationLoader.ts
-└── ConfigurationLoader.test.ts  ← Test file
+```mermaid
+mindmap
+  root((src/cli/))
+    parser["ArgumentParser.ts"]
+    parserTest["ArgumentParser.test.ts — Test file"]
+    loader["ConfigurationLoader.ts"]
+    loaderTest["ConfigurationLoader.test.ts — Test file"]
 ```
 
 ## Running Tests

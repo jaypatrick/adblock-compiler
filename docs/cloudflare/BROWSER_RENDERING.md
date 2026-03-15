@@ -28,15 +28,16 @@ type). The `@cloudflare/playwright` package wraps it into a Playwright-compatibl
 All Playwright structural interfaces and the `EXTRACT_TEXT_SCRIPT` constant live exclusively
 in `src/platform/BrowserFetcher.ts`. Nothing is duplicated in the worker layer.
 
-```
-src/platform/BrowserFetcher.ts
-  ├── IBrowserWorker           — type of env.BROWSER
-  ├── IPlaywrightBrowser       — slim Playwright Browser interface
-  ├── IPlaywrightPage          — slim Playwright Page interface
-  ├── BrowserConnector         — (binding: IBrowserWorker) => Promise<IPlaywrightBrowser>
-  ├── BrowserFetcherOptions    — { timeout?: number; waitUntil?: BrowserWaitUntil; returnHtml?: boolean }
-  ├── EXTRACT_TEXT_SCRIPT      — inline script injected into the page to extract filter rules
-  └── BrowserFetcher           — IContentFetcher implementation
+```mermaid
+mindmap
+  root((src/platform/BrowserFetcher.ts))
+    browserWorker["IBrowserWorker — type of env.BROWSER"]
+    playwrightBrowser["IPlaywrightBrowser — slim Playwright Browser interface"]
+    playwrightPage["IPlaywrightPage — slim Playwright Page interface"]
+    browserConnector["BrowserConnector — (binding: IBrowserWorker) => Promise<IPlaywrightBrowser>"]
+    options["BrowserFetcherOptions — timeout, waitUntil, returnHtml"]
+    extractScript["EXTRACT_TEXT_SCRIPT — inline script injected into the page to extract filter rules"]
+    browserFetcher["BrowserFetcher — IContentFetcher implementation"]
 ```
 
 Worker utilities in `worker/handlers/browser.ts` import types and the constant from

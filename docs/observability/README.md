@@ -14,32 +14,18 @@ edge-level Cloudflare native tools to application-level error tracking with Sent
 
 ## Observability layers
 
-```
-Inbound Request
-      │
-      ▼
-┌─────────────────────────────────────────────────────┐
-│                  Cloudflare Edge                    │
-│  WAF • Rate Limiting • Turnstile • Bot Score        │
-└──────────────────────┬──────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│                Cloudflare Worker                    │
-│                                                     │
-│  withSentryWorker()  ──► Sentry (error tracking)    │
-│  AnalyticsService    ──► Analytics Engine (metrics) │
-│  AdminLogger         ──► Workers Logs (structured)  │
-│  withAdminTracing()  ──► CF Traces (spans)          │
-└──────────────────────┬──────────────────────────────┘
-                       │ tail consumer
-                       ▼
-┌─────────────────────────────────────────────────────┐
-│                  Tail Worker                        │
-│  formatSlackAlert()  ──► Slack (critical errors)    │
-│  forwardToLogSink()  ──► Logtail / Better Stack     │
-│  TAIL_LOGS KV        ──► Short-term log persistence │
-└─────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    request["Inbound request"] --> edge["Cloudflare Edge<br/>WAF • Rate Limiting • Turnstile • Bot Score"]
+    edge --> worker["Cloudflare Worker"]
+    worker --> sentry["withSentryWorker() -> Sentry (error tracking)"]
+    worker --> analytics["AnalyticsService -> Analytics Engine (metrics)"]
+    worker --> logs["AdminLogger -> Workers Logs (structured)"]
+    worker --> traces["withAdminTracing() -> CF Traces (spans)"]
+    worker --> tail["Tail Worker"]
+    tail --> slack["formatSlackAlert() -> Slack (critical errors)"]
+    tail --> sink["forwardToLogSink() -> Logtail / Better Stack"]
+    tail --> kv["TAIL_LOGS KV -> Short-term log persistence"]
 ```
 
 ## Quick environment variable reference

@@ -133,12 +133,10 @@ R2 is Cloudflare's S3-compatible object storage with no egress fees.
 
 Hyperdrive is **not a database** — it is a connection accelerator and query result caching layer that sits between Cloudflare Workers and any external PostgreSQL (or MySQL) database.
 
-```
-Cloudflare Worker
-    ↓  (standard pg connection string)
-Hyperdrive
-    ↓  (pooled, geographically distributed)
-PostgreSQL database (Neon / Supabase / self-hosted)
+```mermaid
+flowchart TD
+    worker["Cloudflare Worker"] -->|standard pg connection string| hyperdrive["Hyperdrive"]
+    hyperdrive -->|pooled, geographically distributed| postgres["PostgreSQL database<br/>(Neon / Supabase / self-hosted)"]
 ```
 
 **How it helps**
@@ -301,37 +299,41 @@ The following schema design uses **PostgreSQL** conventions and targets Neon as 
 
 An authentication system enables per-user API keys, admin roles, and audit logging.
 
-```
-users
-├── id (UUID)
-├── email (unique)
-├── display_name
-├── role (admin | user | readonly)
-├── created_at
-└── updated_at
-
-api_keys
-├── id (UUID)
-├── user_id → users.id
-├── key_hash (SHA-256 of the raw key — never store plaintext)
-├── key_prefix (first 8 chars for display, e.g. "abc12345...")
-├── name (human label, e.g. "CI pipeline key")
-├── scopes (text[] — e.g. ['compile', 'admin:read'])
-├── rate_limit_per_minute
-├── last_used_at
-├── expires_at (nullable)
-├── revoked_at (nullable)
-├── created_at
-└── updated_at
-
-sessions (for web UI login)
-├── id (UUID)
-├── user_id → users.id
-├── token_hash
-├── ip_address
-├── user_agent
-├── expires_at
-└── created_at
+```mermaid
+classDiagram
+    class Users {
+        UUID id
+        string email
+        string display_name
+        string role
+        timestamp created_at
+        timestamp updated_at
+    }
+    class ApiKeys {
+        UUID id
+        UUID user_id
+        string key_hash
+        string key_prefix
+        string name
+        textArray scopes
+        integer rate_limit_per_minute
+        timestamp last_used_at
+        timestamp expires_at
+        timestamp revoked_at
+        timestamp created_at
+        timestamp updated_at
+    }
+    class Sessions {
+        UUID id
+        UUID user_id
+        string token_hash
+        string ip_address
+        string user_agent
+        timestamp expires_at
+        timestamp created_at
+    }
+    Users --> ApiKeys : owns
+    Users --> Sessions : authenticates
 ```
 
 **Design decisions:**
@@ -345,48 +347,51 @@ sessions (for web UI login)
 
 Rather than only caching in R2 or D1, persist structured metadata in PostgreSQL with blobs in R2.
 
-```
-filter_sources
-├── id (UUID)
-├── url (unique) — canonical upstream URL
-├── name — human label (e.g. "EasyList")
-├── description
-├── homepage
-├── license
-├── is_public (bool) — community-visible or private
-├── owner_user_id → users.id (nullable — NULL = system/community)
-├── refresh_interval_seconds (e.g. 3600)
-├── last_checked_at
-├── last_success_at
-├── last_failure_at
-├── consecutive_failures
-├── status (healthy | degraded | unhealthy | unknown)
-├── created_at
-└── updated_at
-
-filter_list_versions
-├── id (UUID)
-├── source_id → filter_sources.id
-├── content_hash (SHA-256)
-├── rule_count
-├── etag
-├── r2_key — pointer to R2 object containing raw content
-├── fetched_at
-├── expires_at
-└── is_current (bool — latest successful fetch)
-
-compiled_outputs
-├── id (UUID)
-├── config_hash (SHA-256 of the input IConfiguration JSON)
-├── config_name
-├── config_snapshot (jsonb — full IConfiguration used)
-├── rule_count
-├── source_count
-├── duration_ms
-├── r2_key — pointer to R2 object containing compiled output
-├── owner_user_id → users.id (nullable)
-├── created_at
-└── expires_at (nullable — NULL = permanent)
+```mermaid
+classDiagram
+    class FilterSources {
+        UUID id
+        string url
+        string name
+        string description
+        string homepage
+        string license
+        bool is_public
+        UUID owner_user_id
+        integer refresh_interval_seconds
+        timestamp last_checked_at
+        timestamp last_success_at
+        timestamp last_failure_at
+        integer consecutive_failures
+        string status
+        timestamp created_at
+        timestamp updated_at
+    }
+    class FilterListVersions {
+        UUID id
+        UUID source_id
+        string content_hash
+        integer rule_count
+        string etag
+        string r2_key
+        timestamp fetched_at
+        timestamp expires_at
+        bool is_current
+    }
+    class CompiledOutputs {
+        UUID id
+        string config_hash
+        string config_name
+        jsonb config_snapshot
+        integer rule_count
+        integer source_count
+        integer duration_ms
+        string r2_key
+        UUID owner_user_id
+        timestamp created_at
+        timestamp expires_at
+    }
+    FilterSources --> FilterListVersions : versions
 ```
 
 **Design decisions:**
@@ -398,56 +403,57 @@ compiled_outputs
 
 ### Compilation History and Metrics
 
-```
-compilation_events
-├── id (UUID)
-├── compiled_output_id → compiled_outputs.id
-├── user_id → users.id (nullable)
-├── api_key_id → api_keys.id (nullable)
-├── request_source (worker | cli | batch_api)
-├── worker_region (e.g. "enam", "weur")
-├── client_ip_hash
-├── duration_ms
-├── cache_hit (bool)
-├── error_message (nullable)
-└── created_at
-
--- Materialized view for dashboard analytics
--- CREATE MATERIALIZED VIEW compilation_stats_hourly AS
--- SELECT
---   date_trunc('hour', created_at) AS hour,
---   count(*) AS total,
---   sum(CASE WHEN cache_hit THEN 1 ELSE 0 END) AS cache_hits,
---   avg(duration_ms) AS avg_duration_ms,
---   max(rule_count) AS max_rules
--- FROM compilation_events
--- JOIN compiled_outputs ON ...
--- GROUP BY 1;
+```mermaid
+classDiagram
+    class CompilationEvents {
+        UUID id
+        UUID compiled_output_id
+        UUID user_id
+        UUID api_key_id
+        string request_source
+        string worker_region
+        string client_ip_hash
+        integer duration_ms
+        bool cache_hit
+        string error_message
+        timestamp created_at
+    }
+    class CompilationStatsHourly {
+        timestamp hour
+        integer total
+        integer cache_hits
+        integer avg_duration_ms
+        integer max_rules
+    }
+    CompilationEvents --> CompilationStatsHourly : materializes into
 ```
 
 ### Source Health and Change Tracking
 
-```
-source_health_snapshots
-├── id (UUID)
-├── source_id → filter_sources.id
-├── status (healthy | degraded | unhealthy)
-├── total_attempts
-├── successful_attempts
-├── failed_attempts
-├── consecutive_failures
-├── avg_duration_ms
-├── avg_rule_count
-└── recorded_at
-
-source_change_events
-├── id (UUID)
-├── source_id → filter_sources.id
-├── previous_version_id → filter_list_versions.id (nullable)
-├── new_version_id → filter_list_versions.id
-├── rule_count_delta (new - previous)
-├── content_hash_changed (bool)
-└── detected_at
+```mermaid
+classDiagram
+    class SourceHealthSnapshots {
+        UUID id
+        UUID source_id
+        string status
+        integer total_attempts
+        integer successful_attempts
+        integer failed_attempts
+        integer consecutive_failures
+        integer avg_duration_ms
+        integer avg_rule_count
+        timestamp recorded_at
+    }
+    class SourceChangeEvents {
+        UUID id
+        UUID source_id
+        UUID previous_version_id
+        UUID new_version_id
+        integer rule_count_delta
+        bool content_hash_changed
+        timestamp detected_at
+    }
+    SourceHealthSnapshots --> SourceChangeEvents : describes source state over time
 ```
 
 ---
@@ -480,24 +486,16 @@ Both Neon and PlanetScale now offer native PostgreSQL with Hyperdrive compatibil
 
 ### Architecture Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                    Cloudflare Worker                            │
-│                                                                 │
-│  Request                                                        │
-│    ↓                                                            │
-│  [D1 cache lookup]  ──── HIT ────▶  Return cached result       │
-│    ↓ MISS                                                       │
-│  [Hyperdrive]  ──────────────────▶  [Neon PostgreSQL]          │
-│    ↓                                        ↓                  │
-│  [Prisma Client]  ◀──────────────  Query result                │
-│    ↓                                                            │
-│  [R2]  (fetch blob if needed)                                   │
-│    ↓                                                            │
-│  [D1 cache write]  (populate L1 cache)                         │
-│    ↓                                                            │
-│  Return response                                                │
-└─────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    request["Request"] --> cacheLookup["D1 cache lookup"]
+    cacheLookup -->|cache hit| cached["Return cached result"]
+    cacheLookup -->|cache miss| hyperdrive["Hyperdrive"]
+    hyperdrive --> neon["Neon PostgreSQL"]
+    neon --> prisma["Prisma Client"]
+    prisma --> r2["R2 — fetch blob if needed"]
+    r2 --> cacheWrite["D1 cache write"]
+    cacheWrite --> response["Return response"]
 ```
 
 ### Data Flow by Use Case

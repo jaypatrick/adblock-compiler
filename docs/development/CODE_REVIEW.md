@@ -89,24 +89,25 @@ const CACHE_TTL = WORKER_DEFAULTS.CACHE_TTL_SECONDS;
 
 **Structure:**
 
-```
-src/
-├── cli/              # Command-line interface
-├── compiler/         # Core compilation logic (FilterCompiler, SourceCompiler)
-├── config/           # ✅ Centralized configuration defaults
-├── configuration/    # Configuration validation
-├── diagnostics/      # Event emission and tracing
-├── diff/             # Diff report generation
-├── downloader/       # Filter list downloading and fetching
-├── formatters/       # Output format converters
-├── platform/         # Platform abstraction (WorkerCompiler)
-├── plugins/          # Plugin system
-├── services/         # High-level services
-├── storage/          # Storage abstractions
-├── transformations/  # Rule transformation implementations
-├── types/            # TypeScript type definitions
-├── utils/            # Utility functions and helpers
-└── version.ts        # ✅ Centralized version management
+```mermaid
+mindmap
+  root((src/))
+    cli["cli/ — Command-line interface"]
+    compiler["compiler/ — Core compilation logic (FilterCompiler, SourceCompiler)"]
+    config["config/ — Centralized configuration defaults"]
+    configuration["configuration/ — Configuration validation"]
+    diagnostics["diagnostics/ — Event emission and tracing"]
+    diff["diff/ — Diff report generation"]
+    downloader["downloader/ — Filter list downloading and fetching"]
+    formatters["formatters/ — Output format converters"]
+    platform["platform/ — Platform abstraction (WorkerCompiler)"]
+    plugins["plugins/ — Plugin system"]
+    services["services/ — High-level services"]
+    storage["storage/ — Storage abstractions"]
+    transformations["transformations/ — Rule transformation implementations"]
+    types["types/ — TypeScript type definitions"]
+    utils["utils/ — Utility functions and helpers"]
+    version["version.ts — Centralized version management"]
 ```
 
 **Metrics:**

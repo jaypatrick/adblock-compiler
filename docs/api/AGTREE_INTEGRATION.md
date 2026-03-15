@@ -37,11 +37,12 @@ The compiler used custom regex-based parsing in `RuleUtils.ts`:
 
 ### Module Structure
 
-```
-src/utils/
-├── AGTreeParser.ts    # Wrapper module for AGTree
-├── RuleUtils.ts       # Refactored to use AGTreeParser
-└── index.ts           # Exports AGTreeParser types
+```mermaid
+mindmap
+  root((src/utils/))
+    agtree["AGTreeParser.ts — Wrapper module for AGTree"]
+    ruleUtils["RuleUtils.ts — Refactored to use AGTreeParser"]
+    indexTs["index.ts — Exports AGTreeParser types"]
 ```
 
 ### AGTreeParser Wrapper

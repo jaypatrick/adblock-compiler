@@ -9,22 +9,28 @@ Welcome to the AdBlock Compiler documentation. This directory contains all the d
 
 ## Documentation Structure
 
+```mermaid
+mindmap
+  root((docs/))
+    admin["admin/ — Angular admin system (users, flags, tiers, audit logs, RBAC)"]
+    api["api/ — REST API reference, OpenAPI spec, streaming, and validation"]
+    cloudflare["cloudflare/ — Cloudflare-specific features (Queues, D1, Workflows, Analytics)"]
+    databaseSetup["database-setup/ — Database architecture, PostgreSQL, Prisma, and local dev setup"]
+    deployment["deployment/ — Docker, Cloudflare Pages/Containers, and production readiness"]
+    development["development/ — Architecture, extensibility, diagnostics, and code quality"]
+    frontend["frontend/ — Angular SPA, Vite, Tailwind CSS, and UI components"]
+    guides["guides/ — Getting started, migration, client libraries, and troubleshooting"]
+    postman["postman/ — Postman collection and environment files"]
+    reference["reference/ — Version management, environment config, and project reference"]
+    releases["releases/ — Release notes and announcements"]
+    testing["testing/ — Testing guides, E2E, and Postman API testing"]
+    workflows["workflows/ — GitHub Actions CI/CD workflows and automation"]
 ```
-docs/
-├── admin/           # Angular admin system (users, flags, tiers, audit logs, RBAC)
-├── api/             # REST API reference, OpenAPI spec, streaming, and validation
-├── cloudflare/      # Cloudflare-specific features (Queues, D1, Workflows, Analytics)
-├── database-setup/  # Database architecture, PostgreSQL, Prisma, and local dev setup
-├── deployment/      # Docker, Cloudflare Pages/Containers, and production readiness
-├── development/     # Architecture, extensibility, diagnostics, and code quality
-├── frontend/        # Angular SPA, Vite, Tailwind CSS, and UI components
-├── guides/          # Getting started, migration, client libraries, and troubleshooting
-├── postman/         # Postman collection and environment files
-├── reference/       # Version management, environment config, and project reference
-├── releases/        # Release notes and announcements
-├── testing/         # Testing guides, E2E, and Postman API testing
-└── workflows/       # GitHub Actions CI/CD workflows and automation
-```
+
+## Documentation Conventions
+
+- Use Mermaid for every chart, flow, architecture diagram, and directory layout.
+- Use Markdown tables for tabular data instead of ASCII-art boxes or grid tables.
 
 ---
 

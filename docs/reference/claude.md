@@ -41,29 +41,29 @@ deno task bench            # Run performance benchmarks
 
 ## Project Structure
 
-```
-src/
-├── cli/                   # CLI implementation (ArgumentParser, ConfigurationLoader)
-├── compiler/              # Core compilation (FilterCompiler, SourceCompiler)
-├── configuration/         # Config validation (pure TypeScript, no AJV)
-├── transformations/       # 11 rule transformations (see below)
-├── downloader/            # Content fetching & preprocessing
-├── platform/              # Platform abstraction (Workers, Deno, Node.js)
-├── storage/               # Caching & health monitoring
-├── filters/               # Rule filtering utilities
-├── utils/                 # Utilities (RuleUtils, Wildcard, TldUtils, etc.)
-├── types/                 # TypeScript interfaces (IConfiguration, ISource)
-├── index.ts               # Library exports
-├── mod.ts                 # Deno module exports
-└── cli.deno.ts            # Deno CLI entry point
-
-worker/
-├── worker.ts              # Cloudflare Worker (main API handler)
-└── html.ts                # HTML templates
-
-public/                    # Static web UI assets
-examples/                  # Example filter list configurations
-docs/                      # Additional documentation
+```mermaid
+mindmap
+  root((Project structure))
+    src["src/"]
+      cli["cli/ — CLI implementation (ArgumentParser, ConfigurationLoader)"]
+      compiler["compiler/ — Core compilation (FilterCompiler, SourceCompiler)"]
+      configuration["configuration/ — Config validation (pure TypeScript, no AJV)"]
+      transformations["transformations/ — 11 rule transformations"]
+      downloader["downloader/ — Content fetching and preprocessing"]
+      platform["platform/ — Platform abstraction (Workers, Deno, Node.js)"]
+      storage["storage/ — Caching and health monitoring"]
+      filters["filters/ — Rule filtering utilities"]
+      utils["utils/ — RuleUtils, Wildcard, TldUtils, etc."]
+      types["types/ — TypeScript interfaces (IConfiguration, ISource)"]
+      indexTs["index.ts — Library exports"]
+      modTs["mod.ts — Deno module exports"]
+      cliDeno["cli.deno.ts — Deno CLI entry point"]
+    worker["worker/"]
+      workerTs["worker.ts — Cloudflare Worker (main API handler)"]
+      htmlTs["html.ts — HTML templates"]
+    public["public/ — Static web UI assets"]
+    examples["examples/ — Example filter list configurations"]
+    docs["docs/ — Additional documentation"]
 ```
 
 ## Architecture Patterns
