@@ -117,6 +117,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.62.1] - 2026-03-15
+
+### Added### Fixed
+
+- **ci**: add 3-attempt retry to database migrations step (#1093)
+
+
 ## [0.62.0] - 2026-03-15
 
 ### Added- **observability**: extensible IDiagnosticsProvider registry + Sentry CF Worker wiring
