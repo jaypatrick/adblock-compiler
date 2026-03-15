@@ -118,6 +118,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.62.2] - 2026-03-15
+
+### Added### Fixed
+
+- blank page — expand CSP for Clerk/Sentry, SPA routing fallback, harden SSR prerender guards (#1097)
+
+
 ## [0.62.1] - 2026-03-15
 
 ### Added### Fixed
