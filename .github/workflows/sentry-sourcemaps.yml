@@ -10,6 +10,8 @@ jobs:
   upload-sourcemaps:
     name: Upload Frontend Source Maps to Sentry
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     # Only run if SENTRY_ORG is configured — skip silently otherwise
     if: ${{ vars.SENTRY_ORG != '' }}
     steps:
