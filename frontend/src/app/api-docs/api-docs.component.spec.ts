@@ -107,6 +107,10 @@ describe('ApiDocsComponent', () => {
             fixture = TestBed.createComponent(ApiDocsComponent);
             component = fixture.componentInstance;
             httpTesting = TestBed.inject(HttpTestingController);
+
+            // Trigger initial change detection to mirror browser behavior and
+            // ensure SSR tests verify behavior after the first CD cycle.
+            fixture.detectChanges();
         });
 
         afterEach(() => {
