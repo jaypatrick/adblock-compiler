@@ -1,41 +1,74 @@
+# ============================================================================
+# wrangler.toml — API Worker configuration (Cloudflare production)
+# ============================================================================
+#
+# TWO ENVIRONMENTS ONLY:
+#
+#   Local dev  →  `wrangler dev`
+#                 Secrets and local overrides loaded from .dev.vars (gitignored).
+#                 Copy .dev.vars.example → .dev.vars and fill in your values.
+#                 Uses live Cloudflare resources by default; pass --local to
+#                 run KV/D1/R2 entirely on-device instead.
+#
+#   Production →  `wrangler deploy`
+#                 This file IS the production configuration.
+#                 No [env.production] block is needed.
+#
+# SECRETS — never put in this file; use `wrangler secret put` for production
+#           and .dev.vars for local dev:
+#   wrangler secret put CLERK_SECRET_KEY
+#   wrangler secret put CLERK_WEBHOOK_SECRET
+#   wrangler secret put ADMIN_KEY
+#   wrangler secret put TURNSTILE_SECRET_KEY
+#   wrangler secret put JWT_SECRET
+#   wrangler secret put CF_ACCESS_AUD
+#   wrangler secret put CORS_ALLOWED_ORIGINS
+#   wrangler secret put SENTRY_DSN
+#   wrangler secret put ANALYTICS_ACCOUNT_ID
+#   wrangler secret put ANALYTICS_API_TOKEN
+#   wrangler secret put OTEL_EXPORTER_OTLP_ENDPOINT
+# ============================================================================
+
 name = "adblock-compiler"
 main = "worker/worker.ts"
 compatibility_date = "2026-01-01"
+
 # Enable Node.js compatibility for dependencies that import Node built-ins
 # (e.g. agents and @cloudflare/playwright-mcp use async_hooks and path).
 compatibility_flags = ["nodejs_compat"]
 
-# Enable the Workers runtime
+# Expose the worker on the *.workers.dev subdomain (fine for beta; disable
+# once a custom domain is configured via a route or Workers Custom Domain).
 workers_dev = true
 
-# Enable logpush for this worker
+# Forward all worker logs to Cloudflare Logpush (production only; no-op locally).
 logpush = true
 
-# Provide a stable fallback for import.meta.url so that Node.js-compat
-# polyfills (fileURLToPath, createRequire) work in Cloudflare Workers.
-# In a bundled Worker, import.meta.url is undefined after esbuild inlines all
-# modules, which causes @prisma/client/runtime/client.mjs and the generated
-# Prisma D1 client to throw on startup. Substituting a file:// URL at bundle
-# time lets fileURLToPath succeed (returning /worker.js) and __dirname resolve
-# to "/" — harmless since the Worker never touches the file system.
+# ─── import.meta.url shim ────────────────────────────────────────────────────
+# Provides a stable fallback so that Node.js-compat polyfills
+# (fileURLToPath, createRequire) work in the bundled Worker where
+# import.meta.url is undefined after esbuild inlines all modules.
+# This lets fileURLToPath succeed (returning /worker.js) and __dirname
+# resolve to "/" — harmless since the Worker never touches the filesystem.
 [define]
 "import.meta.url" = '"file:///worker.js"'
 
-# Build configuration
-# Builds Angular frontend and generates static assets for deployment.
-# Wrangler calls this command automatically on `wrangler deploy`.
-# The script skips the build when the dist directory already exists (e.g. in
-# CI, where the frontend artifact is downloaded before wrangler runs). In local
-# dev the directory is typically absent so pnpm builds it. A dedicated script
-# is used instead of inline shell operators because wrangler's execa tokenises
-# the command string, which prevents `||` from being interpreted by the shell.
+# ─── Build ───────────────────────────────────────────────────────────────────
+# Builds the Angular frontend and generates static assets before deployment.
+# Wrangler runs this automatically on `wrangler deploy`.
+# The script skips the build when ./frontend/dist already exists (e.g. in CI
+# where the frontend artifact is downloaded before wrangler runs). A dedicated
+# script is used instead of inline shell operators because wrangler's execa
+# tokenises the command string, preventing `||` from being interpreted by the
+# shell.
 [build]
 command = "sh scripts/build-worker.sh"
 
+# ─── Browser binding (Cloudflare Browser Rendering) ─────────────────────────
 [browser]
 binding = "BROWSER"
 
-[observability]
+# ─── Observability ───────────────────────────────────────────────────────────
 [observability.logs]
 enabled = true
 head_sampling_rate = 1
@@ -47,44 +80,67 @@ enabled = true
 head_sampling_rate = 1
 persist = true
 
-# KV bindings for caching and rate limiting
+# ─── Static runtime vars (non-secret, Cloudflare-deployed only) ──────────────
+# RULE: This [vars] block is ONLY for non-secret values that must be present
+#       in the deployed Worker runtime. Do NOT add secrets here.
+#       Local dev values belong in .dev.vars (gitignored).
+#       All secrets use `wrangler secret put`.
+[vars]
+# Keep in sync with VERSION in src/version.ts. Run `deno task version:sync` to propagate.
+COMPILER_VERSION = "0.62.3"
+ENVIRONMENT = "production"
+# Clerk publishable key — not a secret; safe to commit.
+# Update to pk_live_... when you go live.
+CLERK_PUBLISHABLE_KEY = "pk_test_bWF0dXJlLWxhbXByZXktNzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
+CLERK_JWKS_URL = "https://mature-lamprey-73.accounts.dev/.well-known/jwks.json"
+
+# ─── KV Namespaces ───────────────────────────────────────────────────────────
+# `wrangler dev` binds to these live namespaces by default.
+# Use `wrangler dev --local` to run against an on-device KV store instead.
 [[kv_namespaces]]
 binding = "COMPILATION_CACHE"
-id = "7772628dc4ae46fbb145a811d2de351e"  # Create with: wrangler kv:namespace create COMPILATION_CACHE
+id = "7772628dc4ae46fbb145a811d2de351e"
 
 [[kv_namespaces]]
 binding = "RATE_LIMIT"
-id = "5dc36da36d9142cc9ced6c56328898ee"  # Create with: wrangler kv:namespace create RATE_LIMIT
+id = "5dc36da36d9142cc9ced6c56328898ee"
 
 [[kv_namespaces]]
 binding = "METRICS"
-id = "025c3f10527c46c0be559f299bdba994"  # Create with: wrangler kv:namespace create METRICS
+id = "025c3f10527c46c0be559f299bdba994"
 
-# RULES_KV: optional binding for rule-set persistence. Worker falls back to
-# COMPILATION_CACHE when unbound. To enable dedicated storage, create the
-# namespace with `wrangler kv:namespace create RULES_KV` and add a binding here.
+# RULES_KV: optional dedicated rule-set storage. Worker falls back to
+# COMPILATION_CACHE when absent. Create with:
+#   wrangler kv:namespace create RULES_KV
+# then add a [[kv_namespaces]] entry here.
 
-# R2 Storage (auto-created by CI)
+# ─── R2 Bucket ───────────────────────────────────────────────────────────────
 [[r2_buckets]]
 binding = "FILTER_STORAGE"
 bucket_name = "adblock-compiler-r2-storage"
 
-# ============================================================================
-# Cloudflare Containers — run Docker images alongside Workers.
-# ============================================================================
-# Each AdblockCompiler Durable Object manages a single Docker container.
-# Wrangler builds the image from Dockerfile.container and pushes it to
-# Cloudflare's Container Registry when you run `wrangler deploy`.
-# Requires Docker to be running locally or in CI.
-# See docs/deployment/cloudflare-containers.md for the full deployment guide.
-# See: https://developers.cloudflare.com/containers/
-[[containers]]
-class_name = "AdblockCompiler"
-image = "./Dockerfile.container"
-max_instances = 5
-instance_type = "basic"
+# ─── D1 Database ─────────────────────────────────────────────────────────────
+[[d1_databases]]
+binding = "DB"
+database_name = "adblock-compiler-d1-database"
+database_id = "3e8e7dfe-3213-452a-a671-6c18e6e74ce5"
+migrations_dir = "migrations"
 
-# Durable Objects bindings
+# ADMIN_DB — not yet provisioned; commented out intentionally.
+# Cloudflare Workers Builds validates every database_id at build time, so an
+# unprovisioned binding causes preview builds to fail.
+# To enable:
+#   1. wrangler d1 create adblock-compiler-admin-d1
+#   2. Paste the returned UUID below and uncomment.
+#   3. wrangler d1 migrations apply adblock-compiler-admin-d1 --remote
+#
+# [[d1_databases]]
+# binding = "ADMIN_DB"
+# database_name = "adblock-compiler-admin-d1"
+# database_id = "<UUID from wrangler d1 create>"
+# migrations_dir = "admin-migrations"
+
+# ─── Durable Objects ─────────────────────────────────────────────────────────
 [[durable_objects.bindings]]
 class_name = "AdblockCompiler"
 name = "ADBLOCK_COMPILER"
@@ -93,213 +149,122 @@ name = "ADBLOCK_COMPILER"
 class_name = "PlaywrightMcpAgent"
 name = "MCP_AGENT"
 
-# Database migrations - each must have a unique tag
+# ─── Containers ──────────────────────────────────────────────────────────────
+# Each AdblockCompiler Durable Object manages one Docker container.
+# Wrangler builds the image from Dockerfile.container on `wrangler deploy`.
+# Requires Docker running locally or in CI.
+# See: https://developers.cloudflare.com/containers/
+[[containers]]
+class_name = "AdblockCompiler"
+image = "./Dockerfile.container"
+max_instances = 5
+instance_type = "basic"
+
+# ─── Migrations ──────────────────────────────────────────────────────────────
 [[migrations]]
-new_sqlite_classes = ["AdblockCompiler"]
 tag = "v1"
+new_sqlite_classes = ["AdblockCompiler"]
 
 [[migrations]]
-new_sqlite_classes = ["PlaywrightMcpAgent"]
 tag = "v2"
+new_sqlite_classes = ["PlaywrightMcpAgent"]
 
-# Static runtime constants (non-secret Cloudflare-specific config)
-# ─────────────────────────────────────────────────────────────────────────────
-# RULE: This [vars] section is ONLY for static, non-secret runtime constants
-#       that are Cloudflare-specific. Do NOT add new application env vars here.
-#       All new variables belong in .env.example → .env.local (via direnv).
-#       For production secrets use `wrangler secret put`.
-# ─────────────────────────────────────────────────────────────────────────────
-[vars]
-# IMPORTANT: This version should match the VERSION constant in src/version.ts (single source of truth)
-# To update: change VERSION in src/version.ts, then run `deno task version:sync` to propagate changes
-# The worker will fall back to src/version.ts if this is not set
-COMPILER_VERSION = "0.62.3"
-ENVIRONMENT = "production"
-CLERK_PUBLISHABLE_KEY = "pk_test_bWF0dXJlLWxhbXByZXktNzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
-CLERK_JWKS_URL = "https://mature-lamprey-73.accounts.dev/.well-known/jwks.json"
-# All other runtime variables (TURNSTILE_*, CLERK_*, ADMIN_KEY, DATABASE_URL, CORS_ALLOWED_ORIGINS, etc.)
-# are managed via the direnv/.envrc system for local dev (.env.local)
-# and via `wrangler secret put` for production deployments.
-#
-# Observability secrets (all optional — worker degrades gracefully when absent):
-#   wrangler secret put SENTRY_DSN               # Sentry error tracking + perf tracing
-#   wrangler secret put ANALYTICS_ACCOUNT_ID     # Cloudflare Analytics Engine (Prometheus)
-#   wrangler secret put ANALYTICS_API_TOKEN      # Cloudflare Analytics Engine (Prometheus)
-#   wrangler secret put OTEL_EXPORTER_OTLP_ENDPOINT  # OpenTelemetry traces export (e.g. Grafana Cloud)
-
-[[d1_databases]]
-binding = "DB"
-database_name = "adblock-compiler-d1-database"
-database_id = "3e8e7dfe-3213-452a-a671-6c18e6e74ce5"
-migrations_dir = "migrations"
-
-# Admin configuration database (ADMIN_DB) — NOT YET PROVISIONED
-# ─────────────────────────────────────────────────────────────────────────────
-# The ADMIN_DB D1 database binding is intentionally commented out until the
-# database is created in the Cloudflare account.  The Cloudflare Workers Builds
-# integration validates that every database_id in wrangler.toml exists in the
-# account; an unprovisioned binding causes the preview build to fail instantly.
-#
-# To enable ADMIN_DB:
-#   1.  wrangler d1 create adblock-compiler-admin-d1
-#   2.  Copy the "database_id" UUID from the command output.
-#   3.  Un-comment the [[d1_databases]] block below and paste the UUID.
-#   4.  Run migrations: wrangler d1 migrations apply adblock-compiler-admin-d1 --remote
-#
-# The worker code treats ADMIN_DB as optional (Env.ADMIN_DB?: D1Database) so
-# all existing functionality works without this binding.
-#
-# [[d1_databases]]
-# binding = "ADMIN_DB"
-# database_name = "adblock-compiler-admin-d1"
-# database_id = "<UUID from wrangler d1 create adblock-compiler-admin-d1>"
-# migrations_dir = "admin-migrations"
-
-# Static assets — served from the Angular production build output.
-# Run `npm --prefix frontend run build` to generate assets before deploying.
-# For local dev: `npm --prefix frontend start` for Angular dev server.
+# ─── Static assets ───────────────────────────────────────────────────────────
+# Served from the Angular production build output at the CDN edge.
+# For local dev, run `npm --prefix frontend start` for the Angular dev server,
+# or `wrangler dev` to serve the pre-built dist output.
 [assets]
 directory = "./frontend/dist/adblock-compiler/browser"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
-# SPA fallback: serve root index.html for any path that doesn't match a static file.
-# Required for Angular's client-side router — /compiler, /performance, /validation,
-# /api-docs, and /admin are all handled by Angular, not by physical HTML files.
+# SPA fallback: any path not matching a static file gets index.html so
+# Angular's client-side router can handle /compiler, /performance, etc.
 not_found_handling = "single-page-application"
 
-# Tail Workers - uncomment after creating the tail worker service
+# ─── Tail Workers ────────────────────────────────────────────────────────────
+# Deploy wrangler.tail.toml first; the tail worker must exist in your account
+# before this binding can be registered.
 [[tail_consumers]]
 service = "adblock-compiler-tail"
 
-# Queues - commented out until queues are created in Cloudflare dashboard
-# To enable queues, first create them in Cloudflare dashboard or run:
+# ─── Queues ──────────────────────────────────────────────────────────────────
+# Create queues before deploying:
 #   wrangler queues create adblock-compiler-worker-queue
 #   wrangler queues create adblock-compiler-worker-queue-high-priority
 #   wrangler queues create adblock-compiler-dlq
-#
 [[queues.producers]]
 queue = "adblock-compiler-worker-queue"
 binding = "ADBLOCK_COMPILER_QUEUE"
-#
+
 [[queues.producers]]
 queue = "adblock-compiler-worker-queue-high-priority"
 binding = "ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY"
-#
+
 [[queues.consumers]]
 queue = "adblock-compiler-worker-queue"
 max_batch_size = 10
 max_batch_timeout = 5
 dead_letter_queue = "adblock-compiler-dlq"
-#
+
 [[queues.consumers]]
 queue = "adblock-compiler-worker-queue-high-priority"
 max_batch_size = 5
 max_batch_timeout = 2
 dead_letter_queue = "adblock-compiler-dlq"
 
-# Development settings
-# Environment variables are loaded from .env via .envrc
-[dev]
-port = 8787
-local_protocol = "http"
-enable_containers = false  # Containers not supported on Windows - use WSL or deploy to test
-
-# Development environment (dev/develop branches only — not deployed to production)
-# Use `wrangler dev --env development` for local testing against these overrides.
-[env.development]
-vars = { ENVIRONMENT = "development" }
-# KV namespaces for development
-[[env.development.kv_namespaces]]
-binding = "COMPILATION_CACHE"
-id = "7772628dc4ae46fbb145a811d2de351e"
-
-[[env.development.kv_namespaces]]
-binding = "RATE_LIMIT"
-id = "5dc36da36d9142cc9ced6c56328898ee"
-
-[[env.development.kv_namespaces]]
-binding = "METRICS"
-id = "025c3f10527c46c0be559f299bdba994"
-
-# RULES_KV development binding: add here once namespace is created.
-# Example: [[env.development.kv_namespaces]]
-#          binding = "RULES_KV"
-#          id = "<preview-namespace-id>"
-
-# Analytics Engine - uncomment after enabling in Cloudflare dashboard
+# ─── Analytics Engine ────────────────────────────────────────────────────────
 [[analytics_engine_datasets]]
 binding = "ANALYTICS_ENGINE"
 dataset = "adguard-compiler-analytics-engine"
 
-# ============================================================================
-# Cloudflare Pipelines — HTTP event ingestion for metrics and audit logs
-# ============================================================================
-# Pipelines provide scalable, batched ingestion of structured events.
-# Use for metrics aggregation, audit log ingestion, and analytics forwarding.
-# Created with:
-#   wrangler pipelines streams create adblock_compiler_metrics_stream
-#   wrangler pipelines sinks create adblock_compiler_metrics_sink --type r2 --bucket adblock-compiler-r2-storage --format json --path metrics/ --roll-interval 300
-#   wrangler pipelines create adblock_compiler_metrics_pipeline --sql "INSERT INTO adblock_compiler_metrics_sink SELECT value FROM adblock_compiler_metrics_stream"
+# ─── Pipelines ───────────────────────────────────────────────────────────────
+# Scalable, batched ingestion of structured events into R2.
 # See: https://developers.cloudflare.com/pipelines/
 [[pipelines]]
 binding = "METRICS_PIPELINE"
 pipeline = "c846e37117874905a94b1ef9da2e138e"
 
-# ============================================================================
-# Cloudflare Workflows - Durable execution for async operations
-# ============================================================================
-# Workflows provide crash-resistant, automatically resumable execution
-# with built-in retry logic and step-by-step checkpointing.
-#
-# Benefits over queue-based processing:
-# - Automatic state persistence between steps
-# - Crash recovery - resumes from last successful step
-# - Built-in retry with configurable policies
-# - Observable step-by-step progress
-# - Reliable scheduled execution with cron triggers
-
-# Compilation Workflow - Handles single async compilations with durability
+# ─── Workflows ───────────────────────────────────────────────────────────────
 [[workflows]]
 name = "compilation-workflow"
 binding = "COMPILATION_WORKFLOW"
 class_name = "CompilationWorkflow"
 
-# Batch Compilation Workflow - Handles batch compilations with per-item recovery
 [[workflows]]
 name = "batch-compilation-workflow"
 binding = "BATCH_COMPILATION_WORKFLOW"
 class_name = "BatchCompilationWorkflow"
 
-# Cache Warming Workflow - Pre-populates cache on schedule
 [[workflows]]
 name = "cache-warming-workflow"
 binding = "CACHE_WARMING_WORKFLOW"
 class_name = "CacheWarmingWorkflow"
 
-# Health Monitoring Workflow - Monitors source health on schedule
 [[workflows]]
 name = "health-monitoring-workflow"
 binding = "HEALTH_MONITORING_WORKFLOW"
 class_name = "HealthMonitoringWorkflow"
 
-# Hyperdrive configuration — PlanetScale PostgreSQL (production)
-# Production connection string is configured via `wrangler hyperdrive update`.
-# Local dev uses localConnectionString which points to a local PostgreSQL instance.
-# See docs/database-setup/local-dev.md for setup instructions.
+# ─── Hyperdrive ──────────────────────────────────────────────────────────────
+# Production connection string is set via `wrangler hyperdrive update`.
+# For local dev, set the connection string in .dev.vars (gitignored):
+#   WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev
+# Do NOT put credentials in localConnectionString here.
 [[hyperdrive]]
 binding = "HYPERDRIVE"
 id = "126a652809674e4abc722e9777ee4140"
-localConnectionString = "postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev"
 
-# ============================================================================
-# Cron Triggers for Scheduled Workflows
-# ============================================================================
-# Cron triggers automatically invoke workflows on schedule
-
+# ─── Cron Triggers ───────────────────────────────────────────────────────────
 [triggers]
-# Cache warming every 6 hours
-# Health monitoring every hour
 crons = [
-    "0 */6 * * *",   # Cache warming: At minute 0 past every 6th hour
-    "0 * * * *",     # Health monitoring: At minute 0 past every hour
+    "0 */6 * * *",  # Cache warming: every 6 hours
+    "0 * * * *",    # Health monitoring: every hour
 ]
+
+# ─── Local dev server ────────────────────────────────────────────────────────
+# These settings apply ONLY to `wrangler dev`. Ignored on `wrangler deploy`.
+[dev]
+port = 8787
+local_protocol = "http"
+# Containers require Linux/WSL — disable for Windows local dev.
+enable_containers = false
