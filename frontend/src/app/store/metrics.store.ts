@@ -9,7 +9,8 @@
  * Angular 21 patterns: signal(), computed(), Injectable, inject()
  */
 
-import { Injectable, inject, computed, type Signal } from '@angular/core';
+import { Injectable, inject, computed, signal, PLATFORM_ID, type Signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { MetricsService, type MetricsResponse, type HealthResponse } from '../services/metrics.service';
 import { QueueService, type QueueStats } from '../services/queue.service';
@@ -63,23 +64,37 @@ export class MetricsStore {
     readonly isStale: Signal<boolean>;
 
     constructor() {
-        this.metricsSwr = this.swrCache.get<ExtendedMetricsResponse>(
-            'metrics',
-            () => firstValueFrom(this.metricsService.getMetrics()) as Promise<ExtendedMetricsResponse>,
-            30_000,
-        );
+        if (isPlatformBrowser(inject(PLATFORM_ID))) {
+            this.metricsSwr = this.swrCache.get<ExtendedMetricsResponse>(
+                'metrics',
+                () => firstValueFrom(this.metricsService.getMetrics()) as Promise<ExtendedMetricsResponse>,
+                30_000,
+            );
 
-        this.healthSwr = this.swrCache.get<ExtendedHealthResponse>(
-            'health',
-            () => firstValueFrom(this.metricsService.getHealth()) as Promise<ExtendedHealthResponse>,
-            30_000,
-        );
+            this.healthSwr = this.swrCache.get<ExtendedHealthResponse>(
+                'health',
+                () => firstValueFrom(this.metricsService.getHealth()) as Promise<ExtendedHealthResponse>,
+                30_000,
+            );
 
-        this.queueSwr = this.swrCache.get<QueueStats>(
-            'queueStats',
-            () => firstValueFrom(this.queueService.getStats()),
-            15_000,
-        );
+            this.queueSwr = this.swrCache.get<QueueStats>(
+                'queueStats',
+                () => firstValueFrom(this.queueService.getStats()),
+                15_000,
+            );
+        } else {
+            // SSR / prerender: no HTTP calls — provide inert stubs so Angular
+            // can complete the prerender without hitting ng-localhost endpoints.
+            const noop = <T>(): SwrEntry<T> => ({
+                data: signal<T | undefined>(undefined).asReadonly(),
+                isRevalidating: signal(false).asReadonly(),
+                isStale: computed(() => false),
+                revalidate: () => {},
+            });
+            this.metricsSwr = noop<ExtendedMetricsResponse>();
+            this.healthSwr = noop<ExtendedHealthResponse>();
+            this.queueSwr = noop<QueueStats>();
+        }
 
         this.metrics = this.metricsSwr.data;
         this.health = this.healthSwr.data;
