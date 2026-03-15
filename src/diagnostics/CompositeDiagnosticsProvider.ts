@@ -189,8 +189,12 @@ export class CompositeDiagnosticsProvider implements IDiagnosticsProvider {
     }
 
     async flush(): Promise<void> {
-        // allSettled ensures a slow or failing provider never blocks the others
-        await Promise.allSettled(this.providers.map((p) => p.flush()));
+        // allSettled ensures a slow or failing provider never blocks the others.
+        // Wrap each call in Promise.resolve().catch() to also guard against
+        // synchronous throws from custom provider implementations.
+        await Promise.allSettled(
+            this.providers.map((p) => Promise.resolve().then(() => p.flush()).catch(() => {})),
+        );
     }
 
     /** Returns the number of registered child providers. */

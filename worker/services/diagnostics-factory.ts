@@ -110,7 +110,7 @@ registerDiagnosticsProvider((env) => {
     if (!env.SENTRY_DSN) return null;
     return new SentryDiagnosticsProvider({
         dsn: env.SENTRY_DSN,
-        release: env.COMPILER_VERSION,
+        release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
         environment: 'production',
     });
 });
@@ -151,8 +151,14 @@ export function createDiagnosticsProvider(
             if (provider !== null) {
                 providers.push(provider);
             }
-        } catch {
-            // A misconfigured builder must never crash the worker
+        } catch (err) {
+            // A misconfigured builder must never crash the worker, but operators
+            // should know about it so they can fix misconfigured custom providers.
+            // deno-lint-ignore no-console
+            console.warn(
+                `[diagnostics-factory] Provider builder at index ${_providerBuilders.indexOf(builder)} threw during initialization:`,
+                err instanceof Error ? err.message : String(err),
+            );
         }
     }
 
