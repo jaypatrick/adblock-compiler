@@ -9,7 +9,7 @@
  * Angular 21 patterns: signal(), computed(), Injectable, inject()
  */
 
-import { Injectable, inject, computed, signal, PLATFORM_ID, type Signal } from '@angular/core';
+import { Injectable, inject, computed, signal, PLATFORM_ID, REQUEST, type Signal } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { firstValueFrom } from 'rxjs';
 import { MetricsService, type MetricsResponse, type HealthResponse } from '../services/metrics.service';
@@ -64,7 +64,14 @@ export class MetricsStore {
     readonly isStale: Signal<boolean>;
 
     constructor() {
-        if (isPlatformBrowser(inject(PLATFORM_ID))) {
+        const platformId = inject(PLATFORM_ID);
+        const request = inject(REQUEST, { optional: true });
+        // Suppress HTTP fetches only during build-time prerender (server context
+        // with no REQUEST token).  Per-request SSR routes (RenderMode.Server)
+        // provide REQUEST and can still prefetch metrics normally.
+        const isPrerender = !isPlatformBrowser(platformId) && !request;
+
+        if (!isPrerender) {
             this.metricsSwr = this.swrCache.get<ExtendedMetricsResponse>(
                 'metrics',
                 () => firstValueFrom(this.metricsService.getMetrics()) as Promise<ExtendedMetricsResponse>,
@@ -83,8 +90,9 @@ export class MetricsStore {
                 15_000,
             );
         } else {
-            // SSR / prerender: no HTTP calls — provide inert stubs so Angular
-            // can complete the prerender without hitting ng-localhost endpoints.
+            // Build-time prerender: no REQUEST token means ng-localhost is
+            // unreachable.  Assign inert noop stubs so Angular can complete
+            // the prerender without network calls.
             const noop = <T>(): SwrEntry<T> => ({
                 data: signal<T | undefined>(undefined).asReadonly(),
                 isRevalidating: signal(false).asReadonly(),
