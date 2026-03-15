@@ -2,12 +2,14 @@
 # See: https://developers.cloudflare.com/workers/static-assets/headers/
 #
 # Strategy:
-#   Content-hashed assets (JS chunks, fonts, images in /media/) are safe to
+#   Content-hashed assets (JS/CSS chunks, fonts, images in /media/) are safe to
 #   cache forever because their filenames change whenever the content changes.
 #   Use `immutable` to skip conditional revalidation on repeat visits.
 #
-#   index.html and other unhashed entry points must always revalidate so users
-#   pick up new deployments immediately.
+#   index.html and other unhashed entry points (e.g. /assets/endpoint-registry.json)
+#   must always revalidate so users pick up new deployments immediately.
+#   /assets/* is intentionally omitted — it contains runtime JSON that is NOT
+#   content-hashed and must not be cached immutably.
 
 /media/*
   Cache-Control: public, max-age=31536000, immutable
@@ -15,5 +17,5 @@
 /*.js
   Cache-Control: public, max-age=31536000, immutable
 
-/assets/*
+/*.css
   Cache-Control: public, max-age=31536000, immutable
