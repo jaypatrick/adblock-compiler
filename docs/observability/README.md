@@ -11,6 +11,7 @@ edge-level Cloudflare native tools to application-level error tracking with Sent
 | [Cloudflare Native Observability](./CLOUDFLARE_OBSERVABILITY.md) | Workers Logs, Traces, Analytics Engine, Tail Worker, Logpush |
 | [Prometheus Metrics](./PROMETHEUS.md) | `/metrics/prometheus` scrape endpoint, Analytics Engine SQL queries, Grafana |
 | [Logpush → R2](./LOGPUSH.md) | Long-term log retention via Cloudflare Logpush to R2 (Phase 1c) |
+| [Custom Providers](./PROVIDERS.md) | How to add a custom `IDiagnosticsProvider` backend via `registerDiagnosticsProvider()` |
 
 ## Observability layers
 
@@ -34,6 +35,7 @@ flowchart TD
 |----------|-------|----------|---------|
 | `SENTRY_DSN` | Worker + Tail + Frontend RUM | Optional | `wrangler secret put SENTRY_DSN` |
 | `SENTRY_RELEASE` | Worker (deploy-time var) | Optional (source map linking) | `wrangler deploy --var SENTRY_RELEASE:$(git rev-parse HEAD)` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | Worker | Optional (OpenTelemetry traces) | `wrangler secret put OTEL_EXPORTER_OTLP_ENDPOINT` |
 | `ANALYTICS_ACCOUNT_ID` | Worker | Optional (Prometheus) | `wrangler secret put ANALYTICS_ACCOUNT_ID` |
 | `ANALYTICS_API_TOKEN` | Worker | Optional (Prometheus) | `wrangler secret put ANALYTICS_API_TOKEN` |
 | `SLACK_WEBHOOK_URL` | Tail Worker | Optional | `wrangler secret put SLACK_WEBHOOK_URL` (tail worker) |

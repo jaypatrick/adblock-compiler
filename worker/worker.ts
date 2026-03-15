@@ -72,6 +72,7 @@ import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdate
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleSentryConfig } from './handlers/sentry-config.ts';
 import { createDiagnosticsProvider } from './services/diagnostics-factory.ts';
+import { withSentryWorker } from './services/sentry-init.ts';
 import { verifyCfAccessJwt } from './middleware/cf-access.ts';
 
 // Import Workflow classes and types
@@ -2975,7 +2976,7 @@ async function handleHealthLatest(env: Env): Promise<Response> {
 /**
  * Main fetch handler for the Cloudflare Worker.
  */
-export default {
+const workerHandler: ExportedHandler<Env> = {
     async fetch(request: Request, env: Env): Promise<Response> {
         const url = new URL(request.url);
         const { pathname } = url;
@@ -4056,6 +4057,13 @@ export default {
         }
     },
 };
+
+// Wrap with Sentry error tracking. When SENTRY_DSN is not set the original
+// handler is returned unchanged — zero overhead in local development.
+export default withSentryWorker(workerHandler, (env) => ({
+    dsn: env.SENTRY_DSN,
+    release: env.COMPILER_VERSION,
+}));
 
 // ============================================================================
 // Export Workflow classes for Cloudflare Workers runtime

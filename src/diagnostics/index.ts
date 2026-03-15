@@ -36,6 +36,7 @@ export { DiagnosticsCollector, NoOpDiagnosticsCollector } from './DiagnosticsCol
 export { createChildContext, createNoOpContext, createTracingContext, getOrCreateContext, traceAsync, traced, tracedAsync, traceSync } from './TracingContext.ts';
 export { createOpenTelemetryExporter, OpenTelemetryExporter, type OpenTelemetryExporterOptions } from './OpenTelemetryExporter.ts';
 export type { IDiagnosticsProvider, ISpan } from './IDiagnosticsProvider.ts';
+export type { DiagnosticsBreadcrumb, DiagnosticsLevel, DiagnosticsUser } from './IDiagnosticsProvider.ts';
 export { ConsoleDiagnosticsProvider, NoOpDiagnosticsProvider } from './IDiagnosticsProvider.ts';
 export { SentryDiagnosticsProvider } from './SentryDiagnosticsProvider.ts';
 export type { SentryDiagnosticsProviderOptions } from './SentryDiagnosticsProvider.ts';

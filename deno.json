@@ -96,6 +96,7 @@
         "prisma": "npm:prisma@^7.5.0",
         "@opentelemetry/api": "jsr:@opentelemetry/api@^1.9.0",
         "jose": "jsr:@panva/jose@^6.2.1",
+        "@sentry/cloudflare": "npm:@sentry/cloudflare@^10.43.0",
         "svix": "npm:svix@^1.62.0",
         "zod": "jsr:@zod/zod@^4.3.6"
     },

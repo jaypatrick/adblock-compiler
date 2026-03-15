@@ -14,37 +14,77 @@
  *     new OpenTelemetryDiagnosticsProvider({ serviceName: 'adblock-compiler' }),
  * ]);
  *
- * // All three calls are forwarded to every child provider
  * composite.captureError(new Error('oops'));
  * const span = composite.startSpan('compile');
  * composite.recordMetric('rule_count', 5000);
+ * await composite.flush();
  * ```
  */
 
-import type { IDiagnosticsProvider, ISpan } from './IDiagnosticsProvider.ts';
+import type { DiagnosticsBreadcrumb, DiagnosticsLevel, DiagnosticsUser, IDiagnosticsProvider, ISpan } from './IDiagnosticsProvider.ts';
 
 // ---------------------------------------------------------------------------
 // CompositeSpan — delegates ISpan calls to all child spans
 // ---------------------------------------------------------------------------
+
+const NOOP_SPAN: ISpan = {
+    end: () => {},
+    setAttribute: () => {},
+    setAttributes: () => {},
+    recordException: () => {},
+    addEvent: () => {},
+};
 
 class CompositeSpan implements ISpan {
     constructor(private readonly spans: ISpan[]) {}
 
     end(): void {
         for (const span of this.spans) {
-            span.end();
+            try {
+                span.end();
+            } catch {
+                // Never let a child span failure propagate
+            }
         }
     }
 
     setAttribute(key: string, value: string | number | boolean): void {
         for (const span of this.spans) {
-            span.setAttribute(key, value);
+            try {
+                span.setAttribute(key, value);
+            } catch {
+                // swallow
+            }
+        }
+    }
+
+    setAttributes(attributes: Record<string, string | number | boolean>): void {
+        for (const span of this.spans) {
+            try {
+                span.setAttributes(attributes);
+            } catch {
+                // swallow
+            }
         }
     }
 
     recordException(error: Error): void {
         for (const span of this.spans) {
-            span.recordException(error);
+            try {
+                span.recordException(error);
+            } catch {
+                // swallow
+            }
+        }
+    }
+
+    addEvent(name: string, attributes?: Record<string, string | number | boolean>): void {
+        for (const span of this.spans) {
+            try {
+                span.addEvent(name, attributes);
+            } catch {
+                // swallow
+            }
         }
     }
 }
@@ -54,23 +94,20 @@ class CompositeSpan implements ISpan {
 // ---------------------------------------------------------------------------
 
 /**
- * Fans out every `captureError`, `startSpan`, and `recordMetric` call to all
- * registered child providers.
+ * Fans out every call to all registered child providers.
  *
- * - Errors thrown by any child provider are swallowed so they cannot
- *   interfere with each other or with application logic.
- * - A `CompositeDiagnosticsProvider` can itself be nested inside another
- *   `CompositeDiagnosticsProvider` for hierarchical routing.
- * - Providers that report to the same backend (e.g., two Sentry instances)
- *   will both receive the event — avoid duplicates by selecting backends
- *   carefully.
+ * - Errors thrown by any child are swallowed so they cannot interfere with
+ *   each other or with application logic.
+ * - A CompositeDiagnosticsProvider can itself be nested inside another for
+ *   hierarchical routing.
+ * - flush() uses Promise.allSettled() so one slow backend never blocks others.
  */
 export class CompositeDiagnosticsProvider implements IDiagnosticsProvider {
     private readonly providers: ReadonlyArray<IDiagnosticsProvider>;
 
     /**
      * @param providers - One or more providers to fan out to.
-     *   Passing zero providers is valid and equivalent to `NoOpDiagnosticsProvider`.
+     *   Passing zero providers is valid and equivalent to NoOpDiagnosticsProvider.
      */
     constructor(providers: IDiagnosticsProvider[]) {
         this.providers = providers;
@@ -86,13 +123,26 @@ export class CompositeDiagnosticsProvider implements IDiagnosticsProvider {
         }
     }
 
+    captureMessage(
+        message: string,
+        level?: DiagnosticsLevel,
+        context?: Record<string, unknown>,
+    ): void {
+        for (const provider of this.providers) {
+            try {
+                provider.captureMessage(message, level, context);
+            } catch {
+                // swallow
+            }
+        }
+    }
+
     startSpan(name: string, attributes?: Record<string, string | number>): ISpan {
         const childSpans = this.providers.map((provider) => {
             try {
                 return provider.startSpan(name, attributes);
             } catch {
-                // If a provider fails to create a span, use a no-op span
-                return { end: () => {}, setAttribute: () => {}, recordException: () => {} } as ISpan;
+                return NOOP_SPAN;
             }
         });
         return new CompositeSpan(childSpans);
@@ -103,9 +153,44 @@ export class CompositeDiagnosticsProvider implements IDiagnosticsProvider {
             try {
                 provider.recordMetric(name, value, tags);
             } catch {
-                // Never let a child provider failure propagate
+                // swallow
             }
         }
+    }
+
+    setUser(user: DiagnosticsUser): void {
+        for (const provider of this.providers) {
+            try {
+                provider.setUser(user);
+            } catch {
+                // swallow
+            }
+        }
+    }
+
+    setContext(name: string, context: Record<string, unknown>): void {
+        for (const provider of this.providers) {
+            try {
+                provider.setContext(name, context);
+            } catch {
+                // swallow
+            }
+        }
+    }
+
+    addBreadcrumb(breadcrumb: DiagnosticsBreadcrumb): void {
+        for (const provider of this.providers) {
+            try {
+                provider.addBreadcrumb(breadcrumb);
+            } catch {
+                // swallow
+            }
+        }
+    }
+
+    async flush(): Promise<void> {
+        // allSettled ensures a slow or failing provider never blocks the others
+        await Promise.allSettled(this.providers.map((p) => p.flush()));
     }
 
     /** Returns the number of registered child providers. */

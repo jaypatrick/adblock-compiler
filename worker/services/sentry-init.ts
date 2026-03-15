@@ -59,33 +59,16 @@ export function withSentryWorker<T extends ExportedHandler<Env>>(
                 return handler.fetch!(request, env, ctx);
             }
 
-            // TODO(#sentry-cf): Uncomment once @sentry/cloudflare is installed:
-            // const Sentry = await import('@sentry/cloudflare');
-            // return Sentry.withSentry(
-            //     () => ({
-            //         dsn: config.dsn!,
-            //         release: config.release,
-            //         environment: config.environment ?? 'production',
-            //         tracesSampleRate: config.tracesSampleRate ?? 0.1,
-            //     }),
-            //     handler,
-            // ).fetch(request, env, ctx);
-
-            // Fallback: manual try/catch until @sentry/cloudflare is installed
-            try {
-                return await handler.fetch!(request, env, ctx);
-            } catch (error) {
-                // deno-lint-ignore no-console
-                console.error(JSON.stringify({
-                    level: 'error',
-                    message: 'Unhandled worker exception',
-                    error: error instanceof Error ? error.message : String(error),
-                    stack: error instanceof Error ? error.stack : undefined,
-                    url: request.url,
-                    method: request.method,
-                }));
-                throw error;
-            }
+            const Sentry = await import('@sentry/cloudflare');
+            return Sentry.withSentry(
+                () => ({
+                    dsn: config.dsn!,
+                    release: config.release,
+                    environment: config.environment ?? 'production',
+                    tracesSampleRate: config.tracesSampleRate ?? 0.1,
+                }),
+                handler,
+            ).fetch!(request, env, ctx);
         },
     } as T;
 }
