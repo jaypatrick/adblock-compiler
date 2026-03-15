@@ -268,7 +268,9 @@ Deno.test('CompositeDiagnosticsProvider — captureMessage forwards to all provi
 Deno.test('CompositeDiagnosticsProvider — captureMessage swallows child exceptions', () => {
     const throwing: IDiagnosticsProvider = {
         captureError: () => {},
-        captureMessage: () => { throw new Error('msg exploded'); },
+        captureMessage: () => {
+            throw new Error('msg exploded');
+        },
         startSpan: () => ({ end: () => {}, setAttribute: () => {}, setAttributes: () => {}, recordException: () => {}, addEvent: () => {} }),
         recordMetric: () => {},
         setUser: () => {},
@@ -305,7 +307,9 @@ Deno.test('CompositeDiagnosticsProvider — setUser swallows child exceptions', 
         captureMessage: () => {},
         startSpan: () => ({ end: () => {}, setAttribute: () => {}, setAttributes: () => {}, recordException: () => {}, addEvent: () => {} }),
         recordMetric: () => {},
-        setUser: () => { throw new Error('setUser exploded'); },
+        setUser: () => {
+            throw new Error('setUser exploded');
+        },
         setContext: () => {},
         addBreadcrumb: () => {},
         flush: async () => {},
@@ -364,7 +368,9 @@ Deno.test('CompositeDiagnosticsProvider — flush continues if one provider thro
         setUser: () => {},
         setContext: () => {},
         addBreadcrumb: () => {},
-        flush: () => { throw new Error('flush exploded synchronously'); },
+        flush: () => {
+            throw new Error('flush exploded synchronously');
+        },
     };
     const spy = makeSpyProvider();
     const composite = new CompositeDiagnosticsProvider([synchronouslyThrowing, spy]);
