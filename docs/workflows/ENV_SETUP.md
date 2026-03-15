@@ -85,16 +85,12 @@ files or this action. Use GitHub Secrets → Worker Secrets for those.
 
 ## Setting Production Secrets
 
-For production deployments, set secrets in GitHub repository settings:
+Two distinct secret stores are used — keep them separate:
 
-```yaml
-env:
-  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-  ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
-  TURNSTILE_SECRET_KEY: ${{ secrets.TURNSTILE_SECRET_KEY }}
-```
+- **GitHub Secrets** (repository settings) — CI/CD tooling only: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`
+- **Cloudflare Worker Secrets** (`wrangler secret put`) — Worker runtime: `CLERK_SECRET_KEY`, `TURNSTILE_SECRET_KEY`, `ADMIN_KEY`, etc.
 
-Required GitHub Secrets for production (shell/CI tooling only):
+Required GitHub Secrets for CI/CD (shell tooling only):
 
 - `CLOUDFLARE_API_TOKEN` — Cloudflare API token for `wrangler deploy`
 - `CLOUDFLARE_ACCOUNT_ID` — Cloudflare account ID
@@ -125,9 +121,8 @@ jobs:
             wrangler deploy --env development
           fi
         env:
-          # Production secrets override file-based config
+          # CI tooling secrets only — Worker runtime secrets are managed via wrangler secret put
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          ADMIN_KEY: ${{ secrets.ADMIN_KEY }}
 ```
 
 ## Comparison: Local vs CI
