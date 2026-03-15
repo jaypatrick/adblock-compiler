@@ -37,11 +37,11 @@ The backend worker is the **compilation engine**. It:
 
 ```mermaid
 mindmap
-  root((adblock-compiler-frontend))
-    frontend["frontend/"]
-      src["src/ — Angular 21 application source"]
-      server["server.ts — Cloudflare Workers fetch handler (AngularAppEngine)"]
-      wrangler["wrangler.toml — deployment configuration (name = adblock-compiler-frontend)"]
+  root((adblock-compiler-backend))
+    worker["worker/"]
+      workerTs["worker.ts — Cloudflare Workers fetch handler"]
+    src["src/ — core compilation logic"]
+    wrangler["wrangler.toml — deployment configuration (name = adblock-compiler-backend)"]
 ```
 
 ### Key Bindings

@@ -45,14 +45,9 @@ Every deployment is assigned a unique version identifier that includes:
 ```mermaid
 flowchart TD
     trigger["1. CI/CD trigger (push to main)"] --> migrations["2. Run database migrations"]
-    migrations --> version["3. Generate deployment version
-- Query D1 for last build number
-- Increment build number
-- Create full version string"]
+    migrations --> version["3. Generate deployment version<br/>- Query D1 for last build number<br/>- Increment build number<br/>- Create full version string"]
     version --> deploy["4. Deploy worker"]
-    deploy --> record["5. Record deployment on success
-- Insert deployment record into D1
-- Include git metadata, timestamps, etc."]
+    deploy --> record["5. Record deployment on success<br/>- Insert deployment record into D1<br/>- Include git metadata, timestamps, etc."]
 ```
 
 ### Version Format

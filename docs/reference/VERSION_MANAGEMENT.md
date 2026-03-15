@@ -113,8 +113,7 @@ Or use the GitHub Actions workflow: Actions → Version Bump → Run workflow
 
 ```mermaid
 flowchart TD
-    version["src/version.ts
-(VERSION = 0.12.0)"] --> workerMain["worker/worker.ts"]
+    version["src/version.ts<br/>(VERSION = 0.12.0)"] --> workerMain["worker/worker.ts"]
     workerMain --> api["API endpoints (/api, /api/version)"]
     api --> publicIndex["public/index.html -> loadVersion()"]
     api --> publicCompiler["public/compiler.html -> fetchCompilerVersion()"]

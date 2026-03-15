@@ -15,8 +15,7 @@ edge-level Cloudflare native tools to application-level error tracking with Sent
 
 ```mermaid
 flowchart TD
-    request["Inbound request"] --> edge["Cloudflare Edge
-WAF • Rate Limiting • Turnstile • Bot Score"]
+    request["Inbound request"] --> edge["Cloudflare Edge<br/>WAF • Rate Limiting • Turnstile • Bot Score"]
     edge --> worker["Cloudflare Worker"]
     worker --> sentry["withSentryWorker() -> Sentry (error tracking)"]
     worker --> analytics["AnalyticsService -> Analytics Engine (metrics)"]

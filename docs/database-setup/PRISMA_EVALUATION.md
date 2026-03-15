@@ -48,8 +48,7 @@ The project uses **Prisma ORM with SQLite** as the default storage backend:
 
 ```mermaid
 flowchart TD
-    adapter["PrismaStorageAdapter
-(SQLite / PostgreSQL / MySQL)"] --> caching["CachingDownloader"]
+    adapter["PrismaStorageAdapter<br/>(SQLite / PostgreSQL / MySQL)"] --> caching["CachingDownloader"]
     caching --> detector["ChangeDetector"]
     caching --> health["SourceHealthMonitor"]
     adapter --> incremental["IncrementalCompiler"]

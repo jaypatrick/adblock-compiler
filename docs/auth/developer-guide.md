@@ -357,9 +357,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    prefix["abc_
-Prefix identifies token type"] --> random["<32-random-bytes-base64url>
-Random body"]
+    prefix["abc_<br/>Prefix identifies token type"] --> random["<32-random-bytes-base64url><br/>Random body"]
 ```
 
 - **Total length**: ~47 characters

@@ -24,8 +24,7 @@ flowchart TD
     worker --> r2["R2 — blobs"]
     worker --> kv["KV — cache"]
     worker --> queue["Queue — async"]
-    hyperdrive --> planetscale["PlanetScale PostgreSQL
-(source of truth)"]
+    hyperdrive --> planetscale["PlanetScale PostgreSQL<br/>(source of truth)"]
 ```
 
 ### Storage Tiers
