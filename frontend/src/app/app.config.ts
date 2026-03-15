@@ -90,9 +90,13 @@ export const appConfig: ApplicationConfig = {
         // still allows the app to boot with Turnstile simply disabled.
         provideAppInitializer(async () => {
             inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
-            inject(ThemeService).loadPreferences();
 
+            // isPlatformBrowser check MUST come before any call that touches browser-only
+            // APIs (localStorage, fetch, Clerk, Sentry). ThemeService.loadPreferences()
+            // reads localStorage and must only run in the browser.
             if (!isPlatformBrowser(inject(PLATFORM_ID))) return;
+
+            inject(ThemeService).loadPreferences();
 
             const http = inject(HttpClient);
             const turnstileService = inject(TurnstileService);

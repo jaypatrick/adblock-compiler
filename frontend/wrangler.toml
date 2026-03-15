@@ -32,3 +32,29 @@ compatibility_flags = ["nodejs_compat"]
 [assets]
 directory = "dist/adblock-compiler/browser"
 binding = "ASSETS"
+# Enables SPA fallback routing: unknown paths (e.g. deep-linking to /compiler)
+# are served the root index.html so Angular's client-side router can handle them
+# instead of returning a 404 from the CDN edge.
+not_found_handling = "single-page-application"
+
+# ---------------------------------------------------------------------------
+# Required Worker Secrets
+# ---------------------------------------------------------------------------
+# The following secrets must be set via `wrangler secret put` on the API Worker
+# (adblock-compiler). They are NOT set here — never commit secret values to
+# wrangler.toml.
+#
+#   wrangler secret put CLERK_PUBLISHABLE_KEY   --name adblock-compiler
+#   wrangler secret put SENTRY_DSN              --name adblock-compiler
+#
+# The frontend Angular app fetches these at runtime from:
+#   GET /api/clerk-config    → returns { publishableKey }
+#   GET /api/sentry-config   → returns { dsn, release }
+#
+# If the API Worker is deployed on a different origin from the frontend, also
+# set the absolute API base URL as a [vars] entry on this (frontend) Worker
+# so server.ts can construct correct absolute URLs during SSR:
+#
+#   [vars]
+#   API_BASE_URL = "https://adblock-compiler.<account>.workers.dev"
+# ---------------------------------------------------------------------------
