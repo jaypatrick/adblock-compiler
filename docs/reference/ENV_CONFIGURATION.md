@@ -187,7 +187,8 @@ See `.env.example` for a complete list of available variables and their purposes
 | Turnstile | `TURNSTILE_SITE_KEY`, `TURNSTILE_SECRET_KEY` | `.env.development` (test keys) / `.env.local` (prod keys) |
 | Logging | `LOG_LEVEL`, `LOG_STRUCTURED`, `LOG_SINK_URL`, `LOG_SINK_TOKEN` | `.env.local` or `.env.development` |
 | Error reporting | `ERROR_REPORTER_TYPE`, `SENTRY_DSN`, `DATADOG_API_KEY` | `.env.local` |
-| Observability | `SENTRY_RELEASE`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `ANALYTICS_ACCOUNT_ID`, `ANALYTICS_API_TOKEN` | `wrangler secret put` / deploy-time var |
+| Observability (secrets) | `OTEL_EXPORTER_OTLP_ENDPOINT`, `ANALYTICS_ACCOUNT_ID`, `ANALYTICS_API_TOKEN` | `wrangler secret put` |
+| Observability (deploy-time) | `SENTRY_RELEASE` | `wrangler deploy --var SENTRY_RELEASE:$(git rev-parse HEAD)` |
 | Notifications | `WEBHOOK_URL`, `SLACK_WEBHOOK_URL`, `DISCORD_WEBHOOK_URL` | `.env.local` |
 | Cloudflare API | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` | `.env.local` |
 | Testing | `E2E_BASE_URL`, `SKIP_CONTRACT_TESTS`, `STORAGE_BACKEND` | `.env.local` or CI secrets |
