@@ -174,7 +174,7 @@ Run `deno task fmt` to automatically format your code.
 - Update relevant docs in `docs/` directory
 - Add JSDoc comments to public APIs
 - Include examples for complex features
-- Use Mermaid fences (` ```mermaid`) for every chart, architecture diagram, flow, and directory layout in documentation
+- Use Mermaid fences (`` ```mermaid ``) for every chart, architecture diagram, flow, and directory layout in documentation
 - Use Markdown tables for tabular data instead of ASCII-art tables
 
 ## Project Structure
