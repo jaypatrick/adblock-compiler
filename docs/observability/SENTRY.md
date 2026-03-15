@@ -56,14 +56,19 @@ All three layers use the **same `SENTRY_DSN` secret** — set once via
 
 ## 3. Install the SDK
 
-The SDK is a **production** dependency of the Worker bundle:
+The SDK is managed via the Deno import map — do **not** use `npm install`.
 
 ```bash
-# From the repo root
-npm install @sentry/cloudflare
+# From the repo root — already done; package is in deno.json imports map
+deno install
 ```
 
-After installing, activate the commented-out code in two files (see §5 and §7 below).
+The `deno.json` imports map already contains:
+```json
+"@sentry/cloudflare": "npm:@sentry/cloudflare@^10.43.0"
+```
+
+Run `deno install` after pulling to ensure `deno.lock` is up-to-date.
 
 ---
 
@@ -113,13 +118,14 @@ SENTRY_DSN=https://your-key@oNNNNNN.ingest.sentry.io/your-project-id
 **not yet wired into `worker/worker.ts`** — you need to add the wrapping
 after installing the SDK.
 
-**Step 1 — Install the SDK:**
+**Step 1 — Ensure the SDK is installed:**
 
 ```bash
-npm install @sentry/cloudflare
+# Package is already in deno.json imports map; just refresh the lockfile
+deno install
 ```
 
-**Step 2 — Wrap the export default in `worker/worker.ts`:**
+**Step 2 — (Already done) The export default in `worker/worker.ts` is wrapped:**
 
 ```typescript
 import { withSentryWorker } from './services/sentry-init.ts';
@@ -294,10 +300,10 @@ wrangler dev
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| Build fails: `Could not resolve "@sentry/cloudflare"` | SDK not installed | `npm install @sentry/cloudflare` |
+| Build fails: `Could not resolve "@sentry/cloudflare"` | SDK not in deno.lock | Run `deno install` from repo root |
 | No events in Sentry | `SENTRY_DSN` secret not set | `wrangler secret put SENTRY_DSN` |
 | Quota exceeded | `tracesSampleRate` too high | Lower to `0.05` or `0.01` in production |
-| SDK version conflicts | `@sentry/cloudflare` incompatibility | Check `package.json` lockfile; pin to a tested version |
+| SDK version conflicts | `@sentry/cloudflare` incompatibility | Check `deno.lock`; pin to a tested version in `deno.json` imports |
 | Worker size exceeds 1 MB | Sentry SDK is large | Enable `--minify` in wrangler, or use `ConsoleDiagnosticsProvider` only |
 
 ### Relevant files

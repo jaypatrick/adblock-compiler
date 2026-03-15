@@ -72,6 +72,7 @@ import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdate
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleSentryConfig } from './handlers/sentry-config.ts';
 import { createDiagnosticsProvider } from './services/diagnostics-factory.ts';
+import { withSentryWorker } from './services/sentry-init.ts';
 import { verifyCfAccessJwt } from './middleware/cf-access.ts';
 
 // Import Workflow classes and types
@@ -2973,10 +2974,22 @@ async function handleHealthLatest(env: Env): Promise<Response> {
 }
 
 /**
+ * Extended Worker handler type that adds the internal `_handleRequest` helper
+ * used to split request routing from CORS/observability wrapping in `fetch()`.
+ *
+ * @internal This method is intentionally prefixed with `_` to signal that it is
+ * not part of the public Cloudflare `ExportedHandler` contract and must not be
+ * called from outside the `workerHandler` object itself.
+ */
+interface WorkerHandler extends ExportedHandler<Env> {
+    _handleRequest(request: Request, env: Env, url: URL, pathname: string): Promise<Response>;
+}
+
+/**
  * Main fetch handler for the Cloudflare Worker.
  */
-export default {
-    async fetch(request: Request, env: Env): Promise<Response> {
+const workerHandler: WorkerHandler = {
+    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         const url = new URL(request.url);
         const { pathname } = url;
 
@@ -3012,6 +3025,10 @@ export default {
             throw err;
         } finally {
             requestSpan.end();
+            // Flush buffered observability events (e.g. Sentry) before the
+            // Worker context closes. waitUntil() keeps the Worker alive until
+            // the promise settles without blocking the response.
+            ctx.waitUntil(diagnostics.flush());
         }
 
         // WebSocket upgrade responses (101) must be returned as-is — constructing a new
@@ -3994,8 +4011,11 @@ export default {
     /**
      * Queue consumer handler for processing compilation jobs
      */
-    async queue(batch: MessageBatch<QueueMessage>, env: Env): Promise<void> {
-        await handleQueue(batch, env);
+    async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
+        // The Cloudflare Workers runtime passes MessageBatch<unknown> at the
+        // ExportedHandler boundary; handleQueue performs structural type-guard
+        // dispatching (msg.body.type) on every message before use.
+        await handleQueue(batch as MessageBatch<QueueMessage>, env);
     },
 
     /**
@@ -4005,8 +4025,8 @@ export default {
      * - "0 *\/6 * * *" - Cache warming every 6 hours
      * - "0 * * * *"    - Health monitoring every hour
      */
-    async scheduled(event: ScheduledEvent, env: Env, _ctx: ExecutionContext): Promise<void> {
-        const cronPattern = event.cron;
+    async scheduled(controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+        const cronPattern = controller.cron;
         const runId = `scheduled-${Date.now()}`;
 
         // deno-lint-ignore no-console
@@ -4056,6 +4076,13 @@ export default {
         }
     },
 };
+
+// Wrap with Sentry error tracking. When SENTRY_DSN is not set the original
+// handler is returned unchanged — zero overhead in local development.
+export default withSentryWorker(workerHandler, (env) => ({
+    dsn: env.SENTRY_DSN,
+    release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
+}));
 
 // ============================================================================
 // Export Workflow classes for Cloudflare Workers runtime
