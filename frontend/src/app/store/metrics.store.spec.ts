@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, PLATFORM_ID } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MetricsStore } from './metrics.store';
@@ -56,5 +56,67 @@ describe('MetricsStore', () => {
 
     it('should have refreshHealth method', () => {
         expect(typeof store.refreshHealth).toBe('function');
+    });
+});
+
+describe('MetricsStore — server platform (SSR/prerender)', () => {
+    let store: MetricsStore;
+    let httpMock: HttpTestingController;
+
+    beforeEach(() => {
+        TestBed.configureTestingModule({
+            providers: [
+                provideZonelessChangeDetection(),
+                provideHttpClient(),
+                provideHttpClientTesting(),
+                { provide: PLATFORM_ID, useValue: 'server' },
+            ],
+        });
+        store = TestBed.inject(MetricsStore);
+        httpMock = TestBed.inject(HttpTestingController);
+    });
+
+    afterEach(() => {
+        httpMock.verify();
+    });
+
+    it('should be created on server without errors', () => {
+        expect(store).toBeTruthy();
+    });
+
+    it('should make no HTTP requests to /api/metrics during prerender', () => {
+        httpMock.expectNone('/api/metrics');
+    });
+
+    it('should make no HTTP requests to /api/health during prerender', () => {
+        httpMock.expectNone('/api/health');
+    });
+
+    it('should make no HTTP requests to /api/queue/stats during prerender', () => {
+        httpMock.expectNone('/api/queue/stats');
+    });
+
+    it('should return undefined metrics on server', () => {
+        expect(store.metrics()).toBeUndefined();
+    });
+
+    it('should return undefined health on server', () => {
+        expect(store.health()).toBeUndefined();
+    });
+
+    it('should return undefined queueStats on server', () => {
+        expect(store.queueStats()).toBeUndefined();
+    });
+
+    it('should report isLoading as false on server', () => {
+        expect(store.isLoading()).toBe(false);
+    });
+
+    it('should report isStale as false on server', () => {
+        expect(store.isStale()).toBe(false);
+    });
+
+    it('should expose a refresh method that is a no-op on server', () => {
+        expect(() => store.refresh()).not.toThrow();
     });
 });
