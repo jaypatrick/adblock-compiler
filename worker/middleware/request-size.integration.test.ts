@@ -23,6 +23,7 @@ function createMockEnv(maxRequestBodyMB?: string): Env {
             get: async () => null,
             put: async () => {},
         } as unknown as KVNamespace,
+        ASSETS: {} as unknown as Fetcher,
     };
 }
 
