@@ -64,7 +64,7 @@ export default {
                 "style-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev",
                 "img-src 'self' data: https://img.clerk.com https://*.clerk.com",
                 "font-src 'self'",
-                "connect-src 'self' https://*.clerk.accounts.dev https://*.sentry.io https://o*.ingest.sentry.io https://o*.ingest.us.sentry.io",
+                "connect-src 'self' https://*.clerk.accounts.dev https://o*.ingest.sentry.io https://o*.ingest.us.sentry.io",
                 "frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev",
                 "object-src 'none'",
                 "base-uri 'self'",

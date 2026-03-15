@@ -36,25 +36,27 @@ binding = "ASSETS"
 # are served the root index.html so Angular's client-side router can handle them
 # instead of returning a 404 from the CDN edge.
 not_found_handling = "single-page-application"
+# Ensures /route and /route/ resolve to the same prerendered index.html so
+# Angular's client-side router handles both forms consistently.
+html_handling = "auto-trailing-slash"
 
 # ---------------------------------------------------------------------------
-# Required Worker Secrets
+# Required API Worker Configuration (adblock-compiler Worker)
 # ---------------------------------------------------------------------------
-# The following secrets must be set via `wrangler secret put` on the API Worker
-# (adblock-compiler). They are NOT set here — never commit secret values to
-# wrangler.toml.
-#
-#   wrangler secret put CLERK_PUBLISHABLE_KEY   --name adblock-compiler
-#   wrangler secret put SENTRY_DSN              --name adblock-compiler
-#
-# The frontend Angular app fetches these at runtime from:
+# The Angular app fetches runtime config at boot from the co-deployed API Worker:
 #   GET /api/clerk-config    → returns { publishableKey }
 #   GET /api/sentry-config   → returns { dsn, release }
 #
-# If the API Worker is deployed on a different origin from the frontend, also
-# set the absolute API base URL as a [vars] entry on this (frontend) Worker
-# so server.ts can construct correct absolute URLs during SSR:
+# CLERK_PUBLISHABLE_KEY — non-secret, set as a [vars] entry on the API Worker:
+#   Add to wrangler.toml [vars] on adblock-compiler:
+#     CLERK_PUBLISHABLE_KEY = "pk_live_..."
+#   Or pass at deploy time:
+#     wrangler deploy --var CLERK_PUBLISHABLE_KEY:pk_live_... --name adblock-compiler
 #
-#   [vars]
-#   API_BASE_URL = "https://adblock-compiler.<account>.workers.dev"
+# SENTRY_DSN — sensitive, set via `wrangler secret put` on the API Worker:
+#   wrangler secret put SENTRY_DSN --name adblock-compiler
+#
+# NOTE: The SSR API base URL (used by AngularAppEngine during server-side rendering)
+# is automatically derived from the incoming request origin via ssrApiBaseUrlFactory
+# in app.config.server.ts — no manual configuration needed for same-origin deploys.
 # ---------------------------------------------------------------------------
