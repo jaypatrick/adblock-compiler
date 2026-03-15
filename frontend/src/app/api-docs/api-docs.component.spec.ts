@@ -28,13 +28,18 @@ describe('ApiDocsComponent', () => {
             component = fixture.componentInstance;
             httpTesting = TestBed.inject(HttpTestingController);
 
-            // Flush only the expected initial httpResource request for /api/version
+            // Trigger initial change detection so httpResource fires its first request,
+            // then flush it so no pending requests leak into tests or afterEach verify.
+            fixture.detectChanges();
             httpTesting.match('/api/version').forEach(req => req.flush({
                 name: 'adblock-compiler', version: '0.0.0',
             }));
         });
 
-        afterEach(() => httpTesting.verify());
+        afterEach(() => {
+            httpTesting.verify();
+            TestBed.resetTestingModule();
+        });
 
         it('should create', () => {
             expect(component).toBeTruthy();
@@ -77,7 +82,6 @@ describe('ApiDocsComponent', () => {
         });
 
         it('should render the page heading', () => {
-            fixture.detectChanges();
             const el: HTMLElement = fixture.nativeElement;
             expect(el.querySelector('h1')?.textContent).toContain('API Reference');
         });
@@ -105,7 +109,10 @@ describe('ApiDocsComponent', () => {
             httpTesting = TestBed.inject(HttpTestingController);
         });
 
-        afterEach(() => httpTesting.verify());
+        afterEach(() => {
+            httpTesting.verify();
+            TestBed.resetTestingModule();
+        });
 
         it('should create without throwing', () => {
             expect(component).toBeTruthy();
