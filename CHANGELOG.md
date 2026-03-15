@@ -120,6 +120,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.62.4] - 2026-03-15
+
+### Added### Fixed
+
+- move inject(ClerkService) before await to prevent NG0203 crash (#1108)
+
+
 ## [0.62.3] - 2026-03-15
 
 ### Added### Fixed
