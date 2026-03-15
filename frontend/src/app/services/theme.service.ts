@@ -18,7 +18,8 @@
  *   light theme flash on page load (FOUC).
  */
 
-import { Injectable, DOCUMENT, inject, signal } from '@angular/core';
+import { Injectable, DOCUMENT, PLATFORM_ID, inject, signal } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 
 /**
  * ThemeService
@@ -37,12 +38,17 @@ export class ThemeService {
     /** Injected DOCUMENT token — SSR-safe alternative to direct `document` access */
     private readonly doc = inject(DOCUMENT);
 
+    /** Platform identifier — guards localStorage and DOM calls from running during SSR */
+    private readonly platformId = inject(PLATFORM_ID);
+
     /**
      * loadPreferences()
      * Called by provideAppInitializer() in app.config.ts BEFORE the first render.
      * Reads the persisted theme preference from localStorage and applies it to <body>.
      */
     loadPreferences(): void {
+        // Guard: localStorage does not exist during SSR/prerender — skip entirely.
+        if (!isPlatformBrowser(this.platformId)) return;
         try {
             const saved = localStorage.getItem('theme');
             const dark = saved === 'dark';

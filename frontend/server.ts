@@ -60,12 +60,12 @@ export default {
         if (contentType.includes('text/html')) {
             const csp = [
                 "default-src 'self'",
-                "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-                "style-src 'self' 'unsafe-inline'",
-                "img-src 'self' data:",
+                "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://*.clerk.accounts.dev",
+                "style-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev",
+                "img-src 'self' data: https://img.clerk.com https://*.clerk.com",
                 "font-src 'self'",
-                "connect-src 'self'",
-                "frame-src https://challenges.cloudflare.com",
+                "connect-src 'self' https://*.clerk.accounts.dev https://o*.ingest.sentry.io https://o*.ingest.us.sentry.io",
+                "frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev",
                 "object-src 'none'",
                 "base-uri 'self'",
             ].join('; ');
