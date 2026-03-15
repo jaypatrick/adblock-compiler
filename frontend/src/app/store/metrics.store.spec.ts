@@ -4,6 +4,19 @@ import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MetricsStore } from './metrics.store';
 
+/** Flush all three SWR fetches that MetricsStore starts on initialization. */
+function flushInitialRequests(httpMock: HttpTestingController): void {
+    httpMock.match('/api/metrics').forEach(r =>
+        r.flush({ totalRequests: 100, averageDuration: 50, cacheHitRate: 80, successRate: 99 }),
+    );
+    httpMock.match('/api/health').forEach(r =>
+        r.flush({ status: 'healthy', version: '1.0' }),
+    );
+    httpMock.match('/api/queue/stats').forEach(r =>
+        r.flush({ depth: 0, processing: 0, completed: 0, failed: 0, depthHistory: [] }),
+    );
+}
+
 describe('MetricsStore', () => {
     let store: MetricsStore;
     let httpMock: HttpTestingController;
@@ -20,44 +33,49 @@ describe('MetricsStore', () => {
             });
             store = TestBed.inject(MetricsStore);
             httpMock = TestBed.inject(HttpTestingController);
-
-            // Flush initial SWR fetches
-            const metricsReq = httpMock.match('/api/metrics');
-            metricsReq.forEach(r => r.flush({ totalRequests: 100, averageDuration: 50, cacheHitRate: 80, successRate: 99 }));
-            const healthReq = httpMock.match('/api/health');
-            healthReq.forEach(r => r.flush({ status: 'healthy', version: '1.0' }));
         });
+
+        afterEach(() => httpMock.verify());
 
         it('should be created', () => {
             expect(store).toBeTruthy();
+            flushInitialRequests(httpMock);
         });
 
         it('should expose metrics signal', () => {
             expect(store.metrics).toBeDefined();
+            flushInitialRequests(httpMock);
         });
 
         it('should expose health signal', () => {
             expect(store.health).toBeDefined();
+            flushInitialRequests(httpMock);
         });
 
-        it('should expose isLoading signal', () => {
+        it('should be loading before initial fetches complete', () => {
+            // SWR starts loading immediately — signal is true before fetches complete
             expect(store.isLoading()).toBe(true);
+            flushInitialRequests(httpMock);
         });
 
         it('should expose isStale signal', () => {
             expect(store.isStale).toBeDefined();
+            flushInitialRequests(httpMock);
         });
 
         it('should have a refresh method', () => {
             expect(typeof store.refresh).toBe('function');
+            flushInitialRequests(httpMock);
         });
 
         it('should have refreshMetrics method', () => {
             expect(typeof store.refreshMetrics).toBe('function');
+            flushInitialRequests(httpMock);
         });
 
         it('should have refreshHealth method', () => {
             expect(typeof store.refreshHealth).toBe('function');
+            flushInitialRequests(httpMock);
         });
     });
 
@@ -121,23 +139,32 @@ describe('MetricsStore', () => {
             });
             store = TestBed.inject(MetricsStore);
             httpMock = TestBed.inject(HttpTestingController);
+            // Flush all three SWR fetches so no pending requests leak between tests
+            flushInitialRequests(httpMock);
         });
+
+        afterEach(() => httpMock.verify());
 
         it('should be created', () => {
             expect(store).toBeTruthy();
         });
 
-        it('should initiate SWR fetches for metrics on SSR per-request render', () => {
-            // Real SWR is active — at least one request to /api/metrics is expected
-            const requests = httpMock.match('/api/metrics');
-            expect(requests.length).toBeGreaterThan(0);
-            requests.forEach(r => r.flush({ totalRequests: 0, averageDuration: 0, cacheHitRate: 0, successRate: 100 }));
+        it('should have initiated SWR fetches for metrics on SSR per-request render', () => {
+            // Requests were flushed in beforeEach with real data; signal reflects flushed value
+            expect(store.metrics()?.totalRequests).toBe(100);
         });
 
-        it('should initiate SWR fetches for health on SSR per-request render', () => {
-            const requests = httpMock.match('/api/health');
-            expect(requests.length).toBeGreaterThan(0);
-            requests.forEach(r => r.flush({ status: 'healthy', version: '1.0' }));
+        it('should have initiated SWR fetches for health on SSR per-request render', () => {
+            expect(store.health()?.status).toBe('healthy');
+        });
+
+        it('should have initiated SWR fetches for queue stats on SSR per-request render', () => {
+            expect(store.queueStats()?.depth).toBe(0);
+        });
+
+        it('should settle to not-loading after initial fetches complete', () => {
+            // Fetches were flushed in beforeEach; microtasks have resolved by test body
+            expect(store.isLoading()).toBe(false);
         });
     });
 });
