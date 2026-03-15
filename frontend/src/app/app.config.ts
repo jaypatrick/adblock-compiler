@@ -98,10 +98,12 @@ export const appConfig: ApplicationConfig = {
 
             inject(ThemeService).loadPreferences();
 
-            // ⚠️  ALL inject() calls MUST be in this synchronous block, BEFORE any
-            // `await`.  After the first `await` the injection context is gone and
-            // inject() will throw NG0203 ("inject() must be called from an
-            // injection context").  Do NOT move inject() calls below an await.
+            // ⚠️  Any inject() calls must happen BEFORE the first `await` in this
+            // initializer.  After the first `await` the injection context is gone
+            // and inject() will throw NG0203 ("inject() must be called from an
+            // injection context").  If you need a dependency after an await, either
+            // capture it here before any await, use runInInjectionContext(), or
+            // pass it in as a closure variable.
             const http = inject(HttpClient);
             const turnstileService = inject(TurnstileService);
             const apiBaseUrl = inject(API_BASE_URL);
