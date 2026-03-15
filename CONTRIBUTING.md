@@ -180,7 +180,7 @@ Run `deno task fmt` to automatically format your code.
 - Update relevant docs in `docs/` directory
 - Add JSDoc comments to public APIs
 - Include examples for complex features
-- Use Mermaid fences (` ```mermaid `) for every chart, architecture diagram, flow, and directory layout in documentation
+- Use Mermaid fences (`` ```mermaid ``) for every chart, architecture diagram, flow, and directory layout in documentation
 - Use Markdown tables for tabular data instead of ASCII-art tables
 
 ## Project Structure
@@ -253,7 +253,7 @@ The compiler supports real-time Server-Sent Events (SSE) streaming. The `SseServ
 //   .isActive() — Signal<boolean>
 //   .close()    — Closes the EventSource
 
-const conn = this.sseService.connect("/compile/stream", request);
+const conn = this.sseService.connect('/compile/stream', request);
 this.sseConnection.set(conn);
 
 // In the template, consume signals directly:
