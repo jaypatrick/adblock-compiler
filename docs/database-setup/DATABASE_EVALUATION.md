@@ -136,8 +136,7 @@ Hyperdrive is **not a database** — it is a connection accelerator and query re
 ```mermaid
 flowchart TD
     worker["Cloudflare Worker"] -->|standard pg connection string| hyperdrive["Hyperdrive"]
-    hyperdrive -->|pooled, geographically distributed| postgres["PostgreSQL database
-(Neon / Supabase / self-hosted)"]
+    hyperdrive -->|pooled, geographically distributed| postgres["PostgreSQL database<br/>(Neon / Supabase / self-hosted)"]
 ```
 
 **How it helps**

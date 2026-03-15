@@ -182,16 +182,8 @@ Log keys are in the format `log:{timestamp}` where timestamp is the event's Unix
 
 ```mermaid
 flowchart TD
-    main["Main Worker
-(worker.ts)
-- Handles requests
-- Emits logs
-- May throw errors"]
-    tail["Tail Worker
-(tail.ts)
-- Receives events
-- Stores logs
-- Forwards errors"]
+    main["Main Worker<br/>(worker.ts)<br/>- Handles requests<br/>- Emits logs<br/>- May throw errors"]
+    tail["Tail Worker<br/>(tail.ts)<br/>- Receives events<br/>- Stores logs<br/>- Forwards errors"]
     kv["KV Storage (optional)"]
     webhook["Webhook (optional)"]
 

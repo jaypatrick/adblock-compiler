@@ -44,16 +44,12 @@ Build a **real-time threat/nuisance/ad domain intelligence platform** on top of 
 
 ```mermaid
 flowchart TD
-    sources["Signal Sources
-(Cloudflare Radar, CT Logs future, blocklist diffs)"] -->|Cron worker every 15 min| ingestion["Ingestion Worker
-(worker/handlers/threat-intel.ts)"]
+    sources["Signal Sources<br/>(Cloudflare Radar, CT Logs future, blocklist diffs)"] -->|Cron worker every 15 min| ingestion["Ingestion Worker<br/>(worker/handlers/threat-intel.ts)"]
     ingestion --> normalize["CloudflareRadarFetcher -> normalize -> score -> dedup -> D1 + Queue"]
-    normalize -->|THREAT_INTEL_QUEUE messages| ruleGen["Rule Generation Worker
-(existing AGTree pipeline)"]
+    normalize -->|THREAT_INTEL_QUEUE messages| ruleGen["Rule Generation Worker<br/>(existing AGTree pipeline)"]
     ruleGen --> outputs["High-confidence domains -> AGTree AST -> all formats -> R2 + D1"]
     outputs --> mcp["MCP Server (/mcp/*)"]
-    outputs --> distribution["Distribution layer
-(R2 hosted URLs, provider push APIs, webhooks)"]
+    outputs --> distribution["Distribution layer<br/>(R2 hosted URLs, provider push APIs, webhooks)"]
 ```
 
 **Existing infrastructure this builds on:**
@@ -441,17 +437,14 @@ CREATE INDEX IF NOT EXISTS idx_gr_domain ON generated_rules(domain);
 
 ```mermaid
 flowchart TD
-    fetcher["CloudflareRadarFetcher
-(cron every 15 min or manual POST)"] --> ingest["handleThreatIntelIngestion()"]
+    fetcher["CloudflareRadarFetcher<br/>(cron every 15 min or manual POST)"] --> ingest["handleThreatIntelIngestion()"]
     ingest --> upsert["Upsert all signals to D1 threat_signals"]
     upsert --> decision{"confidenceScore >= 0.80"}
     decision -->|yes| queue["THREAT_INTEL_QUEUE.send(IThreatIntelQueueMessage)"]
-    queue --> consumer["handleThreatIntelQueue()
-Cloudflare Queue consumer"]
+    queue --> consumer["handleThreatIntelQueue()<br/>Cloudflare Queue consumer"]
     consumer --> ast["Build AGTree AST block-rule node for domain"]
     ast --> emit["Emit AdGuard, uBlock, hosts, and RPZ formats via TranslatorPlugin chain"]
-    emit --> db["Write to generated_rules
-approved if score >= 0.95, otherwise pending"]
+    emit --> db["Write to generated_rules<br/>approved if score >= 0.95, otherwise pending"]
     db --> r2["Flush approved rules to R2 as compiled list fragments"]
 ```
 

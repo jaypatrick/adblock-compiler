@@ -82,27 +82,19 @@ Rules are automatically syntax-highlighted:
 #### Network Rules
 ```mermaid
 flowchart LR
-    separators["||
-Separators (gray)"] --> domain["example.com
-Domain (blue)"] --> terminator["^
-Separator (gray)"] --> modifiers["$third-party
-Modifiers (orange)"]
+    separators["||<br/>Separators (gray)"] --> domain["example.com<br/>Domain (blue)"] --> terminator["^<br/>Separator (gray)"] --> modifiers["$third-party<br/>Modifiers (orange)"]
 ```
 
 #### Exception Rules
 ```mermaid
 flowchart LR
-    exception["@@
-Exception marker (green)"] --> pattern["||example.com^
-Pattern (blue)"]
+    exception["@@<br/>Exception marker (green)"] --> pattern["||example.com^<br/>Pattern (blue)"]
 ```
 
 #### Host Rules
 ```mermaid
 flowchart LR
-    ip["0.0.0.0
-IP address (purple)"] --> domain["example.com
-Domain (blue)"]
+    ip["0.0.0.0<br/>IP address (purple)"] --> domain["example.com<br/>Domain (blue)"]
 ```
 
 ## API Reference
@@ -228,13 +220,7 @@ The UI displays summary statistics in color-coded cards:
 
 ```mermaid
 flowchart LR
-    total["Total Rules
-1000
-(purple)"] --> valid["Valid Rules
-950
-(green)"] --> invalid["Invalid Rules
-50
-(red)"]
+    total["Total Rules<br/>1000<br/>(purple)"] --> valid["Valid Rules<br/>950<br/>(green)"] --> invalid["Invalid Rules<br/>50<br/>(red)"]
 ```
 
 ### Error List Item
@@ -245,8 +231,7 @@ Each error is displayed with:
 flowchart TD
     header["[ERROR] Unsupported Modifier (Line 42) [Custom Filter]"] --> detail["Unsupported modifier: popup"]
     detail --> supported["Supported modifiers: important, ctag, dnstype..."]
-    supported --> rule["||example.com^$popup
-Domain and modifier highlighted in red"]
+    supported --> rule["||example.com^$popup<br/>Domain and modifier highlighted in red"]
     rule --> action["Show AST"]
 ```
 
@@ -256,17 +241,11 @@ Expandable AST tree with color-coded nodes:
 
 ```mermaid
 flowchart TD
-    rule["NetworkRule
-(light blue badge)"] --> pattern["pattern: ||example.com^
-(blue text)"]
-    rule --> exception["exception: false
-(red text)"]
-    rule --> modifiers["ModifierList
-(orange badge)"]
-    modifiers --> modifier["Modifier[0]
-(orange badge)"]
-    modifier --> name["name: popup
-(blue text)"]
+    rule["NetworkRule<br/>(light blue badge)"] --> pattern["pattern: ||example.com^<br/>(blue text)"]
+    rule --> exception["exception: false<br/>(red text)"]
+    rule --> modifiers["ModifierList<br/>(orange badge)"]
+    modifiers --> modifier["Modifier[0]<br/>(orange badge)"]
+    modifier --> name["name: popup<br/>(blue text)"]
 ```
 
 ## Integration with Compiler
