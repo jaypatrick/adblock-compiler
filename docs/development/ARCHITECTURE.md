@@ -172,9 +172,9 @@ mindmap
     downloader["downloader/\nFilterDownloader · ContentFetcher\nPreprocessorEvaluator · ConditionalEvaluator"]
     configuration["configuration/\nConfigurationValidator · Zod schemas\nCompileRequest · BatchRequest"]
     config["config/\nNETWORK_DEFAULTS · WORKER_DEFAULTS\nSTORAGE_DEFAULTS · COMPILATION_DEFAULTS"]
-    storage["storage/\nIStorageAdapter · D1StorageAdapter\nKVStorageAdapter · MemoryStorageAdapter\nPostgresStorageAdapter · CachingDownloader\nChangeDetector · SourceHealthMonitor"]
+    storage["storage/\nIStorageAdapter · D1StorageAdapter\nHyperdriveStorageAdapter · PrismaStorageAdapter\nCachingDownloader · ChangeDetector · SourceHealthMonitor"]
     services["services/\nFilterService · ASTViewerService\nAnalyticsService · PipelineService"]
-    queue["queue/\nIQueueProvider · CloudflareQueueProvider\nCompileMessage · BatchCompileMessage\nCacheWarmMessage"]
+    queue["queue/\nIQueueProvider · CloudflareQueueProvider\nCompileMessage · BatchCompileMessage\nCacheWarmMessage · HealthCheckMessage"]
     diagnostics["diagnostics/\nTracingContext · DiagnosticsCollector\nOpenTelemetryExporter"]
     filters["filters/\nRuleFilter"]
     formatters["formatters/\nOutputFormatter · BaseFormatter\nadblock · hosts · dnsmasq · domains"]
@@ -334,9 +334,7 @@ flowchart TD
     ISA["IStorageAdapter\n← Abstract interface"]:::interface
     ISA --> PSA["PrismaStorageAdapter\n(SQLite · PostgreSQL · MySQL)"]:::adapter
     ISA --> D1A["D1StorageAdapter\n(Cloudflare D1 edge SQLite)"]:::adapter
-    ISA --> KVA["KVStorageAdapter\n(Cloudflare KV)"]:::adapter
-    ISA --> MEM["MemoryStorageAdapter\n(in-process, tests/dev)"]:::adapter
-    ISA --> PGA["PostgresStorageAdapter\n(via Hyperdrive)"]:::adapter
+    ISA --> HDA["HyperdriveStorageAdapter\n(PostgreSQL via Hyperdrive)"]:::adapter
     CD["CachingDownloader"]:::consumer -->|uses| ISA
     SHM["SourceHealthMonitor"]:::consumer -->|uses| ISA
     CD -->|uses| CHD["ChangeDetector"]:::consumer
@@ -344,16 +342,12 @@ flowchart TD
     subgraph BACKEND["Physical Backends"]
         SQLITE["SQLite\n(local dev)"]:::infra
         D1DB["Cloudflare D1\n(edge)"]:::infra
-        KVDB["Cloudflare KV\n(edge)"]:::infra
         PGDB["PostgreSQL\n(via Hyperdrive)"]:::infra
-        RAM["In-memory\n(Map)"]:::infra
     end
 
     PSA --> SQLITE
     D1A --> D1DB
-    KVA --> KVDB
-    PGA --> PGDB
-    MEM --> RAM
+    HDA --> PGDB
 ```
 
 | Component | Description |
@@ -361,6 +355,7 @@ flowchart TD
 | **IStorageAdapter** | Interface with hierarchical key-value ops, TTL support, filter list caching, compilation history. |
 | **PrismaStorageAdapter** | Prisma ORM backend: SQLite (default), PostgreSQL, MySQL, MongoDB, etc. |
 | **D1StorageAdapter** | Cloudflare D1 (edge SQLite) backend. |
+| **HyperdriveStorageAdapter** | PostgreSQL backend via Cloudflare Hyperdrive connection pooling. |
 | **CachingDownloader** | Wraps any `IDownloader` with caching, change detection, and health monitoring. |
 | **ChangeDetector** | Tracks content hashes to detect changes between compilations. |
 | **SourceHealthMonitor** | Tracks fetch success/failure rates, latency, and health status per source. |
@@ -391,6 +386,7 @@ flowchart TD
     CQP --> CM["CompileMessage\n(type: 'compile')"]:::message
     CQP --> BCM["BatchCompileMessage\n(type: 'batch-compile')"]:::message
     CQP --> CWM["CacheWarmMessage\n(type: 'cache-warm')"]:::message
+    CQP --> HCM["HealthCheckMessage\n(type: 'health-check')"]:::message
 ```
 
 ### Diagnostics & Tracing (`src/diagnostics/`)
