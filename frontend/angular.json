@@ -37,6 +37,11 @@
                                 "glob": "_redirects",
                                 "input": "src",
                                 "output": "/"
+                            },
+                            {
+                                "glob": "_headers",
+                                "input": "src",
+                                "output": "/"
                             }
                         ],
                         "styles": [
