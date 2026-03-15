@@ -1,28 +1,48 @@
+# ============================================================================
+# wrangler.tail.toml — Tail Worker configuration
+# ============================================================================
+#
+# TWO ENVIRONMENTS ONLY:
+#
+#   Local dev  →  `wrangler dev --config wrangler.tail.toml`
+#                 Port 8788 (intentionally different from main worker on 8787).
+#                 Secrets loaded from .dev.vars (gitignored, same file as
+#                 the main worker — tail worker reads the same set).
+#
+#   Production →  `wrangler deploy --config wrangler.tail.toml`
+#                 This file IS the production configuration.
+#                 MUST be deployed before the main worker registers the
+#                 [[tail_consumers]] binding in wrangler.toml — otherwise
+#                 the main worker deploy will fail with an unknown service error.
+#
+# SECRETS (wrangler secret put --config wrangler.tail.toml):
+#   ERROR_WEBHOOK_URL — sensitive webhook URL for forwarding critical errors.
+#     wrangler secret put ERROR_WEBHOOK_URL --config wrangler.tail.toml
+#   Do NOT put it in [vars] — it would be visible in the Cloudflare dashboard.
+# ============================================================================
+
 name = "adblock-compiler-tail"
 main = "worker/tail.ts"
-compatibility_date = "2024-01-01"
 
-# Enable the Workers runtime
-workers_dev = true
+# Keep in sync with the main worker's compatibility_date in wrangler.toml.
+compatibility_date = "2026-01-01"
 
-# Build configuration
-[build]
-command = ""
-
-# KV namespace for storing tail logs (optional)
-# Uncomment and create namespace if you want to persist logs
+# ─── KV: Tail log persistence ────────────────────────────────────────────────
+# Stores structured tail log entries for later querying.
+# Create with: wrangler kv:namespace create TAIL_LOGS --config wrangler.tail.toml
 [[kv_namespaces]]
 binding = "TAIL_LOGS"
-id = "476d9c981b8d4e2eaa2442ae85e0c838"  # Create with: wrangler kv:namespace create TAIL_LOGS
+id = "476d9c981b8d4e2eaa2442ae85e0c838"
 
-# Environment variables
+# ─── Static runtime vars (non-secret) ────────────────────────────────────────
 [vars]
-# Log retention in seconds (default: 24 hours = 86400)
+# Log retention TTL in seconds. Default: 86400 (24 hours).
+# Increase for longer audit trails; decrease to reduce KV storage costs.
 LOG_RETENTION_TTL = "86400"
-# Optional: Webhook URL for forwarding critical errors
-# ERROR_WEBHOOK_URL = "https://your-webhook-endpoint.com/errors"
 
-# Development settings
+# ─── Local dev server ────────────────────────────────────────────────────────
+# These settings apply ONLY to `wrangler dev`. Ignored on `wrangler deploy`.
+# Port 8788 avoids conflict with the main worker on 8787.
 [dev]
 port = 8788
 local_protocol = "http"

@@ -1,4 +1,6 @@
-# Wrangler configuration for deploying the Angular frontend to Cloudflare Workers
+# ============================================================================
+# frontend/wrangler.toml — Angular SSR Worker configuration
+# ============================================================================
 #
 # Build output layout (produced by `npm run build` / `ng build`):
 #   dist/adblock-compiler/
@@ -6,57 +8,58 @@
 #   └── server/
 #       └── server.mjs    ← Workers entry point (compiled from server.ts)
 #
-# Deployment:
-#   npm run build          # compile Angular + server
-#   npm run deploy         # wrangler deploy  (uploads Worker + assets)
+# TWO ENVIRONMENTS ONLY:
 #
-# Local dev (mirrors production):
-#   npm run preview        # wrangler dev
+#   Local dev  →  `npm run preview`  (runs `wrangler dev` in this directory)
+#                 Angular dev server: `npm run start`  (port 4200, HMR)
+#                 Secrets loaded from frontend/.dev.vars (gitignored).
+#
+#   Production →  `npm run build && npm run deploy`
+#                 This file IS the production configuration.
+#                 The SSR Worker serves HTML; static assets are served from
+#                 the CDN edge before the Worker fetch handler is invoked.
+#
+# API Worker dependency:
+#   The Angular app fetches runtime config at boot from the co-deployed API Worker:
+#     GET /api/clerk-config   → returns { publishableKey }
+#     GET /api/sentry-config  → returns { dsn, release }
+#   The SSR API base URL is derived automatically from the incoming request
+#   origin via ssrApiBaseUrlFactory in app.config.server.ts — no manual
+#   configuration needed for same-origin deploys.
+#
+# SECRETS (wrangler secret put --name adblock-compiler-frontend):
+#   None required for this worker — the API Worker owns all secrets.
+# ============================================================================
 
 name = "adblock-compiler-frontend"
 
 # Compiled server entry point output by `ng build` when ssr.entry = "server.ts"
 main = "dist/adblock-compiler/server/server.mjs"
 
-# Minimum date for Cloudflare Workers compatibility guarantees.
-# Bump this to enable newer platform APIs as they stabilise.
-compatibility_date = "2025-01-01"
+# Keep in sync with the main worker's compatibility_date in /wrangler.toml.
+compatibility_date = "2026-01-01"
 
 # nodejs_compat exposes Node.js built-in shims (Buffer, crypto, etc.) that
 # Angular's SSR runtime depends on when running on the Workers platform.
 compatibility_flags = ["nodejs_compat"]
 
-# Static assets binding — Cloudflare serves these directly from its CDN edge
-# before the Worker fetch handler is invoked, so Angular's SSR handler only
-# receives HTML document requests (not JS/CSS/font fetches).
+# ─── Static assets ──────────────────────────────────────────────────────────
+# Cloudflare serves these directly from the CDN edge before the Worker fetch
+# handler is invoked, so Angular's SSR handler only receives HTML document
+# requests (not JS/CSS/font fetches).
 [assets]
 directory = "dist/adblock-compiler/browser"
 binding = "ASSETS"
-# Enables SPA fallback routing: unknown paths (e.g. deep-linking to /compiler)
-# are served the root index.html so Angular's client-side router can handle them
-# instead of returning a 404 from the CDN edge.
-not_found_handling = "single-page-application"
-# Ensures /route and /route/ resolve to the same prerendered index.html so
-# Angular's client-side router handles both forms consistently.
+# Ensures /route and /route/ resolve to the same prerendered index.html.
 html_handling = "auto-trailing-slash"
+# SPA fallback: unknown paths (e.g. deep-linking to /compiler) get index.html
+# so Angular's client-side router handles them instead of returning a 404.
+not_found_handling = "single-page-application"
 
-# ---------------------------------------------------------------------------
-# Required API Worker Configuration (adblock-compiler Worker)
-# ---------------------------------------------------------------------------
-# The Angular app fetches runtime config at boot from the co-deployed API Worker:
-#   GET /api/clerk-config    → returns { publishableKey }
-#   GET /api/sentry-config   → returns { dsn, release }
-#
-# CLERK_PUBLISHABLE_KEY — non-secret, set as a [vars] entry on the API Worker:
-#   Add to wrangler.toml [vars] on adblock-compiler:
-#     CLERK_PUBLISHABLE_KEY = "pk_live_..."
-#   Or pass at deploy time:
-#     wrangler deploy --var CLERK_PUBLISHABLE_KEY:pk_live_... --name adblock-compiler
-#
-# SENTRY_DSN — sensitive, set via `wrangler secret put` on the API Worker:
-#   wrangler secret put SENTRY_DSN --name adblock-compiler
-#
-# NOTE: The SSR API base URL (used by AngularAppEngine during server-side rendering)
-# is automatically derived from the incoming request origin via ssrApiBaseUrlFactory
-# in app.config.server.ts — no manual configuration needed for same-origin deploys.
-# ---------------------------------------------------------------------------
+# ─── Local dev server ────────────────────────────────────────────────────────
+# These settings apply ONLY to `wrangler dev` / `npm run preview`.
+# For active development with HMR, use `npm run start` (Angular dev server)
+# instead of `npm run preview`.
+[dev]
+port = 4200
+local_protocol = "http"

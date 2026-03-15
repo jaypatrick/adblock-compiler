@@ -1,0 +1,44 @@
+# ============================================================================
+# .dev.vars.example — Local dev secrets template
+# ============================================================================
+# Copy this file to .dev.vars and fill in your values.
+# .dev.vars is loaded AUTOMATICALLY by `wrangler dev` and is gitignored.
+# It is the Wrangler-native equivalent of .env.local for Worker secrets.
+#
+# Do NOT commit .dev.vars — it contains real credentials.
+# See docs/auth/configuration.md for details on each variable.
+# ============================================================================
+
+# ─── Environment flag ────────────────────────────────────────────────────────
+# Overrides ENVIRONMENT = "production" from wrangler.toml [vars] during local dev.
+ENVIRONMENT=development
+
+# ─── Clerk Authentication ────────────────────────────────────────────────────
+# Get keys from https://dashboard.clerk.com → API Keys
+CLERK_PUBLISHABLE_KEY=pk_test_...
+CLERK_SECRET_KEY=sk_test_...
+CLERK_JWKS_URL=https://your-instance.clerk.accounts.dev/.well-known/jwks.json
+CLERK_WEBHOOK_SECRET=whsec_...
+
+# ─── Admin ───────────────────────────────────────────────────────────────────
+ADMIN_KEY=your-local-admin-key
+
+# ─── Cloudflare Turnstile ────────────────────────────────────────────────────
+# These test keys always pass — safe for local dev.
+# Get real keys from https://dash.cloudflare.com/?to=/:account/turnstile
+TURNSTILE_SITE_KEY=1x000000000000000000000AA
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+
+# ─── CORS ────────────────────────────────────────────────────────────────────
+CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8787
+
+# ─── Hyperdrive (local PostgreSQL override) ───────────────────────────────────
+# Overrides the Hyperdrive binding to point at your local PostgreSQL instance.
+# See: https://developers.cloudflare.com/hyperdrive/configuration/local-development/
+WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev
+
+# ─── Observability (all optional) ────────────────────────────────────────────
+# SENTRY_DSN=https://...@sentry.io/...
+# ANALYTICS_ACCOUNT_ID=your-cf-account-id
+# ANALYTICS_API_TOKEN=your-cf-api-token
+# OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.grafana.net/otlp
