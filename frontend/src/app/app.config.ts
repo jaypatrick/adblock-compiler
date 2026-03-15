@@ -37,6 +37,7 @@ import { ClerkService } from './services/clerk.service';
 import { GlobalErrorHandler } from './error/global-error-handler';
 import { TurnstileService } from './services/turnstile.service';
 import { API_BASE_URL } from './tokens';
+import { initSentry } from './sentry';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -129,6 +130,18 @@ export const appConfig: ApplicationConfig = {
                 console.warn('[app.config] Failed to load Clerk config:', err instanceof Error ? err.message : String(err));
                 clerkService.markConfigLoadFailed();
                 await clerkService.initialize('');
+            }
+
+            // Sentry RUM initialisation (browser only, non-fatal)
+            // Fetches DSN from /api/sentry-config at runtime — no build-time env required.
+            try {
+                const sentryConfig = await firstValueFrom(
+                    http.get<{ dsn: string | null }>(`${apiBaseUrl}/sentry-config`)
+                        .pipe(timeout(5000)),
+                );
+                await initSentry(sentryConfig.dsn);
+            } catch {
+                // Non-fatal: Sentry RUM disabled if config fetch fails
             }
         }),
     ],

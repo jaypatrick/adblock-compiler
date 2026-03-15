@@ -18,11 +18,13 @@ const PUBLIC_ENDPOINT_PREFIXES = [
     '/api/metrics',
     '/api/turnstile-config',
     '/api/clerk-config',
+    '/api/sentry-config',
     '/api/deployments',
     '/health',
     '/metrics',
     '/turnstile-config',
     '/clerk-config',
+    '/sentry-config',
     '/deployments',
 ] as const;
 

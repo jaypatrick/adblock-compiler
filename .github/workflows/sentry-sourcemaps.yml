@@ -1,0 +1,45 @@
+name: Sentry Source Maps
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+
+jobs:
+  upload-sourcemaps:
+    name: Upload Frontend Source Maps to Sentry
+    runs-on: ubuntu-latest
+    # Only run if SENTRY_ORG is configured — skip silently otherwise
+    if: ${{ vars.SENTRY_ORG != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build Angular frontend (with source maps)
+        run: pnpm --filter adblock-compiler-frontend run build -- --source-map=true
+        env:
+          NODE_ENV: production
+
+      - name: Upload source maps to Sentry
+        working-directory: frontend
+        run: |
+          npx @sentry/cli sourcemaps upload \
+            --org "${{ vars.SENTRY_ORG }}" \
+            --project "${{ vars.SENTRY_PROJECT }}" \
+            --release "${{ github.sha }}" \
+            --url-prefix "~/" \
+            ./dist
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
