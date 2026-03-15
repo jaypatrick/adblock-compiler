@@ -115,6 +115,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.61.0] - 2026-03-15
+
+### Added- Phase 3 observability — Sentry RUM, source map CI, Logpush docs (#1071)"
+- wire /metrics/prometheus + diagnostics provider into worker.ts fetch handler
+- 100% extensible observability — CompositeDiagnosticsProvider, factory, Prometheus registry, tests
+- scaffold observability improvements (Phase 1 + Phase 2)
+
+### Fixed
+
+- apply review feedback — release in Sentry.init, misleading SSR comment, upgrade @sentry/angular to v10 (Angular 21)"
+- add explicit permissions and --release flag to sentry-sourcemaps workflow
+- apply all PR review feedback (type-safety, import style, ZTA telemetry, docs accuracy)
+- resolve CI failures — deno fmt and esbuild @sentry/cloudflare import
+
+
 ## [0.60.0] - 2026-03-15
 
 ### Added- **admin**: wire 27 admin API routes into router.ts
