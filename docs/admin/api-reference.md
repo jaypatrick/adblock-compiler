@@ -744,6 +744,161 @@ DELETE /admin/system/announcements/:id
 
 ---
 
+## Local Auth Users
+
+CRUD endpoints for managing local JWT auth users. These endpoints are available when the Worker is configured with a D1 `DB` binding and `JWT_SECRET`. They mirror [Clerk's Backend API](https://clerk.com/docs/reference/backend-api) for easy migration.
+
+**Authentication required**: Admin tier + `admin` role (enforced by `checkRoutePermission`).
+
+> **Note**: Password hashes are never returned. The `api_disabled` flag can be toggled to block a user's API access without deleting the account.
+
+---
+
+### List Local Auth Users
+
+```
+GET /admin/local-users
+```
+
+**Query Parameters**:
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `limit` | integer | 20 | Max results per page (1–100) |
+| `offset` | integer | 0 | Pagination offset |
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "users": [
+      {
+        "id": "uuid",
+        "identifier": "user@example.com",
+        "identifier_type": "email",
+        "role": "user",
+        "tier": "free",
+        "api_disabled": 0,
+        "created_at": "2025-01-01T00:00:00Z",
+        "updated_at": "2025-01-01T00:00:00Z"
+      }
+    ],
+    "total": 42,
+    "limit": 20,
+    "offset": 0
+  }
+}
+```
+
+---
+
+### Get Local Auth User
+
+```
+GET /admin/local-users/:id
+```
+
+**Path Parameters**: `id` — User UUID
+
+**Response**: Same user object as list, wrapped in `{ "data": { "user": { ... } } }`.
+
+---
+
+### Create Local Auth User
+
+```
+POST /admin/local-users
+```
+
+**Request Body**:
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `identifier` | string | ✅ | Email or phone number |
+| `password` | string | ✅ | Plaintext password (hashed server-side with PBKDF2) |
+| `role` | string | | `user` or `admin` (default: `user`) |
+| `tier` | string | | Override tier; defaults to the role's default tier |
+
+**Response**: `201` with the created user object.
+
+**Errors**:
+- `409 Conflict` — identifier already registered
+
+---
+
+### Update Local Auth User
+
+```
+PATCH /admin/local-users/:id
+```
+
+**Request Body** (at least one field required):
+| Field | Type | Description |
+|-------|------|-------------|
+| `role` | string | New role (`user` or `admin`) |
+| `tier` | string | New tier (`free`, `pro`, `admin`) |
+| `api_disabled` | `0` \| `1` | `1` blocks all API access for this user |
+
+> Tier and role are independent. Setting `role` without `tier` auto-derives the default tier for that role. Setting both allows overrides (e.g. `{ "role": "user", "tier": "pro" }` for a Pro-rate-limited non-admin user).
+
+**Response**: Updated user object.
+
+---
+
+### Delete Local Auth User
+
+```
+DELETE /admin/local-users/:id
+```
+
+**Response**: `{ "success": true, "data": { "message": "User deleted" } }`
+
+**Errors**:
+- `404 Not Found` — user does not exist
+
+---
+
+## API Usage
+
+Query per-user API usage statistics stored in KV. Useful for monitoring, abuse detection, and billing.
+
+**Authentication required**: Admin tier + `admin` role.
+
+---
+
+### Get User Usage
+
+```
+GET /admin/usage/:userId
+```
+
+**Path Parameters**: `userId` — User UUID (local auth user ID)
+
+**Query Parameters**:
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `days` | integer | 7 | Lookback window in days (1–90) |
+
+**Response**:
+```json
+{
+  "success": true,
+  "data": {
+    "userId": "uuid",
+    "total": {
+      "count": 1234,
+      "firstSeen": "2025-01-01T00:00:00Z",
+      "lastSeen": "2025-03-15T12:00:00Z"
+    },
+    "days": [
+      { "date": "2025-03-15", "count": 42, "routes": { "/compile": 38, "/validate": 4 } }
+    ],
+    "lookbackDays": 7
+  }
+}
+```
+
+---
+
 ## Endpoint Summary
 
 | # | Method | Path | Permission |
@@ -775,3 +930,9 @@ DELETE /admin/system/announcements/:id
 | 25 | POST | `/admin/system/announcements` | `config:write` |
 | 26 | PATCH | `/admin/system/announcements/:id` | `config:write` |
 | 27 | DELETE | `/admin/system/announcements/:id` | `config:write` |
+| 28 | GET | `/admin/local-users` | Admin role |
+| 29 | GET | `/admin/local-users/:id` | Admin role |
+| 30 | POST | `/admin/local-users` | Admin role |
+| 31 | PATCH | `/admin/local-users/:id` | Admin role |
+| 32 | DELETE | `/admin/local-users/:id` | Admin role |
+| 33 | GET | `/admin/usage/:userId` | Admin role |
