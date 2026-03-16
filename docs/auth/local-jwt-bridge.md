@@ -85,7 +85,7 @@ No verification email or SMS is sent — format validation only.
 {
   "success": true,
   "token": "<HS256 JWT>",
-  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifierType": "email", "tier": "free", "role": "user" }
+  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifier_type": "email", "tier": "free", "role": "user", "api_disabled": 0, "created_at": "2026-01-01T00:00:00.000Z", "updated_at": "2026-01-01T00:00:00.000Z" }
 }
 ```
 
@@ -107,7 +107,7 @@ Authenticate and receive a JWT. Timing-safe: always runs full PBKDF2 even when t
 {
   "success": true,
   "token": "<HS256 JWT>",
-  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifierType": "email", "tier": "free", "role": "user" }
+  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifier_type": "email", "tier": "free", "role": "user", "api_disabled": 0, "created_at": "2026-01-01T00:00:00.000Z", "updated_at": "2026-01-01T00:00:00.000Z" }
 }
 ```
 
@@ -123,7 +123,7 @@ Return the current user's profile. Requires `Authorization: Bearer <token>`.
 ```json
 {
   "success": true,
-  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifierType": "email", "tier": "free", "role": "user", "createdAt": "2026-01-01T00:00:00.000Z" }
+  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifier_type": "email", "tier": "free", "role": "user", "api_disabled": 0, "created_at": "2026-01-01T00:00:00.000Z", "updated_at": "2026-01-01T00:00:00.000Z" }
 }
 ```
 

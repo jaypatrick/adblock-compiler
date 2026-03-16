@@ -365,7 +365,7 @@ export async function authenticateRequestUnified(
                 return {
                     context: { ...ANONYMOUS_AUTH_CONTEXT },
                     response: new Response(
-                        JSON.stringify({ error: validationResult.error ?? 'Token validation failed' }),
+                        JSON.stringify({ success: false, error: validationResult.error ?? 'Token validation failed' }),
                         { status: 401, headers: { 'Content-Type': 'application/json' } },
                     ),
                 };
@@ -377,7 +377,7 @@ export async function authenticateRequestUnified(
         return {
             context: { ...ANONYMOUS_AUTH_CONTEXT },
             response: new Response(
-                JSON.stringify({ error: providerResult.error ?? 'Invalid JWT' }),
+                JSON.stringify({ success: false, error: providerResult.error ?? 'Invalid JWT' }),
                 { status: 401, headers: { 'Content-Type': 'application/json' } },
             ),
         };
@@ -387,7 +387,7 @@ export async function authenticateRequestUnified(
     return {
         context: { ...ANONYMOUS_AUTH_CONTEXT },
         response: new Response(
-            JSON.stringify({ error: 'Unrecognised credential format — expected a Clerk JWT or abc_-prefixed API key' }),
+            JSON.stringify({ success: false, error: 'Unrecognised credential format — expected a Clerk JWT or abc_-prefixed API key' }),
             { status: 401, headers: { 'Content-Type': 'application/json' } },
         ),
     };
