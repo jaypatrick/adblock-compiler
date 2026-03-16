@@ -13,12 +13,7 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import {
-    handleLocalChangePassword,
-    handleLocalLogin,
-    handleLocalMe,
-    handleLocalSignup,
-} from './local-auth.ts';
+import { handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocalSignup } from './local-auth.ts';
 import { hashPassword } from '../utils/password.ts';
 import { type Env, type IAuthContext, UserTier } from '../types.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
@@ -70,6 +65,7 @@ interface UserRecord {
     password_hash: string;
     role: string;
     tier: UserTier;
+    api_disabled: number;
     created_at: string;
     updated_at: string;
 }
@@ -109,6 +105,7 @@ function createMockDb(initialUsers: UserRecord[] = []) {
                         password_hash: password_hash as string,
                         role: role as string,
                         tier: tier as UserTier,
+                        api_disabled: 0,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString(),
                     });
@@ -218,12 +215,13 @@ Deno.test('handleLocalSignup - 400 on short password', async () => {
 Deno.test('handleLocalSignup - 409 on duplicate identifier', async () => {
     const passwordHash = await hashPassword('password123');
     const db = createMockDb([{
-        id: 'existing-id',
+        id: '10000000-0000-4000-8000-000000000001',
         identifier: 'taken@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
         role: 'user',
         tier: UserTier.Free,
+        api_disabled: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }]);
@@ -275,12 +273,13 @@ Deno.test('handleLocalSignup - registered user has user role', async () => {
 Deno.test('handleLocalLogin - 200 + token on valid credentials', async () => {
     const passwordHash = await hashPassword('correctpassword');
     const db = createMockDb([{
-        id: 'user-001',
+        id: '10000000-0000-4000-8000-000000000002',
         identifier: 'login@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
         role: 'user',
         tier: UserTier.Free,
+        api_disabled: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }]);
@@ -301,12 +300,13 @@ Deno.test('handleLocalLogin - 200 + token on valid credentials', async () => {
 Deno.test('handleLocalLogin - 401 on wrong password', async () => {
     const passwordHash = await hashPassword('correctpassword');
     const db = createMockDb([{
-        id: 'user-002',
+        id: '10000000-0000-4000-8000-000000000003',
         identifier: 'login2@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
         role: 'user',
         tier: UserTier.Free,
+        api_disabled: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }]);
@@ -355,12 +355,13 @@ Deno.test('handleLocalLogin - 400 on invalid body', async () => {
 Deno.test('handleLocalLogin - 200 with phone identifier', async () => {
     const passwordHash = await hashPassword('phonepass1');
     const db = createMockDb([{
-        id: 'phone-user-001',
+        id: '10000000-0000-4000-8000-000000000004',
         identifier: '+12025551234',
         identifier_type: 'phone',
         password_hash: passwordHash,
         role: 'user',
         tier: UserTier.Free,
+        api_disabled: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }]);
@@ -382,18 +383,19 @@ Deno.test('handleLocalLogin - 200 with phone identifier', async () => {
 
 Deno.test('handleLocalMe - 200 with valid auth context', async () => {
     const db = createMockDb([{
-        id: 'me-user-001',
+        id: '10000000-0000-4000-8000-000000000005',
         identifier: 'me@example.com',
         identifier_type: 'email',
         password_hash: 'irrelevant',
         role: 'user',
         tier: UserTier.Free,
+        api_disabled: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }]);
     const env = makeEnv({ DB: db as unknown as D1Database });
     const req = new Request('http://localhost/auth/me');
-    const ctx = makeAuthContext('me-user-001');
+    const ctx = makeAuthContext('10000000-0000-4000-8000-000000000005');
 
     const res = await handleLocalMe(req, env, ctx);
     assertEquals(res.status, 200);
@@ -428,17 +430,18 @@ Deno.test('handleLocalMe - 404 when user not in DB', async () => {
 Deno.test('handleLocalChangePassword - 200 on successful change', async () => {
     const passwordHash = await hashPassword('oldpassword');
     const db = createMockDb([{
-        id: 'chpw-user-001',
+        id: '10000000-0000-4000-8000-000000000006',
         identifier: 'chpw@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
         role: 'user',
         tier: UserTier.Free,
+        api_disabled: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }]);
     const env = makeEnv({ DB: db as unknown as D1Database });
-    const ctx = makeAuthContext('chpw-user-001');
+    const ctx = makeAuthContext('10000000-0000-4000-8000-000000000006');
     const req = new Request('http://localhost/auth/change-password', {
         method: 'POST',
         body: JSON.stringify({ currentPassword: 'oldpassword', newPassword: 'newpassword123' }),
@@ -452,17 +455,18 @@ Deno.test('handleLocalChangePassword - 200 on successful change', async () => {
 Deno.test('handleLocalChangePassword - 401 on wrong current password', async () => {
     const passwordHash = await hashPassword('correctpassword');
     const db = createMockDb([{
-        id: 'chpw-user-002',
+        id: '10000000-0000-4000-8000-000000000007',
         identifier: 'chpw2@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
         role: 'user',
         tier: UserTier.Free,
+        api_disabled: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }]);
     const env = makeEnv({ DB: db as unknown as D1Database });
-    const ctx = makeAuthContext('chpw-user-002');
+    const ctx = makeAuthContext('10000000-0000-4000-8000-000000000007');
     const req = new Request('http://localhost/auth/change-password', {
         method: 'POST',
         body: JSON.stringify({ currentPassword: 'wrongpassword', newPassword: 'newpassword123' }),
@@ -488,17 +492,18 @@ Deno.test('handleLocalChangePassword - 401 when anonymous', async () => {
 Deno.test('handleLocalChangePassword - 400 on short new password', async () => {
     const passwordHash = await hashPassword('currentpw');
     const db = createMockDb([{
-        id: 'chpw-user-003',
+        id: '10000000-0000-4000-8000-000000000008',
         identifier: 'chpw3@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
         role: 'user',
         tier: UserTier.Free,
+        api_disabled: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     }]);
     const env = makeEnv({ DB: db as unknown as D1Database });
-    const ctx = makeAuthContext('chpw-user-003');
+    const ctx = makeAuthContext('10000000-0000-4000-8000-000000000008');
     const req = new Request('http://localhost/auth/change-password', {
         method: 'POST',
         body: JSON.stringify({ currentPassword: 'currentpw', newPassword: 'short' }),
