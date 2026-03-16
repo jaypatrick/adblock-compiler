@@ -13,11 +13,7 @@
 // mocks are structurally drop-in compatible with the real interfaces.
 // ============================================================================
 
-import type {
-    IBrowserWorker,
-    IPlaywrightBrowser,
-    IPlaywrightPage,
-} from '../../../src/platform/BrowserFetcher.ts';
+import type { IBrowserWorker, IPlaywrightBrowser, IPlaywrightPage } from '../../../src/platform/BrowserFetcher.ts';
 
 export type { IBrowserWorker, IPlaywrightBrowser, IPlaywrightPage };
 

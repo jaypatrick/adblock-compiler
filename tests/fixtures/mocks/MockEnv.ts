@@ -140,8 +140,8 @@ export function createMockEnvWithAnalytics(
 export function createMockRequest(
     url = 'https://test.example.com/',
     init?: RequestInit,
-): Request {
-    return new Request(url, init);
+): Request<unknown, IncomingRequestCfProperties<unknown>> {
+    return new Request(url, init) as unknown as Request<unknown, IncomingRequestCfProperties<unknown>>;
 }
 
 /** Create a minimal ExecutionContext for handler tests. */

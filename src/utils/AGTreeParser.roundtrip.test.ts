@@ -13,7 +13,7 @@
  */
 
 import { assert, assertEquals } from '@std/assert';
-import { AGTreeParser, AdblockSyntax } from './AGTreeParser.ts';
+import { AdblockSyntax, AGTreeParser } from './AGTreeParser.ts';
 
 // ============================================================================
 // Helper
