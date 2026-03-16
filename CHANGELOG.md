@@ -122,6 +122,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.63.0] - 2026-03-16
+
+### Added- **testing**: unified testing strategy — 52 new tests, shared fixtures, docs (#1118)
+
+
 ## [0.62.5] - 2026-03-15
 
 ### Added### Performance
