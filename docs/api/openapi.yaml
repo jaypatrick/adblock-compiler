@@ -1840,7 +1840,7 @@ paths:
                 Requires Admin tier + admin role.
             operationId: adminListLocalUsers
             security:
-                - AdminKey: []
+                - BearerAuth: []
             parameters:
                 - name: limit
                   in: query
@@ -1879,7 +1879,7 @@ paths:
                 Requires Admin tier + admin role.
             operationId: adminCreateLocalUser
             security:
-                - AdminKey: []
+                - BearerAuth: []
             requestBody:
                 required: true
                 content:
@@ -1922,7 +1922,7 @@ paths:
                 Requires Admin tier + admin role.
             operationId: adminGetLocalUser
             security:
-                - AdminKey: []
+                - BearerAuth: []
             parameters:
                 - name: userId
                   in: path
@@ -1960,7 +1960,7 @@ paths:
                 Requires Admin tier + admin role.
             operationId: adminUpdateLocalUser
             security:
-                - AdminKey: []
+                - BearerAuth: []
             parameters:
                 - name: userId
                   in: path
@@ -2014,7 +2014,7 @@ paths:
                 Requires Admin tier + admin role.
             operationId: adminDeleteLocalUser
             security:
-                - AdminKey: []
+                - BearerAuth: []
             parameters:
                 - name: userId
                   in: path
@@ -2065,7 +2065,7 @@ paths:
                 Requires Admin tier + admin role.
             operationId: adminAuthConfig
             security:
-                - AdminKey: []
+                - BearerAuth: []
             responses:
                 '200':
                     description: Active auth configuration snapshot
@@ -2090,7 +2090,7 @@ paths:
                 Requires Admin tier + admin role.
             operationId: adminGetUserUsage
             security:
-                - AdminKey: []
+                - BearerAuth: []
             parameters:
                 - name: userId
                   in: path

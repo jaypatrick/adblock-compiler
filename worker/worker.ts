@@ -2991,7 +2991,7 @@ async function handleHealthLatest(env: Env): Promise<Response> {
  * called from outside the `workerHandler` object itself.
  */
 interface WorkerHandler extends ExportedHandler<Env> {
-    _handleRequest(request: Request, env: Env, url: URL, pathname: string): Promise<Response>;
+    _handleRequest(request: Request, env: Env, url: URL, pathname: string, ctx: ExecutionContext): Promise<Response>;
 }
 
 /**
@@ -3024,7 +3024,7 @@ const workerHandler: WorkerHandler = {
         try {
             // Execute the actual handler, then wrap the response with CORS headers.
             // This ensures every response — success, error, or fallback — has correct CORS.
-            response = await this._handleRequest(request, env, url, pathname);
+            response = await this._handleRequest(request, env, url, pathname, ctx);
         } catch (err) {
             requestSpan.recordException(err instanceof Error ? err : new Error(String(err)));
             diagnostics.captureError(err instanceof Error ? err : new Error(String(err)), {
@@ -3058,7 +3058,7 @@ const workerHandler: WorkerHandler = {
     },
 
     /** @internal Core request handler — called by fetch() which wraps the response with CORS headers. */
-    async _handleRequest(request: Request, env: Env, url: URL, pathname: string): Promise<Response> {
+    async _handleRequest(request: Request, env: Env, url: URL, pathname: string, ctx: ExecutionContext): Promise<Response> {
         const requestId = generateRequestId('api');
         const analytics = createAnalyticsService(env);
         const ip = request.headers.get('CF-Connecting-IP') || 'unknown';
@@ -3259,36 +3259,138 @@ const workerHandler: WorkerHandler = {
         // Checks if the authenticated user's API access has been disabled.
         // Runs after auth and before ALL routing so every endpoint is covered.
         const accessDenied = await checkUserApiAccess(authContext, env);
-        if (accessDenied) return accessDenied;
+        if (accessDenied) {
+            analytics.trackSecurityEvent({
+                eventType: 'auth_failure',
+                path: routePath,
+                method: request.method,
+                clientIpHash: AnalyticsService.hashIp(ip),
+                reason: 'api_disabled',
+            });
+            return accessDenied;
+        }
 
         // ── ZTA: Per-user API usage tracking (fire-and-forget, non-blocking) ──────
-        void trackApiUsage(authContext, routePath, request.method, env);
+        ctx.waitUntil(trackApiUsage(authContext, routePath, request.method, env));
 
         // ── Local JWT auth routes (pre-Clerk bridge) ────────────────────
         // POST /auth/signup          — register (email or phone + password)
         // POST /auth/login           — authenticate, receive JWT
         // GET  /auth/me              — current user profile (requires auth)
         // POST /auth/change-password — update password    (requires auth)
-        if (routePath === '/auth/signup' && request.method === 'POST') {
-            return await handleLocalSignup(request, env, analytics, ip);
+        //
+        // These routes are only active in local-jwt mode (CLERK_JWKS_URL not set).
+        // When Clerk is active, return 404 so the local bridge is never exposed.
+        if (
+            routePath.startsWith('/auth/') &&
+            (routePath === '/auth/signup' || routePath === '/auth/login' ||
+                routePath === '/auth/me' || routePath === '/auth/change-password')
+        ) {
+            if (env.CLERK_JWKS_URL) {
+                return Response.json({ success: false, error: 'Not found' }, { status: 404 });
+            }
+            if (routePath === '/auth/signup' && request.method === 'POST') {
+                return await handleLocalSignup(request, env, analytics, ip);
+            }
+            if (routePath === '/auth/login' && request.method === 'POST') {
+                return await handleLocalLogin(request, env, analytics, ip);
+            }
+            if (routePath === '/auth/me' && request.method === 'GET') {
+                return await handleLocalMe(request, env, authContext);
+            }
+            if (routePath === '/auth/change-password' && request.method === 'POST') {
+                return await handleLocalChangePassword(request, env, authContext, analytics, ip);
+            }
         }
-        if (routePath === '/auth/login' && request.method === 'POST') {
-            return await handleLocalLogin(request, env, analytics, ip);
-        }
-        if (routePath === '/auth/me' && request.method === 'GET') {
-            return await handleLocalMe(request, env, authContext);
-        }
-        if (routePath === '/auth/change-password' && request.method === 'POST') {
-            return await handleLocalChangePassword(request, env, authContext, analytics, ip);
+
+        // ========================================================================
+        // Admin Storage Endpoints (require X-Admin-Key header)
+        // ========================================================================
+        // This block runs BEFORE the central route permission check so that
+        // /admin/storage/* uses X-Admin-Key auth (not the JWT registry).
+        // ========================================================================
+
+        if (routePath.startsWith('/admin/storage')) {
+            // Verify admin authentication (X-Admin-Key header)
+            const auth = await verifyAdminAuth(request, env);
+            if (!auth.authorized) {
+                return Response.json(
+                    { success: false, error: auth.error },
+                    {
+                        status: 401,
+                        headers: {
+                            'WWW-Authenticate': 'X-Admin-Key',
+                        },
+                    },
+                );
+            }
+
+            // Defense-in-depth: also require CF Access JWT when configured
+            const cfAccess = await verifyCfAccessJwt(request, env);
+            if (!cfAccess.valid) {
+                return Response.json(
+                    { success: false, error: cfAccess.error ?? 'CF Access verification failed' },
+                    { status: 403 },
+                );
+            }
+
+            // Admin storage stats
+            if (routePath === '/admin/storage/stats' && request.method === 'GET') {
+                return handleAdminStorageStats(env);
+            }
+
+            // Admin clear expired entries
+            if (routePath === '/admin/storage/clear-expired' && request.method === 'POST') {
+                return handleAdminClearExpired(env);
+            }
+
+            // Admin clear cache
+            if (routePath === '/admin/storage/clear-cache' && request.method === 'POST') {
+                return handleAdminClearCache(env);
+            }
+
+            // Admin export data
+            if (routePath === '/admin/storage/export' && request.method === 'GET') {
+                return handleAdminExport(env);
+            }
+
+            // Admin vacuum database
+            if (routePath === '/admin/storage/vacuum' && request.method === 'POST') {
+                return handleAdminVacuum(env);
+            }
+
+            // Admin list tables
+            if (routePath === '/admin/storage/tables' && request.method === 'GET') {
+                return handleAdminListTables(env);
+            }
+
+            // Admin SQL query (read-only)
+            if (routePath === '/admin/storage/query' && request.method === 'POST') {
+                return handleAdminQuery(request, env);
+            }
+
+            // Unknown admin endpoint
+            return Response.json(
+                { success: false, error: 'Unknown admin endpoint' },
+                { status: 404 },
+            );
         }
 
         // ── Route permission check (central registry) ───────────────────────
         // Applied globally after auth for all routes registered in ROUTE_PERMISSION_REGISTRY.
-        // Admin routes that use ADMIN_KEY (not JWT) handle their own auth internally —
-        // this check only fires for routes the registry knows about.
+        // /admin/storage routes use X-Admin-Key and are handled before this check.
         // Public endpoints (minTier: Anonymous) pass through with null.
         const permDenied = checkRoutePermission(routePath, authContext);
-        if (permDenied) return permDenied;
+        if (permDenied) {
+            analytics.trackSecurityEvent({
+                eventType: 'auth_failure',
+                path: routePath,
+                method: request.method,
+                clientIpHash: AnalyticsService.hashIp(ip),
+                reason: 'route_permission_denied',
+            });
+            return permDenied;
+        }
 
         // ── Admin local user management routes ──────────────────────────────
         // GET   /admin/auth/config         — inspect active registries (roles/tiers/routes)
@@ -3362,76 +3464,6 @@ const workerHandler: WorkerHandler = {
                     'Cache-Control': 'no-cache',
                 },
             });
-        }
-
-        // ========================================================================
-        // Admin Storage Endpoints (require X-Admin-Key header)
-        // ========================================================================
-
-        if (routePath.startsWith('/admin/storage')) {
-            // Verify admin authentication (X-Admin-Key header)
-            const auth = await verifyAdminAuth(request, env);
-            if (!auth.authorized) {
-                return Response.json(
-                    { success: false, error: auth.error },
-                    {
-                        status: 401,
-                        headers: {
-                            'WWW-Authenticate': 'X-Admin-Key',
-                        },
-                    },
-                );
-            }
-
-            // Defense-in-depth: also require CF Access JWT when configured
-            const cfAccess = await verifyCfAccessJwt(request, env);
-            if (!cfAccess.valid) {
-                return Response.json(
-                    { success: false, error: cfAccess.error ?? 'CF Access verification failed' },
-                    { status: 403 },
-                );
-            }
-
-            // Admin storage stats
-            if (routePath === '/admin/storage/stats' && request.method === 'GET') {
-                return handleAdminStorageStats(env);
-            }
-
-            // Admin clear expired entries
-            if (routePath === '/admin/storage/clear-expired' && request.method === 'POST') {
-                return handleAdminClearExpired(env);
-            }
-
-            // Admin clear cache
-            if (routePath === '/admin/storage/clear-cache' && request.method === 'POST') {
-                return handleAdminClearCache(env);
-            }
-
-            // Admin export data
-            if (routePath === '/admin/storage/export' && request.method === 'GET') {
-                return handleAdminExport(env);
-            }
-
-            // Admin vacuum database
-            if (routePath === '/admin/storage/vacuum' && request.method === 'POST') {
-                return handleAdminVacuum(env);
-            }
-
-            // Admin list tables
-            if (routePath === '/admin/storage/tables' && request.method === 'GET') {
-                return handleAdminListTables(env);
-            }
-
-            // Admin SQL query (read-only)
-            if (routePath === '/admin/storage/query' && request.method === 'POST') {
-                return handleAdminQuery(request, env);
-            }
-
-            // Unknown admin endpoint
-            return Response.json(
-                { success: false, error: 'Unknown admin endpoint' },
-                { status: 404 },
-            );
         }
 
         // Handle queue results endpoint - fetch cached results for a completed job

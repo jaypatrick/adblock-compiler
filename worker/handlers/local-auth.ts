@@ -160,8 +160,22 @@ export async function handleLocalSignup(
         // 6. Issue JWT
         const token = await signLocalJWT(id, role, tier, env.JWT_SECRET);
 
+        // 7. Fetch the full row so the response matches LocalUserPublic schema (includes api_disabled, timestamps)
+        const row = await env.DB
+            .prepare(
+                `SELECT id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at
+                 FROM local_auth_users WHERE id = ? LIMIT 1`,
+            )
+            .bind(id)
+            .first<Record<string, unknown>>();
+
+        const userResult = LocalUserRowSchema.parse(row);
+
         return JsonResponse.success(
-            { token, user: { id, identifier, identifierType, tier, role } },
+            {
+                token,
+                user: LocalUserPublicSchema.parse(userResult),
+            },
             { status: 201 },
         );
     } catch (error) {
@@ -257,13 +271,7 @@ export async function handleLocalLogin(
 
         return JsonResponse.success({
             token,
-            user: {
-                id: user.id,
-                identifier: user.identifier,
-                identifierType: user.identifier_type,
-                tier: user.tier,
-                role: user.role,
-            },
+            user: LocalUserPublicSchema.parse(user),
         });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);

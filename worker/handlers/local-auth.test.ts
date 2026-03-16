@@ -183,7 +183,7 @@ Deno.test('handleLocalSignup - 201 + token on valid phone number', async () => {
     assertEquals(body.success, true);
     assertExists(body.token);
     const user = body.user as Record<string, unknown>;
-    assertEquals(user.identifierType, 'phone');
+    assertEquals(user.identifier_type, 'phone');
 });
 
 Deno.test('handleLocalSignup - 400 on invalid identifier', async () => {

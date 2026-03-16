@@ -23,12 +23,14 @@
  */
 
 import { ZodError } from 'zod';
-import type { Env, IAuthContext } from '../types.ts';
+import { type Env, type IAuthContext, UserTier } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { AdminUpdateLocalUserSchema, LocalSignupRequestSchema, LocalUserPublicSchema } from '../schemas.ts';
 import { hashPassword } from '../utils/password.ts';
 import { isValidLocalRole, tierForRole, VALID_LOCAL_ROLES } from '../utils/local-auth-roles.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
+
+const VALID_TIERS: ReadonlyArray<string> = Object.values(UserTier).filter((t) => t !== UserTier.Anonymous);
 
 // ============================================================================
 // GET /admin/local-users
@@ -50,8 +52,10 @@ export async function handleAdminListLocalUsers(
     if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
 
     const url = new URL(request.url);
-    const limit = Math.min(parseInt(url.searchParams.get('limit') ?? '50', 10), 100);
-    const offset = Math.max(parseInt(url.searchParams.get('offset') ?? '0', 10), 0);
+    const rawLimit = parseInt(url.searchParams.get('limit') ?? '50', 10);
+    const rawOffset = parseInt(url.searchParams.get('offset') ?? '0', 10);
+    const limit = Math.min(Number.isNaN(rawLimit) ? 50 : rawLimit, 100);
+    const offset = Math.max(Number.isNaN(rawOffset) ? 0 : rawOffset, 0);
 
     try {
         const result = await env.DB
@@ -143,11 +147,6 @@ export async function handleAdminCreateLocalUser(
     if (denied) return denied;
 
     if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
-    if (!env.JWT_SECRET) {
-        return JsonResponse.serviceUnavailable(
-            'JWT_SECRET not configured. Run: wrangler secret put JWT_SECRET',
-        );
-    }
 
     let body: unknown;
     try {
@@ -172,7 +171,11 @@ export async function handleAdminCreateLocalUser(
     }
 
     // If tier explicitly provided, validate it; otherwise derive from role
-    const tier = requestedTier ?? tierForRole(requestedRole);
+    const resolvedTier = requestedTier ?? tierForRole(requestedRole);
+    if (!VALID_TIERS.includes(resolvedTier)) {
+        return JsonResponse.badRequest(`Invalid tier. Valid tiers: ${VALID_TIERS.join(', ')}`);
+    }
+    const tier = resolvedTier;
 
     const { identifier, password } = signupParsed.data;
     const identifierType = identifier.includes('@') ? 'email' : 'phone';
@@ -198,10 +201,19 @@ export async function handleAdminCreateLocalUser(
             .bind(id, identifier, identifierType, passwordHash, requestedRole, tier)
             .run();
 
-        return JsonResponse.success(
-            { user: { id, identifier, identifierType, role: requestedRole, tier } },
-            { status: 201 },
-        );
+        // Fetch the full row so the response matches LocalUserPublic schema (includes api_disabled, timestamps)
+        const row = await env.DB
+            .prepare(
+                `SELECT id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at
+                 FROM local_auth_users WHERE id = ? LIMIT 1`,
+            )
+            .bind(id)
+            .first<Record<string, unknown>>();
+
+        const userResult = LocalUserPublicSchema.safeParse(row);
+        if (!userResult.success) return JsonResponse.serverError('User record is malformed after create');
+
+        return JsonResponse.success({ user: userResult.data }, { status: 201 });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         // deno-lint-ignore no-console
