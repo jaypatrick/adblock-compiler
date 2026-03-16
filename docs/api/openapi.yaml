@@ -53,6 +53,8 @@ tags:
       description: Endpoints backed by the Cloudflare Browser Rendering binding (`BROWSER`). Used for resolving redirect chains and monitoring filter-list source URLs for changes.
     - name: Authentication
       description: User-level authentication endpoints — API key management and webhook receivers. Requires Clerk JWT or API key auth.
+    - name: LocalAuth
+      description: Local JWT auth bridge — self-contained sign-up/login until Clerk is production-ready. When `CLERK_JWKS_URL` is set the provider auto-switches to Clerk and these endpoints are no longer used.
 
 paths:
     /api:
