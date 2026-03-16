@@ -16,7 +16,7 @@
 import { assertEquals } from '@std/assert';
 import { handleClerkWebhook } from './clerk-webhook.ts';
 import type { ClerkWebhookEvent, PrismaLike } from './clerk-webhook.ts';
-import type { D1Database, D1ExecResult, D1PreparedStatement, D1Result, Env } from '../types.ts';
+import type { D1Database, D1ExecResult, D1Result, Env } from '../types.ts';
 
 // ============================================================================
 // Prisma mock helper
@@ -125,36 +125,20 @@ function makeSvixRequest(body: unknown): Request {
 
 function createMinimalMockD1(): D1Database {
     return {
-        prepare(_query: string): D1PreparedStatement {
-            const stmt: D1PreparedStatement = {
-                bind(): D1PreparedStatement {
-                    return stmt;
-                },
-                async first<T>(): Promise<T | null> {
-                    return null;
-                },
-                async all<T>(): Promise<D1Result<T>> {
-                    return { results: [], success: true };
-                },
-                async run(): Promise<D1Result> {
-                    return { success: true };
-                },
-                async raw<T>(): Promise<T[]> {
-                    return [];
-                },
+        prepare: (_query: string) => {
+            const stmt = {
+                bind: () => stmt,
+                first: async <T>(): Promise<T | null> => null,
+                all: async <T>() => ({ results: [] as T[], success: true }),
+                run: async () => ({ success: true }),
+                raw: async <T>(): Promise<T[]> => [],
             };
             return stmt;
         },
-        async dump(): Promise<ArrayBuffer> {
-            return new ArrayBuffer(0);
-        },
-        async batch<T>(): Promise<D1Result<T>[]> {
-            return [];
-        },
-        async exec(): Promise<D1ExecResult> {
-            return { count: 0, duration: 0 };
-        },
-    };
+        dump: async (): Promise<ArrayBuffer> => new ArrayBuffer(0),
+        batch: async <T>(): Promise<D1Result<T>[]> => [],
+        exec: async (): Promise<D1ExecResult> => ({ count: 0, duration: 0 }),
+    } as unknown as D1Database;
 }
 
 // ============================================================================
