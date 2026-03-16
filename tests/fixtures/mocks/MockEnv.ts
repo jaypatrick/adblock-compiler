@@ -22,6 +22,11 @@ export class MockKVNamespace {
         const entry = this.store.get(key);
         if (!entry) return null;
 
+        if (entry.expiration && Date.now() > entry.expiration) {
+            this.store.delete(key);
+            return null;
+        }
+
         if (type === 'arrayBuffer' && entry.value instanceof ArrayBuffer) {
             return entry.value;
         }
