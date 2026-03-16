@@ -304,7 +304,13 @@ export async function handleCompileStream(
     env: Env,
 ): Promise<Response> {
     const startTime = Date.now();
-    const rawBody = await request.json();
+    let rawBody: unknown;
+    try {
+        rawBody = await request.json();
+    } catch {
+        // Discard parse error — a generic 400 is returned instead of exposing internal details
+        return JsonResponse.badRequest('Invalid JSON in request body');
+    }
     const parsed = CompileRequestSchema.safeParse(rawBody);
     if (!parsed.success) {
         const errors = parsed.error.issues.map((i) => `/${i.path.join('/')}: ${i.message}`).join(', ');

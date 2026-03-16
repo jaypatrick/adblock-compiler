@@ -194,7 +194,7 @@ export class SignUpComponent implements OnDestroy {
             return;
         }
 
-        await this.router.navigateByUrl('/admin');
+        await this.router.navigateByUrl('/api-keys');
     }
 
     private tryMount(): void {

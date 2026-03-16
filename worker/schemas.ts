@@ -1309,7 +1309,7 @@ export type AdminPaginationQuery = z.infer<typeof AdminPaginationQuerySchema>;
 
 /** GET /admin/usage/:userId?days=<n> */
 export const AdminUsageDaysQuerySchema = z.object({
-    days: z.coerce.number().int().min(1).max(365).default(30),
+    days: z.coerce.number().int().default(30),
 });
 export type AdminUsageDays = z.infer<typeof AdminUsageDaysQuerySchema>;
 
