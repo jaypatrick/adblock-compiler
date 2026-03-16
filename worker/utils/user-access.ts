@@ -14,7 +14,6 @@
 
 import type { Env, IAuthContext } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
-import { getPrismaD1 } from './prisma-d1.ts';
 
 /**
  * Check if the authenticated local-jwt user has API access enabled.
@@ -39,13 +38,12 @@ export async function checkUserApiAccess(
     if (!env.DB) return null;
 
     try {
-        const prisma = getPrismaD1(env.DB);
-        const user = await prisma.localAuthUser.findUnique({
-            where: { id: authContext.userId },
-            select: { apiDisabled: true },
-        });
+        const row = await env.DB
+            .prepare('SELECT api_disabled FROM local_auth_users WHERE id = ?')
+            .bind(authContext.userId)
+            .first<{ api_disabled: number }>();
 
-        if (user?.apiDisabled) {
+        if (row?.api_disabled) {
             return JsonResponse.error('API access has been disabled for this account', 403);
         }
         return null;

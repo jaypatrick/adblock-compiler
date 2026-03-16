@@ -53,10 +53,18 @@ function createFaultyD1(message = 'D1 connection failed'): D1Database {
         prepare: (_query: string) => {
             const stmt = {
                 bind: () => stmt,
-                first: async (): Promise<never> => { throw new Error(message); },
-                all: async (): Promise<never> => { throw new Error(message); },
-                run: async (): Promise<never> => { throw new Error(message); },
-                raw: async (): Promise<never> => { throw new Error(message); },
+                first: async (): Promise<never> => {
+                    throw new Error(message);
+                },
+                all: async (): Promise<never> => {
+                    throw new Error(message);
+                },
+                run: async (): Promise<never> => {
+                    throw new Error(message);
+                },
+                raw: async (): Promise<never> => {
+                    throw new Error(message);
+                },
             };
             return stmt;
         },
