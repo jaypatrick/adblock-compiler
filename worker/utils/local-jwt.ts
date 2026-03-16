@@ -20,7 +20,7 @@
  * @see worker/middleware/clerk-jwt.ts — the Clerk equivalent of this file
  */
 
-import { SignJWT, jwtVerify } from 'jose';
+import { jwtVerify, SignJWT } from 'jose';
 import { ZodError } from 'zod';
 import { LocalJWTClaimsSchema } from '../schemas.ts';
 import type { LocalJWTClaims } from '../schemas.ts';

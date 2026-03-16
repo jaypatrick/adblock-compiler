@@ -225,7 +225,7 @@ export async function handleLocalLogin(
     const { identifier, password } = parsed;
 
     try {
-    // 3. Look up user (parameterised)
+        // 3. Look up user (parameterised)
         const row = await env.DB
             .prepare('SELECT * FROM local_auth_users WHERE identifier = ? LIMIT 1')
             .bind(identifier)
@@ -279,7 +279,7 @@ export async function handleLocalLogin(
 
 /**
  * Return the current authenticated user's profile.
- * Requires a valid JWT (guest or admin).
+ * Requires a valid JWT (user or admin).
  */
 export async function handleLocalMe(
     _request: Request,
