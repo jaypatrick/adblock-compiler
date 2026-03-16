@@ -47,8 +47,6 @@
 
 🌐 **[Try the Admin Dashboard](https://adblock-compiler.jayson-knight.workers.dev/)** | 🔧 **[Compiler UI](https://adblock-compiler.jayson-knight.workers.dev/compiler.html)** | 🚀 **[API Endpoint](https://adblock-compiler.jayson-knight.workers.dev/api)** | 📚 **[Documentation](docs/api/README.md)**
 
-> **Note:** This is a Deno-native rewrite of the original [@adguard/hostlist-compiler](https://www.npmjs.com/package/@adguard/hostlist-compiler). The package provides more functionality with improved performance and no Node.js dependencies.
-
 ## 🎉 New in v0.30.x
 
 - **🎯 Angular 21 SPA** — Production Angular frontend with zoneless change detection, Angular Material 3, SSR, and Cloudflare Workers deployment ([docs](frontend/README.md))
