@@ -10,7 +10,7 @@
  * ZTA compliance:
  *   - Every write endpoint rate-limits before any business logic
  *   - All request bodies are Zod-validated before use
- *   - All D1 queries use parameterised .prepare().bind() statements
+ *   - All D1 queries use parameterised raw D1 calls (.prepare().bind())
  *   - No password hashes or stack traces in responses
  *   - Auth failures emit security events to Analytics Engine
  *   - requireAuth() guard on /auth/me and /auth/change-password
@@ -25,7 +25,7 @@
 import { ZodError } from 'zod';
 import { ANONYMOUS_AUTH_CONTEXT, type Env, type IAuthContext } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
-import { LocalChangePasswordRequestSchema, LocalLoginRequestSchema, LocalSignupRequestSchema, LocalUserPublicSchema, type LocalUserRow, LocalUserRowSchema } from '../schemas.ts';
+import { LocalChangePasswordRequestSchema, LocalLoginRequestSchema, LocalSignupRequestSchema, LocalUserPublicSchema, type LocalUserRow } from '../schemas.ts';
 import { hashPassword, verifyPassword } from '../utils/password.ts';
 import { signLocalJWT } from '../utils/local-jwt.ts';
 import { DEFAULT_ROLE, tierForRole } from '../utils/local-auth-roles.ts';
@@ -124,9 +124,9 @@ export async function handleLocalSignup(
     const identifierType: 'email' | 'phone' = isEmail(identifier) ? 'email' : 'phone';
 
     try {
-        // 4. Check uniqueness (parameterised)
+        // 4. Check uniqueness
         const existing = await env.DB
-            .prepare('SELECT id FROM local_auth_users WHERE identifier = ? LIMIT 1')
+            .prepare('SELECT id FROM local_auth_users WHERE identifier = ?')
             .bind(identifier)
             .first<{ id: string }>();
 
@@ -140,32 +140,33 @@ export async function handleLocalSignup(
         const id = crypto.randomUUID();
         const role = DEFAULT_ROLE;
         const tier = tierForRole(role);
+        const now = new Date().toISOString();
 
         await env.DB
-            .prepare(
-                `INSERT INTO local_auth_users (id, identifier, identifier_type, password_hash, role, tier)
-                 VALUES (?, ?, ?, ?, ?, ?)`,
-            )
+            .prepare('INSERT INTO local_auth_users (id, identifier, identifier_type, password_hash, role, tier) VALUES (?, ?, ?, ?, ?, ?)')
             .bind(id, identifier, identifierType, passwordHash, role, tier)
             .run();
+
+        const userRow: LocalUserRow = {
+            id,
+            identifier,
+            identifier_type: identifierType,
+            password_hash: passwordHash,
+            role,
+            tier,
+            api_disabled: 0,
+            created_at: now,
+            updated_at: now,
+        };
 
         // 6. Issue JWT
         const token = await signLocalJWT(id, role, tier, env.JWT_SECRET);
 
-        // 7. Fetch the full row so the response matches LocalUserPublic schema (includes api_disabled, timestamps)
-        const row = await env.DB
-            .prepare(
-                `SELECT id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at
-                 FROM local_auth_users WHERE id = ? LIMIT 1`,
-            )
-            .bind(id)
-            .first<Record<string, unknown>>();
-
-        // Parse with LocalUserPublicSchema — the SELECT above intentionally omits password_hash
-        const userResult = LocalUserPublicSchema.parse(row);
-
         return JsonResponse.success(
-            { token, user: userResult },
+            {
+                token,
+                user: LocalUserPublicSchema.parse(userRow),
+            },
             { status: 201 },
         );
     } catch (error) {
@@ -228,35 +229,27 @@ export async function handleLocalLogin(
     const { identifier, password } = parsed;
 
     try {
-        // 3. Look up user (parameterised)
-        const row = await env.DB
-            .prepare('SELECT * FROM local_auth_users WHERE identifier = ? LIMIT 1')
+        // 3. Look up user
+        const user = await env.DB
+            .prepare('SELECT * FROM local_auth_users WHERE identifier = ?')
             .bind(identifier)
-            .first<Record<string, unknown>>();
+            .first<LocalUserRow>();
 
         // 4. Always run verifyPassword regardless of whether the user was found.
         //    This is the timing-safe guard against user enumeration: PBKDF2 runs
         //    for the same 100,000 iterations on every code path. The subsequent
-        //    `!row` check cannot leak information because the slow PBKDF2 step
-        //    has already dominated the response time.
-        const hashToCheck = (row?.password_hash as string | undefined) ?? DUMMY_HASH;
+        //    `!user` check cannot leak information because the slow PBKDF2
+        //    step has already dominated the response time.
+        const hashToCheck = user?.password_hash ?? DUMMY_HASH;
         const match = await verifyPassword(password, hashToCheck);
 
-        if (!row || !match) {
+        if (!user || !match) {
             trackFailure(analytics, { path, method: 'POST', reason: 'invalid_credentials' });
             // Generic message — no user enumeration
             return JsonResponse.error('Invalid credentials', 401);
         }
 
-        // 5. Zod-validate the row before trusting it
-        let user: LocalUserRow;
-        try {
-            user = LocalUserRowSchema.parse(row);
-        } catch {
-            return JsonResponse.serverError('User record is malformed');
-        }
-
-        // 6. Issue JWT
+        // 5. Issue JWT
         const token = await signLocalJWT(user.id, user.role, user.tier, env.JWT_SECRET);
 
         return JsonResponse.success({
@@ -295,17 +288,14 @@ export async function handleLocalMe(
     if (!userId) return JsonResponse.error('Could not resolve user identity', 401);
 
     try {
-        const row = await env.DB
-            .prepare('SELECT * FROM local_auth_users WHERE id = ? LIMIT 1')
+        const user = await env.DB
+            .prepare('SELECT * FROM local_auth_users WHERE id = ?')
             .bind(userId)
-            .first<Record<string, unknown>>();
+            .first<LocalUserRow>();
 
-        if (!row) return JsonResponse.error('User not found', 404);
+        if (!user) return JsonResponse.error('User not found', 404);
 
-        const result = LocalUserPublicSchema.safeParse(row);
-        if (!result.success) return JsonResponse.serverError('User record is malformed');
-
-        return JsonResponse.success({ user: result.data });
+        return JsonResponse.success({ user: LocalUserPublicSchema.parse(user) });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         // deno-lint-ignore no-console
@@ -367,21 +357,14 @@ export async function handleLocalChangePassword(
 
     try {
         // 4. Fetch current user record
-        const row = await env.DB
-            .prepare('SELECT * FROM local_auth_users WHERE id = ? LIMIT 1')
+        const user = await env.DB
+            .prepare('SELECT * FROM local_auth_users WHERE id = ?')
             .bind(userId)
-            .first<Record<string, unknown>>();
+            .first<LocalUserRow>();
 
-        if (!row) {
+        if (!user) {
             trackFailure(analytics, { path, method: 'POST', reason: 'user_not_found' });
             return JsonResponse.error('Invalid credentials', 401);
-        }
-
-        let user: LocalUserRow;
-        try {
-            user = LocalUserRowSchema.parse(row);
-        } catch {
-            return JsonResponse.serverError('User record is malformed');
         }
 
         // 5. Verify current password
@@ -391,14 +374,10 @@ export async function handleLocalChangePassword(
             return JsonResponse.error('Invalid credentials', 401);
         }
 
-        // 6. Hash + store new password (parameterised)
+        // 6. Hash + store new password
         const newHash = await hashPassword(parsed.newPassword);
         await env.DB
-            .prepare(
-                `UPDATE local_auth_users
-                 SET password_hash = ?, updated_at = datetime('now')
-                 WHERE id = ?`,
-            )
+            .prepare('UPDATE local_auth_users SET password_hash = ? WHERE id = ?')
             .bind(newHash, userId)
             .run();
 

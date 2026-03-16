@@ -13,6 +13,7 @@ import { recordMetric } from './metrics.ts';
 import { compress, decompress, emitDiagnosticsToTailWorker, getCacheKey, QUEUE_BINDINGS_NOT_AVAILABLE_ERROR, updateQueueStats } from './queue.ts';
 import type { BatchRequest, CompilationResult, CompileQueueMessage, CompileRequest, Env, PreviousVersion, Priority } from '../types.ts';
 import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../../src/configuration/schemas.ts';
+import { AstParseRequestSchema } from '../schemas.ts';
 
 // ============================================================================
 // Configuration
@@ -303,8 +304,19 @@ export async function handleCompileStream(
     env: Env,
 ): Promise<Response> {
     const startTime = Date.now();
-    const body = await request.json() as CompileRequest;
-    const { configuration, preFetchedContent, benchmark } = body;
+    let rawBody: unknown;
+    try {
+        rawBody = await request.json();
+    } catch {
+        // Discard parse error — a generic 400 is returned instead of exposing internal details
+        return JsonResponse.badRequest('Invalid JSON in request body');
+    }
+    const parsed = CompileRequestSchema.safeParse(rawBody);
+    if (!parsed.success) {
+        const errors = parsed.error.issues.map((i) => `/${i.path.join('/')}: ${i.message}`).join(', ');
+        return JsonResponse.badRequest(`Invalid request body: ${errors}`);
+    }
+    const { configuration, preFetchedContent, benchmark } = parsed.data;
 
     const cacheKey = (!preFetchedContent || Object.keys(preFetchedContent).length === 0) ? await getCacheKey(configuration) : null;
 
@@ -755,7 +767,12 @@ export async function handleASTParseRequest(
     _env: Env,
 ): Promise<Response> {
     try {
-        const body = await request.json() as { rules?: string[]; text?: string };
+        const rawBody = await request.json();
+        const parsed = AstParseRequestSchema.safeParse(rawBody);
+        if (!parsed.success) {
+            return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
+        }
+        const body = parsed.data;
 
         const { ASTViewerService } = await import('../../src/services/ASTViewerService.ts');
 

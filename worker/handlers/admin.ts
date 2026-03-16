@@ -4,7 +4,8 @@
  */
 
 import { JsonResponse } from '../utils/index.ts';
-import type { AdminQueryRequest, Env, StorageStats, TableInfo } from '../types.ts';
+import type { Env, StorageStats, TableInfo } from '../types.ts';
+import { AdminQueryRequestSchema } from '../schemas.ts';
 
 // ============================================================================
 // Storage Statistics
@@ -198,12 +199,12 @@ export async function handleAdminQuery(request: Request, env: Env): Promise<Resp
     }
 
     try {
-        const body = await request.json() as AdminQueryRequest;
-        const { sql } = body;
-
-        if (!sql || typeof sql !== 'string') {
-            return JsonResponse.badRequest('Missing or invalid SQL query');
+        const rawBody = await request.json();
+        const parsed = AdminQueryRequestSchema.safeParse(rawBody);
+        if (!parsed.success) {
+            return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
         }
+        const { sql } = parsed.data;
 
         // Strip comments before validation to prevent bypass
         const sanitized = stripSqlComments(sql);

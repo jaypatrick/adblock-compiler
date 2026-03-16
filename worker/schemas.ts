@@ -1263,3 +1263,62 @@ export const ResolvedAdminContextSchema = z.object({
     expires_at: z.string().nullable(),
 });
 export type ResolvedAdminContext = z.infer<typeof ResolvedAdminContextSchema>;
+
+// ============================================================================
+// Request / Query Validation Schemas — trust-boundary gaps closed (#1125)
+// ============================================================================
+
+/** POST /ast/parse */
+export const AstParseRequestSchema = z.object({
+    rules: z.array(z.string()).optional(),
+    text: z.string().optional(),
+}).refine(
+    (d) => d.rules !== undefined || d.text !== undefined,
+    { message: 'Request must include either "rules" array or "text" string' },
+);
+export type AstParseRequest = z.infer<typeof AstParseRequestSchema>;
+
+/** POST /admin/auth/api-keys/revoke — one of apiKeyId or keyPrefix required */
+export const RevokeApiKeyRequestSchema = z.object({
+    apiKeyId: z.string().optional(),
+    keyPrefix: z.string().optional(),
+}).refine(
+    (d) => d.apiKeyId !== undefined || d.keyPrefix !== undefined,
+    { message: 'Provide either apiKeyId or keyPrefix' },
+);
+export type RevokeApiKeyRequest = z.infer<typeof RevokeApiKeyRequestSchema>;
+
+/** POST /admin/auth/api-keys/validate */
+export const ValidateApiKeyRequestSchema = z.object({
+    apiKey: z.string().min(1, 'apiKey is required'),
+});
+export type ValidateApiKeyRequest = z.infer<typeof ValidateApiKeyRequestSchema>;
+
+/** GET /admin/auth/api-keys?userId=<uuid> */
+export const ListApiKeysQuerySchema = z.object({
+    userId: z.string().uuid('userId must be a valid UUID'),
+});
+export type ListApiKeysQuery = z.infer<typeof ListApiKeysQuerySchema>;
+
+/** Shared pagination query params for admin list endpoints */
+export const AdminPaginationQuerySchema = z.object({
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+    offset: z.coerce.number().int().min(0).default(0),
+});
+export type AdminPaginationQuery = z.infer<typeof AdminPaginationQuerySchema>;
+
+/** GET /admin/usage/:userId?days=<n> */
+export const AdminUsageDaysQuerySchema = z.object({
+    days: z.coerce.number().int().default(30),
+});
+export type AdminUsageDays = z.infer<typeof AdminUsageDaysQuerySchema>;
+
+/**
+ * POST /admin/local-users — admin creates a user with optional role/tier override.
+ * Extends LocalSignupRequestSchema so identifier/password validation is shared.
+ */
+export const AdminCreateLocalUserRequestSchema = LocalSignupRequestSchema.extend({
+    role: z.string().min(1).max(64).optional(),
+    tier: z.nativeEnum(UserTier).optional(),
+});
+export type AdminCreateLocalUserRequest = z.infer<typeof AdminCreateLocalUserRequestSchema>;

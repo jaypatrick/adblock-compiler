@@ -16,6 +16,7 @@ import type { Env, IAuthContext } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
 import { getUserApiUsage } from '../utils/api-usage.ts';
+import { AdminUsageDaysQuerySchema } from '../schemas.ts';
 
 export async function handleAdminGetUserUsage(
     request: Request,
@@ -27,10 +28,13 @@ export async function handleAdminGetUserUsage(
     if (denied) return denied;
 
     const url = new URL(request.url);
-    const lookbackDays = Math.min(
-        Math.max(parseInt(url.searchParams.get('days') ?? '30', 10), 1),
-        90,
-    );
+    const daysParsed = AdminUsageDaysQuerySchema.safeParse({
+        days: url.searchParams.get('days') ?? undefined,
+    });
+    if (!daysParsed.success) {
+        return JsonResponse.badRequest(daysParsed.error.issues[0]?.message ?? 'Invalid days parameter');
+    }
+    const lookbackDays = Math.min(Math.max(daysParsed.data.days, 1), 90);
 
     const usage = await getUserApiUsage(userId, env, lookbackDays);
 

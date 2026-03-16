@@ -53,6 +53,21 @@ interface FeatureFlagResponse {
     readonly total: number;
 }
 
+type ServiceStatus = 'healthy' | 'degraded' | 'down';
+
+interface HealthResponse {
+    readonly status: ServiceStatus;
+    readonly version?: string;
+    readonly timestamp?: string;
+    readonly services?: {
+        readonly gateway?:  { readonly status: ServiceStatus };
+        readonly database?: { readonly status: ServiceStatus; readonly latency_ms?: number };
+        readonly compiler?: { readonly status: ServiceStatus };
+        readonly auth?:     { readonly status: ServiceStatus; readonly provider?: 'clerk' | 'local' | 'none' };
+        readonly cache?:    { readonly status: ServiceStatus };
+    };
+}
+
 interface MetricCard {
     readonly icon: string;
     readonly label: string;
@@ -66,6 +81,8 @@ type HealthStatus = 'green' | 'yellow' | 'red';
 interface HealthCheck {
     readonly label: string;
     readonly status: HealthStatus;
+    /** Optional sub-text shown next to the status label (e.g. "Local JWT", "12 ms"). */
+    readonly detail?: string;
 }
 
 @Component({
@@ -173,6 +190,9 @@ interface HealthCheck {
                                 <span class="health-status" [class]="'status-text-' + check.status">
                                     {{ check.status === 'green' ? 'Healthy' : check.status === 'yellow' ? 'Degraded' : 'Down' }}
                                 </span>
+                                @if (check.detail) {
+                                    <span class="health-detail">{{ check.detail }}</span>
+                                }
                             </div>
                         }
                     </div>
@@ -245,6 +265,7 @@ interface HealthCheck {
     .status-text-green { color: #4caf50; }
     .status-text-yellow { color: #ff9800; }
     .status-text-red { color: #f44336; }
+    .health-detail { font-size: 11px; color: #888; font-style: italic; }
     `],
 })
 export class DashboardComponent {
@@ -270,16 +291,18 @@ export class DashboardComponent {
         const auditLogs$ = this.http.get<AuditLogResponse>('/admin/audit-logs?limit=10&offset=0');
         const tiers$ = this.http.get<TierConfigResponse>('/admin/config/tiers');
         const flags$ = this.http.get<FeatureFlagResponse>('/admin/config/feature-flags');
+        const health$ = this.http.get<HealthResponse>('/health');
 
-        // Load all data in parallel via forkJoin-like pattern
+        // Load all data in parallel
         let completed = 0;
         let auditData: AuditLogResponse | null = null;
         let tiersData: TierConfigResponse | null = null;
         let flagsData: FeatureFlagResponse | null = null;
+        let healthData: HealthResponse | null = null;
 
         const tryFinalize = () => {
             completed++;
-            if (completed < 3) return;
+            if (completed < 4) return;
 
             const totalTiers = tiersData?.items?.length ?? 0;
             const activeFlags = flagsData?.items?.filter(f => f.enabled)?.length ?? 0;
@@ -317,16 +340,7 @@ export class DashboardComponent {
             ]);
 
             this.recentActivity.set(auditData?.items ?? []);
-
-            // Derive health from data availability
-            const checks: HealthCheck[] = [
-                { label: 'API Gateway', status: 'green' },
-                { label: 'Database', status: auditData ? 'green' : 'red' },
-                { label: 'Compiler Engine', status: 'green' },
-                { label: 'Auth Service', status: tiersData ? 'green' : 'yellow' },
-                { label: 'Cache Layer', status: 'green' },
-            ];
-            this.healthChecks.set(checks);
+            this.healthChecks.set(this.mapHealthChecks(healthData));
             this.loading.set(false);
         };
 
@@ -342,6 +356,54 @@ export class DashboardComponent {
             next: (res) => { flagsData = res; tryFinalize(); },
             error: () => tryFinalize(),
         });
+        health$.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+            next: (res) => { healthData = res; tryFinalize(); },
+            error: () => tryFinalize(),
+        });
+    }
+
+    /** Map the /health API response to display HealthCheck entries. */
+    private mapHealthChecks(h: HealthResponse | null): HealthCheck[] {
+        const toStatus = (s: ServiceStatus | undefined): HealthStatus => {
+            if (s === 'healthy') return 'green';
+            if (s === 'degraded') return 'yellow';
+            return 'red';
+        };
+
+        const authProviderLabel = (provider: 'clerk' | 'local' | 'none' | undefined): string | undefined => {
+            switch (provider) {
+                case 'clerk': return 'Clerk (Active)';
+                case 'local': return 'Local JWT (Active)';
+                case 'none':  return 'Unconfigured';
+                default:      return undefined;
+            }
+        };
+
+        const dbDetail = (svc: { status: ServiceStatus; latency_ms?: number } | undefined): string | undefined => {
+            if (!svc) return undefined;
+            if (svc.status === 'down') return undefined;
+            return svc.latency_ms != null ? `${svc.latency_ms} ms` : undefined;
+        };
+
+        if (!h) {
+            return [
+                { label: 'API Gateway',     status: 'yellow' },
+                { label: 'Database',        status: 'yellow' },
+                { label: 'Compiler Engine', status: 'yellow' },
+                { label: 'Auth Service',    status: 'yellow' },
+                { label: 'Cache Layer',     status: 'yellow' },
+            ];
+        }
+
+        return [
+            { label: 'API Gateway',     status: toStatus(h.services?.gateway?.status) },
+            { label: 'Database',        status: toStatus(h.services?.database?.status),
+                                        detail: dbDetail(h.services?.database) },
+            { label: 'Compiler Engine', status: toStatus(h.services?.compiler?.status) },
+            { label: 'Auth Service',    status: toStatus(h.services?.auth?.status),
+                                        detail: authProviderLabel(h.services?.auth?.provider) },
+            { label: 'Cache Layer',     status: toStatus(h.services?.cache?.status) },
+        ];
     }
 
     getActionIcon(action: string): string {

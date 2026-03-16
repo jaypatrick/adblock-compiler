@@ -7,6 +7,7 @@ import { ClerkService } from '../services/clerk.service';
 
 describe('adminGuard', () => {
     let mockClerk: {
+        isAvailable: ReturnType<typeof vi.fn>;
         isLoaded: ReturnType<typeof vi.fn>;
         isSignedIn: ReturnType<typeof vi.fn>;
         user: ReturnType<typeof vi.fn>;
@@ -18,6 +19,7 @@ describe('adminGuard', () => {
 
     beforeEach(() => {
         mockClerk = {
+            isAvailable: vi.fn().mockReturnValue(true),
             isLoaded: vi.fn().mockReturnValue(true),
             isSignedIn: vi.fn().mockReturnValue(false),
             user: vi.fn().mockReturnValue(null),

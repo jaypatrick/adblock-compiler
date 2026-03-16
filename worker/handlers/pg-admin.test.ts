@@ -7,7 +7,7 @@
 
 import { assertEquals } from '@std/assert';
 import { handleBackendStatus } from './pg-admin.ts';
-import type { D1Database, D1ExecResult, D1PreparedStatement, D1Result, Env, HyperdriveBinding } from '../types.ts';
+import type { D1Database, D1ExecResult, D1Result, Env, HyperdriveBinding } from '../types.ts';
 
 // ============================================================================
 // Fixtures
@@ -31,71 +31,47 @@ type MockPgFactory = (connectionString: string) => MockPgPool;
 /** Creates a healthy D1 mock (SELECT 1 succeeds). */
 function createHealthyD1(): D1Database {
     return {
-        prepare(_query: string): D1PreparedStatement {
-            const stmt: D1PreparedStatement = {
-                bind(): D1PreparedStatement {
-                    return stmt;
-                },
-                async first<T>(): Promise<T | null> {
-                    return { 1: 1 } as T;
-                },
-                async all<T>(): Promise<D1Result<T>> {
-                    return { results: [], success: true };
-                },
-                async run(): Promise<D1Result> {
-                    return { success: true };
-                },
-                async raw<T>(): Promise<T[]> {
-                    return [];
-                },
+        prepare: (_query: string) => {
+            const stmt = {
+                bind: () => stmt,
+                first: async <T>(): Promise<T | null> => ({ 1: 1 } as T),
+                all: async <T>() => ({ results: [] as T[], success: true }),
+                run: async () => ({ success: true }),
+                raw: async <T>(): Promise<T[]> => [],
             };
             return stmt;
         },
-        async dump(): Promise<ArrayBuffer> {
-            return new ArrayBuffer(0);
-        },
-        async batch<T>(): Promise<D1Result<T>[]> {
-            return [];
-        },
-        async exec(): Promise<D1ExecResult> {
-            return { count: 0, duration: 0 };
-        },
-    };
+        dump: async (): Promise<ArrayBuffer> => new ArrayBuffer(0),
+        batch: async <T>(): Promise<D1Result<T>[]> => [],
+        exec: async (): Promise<D1ExecResult> => ({ count: 0, duration: 0 }),
+    } as unknown as D1Database;
 }
 
 /** Creates a D1 mock that throws on every query. */
 function createFaultyD1(message = 'D1 connection failed'): D1Database {
     return {
-        prepare(_query: string): D1PreparedStatement {
-            const stmt: D1PreparedStatement = {
-                bind(): D1PreparedStatement {
-                    return stmt;
-                },
-                async first<T>(): Promise<T | null> {
+        prepare: (_query: string) => {
+            const stmt = {
+                bind: () => stmt,
+                first: async (): Promise<never> => {
                     throw new Error(message);
                 },
-                async all<T>(): Promise<D1Result<T>> {
+                all: async (): Promise<never> => {
                     throw new Error(message);
                 },
-                async run(): Promise<D1Result> {
+                run: async (): Promise<never> => {
                     throw new Error(message);
                 },
-                async raw<T>(): Promise<T[]> {
+                raw: async (): Promise<never> => {
                     throw new Error(message);
                 },
             };
             return stmt;
         },
-        async dump(): Promise<ArrayBuffer> {
-            return new ArrayBuffer(0);
-        },
-        async batch<T>(): Promise<D1Result<T>[]> {
-            return [];
-        },
-        async exec(): Promise<D1ExecResult> {
-            return { count: 0, duration: 0 };
-        },
-    };
+        dump: async (): Promise<ArrayBuffer> => new ArrayBuffer(0),
+        batch: async <T>(): Promise<D1Result<T>[]> => [],
+        exec: async (): Promise<D1ExecResult> => ({ count: 0, duration: 0 }),
+    } as unknown as D1Database;
 }
 
 /** Builds a minimal Env with optional bindings. */

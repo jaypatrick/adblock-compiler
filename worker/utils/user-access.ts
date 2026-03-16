@@ -39,11 +39,11 @@ export async function checkUserApiAccess(
 
     try {
         const row = await env.DB
-            .prepare('SELECT api_disabled FROM local_auth_users WHERE id = ? LIMIT 1')
+            .prepare('SELECT api_disabled FROM local_auth_users WHERE id = ?')
             .bind(authContext.userId)
             .first<{ api_disabled: number }>();
 
-        if (row?.api_disabled === 1) {
+        if (row?.api_disabled) {
             return JsonResponse.error('API access has been disabled for this account', 403);
         }
         return null;

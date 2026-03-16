@@ -64,41 +64,37 @@ describe('SignInComponent', () => {
         expect(compiled.querySelector('.auth-error')).toBeNull();
     });
 
-    it('should show error state when Clerk is loaded but not available', () => {
+    it('should show local auth form when Clerk is loaded but not available', () => {
         mockClerkService.isLoaded.set(true);
         mockClerkService.isAvailable.set(false);
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.auth-error')).toBeTruthy();
+        expect(compiled.querySelector('.local-auth-card')).toBeTruthy();
         expect(compiled.querySelector('.clerk-container')).toBeNull();
         expect(compiled.querySelector('.auth-loading')).toBeNull();
     });
 
-    it('should show "temporarily unavailable" message when configLoadFailed is true', () => {
+    it('should show local auth form when configLoadFailed is true', () => {
         mockClerkService.isLoaded.set(true);
         mockClerkService.isAvailable.set(false);
         mockClerkService.configLoadFailed.set(true);
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
-        const error = compiled.querySelector('.auth-error');
-        expect(error).toBeTruthy();
-        expect(error?.textContent).toContain('temporarily unavailable');
-        expect(error?.textContent).not.toContain('CLERK_PUBLISHABLE_KEY');
+        expect(compiled.querySelector('.local-auth-card')).toBeTruthy();
+        expect(compiled.querySelector('.clerk-container')).toBeNull();
     });
 
-    it('should show "not configured" message when not available and configLoadFailed is false', () => {
+    it('should show local auth form when not available and configLoadFailed is false', () => {
         mockClerkService.isLoaded.set(true);
         mockClerkService.isAvailable.set(false);
         mockClerkService.configLoadFailed.set(false);
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
-        const error = compiled.querySelector('.auth-error');
-        expect(error).toBeTruthy();
-        expect(error?.textContent).toContain('CLERK_PUBLISHABLE_KEY');
-        expect(error?.textContent).not.toContain('temporarily unavailable');
+        expect(compiled.querySelector('.local-auth-card')).toBeTruthy();
+        expect(compiled.querySelector('.clerk-container')).toBeNull();
     });
 
     it('should show Clerk container when loaded and available', () => {

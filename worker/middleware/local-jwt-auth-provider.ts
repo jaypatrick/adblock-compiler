@@ -22,6 +22,7 @@
 
 import { type Env, type IAuthProvider, type IAuthProviderResult, UserTier } from '../types.ts';
 import { verifyLocalJWT } from '../utils/local-jwt.ts';
+import { getPrismaD1 } from '../utils/prisma-d1.ts';
 
 // ============================================================================
 // Internal helpers (mirrors clerk-auth-provider.ts exactly)
@@ -54,6 +55,17 @@ function resolveRole(metadata: LocalJWTMetadata | undefined): string {
 }
 
 /**
+ * Resolve tier from a raw DB string.
+ * Validates against the UserTier enum and falls back to Free for unknown values.
+ */
+function resolveTierFromDb(tier: string | null | undefined): UserTier {
+    if (!tier) return UserTier.Free;
+    const valid = Object.values(UserTier) as string[];
+    if (!valid.includes(tier)) return UserTier.Free;
+    return tier as UserTier;
+}
+
+/**
  * Extract a Bearer token from the Authorization header.
  * Mirrors `extractBearerToken` in clerk-jwt.ts.
  */
@@ -74,6 +86,13 @@ function extractBearerToken(request: Request): string | null {
  * Local HS256 JWT implementation of {@link IAuthProvider}.
  *
  * Thread-safe and stateless per request — no module-level mutable state.
+ *
+ * ## ZTA: tier and role are resolved from D1, not JWT claims
+ * After signature verification the provider looks up the user row in
+ * `local_auth_users` and uses the database values for `tier` and `role`.
+ * This ensures that privilege changes (e.g. an admin downgrading a user via
+ * PATCH /admin/local-users/:id) take effect on the next request rather than
+ * persisting until JWT expiry (up to 24 hours).
  */
 export class LocalJwtAuthProvider implements IAuthProvider {
     readonly name = 'local-jwt';
@@ -105,14 +124,42 @@ export class LocalJwtAuthProvider implements IAuthProvider {
 
         const { claims } = result;
 
-        // 4. Resolve tier and role from metadata (same fields Clerk uses)
-        const metadata = claims.metadata;
+        // 4. ZTA: verify tier and role from D1 (source of truth) — not from JWT
+        //    claims. This ensures privilege changes (e.g. admin downgrade) take
+        //    effect immediately rather than after JWT expiry (up to 24 hours).
+        if (!this.env.DB) {
+            // Fallback to JWT claims when D1 is not configured (e.g. unit tests
+            // that exercise token parsing without a database binding).
+            const metadata = claims.metadata;
+            return {
+                valid: true,
+                providerUserId: claims.sub,
+                tier: resolveTier(metadata),
+                role: resolveRole(metadata),
+                sessionId: claims.sid ?? null,
+            };
+        }
+
+        const prisma = getPrismaD1(this.env.DB);
+        const user = await prisma.localAuthUser.findUnique({
+            where: { id: claims.sub },
+            select: { id: true, tier: true, role: true, apiDisabled: true },
+        });
+
+        if (!user) {
+            return { valid: false, error: 'User not found' };
+        }
+
+        if (user.apiDisabled) {
+            return { valid: false, error: 'Account is disabled' };
+        }
+
         return {
             valid: true,
-            providerUserId: claims.sub, // UUID from local_auth_users.id
-            tier: resolveTier(metadata),
-            role: resolveRole(metadata),
-            sessionId: claims.sid ?? null, // mirrors Clerk sid
+            providerUserId: claims.sub,
+            tier: resolveTierFromDb(user.tier),
+            role: user.role,
+            sessionId: claims.sid ?? null,
         };
     }
 }

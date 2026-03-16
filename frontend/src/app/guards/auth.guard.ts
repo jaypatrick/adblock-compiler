@@ -1,49 +1,38 @@
 /**
- * Functional route guard for Clerk-authenticated routes.
+ * Functional route guard for authenticated routes.
  *
- * Waits for Clerk to finish loading, then:
+ * Provider-aware via AuthFacadeService:
+ *   - Waits for the active auth provider to finish loading (Clerk or local JWT)
  *   - If signed in → allows navigation
  *   - If not signed in → redirects to /sign-in with a returnUrl query param
- *
- * Uses a polling approach (50 ms intervals, max 10 s) to wait for Clerk's
- * async load, which is more predictable than effect/computed watching in
- * a guard context.
  */
 
 import { inject } from '@angular/core';
 import { CanActivateFn, Router } from '@angular/router';
-import { ClerkService } from '../services/clerk.service';
+import { AuthFacadeService } from '../services/auth-facade.service';
 
-export const authGuard: CanActivateFn = async (route, state) => {
-    const clerk = inject(ClerkService);
+export const authGuard: CanActivateFn = async (_route, state) => {
+    const auth = inject(AuthFacadeService);
     const router = inject(Router);
 
-    // Wait for Clerk SDK to finish loading (max 10 s — generous for slow networks)
-    if (!clerk.isLoaded()) {
-        await waitForClerk(clerk, 10_000);
-    }
+    await waitForAuth(auth, 10_000);
 
-    if (clerk.isSignedIn()) {
-        return true;
-    }
+    if (auth.isSignedIn()) return true;
 
-    // Redirect to sign-in with return URL
     return router.createUrlTree(['/sign-in'], {
         queryParams: { returnUrl: state.url },
     });
 };
 
-/** Poll `isLoaded()` until it becomes true or timeout expires. */
-function waitForClerk(clerk: ClerkService, timeoutMs: number): Promise<void> {
+function waitForAuth(auth: AuthFacadeService, timeoutMs: number): Promise<void> {
     return new Promise((resolve) => {
-        if (clerk.isLoaded()) {
+        if (auth.isLoaded()) {
             resolve();
             return;
         }
-
         const start = Date.now();
         const interval = setInterval(() => {
-            if (clerk.isLoaded() || Date.now() - start > timeoutMs) {
+            if (auth.isLoaded() || Date.now() - start > timeoutMs) {
                 clearInterval(interval);
                 resolve();
             }

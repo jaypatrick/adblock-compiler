@@ -23,6 +23,8 @@ describe('authInterceptor', () => {
                 {
                     provide: ClerkService,
                     useValue: {
+                        isAvailable: vi.fn().mockReturnValue(true),
+                        isLoaded: vi.fn().mockReturnValue(true),
                         isSignedIn: isSignedInSignal.asReadonly(),
                         getToken: mockGetToken,
                     },

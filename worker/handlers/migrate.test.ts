@@ -7,7 +7,7 @@
 
 import { assertEquals, assertStringIncludes } from '@std/assert';
 import { handleMigrateD1ToPg } from './migrate.ts';
-import type { D1Database, D1ExecResult, D1PreparedStatement, D1Result, Env, HyperdriveBinding } from '../types.ts';
+import type { D1Database, D1ExecResult, D1Result, Env, HyperdriveBinding } from '../types.ts';
 
 // ============================================================================
 // Fixtures
@@ -34,14 +34,14 @@ type MockPgFactory = (connectionString: string) => MockPgPool;
  */
 function createMockD1(tableData: Record<string, Array<Record<string, unknown>>>): D1Database {
     return {
-        prepare(query: string): D1PreparedStatement {
+        prepare: (query: string) => {
             let boundValues: unknown[] = [];
-            const stmt: D1PreparedStatement = {
-                bind(...values: unknown[]): D1PreparedStatement {
+            const stmt = {
+                bind: (...values: unknown[]) => {
                     boundValues = [...values];
                     return stmt;
                 },
-                async first<T>(): Promise<T | null> {
+                first: async <T>(): Promise<T | null> => {
                     const countMatch = query.match(/SELECT COUNT\(\*\) as count FROM (\w+)/i);
                     if (countMatch) {
                         const rows = tableData[countMatch[1]] ?? [];
@@ -49,7 +49,7 @@ function createMockD1(tableData: Record<string, Array<Record<string, unknown>>>)
                     }
                     return null;
                 },
-                async all<T>(): Promise<D1Result<T>> {
+                all: async <T>() => {
                     const tableMatch = query.match(/FROM\s+(\w+)/i);
                     const tableName = tableMatch?.[1];
                     const allRows = (tableName && tableData[tableName]) ? tableData[tableName] : [];
@@ -57,25 +57,15 @@ function createMockD1(tableData: Record<string, Array<Record<string, unknown>>>)
                     const offset = typeof boundValues[1] === 'number' ? boundValues[1] : 0;
                     return { results: allRows.slice(offset, offset + limit) as T[], success: true };
                 },
-                async run(): Promise<D1Result> {
-                    return { success: true };
-                },
-                async raw<T>(): Promise<T[]> {
-                    return [];
-                },
+                run: async () => ({ success: true }),
+                raw: async <T>(): Promise<T[]> => [],
             };
             return stmt;
         },
-        async dump(): Promise<ArrayBuffer> {
-            return new ArrayBuffer(0);
-        },
-        async batch<T>(): Promise<D1Result<T>[]> {
-            return [];
-        },
-        async exec(): Promise<D1ExecResult> {
-            return { count: 0, duration: 0 };
-        },
-    };
+        dump: async (): Promise<ArrayBuffer> => new ArrayBuffer(0),
+        batch: async <T>(): Promise<D1Result<T>[]> => [],
+        exec: async (): Promise<D1ExecResult> => ({ count: 0, duration: 0 }),
+    } as unknown as D1Database;
 }
 
 /** Builds a minimal Env with an optional D1 database binding. */

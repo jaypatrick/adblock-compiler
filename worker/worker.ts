@@ -2953,6 +2953,74 @@ async function handleWorkflowEvents(
 /**
  * Get latest health check results
  */
+/**
+ * Perform lightweight per-service health checks and return structured status.
+ *
+ * Checks:
+ *   - database   : D1 `SELECT 1` probe via env.DB
+ *   - cache      : KV list probe via env.COMPILATION_CACHE
+ *   - auth       : presence of CLERK_JWKS_URL / CLERK_SECRET_KEY or JWT_SECRET
+ *   - compiler   : Durable Object namespace binding presence
+ *   - gateway    : always healthy (we are responding)
+ *
+ * Overall status is the worst of all individual statuses.
+ * This endpoint is unauthenticated intentionally — it exposes no sensitive data.
+ */
+async function handleHealth(env: Env): Promise<Response> {
+    type ServiceStatus = 'healthy' | 'degraded' | 'down';
+    type ServiceResult = { status: ServiceStatus; latency_ms?: number };
+
+    const probe = async (fn: () => Promise<void>): Promise<ServiceResult> => {
+        const t0 = Date.now();
+        try {
+            await fn();
+            return { status: 'healthy', latency_ms: Date.now() - t0 };
+        } catch {
+            return { status: 'down', latency_ms: Date.now() - t0 };
+        }
+    };
+
+    const [database, cache] = await Promise.all([
+        env.DB
+            ? probe(async () => {
+                await env.DB!.prepare('SELECT 1').first();
+            })
+            : Promise.resolve<ServiceResult>({ status: 'down' }),
+        probe(async () => {
+            await env.COMPILATION_CACHE.list({ limit: 1 });
+        }),
+    ]);
+
+    // Determine which auth provider is active, mirroring worker.ts selection logic:
+    //   CLERK_JWKS_URL set → ClerkAuthProvider; else JWT_SECRET → LocalJwtAuthProvider
+    const authProvider: 'clerk' | 'local' | 'none' = env.CLERK_JWKS_URL ? 'clerk' : env.JWT_SECRET ? 'local' : 'none';
+    const auth: ServiceResult & { provider: 'clerk' | 'local' | 'none' } = {
+        status: authProvider !== 'none' ? 'healthy' : 'degraded',
+        provider: authProvider,
+    };
+    const compiler: ServiceResult = { status: env.ADBLOCK_COMPILER ? 'healthy' : 'degraded' };
+    const gateway: ServiceResult = { status: 'healthy' };
+
+    const rank: Record<ServiceStatus, number> = { healthy: 0, degraded: 1, down: 2 };
+    const worst = [database, cache, auth, compiler, gateway].reduce<ServiceStatus>(
+        (acc, s) => rank[s.status] > rank[acc] ? s.status : acc,
+        'healthy',
+    );
+
+    return Response.json({
+        status: worst,
+        version: env.COMPILER_VERSION || VERSION,
+        timestamp: new Date().toISOString(),
+        services: {
+            gateway,
+            database,
+            compiler,
+            auth,
+            cache,
+        },
+    });
+}
+
 async function handleHealthLatest(env: Env): Promise<Response> {
     try {
         const latest = await env.METRICS.get('health:latest', 'json');
@@ -4091,12 +4159,7 @@ const workerHandler: WorkerHandler = {
 
         // Health check — returns current service health status
         if (routePath === '/health' && request.method === 'GET') {
-            return Response.json(
-                {
-                    status: 'healthy',
-                    version: env.COMPILER_VERSION || VERSION,
-                },
-            );
+            return handleHealth(env);
         }
 
         // Health: Get latest health check results

@@ -1,20 +1,16 @@
 /**
- * Functional HTTP interceptor for Clerk JWT authentication.
+ * Functional HTTP interceptor for JWT authentication.
  *
+ * Provider-aware via AuthFacadeService — works with both Clerk and local JWT.
  * Attaches `Authorization: Bearer <token>` to outgoing API requests when
- * the user is signed in via Clerk. Skips public/health endpoints that
- * never require auth.
- *
- * Runs alongside the existing `errorInterceptor` — order matters:
- *   withInterceptors([authInterceptor, errorInterceptor])
- *   1. authInterceptor adds the Bearer header
- *   2. errorInterceptor adds X-Trace-ID and handles errors
+ * the user is signed in. Skips public/health endpoints and local auth paths
+ * (to avoid circular validation calls).
  */
 
 import { HttpInterceptorFn } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { from, switchMap, catchError, throwError } from 'rxjs';
-import { ClerkService } from '../services/clerk.service';
+import { AuthFacadeService } from '../services/auth-facade.service';
 
 /** Paths that never need a Bearer token. */
 const PUBLIC_PATHS = [
@@ -24,25 +20,21 @@ const PUBLIC_PATHS = [
     '/api/clerk-config',
     '/api/deployments',
     '/api/metrics',
+    // Local auth endpoints — skip to avoid circular calls during token validation
+    '/api/auth/login',
+    '/api/auth/signup',
+    '/api/auth/me',
 ];
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {
-    const clerk = inject(ClerkService);
+    const auth = inject(AuthFacadeService);
 
-    // Skip if not signed in or if targeting a public endpoint
-    if (!clerk.isSignedIn()) {
-        return next(req);
-    }
+    if (!auth.isSignedIn()) return next(req);
 
     const isPublic = PUBLIC_PATHS.some((p) => req.url.includes(p));
-    if (isPublic) {
-        return next(req);
-    }
+    if (isPublic) return next(req);
 
-    // Get fresh JWT and attach as Bearer header.
-    // catchError is scoped to the getToken() observable only (placed before switchMap)
-    // so HTTP errors from next(...) propagate normally and aren't misreported as token failures.
-    return from(clerk.getToken()).pipe(
+    return from(auth.getToken()).pipe(
         catchError((err) => {
             console.warn('[authInterceptor] Failed to get session token:', err instanceof Error ? err.message : String(err));
             return throwError(() => new Error('Session token refresh failed — please sign in again'));

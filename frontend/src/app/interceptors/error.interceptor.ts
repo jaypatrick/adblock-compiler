@@ -17,10 +17,12 @@ import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, tap, throwError } from 'rxjs';
 import { AuthService } from '../services/auth.service';
+import { AuthFacadeService } from '../services/auth-facade.service';
 import { LogService } from '../services/log.service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
     const auth = inject(AuthService);
+    const authFacade = inject(AuthFacadeService);
     const log = inject(LogService);
 
     const traceId = log.generateTraceId();
@@ -49,7 +51,8 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
                 switch (error.status) {
                     case 401:
                         auth.clearKey();
-                        log.warn('Unauthorized — admin key cleared', 'HTTP', context);
+                        void authFacade.signOut();
+                        log.warn('Unauthorized — session cleared', 'HTTP', context);
                         break;
                     case 408:
                     case 504:

@@ -133,19 +133,11 @@ database_name = "adblock-compiler-d1-database"
 database_id = "3e8e7dfe-3213-452a-a671-6c18e6e74ce5"
 migrations_dir = "migrations"
 
-# ADMIN_DB — not yet provisioned; commented out intentionally.
-# Cloudflare Workers Builds validates every database_id at build time, so an
-# unprovisioned binding causes preview builds to fail.
-# To enable:
-#   1. wrangler d1 create adblock-compiler-admin-d1
-#   2. Paste the returned UUID below and uncomment.
-#   3. wrangler d1 migrations apply adblock-compiler-admin-d1 --remote
-#
-# [[d1_databases]]
-# binding = "ADMIN_DB"
-# database_name = "adblock-compiler-admin-d1"
-# database_id = "<UUID from wrangler d1 create>"
-# migrations_dir = "admin-migrations"
+[[d1_databases]]
+binding = "ADMIN_DB"
+database_name = "adblock-compiler-admin-d1"
+database_id = "7d5a2704-5033-4433-911f-d8368f36dcdf"
+migrations_dir = "admin-migrations"
 
 # ─── Durable Objects ─────────────────────────────────────────────────────────
 [[durable_objects.bindings]]
