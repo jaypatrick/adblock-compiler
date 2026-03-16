@@ -49,7 +49,6 @@ mindmap
 - [Quick Start Guide](guides/quick-start.md) - Get up and running with Docker in minutes
 - [API Documentation](api/README.md) - REST API reference and examples
 - [Client Libraries](guides/clients.md) - Client examples for Python, TypeScript, and Go
-- [Migration Guide](guides/MIGRATION.md) - Migrating from @adguard/hostlist-compiler
 - [Troubleshooting](guides/TROUBLESHOOTING.md) - Common issues and solutions
 
 ### Usage

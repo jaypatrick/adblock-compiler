@@ -62,7 +62,6 @@
 - [Guides](guides/README.md)
   - [Quick Start](guides/quick-start.md)
   - [Clients](guides/clients.md)
-  - [Migration](guides/MIGRATION.md)
   - [Troubleshooting](guides/TROUBLESHOOTING.md)
   - [Validation Errors](guides/VALIDATION_ERRORS.md)
 - [Usage](usage/CONFIGURATION.md)

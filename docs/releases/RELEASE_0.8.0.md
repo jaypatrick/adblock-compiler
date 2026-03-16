@@ -302,8 +302,6 @@ Potential additions in future releases:
 **Repository:** https://github.com/jaypatrick/adblock-compiler  
 **License:** AGPL-3.0
 
-**Based on:** [@adguard/hostlist-compiler](https://www.npmjs.com/package/@adguard/hostlist-compiler)
-
 ---
 
 ## 📝 Summary

@@ -6,7 +6,7 @@ Combining filter lists from multiple sources shouldn't be complex. Whether you'r
 
 ## What is Adblock Compiler?
 
-**Adblock Compiler** is a powerful **Compiler-as-a-Service** package (v0.11.4) that simplifies the creation and management of filter lists. It's a Deno-native rewrite of the original `@adguard/hostlist-compiler`, offering improved performance, no Node.js dependencies, and support for modern edge platforms.
+**Adblock Compiler** is a powerful **Compiler-as-a-Service** package (v0.11.4) that simplifies the creation and management of filter lists. It is a Deno-native, standalone compiler offering high performance, no Node.js dependencies, and support for modern edge platforms.
 
 At its core, Adblock Compiler does one thing exceptionally well: **it transforms, optimizes, and combines adblock filter lists from multiple sources into production-ready blocklists.**
 
