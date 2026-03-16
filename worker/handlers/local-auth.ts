@@ -161,13 +161,11 @@ export async function handleLocalSignup(
             .bind(id)
             .first<Record<string, unknown>>();
 
-        const userResult = LocalUserRowSchema.parse(row);
+        // Parse with LocalUserPublicSchema — the SELECT above intentionally omits password_hash
+        const userResult = LocalUserPublicSchema.parse(row);
 
         return JsonResponse.success(
-            {
-                token,
-                user: LocalUserPublicSchema.parse(userResult),
-            },
+            { token, user: userResult },
             { status: 201 },
         );
     } catch (error) {
@@ -306,18 +304,8 @@ export async function handleLocalMe(
 
         const result = LocalUserPublicSchema.safeParse(row);
         if (!result.success) return JsonResponse.serverError('User record is malformed');
-        const user = result.data;
 
-        return JsonResponse.success({
-            user: {
-                id: user.id,
-                identifier: user.identifier,
-                identifierType: user.identifier_type,
-                tier: user.tier,
-                role: user.role,
-                createdAt: user.created_at,
-            },
-        });
+        return JsonResponse.success({ user: result.data });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         // deno-lint-ignore no-console
