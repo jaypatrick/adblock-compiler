@@ -31,7 +31,7 @@ import { hashPassword } from '../utils/password.ts';
 import { isValidLocalRole, tierForRole, VALID_LOCAL_ROLES } from '../utils/local-auth-roles.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
 import { getPrismaD1 } from '../utils/prisma-d1.ts';
-import type { LocalAuthUser, LocalAuthUserUpdateInput } from '../../prisma/generated-d1/models/LocalAuthUser.ts';
+import type { LocalAuthUserModel as LocalAuthUser, LocalAuthUserUpdateInput } from '../../prisma/generated-d1/models/LocalAuthUser.ts';
 
 const VALID_TIERS: ReadonlyArray<string> = Object.values(UserTier).filter((t) => t !== UserTier.Anonymous);
 

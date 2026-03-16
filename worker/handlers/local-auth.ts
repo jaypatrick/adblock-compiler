@@ -33,7 +33,7 @@ import { requireAuth } from '../middleware/auth.ts';
 import { checkRateLimitTiered } from '../middleware/index.ts';
 import { AnalyticsService, type SecurityEventData } from '../../src/services/AnalyticsService.ts';
 import { getPrismaD1 } from '../utils/prisma-d1.ts';
-import type { LocalAuthUser } from '../../prisma/generated-d1/models/LocalAuthUser.ts';
+import type { LocalAuthUserModel as LocalAuthUser } from '../../prisma/generated-d1/models/LocalAuthUser.ts';
 
 // ============================================================================
 // Internal helpers

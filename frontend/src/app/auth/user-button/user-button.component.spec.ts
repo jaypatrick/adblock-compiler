@@ -10,6 +10,7 @@ describe('UserButtonComponent', () => {
     let component: UserButtonComponent;
     let fixture: ComponentFixture<UserButtonComponent>;
     let mockClerkService: {
+        isAvailable: ReturnType<typeof signal<boolean>>;
         isLoaded: ReturnType<typeof signal<boolean>>;
         isSignedIn: ReturnType<typeof signal<boolean>>;
         configLoadFailed: ReturnType<typeof signal<boolean>>;
@@ -20,6 +21,7 @@ describe('UserButtonComponent', () => {
 
     beforeEach(async () => {
         mockClerkService = {
+            isAvailable: signal(true),
             isLoaded: signal(true),
             isSignedIn: signal(false),
             configLoadFailed: signal(false),
@@ -239,38 +241,37 @@ describe('UserButtonComponent', () => {
         expect(compiled.querySelector('.auth-links')).toBeTruthy();
     });
 
-    it('should show error message when configLoadFailed is true', () => {
+    it('should show auth links when Clerk loaded but user not signed in (configLoadFailed ignored)', () => {
         mockClerkService.isLoaded.set(true);
         mockClerkService.isSignedIn.set(false);
         mockClerkService.configLoadFailed.set(true);
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.auth-config-error')).toBeTruthy();
-        expect(compiled.querySelector('.auth-links')).toBeNull();
+        expect(compiled.querySelector('.auth-links')).toBeTruthy();
         expect(compiled.querySelector('.user-button-container')).toBeNull();
     });
 
-    it('should not show error message when configLoadFailed is false', () => {
+    it('should show auth links when signed out regardless of configLoadFailed', () => {
         mockClerkService.isLoaded.set(true);
         mockClerkService.isSignedIn.set(false);
         mockClerkService.configLoadFailed.set(false);
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.auth-config-error')).toBeNull();
         expect(compiled.querySelector('.auth-links')).toBeTruthy();
+        expect(compiled.querySelector('.user-button-container')).toBeNull();
     });
 
-    it('should not show error message when user is signed in (even if configLoadFailed)', () => {
+    it('should show user button container when signed in even if configLoadFailed', () => {
         mockClerkService.isLoaded.set(true);
         mockClerkService.isSignedIn.set(true);
         mockClerkService.configLoadFailed.set(true);
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.auth-config-error')).toBeNull();
         expect(compiled.querySelector('.user-button-container')).toBeTruthy();
+        expect(compiled.querySelector('.auth-links')).toBeNull();
     });
 
     it('should unmount and remount when theme changes while signed in', async () => {

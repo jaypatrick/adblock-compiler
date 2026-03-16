@@ -1,28 +1,31 @@
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { provideRouter } from '@angular/router';
 import { authGuard } from './auth.guard';
-import { ClerkService } from '../services/clerk.service';
+import { AuthFacadeService } from '../services/auth-facade.service';
 
 describe('authGuard', () => {
-    let mockClerk: { isLoaded: ReturnType<typeof vi.fn>; isSignedIn: ReturnType<typeof vi.fn> };
+    let mockAuth: {
+        isLoaded: ReturnType<typeof signal<boolean>>;
+        isSignedIn: ReturnType<typeof signal<boolean>>;
+    };
     let router: Router;
 
     const mockRoute = {} as ActivatedRouteSnapshot;
     const mockState = { url: '/api-keys' } as RouterStateSnapshot;
 
     beforeEach(() => {
-        mockClerk = {
-            isLoaded: vi.fn().mockReturnValue(true),
-            isSignedIn: vi.fn().mockReturnValue(false),
+        mockAuth = {
+            isLoaded: signal(true),
+            isSignedIn: signal(false),
         };
 
         TestBed.configureTestingModule({
             providers: [
                 provideZonelessChangeDetection(),
                 provideRouter([]),
-                { provide: ClerkService, useValue: mockClerk },
+                { provide: AuthFacadeService, useValue: mockAuth },
             ],
         });
 
@@ -30,14 +33,14 @@ describe('authGuard', () => {
     });
 
     it('should allow navigation when signed in', async () => {
-        mockClerk.isSignedIn.mockReturnValue(true);
+        mockAuth.isSignedIn.set(true);
 
         const result = await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
         expect(result).toBe(true);
     });
 
     it('should redirect to /sign-in when not signed in', async () => {
-        mockClerk.isSignedIn.mockReturnValue(false);
+        mockAuth.isSignedIn.set(false);
 
         const result = await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
         expect(result).toBeInstanceOf(UrlTree);
@@ -45,20 +48,18 @@ describe('authGuard', () => {
     });
 
     it('should include returnUrl in redirect query params', async () => {
-        mockClerk.isSignedIn.mockReturnValue(false);
+        mockAuth.isSignedIn.set(false);
 
         const result = await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
         expect((result as UrlTree).queryParams['returnUrl']).toBe('/api-keys');
     });
 
-    it('should wait for Clerk to load when not yet loaded', async () => {
-        // First call: not loaded, then becomes loaded
-        let callCount = 0;
-        mockClerk.isLoaded.mockImplementation(() => {
-            callCount++;
-            return callCount > 2; // Becomes loaded after 2 polls
-        });
-        mockClerk.isSignedIn.mockReturnValue(true);
+    it('should wait for auth to load when not yet loaded', async () => {
+        mockAuth.isLoaded.set(false);
+        mockAuth.isSignedIn.set(true);
+
+        // Resolve loading after a short delay using a real signal update
+        setTimeout(() => mockAuth.isLoaded.set(true), 100);
 
         const result = await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
         expect(result).toBe(true);

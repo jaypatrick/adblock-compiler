@@ -2981,7 +2981,11 @@ async function handleHealth(env: Env): Promise<Response> {
     };
 
     const [database, cache] = await Promise.all([
-        env.DB ? probe(() => env.DB!.prepare('SELECT 1').first()) : Promise.resolve<ServiceResult>({ status: 'down' }),
+        env.DB
+            ? probe(async () => {
+                await env.DB!.prepare('SELECT 1').first();
+            })
+            : Promise.resolve<ServiceResult>({ status: 'down' }),
         probe(async () => {
             await env.COMPILATION_CACHE.list({ limit: 1 });
         }),
