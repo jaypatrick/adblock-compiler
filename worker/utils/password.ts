@@ -34,7 +34,7 @@ function toBase64Url(bytes: Uint8Array): string {
 }
 
 /** Decode a base64url string to a Uint8Array. */
-function fromBase64Url(b64url: string): Uint8Array {
+function fromBase64Url(b64url: string): Uint8Array<ArrayBuffer> {
     // Restore standard base64 padding
     const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
     const padded = b64.padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=');

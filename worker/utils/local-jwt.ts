@@ -56,7 +56,7 @@ function base64urlEncodeString(str: string): string {
 }
 
 /** Decode a base64url string to a Uint8Array. */
-function base64urlDecode(b64url: string): Uint8Array {
+function base64urlDecode(b64url: string): Uint8Array<ArrayBuffer> {
     const b64 = b64url.replace(/-/g, '+').replace(/_/g, '/');
     const padded = b64.padEnd(b64.length + (4 - (b64.length % 4)) % 4, '=');
     const binary = atob(padded);

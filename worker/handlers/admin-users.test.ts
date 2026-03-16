@@ -13,7 +13,7 @@
  * @see worker/handlers/admin-users.ts
  */
 
-import { assertEquals, assertExists } from '@std/assert';
+import { assertEquals } from '@std/assert';
 import {
     handleAdminCreateLocalUser,
     handleAdminDeleteLocalUser,

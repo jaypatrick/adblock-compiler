@@ -29,7 +29,6 @@ import {
     AdminUpdateLocalUserSchema,
     LocalSignupRequestSchema,
     LocalUserPublicSchema,
-    LocalUserRowSchema,
 } from '../schemas.ts';
 import { hashPassword } from '../utils/password.ts';
 import { isValidLocalRole, tierForRole, VALID_LOCAL_ROLES } from '../utils/local-auth-roles.ts';
@@ -73,7 +72,7 @@ export async function handleAdminListLocalUsers(
             .prepare('SELECT COUNT(*) AS total FROM local_auth_users')
             .first<{ total: number }>();
 
-        const users = result.results
+        const users = (result.results ?? [])
             .map((row) => LocalUserPublicSchema.safeParse(row))
             .filter((r) => r.success)
             .map((r) => r.data);
