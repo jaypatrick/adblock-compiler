@@ -1,0 +1,17 @@
+# Test Hosts File
+# Last modified: 2025-01-01
+#
+# Standard hosts entries
+0.0.0.0 ads.example.com
+0.0.0.0 tracking.example.org
+0.0.0.0 telemetry.test.net
+0.0.0.0 cdn.analytics.io
+127.0.0.1 malware.bad-domain.com
+#
+# Inline comments
+0.0.0.0 inline-comment.example.com # this has a trailing comment
+#
+# Localhost entries (should be excluded)
+127.0.0.1 localhost
+127.0.0.1 localhost.localdomain
+::1 localhost

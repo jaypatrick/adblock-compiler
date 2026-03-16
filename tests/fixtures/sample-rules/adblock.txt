@@ -1,0 +1,21 @@
+[Adblock Plus 2.0]
+! Title: Test Filter List
+! Last modified: 2025-01-01
+! Homepage: https://example.com
+!
+! Standard blocking rules
+||ads.example.com^
+||tracking.example.org^
+||telemetry.test.net^$third-party
+||cdn.analytics.io^$script,image
+!
+! Exception rules
+@@||safe-ads.example.com^
+@@||example.com/acceptable-ads$document
+!
+! Cosmetic filters
+example.com##.ad-banner
+example.org##div[id="sponsored"]
+!
+! Extended CSS filters
+example.com#?#div:has(> .ad-label)

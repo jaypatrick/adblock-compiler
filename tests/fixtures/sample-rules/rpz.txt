@@ -1,0 +1,20 @@
+; Test RPZ (Response Policy Zone) File
+; Last modified: 2025-01-01
+;
+$TTL 300
+@ IN SOA localhost. root.localhost. (
+    2025010101 ; serial
+    3600       ; refresh
+    600        ; retry
+    86400      ; expire
+    300        ; minimum
+)
+@ IN NS localhost.
+;
+; Block rules (CNAME .)
+ads.example.com CNAME .
+tracking.example.org CNAME .
+telemetry.test.net CNAME .
+;
+; Wildcard block
+*.doubleclick.net CNAME .
