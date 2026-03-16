@@ -830,43 +830,62 @@ export type UserTierRow = z.infer<typeof UserTierRowSchema>;
 // ============================================================================
 // Local JWT Auth Schemas — LocalJwtAuthProvider bridge (pre-Clerk)
 //
-// MIGRATION PATH: When Clerk goes live, set CLERK_JWKS_URL and these schemas
-// are no longer used by the auth chain. They can be removed once fully migrated.
+// These schemas mirror the shape of their Clerk equivalents as closely as
+// possible so that the switch to ClerkAuthProvider requires zero schema changes.
+//
+// MIGRATION PATH: When Clerk is production-ready:
+//   1. Set CLERK_JWKS_URL → provider auto-switches, these schemas are unused.
+//   2. Delete this block once migration is confirmed.
+//
+// Identifier note: supports both email addresses and E.164 phone numbers,
+// matching Clerk's "identifier strategy" configuration.  No verification
+// emails or SMS are sent — format validation only.
 // ============================================================================
+
+/** Validates a login/signup identifier: email address OR E.164 phone number. */
+export const LocalIdentifierSchema = z.string().max(254).refine(
+    (val) => z.string().email().safeParse(val).success || /^\+?[1-9]\d{6,14}$/.test(val),
+    { message: 'Must be a valid email address or phone number (+E.164 format)' },
+);
 
 /**
  * Request body for POST /auth/signup.
- * The optional `tier` claim is validated server-side and never trusted directly.
+ * Only `guest` role is granted on self-registration; admin must be set via DB.
  */
 export const LocalSignupRequestSchema = z.object({
-    email: z.string().email().max(254),
+    identifier: LocalIdentifierSchema,
     password: z.string().min(8).max(128),
-    /** Optional tier claim — validated server-side, never promoted to Admin via this field */
-    tier: z.nativeEnum(UserTier).optional(),
 });
 
 export type LocalSignupRequest = z.infer<typeof LocalSignupRequestSchema>;
 
-/**
- * Request body for POST /auth/login.
- */
+/** Request body for POST /auth/login. */
 export const LocalLoginRequestSchema = z.object({
-    email: z.string().email().max(254),
+    identifier: LocalIdentifierSchema,
     password: z.string().min(1).max(128),
 });
 
 export type LocalLoginRequest = z.infer<typeof LocalLoginRequestSchema>;
 
+/** Request body for POST /auth/change-password. */
+export const LocalChangePasswordRequestSchema = z.object({
+    currentPassword: z.string().min(1).max(128),
+    newPassword: z.string().min(8).max(128),
+});
+
+export type LocalChangePasswordRequest = z.infer<typeof LocalChangePasswordRequestSchema>;
+
 /**
  * A row from the `local_auth_users` table.
- * Always Zod-validated before use to prevent trusting raw DB data.
+ * Always Zod-validated before use — never trust raw DB data across a trust boundary.
  */
 export const LocalUserRowSchema = z.object({
     id: z.string().uuid(),
-    email: z.string().email(),
+    identifier: z.string().min(1),
+    identifier_type: z.enum(['email', 'phone']),
     password_hash: z.string(),
-    tier: z.nativeEnum(UserTier),
     role: z.string(),
+    tier: z.nativeEnum(UserTier),
     created_at: z.string(),
     updated_at: z.string(),
 });
@@ -875,18 +894,32 @@ export type LocalUserRow = z.infer<typeof LocalUserRowSchema>;
 
 /**
  * JWT claims issued by LocalJwtAuthProvider (HS256).
- * Mirrors the shape of ClerkJWTClaims for easy provider swap.
+ *
+ * Structure intentionally mirrors {@link ClerkJWTClaimsSchema}:
+ *   - `sub`      → user UUID          (same as Clerk sub)
+ *   - `sid`      → session UUID       (same as Clerk sid)
+ *   - `metadata` → tier + role object (same as Clerk publicMetadata)
+ *
+ * When switching to Clerk, ClerkAuthProvider reads the same `metadata.tier`
+ * and `metadata.role` fields — no claim-mapping changes needed.
  */
 export const LocalJWTClaimsSchema = z.object({
-    /** User ID (UUID from local_auth_users.id) */
+    /** User UUID from local_auth_users.id */
     sub: z.string().min(1),
-    email: z.string().email(),
-    tier: z.nativeEnum(UserTier),
-    role: z.string(),
-    /** Issuer — always 'adblock-compiler-local' for local JWTs */
+    /** Always 'adblock-compiler-local' — easy to grep when migrating */
     iss: z.literal('adblock-compiler-local'),
-    iat: z.number(),
-    exp: z.number(),
+    exp: z.number().int().positive(),
+    iat: z.number().int().min(0),
+    /** Session UUID — mirrors Clerk's sid claim */
+    sid: z.string().optional(),
+    /**
+     * User metadata — intentionally identical structure to Clerk's publicMetadata.
+     * ClerkAuthProvider.verifyToken() reads the same fields from Clerk JWTs.
+     */
+    metadata: z.object({
+        tier: z.nativeEnum(UserTier).optional(),
+        role: z.string().optional(),
+    }).optional(),
 });
 
 export type LocalJWTClaims = z.infer<typeof LocalJWTClaimsSchema>;

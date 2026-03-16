@@ -498,9 +498,10 @@ export function requireTier(context: IAuthContext, minTier: UserTier): Response 
  * ```
  */
 export function requireScope(context: IAuthContext, ...requiredScopes: string[]): Response | null {
-    // JWT-authenticated users (Clerk sessions) bypass scope checks — they own
-    // the account and are limited only by tier, not by API-key scopes.
-    if (context.authMethod === 'clerk-jwt') {
+    // JWT-authenticated users (Clerk session or local JWT bridge) bypass scope
+    // checks — they own the account and are limited only by tier, not by
+    // API-key scopes.
+    if (context.authMethod === 'clerk-jwt' || context.authMethod === 'local-jwt') {
         return null;
     }
 

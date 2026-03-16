@@ -1,0 +1,512 @@
+/**
+ * Tests for local JWT auth handlers.
+ *
+ * Covers:
+ *   POST /auth/signup          (handleLocalSignup)
+ *   POST /auth/login           (handleLocalLogin)
+ *   GET  /auth/me              (handleLocalMe)
+ *   POST /auth/change-password (handleLocalChangePassword)
+ *
+ * Uses in-memory D1 mock and stub AnalyticsService — no real network I/O.
+ *
+ * @see worker/handlers/local-auth.ts
+ */
+
+import { assertEquals, assertExists } from '@std/assert';
+import {
+    handleLocalChangePassword,
+    handleLocalLogin,
+    handleLocalMe,
+    handleLocalSignup,
+} from './local-auth.ts';
+import { hashPassword } from '../utils/password.ts';
+import { UserTier } from '../types.ts';
+import type { IAuthContext } from '../types.ts';
+import type { Env } from '../types.ts';
+import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
+
+// ============================================================================
+// Fixtures
+// ============================================================================
+
+const TEST_JWT_SECRET = 'test-secret-at-least-32-characters-long!!';
+const TEST_IP = '127.0.0.1';
+
+/** Stub analytics — no-op for tests. */
+const analytics = new AnalyticsService(undefined);
+
+function makeAnonContext(): IAuthContext {
+    return {
+        userId: null,
+        clerkUserId: null,
+        tier: UserTier.Anonymous,
+        role: 'anonymous',
+        apiKeyId: null,
+        sessionId: null,
+        scopes: [],
+        authMethod: 'anonymous',
+    };
+}
+
+function makeAuthContext(userId: string): IAuthContext {
+    return {
+        userId: null,
+        clerkUserId: userId,
+        tier: UserTier.Free,
+        role: 'guest',
+        apiKeyId: null,
+        sessionId: null,
+        scopes: [],
+        authMethod: 'local-jwt',
+    };
+}
+
+// ============================================================================
+// In-memory D1 mock
+// ============================================================================
+
+interface UserRecord {
+    id: string;
+    identifier: string;
+    identifier_type: 'email' | 'phone';
+    password_hash: string;
+    role: string;
+    tier: UserTier;
+    created_at: string;
+    updated_at: string;
+}
+
+function createMockDb(initialUsers: UserRecord[] = []) {
+    const users: UserRecord[] = [...initialUsers];
+
+    const makeStatement = (sql: string) => {
+        let boundValues: unknown[] = [];
+        const stmt = {
+            bind(...args: unknown[]) {
+                boundValues = args;
+                return stmt;
+            },
+            async first<T>(): Promise<T | null> {
+                const lower = sql.toLowerCase();
+                if (lower.includes('where identifier =')) {
+                    const identifier = boundValues[0] as string;
+                    const user = users.find((u) => u.identifier === identifier);
+                    return (user ?? null) as T | null;
+                }
+                if (lower.includes('where id =')) {
+                    const id = boundValues[0] as string;
+                    const user = users.find((u) => u.id === id);
+                    return (user ?? null) as T | null;
+                }
+                return null;
+            },
+            async run() {
+                const lower = sql.toLowerCase();
+                if (lower.includes('insert into local_auth_users')) {
+                    const [id, identifier, identifier_type, password_hash, role, tier] = boundValues;
+                    users.push({
+                        id: id as string,
+                        identifier: identifier as string,
+                        identifier_type: identifier_type as 'email' | 'phone',
+                        password_hash: password_hash as string,
+                        role: role as string,
+                        tier: tier as UserTier,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString(),
+                    });
+                    return { success: true, meta: { changes: 1 } };
+                }
+                if (lower.includes('update local_auth_users set password_hash')) {
+                    const [newHash, id] = boundValues;
+                    const idx = users.findIndex((u) => u.id === id);
+                    if (idx >= 0) {
+                        users[idx] = { ...users[idx], password_hash: newHash as string };
+                    }
+                    return { success: true, meta: { changes: 1 } };
+                }
+                return { success: true, meta: { changes: 0 } };
+            },
+        };
+        return stmt;
+    };
+
+    return {
+        prepare: (sql: string) => makeStatement(sql),
+        /** Expose internal store for assertions */
+        _users: users,
+    };
+}
+
+/** Build a minimal Env with controllable DB and JWT_SECRET. */
+function makeEnv(overrides: Partial<Env> = {}): Env {
+    return {
+        COMPILER_VERSION: '1.0.0-test',
+        COMPILATION_CACHE: undefined as unknown as KVNamespace,
+        RATE_LIMIT: {
+            get: async () => null,
+            put: async () => undefined,
+        } as unknown as KVNamespace,
+        METRICS: undefined as unknown as KVNamespace,
+        ASSETS: undefined as unknown as Fetcher,
+        JWT_SECRET: TEST_JWT_SECRET,
+        ...overrides,
+    };
+}
+
+// ============================================================================
+// Signup tests
+// ============================================================================
+
+Deno.test('handleLocalSignup - 201 + token on valid email', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: 'user@example.com', password: 'password123' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalSignup(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 201);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.success, true);
+    assertExists(body.token);
+});
+
+Deno.test('handleLocalSignup - 201 + token on valid phone number', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: '+12025551234', password: 'password123' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalSignup(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 201);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.success, true);
+    assertExists(body.token);
+    const user = body.user as Record<string, unknown>;
+    assertEquals(user.identifierType, 'phone');
+});
+
+Deno.test('handleLocalSignup - 400 on invalid identifier', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: 'not-an-email-or-phone', password: 'password123' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalSignup(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 400);
+});
+
+Deno.test('handleLocalSignup - 400 on short password', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: 'user@example.com', password: 'short' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalSignup(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 400);
+});
+
+Deno.test('handleLocalSignup - 409 on duplicate identifier', async () => {
+    const passwordHash = await hashPassword('password123');
+    const db = createMockDb([{
+        id: 'existing-id',
+        identifier: 'taken@example.com',
+        identifier_type: 'email',
+        password_hash: passwordHash,
+        role: 'guest',
+        tier: UserTier.Free,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: 'taken@example.com', password: 'password123' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalSignup(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 409);
+});
+
+Deno.test('handleLocalSignup - 503 on missing JWT_SECRET', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database, JWT_SECRET: undefined });
+    const req = new Request('http://localhost/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: 'user@example.com', password: 'password123' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalSignup(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 503);
+});
+
+Deno.test('handleLocalSignup - registered user has guest role', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/signup', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: 'newuser@example.com', password: 'password123' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalSignup(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 201);
+    const body = await res.json() as Record<string, unknown>;
+    const user = body.user as Record<string, unknown>;
+    assertEquals(user.role, 'guest');
+    assertEquals(user.tier, 'free');
+});
+
+// ============================================================================
+// Login tests
+// ============================================================================
+
+Deno.test('handleLocalLogin - 200 + token on valid credentials', async () => {
+    const passwordHash = await hashPassword('correctpassword');
+    const db = createMockDb([{
+        id: 'user-001',
+        identifier: 'login@example.com',
+        identifier_type: 'email',
+        password_hash: passwordHash,
+        role: 'guest',
+        tier: UserTier.Free,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: 'login@example.com', password: 'correctpassword' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalLogin(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 200);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.success, true);
+    assertExists(body.token);
+});
+
+Deno.test('handleLocalLogin - 401 on wrong password', async () => {
+    const passwordHash = await hashPassword('correctpassword');
+    const db = createMockDb([{
+        id: 'user-002',
+        identifier: 'login2@example.com',
+        identifier_type: 'email',
+        password_hash: passwordHash,
+        role: 'guest',
+        tier: UserTier.Free,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: 'login2@example.com', password: 'wrongpassword' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalLogin(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 401);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.error, 'Invalid credentials');
+});
+
+Deno.test('handleLocalLogin - 401 on unknown identifier (no user enumeration)', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: 'nobody@example.com', password: 'password123' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalLogin(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 401);
+    const body = await res.json() as Record<string, unknown>;
+    // Same generic error — does not reveal whether the user exists
+    assertEquals(body.error, 'Invalid credentials');
+});
+
+Deno.test('handleLocalLogin - 400 on invalid body', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: 'not-valid', password: 'pw' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalLogin(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 400);
+});
+
+Deno.test('handleLocalLogin - 200 with phone identifier', async () => {
+    const passwordHash = await hashPassword('phonepass1');
+    const db = createMockDb([{
+        id: 'phone-user-001',
+        identifier: '+12025551234',
+        identifier_type: 'phone',
+        password_hash: passwordHash,
+        role: 'guest',
+        tier: UserTier.Free,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/login', {
+        method: 'POST',
+        body: JSON.stringify({ identifier: '+12025551234', password: 'phonepass1' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalLogin(req, env, analytics, TEST_IP);
+    assertEquals(res.status, 200);
+    assertExists((await res.json() as Record<string, unknown>).token);
+});
+
+// ============================================================================
+// /auth/me tests
+// ============================================================================
+
+Deno.test('handleLocalMe - 200 with valid auth context', async () => {
+    const db = createMockDb([{
+        id: 'me-user-001',
+        identifier: 'me@example.com',
+        identifier_type: 'email',
+        password_hash: 'irrelevant',
+        role: 'guest',
+        tier: UserTier.Free,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/me');
+    const ctx = makeAuthContext('me-user-001');
+
+    const res = await handleLocalMe(req, env, ctx);
+    assertEquals(res.status, 200);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.success, true);
+    const user = body.user as Record<string, unknown>;
+    assertEquals(user.identifier, 'me@example.com');
+});
+
+Deno.test('handleLocalMe - 401 when anonymous', async () => {
+    const env = makeEnv();
+    const req = new Request('http://localhost/auth/me');
+
+    const res = await handleLocalMe(req, env, makeAnonContext());
+    assertEquals(res.status, 401);
+});
+
+Deno.test('handleLocalMe - 404 when user not in DB', async () => {
+    const db = createMockDb(); // empty DB
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/me');
+    const ctx = makeAuthContext('nonexistent-user-id');
+
+    const res = await handleLocalMe(req, env, ctx);
+    assertEquals(res.status, 404);
+});
+
+// ============================================================================
+// /auth/change-password tests
+// ============================================================================
+
+Deno.test('handleLocalChangePassword - 200 on successful change', async () => {
+    const passwordHash = await hashPassword('oldpassword');
+    const db = createMockDb([{
+        id: 'chpw-user-001',
+        identifier: 'chpw@example.com',
+        identifier_type: 'email',
+        password_hash: passwordHash,
+        role: 'guest',
+        tier: UserTier.Free,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const ctx = makeAuthContext('chpw-user-001');
+    const req = new Request('http://localhost/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword: 'oldpassword', newPassword: 'newpassword123' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalChangePassword(req, env, ctx, analytics, TEST_IP);
+    assertEquals(res.status, 200);
+});
+
+Deno.test('handleLocalChangePassword - 401 on wrong current password', async () => {
+    const passwordHash = await hashPassword('correctpassword');
+    const db = createMockDb([{
+        id: 'chpw-user-002',
+        identifier: 'chpw2@example.com',
+        identifier_type: 'email',
+        password_hash: passwordHash,
+        role: 'guest',
+        tier: UserTier.Free,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const ctx = makeAuthContext('chpw-user-002');
+    const req = new Request('http://localhost/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword: 'wrongpassword', newPassword: 'newpassword123' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalChangePassword(req, env, ctx, analytics, TEST_IP);
+    assertEquals(res.status, 401);
+});
+
+Deno.test('handleLocalChangePassword - 401 when anonymous', async () => {
+    const env = makeEnv();
+    const req = new Request('http://localhost/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword: 'old', newPassword: 'newpassword123' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalChangePassword(req, env, makeAnonContext(), analytics, TEST_IP);
+    assertEquals(res.status, 401);
+});
+
+Deno.test('handleLocalChangePassword - 400 on short new password', async () => {
+    const passwordHash = await hashPassword('currentpw');
+    const db = createMockDb([{
+        id: 'chpw-user-003',
+        identifier: 'chpw3@example.com',
+        identifier_type: 'email',
+        password_hash: passwordHash,
+        role: 'guest',
+        tier: UserTier.Free,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const ctx = makeAuthContext('chpw-user-003');
+    const req = new Request('http://localhost/auth/change-password', {
+        method: 'POST',
+        body: JSON.stringify({ currentPassword: 'currentpw', newPassword: 'short' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalChangePassword(req, env, ctx, analytics, TEST_IP);
+    assertEquals(res.status, 400);
+});

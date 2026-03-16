@@ -2,37 +2,50 @@
  * Local JWT Utilities — HS256 sign/verify for LocalJwtAuthProvider
  *
  * Uses `jose` (already a dependency via jsr:@panva/jose) to issue and verify
- * HS256 JWTs for the local auth bridge. The API mirrors the patterns used in
- * `clerk-jwt.ts` so that switching back to Clerk is a one-line change.
+ * HS256 JWTs for the local auth bridge.
  *
- * MIGRATION PATH (when Clerk is production-ready):
- *   1. Set `CLERK_JWKS_URL` in wrangler.toml [vars] (or `.dev.vars` locally)
- *   2. The provider in worker.ts auto-switches — this file is no longer called
- *   3. Optionally remove LocalJwtAuthProvider and this file post-migration
+ * ## Clerk mirror design
+ * JWT claims intentionally mirror Clerk's structure so ClerkAuthProvider
+ * can read the same fields without modification after the switch:
+ *   - `sub`               → user UUID       (Clerk: user ID string)
+ *   - `sid`               → session UUID    (Clerk: session ID)
+ *   - `metadata.tier`     → UserTier enum   (Clerk: publicMetadata.tier)
+ *   - `metadata.role`     → role string     (Clerk: publicMetadata.role)
  *
- * Security properties:
- *   - Algorithm: HS256 (HMAC-SHA256)
- *   - Issuer:    'adblock-compiler-local' (validated on verify)
- *   - Expiry:    24h default (configurable per call)
- *   - Clock tolerance: 5s (matching the Clerk verifier in clerk-jwt.ts)
- *   - Claims are Zod-parsed before returning to ensure shape integrity
+ * ## Migration path (when Clerk is production-ready)
+ *   1. Set `CLERK_JWKS_URL` in wrangler.toml [vars] (or `.dev.vars` locally).
+ *   2. Provider in worker.ts auto-switches to ClerkAuthProvider.
+ *   3. This file is no longer called — safe to delete post-migration.
+ *
+ * @see worker/middleware/clerk-jwt.ts — the Clerk equivalent of this file
  */
 
 import { SignJWT, jwtVerify } from 'jose';
 import { ZodError } from 'zod';
 import { LocalJWTClaimsSchema } from '../schemas.ts';
 import type { LocalJWTClaims } from '../schemas.ts';
+import { UserTier } from '../types.ts';
 
 const ISSUER = 'adblock-compiler-local' as const;
 const DEFAULT_EXPIRES_IN_SECONDS = 86_400; // 24 hours
 
 // ============================================================================
-// Helpers
+// Internal helpers
 // ============================================================================
 
 /** Convert a raw secret string to the Uint8Array key form jose expects. */
 function secretKey(secret: string): Uint8Array {
     return new TextEncoder().encode(secret);
+}
+
+/**
+ * Returns true for JWT errors that are expected (expired, malformed, etc.)
+ * Mirrors the same helper in clerk-jwt.ts.
+ */
+function isExpectedJwtError(message: string): boolean {
+    const expected = ['exp', 'nbf', 'iat', 'JWS', 'JWK', 'alg', 'compact', 'decode', 'invalid', 'issuer', 'signature'];
+    const lower = message.toLowerCase();
+    return expected.some((p) => lower.includes(p.toLowerCase()));
 }
 
 // ============================================================================
@@ -42,23 +55,31 @@ function secretKey(secret: string): Uint8Array {
 /**
  * Issue a signed HS256 JWT for a local user.
  *
- * @param payload          - User claims (sub, email, tier, role)
+ * Claims structure mirrors Clerk's JWT template:
+ * ```json
+ * { "sub": "<uuid>", "sid": "<uuid>", "metadata": { "tier": "free", "role": "guest" } }
+ * ```
+ *
+ * @param sub              - User UUID (local_auth_users.id)
+ * @param role             - User role string (e.g. 'guest', 'admin')
+ * @param tier             - User tier (derived from role registry)
  * @param secret           - Raw JWT_SECRET string from env
- * @param expiresInSeconds - Token lifetime in seconds (default: 86400 / 24h)
- * @returns Compact serialised JWT string
+ * @param expiresInSeconds - Token lifetime (default 86400 / 24h)
  */
 export async function signLocalJWT(
-    payload: Omit<LocalJWTClaims, 'iss' | 'iat' | 'exp'>,
+    sub: string,
+    role: string,
+    tier: UserTier,
     secret: string,
     expiresInSeconds: number = DEFAULT_EXPIRES_IN_SECONDS,
 ): Promise<string> {
+    const sid = crypto.randomUUID(); // one UUID session per token — mirrors Clerk sid
     return await new SignJWT({
-        sub: payload.sub,
-        email: payload.email,
-        tier: payload.tier,
-        role: payload.role,
+        sid,
+        metadata: { tier, role },
     })
         .setProtectedHeader({ alg: 'HS256' })
+        .setSubject(sub)
         .setIssuer(ISSUER)
         .setIssuedAt()
         .setExpirationTime(Math.floor(Date.now() / 1000) + expiresInSeconds)
@@ -68,8 +89,8 @@ export async function signLocalJWT(
 /**
  * Verify a HS256 JWT and return Zod-parsed {@link LocalJWTClaims}.
  *
- * Never throws — returns `{ valid: false, error }` for every failure mode so
- * callers can safely branch without try/catch.
+ * Never throws — returns `{ valid: false, error }` on every failure so callers
+ * can safely branch without try/catch.
  *
  * @param token  - Compact JWT string
  * @param secret - Raw JWT_SECRET string from env
@@ -82,8 +103,7 @@ export async function verifyLocalJWT(
         const { payload } = await jwtVerify(token, secretKey(secret), {
             algorithms: ['HS256'],
             issuer: ISSUER,
-            // 5-second clock tolerance — matches clerk-jwt.ts
-            clockTolerance: 5,
+            clockTolerance: 5, // 5s clock skew — matches clerk-jwt.ts
         });
 
         let claims: LocalJWTClaims;
@@ -109,31 +129,4 @@ export async function verifyLocalJWT(
         console.error('[local-jwt] Unexpected verification error:', message);
         return { valid: false, error: 'JWT verification failed' };
     }
-}
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-/**
- * Returns true for JWT errors that are expected (expired, malformed, etc.)
- * as opposed to unexpected infrastructure failures.
- * Mirrors the same helper in clerk-jwt.ts.
- */
-function isExpectedJwtError(message: string): boolean {
-    const expectedPatterns = [
-        'exp',
-        'nbf',
-        'iat',
-        'JWS',
-        'JWK',
-        'alg',
-        'compact',
-        'decode',
-        'invalid',
-        'issuer',
-        'signature',
-    ];
-    const lower = message.toLowerCase();
-    return expectedPatterns.some((p) => lower.includes(p.toLowerCase()));
 }

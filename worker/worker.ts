@@ -61,6 +61,8 @@ import { AnalyticsService } from '../src/services/AnalyticsService.ts';
 import { getDeploymentHistory, getDeploymentStats, getLatestDeployment } from '../src/deployment/version.ts';
 import { checkRateLimitTiered, validateRequestSize } from './middleware/index.ts';
 import { authenticateRequestUnified, requireAuth } from './middleware/auth.ts';
+import { ClerkAuthProvider } from './middleware/clerk-auth-provider.ts';
+import { LocalJwtAuthProvider } from './middleware/local-jwt-auth-provider.ts';
 import { API_DOCS_REDIRECT } from './utils/constants.ts';
 import { JsonResponse } from './utils/response.ts';
 import { getCorsHeaders, getPublicCorsHeaders, handleCorsPreflight, isPublicEndpoint } from './utils/cors.ts';
@@ -69,6 +71,7 @@ import { handleRulesCreate, handleRulesDelete, handleRulesGet, handleRulesList, 
 import { handleNotify } from './handlers/webhook.ts';
 import { handleClerkWebhook } from './handlers/clerk-webhook.ts';
 import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdateApiKey } from './handlers/api-keys.ts';
+import { handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocalSignup } from './handlers/local-auth.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleSentryConfig } from './handlers/sentry-config.ts';
 import { createDiagnosticsProvider } from './services/diagnostics-factory.ts';
@@ -3228,15 +3231,43 @@ const workerHandler: WorkerHandler = {
         const routePath = pathname.startsWith('/api/') ? pathname.slice(4) : pathname;
 
         // ── Unified Authentication ──────────────────────────────────────
-        // Runs the three-tier auth chain (Clerk JWT → API key → Anonymous).
+        // Runs the three-tier auth chain (JWT → API key → Anonymous).
         // Never throws — auth failures are signalled via authResult.response.
         // Requests with NO token proceed as anonymous (no short-circuit).
         // Requests with an INVALID token are rejected (authResult.response is set).
-        const authResult = await authenticateRequestUnified(request, env, createPgPool);
+        //
+        // Provider selection:
+        //   - CLERK_JWKS_URL set → ClerkAuthProvider (production)
+        //   - CLERK_JWKS_URL absent → LocalJwtAuthProvider (pre-Clerk bridge)
+        //
+        // MIGRATION PATH TO CLERK: set CLERK_JWKS_URL in wrangler.toml [vars].
+        // Zero code changes required — the provider auto-switches.
+        const authProvider = env.CLERK_JWKS_URL
+            ? new ClerkAuthProvider(env)
+            : new LocalJwtAuthProvider(env);
+        const authResult = await authenticateRequestUnified(request, env, createPgPool, authProvider);
         if (authResult.response) {
             return authResult.response;
         }
         const authContext: IAuthContext = authResult.context;
+
+        // ── Local JWT auth routes (pre-Clerk bridge) ────────────────────
+        // POST /auth/signup          — register (email or phone + password)
+        // POST /auth/login           — authenticate, receive JWT
+        // GET  /auth/me              — current user profile (requires auth)
+        // POST /auth/change-password — update password    (requires auth)
+        if (routePath === '/auth/signup' && request.method === 'POST') {
+            return await handleLocalSignup(request, env, analytics, ip);
+        }
+        if (routePath === '/auth/login' && request.method === 'POST') {
+            return await handleLocalLogin(request, env, analytics, ip);
+        }
+        if (routePath === '/auth/me' && request.method === 'GET') {
+            return await handleLocalMe(request, env, authContext);
+        }
+        if (routePath === '/auth/change-password' && request.method === 'POST') {
+            return await handleLocalChangePassword(request, env, authContext, analytics, ip);
+        }
 
         // Handle Prometheus scrape endpoint (admin-protected; auth handled inside handler)
         if (routePath === '/metrics/prometheus' && request.method === 'GET') {
