@@ -828,6 +828,70 @@ export const UserTierRowSchema = z.object({
 export type UserTierRow = z.infer<typeof UserTierRowSchema>;
 
 // ============================================================================
+// Local JWT Auth Schemas — LocalJwtAuthProvider bridge (pre-Clerk)
+//
+// MIGRATION PATH: When Clerk goes live, set CLERK_JWKS_URL and these schemas
+// are no longer used by the auth chain. They can be removed once fully migrated.
+// ============================================================================
+
+/**
+ * Request body for POST /auth/signup.
+ * The optional `tier` claim is validated server-side and never trusted directly.
+ */
+export const LocalSignupRequestSchema = z.object({
+    email: z.string().email().max(254),
+    password: z.string().min(8).max(128),
+    /** Optional tier claim — validated server-side, never promoted to Admin via this field */
+    tier: z.nativeEnum(UserTier).optional(),
+});
+
+export type LocalSignupRequest = z.infer<typeof LocalSignupRequestSchema>;
+
+/**
+ * Request body for POST /auth/login.
+ */
+export const LocalLoginRequestSchema = z.object({
+    email: z.string().email().max(254),
+    password: z.string().min(1).max(128),
+});
+
+export type LocalLoginRequest = z.infer<typeof LocalLoginRequestSchema>;
+
+/**
+ * A row from the `local_auth_users` table.
+ * Always Zod-validated before use to prevent trusting raw DB data.
+ */
+export const LocalUserRowSchema = z.object({
+    id: z.string().uuid(),
+    email: z.string().email(),
+    password_hash: z.string(),
+    tier: z.nativeEnum(UserTier),
+    role: z.string(),
+    created_at: z.string(),
+    updated_at: z.string(),
+});
+
+export type LocalUserRow = z.infer<typeof LocalUserRowSchema>;
+
+/**
+ * JWT claims issued by LocalJwtAuthProvider (HS256).
+ * Mirrors the shape of ClerkJWTClaims for easy provider swap.
+ */
+export const LocalJWTClaimsSchema = z.object({
+    /** User ID (UUID from local_auth_users.id) */
+    sub: z.string().min(1),
+    email: z.string().email(),
+    tier: z.nativeEnum(UserTier),
+    role: z.string(),
+    /** Issuer — always 'adblock-compiler-local' for local JWTs */
+    iss: z.literal('adblock-compiler-local'),
+    iat: z.number(),
+    exp: z.number(),
+});
+
+export type LocalJWTClaims = z.infer<typeof LocalJWTClaimsSchema>;
+
+// ============================================================================
 // Admin System Schemas — ADMIN_DB trust boundary validation (#1054)
 // ============================================================================
 
