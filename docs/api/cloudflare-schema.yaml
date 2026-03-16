@@ -1831,7 +1831,7 @@ paths:
             operationId: localMe
             security:
                 -
-                    ClerkJWT: []
+                    BearerAuth: []
             responses:
                 '200':
                     description: Current user profile
@@ -1860,7 +1860,7 @@ paths:
             operationId: localChangePassword
             security:
                 -
-                    ClerkJWT: []
+                    BearerAuth: []
             requestBody:
                 required: true
                 content:
