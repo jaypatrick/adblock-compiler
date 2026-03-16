@@ -9,11 +9,12 @@
  * validation only — the browser binding is not mocked for actual navigation.
  */
 
-import { assertEquals, assertExists, assertStringIncludes } from '@std/assert';
+import { assertEquals, assertStringIncludes } from '@std/assert';
 import { handleMonitorLatest } from './handlers/monitor-latest.ts';
 import { handleResolveUrl } from './handlers/url-resolver.ts';
 import { handleSourceMonitor } from './handlers/source-monitor.ts';
 import { createMockCtx, createMockEnv, createMockRequest, MockKVNamespace } from '../tests/fixtures/mocks/MockEnv.ts';
+import type { BrowserWorker } from './cloudflare-workers-shim.ts';
 
 // ============================================================================
 // handleMonitorLatest — GET /api/browser/monitor/latest
@@ -23,7 +24,7 @@ Deno.test('handleMonitorLatest: returns 503 when COMPILATION_CACHE is missing', 
     const env = createMockEnv({ COMPILATION_CACHE: undefined as unknown as KVNamespace });
     const response = await handleMonitorLatest(createMockRequest(), env);
     assertEquals(response.status, 503);
-    const body = await response.json();
+    const body = await response.json() as any;
     assertStringIncludes(body.error || body.message || JSON.stringify(body), 'KV binding');
 });
 
@@ -48,7 +49,7 @@ Deno.test('handleMonitorLatest: returns 200 with stored summary', async () => {
 
     const response = await handleMonitorLatest(createMockRequest(), env);
     assertEquals(response.status, 200);
-    const body = await response.json();
+    const body = await response.json() as any;
     assertEquals(body.data?.total ?? body.total, 1);
 });
 
@@ -84,7 +85,7 @@ Deno.test('handleResolveUrl: returns 400 for non-JSON body', async () => {
     });
     const response = await handleResolveUrl(request, env);
     assertEquals(response.status, 400);
-    const body = await response.json();
+    const body = await response.json() as any;
     assertStringIncludes(body.error || body.message || JSON.stringify(body), 'JSON');
 });
 
@@ -213,7 +214,7 @@ Deno.test('handleSourceMonitor: accepts valid minimal request body (schema valid
     const response = await handleSourceMonitor(request, env, createMockCtx());
     // If validation passes, we get 200 (results with reachable: false) not 400
     assertEquals(response.status, 200);
-    const body = await response.json();
+    const body = await response.json() as any;
     const data = body.data ?? body;
     assertEquals(data.total, 1);
     assertEquals(data.unreachable, 1);

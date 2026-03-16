@@ -9,7 +9,7 @@
  */
 
 import { assert, assertEquals, assertExists } from '@std/assert';
-import { assertSpyCalls, spy, stub } from '@std/testing/mock';
+import { assertSpyCalls, spy } from '@std/testing/mock';
 import { withSentryWorker } from './sentry-init.ts';
 import type { SentryWorkerConfig } from './sentry-init.ts';
 import type { Env } from '../types.ts';
@@ -31,8 +31,8 @@ function createMockEnv(overrides: Partial<Env> = {}): Env {
     } as Env;
 }
 
-function createMockRequest(url = 'https://worker.test/compile'): Request {
-    return new Request(url, { method: 'POST' });
+function createMockRequest(url = 'https://worker.test/compile'): Request<unknown, IncomingRequestCfProperties<unknown>> {
+    return new Request(url, { method: 'POST' }) as unknown as Request<unknown, IncomingRequestCfProperties<unknown>>;
 }
 
 function createMockCtx(): ExecutionContext {
@@ -73,16 +73,14 @@ Deno.test('withSentryWorker: passthrough fetch returns original response when DS
 });
 
 Deno.test('withSentryWorker: passthrough does not import @sentry/cloudflare', async () => {
-    let sentryImported = false;
-
-    // Stub dynamic import to detect if Sentry is loaded — since import() is
-    // native, we verify indirectly: if DSN is absent the handler should
-    // return the sentinel *without* the Sentry wrapping path executing.
+    // Verify indirectly: if DSN is absent the handler should return the sentinel
+    // *without* the Sentry wrapping path executing.  The spy call count of 1
+    // proves the passthrough was taken (not Sentry.withSentry).
     const fetchSpy = spy(async () => SENTINEL_RESPONSE);
     const handler = { fetch: fetchSpy } as unknown as ExportedHandler<Env>;
     const env = createMockEnv();
 
-    const wrapped = withSentryWorker(handler, (e) => {
+    const wrapped = withSentryWorker(handler, (_e) => {
         // Config returns no DSN
         return { dsn: undefined };
     });
