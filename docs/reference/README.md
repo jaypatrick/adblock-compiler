@@ -14,5 +14,4 @@ Reference material, configuration guides, and project information.
 ## Related
 
 - [Troubleshooting](../guides/TROUBLESHOOTING.md) - Common issues and solutions
-- [Migration Guide](../guides/MIGRATION.md) - Migrating from @adguard/hostlist-compiler
 - [Contributing Guide](../../CONTRIBUTING.md) - How to contribute

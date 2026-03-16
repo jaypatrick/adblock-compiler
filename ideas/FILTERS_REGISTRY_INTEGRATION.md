@@ -23,8 +23,8 @@
 | **Rule formats** | Full adblock syntax, scriptlets, CSS injection, `$replace` | Hosts, adblock-style DNS rules, `$dnsrewrite` |
 | **Trust levels** | `low` / `high` / `full` (3-tier) | `trusted: boolean` (2-tier) |
 | **Platform targeting** | `platformsIncluded` / `platformsExcluded` per-filter | `environment: dev \| prod` |
-| **Build tool** | `@adguard/filters-compiler` | `@adguard/hostlist-compiler` |
-| **`adblock-compiler` relevance** | ✅ Conceptual alignment + richer metadata model | ✅ **Direct** — same tool lineage |
+| **Build tool** | `@adguard/filters-compiler` | [HostlistCompiler](https://github.com/AdguardTeam/HostlistCompiler) |
+| **`adblock-compiler` relevance** | ✅ Conceptual alignment + richer metadata model | ✅ **Direct** — same DNS compilation domain |
 
 ---
 

@@ -7,7 +7,7 @@
 
 ## Summary
 
-**`HostlistsRegistry` is the most directly relevant AdGuard ecosystem repository to `adblock-compiler`.** It is the canonical registry of DNS-level hostslist blocklists for AdGuard DNS, AdGuard Home, and related products — and `adblock-compiler` is explicitly described as a rewrite of `@adguard/hostlist-compiler`, the exact tool HostlistsRegistry uses internally to build its filters.
+**`HostlistsRegistry` is the most directly relevant AdGuard ecosystem repository to `adblock-compiler`.** It is the canonical registry of DNS-level hostslist blocklists for AdGuard DNS, AdGuard Home, and related products — and `adblock-compiler` targets the same DNS-level filter compilation domain.
 
 ---
 
@@ -25,8 +25,8 @@ It is the DNS counterpart to [`FiltersRegistry`](https://github.com/AdguardTeam/
 |---|---|---|
 | **Target** | DNS blockers (AdGuard Home, Pi-hole) | Browser content blockers (extensions) |
 | **Rule formats** | Hosts, adblock-style DNS rules, `$dnsrewrite` | Full adblock syntax, scriptlets, CSS injection |
-| **Build tool** | `@adguard/hostlist-compiler` | `@adguard/filters-compiler` |
-| **`adblock-compiler` relevance** | ✅ **Direct** — same domain, same tool lineage | ✅ Conceptual alignment |
+| **Build tool** | [HostlistCompiler](https://github.com/AdguardTeam/HostlistCompiler) | `@adguard/filters-compiler` |
+| **`adblock-compiler` relevance** | ✅ **Direct** — same DNS compilation domain | ✅ Conceptual alignment |
 
 ---
 
