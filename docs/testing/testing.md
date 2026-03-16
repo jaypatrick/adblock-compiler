@@ -2,111 +2,142 @@
 
 ## Overview
 
-This project has comprehensive unit test coverage using Deno's native testing framework. All tests are co-located with source files in the `src/` directory.
+This project uses a layered testing strategy spanning three frameworks:
+
+| Layer | Framework | Directory | Runner |
+|-------|-----------|-----------|--------|
+| Deno backend (CLI + core) | Deno native (`@std/assert`, `@std/testing/mock`) | `src/` | `deno task test:src` |
+| Cloudflare Worker | Deno native | `worker/` | `deno task test:worker` |
+| Angular frontend | Vitest + `@analogjs/vitest-angular` | `frontend/` | `pnpm --filter adblock-compiler-frontend run test` |
+| E2E (Worker) | Deno native | `worker/*.e2e.test.ts` | included in `test:worker` |
+| E2E (Frontend) | Playwright | `frontend/e2e/` | `pnpm --filter adblock-compiler-frontend run test:e2e` |
+
+All test files are **co-located** next to their source files using the `*.test.ts` naming convention.
 
 ## Test Structure
 
-Tests follow the pattern: `*.test.ts` files are placed next to their corresponding source files.
-
-Example:
-
 ```mermaid
 mindmap
-  root((src/cli/))
-    parser["ArgumentParser.ts"]
-    parserTest["ArgumentParser.test.ts — Test file"]
-    loader["ConfigurationLoader.ts"]
-    loaderTest["ConfigurationLoader.test.ts — Test file"]
+  root((Test Layers))
+    src/["Deno unit tests"]
+      cli["CLI: 46 tests"]
+      compiler["Compiler: 21 tests"]
+      downloader["Downloader: 66 tests"]
+      transforms["Transformations: 60+ tests"]
+      utils["Utils: 90+ tests"]
+      plugins["Plugins: diagnostics, AGTree"]
+    worker/["Worker tests"]
+      handlers["HTTP handlers: 15 endpoints"]
+      services["Services: sentry-init (13 tests)"]
+      queue["Queue: 43 tests"]
+      browser["Browser API: 16 integration tests"]
+      schemas["Zod schemas: 94 tests"]
+    frontend/["Vitest unit tests"]
+      components["60+ component/service tests"]
+    e2e/["E2E"]
+      workerE2e["api.e2e.test.ts, sse.integration.test.ts"]
+      playwrightE2e["frontend/e2e/"]
+    fixtures/["Shared fixtures"]
+      mocks["MockEnv, MockBrowser"]
+      factories["Config/request factories"]
+      sampleRules["Sample filter lists"]
 ```
 
 ## Running Tests
 
 ```bash
-# Run all tests
+# All Deno tests (src/ + worker/)
 deno task test
 
-# Run tests with coverage
+# Backend only (src/)
+deno task test:src
+
+# Worker only
+deno task test:worker
+
+# Frontend unit tests
+pnpm --filter adblock-compiler-frontend run test
+
+# Frontend E2E
+pnpm --filter adblock-compiler-frontend run test:e2e
+
+# Single file
+deno test --no-check src/utils/AGTreeParser.roundtrip.test.ts
+
+# With coverage
 deno task test:coverage
-
-# Run tests in watch mode
-deno task test:watch
-
-# Run specific test file
-deno test src/cli/ArgumentParser.test.ts
-
-# Run tests for a specific module
-deno test src/transformations/
-
-# Run tests with permissions
-deno test --allow-read --allow-write --allow-net --allow-env
 ```
 
-## Test Coverage
+## Shared Test Fixtures (`tests/fixtures/`)
 
-### Modules with Complete Coverage
+Centralized mock factories and sample data live in `tests/fixtures/`:
 
-#### CLI Module
+```
+tests/fixtures/
+├── mod.ts                          # Barrel export
+├── mocks/
+│   ├── MockEnv.ts                  # Worker Env mock (KV, Analytics)
+│   └── MockBrowser.ts              # Playwright browser/page mock
+├── factories/
+│   └── compiler-config.ts          # CompilationConfig, ISource, request factories
+└── sample-rules/
+    ├── adblock.txt                 # Sample adblock filter list
+    ├── hosts.txt                   # Sample hosts file
+    └── rpz.txt                     # Sample RPZ zone file
+```
 
-- ✅ `ArgumentParser.ts` - Argument parsing and validation (22 tests)
-- ✅ `ConfigurationLoader.ts` - JSON loading and validation (16 tests)
-- ✅ `OutputWriter.ts` - File writing (8 tests)
+### Using Fixtures
 
-#### Compiler Module
+```typescript
+import {
+    createMockEnv,
+    createMockRequest,
+    createMockCtx,
+    MockKVNamespace,
+} from '../tests/fixtures/mocks/MockEnv.ts';
+import { createTestConfig, SAMPLE_ADBLOCK_RULES } from '../tests/fixtures/factories/compiler-config.ts';
 
-- ✅ `FilterCompiler.ts` - Main compilation logic (existing tests)
-- ✅ `HeaderGenerator.ts` - Header generation (16 tests)
+Deno.test('my handler test', async () => {
+    const kv = new MockKVNamespace();
+    const env = createMockEnv({ COMPILATION_CACHE: kv as unknown as KVNamespace });
+    const request = createMockRequest('https://test.example.com/api/endpoint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: 'test' }),
+    });
+    const response = await myHandler(request, env, createMockCtx());
+    assertEquals(response.status, 200);
+});
+```
 
-#### Downloader Module
+`MockKVNamespace` is an in-memory `Map`-backed implementation supporting `get`, `put`, `delete`, and `list` — no Cloudflare binding required.
 
-- ✅ `ConditionalEvaluator.ts` - Boolean expression evaluation (25 tests)
-- ✅ `ContentFetcher.ts` - HTTP/file fetching (18 tests)
-- ✅ `FilterDownloader.ts` - Filter list downloading (existing tests)
-- ✅ `PreprocessorEvaluator.ts` - Directive processing (23 tests)
+## CI Pipeline
 
-#### Transformations Module (11 transformations)
+Tests run automatically in GitHub Actions (`ci.yml`) on push to `main`, pull requests, and workflow dispatch:
 
-- ✅ `CompressTransformation.ts` - Hosts to adblock conversion
-- ✅ `ConvertToAsciiTransformation.ts` - Unicode to ASCII conversion
-- ✅ `DeduplicateTransformation.ts` - Remove duplicate rules
-- ✅ `ExcludeTransformation.ts` - Pattern-based exclusion (10 tests)
-- ✅ `IncludeTransformation.ts` - Pattern-based inclusion (11 tests)
-- ✅ `InsertFinalNewLineTransformation.ts` - Final newline insertion
-- ✅ `InvertAllowTransformation.ts` - Allow rule inversion
-- ✅ `RemoveCommentsTransformation.ts` - Comment removal
-- ✅ `RemoveEmptyLinesTransformation.ts` - Empty line removal
-- ✅ `RemoveModifiersTransformation.ts` - Modifier removal
-- ✅ `TrimLinesTransformation.ts` - Whitespace trimming
-- ✅ `ValidateTransformation.ts` - Rule validation
-- ✅ `TransformationRegistry.ts` - Transformation management (13 tests)
+1. **Deno tests** — `deno task test:src` + `deno task test:worker`
+2. **Frontend Vitest** — `pnpm --filter frontend test`
+3. **Coverage upload** — Codecov with 70% patch target, 2% overall drop threshold
+4. **Wrangler verify** — `wrangler deploy --dry-run` (retried up to 3× with 15s backoff)
 
-#### Utils Module
+## Coverage Targets
 
-- ✅ `Benchmark.ts` - Performance benchmarking (existing tests)
-- ✅ `EventEmitter.ts` - Event emission (existing tests)
-- ✅ `logger.ts` - Logging functionality (17 tests)
-- ✅ `RuleUtils.ts` - Rule parsing utilities (existing tests)
-- ✅ `StringUtils.ts` - String utilities (existing tests)
-- ✅ `TldUtils.ts` - Domain/TLD parsing (36 tests)
-- ✅ `Wildcard.ts` - Wildcard pattern matching (existing tests)
+| Metric | Threshold |
+|--------|-----------|
+| Patch coverage (new code) | ≥ 70% |
+| Overall coverage drop | ≤ 2% |
 
-#### Configuration Module
+```bash
+# Generate coverage
+deno task test:coverage
 
-- ✅ `ConfigurationValidator.ts` - Configuration validation (existing tests)
+# HTML report
+deno coverage coverage --html --include="^file:"
 
-#### Platform Module
-
-- ✅ `platform.test.ts` - Platform abstractions (existing tests)
-
-#### Storage Module
-
-- ✅ `PrismaStorageAdapter.test.ts` - Storage operations (existing tests)
-
-## Test Statistics
-
-- **Total Test Files**: 32
-- **Total Modules Tested**: 40+
-- **Test Cases**: 500+
-- **Coverage**: High coverage on all core functionality
+# LCOV for CI
+deno coverage coverage --lcov --output=coverage.lcov --include="^file:"
+```
 
 ## Writing New Tests
 
@@ -134,110 +165,30 @@ Deno.test('MyClass - should handle errors', async () => {
 
 ### Best Practices
 
-1. **Co-locate tests** - Place test files next to source files
-2. **Use descriptive names** - `MyClass - should do something specific`
-3. **Test edge cases** - Empty inputs, null values, boundary conditions
-4. **Use mocks** - Mock external dependencies (file system, HTTP)
-5. **Keep tests isolated** - Each test should be independent
-6. **Use async/await** - For asynchronous operations
-7. **Clean up** - Remove temporary files/state after tests
-
-### Mock Examples
-
-#### Mock File System
-
-```typescript
-class MockFileSystem implements IFileSystem {
-    private files: Map<string, string> = new Map();
-
-    setFile(path: string, content: string) {
-        this.files.set(path, content);
-    }
-
-    async readTextFile(path: string): Promise<string> {
-        return this.files.get(path) ?? '';
-    }
-
-    async writeTextFile(path: string, content: string): Promise<void> {
-        this.files.set(path, content);
-    }
-
-    async exists(path: string): Promise<boolean> {
-        return this.files.has(path);
-    }
-}
-```
-
-#### Mock HTTP Client
-
-```typescript
-class MockHttpClient implements IHttpClient {
-    private responses: Map<string, Response> = new Map();
-
-    setResponse(url: string, response: Response) {
-        this.responses.set(url, response);
-    }
-
-    async fetch(url: string): Promise<Response> {
-        return this.responses.get(url) ?? new Response('', { status: 404 });
-    }
-}
-```
-
-#### Mock Logger
-
-```typescript
-const mockLogger = {
-    debug: () => {},
-    info: () => {},
-    warn: () => {},
-    error: () => {},
-};
-```
-
-## Continuous Integration
-
-Tests are automatically run on:
-
-- Push to main branch
-- Pull requests
-- Pre-deployment
-
-## Coverage Reports
-
-Generate coverage reports:
-
-```bash
-# Generate coverage
-deno task test:coverage
-
-# View coverage report (HTML)
-deno coverage coverage --html --include="^file:"
-
-# Generate lcov report for CI
-deno coverage coverage --lcov --output=coverage.lcov --include="^file:"
-```
+1. **Co-locate tests** — `*.test.ts` next to source files
+2. **Use shared fixtures** — import from `tests/fixtures/` for mocks and factories
+3. **Descriptive names** — `'handleResolveUrl: returns 400 for invalid URL'`
+4. **Test edge cases** — empty inputs, null values, boundary conditions
+5. **Keep tests isolated** — each test should be independent
+6. **Mock external bindings** — use `MockKVNamespace`, `MockBrowser` instead of real bindings
+7. **Sanitize ops** — use `sanitizeOps: false` only when a known timer/resource leak is unavoidable (e.g., Sentry dynamic import)
 
 ## Troubleshooting
 
 ### Tests fail with permission errors
 
-Make sure to run with required permissions:
-
 ```bash
 deno test --allow-read --allow-write --allow-net --allow-env
 ```
 
-### Tests timeout
+### Timer/resource leaks
 
-Increase timeout for slow operations:
+If a test triggers timer or resource leak sanitizer failures from dynamic imports:
 
 ```typescript
 Deno.test({
-    name: 'slow operation',
-    fn: async () => {
-        // test code
-    },
+    name: 'test with dynamic import side-effects',
+    fn: async () => { /* ... */ },
     sanitizeOps: false,
     sanitizeResources: false,
 });
@@ -249,11 +200,13 @@ Ensure mocks are passed to constructors:
 
 ```typescript
 const mockFs = new MockFileSystem();
-const instance = new MyClass(mockFs); // Pass mock
+const instance = new MyClass(mockFs);
 ```
 
 ## Resources
 
 - [Deno Testing Documentation](https://deno.land/manual/testing)
 - [Deno Assertions](https://deno.land/std/assert)
-- [Project README](README.md)
+- [Vitest Documentation](https://vitest.dev/)
+- [Playwright Testing](https://playwright.dev/)
+- [Project README](../../README.md)
