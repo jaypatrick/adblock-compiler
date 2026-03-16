@@ -13,7 +13,7 @@
  */
 
 import { assert, assertEquals } from '@std/assert';
-import { AGTreeParser } from './AGTreeParser.ts';
+import { AGTreeParser, AdblockSyntax } from './AGTreeParser.ts';
 
 // ============================================================================
 // Helper
@@ -160,12 +160,12 @@ Deno.test('roundtrip: multi-line filter list', () => {
 
 Deno.test('detectSyntax: network rule returns Common', () => {
     const syntax = AGTreeParser.detectSyntax('||example.com^');
-    assertEquals(syntax, 'Common');
+    assertEquals(syntax, AdblockSyntax.Common);
 });
 
 Deno.test('detectSyntax: hosts rule returns Common', () => {
     const syntax = AGTreeParser.detectSyntax('0.0.0.0 ads.example.com');
-    assertEquals(syntax, 'Common');
+    assertEquals(syntax, AdblockSyntax.Common);
 });
 
 // ============================================================================
@@ -180,18 +180,26 @@ Deno.test('roundtrip fidelity: ≥95% success rate across rule corpus', () => {
         '@@||cdn.example.com^$image',
         '/ads/banner',
         '||example.com^$domain=a.com|b.com',
+        '||ads2.example.net^$third-party',
+        '@@||safe.example.org^$document',
+        '/tracking/pixel.gif',
         // Host rules
         '0.0.0.0 ads.example.com',
         '127.0.0.1 tracking.example.org',
+        '0.0.0.0 malware.test.net',
+        '127.0.0.1 spam.example.io',
         // Cosmetic rules
         'example.com##.ad-container',
         '##.sponsored-content',
         'example.com#@#.safe-ad',
         'example.org##div[class="promo"]',
+        'news.example.com##aside.sidebar-ad',
+        '##.cookie-banner',
         // Comments
         '! Title: Test',
         '! Homepage: https://example.com',
         '# hosts comment',
+        '! Version: 1.0',
         // Empty
         '',
     ];

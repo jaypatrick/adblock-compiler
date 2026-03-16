@@ -197,8 +197,9 @@ Deno.test('handleSourceMonitor: returns 400 for invalid screenshotPrefix', async
 // ============================================================================
 
 Deno.test('handleSourceMonitor: accepts valid minimal request body (schema validation)', async () => {
-    // This test verifies Zod accepts the shape — the handler will return 502
-    // because BROWSER.fetch is a stub, but that proves validation passed.
+    // This test verifies Zod accepts the shape. When BROWSER.fetch throws,
+    // handleSourceMonitor catches the error per-URL and returns 200 with
+    // reachable: false — validation passed when status is not 400.
     const env = createMockEnv({
         BROWSER: {
             fetch: async () => {

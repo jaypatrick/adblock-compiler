@@ -13,34 +13,7 @@ import { assertSpyCalls, spy } from '@std/testing/mock';
 import { withSentryWorker } from './sentry-init.ts';
 import type { SentryWorkerConfig } from './sentry-init.ts';
 import type { Env } from '../types.ts';
-
-// ============================================================================
-// Helpers
-// ============================================================================
-
-/** Minimal Env stub — only fields the SUT reads. */
-function createMockEnv(overrides: Partial<Env> = {}): Env {
-    return {
-        COMPILER_VERSION: '0.12.1-test',
-        COMPILATION_CACHE: {} as KVNamespace,
-        RATE_LIMIT: {} as KVNamespace,
-        METRICS: {} as KVNamespace,
-        ASSETS: {} as unknown as Fetcher,
-        SENTRY_DSN: undefined,
-        ...overrides,
-    } as Env;
-}
-
-function createMockRequest(url = 'https://worker.test/compile'): Request<unknown, IncomingRequestCfProperties<unknown>> {
-    return new Request(url, { method: 'POST' }) as unknown as Request<unknown, IncomingRequestCfProperties<unknown>>;
-}
-
-function createMockCtx(): ExecutionContext {
-    return {
-        waitUntil: () => {},
-        passThroughOnException: () => {},
-    } as unknown as ExecutionContext;
-}
+import { createMockCtx, createMockEnv, createMockRequest } from '../../tests/fixtures/mocks/MockEnv.ts';
 
 const SENTINEL_RESPONSE = new Response('ok-from-handler', { status: 200 });
 
@@ -239,13 +212,14 @@ Deno.test({
         const env = createMockEnv({ SENTRY_DSN: 'https://key@sentry.io/123' });
 
         const wrapped = withSentryWorker(handler, (e) => ({
-            dsn: (e as Env & { SENTRY_DSN?: string }).SENTRY_DSN,
+            dsn: e.SENTRY_DSN,
             release: e.COMPILER_VERSION,
         }));
 
         try {
             await wrapped.fetch!(createMockRequest(), env, createMockCtx());
-            // If Sentry is available in test env, it will wrap and call through
+            // Sentry resolved and wrapped through — original handler was invoked once.
+            assertSpyCalls(fetchSpy, 1);
         } catch {
             // Expected: @sentry/cloudflare may not be resolvable in Deno test env.
             // The important assertion is that fetchSpy was NOT called directly —
