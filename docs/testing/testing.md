@@ -8,9 +8,9 @@ This project uses a layered testing strategy spanning three frameworks:
 |-------|-----------|-----------|--------|
 | Deno backend (CLI + core) | Deno native (`@std/assert`, `@std/testing/mock`) | `src/` | `deno task test:src` |
 | Cloudflare Worker | Deno native | `worker/` | `deno task test:worker` |
-| Angular frontend | Vitest + `@analogjs/vitest-angular` | `frontend/` | `pnpm --filter frontend test` |
+| Angular frontend | Vitest + `@analogjs/vitest-angular` | `frontend/` | `pnpm --filter adblock-compiler-frontend run test` |
 | E2E (Worker) | Deno native | `worker/*.e2e.test.ts` | included in `test:worker` |
-| E2E (Frontend) | Playwright | `frontend/e2e/` | `pnpm --filter frontend e2e` |
+| E2E (Frontend) | Playwright | `frontend/e2e/` | `pnpm --filter adblock-compiler-frontend run test:e2e` |
 
 All test files are **co-located** next to their source files using the `*.test.ts` naming convention.
 
@@ -56,10 +56,10 @@ deno task test:src
 deno task test:worker
 
 # Frontend unit tests
-pnpm --filter frontend test
+pnpm --filter adblock-compiler-frontend run test
 
 # Frontend E2E
-pnpm --filter frontend e2e
+pnpm --filter adblock-compiler-frontend run test:e2e
 
 # Single file
 deno test --no-check src/utils/AGTreeParser.roundtrip.test.ts
@@ -76,8 +76,8 @@ Centralized mock factories and sample data live in `tests/fixtures/`:
 tests/fixtures/
 ├── mod.ts                          # Barrel export
 ├── mocks/
-│   ├── MockEnv.ts                  # Worker Env mock (KV, Analytics, R2)
-│   └── MockBrowser.ts              # Puppeteer browser/page mock
+│   ├── MockEnv.ts                  # Worker Env mock (KV, Analytics)
+│   └── MockBrowser.ts              # Playwright browser/page mock
 ├── factories/
 │   └── compiler-config.ts          # CompilationConfig, ISource, request factories
 └── sample-rules/

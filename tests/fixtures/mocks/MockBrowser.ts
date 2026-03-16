@@ -9,24 +9,17 @@
  */
 
 // ============================================================================
-// Types matching the interfaces in src/platform/BrowserFetcher.ts
+// Re-export the canonical interfaces from src/platform/BrowserFetcher.ts so
+// mocks are structurally drop-in compatible with the real interfaces.
 // ============================================================================
 
-export interface IPlaywrightPage {
-    goto(url: string, options?: Record<string, unknown>): Promise<null>;
-    content(): Promise<string>;
-    evaluate(fn: unknown): Promise<unknown>;
-    close(): Promise<void>;
-}
+import type {
+    IBrowserWorker,
+    IPlaywrightBrowser,
+    IPlaywrightPage,
+} from '../../../src/platform/BrowserFetcher.ts';
 
-export interface IPlaywrightBrowser {
-    newPage(): Promise<IPlaywrightPage>;
-    close(): Promise<void>;
-}
-
-export interface IBrowserWorker {
-    fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
-}
+export type { IBrowserWorker, IPlaywrightBrowser, IPlaywrightPage };
 
 // ============================================================================
 // Mock factories
@@ -41,19 +34,19 @@ export interface IBrowserWorker {
 export function mockPage(bodyText: string, outerHtml?: string): IPlaywrightPage {
     const resolvedHtml = outerHtml ?? `<html><body>${bodyText}</body></html>`;
     return {
-        goto: async (_url: string, _options?: Record<string, unknown>) => null,
+        goto: async (_url: string, _options?: { waitUntil?: string; timeout?: number }) => null,
         content: async () => resolvedHtml,
-        evaluate: async (fn: unknown) => {
+        evaluate: async <T>(fn: string | ((...args: unknown[]) => T), ..._args: unknown[]): Promise<T> => {
             const fnStr = typeof fn === 'function' ? fn.toString() : String(fn);
             // Handle the EXTRACT_TEXT_SCRIPT evaluation
             if (fnStr.includes('innerText') || fnStr.includes('textContent')) {
-                return bodyText;
+                return bodyText as unknown as T;
             }
             // Handle outerHTML query
             if (fnStr.includes('outerHTML')) {
-                return resolvedHtml;
+                return resolvedHtml as unknown as T;
             }
-            return bodyText;
+            return bodyText as unknown as T;
         },
         close: async () => {},
     };
