@@ -141,11 +141,11 @@ migrations_dir = "migrations"
 #   2. Paste the returned UUID below and uncomment.
 #   3. wrangler d1 migrations apply adblock-compiler-admin-d1 --remote
 #
-# [[d1_databases]]
-# binding = "ADMIN_DB"
-# database_name = "adblock-compiler-admin-d1"
-# database_id = "<UUID from wrangler d1 create>"
-# migrations_dir = "admin-migrations"
+[[d1_databases]]
+binding = "ADMIN_DB"
+database_name = "adblock-compiler-admin-d1"
+database_id = "7d5a2704-5033-4433-911f-d8368f36dcdf"
+migrations_dir = "admin-migrations"
 
 # ─── Durable Objects ─────────────────────────────────────────────────────────
 [[durable_objects.bindings]]
