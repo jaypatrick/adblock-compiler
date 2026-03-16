@@ -3,7 +3,7 @@
  *
  * Tracks API request counts per user using KV storage.
  * Maintains two rolling buckets per user:
- *   1. Daily bucket  — keyed by date (YYYY-MM-DD), with TTL of 91 days
+ *   1. Daily bucket  — keyed by date (YYYY-MM-DD), with TTL of 90 days
  *   2. Total bucket  — keyed as 'total', no TTL
  *
  * KV key schema:
@@ -58,8 +58,8 @@ export interface UserApiUsageResult {
 // Constants
 // ============================================================================
 
-/** TTL for daily buckets: 91 days (13 weeks). */
-const DAILY_BUCKET_TTL_SECONDS = 91 * 24 * 60 * 60;
+/** TTL for daily buckets: 90 days. */
+const DAILY_BUCKET_TTL_SECONDS = 90 * 24 * 60 * 60;
 
 // ============================================================================
 // trackApiUsage

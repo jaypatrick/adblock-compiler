@@ -23,7 +23,7 @@ export async function handleAdminGetUserUsage(
     authContext: IAuthContext,
     userId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission('/admin/usage/user', authContext);
+    const denied = checkRoutePermission(`/admin/usage/${userId}`, authContext);
     if (denied) return denied;
 
     const url = new URL(request.url);
