@@ -31,7 +31,7 @@
  * @see worker/types.ts                  — UserTier enum and TIER_REGISTRY
  */
 
-import { isTierSufficient, type IAuthContext, TIER_REGISTRY, UserTier } from '../types.ts';
+import { type IAuthContext, isTierSufficient, TIER_REGISTRY, UserTier } from '../types.ts';
 
 // ============================================================================
 // Types
@@ -82,6 +82,7 @@ export interface IRoutePermission {
 export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     // ── Admin endpoints (Admin tier + admin role) ──────────────────────────────
     ['/admin/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'All admin operations' }],
+    ['/admin/auth/config', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Auth configuration inspector (roles, tiers, routes)' }],
     ['/admin/local-users', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List local auth users' }],
     ['/admin/local-users/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Local user management (update tier/role)' }],
 

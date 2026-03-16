@@ -73,6 +73,7 @@ import { handleClerkWebhook } from './handlers/clerk-webhook.ts';
 import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdateApiKey } from './handlers/api-keys.ts';
 import { handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocalSignup } from './handlers/local-auth.ts';
 import { handleAdminCreateLocalUser, handleAdminDeleteLocalUser, handleAdminGetLocalUser, handleAdminListLocalUsers, handleAdminUpdateLocalUser } from './handlers/admin-users.ts';
+import { handleAdminAuthConfig } from './handlers/auth-config.ts';
 import { checkRoutePermission } from './utils/route-permissions.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleSentryConfig } from './handlers/sentry-config.ts';
@@ -3280,11 +3281,15 @@ const workerHandler: WorkerHandler = {
         if (permDenied) return permDenied;
 
         // ── Admin local user management routes ──────────────────────────────
-        // GET   /admin/local-users        — list users
-        // GET   /admin/local-users/:id    — get user
-        // POST  /admin/local-users        — create user (any role/tier)
-        // PATCH /admin/local-users/:id    — update role/tier
-        // DELETE /admin/local-users/:id   — delete user
+        // GET   /admin/auth/config         — inspect active registries (roles/tiers/routes)
+        // GET   /admin/local-users         — list users
+        // GET   /admin/local-users/:id     — get user
+        // POST  /admin/local-users         — create user (any role/tier)
+        // PATCH /admin/local-users/:id     — update role/tier
+        // DELETE /admin/local-users/:id    — delete user
+        if (routePath === '/admin/auth/config' && request.method === 'GET') {
+            return await handleAdminAuthConfig(request, env, authContext);
+        }
         if (routePath === '/admin/local-users' && request.method === 'GET') {
             return await handleAdminListLocalUsers(request, env, authContext);
         }

@@ -30,16 +30,15 @@ import {
     LocalLoginRequestSchema,
     LocalSignupRequestSchema,
     LocalUserPublicSchema,
+    type LocalUserRow,
     LocalUserRowSchema,
 } from '../schemas.ts';
-import type { LocalUserRow } from '../schemas.ts';
 import { hashPassword, verifyPassword } from '../utils/password.ts';
 import { signLocalJWT } from '../utils/local-jwt.ts';
 import { DEFAULT_ROLE, tierForRole } from '../utils/local-auth-roles.ts';
 import { requireAuth } from '../middleware/auth.ts';
 import { checkRateLimitTiered } from '../middleware/index.ts';
-import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
-import type { SecurityEventData } from '../../src/services/AnalyticsService.ts';
+import { AnalyticsService, type SecurityEventData } from '../../src/services/AnalyticsService.ts';
 
 // ============================================================================
 // Internal helpers

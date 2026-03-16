@@ -20,9 +20,7 @@ import {
     handleLocalSignup,
 } from './local-auth.ts';
 import { hashPassword } from '../utils/password.ts';
-import { UserTier } from '../types.ts';
-import type { IAuthContext } from '../types.ts';
-import type { Env } from '../types.ts';
+import { type Env, type IAuthContext, UserTier } from '../types.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 
 // ============================================================================
@@ -253,7 +251,7 @@ Deno.test('handleLocalSignup - 503 on missing JWT_SECRET', async () => {
     assertEquals(res.status, 503);
 });
 
-Deno.test('handleLocalSignup - registered user has guest role', async () => {
+Deno.test('handleLocalSignup - registered user has user role', async () => {
     const db = createMockDb();
     const env = makeEnv({ DB: db as unknown as D1Database });
     const req = new Request('http://localhost/auth/signup', {

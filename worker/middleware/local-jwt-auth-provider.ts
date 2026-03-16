@@ -20,8 +20,7 @@
  * @see worker/worker.ts                         — provider selection logic
  */
 
-import type { Env, IAuthProvider, IAuthProviderResult } from '../types.ts';
-import { UserTier } from '../types.ts';
+import { type Env, type IAuthProvider, type IAuthProviderResult, UserTier } from '../types.ts';
 import { verifyLocalJWT } from '../utils/local-jwt.ts';
 
 // ============================================================================
