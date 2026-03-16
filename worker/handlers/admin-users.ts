@@ -25,11 +25,7 @@
 import { ZodError } from 'zod';
 import type { Env, IAuthContext } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
-import {
-    AdminUpdateLocalUserSchema,
-    LocalSignupRequestSchema,
-    LocalUserPublicSchema,
-} from '../schemas.ts';
+import { AdminUpdateLocalUserSchema, LocalSignupRequestSchema, LocalUserPublicSchema } from '../schemas.ts';
 import { hashPassword } from '../utils/password.ts';
 import { isValidLocalRole, tierForRole, VALID_LOCAL_ROLES } from '../utils/local-auth-roles.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
@@ -60,7 +56,7 @@ export async function handleAdminListLocalUsers(
     try {
         const result = await env.DB
             .prepare(
-                `SELECT id, identifier, identifier_type, role, tier, created_at, updated_at
+                `SELECT id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at
                  FROM local_auth_users
                  ORDER BY created_at DESC
                  LIMIT ? OFFSET ?`,
@@ -110,7 +106,7 @@ export async function handleAdminGetLocalUser(
     try {
         const row = await env.DB
             .prepare(
-                `SELECT id, identifier, identifier_type, role, tier, created_at, updated_at
+                `SELECT id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at
                  FROM local_auth_users WHERE id = ? LIMIT 1`,
             )
             .bind(userId)
@@ -267,16 +263,32 @@ export async function handleAdminUpdateLocalUser(
     const newTier = parsed.tier ?? (parsed.role ? tierForRole(parsed.role) : undefined);
 
     try {
-        // Use COALESCE so unset fields preserve existing values — single clean statement
+        // Dynamic SQL building: only set columns that are explicitly provided
+        const setClauses: string[] = [];
+        const values: unknown[] = [];
+
+        if (parsed.role !== undefined) {
+            setClauses.push('role = ?');
+            values.push(parsed.role);
+        }
+        if (newTier !== undefined) {
+            setClauses.push('tier = ?');
+            values.push(newTier);
+        }
+        if (parsed.api_disabled !== undefined) {
+            setClauses.push('api_disabled = ?');
+            values.push(parsed.api_disabled);
+        }
+
+        // Defensive guard: schema refine ensures at least one field, but protect SQL construction
+        if (setClauses.length === 0) return JsonResponse.badRequest('At least one field must be provided');
+
+        setClauses.push("updated_at = datetime('now')");
+        values.push(userId);
+
         const result = await env.DB
-            .prepare(
-                `UPDATE local_auth_users
-                 SET role       = COALESCE(?, role),
-                     tier       = COALESCE(?, tier),
-                     updated_at = datetime('now')
-                 WHERE id = ?`,
-            )
-            .bind(parsed.role ?? null, newTier ?? null, userId)
+            .prepare(`UPDATE local_auth_users SET ${setClauses.join(', ')} WHERE id = ?`)
+            .bind(...values)
             .run();
 
         if (!result.meta?.changes) return JsonResponse.notFound('User not found');
@@ -284,7 +296,7 @@ export async function handleAdminUpdateLocalUser(
         // Return updated record
         const row = await env.DB
             .prepare(
-                `SELECT id, identifier, identifier_type, role, tier, created_at, updated_at
+                `SELECT id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at
                  FROM local_auth_users WHERE id = ? LIMIT 1`,
             )
             .bind(userId)

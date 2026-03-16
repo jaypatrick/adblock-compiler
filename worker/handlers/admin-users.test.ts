@@ -14,13 +14,7 @@
  */
 
 import { assertEquals } from '@std/assert';
-import {
-    handleAdminCreateLocalUser,
-    handleAdminDeleteLocalUser,
-    handleAdminGetLocalUser,
-    handleAdminListLocalUsers,
-    handleAdminUpdateLocalUser,
-} from './admin-users.ts';
+import { handleAdminCreateLocalUser, handleAdminDeleteLocalUser, handleAdminGetLocalUser, handleAdminListLocalUsers, handleAdminUpdateLocalUser } from './admin-users.ts';
 import { hashPassword } from '../utils/password.ts';
 import { type Env, type IAuthContext, UserTier } from '../types.ts';
 
@@ -68,6 +62,7 @@ interface UserRecord {
     password_hash: string;
     role: string;
     tier: UserTier;
+    api_disabled: number;
     created_at: string;
     updated_at: string;
 }
@@ -121,17 +116,27 @@ function createMockDb(initialUsers: UserRecord[] = []) {
                         password_hash: password_hash as string,
                         role: role as string,
                         tier: tier as UserTier,
+                        api_disabled: 0,
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString(),
                     });
                     return { success: true, meta: { changes: 1 } };
                 }
-                if (lower.includes('update local_auth_users set role')) {
-                    const [newRole, newTier, id] = boundValues;
+                if (lower.includes('update local_auth_users')) {
+                    // Dynamic SQL: last bound value is always the userId (WHERE id = ?)
+                    const id = boundValues[boundValues.length - 1] as string;
                     const idx = users.findIndex((u) => u.id === id);
                     if (idx >= 0) {
-                        if (newRole !== null) users[idx].role = newRole as string;
-                        if (newTier !== null) users[idx].tier = newTier as UserTier;
+                        let vIdx = 0;
+                        if (lower.includes('role = ?')) {
+                            users[idx].role = boundValues[vIdx++] as string;
+                        }
+                        if (lower.includes('tier = ?')) {
+                            users[idx].tier = boundValues[vIdx++] as UserTier;
+                        }
+                        if (lower.includes('api_disabled = ?')) {
+                            users[idx].api_disabled = boundValues[vIdx] as number;
+                        }
                         users[idx].updated_at = new Date().toISOString();
                         return { success: true, meta: { changes: 1 } };
                     }
@@ -178,6 +183,7 @@ async function makeUserRecord(identifier = 'test@example.com'): Promise<UserReco
         password_hash: await hashPassword('password123'),
         role: 'user',
         tier: UserTier.Free,
+        api_disabled: 0,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
     };

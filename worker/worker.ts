@@ -75,6 +75,9 @@ import { handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocal
 import { handleAdminCreateLocalUser, handleAdminDeleteLocalUser, handleAdminGetLocalUser, handleAdminListLocalUsers, handleAdminUpdateLocalUser } from './handlers/admin-users.ts';
 import { handleAdminAuthConfig } from './handlers/auth-config.ts';
 import { checkRoutePermission } from './utils/route-permissions.ts';
+import { checkUserApiAccess } from './utils/user-access.ts';
+import { trackApiUsage } from './utils/api-usage.ts';
+import { handleAdminGetUserUsage } from './handlers/admin-usage.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleSentryConfig } from './handlers/sentry-config.ts';
 import { createDiagnosticsProvider } from './services/diagnostics-factory.ts';
@@ -3245,14 +3248,21 @@ const workerHandler: WorkerHandler = {
         //
         // MIGRATION PATH TO CLERK: set CLERK_JWKS_URL in wrangler.toml [vars].
         // Zero code changes required — the provider auto-switches.
-        const authProvider = env.CLERK_JWKS_URL
-            ? new ClerkAuthProvider(env)
-            : new LocalJwtAuthProvider(env);
+        const authProvider = env.CLERK_JWKS_URL ? new ClerkAuthProvider(env) : new LocalJwtAuthProvider(env);
         const authResult = await authenticateRequestUnified(request, env, createPgPool, authProvider);
         if (authResult.response) {
             return authResult.response;
         }
         const authContext: IAuthContext = authResult.context;
+
+        // ── ZTA: Per-user API access gate ─────────────────────────────────────────
+        // Checks if the authenticated user's API access has been disabled.
+        // Runs after auth and before ALL routing so every endpoint is covered.
+        const accessDenied = await checkUserApiAccess(authContext, env);
+        if (accessDenied) return accessDenied;
+
+        // ── ZTA: Per-user API usage tracking (fire-and-forget, non-blocking) ──────
+        void trackApiUsage(authContext, routePath, request.method, env);
 
         // ── Local JWT auth routes (pre-Clerk bridge) ────────────────────
         // POST /auth/signup          — register (email or phone + password)
@@ -3308,6 +3318,12 @@ const workerHandler: WorkerHandler = {
             if (request.method === 'DELETE') {
                 return await handleAdminDeleteLocalUser(request, env, authContext, userId);
             }
+        }
+
+        // GET /admin/usage/:userId — per-user API usage statistics
+        const usageMatch = routePath.match(/^\/admin\/usage\/([^/]+)$/);
+        if (usageMatch && request.method === 'GET') {
+            return await handleAdminGetUserUsage(request, env, authContext, usageMatch[1]);
         }
 
         // Handle Prometheus scrape endpoint (admin-protected; auth handled inside handler)

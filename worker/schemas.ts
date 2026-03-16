@@ -886,6 +886,7 @@ export const LocalUserRowSchema = z.object({
     password_hash: z.string(),
     role: z.string(),
     tier: z.nativeEnum(UserTier),
+    api_disabled: z.number().int().min(0).max(1).default(0),
     created_at: z.string(),
     updated_at: z.string(),
 });
@@ -944,9 +945,10 @@ export type LocalUserPublic = z.infer<typeof LocalUserPublicSchema>;
 export const AdminUpdateLocalUserSchema = z.object({
     tier: z.nativeEnum(UserTier).optional(),
     role: z.string().min(1).max(64).optional(),
+    api_disabled: z.literal(0).or(z.literal(1)).optional(),
 }).refine(
-    (d) => d.tier !== undefined || d.role !== undefined,
-    { message: 'At least one of tier or role is required' },
+    (d) => d.tier !== undefined || d.role !== undefined || d.api_disabled !== undefined,
+    { message: 'At least one of tier, role, or api_disabled is required' },
 );
 
 export type AdminUpdateLocalUser = z.infer<typeof AdminUpdateLocalUserSchema>;

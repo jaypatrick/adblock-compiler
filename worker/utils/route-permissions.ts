@@ -85,6 +85,7 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/admin/auth/config', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Auth configuration inspector (roles, tiers, routes)' }],
     ['/admin/local-users', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List local auth users' }],
     ['/admin/local-users/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Local user management (update tier/role)' }],
+    ['/admin/usage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Per-user API usage statistics' }],
 
     // ── Pro tier endpoints ─────────────────────────────────────────────────────
     ['/compile/async', { minTier: UserTier.Pro, description: 'Async compilation (Pro+)' }],
@@ -189,9 +190,7 @@ export function checkRoutePermission(
         return new Response(
             JSON.stringify({
                 success: false,
-                error: isAnon
-                    ? 'Authentication required'
-                    : `Insufficient tier: requires ${required}, current tier is ${actual}`,
+                error: isAnon ? 'Authentication required' : `Insufficient tier: requires ${required}, current tier is ${actual}`,
             }),
             { status: isAnon ? 401 : 403, headers: { 'Content-Type': 'application/json' } },
         );

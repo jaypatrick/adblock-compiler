@@ -22,6 +22,7 @@
 import type { Env, HyperdriveBinding, IAuthProvider } from '../types.ts';
 import { ANONYMOUS_AUTH_CONTEXT, AuthScope, type IAuthContext, type IAuthMiddlewareResult, isTierSufficient, TIER_REGISTRY, UserTier } from '../types.ts';
 import { ClerkAuthProvider } from './clerk-auth-provider.ts';
+import { runTokenValidators } from './token-validator.ts';
 import { ApiKeyRowSchema, UserTierRowSchema } from '../schemas.ts';
 import { z } from 'zod';
 
@@ -357,6 +358,19 @@ export async function authenticateRequestUnified(
                 scopes: [],
                 authMethod: provider.authMethod,
             };
+
+            // ZTA: run all registered token validators (tamper detection, revocation, etc.)
+            const validationResult = await runTokenValidators(token, context, env);
+            if (!validationResult.valid) {
+                return {
+                    context: { ...ANONYMOUS_AUTH_CONTEXT },
+                    response: new Response(
+                        JSON.stringify({ error: validationResult.error ?? 'Token validation failed' }),
+                        { status: 401, headers: { 'Content-Type': 'application/json' } },
+                    ),
+                };
+            }
+
             return { context };
         }
 
