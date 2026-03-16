@@ -2981,19 +2981,15 @@ async function handleHealth(env: Env): Promise<Response> {
     };
 
     const [database, cache] = await Promise.all([
-        env.DB
-            ? probe(() => env.DB!.prepare('SELECT 1').first())
-            : Promise.resolve<ServiceResult>({ status: 'down' }),
-        probe(async () => { await env.COMPILATION_CACHE.list({ limit: 1 }); }),
+        env.DB ? probe(() => env.DB!.prepare('SELECT 1').first()) : Promise.resolve<ServiceResult>({ status: 'down' }),
+        probe(async () => {
+            await env.COMPILATION_CACHE.list({ limit: 1 });
+        }),
     ]);
 
     // Determine which auth provider is active, mirroring worker.ts selection logic:
     //   CLERK_JWKS_URL set → ClerkAuthProvider; else JWT_SECRET → LocalJwtAuthProvider
-    const authProvider: 'clerk' | 'local' | 'none' = env.CLERK_JWKS_URL
-        ? 'clerk'
-        : env.JWT_SECRET
-        ? 'local'
-        : 'none';
+    const authProvider: 'clerk' | 'local' | 'none' = env.CLERK_JWKS_URL ? 'clerk' : env.JWT_SECRET ? 'local' : 'none';
     const auth: ServiceResult & { provider: 'clerk' | 'local' | 'none' } = {
         status: authProvider !== 'none' ? 'healthy' : 'degraded',
         provider: authProvider,
