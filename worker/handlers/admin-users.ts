@@ -3,14 +3,15 @@
  *
  * Endpoints for managing local auth users. Admin role + Admin tier required.
  *
- *   GET   /admin/local-users      — list all local auth users (paginated)
- *   GET   /admin/local-users/:id  — get a single user
- *   POST  /admin/local-users      — create a user with any role/tier
- *   PATCH /admin/local-users/:id  — update a user's tier and/or role
+ *   GET    /admin/local-users      — list all local auth users (paginated)
+ *   GET    /admin/local-users/:id  — get a single user
+ *   POST   /admin/local-users      — create a user with any role/tier
+ *   PATCH  /admin/local-users/:id  — update a user's tier and/or role
+ *   DELETE /admin/local-users/:id  — delete a user
  *
  * ZTA compliance:
  *   - checkRoutePermission() applied on every handler — Admin tier + role required
- *   - All D1 queries use parameterised .prepare().bind() statements
+ *   - All D1 queries use parameterised Prisma ORM calls
  *   - Responses never include password_hash
  *   - Rate limiting applied via the auth tier (Admin = unlimited)
  *
@@ -25,12 +26,33 @@
 import { ZodError } from 'zod';
 import { type Env, type IAuthContext, UserTier } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
-import { AdminUpdateLocalUserSchema, LocalSignupRequestSchema, LocalUserPublicSchema } from '../schemas.ts';
+import {
+    AdminCreateLocalUserRequestSchema,
+    AdminPaginationQuerySchema,
+    AdminUpdateLocalUserSchema,
+    LocalUserPublicSchema,
+} from '../schemas.ts';
 import { hashPassword } from '../utils/password.ts';
 import { isValidLocalRole, tierForRole, VALID_LOCAL_ROLES } from '../utils/local-auth-roles.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
+import { getPrismaD1 } from '../utils/prisma-d1.ts';
+import type { LocalAuthUser } from '../../prisma/generated-d1/models/LocalAuthUser.ts';
 
 const VALID_TIERS: ReadonlyArray<string> = Object.values(UserTier).filter((t) => t !== UserTier.Anonymous);
+
+/** Map Prisma LocalAuthUser to snake_case shape for existing Zod schemas. */
+function toPublicRow(u: LocalAuthUser) {
+    return LocalUserPublicSchema.parse({
+        id: u.id,
+        identifier: u.identifier,
+        identifier_type: u.identifierType,
+        role: u.role,
+        tier: u.tier,
+        api_disabled: u.apiDisabled,
+        created_at: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt),
+        updated_at: u.updatedAt instanceof Date ? u.updatedAt.toISOString() : String(u.updatedAt),
+    });
+}
 
 // ============================================================================
 // GET /admin/local-users
@@ -52,37 +74,45 @@ export async function handleAdminListLocalUsers(
     if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
 
     const url = new URL(request.url);
-    const rawLimit = parseInt(url.searchParams.get('limit') ?? '50', 10);
-    const rawOffset = parseInt(url.searchParams.get('offset') ?? '0', 10);
-    const limit = Math.min(Number.isNaN(rawLimit) ? 50 : rawLimit, 100);
-    const offset = Math.max(Number.isNaN(rawOffset) ? 0 : rawOffset, 0);
+    const paginationParsed = AdminPaginationQuerySchema.safeParse({
+        limit: url.searchParams.get('limit') ?? undefined,
+        offset: url.searchParams.get('offset') ?? undefined,
+    });
+    if (!paginationParsed.success) {
+        return JsonResponse.badRequest(paginationParsed.error.issues[0]?.message ?? 'Invalid pagination params');
+    }
+    const { limit, offset: skip } = paginationParsed.data;
 
     try {
-        const result = await env.DB
-            .prepare(
-                `SELECT id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at
-                 FROM local_auth_users
-                 ORDER BY created_at DESC
-                 LIMIT ? OFFSET ?`,
+        const prisma = getPrismaD1(env.DB);
+
+        const [rows, total] = await Promise.all([
+            prisma.localAuthUser.findMany({
+                orderBy: { createdAt: 'desc' },
+                take: limit,
+                skip,
+                omit: { passwordHash: true },
+            }),
+            prisma.localAuthUser.count(),
+        ]);
+
+        const users = rows
+            .map((u) =>
+                LocalUserPublicSchema.safeParse({
+                    id: u.id,
+                    identifier: u.identifier,
+                    identifier_type: u.identifierType,
+                    role: u.role,
+                    tier: u.tier,
+                    api_disabled: u.apiDisabled,
+                    created_at: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt),
+                    updated_at: u.updatedAt instanceof Date ? u.updatedAt.toISOString() : String(u.updatedAt),
+                })
             )
-            .bind(limit, offset)
-            .all<Record<string, unknown>>();
-
-        const countRow = await env.DB
-            .prepare('SELECT COUNT(*) AS total FROM local_auth_users')
-            .first<{ total: number }>();
-
-        const users = (result.results ?? [])
-            .map((row) => LocalUserPublicSchema.safeParse(row))
             .filter((r) => r.success)
             .map((r) => r.data);
 
-        return JsonResponse.success({
-            users,
-            total: countRow?.total ?? 0,
-            limit,
-            offset,
-        });
+        return JsonResponse.success({ users, total, limit, offset: skip });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         // deno-lint-ignore no-console
@@ -108,20 +138,15 @@ export async function handleAdminGetLocalUser(
     if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
 
     try {
-        const row = await env.DB
-            .prepare(
-                `SELECT id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at
-                 FROM local_auth_users WHERE id = ? LIMIT 1`,
-            )
-            .bind(userId)
-            .first<Record<string, unknown>>();
+        const prisma = getPrismaD1(env.DB);
+        const user = await prisma.localAuthUser.findUnique({
+            where: { id: userId },
+            omit: { passwordHash: true },
+        });
 
-        if (!row) return JsonResponse.notFound('User not found');
+        if (!user) return JsonResponse.notFound('User not found');
 
-        const result = LocalUserPublicSchema.safeParse(row);
-        if (!result.success) return JsonResponse.serverError('User record is malformed');
-
-        return JsonResponse.success({ user: result.data });
+        return JsonResponse.success({ user: toPublicRow(user as LocalAuthUser) });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         // deno-lint-ignore no-console
@@ -155,36 +180,32 @@ export async function handleAdminCreateLocalUser(
         return JsonResponse.badRequest('Invalid JSON body');
     }
 
-    // Reuse signup schema for identifier + password validation
-    const signupParsed = LocalSignupRequestSchema.safeParse(body);
-    if (!signupParsed.success) {
-        return JsonResponse.badRequest(signupParsed.error.issues[0]?.message ?? 'Validation error');
+    const parsed = AdminCreateLocalUserRequestSchema.safeParse(body);
+    if (!parsed.success) {
+        return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Validation error');
     }
 
-    // Admin can also supply role and tier
-    const bodyObj = body as Record<string, unknown>;
-    const requestedRole = typeof bodyObj.role === 'string' ? bodyObj.role : 'user';
-    const requestedTier = typeof bodyObj.tier === 'string' ? bodyObj.tier : null;
+    const { identifier, password, role: requestedRole = 'user', tier: requestedTier } = parsed.data;
 
     if (!isValidLocalRole(requestedRole)) {
         return JsonResponse.badRequest(`Invalid role. Valid roles: ${VALID_LOCAL_ROLES.join(', ')}`);
     }
 
-    // If tier explicitly provided, validate it; otherwise derive from role
+    // Derive tier from role if not explicitly provided
     const resolvedTier = requestedTier ?? tierForRole(requestedRole);
     if (!VALID_TIERS.includes(resolvedTier)) {
         return JsonResponse.badRequest(`Invalid tier. Valid tiers: ${VALID_TIERS.join(', ')}`);
     }
-    const tier = resolvedTier;
 
-    const { identifier, password } = signupParsed.data;
     const identifierType = identifier.includes('@') ? 'email' : 'phone';
 
     try {
-        const existing = await env.DB
-            .prepare('SELECT id FROM local_auth_users WHERE identifier = ? LIMIT 1')
-            .bind(identifier)
-            .first<{ id: string }>();
+        const prisma = getPrismaD1(env.DB);
+
+        const existing = await prisma.localAuthUser.findUnique({
+            where: { identifier },
+            select: { id: true },
+        });
 
         if (existing) {
             return JsonResponse.error('An account with this identifier already exists', 409);
@@ -193,27 +214,11 @@ export async function handleAdminCreateLocalUser(
         const passwordHash = await hashPassword(password);
         const id = crypto.randomUUID();
 
-        await env.DB
-            .prepare(
-                `INSERT INTO local_auth_users (id, identifier, identifier_type, password_hash, role, tier)
-                 VALUES (?, ?, ?, ?, ?, ?)`,
-            )
-            .bind(id, identifier, identifierType, passwordHash, requestedRole, tier)
-            .run();
+        const created = await prisma.localAuthUser.create({
+            data: { id, identifier, identifierType, passwordHash, role: requestedRole, tier: resolvedTier },
+        });
 
-        // Fetch the full row so the response matches LocalUserPublic schema (includes api_disabled, timestamps)
-        const row = await env.DB
-            .prepare(
-                `SELECT id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at
-                 FROM local_auth_users WHERE id = ? LIMIT 1`,
-            )
-            .bind(id)
-            .first<Record<string, unknown>>();
-
-        const userResult = LocalUserPublicSchema.safeParse(row);
-        if (!userResult.success) return JsonResponse.serverError('User record is malformed after create');
-
-        return JsonResponse.success({ user: userResult.data }, { status: 201 });
+        return JsonResponse.success({ user: toPublicRow(created) }, { status: 201 });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         // deno-lint-ignore no-console
@@ -264,7 +269,6 @@ export async function handleAdminUpdateLocalUser(
         throw err;
     }
 
-    // Validate role against the registry (if provided)
     if (parsed.role && !isValidLocalRole(parsed.role)) {
         return JsonResponse.badRequest(
             `Invalid role '${parsed.role}'. Valid roles: ${VALID_LOCAL_ROLES.join(', ')}`,
@@ -275,51 +279,29 @@ export async function handleAdminUpdateLocalUser(
     const newTier = parsed.tier ?? (parsed.role ? tierForRole(parsed.role) : undefined);
 
     try {
-        // Dynamic SQL building: only set columns that are explicitly provided
-        const setClauses: string[] = [];
-        const values: unknown[] = [];
+        const prisma = getPrismaD1(env.DB);
 
-        if (parsed.role !== undefined) {
-            setClauses.push('role = ?');
-            values.push(parsed.role);
-        }
-        if (newTier !== undefined) {
-            setClauses.push('tier = ?');
-            values.push(newTier);
-        }
-        if (parsed.api_disabled !== undefined) {
-            setClauses.push('api_disabled = ?');
-            values.push(parsed.api_disabled);
+        // Build partial update data — only include fields that were provided
+        const updateData: Record<string, unknown> = {};
+        if (parsed.role !== undefined) updateData.role = parsed.role;
+        if (newTier !== undefined) updateData.tier = newTier;
+        if (parsed.api_disabled !== undefined) updateData.apiDisabled = parsed.api_disabled;
+
+        if (Object.keys(updateData).length === 0) {
+            return JsonResponse.badRequest('At least one field must be provided');
         }
 
-        // Defensive guard: schema refine ensures at least one field, but protect SQL construction
-        if (setClauses.length === 0) return JsonResponse.badRequest('At least one field must be provided');
+        const updated = await prisma.localAuthUser.update({
+            where: { id: userId },
+            data: updateData,
+        });
 
-        setClauses.push("updated_at = datetime('now')");
-        values.push(userId);
-
-        const updateSql = 'UPDATE local_auth_users SET ' + setClauses.join(', ') + ' WHERE id = ?';
-        const result = await env.DB
-            .prepare(updateSql)
-            .bind(...values)
-            .run();
-
-        if (!result.meta?.changes) return JsonResponse.notFound('User not found');
-
-        // Return updated record
-        const row = await env.DB
-            .prepare(
-                `SELECT id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at
-                 FROM local_auth_users WHERE id = ? LIMIT 1`,
-            )
-            .bind(userId)
-            .first<Record<string, unknown>>();
-
-        const userResult = LocalUserPublicSchema.safeParse(row);
-        if (!userResult.success) return JsonResponse.serverError('User record is malformed');
-
-        return JsonResponse.success({ user: userResult.data });
+        return JsonResponse.success({ user: toPublicRow(updated) });
     } catch (error) {
+        // P2025: Prisma record not found on update
+        if ((error as { code?: string }).code === 'P2025') {
+            return JsonResponse.notFound('User not found');
+        }
         const message = error instanceof Error ? error.message : String(error);
         // deno-lint-ignore no-console
         console.error('[admin/local-users] Update error:', message);
@@ -344,15 +326,15 @@ export async function handleAdminDeleteLocalUser(
     if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
 
     try {
-        const result = await env.DB
-            .prepare('DELETE FROM local_auth_users WHERE id = ?')
-            .bind(userId)
-            .run();
+        const prisma = getPrismaD1(env.DB);
 
-        if (!result.meta?.changes) return JsonResponse.notFound('User not found');
+        await prisma.localAuthUser.delete({ where: { id: userId } });
 
         return JsonResponse.success({ message: 'User deleted' });
     } catch (error) {
+        if ((error as { code?: string }).code === 'P2025') {
+            return JsonResponse.notFound('User not found');
+        }
         const message = error instanceof Error ? error.message : String(error);
         // deno-lint-ignore no-console
         console.error('[admin/local-users] Delete error:', message);

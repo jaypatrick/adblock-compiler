@@ -10,7 +10,7 @@
  * ZTA compliance:
  *   - Every write endpoint rate-limits before any business logic
  *   - All request bodies are Zod-validated before use
- *   - All D1 queries use parameterised .prepare().bind() statements
+ *   - All D1 queries use parameterised Prisma ORM calls
  *   - No password hashes or stack traces in responses
  *   - Auth failures emit security events to Analytics Engine
  *   - requireAuth() guard on /auth/me and /auth/change-password
@@ -23,15 +23,23 @@
  */
 
 import { ZodError } from 'zod';
-import { ANONYMOUS_AUTH_CONTEXT, type Env, type IAuthContext } from '../types.ts';
+import { ANONYMOUS_AUTH_CONTEXT, type Env, type IAuthContext, UserTier } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
-import { LocalChangePasswordRequestSchema, LocalLoginRequestSchema, LocalSignupRequestSchema, LocalUserPublicSchema, type LocalUserRow, LocalUserRowSchema } from '../schemas.ts';
+import {
+    LocalChangePasswordRequestSchema,
+    LocalLoginRequestSchema,
+    LocalSignupRequestSchema,
+    LocalUserPublicSchema,
+    type LocalUserRow,
+} from '../schemas.ts';
 import { hashPassword, verifyPassword } from '../utils/password.ts';
 import { signLocalJWT } from '../utils/local-jwt.ts';
 import { DEFAULT_ROLE, tierForRole } from '../utils/local-auth-roles.ts';
 import { requireAuth } from '../middleware/auth.ts';
 import { checkRateLimitTiered } from '../middleware/index.ts';
 import { AnalyticsService, type SecurityEventData } from '../../src/services/AnalyticsService.ts';
+import { getPrismaD1 } from '../utils/prisma-d1.ts';
+import type { LocalAuthUser } from '../../prisma/generated-d1/models/LocalAuthUser.ts';
 
 // ============================================================================
 // Internal helpers
@@ -55,6 +63,24 @@ function trackFailure(
     } catch {
         // Non-critical — telemetry must never break auth flow
     }
+}
+
+/**
+ * Map a Prisma LocalAuthUser to the snake_case LocalUserRow shape so that
+ * existing Zod schemas and response formatters remain unchanged.
+ */
+function toUserRow(u: LocalAuthUser): LocalUserRow {
+    return {
+        id: u.id,
+        identifier: u.identifier,
+        identifier_type: u.identifierType as 'email' | 'phone',
+        password_hash: u.passwordHash,
+        role: u.role,
+        tier: u.tier as UserTier,
+        api_disabled: u.apiDisabled,
+        created_at: u.createdAt instanceof Date ? u.createdAt.toISOString() : String(u.createdAt),
+        updated_at: u.updatedAt instanceof Date ? u.updatedAt.toISOString() : String(u.updatedAt),
+    };
 }
 
 /**
@@ -124,11 +150,13 @@ export async function handleLocalSignup(
     const identifierType: 'email' | 'phone' = isEmail(identifier) ? 'email' : 'phone';
 
     try {
-        // 4. Check uniqueness (parameterised)
-        const existing = await env.DB
-            .prepare('SELECT id FROM local_auth_users WHERE identifier = ? LIMIT 1')
-            .bind(identifier)
-            .first<{ id: string }>();
+        const prisma = getPrismaD1(env.DB);
+
+        // 4. Check uniqueness
+        const existing = await prisma.localAuthUser.findUnique({
+            where: { identifier },
+            select: { id: true },
+        });
 
         if (existing) {
             trackFailure(analytics, { path, method: 'POST', reason: 'duplicate_identifier' });
@@ -141,17 +169,14 @@ export async function handleLocalSignup(
         const role = DEFAULT_ROLE;
         const tier = tierForRole(role);
 
-        await env.DB
-            .prepare(
-                `INSERT INTO local_auth_users (id, identifier, identifier_type, password_hash, role, tier)
-                 VALUES (?, ?, ?, ?, ?, ?)`,
-            )
-            .bind(id, identifier, identifierType, passwordHash, role, tier)
-            .run();
+        const created = await prisma.localAuthUser.create({
+            data: { id, identifier, identifierType, passwordHash, role, tier },
+        });
 
         // 6. Issue JWT
         const token = await signLocalJWT(id, role, tier, env.JWT_SECRET);
 
+<<<<<<< Updated upstream
         // 7. Fetch the full row so the response matches LocalUserPublic schema (includes api_disabled, timestamps)
         const row = await env.DB
             .prepare(
@@ -166,6 +191,13 @@ export async function handleLocalSignup(
 
         return JsonResponse.success(
             { token, user: userResult },
+=======
+        return JsonResponse.success(
+            {
+                token,
+                user: LocalUserPublicSchema.parse(toUserRow(created)),
+            },
+>>>>>>> Stashed changes
             { status: 201 },
         );
     } catch (error) {
@@ -228,35 +260,30 @@ export async function handleLocalLogin(
     const { identifier, password } = parsed;
 
     try {
-        // 3. Look up user (parameterised)
-        const row = await env.DB
-            .prepare('SELECT * FROM local_auth_users WHERE identifier = ? LIMIT 1')
-            .bind(identifier)
-            .first<Record<string, unknown>>();
+        const prisma = getPrismaD1(env.DB);
+
+        // 3. Look up user
+        const prismaUser = await prisma.localAuthUser.findUnique({
+            where: { identifier },
+        });
 
         // 4. Always run verifyPassword regardless of whether the user was found.
         //    This is the timing-safe guard against user enumeration: PBKDF2 runs
         //    for the same 100,000 iterations on every code path. The subsequent
-        //    `!row` check cannot leak information because the slow PBKDF2 step
-        //    has already dominated the response time.
-        const hashToCheck = (row?.password_hash as string | undefined) ?? DUMMY_HASH;
+        //    `!prismaUser` check cannot leak information because the slow PBKDF2
+        //    step has already dominated the response time.
+        const hashToCheck = prismaUser?.passwordHash ?? DUMMY_HASH;
         const match = await verifyPassword(password, hashToCheck);
 
-        if (!row || !match) {
+        if (!prismaUser || !match) {
             trackFailure(analytics, { path, method: 'POST', reason: 'invalid_credentials' });
             // Generic message — no user enumeration
             return JsonResponse.error('Invalid credentials', 401);
         }
 
-        // 5. Zod-validate the row before trusting it
-        let user: LocalUserRow;
-        try {
-            user = LocalUserRowSchema.parse(row);
-        } catch {
-            return JsonResponse.serverError('User record is malformed');
-        }
+        const user = toUserRow(prismaUser);
 
-        // 6. Issue JWT
+        // 5. Issue JWT
         const token = await signLocalJWT(user.id, user.role, user.tier, env.JWT_SECRET);
 
         return JsonResponse.success({
@@ -295,15 +322,19 @@ export async function handleLocalMe(
     if (!userId) return JsonResponse.error('Could not resolve user identity', 401);
 
     try {
-        const row = await env.DB
-            .prepare('SELECT * FROM local_auth_users WHERE id = ? LIMIT 1')
-            .bind(userId)
-            .first<Record<string, unknown>>();
+        const prisma = getPrismaD1(env.DB);
+        const prismaUser = await prisma.localAuthUser.findUnique({
+            where: { id: userId },
+        });
 
-        if (!row) return JsonResponse.error('User not found', 404);
+        if (!prismaUser) return JsonResponse.error('User not found', 404);
 
+<<<<<<< Updated upstream
         const result = LocalUserPublicSchema.safeParse(row);
         if (!result.success) return JsonResponse.serverError('User record is malformed');
+=======
+        const user = toUserRow(prismaUser);
+>>>>>>> Stashed changes
 
         return JsonResponse.success({ user: result.data });
     } catch (error) {
@@ -366,41 +397,31 @@ export async function handleLocalChangePassword(
     if (!userId) return JsonResponse.error('Could not resolve user identity', 401);
 
     try {
-        // 4. Fetch current user record
-        const row = await env.DB
-            .prepare('SELECT * FROM local_auth_users WHERE id = ? LIMIT 1')
-            .bind(userId)
-            .first<Record<string, unknown>>();
+        const prisma = getPrismaD1(env.DB);
 
-        if (!row) {
+        // 4. Fetch current user record
+        const prismaUser = await prisma.localAuthUser.findUnique({
+            where: { id: userId },
+        });
+
+        if (!prismaUser) {
             trackFailure(analytics, { path, method: 'POST', reason: 'user_not_found' });
             return JsonResponse.error('Invalid credentials', 401);
         }
 
-        let user: LocalUserRow;
-        try {
-            user = LocalUserRowSchema.parse(row);
-        } catch {
-            return JsonResponse.serverError('User record is malformed');
-        }
-
         // 5. Verify current password
-        const valid = await verifyPassword(parsed.currentPassword, user.password_hash);
+        const valid = await verifyPassword(parsed.currentPassword, prismaUser.passwordHash);
         if (!valid) {
             trackFailure(analytics, { path, method: 'POST', reason: 'wrong_current_password' });
             return JsonResponse.error('Invalid credentials', 401);
         }
 
-        // 6. Hash + store new password (parameterised)
+        // 6. Hash + store new password
         const newHash = await hashPassword(parsed.newPassword);
-        await env.DB
-            .prepare(
-                `UPDATE local_auth_users
-                 SET password_hash = ?, updated_at = datetime('now')
-                 WHERE id = ?`,
-            )
-            .bind(newHash, userId)
-            .run();
+        await prisma.localAuthUser.update({
+            where: { id: userId },
+            data: { passwordHash: newHash },
+        });
 
         return JsonResponse.success({ message: 'Password updated successfully' });
     } catch (error) {
@@ -409,3 +430,4 @@ export async function handleLocalChangePassword(
         return JsonResponse.serverError('Password change failed');
     }
 }
+

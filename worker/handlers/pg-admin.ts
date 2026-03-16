@@ -14,6 +14,7 @@
 
 import type { Env, HyperdriveBinding } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
+import { AdminQueryRequestSchema } from '../schemas.ts';
 
 // ============================================================================
 // Types
@@ -245,16 +246,16 @@ export async function handlePgQuery(
     hyperdrive: HyperdriveBinding,
     createPool: PgPoolFactory,
 ): Promise<Response> {
-    let body: { sql?: string };
+    let sql: string;
     try {
-        body = await request.json() as { sql?: string };
+        const rawBody = await request.json();
+        const parsed = AdminQueryRequestSchema.safeParse(rawBody);
+        if (!parsed.success) {
+            return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
+        }
+        sql = parsed.data.sql;
     } catch {
         return JsonResponse.badRequest('Invalid JSON body');
-    }
-
-    const { sql } = body;
-    if (!sql || typeof sql !== 'string') {
-        return JsonResponse.badRequest('Missing or invalid SQL query');
     }
 
     // Strip comments before validation to prevent bypass

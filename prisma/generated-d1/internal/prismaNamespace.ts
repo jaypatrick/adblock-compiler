@@ -390,7 +390,8 @@ export const ModelName = {
   CompilationMetadata: 'CompilationMetadata',
   SourceSnapshot: 'SourceSnapshot',
   SourceHealth: 'SourceHealth',
-  SourceAttempt: 'SourceAttempt'
+  SourceAttempt: 'SourceAttempt',
+  LocalAuthUser: 'LocalAuthUser'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -406,7 +407,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "storageEntry" | "filterCache" | "compilationMetadata" | "sourceSnapshot" | "sourceHealth" | "sourceAttempt"
+    modelProps: "user" | "storageEntry" | "filterCache" | "compilationMetadata" | "sourceSnapshot" | "sourceHealth" | "sourceAttempt" | "localAuthUser"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -928,6 +929,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    LocalAuthUser: {
+      payload: Prisma.$LocalAuthUserPayload<ExtArgs>
+      fields: Prisma.LocalAuthUserFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.LocalAuthUserFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LocalAuthUserPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.LocalAuthUserFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LocalAuthUserPayload>
+        }
+        findFirst: {
+          args: Prisma.LocalAuthUserFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LocalAuthUserPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.LocalAuthUserFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LocalAuthUserPayload>
+        }
+        findMany: {
+          args: Prisma.LocalAuthUserFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LocalAuthUserPayload>[]
+        }
+        create: {
+          args: Prisma.LocalAuthUserCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LocalAuthUserPayload>
+        }
+        createMany: {
+          args: Prisma.LocalAuthUserCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.LocalAuthUserCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LocalAuthUserPayload>[]
+        }
+        delete: {
+          args: Prisma.LocalAuthUserDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LocalAuthUserPayload>
+        }
+        update: {
+          args: Prisma.LocalAuthUserUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LocalAuthUserPayload>
+        }
+        deleteMany: {
+          args: Prisma.LocalAuthUserDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.LocalAuthUserUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.LocalAuthUserUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LocalAuthUserPayload>[]
+        }
+        upsert: {
+          args: Prisma.LocalAuthUserUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$LocalAuthUserPayload>
+        }
+        aggregate: {
+          args: Prisma.LocalAuthUserAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateLocalAuthUser>
+        }
+        groupBy: {
+          args: Prisma.LocalAuthUserGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LocalAuthUserGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.LocalAuthUserCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.LocalAuthUserCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -1069,6 +1144,21 @@ export const SourceAttemptScalarFieldEnum = {
 } as const
 
 export type SourceAttemptScalarFieldEnum = (typeof SourceAttemptScalarFieldEnum)[keyof typeof SourceAttemptScalarFieldEnum]
+
+
+export const LocalAuthUserScalarFieldEnum = {
+  id: 'id',
+  identifier: 'identifier',
+  identifierType: 'identifierType',
+  passwordHash: 'passwordHash',
+  role: 'role',
+  tier: 'tier',
+  apiDisabled: 'apiDisabled',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type LocalAuthUserScalarFieldEnum = (typeof LocalAuthUserScalarFieldEnum)[keyof typeof LocalAuthUserScalarFieldEnum]
 
 
 export const SortOrder = {
@@ -1229,6 +1319,7 @@ export type GlobalOmitConfig = {
   sourceSnapshot?: Prisma.SourceSnapshotOmit
   sourceHealth?: Prisma.SourceHealthOmit
   sourceAttempt?: Prisma.SourceAttemptOmit
+  localAuthUser?: Prisma.LocalAuthUserOmit
 }
 
 /* Types for Logging */

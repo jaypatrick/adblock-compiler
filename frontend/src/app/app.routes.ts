@@ -74,7 +74,7 @@ export const routes: Routes = [
         loadComponent: () => import('./components/api-keys/api-keys.component').then((m) => m.ApiKeysComponent),
         title: 'API Keys',
         data: { description: 'Manage API keys', metaDescription: 'Create and manage personal API keys for programmatic access to the Adblock Compiler service.' },
-        canActivate: [() => import('./guards/auth.guard').then((m) => m.authGuard)],
+        canActivate: [(_route, state) => import('./guards/auth.guard').then((m) => m.authGuard(_route, state))],
     },
     {
         path: 'admin',
@@ -82,7 +82,7 @@ export const routes: Routes = [
         loadChildren: () => import('./admin/admin.routes').then((m) => m.ADMIN_ROUTES),
         title: 'Admin',
         data: { description: 'Administration', metaDescription: 'Adblock Compiler administration console. Manage users, storage, configuration, and system settings.' },
-        canActivate: [() => import('./guards/admin.guard').then((m) => m.adminGuard)],
+        canActivate: [(_route, state) => import('./guards/admin.guard').then((m) => m.adminGuard(_route, state))],
     },
     {
         path: '**',

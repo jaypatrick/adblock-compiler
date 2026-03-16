@@ -15,6 +15,7 @@ import type { HyperdriveBinding } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { generateApiKey, hashKey } from '../middleware/api-key-utils.ts';
 import { CreateApiKeySchema, CreateUserSchema } from '../../src/storage/schemas.ts';
+import { ListApiKeysQuerySchema, RevokeApiKeyRequestSchema, ValidateApiKeyRequestSchema } from '../schemas.ts';
 
 // ============================================================================
 // Types
@@ -162,13 +163,14 @@ export async function handleRevokeApiKey(
 ): Promise<Response> {
     let body: { apiKeyId?: string; keyPrefix?: string };
     try {
-        body = await request.json() as { apiKeyId?: string; keyPrefix?: string };
+        const rawBody = await request.json();
+        const parsed = RevokeApiKeyRequestSchema.safeParse(rawBody);
+        if (!parsed.success) {
+            return JsonResponse.error(parsed.error.issues[0]?.message ?? 'Invalid request body', 400);
+        }
+        body = parsed.data;
     } catch {
         return JsonResponse.error('Invalid JSON body', 400);
-    }
-
-    if (!body.apiKeyId && !body.keyPrefix) {
-        return JsonResponse.error('Provide either apiKeyId or keyPrefix', 400);
     }
 
     const pool = createPool(hyperdrive.connectionString);
@@ -210,11 +212,12 @@ export async function handleListApiKeys(
     createPool: PgPoolFactory,
 ): Promise<Response> {
     const url = new URL(request.url);
-    const userId = url.searchParams.get('userId');
-
-    if (!userId) {
-        return JsonResponse.error('Missing required query parameter: userId', 400);
+    const userIdRaw = url.searchParams.get('userId');
+    const qParsed = ListApiKeysQuerySchema.safeParse({ userId: userIdRaw });
+    if (!qParsed.success) {
+        return JsonResponse.error(qParsed.error.issues[0]?.message ?? 'Missing or invalid userId', 400);
     }
+    const { userId } = qParsed.data;
 
     const pool = createPool(hyperdrive.connectionString);
 
@@ -269,15 +272,16 @@ export async function handleValidateApiKey(
     hyperdrive: HyperdriveBinding,
     createPool: PgPoolFactory,
 ): Promise<Response> {
-    let body: { apiKey?: string };
+    let body: { apiKey: string };
     try {
-        body = await request.json() as { apiKey?: string };
+        const rawBody = await request.json();
+        const parsed = ValidateApiKeyRequestSchema.safeParse(rawBody);
+        if (!parsed.success) {
+            return JsonResponse.error(parsed.error.issues[0]?.message ?? 'Invalid request body', 400);
+        }
+        body = parsed.data;
     } catch {
         return JsonResponse.error('Invalid JSON body', 400);
-    }
-
-    if (!body.apiKey) {
-        return JsonResponse.error('Missing required field: apiKey', 400);
     }
 
     const keyHash = await hashKey(body.apiKey);
