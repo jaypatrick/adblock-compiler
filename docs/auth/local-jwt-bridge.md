@@ -25,7 +25,7 @@ Two roles are available. To add more, add one entry to `worker/utils/local-auth-
 
 | Role | Tier | Self-register | Description |
 |---|---|---|---|
-| `guest` | `free` | ✅ Yes | Authenticated user — full feature access |
+| `user` | `free` | ✅ Yes | Authenticated user — full feature access |
 | `admin` | `admin` | ❌ No | Unrestricted access + admin endpoints |
 
 **Unauthenticated requests are read-only** — existing `requireAuth()` guards on write endpoints enforce this automatically.
@@ -70,7 +70,7 @@ All four endpoints live under `/api/auth/*` (the Angular app uses `API_BASE_URL 
 
 ### `POST /auth/signup`
 
-Register a new account. All self-registered users receive the `guest` role.
+Register a new account. All self-registered users receive the `user` role.
 
 **Request**
 ```json
@@ -85,7 +85,7 @@ No verification email or SMS is sent — format validation only.
 {
   "success": true,
   "token": "<HS256 JWT>",
-  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifierType": "email", "tier": "free", "role": "guest" }
+  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifierType": "email", "tier": "free", "role": "user" }
 }
 ```
 
@@ -107,7 +107,7 @@ Authenticate and receive a JWT. Timing-safe: always runs full PBKDF2 even when t
 {
   "success": true,
   "token": "<HS256 JWT>",
-  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifierType": "email", "tier": "free", "role": "guest" }
+  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifierType": "email", "tier": "free", "role": "user" }
 }
 ```
 
@@ -123,7 +123,7 @@ Return the current user's profile. Requires `Authorization: Bearer <token>`.
 ```json
 {
   "success": true,
-  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifierType": "email", "tier": "free", "role": "guest", "createdAt": "2026-01-01T00:00:00.000Z" }
+  "user": { "id": "<uuid>", "identifier": "user@example.com", "identifierType": "email", "tier": "free", "role": "user", "createdAt": "2026-01-01T00:00:00.000Z" }
 }
 ```
 

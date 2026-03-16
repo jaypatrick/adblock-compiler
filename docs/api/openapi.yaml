@@ -1666,6 +1666,458 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ErrorResponse'
 
+    # ---------------------------------------------------------------------------
+    # Local JWT Auth Bridge — POST /auth/signup, /auth/login, GET /auth/me, POST /auth/change-password
+    # Active when CLERK_JWKS_URL is NOT set. Auto-replaced by Clerk when CLERK_JWKS_URL is set.
+    # ---------------------------------------------------------------------------
+
+    /auth/signup:
+        post:
+            tags: [LocalAuth]
+            summary: Register a new local account
+            description: |
+                Create a new account using an email address or E.164 phone number and password.
+                All self-registered users receive the `user` role (Free tier).
+                Admin role must be granted via `POST /admin/local-users`.
+
+                **Rate limited** (anonymous tier). Returns a signed HS256 JWT on success.
+
+                > Only active when `CLERK_JWKS_URL` is not configured. When Clerk is live,
+                > sign up via the Clerk-hosted UI instead.
+            operationId: localSignup
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/LocalSignupRequest'
+                        example:
+                            identifier: user@example.com
+                            password: minEightChars
+            responses:
+                '201':
+                    description: Account created — JWT returned
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LocalAuthResponse'
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
+                '409':
+                    description: An account with this identifier already exists
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '429':
+                    $ref: '#/components/responses/RateLimitError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /auth/login:
+        post:
+            tags: [LocalAuth]
+            summary: Authenticate and receive a JWT
+            description: |
+                Authenticate with an identifier (email or phone) and password.
+                Returns a signed HS256 JWT valid for 24 hours.
+
+                Timing-safe: always runs full PBKDF2 derivation even for unknown identifiers
+                to prevent user enumeration via timing side-channels.
+
+                **Rate limited** (anonymous tier).
+            operationId: localLogin
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/LocalLoginRequest'
+                        example:
+                            identifier: user@example.com
+                            password: yourpassword
+            responses:
+                '200':
+                    description: Authentication successful — JWT returned
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LocalAuthResponse'
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
+                '401':
+                    description: Invalid credentials (generic — no user enumeration)
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '429':
+                    $ref: '#/components/responses/RateLimitError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /auth/me:
+        get:
+            tags: [LocalAuth]
+            summary: Get current user profile
+            description: |
+                Returns the authenticated user's public profile.
+                Requires a valid `Authorization: Bearer <jwt>` header.
+            operationId: localMe
+            security:
+                - ClerkJWT: []
+            responses:
+                '200':
+                    description: Current user profile
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/LocalMeResponse'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '404':
+                    description: User record not found (deleted since token was issued)
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /auth/change-password:
+        post:
+            tags: [LocalAuth]
+            summary: Change the current user's password
+            description: |
+                Update the authenticated user's password.
+                Requires a valid `Authorization: Bearer <jwt>` header and the correct current password.
+            operationId: localChangePassword
+            security:
+                - ClerkJWT: []
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/LocalChangePasswordRequest'
+            responses:
+                '200':
+                    description: Password updated successfully
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                required: [success, message]
+                                properties:
+                                    success:
+                                        type: boolean
+                                        example: true
+                                    message:
+                                        type: string
+                                        example: Password updated successfully
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
+                '401':
+                    description: Not authenticated or current password is wrong
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    # ---------------------------------------------------------------------------
+    # Admin — local user management
+    # ---------------------------------------------------------------------------
+
+    /admin/local-users:
+        get:
+            tags: [Admin]
+            summary: List local auth users
+            description: |
+                Returns a paginated list of all local auth users.
+                Responses never include `password_hash`.
+                Requires Admin tier + admin role.
+            operationId: adminListLocalUsers
+            security:
+                - AdminKey: []
+            parameters:
+                - name: limit
+                  in: query
+                  schema:
+                      type: integer
+                      minimum: 1
+                      maximum: 100
+                      default: 50
+                  description: Maximum number of users to return
+                - name: offset
+                  in: query
+                  schema:
+                      type: integer
+                      minimum: 0
+                      default: 0
+                  description: Number of users to skip (for pagination)
+            responses:
+                '200':
+                    description: Paginated user list
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminLocalUsersListResponse'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+        post:
+            tags: [Admin]
+            summary: Create a local auth user
+            description: |
+                Create a new local auth user with any valid role and tier.
+                Admins can create users with privileged roles (e.g. `admin`) that cannot be self-registered.
+                Requires Admin tier + admin role.
+            operationId: adminCreateLocalUser
+            security:
+                - AdminKey: []
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AdminCreateLocalUserRequest'
+                        example:
+                            identifier: newuser@example.com
+                            password: securepass123
+                            role: user
+                            tier: free
+            responses:
+                '201':
+                    description: User created
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminLocalUserResponse'
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
+                '409':
+                    description: An account with this identifier already exists
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /admin/local-users/{userId}:
+        get:
+            tags: [Admin]
+            summary: Get a local auth user
+            description: |
+                Returns the public profile of a single local auth user by UUID.
+                Requires Admin tier + admin role.
+            operationId: adminGetLocalUser
+            security:
+                - AdminKey: []
+            parameters:
+                - name: userId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                      format: uuid
+                  description: Local auth user UUID
+            responses:
+                '200':
+                    description: User profile
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminLocalUserResponse'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
+                '404':
+                    description: User not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+        patch:
+            tags: [Admin]
+            summary: Update a local auth user
+            description: |
+                Update a user's `tier`, `role`, and/or `api_disabled` flag.
+                Tier and role are independent fields — changing role does not automatically change tier unless
+                no explicit tier is provided (in which case the role's default tier is applied).
+                Requires Admin tier + admin role.
+            operationId: adminUpdateLocalUser
+            security:
+                - AdminKey: []
+            parameters:
+                - name: userId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                      format: uuid
+                  description: Local auth user UUID
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AdminUpdateLocalUserRequest'
+                        examples:
+                            disable:
+                                summary: Disable API access
+                                value:
+                                    api_disabled: 1
+                            promote:
+                                summary: Promote to admin
+                                value:
+                                    role: admin
+                                    tier: admin
+            responses:
+                '200':
+                    description: Updated user profile
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminLocalUserResponse'
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
+                '404':
+                    description: User not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+        delete:
+            tags: [Admin]
+            summary: Delete a local auth user
+            description: |
+                Permanently deletes a local auth user by UUID.
+                Requires Admin tier + admin role.
+            operationId: adminDeleteLocalUser
+            security:
+                - AdminKey: []
+            parameters:
+                - name: userId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                      format: uuid
+                  description: Local auth user UUID
+            responses:
+                '200':
+                    description: User deleted
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                required: [success, message]
+                                properties:
+                                    success:
+                                        type: boolean
+                                        example: true
+                                    message:
+                                        type: string
+                                        example: User deleted
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
+                '404':
+                    description: User not found
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
+
+    /admin/auth/config:
+        get:
+            tags: [Admin]
+            summary: Inspect active auth registries
+            description: |
+                Returns a read-only snapshot of all three extensibility registries at runtime:
+                - `LOCAL_ROLE_REGISTRY` — all defined roles, their tiers, and self-register flag
+                - `TIER_REGISTRY` — all tiers with rate limits and ordering
+                - `ROUTE_PERMISSION_REGISTRY` — all registered route permission rules
+
+                Also reports which auth provider is active (`local-jwt` vs `clerk`).
+                Requires Admin tier + admin role.
+            operationId: adminAuthConfig
+            security:
+                - AdminKey: []
+            responses:
+                '200':
+                    description: Active auth configuration snapshot
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminAuthConfigResponse'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
+
+    /admin/usage/{userId}:
+        get:
+            tags: [Admin]
+            summary: Get per-user API usage statistics
+            description: |
+                Returns KV-backed API usage counters for a specific user:
+                - `total` — lifetime request count, first/last seen timestamps
+                - `days` — per-day breakdown for the requested lookback window (max 90 days)
+
+                Requires Admin tier + admin role.
+            operationId: adminGetUserUsage
+            security:
+                - AdminKey: []
+            parameters:
+                - name: userId
+                  in: path
+                  required: true
+                  schema:
+                      type: string
+                  description: User ID (UUID or Clerk user ID)
+                - name: days
+                  in: query
+                  schema:
+                      type: integer
+                      minimum: 1
+                      maximum: 90
+                      default: 30
+                  description: Number of past days to include in the daily breakdown
+            responses:
+                '200':
+                    description: Per-user usage statistics
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AdminUserUsageResponse'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
+
 components:
     schemas:
         # Request Schemas
@@ -3690,6 +4142,282 @@ components:
                 duration:
                     type: string
                     description: Processing duration (e.g. "5ms")
+
+        # -------------------------------------------------------------------------
+        # Local JWT Auth Bridge Schemas
+        # -------------------------------------------------------------------------
+
+        LocalSignupRequest:
+            type: object
+            required: [identifier, password]
+            properties:
+                identifier:
+                    type: string
+                    description: Email address (user@example.com) or E.164 phone number (+12025551234)
+                    example: user@example.com
+                password:
+                    type: string
+                    minLength: 8
+                    maxLength: 128
+                    description: Password (minimum 8 characters)
+
+        LocalLoginRequest:
+            type: object
+            required: [identifier, password]
+            properties:
+                identifier:
+                    type: string
+                    description: Email address or E.164 phone number used at signup
+                    example: user@example.com
+                password:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+
+        LocalChangePasswordRequest:
+            type: object
+            required: [currentPassword, newPassword]
+            properties:
+                currentPassword:
+                    type: string
+                    minLength: 1
+                    maxLength: 128
+                    description: The user's current password
+                newPassword:
+                    type: string
+                    minLength: 8
+                    maxLength: 128
+                    description: The new password (minimum 8 characters)
+
+        LocalUserPublic:
+            type: object
+            required: [id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at]
+            properties:
+                id:
+                    type: string
+                    format: uuid
+                    description: User UUID
+                identifier:
+                    type: string
+                    description: Email address or E.164 phone number
+                identifier_type:
+                    type: string
+                    enum: [email, phone]
+                    description: Whether the identifier is an email address or phone number
+                role:
+                    type: string
+                    description: User role (e.g. `user`, `admin`)
+                    example: user
+                tier:
+                    type: string
+                    description: Rate-limit tier (e.g. `free`, `pro`, `admin`)
+                    example: free
+                api_disabled:
+                    type: integer
+                    enum: [0, 1]
+                    description: Whether API access is disabled for this user (0 = enabled, 1 = disabled)
+                created_at:
+                    type: string
+                    format: date-time
+                updated_at:
+                    type: string
+                    format: date-time
+
+        LocalAuthResponse:
+            type: object
+            required: [success, token, user]
+            properties:
+                success:
+                    type: boolean
+                    example: true
+                token:
+                    type: string
+                    description: Signed HS256 JWT valid for 24 hours
+                user:
+                    $ref: '#/components/schemas/LocalUserPublic'
+
+        LocalMeResponse:
+            type: object
+            required: [success, user]
+            properties:
+                success:
+                    type: boolean
+                    example: true
+                user:
+                    $ref: '#/components/schemas/LocalUserPublic'
+
+        AdminLocalUsersListResponse:
+            type: object
+            required: [success, users, total, limit, offset]
+            properties:
+                success:
+                    type: boolean
+                    example: true
+                users:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/LocalUserPublic'
+                total:
+                    type: integer
+                    description: Total number of users in the database
+                limit:
+                    type: integer
+                offset:
+                    type: integer
+
+        AdminLocalUserResponse:
+            type: object
+            required: [success, user]
+            properties:
+                success:
+                    type: boolean
+                    example: true
+                user:
+                    $ref: '#/components/schemas/LocalUserPublic'
+
+        AdminCreateLocalUserRequest:
+            type: object
+            required: [identifier, password]
+            properties:
+                identifier:
+                    type: string
+                    description: Email address or E.164 phone number
+                password:
+                    type: string
+                    minLength: 8
+                    maxLength: 128
+                role:
+                    type: string
+                    description: Role to assign (defaults to `user`)
+                    default: user
+                    example: user
+                tier:
+                    type: string
+                    description: Tier to assign (defaults to the role's default tier)
+                    example: free
+
+        AdminUpdateLocalUserRequest:
+            type: object
+            description: At least one of `tier`, `role`, or `api_disabled` must be provided.
+            properties:
+                tier:
+                    type: string
+                    description: New rate-limit tier
+                    example: pro
+                role:
+                    type: string
+                    minLength: 1
+                    maxLength: 64
+                    description: New role name
+                    example: admin
+                api_disabled:
+                    type: integer
+                    enum: [0, 1]
+                    description: Set to 1 to disable API access, 0 to re-enable
+
+        AdminAuthConfigResponse:
+            type: object
+            required: [success, provider, roles, tiers, routes]
+            properties:
+                success:
+                    type: boolean
+                    example: true
+                provider:
+                    type: string
+                    enum: [local-jwt, clerk]
+                    description: Active auth provider
+                roles:
+                    type: array
+                    items:
+                        type: object
+                        required: [role, displayName, tier, canSelfRegister, description]
+                        properties:
+                            role:
+                                type: string
+                            displayName:
+                                type: string
+                            tier:
+                                type: string
+                            canSelfRegister:
+                                type: boolean
+                            description:
+                                type: string
+                tiers:
+                    type: array
+                    items:
+                        type: object
+                        required: [tier, displayName, order, description]
+                        properties:
+                            tier:
+                                type: string
+                            displayName:
+                                type: string
+                            order:
+                                type: integer
+                            rateLimit:
+                                type: integer
+                                nullable: true
+                                description: Requests per minute (null = unlimited)
+                            description:
+                                type: string
+                routes:
+                    type: array
+                    items:
+                        type: object
+                        required: [pattern, minTier, description]
+                        properties:
+                            pattern:
+                                type: string
+                            minTier:
+                                type: string
+                            requiredRole:
+                                type: string
+                                nullable: true
+                            description:
+                                type: string
+
+        AdminUserUsageResponse:
+            type: object
+            required: [success, userId, lookbackDays]
+            properties:
+                success:
+                    type: boolean
+                    example: true
+                userId:
+                    type: string
+                lookbackDays:
+                    type: integer
+                total:
+                    type: object
+                    nullable: true
+                    properties:
+                        count:
+                            type: integer
+                        firstSeen:
+                            type: string
+                            format: date-time
+                            nullable: true
+                        lastSeen:
+                            type: string
+                            format: date-time
+                            nullable: true
+                days:
+                    type: array
+                    items:
+                        type: object
+                        required: [date, count]
+                        properties:
+                            date:
+                                type: string
+                                format: date
+                                description: Date in YYYY-MM-DD format
+                            count:
+                                type: integer
+                            routes:
+                                type: object
+                                additionalProperties:
+                                    type: integer
+                                description: Per-route request counts for this day
 
     securitySchemes:
         Turnstile:
