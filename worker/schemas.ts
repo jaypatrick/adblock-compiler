@@ -850,7 +850,7 @@ export const LocalIdentifierSchema = z.string().max(254).refine(
 
 /**
  * Request body for POST /auth/signup.
- * Only `guest` role is granted on self-registration; admin must be set via DB.
+ * All self-registered users receive the 'user' role; admin must be granted via the admin API.
  */
 export const LocalSignupRequestSchema = z.object({
     identifier: LocalIdentifierSchema,
@@ -923,6 +923,33 @@ export const LocalJWTClaimsSchema = z.object({
 });
 
 export type LocalJWTClaims = z.infer<typeof LocalJWTClaimsSchema>;
+
+/**
+ * Public view of a local auth user — omits `password_hash`.
+ * Used in all API responses (GET /auth/me, admin user list, etc.).
+ * Mirrors the shape of Clerk's User object for easy migration.
+ */
+export const LocalUserPublicSchema = LocalUserRowSchema.omit({ password_hash: true });
+export type LocalUserPublic = z.infer<typeof LocalUserPublicSchema>;
+
+/**
+ * Request body for PATCH /admin/local-users/:id
+ *
+ * Allows an admin to independently update a user's tier and/or role.
+ * Tier and role are separate (mirroring Clerk's publicMetadata model):
+ *   - Changing role auto-suggests the default tier for that role
+ *   - Setting tier explicitly overrides the role-derived default
+ *   - e.g. role='user' + tier='pro' gives a user higher rate limits
+ */
+export const AdminUpdateLocalUserSchema = z.object({
+    tier: z.nativeEnum(UserTier).optional(),
+    role: z.string().min(1).max(64).optional(),
+}).refine(
+    (d) => d.tier !== undefined || d.role !== undefined,
+    { message: 'At least one of tier or role is required' },
+);
+
+export type AdminUpdateLocalUser = z.infer<typeof AdminUpdateLocalUserSchema>;
 
 // ============================================================================
 // Admin System Schemas — ADMIN_DB trust boundary validation (#1054)

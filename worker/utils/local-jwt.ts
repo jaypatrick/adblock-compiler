@@ -61,7 +61,7 @@ function isExpectedJwtError(message: string): boolean {
  * ```
  *
  * @param sub              - User UUID (local_auth_users.id)
- * @param role             - User role string (e.g. 'guest', 'admin')
+ * @param role             - User role string (e.g. 'user', 'admin')
  * @param tier             - User tier (derived from role registry)
  * @param secret           - Raw JWT_SECRET string from env
  * @param expiresInSeconds - Token lifetime (default 86400 / 24h)

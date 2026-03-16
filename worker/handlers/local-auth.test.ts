@@ -53,7 +53,7 @@ function makeAuthContext(userId: string): IAuthContext {
         userId: null,
         clerkUserId: userId,
         tier: UserTier.Free,
-        role: 'guest',
+        role: 'user',
         apiKeyId: null,
         sessionId: null,
         scopes: [],
@@ -224,7 +224,7 @@ Deno.test('handleLocalSignup - 409 on duplicate identifier', async () => {
         identifier: 'taken@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
-        role: 'guest',
+        role: 'user',
         tier: UserTier.Free,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -266,7 +266,7 @@ Deno.test('handleLocalSignup - registered user has guest role', async () => {
     assertEquals(res.status, 201);
     const body = await res.json() as Record<string, unknown>;
     const user = body.user as Record<string, unknown>;
-    assertEquals(user.role, 'guest');
+    assertEquals(user.role, 'user');
     assertEquals(user.tier, 'free');
 });
 
@@ -281,7 +281,7 @@ Deno.test('handleLocalLogin - 200 + token on valid credentials', async () => {
         identifier: 'login@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
-        role: 'guest',
+        role: 'user',
         tier: UserTier.Free,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -307,7 +307,7 @@ Deno.test('handleLocalLogin - 401 on wrong password', async () => {
         identifier: 'login2@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
-        role: 'guest',
+        role: 'user',
         tier: UserTier.Free,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -361,7 +361,7 @@ Deno.test('handleLocalLogin - 200 with phone identifier', async () => {
         identifier: '+12025551234',
         identifier_type: 'phone',
         password_hash: passwordHash,
-        role: 'guest',
+        role: 'user',
         tier: UserTier.Free,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -388,7 +388,7 @@ Deno.test('handleLocalMe - 200 with valid auth context', async () => {
         identifier: 'me@example.com',
         identifier_type: 'email',
         password_hash: 'irrelevant',
-        role: 'guest',
+        role: 'user',
         tier: UserTier.Free,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -434,7 +434,7 @@ Deno.test('handleLocalChangePassword - 200 on successful change', async () => {
         identifier: 'chpw@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
-        role: 'guest',
+        role: 'user',
         tier: UserTier.Free,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -458,7 +458,7 @@ Deno.test('handleLocalChangePassword - 401 on wrong current password', async () 
         identifier: 'chpw2@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
-        role: 'guest',
+        role: 'user',
         tier: UserTier.Free,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
@@ -494,7 +494,7 @@ Deno.test('handleLocalChangePassword - 400 on short new password', async () => {
         identifier: 'chpw3@example.com',
         identifier_type: 'email',
         password_hash: passwordHash,
-        role: 'guest',
+        role: 'user',
         tier: UserTier.Free,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),

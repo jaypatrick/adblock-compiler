@@ -29,6 +29,7 @@ import {
     LocalChangePasswordRequestSchema,
     LocalLoginRequestSchema,
     LocalSignupRequestSchema,
+    LocalUserPublicSchema,
     LocalUserRowSchema,
 } from '../schemas.ts';
 import type { LocalUserRow } from '../schemas.ts';
@@ -82,8 +83,8 @@ const DUMMY_HASH =
 
 /**
  * Register a new user with an email address or phone number.
- * All self-registered users receive the 'guest' role.
- * Admin role must be granted directly via DB or a future admin endpoint.
+ * All self-registered users receive the 'user' role.
+ * Admin role must be granted via POST /admin/local-users.
  */
 export async function handleLocalSignup(
     request: Request,
@@ -304,12 +305,9 @@ export async function handleLocalMe(
 
         if (!row) return JsonResponse.error('User not found', 404);
 
-        let user: LocalUserRow;
-        try {
-            user = LocalUserRowSchema.parse(row);
-        } catch {
-            return JsonResponse.serverError('User record is malformed');
-        }
+        const result = LocalUserPublicSchema.safeParse(row);
+        if (!result.success) return JsonResponse.serverError('User record is malformed');
+        const user = result.data;
 
         return JsonResponse.success({
             user: {

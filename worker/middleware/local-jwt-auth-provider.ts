@@ -51,7 +51,7 @@ function resolveTier(metadata: LocalJWTMetadata | undefined): UserTier {
  * Intentionally identical to `resolveRoleFromMetadata` in clerk-auth-provider.ts.
  */
 function resolveRole(metadata: LocalJWTMetadata | undefined): string {
-    return metadata?.role ?? 'guest';
+    return metadata?.role ?? 'user';
 }
 
 /**

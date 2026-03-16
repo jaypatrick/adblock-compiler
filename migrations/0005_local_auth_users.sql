@@ -13,7 +13,7 @@
 -- Schema mirrors Clerk's user model:
 --   identifier      → Clerk's primary email_address or phone_number
 --   identifier_type → Clerk's "identifier strategy" ('email' | 'phone')
---   role            → Clerk publicMetadata.role  ('guest' | 'admin' | ...)
+--   role            → Clerk publicMetadata.role  ('user' | 'admin' | ...)
 --   tier            → Clerk publicMetadata.tier  ('free' | 'admin' | ...)
 --
 -- Password hashing: PBKDF2 via Web Crypto API (SubtleCrypto).
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS local_auth_users (
     identifier      TEXT NOT NULL UNIQUE,                        -- email address or phone number
     identifier_type TEXT NOT NULL DEFAULT 'email',               -- 'email' | 'phone'
     password_hash   TEXT NOT NULL,                               -- "<base64url-salt>:<base64url-hash>"
-    role            TEXT NOT NULL DEFAULT 'guest',               -- mirrors Clerk publicMetadata.role
+    role            TEXT NOT NULL DEFAULT 'user',               -- mirrors Clerk publicMetadata.role
     tier            TEXT NOT NULL DEFAULT 'free',                -- mirrors Clerk publicMetadata.tier
     created_at      TEXT NOT NULL DEFAULT (datetime('now')),
     updated_at      TEXT NOT NULL DEFAULT (datetime('now'))

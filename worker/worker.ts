@@ -72,6 +72,8 @@ import { handleNotify } from './handlers/webhook.ts';
 import { handleClerkWebhook } from './handlers/clerk-webhook.ts';
 import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdateApiKey } from './handlers/api-keys.ts';
 import { handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocalSignup } from './handlers/local-auth.ts';
+import { handleAdminCreateLocalUser, handleAdminDeleteLocalUser, handleAdminGetLocalUser, handleAdminListLocalUsers, handleAdminUpdateLocalUser } from './handlers/admin-users.ts';
+import { checkRoutePermission } from './utils/route-permissions.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleSentryConfig } from './handlers/sentry-config.ts';
 import { createDiagnosticsProvider } from './services/diagnostics-factory.ts';
@@ -3267,6 +3269,40 @@ const workerHandler: WorkerHandler = {
         }
         if (routePath === '/auth/change-password' && request.method === 'POST') {
             return await handleLocalChangePassword(request, env, authContext, analytics, ip);
+        }
+
+        // ── Route permission check (central registry) ───────────────────────
+        // Applied globally after auth for all routes registered in ROUTE_PERMISSION_REGISTRY.
+        // Admin routes that use ADMIN_KEY (not JWT) handle their own auth internally —
+        // this check only fires for routes the registry knows about.
+        // Public endpoints (minTier: Anonymous) pass through with null.
+        const permDenied = checkRoutePermission(routePath, authContext);
+        if (permDenied) return permDenied;
+
+        // ── Admin local user management routes ──────────────────────────────
+        // GET   /admin/local-users        — list users
+        // GET   /admin/local-users/:id    — get user
+        // POST  /admin/local-users        — create user (any role/tier)
+        // PATCH /admin/local-users/:id    — update role/tier
+        // DELETE /admin/local-users/:id   — delete user
+        if (routePath === '/admin/local-users' && request.method === 'GET') {
+            return await handleAdminListLocalUsers(request, env, authContext);
+        }
+        if (routePath === '/admin/local-users' && request.method === 'POST') {
+            return await handleAdminCreateLocalUser(request, env, authContext);
+        }
+        const localUserMatch = routePath.match(/^\/admin\/local-users\/([0-9a-f-]{36})$/i);
+        if (localUserMatch) {
+            const userId = localUserMatch[1];
+            if (request.method === 'GET') {
+                return await handleAdminGetLocalUser(request, env, authContext, userId);
+            }
+            if (request.method === 'PATCH') {
+                return await handleAdminUpdateLocalUser(request, env, authContext, userId);
+            }
+            if (request.method === 'DELETE') {
+                return await handleAdminDeleteLocalUser(request, env, authContext, userId);
+            }
         }
 
         // Handle Prometheus scrape endpoint (admin-protected; auth handled inside handler)
