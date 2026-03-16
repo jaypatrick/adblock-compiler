@@ -174,7 +174,7 @@ export class SignInComponent implements OnDestroy {
             return;
         }
 
-        const returnUrl = (this.route.snapshot.queryParams['returnUrl'] as string | undefined) ?? '/admin';
+        const returnUrl = (this.route.snapshot.queryParams['returnUrl'] as string | undefined) ?? '/api-keys';
         await this.router.navigateByUrl(returnUrl);
     }
 

@@ -55,6 +55,17 @@ function resolveRole(metadata: LocalJWTMetadata | undefined): string {
 }
 
 /**
+ * Resolve tier from a raw DB string.
+ * Validates against the UserTier enum and falls back to Free for unknown values.
+ */
+function resolveTierFromDb(tier: string | null | undefined): UserTier {
+    if (!tier) return UserTier.Free;
+    const valid = Object.values(UserTier) as string[];
+    if (!valid.includes(tier)) return UserTier.Free;
+    return tier as UserTier;
+}
+
+/**
  * Extract a Bearer token from the Authorization header.
  * Mirrors `extractBearerToken` in clerk-jwt.ts.
  */
@@ -146,7 +157,7 @@ export class LocalJwtAuthProvider implements IAuthProvider {
         return {
             valid: true,
             providerUserId: claims.sub,
-            tier: user.tier,
+            tier: resolveTierFromDb(user.tier),
             role: user.role,
             sessionId: claims.sid ?? null,
         };

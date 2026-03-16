@@ -31,7 +31,7 @@ import { hashPassword } from '../utils/password.ts';
 import { isValidLocalRole, tierForRole, VALID_LOCAL_ROLES } from '../utils/local-auth-roles.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
 import { getPrismaD1 } from '../utils/prisma-d1.ts';
-import type { LocalAuthUser } from '../../prisma/generated-d1/models/LocalAuthUser.ts';
+import type { LocalAuthUser, LocalAuthUserUpdateInput } from '../../prisma/generated-d1/models/LocalAuthUser.ts';
 
 const VALID_TIERS: ReadonlyArray<string> = Object.values(UserTier).filter((t) => t !== UserTier.Anonymous);
 
@@ -277,7 +277,7 @@ export async function handleAdminUpdateLocalUser(
         const prisma = getPrismaD1(env.DB);
 
         // Build partial update data — only include fields that were provided
-        const updateData: Record<string, unknown> = {};
+        const updateData: LocalAuthUserUpdateInput = {};
         if (parsed.role !== undefined) updateData.role = parsed.role;
         if (newTier !== undefined) updateData.tier = newTier;
         if (parsed.api_disabled !== undefined) updateData.apiDisabled = parsed.api_disabled;

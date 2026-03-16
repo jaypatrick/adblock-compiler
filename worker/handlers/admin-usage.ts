@@ -34,7 +34,7 @@ export async function handleAdminGetUserUsage(
     if (!daysParsed.success) {
         return JsonResponse.badRequest(daysParsed.error.issues[0]?.message ?? 'Invalid days parameter');
     }
-    const lookbackDays = Math.min(daysParsed.data.days, 90);
+    const lookbackDays = Math.min(Math.max(daysParsed.data.days, 1), 90);
 
     const usage = await getUserApiUsage(userId, env, lookbackDays);
 
