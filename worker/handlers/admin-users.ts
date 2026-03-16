@@ -283,8 +283,9 @@ export async function handleAdminUpdateLocalUser(
         }
 
         binds.push(userId);
+        const updateSql = `UPDATE local_auth_users SET ${setClauses.join(', ')} WHERE id = ?`;
         const result = await env.DB
-            .prepare(`UPDATE local_auth_users SET ${setClauses.join(', ')} WHERE id = ?`)
+            .prepare(updateSql)
             .bind(...binds)
             .run();
 
