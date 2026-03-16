@@ -7,8 +7,8 @@
  * deserialized via Zod transforms on read.
  */
 
-import type { D1Database } from '../types';
-import { type CreateFeatureFlagRequest, type FeatureFlagRow, FeatureFlagRowSchema, type UpdateFeatureFlagRequest } from '../schemas';
+import type { D1Database } from '../types.ts';
+import { type CreateFeatureFlagRequest, type FeatureFlagRow, FeatureFlagRowSchema, type UpdateFeatureFlagRequest } from '../schemas.ts';
 
 // ---------------------------------------------------------------------------
 // Types

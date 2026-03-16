@@ -169,6 +169,12 @@ export interface ApiRequestEventData extends BaseEventData {
     contentType?: string;
     /** Response size in bytes */
     responseSizeBytes?: number;
+    /** Authenticated user ID (null/undefined for anonymous requests) */
+    userId?: string | null;
+    /** Authentication method used */
+    authMethod?: string;
+    /** User tier */
+    tier?: string;
 }
 
 /**

@@ -1768,6 +1768,343 @@
             },
             "description": "Executes a SELECT-only SQL query against PostgreSQL for debugging (mirrors /admin/storage/query for D1)"
           }
+        },
+        {
+          "name": "List local auth users",
+          "description": "Returns a paginated list of all local auth users.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/local-users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "local-users"
+              ],
+              "query": [
+                {
+                  "key": "limit",
+                  "value": "{{limit}}",
+                  "description": "Maximum number of users to return",
+                  "disabled": true
+                },
+                {
+                  "key": "offset",
+                  "value": "{{offset}}",
+                  "description": "Number of users to skip (for pagination)",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns a paginated list of all local auth users.\nResponses never include `password_hash`.\nRequires Admin tier + admin role.\n"
+          }
+        },
+        {
+          "name": "Create a local auth user",
+          "description": "Create a new local auth user with any valid role and tier.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/local-users",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "local-users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"identifier\": \"newuser@example.com\",\n    \"password\": \"securepass123\",\n    \"role\": \"user\",\n    \"tier\": \"free\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Create a new local auth user with any valid role and tier.\nAdmins can create users with privileged roles (e.g. `admin`) that cannot be self-registered.\nRequires Admin tier + admin role.\n"
+          }
+        },
+        {
+          "name": "Get a local auth user",
+          "description": "Returns the public profile of a single local auth user by UUID.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/local-users/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "local-users",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}",
+                  "description": "Path parameter: userId"
+                }
+              ]
+            },
+            "description": "Returns the public profile of a single local auth user by UUID.\nRequires Admin tier + admin role.\n"
+          }
+        },
+        {
+          "name": "Update a local auth user",
+          "description": "Update a user's `tier`, `role`, and/or `api_disabled` flag.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/admin/local-users/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "local-users",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}",
+                  "description": "Path parameter: userId"
+                }
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"api_disabled\": 1\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Update a user's `tier`, `role`, and/or `api_disabled` flag.\nTier and role are independent fields — changing role does not automatically change tier unless\nno explicit tier is provided (in which case the role's default tier is applied).\nRequires Admin tier + admin role.\n"
+          }
+        },
+        {
+          "name": "Delete a local auth user",
+          "description": "Permanently deletes a local auth user by UUID.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/local-users/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "local-users",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}",
+                  "description": "Path parameter: userId"
+                }
+              ]
+            },
+            "description": "Permanently deletes a local auth user by UUID.\nRequires Admin tier + admin role.\n"
+          }
+        },
+        {
+          "name": "Inspect active auth registries",
+          "description": "Returns a read-only snapshot of all three extensibility registries at runtime:",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/auth/config",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "auth",
+                "config"
+              ]
+            },
+            "description": "Returns a read-only snapshot of all three extensibility registries at runtime:\n- `LOCAL_ROLE_REGISTRY` — all defined roles, their tiers, and self-register flag\n- `TIER_REGISTRY` — all tiers with rate limits and ordering\n- `ROUTE_PERMISSION_REGISTRY` — all registered route permission rules\n\nAlso reports which auth provider is active (`local-jwt` vs `clerk`).\nRequires Admin tier + admin role.\n"
+          }
+        },
+        {
+          "name": "Get per-user API usage statistics",
+          "description": "Returns KV-backed API usage counters for a specific user:",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/admin/usage/:userId",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "admin",
+                "usage",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "{{userId}}",
+                  "description": "Path parameter: userId"
+                }
+              ],
+              "query": [
+                {
+                  "key": "days",
+                  "value": "{{days}}",
+                  "description": "Number of past days to include in the daily breakdown",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Returns KV-backed API usage counters for a specific user:\n- `total` — lifetime request count, first/last seen timestamps\n- `days` — per-day breakdown for the requested lookback window (max 90 days)\n\nRequires Admin tier + admin role.\n"
+          }
         }
       ]
     },
@@ -2588,6 +2925,201 @@
               }
             },
             "description": "Receives Clerk webhook events (user.created, user.updated, user.deleted, session.created).\nVerified via Svix webhook signature. This endpoint is called by Clerk's webhook infrastructure\nand should not be called directly.\n"
+          }
+        }
+      ]
+    },
+    {
+      "name": "LocalAuth",
+      "description": "Local JWT auth bridge — self-contained sign-up/login until Clerk is production-ready. When `CLERK_JWKS_URL` is set the provider auto-switches to Clerk and these endpoints are no longer used.",
+      "item": [
+        {
+          "name": "Register a new local account",
+          "description": "Create a new account using an email address or E.164 phone number and password.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 201', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/signup",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "signup"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"identifier\": \"user@example.com\",\n    \"password\": \"minEightChars\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Create a new account using an email address or E.164 phone number and password.\nAll self-registered users receive the `user` role (Free tier).\nAdmin role must be granted via `POST /admin/local-users`.\n\n**Rate limited** (anonymous tier). Returns a signed HS256 JWT on success.\n\n> Only active when `CLERK_JWKS_URL` is not configured. When Clerk is live,\n> sign up via the Clerk-hosted UI instead.\n"
+          }
+        },
+        {
+          "name": "Authenticate and receive a JWT",
+          "description": "Authenticate with an identifier (email or phone) and password.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"identifier\": \"user@example.com\",\n    \"password\": \"yourpassword\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Authenticate with an identifier (email or phone) and password.\nReturns a signed HS256 JWT valid for 24 hours.\n\nTiming-safe: always runs full PBKDF2 derivation even for unknown identifiers\nto prevent user enumeration via timing side-channels.\n\n**Rate limited** (anonymous tier).\n"
+          }
+        },
+        {
+          "name": "Get current user profile",
+          "description": "Returns the authenticated user's public profile.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            },
+            "description": "Returns the authenticated user's public profile.\nRequires a valid `Authorization: Bearer <jwt>` header.\n"
+          }
+        },
+        {
+          "name": "Change the current user's password",
+          "description": "Update the authenticated user's password.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/change-password",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "change-password"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Update the authenticated user's password.\nRequires a valid `Authorization: Bearer <jwt>` header and the correct current password.\n"
           }
         }
       ]

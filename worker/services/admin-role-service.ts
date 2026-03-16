@@ -9,9 +9,9 @@
  */
 
 import { z } from 'zod';
-import type { D1Database } from '../types';
-import type { AdminRoleAssignmentRow, AdminRoleRow, AssignRoleRequest, CreateAdminRoleRequest, ResolvedAdminContext, UpdateAdminRoleRequest } from '../schemas';
-import { AdminRoleAssignmentRowSchema, AdminRoleRowSchema, ResolvedAdminContextSchema } from '../schemas';
+import type { D1Database } from '../types.ts';
+import type { AdminRoleAssignmentRow, AdminRoleRow, AssignRoleRequest, CreateAdminRoleRequest, ResolvedAdminContext, UpdateAdminRoleRequest } from '../schemas.ts';
+import { AdminRoleAssignmentRowSchema, AdminRoleRowSchema, ResolvedAdminContextSchema } from '../schemas.ts';
 
 // ---------------------------------------------------------------------------
 // Constants

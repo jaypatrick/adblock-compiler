@@ -22,6 +22,7 @@
 import type { Env, HyperdriveBinding, IAuthProvider } from '../types.ts';
 import { ANONYMOUS_AUTH_CONTEXT, AuthScope, type IAuthContext, type IAuthMiddlewareResult, isTierSufficient, TIER_REGISTRY, UserTier } from '../types.ts';
 import { ClerkAuthProvider } from './clerk-auth-provider.ts';
+import { runTokenValidators } from './token-validator.ts';
 import { ApiKeyRowSchema, UserTierRowSchema } from '../schemas.ts';
 import { z } from 'zod';
 
@@ -357,13 +358,26 @@ export async function authenticateRequestUnified(
                 scopes: [],
                 authMethod: provider.authMethod,
             };
+
+            // ZTA: run all registered token validators (tamper detection, revocation, etc.)
+            const validationResult = await runTokenValidators(token, context, env);
+            if (!validationResult.valid) {
+                return {
+                    context: { ...ANONYMOUS_AUTH_CONTEXT },
+                    response: new Response(
+                        JSON.stringify({ success: false, error: validationResult.error ?? 'Token validation failed' }),
+                        { status: 401, headers: { 'Content-Type': 'application/json' } },
+                    ),
+                };
+            }
+
             return { context };
         }
 
         return {
             context: { ...ANONYMOUS_AUTH_CONTEXT },
             response: new Response(
-                JSON.stringify({ error: providerResult.error ?? 'Invalid JWT' }),
+                JSON.stringify({ success: false, error: providerResult.error ?? 'Invalid JWT' }),
                 { status: 401, headers: { 'Content-Type': 'application/json' } },
             ),
         };
@@ -373,7 +387,7 @@ export async function authenticateRequestUnified(
     return {
         context: { ...ANONYMOUS_AUTH_CONTEXT },
         response: new Response(
-            JSON.stringify({ error: 'Unrecognised credential format — expected a Clerk JWT or abc_-prefixed API key' }),
+            JSON.stringify({ success: false, error: 'Unrecognised credential format — expected a Clerk JWT or abc_-prefixed API key' }),
             { status: 401, headers: { 'Content-Type': 'application/json' } },
         ),
     };
@@ -498,9 +512,10 @@ export function requireTier(context: IAuthContext, minTier: UserTier): Response 
  * ```
  */
 export function requireScope(context: IAuthContext, ...requiredScopes: string[]): Response | null {
-    // JWT-authenticated users (Clerk sessions) bypass scope checks — they own
-    // the account and are limited only by tier, not by API-key scopes.
-    if (context.authMethod === 'clerk-jwt') {
+    // JWT-authenticated users (Clerk session or local JWT bridge) bypass scope
+    // checks — they own the account and are limited only by tier, not by
+    // API-key scopes.
+    if (context.authMethod === 'clerk-jwt' || context.authMethod === 'local-jwt') {
         return null;
     }
 

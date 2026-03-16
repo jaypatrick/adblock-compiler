@@ -16,7 +16,7 @@
  * @module admin-analytics-events
  */
 
-import type { Env } from '../types';
+import type { Env } from '../types.ts';
 
 // ---------------------------------------------------------------------------
 // Index constants (Analytics Engine `indexes[0]` — max 32 bytes)

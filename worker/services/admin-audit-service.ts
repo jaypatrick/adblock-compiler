@@ -10,8 +10,8 @@
  * The audit_logs table is **append-only**: no UPDATE or DELETE operations exist.
  */
 
-import { type AdminAuditLogRow, AdminAuditLogRowSchema, type AuditLogQuery, AuditLogQuerySchema } from '../schemas';
-import type { D1Database } from '../types';
+import { type AdminAuditLogRow, AdminAuditLogRowSchema, type AuditLogQuery, AuditLogQuerySchema } from '../schemas.ts';
+import type { D1Database } from '../types.ts';
 
 // ---------------------------------------------------------------------------
 // Types
