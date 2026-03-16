@@ -14,11 +14,7 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import {
-    checkRoutePermission,
-    ROUTE_PERMISSION_REGISTRY,
-    resolveRoutePermission,
-} from './route-permissions.ts';
+import { checkRoutePermission, resolveRoutePermission, ROUTE_PERMISSION_REGISTRY } from './route-permissions.ts';
 import { type IAuthContext, UserTier } from '../types.ts';
 
 // ============================================================================

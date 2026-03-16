@@ -25,14 +25,7 @@
 import { ZodError } from 'zod';
 import { ANONYMOUS_AUTH_CONTEXT, type Env, type IAuthContext } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
-import {
-    LocalChangePasswordRequestSchema,
-    LocalLoginRequestSchema,
-    LocalSignupRequestSchema,
-    LocalUserPublicSchema,
-    type LocalUserRow,
-    LocalUserRowSchema,
-} from '../schemas.ts';
+import { LocalChangePasswordRequestSchema, LocalLoginRequestSchema, LocalSignupRequestSchema, LocalUserPublicSchema, type LocalUserRow, LocalUserRowSchema } from '../schemas.ts';
 import { hashPassword, verifyPassword } from '../utils/password.ts';
 import { signLocalJWT } from '../utils/local-jwt.ts';
 import { DEFAULT_ROLE, tierForRole } from '../utils/local-auth-roles.ts';
@@ -73,8 +66,7 @@ function trackFailure(
  * `salt:hash` format so `verifyPassword` always performs the full PBKDF2
  * derivation before returning false.
  */
-const DUMMY_HASH =
-    'AAAAAAAAAAAAAAAAAAAAAA:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+const DUMMY_HASH = 'AAAAAAAAAAAAAAAAAAAAAA:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
 
 // ============================================================================
 // POST /auth/signup

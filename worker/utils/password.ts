@@ -54,7 +54,7 @@ function fromBase64Url(b64url: string): Uint8Array<ArrayBuffer> {
  * Derive PBKDF2 key material from a password and salt.
  * Returns raw bytes (KEY_BYTES length).
  */
-async function pbkdf2Derive(password: string, salt: Uint8Array): Promise<Uint8Array> {
+async function pbkdf2Derive(password: string, salt: Uint8Array<ArrayBuffer>): Promise<Uint8Array> {
     const subtle = crypto.subtle;
     const enc = new TextEncoder();
 

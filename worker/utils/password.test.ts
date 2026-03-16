@@ -78,7 +78,7 @@ Deno.test('hashPassword + verifyPassword - round-trip with various passwords', a
         'With spaces and CAPS!',
         'unicode-🔑-password',
         'a'.repeat(128), // max length
-        '12345678',      // min length
+        '12345678', // min length
     ];
 
     for (const pw of passwords) {
