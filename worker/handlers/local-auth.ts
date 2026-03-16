@@ -25,13 +25,7 @@
 import { ZodError } from 'zod';
 import { ANONYMOUS_AUTH_CONTEXT, type Env, type IAuthContext, UserTier } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
-import {
-    LocalChangePasswordRequestSchema,
-    LocalLoginRequestSchema,
-    LocalSignupRequestSchema,
-    LocalUserPublicSchema,
-    type LocalUserRow,
-} from '../schemas.ts';
+import { LocalChangePasswordRequestSchema, LocalLoginRequestSchema, LocalSignupRequestSchema, LocalUserPublicSchema, type LocalUserRow } from '../schemas.ts';
 import { hashPassword, verifyPassword } from '../utils/password.ts';
 import { signLocalJWT } from '../utils/local-jwt.ts';
 import { DEFAULT_ROLE, tierForRole } from '../utils/local-auth-roles.ts';
@@ -176,28 +170,11 @@ export async function handleLocalSignup(
         // 6. Issue JWT
         const token = await signLocalJWT(id, role, tier, env.JWT_SECRET);
 
-<<<<<<< Updated upstream
-        // 7. Fetch the full row so the response matches LocalUserPublic schema (includes api_disabled, timestamps)
-        const row = await env.DB
-            .prepare(
-                `SELECT id, identifier, identifier_type, role, tier, api_disabled, created_at, updated_at
-                 FROM local_auth_users WHERE id = ? LIMIT 1`,
-            )
-            .bind(id)
-            .first<Record<string, unknown>>();
-
-        // Parse with LocalUserPublicSchema — the SELECT above intentionally omits password_hash
-        const userResult = LocalUserPublicSchema.parse(row);
-
-        return JsonResponse.success(
-            { token, user: userResult },
-=======
         return JsonResponse.success(
             {
                 token,
                 user: LocalUserPublicSchema.parse(toUserRow(created)),
             },
->>>>>>> Stashed changes
             { status: 201 },
         );
     } catch (error) {
@@ -329,14 +306,9 @@ export async function handleLocalMe(
 
         if (!prismaUser) return JsonResponse.error('User not found', 404);
 
-<<<<<<< Updated upstream
-        const result = LocalUserPublicSchema.safeParse(row);
-        if (!result.success) return JsonResponse.serverError('User record is malformed');
-=======
-        const user = toUserRow(prismaUser);
->>>>>>> Stashed changes
+        const user = LocalUserPublicSchema.parse(toUserRow(prismaUser));
 
-        return JsonResponse.success({ user: result.data });
+        return JsonResponse.success({ user });
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         // deno-lint-ignore no-console
@@ -430,4 +402,3 @@ export async function handleLocalChangePassword(
         return JsonResponse.serverError('Password change failed');
     }
 }
-
