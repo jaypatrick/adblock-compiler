@@ -11,7 +11,7 @@
  */
 
 import { assertEquals } from '@std/assert';
-import { createAdminLogger, createRequestId, sanitizeForLog, startTimer, withAdminTracing } from './admin-logger';
+import { createAdminLogger, createRequestId, sanitizeForLog, startTimer, withAdminTracing } from './admin-logger.ts';
 
 // ============================================================================
 // Helpers

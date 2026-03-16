@@ -9,7 +9,7 @@
  * Boolean columns (is_active, is_public) are stored as 1/0 integers.
  */
 
-import type { D1Database } from '../types';
+import type { D1Database } from '../types.ts';
 import {
     type AdminAnnouncementRow,
     AdminAnnouncementRowSchema,
@@ -25,7 +25,7 @@ import {
     type UpdateEndpointOverrideRequest,
     type UpdateScopeConfigRequest,
     type UpdateTierConfigRequest,
-} from '../schemas';
+} from '../schemas.ts';
 
 // ---------------------------------------------------------------------------
 // Private helpers

@@ -31,7 +31,7 @@
  * the module is imported multiple times.
  */
 
-import type { Env } from '../types';
+import type { Env } from '../types.ts';
 
 // ---------------------------------------------------------------------------
 // Types

@@ -13,9 +13,9 @@
  * All functions are pure (no module-level state) and safe to call concurrently.
  */
 
-import type { Env } from '../types';
-import { type IScopeConfig, isTierSufficient, type ITierConfig, SCOPE_REGISTRY, TIER_RATE_LIMITS, TIER_REGISTRY, UserTier } from '../types';
-import { listScopeConfigs, listTierConfigs } from './admin-config-service';
+import type { Env } from '../types.ts';
+import { type IScopeConfig, isTierSufficient, type ITierConfig, SCOPE_REGISTRY, TIER_RATE_LIMITS, TIER_REGISTRY, UserTier } from '../types.ts';
+import { listScopeConfigs, listTierConfigs } from './admin-config-service.ts';
 
 // ---------------------------------------------------------------------------
 // Constants

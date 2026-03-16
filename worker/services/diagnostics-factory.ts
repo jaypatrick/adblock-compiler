@@ -64,7 +64,7 @@ import { ConsoleDiagnosticsProvider, NoOpDiagnosticsProvider } from '../../src/d
 import type { IDiagnosticsProvider } from '../../src/diagnostics/IDiagnosticsProvider.ts';
 import { OpenTelemetryDiagnosticsProvider } from '../../src/diagnostics/OpenTelemetryDiagnosticsProvider.ts';
 import { SentryDiagnosticsProvider } from '../../src/diagnostics/SentryDiagnosticsProvider.ts';
-import type { Env } from '../types';
+import type { Env } from '../types.ts';
 
 // ---------------------------------------------------------------------------
 // Provider registry

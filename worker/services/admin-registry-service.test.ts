@@ -11,9 +11,9 @@
  */
 
 import { assertEquals } from '@std/assert';
-import { SCOPE_REGISTRY, TIER_RATE_LIMITS, TIER_REGISTRY, UserTier } from '../types';
-import { getTierRateLimit, invalidateScopeCache, invalidateTierCache, isTierSufficientDynamic, loadScopeRegistry, loadTierRegistry } from './admin-registry-service';
-import type { Env } from '../types';
+import { SCOPE_REGISTRY, TIER_RATE_LIMITS, TIER_REGISTRY, UserTier } from '../types.ts';
+import { getTierRateLimit, invalidateScopeCache, invalidateTierCache, isTierSufficientDynamic, loadScopeRegistry, loadTierRegistry } from './admin-registry-service.ts';
+import type { Env } from '../types.ts';
 
 // ============================================================================
 // Mock KV Namespace
