@@ -123,6 +123,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.64.0] - 2026-03-16
+
+### Added- add local auth + admin user management endpoints to OpenAPI spec and fix role docs
+- ZTA token validation, per-user API access control, usage tracking, and api_disabled flag
+- route permission registry + admin user management + rename guest→user role
+- local JWT auth bridge — signup/login/me/change-password + role registry + ZTA auth fixes
+
+### Fixed
+
+- regenerate cloudflare-schema.yaml with BearerAuth security scheme
+- regenerate cloudflare-schema.yaml with BearerAuth security scheme
+- local-auth signup parse with LocalUserPublicSchema, /auth/me consistent shape, OpenAPI BearerAuth on auth endpoints
+- apply second round of review feedback — schema alignment, idempotent migration, auth envelope, doc examples
+- resolve CI failures on local JWT auth branch
+- apply all PR review feedback — security events, tier validation, Clerk mode guard, /admin/storage routing, response shape alignment
+- add missing .ts extensions to relative imports in worker/services
+- align api_disabled TTL to 90 days and use userId in route permission check
+- resolve CI lint and type errors in admin-users, local-jwt, password
+
+
 ## [0.63.0] - 2026-03-16
 
 ### Added- **testing**: unified testing strategy — 52 new tests, shared fixtures, docs (#1118)
