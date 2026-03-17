@@ -83,63 +83,63 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     // ── Fully public (Anonymous — no JWT required) ─────────────────────────────
     // Config/bootstrap endpoints the Angular SPA needs before auth loads.
     // Health and auth entry-points are intentionally public.
-    ['/health',                   { minTier: UserTier.Anonymous, description: 'Health check' }],
-    ['/health/*',                  { minTier: UserTier.Anonymous, description: 'Health sub-endpoints' }],
-    ['/metrics',                   { minTier: UserTier.Anonymous, description: 'Public aggregate metrics' }],
-    ['/auth/signup',               { minTier: UserTier.Anonymous, description: 'Register new account' }],
-    ['/auth/login',                { minTier: UserTier.Anonymous, description: 'Authenticate' }],
+    ['/health', { minTier: UserTier.Anonymous, description: 'Health check' }],
+    ['/health/*', { minTier: UserTier.Anonymous, description: 'Health sub-endpoints' }],
+    ['/metrics', { minTier: UserTier.Anonymous, description: 'Public aggregate metrics' }],
+    ['/auth/signup', { minTier: UserTier.Anonymous, description: 'Register new account' }],
+    ['/auth/login', { minTier: UserTier.Anonymous, description: 'Authenticate' }],
     // Clerk webhook uses SVIX signature — not a user JWT
-    ['/webhooks/*',                { minTier: UserTier.Anonymous, description: 'Webhook receivers (self-authenticated)' }],
+    ['/webhooks/*', { minTier: UserTier.Anonymous, description: 'Webhook receivers (self-authenticated)' }],
 
     // ── Free tier (any authenticated user) ────────────────────────────────────
     // Compile / transform
-    ['/compile',                   { minTier: UserTier.Free, description: 'Compile filter lists' }],
-    ['/compile/stream',            { minTier: UserTier.Free, description: 'Streaming compile' }],
-    ['/compile/batch',             { minTier: UserTier.Free, description: 'Batch compile' }],
-    ['/ast/parse',                 { minTier: UserTier.Free, description: 'Parse rules to AST' }],
-    ['/validate',                  { minTier: UserTier.Free, description: 'Validate filter rules' }],
-    ['/validate-rule',             { minTier: UserTier.Free, description: 'Validate single rule' }],
-    ['/ws/compile',                { minTier: UserTier.Free, description: 'WebSocket compile (Free+)' }],
+    ['/compile', { minTier: UserTier.Free, description: 'Compile filter lists' }],
+    ['/compile/stream', { minTier: UserTier.Free, description: 'Streaming compile' }],
+    ['/compile/batch', { minTier: UserTier.Free, description: 'Batch compile' }],
+    ['/ast/parse', { minTier: UserTier.Free, description: 'Parse rules to AST' }],
+    ['/validate', { minTier: UserTier.Free, description: 'Validate filter rules' }],
+    ['/validate-rule', { minTier: UserTier.Free, description: 'Validate single rule' }],
+    ['/ws/compile', { minTier: UserTier.Free, description: 'WebSocket compile (Free+)' }],
     // User identity & settings
-    ['/auth/me',                   { minTier: UserTier.Free, description: 'Current user profile' }],
-    ['/auth/change-password',      { minTier: UserTier.Free, description: 'Update password' }],
-    ['/auth/profile',              { minTier: UserTier.Free, description: 'Update profile' }],
-    ['/auth/bootstrap-admin',      { minTier: UserTier.Free, description: 'One-time admin bootstrap (email-gated)' }],
+    ['/auth/me', { minTier: UserTier.Free, description: 'Current user profile' }],
+    ['/auth/change-password', { minTier: UserTier.Free, description: 'Update password' }],
+    ['/auth/profile', { minTier: UserTier.Free, description: 'Update profile' }],
+    ['/auth/bootstrap-admin', { minTier: UserTier.Free, description: 'One-time admin bootstrap (email-gated)' }],
     // API keys (user-owned)
-    ['/keys',                      { minTier: UserTier.Free, description: 'API key management' }],
-    ['/keys/*',                    { minTier: UserTier.Free, description: 'API key operations' }],
+    ['/keys', { minTier: UserTier.Free, description: 'API key management' }],
+    ['/keys/*', { minTier: UserTier.Free, description: 'API key operations' }],
     // Custom rules
-    ['/rules',                     { minTier: UserTier.Free, description: 'Custom rule management' }],
-    ['/rules/*',                   { minTier: UserTier.Free, description: 'Custom rule operations' }],
+    ['/rules', { minTier: UserTier.Free, description: 'Custom rule management' }],
+    ['/rules/*', { minTier: UserTier.Free, description: 'Custom rule operations' }],
     // Queue (read/write)
-    ['/queue/stats',               { minTier: UserTier.Free, description: 'Queue statistics' }],
-    ['/queue/history',             { minTier: UserTier.Free, description: 'Queue job history' }],
-    ['/queue/results/*',           { minTier: UserTier.Free, description: 'Retrieve async job results' }],
-    ['/queue/cancel/*',            { minTier: UserTier.Free, description: 'Cancel queued job' }],
+    ['/queue/stats', { minTier: UserTier.Free, description: 'Queue statistics' }],
+    ['/queue/history', { minTier: UserTier.Free, description: 'Queue job history' }],
+    ['/queue/results/*', { minTier: UserTier.Free, description: 'Retrieve async job results' }],
+    ['/queue/cancel/*', { minTier: UserTier.Free, description: 'Cancel queued job' }],
     // Notifications & logging
-    ['/notify',                    { minTier: UserTier.Free, description: 'Send notification' }],
-    ['/log',                       { minTier: UserTier.Free, description: 'Client-side log ingestion' }],
+    ['/notify', { minTier: UserTier.Free, description: 'Send notification' }],
+    ['/log', { minTier: UserTier.Free, description: 'Client-side log ingestion' }],
     // URL proxy (SSRF-protected inside handler)
-    ['/proxy/*',                   { minTier: UserTier.Free, description: 'SSRF-protected URL proxy' }],
+    ['/proxy/*', { minTier: UserTier.Free, description: 'SSRF-protected URL proxy' }],
 
     // ── Pro tier (paid / upgraded) ─────────────────────────────────────────────
-    ['/compile/async',             { minTier: UserTier.Pro, description: 'Async compilation (Pro+)' }],
-    ['/compile/batch/async',       { minTier: UserTier.Pro, description: 'Async batch compilation (Pro+)' }],
-    ['/workflow/*',                { minTier: UserTier.Pro, description: 'Workflow execution (Pro+)' }],
+    ['/compile/async', { minTier: UserTier.Pro, description: 'Async compilation (Pro+)' }],
+    ['/compile/batch/async', { minTier: UserTier.Pro, description: 'Async batch compilation (Pro+)' }],
+    ['/workflow/*', { minTier: UserTier.Pro, description: 'Workflow execution (Pro+)' }],
 
     // ── Admin tier (Admin role required) ──────────────────────────────────────
     // Wildcard catch-all for all /admin/* sub-paths (longest-prefix wins for specifics)
-    ['/admin/*',                   { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin operations (catch-all)' }],
+    ['/admin/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin operations (catch-all)' }],
     // Explicit entries (same tier — kept for documentation clarity)
-    ['/admin/auth/config',         { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Auth configuration inspector' }],
-    ['/admin/local-users',         { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List local auth users' }],
-    ['/admin/local-users/*',       { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Local user management (update tier/role)' }],
-    ['/admin/usage/*',             { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Per-user API usage statistics' }],
-    ['/admin/storage',             { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin panel' }],
-    ['/admin/storage/*',           { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin operations' }],
-    ['/admin/auth/api-keys',       { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key management' }],
-    ['/admin/auth/api-keys/*',     { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key operations' }],
-    ['/metrics/prometheus',        { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Prometheus metrics scrape' }],
+    ['/admin/auth/config', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Auth configuration inspector' }],
+    ['/admin/local-users', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List local auth users' }],
+    ['/admin/local-users/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Local user management (update tier/role)' }],
+    ['/admin/usage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Per-user API usage statistics' }],
+    ['/admin/storage', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin panel' }],
+    ['/admin/storage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin operations' }],
+    ['/admin/auth/api-keys', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key management' }],
+    ['/admin/auth/api-keys/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key operations' }],
+    ['/metrics/prometheus', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Prometheus metrics scrape' }],
 ]);
 
 // ============================================================================
