@@ -88,7 +88,7 @@ destinations = [ "sentry-traces" ]
 #       All secrets use `wrangler secret put`.
 [vars]
 # Keep in sync with VERSION in src/version.ts. Run `deno task version:sync` to propagate.
-COMPILER_VERSION = "0.64.0"
+COMPILER_VERSION = "0.65.0"
 ENVIRONMENT = "production"
 # Clerk publishable key — uncomment and set to pk_live_... when Clerk is production-ready.
 # To activate Clerk: uncomment both lines below and also set CLERK_JWKS_URL.
