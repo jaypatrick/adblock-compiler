@@ -295,7 +295,7 @@ export async function routeAdminStorage(
     routePath: string,
     request: Request,
     env: Env,
-    authContext: IAuthContext,
+    _authContext: IAuthContext,
 ): Promise<Response> {
     // ZTA: permission check is enforced in router.ts before this function is called.
     // Defense-in-depth: also require CF Access JWT when configured.
