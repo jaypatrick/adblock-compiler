@@ -10,7 +10,6 @@
 import { JsonResponse } from '../utils/index.ts';
 import type { Env, IAuthContext, StorageStats, TableInfo } from '../types.ts';
 import { AdminQueryRequestSchema } from '../schemas.ts';
-import { checkRoutePermission } from '../utils/route-permissions.ts';
 import { verifyCfAccessJwt } from '../middleware/cf-access.ts';
 
 // ============================================================================
@@ -283,8 +282,9 @@ export async function handleAdminQuery(request: Request, env: Env): Promise<Resp
 /**
  * Route handler for all /admin/storage/* endpoints.
  *
- * ZTA: Verifies JWT admin tier + role (via checkRoutePermission) before any business logic.
- * Also validates Cloudflare Access JWT when CF_ACCESS_AUD is configured.
+ * ZTA: Permission check (admin tier + role) is enforced in router.ts before
+ * this function is called, so unauthorized requests never reach this module.
+ * Defense-in-depth: also validates Cloudflare Access JWT when configured.
  *
  * @param routePath   - Path with /api prefix stripped (e.g. "/admin/storage/stats")
  * @param request     - Incoming request
@@ -297,11 +297,8 @@ export async function routeAdminStorage(
     env: Env,
     authContext: IAuthContext,
 ): Promise<Response> {
-    // ZTA: verify JWT admin tier + role via registry (returns 401 for anon, 403 for wrong tier/role)
-    const permDenied = checkRoutePermission(routePath, authContext);
-    if (permDenied) return permDenied;
-
-    // ZTA: defense-in-depth — also require CF Access JWT when configured
+    // ZTA: permission check is enforced in router.ts before this function is called.
+    // Defense-in-depth: also require CF Access JWT when configured.
     const cfAccess = await verifyCfAccessJwt(request, env);
     if (!cfAccess.valid) {
         return Response.json(

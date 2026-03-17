@@ -164,6 +164,20 @@ export async function handleRequest(
 
     // ── Admin storage (JWT admin auth, lazy) ──────────────────────────────
     if (routePath.startsWith('/admin/storage')) {
+        // ZTA: check permissions before the dynamic import to avoid loading
+        // the admin module for unauthorized requests and to emit centralized
+        // security-event telemetry consistent with all other permission denials.
+        const permDenied = checkRoutePermission(routePath, authContext);
+        if (permDenied) {
+            analytics.trackSecurityEvent({
+                eventType: 'auth_failure',
+                path: routePath,
+                method: request.method,
+                clientIpHash: AnalyticsService.hashIp(ip),
+                reason: 'route_permission_denied',
+            });
+            return permDenied;
+        }
         const { routeAdminStorage } = await import('./admin.ts');
         return routeAdminStorage(routePath, request, env, authContext);
     }

@@ -73,18 +73,7 @@ export class LocalAuthService {
 
         // ZTA: re-validate token every 5 minutes to ensure it hasn't been revoked
         // and to pick up any role/tier changes made by an admin.
-        this.revalidationInterval = setInterval(() => {
-            const tok = this._token();
-            if (!tok || !isPlatformBrowser(this.platformId)) return;
-            this.http
-                .get<{ user: LocalUser }>(`${this.apiBase}/auth/me`, {
-                    headers: { Authorization: `Bearer ${tok}` },
-                })
-                .subscribe({
-                    next: (res) => this._user.set(res.user),
-                    error: () => this.signOut(),
-                });
-        }, 5 * 60 * 1000); // 5 minutes
+        this.startRevalidation();
     }
 
     getToken(): string | null {
@@ -101,6 +90,7 @@ export class LocalAuthService {
         this.persist(res.token);
         this._token.set(res.token);
         this._user.set(res.user);
+        this.startRevalidation();
     }
 
     async signup(identifier: string, password: string): Promise<void> {
@@ -113,6 +103,7 @@ export class LocalAuthService {
         this.persist(res.token);
         this._token.set(res.token);
         this._user.set(res.user);
+        this.startRevalidation();
     }
 
     signOut(): void {
@@ -148,6 +139,32 @@ export class LocalAuthService {
                 headers: { Authorization: `Bearer ${tok}` },
             }),
         );
+    }
+
+    /**
+     * Start (or restart) the 5-minute /auth/me revalidation interval.
+     * Clears any existing interval first to prevent duplicates when called
+     * after login/signup on a session that was already active.
+     * Only runs in browser contexts.
+     */
+    private startRevalidation(): void {
+        if (!isPlatformBrowser(this.platformId)) return;
+        if (this.revalidationInterval !== null) {
+            clearInterval(this.revalidationInterval);
+            this.revalidationInterval = null;
+        }
+        this.revalidationInterval = setInterval(() => {
+            const tok = this._token();
+            if (!tok) return;
+            this.http
+                .get<{ user: LocalUser }>(`${this.apiBase}/auth/me`, {
+                    headers: { Authorization: `Bearer ${tok}` },
+                })
+                .subscribe({
+                    next: (res) => this._user.set(res.user),
+                    error: () => this.signOut(),
+                });
+        }, 5 * 60 * 1000); // 5 minutes
     }
 
     private loadToken(): string | null {

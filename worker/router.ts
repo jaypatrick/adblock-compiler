@@ -1,14 +1,14 @@
 /**
  * Thin orchestrator router for the Cloudflare Worker.
  *
- * This module demonstrates the modular routing pattern that the worker.ts
- * should migrate towards. It imports handlers from dedicated modules
- * and orchestrates routing with minimal logic.
+ * This module demonstrates the modular routing pattern.  It is kept for
+ * reference and for handling a narrow set of legacy endpoints.
  *
- * Migration path:
- * 1. Use this router for new endpoints
- * 2. Gradually move existing endpoints from worker.ts
- * 3. Eventually replace worker.ts with this pattern
+ * ⚠️  NOTE: This file is NOT the canonical Worker entrypoint.
+ * All production traffic is routed through worker/handlers/router.ts
+ * (handleRequest), which enforces unified auth + ZTA checkRoutePermission.
+ * Routes marked requireAuth here return 410 (migrated); do NOT add new
+ * endpoints to this file — add them to worker/handlers/router.ts instead.
  */
 
 import type { Env } from './types.ts';

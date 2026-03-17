@@ -37,9 +37,30 @@ import { AnalyticsService, type SecurityEventData } from '../../src/services/Ana
 // Internal helpers
 // ============================================================================
 
+// Maximum pre-normalization length before NFKC expansion (2× RFC 5321 limit
+// to accommodate pathological Unicode expansion cases without blocking normal input).
+const MAX_PRE_NORMALIZATION_LENGTH = 640;
+// RFC 5321 maximum email address length (local-part + '@' + domain).
+const RFC_5321_MAX_EMAIL_LENGTH = 320;
+
 /** Detect whether an identifier string is an email address. */
 function isEmail(identifier: string): boolean {
     return identifier.includes('@');
+}
+
+/**
+ * Canonicalize an email identifier: trim whitespace, NFKC-normalize, and
+ * lowercase so that case variants map to a single canonical form. Phone
+ * identifiers are returned trimmed only (case is not meaningful).
+ * Identifiers are length-capped before normalization to guard against
+ * Unicode normalization bombs (NFKC can expand certain sequences).
+ */
+function canonicalizeIdentifier(identifier: string): string {
+    const trimmed = identifier.trim().slice(0, MAX_PRE_NORMALIZATION_LENGTH);
+    if (!isEmail(trimmed)) return trimmed;
+    const normalized = trimmed.normalize('NFKC').toLowerCase();
+    // Enforce RFC 5321 email length limit post-normalization
+    return normalized.length <= RFC_5321_MAX_EMAIL_LENGTH ? normalized : normalized.slice(0, RFC_5321_MAX_EMAIL_LENGTH);
 }
 
 /** Emit a security event (fire-and-forget — never throws). */
@@ -120,7 +141,8 @@ export async function handleLocalSignup(
         );
     }
 
-    const { identifier, password } = parsed;
+    const { identifier: rawIdentifier, password } = parsed;
+    const identifier = canonicalizeIdentifier(rawIdentifier);
     const identifierType: 'email' | 'phone' = isEmail(identifier) ? 'email' : 'phone';
 
     try {
@@ -226,7 +248,8 @@ export async function handleLocalLogin(
         );
     }
 
-    const { identifier, password } = parsed;
+    const { identifier: rawIdentifier, password } = parsed;
+    const identifier = canonicalizeIdentifier(rawIdentifier);
 
     try {
         // 3. Look up user
@@ -518,8 +541,12 @@ export async function handleLocalUpdateProfile(
     const parsed = z.object({ identifier: z.string().email('Must be a valid email').optional() }).safeParse(body);
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Validation error');
 
-    const { identifier } = parsed.data;
-    if (!identifier) return JsonResponse.success({ message: 'No changes made' });
+    const { identifier: rawIdentifier } = parsed.data;
+    if (!rawIdentifier) return JsonResponse.success({ message: 'No changes made' });
+
+    // Canonicalize email before duplicate check and write — ensures identifiers
+    // are stored in a consistent form and that case variants don't bypass uniqueness.
+    const identifier = canonicalizeIdentifier(rawIdentifier);
 
     try {
         const existing = await env.DB
