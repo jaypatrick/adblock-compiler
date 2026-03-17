@@ -34,6 +34,7 @@ export class LocalAuthService {
     private readonly _token = signal<string | null>(null);
     private readonly _user = signal<LocalUser | null>(null);
     private readonly _isLoaded = signal(false);
+    private revalidationInterval: ReturnType<typeof setInterval> | null = null;
 
     readonly isLoaded = this._isLoaded.asReadonly();
     readonly isSignedIn = computed(() => this._token() !== null);
@@ -69,6 +70,21 @@ export class LocalAuthService {
                     this._isLoaded.set(true);
                 },
             });
+
+        // ZTA: re-validate token every 5 minutes to ensure it hasn't been revoked
+        // and to pick up any role/tier changes made by an admin.
+        this.revalidationInterval = setInterval(() => {
+            const tok = this._token();
+            if (!tok || !isPlatformBrowser(this.platformId)) return;
+            this.http
+                .get<{ user: LocalUser }>(`${this.apiBase}/auth/me`, {
+                    headers: { Authorization: `Bearer ${tok}` },
+                })
+                .subscribe({
+                    next: (res) => this._user.set(res.user),
+                    error: () => this.signOut(),
+                });
+        }, 5 * 60 * 1000); // 5 minutes
     }
 
     getToken(): string | null {
@@ -100,6 +116,10 @@ export class LocalAuthService {
     }
 
     signOut(): void {
+        if (this.revalidationInterval !== null) {
+            clearInterval(this.revalidationInterval);
+            this.revalidationInterval = null;
+        }
         this._token.set(null);
         this._user.set(null);
         try {
@@ -107,6 +127,27 @@ export class LocalAuthService {
         } catch {
             // sessionStorage not available
         }
+    }
+
+    async updateProfile(identifier: string): Promise<void> {
+        const tok = this._token();
+        if (!tok) throw new Error('Not authenticated');
+        const res = await firstValueFrom(
+            this.http.patch<{ user: LocalUser }>(`${this.apiBase}/auth/profile`, { identifier }, {
+                headers: { Authorization: `Bearer ${tok}` },
+            }),
+        );
+        this._user.set(res.user);
+    }
+
+    async changePassword(currentPassword: string, newPassword: string): Promise<void> {
+        const tok = this._token();
+        if (!tok) throw new Error('Not authenticated');
+        await firstValueFrom(
+            this.http.post(`${this.apiBase}/auth/change-password`, { currentPassword, newPassword }, {
+                headers: { Authorization: `Bearer ${tok}` },
+            }),
+        );
     }
 
     private loadToken(): string | null {

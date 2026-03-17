@@ -28,6 +28,10 @@ import { ThemeService } from '../../services/theme.service';
                 <!-- Local auth branch: identifier + sign-out -->
                 <div class="local-user">
                     <span class="local-user-email">{{ auth.userIdentifier() }}</span>
+                    <a routerLink="/profile" mat-stroked-button type="button">Profile</a>
+                    @if (auth.isAdmin()) {
+                        <a routerLink="/admin" mat-stroked-button type="button">Admin</a>
+                    }
                     <button mat-stroked-button type="button" (click)="signOut()">Sign out</button>
                 </div>
             } @else {

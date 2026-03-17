@@ -37,6 +37,12 @@ export const routes: Routes = [
         loadComponent: () => import('./auth/sign-up/sign-up.component').then((m) => m.SignUpComponent),
         title: 'Sign Up',
     },
+    {
+        path: 'profile',
+        loadComponent: () => import('./profile/profile.component').then((m) => m.ProfileComponent),
+        title: 'My Profile',
+        canActivate: [(_route, state) => import('./guards/auth.guard').then((m) => m.authGuard(_route, state))],
+    },
     // Common auth path aliases — redirect to canonical routes so users
     // arriving via /login, /log-in, /register etc. land on the right page.
     // pathMatch: 'full' ensures only the exact alias path is redirected;
@@ -50,18 +56,21 @@ export const routes: Routes = [
         loadComponent: () => import('./compiler/compiler.component').then((m) => m.CompilerComponent),
         title: 'Compiler',
         data: { description: 'Configure and run filter list compilations', metaDescription: 'Configure and compile adblock filter lists with real-time SSE streaming, batch processing, and async queue modes. Supports custom transformations and presets.' },
+        canActivate: [(_route, state) => import('./guards/auth.guard').then((m) => m.authGuard(_route, state))],
     },
     {
         path: 'performance',
         loadComponent: () => import('./performance/performance.component').then((m) => m.PerformanceComponent),
         title: 'Performance',
         data: { description: 'Real-time compilation performance metrics', metaDescription: 'Monitor real-time compilation performance metrics including latency percentiles, cache hit rates, and endpoint response times.' },
+        canActivate: [(_route, state) => import('./guards/auth.guard').then((m) => m.authGuard(_route, state))],
     },
     {
         path: 'validation',
         loadComponent: () => import('./validation/validation.component').then((m) => m.ValidationComponent),
         title: 'Validation',
         data: { description: 'Validate adblock filter rules', metaDescription: 'Validate adblock filter rules using the AGTree parser with color-coded error reporting and syntax highlighting.' },
+        canActivate: [(_route, state) => import('./guards/auth.guard').then((m) => m.authGuard(_route, state))],
     },
     {
         path: 'api-docs',

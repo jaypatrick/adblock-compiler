@@ -28,18 +28,19 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 
 interface AdminUser {
-    readonly clerk_user_id: string;
-    readonly email: string;
-    readonly display_name: string;
+    readonly id: string;
+    readonly identifier: string;
+    readonly identifier_type: 'email' | 'phone';
+    readonly role: string;
     readonly tier: string;
-    readonly admin_role: string | null;
+    readonly api_disabled: number;
     readonly created_at: string;
-    readonly last_sign_in: string | null;
+    readonly updated_at: string;
 }
 
 interface UserListResponse {
     readonly success: boolean;
-    readonly items: AdminUser[];
+    readonly users: AdminUser[];
     readonly total: number;
     readonly limit: number;
     readonly offset: number;
@@ -126,14 +127,16 @@ interface UserListResponse {
                 <p class="empty-state">No users found matching the current filters.</p>
             } @else {
                 <table mat-table [dataSource]="users()" class="users-table">
-                    <ng-container matColumnDef="email">
+                    <ng-container matColumnDef="identifier">
                         <th mat-header-cell *matHeaderCellDef>Email</th>
-                        <td mat-cell *matCellDef="let row">{{ row.email }}</td>
+                        <td mat-cell *matCellDef="let row">{{ row.identifier }}</td>
                     </ng-container>
 
-                    <ng-container matColumnDef="display_name">
-                        <th mat-header-cell *matHeaderCellDef>Name</th>
-                        <td mat-cell *matCellDef="let row">{{ row.display_name || '—' }}</td>
+                    <ng-container matColumnDef="role">
+                        <th mat-header-cell *matHeaderCellDef>Role</th>
+                        <td mat-cell *matCellDef="let row">
+                            <span class="role-chip">{{ row.role }}</span>
+                        </td>
                     </ng-container>
 
                     <ng-container matColumnDef="tier">
@@ -143,13 +146,13 @@ interface UserListResponse {
                         </td>
                     </ng-container>
 
-                    <ng-container matColumnDef="admin_role">
-                        <th mat-header-cell *matHeaderCellDef>Role</th>
+                    <ng-container matColumnDef="api_disabled">
+                        <th mat-header-cell *matHeaderCellDef>API</th>
                         <td mat-cell *matCellDef="let row">
-                            @if (row.admin_role) {
-                                <span class="role-chip">{{ row.admin_role }}</span>
+                            @if (row.api_disabled) {
+                                <span class="text-muted">disabled</span>
                             } @else {
-                                <span class="text-muted">none</span>
+                                <span>enabled</span>
                             }
                         </td>
                     </ng-container>
@@ -157,11 +160,6 @@ interface UserListResponse {
                     <ng-container matColumnDef="created_at">
                         <th mat-header-cell *matHeaderCellDef>Created</th>
                         <td mat-cell *matCellDef="let row">{{ row.created_at | date:'mediumDate' }}</td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="last_sign_in">
-                        <th mat-header-cell *matHeaderCellDef>Last Sign-In</th>
-                        <td mat-cell *matCellDef="let row">{{ row.last_sign_in ? (row.last_sign_in | date:'short') : '—' }}</td>
                     </ng-container>
 
                     <ng-container matColumnDef="actions">
@@ -173,7 +171,7 @@ interface UserListResponse {
                             <button mat-icon-button matTooltip="Change tier" (click)="openTierOverlay(row)">
                                 <mat-icon aria-hidden="true">layers</mat-icon>
                             </button>
-                            <button mat-icon-button matTooltip="Assign role" (click)="openRoleOverlay(row)">
+                            <button mat-icon-button matTooltip="Toggle admin role" (click)="openRoleOverlay(row)">
                                 <mat-icon aria-hidden="true">admin_panel_settings</mat-icon>
                             </button>
                         </td>
@@ -201,34 +199,34 @@ interface UserListResponse {
             <mat-card appearance="outlined" class="dialog-card" (click)="$event.stopPropagation()" (keydown.enter)="$event.stopPropagation()" tabindex="0" role="dialog">
                 <mat-card-header>
                     <mat-icon mat-card-avatar aria-hidden="true">person</mat-icon>
-                    <mat-card-title>{{ detailUser()!.display_name || detailUser()!.email }}</mat-card-title>
-                    <mat-card-subtitle>{{ detailUser()!.clerk_user_id }}</mat-card-subtitle>
+                    <mat-card-title>{{ detailUser()!.identifier }}</mat-card-title>
+                    <mat-card-subtitle>{{ detailUser()!.id }}</mat-card-subtitle>
                 </mat-card-header>
                 <mat-card-content>
                     <div class="detail-grid">
                         <div class="detail-row">
                             <span class="detail-label">Email</span>
-                            <span>{{ detailUser()!.email }}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Display Name</span>
-                            <span>{{ detailUser()!.display_name || '—' }}</span>
+                            <span>{{ detailUser()!.identifier }}</span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Tier</span>
                             <span class="tier-chip">{{ detailUser()!.tier }}</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Admin Role</span>
-                            <span>{{ detailUser()!.admin_role || 'None' }}</span>
+                            <span class="detail-label">Role</span>
+                            <span>{{ detailUser()!.role }}</span>
+                        </div>
+                        <div class="detail-row">
+                            <span class="detail-label">API</span>
+                            <span>{{ detailUser()!.api_disabled ? 'Disabled' : 'Enabled' }}</span>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Created</span>
                             <span>{{ detailUser()!.created_at | date:'medium' }}</span>
                         </div>
                         <div class="detail-row">
-                            <span class="detail-label">Last Sign-In</span>
-                            <span>{{ detailUser()!.last_sign_in ? (detailUser()!.last_sign_in | date:'medium') : 'Never' }}</span>
+                            <span class="detail-label">Updated</span>
+                            <span>{{ detailUser()!.updated_at | date:'medium' }}</span>
                         </div>
                     </div>
                 </mat-card-content>
@@ -246,7 +244,7 @@ interface UserListResponse {
                 <mat-card-header>
                     <mat-icon mat-card-avatar aria-hidden="true">layers</mat-icon>
                     <mat-card-title>Change Tier</mat-card-title>
-                    <mat-card-subtitle>{{ tierOverlayUser()!.email }}</mat-card-subtitle>
+                    <mat-card-subtitle>{{ tierOverlayUser()!.identifier }}</mat-card-subtitle>
                 </mat-card-header>
                 <mat-card-content>
                     <mat-form-field appearance="outline" class="full-width">
@@ -279,7 +277,7 @@ interface UserListResponse {
                 <mat-card-header>
                     <mat-icon mat-card-avatar aria-hidden="true">admin_panel_settings</mat-icon>
                     <mat-card-title>Assign Admin Role</mat-card-title>
-                    <mat-card-subtitle>{{ roleOverlayUser()!.email }}</mat-card-subtitle>
+                    <mat-card-subtitle>{{ roleOverlayUser()!.identifier }}</mat-card-subtitle>
                 </mat-card-header>
                 <mat-card-content>
                     <mat-form-field appearance="outline" class="full-width">
@@ -361,10 +359,10 @@ export class UsersComponent {
     readonly tierOverlayUser = signal<AdminUser | null>(null);
     readonly roleOverlayUser = signal<AdminUser | null>(null);
 
-    readonly displayedColumns = ['email', 'display_name', 'tier', 'admin_role', 'created_at', 'last_sign_in', 'actions'];
+    readonly displayedColumns = ['identifier', 'role', 'tier', 'api_disabled', 'created_at', 'actions'];
     readonly pageSize = 25;
-    readonly allTiers = ['free', 'starter', 'pro', 'enterprise', 'internal'];
-    readonly allRoles = ['super_admin', 'admin', 'moderator'];
+    readonly allTiers = ['anonymous', 'free', 'pro', 'admin'];
+    readonly allRoles = ['user', 'admin'];
 
     searchQuery = '';
     filterTier = '';
@@ -386,9 +384,9 @@ export class UsersComponent {
         if (this.filterTier) params = params.set('tier', this.filterTier);
         if (this.filterRole) params = params.set('role', this.filterRole);
 
-        this.http.get<UserListResponse>('/admin/auth/users', { params }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        this.http.get<UserListResponse>('/admin/local-users', { params }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: (res) => {
-                this.users.set(res.items ?? []);
+                this.users.set(res.users ?? []);
                 this.totalCount.set(res.total ?? 0);
                 this.loading.set(false);
             },
@@ -428,7 +426,7 @@ export class UsersComponent {
     }
 
     openRoleOverlay(user: AdminUser): void {
-        this.selectedRole = user.admin_role ?? '';
+        this.selectedRole = user.role ?? '';
         this.roleOverlayUser.set(user);
     }
 
@@ -443,7 +441,7 @@ export class UsersComponent {
         if (!user) return;
 
         this.saving.set(true);
-        this.http.patch(`/admin/auth/users/${user.clerk_user_id}`, { tier: this.selectedTier }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        this.http.patch(`/admin/local-users/${user.id}`, { tier: this.selectedTier }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: () => {
                 this.snackBar.open(`Tier updated to "${this.selectedTier}"`, 'OK', { duration: 3000 });
                 this.saving.set(false);
@@ -463,14 +461,7 @@ export class UsersComponent {
 
         this.saving.set(true);
 
-        const request = this.selectedRole
-            ? this.http.post('/admin/roles/assignments', {
-                clerk_user_id: user.clerk_user_id,
-                role_name: this.selectedRole,
-            })
-            : this.http.delete(`/admin/roles/assignments/${user.clerk_user_id}`);
-
-        request.pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        this.http.patch(`/admin/local-users/${user.id}`, { role: this.selectedRole }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: () => {
                 this.snackBar.open(
                     this.selectedRole ? `Role "${this.selectedRole}" assigned` : 'Role revoked',

@@ -95,4 +95,36 @@ export class AuthFacadeService {
             return { error: msg };
         }
     }
+
+    /**
+     * Update the signed-in user's profile (identifier/email).
+     * Local-auth only — no-op when Clerk is active.
+     */
+    async updateProfile(identifier: string): Promise<{ error?: string }> {
+        if (this.clerk.isAvailable()) return {};
+        try {
+            await this.local.updateProfile(identifier);
+            return {};
+        } catch (err) {
+            const httpBody = (err as { error?: { error?: string } })?.error;
+            const msg = httpBody?.error ?? (err instanceof Error ? err.message : 'Profile update failed.');
+            return { error: msg };
+        }
+    }
+
+    /**
+     * Change the signed-in user's password.
+     * Local-auth only — no-op when Clerk is active.
+     */
+    async changePassword(currentPassword: string, newPassword: string): Promise<{ error?: string }> {
+        if (this.clerk.isAvailable()) return {};
+        try {
+            await this.local.changePassword(currentPassword, newPassword);
+            return {};
+        } catch (err) {
+            const httpBody = (err as { error?: { error?: string } })?.error;
+            const msg = httpBody?.error ?? (err instanceof Error ? err.message : 'Password change failed.');
+            return { error: msg };
+        }
+    }
 }

@@ -127,12 +127,28 @@ Deno.test('checkRoutePermission - public endpoint /auth/signup allows anonymous'
     assertEquals(checkRoutePermission('/auth/signup', anonContext), null);
 });
 
-Deno.test('checkRoutePermission - unknown path always passes (no restriction)', () => {
-    assertEquals(checkRoutePermission('/unknown/path', anonContext), null);
+Deno.test('checkRoutePermission - unknown path returns 401 for anonymous (ZTA deny-by-default)', () => {
+    // Unregistered routes now require Free tier by default (ZTA).
+    // Authenticated users can still reach unregistered paths; anonymous users cannot.
+    const response = checkRoutePermission('/unknown/path', anonContext);
+    assertExists(response);
+    assertEquals(response!.status, 401);
 });
 
-Deno.test('checkRoutePermission - compile endpoint allows anonymous', () => {
-    assertEquals(checkRoutePermission('/compile', anonContext), null);
+Deno.test('checkRoutePermission - unknown path allows authenticated Free user (ZTA deny-by-default)', () => {
+    // Free-tier authenticated user can reach unregistered paths.
+    assertEquals(checkRoutePermission('/unknown/path', makeContext()), null);
+});
+
+Deno.test('checkRoutePermission - compile endpoint returns 401 for anonymous (requires sign-in)', () => {
+    // /compile is now Free-tier — anonymous users must sign in.
+    const response = checkRoutePermission('/compile', anonContext);
+    assertExists(response);
+    assertEquals(response!.status, 401);
+});
+
+Deno.test('checkRoutePermission - compile endpoint allows Free user', () => {
+    assertEquals(checkRoutePermission('/compile', makeContext()), null);
 });
 
 // ============================================================================

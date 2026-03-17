@@ -7,7 +7,7 @@
  */
 
 import { Component, ElementRef, afterNextRender, inject, viewChild, OnDestroy, effect, signal } from '@angular/core';
-import { Router } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -31,6 +31,7 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
     standalone: true,
     imports: [
         ReactiveFormsModule,
+        RouterLink,
         MatProgressSpinnerModule,
         MatFormFieldModule,
         MatInputModule,
@@ -93,6 +94,7 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
                             }
                         </button>
                     </form>
+                    <p class="auth-switch">Already have an account? <a routerLink="/sign-in" class="auth-link">Sign in</a></p>
                 </div>
             }
         </div>
@@ -136,6 +138,9 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
         }
         .full-width { width: 100%; }
         .submit-btn { margin-top: 0.5rem; }
+        .auth-switch { margin-top: 1rem; text-align: center; font-size: 0.875rem; color: var(--mat-sys-on-surface-variant); }
+        .auth-link { color: var(--mat-sys-primary); text-decoration: none; font-weight: 500; }
+        .auth-link:hover { text-decoration: underline; }
     `],
 })
 export class SignUpComponent implements OnDestroy {
@@ -180,6 +185,7 @@ export class SignUpComponent implements OnDestroy {
     }
 
     protected async submit(): Promise<void> {
+        this.form.markAllAsTouched();
         if (this.form.invalid || this.loading()) return;
         this.errorMessage.set(null);
         this.loading.set(true);

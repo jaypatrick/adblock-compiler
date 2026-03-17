@@ -10,9 +10,9 @@
  * SSR-safe: all Clerk operations are guarded by `isPlatformBrowser`.
  * Clerk JS is loaded lazily via dynamic import to keep the server bundle clean.
  *
- * Separate from AuthService (admin key management) — the two coexist:
+ * Separate from LocalAuthService (local JWT bridge) — the two coexist:
  *   - ClerkService handles user identity (JWT, sign-in/out, user profile)
- *   - AuthService handles legacy admin key authentication
+ *   - LocalAuthService handles local JWT authentication (pre-Clerk bridge)
  */
 
 import { Injectable, inject, signal, computed, PLATFORM_ID } from '@angular/core';
