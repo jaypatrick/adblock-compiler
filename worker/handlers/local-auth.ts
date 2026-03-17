@@ -487,9 +487,21 @@ export async function handleLocalUpdateProfile(
     request: Request,
     env: Env,
     authContext: IAuthContext,
+    analytics: AnalyticsService,
+    ip: string,
 ): Promise<Response> {
+    const path = '/auth/profile';
+
+    // 1. Must be authenticated (before rate limiting — we need authContext)
     const denied = requireAuth(authContext);
     if (denied) return denied;
+
+    // 2. Rate limit (authenticated context — keyed by userId)
+    const rl = await checkRateLimitTiered(env, ip, authContext);
+    if (!rl.allowed) {
+        trackFailure(analytics, { path, method: 'PATCH', reason: 'rate_limit', clientIpHash: AnalyticsService.hashIp(ip) });
+        return JsonResponse.rateLimited(Math.ceil((rl.resetAt - Date.now()) / 1000));
+    }
 
     if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
 

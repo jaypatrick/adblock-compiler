@@ -61,7 +61,7 @@ import { handleWebSocketUpgrade } from './websocket.ts';
 import { AnalyticsService } from '../src/services/AnalyticsService.ts';
 import { getDeploymentHistory, getDeploymentStats, getLatestDeployment } from '../src/deployment/version.ts';
 import { checkRateLimitTiered, validateRequestSize } from './middleware/index.ts';
-import { authenticateRequestUnified, requireAuth, requireTier } from './middleware/auth.ts';
+import { authenticateRequestUnified, requireAuth } from './middleware/auth.ts';
 import { ClerkAuthProvider } from './middleware/clerk-auth-provider.ts';
 import { LocalJwtAuthProvider } from './middleware/local-jwt-auth-provider.ts';
 import { API_DOCS_REDIRECT } from './utils/constants.ts';
@@ -3329,7 +3329,7 @@ const workerHandler: WorkerHandler = {
                 return await handleLocalBootstrapAdmin(request, env, authContext, analytics, ip);
             }
             if (routePath === '/auth/profile' && request.method === 'PATCH') {
-                return await handleLocalUpdateProfile(request, env, authContext);
+                return await handleLocalUpdateProfile(request, env, authContext, analytics, ip);
             }
         }
 
@@ -3341,9 +3341,11 @@ const workerHandler: WorkerHandler = {
         // ========================================================================
 
         if (routePath.startsWith('/admin/storage')) {
-            // Enforce Admin tier explicitly — this block exits before checkRoutePermission runs.
-            const tierDenied = requireTier(authContext, UserTier.Admin);
-            if (tierDenied) {
+            // Use checkRoutePermission so anonymous requests get 401 (not 403) and
+            // the requiredRole:'admin' declared in ROUTE_PERMISSION_REGISTRY is enforced.
+            // This block exits before the central permission check below.
+            const permDenied = checkRoutePermission(routePath, authContext);
+            if (permDenied) {
                 analytics.trackSecurityEvent({
                     eventType: 'auth_failure',
                     path: routePath,
@@ -3351,7 +3353,7 @@ const workerHandler: WorkerHandler = {
                     clientIpHash: AnalyticsService.hashIp(ip),
                     reason: 'insufficient_tier_admin_storage',
                 });
-                return tierDenied;
+                return permDenied;
             }
 
             // Defense-in-depth: also require CF Access JWT when configured.
@@ -3388,19 +3390,26 @@ const workerHandler: WorkerHandler = {
         }
 
         // ── Route permission check (central registry) ───────────────────────
-        // Applied globally after auth for all routes registered in ROUTE_PERMISSION_REGISTRY.
-        // /admin/storage routes enforce Admin tier explicitly inside their block before reaching here.
+        // Applied globally after auth, but ONLY for server-handled API paths.
+        // SPA client routes (e.g. /sign-in, /compiler) and static assets bypass
+        // this check and are served by serveStaticAsset() at the bottom of
+        // _handleRequest. /admin/storage routes enforce permissions inside their
+        // own block before reaching here.
         // Public endpoints (minTier: Anonymous) pass through with null.
-        const permDenied = checkRoutePermission(routePath, authContext);
-        if (permDenied) {
-            analytics.trackSecurityEvent({
-                eventType: 'auth_failure',
-                path: routePath,
-                method: request.method,
-                clientIpHash: AnalyticsService.hashIp(ip),
-                reason: 'route_permission_denied',
-            });
-            return permDenied;
+        const isServerHandledPath = pathname.startsWith('/api/') ||
+            SPA_SERVER_PREFIXES.some((p) => pathname === p || pathname.startsWith(`${p}/`));
+        if (isServerHandledPath) {
+            const permDenied = checkRoutePermission(routePath, authContext);
+            if (permDenied) {
+                analytics.trackSecurityEvent({
+                    eventType: 'auth_failure',
+                    path: routePath,
+                    method: request.method,
+                    clientIpHash: AnalyticsService.hashIp(ip),
+                    reason: 'route_permission_denied',
+                });
+                return permDenied;
+            }
         }
 
         // ── Admin local user management routes ──────────────────────────────
