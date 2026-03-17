@@ -80,38 +80,69 @@ export interface IRoutePermission {
  * | Administrator    | Admin     | Admin panel + user management           |
  */
 export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
-    // ── Admin endpoints (Admin tier + admin role) ──────────────────────────────
-    ['/admin/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'All admin operations' }],
-    ['/admin/auth/config', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Auth configuration inspector (roles, tiers, routes)' }],
-    ['/admin/local-users', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List local auth users' }],
-    ['/admin/local-users/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Local user management (update tier/role)' }],
-    ['/admin/usage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Per-user API usage statistics' }],
+    // ── Fully public (Anonymous — no JWT required) ─────────────────────────────
+    // Config/bootstrap endpoints the Angular SPA needs before auth loads.
+    // Health and auth entry-points are intentionally public.
+    ['/health', { minTier: UserTier.Anonymous, description: 'Health check' }],
+    ['/health/*', { minTier: UserTier.Anonymous, description: 'Health sub-endpoints' }],
+    ['/metrics', { minTier: UserTier.Anonymous, description: 'Public aggregate metrics' }],
+    ['/auth/signup', { minTier: UserTier.Anonymous, description: 'Register new account' }],
+    ['/auth/login', { minTier: UserTier.Anonymous, description: 'Authenticate' }],
+    // Clerk webhook uses SVIX signature — not a user JWT
+    ['/webhooks/*', { minTier: UserTier.Anonymous, description: 'Webhook receivers (self-authenticated)' }],
+    // API documentation — publicly readable
+    ['/docs', { minTier: UserTier.Anonymous, description: 'API documentation' }],
+    ['/docs/*', { minTier: UserTier.Anonymous, description: 'API documentation pages' }],
 
-    // ── Pro tier endpoints ─────────────────────────────────────────────────────
+    // ── Free tier (any authenticated user) ────────────────────────────────────
+    // Compile / transform
+    ['/compile', { minTier: UserTier.Free, description: 'Compile filter lists' }],
+    ['/compile/stream', { minTier: UserTier.Free, description: 'Streaming compile' }],
+    ['/compile/batch', { minTier: UserTier.Free, description: 'Batch compile' }],
+    ['/ast/parse', { minTier: UserTier.Free, description: 'Parse rules to AST' }],
+    ['/validate', { minTier: UserTier.Free, description: 'Validate filter rules' }],
+    ['/validate-rule', { minTier: UserTier.Free, description: 'Validate single rule' }],
+    ['/ws/compile', { minTier: UserTier.Free, description: 'WebSocket compile (Free+)' }],
+    // User identity & settings
+    ['/auth/me', { minTier: UserTier.Free, description: 'Current user profile' }],
+    ['/auth/change-password', { minTier: UserTier.Free, description: 'Update password' }],
+    ['/auth/profile', { minTier: UserTier.Free, description: 'Update profile' }],
+    ['/auth/bootstrap-admin', { minTier: UserTier.Free, description: 'One-time admin bootstrap (email-gated)' }],
+    // API keys (user-owned)
+    ['/keys', { minTier: UserTier.Free, description: 'API key management' }],
+    ['/keys/*', { minTier: UserTier.Free, description: 'API key operations' }],
+    // Custom rules
+    ['/rules', { minTier: UserTier.Free, description: 'Custom rule management' }],
+    ['/rules/*', { minTier: UserTier.Free, description: 'Custom rule operations' }],
+    // Queue (read/write)
+    ['/queue/stats', { minTier: UserTier.Free, description: 'Queue statistics' }],
+    ['/queue/history', { minTier: UserTier.Free, description: 'Queue job history' }],
+    ['/queue/results/*', { minTier: UserTier.Free, description: 'Retrieve async job results' }],
+    ['/queue/cancel/*', { minTier: UserTier.Free, description: 'Cancel queued job' }],
+    // Notifications & logging
+    ['/notify', { minTier: UserTier.Free, description: 'Send notification' }],
+    ['/log', { minTier: UserTier.Free, description: 'Client-side log ingestion' }],
+    // URL proxy (SSRF-protected inside handler)
+    ['/proxy/*', { minTier: UserTier.Free, description: 'SSRF-protected URL proxy' }],
+
+    // ── Pro tier (paid / upgraded) ─────────────────────────────────────────────
     ['/compile/async', { minTier: UserTier.Pro, description: 'Async compilation (Pro+)' }],
     ['/compile/batch/async', { minTier: UserTier.Pro, description: 'Async batch compilation (Pro+)' }],
     ['/workflow/*', { minTier: UserTier.Pro, description: 'Workflow execution (Pro+)' }],
 
-    // ── Authenticated endpoints (Free tier minimum) ────────────────────────────
-    ['/auth/me', { minTier: UserTier.Free, description: 'Current user profile' }],
-    ['/auth/change-password', { minTier: UserTier.Free, description: 'Update password' }],
-    ['/keys', { minTier: UserTier.Free, description: 'API key management' }],
-    ['/keys/*', { minTier: UserTier.Free, description: 'API key management' }],
-    ['/rules', { minTier: UserTier.Free, description: 'Custom rule management' }],
-    ['/rules/*', { minTier: UserTier.Free, description: 'Custom rule management' }],
-
-    // ── Public endpoints (Anonymous OK — rate-limited) ─────────────────────────
-    // Listed for documentation; no auth check is enforced for these.
-    ['/compile', { minTier: UserTier.Anonymous, description: 'Compile filter lists' }],
-    ['/compile/stream', { minTier: UserTier.Anonymous, description: 'Streaming compile' }],
-    ['/compile/batch', { minTier: UserTier.Anonymous, description: 'Batch compile' }],
-    ['/validate', { minTier: UserTier.Anonymous, description: 'Validate rules' }],
-    ['/validate-rule', { minTier: UserTier.Anonymous, description: 'Validate single rule' }],
-    ['/ast/parse', { minTier: UserTier.Anonymous, description: 'Parse rules to AST' }],
-    ['/auth/signup', { minTier: UserTier.Anonymous, description: 'Register new account' }],
-    ['/auth/login', { minTier: UserTier.Anonymous, description: 'Authenticate' }],
-    ['/health', { minTier: UserTier.Anonymous, description: 'Health check' }],
-    ['/metrics', { minTier: UserTier.Anonymous, description: 'Public metrics' }],
+    // ── Admin tier (Admin role required) ──────────────────────────────────────
+    // Wildcard catch-all for all /admin/* sub-paths (longest-prefix wins for specifics)
+    ['/admin/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin operations (catch-all)' }],
+    // Explicit entries (same tier — kept for documentation clarity)
+    ['/admin/auth/config', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Auth configuration inspector' }],
+    ['/admin/local-users', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List local auth users' }],
+    ['/admin/local-users/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Local user management (update tier/role)' }],
+    ['/admin/usage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Per-user API usage statistics' }],
+    ['/admin/storage', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin panel' }],
+    ['/admin/storage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin operations' }],
+    ['/admin/auth/api-keys', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key management' }],
+    ['/admin/auth/api-keys/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key operations' }],
+    ['/metrics/prometheus', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Prometheus metrics scrape' }],
 ]);
 
 // ============================================================================
@@ -179,8 +210,22 @@ export function checkRoutePermission(
 ): Response | null {
     const permission = resolveRoutePermission(routePath);
 
-    // No entry or public endpoint — allow
-    if (!permission || permission.minTier === UserTier.Anonymous) return null;
+    // Route not explicitly registered → default to Free tier (ZTA: deny-by-default).
+    // Public platform endpoints (/version, /deployments, /turnstile-config, /clerk-config,
+    // /sentry-config, /favicon.ico, /assets/*) are handled before auth runs in worker.ts
+    // via early-return routing and never reach this permission check.
+    if (!permission) {
+        if (!isTierSufficient(authContext.tier, UserTier.Free)) {
+            return new Response(
+                JSON.stringify({ success: false, error: 'Authentication required' }),
+                { status: 401, headers: { 'Content-Type': 'application/json' } },
+            );
+        }
+        return null;
+    }
+
+    // Explicitly public endpoint — allow without auth
+    if (permission.minTier === UserTier.Anonymous) return null;
 
     // ── Tier check ──────────────────────────────────────────────────────────
     if (!isTierSufficient(authContext.tier, permission.minTier)) {

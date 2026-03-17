@@ -16,12 +16,10 @@
 import { HttpInterceptorFn, HttpErrorResponse } from '@angular/common/http';
 import { inject } from '@angular/core';
 import { catchError, tap, throwError } from 'rxjs';
-import { AuthService } from '../services/auth.service';
 import { AuthFacadeService } from '../services/auth-facade.service';
 import { LogService } from '../services/log.service';
 
 export const errorInterceptor: HttpInterceptorFn = (req, next) => {
-    const auth = inject(AuthService);
     const authFacade = inject(AuthFacadeService);
     const log = inject(LogService);
 
@@ -50,7 +48,6 @@ export const errorInterceptor: HttpInterceptorFn = (req, next) => {
             } else {
                 switch (error.status) {
                     case 401:
-                        auth.clearKey();
                         void authFacade.signOut();
                         log.warn('Unauthorized — session cleared', 'HTTP', context);
                         break;

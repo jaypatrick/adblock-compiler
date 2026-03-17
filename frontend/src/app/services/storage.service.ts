@@ -1,15 +1,13 @@
 /**
  * StorageService — wraps the /admin/storage/* endpoints.
  *
- * All requests require the X-Admin-Key header, which is added
- * automatically by the error interceptor from AuthService.
+ * Auth tokens are attached automatically by the HTTP interceptor.
  */
 
 import { Injectable, inject } from '@angular/core';
-import { HttpClient, HttpHeaders } from '@angular/common/http';
+import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
 import { ADMIN_BASE_URL } from '../tokens';
-import { AuthService } from './auth.service';
 
 export interface StorageStats {
     readonly kvKeys: number;
@@ -39,23 +37,16 @@ export interface QueryResult {
 export class StorageService {
     private readonly http = inject(HttpClient);
     private readonly adminBaseUrl = inject(ADMIN_BASE_URL);
-    private readonly auth = inject(AuthService);
-
-    private get headers(): HttpHeaders {
-        return new HttpHeaders({ 'X-Admin-Key': this.auth.adminKey() });
-    }
 
     getStats(): Observable<StorageStats> {
         return this.http.get<StorageStats>(
             `${this.adminBaseUrl}/stats`,
-            { headers: this.headers },
         );
     }
 
     getTables(): Observable<TableInfo[]> {
         return this.http.get<TableInfo[]>(
             `${this.adminBaseUrl}/tables`,
-            { headers: this.headers },
         );
     }
 
@@ -63,7 +54,6 @@ export class StorageService {
         return this.http.post<QueryResult>(
             `${this.adminBaseUrl}/query`,
             { sql },
-            { headers: this.headers },
         );
     }
 
@@ -71,7 +61,6 @@ export class StorageService {
         return this.http.post<{ success: boolean }>(
             `${this.adminBaseUrl}/clear-cache`,
             {},
-            { headers: this.headers },
         );
     }
 
@@ -79,7 +68,6 @@ export class StorageService {
         return this.http.post<{ success: boolean; removed: number }>(
             `${this.adminBaseUrl}/clear-expired`,
             {},
-            { headers: this.headers },
         );
     }
 
@@ -87,14 +75,13 @@ export class StorageService {
         return this.http.post<{ success: boolean }>(
             `${this.adminBaseUrl}/vacuum`,
             {},
-            { headers: this.headers },
         );
     }
 
     exportData(): Observable<Blob> {
         return this.http.get(
             `${this.adminBaseUrl}/export`,
-            { headers: this.headers, responseType: 'blob' },
+            { responseType: 'blob' },
         );
     }
 }

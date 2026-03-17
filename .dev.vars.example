@@ -38,9 +38,11 @@ CLERK_WEBHOOK_SECRET=whsec_...
 # MIGRATION: once CLERK_JWKS_URL is set above, this key is no longer used.
 JWT_SECRET=replace-with-openssl-rand-base64-32-output
 
-# ─── Admin ───────────────────────────────────────────────────────────────────
-# Legacy admin key (secret — production: `wrangler secret put ADMIN_KEY`)
-ADMIN_KEY=your-local-admin-key
+# ─── Bootstrap Admin ─────────────────────────────────────────────────────────
+# Email of the first admin user. When set, POST /auth/bootstrap-admin promotes
+# the signed-in user matching this email to the 'admin' role.
+# Remove once the first admin is set.
+# INITIAL_ADMIN_EMAIL=you@example.com
 
 # ─── Cloudflare Turnstile ────────────────────────────────────────────────────
 # Site key (non-secret — production value lives in wrangler.toml [vars])
@@ -82,6 +84,8 @@ WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:passwor
 # OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.grafana.net/otlp
 # Error reporter type: console | cloudflare | sentry | composite
 # ERROR_REPORTER_TYPE=composite
+# Set 'true' to enable verbose console output from the error reporter
+# ERROR_REPORTER_VERBOSE=false
 
 # ─── Optional integrations ───────────────────────────────────────────────────
 # Generic webhook target for POST /api/notify

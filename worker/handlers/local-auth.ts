@@ -22,7 +22,7 @@
  * and these handlers are no longer called. They can be deleted after migration.
  */
 
-import { ZodError } from 'zod';
+import { z, ZodError } from 'zod';
 import { ANONYMOUS_AUTH_CONTEXT, type Env, type IAuthContext } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { LocalChangePasswordRequestSchema, LocalLoginRequestSchema, LocalSignupRequestSchema, LocalUserPublicSchema, type LocalUserRow } from '../schemas.ts';
@@ -37,9 +37,30 @@ import { AnalyticsService, type SecurityEventData } from '../../src/services/Ana
 // Internal helpers
 // ============================================================================
 
+// Maximum pre-normalization length before NFKC expansion (2× RFC 5321 limit
+// to accommodate pathological Unicode expansion cases without blocking normal input).
+const MAX_PRE_NORMALIZATION_LENGTH = 640;
+// RFC 5321 maximum email address length (local-part + '@' + domain).
+const RFC_5321_MAX_EMAIL_LENGTH = 320;
+
 /** Detect whether an identifier string is an email address. */
 function isEmail(identifier: string): boolean {
     return identifier.includes('@');
+}
+
+/**
+ * Canonicalize an email identifier: trim whitespace, NFKC-normalize, and
+ * lowercase so that case variants map to a single canonical form. Phone
+ * identifiers are returned trimmed only (case is not meaningful).
+ * Identifiers are length-capped before normalization to guard against
+ * Unicode normalization bombs (NFKC can expand certain sequences).
+ */
+function canonicalizeIdentifier(identifier: string): string {
+    const trimmed = identifier.trim().slice(0, MAX_PRE_NORMALIZATION_LENGTH);
+    if (!isEmail(trimmed)) return trimmed;
+    const normalized = trimmed.normalize('NFKC').toLowerCase();
+    // Enforce RFC 5321 email length limit post-normalization
+    return normalized.length <= RFC_5321_MAX_EMAIL_LENGTH ? normalized : normalized.slice(0, RFC_5321_MAX_EMAIL_LENGTH);
 }
 
 /** Emit a security event (fire-and-forget — never throws). */
@@ -120,7 +141,8 @@ export async function handleLocalSignup(
         );
     }
 
-    const { identifier, password } = parsed;
+    const { identifier: rawIdentifier, password } = parsed;
+    const identifier = canonicalizeIdentifier(rawIdentifier);
     const identifierType: 'email' | 'phone' = isEmail(identifier) ? 'email' : 'phone';
 
     try {
@@ -226,7 +248,8 @@ export async function handleLocalLogin(
         );
     }
 
-    const { identifier, password } = parsed;
+    const { identifier: rawIdentifier, password } = parsed;
+    const identifier = canonicalizeIdentifier(rawIdentifier);
 
     try {
         // 3. Look up user
@@ -386,5 +409,167 @@ export async function handleLocalChangePassword(
         const message = error instanceof Error ? error.message : String(error);
         trackFailure(analytics, { path, method: 'POST', reason: message });
         return JsonResponse.serverError('Password change failed');
+    }
+}
+
+// ============================================================================
+// POST /auth/bootstrap-admin
+// ============================================================================
+
+/**
+ * Promote the requesting user to admin if their identifier matches
+ * INITIAL_ADMIN_EMAIL and they are not already an admin.
+ */
+export async function handleLocalBootstrapAdmin(
+    _request: Request,
+    env: Env,
+    authContext: IAuthContext,
+    analytics: AnalyticsService,
+    ip: string,
+): Promise<Response> {
+    const path = '/auth/bootstrap-admin';
+
+    const denied = requireAuth(authContext);
+    if (denied) return denied;
+
+    // Rate limit (authenticated context — keyed by userId)
+    const rl = await checkRateLimitTiered(env, ip, authContext);
+    if (!rl.allowed) {
+        trackFailure(analytics, { path, method: 'POST', reason: 'rate_limit', clientIpHash: AnalyticsService.hashIp(ip) });
+        return JsonResponse.rateLimited(Math.ceil((rl.resetAt - Date.now()) / 1000));
+    }
+
+    if (!env.INITIAL_ADMIN_EMAIL) {
+        return JsonResponse.error('Bootstrap admin is not configured (INITIAL_ADMIN_EMAIL not set)', 403);
+    }
+
+    if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
+    if (!env.JWT_SECRET) return JsonResponse.serviceUnavailable('JWT_SECRET not configured');
+
+    const userId = authContext.clerkUserId;
+    if (!userId) return JsonResponse.error('Could not resolve user identity', 401);
+
+    try {
+        const user = await env.DB
+            .prepare('SELECT * FROM local_auth_users WHERE id = ?')
+            .bind(userId)
+            .first<LocalUserRow>();
+
+        if (!user) return JsonResponse.error('User not found', 404);
+
+        if (user.identifier.toLowerCase().normalize('NFKC') !== env.INITIAL_ADMIN_EMAIL.toLowerCase().normalize('NFKC')) {
+            trackFailure(analytics, { path, method: 'POST', reason: 'identifier_mismatch', clientIpHash: AnalyticsService.hashIp(ip) });
+            return JsonResponse.error('This account is not designated as the initial admin', 403);
+        }
+
+        // Single-use guard: reject if any admin already exists in the system.
+        // Bootstrap is a one-time operation — use /admin/local-users to create additional admins.
+        const existingAdmin = await env.DB
+            .prepare('SELECT COUNT(*) as count FROM local_auth_users WHERE role = ?')
+            .bind('admin')
+            .first<{ count: number }>();
+
+        if (existingAdmin && existingAdmin.count > 0 && user.role !== 'admin') {
+            trackFailure(analytics, { path, method: 'POST', reason: 'bootstrap_already_used', clientIpHash: AnalyticsService.hashIp(ip) });
+            return JsonResponse.error('Admin bootstrap has already been used. Create additional admins via /admin/local-users', 403);
+        }
+
+        if (user.role === 'admin') {
+            return JsonResponse.success({ message: 'Account is already an admin', user: LocalUserPublicSchema.parse(user) });
+        }
+
+        const newTier = tierForRole('admin');
+        await env.DB
+            .prepare("UPDATE local_auth_users SET role = 'admin', tier = ? WHERE id = ? AND role != 'admin'")
+            .bind(newTier, userId)
+            .run();
+
+        const updatedUser: LocalUserRow = { ...user, role: 'admin', tier: newTier };
+        const token = await signLocalJWT(userId, 'admin', newTier, env.JWT_SECRET);
+
+        return JsonResponse.success({
+            message: 'Account promoted to admin',
+            token,
+            user: LocalUserPublicSchema.parse(updatedUser),
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        trackFailure(analytics, { path, method: 'POST', reason: message, clientIpHash: AnalyticsService.hashIp(ip) });
+        return JsonResponse.serverError('Bootstrap admin failed');
+    }
+}
+
+// ============================================================================
+// PATCH /auth/profile
+// ============================================================================
+
+/**
+ * Update the authenticated user's profile (identifier/email).
+ */
+export async function handleLocalUpdateProfile(
+    request: Request,
+    env: Env,
+    authContext: IAuthContext,
+    analytics: AnalyticsService,
+    ip: string,
+): Promise<Response> {
+    const path = '/auth/profile';
+
+    // 1. Must be authenticated (before rate limiting — we need authContext)
+    const denied = requireAuth(authContext);
+    if (denied) return denied;
+
+    // 2. Rate limit (authenticated context — keyed by userId)
+    const rl = await checkRateLimitTiered(env, ip, authContext);
+    if (!rl.allowed) {
+        trackFailure(analytics, { path, method: 'PATCH', reason: 'rate_limit', clientIpHash: AnalyticsService.hashIp(ip) });
+        return JsonResponse.rateLimited(Math.ceil((rl.resetAt - Date.now()) / 1000));
+    }
+
+    if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
+
+    const userId = authContext.clerkUserId;
+    if (!userId) return JsonResponse.error('Could not resolve user identity', 401);
+
+    let body: unknown;
+    try {
+        body = await request.json();
+    } catch {
+        return JsonResponse.badRequest('Invalid JSON body');
+    }
+
+    const parsed = z.object({ identifier: z.string().email('Must be a valid email').optional() }).safeParse(body);
+    if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Validation error');
+
+    const { identifier: rawIdentifier } = parsed.data;
+    if (!rawIdentifier) return JsonResponse.success({ message: 'No changes made' });
+
+    // Canonicalize email before duplicate check and write — ensures identifiers
+    // are stored in a consistent form and that case variants don't bypass uniqueness.
+    const identifier = canonicalizeIdentifier(rawIdentifier);
+
+    try {
+        const existing = await env.DB
+            .prepare('SELECT id FROM local_auth_users WHERE identifier = ? AND id != ?')
+            .bind(identifier, userId)
+            .first<{ id: string }>();
+        if (existing) return JsonResponse.error('An account with this email already exists', 409);
+
+        await env.DB
+            .prepare('UPDATE local_auth_users SET identifier = ?, identifier_type = ? WHERE id = ?')
+            .bind(identifier, 'email', userId)
+            .run();
+
+        const user = await env.DB
+            .prepare('SELECT * FROM local_auth_users WHERE id = ?')
+            .bind(userId)
+            .first<LocalUserRow>();
+
+        return JsonResponse.success({ user: user ? LocalUserPublicSchema.parse(user) : null });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        // deno-lint-ignore no-console
+        console.error('[auth/profile] DB error:', message);
+        return JsonResponse.serverError('Profile update failed');
     }
 }

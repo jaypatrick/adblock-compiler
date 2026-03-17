@@ -25,7 +25,7 @@ import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatDividerModule } from '@angular/material/divider';
 import { JsonPipe } from '@angular/common';
 import { SkeletonCardComponent } from '../../skeleton/skeleton-card.component';
-import { AuthService } from '../../services/auth.service';
+import { AuthFacadeService } from '../../services/auth-facade.service';
 import { StorageService, StorageStats, QueryResult } from '../../services/storage.service';
 
 @Component({
@@ -45,163 +45,131 @@ import { StorageService, StorageStats, QueryResult } from '../../services/storag
         SkeletonCardComponent,
     ],
     template: `
-    <!-- Auth -->
-    @if (!auth.isAuthenticated()) {
-        <mat-card appearance="outlined" class="auth-card mb-2">
-            <mat-card-header>
-                <mat-icon mat-card-avatar style="color: var(--mat-sys-tertiary)" aria-hidden="true">lock</mat-icon>
-                <mat-card-title>Authentication Required</mat-card-title>
-                <mat-card-subtitle>Enter your admin key to access storage management</mat-card-subtitle>
-            </mat-card-header>
-            <mat-card-content>
-                <div class="flex items-center gap-3">
-                    <mat-form-field appearance="outline" class="auth-field">
-                        <mat-label>Admin Key</mat-label>
-                        <input matInput type="password" [(ngModel)]="keyInput"
-                            (keyup.enter)="authenticate()" placeholder="X-Admin-Key" />
-                        <mat-icon matSuffix aria-hidden="true">vpn_key</mat-icon>
-                    </mat-form-field>
-                    <button mat-raised-button color="primary" (click)="authenticate()">
-                        <span><mat-icon aria-hidden="true">login</mat-icon> Authenticate</span>
-                    </button>
-                </div>
-            </mat-card-content>
-        </mat-card>
-    }
+    <!-- Status bar -->
+    <mat-card appearance="outlined" class="mb-2">
+        <mat-card-content>
+            <div class="flex items-center justify-between">
+                <mat-chip-set>
+                    <mat-chip highlighted color="primary">
+                        <mat-icon aria-hidden="true">check_circle</mat-icon> {{ auth.userIdentifier() ?? 'Admin' }}
+                    </mat-chip>
+                </mat-chip-set>
+            </div>
+        </mat-card-content>
+    </mat-card>
 
-    <!-- Authenticated content -->
-    @if (auth.isAuthenticated()) {
-        <!-- Status bar -->
-        <mat-card appearance="outlined" class="mb-2">
-            <mat-card-content>
-                <div class="flex items-center justify-between">
-                    <mat-chip-set>
-                        <mat-chip highlighted color="primary">
-                            <mat-icon aria-hidden="true">check_circle</mat-icon> Authenticated
-                        </mat-chip>
-                    </mat-chip-set>
-                    <button mat-stroked-button color="warn" (click)="auth.clearKey()">
-                        <span><mat-icon aria-hidden="true">logout</mat-icon> Logout</span>
-                    </button>
-                </div>
-            </mat-card-content>
-        </mat-card>
-
-        <!-- Stats -->
-        <mat-card appearance="outlined" class="mb-2">
-            <mat-card-header>
-                <mat-icon mat-card-avatar aria-hidden="true">bar_chart</mat-icon>
-                <mat-card-title>Storage Stats</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-                @if (statsResource.isLoading()) {
-                    <div class="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4">
-                        @for (i of [0,1,2,3]; track i) {
-                            <app-skeleton-card [lines]="1" [lineWidths]="['60%']" />
-                        }
-                    </div>
-                } @else if (statsResource.value(); as stats) {
-                    <div class="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4">
-                        <div class="flex flex-col items-center p-4 rounded-lg bg-surface-variant">
-                            <span class="text-stat-lg font-bold">{{ stats.kvKeys }}</span>
-                            <span class="text-xs text-on-surface-variant uppercase tracking-wide">KV Keys</span>
-                        </div>
-                        <div class="flex flex-col items-center p-4 rounded-lg bg-surface-variant">
-                            <span class="text-stat-lg font-bold">{{ stats.r2Objects }}</span>
-                            <span class="text-xs text-on-surface-variant uppercase tracking-wide">R2 Objects</span>
-                        </div>
-                        <div class="flex flex-col items-center p-4 rounded-lg bg-surface-variant">
-                            <span class="text-stat-lg font-bold">{{ stats.d1Tables }}</span>
-                            <span class="text-xs text-on-surface-variant uppercase tracking-wide">D1 Tables</span>
-                        </div>
-                        <div class="flex flex-col items-center p-4 rounded-lg bg-surface-variant">
-                            <span class="text-stat-lg font-bold">{{ stats.cacheEntries }}</span>
-                            <span class="text-xs text-on-surface-variant uppercase tracking-wide">Cache Entries</span>
-                        </div>
-                    </div>
-                } @else {
-                    <span class="mat-body-2">Failed to load stats</span>
-                }
-            </mat-card-content>
-        </mat-card>
-
-        <!-- Actions -->
-        <mat-card appearance="outlined" class="mb-2">
-            <mat-card-header>
-                <mat-icon mat-card-avatar aria-hidden="true">settings</mat-icon>
-                <mat-card-title>Actions</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-                <div class="flex gap-3 flex-wrap">
-                    <button mat-stroked-button (click)="clearCache()">
-                        <span><mat-icon aria-hidden="true">delete_sweep</mat-icon> Clear Cache</span>
-                    </button>
-                    <button mat-stroked-button (click)="clearExpired()">
-                        <span><mat-icon aria-hidden="true">auto_delete</mat-icon> Clear Expired</span>
-                    </button>
-                    <button mat-stroked-button (click)="vacuum()">
-                        <span><mat-icon aria-hidden="true">compress</mat-icon> Vacuum DB</span>
-                    </button>
-                    <button mat-stroked-button (click)="exportData()">
-                        <span><mat-icon aria-hidden="true">download</mat-icon> Export</span>
-                    </button>
-                </div>
-                @if (actionResult()) {
-                    <p class="action-result mat-body-2 mt-1">{{ actionResult() }}</p>
-                }
-            </mat-card-content>
-        </mat-card>
-
-        <!-- SQL Query -->
-        <mat-card appearance="outlined" class="mb-2">
-            <mat-card-header>
-                <mat-icon mat-card-avatar aria-hidden="true">terminal</mat-icon>
-                <mat-card-title>SQL Query (Read-only)</mat-card-title>
-            </mat-card-header>
-            <mat-card-content>
-                <mat-form-field appearance="outline" class="query-field">
-                    <mat-label>SQL</mat-label>
-                    <textarea matInput [(ngModel)]="sqlInput" rows="3"
-                        placeholder="SELECT * FROM compilations LIMIT 10"
-                        (keyup.shift.enter)="runQuery()"
-                    ></textarea>
-                    <mat-hint>Shift+Enter to execute</mat-hint>
-                </mat-form-field>
-                @if (sqlWarning()) {
-                    <p style="color: var(--mat-sys-error); margin-bottom: 8px;">
-                        <mat-icon style="vertical-align: middle; font-size: 18px;" aria-hidden="true">block</mat-icon>
-                        {{ sqlWarning() }}
-                    </p>
-                }
-                <button mat-raised-button color="primary" (click)="runQuery()"
-                    [disabled]="queryResource.isLoading() || !sqlInput.trim()">
-                    @if (queryResource.isLoading()) {
-                        <mat-progress-spinner diameter="20" mode="indeterminate" />
-                    } @else {
-                        <span><mat-icon aria-hidden="true">play_arrow</mat-icon> Execute</span>
+    <!-- Stats -->
+    <mat-card appearance="outlined" class="mb-2">
+        <mat-card-header>
+            <mat-icon mat-card-avatar aria-hidden="true">bar_chart</mat-icon>
+            <mat-card-title>Storage Stats</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+            @if (statsResource.isLoading()) {
+                <div class="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4">
+                    @for (i of [0,1,2,3]; track i) {
+                        <app-skeleton-card [lines]="1" [lineWidths]="['60%']" />
                     }
-                </button>
+                </div>
+            } @else if (statsResource.value(); as stats) {
+                <div class="grid grid-cols-[repeat(auto-fit,minmax(140px,1fr))] gap-4">
+                    <div class="flex flex-col items-center p-4 rounded-lg bg-surface-variant">
+                        <span class="text-stat-lg font-bold">{{ stats.kvKeys }}</span>
+                        <span class="text-xs text-on-surface-variant uppercase tracking-wide">KV Keys</span>
+                    </div>
+                    <div class="flex flex-col items-center p-4 rounded-lg bg-surface-variant">
+                        <span class="text-stat-lg font-bold">{{ stats.r2Objects }}</span>
+                        <span class="text-xs text-on-surface-variant uppercase tracking-wide">R2 Objects</span>
+                    </div>
+                    <div class="flex flex-col items-center p-4 rounded-lg bg-surface-variant">
+                        <span class="text-stat-lg font-bold">{{ stats.d1Tables }}</span>
+                        <span class="text-xs text-on-surface-variant uppercase tracking-wide">D1 Tables</span>
+                    </div>
+                    <div class="flex flex-col items-center p-4 rounded-lg bg-surface-variant">
+                        <span class="text-stat-lg font-bold">{{ stats.cacheEntries }}</span>
+                        <span class="text-xs text-on-surface-variant uppercase tracking-wide">Cache Entries</span>
+                    </div>
+                </div>
+            } @else {
+                <span class="mat-body-2">Failed to load stats</span>
+            }
+        </mat-card-content>
+    </mat-card>
 
-                @if (queryResource.value(); as result) {
-                    <mat-divider class="mt-2 mb-2"></mat-divider>
-                    <mat-chip-set class="mb-1">
-                        <mat-chip highlighted color="primary">{{ result.rowCount }} rows</mat-chip>
-                        @if (result.duration) {
-                            <mat-chip>{{ result.duration }}</mat-chip>
-                        }
-                    </mat-chip-set>
-                    <!-- CDK Virtual Scroll for large query results -->
-                    <cdk-virtual-scroll-viewport itemSize="20" class="query-results-viewport">
-                        <pre class="query-results">{{ result | json }}</pre>
-                    </cdk-virtual-scroll-viewport>
+    <!-- Actions -->
+    <mat-card appearance="outlined" class="mb-2">
+        <mat-card-header>
+            <mat-icon mat-card-avatar aria-hidden="true">settings</mat-icon>
+            <mat-card-title>Actions</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+            <div class="flex gap-3 flex-wrap">
+                <button mat-stroked-button (click)="clearCache()">
+                    <span><mat-icon aria-hidden="true">delete_sweep</mat-icon> Clear Cache</span>
+                </button>
+                <button mat-stroked-button (click)="clearExpired()">
+                    <span><mat-icon aria-hidden="true">auto_delete</mat-icon> Clear Expired</span>
+                </button>
+                <button mat-stroked-button (click)="vacuum()">
+                    <span><mat-icon aria-hidden="true">compress</mat-icon> Vacuum DB</span>
+                </button>
+                <button mat-stroked-button (click)="exportData()">
+                    <span><mat-icon aria-hidden="true">download</mat-icon> Export</span>
+                </button>
+            </div>
+            @if (actionResult()) {
+                <p class="action-result mat-body-2 mt-1">{{ actionResult() }}</p>
+            }
+        </mat-card-content>
+    </mat-card>
+
+    <!-- SQL Query -->
+    <mat-card appearance="outlined" class="mb-2">
+        <mat-card-header>
+            <mat-icon mat-card-avatar aria-hidden="true">terminal</mat-icon>
+            <mat-card-title>SQL Query (Read-only)</mat-card-title>
+        </mat-card-header>
+        <mat-card-content>
+            <mat-form-field appearance="outline" class="query-field">
+                <mat-label>SQL</mat-label>
+                <textarea matInput [(ngModel)]="sqlInput" rows="3"
+                    placeholder="SELECT * FROM compilations LIMIT 10"
+                    (keyup.shift.enter)="runQuery()"
+                ></textarea>
+                <mat-hint>Shift+Enter to execute</mat-hint>
+            </mat-form-field>
+            @if (sqlWarning()) {
+                <p style="color: var(--mat-sys-error); margin-bottom: 8px;">
+                    <mat-icon style="vertical-align: middle; font-size: 18px;" aria-hidden="true">block</mat-icon>
+                    {{ sqlWarning() }}
+                </p>
+            }
+            <button mat-raised-button color="primary" (click)="runQuery()"
+                [disabled]="queryResource.isLoading() || !sqlInput.trim()">
+                @if (queryResource.isLoading()) {
+                    <mat-progress-spinner diameter="20" mode="indeterminate" />
+                } @else {
+                    <span><mat-icon aria-hidden="true">play_arrow</mat-icon> Execute</span>
                 }
-            </mat-card-content>
-        </mat-card>
-    }
+            </button>
+
+            @if (queryResource.value(); as result) {
+                <mat-divider class="mt-2 mb-2"></mat-divider>
+                <mat-chip-set class="mb-1">
+                    <mat-chip highlighted color="primary">{{ result.rowCount }} rows</mat-chip>
+                    @if (result.duration) {
+                        <mat-chip>{{ result.duration }}</mat-chip>
+                    }
+                </mat-chip-set>
+                <!-- CDK Virtual Scroll for large query results -->
+                <cdk-virtual-scroll-viewport itemSize="20" class="query-results-viewport">
+                    <pre class="query-results">{{ result | json }}</pre>
+                </cdk-virtual-scroll-viewport>
+            }
+        </mat-card-content>
+    </mat-card>
     `,
     styles: [`
-    .auth-card { border-color: var(--mat-sys-tertiary); }
-    .auth-field { flex: 1; }
     .action-result { color: var(--mat-sys-primary); }
     .query-field { width: 100%; }
     .query-results-viewport { height: 400px; }
@@ -216,19 +184,16 @@ import { StorageService, StorageStats, QueryResult } from '../../services/storag
     `],
 })
 export class StorageComponent {
-    readonly auth = inject(AuthService);
+    readonly auth = inject(AuthFacadeService);
     private readonly storage = inject(StorageService);
     private readonly destroyRef = inject(DestroyRef);
 
-    keyInput = '';
     sqlInput = '';
     readonly actionResult = signal('');
 
-    private readonly authTrigger = signal(0);
     private readonly queryTrigger = signal<string | undefined>(undefined);
 
-    readonly statsResource = rxResource<StorageStats, number | undefined>({
-        params: (): number | undefined => this.auth.isAuthenticated() ? this.authTrigger() : undefined,
+    readonly statsResource = rxResource<StorageStats, void>({
         stream: () => this.storage.getStats().pipe(
             catchError(() => of({ kvKeys: 0, r2Objects: 0, d1Tables: 0, cacheEntries: 0 } as StorageStats)),
         ),
@@ -238,14 +203,6 @@ export class StorageComponent {
         params: (): string | undefined => this.queryTrigger(),
         stream: ({ params }) => params ? this.storage.query(params) : EMPTY,
     });
-
-    authenticate(): void {
-        if (this.keyInput.trim()) {
-            this.auth.setKey(this.keyInput.trim());
-            this.keyInput = '';
-            this.authTrigger.update(v => v + 1);
-        }
-    }
 
     /**
      * Destructive SQL keywords that should not be executed from the admin console.
@@ -275,7 +232,7 @@ export class StorageComponent {
         this.storage.clearCache().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: () => {
                 this.actionResult.set('Cache cleared successfully');
-                this.authTrigger.update(v => v + 1);
+                this.statsResource.reload();
             },
             error: (e) => this.actionResult.set(`Error: ${e.message}`),
         });
@@ -285,7 +242,7 @@ export class StorageComponent {
         this.storage.clearExpired().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: (r) => {
                 this.actionResult.set(`Removed ${r.removed} expired entries`);
-                this.authTrigger.update(v => v + 1);
+                this.statsResource.reload();
             },
             error: (e) => this.actionResult.set(`Error: ${e.message}`),
         });

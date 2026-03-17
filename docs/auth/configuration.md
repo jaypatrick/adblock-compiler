@@ -4,7 +4,7 @@ Complete reference for all environment variables and configuration needed to run
 
 ## Environment Variables
 
-### Clerk Authentication (Required)
+### Clerk Authentication (Required for Clerk mode)
 
 | Variable                | Required | Source                                                 | Description                                                                                               |
 | ----------------------- | -------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
@@ -13,11 +13,14 @@ Complete reference for all environment variables and configuration needed to run
 | `CLERK_JWKS_URL`        | **Yes**  | Derived from Clerk Frontend API URL                    | JWKS endpoint for JWT verification. Format: `https://<instance>.clerk.accounts.dev/.well-known/jwks.json` |
 | `CLERK_WEBHOOK_SECRET`  | **Yes**  | Clerk Dashboard → Webhooks → Endpoint → Signing Secret | Svix signing secret for webhook signature verification. Starts with `whsec_`.                             |
 
-### Admin Access (Legacy)
+### Local JWT Auth (Required when Clerk is not configured)
 
-| Variable    | Required | Source         | Description                                                                                                                                 |
-| ----------- | -------- | -------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ADMIN_KEY` | Optional | Self-generated | Static admin key for legacy admin endpoints. Used with `X-Admin-Key` header. Will be replaced by Clerk tier-based auth in a future release. |
+When `CLERK_JWKS_URL` is **not** set, the Worker uses a local HS256 JWT provider. All `POST /auth/*` endpoints become active.
+
+| Variable               | Required | Source                              | Description                                                                                                                                  |
+| ---------------------- | -------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `JWT_SECRET`           | **Yes**  | Self-generated (`openssl rand -base64 32`) | HS256 signing secret for `LocalJwtAuthProvider`. Issued JWTs are valid for 1 hour (ZTA). Never reuse across environments.              |
+| `INITIAL_ADMIN_EMAIL`  | Optional | Self-configured                     | Email address of the designated first admin. When set, `POST /auth/bootstrap-admin` promotes the matching signed-in user to `admin` role. Unset this variable once the first admin is established. |
 
 ### Cloudflare Access (Optional — Defense-in-Depth)
 
@@ -83,11 +86,15 @@ CLERK_SECRET_KEY=sk_test_...
 CLERK_JWKS_URL=https://your-instance.clerk.accounts.dev/.well-known/jwks.json
 CLERK_WEBHOOK_SECRET=whsec_...
 
+# Local JWT auth (active when CLERK_JWKS_URL is unset)
+# Generate: openssl rand -base64 32
+JWT_SECRET=replace-with-openssl-rand-base64-32-output
+# First-admin bootstrap email (remove once first admin is set)
+# INITIAL_ADMIN_EMAIL=you@example.com
+
 # Use Cloudflare test keys (always pass) for local dev
 TURNSTILE_SITE_KEY=1x00000000000000000000AA
 TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
-
-ADMIN_KEY=local-dev-admin-key
 
 CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8787
 
@@ -146,6 +153,10 @@ For production, set secrets via Cloudflare's secret management — **never** com
 wrangler secret put CLERK_SECRET_KEY
 wrangler secret put CLERK_WEBHOOK_SECRET
 
+# Local JWT auth (only needed when Clerk is not active)
+wrangler secret put JWT_SECRET
+# wrangler secret put INITIAL_ADMIN_EMAIL  # remove after first admin is set
+
 # Cloudflare Access (admin route protection — optional)
 wrangler secret put CF_ACCESS_TEAM_DOMAIN
 wrangler secret put CF_ACCESS_AUD
@@ -155,9 +166,6 @@ wrangler secret put TURNSTILE_SECRET_KEY
 
 # CORS allowlist
 wrangler secret put CORS_ALLOWED_ORIGINS
-
-# Legacy admin key
-wrangler secret put ADMIN_KEY
 
 # Observability
 wrangler secret put SENTRY_DSN
@@ -263,13 +271,13 @@ wrangler d1 migrations apply adblock-compiler-d1-database --remote
 3. [ ] Configure CF Access for admin routes (recommended)
 4. [ ] Enable Turnstile for bot protection
 5. [ ] Set up monitoring/alerts for auth failures
-6. [ ] Remove or rotate `ADMIN_KEY` if migrating to Clerk-only admin auth
+6. [ ] If migrating from Local JWT Auth to Clerk, set `CLERK_JWKS_URL` and rotate/delete `JWT_SECRET`
 
 ## Conditional Feature Behavior
 
-| Feature    | When Enabled                                  | When Disabled                                              |
-| ---------- | --------------------------------------------- | ---------------------------------------------------------- |
-| Clerk Auth | `CLERK_JWKS_URL` is set                       | JWT verification skipped; anonymous access only            |
-| Turnstile  | `TURNSTILE_SECRET_KEY` is set                 | Bot protection disabled; compilation requests not verified |
-| CF Access  | `CF_ACCESS_TEAM_DOMAIN` + `CF_ACCESS_AUD` set | CF Access checks skipped on admin routes                   |
-| Admin Key  | `ADMIN_KEY` is set                            | Legacy admin endpoints return "not configured"             |
+| Feature        | When Enabled                                  | When Disabled                                              |
+| -------------- | --------------------------------------------- | ---------------------------------------------------------- |
+| Clerk Auth     | `CLERK_JWKS_URL` is set                       | Falls back to LocalJwtAuthProvider (local JWT mode)        |
+| Local JWT Auth | `CLERK_JWKS_URL` is **not** set               | Auth handled by Clerk SDK                                  |
+| Turnstile      | `TURNSTILE_SECRET_KEY` is set                 | Bot protection disabled; compilation requests not verified |
+| CF Access      | `CF_ACCESS_TEAM_DOMAIN` + `CF_ACCESS_AUD` set | CF Access checks skipped on admin routes                   |

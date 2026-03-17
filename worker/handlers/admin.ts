@@ -2,15 +2,14 @@
  * Admin handlers for the Cloudflare Worker.
  * Provides storage management and database administration endpoints.
  *
- * ZTA: All /admin/storage/* endpoints require X-Admin-Key authentication plus
- * optional Cloudflare Access JWT verification. Auth is checked in routeAdminStorage
- * before any handler executes.
+ * ZTA: All /admin/storage/* endpoints require JWT admin auth (tier + role check via
+ * checkRoutePermission) plus optional Cloudflare Access JWT verification.
+ * Auth is checked in routeAdminStorage before any handler executes.
  */
 
 import { JsonResponse } from '../utils/index.ts';
-import type { Env, StorageStats, TableInfo } from '../types.ts';
+import type { Env, IAuthContext, StorageStats, TableInfo } from '../types.ts';
 import { AdminQueryRequestSchema } from '../schemas.ts';
-import { verifyAdminAuth } from '../middleware/index.ts';
 import { verifyCfAccessJwt } from '../middleware/cf-access.ts';
 
 // ============================================================================
@@ -283,31 +282,23 @@ export async function handleAdminQuery(request: Request, env: Env): Promise<Resp
 /**
  * Route handler for all /admin/storage/* endpoints.
  *
- * ZTA: Verifies X-Admin-Key header before any business logic.
- * Also validates Cloudflare Access JWT when CF_ACCESS_AUD is configured.
+ * ZTA: Permission check (admin tier + role) is enforced in router.ts before
+ * this function is called, so unauthorized requests never reach this module.
+ * Defense-in-depth: also validates Cloudflare Access JWT when configured.
  *
- * @param routePath - Path with /api prefix stripped (e.g. "/admin/storage/stats")
- * @param request   - Incoming request
- * @param env       - Worker environment bindings
+ * @param routePath   - Path with /api prefix stripped (e.g. "/admin/storage/stats")
+ * @param request     - Incoming request
+ * @param env         - Worker environment bindings
+ * @param authContext - Resolved auth context from the unified auth middleware
  */
 export async function routeAdminStorage(
     routePath: string,
     request: Request,
     env: Env,
+    _authContext: IAuthContext,
 ): Promise<Response> {
-    // ZTA: verify X-Admin-Key header
-    const auth = await verifyAdminAuth(request, env);
-    if (!auth.authorized) {
-        return Response.json(
-            { success: false, error: auth.error },
-            {
-                status: 401,
-                headers: { 'WWW-Authenticate': 'X-Admin-Key' },
-            },
-        );
-    }
-
-    // ZTA: defense-in-depth — also require CF Access JWT when configured
+    // ZTA: permission check is enforced in router.ts before this function is called.
+    // Defense-in-depth: also require CF Access JWT when configured.
     const cfAccess = await verifyCfAccessJwt(request, env);
     if (!cfAccess.valid) {
         return Response.json(

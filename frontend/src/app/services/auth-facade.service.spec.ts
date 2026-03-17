@@ -52,6 +52,8 @@ function makeLocalMock(overrides: Partial<{
     login: (id: string, pw: string) => Promise<void>;
     signup: (id: string, pw: string) => Promise<void>;
     signOut: () => void;
+    updateProfile: (id: string) => Promise<void>;
+    changePassword: (current: string, next: string) => Promise<void>;
 }> = {}) {
     return {
         isLoaded: vi.fn().mockReturnValue(overrides.isLoaded ?? true),
@@ -62,6 +64,8 @@ function makeLocalMock(overrides: Partial<{
         login: vi.fn().mockImplementation(overrides.login ?? (() => Promise.resolve())),
         signup: vi.fn().mockImplementation(overrides.signup ?? (() => Promise.resolve())),
         signOut: vi.fn().mockImplementation(overrides.signOut ?? (() => {})),
+        updateProfile: vi.fn().mockImplementation(overrides.updateProfile ?? (() => Promise.resolve())),
+        changePassword: vi.fn().mockImplementation(overrides.changePassword ?? (() => Promise.resolve())),
     };
 }
 
@@ -313,6 +317,84 @@ describe('AuthFacadeService', () => {
             const result = await service.signup('clerk@example.com', 'pass');
             expect(result).toEqual({});
             expect(localMock.signup).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('updateProfile() — local auth active', () => {
+        beforeEach(() => setup({ isAvailable: false }));
+
+        it('returns empty object on success (delegates to local.updateProfile)', async () => {
+            localMock.updateProfile.mockResolvedValue(undefined);
+            const result = await service.updateProfile('new@example.com');
+            expect(result).toEqual({});
+            expect(localMock.updateProfile).toHaveBeenCalledWith('new@example.com');
+        });
+
+        it('returns error from HTTP structured body', async () => {
+            localMock.updateProfile.mockRejectedValue({ error: { error: 'Email already taken' } });
+            const result = await service.updateProfile('taken@example.com');
+            expect(result.error).toBe('Email already taken');
+        });
+
+        it('returns error from Error instance', async () => {
+            localMock.updateProfile.mockRejectedValue(new Error('Not authenticated'));
+            const result = await service.updateProfile('user@example.com');
+            expect(result.error).toBe('Not authenticated');
+        });
+
+        it('returns fallback message for unknown error type', async () => {
+            localMock.updateProfile.mockRejectedValue(null);
+            const result = await service.updateProfile('user@example.com');
+            expect(result.error).toBe('Profile update failed.');
+        });
+    });
+
+    describe('updateProfile() — Clerk active (no-op)', () => {
+        beforeEach(() => setup({ isAvailable: true }));
+
+        it('returns empty object without calling local.updateProfile', async () => {
+            const result = await service.updateProfile('clerk@example.com');
+            expect(result).toEqual({});
+            expect(localMock.updateProfile).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('changePassword() — local auth active', () => {
+        beforeEach(() => setup({ isAvailable: false }));
+
+        it('returns empty object on success (delegates to local.changePassword)', async () => {
+            localMock.changePassword.mockResolvedValue(undefined);
+            const result = await service.changePassword('oldpass', 'newpass123');
+            expect(result).toEqual({});
+            expect(localMock.changePassword).toHaveBeenCalledWith('oldpass', 'newpass123');
+        });
+
+        it('returns error from HTTP structured body', async () => {
+            localMock.changePassword.mockRejectedValue({ error: { error: 'Current password is incorrect' } });
+            const result = await service.changePassword('wrong', 'newpass123');
+            expect(result.error).toBe('Current password is incorrect');
+        });
+
+        it('returns error from Error instance', async () => {
+            localMock.changePassword.mockRejectedValue(new Error('Not authenticated'));
+            const result = await service.changePassword('old', 'new12345');
+            expect(result.error).toBe('Not authenticated');
+        });
+
+        it('returns fallback message for unknown error type', async () => {
+            localMock.changePassword.mockRejectedValue(undefined);
+            const result = await service.changePassword('old', 'new12345');
+            expect(result.error).toBe('Password change failed.');
+        });
+    });
+
+    describe('changePassword() — Clerk active (no-op)', () => {
+        beforeEach(() => setup({ isAvailable: true }));
+
+        it('returns empty object without calling local.changePassword', async () => {
+            const result = await service.changePassword('old', 'new12345');
+            expect(result).toEqual({});
+            expect(localMock.changePassword).not.toHaveBeenCalled();
         });
     });
 });

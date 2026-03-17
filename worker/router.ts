@@ -1,14 +1,14 @@
 /**
  * Thin orchestrator router for the Cloudflare Worker.
  *
- * This module demonstrates the modular routing pattern that the worker.ts
- * should migrate towards. It imports handlers from dedicated modules
- * and orchestrates routing with minimal logic.
+ * This module demonstrates the modular routing pattern.  It is kept for
+ * reference and for handling a narrow set of legacy endpoints.
  *
- * Migration path:
- * 1. Use this router for new endpoints
- * 2. Gradually move existing endpoints from worker.ts
- * 3. Eventually replace worker.ts with this pattern
+ * ⚠️  NOTE: This file is NOT the canonical Worker entrypoint.
+ * All production traffic is routed through worker/handlers/router.ts
+ * (handleRequest), which enforces unified auth + ZTA checkRoutePermission.
+ * Routes marked requireAuth here return 410 (migrated); do NOT add new
+ * endpoints to this file — add them to worker/handlers/router.ts instead.
  */
 
 import type { Env } from './types.ts';
@@ -17,7 +17,7 @@ import { JsonResponse } from './utils/response.ts';
 import { getCorsHeaders, getPublicCorsHeaders, handleCorsPreflight, isPublicEndpoint } from './utils/cors.ts';
 import { createWorkerErrorReporter } from './utils/errorReporter.ts';
 import { ErrorUtils } from '../src/utils/ErrorUtils.ts';
-import { checkRateLimit, validateRequestSize, verifyAdminAuth, verifyTurnstileToken } from './middleware/index.ts';
+import { checkRateLimit, validateRequestSize, verifyTurnstileToken } from './middleware/index.ts';
 import { handleASTParseRequest, handleCompileAsync, handleCompileBatch, handleCompileBatchAsync, handleCompileJson, handleCompileStream } from './handlers/compile.ts';
 import { handleMetrics, recordMetric } from './handlers/metrics.ts';
 import { handleQueueResults, handleQueueStats } from './handlers/queue.ts';
@@ -748,12 +748,9 @@ export async function handleRequest(
             }
         }
 
-        // Admin authentication
+        // Admin auth via admin key has been removed. These routes are deprecated.
         if (route.requireAuth) {
-            const auth = await verifyAdminAuth(request, env);
-            if (!auth.authorized) {
-                return withCors(JsonResponse.error(auth.error || 'Unauthorized', 401));
-            }
+            return withCors(JsonResponse.error('This endpoint has been migrated. Use the primary API.', 410));
         }
 
         // Turnstile verification

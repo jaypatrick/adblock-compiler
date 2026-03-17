@@ -36,7 +36,7 @@ import { handleRulesCreate, handleRulesDelete, handleRulesGet, handleRulesList, 
 import { handleNotify } from './webhook.ts';
 import { handleClerkWebhook } from './clerk-webhook.ts';
 import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdateApiKey } from './api-keys.ts';
-import { handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocalSignup } from './local-auth.ts';
+import { handleLocalBootstrapAdmin, handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocalSignup, handleLocalUpdateProfile } from './local-auth.ts';
 import { handleAdminCreateLocalUser, handleAdminDeleteLocalUser, handleAdminGetLocalUser, handleAdminListLocalUsers, handleAdminUpdateLocalUser } from './admin-users.ts';
 import { handleAdminAuthConfig } from './auth-config.ts';
 import { handleAdminGetUserUsage } from './admin-usage.ts';
@@ -158,12 +158,28 @@ export async function handleRequest(
         if (routePath === '/auth/login' && request.method === 'POST') return handleLocalLogin(request, env, analytics, ip);
         if (routePath === '/auth/me' && request.method === 'GET') return handleLocalMe(request, env, authContext);
         if (routePath === '/auth/change-password' && request.method === 'POST') return handleLocalChangePassword(request, env, authContext, analytics, ip);
+        if (routePath === '/auth/bootstrap-admin' && request.method === 'POST') return handleLocalBootstrapAdmin(request, env, authContext, analytics, ip);
+        if (routePath === '/auth/profile' && request.method === 'PATCH') return handleLocalUpdateProfile(request, env, authContext, analytics, ip);
     }
 
-    // ── Admin storage (X-Admin-Key auth, lazy) ──────────────────────────────
+    // ── Admin storage (JWT admin auth, lazy) ──────────────────────────────
     if (routePath.startsWith('/admin/storage')) {
+        // ZTA: check permissions before the dynamic import to avoid loading
+        // the admin module for unauthorized requests and to emit centralized
+        // security-event telemetry consistent with all other permission denials.
+        const permDenied = checkRoutePermission(routePath, authContext);
+        if (permDenied) {
+            analytics.trackSecurityEvent({
+                eventType: 'auth_failure',
+                path: routePath,
+                method: request.method,
+                clientIpHash: AnalyticsService.hashIp(ip),
+                reason: 'route_permission_denied',
+            });
+            return permDenied;
+        }
         const { routeAdminStorage } = await import('./admin.ts');
-        return routeAdminStorage(routePath, request, env);
+        return routeAdminStorage(routePath, request, env, authContext);
     }
 
     // ── Route permission check ──────────────────────────────────────────────

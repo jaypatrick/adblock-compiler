@@ -5,20 +5,20 @@ import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { NEVER } from 'rxjs';
 import { StorageComponent } from './storage.component';
-import { AuthService } from '../../services/auth.service';
+import { AuthFacadeService } from '../../services/auth-facade.service';
 import { StorageService } from '../../services/storage.service';
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-function createMockAuthService(authenticated = false) {
-    const keySignal = signal(authenticated ? 'test-key' : '');
+function createMockAuthFacadeService(signedIn = false) {
     return {
-        adminKey: keySignal,
-        isAuthenticated: vi.fn(() => authenticated),
-        setKey: vi.fn((key: string) => keySignal.set(key)),
-        clearKey: vi.fn(() => keySignal.set('')),
+        isLoaded: signal(true),
+        isSignedIn: signal(signedIn),
+        isAdmin: signal(signedIn),
+        useClerk: signal(false),
+        userIdentifier: signal(signedIn ? 'admin@example.com' : null),
     };
 }
 
@@ -40,11 +40,11 @@ function createMockStorageService() {
 describe('StorageComponent', () => {
     let fixture: ComponentFixture<StorageComponent>;
     let component: StorageComponent;
-    let mockAuth: ReturnType<typeof createMockAuthService>;
+    let mockAuth: ReturnType<typeof createMockAuthFacadeService>;
     let mockStorage: ReturnType<typeof createMockStorageService>;
 
-    async function setup(authenticated = false) {
-        mockAuth = createMockAuthService(authenticated);
+    async function setup(signedIn = false) {
+        mockAuth = createMockAuthFacadeService(signedIn);
         mockStorage = createMockStorageService();
 
         await TestBed.configureTestingModule({
@@ -53,7 +53,7 @@ describe('StorageComponent', () => {
                 provideZonelessChangeDetection(),
                 provideHttpClient(),
                 provideHttpClientTesting(),
-                { provide: AuthService, useValue: mockAuth },
+                { provide: AuthFacadeService, useValue: mockAuth },
                 { provide: StorageService, useValue: mockStorage },
             ],
         }).compileComponents();
@@ -63,57 +63,11 @@ describe('StorageComponent', () => {
         fixture.detectChanges();
     }
 
-    describe('unauthenticated state', () => {
-        beforeEach(async () => { await setup(false); });
+    describe('component creation', () => {
+        beforeEach(async () => { await setup(true); });
 
         it('should create', () => {
             expect(component).toBeTruthy();
-        });
-
-        it('should show auth card when not authenticated', () => {
-            const el: HTMLElement = fixture.nativeElement;
-            expect(el.textContent).toContain('Authentication Required');
-        });
-
-        it('should not show authenticated content when not authenticated', () => {
-            const el: HTMLElement = fixture.nativeElement;
-            expect(el.textContent).not.toContain('Authenticated');
-        });
-    });
-
-    describe('authenticated state', () => {
-        beforeEach(async () => { await setup(true); });
-
-        it('should show authenticated content', () => {
-            const el: HTMLElement = fixture.nativeElement;
-            expect(el.textContent).toContain('Authenticated');
-        });
-
-        it('should not show auth card when authenticated', () => {
-            const el: HTMLElement = fixture.nativeElement;
-            expect(el.textContent).not.toContain('Authentication Required');
-        });
-    });
-
-    describe('authenticate()', () => {
-        beforeEach(async () => { await setup(false); });
-
-        it('should call setKey when keyInput is non-empty', () => {
-            component.keyInput = 'my-admin-key';
-            component.authenticate();
-            expect(mockAuth.setKey).toHaveBeenCalledWith('my-admin-key');
-        });
-
-        it('should clear keyInput after authenticate()', () => {
-            component.keyInput = 'my-admin-key';
-            component.authenticate();
-            expect(component.keyInput).toBe('');
-        });
-
-        it('should not call setKey when keyInput is blank', () => {
-            component.keyInput = '   ';
-            component.authenticate();
-            expect(mockAuth.setKey).not.toHaveBeenCalled();
         });
     });
 

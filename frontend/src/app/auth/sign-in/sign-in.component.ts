@@ -7,7 +7,7 @@
  */
 
 import { Component, ElementRef, afterNextRender, inject, viewChild, OnDestroy, effect, signal } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators } from '@angular/forms';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -22,6 +22,7 @@ import { ThemeService } from '../../services/theme.service';
     standalone: true,
     imports: [
         ReactiveFormsModule,
+        RouterLink,
         MatProgressSpinnerModule,
         MatFormFieldModule,
         MatInputModule,
@@ -76,6 +77,7 @@ import { ThemeService } from '../../services/theme.service';
                             }
                         </button>
                     </form>
+                    <p class="auth-switch">Don't have an account? <a routerLink="/sign-up" class="auth-link">Sign up</a></p>
                 </div>
             }
         </div>
@@ -119,6 +121,9 @@ import { ThemeService } from '../../services/theme.service';
         }
         .full-width { width: 100%; }
         .submit-btn { margin-top: 0.5rem; }
+        .auth-switch { margin-top: 1rem; text-align: center; font-size: 0.875rem; color: var(--mat-sys-on-surface-variant); }
+        .auth-link { color: var(--mat-sys-primary); text-decoration: none; font-weight: 500; }
+        .auth-link:hover { text-decoration: underline; }
     `],
 })
 export class SignInComponent implements OnDestroy {
@@ -160,6 +165,7 @@ export class SignInComponent implements OnDestroy {
     }
 
     protected async submit(): Promise<void> {
+        this.form.markAllAsTouched();
         if (this.form.invalid || this.loading()) return;
         this.errorMessage.set(null);
         this.loading.set(true);

@@ -312,7 +312,7 @@ export class ApiDocsComponent {
             ],
         },
         {
-            title: 'Admin (requires X-Admin-Key)',
+            title: 'Admin (requires Bearer JWT)',
             icon: 'admin_panel_settings',
             description: 'Storage inspection, cache management, and data export',
             endpoints: [

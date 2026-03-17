@@ -18,7 +18,6 @@
 #           and .dev.vars for local dev:
 #   wrangler secret put CLERK_SECRET_KEY
 #   wrangler secret put CLERK_WEBHOOK_SECRET
-#   wrangler secret put ADMIN_KEY
 #   wrangler secret put TURNSTILE_SECRET_KEY
 #   wrangler secret put JWT_SECRET
 #   wrangler secret put CF_ACCESS_AUD

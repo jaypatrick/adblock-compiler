@@ -4,35 +4,19 @@ How admin endpoints are protected and how to configure admin access.
 
 ## Current Admin Authentication
 
-Admin routes use **Clerk JWT-based authentication** as the primary layer, with optional Cloudflare Access as defense-in-depth. The `/admin/*` Angular panel and all backing API endpoints are fully protected.
+Admin routes use **Bearer JWT authentication** as the primary layer, with optional Cloudflare Access as defense-in-depth. The `/admin/*` Angular panel and all backing API endpoints are fully protected.
 
-### Layer 1: Clerk JWT (Primary)
+### Layer 1: Bearer JWT (Primary)
 
-Admin requests require a valid Clerk JWT with `publicMetadata.role === 'admin'`. The Angular admin panel attaches this automatically via the HTTP interceptor. For API access:
-
-```bash
-# Obtain a session token from Clerk, then:
-curl -X GET https://adblock-compiler.jayson-knight.workers.dev/admin/roles/me \
-  -H "Authorization: Bearer <clerk-session-jwt>"
-```
-
-Within the admin system, a **granular sub-role** (`viewer` / `editor` / `super-admin`) is resolved from the Admin D1 database and cached in KV. Endpoints enforce the required permission via `requireAdminPermission('...')` middleware.
-
-### Layer 2: Static Admin Key (Legacy, for `/admin/storage/*` only)
-
-The legacy storage endpoints retain `X-Admin-Key` header support for backward compatibility:
+Admin requests require a valid JWT with `role === 'admin'`. The Angular admin panel attaches this automatically via the HTTP interceptor. For API access:
 
 ```bash
-curl -X GET https://adblock-compiler.jayson-knight.workers.dev/admin/storage/stats \
-  -H "X-Admin-Key: your-admin-key-here"
+# Obtain a session token, then:
+curl -X GET https://adblock-compiler.jayson-knight.workers.dev/admin/local-users \
+  -H "Authorization: Bearer <your-jwt>"
 ```
 
-**Configuration:**
-```bash
-wrangler secret put ADMIN_KEY
-```
-
-### Layer 3: Cloudflare Access (Defense-in-Depth)
+### Layer 2: Cloudflare Access (Defense-in-Depth)
 
 When configured, admin routes also require a valid Cloudflare Access JWT:
 
@@ -47,96 +31,62 @@ wrangler secret put CF_ACCESS_TEAM_DOMAIN  # e.g., "mycompany"
 wrangler secret put CF_ACCESS_AUD          # Application audience tag
 ```
 
-## Clerk-Based Admin Auth
-
-> **Status**: ✅ Complete — shipped in PR #1058 (v0.60.0)
+## Local Auth Admin Access
 
 ### Current State
 
 | Feature | Status |
 |---------|--------|
-| `ADMIN_KEY` static key | ✅ Active (legacy, storage endpoints only) |
 | CF Access verification | ✅ Active (when configured) |
-| Clerk `requireAuth()` on admin routes | ✅ Active |
-| Clerk `requireAdminPermission()` on admin routes | ✅ Active |
-| Granular sub-roles (viewer/editor/super-admin) | ✅ Active (Admin D1 + KV) |
+| Bearer JWT `requireAuth()` on admin routes | ✅ Active |
+| `role === 'admin'` check on admin routes | ✅ Active |
 | Audit logging for all write/mutation operations | ✅ Active |
 
-### How to Become an Admin
+### How to Become an Admin (Local Auth)
 
-1. **Sign up** — Create an account via the web UI or Clerk
-2. **Set tier in Clerk** — An existing admin sets your tier to `admin` in Clerk public metadata:
-
-   **Via Clerk Dashboard:**
-   - Go to [dashboard.clerk.com](https://dashboard.clerk.com) → Users
-   - Find the user → Public metadata → Edit
-   - Set: `{ "tier": "admin", "role": "admin" }`
-
-   **Via Clerk API:**
-   ```bash
-   curl -X PATCH https://api.clerk.com/v1/users/{user_id}/metadata \
-     -H "Authorization: Bearer sk_live_..." \
-     -H "Content-Type: application/json" \
-     -d '{"public_metadata": {"tier": "admin", "role": "admin"}}'
+1. **Sign up** — Create an account via `/sign-up`
+2. **Set `INITIAL_ADMIN_EMAIL`** in `.dev.vars`:
    ```
-
-3. **JWT claims updated** — Clerk embeds `role: admin` in all subsequent session JWTs automatically
-4. **Access granted** — The `requireAdminPermission()` middleware reads the JWT claims directly to
-   verify `publicMetadata.role === 'admin'`. Note: the webhook handler intentionally ignores
-   `admin` tier/role values — admin access is granted via JWT metadata, not a webhook-driven D1 update.
-5. **Assign sub-role** — Visit `/admin/roles` to assign `editor` or `super-admin` sub-role (defaults to `viewer`)
+   INITIAL_ADMIN_EMAIL=you@youremail.com
+   ```
+3. **Bootstrap** — While signed in, call:
+   ```bash
+   curl -X POST /api/auth/bootstrap-admin \
+     -H "Authorization: Bearer <your-jwt>"
+   ```
+   The Worker promotes your account to `admin` role and returns a new JWT.
+4. **Sign out and sign back in** — The new JWT includes `role: "admin"`.
 
 ### Bootstrap Problem: First Admin
 
 When setting up a fresh installation with no existing admins:
 
-1. **Option A (Recommended)**: Use the Clerk dashboard directly — it doesn't require admin auth to access. Set `tier: admin, role: admin` on your user in the Clerk dashboard UI.
+1. **Option A (Recommended)**: Use the `POST /auth/bootstrap-admin` endpoint (email-gated by `INITIAL_ADMIN_EMAIL`).
 
-2. **Option B**: Use the Clerk Backend API with your `CLERK_SECRET_KEY`:
+2. **Option B**: Directly update the D1 database via `wrangler d1 execute`:
    ```bash
-   # Find your user ID
-   curl https://api.clerk.com/v1/users?email_address=you@example.com \
-     -H "Authorization: Bearer sk_live_..."
-
-   # Set admin tier
-   curl -X PATCH https://api.clerk.com/v1/users/{your_user_id}/metadata \
-     -H "Authorization: Bearer sk_live_..." \
-     -d '{"public_metadata": {"tier": "admin", "role": "admin"}}'
+   wrangler d1 execute adblock-compiler-d1-database --command "UPDATE local_auth_users SET role='admin' WHERE identifier='you@example.com'"
    ```
-
-3. **Option C (Legacy)**: Use the `ADMIN_KEY` for initial storage endpoint access, then migrate to Clerk auth.
 
 ## Admin Endpoints Reference
 
-The admin system exposes 27 API endpoints across 10 resource groups. See the [Admin API Reference](../admin/api-reference.md) for the full list with request/response schemas.
+The admin system exposes API endpoints across several resource groups. See the [Admin API Reference](../admin/api-reference.md) for the full list with request/response schemas.
 
 **Resource groups:**
 
 | Group | Base Path | Description |
 |-------|-----------|-------------|
-| Roles | `/admin/roles` | Role definitions, assignments, permission resolution |
-| Users | `/admin/users` | User management, tier editing, suspension |
-| Tiers | `/admin/config/tiers` | Runtime-editable tier registry |
-| Scopes | `/admin/config/scopes` | Runtime-editable scope registry |
-| Endpoints | `/admin/config/endpoints` | Per-endpoint auth overrides |
-| Feature Flags | `/admin/config/flags` | Flag CRUD + rollout controls |
-| Audit Logs | `/admin/audit-logs` | Immutable audit trail (paginated, filtered) |
-| API Keys | `/admin/keys` | Cross-user key management + revocation |
-| Announcements | `/admin/announcements` | System banner management |
-| Storage | `/admin/storage/*` | Legacy storage tools (stats, export, query) |
+| Local Users | `/admin/local-users` | User management, tier editing, role assignment |
+| Storage | `/admin/storage/*` | Storage tools (stats, export, query) |
+| API Keys | `/admin/auth/api-keys` | Cross-user key management + revocation |
+| Auth Config | `/admin/auth/config` | Auth configuration inspector |
+| Usage | `/admin/usage/*` | Per-user API usage statistics |
 
-### Example: Get Current User Permissions
+### Example: List Users
 
 ```bash
-# Using Clerk JWT (current)
-curl -X GET https://your-worker.workers.dev/admin/roles/me \
+curl -X GET https://your-worker.workers.dev/admin/local-users \
   -H "Authorization: Bearer eyJhbGciOiJSUzI1NiIs..."
-
-# Response
-{
-  "role": "editor",
-  "permissions": ["admin:read", "config:write", "users:read", "flags:write"]
-}
 ```
 
 ## Cloudflare Access Setup (Recommended)
@@ -185,8 +135,7 @@ wrangler secret put CF_ACCESS_TEAM_DOMAIN
 ## Security Recommendations
 
 1. **Always configure CF Access** for production admin routes — it provides an additional authentication layer independent of your application code
-2. **Use strong ADMIN_KEY values** — at least 32 random characters
-3. **Rotate ADMIN_KEY periodically** — update via `wrangler secret put ADMIN_KEY`
-4. **Limit admin users** — only grant `tier: admin` to users who need it
-5. **Monitor admin access** — check Worker logs for admin endpoint usage
-6. **Plan for ADMIN_KEY deprecation** — once Clerk tier-based admin auth is wired in, transition away from static keys
+2. **Limit admin users** — only grant `role: admin` to users who need it
+3. **Monitor admin access** — check Worker logs for admin endpoint usage
+4. **Use `INITIAL_ADMIN_EMAIL`** — set this env var to gate bootstrap to a specific email address
+

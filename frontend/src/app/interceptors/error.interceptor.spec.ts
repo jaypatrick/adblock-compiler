@@ -3,17 +3,18 @@ import { provideZonelessChangeDetection, PLATFORM_ID } from '@angular/core';
 import { HttpClient, provideHttpClient, withInterceptors } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { errorInterceptor } from './error.interceptor';
-import { AuthService } from '../services/auth.service';
+import { AuthFacadeService } from '../services/auth-facade.service';
 import { LogService } from '../services/log.service';
 import { LOG_ENDPOINT } from '../tokens';
 
 describe('errorInterceptor', () => {
     let http: HttpClient;
     let httpTesting: HttpTestingController;
-    let auth: AuthService;
+    let mockAuthFacade: { signOut: ReturnType<typeof vi.fn> };
     let log: LogService;
 
     beforeEach(() => {
+        mockAuthFacade = { signOut: vi.fn().mockResolvedValue(undefined) };
         sessionStorage.clear();
         TestBed.configureTestingModule({
             providers: [
@@ -22,11 +23,11 @@ describe('errorInterceptor', () => {
                 provideHttpClientTesting(),
                 { provide: PLATFORM_ID, useValue: 'browser' },
                 { provide: LOG_ENDPOINT, useValue: '/api/log' },
+                { provide: AuthFacadeService, useValue: mockAuthFacade },
             ],
         });
         http = TestBed.inject(HttpClient);
         httpTesting = TestBed.inject(HttpTestingController);
-        auth = TestBed.inject(AuthService);
         log = TestBed.inject(LogService);
     });
 
@@ -52,10 +53,7 @@ describe('errorInterceptor', () => {
         req.flush({ ok: true });
     });
 
-    it('should clear admin key on 401 Unauthorized', () => {
-        auth.setKey('will-be-cleared');
-        expect(auth.isAuthenticated()).toBe(true);
-
+    it('should call signOut on 401 Unauthorized', () => {
         http.get('/api/admin').subscribe({ error: () => {} });
 
         httpTesting.expectOne('/api/admin').flush(null, {
@@ -63,8 +61,7 @@ describe('errorInterceptor', () => {
             statusText: 'Unauthorized',
         });
 
-        expect(auth.isAuthenticated()).toBe(false);
-        expect(auth.adminKey()).toBe('');
+        expect(mockAuthFacade.signOut).toHaveBeenCalledTimes(1);
     });
 
     it('should re-throw error after handling 401', () => {
@@ -159,9 +156,7 @@ describe('errorInterceptor', () => {
         );
     });
 
-    it('should not clear admin key on non-401 errors', () => {
-        auth.setKey('should-remain');
-
+    it('should not call signOut on non-401 errors', () => {
         http.get('/api/test').subscribe({ error: () => {} });
 
         httpTesting.expectOne('/api/test').flush(null, {
@@ -169,7 +164,6 @@ describe('errorInterceptor', () => {
             statusText: 'Server Error',
         });
 
-        expect(auth.isAuthenticated()).toBe(true);
-        expect(auth.adminKey()).toBe('should-remain');
+        expect(mockAuthFacade.signOut).not.toHaveBeenCalled();
     });
 });

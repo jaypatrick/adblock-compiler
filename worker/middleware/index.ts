@@ -5,7 +5,7 @@
 
 import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
 import { ErrorUtils } from '../../src/utils/index.ts';
-import type { AdminAuthResult, Env, IAuthContext, RateLimitData, TurnstileResult, TurnstileVerifyResponse } from '../types.ts';
+import type { Env, IAuthContext, RateLimitData, TurnstileResult, TurnstileVerifyResponse } from '../types.ts';
 import { ANONYMOUS_AUTH_CONTEXT, TIER_RATE_LIMITS, UserTier } from '../types.ts';
 
 // ============================================================================
@@ -183,69 +183,6 @@ export async function verifyTurnstileToken(
  */
 export function isTurnstileEnabled(env: Env): boolean {
     return !!env.TURNSTILE_SECRET_KEY;
-}
-
-// ============================================================================
-// Admin Authentication
-// ============================================================================
-
-/**
- * Constant-time string comparison to prevent timing attacks.
- * Uses HMAC-based comparison via Web Crypto API.
- */
-async function timingSafeCompare(a: string, b: string): Promise<boolean> {
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode('timing-safe-compare-key');
-    const key = await crypto.subtle.importKey(
-        'raw',
-        keyData,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign'],
-    );
-    const aMac = new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(a)));
-    const bMac = new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(b)));
-    if (aMac.length !== bMac.length) return false;
-    let result = 0;
-    for (let i = 0; i < aMac.length; i++) {
-        result |= aMac[i] ^ bMac[i];
-    }
-    return result === 0;
-}
-
-/**
- * Verify admin authentication from request headers.
- *
- * @param request - Incoming request
- * @param env - Environment bindings
- * @returns Authorization result
- */
-export async function verifyAdminAuth(request: Request, env: Env): Promise<AdminAuthResult> {
-    const adminKey = request.headers.get('X-Admin-Key');
-
-    // If no ADMIN_KEY is configured, admin features are disabled
-    if (!env.ADMIN_KEY) {
-        return { authorized: false, error: 'Admin features not configured' };
-    }
-
-    if (!adminKey) {
-        return { authorized: false, error: 'Unauthorized' };
-    }
-
-    // Use constant-time comparison to prevent timing attacks
-    const matches = await timingSafeCompare(adminKey, env.ADMIN_KEY);
-    if (!matches) {
-        return { authorized: false, error: 'Unauthorized' };
-    }
-
-    return { authorized: true };
-}
-
-/**
- * Check if admin features are available
- */
-export function isAdminEnabled(env: Env): boolean {
-    return !!env.ADMIN_KEY;
 }
 
 // ============================================================================
