@@ -763,30 +763,28 @@ GET /admin/local-users
 **Query Parameters**:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `limit` | integer | 20 | Max results per page (1–100) |
+| `limit` | integer | 50 | Max results per page (1–100) |
 | `offset` | integer | 0 | Pagination offset |
 
 **Response**:
 ```json
 {
   "success": true,
-  "data": {
-    "users": [
-      {
-        "id": "uuid",
-        "identifier": "user@example.com",
-        "identifier_type": "email",
-        "role": "user",
-        "tier": "free",
-        "api_disabled": 0,
-        "created_at": "2025-01-01T00:00:00Z",
-        "updated_at": "2025-01-01T00:00:00Z"
-      }
-    ],
-    "total": 42,
-    "limit": 20,
-    "offset": 0
-  }
+  "users": [
+    {
+      "id": "uuid",
+      "identifier": "user@example.com",
+      "identifier_type": "email",
+      "role": "user",
+      "tier": "free",
+      "api_disabled": 0,
+      "created_at": "2025-01-01T00:00:00Z",
+      "updated_at": "2025-01-01T00:00:00Z"
+    }
+  ],
+  "total": 42,
+  "limit": 50,
+  "offset": 0
 }
 ```
 
@@ -800,7 +798,7 @@ GET /admin/local-users/:id
 
 **Path Parameters**: `id` — User UUID
 
-**Response**: Same user object as list, wrapped in `{ "data": { "user": { ... } } }`.
+**Response**: `{ "success": true, "user": { ... } }` — same user object shape as the list items above.
 
 ---
 
@@ -850,7 +848,7 @@ PATCH /admin/local-users/:id
 DELETE /admin/local-users/:id
 ```
 
-**Response**: `{ "success": true, "data": { "message": "User deleted" } }`
+**Response**: `{ "success": true, "message": "User deleted" }`
 
 **Errors**:
 - `404 Not Found` — user does not exist
@@ -876,24 +874,22 @@ GET /admin/usage/:userId
 **Query Parameters**:
 | Parameter | Type | Default | Description |
 |-----------|------|---------|-------------|
-| `days` | integer | 7 | Lookback window in days (1–90) |
+| `days` | integer | 30 | Lookback window in days (1–90) |
 
 **Response**:
 ```json
 {
   "success": true,
-  "data": {
-    "userId": "uuid",
-    "total": {
-      "count": 1234,
-      "firstSeen": "2025-01-01T00:00:00Z",
-      "lastSeen": "2025-03-15T12:00:00Z"
-    },
-    "days": [
-      { "date": "2025-03-15", "count": 42, "routes": { "/compile": 38, "/validate": 4 } }
-    ],
-    "lookbackDays": 7
-  }
+  "userId": "uuid",
+  "total": {
+    "count": 1234,
+    "firstSeen": "2025-01-01T00:00:00Z",
+    "lastSeen": "2025-03-15T12:00:00Z"
+  },
+  "days": [
+    { "date": "2025-03-15", "count": 42, "routes": { "/compile": 38, "/validate": 4 } }
+  ],
+  "lookbackDays": 30
 }
 ```
 
