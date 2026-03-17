@@ -96,7 +96,7 @@ ENVIRONMENT = "production"
 # Public Turnstile site key — not a secret; safe to commit.
 # For local dev, .dev.vars overrides this with the always-pass test key (1x000...AA).
 TURNSTILE_SITE_KEY = "0x4AAAAAACMKiPZdJh8I8IEM"
-CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787,https://adblock-compiler.jayson-knight.workers.dev"
+# CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787,https://adblock-compiler.jayson-knight.workers.dev"
 
 # ─── KV Namespaces ───────────────────────────────────────────────────────────
 # `wrangler dev` binds to these live namespaces by default.
