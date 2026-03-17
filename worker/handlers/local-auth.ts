@@ -439,13 +439,25 @@ export async function handleLocalBootstrapAdmin(
             return JsonResponse.error('This account is not designated as the initial admin', 403);
         }
 
+        // Single-use guard: reject if any admin already exists in the system.
+        // Bootstrap is a one-time operation — use /admin/local-users to create additional admins.
+        const existingAdmin = await env.DB
+            .prepare('SELECT COUNT(*) as count FROM local_auth_users WHERE role = ?')
+            .bind('admin')
+            .first<{ count: number }>();
+
+        if (existingAdmin && existingAdmin.count > 0 && user.role !== 'admin') {
+            trackFailure(analytics, { path, method: 'POST', reason: 'bootstrap_already_used', clientIpHash: AnalyticsService.hashIp(ip) });
+            return JsonResponse.error('Admin bootstrap has already been used. Create additional admins via /admin/local-users', 403);
+        }
+
         if (user.role === 'admin') {
             return JsonResponse.success({ message: 'Account is already an admin', user: LocalUserPublicSchema.parse(user) });
         }
 
         const newTier = tierForRole('admin');
         await env.DB
-            .prepare("UPDATE local_auth_users SET role = 'admin', tier = ? WHERE id = ?")
+            .prepare("UPDATE local_auth_users SET role = 'admin', tier = ? WHERE id = ? AND role != 'admin'")
             .bind(newTier, userId)
             .run();
 

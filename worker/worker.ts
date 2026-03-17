@@ -15,6 +15,7 @@
 
 // Import shared types
 import type { BatchCompileQueueMessage, CacheWarmQueueMessage, CompileQueueMessage, CompileRequest, Env, IAuthContext, Priority, QueueMessage, Workflow } from './types.ts';
+import { UserTier } from './types.ts';
 
 // Container class for Cloudflare Containers deployment.
 // Extends the official @cloudflare/containers helper so that Cloudflare's
@@ -60,7 +61,7 @@ import { handleWebSocketUpgrade } from './websocket.ts';
 import { AnalyticsService } from '../src/services/AnalyticsService.ts';
 import { getDeploymentHistory, getDeploymentStats, getLatestDeployment } from '../src/deployment/version.ts';
 import { checkRateLimitTiered, validateRequestSize } from './middleware/index.ts';
-import { authenticateRequestUnified, requireAuth } from './middleware/auth.ts';
+import { authenticateRequestUnified, requireAuth, requireTier } from './middleware/auth.ts';
 import { ClerkAuthProvider } from './middleware/clerk-auth-provider.ts';
 import { LocalJwtAuthProvider } from './middleware/local-jwt-auth-provider.ts';
 import { API_DOCS_REDIRECT } from './utils/constants.ts';
@@ -3340,8 +3341,19 @@ const workerHandler: WorkerHandler = {
         // ========================================================================
 
         if (routePath.startsWith('/admin/storage')) {
-            // JWT auth is handled by authenticateRequestUnified above;
-            // checkRoutePermission enforces Admin tier + role below.
+            // Enforce Admin tier explicitly — this block exits before checkRoutePermission runs.
+            const tierDenied = requireTier(authContext, UserTier.Admin);
+            if (tierDenied) {
+                analytics.trackSecurityEvent({
+                    eventType: 'auth_failure',
+                    path: routePath,
+                    method: request.method,
+                    clientIpHash: AnalyticsService.hashIp(ip),
+                    reason: 'insufficient_tier_admin_storage',
+                });
+                return tierDenied;
+            }
+
             // Defense-in-depth: also require CF Access JWT when configured.
             const cfAccess = await verifyCfAccessJwt(request, env);
             if (!cfAccess.valid) {
@@ -3377,7 +3389,7 @@ const workerHandler: WorkerHandler = {
 
         // ── Route permission check (central registry) ───────────────────────
         // Applied globally after auth for all routes registered in ROUTE_PERMISSION_REGISTRY.
-        // /admin/storage routes are handled before this check (JWT auth from authenticateRequestUnified applies).
+        // /admin/storage routes enforce Admin tier explicitly inside their block before reaching here.
         // Public endpoints (minTier: Anonymous) pass through with null.
         const permDenied = checkRoutePermission(routePath, authContext);
         if (permDenied) {
