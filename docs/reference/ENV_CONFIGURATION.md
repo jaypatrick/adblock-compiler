@@ -128,6 +128,7 @@ DIRECT_DATABASE_URL=postgresql://user:password@localhost:5432/adblock_dev
 | `CLERK_SECRET_KEY`            | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `CLERK_WEBHOOK_SECRET`        | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `ADMIN_KEY`                   | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `JWT_SECRET`                  | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `TURNSTILE_SITE_KEY`          | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
 | `TURNSTILE_SECRET_KEY`        | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `CORS_ALLOWED_ORIGINS`        | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
