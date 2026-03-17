@@ -497,7 +497,11 @@ export async function handleLocalUpdateProfile(
     if (!userId) return JsonResponse.error('Could not resolve user identity', 401);
 
     let body: unknown;
-    try { body = await request.json(); } catch { return JsonResponse.badRequest('Invalid JSON body'); }
+    try {
+        body = await request.json();
+    } catch {
+        return JsonResponse.badRequest('Invalid JSON body');
+    }
 
     const parsed = z.object({ identifier: z.string().email('Must be a valid email').optional() }).safeParse(body);
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Validation error');
