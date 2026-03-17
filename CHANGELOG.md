@@ -110,18 +110,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+## [0.65.0] - 2026-03-17
 
+### Added- secure all API endpoints by tier, remove AuthService, fix sign-up/sign-in UX, add profile page, ZTA periodic re-validation
+- remove legacy ADMIN_KEY system, add bootstrap-admin, shorten JWT to 1h (ZTA)
 
+### Fixed
 
-
-
-
-
-
-
-
-
-
+- prefix unused authContext param with _ in routeAdminStorage to fix deno lint/typecheck CI failures
+- canonicalize email identifiers, fix revalidation interval, move admin/storage auth telemetry to router
+- replace removed verifyAdminAuth with checkRoutePermission in admin.ts; wire up new auth handlers in router.ts
+- narrow /api meta route guard; return real 404 for server-handled paths in serveStaticAsset
+- run deno fmt on health.ts and workflow.ts to fix CI lint-format failure
+- address PR review — consolidate duplicates, harden Turnstile gating on ast/parse, validate, ws/compile
+- enforce Admin tier on /admin/storage/* and add bootstrap single-use guard
 
 
 ## [0.64.0] - 2026-03-16
