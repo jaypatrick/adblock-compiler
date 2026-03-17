@@ -1,9 +1,15 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { ActivatedRoute } from '@angular/router';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SignUpComponent } from './sign-up.component';
 import { ClerkService } from '../../services/clerk.service';
 import { ThemeService } from '../../services/theme.service';
+
+/** Build a minimal ActivatedRoute stub with the given query params snapshot. */
+function makeRoute(queryParams: Record<string, string> = {}) {
+    return { snapshot: { queryParams } };
+}
 
 function makeMockClerk(overrides: Partial<{ isLoaded: boolean; isAvailable: boolean; configLoadFailed: boolean }> = {}) {
     return {

@@ -3,12 +3,10 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { StorageService, StorageStats } from './storage.service';
-import { AuthService } from './auth.service';
 import { ADMIN_BASE_URL } from '../tokens';
 
 describe('StorageService', () => {
     let service: StorageService;
-    let auth: AuthService;
     let httpTesting: HttpTestingController;
 
     beforeEach(() => {
@@ -21,23 +19,18 @@ describe('StorageService', () => {
             ],
         });
         service = TestBed.inject(StorageService);
-        auth = TestBed.inject(AuthService);
         httpTesting = TestBed.inject(HttpTestingController);
-
-        // Set admin key for all requests
-        auth.setKey('test-admin-key');
     });
 
     afterEach(() => {
         httpTesting.verify();
-        auth.clearKey();
     });
 
     it('should be created', () => {
         expect(service).toBeTruthy();
     });
 
-    it('should GET /admin/storage/stats with X-Admin-Key header', () => {
+    it('should GET /admin/storage/stats', () => {
         const mockStats: StorageStats = {
             kvKeys: 10,
             r2Objects: 5,
@@ -51,7 +44,6 @@ describe('StorageService', () => {
 
         const req = httpTesting.expectOne('/admin/storage/stats');
         expect(req.request.method).toBe('GET');
-        expect(req.request.headers.get('X-Admin-Key')).toBe('test-admin-key');
         req.flush(mockStats);
     });
 
@@ -60,7 +52,6 @@ describe('StorageService', () => {
 
         const req = httpTesting.expectOne('/admin/storage/tables');
         expect(req.request.method).toBe('GET');
-        expect(req.request.headers.get('X-Admin-Key')).toBe('test-admin-key');
         req.flush([]);
     });
 
@@ -72,7 +63,6 @@ describe('StorageService', () => {
         const req = httpTesting.expectOne('/admin/storage/query');
         expect(req.request.method).toBe('POST');
         expect(req.request.body).toEqual({ sql });
-        expect(req.request.headers.get('X-Admin-Key')).toBe('test-admin-key');
         req.flush({ success: true, columns: [], rows: [], rowCount: 0 });
     });
 
@@ -83,7 +73,6 @@ describe('StorageService', () => {
 
         const req = httpTesting.expectOne('/admin/storage/clear-cache');
         expect(req.request.method).toBe('POST');
-        expect(req.request.headers.get('X-Admin-Key')).toBe('test-admin-key');
         req.flush({ success: true });
     });
 
@@ -114,15 +103,5 @@ describe('StorageService', () => {
         expect(req.request.method).toBe('GET');
         expect(req.request.responseType).toBe('blob');
         req.flush(new Blob(['{}'], { type: 'application/json' }));
-    });
-
-    it('should use current admin key from AuthService', () => {
-        auth.setKey('new-key-123');
-
-        service.getStats().subscribe();
-
-        const req = httpTesting.expectOne('/admin/storage/stats');
-        expect(req.request.headers.get('X-Admin-Key')).toBe('new-key-123');
-        req.flush({});
     });
 });

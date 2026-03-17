@@ -15,7 +15,6 @@
 
 // Import shared types
 import type { BatchCompileQueueMessage, CacheWarmQueueMessage, CompileQueueMessage, CompileRequest, Env, IAuthContext, Priority, QueueMessage, Workflow } from './types.ts';
-import { UserTier } from './types.ts';
 
 // Container class for Cloudflare Containers deployment.
 // Extends the official @cloudflare/containers helper so that Cloudflare's
