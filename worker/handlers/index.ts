@@ -3,7 +3,16 @@
  */
 
 // Admin handlers
-export { handleAdminClearCache, handleAdminClearExpired, handleAdminExport, handleAdminListTables, handleAdminQuery, handleAdminStorageStats, handleAdminVacuum, routeAdminStorage } from './admin.ts';
+export {
+    handleAdminClearCache,
+    handleAdminClearExpired,
+    handleAdminExport,
+    handleAdminListTables,
+    handleAdminQuery,
+    handleAdminStorageStats,
+    handleAdminVacuum,
+    routeAdminStorage,
+} from './admin.ts';
 
 // Asset / SPA serving handlers
 export { fetchAssetWithRedirects, fetchSpaShell, serveStaticAsset, serveWebUI } from './assets.ts';
@@ -41,6 +50,12 @@ export {
     routeQueue,
     updateQueueStats,
 } from './queue.ts';
+
+// Core request router (extracted from worker.ts _handleRequest)
+export { handleRequest } from './router.ts';
+
+// Scheduled cron handler
+export { handleScheduled } from './scheduled.ts';
 
 // Rule validation handler (POST /api/validate-rule)
 export { handleValidateRule } from './validate-rule.ts';
