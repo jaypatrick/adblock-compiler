@@ -74,11 +74,13 @@ enabled = true
 head_sampling_rate = 1
 persist = true
 invocation_logs = true
+destinations = [ "sentry-logs" ]
 
 [observability.traces]
 enabled = true
 head_sampling_rate = 1
 persist = true
+destinations = [ "sentry-traces" ]
 
 # ─── Static runtime vars (non-secret, Cloudflare-deployed only) ──────────────
 # RULE: This [vars] block is ONLY for non-secret values that must be present
