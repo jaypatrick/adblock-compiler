@@ -12,11 +12,10 @@
 import type { Env, IAuthContext } from '../types.ts';
 
 // Middleware
-import { checkRateLimitTiered, validateRequestSize } from '../middleware/index.ts';
+import { checkRateLimitTiered, validateRequestSize, verifyTurnstileToken } from '../middleware/index.ts';
 import { authenticateRequestUnified, requireAuth } from '../middleware/auth.ts';
 import { ClerkAuthProvider } from '../middleware/clerk-auth-provider.ts';
 import { LocalJwtAuthProvider } from '../middleware/local-jwt-auth-provider.ts';
-import { verifyTurnstileToken } from '../middleware/turnstile.ts';
 
 // Utils
 import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
@@ -60,6 +59,10 @@ function payloadTooLarge(error: string): Response {
 /**
  * Verify Turnstile token from a cloned request body.
  * Returns null on success; a Response on failure.
+ *
+ * When TURNSTILE_SECRET_KEY is configured, JSON parse failures are treated as
+ * verification failures (400 Bad Request) so clients cannot skip the check by
+ * sending a malformed body.
  */
 async function checkTurnstile(
     request: Request,
@@ -67,17 +70,23 @@ async function checkTurnstile(
     ip: string,
 ): Promise<Response | null> {
     if (!env.TURNSTILE_SECRET_KEY) return null;
+    let token = '';
     try {
         const body = await request.clone().json() as { turnstileToken?: string };
-        const result = await verifyTurnstileToken(env, body.turnstileToken || '', ip);
-        if (!result.success) {
-            return Response.json(
-                { success: false, error: result.error || 'Turnstile verification failed' },
-                { status: 403, headers: {} },
-            );
-        }
+        token = body.turnstileToken || '';
     } catch {
-        // If body parsing fails, let it through (token missing → Turnstile will reject if needed)
+        // Body is not valid JSON — treat as a missing token (verification will fail below)
+        return Response.json(
+            { success: false, error: 'Invalid request body — could not extract Turnstile token' },
+            { status: 400 },
+        );
+    }
+    const result = await verifyTurnstileToken(env, token, ip);
+    if (!result.success) {
+        return Response.json(
+            { success: false, error: result.error || 'Turnstile verification failed' },
+            { status: 403 },
+        );
     }
     return null;
 }
@@ -223,16 +232,75 @@ export async function handleRequest(
     if (routePath === '/ast/parse' && request.method === 'POST') {
         const sz = await validateRequestSize(request, env);
         if (!sz.valid) return payloadTooLarge(sz.error || 'Request body too large');
+        const rl = await checkRateLimitTiered(env, ip, authContext);
+        if (!rl.allowed) {
+            analytics.trackRateLimitExceeded({
+                requestId,
+                clientIpHash: AnalyticsService.hashIp(ip),
+                rateLimit: rl.limit,
+                windowSeconds: RATE_LIMIT_WINDOW,
+            });
+            return Response.json(
+                { success: false, error: `Rate limit exceeded. Maximum ${rl.limit} requests per ${RATE_LIMIT_WINDOW} seconds.` },
+                {
+                    status: 429,
+                    headers: {
+                        'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+                        'X-RateLimit-Limit': String(rl.limit),
+                        'X-RateLimit-Remaining': '0',
+                        'X-RateLimit-Reset': String(rl.resetAt),
+                    },
+                },
+            );
+        }
+        const tsError = await checkTurnstile(request, env, ip);
+        if (tsError) return tsError;
         return handleASTParseRequest(request, env);
     }
 
     if (routePath === '/validate' && request.method === 'POST') {
         const sz = await validateRequestSize(request, env);
         if (!sz.valid) return payloadTooLarge(sz.error || 'Request body too large');
+        const rl = await checkRateLimitTiered(env, ip, authContext);
+        if (!rl.allowed) {
+            analytics.trackRateLimitExceeded({
+                requestId,
+                clientIpHash: AnalyticsService.hashIp(ip),
+                rateLimit: rl.limit,
+                windowSeconds: RATE_LIMIT_WINDOW,
+            });
+            return Response.json(
+                { success: false, error: `Rate limit exceeded. Maximum ${rl.limit} requests per ${RATE_LIMIT_WINDOW} seconds.` },
+                {
+                    status: 429,
+                    headers: {
+                        'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+                        'X-RateLimit-Limit': String(rl.limit),
+                        'X-RateLimit-Remaining': '0',
+                        'X-RateLimit-Reset': String(rl.resetAt),
+                    },
+                },
+            );
+        }
+        const tsError = await checkTurnstile(request, env, ip);
+        if (tsError) return tsError;
         return handleValidate(request);
     }
 
-    if (routePath === '/ws/compile' && request.method === 'GET') return handleWebSocketUpgrade(request, env);
+    if (routePath === '/ws/compile' && request.method === 'GET') {
+        // Turnstile token for WebSocket comes from the query parameter (no request body on GET)
+        if (env.TURNSTILE_SECRET_KEY) {
+            const token = url.searchParams.get('turnstileToken') || '';
+            const result = await verifyTurnstileToken(env, token, ip);
+            if (!result.success) {
+                return Response.json(
+                    { success: false, error: result.error || 'Turnstile verification failed' },
+                    { status: 403 },
+                );
+            }
+        }
+        return handleWebSocketUpgrade(request, env);
+    }
 
     // Validate-rule (rate limited)
     if (routePath === '/validate-rule' && request.method === 'POST') {

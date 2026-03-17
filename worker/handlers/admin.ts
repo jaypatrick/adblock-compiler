@@ -10,7 +10,7 @@
 import { JsonResponse } from '../utils/index.ts';
 import type { Env, StorageStats, TableInfo } from '../types.ts';
 import { AdminQueryRequestSchema } from '../schemas.ts';
-import { verifyAdminAuth } from '../utils/auth-helpers.ts';
+import { verifyAdminAuth } from '../middleware/index.ts';
 import { verifyCfAccessJwt } from '../middleware/cf-access.ts';
 
 // ============================================================================
