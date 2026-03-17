@@ -84,6 +84,8 @@ WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:passwor
 # OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.grafana.net/otlp
 # Error reporter type: console | cloudflare | sentry | composite
 # ERROR_REPORTER_TYPE=composite
+# Set 'true' to enable verbose console output from the error reporter
+# ERROR_REPORTER_VERBOSE=false
 
 # ─── Optional integrations ───────────────────────────────────────────────────
 # Generic webhook target for POST /api/notify

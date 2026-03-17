@@ -119,26 +119,33 @@ DIRECT_DATABASE_URL=postgresql://user:password@localhost:5432/adblock_dev
 | Variable                      | Worker `Env`?      | Local file                        | Production             |
 | ----------------------------- | ------------------ | --------------------------------- | ---------------------- |
 | `COMPILER_VERSION`            | ✅                 | `.env`                            | `wrangler.toml [vars]` |
+| `ENVIRONMENT`                 | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
 | `PORT`                        | ❌                 | `.env`                            | N/A                    |
 | `DATABASE_URL`                | ❌                 | `.env.development` / `.env.local` | Hyperdrive binding     |
 | `DIRECT_DATABASE_URL`         | ❌                 | `.env.local`                      | N/A                    |
-| `ENVIRONMENT`                 | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
 | `CLERK_PUBLISHABLE_KEY`       | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
 | `CLERK_JWKS_URL`              | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
 | `CLERK_SECRET_KEY`            | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `CLERK_WEBHOOK_SECRET`        | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
-| `ADMIN_KEY`                   | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `JWT_SECRET`                  | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `INITIAL_ADMIN_EMAIL`         | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `TURNSTILE_SITE_KEY`          | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
 | `TURNSTILE_SECRET_KEY`        | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `CORS_ALLOWED_ORIGINS`        | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
-| `WRANGLER_HYPERDRIVE_LOCAL_*` | ✅ (wrangler only) | `.dev.vars`                       | N/A                    |
 | `CF_ACCESS_TEAM_DOMAIN`       | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `CF_ACCESS_AUD`               | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `MAX_REQUEST_BODY_MB`         | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
+| `WRANGLER_HYPERDRIVE_LOCAL_*` | ✅ (wrangler only) | `.dev.vars`                       | N/A                    |
 | `SENTRY_DSN`                  | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `SENTRY_RELEASE`              | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `ERROR_REPORTER_TYPE`         | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
+| `ERROR_REPORTER_VERBOSE`      | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `ANALYTICS_ACCOUNT_ID`        | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `ANALYTICS_API_TOKEN`         | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
-| `OTEL_EXPORTER_OTLP_ENDPOINT` | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
+| `CF_WEB_ANALYTICS_TOKEN`      | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
+| `WEBHOOK_URL`                 | ✅                 | `.dev.vars`                       | `wrangler.toml [vars]` |
+| `DATADOG_API_KEY`             | ✅                 | `.dev.vars`                       | `wrangler secret put`  |
 | `LOG_LEVEL`                   | ❌                 | `.env.development`                | N/A                    |
 | `LOG_STRUCTURED`              | ❌                 | `.env.development`                | N/A                    |
 
