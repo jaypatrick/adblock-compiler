@@ -14,7 +14,7 @@ export { handleResolveUrl } from './url-resolver.ts';
 export { handleSourceMonitor } from './source-monitor.ts';
 
 // Compile handlers
-export { handleASTParseRequest, handleCompileAsync, handleCompileBatch, handleCompileBatchAsync, handleCompileJson, handleCompileStream } from './compile.ts';
+export { handleASTParseRequest, handleCompileAsync, handleCompileBatch, handleCompileBatchAsync, handleCompileJson, handleCompileStream, handleValidate } from './compile.ts';
 
 // Health check handlers
 export { handleHealth, handleHealthLatest } from './health.ts';
