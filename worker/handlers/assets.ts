@@ -88,13 +88,23 @@ export async function serveStaticAsset(
             const isServerPath = SPA_SERVER_PREFIXES.some(
                 (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
             );
+
+            // Server-handled prefix with no matching asset — return a real 404 so
+            // unknown API/compile/queue/etc. paths are not masked as 200 HTML responses.
+            if (isServerPath) {
+                return new Response('Not Found', { status: 404 });
+            }
+
             const acceptsHtml = (request.headers.get('Accept') ?? '').includes('text/html');
-            if (!FILE_EXTENSION_RE.test(pathname) && !isServerPath && acceptsHtml) {
+            if (!FILE_EXTENSION_RE.test(pathname) && acceptsHtml) {
                 const shell = await fetchSpaShell(env.ASSETS);
                 if (shell) {
                     return shell;
                 }
             }
+
+            // Static file miss (with extension) or SPA shell unavailable — 404.
+            return new Response('Not Found', { status: 404 });
         } catch (error) {
             // deno-lint-ignore no-console
             console.error('Asset fetch error:', error);

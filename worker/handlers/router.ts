@@ -112,8 +112,17 @@ export async function handleRequest(
     const agentResponse = await routeAgentRequest(request, env);
     if (agentResponse) return agentResponse;
 
-    // Pre-auth API metadata routes (lazy import)
-    if (pathname.startsWith('/api') && request.method === 'GET') {
+    // Pre-auth API metadata routes (lazy import).
+    // Narrowed to the exact paths served by routeApiMeta to avoid pulling the
+    // deployment/version code into the isolate for unrelated API requests.
+    const isApiMetaRoute = request.method === 'GET' &&
+        (pathname === '/api' ||
+            pathname === '/api/version' ||
+            pathname.startsWith('/api/deployments') ||
+            pathname === '/api/turnstile-config' ||
+            pathname === '/api/clerk-config' ||
+            pathname === '/api/sentry-config');
+    if (isApiMetaRoute) {
         const { routeApiMeta } = await import('./info.ts');
         const metaResponse = await routeApiMeta(pathname, request, url, env);
         if (metaResponse) return metaResponse;
