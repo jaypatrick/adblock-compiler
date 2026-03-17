@@ -47,11 +47,7 @@ export async function handleHealth(env: Env): Promise<Response> {
         }),
     ]);
 
-    const authProvider: 'clerk' | 'local' | 'none' = env.CLERK_JWKS_URL
-        ? 'clerk'
-        : env.JWT_SECRET
-        ? 'local'
-        : 'none';
+    const authProvider: 'clerk' | 'local' | 'none' = env.CLERK_JWKS_URL ? 'clerk' : env.JWT_SECRET ? 'local' : 'none';
     const auth: ServiceResult & { provider: 'clerk' | 'local' | 'none' } = {
         status: authProvider !== 'none' ? 'healthy' : 'degraded',
         provider: authProvider,

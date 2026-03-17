@@ -7,12 +7,7 @@
  * analytics.trackSecurityEvent() on auth/rate failures.
  */
 
-import type {
-    BatchCompilationParams,
-    CacheWarmingParams,
-    CompilationParams,
-    HealthMonitoringParams,
-} from '../workflows/index.ts';
+import type { BatchCompilationParams, CacheWarmingParams, CompilationParams, HealthMonitoringParams } from '../workflows/index.ts';
 import { generateWorkflowId } from '../utils/index.ts';
 import type { Env, IAuthContext, Priority, Workflow } from '../types.ts';
 import type { IConfiguration } from '../../src/types/index.ts';
@@ -28,8 +23,7 @@ import { requireAuth } from '../middleware/auth.ts';
 /**
  * Error message returned when Workflow bindings are not configured.
  */
-export const WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR =
-    'Workflow bindings are not available. ' +
+export const WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR = 'Workflow bindings are not available. ' +
     'Workflows must be configured in wrangler.toml. See the Cloudflare Workflows documentation for setup instructions.';
 
 // ============================================================================
@@ -394,9 +388,7 @@ export async function handleWorkflowEvents(
         }
 
         const progressEvents = eventLog.events.filter((e) => e.type === 'workflow:progress');
-        const latestProgress = progressEvents.length > 0
-            ? (progressEvents[progressEvents.length - 1].progress ?? 0)
-            : 0;
+        const latestProgress = progressEvents.length > 0 ? (progressEvents[progressEvents.length - 1].progress ?? 0) : 0;
 
         const isComplete = eventLog.events.some(
             (e) => e.type === 'workflow:completed' || e.type === 'workflow:failed',
