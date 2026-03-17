@@ -2,10 +2,14 @@
 
 The adblock-compiler uses [Clerk](https://clerk.com) for user identity management and a tiered authorization system built on JWT tokens, API keys, and Cloudflare Access.
 
+> **Pre-Clerk bridge active?** See [Auth Provider Selection](auth-provider-selection.md) to understand which provider is in use and how to switch.
+
 ## Documentation
 
 | Document | Audience | Description |
 |----------|----------|-------------|
+| [Auth Provider Selection](auth-provider-selection.md) | All | How the system chooses between local JWT auth and Clerk, and how to control it |
+| [Local JWT Bridge](local-jwt-bridge.md) | Developers / Operators | Temporary self-contained auth active until Clerk is production-ready |
 | [Clerk Dashboard Setup](clerk-setup.md) | Operators | Step-by-step Clerk application configuration |
 | [Configuration Guide](configuration.md) | Operators / DevOps | Environment variables, secrets, and deployment setup |
 | [Developer Guide](developer-guide.md) | Developers | Architecture, extensibility, and code patterns |
@@ -48,9 +52,10 @@ flowchart LR
 
 The system supports three authentication methods, tried in order:
 
-1. **Clerk JWT** — Primary method for browser users. The Angular frontend obtains a JWT from Clerk and sends it as `Authorization: Bearer <jwt>`.
-2. **API Key** — For programmatic access. Users create API keys via the dashboard; sent as `Authorization: Bearer abc_...`.
-3. **Anonymous** — Unauthenticated access with lowest rate limits. Will be removed in a future release.
+1. **Clerk JWT** — Primary method for browser users. The Angular frontend obtains a JWT from Clerk and sends it as `Authorization: Bearer <jwt>`. Active only when `CLERK_JWKS_URL` is configured.
+2. **Local JWT (bridge)** — Temporary replacement for Clerk. Issues HS256 JWTs via `POST /auth/login`. Active when `CLERK_JWKS_URL` is **not** configured. See [Auth Provider Selection](auth-provider-selection.md).
+3. **API Key** — For programmatic access. Users create API keys via the dashboard; sent as `Authorization: Bearer abc_...`.
+4. **Anonymous** — Unauthenticated access with lowest rate limits. Will be removed in a future release.
 
 ## Tier System
 
