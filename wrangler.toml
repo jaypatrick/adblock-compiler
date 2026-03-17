@@ -89,10 +89,10 @@ persist = true
 # Keep in sync with VERSION in src/version.ts. Run `deno task version:sync` to propagate.
 COMPILER_VERSION = "0.64.0"
 ENVIRONMENT = "production"
-# Clerk publishable key — not a secret; safe to commit.
-# Update to pk_live_... when you go live.
-CLERK_PUBLISHABLE_KEY = "pk_test_bWF0dXJlLWxhbXByZXktNzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
-CLERK_JWKS_URL = "https://mature-lamprey-73.accounts.dev/.well-known/jwks.json"
+# Clerk publishable key — uncomment and set to pk_live_... when Clerk is production-ready.
+# To activate Clerk: uncomment both lines below and also set CLERK_JWKS_URL.
+# CLERK_PUBLISHABLE_KEY = "pk_test_bWF0dXJlLWxhbXByZXktNzMuY2xlcmsuYWNjb3VudHMuZGV2JA"
+# CLERK_JWKS_URL = "https://mature-lamprey-73.accounts.dev/.well-known/jwks.json"
 # Public Turnstile site key — not a secret; safe to commit.
 # For local dev, .dev.vars overrides this with the always-pass test key (1x000...AA).
 TURNSTILE_SITE_KEY = "0x4AAAAAACMKiPZdJh8I8IEM"
