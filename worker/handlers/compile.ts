@@ -796,3 +796,59 @@ export async function handleASTParseRequest(
         return JsonResponse.serverError(error);
     }
 }
+
+/**
+ * Validate an array of adblock rules and return per-rule parse results.
+ * POST /api/validate
+ */
+export async function handleValidate(request: Request): Promise<Response> {
+    try {
+        const body = await request.json() as { rules?: string[]; strict?: boolean };
+        const rules = Array.isArray(body.rules) ? body.rules : [];
+        const startTime = Date.now();
+        const errors: Array<{
+            line: number;
+            rule: string;
+            errorType: string;
+            message: string;
+            severity: 'error' | 'warning' | 'info';
+        }> = [];
+
+        let validRules = 0;
+        const { ASTViewerService } = await import('../../src/services/ASTViewerService.ts');
+        for (let i = 0; i < rules.length; i++) {
+            const rule = rules[i].trim();
+            if (!rule || rule.startsWith('!')) {
+                validRules++;
+                continue;
+            }
+            const result = ASTViewerService.parseRule(rule);
+            if (result.success) {
+                validRules++;
+            } else {
+                errors.push({
+                    line: i + 1,
+                    rule,
+                    errorType: 'ParseError',
+                    message: String(result.error),
+                    severity: 'error',
+                });
+            }
+        }
+
+        const duration = `${Date.now() - startTime}ms`;
+        return Response.json({
+            success: true,
+            valid: errors.length === 0,
+            totalRules: rules.length,
+            validRules,
+            invalidRules: errors.length,
+            errors,
+            warnings: [],
+            duration,
+        });
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return Response.json({ success: false, error: message }, { status: 400 });
+    }
+}
