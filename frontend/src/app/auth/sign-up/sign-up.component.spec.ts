@@ -41,6 +41,7 @@ describe('SignUpComponent', () => {
                 provideZonelessChangeDetection(),
                 { provide: ClerkService, useValue: mockClerkService },
                 { provide: ThemeService, useValue: mockThemeService },
+                { provide: ActivatedRoute, useValue: makeRoute() },
             ],
         }).compileComponents();
 
@@ -135,6 +136,7 @@ describe('SignUpComponent', () => {
                 provideZonelessChangeDetection(),
                 { provide: ClerkService, useValue: clerk },
                 { provide: ThemeService, useValue: makeMockTheme() },
+                { provide: ActivatedRoute, useValue: makeRoute() },
             ],
         }).compileComponents();
 
@@ -162,6 +164,7 @@ describe('SignUpComponent', () => {
                 provideZonelessChangeDetection(),
                 { provide: ClerkService, useValue: makeMockClerk() },
                 { provide: ThemeService, useValue: makeMockTheme() },
+                { provide: ActivatedRoute, useValue: makeRoute() },
             ],
         });
 
@@ -183,6 +186,7 @@ describe('SignUpComponent', () => {
                 provideZonelessChangeDetection(),
                 { provide: ClerkService, useValue: mockClerkNoMount },
                 { provide: ThemeService, useValue: makeMockTheme() },
+                { provide: ActivatedRoute, useValue: makeRoute() },
             ],
         });
 
@@ -226,6 +230,7 @@ describe('SignUpComponent', () => {
                 provideZonelessChangeDetection(),
                 { provide: ClerkService, useValue: clerk },
                 { provide: ThemeService, useValue: theme },
+                { provide: ActivatedRoute, useValue: makeRoute() },
             ],
         });
 
