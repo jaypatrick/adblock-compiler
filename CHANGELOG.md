@@ -110,21 +110,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## [0.65.0] - 2026-03-17
 
 ### Added- secure all API endpoints by tier, remove AuthService, fix sign-up/sign-in UX, add profile page, ZTA periodic re-validation
