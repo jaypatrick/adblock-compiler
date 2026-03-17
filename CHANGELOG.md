@@ -124,6 +124,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.64.1] - 2026-03-17
+
+### Added### Fixed
+
+- narrow /api meta route guard; return real 404 for server-handled paths in serveStaticAsset
+- run deno fmt on health.ts and workflow.ts to fix CI lint-format failure
+- address PR review — consolidate duplicates, harden Turnstile gating on ast/parse, validate, ws/compile
+
+
 ## [0.64.0] - 2026-03-16
 
 ### Added- add local auth + admin user management endpoints to OpenAPI spec and fix role docs
