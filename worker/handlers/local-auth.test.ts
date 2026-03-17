@@ -13,7 +13,7 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import { handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocalSignup } from './local-auth.ts';
+import { handleLocalBootstrapAdmin, handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocalSignup, handleLocalUpdateProfile } from './local-auth.ts';
 import { hashPassword } from '../utils/password.ts';
 import { type Env, type IAuthContext, UserTier } from '../types.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
@@ -82,6 +82,13 @@ function createMockDb(initialUsers: UserRecord[] = []) {
             },
             async first<T>(): Promise<T | null> {
                 const lower = sql.toLowerCase();
+                // Duplicate-email check: WHERE identifier = ? AND id != ?
+                if (lower.includes('where identifier =') && lower.includes('and id !=')) {
+                    const identifier = boundValues[0] as string;
+                    const excludeId = boundValues[1] as string;
+                    const user = users.find((u) => u.identifier === identifier && u.id !== excludeId);
+                    return (user ?? null) as T | null;
+                }
                 if (lower.includes('where identifier =')) {
                     const identifier = boundValues[0] as string;
                     const user = users.find((u) => u.identifier === identifier);
@@ -91,6 +98,11 @@ function createMockDb(initialUsers: UserRecord[] = []) {
                     const id = boundValues[0] as string;
                     const user = users.find((u) => u.id === id);
                     return (user ?? null) as T | null;
+                }
+                // COUNT(*) by role: SELECT COUNT(*) as count FROM local_auth_users WHERE role = ?
+                if (lower.includes('select count(*)') && lower.includes('where role =')) {
+                    const role = boundValues[0] as string;
+                    return { count: users.filter((u) => u.role === role).length } as T;
                 }
                 return null;
             },
@@ -116,6 +128,28 @@ function createMockDb(initialUsers: UserRecord[] = []) {
                     const idx = users.findIndex((u) => u.id === id);
                     if (idx >= 0) {
                         users[idx] = { ...users[idx], password_hash: newHash as string };
+                    }
+                    return { success: true, meta: { changes: 1 } };
+                }
+                // UPDATE role = 'admin' / tier
+                if (lower.includes("set role = 'admin'") || lower.includes('set role =')) {
+                    const [newTier, id] = boundValues;
+                    const idx = users.findIndex((u) => u.id === id);
+                    if (idx >= 0) {
+                        users[idx] = { ...users[idx], role: 'admin', tier: newTier as UserTier };
+                    }
+                    return { success: true, meta: { changes: 1 } };
+                }
+                // UPDATE identifier / identifier_type
+                if (lower.includes('set identifier =')) {
+                    const [newIdentifier, newIdentifierType, id] = boundValues;
+                    const idx = users.findIndex((u) => u.id === id);
+                    if (idx >= 0) {
+                        users[idx] = {
+                            ...users[idx],
+                            identifier: newIdentifier as string,
+                            identifier_type: newIdentifierType as 'email' | 'phone',
+                        };
                     }
                     return { success: true, meta: { changes: 1 } };
                 }
@@ -512,4 +546,319 @@ Deno.test('handleLocalChangePassword - 400 on short new password', async () => {
 
     const res = await handleLocalChangePassword(req, env, ctx, analytics, TEST_IP);
     assertEquals(res.status, 400);
+});
+
+// ============================================================================
+// handleLocalBootstrapAdmin tests
+// ============================================================================
+
+Deno.test('handleLocalBootstrapAdmin - 401 when anonymous', async () => {
+    const env = makeEnv();
+    const req = new Request('http://localhost/auth/bootstrap-admin', { method: 'POST' });
+
+    const res = await handleLocalBootstrapAdmin(req, env, makeAnonContext(), analytics, TEST_IP);
+    assertEquals(res.status, 401);
+});
+
+Deno.test('handleLocalBootstrapAdmin - 403 when INITIAL_ADMIN_EMAIL not configured', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/bootstrap-admin', { method: 'POST' });
+
+    const res = await handleLocalBootstrapAdmin(req, env, makeAuthContext('any-user-id'), analytics, TEST_IP);
+    assertEquals(res.status, 403);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(typeof body.error, 'string');
+    assertEquals((body.error as string).includes('INITIAL_ADMIN_EMAIL'), true);
+});
+
+Deno.test('handleLocalBootstrapAdmin - 503 when DB not configured', async () => {
+    const env = makeEnv({
+        DB: undefined as unknown as D1Database,
+        INITIAL_ADMIN_EMAIL: 'admin@example.com',
+    } as unknown as Env);
+    const req = new Request('http://localhost/auth/bootstrap-admin', { method: 'POST' });
+
+    const res = await handleLocalBootstrapAdmin(req, env, makeAuthContext('any-user-id'), analytics, TEST_IP);
+    assertEquals(res.status, 503);
+});
+
+Deno.test('handleLocalBootstrapAdmin - 503 when JWT_SECRET not configured', async () => {
+    const db = createMockDb();
+    const env = makeEnv({
+        DB: db as unknown as D1Database,
+        JWT_SECRET: undefined,
+        INITIAL_ADMIN_EMAIL: 'admin@example.com',
+    } as unknown as Env);
+    const req = new Request('http://localhost/auth/bootstrap-admin', { method: 'POST' });
+
+    const res = await handleLocalBootstrapAdmin(req, env, makeAuthContext('any-user-id'), analytics, TEST_IP);
+    assertEquals(res.status, 503);
+});
+
+Deno.test('handleLocalBootstrapAdmin - 404 when user not found in DB', async () => {
+    const db = createMockDb(); // empty DB
+    const env = makeEnv({
+        DB: db as unknown as D1Database,
+        INITIAL_ADMIN_EMAIL: 'admin@example.com',
+    } as unknown as Env);
+    const req = new Request('http://localhost/auth/bootstrap-admin', { method: 'POST' });
+
+    const res = await handleLocalBootstrapAdmin(req, env, makeAuthContext('nonexistent-id'), analytics, TEST_IP);
+    assertEquals(res.status, 404);
+});
+
+Deno.test("handleLocalBootstrapAdmin - 403 when user's identifier doesn't match INITIAL_ADMIN_EMAIL", async () => {
+    const passwordHash = await hashPassword('password123');
+    const db = createMockDb([{
+        id: '20000000-0000-4000-8000-000000000001',
+        identifier: 'user@example.com',
+        identifier_type: 'email',
+        password_hash: passwordHash,
+        role: 'user',
+        tier: UserTier.Free,
+        api_disabled: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({
+        DB: db as unknown as D1Database,
+        INITIAL_ADMIN_EMAIL: 'differentadmin@example.com',
+    } as unknown as Env);
+    const req = new Request('http://localhost/auth/bootstrap-admin', { method: 'POST' });
+
+    const res = await handleLocalBootstrapAdmin(req, env, makeAuthContext('20000000-0000-4000-8000-000000000001'), analytics, TEST_IP);
+    assertEquals(res.status, 403);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.error, 'This account is not designated as the initial admin');
+});
+
+Deno.test('handleLocalBootstrapAdmin - 403 when admin already exists (bootstrap already used)', async () => {
+    const passwordHash = await hashPassword('password123');
+    const db = createMockDb([
+        {
+            id: '20000000-0000-4000-8000-000000000002',
+            identifier: 'newadmin@example.com',
+            identifier_type: 'email',
+            password_hash: passwordHash,
+            role: 'user',
+            tier: UserTier.Free,
+            api_disabled: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        },
+        {
+            id: '20000000-0000-4000-8000-000000000099',
+            identifier: 'existing-admin@example.com',
+            identifier_type: 'email',
+            password_hash: passwordHash,
+            role: 'admin',
+            tier: UserTier.Admin,
+            api_disabled: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        },
+    ]);
+    const env = makeEnv({
+        DB: db as unknown as D1Database,
+        INITIAL_ADMIN_EMAIL: 'newadmin@example.com',
+    } as unknown as Env);
+    const req = new Request('http://localhost/auth/bootstrap-admin', { method: 'POST' });
+
+    const res = await handleLocalBootstrapAdmin(req, env, makeAuthContext('20000000-0000-4000-8000-000000000002'), analytics, TEST_IP);
+    assertEquals(res.status, 403);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(typeof body.error, 'string');
+    assertEquals((body.error as string).includes('already been used'), true);
+});
+
+Deno.test('handleLocalBootstrapAdmin - 200 with already-admin message when user is already admin', async () => {
+    const passwordHash = await hashPassword('password123');
+    const db = createMockDb([{
+        id: '20000000-0000-4000-8000-000000000003',
+        identifier: 'admin@example.com',
+        identifier_type: 'email',
+        password_hash: passwordHash,
+        role: 'admin',
+        tier: UserTier.Admin,
+        api_disabled: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({
+        DB: db as unknown as D1Database,
+        INITIAL_ADMIN_EMAIL: 'admin@example.com',
+    } as unknown as Env);
+    const req = new Request('http://localhost/auth/bootstrap-admin', { method: 'POST' });
+
+    const res = await handleLocalBootstrapAdmin(req, env, makeAuthContext('20000000-0000-4000-8000-000000000003'), analytics, TEST_IP);
+    assertEquals(res.status, 200);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.success, true);
+    assertEquals(body.message, 'Account is already an admin');
+});
+
+Deno.test('handleLocalBootstrapAdmin - 200 and promotes user to admin (happy path)', async () => {
+    const passwordHash = await hashPassword('password123');
+    const db = createMockDb([{
+        id: '20000000-0000-4000-8000-000000000004',
+        identifier: 'newadmin@example.com',
+        identifier_type: 'email',
+        password_hash: passwordHash,
+        role: 'user',
+        tier: UserTier.Free,
+        api_disabled: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({
+        DB: db as unknown as D1Database,
+        INITIAL_ADMIN_EMAIL: 'newadmin@example.com',
+    } as unknown as Env);
+    const req = new Request('http://localhost/auth/bootstrap-admin', { method: 'POST' });
+
+    const res = await handleLocalBootstrapAdmin(req, env, makeAuthContext('20000000-0000-4000-8000-000000000004'), analytics, TEST_IP);
+    assertEquals(res.status, 200);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.success, true);
+    assertEquals(body.message, 'Account promoted to admin');
+    assertExists(body.token);
+    const user = body.user as Record<string, unknown>;
+    assertEquals(user.role, 'admin');
+});
+
+// ============================================================================
+// handleLocalUpdateProfile tests
+// ============================================================================
+
+Deno.test('handleLocalUpdateProfile - 401 when anonymous', async () => {
+    const env = makeEnv();
+    const req = new Request('http://localhost/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ identifier: 'new@example.com' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalUpdateProfile(req, env, makeAnonContext(), analytics, TEST_IP);
+    assertEquals(res.status, 401);
+});
+
+Deno.test('handleLocalUpdateProfile - 503 when DB not configured', async () => {
+    const env = makeEnv({ DB: undefined as unknown as D1Database });
+    const req = new Request('http://localhost/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ identifier: 'new@example.com' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalUpdateProfile(req, env, makeAuthContext('any-user-id'), analytics, TEST_IP);
+    assertEquals(res.status, 503);
+});
+
+Deno.test('handleLocalUpdateProfile - 400 on invalid JSON body', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/profile', {
+        method: 'PATCH',
+        body: 'not-json',
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalUpdateProfile(req, env, makeAuthContext('any-user-id'), analytics, TEST_IP);
+    assertEquals(res.status, 400);
+});
+
+Deno.test('handleLocalUpdateProfile - 400 on invalid email format', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ identifier: 'not-a-valid-email' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalUpdateProfile(req, env, makeAuthContext('any-user-id'), analytics, TEST_IP);
+    assertEquals(res.status, 400);
+});
+
+Deno.test('handleLocalUpdateProfile - 200 "No changes made" when identifier is omitted', async () => {
+    const db = createMockDb();
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({}),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalUpdateProfile(req, env, makeAuthContext('any-user-id'), analytics, TEST_IP);
+    assertEquals(res.status, 200);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.success, true);
+    assertEquals(body.message, 'No changes made');
+});
+
+Deno.test('handleLocalUpdateProfile - 409 when email already taken by another user', async () => {
+    const passwordHash = await hashPassword('password123');
+    const db = createMockDb([
+        {
+            id: '30000000-0000-4000-8000-000000000001',
+            identifier: 'taken@example.com',
+            identifier_type: 'email',
+            password_hash: passwordHash,
+            role: 'user',
+            tier: UserTier.Free,
+            api_disabled: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        },
+        {
+            id: '30000000-0000-4000-8000-000000000002',
+            identifier: 'current@example.com',
+            identifier_type: 'email',
+            password_hash: passwordHash,
+            role: 'user',
+            tier: UserTier.Free,
+            api_disabled: 0,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        },
+    ]);
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ identifier: 'taken@example.com' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalUpdateProfile(req, env, makeAuthContext('30000000-0000-4000-8000-000000000002'), analytics, TEST_IP);
+    assertEquals(res.status, 409);
+});
+
+Deno.test('handleLocalUpdateProfile - 200 and updates profile successfully (happy path)', async () => {
+    const passwordHash = await hashPassword('password123');
+    const db = createMockDb([{
+        id: '30000000-0000-4000-8000-000000000003',
+        identifier: 'old@example.com',
+        identifier_type: 'email',
+        password_hash: passwordHash,
+        role: 'user',
+        tier: UserTier.Free,
+        api_disabled: 0,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+    }]);
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/auth/profile', {
+        method: 'PATCH',
+        body: JSON.stringify({ identifier: 'new@example.com' }),
+        headers: { 'Content-Type': 'application/json' },
+    });
+
+    const res = await handleLocalUpdateProfile(req, env, makeAuthContext('30000000-0000-4000-8000-000000000003'), analytics, TEST_IP);
+    assertEquals(res.status, 200);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.success, true);
+    // The updated user returned in body should reflect the new identifier
+    const user = body.user as Record<string, unknown>;
+    assertEquals(user.identifier, 'new@example.com');
 });

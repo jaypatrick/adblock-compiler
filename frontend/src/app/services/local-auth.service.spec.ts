@@ -272,4 +272,65 @@ describe('LocalAuthService', () => {
             expect(sessionStorage.getItem('adblock-jwt')).toBe(TOKEN);
         });
     });
+
+    describe('updateProfile()', () => {
+        beforeEach(() => {
+            sessionStorage.clear();
+            createService('browser');
+        });
+
+        it('should update user successfully via PATCH /api/auth/profile', async () => {
+            // First log in to get a token
+            const loginPromise = service.login('old@example.com', 'pass');
+            httpTesting.expectOne('/api/auth/login').flush({ token: TOKEN, user: MOCK_USER });
+            await loginPromise;
+
+            const updatedUser = { ...MOCK_USER, identifier: 'new@example.com' };
+            const updatePromise = service.updateProfile('new@example.com');
+
+            const req = httpTesting.expectOne('/api/auth/profile');
+            expect(req.request.method).toBe('PATCH');
+            expect(req.request.body).toEqual({ identifier: 'new@example.com' });
+            expect(req.request.headers.get('Authorization')).toBe(`Bearer ${TOKEN}`);
+            req.flush({ user: updatedUser });
+
+            await updatePromise;
+
+            expect(service.user()).toEqual(updatedUser);
+        });
+
+        it('should throw when not authenticated (no token)', async () => {
+            // No login — token is null
+            await expect(service.updateProfile('new@example.com')).rejects.toThrow('Not authenticated');
+        });
+    });
+
+    describe('changePassword()', () => {
+        beforeEach(() => {
+            sessionStorage.clear();
+            createService('browser');
+        });
+
+        it('should call POST /api/auth/change-password successfully', async () => {
+            // First log in to get a token
+            const loginPromise = service.login('user@example.com', 'oldpass');
+            httpTesting.expectOne('/api/auth/login').flush({ token: TOKEN, user: MOCK_USER });
+            await loginPromise;
+
+            const changePromise = service.changePassword('oldpass', 'newpass123');
+
+            const req = httpTesting.expectOne('/api/auth/change-password');
+            expect(req.request.method).toBe('POST');
+            expect(req.request.body).toEqual({ currentPassword: 'oldpass', newPassword: 'newpass123' });
+            expect(req.request.headers.get('Authorization')).toBe(`Bearer ${TOKEN}`);
+            req.flush({});
+
+            await changePromise;
+        });
+
+        it('should throw when not authenticated (no token)', async () => {
+            // No login — token is null
+            await expect(service.changePassword('old', 'new123')).rejects.toThrow('Not authenticated');
+        });
+    });
 });

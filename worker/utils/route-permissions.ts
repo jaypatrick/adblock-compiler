@@ -90,6 +90,9 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/auth/login', { minTier: UserTier.Anonymous, description: 'Authenticate' }],
     // Clerk webhook uses SVIX signature — not a user JWT
     ['/webhooks/*', { minTier: UserTier.Anonymous, description: 'Webhook receivers (self-authenticated)' }],
+    // API documentation — publicly readable
+    ['/docs', { minTier: UserTier.Anonymous, description: 'API documentation' }],
+    ['/docs/*', { minTier: UserTier.Anonymous, description: 'API documentation pages' }],
 
     // ── Free tier (any authenticated user) ────────────────────────────────────
     // Compile / transform
