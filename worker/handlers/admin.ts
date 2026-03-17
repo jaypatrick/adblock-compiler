@@ -1,11 +1,17 @@
 /**
  * Admin handlers for the Cloudflare Worker.
  * Provides storage management and database administration endpoints.
+ *
+ * ZTA: All /admin/storage/* endpoints require X-Admin-Key authentication plus
+ * optional Cloudflare Access JWT verification. Auth is checked in routeAdminStorage
+ * before any handler executes.
  */
 
 import { JsonResponse } from '../utils/index.ts';
 import type { Env, StorageStats, TableInfo } from '../types.ts';
 import { AdminQueryRequestSchema } from '../schemas.ts';
+import { verifyAdminAuth } from '../utils/auth-helpers.ts';
+import { verifyCfAccessJwt } from '../middleware/cf-access.ts';
 
 // ============================================================================
 // Storage Statistics
@@ -268,4 +274,69 @@ export async function handleAdminQuery(request: Request, env: Env): Promise<Resp
     } catch (error) {
         return JsonResponse.serverError(error);
     }
+}
+
+// ============================================================================
+// Admin Storage Route Handler (for lazy import from worker.ts)
+// ============================================================================
+
+/**
+ * Route handler for all /admin/storage/* endpoints.
+ *
+ * ZTA: Verifies X-Admin-Key header before any business logic.
+ * Also validates Cloudflare Access JWT when CF_ACCESS_AUD is configured.
+ *
+ * @param routePath - Path with /api prefix stripped (e.g. "/admin/storage/stats")
+ * @param request   - Incoming request
+ * @param env       - Worker environment bindings
+ */
+export async function routeAdminStorage(
+    routePath: string,
+    request: Request,
+    env: Env,
+): Promise<Response> {
+    // ZTA: verify X-Admin-Key header
+    const auth = await verifyAdminAuth(request, env);
+    if (!auth.authorized) {
+        return Response.json(
+            { success: false, error: auth.error },
+            {
+                status: 401,
+                headers: { 'WWW-Authenticate': 'X-Admin-Key' },
+            },
+        );
+    }
+
+    // ZTA: defense-in-depth — also require CF Access JWT when configured
+    const cfAccess = await verifyCfAccessJwt(request, env);
+    if (!cfAccess.valid) {
+        return Response.json(
+            { success: false, error: cfAccess.error ?? 'CF Access verification failed' },
+            { status: 403 },
+        );
+    }
+
+    if (routePath === '/admin/storage/stats' && request.method === 'GET') {
+        return handleAdminStorageStats(env);
+    }
+    if (routePath === '/admin/storage/clear-expired' && request.method === 'POST') {
+        return handleAdminClearExpired(env);
+    }
+    if (routePath === '/admin/storage/clear-cache' && request.method === 'POST') {
+        return handleAdminClearCache(env);
+    }
+    if (routePath === '/admin/storage/export' && request.method === 'GET') {
+        return handleAdminExport(env);
+    }
+    if (routePath === '/admin/storage/vacuum' && request.method === 'POST') {
+        return handleAdminVacuum(env);
+    }
+    if (routePath === '/admin/storage/tables' && request.method === 'GET') {
+        return handleAdminListTables(env);
+    }
+    if (routePath === '/admin/storage/query' && request.method === 'POST') {
+        return handleAdminQuery(request, env);
+    }
+
+    return Response.json({ success: false, error: 'Unknown admin endpoint' }, { status: 404 });
 }

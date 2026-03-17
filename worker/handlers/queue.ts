@@ -6,7 +6,9 @@
 import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
 import { createTracingContext, type DiagnosticEvent, WorkerCompiler } from '../../src/index.ts';
 import { generateRequestId, JsonResponse } from '../utils/index.ts';
-import type { BatchCompileQueueMessage, CacheWarmQueueMessage, CompilationResult, CompileQueueMessage, Env, JobInfo, QueueMessage, QueueStats } from '../types.ts';
+import type { BatchCompileQueueMessage, CacheWarmQueueMessage, CompilationResult, CompileQueueMessage, Env, IAuthContext, JobInfo, QueueMessage, QueueStats } from '../types.ts';
+import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
+import { requireAuth } from '../middleware/auth.ts';
 
 // ============================================================================
 // Constants
@@ -785,4 +787,61 @@ export async function handleQueueResults(
         console.error('Failed to decompress cached result:', error);
         return JsonResponse.serverError('Failed to decompress cached result');
     }
+}
+
+// ============================================================================
+// Queue Route Handler (for import from worker.ts)
+// ============================================================================
+
+/**
+ * Route handler for all /queue/* endpoints.
+ *
+ * ZTA: /queue/cancel/* requires authentication; other routes are public.
+ *
+ * @param routePath   - Path with /api prefix stripped (e.g. "/queue/stats")
+ * @param request     - Incoming request
+ * @param env         - Worker environment bindings
+ * @param authContext - Authenticated request context
+ * @param analytics   - Analytics service instance
+ * @param ip          - Client IP address
+ */
+export async function routeQueue(
+    routePath: string,
+    request: Request,
+    env: Env,
+    authContext: IAuthContext,
+    analytics: AnalyticsService,
+    ip: string,
+): Promise<Response> {
+    if (routePath === '/queue/stats' && request.method === 'GET') {
+        return handleQueueStats(env);
+    }
+
+    if (routePath === '/queue/history' && request.method === 'GET') {
+        return handleQueueHistory(env);
+    }
+
+    if (routePath.startsWith('/queue/results/') && request.method === 'GET') {
+        const requestId = routePath.split('/').pop() ?? '';
+        return handleQueueResults(requestId, env);
+    }
+
+    if (routePath.startsWith('/queue/cancel/') && request.method === 'POST') {
+        const cancelAuthGuard = requireAuth(authContext);
+        if (cancelAuthGuard) {
+            analytics.trackSecurityEvent({
+                eventType: 'auth_failure',
+                path: routePath,
+                method: 'POST',
+                clientIpHash: AnalyticsService.hashIp(ip),
+                reason: 'unauthenticated_queue_cancel',
+            });
+            return cancelAuthGuard;
+        }
+
+        const requestId = routePath.split('/').pop() ?? '';
+        return handleQueueCancel(requestId, env);
+    }
+
+    return Response.json({ success: false, error: 'Not found' }, { status: 404 });
 }

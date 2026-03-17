@@ -3,7 +3,10 @@
  */
 
 // Admin handlers
-export { handleAdminClearCache, handleAdminClearExpired, handleAdminExport, handleAdminListTables, handleAdminQuery, handleAdminStorageStats, handleAdminVacuum } from './admin.ts';
+export { handleAdminClearCache, handleAdminClearExpired, handleAdminExport, handleAdminListTables, handleAdminQuery, handleAdminStorageStats, handleAdminVacuum, routeAdminStorage } from './admin.ts';
+
+// Asset / SPA serving handlers
+export { fetchAssetWithRedirects, fetchSpaShell, serveStaticAsset, serveWebUI } from './assets.ts';
 
 // Browser Rendering handlers
 export { handleMonitorLatest } from './monitor-latest.ts';
@@ -12,6 +15,12 @@ export { handleSourceMonitor } from './source-monitor.ts';
 
 // Compile handlers
 export { handleASTParseRequest, handleCompileAsync, handleCompileBatch, handleCompileBatchAsync, handleCompileJson, handleCompileStream } from './compile.ts';
+
+// Health check handlers
+export { handleHealth, handleHealthLatest } from './health.ts';
+
+// Info / API metadata handlers
+export { handleInfo, routeApiMeta } from './info.ts';
 
 // Metrics handlers
 export { handleMetrics, recordMetric } from './metrics.ts';
@@ -29,6 +38,7 @@ export {
     handleQueueStats,
     processCompileMessage,
     QUEUE_BINDINGS_NOT_AVAILABLE_ERROR,
+    routeQueue,
     updateQueueStats,
 } from './queue.ts';
 
@@ -46,3 +56,16 @@ export { handleClerkWebhook } from './clerk-webhook.ts';
 
 // Prometheus metrics handler (GET /metrics/prometheus)
 export { handlePrometheusMetrics } from './prometheus-metrics.ts';
+
+// Workflow handlers
+export {
+    handleWorkflowBatchCompile,
+    handleWorkflowCacheWarm,
+    handleWorkflowCompile,
+    handleWorkflowEvents,
+    handleWorkflowHealthCheck,
+    handleWorkflowMetrics,
+    handleWorkflowStatus,
+    routeWorkflow,
+    WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR,
+} from './workflow.ts';
