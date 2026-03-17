@@ -17,7 +17,7 @@ import { JsonResponse } from './utils/response.ts';
 import { getCorsHeaders, getPublicCorsHeaders, handleCorsPreflight, isPublicEndpoint } from './utils/cors.ts';
 import { createWorkerErrorReporter } from './utils/errorReporter.ts';
 import { ErrorUtils } from '../src/utils/ErrorUtils.ts';
-import { checkRateLimit, validateRequestSize, verifyAdminAuth, verifyTurnstileToken } from './middleware/index.ts';
+import { checkRateLimit, validateRequestSize, verifyTurnstileToken } from './middleware/index.ts';
 import { handleASTParseRequest, handleCompileAsync, handleCompileBatch, handleCompileBatchAsync, handleCompileJson, handleCompileStream } from './handlers/compile.ts';
 import { handleMetrics, recordMetric } from './handlers/metrics.ts';
 import { handleQueueResults, handleQueueStats } from './handlers/queue.ts';
@@ -748,12 +748,9 @@ export async function handleRequest(
             }
         }
 
-        // Admin authentication
+        // Admin auth via admin key has been removed. These routes are deprecated.
         if (route.requireAuth) {
-            const auth = await verifyAdminAuth(request, env);
-            if (!auth.authorized) {
-                return withCors(JsonResponse.error(auth.error || 'Unauthorized', 401));
-            }
+            return withCors(JsonResponse.error('This endpoint has been migrated. Use the primary API.', 410));
         }
 
         // Turnstile verification

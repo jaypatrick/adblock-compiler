@@ -38,7 +38,6 @@
 
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import { verifyCfAccessJwt } from '../middleware/cf-access.ts';
-import { verifyAdminAuth } from '../middleware/index.ts';
 import type { Env } from '../types.ts';
 import { _clearRegistryForTesting, getRegisteredMetrics, registerPrometheusMetric, renderMetric } from './prometheus-metric-registry.ts';
 
@@ -240,23 +239,9 @@ registerPrometheusMetric({
  * Iterates all registered metrics (built-in + custom) and renders them as
  * Prometheus text exposition format (version 0.0.4).
  *
- * Protected by admin key — callers must supply `X-Admin-Key` header.
+ * Protected by JWT Admin tier — checkRoutePermission in worker.ts enforces admin access.
  */
 export async function handlePrometheusMetrics(request: Request, env: Env): Promise<Response> {
-    // ZTA Layer 2: verify X-Admin-Key
-    const auth = await verifyAdminAuth(request, env);
-    if (!auth.authorized) {
-        // ZTA: emit security event for auth failures on this endpoint.
-        // AnalyticsService is no-op when env.ANALYTICS_ENGINE is undefined.
-        new AnalyticsService(env.ANALYTICS_ENGINE).trackSecurityEvent({
-            eventType: 'auth_failure',
-            path: '/metrics/prometheus',
-            method: request.method,
-            reason: auth.error ?? 'Unauthorized',
-        });
-        return new Response(auth.error ?? 'Unauthorized', { status: 401 });
-    }
-
     // ZTA Layer 1: verify Cloudflare Access JWT when CF_ACCESS_AUD is configured.
     // verifyCfAccessJwt() is a no-op when CF_ACCESS_TEAM_DOMAIN / CF_ACCESS_AUD are unset,
     // so this does not break local development or non-Access deployments.

@@ -86,6 +86,11 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/admin/local-users', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List local auth users' }],
     ['/admin/local-users/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Local user management (update tier/role)' }],
     ['/admin/usage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Per-user API usage statistics' }],
+    ['/admin/storage', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin panel' }],
+    ['/admin/storage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin operations' }],
+    ['/admin/auth/api-keys', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key management' }],
+    ['/admin/auth/api-keys/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key operations' }],
+    ['/metrics/prometheus', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Prometheus metrics scrape endpoint' }],
 
     // ── Pro tier endpoints ─────────────────────────────────────────────────────
     ['/compile/async', { minTier: UserTier.Pro, description: 'Async compilation (Pro+)' }],

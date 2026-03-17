@@ -34,7 +34,7 @@ import { UserTier } from '../types.ts';
 
 const ISSUER = 'adblock-compiler-local' as const;
 const ALGORITHM = 'HS256' as const;
-const DEFAULT_EXPIRES_IN_SECONDS = 86_400; // 24 hours
+const DEFAULT_EXPIRES_IN_SECONDS = 3_600; // 1 hour
 const CLOCK_TOLERANCE_SECONDS = 5; // matches clerk-jwt.ts
 
 // ============================================================================
@@ -106,7 +106,7 @@ async function importHmacKey(secret: string, usage: 'sign' | 'verify'): Promise<
  * @param role             - User role string (e.g. 'user', 'admin')
  * @param tier             - User tier (derived from role registry)
  * @param secret           - Raw JWT_SECRET string from env
- * @param expiresInSeconds - Token lifetime (default 86400 / 24h)
+ * @param expiresInSeconds - Token lifetime (default 3600 / 1h)
  */
 export async function signLocalJWT(
     sub: string,

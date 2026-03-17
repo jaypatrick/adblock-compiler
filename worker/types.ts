@@ -419,8 +419,6 @@ export interface Env {
     ADMIN_DB?: D1Database;
     // Hyperdrive binding (optional - for PlanetScale PostgreSQL via Hyperdrive)
     HYPERDRIVE?: HyperdriveBinding;
-    // Admin authentication key
-    ADMIN_KEY?: string;
     // Request body size limit in megabytes (optional - defaults to 1MB)
     MAX_REQUEST_BODY_MB?: string;
     // Workflow bindings (optional - for durable execution)
@@ -482,6 +480,12 @@ export interface Env {
      * Production: `wrangler secret put JWT_SECRET`
      */
     JWT_SECRET?: string;
+    /**
+     * Email of the first admin user. When set, POST /auth/bootstrap-admin
+     * promotes the signed-in user matching this email to the 'admin' role.
+     * Remove once the first admin is set.
+     */
+    INITIAL_ADMIN_EMAIL?: string;
     // --- Cloudflare Access (admin route protection) ---
     /** Cloudflare Access team domain (e.g., 'myteam' for myteam.cloudflareaccess.com) */
     CF_ACCESS_TEAM_DOMAIN?: string;
@@ -779,14 +783,6 @@ export interface TurnstileResult {
 // ============================================================================
 // Admin Types
 // ============================================================================
-
-/**
- * Admin auth result
- */
-export interface AdminAuthResult {
-    authorized: boolean;
-    error?: string;
-}
 
 /**
  * Storage stats response

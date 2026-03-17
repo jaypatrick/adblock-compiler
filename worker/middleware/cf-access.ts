@@ -2,7 +2,7 @@
  * Cloudflare Access JWT Verification Middleware
  *
  * Verifies Cloudflare Access JWTs for admin route protection.
- * Defense-in-depth: admin routes require BOTH the X-Admin-Key header
+ * Defense-in-depth: admin routes require BOTH a valid JWT (Admin tier)
  * AND a valid CF Access JWT (when CF Access is configured).
  *
  * Authentication flow:

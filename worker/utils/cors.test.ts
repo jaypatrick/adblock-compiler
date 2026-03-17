@@ -193,6 +193,5 @@ Deno.test('handleCorsPreflight - includes Authorization in allowed headers', () 
     const res = handleCorsPreflight(req);
     const allowed = res.headers.get('Access-Control-Allow-Headers') ?? '';
     assertEquals(allowed.includes('Authorization'), true);
-    assertEquals(allowed.includes('X-Admin-Key'), true);
     assertEquals(allowed.includes('X-Turnstile-Token'), true);
 });

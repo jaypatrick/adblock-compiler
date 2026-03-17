@@ -38,9 +38,11 @@ CLERK_WEBHOOK_SECRET=whsec_...
 # MIGRATION: once CLERK_JWKS_URL is set above, this key is no longer used.
 JWT_SECRET=replace-with-openssl-rand-base64-32-output
 
-# ─── Admin ───────────────────────────────────────────────────────────────────
-# Legacy admin key (secret — production: `wrangler secret put ADMIN_KEY`)
-ADMIN_KEY=your-local-admin-key
+# ─── Bootstrap Admin ─────────────────────────────────────────────────────────
+# Email of the first admin user. When set, POST /auth/bootstrap-admin promotes
+# the signed-in user matching this email to the 'admin' role.
+# Remove once the first admin is set.
+# INITIAL_ADMIN_EMAIL=you@example.com
 
 # ─── Cloudflare Turnstile ────────────────────────────────────────────────────
 # Site key (non-secret — production value lives in wrangler.toml [vars])

@@ -2,7 +2,6 @@
  * Tests for the Prometheus metrics handler and metric registry.
  *
  * Covers:
- *  - 401 on missing/wrong admin key
  *  - Content-Type header
  *  - Fallback zeroed metrics when secrets are absent
  *  - # note: comment present when secrets are missing
@@ -21,7 +20,6 @@ import { renderMetric } from './prometheus-metric-registry.ts';
 
 function makeEnv(overrides: Partial<Env> = {}): Env {
     return {
-        ADMIN_KEY: 'secret-admin-key',
         COMPILER_VERSION: '1.0.0-test',
         ...overrides,
     } as unknown as Env;
@@ -32,7 +30,7 @@ function makeRequest(
 ): Request {
     return new Request('https://worker.example.com/metrics/prometheus', {
         method: overrides.method ?? 'GET',
-        headers: overrides.headers ?? { 'X-Admin-Key': 'secret-admin-key' },
+        headers: overrides.headers ?? {},
     });
 }
 
@@ -80,25 +78,6 @@ Deno.test('renderMetric — labels are rendered correctly', () => {
         1,
     );
     assertStringIncludes(out, 'my_gauge{env="prod",region="us-east"} 1');
-});
-
-// ---------------------------------------------------------------------------
-// Auth
-// ---------------------------------------------------------------------------
-
-Deno.test('handlePrometheusMetrics — missing admin key returns 401', async () => {
-    const req = new Request('https://worker.example.com/metrics/prometheus', {
-        method: 'GET',
-        // No X-Admin-Key header
-    });
-    const res = await handlePrometheusMetrics(req, makeEnv());
-    assertEquals(res.status, 401);
-});
-
-Deno.test('handlePrometheusMetrics — wrong admin key returns 401', async () => {
-    const req = makeRequest({ headers: { 'X-Admin-Key': 'wrong-key' } });
-    const res = await handlePrometheusMetrics(req, makeEnv());
-    assertEquals(res.status, 401);
 });
 
 // ---------------------------------------------------------------------------

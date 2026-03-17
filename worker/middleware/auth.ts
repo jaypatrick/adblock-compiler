@@ -12,8 +12,8 @@
  *   - If a Bearer token matches neither pattern, it is rejected
  *
  * Legacy support:
- *   - `authenticateApiKey()` and `authenticateRequest()` are preserved for
- *     backward compatibility but should be migrated to `authenticateRequestUnified()`.
+ *   - `authenticateApiKey()` is preserved for backward compatibility but
+ *     should be migrated to `authenticateRequestUnified()`.
  *
  * @see worker/middleware/clerk-jwt.ts — JWT verification
  * @see worker/types.ts — IAuthContext, IAuthMiddlewareResult, UserTier
@@ -189,40 +189,6 @@ export async function authenticateApiKey(
         const message = error instanceof Error ? error.message : String(error);
         return { authenticated: false, error: `Authentication service error: ${message}` };
     }
-}
-
-/**
- * Combined auth check: tries API key auth via Hyperdrive first,
- * falls back to static ADMIN_KEY for backward compatibility.
- *
- * Use this for admin routes during the migration period.
- *
- * @param request - Incoming HTTP request
- * @param env - Partial env with ADMIN_KEY and optional HYPERDRIVE
- * @param createPool - Optional pg Pool factory (required if HYPERDRIVE is set)
- * @returns Authentication result
- */
-export async function authenticateRequest(
-    request: Request,
-    env: { ADMIN_KEY?: string; HYPERDRIVE?: HyperdriveBinding },
-    createPool?: PgPoolFactory,
-): Promise<ApiKeyAuthResult> {
-    // Try API key auth if Hyperdrive is available
-    const token = extractBearerToken(request);
-    if (token && env.HYPERDRIVE && createPool) {
-        return authenticateApiKey(request, env.HYPERDRIVE, createPool, AuthScope.Admin);
-    }
-
-    // Fall back to static ADMIN_KEY
-    const adminKey = request.headers.get('X-Admin-Key');
-    if (!env.ADMIN_KEY) {
-        return { authenticated: false, error: 'Authentication not configured' };
-    }
-    if (!adminKey || adminKey !== env.ADMIN_KEY) {
-        return { authenticated: false, error: 'Unauthorized' };
-    }
-
-    return { authenticated: true };
 }
 
 // ---------------------------------------------------------------------------

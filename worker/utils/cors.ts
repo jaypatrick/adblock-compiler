@@ -102,7 +102,7 @@ export function handleCorsPreflight(request: Request, env?: Env): Response {
 
     const headers: Record<string, string> = {
         'Access-Control-Allow-Methods': 'GET, POST, PUT, PATCH, DELETE, OPTIONS',
-        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Admin-Key, X-Turnstile-Token',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Turnstile-Token',
         'Access-Control-Max-Age': '86400',
         'Vary': 'Origin',
     };

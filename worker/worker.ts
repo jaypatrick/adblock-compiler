@@ -71,9 +71,10 @@ import { handleRulesCreate, handleRulesDelete, handleRulesGet, handleRulesList, 
 import { handleNotify } from './handlers/webhook.ts';
 import { handleClerkWebhook } from './handlers/clerk-webhook.ts';
 import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdateApiKey } from './handlers/api-keys.ts';
-import { handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocalSignup } from './handlers/local-auth.ts';
+import { handleLocalBootstrapAdmin, handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocalSignup, handleLocalUpdateProfile } from './handlers/local-auth.ts';
 import { handleAdminCreateLocalUser, handleAdminDeleteLocalUser, handleAdminGetLocalUser, handleAdminListLocalUsers, handleAdminUpdateLocalUser } from './handlers/admin-users.ts';
 import { handleAdminAuthConfig } from './handlers/auth-config.ts';
+import { handleListApiKeys as handleAdminListApiKeys, handleRevokeApiKey as handleAdminRevokeApiKey } from './handlers/auth-admin.ts';
 import { checkRoutePermission } from './utils/route-permissions.ts';
 import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
@@ -2181,53 +2182,6 @@ async function queueBatchCompileJob(
 // ============================================================================
 
 /**
- * Constant-time string comparison to prevent timing attacks.
- */
-async function timingSafeCompareWorker(a: string, b: string): Promise<boolean> {
-    const encoder = new TextEncoder();
-    const keyData = encoder.encode('timing-safe-compare-key');
-    const key = await crypto.subtle.importKey(
-        'raw',
-        keyData,
-        { name: 'HMAC', hash: 'SHA-256' },
-        false,
-        ['sign'],
-    );
-    const aMac = new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(a)));
-    const bMac = new Uint8Array(await crypto.subtle.sign('HMAC', key, encoder.encode(b)));
-    if (aMac.length !== bMac.length) return false;
-    let result = 0;
-    for (let i = 0; i < aMac.length; i++) {
-        result |= aMac[i] ^ bMac[i];
-    }
-    return result === 0;
-}
-
-/**
- * Verify admin authentication
- */
-async function verifyAdminAuth(request: Request, env: Env): Promise<{ authorized: boolean; error?: string }> {
-    const adminKey = request.headers.get('X-Admin-Key');
-
-    // If no ADMIN_KEY is configured, admin features are disabled
-    if (!env.ADMIN_KEY) {
-        return { authorized: false, error: 'Admin features not configured' };
-    }
-
-    if (!adminKey) {
-        return { authorized: false, error: 'Unauthorized' };
-    }
-
-    // Use constant-time comparison to prevent timing attacks
-    const matches = await timingSafeCompareWorker(adminKey, env.ADMIN_KEY);
-    if (!matches) {
-        return { authorized: false, error: 'Unauthorized' };
-    }
-
-    return { authorized: true };
-}
-
-/**
  * Handle admin storage stats endpoint
  */
 async function handleAdminStorageStats(env: Env): Promise<Response> {
@@ -3352,7 +3306,8 @@ const workerHandler: WorkerHandler = {
         if (
             routePath.startsWith('/auth/') &&
             (routePath === '/auth/signup' || routePath === '/auth/login' ||
-                routePath === '/auth/me' || routePath === '/auth/change-password')
+                routePath === '/auth/me' || routePath === '/auth/change-password' ||
+                routePath === '/auth/bootstrap-admin' || routePath === '/auth/profile')
         ) {
             if (env.CLERK_JWKS_URL) {
                 return Response.json({ success: false, error: 'Not found' }, { status: 404 });
@@ -3369,31 +3324,25 @@ const workerHandler: WorkerHandler = {
             if (routePath === '/auth/change-password' && request.method === 'POST') {
                 return await handleLocalChangePassword(request, env, authContext, analytics, ip);
             }
+            if (routePath === '/auth/bootstrap-admin' && request.method === 'POST') {
+                return await handleLocalBootstrapAdmin(request, env, authContext, analytics, ip);
+            }
+            if (routePath === '/auth/profile' && request.method === 'PATCH') {
+                return await handleLocalUpdateProfile(request, env, authContext);
+            }
         }
 
         // ========================================================================
-        // Admin Storage Endpoints (require X-Admin-Key header)
+        // Admin Storage Endpoints (JWT auth via authenticateRequestUnified)
         // ========================================================================
         // This block runs BEFORE the central route permission check so that
-        // /admin/storage/* uses X-Admin-Key auth (not the JWT registry).
+        // /admin/storage/* can apply CF Access defense-in-depth before dispatch.
         // ========================================================================
 
         if (routePath.startsWith('/admin/storage')) {
-            // Verify admin authentication (X-Admin-Key header)
-            const auth = await verifyAdminAuth(request, env);
-            if (!auth.authorized) {
-                return Response.json(
-                    { success: false, error: auth.error },
-                    {
-                        status: 401,
-                        headers: {
-                            'WWW-Authenticate': 'X-Admin-Key',
-                        },
-                    },
-                );
-            }
-
-            // Defense-in-depth: also require CF Access JWT when configured
+            // JWT auth is handled by authenticateRequestUnified above;
+            // checkRoutePermission enforces Admin tier + role below.
+            // Defense-in-depth: also require CF Access JWT when configured.
             const cfAccess = await verifyCfAccessJwt(request, env);
             if (!cfAccess.valid) {
                 return Response.json(
@@ -3402,51 +3351,33 @@ const workerHandler: WorkerHandler = {
                 );
             }
 
-            // Admin storage stats
             if (routePath === '/admin/storage/stats' && request.method === 'GET') {
                 return handleAdminStorageStats(env);
             }
-
-            // Admin clear expired entries
             if (routePath === '/admin/storage/clear-expired' && request.method === 'POST') {
                 return handleAdminClearExpired(env);
             }
-
-            // Admin clear cache
             if (routePath === '/admin/storage/clear-cache' && request.method === 'POST') {
                 return handleAdminClearCache(env);
             }
-
-            // Admin export data
             if (routePath === '/admin/storage/export' && request.method === 'GET') {
                 return handleAdminExport(env);
             }
-
-            // Admin vacuum database
             if (routePath === '/admin/storage/vacuum' && request.method === 'POST') {
                 return handleAdminVacuum(env);
             }
-
-            // Admin list tables
             if (routePath === '/admin/storage/tables' && request.method === 'GET') {
                 return handleAdminListTables(env);
             }
-
-            // Admin SQL query (read-only)
             if (routePath === '/admin/storage/query' && request.method === 'POST') {
                 return handleAdminQuery(request, env);
             }
-
-            // Unknown admin endpoint
-            return Response.json(
-                { success: false, error: 'Unknown admin endpoint' },
-                { status: 404 },
-            );
+            return Response.json({ success: false, error: 'Unknown admin storage endpoint' }, { status: 404 });
         }
 
         // ── Route permission check (central registry) ───────────────────────
         // Applied globally after auth for all routes registered in ROUTE_PERMISSION_REGISTRY.
-        // /admin/storage routes use X-Admin-Key and are handled before this check.
+        // /admin/storage routes are handled before this check (JWT auth from authenticateRequestUnified applies).
         // Public endpoints (minTier: Anonymous) pass through with null.
         const permDenied = checkRoutePermission(routePath, authContext);
         if (permDenied) {
@@ -3494,6 +3425,20 @@ const workerHandler: WorkerHandler = {
         const usageMatch = routePath.match(/^\/admin\/usage\/([^/]+)$/);
         if (usageMatch && request.method === 'GET') {
             return await handleAdminGetUserUsage(request, env, authContext, usageMatch[1]);
+        }
+
+        // ── Admin API key management (JWT auth via checkRoutePermission above) ─
+        if (routePath === '/admin/auth/api-keys' && request.method === 'GET') {
+            if (!env.HYPERDRIVE) {
+                return JsonResponse.error('API key management requires PostgreSQL (HYPERDRIVE not configured)', 503);
+            }
+            return handleAdminListApiKeys(request, env.HYPERDRIVE, createPgPool);
+        }
+        if (routePath === '/admin/auth/api-keys/revoke' && request.method === 'POST') {
+            if (!env.HYPERDRIVE) {
+                return JsonResponse.error('API key management requires PostgreSQL (HYPERDRIVE not configured)', 503);
+            }
+            return handleAdminRevokeApiKey(request, env.HYPERDRIVE, createPgPool);
         }
 
         // Handle Prometheus scrape endpoint (admin-protected; auth handled inside handler)

@@ -71,7 +71,6 @@ export const JsonResponse = {
      */
     unauthorized(error = 'Unauthorized', options: Omit<ResponseOptions, 'status'> = {}): Response {
         const headers = buildHeaders({ ...options, status: 401 });
-        headers['WWW-Authenticate'] = 'X-Admin-Key';
         return Response.json(
             { success: false, error },
             { status: 401, headers },
