@@ -379,8 +379,8 @@ export default {
                 const { withSentry } = await import('@sentry/cloudflare');
                 return withSentry(
                     () => ({ dsn, tracesSampleRate: 0, integrations: [] }),
-                    handler as unknown as ExportedHandler<TailEnv>,
-                ).tail!(events as unknown as readonly TraceItem[], env, ctx);
+                    handler as unknown as ExportedHandler<unknown>,
+                ).tail!(events as unknown as TraceItem[], env, ctx);
             } catch {
                 // SDK load or init failed — fall through to the plain handler
             }
