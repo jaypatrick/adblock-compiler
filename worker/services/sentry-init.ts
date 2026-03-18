@@ -43,6 +43,7 @@ export interface SentryWorkerConfig {
  *
  * @param handler - The existing export default { fetch, queue, scheduled } object.
  * @param configFn - A function that receives `env` and returns SentryWorkerConfig.
+ *   Pass `environment: env.ENVIRONMENT ?? 'production'` to correctly tag staging vs production.
  */
 export function withSentryWorker<T extends ExportedHandler<Env>>(
     handler: T,
