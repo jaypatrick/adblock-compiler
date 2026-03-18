@@ -358,6 +358,12 @@ The DSN is fetched at **runtime** from `/api/sentry-config` (the Worker
 exposes it from the `SENTRY_DSN` Worker Secret). It is never baked into the
 build artifact, which means the same build artifact can run in any environment.
 
+> **ZTA note:** `/api/sentry-config` (and all other pre-auth config endpoints) is protected by
+> anonymous-tier rate limiting via `checkRateLimitTiered` in `worker/handlers/router.ts`, even
+> though it requires no authentication. This prevents scraping or DoS of the config endpoint.
+> The DSN itself is intentionally public (Sentry uses it in every browser request), but the
+> endpoint still enforces rate limits. See `worker/utils/cors.ts` for the CORS policy.
+
 ```
 Angular app boots
   └── provideAppInitializer()
