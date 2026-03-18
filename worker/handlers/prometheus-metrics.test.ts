@@ -164,8 +164,7 @@ function withMockFetch(
 ): Promise<void> {
     const originalFetch = globalThis.fetch;
     // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async () =>
-        new Response(JSON.stringify(mockResponse), { status });
+    (globalThis as any).fetch = async () => new Response(JSON.stringify(mockResponse), { status });
     return fn().finally(() => {
         globalThis.fetch = originalFetch;
     });
@@ -217,7 +216,9 @@ Deno.test('handlePrometheusMetrics — returns 200 when analytics API fetch fail
 
     const originalFetch = globalThis.fetch;
     // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async () => { throw new Error('Analytics unavailable'); };
+    (globalThis as any).fetch = async () => {
+        throw new Error('Analytics unavailable');
+    };
 
     try {
         const res = await handlePrometheusMetrics(req, env);

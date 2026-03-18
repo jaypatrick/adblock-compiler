@@ -23,16 +23,7 @@
 
 import { assertEquals, assertExists } from '@std/assert';
 import { ANONYMOUS_AUTH_CONTEXT, type IAuthContext, UserTier } from '../types.ts';
-import {
-    checkRateLimit,
-    checkRateLimitTiered,
-    cloneAndParseBody,
-    getClientIp,
-    getRateLimitConfig,
-    isTurnstileEnabled,
-    parseJsonBody,
-    verifyTurnstileToken,
-} from './index.ts';
+import { checkRateLimit, checkRateLimitTiered, cloneAndParseBody, getClientIp, getRateLimitConfig, isTurnstileEnabled, parseJsonBody, verifyTurnstileToken } from './index.ts';
 import type { Env } from '../types.ts';
 
 // ============================================================================
@@ -56,7 +47,9 @@ function makeKvNamespace(data: KVData = new Map()): KVNamespace {
                 data.set(key, value);
             }
         },
-        delete: async (key: string) => { data.delete(key); },
+        delete: async (key: string) => {
+            data.delete(key);
+        },
         list: async () => ({ keys: [], list_complete: true, cursor: '' }),
         getWithMetadata: async () => ({ value: null, metadata: null }),
     } as unknown as KVNamespace;
@@ -223,8 +216,7 @@ Deno.test('verifyTurnstileToken - succeeds when Cloudflare returns success:true'
     const env = makeEnv({ TURNSTILE_SECRET_KEY: 'secret_test' });
     const originalFetch = globalThis.fetch;
     // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async () =>
-        new Response(JSON.stringify({ success: true }), { status: 200 });
+    (globalThis as any).fetch = async () => new Response(JSON.stringify({ success: true }), { status: 200 });
 
     try {
         const result = await verifyTurnstileToken(env, 'valid-token', '1.2.3.4');
@@ -258,7 +250,9 @@ Deno.test('verifyTurnstileToken - fails when network error occurs', async () => 
     const env = makeEnv({ TURNSTILE_SECRET_KEY: 'secret_test' });
     const originalFetch = globalThis.fetch;
     // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async () => { throw new Error('Network error'); };
+    (globalThis as any).fetch = async () => {
+        throw new Error('Network error');
+    };
 
     try {
         const result = await verifyTurnstileToken(env, 'token', '1.2.3.4');
@@ -273,8 +267,7 @@ Deno.test('verifyTurnstileToken - fails when Cloudflare returns no error-codes',
     const env = makeEnv({ TURNSTILE_SECRET_KEY: 'secret_test' });
     const originalFetch = globalThis.fetch;
     // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async () =>
-        new Response(JSON.stringify({ success: false }), { status: 200 });
+    (globalThis as any).fetch = async () => new Response(JSON.stringify({ success: false }), { status: 200 });
 
     try {
         const result = await verifyTurnstileToken(env, 'bad-token', '1.2.3.4');

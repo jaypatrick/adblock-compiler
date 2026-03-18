@@ -17,13 +17,7 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import {
-    ANONYMOUS_AUTH_CONTEXT,
-    type Env,
-    type HyperdriveBinding,
-    type IAuthContext,
-    UserTier,
-} from '../types.ts';
+import { ANONYMOUS_AUTH_CONTEXT, type Env, type HyperdriveBinding, type IAuthContext, UserTier } from '../types.ts';
 import { authenticateRequestUnified, requireAuth, requireScope, requireTier } from './auth.ts';
 
 // ============================================================================
