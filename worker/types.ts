@@ -439,6 +439,7 @@ export interface Env {
     ERROR_REPORTER_TYPE?: string; // 'console', 'cloudflare', 'sentry', 'composite'
     SENTRY_DSN?: string; // Sentry Data Source Name (required if using Sentry)
     SENTRY_RELEASE?: string; // Git SHA / tag injected at deploy time for source map association
+    ENVIRONMENT?: string; // Deployment environment tag; mirrors wrangler.toml [vars]
     ERROR_REPORTER_VERBOSE?: string; // 'true' or 'false' for verbose console logging
     // OpenTelemetry OTLP collector endpoint (required if using OpenTelemetry traces/metrics)
     // e.g. https://otlp.grafana.net or https://api.honeycomb.io

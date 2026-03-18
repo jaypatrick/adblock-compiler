@@ -146,10 +146,10 @@ export const appConfig: ApplicationConfig = {
             // Fetches DSN and release from /api/sentry-config at runtime — no build-time env required.
             try {
                 const sentryConfig = await firstValueFrom(
-                    http.get<{ dsn: string | null; release: string | null }>(`${apiBaseUrl}/sentry-config`)
+                    http.get<{ dsn: string | null; release: string | null; environment: string | null }>(`${apiBaseUrl}/sentry-config`)
                         .pipe(timeout(5000)),
                 );
-                await initSentry(sentryConfig.dsn, sentryConfig.release);
+                await initSentry(sentryConfig.dsn, sentryConfig.release, sentryConfig.environment);
             } catch {
                 // Non-fatal: Sentry RUM disabled if config fetch fails
             }

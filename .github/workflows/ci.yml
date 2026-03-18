@@ -489,7 +489,7 @@ jobs:
               if: env.CLOUDFLARE_API_TOKEN != ''
               run: |
                   echo "Deploying tail worker (adblock-compiler-tail)..."
-                  deno task wrangler:tail:deploy
+                  deno run -A npm:wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ github.sha }}
 
             - name: Verify Docker for container build
               if: env.CLOUDFLARE_API_TOKEN != ''
@@ -503,7 +503,7 @@ jobs:
               if: env.CLOUDFLARE_API_TOKEN != ''
               run: |
                   echo "Deploying version: ${{ steps.version.outputs.full_version }}"
-                  deno task wrangler:deploy
+                  deno run -A npm:wrangler deploy --var SENTRY_RELEASE:${{ github.sha }}
 
             - name: Record deployment
               if: success() && env.CLOUDFLARE_API_TOKEN != ''

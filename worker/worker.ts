@@ -133,6 +133,7 @@ const workerHandler: WorkerHandler = {
 export default withSentryWorker(workerHandler, (env) => ({
     dsn: env.SENTRY_DSN,
     release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
+    environment: env.ENVIRONMENT ?? 'production',
 }));
 
 // ============================================================================

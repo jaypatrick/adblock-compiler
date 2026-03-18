@@ -32,16 +32,17 @@ function makeEnv(overrides: Partial<Env> = {}): Env {
 Deno.test('handleSentryConfig — returns { dsn: null, release: null } when env vars are unset', async () => {
     const env = makeEnv(); // no SENTRY_DSN, no SENTRY_RELEASE
     const response = handleSentryConfig(env);
-    const body = await response.json() as { dsn: string | null; release: string | null };
+    const body = await response.json() as { dsn: string | null; release: string | null; environment: string };
     assertEquals(body.dsn, null);
     assertEquals(body.release, null);
+    assertEquals(body.environment, 'production');
 });
 
 Deno.test('handleSentryConfig — returns the correct DSN when SENTRY_DSN is set', async () => {
     const dsn = 'https://abc123@o999.ingest.sentry.io/12345';
     const env = makeEnv({ SENTRY_DSN: dsn });
     const response = handleSentryConfig(env);
-    const body = await response.json() as { dsn: string | null; release: string | null };
+    const body = await response.json() as { dsn: string | null; release: string | null; environment: string };
     assertEquals(body.dsn, dsn);
 });
 
@@ -49,8 +50,15 @@ Deno.test('handleSentryConfig — returns the correct release when SENTRY_RELEAS
     const release = 'abc1234def5678';
     const env = makeEnv({ SENTRY_RELEASE: release });
     const response = handleSentryConfig(env);
-    const body = await response.json() as { dsn: string | null; release: string | null };
+    const body = await response.json() as { dsn: string | null; release: string | null; environment: string };
     assertEquals(body.release, release);
+});
+
+Deno.test('handleSentryConfig — returns ENVIRONMENT when set', async () => {
+    const env = makeEnv({ ENVIRONMENT: 'staging' });
+    const response = handleSentryConfig(env);
+    const body = await response.json() as { dsn: string | null; release: string | null; environment: string };
+    assertEquals(body.environment, 'staging');
 });
 
 Deno.test('handleSentryConfig — Content-Type is application/json', () => {

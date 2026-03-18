@@ -110,43 +110,64 @@ Deno.test('withSentryWorker: configFn is called on every fetch invocation', asyn
 // Handler spread / non-fetch export preservation
 // ============================================================================
 
-Deno.test('withSentryWorker: preserves queue handler', () => {
-    const queueFn = async () => {};
+Deno.test('withSentryWorker: wraps queue handler with no-DSN passthrough', async () => {
+    let called = false;
     const handler = {
         fetch: async () => SENTINEL_RESPONSE,
-        queue: queueFn,
+        queue: async () => {
+            called = true;
+        },
     } as unknown as ExportedHandler<Env>;
 
     const wrapped = withSentryWorker(handler, () => ({ dsn: undefined }));
 
-    assertEquals(wrapped.queue, queueFn, 'queue handler should be preserved');
+    assert(wrapped.queue !== handler.queue, 'queue should be wrapped, not the original function');
+    await wrapped.queue!(
+        {} as unknown as MessageBatch<unknown>,
+        {} as unknown as Env,
+        createMockCtx(),
+    );
+    assertEquals(called, true, 'original queue handler should be called when no DSN');
 });
 
-Deno.test('withSentryWorker: preserves scheduled handler', () => {
-    const scheduledFn = async () => {};
+Deno.test('withSentryWorker: wraps scheduled handler with no-DSN passthrough', async () => {
+    let called = false;
     const handler = {
         fetch: async () => SENTINEL_RESPONSE,
-        scheduled: scheduledFn,
+        scheduled: async () => {
+            called = true;
+        },
     } as unknown as ExportedHandler<Env>;
 
     const wrapped = withSentryWorker(handler, () => ({ dsn: undefined }));
 
-    assertEquals(wrapped.scheduled, scheduledFn, 'scheduled handler should be preserved');
+    assert(
+        wrapped.scheduled !== handler.scheduled,
+        'scheduled should be wrapped, not the original function',
+    );
+    await wrapped.scheduled!(
+        {} as unknown as ScheduledController,
+        {} as unknown as Env,
+        createMockCtx(),
+    );
+    assertEquals(called, true, 'original scheduled handler should be called when no DSN');
 });
 
-Deno.test('withSentryWorker: overrides fetch but keeps other properties', () => {
+Deno.test('withSentryWorker: wraps fetch, scheduled and queue', () => {
     const originalFetch = async () => SENTINEL_RESPONSE;
+    const originalQueue = async () => {};
+    const originalScheduled = async () => {};
     const handler = {
         fetch: originalFetch,
-        queue: async () => {},
+        queue: originalQueue,
+        scheduled: originalScheduled,
     } as unknown as ExportedHandler<Env>;
 
     const wrapped = withSentryWorker(handler, () => ({ dsn: undefined }));
 
-    // fetch is replaced by the wrapper
     assert(wrapped.fetch !== originalFetch, 'fetch should be replaced by wrapper');
-    // queue stays the same
-    assertEquals(wrapped.queue, handler.queue);
+    assert(wrapped.queue !== originalQueue, 'queue should also be replaced by wrapper');
+    assert(wrapped.scheduled !== originalScheduled, 'scheduled should also be replaced by wrapper');
 });
 
 // ============================================================================

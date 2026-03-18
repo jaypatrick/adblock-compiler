@@ -39,6 +39,8 @@ export interface SentryWorkerConfig {
  * When SENTRY_DSN is not set the original handler is returned unchanged —
  * zero overhead in local development.
  *
+ * All three handler entry points are wrapped: `fetch`, `scheduled`, and `queue`.
+ *
  * @param handler - The existing export default { fetch, queue, scheduled } object.
  * @param configFn - A function that receives `env` and returns SentryWorkerConfig.
  */
@@ -46,6 +48,14 @@ export function withSentryWorker<T extends ExportedHandler<Env>>(
     handler: T,
     configFn: (env: Env) => SentryWorkerConfig,
 ): T {
+    /** Build the Sentry init config object from a resolved SentryWorkerConfig. */
+    const sentryConfig = (config: SentryWorkerConfig) => ({
+        dsn: config.dsn!,
+        release: config.release,
+        environment: config.environment ?? 'production',
+        tracesSampleRate: config.tracesSampleRate ?? 0.1,
+    });
+
     return {
         ...handler,
         async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -66,14 +76,35 @@ export function withSentryWorker<T extends ExportedHandler<Env>>(
 
             const Sentry = await import('@sentry/cloudflare');
             return Sentry.withSentry(
-                () => ({
-                    dsn: config.dsn!,
-                    release: config.release,
-                    environment: config.environment ?? 'production',
-                    tracesSampleRate: config.tracesSampleRate ?? 0.1,
-                }),
+                () => sentryConfig(config),
                 handler as unknown as ExportedHandler<unknown, unknown, unknown>,
             ).fetch!(cfRequest, env, ctx);
+        },
+        async scheduled(
+            controller: ScheduledController,
+            env: Env,
+            ctx: ExecutionContext,
+        ): Promise<void> {
+            const config = configFn(env);
+            if (!config.dsn) return handler.scheduled!(controller, env, ctx);
+            const Sentry = await import('@sentry/cloudflare');
+            return Sentry.withSentry(
+                () => sentryConfig(config),
+                handler as unknown as ExportedHandler<unknown, unknown, unknown>,
+            ).scheduled!(controller, env, ctx);
+        },
+        async queue(
+            batch: MessageBatch<unknown>,
+            env: Env,
+            ctx: ExecutionContext,
+        ): Promise<void> {
+            const config = configFn(env);
+            if (!config.dsn) return handler.queue!(batch, env, ctx);
+            const Sentry = await import('@sentry/cloudflare');
+            return Sentry.withSentry(
+                () => sentryConfig(config),
+                handler as unknown as ExportedHandler<unknown, unknown, unknown>,
+            ).queue!(batch, env, ctx);
         },
     } as T;
 }

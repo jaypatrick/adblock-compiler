@@ -19,6 +19,8 @@
 #   ERROR_WEBHOOK_URL — sensitive webhook URL for forwarding critical errors.
 #     wrangler secret put ERROR_WEBHOOK_URL --config wrangler.tail.toml
 #   Do NOT put it in [vars] — it would be visible in the Cloudflare dashboard.
+#   SENTRY_DSN — Sentry Data Source Name for tail-worker exception capture.
+#     wrangler secret put SENTRY_DSN --config wrangler.tail.toml
 # ============================================================================
 
 name = "adblock-compiler-tail"

@@ -21,7 +21,7 @@
 
 import * as Sentry from '@sentry/angular';
 
-export async function initSentry(dsn: string | null | undefined, release?: string | null): Promise<void> {
+export async function initSentry(dsn: string | null | undefined, release?: string | null, environment?: string | null): Promise<void> {
     if (!dsn) return;
     Sentry.init({
         dsn,
@@ -36,7 +36,7 @@ export async function initSentry(dsn: string | null | undefined, release?: strin
         // Always replay the session on errors; sample 5 % otherwise.
         replaysOnErrorSampleRate: 1.0,
         replaysSessionSampleRate: 0.05,
-        environment: 'production',
+        environment: environment ?? 'production',
     });
 }
 

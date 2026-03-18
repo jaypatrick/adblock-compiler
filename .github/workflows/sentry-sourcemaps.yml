@@ -45,3 +45,33 @@ jobs:
             ./dist
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
+  upload-worker:
+    name: Upload Worker Source Maps to Sentry
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    # Only run if SENTRY_PROJECT_WORKER is configured
+    if: ${{ vars.SENTRY_ORG != '' && vars.SENTRY_PROJECT_WORKER != '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Deno
+        uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+
+      - name: Build Worker bundle (dry-run for source maps)
+        run: deno run -A npm:wrangler deploy --dry-run --outdir dist/worker
+        env:
+          CLOUDFLARE_API_TOKEN: placeholder
+
+      - name: Upload Worker source maps to Sentry
+        run: |
+          npx @sentry/cli sourcemaps upload \
+            --org "${{ vars.SENTRY_ORG }}" \
+            --project "${{ vars.SENTRY_PROJECT_WORKER }}" \
+            --release "${{ github.sha }}" \
+            ./dist/worker
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

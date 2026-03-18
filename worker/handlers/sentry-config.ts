@@ -18,6 +18,7 @@ export function handleSentryConfig(env: Env): Response {
         JSON.stringify({
             dsn: env.SENTRY_DSN ?? null,
             release: env.SENTRY_RELEASE ?? null,
+            environment: env.ENVIRONMENT ?? 'production',
         }),
         {
             headers: {

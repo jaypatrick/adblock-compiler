@@ -35,9 +35,10 @@ export interface TailEnv {
     // Minimum log level to forward to sink ('debug'|'info'|'warn'|'error'), default 'warn'
     LOG_SINK_MIN_LEVEL?: string;
     /**
-     * Sentry DSN — stored here so the tail worker can optionally
-     * report tail-worker-level errors to Sentry in a future iteration.
-     * TODO: wire Sentry.captureException() into the tail worker catch blocks.
+     * Sentry DSN — when set the tail worker forwards worker exceptions captured
+     * in tail events to Sentry, providing full visibility into scheduled and
+     * queue handler failures that are otherwise invisible to the main Sentry SDK.
+     * Store via: wrangler secret put SENTRY_DSN --config wrangler.tail.toml
      */
     SENTRY_DSN?: string;
 }
@@ -233,6 +234,18 @@ export default {
         // Process each event
         const promises: Promise<void>[] = [];
 
+        // Initialise Sentry for tail-worker-level error capture if DSN is configured.
+        // Dynamic import avoids bundling overhead when Sentry is not used.
+        let sentry: typeof import('@sentry/cloudflare') | null = null;
+        if (env.SENTRY_DSN) {
+            try {
+                sentry = await import('@sentry/cloudflare');
+                sentry.init({ dsn: env.SENTRY_DSN, tracesSampleRate: 0 });
+            } catch {
+                sentry = null;
+            }
+        }
+
         for (const event of events) {
             // Store logs in KV if available
             if (env.TAIL_LOGS) {
@@ -301,11 +314,26 @@ export default {
                 );
             }
 
-            // Log exceptions
+            // Log exceptions and forward to Sentry if configured
             for (const exception of event.exceptions) {
                 console.error(
                     `[TAIL] Exception: ${exception.name}: ${exception.message} at ${new Date(exception.timestamp).toISOString()}`,
                 );
+                if (sentry) {
+                    try {
+                        sentry.withScope((scope) => {
+                            scope.setTag('outcome', event.outcome);
+                            scope.setTag('scriptName', event.scriptName ?? 'unknown');
+                            scope.setTag('url', event.event?.request?.url ?? 'unknown');
+                            scope.setTag('method', event.event?.request?.method ?? 'unknown');
+                            sentry!.captureException(
+                                new Error(`${exception.name}: ${exception.message}`),
+                            );
+                        });
+                    } catch {
+                        // Never let Sentry failures surface in the tail worker
+                    }
+                }
             }
 
             // Log error-level messages
@@ -314,6 +342,11 @@ export default {
                     console.error(`[TAIL] ${formatLogMessage(log)}`);
                 }
             }
+        }
+
+        // Flush Sentry before the event loop closes
+        if (sentry) {
+            promises.push(sentry.flush(2000).then(() => {}));
         }
 
         // Wait for all async operations to complete
