@@ -2,11 +2,24 @@
 
 Thank you for your interest in contributing to the Adblock Compiler project! This guide will help you get started.
 
+## Package Manager Convention
+
+> **⚠️ Important:** This project uses **pnpm** (for the Angular frontend workspace) and **Deno** (for the Worker backend). **Never use `npm` commands directly** — doing so will generate `package-lock.json` files that must not be committed and can create version-mismatch issues.
+>
+> | Scope                    | Tool                 | Example                                             |
+> | ------------------------ | -------------------- | --------------------------------------------------- |
+> | Angular frontend         | `pnpm`               | `pnpm --filter adblock-compiler-frontend run build` |
+> | Worker / backend         | `deno`               | `deno task dev`                                     |
+> | Wrangler (Worker deploy) | `deno task wrangler` | `deno task wrangler deploy`                         |
+>
+> The single source of truth for Node package versions is `pnpm-lock.yaml`. If you accidentally run `npm install` and a `package-lock.json` appears, delete it before committing.
+
 ## Development Setup
 
 1. **Prerequisites**
    - [Deno](https://deno.land/) 2.x or higher
    - [Node.js](https://nodejs.org/) 22.x or higher (for Angular frontend)
+   - [pnpm](https://pnpm.io/) 10.x or higher
    - Git
 
 2. **Clone and Setup**

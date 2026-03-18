@@ -27,6 +27,6 @@
         "@cloudflare/containers": "^0.1.1",
         "@cloudflare/playwright": "^1.1.2",
         "@cloudflare/playwright-mcp": "^0.0.5",
-        "wrangler": "^4.73.0"
+        "wrangler": "^4.75.0"
     }
 }
