@@ -35,7 +35,7 @@
     "npm:prisma@^7.5.0": "7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
     "npm:svix@^1.62.0": "1.88.0",
     "npm:svix@^1.88.0": "1.88.0",
-    "npm:wrangler@^4.73.0": "4.75.0_@cloudflare+workers-types@4.20260313.1",
+    "npm:wrangler@^4.75.0": "4.75.0_@cloudflare+workers-types@4.20260313.1",
     "npm:zod@^4.3.6": "4.3.6"
   },
   "jsr": {
@@ -2268,7 +2268,7 @@
       "npm:@sentry/cloudflare@^10.43.0",
       "npm:prisma@^7.5.0",
       "npm:svix@^1.62.0",
-      "npm:wrangler@^4.73.0"
+      "npm:wrangler@^4.75.0"
     ],
     "packageJson": {
       "dependencies": [
@@ -2282,7 +2282,7 @@
         "npm:@sentry/cloudflare@10.43.0",
         "npm:jose@^6.2.1",
         "npm:svix@^1.88.0",
-        "npm:wrangler@^4.73.0",
+        "npm:wrangler@^4.75.0",
         "npm:zod@^4.3.6"
       ]
     }
