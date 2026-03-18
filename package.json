@@ -1,6 +1,6 @@
 {
     "name": "adblock-compiler",
-    "version": "0.66.1",
+    "version": "0.67.0",
     "description": "Compiler-as-a-Service for adblock filter lists",
     "homepage": "https://adblock-compiler.jayson-knight.workers.dev/",
     "type": "module",
@@ -27,6 +27,6 @@
         "@cloudflare/containers": "^0.1.1",
         "@cloudflare/playwright": "^1.1.2",
         "@cloudflare/playwright-mcp": "^0.0.5",
-        "wrangler": "^4.73.0"
+        "wrangler": "^4.75.0"
     }
 }

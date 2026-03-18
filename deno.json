@@ -1,6 +1,6 @@
 {
     "name": "@jk-com/adblock-compiler",
-    "version": "0.66.1",
+    "version": "0.67.0",
     "exports": "./src/index.ts",
     "nodeModulesDir": "auto",
     "publish": {
@@ -77,7 +77,7 @@
     "imports": {
         "@/": "./src/",
         "@adguard/agtree": "npm:@adguard/agtree@^4.0.1",
-        "wrangler": "npm:wrangler@^4.73.0",
+        "wrangler": "npm:wrangler@^4.75.0",
         "@std/path": "jsr:@std/path@^1.1.4",
         "@std/fs": "jsr:@std/fs@^1.0.23",
         "@std/cli": "jsr:@std/cli@^1.0.28",
