@@ -16,7 +16,7 @@
  *
  * Required Worker secret:  SENTRY_DSN      (wrangler secret put SENTRY_DSN)
  * Optional Worker var:     SENTRY_RELEASE  (git SHA — set at deploy time)
- * Required Worker route:   GET /api/sentry-config  → { dsn: string | null, release: string | null, environment: string | null }
+ * Required Worker route:   GET /api/sentry-config  → { dsn: string | null, release: string | null, environment: string }
  */
 
 import { z } from 'zod';
@@ -32,7 +32,7 @@ import * as Sentry from '@sentry/angular';
 export const SentryConfigResponseSchema = z.object({
     dsn: z.string().nullable(),
     release: z.string().nullable(),
-    environment: z.string().nullable().optional().default('production'),
+    environment: z.string().optional().default('production'),
 });
 
 export type SentryConfigResponse = z.infer<typeof SentryConfigResponseSchema>;

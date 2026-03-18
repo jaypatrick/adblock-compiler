@@ -36,8 +36,8 @@ export interface SentryWorkerConfig {
 /**
  * Wraps a Cloudflare Worker export default handler with Sentry error tracking.
  *
- * When SENTRY_DSN is not set the original handler is returned unchanged —
- * zero overhead in local development.
+ * When SENTRY_DSN is not set the wrapper passes through to the original handler
+ * without importing the Sentry SDK — zero overhead in local development.
  *
  * All three handler entry points are wrapped: `fetch`, `scheduled`, and `queue`.
  *
