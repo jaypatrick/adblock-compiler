@@ -13,7 +13,7 @@
 
 import { assertEquals, assertStringIncludes } from '@std/assert';
 import type { Env } from '../types.ts';
-import { _clearRegistryForTesting, handlePrometheusMetrics, registerPrometheusMetric } from './prometheus-metrics.ts';
+import { _clearRegistryForTesting, _registerBuiltinMetricsForTesting, handlePrometheusMetrics, registerPrometheusMetric } from './prometheus-metrics.ts';
 import { renderMetric } from './prometheus-metric-registry.ts';
 
 // ---------------------------------------------------------------------------
@@ -232,6 +232,7 @@ Deno.test('prometheus registry and analytics engine paths', async (t) => {
 
     await t.step('error rate is zero when total_requests is zero', async () => {
         _clearRegistryForTesting();
+        _registerBuiltinMetricsForTesting();
         const env = makeEnv({
             ANALYTICS_ACCOUNT_ID: 'acct_test',
             ANALYTICS_API_TOKEN: 'tok_test',

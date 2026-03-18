@@ -125,109 +125,115 @@ async function fetchRow(env: Env): Promise<Record<string, number>> {
 }
 
 // Register built-in metrics — each calls fetchRow() which is de-duplicated.
-registerPrometheusMetric({
-    name: 'adblock_compilation_requests',
-    type: 'counter',
-    help: 'Total number of compilation requests in the last 24 hours.',
-    collect: async (env) => {
-        if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
-        return (await fetchRow(env)).total_requests ?? 0;
-    },
-});
+function registerBuiltinMetrics(): void {
+    registerPrometheusMetric({
+        name: 'adblock_compilation_requests',
+        type: 'counter',
+        help: 'Total number of compilation requests in the last 24 hours.',
+        collect: async (env) => {
+            if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
+            return (await fetchRow(env)).total_requests ?? 0;
+        },
+    });
 
-registerPrometheusMetric({
-    name: 'adblock_compilation_errors',
-    type: 'counter',
-    help: 'Total number of compilation errors in the last 24 hours.',
-    collect: async (env) => {
-        if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
-        return (await fetchRow(env)).error_requests ?? 0;
-    },
-});
+    registerPrometheusMetric({
+        name: 'adblock_compilation_errors',
+        type: 'counter',
+        help: 'Total number of compilation errors in the last 24 hours.',
+        collect: async (env) => {
+            if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
+            return (await fetchRow(env)).error_requests ?? 0;
+        },
+    });
 
-registerPrometheusMetric({
-    name: 'adblock_compilation_error_rate',
-    type: 'gauge',
-    help: 'Compilation error rate (0–1) over the last 24 hours.',
-    collect: async (env) => {
-        if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
-        const row = await fetchRow(env);
-        const total = row.total_requests ?? 0;
-        return total > 0 ? (row.error_requests ?? 0) / total : 0;
-    },
-});
+    registerPrometheusMetric({
+        name: 'adblock_compilation_error_rate',
+        type: 'gauge',
+        help: 'Compilation error rate (0–1) over the last 24 hours.',
+        collect: async (env) => {
+            if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
+            const row = await fetchRow(env);
+            const total = row.total_requests ?? 0;
+            return total > 0 ? (row.error_requests ?? 0) / total : 0;
+        },
+    });
 
-registerPrometheusMetric({
-    name: 'adblock_compilation_latency_avg_ms',
-    type: 'gauge',
-    help: 'Average successful compilation latency in milliseconds over the last 24 hours.',
-    collect: async (env) => {
-        if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
-        return (await fetchRow(env)).avg_latency_ms ?? 0;
-    },
-});
+    registerPrometheusMetric({
+        name: 'adblock_compilation_latency_avg_ms',
+        type: 'gauge',
+        help: 'Average successful compilation latency in milliseconds over the last 24 hours.',
+        collect: async (env) => {
+            if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
+            return (await fetchRow(env)).avg_latency_ms ?? 0;
+        },
+    });
 
-registerPrometheusMetric({
-    name: 'adblock_compilation_latency_p95_ms',
-    type: 'gauge',
-    help: 'P95 compilation latency in milliseconds over the last 24 hours.',
-    collect: async (env) => {
-        if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
-        return (await fetchRow(env)).p95_latency_ms ?? 0;
-    },
-});
+    registerPrometheusMetric({
+        name: 'adblock_compilation_latency_p95_ms',
+        type: 'gauge',
+        help: 'P95 compilation latency in milliseconds over the last 24 hours.',
+        collect: async (env) => {
+            if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
+            return (await fetchRow(env)).p95_latency_ms ?? 0;
+        },
+    });
 
-registerPrometheusMetric({
-    name: 'adblock_cache_hits',
-    type: 'counter',
-    help: 'Total cache hits in the last 24 hours.',
-    collect: async (env) => {
-        if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
-        return (await fetchRow(env)).cache_hits ?? 0;
-    },
-});
+    registerPrometheusMetric({
+        name: 'adblock_cache_hits',
+        type: 'counter',
+        help: 'Total cache hits in the last 24 hours.',
+        collect: async (env) => {
+            if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
+            return (await fetchRow(env)).cache_hits ?? 0;
+        },
+    });
 
-registerPrometheusMetric({
-    name: 'adblock_cache_misses',
-    type: 'counter',
-    help: 'Total cache misses in the last 24 hours.',
-    collect: async (env) => {
-        if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
-        return (await fetchRow(env)).cache_misses ?? 0;
-    },
-});
+    registerPrometheusMetric({
+        name: 'adblock_cache_misses',
+        type: 'counter',
+        help: 'Total cache misses in the last 24 hours.',
+        collect: async (env) => {
+            if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
+            return (await fetchRow(env)).cache_misses ?? 0;
+        },
+    });
 
-registerPrometheusMetric({
-    name: 'adblock_cache_hit_rate',
-    type: 'gauge',
-    help: 'Cache hit rate (0–1) over the last 24 hours.',
-    collect: async (env) => {
-        if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
-        const row = await fetchRow(env);
-        const total = (row.cache_hits ?? 0) + (row.cache_misses ?? 0);
-        return total > 0 ? (row.cache_hits ?? 0) / total : 0;
-    },
-});
+    registerPrometheusMetric({
+        name: 'adblock_cache_hit_rate',
+        type: 'gauge',
+        help: 'Cache hit rate (0–1) over the last 24 hours.',
+        collect: async (env) => {
+            if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
+            const row = await fetchRow(env);
+            const total = (row.cache_hits ?? 0) + (row.cache_misses ?? 0);
+            return total > 0 ? (row.cache_hits ?? 0) / total : 0;
+        },
+    });
 
-registerPrometheusMetric({
-    name: 'adblock_rate_limit_events',
-    type: 'counter',
-    help: 'Total rate limit exceeded events in the last 24 hours.',
-    collect: async (env) => {
-        if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
-        return (await fetchRow(env)).rate_limit_events ?? 0;
-    },
-});
+    registerPrometheusMetric({
+        name: 'adblock_rate_limit_events',
+        type: 'counter',
+        help: 'Total rate limit exceeded events in the last 24 hours.',
+        collect: async (env) => {
+            if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
+            return (await fetchRow(env)).rate_limit_events ?? 0;
+        },
+    });
 
-registerPrometheusMetric({
-    name: 'adblock_source_fetch_errors',
-    type: 'counter',
-    help: 'Total source fetch errors in the last 24 hours.',
-    collect: async (env) => {
-        if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
-        return (await fetchRow(env)).source_errors ?? 0;
-    },
-});
+    registerPrometheusMetric({
+        name: 'adblock_source_fetch_errors',
+        type: 'counter',
+        help: 'Total source fetch errors in the last 24 hours.',
+        collect: async (env) => {
+            if (!env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN) return null;
+            return (await fetchRow(env)).source_errors ?? 0;
+        },
+    });
+}
+registerBuiltinMetrics();
+
+/** For tests only — re-registers built-in metrics after _clearRegistryForTesting(). */
+export const _registerBuiltinMetricsForTesting = registerBuiltinMetrics;
 
 // ---------------------------------------------------------------------------
 // Public handler
