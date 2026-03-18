@@ -112,6 +112,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.67.0] - 2026-03-18
+
+### Added- **tests**: add frontend schema validation tests and middleware tests
+- **tests**: add 157 new unit tests across worker handlers and utilities
+
+### Fixed
+
+- address PR review - correct JSDoc table fallback and Phase 2 re-enable instructions
+- **tests**: address PR review comments — deterministic tests, hard codecov gate, correct JWT signing
+- wire Sentry end-to-end and disable Grafana/OTel plumbing (Phase 2 deferred)
+- **codecov**: add flag_management, checkout, remove silent failures
+
+
 ## [0.66.1] - 2026-03-18
 
 ### Added### Fixed
