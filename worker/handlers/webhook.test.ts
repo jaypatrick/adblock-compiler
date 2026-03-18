@@ -10,7 +10,8 @@
  *   - handleNotify: includes deliveries array in response
  *   - handleNotify: response contains event and duration
  *
- * Uses a mock fetch interceptor to avoid real network calls.
+ * Delivery tests that patch globalThis.fetch are serialised inside a single
+ * Deno.test using t.step() to prevent parallel fetch-patch races.
  *
  * @see worker/handlers/webhook.ts
  */
@@ -102,262 +103,258 @@ Deno.test('handleNotify - returns 503 when no targets are configured', async () 
 
 // ============================================================================
 // handleNotify — delivery
+//
+// All tests below patch globalThis.fetch.  They are serialised inside a single
+// Deno.test using t.step() so parallel Deno.test runs cannot race on the
+// global fetch patch.
 // ============================================================================
 
-Deno.test('handleNotify - delivers to WEBHOOK_URL and returns 200 on success', async () => {
-    const env = makeEnv({ WEBHOOK_URL: 'https://hooks.example.com/notify' });
-    const req = makeRequest({ event: 'test.event', message: 'Hello from test' });
+Deno.test('handleNotify delivery (fetch-serialized)', async (t) => {
+    await t.step('delivers to WEBHOOK_URL and returns 200 on success', async () => {
+        const env = makeEnv({ WEBHOOK_URL: 'https://hooks.example.com/notify' });
+        const req = makeRequest({ event: 'test.event', message: 'Hello from test' });
 
-    await withMockFetch(200, async () => {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 200);
-        const body = await res.json() as { success: boolean; event: string; deliveries: Array<{ success: boolean; target: string }> };
-        assertEquals(body.success, true);
-        assertEquals(body.event, 'test.event');
-        assertExists(body.deliveries);
-        assertEquals(body.deliveries.length, 1);
-        assertEquals(body.deliveries[0].target, 'generic');
-        assertEquals(body.deliveries[0].success, true);
-    });
-});
-
-Deno.test('handleNotify - returns 502 when all configured targets fail', async () => {
-    const env = makeEnv({ WEBHOOK_URL: 'https://hooks.example.com/notify' });
-    const req = makeRequest({ event: 'test.fail', message: 'This will fail' });
-
-    await withFailingFetch(async () => {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 502);
-        const body = await res.json() as { success: boolean };
-        assertEquals(body.success, false);
-    });
-});
-
-Deno.test('handleNotify - response includes duration field', async () => {
-    const env = makeEnv({ WEBHOOK_URL: 'https://hooks.example.com/notify' });
-    const req = makeRequest({ event: 'test.duration', message: 'Test' });
-
-    await withMockFetch(200, async () => {
-        const res = await handleNotify(req, env);
-        const body = await res.json() as { duration: string };
-        assertExists(body.duration);
-        assertEquals(body.duration.endsWith('ms'), true);
-    });
-});
-
-Deno.test('handleNotify - handles generic webhook delivery failure (non-ok status)', async () => {
-    const env = makeEnv({ WEBHOOK_URL: 'https://hooks.example.com/notify' });
-    const req = makeRequest({ event: 'test.fail', message: 'Test' });
-
-    await withMockFetch(503, async () => {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 502); // all targets failed
-        const body = await res.json() as { deliveries: Array<{ success: boolean; statusCode: number }> };
-        assertEquals(body.deliveries[0].success, false);
-        assertEquals(body.deliveries[0].statusCode, 503);
-    });
-});
-
-Deno.test('handleNotify - multiple optional fields are accepted', async () => {
-    const env = makeEnv({ WEBHOOK_URL: 'https://hooks.example.com/notify' });
-    const req = makeRequest({
-        event: 'compile.success',
-        message: 'Compilation succeeded',
-        level: 'info',
-        source: 'worker',
-        metadata: { ruleCount: 1234 },
-        timestamp: new Date().toISOString(),
+        await withMockFetch(200, async () => {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 200);
+            const body = await res.json() as { success: boolean; event: string; deliveries: Array<{ success: boolean; target: string }> };
+            assertEquals(body.success, true);
+            assertEquals(body.event, 'test.event');
+            assertExists(body.deliveries);
+            assertEquals(body.deliveries.length, 1);
+            assertEquals(body.deliveries[0].target, 'generic');
+            assertEquals(body.deliveries[0].success, true);
+        });
     });
 
-    await withMockFetch(200, async () => {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 200);
+    await t.step('returns 502 when all configured targets fail', async () => {
+        const env = makeEnv({ WEBHOOK_URL: 'https://hooks.example.com/notify' });
+        const req = makeRequest({ event: 'test.fail', message: 'This will fail' });
+
+        await withFailingFetch(async () => {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 502);
+            const body = await res.json() as { success: boolean };
+            assertEquals(body.success, false);
+        });
     });
-});
 
-// ============================================================================
-// handleNotify — Sentry delivery
-// ============================================================================
+    await t.step('response includes duration field', async () => {
+        const env = makeEnv({ WEBHOOK_URL: 'https://hooks.example.com/notify' });
+        const req = makeRequest({ event: 'test.duration', message: 'Test' });
 
-Deno.test('handleNotify - delivers to Sentry when SENTRY_DSN is configured', async () => {
-    const env = makeEnv({
-        SENTRY_DSN: 'https://abc123@sentry.io/12345',
+        await withMockFetch(200, async () => {
+            const res = await handleNotify(req, env);
+            const body = await res.json() as { duration: string };
+            assertExists(body.duration);
+            assertEquals(body.duration.endsWith('ms'), true);
+        });
     });
-    const req = makeRequest({ event: 'error.occurred', message: 'Something broke', level: 'error' });
 
-    await withMockFetch(200, async () => {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 200);
-        const body = await res.json() as {
-            success: boolean;
-            deliveries: Array<{ target: string; success: boolean }>;
+    await t.step('handles generic webhook delivery failure (non-ok status)', async () => {
+        const env = makeEnv({ WEBHOOK_URL: 'https://hooks.example.com/notify' });
+        const req = makeRequest({ event: 'test.fail', message: 'Test' });
+
+        await withMockFetch(503, async () => {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 502); // all targets failed
+            const body = await res.json() as { deliveries: Array<{ success: boolean; statusCode: number }> };
+            assertEquals(body.deliveries[0].success, false);
+            assertEquals(body.deliveries[0].statusCode, 503);
+        });
+    });
+
+    await t.step('multiple optional fields are accepted', async () => {
+        const env = makeEnv({ WEBHOOK_URL: 'https://hooks.example.com/notify' });
+        const req = makeRequest({
+            event: 'compile.success',
+            message: 'Compilation succeeded',
+            level: 'info',
+            source: 'worker',
+            metadata: { ruleCount: 1234 },
+            timestamp: new Date().toISOString(),
+        });
+
+        await withMockFetch(200, async () => {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 200);
+        });
+    });
+
+    // --- Sentry delivery ---
+
+    await t.step('delivers to Sentry when SENTRY_DSN is configured', async () => {
+        const env = makeEnv({ SENTRY_DSN: 'https://abc123@sentry.io/12345' });
+        const req = makeRequest({ event: 'error.occurred', message: 'Something broke', level: 'error' });
+
+        await withMockFetch(200, async () => {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 200);
+            const body = await res.json() as {
+                success: boolean;
+                deliveries: Array<{ target: string; success: boolean }>;
+            };
+            assertEquals(body.success, true);
+            assertEquals(body.deliveries.length, 1);
+            assertEquals(body.deliveries[0].target, 'sentry');
+            assertEquals(body.deliveries[0].success, true);
+        });
+    });
+
+    await t.step('Sentry delivery returns 502 when fetch fails', async () => {
+        const env = makeEnv({ SENTRY_DSN: 'https://abc123@sentry.io/12345' });
+        const req = makeRequest({ event: 'error.occurred', message: 'Test' });
+
+        await withFailingFetch(async () => {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 502);
+            const body = await res.json() as { success: boolean };
+            assertEquals(body.success, false);
+        });
+    });
+
+    await t.step('Sentry maps warn level to warning', async () => {
+        const env = makeEnv({ SENTRY_DSN: 'https://abc123@sentry.io/12345' });
+        const req = makeRequest({ event: 'quota.warn', message: 'Quota near limit', level: 'warn' });
+
+        const capturedBodies: unknown[] = [];
+        const originalFetch = globalThis.fetch;
+        // deno-lint-ignore no-explicit-any
+        (globalThis as any).fetch = async (_url: unknown, init?: { body?: string }) => {
+            if (init?.body) capturedBodies.push(JSON.parse(init.body));
+            return new Response('{}', { status: 200 });
         };
-        assertEquals(body.success, true);
-        assertEquals(body.deliveries.length, 1);
-        assertEquals(body.deliveries[0].target, 'sentry');
-        assertEquals(body.deliveries[0].success, true);
+
+        try {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 200);
+            assertEquals(capturedBodies.length, 1);
+            assertEquals((capturedBodies[0] as { level: string }).level, 'warning');
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
     });
-});
 
-Deno.test('handleNotify - Sentry delivery returns 502 when fetch fails', async () => {
-    const env = makeEnv({
-        SENTRY_DSN: 'https://abc123@sentry.io/12345',
+    // --- Datadog delivery ---
+
+    await t.step('delivers to Datadog when DATADOG_API_KEY is configured', async () => {
+        const env = makeEnv({ DATADOG_API_KEY: 'dd-api-key-test' });
+        const req = makeRequest({ event: 'deploy.done', message: 'Deploy completed', level: 'info' });
+
+        await withMockFetch(200, async () => {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 200);
+            const body = await res.json() as {
+                success: boolean;
+                deliveries: Array<{ target: string; success: boolean }>;
+            };
+            assertEquals(body.success, true);
+            assertEquals(body.deliveries.length, 1);
+            assertEquals(body.deliveries[0].target, 'datadog');
+            assertEquals(body.deliveries[0].success, true);
+        });
     });
-    const req = makeRequest({ event: 'error.occurred', message: 'Test' });
 
-    await withFailingFetch(async () => {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 502);
-        const body = await res.json() as { success: boolean };
-        assertEquals(body.success, false);
+    await t.step('Datadog delivery returns 502 when fetch fails', async () => {
+        const env = makeEnv({ DATADOG_API_KEY: 'dd-api-key-test' });
+        const req = makeRequest({ event: 'deploy.done', message: 'Test' });
+
+        await withFailingFetch(async () => {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 502);
+        });
     });
-});
 
-Deno.test('handleNotify - Sentry maps warn level to warning', async () => {
-    const env = makeEnv({ SENTRY_DSN: 'https://abc123@sentry.io/12345' });
-    const req = makeRequest({ event: 'quota.warn', message: 'Quota near limit', level: 'warn' });
+    await t.step('Datadog maps error level to alert_type error', async () => {
+        const env = makeEnv({ DATADOG_API_KEY: 'dd-api-key-test' });
+        const req = makeRequest({ event: 'sys.error', message: 'Critical failure', level: 'error' });
 
-    const capturedBodies: unknown[] = [];
-    const originalFetch = globalThis.fetch;
-    // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async (_url: unknown, init?: { body?: string }) => {
-        if (init?.body) capturedBodies.push(JSON.parse(init.body));
-        return new Response('{}', { status: 200 });
-    };
-
-    try {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 200);
-        assertEquals(capturedBodies.length, 1);
-        assertEquals((capturedBodies[0] as { level: string }).level, 'warning');
-    } finally {
-        globalThis.fetch = originalFetch;
-    }
-});
-
-// ============================================================================
-// handleNotify — Datadog delivery
-// ============================================================================
-
-Deno.test('handleNotify - delivers to Datadog when DATADOG_API_KEY is configured', async () => {
-    const env = makeEnv({ DATADOG_API_KEY: 'dd-api-key-test' });
-    const req = makeRequest({ event: 'deploy.done', message: 'Deploy completed', level: 'info' });
-
-    await withMockFetch(200, async () => {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 200);
-        const body = await res.json() as {
-            success: boolean;
-            deliveries: Array<{ target: string; success: boolean }>;
+        const capturedBodies: unknown[] = [];
+        const originalFetch = globalThis.fetch;
+        // deno-lint-ignore no-explicit-any
+        (globalThis as any).fetch = async (_url: unknown, init?: { body?: string }) => {
+            if (init?.body) capturedBodies.push(JSON.parse(init.body));
+            return new Response('{}', { status: 200 });
         };
-        assertEquals(body.success, true);
-        assertEquals(body.deliveries.length, 1);
-        assertEquals(body.deliveries[0].target, 'datadog');
-        assertEquals(body.deliveries[0].success, true);
+
+        try {
+            await handleNotify(req, env);
+            assertEquals(capturedBodies.length, 1);
+            assertEquals((capturedBodies[0] as { alert_type: string }).alert_type, 'error');
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
     });
-});
 
-Deno.test('handleNotify - Datadog delivery returns 502 when fetch fails', async () => {
-    const env = makeEnv({ DATADOG_API_KEY: 'dd-api-key-test' });
-    const req = makeRequest({ event: 'deploy.done', message: 'Test' });
+    // --- Multiple targets ---
 
-    await withFailingFetch(async () => {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 502);
+    await t.step('delivers to both WEBHOOK_URL and SENTRY_DSN', async () => {
+        const env = makeEnv({
+            WEBHOOK_URL: 'https://hooks.example.com/notify',
+            SENTRY_DSN: 'https://key@sentry.io/99',
+        });
+        const req = makeRequest({ event: 'multi.target', message: 'Both targets' });
+
+        await withMockFetch(200, async () => {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 200);
+            const body = await res.json() as {
+                success: boolean;
+                deliveries: Array<{ target: string }>;
+            };
+            assertEquals(body.success, true);
+            assertEquals(body.deliveries.length, 2);
+            const targets = body.deliveries.map((d) => d.target).sort();
+            assertEquals(targets, ['generic', 'sentry']);
+        });
     });
-});
 
-Deno.test('handleNotify - Datadog maps error level to alert_type error', async () => {
-    const env = makeEnv({ DATADOG_API_KEY: 'dd-api-key-test' });
-    const req = makeRequest({ event: 'sys.error', message: 'Critical failure', level: 'error' });
+    await t.step('partial success returns 200 when at least one target succeeds', async () => {
+        // WEBHOOK_URL will succeed; SENTRY_DSN will fail (we throw for sentry's URL)
+        const env = makeEnv({
+            WEBHOOK_URL: 'https://hooks.example.com/notify',
+            SENTRY_DSN: 'https://key@sentry.io/99',
+        });
+        const req = makeRequest({ event: 'partial.success', message: 'Test' });
 
-    const capturedBodies: unknown[] = [];
-    const originalFetch = globalThis.fetch;
-    // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async (_url: unknown, init?: { body?: string }) => {
-        if (init?.body) capturedBodies.push(JSON.parse(init.body));
-        return new Response('{}', { status: 200 });
-    };
-
-    try {
-        await handleNotify(req, env);
-        assertEquals(capturedBodies.length, 1);
-        assertEquals((capturedBodies[0] as { alert_type: string }).alert_type, 'error');
-    } finally {
-        globalThis.fetch = originalFetch;
-    }
-});
-
-// ============================================================================
-// handleNotify — Multiple targets
-// ============================================================================
-
-Deno.test('handleNotify - delivers to both WEBHOOK_URL and SENTRY_DSN', async () => {
-    const env = makeEnv({
-        WEBHOOK_URL: 'https://hooks.example.com/notify',
-        SENTRY_DSN: 'https://key@sentry.io/99',
-    });
-    const req = makeRequest({ event: 'multi.target', message: 'Both targets' });
-
-    await withMockFetch(200, async () => {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 200);
-        const body = await res.json() as {
-            success: boolean;
-            deliveries: Array<{ target: string }>;
+        const originalFetch = globalThis.fetch;
+        // deno-lint-ignore no-explicit-any
+        (globalThis as any).fetch = async (url: string) => {
+            const hostname = new URL(url).hostname;
+            if (hostname === 'hooks.example.com') return new Response('{}', { status: 200 });
+            throw new Error('Sentry unreachable');
         };
-        assertEquals(body.success, true);
-        assertEquals(body.deliveries.length, 2);
-        const targets = body.deliveries.map((d) => d.target).sort();
-        assertEquals(targets, ['generic', 'sentry']);
+
+        try {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 200); // at least one succeeded
+            const body = await res.json() as {
+                success: boolean;
+                deliveries: Array<{ success: boolean }>;
+            };
+            assertEquals(body.success, true);
+            const successes = body.deliveries.filter((d) => d.success);
+            assertEquals(successes.length, 1);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
     });
-});
 
-Deno.test('handleNotify - partial success returns 200 when at least one target succeeds', async () => {
-    // WEBHOOK_URL will succeed; SENTRY_DSN will fail (we throw for sentry's URL)
-    const env = makeEnv({
-        WEBHOOK_URL: 'https://hooks.example.com/notify',
-        SENTRY_DSN: 'https://key@sentry.io/99',
-    });
-    const req = makeRequest({ event: 'partial.success', message: 'Test' });
+    await t.step('all three targets can be configured simultaneously', async () => {
+        const env = makeEnv({
+            WEBHOOK_URL: 'https://hooks.example.com/notify',
+            SENTRY_DSN: 'https://key@sentry.io/99',
+            DATADOG_API_KEY: 'dd-key',
+        });
+        const req = makeRequest({ event: 'triple.target', message: 'All three' });
 
-    const originalFetch = globalThis.fetch;
-    // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async (url: string) => {
-        const hostname = new URL(url).hostname;
-        if (hostname === 'hooks.example.com') return new Response('{}', { status: 200 });
-        throw new Error('Sentry unreachable');
-    };
-
-    try {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 200); // at least one succeeded
-        const body = await res.json() as {
-            success: boolean;
-            deliveries: Array<{ success: boolean }>;
-        };
-        assertEquals(body.success, true);
-        const successes = body.deliveries.filter((d) => d.success);
-        assertEquals(successes.length, 1);
-    } finally {
-        globalThis.fetch = originalFetch;
-    }
-});
-
-Deno.test('handleNotify - all three targets can be configured simultaneously', async () => {
-    const env = makeEnv({
-        WEBHOOK_URL: 'https://hooks.example.com/notify',
-        SENTRY_DSN: 'https://key@sentry.io/99',
-        DATADOG_API_KEY: 'dd-key',
-    });
-    const req = makeRequest({ event: 'triple.target', message: 'All three' });
-
-    await withMockFetch(200, async () => {
-        const res = await handleNotify(req, env);
-        assertEquals(res.status, 200);
-        const body = await res.json() as {
-            deliveries: Array<{ target: string }>;
-        };
-        assertEquals(body.deliveries.length, 3);
+        await withMockFetch(200, async () => {
+            const res = await handleNotify(req, env);
+            assertEquals(res.status, 200);
+            const body = await res.json() as {
+                deliveries: Array<{ target: string }>;
+            };
+            assertEquals(body.deliveries.length, 3);
+        });
     });
 });

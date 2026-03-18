@@ -262,10 +262,11 @@ export async function handlePrometheusMetrics(request: Request, env: Env): Promi
     const defs = getRegisteredMetrics();
     const secretsMissing = !env.ANALYTICS_ACCOUNT_ID || !env.ANALYTICS_API_TOKEN;
 
-    // Collect all metrics in parallel
+    // Collect all metrics in parallel; .catch(() => null) isolates per-metric rejections
+    // so that a single failing collect() does not abort the entire Promise.all.
     const values = await Promise.all(defs.map((def) => {
         try {
-            return Promise.resolve(def.collect(env));
+            return Promise.resolve(def.collect(env)).catch(() => null);
         } catch {
             return Promise.resolve(null);
         }
