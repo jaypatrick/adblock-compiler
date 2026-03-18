@@ -28,6 +28,9 @@ main = "worker/tail.ts"
 
 # Keep in sync with the main worker's compatibility_date in wrangler.toml.
 compatibility_date = "2026-01-01"
+# Required for @sentry/cloudflare which imports node:async_hooks internally.
+# Must match the main worker's compatibility_flags in wrangler.toml.
+compatibility_flags = ["nodejs_compat"]
 
 # ─── KV: Tail log persistence ────────────────────────────────────────────────
 # Stores structured tail log entries for later querying.
