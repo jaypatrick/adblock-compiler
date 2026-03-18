@@ -164,15 +164,31 @@ Run `deno task fmt` to automatically format your code.
 
 ## Testing
 
-- **Location**: Co-locate tests with source files (`*.test.ts`)
-- **Framework**: Use Deno's built-in test framework
-- **Coverage**: Aim for comprehensive test coverage
+> **Rule: every code change ships with tests — no exceptions.**
+> If you write code (a new handler, utility function, service, component, middleware, or schema), you write a corresponding unit test in the same PR. This applies to humans and AI agents alike.
+
+- **Location**: Co-locate tests with source files (`*.test.ts` for Deno, `*.spec.ts` for Angular)
+- **Framework**: Deno native (`@std/assert`) for `src/` and `worker/`; Vitest + Angular TestBed for `frontend/`
+- **Coverage target**: ≥ 70% patch coverage on every PR (enforced by Codecov)
+- **Pattern**: Follow the `makeEnv(overrides)` fixture pattern; use in-memory KV/DB stubs; never call real Cloudflare bindings in unit tests
 - **Commands**:
   ```bash
-  deno task test              # Run all tests
+  deno task test              # Run all Deno tests (src/ + worker/)
   deno task test:watch        # Watch mode
   deno task test:coverage     # With coverage
+
+  # Frontend
+  pnpm --filter adblock-compiler-frontend run test
   ```
+
+### Mandatory checklist before opening a PR
+
+- [ ] Every **new source file** has a corresponding `*.test.ts` / `*.spec.ts` file
+- [ ] Every **modified function** has test coverage for the changed code path
+- [ ] `deno task test` passes locally with no failures
+- [ ] `deno task lint && deno fmt --check` passes (CI will fail otherwise)
+
+See [`docs/testing/testing.md`](docs/testing/testing.md) for fixture patterns, shared mocks, and troubleshooting tips.
 
 ## Documentation
 
