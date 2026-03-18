@@ -9,7 +9,7 @@ troubleshooting issues.
 
 ## Table of contents
 
-1. [Project setup on sentry.io](#1-project-setup-on-sentiryio)
+1. [Project setup on sentry.io](#1-project-setup-on-sentryio)
 2. [Alert rules](#2-alert-rules)
 3. [Issue grouping and fingerprinting](#3-issue-grouping-and-fingerprinting)
 4. [Performance monitoring](#4-performance-monitoring)

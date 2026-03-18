@@ -324,8 +324,10 @@ export default {
                         sentry.withScope((scope) => {
                             scope.setTag('outcome', event.outcome);
                             scope.setTag('scriptName', event.scriptName ?? 'unknown');
-                            scope.setTag('url', event.event?.request?.url ?? 'unknown');
-                            scope.setTag('method', event.event?.request?.method ?? 'unknown');
+                            scope.setContext('request', {
+                                url: event.event?.request?.url ?? 'unknown',
+                                method: event.event?.request?.method ?? 'unknown',
+                            });
                             sentry!.captureException(
                                 new Error(`${exception.name}: ${exception.message}`),
                             );
