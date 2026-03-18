@@ -10,6 +10,7 @@
 
 // Types
 import type { Env, IAuthContext } from '../types.ts';
+import { ANONYMOUS_AUTH_CONTEXT } from '../types.ts';
 
 // Middleware
 import { checkRateLimitTiered, validateRequestSize, verifyTurnstileToken } from '../middleware/index.ts';
@@ -123,6 +124,29 @@ export async function handleRequest(
             pathname === '/api/clerk-config' ||
             pathname === '/api/sentry-config');
     if (isApiMetaRoute) {
+        // ZTA: Apply anonymous-tier rate limiting before serving pre-auth config
+        // endpoints. These routes bypass unified auth, so they need their own guard.
+        const rl = await checkRateLimitTiered(env, ip, ANONYMOUS_AUTH_CONTEXT);
+        if (!rl.allowed) {
+            analytics.trackRateLimitExceeded({
+                requestId,
+                clientIpHash: AnalyticsService.hashIp(ip),
+                rateLimit: rl.limit,
+                windowSeconds: RATE_LIMIT_WINDOW,
+            });
+            return Response.json(
+                { success: false, error: `Rate limit exceeded. Maximum ${rl.limit} requests per ${RATE_LIMIT_WINDOW} seconds.` },
+                {
+                    status: 429,
+                    headers: {
+                        'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+                        'X-RateLimit-Limit': String(rl.limit),
+                        'X-RateLimit-Remaining': '0',
+                        'X-RateLimit-Reset': String(rl.resetAt),
+                    },
+                },
+            );
+        }
         const { routeApiMeta } = await import('./info.ts');
         const metaResponse = await routeApiMeta(pathname, request, url, env);
         if (metaResponse) return metaResponse;

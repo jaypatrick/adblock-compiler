@@ -37,7 +37,7 @@ import { ClerkService } from './services/clerk.service';
 import { GlobalErrorHandler } from './error/global-error-handler';
 import { TurnstileService } from './services/turnstile.service';
 import { API_BASE_URL } from './tokens';
-import { initSentry } from './sentry';
+import { initSentry, SentryConfigResponseSchema } from './sentry';
 
 export const appConfig: ApplicationConfig = {
     providers: [
@@ -144,12 +144,18 @@ export const appConfig: ApplicationConfig = {
 
             // Sentry RUM initialisation (browser only, non-fatal)
             // Fetches DSN and release from /api/sentry-config at runtime — no build-time env required.
+            // Response is validated with Zod at the trust boundary before being consumed.
             try {
-                const sentryConfig = await firstValueFrom(
-                    http.get<{ dsn: string | null; release: string | null; environment: string | null }>(`${apiBaseUrl}/sentry-config`)
+                const raw = await firstValueFrom(
+                    http.get(`${apiBaseUrl}/sentry-config`)
                         .pipe(timeout(5000)),
                 );
-                await initSentry(sentryConfig.dsn, sentryConfig.release, sentryConfig.environment);
+                const result = SentryConfigResponseSchema.safeParse(raw);
+                if (result.success) {
+                    await initSentry(result.data.dsn, result.data.release, result.data.environment);
+                } else {
+                    console.warn('[app.config] /api/sentry-config returned unexpected shape:', result.error.issues);
+                }
             } catch {
                 // Non-fatal: Sentry RUM disabled if config fetch fails
             }

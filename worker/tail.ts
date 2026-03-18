@@ -15,6 +15,8 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
+// @sentry/cloudflare is imported lazily inside tail() — only when SENTRY_DSN is set.
+
 /**
  * Environment bindings for the tail worker.
  */
@@ -47,7 +49,7 @@ export interface TailEnv {
  * Tail event structure from Cloudflare
  */
 export interface TailEvent {
-    scriptName?: string;
+    scriptName?: string | null;
     outcome: 'ok' | 'exception' | 'exceededCpu' | 'exceededMemory' | 'unknown' | 'canceled';
     eventTimestamp: number;
     logs: TailLog[];
@@ -229,20 +231,20 @@ export async function forwardToLogSink(event: TailEvent, env: TailEnv): Promise<
 /**
  * Main tail handler
  */
-export default {
+const handler = {
     async tail(events: TailEvent[], env: TailEnv, ctx: ExecutionContext) {
         // Process each event
         const promises: Promise<void>[] = [];
 
-        // Initialise Sentry for tail-worker-level error capture if DSN is configured.
-        // Dynamic import avoids bundling overhead when Sentry is not used.
-        let sentry: typeof import('@sentry/cloudflare') | null = null;
+        // Lazily import the Sentry SDK only when a DSN is configured.
+        // This keeps tail-worker startup free of the Sentry module and prevents
+        // a missing/unsupported SDK from causing a startup failure.
+        let Sentry: typeof import('@sentry/cloudflare') | null = null;
         if (env.SENTRY_DSN) {
             try {
-                sentry = await import('@sentry/cloudflare');
-                sentry.init({ dsn: env.SENTRY_DSN, tracesSampleRate: 0 });
+                Sentry = await import('@sentry/cloudflare');
             } catch {
-                sentry = null;
+                Sentry = null;
             }
         }
 
@@ -319,14 +321,18 @@ export default {
                 console.error(
                     `[TAIL] Exception: ${exception.name}: ${exception.message} at ${new Date(exception.timestamp).toISOString()}`,
                 );
-                if (sentry) {
+                if (Sentry) {
+                    // Capture a non-null const so TypeScript narrows correctly inside the closure.
+                    const sentry = Sentry;
                     try {
                         sentry.withScope((scope) => {
                             scope.setTag('outcome', event.outcome);
                             scope.setTag('scriptName', event.scriptName ?? 'unknown');
-                            scope.setTag('url', event.event?.request?.url ?? 'unknown');
-                            scope.setTag('method', event.event?.request?.method ?? 'unknown');
-                            sentry!.captureException(
+                            scope.setContext('request', {
+                                url: event.event?.request?.url ?? 'unknown',
+                                method: event.event?.request?.method ?? 'unknown',
+                            });
+                            sentry.captureException(
                                 new Error(`${exception.name}: ${exception.message}`),
                             );
                         });
@@ -344,12 +350,41 @@ export default {
             }
         }
 
-        // Flush Sentry before the event loop closes
-        if (sentry) {
-            promises.push(sentry.flush(2000).then(() => {}));
+        // Flush buffered Sentry events before the handler returns.
+        // Added to promises so ctx.waitUntil() keeps the worker alive until flushed.
+        if (Sentry) {
+            promises.push(
+                Sentry.flush(2000).then(() => {}).catch((err) => {
+                    console.warn('[TAIL] Sentry flush failed:', err);
+                }),
+            );
         }
 
         // Wait for all async operations to complete
         ctx.waitUntil(Promise.all(promises));
+    },
+};
+
+// Raw handler exported for unit tests.
+export const tailHandler = handler;
+
+// Default export: lazily wraps with withSentry() only when SENTRY_DSN is set to
+// avoid loading the SDK at module startup. Falls through to the plain handler
+// when DSN is absent or the SDK cannot be loaded.
+export default {
+    async tail(events: TailEvent[], env: TailEnv, ctx: ExecutionContext): Promise<void> {
+        if (env.SENTRY_DSN) {
+            try {
+                const dsn = env.SENTRY_DSN;
+                const { withSentry } = await import('@sentry/cloudflare');
+                return withSentry(
+                    () => ({ dsn, tracesSampleRate: 0, integrations: [] }),
+                    handler as unknown as ExportedHandler<unknown>,
+                ).tail!(events as unknown as TraceItem[], env, ctx);
+            } catch {
+                // SDK load or init failed — fall through to the plain handler
+            }
+        }
+        return handler.tail(events, env, ctx);
     },
 };

@@ -195,3 +195,13 @@ Deno.test('handleCorsPreflight - includes Authorization in allowed headers', () 
     assertEquals(allowed.includes('Authorization'), true);
     assertEquals(allowed.includes('X-Turnstile-Token'), true);
 });
+
+Deno.test('handleCorsPreflight - does NOT include X-Admin-Key in allowed headers (ZTA: header removed)', () => {
+    // ZTA cleanup: X-Admin-Key was removed from Access-Control-Allow-Headers so
+    // browsers never send it cross-origin.  Auth now flows exclusively through
+    // standard Bearer tokens (Clerk JWT / API key in Authorization header).
+    const req = makeRequest('http://localhost:4200');
+    const res = handleCorsPreflight(req);
+    const allowed = res.headers.get('Access-Control-Allow-Headers') ?? '';
+    assertEquals(allowed.includes('X-Admin-Key'), false);
+});
