@@ -212,71 +212,76 @@ Deno.test('verifyTurnstileToken - fails when token is empty string', async () =>
     assertExists(result.error);
 });
 
-Deno.test('verifyTurnstileToken - succeeds when Cloudflare returns success:true', async () => {
-    const env = makeEnv({ TURNSTILE_SECRET_KEY: 'secret_test' });
-    const originalFetch = globalThis.fetch;
-    // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async () => new Response(JSON.stringify({ success: true }), { status: 200 });
+Deno.test('verifyTurnstileToken with Cloudflare API (fetch-serialized)', async (t) => {
+    // All steps patch globalThis.fetch and are serialised via t.step() to prevent
+    // parallel Deno.test races on the global fetch mock.
 
-    try {
-        const result = await verifyTurnstileToken(env, 'valid-token', '1.2.3.4');
-        assertEquals(result.success, true);
-    } finally {
-        globalThis.fetch = originalFetch;
-    }
-});
+    await t.step('succeeds when Cloudflare returns success:true', async () => {
+        const env = makeEnv({ TURNSTILE_SECRET_KEY: 'secret_test' });
+        const originalFetch = globalThis.fetch;
+        // deno-lint-ignore no-explicit-any
+        (globalThis as any).fetch = async () => new Response(JSON.stringify({ success: true }), { status: 200 });
 
-Deno.test('verifyTurnstileToken - fails when Cloudflare returns success:false with error codes', async () => {
-    const env = makeEnv({ TURNSTILE_SECRET_KEY: 'secret_test' });
-    const originalFetch = globalThis.fetch;
-    // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async () =>
-        new Response(
-            JSON.stringify({ success: false, 'error-codes': ['invalid-input-response'] }),
-            { status: 200 },
-        );
+        try {
+            const result = await verifyTurnstileToken(env, 'valid-token', '1.2.3.4');
+            assertEquals(result.success, true);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
 
-    try {
-        const result = await verifyTurnstileToken(env, 'bad-token', '1.2.3.4');
-        assertEquals(result.success, false);
-        assertExists(result.error);
-        assertEquals(result.error!.includes('invalid-input-response'), true);
-    } finally {
-        globalThis.fetch = originalFetch;
-    }
-});
+    await t.step('fails when Cloudflare returns success:false with error codes', async () => {
+        const env = makeEnv({ TURNSTILE_SECRET_KEY: 'secret_test' });
+        const originalFetch = globalThis.fetch;
+        // deno-lint-ignore no-explicit-any
+        (globalThis as any).fetch = async () =>
+            new Response(
+                JSON.stringify({ success: false, 'error-codes': ['invalid-input-response'] }),
+                { status: 200 },
+            );
 
-Deno.test('verifyTurnstileToken - fails when network error occurs', async () => {
-    const env = makeEnv({ TURNSTILE_SECRET_KEY: 'secret_test' });
-    const originalFetch = globalThis.fetch;
-    // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async () => {
-        throw new Error('Network error');
-    };
+        try {
+            const result = await verifyTurnstileToken(env, 'bad-token', '1.2.3.4');
+            assertEquals(result.success, false);
+            assertExists(result.error);
+            assertEquals(result.error!.includes('invalid-input-response'), true);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
 
-    try {
-        const result = await verifyTurnstileToken(env, 'token', '1.2.3.4');
-        assertEquals(result.success, false);
-        assertExists(result.error);
-    } finally {
-        globalThis.fetch = originalFetch;
-    }
-});
+    await t.step('fails when network error occurs', async () => {
+        const env = makeEnv({ TURNSTILE_SECRET_KEY: 'secret_test' });
+        const originalFetch = globalThis.fetch;
+        // deno-lint-ignore no-explicit-any
+        (globalThis as any).fetch = async () => {
+            throw new Error('Network error');
+        };
 
-Deno.test('verifyTurnstileToken - fails when Cloudflare returns no error-codes', async () => {
-    const env = makeEnv({ TURNSTILE_SECRET_KEY: 'secret_test' });
-    const originalFetch = globalThis.fetch;
-    // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async () => new Response(JSON.stringify({ success: false }), { status: 200 });
+        try {
+            const result = await verifyTurnstileToken(env, 'token', '1.2.3.4');
+            assertEquals(result.success, false);
+            assertExists(result.error);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
 
-    try {
-        const result = await verifyTurnstileToken(env, 'bad-token', '1.2.3.4');
-        assertEquals(result.success, false);
-        assertExists(result.error);
-        assertEquals(result.error!.includes('unknown error'), true);
-    } finally {
-        globalThis.fetch = originalFetch;
-    }
+    await t.step('fails when Cloudflare returns no error-codes', async () => {
+        const env = makeEnv({ TURNSTILE_SECRET_KEY: 'secret_test' });
+        const originalFetch = globalThis.fetch;
+        // deno-lint-ignore no-explicit-any
+        (globalThis as any).fetch = async () => new Response(JSON.stringify({ success: false }), { status: 200 });
+
+        try {
+            const result = await verifyTurnstileToken(env, 'bad-token', '1.2.3.4');
+            assertEquals(result.success, false);
+            assertExists(result.error);
+            assertEquals(result.error!.includes('unknown error'), true);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
 });
 
 // ============================================================================
