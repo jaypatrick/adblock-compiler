@@ -15,6 +15,9 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
+import { captureException, withScope, withSentry } from '@sentry/cloudflare';
+import type { CloudflareOptions } from '@sentry/cloudflare';
+
 /**
  * Environment bindings for the tail worker.
  */
@@ -47,7 +50,7 @@ export interface TailEnv {
  * Tail event structure from Cloudflare
  */
 export interface TailEvent {
-    scriptName?: string;
+    scriptName?: string | null;
     outcome: 'ok' | 'exception' | 'exceededCpu' | 'exceededMemory' | 'unknown' | 'canceled';
     eventTimestamp: number;
     logs: TailLog[];
@@ -229,22 +232,10 @@ export async function forwardToLogSink(event: TailEvent, env: TailEnv): Promise<
 /**
  * Main tail handler
  */
-export default {
+const handler = {
     async tail(events: TailEvent[], env: TailEnv, ctx: ExecutionContext) {
         // Process each event
         const promises: Promise<void>[] = [];
-
-        // Initialise Sentry for tail-worker-level error capture if DSN is configured.
-        // Dynamic import avoids bundling overhead when Sentry is not used.
-        let sentry: typeof import('@sentry/cloudflare') | null = null;
-        if (env.SENTRY_DSN) {
-            try {
-                sentry = await import('@sentry/cloudflare');
-                sentry.init({ dsn: env.SENTRY_DSN, tracesSampleRate: 0 });
-            } catch {
-                sentry = null;
-            }
-        }
 
         for (const event of events) {
             // Store logs in KV if available
@@ -319,16 +310,16 @@ export default {
                 console.error(
                     `[TAIL] Exception: ${exception.name}: ${exception.message} at ${new Date(exception.timestamp).toISOString()}`,
                 );
-                if (sentry) {
+                if (env.SENTRY_DSN) {
                     try {
-                        sentry.withScope((scope) => {
+                        withScope((scope) => {
                             scope.setTag('outcome', event.outcome);
                             scope.setTag('scriptName', event.scriptName ?? 'unknown');
                             scope.setContext('request', {
                                 url: event.event?.request?.url ?? 'unknown',
                                 method: event.event?.request?.method ?? 'unknown',
                             });
-                            sentry!.captureException(
+                            captureException(
                                 new Error(`${exception.name}: ${exception.message}`),
                             );
                         });
@@ -346,12 +337,17 @@ export default {
             }
         }
 
-        // Flush Sentry before the event loop closes
-        if (sentry) {
-            promises.push(sentry.flush(2000).then(() => {}));
-        }
-
         // Wait for all async operations to complete
         ctx.waitUntil(Promise.all(promises));
     },
 };
+
+function sentryOptions(env: TailEnv): CloudflareOptions | undefined {
+    if (!env.SENTRY_DSN) return undefined;
+    return { dsn: env.SENTRY_DSN, tracesSampleRate: 0, integrations: [] };
+}
+
+// Raw handler exported for unit tests (avoids TraceItem type constraints from withSentry wrapper).
+export const tailHandler = handler;
+
+export default withSentry(sentryOptions, handler as Parameters<typeof withSentry<TailEnv>>[1]);

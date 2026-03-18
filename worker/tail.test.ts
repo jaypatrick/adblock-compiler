@@ -6,7 +6,7 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import tailHandler, { createStructuredEvent, formatLogMessage, shouldForwardEvent, type TailEnv, type TailEvent, type TailLog } from './tail.ts';
+import { createStructuredEvent, formatLogMessage, shouldForwardEvent, type TailEnv, type TailEvent, tailHandler, type TailLog } from './tail.ts';
 
 // Tests
 Deno.test('formatLogMessage - formats simple string message', () => {
@@ -362,22 +362,32 @@ Deno.test('tail() handler - completes without throwing when events contain excep
     await tailHandler.tail([event], env, ctx);
 });
 
-Deno.test('tail() handler - completes without throwing when events contain exceptions and DSN is set', async () => {
-    // Even when SENTRY_DSN is provided, the Sentry import may fail in the test
-    // environment. The try/catch in tail.ts ensures this is handled gracefully.
-    const env = createMockTailEnv({ SENTRY_DSN: 'https://test@o0.ingest.sentry.io/0' });
-    const ctx = createMockTailCtx();
-    const event = makeEvent({
-        outcome: 'exception',
-        exceptions: [{ name: 'Error', message: 'unhandled', timestamp: Date.now() }],
-    });
-    await tailHandler.tail([event], env, ctx);
+Deno.test({
+    name: 'tail() handler - completes without throwing when events contain exceptions and DSN is set',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    async fn() {
+        // Even when SENTRY_DSN is provided, the Sentry import may fail in the test
+        // environment. The try/catch in tail.ts ensures this is handled gracefully.
+        const env = createMockTailEnv({ SENTRY_DSN: 'https://test@o0.ingest.sentry.io/0' });
+        const ctx = createMockTailCtx();
+        const event = makeEvent({
+            outcome: 'exception',
+            exceptions: [{ name: 'Error', message: 'unhandled', timestamp: Date.now() }],
+        });
+        await tailHandler.tail([event], env, ctx);
+    },
 });
 
-Deno.test('tail() handler - completes without throwing when SENTRY_DSN is set and no exceptions in events', async () => {
-    const env = createMockTailEnv({ SENTRY_DSN: 'https://test@o0.ingest.sentry.io/0' });
-    const ctx = createMockTailCtx();
-    await tailHandler.tail([makeEvent({ outcome: 'ok' })], env, ctx);
+Deno.test({
+    name: 'tail() handler - completes without throwing when SENTRY_DSN is set and no exceptions in events',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    async fn() {
+        const env = createMockTailEnv({ SENTRY_DSN: 'https://test@o0.ingest.sentry.io/0' });
+        const ctx = createMockTailCtx();
+        await tailHandler.tail([makeEvent({ outcome: 'ok' })], env, ctx);
+    },
 });
 
 Deno.test('tail() handler - handles multiple events with mixed outcomes', async () => {
