@@ -11,7 +11,7 @@
  * |---------------------------------------------------------|------------------------------------------------|
  * | Neither `SENTRY_DSN` nor `OTEL_EXPORTER_OTLP_ENDPOINT` | `ConsoleDiagnosticsProvider`                   |
  * | `SENTRY_DSN` only                                       | `SentryDiagnosticsProvider`                    |
- * | `OTEL_EXPORTER_OTLP_ENDPOINT` (disabled — Phase 2)     | n/a — OTel provider commented out              |
+ * | `OTEL_EXPORTER_OTLP_ENDPOINT` (disabled — Phase 2)     | `ConsoleDiagnosticsProvider` (OTel off)        |
  * | Both                                                    | `SentryDiagnosticsProvider` only (OTel off)    |
  *
  * ## Basic usage
