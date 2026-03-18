@@ -6,11 +6,11 @@ Thank you for your interest in contributing to the Adblock Compiler project! Thi
 
 > **⚠️ Important:** This project uses **pnpm** (for the Angular frontend workspace) and **Deno** (for the Worker backend). **Never use `npm` commands directly** — doing so will generate `package-lock.json` files that must not be committed and can create version-mismatch issues.
 >
-> | Scope | Tool | Example |
-> |---|---|---|
-> | Angular frontend | `pnpm` | `pnpm --filter adblock-compiler-frontend run build` |
-> | Worker / backend | `deno` | `deno task dev` |
-> | Wrangler (Worker deploy) | `deno task wrangler` | `deno task wrangler deploy` |
+> | Scope                    | Tool                 | Example                                             |
+> | ------------------------ | -------------------- | --------------------------------------------------- |
+> | Angular frontend         | `pnpm`               | `pnpm --filter adblock-compiler-frontend run build` |
+> | Worker / backend         | `deno`               | `deno task dev`                                     |
+> | Wrangler (Worker deploy) | `deno task wrangler` | `deno task wrangler deploy`                         |
 >
 > The single source of truth for Node package versions is `pnpm-lock.yaml`. If you accidentally run `npm install` and a `package-lock.json` appears, delete it before committing.
 
