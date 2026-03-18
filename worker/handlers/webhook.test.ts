@@ -324,7 +324,8 @@ Deno.test('handleNotify - partial success returns 200 when at least one target s
     const originalFetch = globalThis.fetch;
     // deno-lint-ignore no-explicit-any
     (globalThis as any).fetch = async (url: string) => {
-        if (url.includes('hooks.example.com')) return new Response('{}', { status: 200 });
+        const hostname = new URL(url).hostname;
+        if (hostname === 'hooks.example.com') return new Response('{}', { status: 200 });
         throw new Error('Sentry unreachable');
     };
 
