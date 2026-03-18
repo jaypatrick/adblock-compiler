@@ -111,6 +111,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.66.1] - 2026-03-18
+
+### Added### Fixed
+
+- **tail**: add nodejs_compat flag for @sentry/cloudflare node:async_hooks
+
+
 ## [0.66.0] - 2026-03-18
 
 ### Added- **sentry**: audit and enhance Sentry integration across all workers and frontend (#1155)
