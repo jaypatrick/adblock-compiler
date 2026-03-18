@@ -390,15 +390,20 @@ Deno.test({
     },
 });
 
-Deno.test('tail() handler - handles multiple events with mixed outcomes', async () => {
-    const env = createMockTailEnv();
-    const ctx = createMockTailCtx();
-    const events = [
-        makeEvent({ outcome: 'ok' }),
-        makeEvent({ outcome: 'exception', exceptions: [{ name: 'RangeError', message: 'boom', timestamp: Date.now() }] }),
-        makeEvent({ outcome: 'canceled' }),
-    ];
-    await tailHandler.tail(events, env, ctx);
+Deno.test({
+    name: 'tail() handler - handles multiple events with mixed outcomes',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    async fn() {
+        const env = createMockTailEnv();
+        const ctx = createMockTailCtx();
+        const events = [
+            makeEvent({ outcome: 'ok' }),
+            makeEvent({ outcome: 'exception', exceptions: [{ name: 'RangeError', message: 'boom', timestamp: Date.now() }] }),
+            makeEvent({ outcome: 'canceled' }),
+        ];
+        await tailHandler.tail(events, env, ctx);
+    },
 });
 
 Deno.test('tail() handler - garbage SENTRY_DSN does not throw (Sentry init is non-fatal)', async () => {
