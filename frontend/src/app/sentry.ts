@@ -32,7 +32,7 @@ import * as Sentry from '@sentry/angular';
 export const SentryConfigResponseSchema = z.object({
     dsn: z.string().nullable(),
     release: z.string().nullable(),
-    environment: z.string().nullable(),
+    environment: z.string().nullable().optional().default('production'),
 });
 
 export type SentryConfigResponse = z.infer<typeof SentryConfigResponseSchema>;

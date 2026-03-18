@@ -63,8 +63,6 @@ jobs:
 
       - name: Build Worker bundle (dry-run for source maps)
         run: deno run -A npm:wrangler deploy --dry-run --outdir dist/worker
-        env:
-          CLOUDFLARE_API_TOKEN: placeholder
 
       - name: Upload Worker source maps to Sentry
         run: |
