@@ -1,0 +1,60 @@
+# Codecov configuration
+# Docs: https://docs.codecov.io/docs/codecov-yaml
+
+coverage:
+    # -------------------------------------------------------------------------
+    # Patch coverage — enforced on every PR.
+    # Every code change must have ≥ 70% line coverage on the changed lines.
+    # PRs that drop patch coverage below 70% will fail the Codecov status check.
+    # -------------------------------------------------------------------------
+    status:
+        patch:
+            default:
+                # Require 70% coverage on every new patch (changed lines).
+                # This mirrors the project goal stated in the issue tracker and
+                # CONTRIBUTING.md: "if you write code, you write tests."
+                # No threshold — this is a hard gate: patch coverage must be ≥ 70%.
+                target: 70%
+
+        project:
+            default:
+                # Never let overall project coverage drop by more than 2%.
+                target: auto
+                threshold: 2%
+
+    # -------------------------------------------------------------------------
+    # Flags — separate reporting per test layer so Codecov can track coverage
+    # trends for each layer independently (Deno vs Angular).
+    # -------------------------------------------------------------------------
+
+# -------------------------------------------------------------------------
+# Ignore paths that are intentionally not covered by unit tests.
+# These are either generated files, entry-point bootstrapping, or
+# SSR/config files that are exercised by integration / E2E tests only.
+# -------------------------------------------------------------------------
+ignore:
+    # Angular entry points and SSR bootstrap (not unit-testable)
+    - 'frontend/src/main.ts'
+    - 'frontend/src/main.server.ts'
+    - 'frontend/src/app/app.config.ts'
+    - 'frontend/src/app/app.config.server.ts'
+    - 'frontend/src/app/app.routes.server.ts'
+    # Test setup infrastructure
+    - 'frontend/src/test-setup.ts'
+    # Generated and example files
+    - 'src/storage/example.ts'
+    - 'src/storage/prisma-example.ts'
+    # Scripts are not shipped to production; exclude from project gate
+    - 'scripts/**'
+    # Documentation
+    - 'docs/**'
+
+# -------------------------------------------------------------------------
+# Comment configuration — post a coverage summary on every PR.
+# -------------------------------------------------------------------------
+comment:
+    layout: 'reach,diff,flags,files,footer'
+    behavior: default
+    require_changes: false
+    require_base: false
+    require_head: true

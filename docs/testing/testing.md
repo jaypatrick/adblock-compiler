@@ -141,6 +141,10 @@ deno coverage coverage --lcov --output=coverage.lcov --include="^file:"
 
 ## Writing New Tests
 
+> **Mandatory rule: every code change ships with tests — no exceptions.**
+> New source file → new test file. Modified logic → updated tests for the affected code path.
+> Codecov enforces ≥ 70% patch coverage on every PR and will fail the status check if the gate is not met.
+
 ### Test File Template
 
 ```typescript
