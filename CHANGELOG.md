@@ -110,6 +110,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.66.0] - 2026-03-18
+
+### Added- **sentry**: audit and enhance Sentry integration across all workers and frontend (#1155)
+
+### Fixed
+
+- add missing unit tests for sentry.ts, response.ts, and cors.ts
+- **tail**: correct ExportedHandler and TraceItem cast types for withSentry
+- **sentry**: address all PR review comments - lazy import, flush, schema, docstrings
+- **tests**: suppress Deno leak detection on mixed-outcome tail test
+- refactor tail.ts Sentry init to use withSentry public API
+- **sentry**: address PR review feedback — anchor typo, placeholder token, conditional handlers, tag cardinality, optional environment
+- **zta**: add rate limiting to pre-auth sentry-config meta routes
+
+
 ## [0.65.0] - 2026-03-17
 
 ### Added- secure all API endpoints by tier, remove AuthService, fix sign-up/sign-in UX, add profile page, ZTA periodic re-validation
