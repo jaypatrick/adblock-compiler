@@ -79,7 +79,9 @@ WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:passwor
 # (secrets — production: `wrangler secret put ANALYTICS_ACCOUNT_ID`)
 # ANALYTICS_ACCOUNT_ID=your-cf-account-id
 # ANALYTICS_API_TOKEN=your-cf-api-token
-# OpenTelemetry OTLP collector endpoint
+# OpenTelemetry OTLP collector endpoint — DISABLED (Grafana Phase 2)
+# The OTel provider is commented out in worker/services/diagnostics-factory.ts.
+# TODO(grafana-phase2): Un-comment provider registration and set this secret.
 # (secret — production: `wrangler secret put OTEL_EXPORTER_OTLP_ENDPOINT`)
 # OTEL_EXPORTER_OTLP_ENDPOINT=https://otlp.grafana.net/otlp
 # Error reporter type: console | cloudflare | sentry | composite

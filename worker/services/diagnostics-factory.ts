@@ -11,8 +11,8 @@
  * |---------------------------------------------------------|------------------------------------------------|
  * | Neither `SENTRY_DSN` nor `OTEL_EXPORTER_OTLP_ENDPOINT` | `ConsoleDiagnosticsProvider`                   |
  * | `SENTRY_DSN` only                                       | `SentryDiagnosticsProvider`                    |
- * | `OTEL_EXPORTER_OTLP_ENDPOINT` only                      | `OpenTelemetryDiagnosticsProvider`             |
- * | Both                                                    | `CompositeDiagnosticsProvider([Sentry, OTel])` |
+ * | `OTEL_EXPORTER_OTLP_ENDPOINT` (disabled — Phase 2)     | n/a — OTel provider commented out              |
+ * | Both                                                    | `SentryDiagnosticsProvider` only (OTel off)    |
  *
  * ## Basic usage
  *
@@ -62,7 +62,8 @@
 import { CompositeDiagnosticsProvider } from '../../src/diagnostics/CompositeDiagnosticsProvider.ts';
 import { ConsoleDiagnosticsProvider, NoOpDiagnosticsProvider } from '../../src/diagnostics/IDiagnosticsProvider.ts';
 import type { IDiagnosticsProvider } from '../../src/diagnostics/IDiagnosticsProvider.ts';
-import { OpenTelemetryDiagnosticsProvider } from '../../src/diagnostics/OpenTelemetryDiagnosticsProvider.ts';
+// TODO(grafana-phase2): Re-enable when Grafana Cloud / OTLP is configured.
+// import { OpenTelemetryDiagnosticsProvider } from '../../src/diagnostics/OpenTelemetryDiagnosticsProvider.ts';
 import { SentryDiagnosticsProvider } from '../../src/diagnostics/SentryDiagnosticsProvider.ts';
 import type { Env } from '../types.ts';
 
@@ -85,7 +86,8 @@ import type { Env } from '../types.ts';
 export type ProviderBuilderFn = (env: Env) => IDiagnosticsProvider | null;
 
 // Module-level registry of provider builder functions.
-// Built-in Sentry and OTel builders are pre-registered at module init below.
+// Built-in Sentry builder is pre-registered at module init below.
+// OTel builder is disabled — see TODO(grafana-phase2) below.
 const _providerBuilders: ProviderBuilderFn[] = [];
 
 /**
@@ -115,13 +117,14 @@ registerDiagnosticsProvider((env) => {
     });
 });
 
-registerDiagnosticsProvider((env) => {
-    if (!env.OTEL_EXPORTER_OTLP_ENDPOINT) return null;
-    return new OpenTelemetryDiagnosticsProvider({
-        serviceName: 'adblock-compiler',
-        serviceVersion: env.COMPILER_VERSION,
-    });
-});
+// TODO(grafana-phase2): Re-enable OpenTelemetry/Grafana provider in Phase 2.
+// registerDiagnosticsProvider((env) => {
+//     if (!env.OTEL_EXPORTER_OTLP_ENDPOINT) return null;
+//     return new OpenTelemetryDiagnosticsProvider({
+//         serviceName: 'adblock-compiler',
+//         serviceVersion: env.COMPILER_VERSION,
+//     });
+// });
 
 // ---------------------------------------------------------------------------
 // Public API

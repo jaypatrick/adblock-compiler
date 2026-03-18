@@ -130,6 +130,7 @@ const workerHandler: WorkerHandler = {
 
 // Wrap with Sentry error tracking. When SENTRY_DSN is not set the original
 // handler is returned unchanged — zero overhead in local development.
+// Grafana/OTLP tracing is disabled — see diagnostics-factory.ts TODO(grafana-phase2).
 export default withSentryWorker(workerHandler, (env) => ({
     dsn: env.SENTRY_DSN,
     release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,

@@ -1,4 +1,13 @@
 /**
+ * @disabled Grafana/OTLP tracing is not active in the Worker runtime.
+ * TODO(grafana-phase2): Wire this provider into diagnostics-factory.ts once
+ * OTEL_EXPORTER_OTLP_ENDPOINT is configured in Cloudflare Worker secrets.
+ *
+ * The file is kept intact so Phase 2 re-enablement is a one-line uncomment
+ * in diagnostics-factory.ts.
+ */
+
+/**
  * OpenTelemetryDiagnosticsProvider — routes spans and metrics via OTLP.
  *
  * Bridges the IDiagnosticsProvider interface to the OpenTelemetry JS SDK.

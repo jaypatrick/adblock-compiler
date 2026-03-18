@@ -38,23 +38,23 @@ Deno.test('createDiagnosticsProvider — SENTRY_DSN only → SentryDiagnosticsPr
     assertInstanceOf(provider, SentryDiagnosticsProvider);
 });
 
-Deno.test('createDiagnosticsProvider — OTEL endpoint only → OpenTelemetryDiagnosticsProvider', () => {
+Deno.test('createDiagnosticsProvider — OTEL endpoint only → ConsoleDiagnosticsProvider (OTel disabled)', () => {
     const provider = createDiagnosticsProvider(
         makeEnv({ OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp.example.com' }),
     );
-    // Not instanceof Composite — single provider returned directly
-    assertEquals(provider instanceof CompositeDiagnosticsProvider, false);
+    // OTel provider is disabled (TODO grafana-phase2) — falls back to ConsoleDiagnosticsProvider
+    assertInstanceOf(provider, ConsoleDiagnosticsProvider);
 });
 
-Deno.test('createDiagnosticsProvider — both Sentry + OTEL → CompositeDiagnosticsProvider', () => {
+Deno.test('createDiagnosticsProvider — both Sentry + OTEL → SentryDiagnosticsProvider only (OTel disabled)', () => {
     const provider = createDiagnosticsProvider(
         makeEnv({
             SENTRY_DSN: 'https://key@sentry.io/123',
             OTEL_EXPORTER_OTLP_ENDPOINT: 'https://otlp.example.com',
         }),
     );
-    assertInstanceOf(provider, CompositeDiagnosticsProvider);
-    assertEquals((provider as CompositeDiagnosticsProvider).size, 2);
+    // OTel provider is disabled (TODO grafana-phase2) — only Sentry is active
+    assertInstanceOf(provider, SentryDiagnosticsProvider);
 });
 
 Deno.test('createDiagnosticsProvider — extras are appended to provider list', () => {

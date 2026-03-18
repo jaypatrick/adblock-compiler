@@ -30,7 +30,8 @@ export interface TailEnv {
     // Optional log retention period in seconds (default: 24 hours)
     LOG_RETENTION_TTL?: string;
 
-    // HTTP log sink endpoint (e.g., Better Stack, Logtail, Grafana Loki)
+    // HTTP log sink endpoint (e.g., Better Stack, Logtail)
+    // Note: Grafana Loki forwarding is deferred to Phase 2 (see TODO(grafana-phase2)).
     LOG_SINK_URL?: string;
     // Bearer token for authenticating with the log sink
     LOG_SINK_TOKEN?: string;
