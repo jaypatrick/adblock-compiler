@@ -322,15 +322,17 @@ const handler = {
                     `[TAIL] Exception: ${exception.name}: ${exception.message} at ${new Date(exception.timestamp).toISOString()}`,
                 );
                 if (Sentry) {
+                    // Capture a non-null const so TypeScript narrows correctly inside the closure.
+                    const sentry = Sentry;
                     try {
-                        Sentry.withScope((scope) => {
+                        sentry.withScope((scope) => {
                             scope.setTag('outcome', event.outcome);
                             scope.setTag('scriptName', event.scriptName ?? 'unknown');
                             scope.setContext('request', {
                                 url: event.event?.request?.url ?? 'unknown',
                                 method: event.event?.request?.method ?? 'unknown',
                             });
-                            Sentry!.captureException(
+                            sentry.captureException(
                                 new Error(`${exception.name}: ${exception.message}`),
                             );
                         });
@@ -351,7 +353,11 @@ const handler = {
         // Flush buffered Sentry events before the handler returns.
         // Added to promises so ctx.waitUntil() keeps the worker alive until flushed.
         if (Sentry) {
-            promises.push(Sentry.flush(2000).then(() => {}).catch(() => {}));
+            promises.push(
+                Sentry.flush(2000).then(() => {}).catch((err) => {
+                    console.warn('[TAIL] Sentry flush failed:', err);
+                }),
+            );
         }
 
         // Wait for all async operations to complete
@@ -369,9 +375,10 @@ export default {
     async tail(events: TailEvent[], env: TailEnv, ctx: ExecutionContext): Promise<void> {
         if (env.SENTRY_DSN) {
             try {
+                const dsn = env.SENTRY_DSN;
                 const { withSentry } = await import('@sentry/cloudflare');
                 return withSentry(
-                    () => ({ dsn: env.SENTRY_DSN!, tracesSampleRate: 0, integrations: [] }),
+                    () => ({ dsn, tracesSampleRate: 0, integrations: [] }),
                     handler as unknown as ExportedHandler<TailEnv>,
                 ).tail!(events as unknown as readonly TraceItem[], env, ctx);
             } catch {

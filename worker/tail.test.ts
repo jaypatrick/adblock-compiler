@@ -408,10 +408,43 @@ Deno.test({
 });
 
 Deno.test('tail() handler - garbage SENTRY_DSN does not throw (Sentry init is non-fatal)', async () => {
-    // If the DSN is malformed, Sentry.init() may throw internally.
-    // The try/catch in tail.ts sets sentry = null and continues.
+    // If the DSN is malformed, the SDK may throw during captureException.
+    // The try/catch around Sentry calls ensures errors are swallowed silently.
     const env = createMockTailEnv({ SENTRY_DSN: 'not-a-valid-dsn' });
     const ctx = createMockTailCtx();
     const event = makeEvent({ exceptions: [{ name: 'Error', message: 'x', timestamp: Date.now() }] });
     await tailHandler.tail([event], env, ctx);
+});
+
+// ============================================================================
+// default export — smoke tests for the production withSentry wrapper path
+// ============================================================================
+
+Deno.test('default export - has a tail() method', () => {
+    assertExists(tailDefault.tail);
+    assertEquals(typeof tailDefault.tail, 'function');
+});
+
+Deno.test({
+    name: 'default export tail() - completes without throwing when SENTRY_DSN is absent',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    async fn() {
+        const env = createMockTailEnv();
+        const ctx = createMockTailCtx();
+        await tailDefault.tail([makeEvent({ outcome: 'ok' })], env, ctx);
+    },
+});
+
+Deno.test({
+    name: 'default export tail() - completes without throwing when SENTRY_DSN is present',
+    sanitizeOps: false,
+    sanitizeResources: false,
+    async fn() {
+        // The withSentry wrapper path: SDK is lazily imported. If it fails
+        // (unsupported in test env), the catch block falls through to the plain handler.
+        const env = createMockTailEnv({ SENTRY_DSN: 'https://test@o0.ingest.sentry.io/0' });
+        const ctx = createMockTailCtx();
+        await tailDefault.tail([makeEvent({ outcome: 'ok' })], env, ctx);
+    },
 });
