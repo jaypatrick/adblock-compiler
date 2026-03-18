@@ -13,10 +13,8 @@ coverage:
                 # Require 70% coverage on every new patch (changed lines).
                 # This mirrors the project goal stated in the issue tracker and
                 # CONTRIBUTING.md: "if you write code, you write tests."
+                # No threshold — this is a hard gate: patch coverage must be ≥ 70%.
                 target: 70%
-                # Allow a 5% tolerance to account for untestable glue code
-                # (e.g. entry-point bootstrapping, Cloudflare binding type shims).
-                threshold: 5%
 
         project:
             default:

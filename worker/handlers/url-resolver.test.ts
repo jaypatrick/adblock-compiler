@@ -6,7 +6,6 @@
  *   - handleResolveUrl: returns 400 on invalid JSON body
  *   - handleResolveUrl: returns 400 on invalid URL in body
  *   - handleResolveUrl: returns 400 on missing url field
- *   - handleResolveUrl: returns 200 with resolvedUrl on success
  *   - handleResolveUrl: returns 502 when browser navigation fails
  *   - UrlResolveRequestSchema: validates timeout range, waitUntil values
  *
@@ -88,18 +87,17 @@ Deno.test('handleResolveUrl - returns 400 when url field is missing', async () =
 // handleResolveUrl — successful navigation (mock browser)
 // ============================================================================
 
-Deno.test('handleResolveUrl - returns 200 with resolvedUrl on success', async () => {
-    const mockBrowser = {} as unknown as Env['BROWSER'];
-
-    // We patch the resolveCanonicalUrl call by using a mock environment that
-    // triggers the browser code path. Since we cannot easily mock the browser
-    // binding in a unit test, we verify the 502 error path by providing a
-    // browser binding that throws with a controlled message.
-    const env = makeEnv({ BROWSER: mockBrowser });
+Deno.test('handleResolveUrl - returns 502 when browser navigation fails', async () => {
+    // Provide a non-null BROWSER binding so the 503 guard passes.
+    // In the test environment @cloudflare/playwright is unavailable, so
+    // acquireBrowser() will throw, giving a deterministic 502.
+    const env = makeEnv({ BROWSER: {} as unknown as Env['BROWSER'] });
     const req = makeRequest({ url: 'https://example.com' });
     const res = await handleResolveUrl(req, env);
-    // Without a real browser, navigation fails with 502
-    assertEquals([200, 502].includes(res.status), true);
+    assertEquals(res.status, 502);
+    const body = await res.json() as { success: boolean; error: string };
+    assertEquals(body.success, false);
+    assertExists(body.error);
 });
 
 // ============================================================================

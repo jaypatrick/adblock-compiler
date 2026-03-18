@@ -14,7 +14,7 @@
 
 import { assertEquals } from '@std/assert';
 import { handleScheduled } from './scheduled.ts';
-import type { Env, Workflow } from '../types.ts';
+import type { Env, Workflow, WorkflowInstance } from '../types.ts';
 
 // ============================================================================
 // Fixtures
@@ -37,9 +37,9 @@ function makeWorkflow<T>(): { workflow: Workflow<T>; calls: Array<{ id: string; 
     const workflow: Workflow<T> = {
         create: async (options) => {
             calls.push({ id: options?.id ?? '', params: options?.params as T });
-            return { id: options?.id ?? 'mock-instance' } as ReturnType<typeof workflow.create> extends Promise<infer U> ? U : never;
+            return { id: options?.id ?? 'mock-instance' } as WorkflowInstance;
         },
-        get: async (_id: string) => ({ id: _id } as ReturnType<typeof workflow.get> extends Promise<infer U> ? U : never),
+        get: async (_id: string) => ({ id: _id }) as WorkflowInstance,
     };
     return { workflow, calls };
 }

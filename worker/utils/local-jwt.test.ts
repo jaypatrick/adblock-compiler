@@ -25,6 +25,36 @@ const SECRET = 'test-secret-at-least-32-chars-long!!';
 const USER_ID = 'aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee';
 
 // ============================================================================
+// Test helper — crafts a properly-signed JWT with arbitrary header/payload.
+// Used to exercise claim-validation paths that signLocalJWT cannot reach
+// (wrong issuer, future iat, invalid JSON payload, missing claims).
+// ============================================================================
+
+function toBase64Url(base64: string): string {
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function b64url(str: string): string {
+    return toBase64Url(btoa(str));
+}
+
+async function craftSignedJWT(headerJson: Record<string, unknown>, payloadRaw: string, secret: string): Promise<string> {
+    const encodedHeader = b64url(JSON.stringify(headerJson));
+    const encodedPayload = b64url(payloadRaw);
+    const signingInput = `${encodedHeader}.${encodedPayload}`;
+    const key = await crypto.subtle.importKey(
+        'raw',
+        new TextEncoder().encode(secret),
+        { name: 'HMAC', hash: 'SHA-256' },
+        false,
+        ['sign'],
+    );
+    const sigBytes = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(signingInput));
+    const sig = toBase64Url(btoa(String.fromCharCode(...new Uint8Array(sigBytes))));
+    return `${signingInput}.${sig}`;
+}
+
+// ============================================================================
 // signLocalJWT
 // ============================================================================
 
@@ -133,22 +163,65 @@ Deno.test('verifyLocalJWT - rejects token with wrong algorithm in header', async
 });
 
 Deno.test('verifyLocalJWT - rejects token with wrong issuer', async () => {
-    // Craft a token signed with the correct secret but wrong issuer
-    const token = await signLocalJWT(USER_ID, 'user', UserTier.Free, SECRET);
-    // Decode and re-encode the payload with a different issuer
-    const [headerB64, payloadB64, sigB64] = token.split('.');
-    const padded = payloadB64.replace(/-/g, '+').replace(/_/g, '/').padEnd(
-        payloadB64.length + (4 - (payloadB64.length % 4)) % 4,
-        '=',
-    );
-    const payload = JSON.parse(atob(padded)) as Record<string, unknown>;
-    payload.iss = 'wrong-issuer';
-    const newPayloadB64 = btoa(JSON.stringify(payload))
-        .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-    // Use original signature (now invalid because payload changed)
-    const tamperedToken = `${headerB64}.${newPayloadB64}.${sigB64}`;
-    const result = await verifyLocalJWT(tamperedToken, SECRET);
-    // Either invalid signature or invalid issuer
+    // Craft a token that is validly signed but carries the wrong issuer.
+    // Re-signing with the same secret ensures the signature is correct so
+    // that verification reaches the issuer-check branch (not signature branch).
+    const now = Math.floor(Date.now() / 1000);
+    const payload = JSON.stringify({
+        sub: USER_ID,
+        iss: 'wrong-issuer',
+        iat: now,
+        exp: now + 3600,
+        sid: 'test-session',
+        metadata: { tier: UserTier.Free, role: 'user' },
+    });
+    const token = await craftSignedJWT({ alg: 'HS256', typ: 'JWT' }, payload, SECRET);
+    const result = await verifyLocalJWT(token, SECRET);
+    assertEquals(result.valid, false);
+    if (!result.valid) {
+        assertEquals(result.error.includes('issuer'), true);
+    }
+});
+
+Deno.test('verifyLocalJWT - rejects token with future iat', async () => {
+    // iat in the far future (now + 100 s) — exceeds the 5 s clock tolerance.
+    const now = Math.floor(Date.now() / 1000);
+    const payload = JSON.stringify({
+        sub: USER_ID,
+        iss: 'adblock-compiler-local',
+        iat: now + 100,
+        exp: now + 3700,
+        sid: 'test-session',
+        metadata: { tier: UserTier.Free, role: 'user' },
+    });
+    const token = await craftSignedJWT({ alg: 'HS256', typ: 'JWT' }, payload, SECRET);
+    const result = await verifyLocalJWT(token, SECRET);
+    assertEquals(result.valid, false);
+    if (!result.valid) {
+        assertEquals(result.error.includes('not yet valid'), true);
+    }
+});
+
+Deno.test('verifyLocalJWT - rejects token with invalid payload JSON', async () => {
+    // Payload section is not valid JSON — verifyLocalJWT should return "invalid payload".
+    const token = await craftSignedJWT({ alg: 'HS256', typ: 'JWT' }, '{not valid json}', SECRET);
+    const result = await verifyLocalJWT(token, SECRET);
+    assertEquals(result.valid, false);
+    if (!result.valid) {
+        assertEquals(result.error.includes('payload'), true);
+    }
+});
+
+Deno.test('verifyLocalJWT - rejects token with missing required claims', async () => {
+    // Payload is valid JSON but missing required Zod fields (sub, exp, iat).
+    const now = Math.floor(Date.now() / 1000);
+    const payload = JSON.stringify({
+        iss: 'adblock-compiler-local',
+        exp: now + 3600,
+        // sub is intentionally absent
+    });
+    const token = await craftSignedJWT({ alg: 'HS256', typ: 'JWT' }, payload, SECRET);
+    const result = await verifyLocalJWT(token, SECRET);
     assertEquals(result.valid, false);
 });
 

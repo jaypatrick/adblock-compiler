@@ -116,6 +116,16 @@ Deno.test('handleValidateRule - strict mode with valid rule returns valid:true',
     assertEquals(body.valid, true);
 });
 
+Deno.test('handleValidateRule - strict mode with invalid rule returns valid:false', async () => {
+    // '||example.com$' has empty modifiers, which strict parsing rejects
+    const req = makeRequest({ rule: '||example.com$', strict: true });
+    const res = await handleValidateRule(req, makeEnv());
+    assertEquals(res.status, 200);
+    const body = await res.json() as { valid: boolean; error: string };
+    assertEquals(body.valid, false);
+    assertExists(body.error);
+});
+
 Deno.test('handleValidateRule - includes rule and ruleType in response', async () => {
     const req = makeRequest({ rule: '||example.com^' });
     const res = await handleValidateRule(req, makeEnv());
