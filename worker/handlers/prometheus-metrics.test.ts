@@ -124,7 +124,10 @@ const MOCK_ANALYTICS_ROW = {
 
 /**
  * Patches globalThis.fetch for the duration of `fn`, then restores it.
- * Must only be called from within a t.step() so steps are already serialised.
+ *
+ * Usage requirement: call this only from within a serialised t.step() block.
+ * Calling it from a top-level Deno.test that runs concurrently with other
+ * fetch-patching tests can cause flaky cross-test interference.
  */
 function withMockFetch(
     mockResponse: unknown,
