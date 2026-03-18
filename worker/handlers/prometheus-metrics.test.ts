@@ -152,3 +152,131 @@ Deno.test('registerPrometheusMetric — collect returning null omits metric', as
 
     assertEquals(body.includes('null_metric'), false);
 });
+
+// ---------------------------------------------------------------------------
+// Analytics Engine path (ANALYTICS_ACCOUNT_ID + ANALYTICS_API_TOKEN configured)
+// ---------------------------------------------------------------------------
+
+function withMockFetch(
+    mockResponse: unknown,
+    fn: () => Promise<void>,
+    status = 200,
+): Promise<void> {
+    const originalFetch = globalThis.fetch;
+    // deno-lint-ignore no-explicit-any
+    (globalThis as any).fetch = async () =>
+        new Response(JSON.stringify(mockResponse), { status });
+    return fn().finally(() => {
+        globalThis.fetch = originalFetch;
+    });
+}
+
+const MOCK_ANALYTICS_ROW = {
+    total_requests: 1000,
+    success_requests: 950,
+    error_requests: 50,
+    avg_latency_ms: 123.4,
+    p95_latency_ms: 456.7,
+    cache_hits: 800,
+    cache_misses: 200,
+    rate_limit_events: 5,
+    source_errors: 3,
+};
+
+Deno.test('handlePrometheusMetrics — includes compilation metrics when analytics secrets configured', async () => {
+    _clearRegistryForTesting();
+
+    const env = makeEnv({
+        ANALYTICS_ACCOUNT_ID: 'acct_test',
+        ANALYTICS_API_TOKEN: 'tok_test',
+    });
+    const req = makeRequest();
+
+    await withMockFetch({ data: [MOCK_ANALYTICS_ROW] }, async () => {
+        const res = await handlePrometheusMetrics(req, env);
+        assertEquals(res.status, 200);
+        const body = await res.text();
+
+        // Should not include the "missing secrets" note
+        assertEquals(body.includes('ANALYTICS_ACCOUNT_ID or ANALYTICS_API_TOKEN not configured'), false);
+        // Should include built-in metric names (re-registered by module load)
+        assertStringIncludes(body, 'adblock_compilation_requests_total');
+        assertStringIncludes(body, 'adblock_compilation_errors_total');
+        assertStringIncludes(body, 'adblock_cache_hits_total');
+    });
+});
+
+Deno.test('handlePrometheusMetrics — returns 200 when analytics API fetch fails', async () => {
+    _clearRegistryForTesting();
+
+    const env = makeEnv({
+        ANALYTICS_ACCOUNT_ID: 'acct_test',
+        ANALYTICS_API_TOKEN: 'tok_test',
+    });
+    const req = makeRequest();
+
+    const originalFetch = globalThis.fetch;
+    // deno-lint-ignore no-explicit-any
+    (globalThis as any).fetch = async () => { throw new Error('Analytics unavailable'); };
+
+    try {
+        const res = await handlePrometheusMetrics(req, env);
+        // Handler should not crash — errors in collect() are caught per-metric
+        assertEquals(res.status, 200);
+    } finally {
+        globalThis.fetch = originalFetch;
+    }
+});
+
+Deno.test('handlePrometheusMetrics — returns 200 when analytics API returns non-ok status', async () => {
+    _clearRegistryForTesting();
+
+    const env = makeEnv({
+        ANALYTICS_ACCOUNT_ID: 'acct_test',
+        ANALYTICS_API_TOKEN: 'tok_test',
+    });
+    const req = makeRequest();
+
+    await withMockFetch({ error: 'Unauthorized' }, async () => {
+        const res = await handlePrometheusMetrics(req, env);
+        assertEquals(res.status, 200);
+    }, 401);
+});
+
+Deno.test('handlePrometheusMetrics — no "note" comment when analytics secrets are present', async () => {
+    _clearRegistryForTesting();
+
+    const env = makeEnv({
+        ANALYTICS_ACCOUNT_ID: 'acct_test',
+        ANALYTICS_API_TOKEN: 'tok_test',
+    });
+    const req = makeRequest();
+
+    await withMockFetch({ data: [MOCK_ANALYTICS_ROW] }, async () => {
+        const res = await handlePrometheusMetrics(req, env);
+        const body = await res.text();
+        assertEquals(
+            body.includes('# note: ANALYTICS_ACCOUNT_ID or ANALYTICS_API_TOKEN not configured'),
+            false,
+        );
+    });
+});
+
+Deno.test('handlePrometheusMetrics — error rate is zero when total_requests is zero', async () => {
+    _clearRegistryForTesting();
+
+    const env = makeEnv({
+        ANALYTICS_ACCOUNT_ID: 'acct_test',
+        ANALYTICS_API_TOKEN: 'tok_test',
+    });
+    const req = makeRequest();
+
+    const emptyRow = { ...MOCK_ANALYTICS_ROW, total_requests: 0, error_requests: 0 };
+
+    await withMockFetch({ data: [emptyRow] }, async () => {
+        const res = await handlePrometheusMetrics(req, env);
+        const body = await res.text();
+        // error rate should be 0 (not NaN/Infinity)
+        assertStringIncludes(body, 'adblock_compilation_error_rate 0');
+    });
+});
