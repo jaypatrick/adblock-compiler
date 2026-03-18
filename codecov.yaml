@@ -12,6 +12,20 @@ coverage:
                 target: auto
                 threshold: 2%
 
+flag_management:
+    default_rules:
+        carryforward: true
+    individual_flags:
+        - name: deno
+          paths:
+              - src/
+              - worker/
+          carryforward: true
+        - name: frontend
+          paths:
+              - frontend/src/
+          carryforward: true
+
 # Exclude files that are intentionally untested at the unit level
 # (bootstrap configs, SSR route configs, generated files, etc.)
 ignore:
