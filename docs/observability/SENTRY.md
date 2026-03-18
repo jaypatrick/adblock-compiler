@@ -13,12 +13,12 @@ runs identically to before — no SDK is imported and no events are captured.
 2. [Prerequisites — create your Sentry project](#2-prerequisites--create-your-sentry-project)
 3. [Install the SDK](#3-install-the-sdk)
 4. [Environment variables and secrets](#4-environment-variables-and-secrets)
-5. [Activate the Worker wrapper](#5-activate-the-worker-wrapper)
-6. [Activate the Tail Worker capture](#6-activate-the-tail-worker-capture)
+5. [Worker wrapper](#5-worker-wrapper)
+6. [Tail Worker capture](#6-tail-worker-capture)
 7. [Using `SentryDiagnosticsProvider`](#7-using-sentrydiagnosticsprovider)
 8. [Verifying the integration](#8-verifying-the-integration)
 9. [Troubleshooting](#9-troubleshooting)
-10. [Frontend RUM (Phase 3)](#10-frontend-rum-phase-3)
+10. [Frontend RUM](#10-frontend-rum)
 
 ---
 
@@ -27,12 +27,16 @@ runs identically to before — no SDK is imported and no events are captured.
 ```mermaid
 flowchart TD
     worker["worker/worker.ts"] --> wrapper["withSentryWorker(handler, cfg)"]
-    wrapper --> noDsn["No DSN -> pass-through (minimal overhead)"]
-    wrapper --> withDsn["DSN set -> Sentry.withSentry(cfg, handler)"]
+    wrapper --> noDsn["No DSN → pass-through (minimal overhead)"]
+    wrapper --> withDsn["DSN set → Sentry.withSentry(cfg, handler)"]
     withDsn --> capture["captureException() on unhandled throws"]
-    provider["src/diagnostics/SentryDiagnosticsProvider"] --> captureError["captureError() -> Sentry.captureException()"]
-    provider --> startSpan["startSpan() -> TODO: Sentry.startSpan() after SDK install"]
-    tail["worker/tail.ts"] --> tailDsn["SENTRY_DSN binding available for future capture"]
+    provider["src/diagnostics/SentryDiagnosticsProvider"] --> captureError["captureError() → Sentry.captureException()"]
+    provider --> startSpan["startSpan() → Sentry.startSpan()"]
+    tail["worker/tail.ts"] --> tailSentry["SENTRY_DSN set → init SDK + captureException()"]
+    tail --> tailFlush["flush(2000) before event loop closes"]
+    frontend["Angular app (browser)"] --> sentryConfig["GET /api/sentry-config"]
+    sentryConfig --> initSentry["initSentry(dsn, release, environment)"]
+    initSentry --> rum["Sentry.init() — browserTracing + replay"]
 ```
 
 All three layers use the **same `SENTRY_DSN` secret** — set once via
@@ -136,15 +140,34 @@ set the secret (see [§4](#4-environment-variables-and-secrets)).
 
 ---
 
-## 6. Activate the Tail Worker capture
+## 6. Tail Worker capture
 
-The tail worker (`worker/tail.ts`) already has the `SENTRY_DSN` binding on
-`TailEnv`. To forward unhandled tail-worker exceptions to Sentry:
+The tail worker (`worker/tail.ts`) automatically forwards unhandled Worker
+exceptions to Sentry when `SENTRY_DSN` is set. The integration is already
+wired — no code changes are needed.
 
-1. Add `SENTRY_DSN` as a secret for the **tail** worker deployment.
-2. In `worker/tail.ts`, call `Sentry.captureException(error)` inside the
-   `catch` block that processes the tail events (look for the
-   `// TODO: wire Sentry...` comment).
+**How it works:**
+
+1. On each tail event batch, if `SENTRY_DSN` is present in `TailEnv`, the
+   Sentry SDK is dynamically imported and initialised (`tracesSampleRate: 0`
+   — no transactions, only exceptions).
+2. Each exception in `event.exceptions` is forwarded to Sentry via
+   `sentry.captureException()` inside `sentry.withScope()`, with contextual
+   tags (`outcome`, `scriptName`, `url`, `method`).
+3. Before the event loop closes, `sentry.flush(2000)` is awaited via
+   `ctx.waitUntil()` to ensure buffered events are sent.
+4. Any Sentry failure is caught silently — the tail worker continues regardless.
+
+**Setup** — set the secret for the tail worker deployment:
+
+```bash
+wrangler secret put SENTRY_DSN --config wrangler.tail.toml
+# Use the same DSN as the main worker
+```
+
+> **Why a separate secret?** The tail worker is a separate Cloudflare deployment
+> (see `wrangler.tail.toml`) and has its own binding scope. Even though both
+> workers share the same DSN value, secrets must be set independently.
 
 ---
 
@@ -283,7 +306,7 @@ wrangler dev
 | `worker/handlers/sentry-config.ts` | `GET /api/sentry-config` — exposes public DSN to the frontend |
 | `src/diagnostics/SentryDiagnosticsProvider.ts` | Fine-grained span / error capture |
 | `src/diagnostics/IDiagnosticsProvider.ts` | `IDiagnosticsProvider` interface (NoOp + Console) |
-| `worker/tail.ts` | Tail worker — `TailEnv.SENTRY_DSN` binding |
+| `worker/tail.ts` | Tail worker — Sentry fully wired: `captureException()` + `flush()` |
 | `frontend/src/app/sentry.ts` | `initSentry()` — browser SDK init helper |
 | `frontend/src/app/error/global-error-handler.ts` | Forwards Angular errors to Sentry via `captureException` |
 | `.github/workflows/sentry-sourcemaps.yml` | Source map upload CI workflow |
@@ -291,7 +314,7 @@ wrangler dev
 
 ---
 
-## 10. Frontend RUM (Phase 3)
+## 10. Frontend RUM
 
 The Angular admin UI ships with **Sentry Browser SDK** (`@sentry/angular` v9)
 for real-user monitoring — unhandled JS errors, browser performance tracing,
