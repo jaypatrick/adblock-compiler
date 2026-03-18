@@ -6,7 +6,7 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import { createStructuredEvent, formatLogMessage, shouldForwardEvent, type TailEnv, type TailEvent, tailHandler, type TailLog } from './tail.ts';
+import tailDefault, { createStructuredEvent, formatLogMessage, shouldForwardEvent, type TailEnv, type TailEvent, tailHandler, type TailLog } from './tail.ts';
 
 // Tests
 Deno.test('formatLogMessage - formats simple string message', () => {
@@ -367,8 +367,9 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     async fn() {
-        // Even when SENTRY_DSN is provided, the Sentry import may fail in the test
-        // environment. The try/catch in tail.ts ensures this is handled gracefully.
+        // The Sentry SDK is dynamically imported inside tail() only when DSN is set.
+        // The try/catch around the import ensures graceful handling if the SDK is
+        // unavailable in this environment.
         const env = createMockTailEnv({ SENTRY_DSN: 'https://test@o0.ingest.sentry.io/0' });
         const ctx = createMockTailCtx();
         const event = makeEvent({
