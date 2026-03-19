@@ -113,6 +113,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.67.1] - 2026-03-19
+
+### Added### Fixed
+
+- log collect() errors, update stale comment, add --jobs=1 to prevent fetch races
+- re-register built-in Prometheus metrics after test registry clear
+- serialize fetch-mocking tests with t.step(), fix Promise.all rejection isolation, stub JWKS fetch in clerk-jwt tests
+
+
 ## [0.67.0] - 2026-03-18
 
 ### Added- **tests**: add frontend schema validation tests and middleware tests
