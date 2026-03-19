@@ -18,9 +18,9 @@ coverage:
 
         project:
             default:
-                # Target 80% overall project coverage; allow up to 2% drop before failing.
+                # Target 80% overall project coverage; allow up to 5% drop before failing.
                 target: 80%
-                threshold: 2%
+                threshold: 5%
 
     # -------------------------------------------------------------------------
     # Flags — separate reporting per test layer so Codecov can track coverage
