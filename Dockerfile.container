@@ -10,7 +10,7 @@
 #
 # See docs/deployment/cloudflare-containers.md for full deployment instructions.
 
-ARG DENO_VERSION=2.6.7
+ARG DENO_VERSION=2.7.7
 
 FROM denoland/deno:${DENO_VERSION}
 

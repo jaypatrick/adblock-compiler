@@ -3,6 +3,7 @@
 
 services:
     adblock-compiler:
+        image: jaysonknight/adblock-compiler:latest
         # Override environment to use production configuration
         env_file:
             - .env

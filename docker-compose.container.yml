@@ -1,0 +1,31 @@
+# Docker Compose for local Cloudflare container image testing
+#
+# Builds and runs Dockerfile.container locally so you can verify the
+# Cloudflare Containers production image before deploying.
+#
+# Usage:
+#   docker compose -f docker-compose.container.yml up --build
+#
+# The service is pinned to linux/amd64 to match Cloudflare Containers'
+# requirement. On Apple Silicon (arm64) hosts Docker Desktop's Rosetta 2
+# emulation handles the platform translation automatically.
+
+services:
+    adblock-compiler-container:
+        image: jaysonknight/adblock-compiler-container:latest
+        build:
+            context: .
+            dockerfile: Dockerfile.container
+        platform: linux/amd64
+        container_name: adblock-compiler-container
+        ports:
+            - '${HOST_PORT:-8787}:8787'
+        environment:
+            - PORT=8787
+        restart: unless-stopped
+        healthcheck:
+            test: ['CMD', 'curl', '-f', 'http://localhost:8787/health']
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 10s

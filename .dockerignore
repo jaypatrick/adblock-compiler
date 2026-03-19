@@ -67,6 +67,9 @@ playwright-report/
 # CI/CD
 .github/
 
+# Cloudflare container Dockerfile — not needed in the main Dockerfile build context
+Dockerfile.container
+
 # Examples
 examples/
 
