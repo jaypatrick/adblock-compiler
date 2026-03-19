@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, PLATFORM_ID } from '@angular/core';
 import { Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { provideRouter } from '@angular/router';
 import { adminGuard } from './admin.guard';
@@ -75,5 +75,36 @@ describe('adminGuard', () => {
 
         const result = await TestBed.runInInjectionContext(() => adminGuard(mockRoute, mockState));
         expect((result as UrlTree).queryParams['returnUrl']).toBe('/admin');
+    });
+
+    describe('SSR / server platform', () => {
+        beforeEach(() => {
+            TestBed.resetTestingModule();
+            TestBed.configureTestingModule({
+                providers: [
+                    provideZonelessChangeDetection(),
+                    provideRouter([]),
+                    { provide: ClerkService, useValue: mockClerk },
+                    { provide: PLATFORM_ID, useValue: 'server' },
+                ],
+            });
+            router = TestBed.inject(Router);
+        });
+
+        it('should immediately redirect to /sign-in without waiting for auth', async () => {
+            // Clerk never loads on the server — guard must not stall
+            mockClerk.isLoaded.mockReturnValue(false);
+
+            const result = await TestBed.runInInjectionContext(() => adminGuard(mockRoute, mockState));
+            expect(result).toBeInstanceOf(UrlTree);
+            expect((result as UrlTree).toString()).toContain('/sign-in');
+        });
+
+        it('should include returnUrl in the server-side redirect', async () => {
+            mockClerk.isLoaded.mockReturnValue(false);
+
+            const result = await TestBed.runInInjectionContext(() => adminGuard(mockRoute, mockState));
+            expect((result as UrlTree).queryParams['returnUrl']).toBe('/admin');
+        });
     });
 });

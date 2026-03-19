@@ -11,6 +11,8 @@
  */
 
 import { Routes } from '@angular/router';
+import { authGuard } from './guards/auth.guard';
+import { adminGuard } from './guards/admin.guard';
 
 /**
  * Application Routes
@@ -41,7 +43,7 @@ export const routes: Routes = [
         path: 'profile',
         loadComponent: () => import('./profile/profile.component').then((m) => m.ProfileComponent),
         title: 'My Profile',
-        canActivate: [(_route, state) => import('./guards/auth.guard').then((m) => m.authGuard(_route, state))],
+        canActivate: [authGuard],
     },
     // Common auth path aliases — redirect to canonical routes so users
     // arriving via /login, /log-in, /register etc. land on the right page.
@@ -56,21 +58,21 @@ export const routes: Routes = [
         loadComponent: () => import('./compiler/compiler.component').then((m) => m.CompilerComponent),
         title: 'Compiler',
         data: { description: 'Configure and run filter list compilations', metaDescription: 'Configure and compile adblock filter lists with real-time SSE streaming, batch processing, and async queue modes. Supports custom transformations and presets.' },
-        canActivate: [(_route, state) => import('./guards/auth.guard').then((m) => m.authGuard(_route, state))],
+        canActivate: [authGuard],
     },
     {
         path: 'performance',
         loadComponent: () => import('./performance/performance.component').then((m) => m.PerformanceComponent),
         title: 'Performance',
         data: { description: 'Real-time compilation performance metrics', metaDescription: 'Monitor real-time compilation performance metrics including latency percentiles, cache hit rates, and endpoint response times.' },
-        canActivate: [(_route, state) => import('./guards/auth.guard').then((m) => m.authGuard(_route, state))],
+        canActivate: [authGuard],
     },
     {
         path: 'validation',
         loadComponent: () => import('./validation/validation.component').then((m) => m.ValidationComponent),
         title: 'Validation',
         data: { description: 'Validate adblock filter rules', metaDescription: 'Validate adblock filter rules using the AGTree parser with color-coded error reporting and syntax highlighting.' },
-        canActivate: [(_route, state) => import('./guards/auth.guard').then((m) => m.authGuard(_route, state))],
+        canActivate: [authGuard],
     },
     {
         path: 'api-docs',
@@ -83,7 +85,7 @@ export const routes: Routes = [
         loadComponent: () => import('./components/api-keys/api-keys.component').then((m) => m.ApiKeysComponent),
         title: 'API Keys',
         data: { description: 'Manage API keys', metaDescription: 'Create and manage personal API keys for programmatic access to the Adblock Compiler service.' },
-        canActivate: [(_route, state) => import('./guards/auth.guard').then((m) => m.authGuard(_route, state))],
+        canActivate: [authGuard],
     },
     {
         path: 'admin',
@@ -91,7 +93,7 @@ export const routes: Routes = [
         loadChildren: () => import('./admin/admin.routes').then((m) => m.ADMIN_ROUTES),
         title: 'Admin',
         data: { description: 'Administration', metaDescription: 'Adblock Compiler administration console. Manage users, storage, configuration, and system settings.' },
-        canActivate: [(_route, state) => import('./guards/admin.guard').then((m) => m.adminGuard(_route, state))],
+        canActivate: [adminGuard],
     },
     {
         path: '**',

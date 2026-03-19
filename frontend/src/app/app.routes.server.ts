@@ -50,10 +50,11 @@ export const serverRoutes: ServerRoute[] = [
         renderMode: RenderMode.Prerender,
     },
     {
-        // Validation: static UI shell — AGTree parser runs entirely client-side.
-        // Prerender the shell at build time.
+        // Validation: auth-guarded route — must not be prerendered at build time
+        // (no user context available). Client-side rendering lets the authGuard
+        // evaluate with real auth state after the Angular app bootstraps.
         path: 'validation',
-        renderMode: RenderMode.Prerender,
+        renderMode: RenderMode.Client,
     },
     {
         // API keys: user-specific, requires Clerk auth — CSR only (no SSR for auth UI).

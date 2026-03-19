@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { provideZonelessChangeDetection, signal, PLATFORM_ID } from '@angular/core';
 import { Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { provideRouter } from '@angular/router';
 import { authGuard } from './auth.guard';
@@ -63,5 +63,36 @@ describe('authGuard', () => {
 
         const result = await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
         expect(result).toBe(true);
+    });
+
+    describe('SSR / server platform', () => {
+        beforeEach(() => {
+            TestBed.resetTestingModule();
+            TestBed.configureTestingModule({
+                providers: [
+                    provideZonelessChangeDetection(),
+                    provideRouter([]),
+                    { provide: AuthFacadeService, useValue: mockAuth },
+                    { provide: PLATFORM_ID, useValue: 'server' },
+                ],
+            });
+            router = TestBed.inject(Router);
+        });
+
+        it('should immediately redirect to /sign-in without waiting for auth', async () => {
+            // Auth is never loaded on the server — guard must not stall
+            mockAuth.isLoaded.set(false);
+
+            const result = await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
+            expect(result).toBeInstanceOf(UrlTree);
+            expect((result as UrlTree).toString()).toContain('/sign-in');
+        });
+
+        it('should include returnUrl in the server-side redirect', async () => {
+            mockAuth.isLoaded.set(false);
+
+            const result = await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
+            expect((result as UrlTree).queryParams['returnUrl']).toBe('/api-keys');
+        });
     });
 });
