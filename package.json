@@ -1,32 +1,33 @@
 {
-    "name": "adblock-compiler",
-    "version": "0.68.1",
-    "description": "Compiler-as-a-Service for adblock filter lists",
-    "homepage": "https://adblock-compiler.jayson-knight.workers.dev/",
-    "type": "module",
-    "scripts": {
-        "ui:build": "pnpm --filter adblock-compiler-frontend run build",
-        "ui:dev": "pnpm --filter adblock-compiler-frontend run start",
-        "ui:test": "pnpm --filter adblock-compiler-frontend run test",
-        "ui:lint": "pnpm --filter adblock-compiler-frontend run lint",
-        "build:worker": "pnpm install && pnpm --filter adblock-compiler-frontend run build"
-    },
-    "packageManager": "pnpm@10.31.0",
-    "_syncNote": "Dependency versions here must match those pinned in deno.json's import map; keep them in sync (for example via the existing version:sync-style task).",
-    "dependencies": {
-        "@adguard/agtree": "^4.0.1",
-        "@opentelemetry/api": "^1.9.0",
-        "@prisma/adapter-d1": "^7.5.0",
-        "@prisma/client": "^7.5.0",
-        "@sentry/cloudflare": "10.43.0",
-        "jose": "^6.2.1",
-        "svix": "^1.88.0",
-        "zod": "^4.3.6"
-    },
-    "devDependencies": {
-        "@cloudflare/containers": "^0.1.1",
-        "@cloudflare/playwright": "^1.1.2",
-        "@cloudflare/playwright-mcp": "^0.0.5",
-        "wrangler": "^4.75.0"
-    }
+  "name": "adblock-compiler",
+  "version": "0.68.1",
+  "description": "Compiler-as-a-Service for adblock filter lists",
+  "homepage": "https://adblock-compiler.jayson-knight.workers.dev/",
+  "type": "module",
+  "scripts": {
+    "ui:build": "pnpm --filter adblock-compiler-frontend run build",
+    "ui:dev": "pnpm --filter adblock-compiler-frontend run start",
+    "ui:test": "pnpm --filter adblock-compiler-frontend run test",
+    "ui:lint": "pnpm --filter adblock-compiler-frontend run lint",
+    "build:worker": "pnpm install && pnpm --filter adblock-compiler-frontend run build"
+  },
+  "packageManager": "pnpm@10.31.0",
+  "_syncNote": "Dependency versions here must match those pinned in deno.json's import map; keep them in sync (for example via the existing version:sync-style task).",
+  "dependencies": {
+    "@adguard/agtree": "^4.0.1",
+    "@opentelemetry/api": "^1.9.0",
+    "@prisma/adapter-d1": "^7.5.0",
+    "@prisma/client": "^7.5.0",
+    "@sentry/cloudflare": "10.43.0",
+    "jose": "^6.2.1",
+    "svix": "^1.88.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@cloudflare/containers": "^0.1.1",
+    "@cloudflare/playwright": "^1.1.2",
+    "@cloudflare/playwright-mcp": "^0.0.5",
+    "@cloudflare/workers-types": "^4.20260313.1",
+    "wrangler": "^4.75.0"
+  }
 }

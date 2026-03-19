@@ -42,6 +42,9 @@ importers:
       '@cloudflare/playwright-mcp':
         specifier: ^0.0.5
         version: 0.0.5(@cfworker/json-schema@4.1.1)(@cloudflare/workers-types@4.20260313.1)(react@19.2.4)(zod@4.3.6)
+      '@cloudflare/workers-types':
+        specifier: ^4.20260313.1
+        version: 4.20260313.1
       wrangler:
         specifier: ^4.75.0
         version: 4.75.0(@cloudflare/workers-types@4.20260313.1)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -7039,7 +7042,7 @@ packages:
     engines: {node: '>=20.0.0'}
     hasBin: true
     peerDependencies:
-      '@cloudflare/workers-types': ^4.20260313.1
+      '@cloudflare/workers-types': ^4.20260317.1
     peerDependenciesMeta:
       '@cloudflare/workers-types':
         optional: true
