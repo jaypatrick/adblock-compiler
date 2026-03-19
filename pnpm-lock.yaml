@@ -7042,7 +7042,7 @@ packages:
     engines: {node: '>=20.0.0'}
     hasBin: true
     peerDependencies:
-      '@cloudflare/workers-types': ^4.20260317.1
+      '@cloudflare/workers-types': ^4.20260313.1
     peerDependenciesMeta:
       '@cloudflare/workers-types':
         optional: true
