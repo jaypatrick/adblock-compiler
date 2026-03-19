@@ -7,11 +7,13 @@
  *  - # note: comment present when secrets are missing
  *  - Custom metric registration via registerPrometheusMetric
  *  - renderMetric() output format (counter and gauge)
+ *  - Analytics Engine integration paths (serialized via t.step to prevent
+ *    globalThis.fetch races and registry state interference between parallel tests)
  */
 
 import { assertEquals, assertStringIncludes } from '@std/assert';
 import type { Env } from '../types.ts';
-import { _clearRegistryForTesting, handlePrometheusMetrics, registerPrometheusMetric } from './prometheus-metrics.ts';
+import { _clearRegistryForTesting, _registerBuiltinMetricsForTesting, handlePrometheusMetrics, registerPrometheusMetric } from './prometheus-metrics.ts';
 import { renderMetric } from './prometheus-metric-registry.ts';
 
 // ---------------------------------------------------------------------------
@@ -105,50 +107,185 @@ Deno.test('handlePrometheusMetrics — missing secrets emits # note comment', as
 });
 
 // ---------------------------------------------------------------------------
-// Custom metric registration
+// Analytics Engine mock data
 // ---------------------------------------------------------------------------
 
-Deno.test('registerPrometheusMetric — custom metric appears in output', async () => {
-    _clearRegistryForTesting();
+const MOCK_ANALYTICS_ROW = {
+    total_requests: 1000,
+    success_requests: 950,
+    error_requests: 50,
+    avg_latency_ms: 123.4,
+    p95_latency_ms: 456.7,
+    cache_hits: 800,
+    cache_misses: 200,
+    rate_limit_events: 5,
+    source_errors: 3,
+};
 
-    registerPrometheusMetric({
-        name: 'test_custom_gauge',
-        type: 'gauge',
-        help: 'A custom test gauge.',
-        collect: () => 99,
+/**
+ * Patches globalThis.fetch for the duration of `fn`, then restores it.
+ *
+ * Usage requirement: call this only from within a serialised t.step() block.
+ * Calling it from a top-level Deno.test that runs concurrently with other
+ * fetch-patching tests can cause flaky cross-test interference.
+ */
+function withMockFetch(
+    mockResponse: unknown,
+    fn: () => Promise<void>,
+    status = 200,
+): Promise<void> {
+    const originalFetch = globalThis.fetch;
+    // deno-lint-ignore no-explicit-any
+    (globalThis as any).fetch = async () => new Response(JSON.stringify(mockResponse), { status });
+    return fn().finally(() => {
+        globalThis.fetch = originalFetch;
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Registry and Analytics Engine tests
+//
+// All tests that modify the global metric registry OR patch globalThis.fetch
+// are serialised inside a single Deno.test using t.step().  This prevents
+// concurrent Deno.test blocks from racing on the shared registry state or on
+// the globalThis.fetch patch.
+//
+// IMPORTANT: the built-in metrics step MUST run first (before any
+// _clearRegistryForTesting() call), or steps that need built-ins must call
+// _registerBuiltinMetricsForTesting() after clearing to restore them.
+// ---------------------------------------------------------------------------
+
+Deno.test('prometheus registry and analytics engine paths', async (t) => {
+    // Step 1 — built-in metrics: runs BEFORE any _clearRegistryForTesting() call
+    // so the module-level metric registrations are still intact.
+    await t.step('includes compilation metrics when analytics secrets configured', async () => {
+        const env = makeEnv({
+            ANALYTICS_ACCOUNT_ID: 'acct_test',
+            ANALYTICS_API_TOKEN: 'tok_test',
+        });
+
+        await withMockFetch({ data: [MOCK_ANALYTICS_ROW] }, async () => {
+            const res = await handlePrometheusMetrics(makeRequest(), env);
+            assertEquals(res.status, 200);
+            const body = await res.text();
+
+            // Should not include the "missing secrets" note
+            assertEquals(body.includes('ANALYTICS_ACCOUNT_ID or ANALYTICS_API_TOKEN not configured'), false);
+            // Built-in counter metrics (rendered with _total suffix)
+            assertStringIncludes(body, 'adblock_compilation_requests_total');
+            assertStringIncludes(body, 'adblock_compilation_errors_total');
+            assertStringIncludes(body, 'adblock_cache_hits_total');
+        });
     });
 
-    const req = makeRequest();
-    const res = await handlePrometheusMetrics(req, makeEnv());
-    const body = await res.text();
+    await t.step('no "note" comment when analytics secrets are present', async () => {
+        _clearRegistryForTesting();
+        const env = makeEnv({
+            ANALYTICS_ACCOUNT_ID: 'acct_test',
+            ANALYTICS_API_TOKEN: 'tok_test',
+        });
 
-    assertStringIncludes(body, '# HELP test_custom_gauge A custom test gauge.');
-    assertStringIncludes(body, 'test_custom_gauge 99');
-});
+        await withMockFetch({ data: [MOCK_ANALYTICS_ROW] }, async () => {
+            const res = await handlePrometheusMetrics(makeRequest(), env);
+            const body = await res.text();
+            assertEquals(
+                body.includes('# note: ANALYTICS_ACCOUNT_ID or ANALYTICS_API_TOKEN not configured'),
+                false,
+            );
+        });
+    });
 
-Deno.test('registerPrometheusMetric — duplicate name is a no-op (first wins)', async () => {
-    _clearRegistryForTesting();
+    await t.step('returns 200 when analytics API fetch fails', async () => {
+        _clearRegistryForTesting();
+        const env = makeEnv({
+            ANALYTICS_ACCOUNT_ID: 'acct_test',
+            ANALYTICS_API_TOKEN: 'tok_test',
+        });
 
-    registerPrometheusMetric({ name: 'dup_metric', type: 'gauge', help: 'First.', collect: () => 1 });
-    registerPrometheusMetric({ name: 'dup_metric', type: 'gauge', help: 'Second.', collect: () => 2 });
+        const originalFetch = globalThis.fetch;
+        // deno-lint-ignore no-explicit-any
+        (globalThis as any).fetch = async () => {
+            throw new Error('Analytics unavailable');
+        };
 
-    const req = makeRequest();
-    const res = await handlePrometheusMetrics(req, makeEnv());
-    const body = await res.text();
+        try {
+            const res = await handlePrometheusMetrics(makeRequest(), env);
+            // collect() rejections are isolated via .catch(() => null); handler must not throw
+            assertEquals(res.status, 200);
+        } finally {
+            globalThis.fetch = originalFetch;
+        }
+    });
 
-    // Only one occurrence
-    const matches = body.match(/dup_metric/g) ?? [];
-    assertEquals(matches.length, 3); // HELP + TYPE + sample — exactly one set
-});
+    await t.step('returns 200 when analytics API returns non-ok status', async () => {
+        _clearRegistryForTesting();
+        const env = makeEnv({
+            ANALYTICS_ACCOUNT_ID: 'acct_test',
+            ANALYTICS_API_TOKEN: 'tok_test',
+        });
 
-Deno.test('registerPrometheusMetric — collect returning null omits metric', async () => {
-    _clearRegistryForTesting();
+        await withMockFetch({ error: 'Unauthorized' }, async () => {
+            const res = await handlePrometheusMetrics(makeRequest(), env);
+            assertEquals(res.status, 200);
+        }, 401);
+    });
 
-    registerPrometheusMetric({ name: 'null_metric', type: 'gauge', help: 'Null.', collect: () => null });
+    await t.step('error rate is zero when total_requests is zero', async () => {
+        _clearRegistryForTesting();
+        _registerBuiltinMetricsForTesting();
+        const env = makeEnv({
+            ANALYTICS_ACCOUNT_ID: 'acct_test',
+            ANALYTICS_API_TOKEN: 'tok_test',
+        });
+        const emptyRow = { ...MOCK_ANALYTICS_ROW, total_requests: 0, error_requests: 0 };
 
-    const req = makeRequest();
-    const res = await handlePrometheusMetrics(req, makeEnv());
-    const body = await res.text();
+        await withMockFetch({ data: [emptyRow] }, async () => {
+            const res = await handlePrometheusMetrics(makeRequest(), env);
+            const body = await res.text();
+            // error rate should be 0 (not NaN/Infinity)
+            assertStringIncludes(body, 'adblock_compilation_error_rate 0');
+        });
+    });
 
-    assertEquals(body.includes('null_metric'), false);
+    // --- Custom metric registration ---
+
+    await t.step('custom metric appears in output', async () => {
+        _clearRegistryForTesting();
+
+        registerPrometheusMetric({
+            name: 'test_custom_gauge',
+            type: 'gauge',
+            help: 'A custom test gauge.',
+            collect: () => 99,
+        });
+
+        const res = await handlePrometheusMetrics(makeRequest(), makeEnv());
+        const body = await res.text();
+        assertStringIncludes(body, '# HELP test_custom_gauge A custom test gauge.');
+        assertStringIncludes(body, 'test_custom_gauge 99');
+    });
+
+    await t.step('duplicate name is a no-op (first wins)', async () => {
+        _clearRegistryForTesting();
+
+        registerPrometheusMetric({ name: 'dup_metric', type: 'gauge', help: 'First.', collect: () => 1 });
+        registerPrometheusMetric({ name: 'dup_metric', type: 'gauge', help: 'Second.', collect: () => 2 });
+
+        const res = await handlePrometheusMetrics(makeRequest(), makeEnv());
+        const body = await res.text();
+
+        // Only one occurrence
+        const matches = body.match(/dup_metric/g) ?? [];
+        assertEquals(matches.length, 3); // HELP + TYPE + sample — exactly one set
+    });
+
+    await t.step('collect returning null omits metric', async () => {
+        _clearRegistryForTesting();
+
+        registerPrometheusMetric({ name: 'null_metric', type: 'gauge', help: 'Null.', collect: () => null });
+
+        const res = await handlePrometheusMetrics(makeRequest(), makeEnv());
+        const body = await res.text();
+        assertEquals(body.includes('null_metric'), false);
+    });
 });
