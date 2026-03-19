@@ -114,6 +114,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.67.2] - 2026-03-19
+
+### Added### Fixed
+
+- add SSR platform short-circuit to guards; change validation to RenderMode.Client
+- NG0203 — replace dynamic guard imports with static imports in app.routes.ts
+
+
 ## [0.67.1] - 2026-03-19
 
 ### Added### Fixed
