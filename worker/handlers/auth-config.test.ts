@@ -15,7 +15,7 @@
 
 import { assertEquals, assertExists } from '@std/assert';
 import { handleAdminAuthConfig } from './auth-config.ts';
-import { ANONYMOUS_AUTH_CONTEXT, UserTier, type Env, type IAuthContext } from '../types.ts';
+import { ANONYMOUS_AUTH_CONTEXT, type Env, type IAuthContext, UserTier } from '../types.ts';
 
 // ============================================================================
 // Fixtures

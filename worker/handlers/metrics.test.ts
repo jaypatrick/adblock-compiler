@@ -15,9 +15,9 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import { recordMetric, getMetrics, handleMetrics } from './metrics.ts';
+import { getMetrics, handleMetrics, recordMetric } from './metrics.ts';
 import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
-import type { Env, EndpointMetrics } from '../types.ts';
+import type { EndpointMetrics, Env } from '../types.ts';
 
 // ============================================================================
 // Fixtures
@@ -34,8 +34,12 @@ function makeTrackedKv(initial: Map<string, string> = new Map()) {
             if (val === undefined || val === null) return null;
             return format === 'json' ? JSON.parse(val) : val;
         },
-        put: async (key: string, value: string) => { store.set(key, value); },
-        delete: async (key: string) => { store.delete(key); },
+        put: async (key: string, value: string) => {
+            store.set(key, value);
+        },
+        delete: async (key: string) => {
+            store.delete(key);
+        },
         getWithMetadata: async (key: string) => ({
             value: store.has(key) ? JSON.parse(store.get(key)!) : null,
             metadata: null,
@@ -46,7 +50,9 @@ function makeTrackedKv(initial: Map<string, string> = new Map()) {
 
 /** KVNamespace stub that throws on every call. */
 function makeFailingKv(): KVNamespace {
-    const fail = async () => { throw new Error('KV error'); };
+    const fail = async () => {
+        throw new Error('KV error');
+    };
     return { list: fail, get: fail, put: fail, delete: fail, getWithMetadata: fail } as unknown as KVNamespace;
 }
 
