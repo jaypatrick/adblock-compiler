@@ -272,6 +272,24 @@ jobs:
             - name: Check for slow types
               run: deno publish --dry-run --allow-dirty
 
+    validate-migrations:
+        name: Validate Migrations
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+            - name: Setup Deno environment
+              uses: ./.github/actions/setup-deno-env
+              with:
+                  deno-version: ${{ env.DENO_VERSION }}
+                  install-deps: 'false'
+
+            - name: Validate migration file naming and ordering
+              run: deno task migrate:validate
+
     ci-gate:
         name: CI Gate
         runs-on: ubuntu-latest
@@ -281,6 +299,7 @@ jobs:
             - typecheck
             - test
             - validate-artifacts
+            - validate-migrations
             - frontend-lint-test
             - frontend-build
             - check-slow-types
