@@ -116,6 +116,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.68.2] - 2026-03-19
+
+### Added### Fixed
+
+- address PR review comments on Docker pipeline
+- fix Docker build/publish pipeline and update all dependencies
+
+
 ## [0.68.1] - 2026-03-19
 
 ### Added### Fixed
