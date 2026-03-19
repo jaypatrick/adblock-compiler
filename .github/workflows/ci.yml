@@ -513,9 +513,13 @@ jobs:
             - name: Verify Docker for container build
               if: env.CLOUDFLARE_API_TOKEN != ''
               run: |
-                  echo "Checking Docker availability for Cloudflare Containers build..."
-                  docker info
-                  echo "✅ Docker is available"
+                  echo "Pre-building Dockerfile.container to surface errors before wrangler deploy..."
+                  docker buildx build \
+                    --platform linux/amd64 \
+                    -f Dockerfile.container \
+                    --no-push \
+                    . 2>&1
+                  echo "✅ Dockerfile.container pre-build succeeded"
 
             - name: Deploy Worker
               id: deploy

@@ -1,6 +1,7 @@
 services:
     # Main adblock-compiler service
     adblock-compiler:
+        image: jaysonknight/adblock-compiler:latest
         build:
             context: .
             dockerfile: Dockerfile
