@@ -31,21 +31,29 @@ function flushDashboard(
     const flagsReq  = httpTesting.expectOne(r => r.url.includes('/admin/config/feature-flags'));
     const healthReq = httpTesting.expectOne(r => r.url.includes('/health'));
 
-    auditError
-        ? auditReq.flush('error', { status: 500, statusText: 'Server Error' })
-        : auditReq.flush({ success: true, items: auditItems, total: auditTotal ?? auditItems.length, limit: 10, offset: 0 });
+    if (auditError) {
+        auditReq.flush('error', { status: 500, statusText: 'Server Error' });
+    } else {
+        auditReq.flush({ success: true, items: auditItems, total: auditTotal ?? auditItems.length, limit: 10, offset: 0 });
+    }
 
-    tiersError
-        ? tiersReq.flush('error', { status: 500, statusText: 'Server Error' })
-        : tiersReq.flush({ success: true, items: tiersItems, total: tiersItems.length });
+    if (tiersError) {
+        tiersReq.flush('error', { status: 500, statusText: 'Server Error' });
+    } else {
+        tiersReq.flush({ success: true, items: tiersItems, total: tiersItems.length });
+    }
 
-    flagsError
-        ? flagsReq.flush('error', { status: 500, statusText: 'Server Error' })
-        : flagsReq.flush({ success: true, items: flagsItems, total: flagsItems.length });
+    if (flagsError) {
+        flagsReq.flush('error', { status: 500, statusText: 'Server Error' });
+    } else {
+        flagsReq.flush({ success: true, items: flagsItems, total: flagsItems.length });
+    }
 
-    healthError
-        ? healthReq.flush('error', { status: 503, statusText: 'Service Unavailable' })
-        : healthReq.flush(health);
+    if (healthError) {
+        healthReq.flush('error', { status: 503, statusText: 'Service Unavailable' });
+    } else {
+        healthReq.flush(health);
+    }
 }
 
 describe('DashboardComponent', () => {
