@@ -115,6 +115,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.68.1] - 2026-03-19
+
+### Added### Fixed
+
+- suppress no-this-alias lint error in filter-parser spec
+- **test-helpers**: makeInMemoryKv getWithMetadata mirrors get() contract
+- **tests**: refactor filter-parser Worker stub and freeze Date.now in metrics tests
+
+
 ## [0.68.0] - 2026-03-19
 
 ### Added- raise Codecov coverage gate to 80% and add missing test files
