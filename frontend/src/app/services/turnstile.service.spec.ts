@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection, PLATFORM_ID } from '@angular/core';
 import { TurnstileService } from './turnstile.service';
+import { provideTestBed } from '../../test-utils';
 
 /** Minimal turnstile global stub */
 function makeTurnstileGlobal(widgetId = 'widget-1') {
@@ -15,12 +15,7 @@ describe('TurnstileService', () => {
     let service: TurnstileService;
 
     beforeEach(() => {
-        TestBed.configureTestingModule({
-            providers: [
-                provideZonelessChangeDetection(),
-                { provide: PLATFORM_ID, useValue: 'browser' },
-            ],
-        });
+        TestBed.configureTestingModule({ providers: provideTestBed() });
         service = TestBed.inject(TurnstileService);
     });
 
@@ -84,12 +79,7 @@ describe('TurnstileService', () => {
 
     it('should return null without rendering when platform is server', () => {
         TestBed.resetTestingModule();
-        TestBed.configureTestingModule({
-            providers: [
-                provideZonelessChangeDetection(),
-                { provide: PLATFORM_ID, useValue: 'server' },
-            ],
-        });
+        TestBed.configureTestingModule({ providers: provideTestBed('server') });
         const ssrService = TestBed.inject(TurnstileService);
         ssrService.setSiteKey('test-key');
 

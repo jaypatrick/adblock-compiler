@@ -8,7 +8,7 @@
  */
 
 import { assertEquals, assertExists, assertNotEquals } from '@std/assert';
-import type { Env } from '../types.ts';
+import { makeEnv } from '../test-helpers.ts';
 import {
     compress,
     decompress,
@@ -22,22 +22,9 @@ import {
 } from './queue.ts';
 
 // ============================================================================
-// Fixtures
 // ============================================================================
-
-function makeEnv(overrides: Partial<Env> = {}): Env {
-    return {
-        COMPILER_VERSION: '1.0.0-test',
-        COMPILATION_CACHE: undefined as unknown as KVNamespace,
-        RATE_LIMIT: undefined as unknown as KVNamespace,
-        METRICS: {
-            get: async (_key: string) => null,
-            put: async () => undefined,
-        } as unknown as KVNamespace,
-        ASSETS: undefined as unknown as Fetcher,
-        ...overrides,
-    } as unknown as Env;
-}
+// Fixtures — queue tests use the shared makeEnv from test-helpers.ts
+// ============================================================================
 
 // ============================================================================
 // compress / decompress

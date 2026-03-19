@@ -16,64 +16,7 @@
 
 import { assertEquals, assertExists } from '@std/assert';
 import { handleHealth, handleHealthLatest } from './health.ts';
-import type { Env } from '../types.ts';
-
-// ============================================================================
-// Fixtures
-// ============================================================================
-
-/** A KVNamespace stub that always succeeds on list() and get(). */
-function makeKv(getResult: unknown = null): KVNamespace {
-    return {
-        list: async () => ({ keys: [], list_complete: true, cursor: '' }),
-        get: async <T>() => getResult as T,
-        put: async () => {},
-        delete: async () => {},
-        getWithMetadata: async <T>() => ({ value: getResult as T, metadata: null }),
-    } as unknown as KVNamespace;
-}
-
-/** A KVNamespace stub that throws on every call. */
-function makeFailingKv(): KVNamespace {
-    return {
-        list: async () => {
-            throw new Error('KV error');
-        },
-        get: async () => {
-            throw new Error('KV error');
-        },
-        put: async () => {
-            throw new Error('KV error');
-        },
-        delete: async () => {
-            throw new Error('KV error');
-        },
-        getWithMetadata: async () => {
-            throw new Error('KV error');
-        },
-    } as unknown as KVNamespace;
-}
-
-/** A D1Database stub that accepts SELECT 1 probe. */
-function makeDb(): D1Database {
-    return {
-        prepare: (_sql: string) => ({
-            first: async () => ({ '1': 1 }),
-            bind: () => ({ first: async () => ({ '1': 1 }) }),
-        }),
-    } as unknown as D1Database;
-}
-
-function makeEnv(overrides: Partial<Env> = {}): Env {
-    return {
-        COMPILER_VERSION: '1.0.0-test',
-        COMPILATION_CACHE: makeKv(),
-        RATE_LIMIT: makeKv(),
-        METRICS: makeKv(),
-        ASSETS: undefined as unknown as Fetcher,
-        ...overrides,
-    } as unknown as Env;
-}
+import { makeDb, makeEnv, makeFailingKv, makeKv } from '../test-helpers.ts';
 
 // ============================================================================
 // handleHealth

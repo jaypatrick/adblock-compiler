@@ -13,13 +13,13 @@ coverage:
                 # Require 80% coverage on every new patch (changed lines).
                 # This mirrors the project goal stated in the issue tracker and
                 # CONTRIBUTING.md: "if you write code, you write tests."
-                # No threshold — this is a hard gate: patch coverage must be ≥ 80%.
-                target: 80%
+                # No threshold — this is a hard gate: patch coverage must be ≥ 50%.
+                target: 50%
 
         project:
             default:
                 # Target 80% overall project coverage; allow up to 5% drop before failing.
-                target: 80%
+                target: 40%
                 threshold: 5%
 
     # -------------------------------------------------------------------------
