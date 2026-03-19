@@ -12,29 +12,7 @@
 
 import { assertEquals, assertExists } from '@std/assert';
 import { handleMonitorLatest } from './monitor-latest.ts';
-import type { Env } from '../types.ts';
-
-// ============================================================================
-// Fixtures
-// ============================================================================
-
-/** KVNamespace stub that returns the given value for every get(). */
-function makeKv(getResult: unknown = null): KVNamespace {
-    return {
-        list: async () => ({ keys: [], list_complete: true, cursor: '' }),
-        get: async <T>() => getResult as T,
-        put: async () => {},
-        delete: async () => {},
-        getWithMetadata: async <T>() => ({ value: getResult as T, metadata: null }),
-    } as unknown as KVNamespace;
-}
-
-function makeEnv(overrides: Partial<Env> = {}): Env {
-    return {
-        COMPILER_VERSION: '1.0.0-test',
-        ...overrides,
-    } as unknown as Env;
-}
+import { makeEnv, makeKv } from '../test-helpers.ts';
 
 const req = new Request('http://localhost/api/browser/monitor/latest');
 
@@ -43,7 +21,7 @@ const req = new Request('http://localhost/api/browser/monitor/latest');
 // ============================================================================
 
 Deno.test('handleMonitorLatest - returns 503 when COMPILATION_CACHE binding is absent', async () => {
-    const res = await handleMonitorLatest(req, makeEnv());
+    const res = await handleMonitorLatest(req, makeEnv({ COMPILATION_CACHE: undefined as unknown as KVNamespace }));
     assertEquals(res.status, 503);
     const body = await res.json() as { success: boolean };
     assertEquals(body.success, false);

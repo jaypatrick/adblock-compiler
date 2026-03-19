@@ -17,13 +17,14 @@
 import { assertEquals, assertExists } from '@std/assert';
 import { getMetrics, handleMetrics, recordMetric } from './metrics.ts';
 import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
-import type { EndpointMetrics, Env } from '../types.ts';
+import { makeEnv, makeFailingKv, makeKv } from '../test-helpers.ts';
+import type { EndpointMetrics } from '../types.ts';
 
 // ============================================================================
 // Fixtures
 // ============================================================================
 
-/** KVNamespace backed by a plain Map. Supports get(key, 'json') format. */
+/** KVNamespace backed by a plain Map. Supports get(key, 'json') format. Exposes `.store` for direct inspection. */
 function makeTrackedKv(initial: Map<string, string> = new Map()) {
     const store = new Map<string, string>(initial);
     const kv = {
@@ -46,33 +47,6 @@ function makeTrackedKv(initial: Map<string, string> = new Map()) {
         }),
     } as unknown as KVNamespace & { store: Map<string, string> };
     return kv;
-}
-
-/** KVNamespace stub that throws on every call. */
-function makeFailingKv(): KVNamespace {
-    const fail = async () => {
-        throw new Error('KV error');
-    };
-    return { list: fail, get: fail, put: fail, delete: fail, getWithMetadata: fail } as unknown as KVNamespace;
-}
-
-/** KVNamespace stub that returns the given value for every get(). */
-function makeKv(getResult: unknown = null): KVNamespace {
-    return {
-        list: async () => ({ keys: [], list_complete: true, cursor: '' }),
-        get: async <T>() => getResult as T,
-        put: async () => {},
-        delete: async () => {},
-        getWithMetadata: async <T>() => ({ value: getResult as T, metadata: null }),
-    } as unknown as KVNamespace;
-}
-
-function makeEnv(overrides: Partial<Env> = {}): Env {
-    return {
-        COMPILER_VERSION: '1.0.0-test',
-        METRICS: makeKv(),
-        ...overrides,
-    } as unknown as Env;
 }
 
 /** Compute the current metrics window key (matches handler logic). */

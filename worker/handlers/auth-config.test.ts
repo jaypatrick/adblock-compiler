@@ -15,18 +15,8 @@
 
 import { assertEquals, assertExists } from '@std/assert';
 import { handleAdminAuthConfig } from './auth-config.ts';
-import { ANONYMOUS_AUTH_CONTEXT, type Env, type IAuthContext, UserTier } from '../types.ts';
-
-// ============================================================================
-// Fixtures
-// ============================================================================
-
-function makeEnv(overrides: Partial<Env> = {}): Env {
-    return {
-        COMPILER_VERSION: '1.0.0-test',
-        ...overrides,
-    } as unknown as Env;
-}
+import { makeEnv } from '../test-helpers.ts';
+import { ANONYMOUS_AUTH_CONTEXT, type IAuthContext, UserTier } from '../types.ts';
 
 function makeAdminContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
     return {

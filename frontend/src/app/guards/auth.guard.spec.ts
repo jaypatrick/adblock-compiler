@@ -1,9 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection, signal, PLATFORM_ID } from '@angular/core';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { provideRouter } from '@angular/router';
 import { authGuard } from './auth.guard';
 import { AuthFacadeService } from '../services/auth-facade.service';
+import { provideTestBed } from '../../test-utils';
 
 describe('authGuard', () => {
     let mockAuth: {
@@ -70,10 +71,9 @@ describe('authGuard', () => {
             TestBed.resetTestingModule();
             TestBed.configureTestingModule({
                 providers: [
-                    provideZonelessChangeDetection(),
+                    ...provideTestBed('server'),
                     provideRouter([]),
                     { provide: AuthFacadeService, useValue: mockAuth },
-                    { provide: PLATFORM_ID, useValue: 'server' },
                 ],
             });
             router = TestBed.inject(Router);

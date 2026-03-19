@@ -18,7 +18,7 @@
 
 import { assertEquals } from '@std/assert';
 import { fetchAssetWithRedirects, serveStaticAsset, serveWebUI } from './assets.ts';
-import type { Env } from '../types.ts';
+import { makeEnv } from '../test-helpers.ts';
 
 // ============================================================================
 // Fixtures
@@ -42,13 +42,6 @@ function makeUrlFetcher(handler: (url: URL) => Response): Fetcher {
             return handler(url);
         },
     } as unknown as Fetcher;
-}
-
-function makeEnv(overrides: Partial<Env> = {}): Env {
-    return {
-        COMPILER_VERSION: '1.0.0-test',
-        ...overrides,
-    } as unknown as Env;
 }
 
 // ============================================================================

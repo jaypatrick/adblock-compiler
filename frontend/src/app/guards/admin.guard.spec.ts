@@ -1,9 +1,10 @@
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection, PLATFORM_ID } from '@angular/core';
+import { provideZonelessChangeDetection } from '@angular/core';
 import { Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { provideRouter } from '@angular/router';
 import { adminGuard } from './admin.guard';
 import { ClerkService } from '../services/clerk.service';
+import { provideTestBed } from '../../test-utils';
 
 describe('adminGuard', () => {
     let mockClerk: {
@@ -82,10 +83,9 @@ describe('adminGuard', () => {
             TestBed.resetTestingModule();
             TestBed.configureTestingModule({
                 providers: [
-                    provideZonelessChangeDetection(),
+                    ...provideTestBed('server'),
                     provideRouter([]),
                     { provide: ClerkService, useValue: mockClerk },
-                    { provide: PLATFORM_ID, useValue: 'server' },
                 ],
             });
             router = TestBed.inject(Router);

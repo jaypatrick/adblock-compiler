@@ -15,52 +15,15 @@
 
 import { assertEquals, assertExists, assertMatch } from '@std/assert';
 import { handleRulesCreate, handleRulesDelete, handleRulesGet, handleRulesList, handleRulesUpdate } from './rules.ts';
-import type { Env } from '../types.ts';
+import { makeEnv, makeInMemoryKv } from '../test-helpers.ts';
 import type { RuleSet } from '../schemas.ts';
 
 // ============================================================================
-// In-memory KV stub
+// Fixtures
 // ============================================================================
 
-function makeInMemoryKv(): KVNamespace {
-    const store = new Map<string, string>();
-
-    return {
-        async put(key: string, value: string) {
-            store.set(key, value);
-        },
-        async get<T>(key: string, type?: string): Promise<T | null> {
-            const raw = store.get(key);
-            if (raw === undefined) return null;
-            if (type === 'json') return JSON.parse(raw) as T;
-            return raw as unknown as T;
-        },
-        async delete(key: string) {
-            store.delete(key);
-        },
-        async list({ prefix, limit: _limit }: { prefix?: string; limit?: number; cursor?: string }) {
-            const keys = [...store.keys()]
-                .filter((k) => !prefix || k.startsWith(prefix))
-                .map((name) => ({ name }));
-            return { keys, list_complete: true, cursor: '' };
-        },
-        getWithMetadata: async <T>(key: string) => {
-            const raw = store.get(key);
-            if (raw === undefined) return { value: null as T, metadata: null };
-            return { value: JSON.parse(raw) as T, metadata: null };
-        },
-    } as unknown as KVNamespace;
-}
-
-function makeEnv(overrides: Partial<Env> = {}): Env {
-    return {
-        COMPILER_VERSION: '1.0.0-test',
-        COMPILATION_CACHE: makeInMemoryKv(),
-        RATE_LIMIT: undefined as unknown as KVNamespace,
-        METRICS: undefined as unknown as KVNamespace,
-        ASSETS: undefined as unknown as Fetcher,
-        ...overrides,
-    } as unknown as Env;
+function makeRulesEnv() {
+    return makeEnv({ COMPILATION_CACHE: makeInMemoryKv() });
 }
 
 function makeRequest(body: unknown, method = 'POST'): Request {
@@ -76,7 +39,7 @@ function makeRequest(body: unknown, method = 'POST'): Request {
 // ============================================================================
 
 Deno.test('handleRulesCreate - creates a rule set and returns 201', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const req = makeRequest({ name: 'Test List', rules: ['||ads.example.com^'] });
     const res = await handleRulesCreate(req, env);
     assertEquals(res.status, 201);
@@ -89,7 +52,7 @@ Deno.test('handleRulesCreate - creates a rule set and returns 201', async () => 
 });
 
 Deno.test('handleRulesCreate - assigns generated UUID id', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const req = makeRequest({ name: 'MyList', rules: ['##.banner'] });
     const res = await handleRulesCreate(req, env);
     const body = await res.json() as { data: RuleSet };
@@ -97,7 +60,7 @@ Deno.test('handleRulesCreate - assigns generated UUID id', async () => {
 });
 
 Deno.test('handleRulesCreate - returns 400 on invalid JSON body', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const req = new Request('http://localhost/api/rules', {
         method: 'POST',
         body: 'not-json',
@@ -107,7 +70,7 @@ Deno.test('handleRulesCreate - returns 400 on invalid JSON body', async () => {
 });
 
 Deno.test('handleRulesCreate - returns 422 when name is missing', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const req = makeRequest({ rules: ['||ads.example.com^'] }); // missing name
     const res = await handleRulesCreate(req, env);
     assertEquals(res.status, 422);
@@ -126,7 +89,7 @@ Deno.test('handleRulesCreate - stores in RULES_KV when available', async () => {
 // ============================================================================
 
 Deno.test('handleRulesList - returns empty list when no rules exist', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const req = new Request('http://localhost/api/rules');
     const res = await handleRulesList(req, env);
     assertEquals(res.status, 200);
@@ -137,7 +100,7 @@ Deno.test('handleRulesList - returns empty list when no rules exist', async () =
 });
 
 Deno.test('handleRulesList - returns created rule sets', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
 
     // Create two rule sets
     await handleRulesCreate(makeRequest({ name: 'List A', rules: ['||a.com^'] }), env);
@@ -151,7 +114,7 @@ Deno.test('handleRulesList - returns created rule sets', async () => {
 });
 
 Deno.test('handleRulesList - does not include rules array in list response', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     await handleRulesCreate(makeRequest({ name: 'List A', rules: ['||a.com^', '||b.com^'] }), env);
 
     const req = new Request('http://localhost/api/rules');
@@ -167,7 +130,7 @@ Deno.test('handleRulesList - does not include rules array in list response', asy
 // ============================================================================
 
 Deno.test('handleRulesGet - returns rule set by id', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const createRes = await handleRulesCreate(makeRequest({ name: 'Get Test', rules: ['||get.com^'] }), env);
     const { data: created } = await createRes.json() as { data: RuleSet };
 
@@ -180,7 +143,7 @@ Deno.test('handleRulesGet - returns rule set by id', async () => {
 });
 
 Deno.test('handleRulesGet - returns 404 for unknown id', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const res = await handleRulesGet('nonexistent-id', env);
     assertEquals(res.status, 404);
 });
@@ -190,7 +153,7 @@ Deno.test('handleRulesGet - returns 404 for unknown id', async () => {
 // ============================================================================
 
 Deno.test('handleRulesUpdate - updates name and rules', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const createRes = await handleRulesCreate(makeRequest({ name: 'Original', rules: ['||old.com^'] }), env);
     const { data: created } = await createRes.json() as { data: RuleSet };
 
@@ -208,7 +171,7 @@ Deno.test('handleRulesUpdate - updates name and rules', async () => {
 });
 
 Deno.test('handleRulesUpdate - returns 404 for unknown id', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const req = new Request('http://localhost/api/rules/missing', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -219,7 +182,7 @@ Deno.test('handleRulesUpdate - returns 404 for unknown id', async () => {
 });
 
 Deno.test('handleRulesUpdate - returns 400 on invalid JSON body', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const createRes = await handleRulesCreate(makeRequest({ name: 'ToUpdate', rules: ['||x.com^'] }), env);
     const { data: created } = await createRes.json() as { data: RuleSet };
 
@@ -236,7 +199,7 @@ Deno.test('handleRulesUpdate - returns 400 on invalid JSON body', async () => {
 // ============================================================================
 
 Deno.test('handleRulesDelete - deletes existing rule set', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const createRes = await handleRulesCreate(makeRequest({ name: 'To Delete', rules: ['||del.com^'] }), env);
     const { data: created } = await createRes.json() as { data: RuleSet };
 
@@ -251,7 +214,7 @@ Deno.test('handleRulesDelete - deletes existing rule set', async () => {
 });
 
 Deno.test('handleRulesDelete - returns 404 for unknown id', async () => {
-    const env = makeEnv();
+    const env = makeRulesEnv();
     const res = await handleRulesDelete('nonexistent', env);
     assertEquals(res.status, 404);
 });

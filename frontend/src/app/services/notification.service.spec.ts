@@ -1,18 +1,9 @@
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection, PLATFORM_ID } from '@angular/core';
-import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting } from '@angular/common/http/testing';
 import { NotificationService } from './notification.service';
-import { API_BASE_URL } from '../tokens';
+import { provideTestBed } from '../../test-utils';
 
-function makeProviders(platformId = 'browser') {
-    return [
-        provideZonelessChangeDetection(),
-        provideHttpClient(),
-        provideHttpClientTesting(),
-        { provide: API_BASE_URL, useValue: '/api' },
-        { provide: PLATFORM_ID, useValue: platformId },
-    ];
+function makeProviders(platformId: 'browser' | 'server' = 'browser') {
+    return provideTestBed(platformId);
 }
 
 describe('NotificationService', () => {
