@@ -75,4 +75,59 @@ describe('SwrCacheService', () => {
         expect(entry.data()).toBeUndefined();
         consoleSpy.mockRestore();
     });
+
+    it('does not re-fetch when data is within TTL', async () => {
+        const fetcher = vi.fn().mockResolvedValue('data');
+        const largeTtl = 60_000;
+
+        const entry = service.get('fresh-key', fetcher, largeTtl);
+        await vi.waitFor(() => expect(entry.data()).toBe('data'));
+
+        // Second get() with same key and large TTL — isStale() = false, no re-fetch
+        service.get('fresh-key', fetcher, largeTtl);
+
+        expect(fetcher).toHaveBeenCalledTimes(1);
+    });
+
+    it('prevents concurrent fetches — revalidate() is a no-op while fetch is in progress', async () => {
+        let resolveFetch: (v: unknown) => void;
+        const fetcher = vi.fn().mockImplementationOnce(
+            () => new Promise(r => { resolveFetch = r; }),
+        );
+
+        const entry = service.get('concurrent', fetcher, 0);
+
+        // First fetch is in progress (isRevalidating guard is active)
+        expect(entry.isRevalidating()).toBe(true);
+
+        // Second call while revalidating — doFetch guard returns early
+        entry.revalidate();
+
+        expect(fetcher).toHaveBeenCalledTimes(1);
+
+        // Resolve the first fetch
+        resolveFetch!('data');
+        await vi.waitFor(() => expect(entry.data()).toBe('data'));
+    });
+
+    it('re-fetches after invalidation forces isStale to true', async () => {
+        const fetcher = vi.fn()
+            .mockResolvedValueOnce('first')
+            .mockResolvedValue('second');
+
+        const entry = service.get('revalidate-key', fetcher, 60_000);
+        await vi.waitFor(() => expect(entry.data()).toBe('first'));
+
+        // Reset timestamp to 0 → isStale() returns true
+        service.invalidate('revalidate-key');
+
+        // Next get() sees stale data and triggers re-fetch
+        const entry2 = service.get('revalidate-key', fetcher, 60_000);
+        await vi.waitFor(() => expect(entry2.data()).toBe('second'));
+        expect(fetcher).toHaveBeenCalledTimes(2);
+    });
+
+    it('invalidate on unknown key does not throw', () => {
+        expect(() => service.invalidate('key-that-does-not-exist')).not.toThrow();
+    });
 });

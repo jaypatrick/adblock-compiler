@@ -1,6 +1,6 @@
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, PLATFORM_ID } from '@angular/core';
-import { FilterParserService } from './filter-parser.service';
+import { FilterParserService, type ParsedResult, type ParsedRule } from './filter-parser.service';
 
 describe('FilterParserService', () => {
     let service: FilterParserService;
@@ -54,5 +54,116 @@ describe('FilterParserService', () => {
     it('should terminate worker cleanly', () => {
         service.terminate();
         expect(service).toBeTruthy(); // No error thrown
+    });
+
+    // -------------------------------------------------------------------------
+    // Worker message handling (handleMessage private method)
+    // Worker URL construction via import.meta.url is not resolvable in Vitest,
+    // so we invoke the private handler directly to test signal updates.
+    // -------------------------------------------------------------------------
+
+    describe('Worker message handling', () => {
+        it('handles result message — updates result signal and stops parsing', () => {
+            const resultPayload: ParsedResult = {
+                rules: [{ line: 1, raw: '||ads.com^', type: 'filter' }],
+                totalLines: 1,
+                urlCount: 0,
+                filterCount: 1,
+                commentCount: 0,
+                duration: 10,
+            };
+
+            service.isParsing.set(true);
+            (service as unknown as { handleMessage(e: MessageEvent): void }).handleMessage(
+                { data: { type: 'result', payload: resultPayload } } as MessageEvent,
+            );
+
+            expect(service.result()).toEqual(resultPayload);
+            expect(service.isParsing()).toBe(false);
+            expect(service.progress()).toBe(100);
+        });
+
+        it('handles progress message — updates progress signal without stopping parse', () => {
+            service.isParsing.set(true);
+            (service as unknown as { handleMessage(e: MessageEvent): void }).handleMessage(
+                { data: { type: 'progress', payload: 42 } } as MessageEvent,
+            );
+
+            expect(service.progress()).toBe(42);
+            expect(service.isParsing()).toBe(true);
+        });
+
+        it('handles error message — sets error signal and stops parsing', () => {
+            service.isParsing.set(true);
+            (service as unknown as { handleMessage(e: MessageEvent): void }).handleMessage(
+                { data: { type: 'error', payload: 'Parse failed' } } as MessageEvent,
+            );
+
+            expect(service.error()).toBe('Parse failed');
+            expect(service.isParsing()).toBe(false);
+        });
+    });
+
+    // -------------------------------------------------------------------------
+    // extractedUrls computed
+    // -------------------------------------------------------------------------
+
+    describe('extractedUrls', () => {
+        it('returns only url-type rules from the parse result', () => {
+            const rules: ParsedRule[] = [
+                { line: 1, raw: 'https://cdn.example.com/list.txt', type: 'url' },
+                { line: 2, raw: '||ads.com^', type: 'filter' },
+                { line: 3, raw: '! Comment line', type: 'comment' },
+                { line: 4, raw: 'https://example.org/other.txt', type: 'url' },
+            ];
+            const result: ParsedResult = {
+                rules,
+                totalLines: 4,
+                urlCount: 2,
+                filterCount: 1,
+                commentCount: 1,
+                duration: 5,
+            };
+
+            service.result.set(result);
+
+            expect(service.extractedUrls()).toEqual([
+                'https://cdn.example.com/list.txt',
+                'https://example.org/other.txt',
+            ]);
+        });
+    });
+});
+
+// ---------------------------------------------------------------------------
+// SSR path — separate describe to avoid TestBed provider conflict
+// ---------------------------------------------------------------------------
+
+describe('FilterParserService — SSR', () => {
+    let service: FilterParserService;
+
+    beforeEach(() => {
+        TestBed.configureTestingModule({
+            providers: [
+                provideZonelessChangeDetection(),
+                { provide: PLATFORM_ID, useValue: 'server' },
+            ],
+        });
+        service = TestBed.inject(FilterParserService);
+    });
+
+    afterEach(() => {
+        service.terminate();
+        vi.unstubAllGlobals();
+    });
+
+    it('does not create a Worker when running server-side and resets isParsing', () => {
+        const workerSpy = vi.fn();
+        vi.stubGlobal('Worker', workerSpy);
+
+        service.parse('||ads.com^');
+
+        expect(workerSpy).not.toHaveBeenCalled();
+        expect(service.isParsing()).toBe(false);
     });
 });
