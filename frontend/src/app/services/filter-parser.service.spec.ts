@@ -57,12 +57,44 @@ describe('FilterParserService', () => {
     });
 
     // -------------------------------------------------------------------------
-    // Worker message handling (handleMessage private method)
-    // Worker URL construction via import.meta.url is not resolvable in Vitest,
-    // so we invoke the private handler directly to test signal updates.
+    // Worker message handling — driven via parse() + Worker constructor stub
+    //
+    // We stub globalThis.Worker so that parse() creates a FakeWorker whose
+    // onmessage/onerror callbacks are captured. Tests then fire those callbacks
+    // directly to verify the public signal updates without touching any private
+    // implementation detail.
     // -------------------------------------------------------------------------
 
     describe('Worker message handling', () => {
+        /** Last FakeWorker instance created by the service under test. */
+        let fakeWorkerInstance: {
+            onmessage: ((e: MessageEvent) => void) | null;
+            onerror: ((e: ErrorEvent) => void) | null;
+            postMessage: ReturnType<typeof vi.fn>;
+            terminate: ReturnType<typeof vi.fn>;
+        } | null = null;
+
+        beforeEach(() => {
+            fakeWorkerInstance = null;
+
+            class FakeWorker {
+                onmessage: ((e: MessageEvent) => void) | null = null;
+                onerror: ((e: ErrorEvent) => void) | null = null;
+                postMessage = vi.fn();
+                terminate = vi.fn();
+                constructor(_url: string | URL, _opts?: WorkerOptions) {
+                    fakeWorkerInstance = this;
+                }
+            }
+
+            vi.stubGlobal('Worker', FakeWorker);
+        });
+
+        afterEach(() => {
+            vi.unstubAllGlobals();
+            fakeWorkerInstance = null;
+        });
+
         it('handles result message — updates result signal and stops parsing', () => {
             const resultPayload: ParsedResult = {
                 rules: [{ line: 1, raw: '||ads.com^', type: 'filter' }],
@@ -73,10 +105,11 @@ describe('FilterParserService', () => {
                 duration: 10,
             };
 
-            service.isParsing.set(true);
-            (service as unknown as { handleMessage(e: MessageEvent): void }).handleMessage(
-                { data: { type: 'result', payload: resultPayload } } as MessageEvent,
-            );
+            service.parse('||ads.com^');
+            expect(service.isParsing()).toBe(true);
+            expect(fakeWorkerInstance).not.toBeNull();
+
+            fakeWorkerInstance!.onmessage!({ data: { type: 'result', payload: resultPayload } } as MessageEvent);
 
             expect(service.result()).toEqual(resultPayload);
             expect(service.isParsing()).toBe(false);
@@ -84,22 +117,32 @@ describe('FilterParserService', () => {
         });
 
         it('handles progress message — updates progress signal without stopping parse', () => {
-            service.isParsing.set(true);
-            (service as unknown as { handleMessage(e: MessageEvent): void }).handleMessage(
-                { data: { type: 'progress', payload: 42 } } as MessageEvent,
-            );
+            service.parse('||ads.com^');
+            expect(service.isParsing()).toBe(true);
+
+            fakeWorkerInstance!.onmessage!({ data: { type: 'progress', payload: 42 } } as MessageEvent);
 
             expect(service.progress()).toBe(42);
             expect(service.isParsing()).toBe(true);
         });
 
         it('handles error message — sets error signal and stops parsing', () => {
-            service.isParsing.set(true);
-            (service as unknown as { handleMessage(e: MessageEvent): void }).handleMessage(
-                { data: { type: 'error', payload: 'Parse failed' } } as MessageEvent,
-            );
+            service.parse('||ads.com^');
+            expect(service.isParsing()).toBe(true);
+
+            fakeWorkerInstance!.onmessage!({ data: { type: 'error', payload: 'Parse failed' } } as MessageEvent);
 
             expect(service.error()).toBe('Parse failed');
+            expect(service.isParsing()).toBe(false);
+        });
+
+        it('onerror callback — sets error signal and stops parsing', () => {
+            service.parse('||ads.com^');
+            expect(service.isParsing()).toBe(true);
+
+            fakeWorkerInstance!.onerror!({ message: 'Worker crashed' } as ErrorEvent);
+
+            expect(service.error()).toBe('Worker crashed');
             expect(service.isParsing()).toBe(false);
         });
     });
