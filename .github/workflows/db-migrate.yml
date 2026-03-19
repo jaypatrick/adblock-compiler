@@ -4,12 +4,16 @@ name: Database Migrations
 #
 # PR behaviour  → validate + dry-run (no side effects); posts a comment with
 #                 the list of pending migrations.
-# main behaviour → validate + apply migrations atomically (all-or-nothing).
+# main behaviour → validate + apply migrations per-backend (best-effort
+#                 sequential).  Each backend (D1, PostgreSQL) is atomic within
+#                 itself; cross-backend rollback is not supported — a failure in
+#                 one backend does not roll back an already-applied backend.
 #
 # Backend support:
 #   Cloudflare D1  — always attempted when CLOUDFLARE_API_TOKEN is set.
-#   PostgreSQL     — attempted when POSTGRES_URL is set (e.g. PlanetScale /
-#                    Neon / self-hosted).  Uses psql with a single transaction.
+#   PostgreSQL     — attempted when DIRECT_DATABASE_URL is set (e.g. PlanetScale
+#                    / Neon / self-hosted).  Requires DIRECT_DATABASE_URL to
+#                    match what prisma/prisma.config.ts expects.
 
 on:
     push:
@@ -151,9 +155,10 @@ jobs:
             # ── PostgreSQL dry-run ───────────────────────────────────────────
             - name: PostgreSQL — validate pending migrations
               id: pg_pending
-              if: secrets.POSTGRES_URL != ''
+              if: secrets.DIRECT_DATABASE_URL != ''
               env:
-                  POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+                  # prisma/prisma.config.ts prefers DIRECT_DATABASE_URL over DATABASE_URL
+                  DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
               run: |
                   echo "=== Pending PostgreSQL migrations ==="
                   # Use Prisma to report pending migrations without applying them
@@ -166,8 +171,12 @@ jobs:
                   } >> "$GITHUB_OUTPUT"
 
             # ── Post PR comment ──────────────────────────────────────────────
+            # Skip for fork PRs: GITHUB_TOKEN is read-only there even with
+            # pull-requests: write, so comment writes would fail.
             - name: Post migration plan as PR comment
-              if: github.event_name == 'pull_request'
+              if: >-
+                  github.event_name == 'pull_request' &&
+                  github.event.pull_request.head.repo.full_name == github.repository
               uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
               with:
                   github-token: ${{ secrets.GITHUB_TOKEN }}
@@ -184,7 +193,7 @@ jobs:
 
                       let body = '## 🗄️ Database Migration Plan\n\n';
                       body += '> **This is a dry-run.** No changes have been applied to any database.\n';
-                      body += '> Migrations will be applied atomically (all-or-nothing) when this PR is merged to `main`.\n\n';
+                      body += '> Migrations will be applied per-backend (sequentially) when this PR is merged to `main`.\n\n';
 
                       // Changed files section
                       if (changed_d1 || changed_admin) {
@@ -340,13 +349,14 @@ jobs:
                   done
 
             # ── PostgreSQL migrations ────────────────────────────────────────
-            # Applied in a single transaction so any failure rolls everything
-            # back (all-or-nothing).  Requires POSTGRES_URL secret.
+            # Each individual Prisma migration runs in its own transaction;
+            # requires DIRECT_DATABASE_URL (see prisma/prisma.config.ts).
             - name: PostgreSQL — apply migrations
               id: pg_migrate
-              if: secrets.POSTGRES_URL != ''
+              if: secrets.DIRECT_DATABASE_URL != ''
               env:
-                  POSTGRES_URL: ${{ secrets.POSTGRES_URL }}
+                  # prisma/prisma.config.ts prefers DIRECT_DATABASE_URL over DATABASE_URL
+                  DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
               run: |
                   echo "Applying PostgreSQL migrations..."
                   if OUTPUT=$(deno run -A npm:prisma migrate deploy 2>&1); then

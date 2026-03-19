@@ -11,8 +11,10 @@
  *  - Monotonically increasing sequence with no gaps
  *  - No duplicate sequence numbers
  *  - Non-empty SQL content
- *  - No forbidden DDL in a migration file that could break atomicity
- *    (e.g. bare PRAGMA statements outside comments)
+ *
+ * Advisory warnings (non-blocking) are emitted for:
+ *  - Bare PRAGMA statements (non-transactional in D1/SQLite)
+ *  - DROP TABLE without IF EXISTS (destructive and irreversible)
  *
  * Usage:
  *   deno run --allow-read scripts/validate-migrations.ts [dir1] [dir2] ...
