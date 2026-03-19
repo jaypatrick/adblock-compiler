@@ -18,7 +18,7 @@ coverage:
 
         project:
             default:
-                # Never let overall project coverage drop below 80%.
+                # Target 80% overall project coverage; allow up to 2% drop before failing.
                 target: 80%
                 threshold: 2%
 

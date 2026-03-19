@@ -64,6 +64,13 @@ Deno.test('compress/decompress - round-trip with multi-line content', async () =
     assertEquals(restored, original);
 });
 
+Deno.test('compress/decompress - round-trip with unicode content (emoji and accented chars)', async () => {
+    const original = '! 🚫 Règles de filtrage — café résumé naïve\n||例え.com^\n||example.com/фильтр^';
+    const compressed = await compress(original);
+    const restored = await decompress(compressed);
+    assertEquals(restored, original);
+});
+
 // ============================================================================
 // getCacheKey
 // ============================================================================
