@@ -116,6 +116,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.68.2] - 2026-03-19
+
+### Added### Fixed
+
+- update deno.lock for @cloudflare/workers-types 4.20260317.1
+- update pnpm-lock.yaml to match @cloudflare/workers-types ^4.20260317.1
+- use path reference for @cloudflare/workers-types to resolve Deno LSP false positives in worker.ts
+- address PR review comments on Docker pipeline
+- fix Docker build/publish pipeline and update all dependencies
+
+
 ## [0.68.1] - 2026-03-19
 
 ### Added### Fixed
