@@ -46,10 +46,11 @@ export function makeInMemoryKv(initial: Map<string, string> = new Map()): KVName
                 .map((name) => ({ name }));
             return { keys, list_complete: true, cursor: '' };
         },
-        getWithMetadata: async <T>(key: string) => {
+        getWithMetadata: async <T>(key: string, type?: string) => {
             const raw = store.get(key);
             if (raw === undefined) return { value: null as T, metadata: null };
-            return { value: JSON.parse(raw) as T, metadata: null };
+            if (type === 'json') return { value: JSON.parse(raw) as T, metadata: null };
+            return { value: raw as unknown as T, metadata: null };
         },
     } as unknown as KVNamespace;
 }
