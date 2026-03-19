@@ -1,5 +1,5 @@
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection, DOCUMENT } from '@angular/core';
+import { provideZonelessChangeDetection, DOCUMENT, PLATFORM_ID } from '@angular/core';
 import { ThemeService } from './theme.service';
 
 describe('ThemeService', () => {
@@ -15,11 +15,14 @@ describe('ThemeService', () => {
         doc = TestBed.inject(DOCUMENT);
         // Ensure clean state
         doc.body.classList.remove('dark-theme');
+        doc.documentElement.removeAttribute('data-theme');
     });
 
     afterEach(() => {
         localStorage.clear();
         doc.body.classList.remove('dark-theme');
+        doc.documentElement.removeAttribute('data-theme');
+        vi.restoreAllMocks();
     });
 
     it('should be created', () => {
@@ -68,5 +71,73 @@ describe('ThemeService', () => {
     it('should default to light when localStorage is empty', () => {
         service.loadPreferences();
         expect(service.isDark()).toBe(false);
+    });
+
+    // -------------------------------------------------------------------------
+    // data-theme attribute
+    // -------------------------------------------------------------------------
+
+    it('should set data-theme="dark" on <html> when toggling to dark', () => {
+        service.toggle();
+        expect(doc.documentElement.getAttribute('data-theme')).toBe('dark');
+    });
+
+    it('should set data-theme="light" on <html> when toggling back to light', () => {
+        service.toggle(); // dark
+        service.toggle(); // light
+        expect(doc.documentElement.getAttribute('data-theme')).toBe('light');
+    });
+
+    it('should set data-theme="dark" when loading dark preference', () => {
+        localStorage.setItem('theme', 'dark');
+        service.loadPreferences();
+        expect(doc.documentElement.getAttribute('data-theme')).toBe('dark');
+    });
+
+    it('should set data-theme="light" when loading light preference', () => {
+        localStorage.setItem('theme', 'light');
+        service.loadPreferences();
+        expect(doc.documentElement.getAttribute('data-theme')).toBe('light');
+    });
+
+    // -------------------------------------------------------------------------
+    // Error resilience
+    // -------------------------------------------------------------------------
+
+    it('should update signal and DOM even when localStorage.setItem throws during toggle', () => {
+        vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+            throw new DOMException('QuotaExceededError');
+        });
+        expect(() => service.toggle()).not.toThrow();
+        expect(service.isDark()).toBe(true);
+        expect(doc.body.classList.contains('dark-theme')).toBe(true);
+    });
+
+    it('should fall back to light theme when localStorage.getItem throws during loadPreferences', () => {
+        vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+            throw new DOMException('SecurityError');
+        });
+        expect(() => service.loadPreferences()).not.toThrow();
+        expect(service.isDark()).toBe(false);
+    });
+
+    // -------------------------------------------------------------------------
+    // SSR platform guard
+    // -------------------------------------------------------------------------
+
+    it('should skip localStorage and DOM on server platform', () => {
+        TestBed.resetTestingModule();
+        TestBed.configureTestingModule({
+            providers: [
+                provideZonelessChangeDetection(),
+                { provide: PLATFORM_ID, useValue: 'server' },
+            ],
+        });
+        const ssrService = TestBed.inject(ThemeService);
+        const getSpy = vi.spyOn(Storage.prototype, 'getItem');
+
+        expect(() => ssrService.loadPreferences()).not.toThrow();
+        expect(getSpy).not.toHaveBeenCalled();
+        expect(ssrService.isDark()).toBe(false);
     });
 });

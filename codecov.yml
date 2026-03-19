@@ -4,23 +4,23 @@
 coverage:
     # -------------------------------------------------------------------------
     # Patch coverage — enforced on every PR.
-    # Every code change must have ≥ 70% line coverage on the changed lines.
-    # PRs that drop patch coverage below 70% will fail the Codecov status check.
+    # Every code change must have ≥ 80% line coverage on the changed lines.
+    # PRs that drop patch coverage below 80% will fail the Codecov status check.
     # -------------------------------------------------------------------------
     status:
         patch:
             default:
-                # Require 70% coverage on every new patch (changed lines).
+                # Require 80% coverage on every new patch (changed lines).
                 # This mirrors the project goal stated in the issue tracker and
                 # CONTRIBUTING.md: "if you write code, you write tests."
-                # No threshold — this is a hard gate: patch coverage must be ≥ 70%.
-                target: 70%
+                # No threshold — this is a hard gate: patch coverage must be ≥ 80%.
+                target: 80%
 
         project:
             default:
-                # Never let overall project coverage drop by more than 2%.
-                target: auto
-                threshold: 2%
+                # Target 80% overall project coverage; allow up to 5% drop before failing.
+                target: 80%
+                threshold: 5%
 
     # -------------------------------------------------------------------------
     # Flags — separate reporting per test layer so Codecov can track coverage
