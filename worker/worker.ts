@@ -6,7 +6,10 @@
  * router in `./handlers/router.ts`.
  */
 
-/// <reference types="@cloudflare/workers-types" />
+// Use a path reference (not triple-slash "types" directive) so the Deno LSP resolves
+// the Cloudflare Workers global types directly, bypassing import-map lookup which the
+// LSP does not apply to `/// <reference types />` directives.
+/// <reference path="../node_modules/@cloudflare/workers-types/index.d.ts" />
 
 // Types
 import type { Env, QueueMessage } from './types.ts';
@@ -32,7 +35,10 @@ export class AdblockCompiler extends Container {
     }
 
     override onError(error: unknown): void {
-        console.error('[AdblockCompiler] Container error:', error instanceof Error ? error.message : String(error));
+        console.error(
+            '[AdblockCompiler] Container error:',
+            error instanceof Error ? error.message : String(error),
+        );
     }
 }
 
@@ -74,7 +80,11 @@ interface WorkerHandler extends ExportedHandler<Env> {
 }
 
 const workerHandler: WorkerHandler = {
-    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    async fetch(
+        request: Request,
+        env: Env,
+        ctx: ExecutionContext,
+    ): Promise<Response> {
         const url = new URL(request.url);
         const { pathname } = url;
 
@@ -84,17 +94,30 @@ const workerHandler: WorkerHandler = {
 
         const corsHeaders = isPublicEndpoint(pathname) ? getPublicCorsHeaders() : getCorsHeaders(request, env);
         const diagnostics = createDiagnosticsProvider(env);
-        const requestSpan = diagnostics.startSpan(`http.${request.method}`, { url: pathname });
+        const requestSpan = diagnostics.startSpan(`http.${request.method}`, {
+            url: pathname,
+        });
 
         let response: Response;
         try {
-            response = await this._handleRequest(request, env, url, pathname, ctx);
+            response = await this._handleRequest(
+                request,
+                env,
+                url,
+                pathname,
+                ctx,
+            );
         } catch (err) {
-            requestSpan.recordException(err instanceof Error ? err : new Error(String(err)));
-            diagnostics.captureError(err instanceof Error ? err : new Error(String(err)), {
-                url: request.url,
-                method: request.method,
-            });
+            requestSpan.recordException(
+                err instanceof Error ? err : new Error(String(err)),
+            );
+            diagnostics.captureError(
+                err instanceof Error ? err : new Error(String(err)),
+                {
+                    url: request.url,
+                    method: request.method,
+                },
+            );
             throw err;
         } finally {
             requestSpan.end();
@@ -105,7 +128,11 @@ const workerHandler: WorkerHandler = {
 
         const newHeaders = new Headers(response.headers);
         for (const [k, v] of Object.entries(corsHeaders)) newHeaders.set(k, v);
-        return new Response(response.body, { status: response.status, statusText: response.statusText, headers: newHeaders });
+        return new Response(response.body, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: newHeaders,
+        });
     },
 
     /** @internal Delegates to the router; called by fetch() which wraps the response with CORS headers. */
@@ -123,7 +150,11 @@ const workerHandler: WorkerHandler = {
         await handleQueue(batch as MessageBatch<QueueMessage>, env);
     },
 
-    async scheduled(controller: ScheduledController, env: Env, _ctx: ExecutionContext): Promise<void> {
+    async scheduled(
+        controller: ScheduledController,
+        env: Env,
+        _ctx: ExecutionContext,
+    ): Promise<void> {
         await handleScheduled(controller, env);
     },
 };
