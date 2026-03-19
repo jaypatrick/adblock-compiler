@@ -512,12 +512,14 @@ jobs:
 
             - name: Verify Docker for container build
               if: env.CLOUDFLARE_API_TOKEN != ''
+              env:
+                  DOCKER_BUILDKIT: '1'
               run: |
                   echo "Pre-building Dockerfile.container to surface errors before wrangler deploy..."
-                  docker buildx build \
+                  docker build \
                     --platform linux/amd64 \
                     -f Dockerfile.container \
-                    --no-push \
+                    --no-cache \
                     . 2>&1
                   echo "✅ Dockerfile.container pre-build succeeded"
 
