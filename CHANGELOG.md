@@ -114,6 +114,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.68.0] - 2026-03-19
+
+### Added- raise Codecov coverage gate to 80% and add missing test files
+- add database migration workflows (backend-agnostic, all-or-nothing)
+
+### Fixed
+
+- replace ternary statements with if/else in dashboard spec to satisfy no-unused-expressions
+- accurate threshold comment in codecov.yml and add unicode compress test
+- address review feedback on db-migrate workflow and validator
+- add SSR platform short-circuit to guards; change validation to RenderMode.Client
+- NG0203 — replace dynamic guard imports with static imports in app.routes.ts
+
+
 ## [0.67.1] - 2026-03-19
 
 ### Added### Fixed
