@@ -272,3 +272,34 @@ Deno.test('BrowserFetcher.canHandle - returns false for empty string', () => {
     const fetcher = new BrowserFetcher(MOCK_BINDING, {}, MOCK_CONNECTOR);
     assertEquals(fetcher.canHandle(''), false);
 });
+
+// ============================================================================
+// SSRF protection tests
+// ============================================================================
+
+Deno.test('BrowserFetcher - fetch throws for private/internal localhost address', async () => {
+    const fetcher = new BrowserFetcher(MOCK_BINDING, {}, makeConnector(mockBrowser(mockPage(''))));
+    await assertRejects(
+        () => fetcher.fetch('http://localhost/list.txt'),
+        Error,
+        'Blocked',
+    );
+});
+
+Deno.test('BrowserFetcher - fetch throws for 192.168.x.x private address', async () => {
+    const fetcher = new BrowserFetcher(MOCK_BINDING, {}, makeConnector(mockBrowser(mockPage(''))));
+    await assertRejects(
+        () => fetcher.fetch('http://192.168.1.1/list.txt'),
+        Error,
+        'Blocked',
+    );
+});
+
+Deno.test('BrowserFetcher - fetch throws for cloud metadata service address (169.254.169.254)', async () => {
+    const fetcher = new BrowserFetcher(MOCK_BINDING, {}, makeConnector(mockBrowser(mockPage(''))));
+    await assertRejects(
+        () => fetcher.fetch('http://169.254.169.254/latest/meta-data/'),
+        Error,
+        'Blocked',
+    );
+});
