@@ -151,8 +151,8 @@ function withMockFetch(
 // the globalThis.fetch patch.
 //
 // IMPORTANT: the built-in metrics step MUST run first (before any
-// _clearRegistryForTesting() call) because the built-ins are registered once
-// at module load time and cannot be re-registered after clearing.
+// _clearRegistryForTesting() call), or steps that need built-ins must call
+// _registerBuiltinMetricsForTesting() after clearing to restore them.
 // ---------------------------------------------------------------------------
 
 Deno.test('prometheus registry and analytics engine paths', async (t) => {
