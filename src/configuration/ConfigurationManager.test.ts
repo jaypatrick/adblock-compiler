@@ -11,7 +11,7 @@ import { assertEquals, assertInstanceOf, assertRejects } from '@std/assert';
 import { ConfigurationManager, ConfigurationValidationError } from './ConfigurationManager.ts';
 import { EnvConfigurationSource, ObjectConfigurationSource, OverrideConfigurationSource } from './sources/index.ts';
 import type { IConfiguration } from '../types/index.ts';
-import { TransformationType } from '../types/index.ts';
+import { SourceType, TransformationType } from '../types/index.ts';
 import { VALIDATION_DEFAULTS } from '../config/defaults.ts';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

@@ -19,7 +19,7 @@ import { z } from 'zod';
 
 const ResolveRequestSchema = z.object({
     config: z.unknown(),
-    override: z.record(z.unknown()).optional(),
+    override: z.record(z.string(), z.unknown()).optional(),
     applyEnvOverrides: z.boolean().optional(),
     turnstileToken: z.string().optional(),
 });

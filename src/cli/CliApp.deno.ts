@@ -19,6 +19,7 @@ import {
 import { FilterCompiler, FilterCompilerOptions } from '../compiler/index.ts';
 import type { DownloaderOptions } from '../downloader/index.ts';
 import { ConfigurationManager, FileConfigurationSource, ObjectConfigurationSource, OverrideConfigurationSource } from '../configuration/index.ts';
+import type { IConfigurationSource } from '../configuration/index.ts';
 import { formatDuration } from '../utils/index.ts';
 
 // Log level constants
@@ -585,7 +586,7 @@ Examples:
             ...(this.args['include-from']?.length && { inclusions_sources: this.args['include-from'] }),
         };
 
-        const managerSources = [new ObjectConfigurationSource(baseConfig)];
+        const managerSources: IConfigurationSource[] = [new ObjectConfigurationSource(baseConfig)];
         if (this.args.override) {
             managerSources.push(new OverrideConfigurationSource(this.args.override));
         }

@@ -14,11 +14,7 @@
 import { assertEquals, assertExists } from '@std/assert';
 import { makeEnv } from '../test-helpers.ts';
 import { SourceType } from '../../src/types/index.ts';
-import {
-    handleConfigurationDefaults,
-    handleConfigurationResolve,
-    handleConfigurationValidate,
-} from './configuration.ts';
+import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './configuration.ts';
 
 // ============================================================================
 // Fixtures
