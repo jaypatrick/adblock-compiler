@@ -9,7 +9,7 @@
  */
 
 import { COMPILATION_DEFAULTS, VALIDATION_DEFAULTS } from '../../src/config/defaults.ts';
-import { ConfigurationManager, ConfigurationValidationError, OverrideConfigurationSource, ObjectConfigurationSource } from '../../src/configuration/index.ts';
+import { ConfigurationManager, ConfigurationValidationError, ObjectConfigurationSource, OverrideConfigurationSource } from '../../src/configuration/index.ts';
 import { ConfigurationSchema } from '../../src/configuration/schemas.ts';
 import { JsonResponse } from '../utils/response.ts';
 import type { Env } from '../types.ts';

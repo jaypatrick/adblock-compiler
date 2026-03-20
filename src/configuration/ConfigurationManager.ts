@@ -110,9 +110,7 @@ export class ConfigurationManager {
     async load(): Promise<IConfiguration> {
         const applyEnv = this.options.applyEnvOverrides !== false;
 
-        const pipeline: IConfigurationSource[] = applyEnv
-            ? [...this.sources, new EnvConfigurationSource()]
-            : [...this.sources];
+        const pipeline: IConfigurationSource[] = applyEnv ? [...this.sources, new EnvConfigurationSource()] : [...this.sources];
 
         // Collect partials from all sources in pipeline order
         const partials: Partial<IConfiguration>[] = [];

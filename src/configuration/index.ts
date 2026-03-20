@@ -21,10 +21,7 @@ export {
     ObjectConfigurationSource,
     OverrideConfigurationSource,
 } from './ConfigurationManager.ts';
-export type {
-    IConfigurationSource,
-    ManagerOptions,
-} from './ConfigurationManager.ts';
+export type { IConfigurationSource, ManagerOptions } from './ConfigurationManager.ts';
 
 // Zod schemas for runtime validation
 export {

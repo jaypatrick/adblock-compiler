@@ -439,9 +439,7 @@ Examples:
 
         try {
             const baseSources = [new FileConfigurationSource(this.args.config!)];
-            const managerSources = this.args.override
-                ? [...baseSources, new OverrideConfigurationSource(this.args.override)]
-                : baseSources;
+            const managerSources = this.args.override ? [...baseSources, new OverrideConfigurationSource(this.args.override)] : baseSources;
 
             const mgr = ConfigurationManager.fromSources(managerSources, {
                 applyEnvOverrides: !this.args['no-env-overrides'],
