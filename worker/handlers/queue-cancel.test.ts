@@ -37,7 +37,9 @@ function makeRequest(requestId: string): Request {
 function makeAnalytics(): { events: unknown[]; service: AnalyticsService } {
     const events: unknown[] = [];
     const service = {
-        trackSecurityEvent: (event: unknown) => { events.push(event); },
+        trackSecurityEvent: (event: unknown) => {
+            events.push(event);
+        },
     } as unknown as AnalyticsService;
     return { events, service };
 }

@@ -63,9 +63,11 @@ Deno.test('poc-assets - returns 429 and rate-limit headers when limit is exhaust
     // Fill the rate-limit KV with an exhausted window (count >= max, resetAt in the future)
     const now = Date.now();
     const resetAt = now + 60_000;
-    const kv = makeInMemoryKv(new Map([
-        ['ratelimit:ip:unknown', JSON.stringify({ count: 9999, resetAt })],
-    ]));
+    const kv = makeInMemoryKv(
+        new Map([
+            ['ratelimit:ip:unknown', JSON.stringify({ count: 9999, resetAt })],
+        ]),
+    );
     const env = makeEnv({
         ASSETS: { fetch: async (_r: Request) => new Response('ok') } as unknown as Fetcher,
         RATE_LIMIT: kv,

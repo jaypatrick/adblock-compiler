@@ -10,7 +10,7 @@
  * This is an anonymous-tier, read-only, cacheable endpoint.
  */
 
-import { ConfigurationSchema, CompileRequestSchema, SourceSchema, BenchmarkMetricsSchema } from '../../src/configuration/schemas.ts';
+import { BenchmarkMetricsSchema, CompileRequestSchema, ConfigurationSchema, SourceSchema } from '../../src/configuration/schemas.ts';
 import type { Env } from '../types.ts';
 
 // deno-lint-ignore no-explicit-any
