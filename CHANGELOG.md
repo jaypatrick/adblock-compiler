@@ -119,6 +119,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.69.2] - 2026-03-20
+
+### Added### Fixed
+
+- add hono to package.json and pnpm-lock.yaml to resolve wrangler bundling failure
+- use string literal in dynamic import for JSR compatibility
+
+
 ## [0.69.1] - 2026-03-20
 
 ### Added### Fixed
