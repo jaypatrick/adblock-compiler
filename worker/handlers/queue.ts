@@ -9,6 +9,8 @@ import { generateRequestId, JsonResponse } from '../utils/index.ts';
 import type { BatchCompileQueueMessage, CacheWarmQueueMessage, CompilationResult, CompileQueueMessage, Env, IAuthContext, JobInfo, QueueMessage, QueueStats } from '../types.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import { requireAuth } from '../middleware/auth.ts';
+import { verifyCfAccessJwt } from '../middleware/cf-access.ts';
+import { z } from 'zod';
 
 // ============================================================================
 // Constants
@@ -695,26 +697,74 @@ export async function handleQueueHistory(env: Env): Promise<Response> {
     });
 }
 
+// ── Zod schemas ───────────────────────────────────────────────────────────────
+export const QueueCancelParamsSchema = z.object({
+    requestId: z.string().min(1, 'requestId is required').regex(/^[a-zA-Z0-9_-]+$/, 'Invalid requestId format'),
+});
+
 /**
- * Handle POST /queue/cancel/:requestId request.
+ * Cancel a pending queue job by requestId.
+ *
+ * DELETE /queue/cancel/:requestId
+ *
+ * Because no `queue:job:*` record is written when async jobs are enqueued,
+ * cancellation is treated as a best-effort, idempotent signal: a
+ * `queue:cancel:<requestId>` key is written to METRICS so that downstream
+ * queue processors can consult it and skip the job if still pending.
+ *
+ * Always returns 200 for a valid, authenticated request — consumers of the
+ * queue should check for the cancel signal before processing.
  */
 export async function handleQueueCancel(
-    requestId: string,
+    request: Request,
     env: Env,
+    authContext: IAuthContext,
+    analytics: AnalyticsService,
+    requestId: string,
 ): Promise<Response> {
-    if (!requestId) {
-        return JsonResponse.badRequest('Invalid request ID');
+    const authError = requireAuth(authContext);
+    if (authError) return authError;
+
+    // ZTA: Cloudflare Access verification (no-op when CF_ACCESS_AUD is not configured)
+    const cfAccess = await verifyCfAccessJwt(request, env);
+    if (!cfAccess.valid) {
+        analytics.trackSecurityEvent({
+            eventType: 'auth_failure',
+            path: `/queue/cancel/${requestId}`,
+            method: 'DELETE',
+            clientIpHash: AnalyticsService.hashIp(request.headers.get('CF-Connecting-IP') || 'unknown'),
+            reason: 'cf_access_jwt_invalid',
+        });
+        return Response.json(
+            { success: false, error: cfAccess.error ?? 'CF Access verification failed' },
+            { status: 403 },
+        );
     }
 
-    await updateQueueStats(env, 'cancelled', 0, 1, {
-        requestId,
-        configName: 'Cancelled by user',
+    const parsed = QueueCancelParamsSchema.safeParse({ requestId });
+    if (!parsed.success) {
+        return JsonResponse.badRequest(
+            parsed.error.issues.map((i) => `${i.path.join('.') || 'requestId'}: ${i.message}`).join('; '),
+        );
+    }
+
+    // Best-effort: write a cancel signal so queue consumers can skip this job.
+    // No 404/409 — cancellation is idempotent and does not require a pre-existing job record.
+    const cancelKey = `queue:cancel:${requestId}`;
+    await env.METRICS.put(
+        cancelKey,
+        JSON.stringify({ requestId, status: 'cancelled', cancelledAt: new Date().toISOString() }),
+        { expirationTtl: 86400 },
+    );
+
+    analytics.trackSecurityEvent({
+        path: `/queue/cancel/${requestId}`,
+        method: 'DELETE',
+        clientIpHash: AnalyticsService.hashIp(request.headers.get('CF-Connecting-IP') || 'unknown'),
+        reason: 'queue_job_cancelled',
     });
 
-    return JsonResponse.success({
-        message: `Job ${requestId} marked as cancelled`,
-        note: 'Job may still process if already started',
-    });
+    return JsonResponse.success({ cancelled: true, requestId });
 }
 
 /**
@@ -796,14 +846,16 @@ export async function handleQueueResults(
 /**
  * Route handler for all /queue/* endpoints.
  *
- * ZTA: /queue/cancel/* requires authentication; other routes are public.
+ * ZTA: All /queue/* routes are gated by checkRoutePermission() in router.ts
+ * (Free tier or above). /queue/cancel/* additionally requires a valid app-level
+ * auth token AND a Cloudflare Access JWT when CF_ACCESS_AUD is configured.
  *
  * @param routePath   - Path with /api prefix stripped (e.g. "/queue/stats")
  * @param request     - Incoming request
  * @param env         - Worker environment bindings
  * @param authContext - Authenticated request context
  * @param analytics   - Analytics service instance
- * @param ip          - Client IP address
+ * @param _ip         - Client IP address (unused; auth is caller-resolved)
  */
 export async function routeQueue(
     routePath: string,
@@ -811,7 +863,7 @@ export async function routeQueue(
     env: Env,
     authContext: IAuthContext,
     analytics: AnalyticsService,
-    ip: string,
+    _ip: string,
 ): Promise<Response> {
     if (routePath === '/queue/stats' && request.method === 'GET') {
         return handleQueueStats(env);
@@ -826,21 +878,9 @@ export async function routeQueue(
         return handleQueueResults(requestId, env);
     }
 
-    if (routePath.startsWith('/queue/cancel/') && request.method === 'POST') {
-        const cancelAuthGuard = requireAuth(authContext);
-        if (cancelAuthGuard) {
-            analytics.trackSecurityEvent({
-                eventType: 'auth_failure',
-                path: routePath,
-                method: 'POST',
-                clientIpHash: AnalyticsService.hashIp(ip),
-                reason: 'unauthenticated_queue_cancel',
-            });
-            return cancelAuthGuard;
-        }
-
-        const requestId = routePath.split('/').pop() ?? '';
-        return handleQueueCancel(requestId, env);
+    const cancelMatch = routePath.match(/^\/queue\/cancel\/([a-zA-Z0-9_-]+)$/);
+    if (cancelMatch && request.method === 'DELETE') {
+        return handleQueueCancel(request, env, authContext, analytics, cancelMatch[1]);
     }
 
     return Response.json({ success: false, error: 'Not found' }, { status: 404 });

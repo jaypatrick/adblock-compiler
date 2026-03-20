@@ -7,6 +7,9 @@ on:
       - 'docs/**'
       - 'book.toml'
       - 'scripts/mdbook-last-updated.ts'
+      - 'scripts/generate-docs.ts'
+      - 'scripts/generate-cloudflare-schema.ts'
+      - 'scripts/generate-postman-collection.ts'
       - '.github/workflows/mdbook.yml'
   workflow_dispatch:
 
@@ -56,6 +59,12 @@ jobs:
           restore-keys: |
             deno-docs-${{ runner.os }}-
             deno-${{ runner.os }}-
+
+      - name: Regenerate OpenAPI documentation
+        run: |
+          deno task openapi:docs
+          deno task schema:cloudflare
+          deno task postman:collection
 
       - name: Build mdBook
         run: mdbook build

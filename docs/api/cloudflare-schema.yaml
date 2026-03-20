@@ -58,6 +58,12 @@ tags:
         description: >-
             Local JWT auth bridge — self-contained sign-up/login until Clerk is production-ready. When `CLERK_JWKS_URL`
             is set the provider auto-switches to Clerk and these endpoints are no longer used.
+    -
+        name: Info
+        description: 'API metadata and self-describing schema endpoints (anonymous access, cached).'
+    -
+        name: Configuration
+        description: 'Compilation configuration defaults, validation, and resolution endpoints.'
 paths:
     /api:
         get:
@@ -73,6 +79,40 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ApiInfo'
+    /api/schemas:
+        get:
+            tags:
+                - Info
+            operationId: getApiSchemas
+            summary: Get JSON Schemas for all public request/response types
+            description: |
+                Returns JSON Schema representations of all public Zod schemas
+                (ConfigurationSchema, CompileRequestSchema, SourceSchema, BenchmarkMetricsSchema)
+                for use by API testers and external tooling.
+                Anonymous access. Cached for 1 hour.
+            responses:
+                '200':
+                    description: JSON Schema definitions.
+                    headers:
+                        Cache-Control:
+                            schema:
+                                type: string
+                                example: 'public, max-age=3600'
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        example: true
+                                    schemas:
+                                        type: object
+                                        additionalProperties:
+                                            type: object
+                                            description: A JSON Schema definition object.
+                '429':
+                    $ref: '#/components/responses/RateLimited'
     /compile:
         post:
             tags:
@@ -492,12 +532,20 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/QueueHistoryResponse'
     '/queue/cancel/{requestId}':
-        post:
+        delete:
             tags:
                 - Queue
-            summary: Cancel a queued job
-            description: Marks a pending queue job as cancelled
+            summary: Cancel a pending queue job
+            description: |
+                Cancels a pending queue job by its requestId.
+                Returns 409 if the job is already completed, failed, or cancelled.
+                Requires authentication (free tier or above).
             operationId: cancelQueueJob
+            security:
+                -
+                    BearerAuth: []
+                -
+                    ApiKeyAuth: []
             parameters:
                 -
                     name: requestId
@@ -505,16 +553,40 @@ paths:
                     required: true
                     schema:
                         type: string
-                    description: Request ID of the job to cancel
+                        pattern: '^[a-zA-Z0-9_-]+$'
+                    description: The requestId of the queue job to cancel.
             responses:
                 '200':
-                    description: Job cancelled
+                    description: Job cancelled successfully.
                     content:
                         application/json:
                             schema:
-                                $ref: '#/components/schemas/CancelJobResponse'
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        example: true
+                                    cancelled:
+                                        type: boolean
+                                        example: true
+                                        description: >-
+                                            Whether the cancellation signal was recorded. This is a best-effort
+                                            operation.
+                                    requestId:
+                                        type: string
+                                        description: The requestId of the job.
                 '400':
-                    description: Invalid request ID
+                    $ref: '#/components/responses/BadRequest'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '403':
+                    description: Cloudflare Access JWT invalid or missing.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '429':
+                    $ref: '#/components/responses/RateLimited'
     /ast/parse:
         post:
             tags:
@@ -539,6 +611,170 @@ paths:
                     description: Invalid request (must provide rules or text)
                 '500':
                     description: Parse error
+    /configuration/defaults:
+        get:
+            tags:
+                - Configuration
+            operationId: getConfigurationDefaults
+            summary: Get system compilation defaults and limits
+            description: |
+                Returns the system defaults and hard limits that apply to every compilation.
+                No authentication required (anonymous tier).
+            responses:
+                '200':
+                    description: Defaults and limits.
+                    headers:
+                        Cache-Control:
+                            schema:
+                                type: string
+                                example: 'public, max-age=3600'
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        example: true
+                                    defaults:
+                                        type: object
+                                        properties:
+                                            compilation:
+                                                type: object
+                                            validation:
+                                                type: object
+                                    limits:
+                                        type: object
+                                        properties:
+                                            maxSources:
+                                                type: integer
+                                                example: 20
+                                            maxExclusions:
+                                                type: integer
+                                                example: 1000
+                                    supportedSourceTypes:
+                                        type: array
+                                        items:
+                                            type: string
+                                        example:
+                                            - adblock
+                                            - hosts
+                '429':
+                    $ref: '#/components/responses/RateLimited'
+    /configuration/validate:
+        post:
+            tags:
+                - Configuration
+            operationId: validateConfiguration
+            summary: Validate a configuration object against the schema
+            description: |
+                Validates a configuration object against the Zod `ConfigurationSchema`.
+                Requires a Cloudflare Turnstile token when `TURNSTILE_SECRET_KEY` is configured.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - config
+                            properties:
+                                config:
+                                    type: object
+                                    description: The configuration object to validate.
+                                turnstileToken:
+                                    type: string
+                                    description: Cloudflare Turnstile token (required when Turnstile is enabled).
+            responses:
+                '200':
+                    description: Validation result.
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        example: true
+                                    valid:
+                                        type: boolean
+                                    errors:
+                                        type: array
+                                        items:
+                                            type: object
+                                            properties:
+                                                path:
+                                                    type: string
+                                                message:
+                                                    type: string
+                                                code:
+                                                    type: string
+                '400':
+                    $ref: '#/components/responses/BadRequest'
+                '403':
+                    description: Turnstile verification failed.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '429':
+                    $ref: '#/components/responses/RateLimited'
+    /configuration/resolve:
+        post:
+            tags:
+                - Configuration
+            operationId: resolveConfiguration
+            summary: Merge configuration layers and return effective IConfiguration
+            description: |
+                Merges one or more configuration layers (base config + optional override) and
+                returns the effective `IConfiguration`. Useful for previewing the result of a
+                config + environment overlay before submitting a compile job.
+                Requires a Cloudflare Turnstile token when `TURNSTILE_SECRET_KEY` is configured.
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - config
+                            properties:
+                                config:
+                                    type: object
+                                    description: Base configuration object.
+                                override:
+                                    type: object
+                                    description: Optional highest-priority JSON overlay merged on top of config.
+                                applyEnvOverrides:
+                                    type: boolean
+                                    default: true
+                                    description: Whether to apply environment variable overrides.
+                                turnstileToken:
+                                    type: string
+                                    description: Cloudflare Turnstile token (required when Turnstile is enabled).
+            responses:
+                '200':
+                    description: Resolved configuration.
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success:
+                                        type: boolean
+                                        example: true
+                                    config:
+                                        $ref: '#/components/schemas/Configuration'
+                '400':
+                    $ref: '#/components/responses/BadRequest'
+                '403':
+                    description: Turnstile verification failed.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '429':
+                    $ref: '#/components/responses/RateLimited'
     /admin/storage/stats:
         get:
             tags:
@@ -2203,6 +2439,14 @@ paths:
                     $ref: '#/components/responses/ForbiddenError'
 components:
     schemas:
+        ErrorResponse:
+            type: object
+            properties:
+                success:
+                    type: boolean
+                    example: false
+                error:
+                    type: string
         CompileRequest:
             type: object
             required:
@@ -3839,6 +4083,59 @@ components:
                     type: integer
                     description: Number of unreachable URLs.
     responses:
+        BadRequest:
+            description: Bad request - input validation failed
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
+                                example: 'requestId: Invalid requestId format'
+        Unauthorized:
+            description: Unauthorized - authentication required
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
+                                example: Authentication required
+        RateLimited:
+            description: Rate limit exceeded
+            headers:
+                Retry-After:
+                    schema:
+                        type: integer
+                    description: Seconds until retry allowed
+                X-RateLimit-Limit:
+                    schema:
+                        type: integer
+                X-RateLimit-Remaining:
+                    schema:
+                        type: integer
+                X-RateLimit-Reset:
+                    schema:
+                        type: integer
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
+                                example: Rate limit exceeded.
         BadRequestError:
             description: Bad request - request body failed schema validation
             content:

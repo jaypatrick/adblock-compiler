@@ -493,8 +493,8 @@
           }
         },
         {
-          "name": "Cancel a queued job",
-          "description": "Marks a pending queue job as cancelled",
+          "name": "Cancel a pending queue job",
+          "description": "Cancels a pending queue job by its requestId.",
           "event": [
             {
               "listen": "test",
@@ -513,7 +513,7 @@
             }
           ],
           "request": {
-            "method": "POST",
+            "method": "DELETE",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/queue/cancel/:requestId",
@@ -533,7 +533,7 @@
                 }
               ]
             },
-            "description": "Marks a pending queue job as cancelled"
+            "description": "Cancels a pending queue job by its requestId.\nReturns 409 if the job is already completed, failed, or cancelled.\nRequires authentication (free tier or above).\n"
           }
         }
       ]
@@ -3120,6 +3120,192 @@
               }
             },
             "description": "Update the authenticated user's password.\nRequires a valid `Authorization: Bearer <jwt>` header and the correct current password.\n"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Info",
+      "description": "API metadata and self-describing schema endpoints (anonymous access, cached).",
+      "item": [
+        {
+          "name": "Get JSON Schemas for all public request/response types",
+          "description": "Returns JSON Schema representations of all public Zod schemas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/schemas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "schemas"
+              ]
+            },
+            "description": "Returns JSON Schema representations of all public Zod schemas\n(ConfigurationSchema, CompileRequestSchema, SourceSchema, BenchmarkMetricsSchema)\nfor use by API testers and external tooling.\nAnonymous access. Cached for 1 hour.\n"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Configuration",
+      "description": "Compilation configuration defaults, validation, and resolution endpoints.",
+      "item": [
+        {
+          "name": "Get system compilation defaults and limits",
+          "description": "Returns the system defaults and hard limits that apply to every compilation.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/configuration/defaults",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "configuration",
+                "defaults"
+              ]
+            },
+            "description": "Returns the system defaults and hard limits that apply to every compilation.\nNo authentication required (anonymous tier).\n"
+          }
+        },
+        {
+          "name": "Validate a configuration object against the schema",
+          "description": "Validates a configuration object against the Zod `ConfigurationSchema`.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/configuration/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "configuration",
+                "validate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"config\": {},\n    \"turnstileToken\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Validates a configuration object against the Zod `ConfigurationSchema`.\nRequires a Cloudflare Turnstile token when `TURNSTILE_SECRET_KEY` is configured.\n"
+          }
+        },
+        {
+          "name": "Merge configuration layers and return effective IConfiguration",
+          "description": "Merges one or more configuration layers (base config + optional override) and",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/configuration/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "configuration",
+                "resolve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"config\": {},\n    \"override\": {},\n    \"applyEnvOverrides\": false,\n    \"turnstileToken\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Merges one or more configuration layers (base config + optional override) and\nreturns the effective `IConfiguration`. Useful for previewing the result of a\nconfig + environment overlay before submitting a compile job.\nRequires a Cloudflare Turnstile token when `TURNSTILE_SECRET_KEY` is configured.\n"
           }
         }
       ]

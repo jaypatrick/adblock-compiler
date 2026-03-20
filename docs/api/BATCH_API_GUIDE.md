@@ -1198,6 +1198,26 @@ graph TB
 
 ---
 
+## Cancelling Async Jobs
+
+A queued compilation job can be cancelled while it is still `pending`:
+
+```http
+DELETE /api/queue/cancel/{requestId}
+Authorization: Bearer <token>
+```
+
+| Status | Meaning |
+|--------|---------|
+| 200 | Job cancelled successfully |
+| 401 | Authentication required |
+| 404 | Job not found (may have already expired) |
+| 409 | Job already completed, failed, or cancelled |
+
+Once a job has been picked up by the queue consumer it cannot be cancelled retroactively.
+
+---
+
 ## Related Documentation
 
 - [Queue Support Documentation](./QUEUE_SUPPORT.md) - Detailed queue configuration

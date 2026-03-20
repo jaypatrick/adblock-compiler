@@ -8,7 +8,7 @@
  */
 
 import { assertEquals, assertExists, assertNotEquals } from '@std/assert';
-import { makeEnv } from '../test-helpers.ts';
+import { makeEnv, makeInMemoryKv } from '../test-helpers.ts';
 import {
     compress,
     decompress,
@@ -153,17 +153,26 @@ Deno.test('processInChunks - uses default item id when getItemId not provided', 
 // handleQueueCancel
 // ============================================================================
 
-Deno.test('handleQueueCancel - valid requestId returns 200 with message', async () => {
-    const env = makeEnv();
-    const res = await handleQueueCancel('req-abc', env);
+Deno.test('handleQueueCancel - valid requestId with pending job returns 200', async () => {
+    const pendingJob = { status: 'pending', requestId: 'req-abc123' };
+    const kv = makeInMemoryKv(new Map([['queue:job:req-abc123', JSON.stringify(pendingJob)]]));
+    const env = makeEnv({ METRICS: kv });
+    const authContext = { authMethod: 'clerk-jwt', tier: 'free', userId: 'user-1' } as unknown as import('../types.ts').IAuthContext;
+    const analytics = { trackSecurityEvent: () => {} } as unknown as import('../../src/services/AnalyticsService.ts').AnalyticsService;
+    const request = new Request('http://localhost/api/queue/cancel/req-abc123', { method: 'DELETE' });
+    const res = await handleQueueCancel(request, env, authContext, analytics, 'req-abc123');
     assertEquals(res.status, 200);
-    const body = await res.json() as Record<string, unknown>;
-    assertExists(body.message);
+    const body = await res.json() as { success: boolean; cancelled: boolean };
+    assertEquals(body.success, true);
+    assertEquals(body.cancelled, true);
 });
 
-Deno.test('handleQueueCancel - empty requestId returns 400', async () => {
+Deno.test('handleQueueCancel - invalid requestId format returns 400', async () => {
     const env = makeEnv();
-    const res = await handleQueueCancel('', env);
+    const authContext = { authMethod: 'clerk-jwt', tier: 'free', userId: 'user-1' } as unknown as import('../types.ts').IAuthContext;
+    const analytics = { trackSecurityEvent: () => {} } as unknown as import('../../src/services/AnalyticsService.ts').AnalyticsService;
+    const request = new Request('http://localhost/api/queue/cancel/bad..id', { method: 'DELETE' });
+    const res = await handleQueueCancel(request, env, authContext, analytics, 'bad..id');
     assertEquals(res.status, 400);
 });
 

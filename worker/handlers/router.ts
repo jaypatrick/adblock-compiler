@@ -114,6 +114,40 @@ export async function handleRequest(
     const agentResponse = await routeAgentRequest(request, env);
     if (agentResponse) return agentResponse;
 
+    // ── PoC framework apps (served via ASSETS binding) ──────────────────────────
+    // ZTA: PoC apps (/poc/*) are intentionally public — they are static framework
+    // demo apps (React, Vue, Angular, Svelte) requiring no authentication. Auth is
+    // not checked here by design; anonymous-tier rate limiting is still enforced.
+    if (pathname.startsWith('/poc/') || pathname === '/poc') {
+        const rl = await checkRateLimitTiered(env, ip, ANONYMOUS_AUTH_CONTEXT);
+        if (!rl.allowed) {
+            analytics.trackRateLimitExceeded({
+                requestId,
+                clientIpHash: AnalyticsService.hashIp(ip),
+                rateLimit: rl.limit,
+                windowSeconds: RATE_LIMIT_WINDOW,
+            });
+            return Response.json(
+                { success: false, error: `Rate limit exceeded.` },
+                {
+                    status: 429,
+                    headers: {
+                        'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+                        'X-RateLimit-Limit': String(rl.limit),
+                        'X-RateLimit-Remaining': '0',
+                        'X-RateLimit-Reset': String(rl.resetAt),
+                    },
+                },
+            );
+        }
+        if (env.ASSETS) {
+            // Safe: request.url already validated to start with /poc/ above;
+            // ASSETS binding only serves pre-uploaded static files.
+            return env.ASSETS.fetch(request);
+        }
+        return Response.json({ success: false, error: 'PoC assets not available in this deployment' }, { status: 503 });
+    }
+
     // Pre-auth API metadata routes (lazy import).
     // Narrowed to the exact paths served by routeApiMeta to avoid pulling the
     // deployment/version code into the isolate for unrelated API requests.
@@ -123,7 +157,8 @@ export async function handleRequest(
             pathname.startsWith('/api/deployments') ||
             pathname === '/api/turnstile-config' ||
             pathname === '/api/clerk-config' ||
-            pathname === '/api/sentry-config');
+            pathname === '/api/sentry-config' ||
+            pathname === '/api/schemas');
     if (isApiMetaRoute) {
         // ZTA: Apply anonymous-tier rate limiting before serving pre-auth config
         // endpoints. These routes bypass unified auth, so they need their own guard.
