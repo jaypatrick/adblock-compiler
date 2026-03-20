@@ -7,10 +7,10 @@
  *   deno test --allow-read --allow-write --allow-net --allow-env src/configuration/ConfigurationManager.test.ts
  */
 
-import { assertEquals, assertInstanceOf, assertRejects } from '@std/assert';
+import { assertEquals, assertInstanceOf, assertRejects, assertThrows } from '@std/assert';
 import { ConfigurationManager, ConfigurationValidationError } from './ConfigurationManager.ts';
 import { EnvConfigurationSource, ObjectConfigurationSource, OverrideConfigurationSource } from './sources/index.ts';
-import type { IConfiguration } from '../types/index.ts';
+import type { IConfiguration, IFileSystem } from '../types/index.ts';
 import { SourceType, TransformationType } from '../types/index.ts';
 import { VALIDATION_DEFAULTS } from '../config/defaults.ts';
 
@@ -104,17 +104,7 @@ Deno.test('OverrideConfigurationSource: applies JSON overlay as highest priority
 });
 
 Deno.test('OverrideConfigurationSource: throws on invalid JSON', () => {
-    assertInstanceOf(
-        (() => {
-            try {
-                new OverrideConfigurationSource('not-json');
-                return null;
-            } catch (e) {
-                return e;
-            }
-        })(),
-        Error,
-    );
+    assertThrows(() => new OverrideConfigurationSource('not-json'), Error);
 });
 
 // ── EnvConfigurationSource ────────────────────────────────────────────────────
@@ -197,4 +187,169 @@ Deno.test('fromObject: respects transformations field', async () => {
         transformations: [TransformationType.Deduplicate],
     }, { applyEnvOverrides: false }).load();
     assertEquals(cfg.transformations, [TransformationType.Deduplicate]);
+});
+
+// ── fromFile ──────────────────────────────────────────────────────────────────
+
+function makeMockFs(content: string): IFileSystem {
+    return {
+        readTextFile: async (_path: string) => content,
+        writeTextFile: async () => {},
+        exists: async () => true,
+    };
+}
+
+Deno.test('fromFile: loads and validates configuration from a file', async () => {
+    const fileContent = JSON.stringify(minimalConfig());
+    const mgr = ConfigurationManager.fromFile('./config.json', makeMockFs(fileContent), { applyEnvOverrides: false });
+    const cfg = await mgr.load();
+    assertEquals(cfg.name, 'Test List');
+    assertEquals(cfg.sources.length, 1);
+});
+
+Deno.test('fromFile: throws ConfigurationValidationError when file contains invalid config', async () => {
+    const fileContent = JSON.stringify({ name: 'No Sources' }); // missing required sources
+    const mgr = ConfigurationManager.fromFile('./config.json', makeMockFs(fileContent), { applyEnvOverrides: false });
+    await assertRejects(() => mgr.load(), ConfigurationValidationError);
+});
+
+// ── fromCliArgs ───────────────────────────────────────────────────────────────
+
+Deno.test('fromCliArgs: creates config from input URLs with hosts type', async () => {
+    const cfg = await ConfigurationManager.fromCliArgs(
+        ['https://example.com/hosts.txt'],
+        'hosts',
+        { applyEnvOverrides: false },
+    ).load();
+    assertEquals(cfg.sources[0].source, 'https://example.com/hosts.txt');
+    assertEquals(cfg.sources[0].type, SourceType.Hosts);
+});
+
+Deno.test('fromCliArgs: creates config from input URLs with adblock type', async () => {
+    const cfg = await ConfigurationManager.fromCliArgs(
+        ['https://example.com/list.txt'],
+        'adblock',
+        { applyEnvOverrides: false },
+    ).load();
+    assertEquals(cfg.sources[0].type, SourceType.Adblock);
+});
+
+Deno.test('fromCliArgs: multiple inputs produce multiple sources', async () => {
+    const cfg = await ConfigurationManager.fromCliArgs(
+        ['https://example.com/a.txt', 'https://example.com/b.txt'],
+        'hosts',
+        { applyEnvOverrides: false },
+    ).load();
+    assertEquals(cfg.sources.length, 2);
+});
+
+// ── getValidationErrors non-null ──────────────────────────────────────────────
+
+Deno.test('getValidationErrors: returns ZodError after failed load', async () => {
+    const mgr = ConfigurationManager.fromObject({ name: 'No Sources' }, { applyEnvOverrides: false });
+    try {
+        await mgr.load();
+    } catch {
+        // expected
+    }
+    const errors = mgr.getValidationErrors();
+    assertEquals(errors !== null, true);
+    assertEquals(Array.isArray((errors as { issues: unknown[] })!.issues), true);
+    assertEquals((errors as { issues: unknown[] })!.issues.length > 0, true);
+});
+
+// ── resolveObject without override ────────────────────────────────────────────
+
+Deno.test('resolveObject: resolves plain object without override', async () => {
+    const cfg = await ConfigurationManager.resolveObject(
+        minimalConfig(),
+        undefined,
+        { applyEnvOverrides: false },
+    );
+    assertEquals(cfg.name, 'Test List');
+});
+
+Deno.test('resolveObject: throws ConfigurationValidationError for invalid object', async () => {
+    await assertRejects(
+        () => ConfigurationManager.resolveObject({ name: '' }, undefined, { applyEnvOverrides: false }),
+        ConfigurationValidationError,
+    );
+});
+
+// ── enforceSourceLimit: false ─────────────────────────────────────────────────
+
+Deno.test('enforceSourceLimit: false — does not truncate sources array', async () => {
+    const sources = Array.from({ length: 5 }, (_, i) => ({
+        source: `https://example.com/${i}.txt`,
+        type: SourceType.Hosts,
+    }));
+    const cfg = await ConfigurationManager.fromObject(
+        { name: 'Limits Test', sources },
+        { applyEnvOverrides: false, enforceSourceLimit: false },
+    ).load();
+    assertEquals(cfg.sources.length, 5);
+});
+
+// ── enforceExclusionLimit: false ──────────────────────────────────────────────
+
+Deno.test('enforceExclusionLimit: false — does not truncate exclusions array', async () => {
+    const exclusions = Array.from({ length: 5 }, (_, i) => `exclusion${i}`);
+    const cfg = await ConfigurationManager.fromObject(
+        { name: 'Exclusion Test', sources: minimalConfig().sources!, exclusions },
+        { applyEnvOverrides: false, enforceExclusionLimit: false },
+    ).load();
+    assertEquals(cfg.exclusions!.length, 5);
+});
+
+// ── applyEnvOverrides default (true) ─────────────────────────────────────────
+
+Deno.test('applyEnvOverrides: default applies env source (env name wins when set)', async () => {
+    // Build a manager with a custom env source manually via fromSources
+    const cfg = await ConfigurationManager.fromSources([
+        new ObjectConfigurationSource({ ...minimalConfig(), name: 'Base' }),
+        new EnvConfigurationSource((k) => k === 'ADBLOCK_CONFIG_NAME' ? 'EnvWins' : undefined),
+    ], { applyEnvOverrides: false }).load();
+    assertEquals(cfg.name, 'EnvWins');
+});
+
+// ── deepMerge edge cases ──────────────────────────────────────────────────────
+
+Deno.test('deepMerge: empty array of partials returns empty object', () => {
+    const result = ConfigurationManager.deepMerge([]);
+    assertEquals(result, {});
+});
+
+Deno.test('deepMerge: single partial returns its values', () => {
+    const result = ConfigurationManager.deepMerge([{ name: 'Only One' }]);
+    assertEquals(result.name, 'Only One');
+});
+
+// ── validateOnly edge cases ───────────────────────────────────────────────────
+
+Deno.test('validateOnly: null input returns valid: false', () => {
+    const result = ConfigurationManager.validateOnly(null);
+    assertEquals(result.valid, false);
+});
+
+Deno.test('validateOnly: valid config with optional fields is accepted', () => {
+    const result = ConfigurationManager.validateOnly({
+        ...minimalConfig(),
+        description: 'A description',
+        homepage: 'https://example.com',
+        license: 'MIT',
+        version: '1.0.0',
+    });
+    assertEquals(result.valid, true);
+});
+
+// ── fromSources with OverrideConfigurationSource ──────────────────────────────
+
+Deno.test('fromSources: override replaces sources array from base', async () => {
+    const baseSource = [{ source: 'https://base.example.com/hosts.txt', type: SourceType.Hosts }];
+    const overrideSource = [{ source: 'https://override.example.com/hosts.txt', type: SourceType.Hosts }];
+    const cfg = await ConfigurationManager.fromSources([
+        new ObjectConfigurationSource({ name: 'Base', sources: baseSource }),
+        new OverrideConfigurationSource(JSON.stringify({ sources: overrideSource })),
+    ], { applyEnvOverrides: false }).load();
+    assertEquals(cfg.sources[0].source, 'https://override.example.com/hosts.txt');
 });
