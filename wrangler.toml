@@ -267,5 +267,7 @@ crons = [
 [dev]
 port = 8787
 local_protocol = "http"
-# Containers require Linux/WSL — disable for Windows local dev.
+# Set to true on Linux/macOS or WSL. Must be false on native Windows
+# because Cloudflare Containers requires a Linux Docker daemon.
+# See: https://developers.cloudflare.com/containers/
 enable_containers = false

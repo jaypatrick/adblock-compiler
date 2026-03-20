@@ -12,7 +12,11 @@
 
 ARG DENO_VERSION=2.7.7
 
-FROM denoland/deno:${DENO_VERSION}
+# Pin the platform to linux/amd64 — Cloudflare Containers only runs amd64 images.
+# Without this flag, builds on Apple Silicon (M1/M2/M3) or ARM CI runners produce
+# an arm64 image that silently fails to run on Cloudflare.
+# See: https://developers.cloudflare.com/containers/
+FROM --platform=linux/amd64 denoland/deno:${DENO_VERSION}
 
 # Install curl for the HEALTHCHECK.
 # The denoland/deno base image does not ship with curl; we install it as root

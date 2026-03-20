@@ -93,7 +93,9 @@ Deno.test('container-server handler - POST /compile with missing configuration r
 
     const response = await handler(request);
     assertEquals(response.status, 400);
-    assertStringIncludes(await response.text(), 'Missing required field: configuration');
+    // The Zod-validated response is JSON with a structured error payload.
+    const body = await response.json() as Record<string, unknown>;
+    assertEquals(body.error, 'Invalid request body');
 });
 
 // ---------------------------------------------------------------------------

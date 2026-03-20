@@ -6,6 +6,50 @@ This guide explains how to deploy the Adblock Compiler to Cloudflare Containers.
 
 Cloudflare Containers allows you to deploy Docker containers globally alongside your Workers. The container configuration is set up in `wrangler.toml` and the container image is defined in `Dockerfile.container`.
 
+## Known Gotchas
+
+These are the most common configuration mistakes that cause silent or hard-to-diagnose failures.
+
+### 1. Missing `--platform=linux/amd64` in `Dockerfile.container`
+
+Cloudflare Containers **only runs `linux/amd64` images**. If you build on Apple Silicon (M1/M2/M3) or an ARM-based CI runner without pinning the platform, Docker will produce an `arm64` image that will silently fail to start on Cloudflare.
+
+The `FROM` line in `Dockerfile.container` must read:
+
+```dockerfile
+FROM --platform=linux/amd64 denoland/deno:${DENO_VERSION}
+```
+
+### 2. `enable_containers` in `wrangler.toml [dev]`
+
+The `[dev]` section of `wrangler.toml` contains an `enable_containers` flag:
+
+```toml
+[dev]
+# Set to true on Linux/macOS or WSL. Must be false on native Windows
+# because Cloudflare Containers requires a Linux Docker daemon.
+enable_containers = false
+```
+
+- **Linux / macOS / WSL** — set `enable_containers = true` to run containers in local `wrangler dev`.
+- **Native Windows** — leave it `false`; use WSL instead (see [Windows Limitation](#windows-limitation)).
+
+### 3. `CONTAINER_SECRET` environment variable
+
+The container server (`worker/container-server.ts`) requires the `CONTAINER_SECRET` environment variable to be set. Requests to `POST /compile` are rejected with `503 Service Unavailable` if the variable is missing or with `401 Unauthorized` if the header value doesn't match.
+
+Set it locally by adding a line to `.dev.vars`:
+
+```
+CONTAINER_SECRET=your-local-secret
+```
+
+For production, add it as a Worker Secret:
+
+```bash
+npx wrangler secret put CONTAINER_SECRET
+```
+
 ## Current Configuration
 
 ### `wrangler.toml`
@@ -120,6 +164,26 @@ Visit http://localhost:8787 to access:
 - `/metrics` — Request metrics
 
 **Note:** The `ADBLOCK_COMPILER` Durable Object binding is available in local dev, but containers are disabled via `enable_containers = false` in the `[dev]` section of `wrangler.toml`.
+
+### Health Check
+
+Use the `container:health` script to quickly verify that a running container server is healthy:
+
+```bash
+# Check local container (defaults to http://localhost:8787)
+deno task container:health
+
+# Check a deployed container with the compile smoke-test
+deno task container:health -- --url https://adblock-compiler.jayson-knight.workers.dev --secret my-secret
+
+# Override the request timeout
+deno task container:health -- --url http://localhost:8787 --timeout 30
+```
+
+The script:
+1. Hits `GET /health` and validates the response shape (`{ status: "ok", version: string }`) with Zod.
+2. Optionally sends a minimal `POST /compile` smoke-test when `--secret` is provided.
+3. Prints a pass/fail summary and exits with code `0` (all pass) or `1` (any failure).
 
 ## Container Architecture
 
@@ -240,6 +304,24 @@ Error: Container failed to start
 1. Check `npx wrangler containers list` for status
 2. Check container logs with `deno task wrangler:tail`
 3. Verify `Dockerfile.container` builds locally: `docker build -f Dockerfile.container -t test .`
+
+### Image architecture mismatch
+
+If the container starts but immediately crashes (or Cloudflare reports an image error), the image was likely built for the wrong CPU architecture.
+
+**Cause:** The `FROM` line in `Dockerfile.container` is missing the `--platform=linux/amd64` flag. Builds on Apple Silicon or ARM CI runners default to `arm64`, which Cloudflare Containers cannot run.
+
+**Solution:** Ensure `Dockerfile.container` uses:
+```dockerfile
+FROM --platform=linux/amd64 denoland/deno:${DENO_VERSION}
+```
+Then rebuild and redeploy.
+
+### Container request body rejected (400 / 503)
+
+- **503 Service Unavailable** — `CONTAINER_SECRET` is not set in the container environment. Add it to `.dev.vars` for local dev or run `npx wrangler secret put CONTAINER_SECRET` for production.
+- **401 Unauthorized** — The `X-Container-Secret` header sent by the Worker doesn't match `CONTAINER_SECRET`. Ensure both sides use the same value.
+- **400 Bad Request with JSON details** — The request body failed Zod schema validation. Inspect the `details` field in the JSON response for field-level error messages.
 
 ### Module not found errors
 
