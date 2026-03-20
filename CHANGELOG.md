@@ -118,6 +118,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.69.1] - 2026-03-20
+
+### Added### Fixed
+
+- remove unused ContainerCompileRequest type alias (TS6196)
+- apply reviewer feedback on container config changes
+- address all five Cloudflare container configuration issues
+
+
 ## [0.69.0] - 2026-03-20
 
 ### Added- ConfigurationManager abstraction (#1208)
