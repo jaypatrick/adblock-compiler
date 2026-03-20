@@ -23,7 +23,7 @@
  * prefixes, structured output, Deno.exit(1) on failure.
  */
 
-import { parseArgs } from '@std/cli';
+import { parseArgs } from '@std/cli/parse-args';
 import { z } from 'zod';
 
 // ─── CLI flags ───────────────────────────────────────────────────────────────
@@ -118,12 +118,19 @@ async function smokeTestCompile(secret: string): Promise<boolean> {
     const url = `${BASE_URL}/compile`;
     console.log(`🔍 Smoke-testing compile endpoint: ${url}`);
 
-    // Minimal valid configuration — a single trivial filter rule.
+    // Use a payload that is guaranteed to produce a valid compile result:
+    // one source whose content is supplied via preFetchedContent so no network
+    // fetch is required and the response is always a 200 with rule text.
+    const smokeFilterUrl = 'https://example.com/smoke-test-filters.txt';
+    const smokeFilterContent = '||smoke-test.example.com^';
     const payload = {
         configuration: {
             name: 'health-check',
             version: '1.0.0',
-            sources: [],
+            sources: [{ source: smokeFilterUrl }],
+        },
+        preFetchedContent: {
+            [smokeFilterUrl]: smokeFilterContent,
         },
     };
 
@@ -144,14 +151,21 @@ async function smokeTestCompile(secret: string): Promise<boolean> {
         return false;
     }
 
-    // Accept 200 (success) or 400 (schema validation hit our minimal payload —
-    // still means the server is up and running correctly).
-    if (res.status !== 200 && res.status !== 400) {
-        console.error(`❌ Compile smoke-test returned unexpected HTTP ${res.status} ${res.statusText}`);
+    // Require 200: a valid payload should always compile successfully.
+    // Treating 400 as a pass would mask regressions in schema validation.
+    if (res.status !== 200) {
+        const body = await res.text().catch(() => '(unreadable)');
+        console.error(`❌ Compile smoke-test returned HTTP ${res.status} ${res.statusText}: ${body}`);
         return false;
     }
 
-    console.log(`✅ Compile smoke-test passed — HTTP ${res.status}`);
+    const text = await res.text().catch(() => '');
+    if (!text.trim()) {
+        console.error('❌ Compile smoke-test returned an empty response body');
+        return false;
+    }
+
+    console.log(`✅ Compile smoke-test passed — HTTP 200, ${text.trim().split('\n').length} rule(s) returned`);
     return true;
 }
 

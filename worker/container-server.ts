@@ -16,7 +16,7 @@
  */
 
 import { WorkerCompiler } from '../src/platform/index.ts';
-import type { IConfiguration } from '../src/types/index.ts';
+import { ConfigurationSchema } from '../src/configuration/index.ts';
 import { VERSION } from '../src/version.ts';
 import { z } from 'zod';
 
@@ -30,10 +30,12 @@ const PORT = parseInt(Deno.env.get('PORT') ?? '8787', 10);
  * instead of a generic string error that is hard to act on.
  */
 const ContainerCompileRequestSchema = z.object({
-    configuration: z.record(z.unknown()).refine((val) => val !== null, {
-        message: 'configuration must be a non-null object',
-    }),
-    preFetchedContent: z.record(z.string()).optional(),
+    // Validate configuration against the full IConfiguration schema so invalid
+    // configs produce a 400 (field-level detail) rather than a 500 from the
+    // compiler.  Using ConfigurationSchema here keeps runtime and type-level
+    // definitions in sync and avoids an unsafe `as IConfiguration` cast.
+    configuration: ConfigurationSchema,
+    preFetchedContent: z.record(z.string(), z.string()).optional(),
 });
 
 /**
@@ -102,7 +104,7 @@ export async function handler(request: Request): Promise<Response> {
             const compiler = new WorkerCompiler({
                 preFetchedContent: body.preFetchedContent,
             });
-            const rules = await compiler.compile(body.configuration as IConfiguration);
+            const rules = await compiler.compile(body.configuration);
             const output = rules.join('\n');
             return new Response(output, {
                 headers: { 'Content-Type': 'text/plain; charset=utf-8' },
