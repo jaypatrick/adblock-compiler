@@ -117,15 +117,14 @@ Deno.test('my handler test', async () => {
 Tests run automatically in GitHub Actions (`ci.yml`) on push to `main`, pull requests, and workflow dispatch:
 
 1. **Deno tests** — `deno task test:src` + `deno task test:worker`
-2. **Frontend Vitest** — `pnpm --filter frontend test`
+2. **Frontend Vitest** — `pnpm --filter adblock-compiler-frontend run test`
 3. **Wrangler verify** — `wrangler deploy --dry-run` (retried up to 3× with 15s backoff)
 
 ## Coverage Targets
 
 | Metric | Threshold |
 |--------|-----------|
-| Patch coverage (new code) | ≥ 70% |
-| Overall coverage drop | ≤ 2% |
+| Patch coverage (new code) | ≥ 80% |
 
 ```bash
 # Generate coverage
@@ -133,9 +132,6 @@ deno task test:coverage
 
 # HTML report
 deno coverage coverage --html --include="^file:"
-
-# LCOV for CI
-deno coverage coverage --lcov --output=coverage.lcov --include="^file:"
 ```
 
 ## Writing New Tests
