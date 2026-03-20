@@ -225,3 +225,92 @@ Deno.test('handleConfigurationResolve — array override returns 400', async () 
     assertEquals(body.success, false);
     assertExists(body.error);
 });
+
+Deno.test('handleConfigurationResolve — applyEnvOverrides not provided defaults to true', async () => {
+    // Without applyEnvOverrides in the body it should default to true (env applied).
+    // In a test environment without ADBLOCK_CONFIG_* vars, the result should be the same.
+    const req = makeRequest('POST', {
+        config: VALID_CONFIG,
+        // applyEnvOverrides intentionally omitted
+    }, 'http://localhost/api/configuration/resolve');
+    const res = await handleConfigurationResolve(req, makeEnv());
+    assertEquals(res.status, 200);
+    const body = await res.json() as { success: boolean; config: { name: string } };
+    assertEquals(body.success, true);
+    assertEquals(body.config.name, 'Test List');
+});
+
+Deno.test('handleConfigurationResolve — applyEnvOverrides: true explicitly uses env source', async () => {
+    const req = makeRequest('POST', {
+        config: VALID_CONFIG,
+        applyEnvOverrides: true,
+    }, 'http://localhost/api/configuration/resolve');
+    const res = await handleConfigurationResolve(req, makeEnv());
+    assertEquals(res.status, 200);
+    const body = await res.json() as { success: boolean; config: { name: string } };
+    assertEquals(body.success, true);
+    // Without ADBLOCK_CONFIG_* env vars, name stays as VALID_CONFIG.name
+    assertEquals(body.config.name, 'Test List');
+});
+
+Deno.test('handleConfigurationValidate — returns 200 with valid: false for empty sources array', async () => {
+    const req = makeRequest('POST', { config: { name: 'Valid Name', sources: [] } });
+    const res = await handleConfigurationValidate(req, makeEnv());
+    assertEquals(res.status, 200);
+    const body = await res.json() as { success: boolean; valid: boolean; errors?: unknown[] };
+    assertEquals(body.success, true);
+    assertEquals(body.valid, false);
+    assertEquals(Array.isArray(body.errors), true);
+});
+
+Deno.test('handleConfigurationValidate — returns 200 with valid: true for config with optional fields', async () => {
+    const req = makeRequest('POST', {
+        config: {
+            ...VALID_CONFIG,
+            description: 'A test list',
+            homepage: 'https://example.com',
+            license: 'MIT',
+            version: '1.0.0',
+        },
+    });
+    const res = await handleConfigurationValidate(req, makeEnv());
+    assertEquals(res.status, 200);
+    const body = await res.json() as { success: boolean; valid: boolean };
+    assertEquals(body.success, true);
+    assertEquals(body.valid, true);
+});
+
+Deno.test('handleConfigurationResolve — override with multiple fields all applied', async () => {
+    const req = makeRequest('POST', {
+        config: VALID_CONFIG,
+        override: { name: 'Merged Name', description: 'Merged Desc' },
+        applyEnvOverrides: false,
+    }, 'http://localhost/api/configuration/resolve');
+    const res = await handleConfigurationResolve(req, makeEnv());
+    assertEquals(res.status, 200);
+    const body = await res.json() as { success: boolean; config: { name: string; description: string } };
+    assertEquals(body.success, true);
+    assertEquals(body.config.name, 'Merged Name');
+    assertEquals(body.config.description, 'Merged Desc');
+});
+
+Deno.test('handleConfigurationResolve — validation errors include path/message/code', async () => {
+    const req = makeRequest('POST', {
+        config: { name: '' },
+        applyEnvOverrides: false,
+    }, 'http://localhost/api/configuration/resolve');
+    const res = await handleConfigurationResolve(req, makeEnv());
+    assertEquals(res.status, 400);
+    const body = await res.json() as {
+        success: boolean;
+        error: string;
+        errors?: { path: string; message: string; code: string }[];
+    };
+    assertEquals(body.success, false);
+    assertExists(body.error);
+    assertEquals(Array.isArray(body.errors), true);
+    if (body.errors && body.errors.length > 0) {
+        assertExists(body.errors[0].message);
+        assertExists(body.errors[0].code);
+    }
+});
