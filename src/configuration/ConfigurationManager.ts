@@ -110,7 +110,25 @@ export class ConfigurationManager {
     async load(): Promise<IConfiguration> {
         const applyEnv = this.options.applyEnvOverrides !== false;
 
-        const pipeline: IConfigurationSource[] = applyEnv ? [...this.sources, new EnvConfigurationSource()] : [...this.sources];
+        let pipeline: IConfigurationSource[];
+        if (applyEnv) {
+            // Env overrides sit between base sources and any explicit override sources so that
+            // OverrideConfigurationSource / CliConfigurationSource take the highest precedence.
+            // Both source types validate their input at construction time (OverrideConfigurationSource
+            // requires a non-null JSON object; CliConfigurationSource is built from validated CLI args).
+            const baseSources: IConfigurationSource[] = [];
+            const overrideSources: IConfigurationSource[] = [];
+            for (const source of this.sources) {
+                if (source instanceof OverrideConfigurationSource || source instanceof CliConfigurationSource) {
+                    overrideSources.push(source);
+                } else {
+                    baseSources.push(source);
+                }
+            }
+            pipeline = [...baseSources, new EnvConfigurationSource(), ...overrideSources];
+        } else {
+            pipeline = [...this.sources];
+        }
 
         // Collect partials from all sources in pipeline order
         const partials: Partial<IConfiguration>[] = [];
@@ -248,6 +266,9 @@ export class ConfigurationManager {
     static deepMerge(partials: Partial<IConfiguration>[]): Partial<IConfiguration> {
         const result: Partial<IConfiguration> = {};
         for (const partial of partials) {
+            if (partial === null || partial === undefined || typeof partial !== 'object' || Array.isArray(partial)) {
+                continue;
+            }
             for (const [key, value] of Object.entries(partial)) {
                 if (value !== undefined) {
                     (result as Record<string, unknown>)[key] = value;

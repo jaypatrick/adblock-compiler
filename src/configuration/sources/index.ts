@@ -174,11 +174,20 @@ export class OverrideConfigurationSource implements IConfigurationSource {
     private readonly parsed: Partial<IConfiguration>;
 
     constructor(json: string) {
+        let parsed: unknown;
         try {
-            this.parsed = JSON.parse(json) as Partial<IConfiguration>;
+            parsed = JSON.parse(json);
         } catch {
             throw new Error(`--override value is not valid JSON: ${json}`);
         }
+
+        if (parsed === null || Array.isArray(parsed) || typeof parsed !== 'object') {
+            throw new Error(
+                `--override JSON must be an object (e.g. {"key":"value"}), but received: ${json}`,
+            );
+        }
+
+        this.parsed = parsed as Partial<IConfiguration>;
     }
 
     async load(): Promise<Partial<IConfiguration>> {

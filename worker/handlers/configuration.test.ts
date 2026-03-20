@@ -314,3 +314,39 @@ Deno.test('handleConfigurationResolve — validation errors include path/message
         assertExists(body.errors[0].code);
     }
 });
+
+Deno.test('handleConfigurationResolve — null config returns 400 with clean error', async () => {
+    const req = makeRequest('POST', {
+        config: null,
+        applyEnvOverrides: false,
+    }, 'http://localhost/api/configuration/resolve');
+    const res = await handleConfigurationResolve(req, makeEnv());
+    assertEquals(res.status, 400);
+    const body = await res.json() as { success: boolean; error: string };
+    assertEquals(body.success, false);
+    assertExists(body.error);
+});
+
+Deno.test('handleConfigurationResolve — scalar config returns 400 with clean error', async () => {
+    const req = makeRequest('POST', {
+        config: 42,
+        applyEnvOverrides: false,
+    }, 'http://localhost/api/configuration/resolve');
+    const res = await handleConfigurationResolve(req, makeEnv());
+    assertEquals(res.status, 400);
+    const body = await res.json() as { success: boolean; error: string };
+    assertEquals(body.success, false);
+    assertExists(body.error);
+});
+
+Deno.test('handleConfigurationResolve — array config returns 400 with clean error', async () => {
+    const req = makeRequest('POST', {
+        config: ['not', 'an', 'object'],
+        applyEnvOverrides: false,
+    }, 'http://localhost/api/configuration/resolve');
+    const res = await handleConfigurationResolve(req, makeEnv());
+    assertEquals(res.status, 400);
+    const body = await res.json() as { success: boolean; error: string };
+    assertEquals(body.success, false);
+    assertExists(body.error);
+});
