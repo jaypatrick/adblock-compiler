@@ -559,9 +559,8 @@ class SamplingDiagnosticsCollector extends DiagnosticsCollector {
 
 **Recommendation**:
 
-1. Add Codecov integration to CI workflow
-2. Generate coverage badge for README
-3. Track coverage trends over time
+1. Generate coverage badge for README
+2. Track coverage trends over time
 
 #### 🐛 BUG-009: E2E tests require running server
 

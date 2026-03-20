@@ -161,7 +161,6 @@ This ensures:
 
 ### CI Workflow
 
-- `CODECOV_TOKEN` - For uploading test coverage (optional)
 - `CLOUDFLARE_API_TOKEN` - For Cloudflare deployments (optional)
 - `CLOUDFLARE_ACCOUNT_ID` - For Cloudflare deployments (optional)
 

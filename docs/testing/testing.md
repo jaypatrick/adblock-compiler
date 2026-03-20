@@ -118,8 +118,7 @@ Tests run automatically in GitHub Actions (`ci.yml`) on push to `main`, pull req
 
 1. **Deno tests** — `deno task test:src` + `deno task test:worker`
 2. **Frontend Vitest** — `pnpm --filter frontend test`
-3. **Coverage upload** — Codecov with 70% patch target, 2% overall drop threshold
-4. **Wrangler verify** — `wrangler deploy --dry-run` (retried up to 3× with 15s backoff)
+3. **Wrangler verify** — `wrangler deploy --dry-run` (retried up to 3× with 15s backoff)
 
 ## Coverage Targets
 
@@ -143,7 +142,6 @@ deno coverage coverage --lcov --output=coverage.lcov --include="^file:"
 
 > **Mandatory rule: every code change ships with tests — no exceptions.**
 > New source file → new test file. Modified logic → updated tests for the affected code path.
-> Codecov enforces ≥ 70% patch coverage on every PR and will fail the status check if the gate is not met.
 
 ### Test File Template
 

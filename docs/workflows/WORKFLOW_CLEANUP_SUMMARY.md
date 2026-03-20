@@ -113,7 +113,6 @@ These workflows had overlapping functionality:
 - `WARP_AGENT_PROFILE` - Repository variable can be removed
 
 **Secrets Still Required:**
-- `CODECOV_TOKEN` - Optional for code coverage reports
 - `CLOUDFLARE_API_TOKEN` - Required for Cloudflare deployments
 - `CLOUDFLARE_ACCOUNT_ID` - Required for Cloudflare deployments
 
