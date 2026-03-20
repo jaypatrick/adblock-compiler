@@ -17,17 +17,13 @@ import type { DiagnosticsBreadcrumb, DiagnosticsLevel, DiagnosticsUser, IDiagnos
 
 // Dynamic import keeps the module graph valid in environments where
 // @sentry/cloudflare is not installed (e.g., Deno unit tests).
-// The module specifier is kept in a variable so bundlers (esbuild/wrangler)
-// do not attempt to statically resolve '@sentry/cloudflare' at build time.
 // deno-lint-ignore no-explicit-any
 let SentryModule: any = null;
 
 // deno-lint-ignore no-explicit-any
 async function getSentry(): Promise<any> {
     if (!SentryModule) {
-        // deno-lint-ignore no-explicit-any
-        const mod = '@sentry/cloudflare' as any;
-        SentryModule = await import(mod);
+        SentryModule = await import('@sentry/cloudflare');
     }
     return SentryModule;
 }
