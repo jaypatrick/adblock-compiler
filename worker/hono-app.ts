@@ -727,9 +727,10 @@ routes.get('*', async (c) => {
 //
 // Design note: double-mounting the same sub-app causes its middleware to run twice
 // for /api/* requests — once via the /api mount (path stripped) and once via the /
-// mount (full path).  The ZTA middleware guards against this with `_routesMiddlewareRan`,
-// and both middleware layers normalise the path by stripping any /api prefix so the
-// permission registry is consulted with the canonical path (e.g. /health, not /api/health).
+// mount (full path).  Upstream ZTA middleware MUST ensure any permission checks or
+// usage tracking are effectively applied once per request, and both middleware layers
+// normalise the path by stripping any /api prefix so the permission registry is
+// consulted with the canonical path (e.g. /health, not /api/health).
 //
 // /api is registered first so that /api/* requests get correct Hono prefix-stripping
 // before the root-mount sub-app can intercept them as unrecognised paths.

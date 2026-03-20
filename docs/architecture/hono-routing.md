@@ -24,9 +24,9 @@ flowchart TD
     POC -->|no| PREAUTH{Pre-auth path?\n/api/version etc.}
     PREAUTH -->|yes| PREAUTHRL[Anonymous rate limit]
     PREAUTHRL --> PREAUTHROUTE[Route to info handler]
-    PREAUTH -->|no| AUTH[3. Unified Auth\nauthenticateRequestUnified]
-    AUTH --> CORS[4. CORS middleware\nhono/cors]
-    CORS --> SECURE[5. Secure Headers\nhono/secure-headers]
+    PREAUTH -->|no| AUTH[2b. Unified Auth\nauthenticateRequestUnified]
+    AUTH --> CORS[3. CORS middleware\nhono/cors]
+    CORS --> SECURE[4. Secure Headers\nhono/secure-headers]
     SECURE --> ZTA[ZTA: checkUserApiAccess\n+ trackApiUsage]
     ZTA --> PERM[Permission check\ncheckRoutePermission]
     PERM -->|denied| SEC[Security event + 403]
@@ -57,8 +57,10 @@ as `/api/compile`, `/api/rules`, etc.
 Hono's `app.route()` is used to mount the same `routes` sub-app under both `/` and `/api`:
 
 ```typescript
-app.route('/', routes);
+// /api is mounted first — ensures correct prefix-stripping for /api/* requests
+// before the root-mount sub-app intercepts them as unrecognised paths.
 app.route('/api', routes);
+app.route('/', routes);
 ```
 
 This means `/compile` and `/api/compile` both reach the same handler. No path-stripping
