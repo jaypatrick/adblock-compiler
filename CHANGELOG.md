@@ -117,6 +117,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.69.0] - 2026-03-20
+
+### Added- ConfigurationManager abstraction (#1208)
+
+### Fixed
+
+- CI failures - reorder transformations (Deduplicate before Compress) and apply deno fmt
+- address ConfigurationManager review feedback - env precedence, validation guards, CLI re-validation
+- resolve CI failures (missing SourceType import, IConfigurationSource type annotation, z.record key type, deno fmt)
+- address ConfigurationManager PR review feedback with tests and docs
+
+
 ## [0.68.2] - 2026-03-19
 
 ### Added### Fixed
