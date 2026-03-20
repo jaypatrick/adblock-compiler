@@ -38,7 +38,6 @@ The main CI/CD pipeline runs on every push and pull request to master/main branc
 - Runs `deno lint` and `deno fmt --check`
 - Type checks with `deno check src/index.ts`
 - Runs test suite with coverage
-- Uploads coverage to Codecov
 
 #### 2. **Benchmark** - Performance Benchmarks
 
@@ -204,7 +203,6 @@ git push origin v0.8.0
 
 | Secret                  | Required       | Purpose                      |
 | ----------------------- | -------------- | ---------------------------- |
-| `CODECOV_TOKEN`         | Optional       | Upload code coverage reports |
 | `CLOUDFLARE_API_TOKEN`  | For deployment | Cloudflare API access        |
 | `CLOUDFLARE_ACCOUNT_ID` | For deployment | Cloudflare account ID        |
 

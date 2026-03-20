@@ -84,7 +84,7 @@ Last Updated: 2026-02-11
 #### BUG-008: No public coverage reports
 
 **Impact**: Unknown test coverage
-**Fix**: Add Codecov integration
+**Fix**: Publish coverage reports (e.g., HTML artifacts) via CI
 
 #### BUG-009: E2E tests require running server
 

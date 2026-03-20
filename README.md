@@ -5,7 +5,6 @@
 [![CI/CD Pipeline](https://github.com/jaypatrick/adblock-compiler/actions/workflows/ci.yml/badge.svg)](https://github.com/jaypatrick/adblock-compiler/actions/workflows/ci.yml)
 [![Docker](https://github.com/jaypatrick/adblock-compiler/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/jaypatrick/adblock-compiler/actions/workflows/docker-publish.yml)
 [![Build & Deploy mdBook](https://github.com/jaypatrick/adblock-compiler/actions/workflows/mdbook.yml/badge.svg)](https://github.com/jaypatrick/adblock-compiler/actions/workflows/mdbook.yml)
-[![codecov](https://codecov.io/gh/jaypatrick/adblock-compiler/branch/main/graph/badge.svg?token=LC5EYHK71O)](https://codecov.io/gh/jaypatrick/adblock-compiler)
 
 <!-- Package & Release -->
 

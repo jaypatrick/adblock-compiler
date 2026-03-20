@@ -182,7 +182,7 @@ Run `deno task fmt` to automatically format your code.
 
 - **Location**: Co-locate tests with source files (`*.test.ts` for Deno, `*.spec.ts` for Angular)
 - **Framework**: Deno native (`@std/assert`) for `src/` and `worker/`; Vitest + Angular TestBed for `frontend/`
-- **Coverage target**: ≥ 80% patch coverage on every PR (enforced by Codecov)
+- **Coverage target**: ≥ 80% patch coverage on every PR
 - **Pattern**: Follow the `makeEnv(overrides)` fixture pattern; use in-memory KV/DB stubs; never call real Cloudflare bindings in unit tests
 - **Commands**:
   ```bash
