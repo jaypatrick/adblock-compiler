@@ -39,13 +39,6 @@ const ContainerCompileRequestSchema = z.object({
 });
 
 /**
- * Request body accepted by `POST /compile`.
- * Derived directly from the Zod schema so the runtime and type-level
- * definitions cannot drift apart.
- */
-type ContainerCompileRequest = z.infer<typeof ContainerCompileRequestSchema>;
-
-/**
  * HTTP handler for the container server.
  *
  * Routes:
