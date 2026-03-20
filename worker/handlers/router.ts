@@ -43,6 +43,7 @@ import { handleAdminAuthConfig } from './auth-config.ts';
 import { handleAdminGetUserUsage } from './admin-usage.ts';
 import { handlePrometheusMetrics } from './prometheus-metrics.ts';
 import { handleMetrics } from './metrics.ts';
+import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './configuration.ts';
 
 // Agent routing
 import { routeAgentRequest } from '../agent-routing.ts';
@@ -371,6 +372,31 @@ export async function handleRequest(
         const sz = await validateRequestSize(request, env);
         if (!sz.valid) return payloadTooLarge(sz.error || 'Request body too large');
         return handleValidateRule(request, env);
+    }
+
+    // Configuration management
+    if (routePath === '/configuration/defaults' && request.method === 'GET') {
+        const rl = await checkRateLimitTiered(env, ip, authContext);
+        if (!rl.allowed) return JsonResponse.rateLimited(RATE_LIMIT_WINDOW);
+        return handleConfigurationDefaults(request, env);
+    }
+    if (routePath === '/configuration/validate' && request.method === 'POST') {
+        const rl = await checkRateLimitTiered(env, ip, authContext);
+        if (!rl.allowed) return JsonResponse.rateLimited(RATE_LIMIT_WINDOW);
+        const sz = await validateRequestSize(request, env);
+        if (!sz.valid) return payloadTooLarge(sz.error || 'Request body too large');
+        const tsError = await checkTurnstile(request, env, ip);
+        if (tsError) return tsError;
+        return handleConfigurationValidate(request, env);
+    }
+    if (routePath === '/configuration/resolve' && request.method === 'POST') {
+        const rl = await checkRateLimitTiered(env, ip, authContext);
+        if (!rl.allowed) return JsonResponse.rateLimited(RATE_LIMIT_WINDOW);
+        const sz = await validateRequestSize(request, env);
+        if (!sz.valid) return payloadTooLarge(sz.error || 'Request body too large');
+        const tsError = await checkTurnstile(request, env, ip);
+        if (tsError) return tsError;
+        return handleConfigurationResolve(request, env);
     }
 
     // Rules management (requires auth)

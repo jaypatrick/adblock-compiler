@@ -11,6 +11,21 @@
  */
 export { ConfigurationValidator } from './ConfigurationValidator.ts';
 
+// ConfigurationManager – unified load/merge/validate orchestrator
+export {
+    CliConfigurationSource,
+    ConfigurationManager,
+    ConfigurationValidationError,
+    EnvConfigurationSource,
+    FileConfigurationSource,
+    ObjectConfigurationSource,
+    OverrideConfigurationSource,
+} from './ConfigurationManager.ts';
+export type {
+    IConfigurationSource,
+    ManagerOptions,
+} from './ConfigurationManager.ts';
+
 // Zod schemas for runtime validation
 export {
     AdblockRuleSchema,
