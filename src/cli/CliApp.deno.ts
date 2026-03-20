@@ -449,8 +449,7 @@ Examples:
             let config = await mgr.load();
 
             // Determine whether any CLI overlays need to be applied post-load.
-            const hasCliOverlays =
-                this.hasAnyTransformationFlags() ||
+            const hasCliOverlays = this.hasAnyTransformationFlags() ||
                 this.args.exclude?.length ||
                 this.args['exclude-from']?.length ||
                 this.args.include?.length ||

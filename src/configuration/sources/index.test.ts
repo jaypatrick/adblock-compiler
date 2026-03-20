@@ -8,13 +8,7 @@
  */
 
 import { assertEquals, assertRejects, assertThrows } from '@std/assert';
-import {
-    CliConfigurationSource,
-    EnvConfigurationSource,
-    FileConfigurationSource,
-    ObjectConfigurationSource,
-    OverrideConfigurationSource,
-} from './index.ts';
+import { CliConfigurationSource, EnvConfigurationSource, FileConfigurationSource, ObjectConfigurationSource, OverrideConfigurationSource } from './index.ts';
 import type { IFileSystem } from '../../types/index.ts';
 import { SourceType } from '../../types/index.ts';
 

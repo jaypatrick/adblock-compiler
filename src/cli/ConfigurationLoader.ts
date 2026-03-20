@@ -58,13 +58,14 @@ export class ConfigurationLoader {
             type: sourceType,
         }));
 
-        // Default transformations for command-line mode
+        // Default transformations for command-line mode.
+        // Deduplicate must appear before Compress (schema constraint).
         const transformations: TransformationType[] = [
             'RemoveComments' as TransformationType,
+            'Deduplicate' as TransformationType,
             'Compress' as TransformationType,
             'RemoveModifiers' as TransformationType,
             'Validate' as TransformationType,
-            'Deduplicate' as TransformationType,
             'TrimLines' as TransformationType,
             'InsertFinalNewLine' as TransformationType,
         ];
