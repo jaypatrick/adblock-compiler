@@ -18,7 +18,8 @@ import {
 } from '../types/index.ts';
 import { FilterCompiler, FilterCompilerOptions } from '../compiler/index.ts';
 import type { DownloaderOptions } from '../downloader/index.ts';
-import { ConfigurationSchema } from '../configuration/index.ts';
+import { ConfigurationManager, FileConfigurationSource, ObjectConfigurationSource, OverrideConfigurationSource } from '../configuration/index.ts';
+import type { IConfigurationSource } from '../configuration/index.ts';
 import { formatDuration } from '../utils/index.ts';
 
 // Log level constants
@@ -85,6 +86,13 @@ interface ICliArgs {
     'api-key'?: string;
     'bearer-token'?: string;
     'api-url'?: string;
+    // Configuration management
+    /** Disable ADBLOCK_CONFIG_* environment variable overrides. */
+    'no-env-overrides'?: boolean;
+    /** Inline JSON overlay applied at highest precedence (e.g. for CI/CD). */
+    override?: string;
+    /** Print the fully-resolved effective configuration as JSON, then exit. */
+    'dump-config'?: boolean;
 }
 
 /**
@@ -276,6 +284,12 @@ Authentication:
       --api-url <url>          Base URL for the worker API [default: http://localhost:8787]
                                Used with --use-queue for remote compilation
 
+Configuration management:
+      --no-env-overrides       Disable ADBLOCK_CONFIG_* environment variable overrides
+      --override <json>        Inline JSON overlay applied at highest precedence (e.g. CI/CD)
+                               Example: --override '{"name":"My Build"}'
+      --dump-config            Print the fully-resolved effective configuration as JSON, then exit
+
 Examples:
   adblock-compiler -c config.json -o output.txt
       compile a blocklist and write the output to output.txt
@@ -302,7 +316,7 @@ Examples:
      */
     private parseArgs(argv: string[]): ICliArgs {
         const parsed = parseArgs(argv, {
-            string: ['config', 'input-type', 'output', 'format', 'name', 'user-agent', 'priority', 'api-key', 'bearer-token', 'api-url'],
+            string: ['config', 'input-type', 'output', 'format', 'name', 'user-agent', 'priority', 'api-key', 'bearer-token', 'api-url', 'override'],
             boolean: [
                 'verbose',
                 'benchmark',
@@ -320,6 +334,8 @@ Examples:
                 'remove-modifiers',
                 'allow-ip',
                 'convert-to-ascii',
+                'no-env-overrides',
+                'dump-config',
             ],
             collect: ['input', 'transformation', 'exclude', 'exclude-from', 'include', 'include-from'],
             alias: {
@@ -388,6 +404,9 @@ Examples:
             'api-key': parsed['api-key'],
             'bearer-token': parsed['bearer-token'],
             'api-url': parsed['api-url'] ?? 'http://localhost:8787',
+            'no-env-overrides': parsed['no-env-overrides'],
+            override: parsed.override,
+            'dump-config': parsed['dump-config'],
         };
     }
 
@@ -409,40 +428,63 @@ Examples:
     }
 
     /**
-     * Reads the configuration file using Deno's file system API.
+     * Reads and resolves the configuration file using ConfigurationManager.
+     *
+     * Supports:
+     *  - `--no-env-overrides` — disables ADBLOCK_CONFIG_* environment variables
+     *  - `--override <json>`  — applies a highest-priority JSON overlay
+     *  - `--dump-config`      — prints the resolved config and exits
      */
     private async readConfig(): Promise<IConfiguration> {
         this.logger.debug(`Reading configuration from ${this.args.config}`);
 
         try {
-            const configStr = await Deno.readTextFile(this.args.config!);
-            const configData = JSON.parse(configStr);
+            const baseSources = [new FileConfigurationSource(this.args.config!)];
+            const managerSources = this.args.override ? [...baseSources, new OverrideConfigurationSource(this.args.override)] : baseSources;
 
-            const result = ConfigurationSchema.safeParse(configData);
-            if (!result.success) {
-                const issues = result.error.issues.map((i) => `  ${i.path.join('.')}: ${i.message}`).join('\n');
-                throw new Error(`Invalid configuration file:\n${issues}`);
+            const mgr = ConfigurationManager.fromSources(managerSources, {
+                applyEnvOverrides: !this.args['no-env-overrides'],
+            });
+
+            let config = await mgr.load();
+
+            // Determine whether any CLI overlays need to be applied post-load.
+            const hasCliOverlays = this.hasAnyTransformationFlags() ||
+                this.args.exclude?.length ||
+                this.args['exclude-from']?.length ||
+                this.args.include?.length ||
+                this.args['include-from']?.length;
+
+            if (hasCliOverlays) {
+                // Build the overlaid config object by applying CLI-provided changes.
+                let overlaidConfig: Partial<typeof config> = { ...config };
+
+                if (this.hasAnyTransformationFlags()) {
+                    overlaidConfig = { ...overlaidConfig, transformations: this.buildTransformations(config.transformations) };
+                }
+                if (this.args.exclude?.length) {
+                    overlaidConfig = { ...overlaidConfig, exclusions: [...(config.exclusions ?? []), ...this.args.exclude] };
+                }
+                if (this.args['exclude-from']?.length) {
+                    overlaidConfig = { ...overlaidConfig, exclusions_sources: [...(config.exclusions_sources ?? []), ...this.args['exclude-from']] };
+                }
+                if (this.args.include?.length) {
+                    overlaidConfig = { ...overlaidConfig, inclusions: [...(config.inclusions ?? []), ...this.args.include] };
+                }
+                if (this.args['include-from']?.length) {
+                    overlaidConfig = { ...overlaidConfig, inclusions_sources: [...(config.inclusions_sources ?? []), ...this.args['include-from']] };
+                }
+
+                // Re-run through ConfigurationManager to enforce limits and re-validate.
+                config = await ConfigurationManager.fromSources(
+                    [new ObjectConfigurationSource(overlaidConfig)],
+                    { applyEnvOverrides: false },
+                ).load();
             }
 
-            const config = result.data;
-
-            // Apply CLI transformation overrides when any transformation flag is provided
-            if (this.hasAnyTransformationFlags()) {
-                config.transformations = this.buildTransformations(config.transformations);
-            }
-
-            // Apply CLI filtering overlays
-            if (this.args.exclude?.length) {
-                config.exclusions = [...(config.exclusions ?? []), ...this.args.exclude];
-            }
-            if (this.args['exclude-from']?.length) {
-                config.exclusions_sources = [...(config.exclusions_sources ?? []), ...this.args['exclude-from']];
-            }
-            if (this.args.include?.length) {
-                config.inclusions = [...(config.inclusions ?? []), ...this.args.include];
-            }
-            if (this.args['include-from']?.length) {
-                config.inclusions_sources = [...(config.inclusions_sources ?? []), ...this.args['include-from']];
+            if (this.args['dump-config']) {
+                console.log(JSON.stringify(config, null, 2));
+                Deno.exit(0);
             }
 
             return config;
@@ -530,9 +572,14 @@ Examples:
     }
 
     /**
-     * Creates a configuration from CLI input arguments.
+     * Creates a configuration from CLI input arguments using ConfigurationManager.
+     *
+     * Supports:
+     *  - `--no-env-overrides` — disables ADBLOCK_CONFIG_* environment variables
+     *  - `--override <json>`  — applies a highest-priority JSON overlay
+     *  - `--dump-config`      — prints the resolved config and exits
      */
-    private createConfig(): IConfiguration {
+    private async createConfig(): Promise<IConfiguration> {
         const inputType = this.args['input-type'] || 'hosts';
 
         this.logger.debug(`Creating configuration for input ${this.args.input} of type ${inputType}`);
@@ -544,7 +591,7 @@ Examples:
 
         const transformations = this.buildTransformations();
 
-        const config: IConfiguration = {
+        const baseConfig = {
             name: 'Blocklist',
             sources,
             transformations,
@@ -553,6 +600,22 @@ Examples:
             ...(this.args.include?.length && { inclusions: this.args.include }),
             ...(this.args['include-from']?.length && { inclusions_sources: this.args['include-from'] }),
         };
+
+        const managerSources: IConfigurationSource[] = [new ObjectConfigurationSource(baseConfig)];
+        if (this.args.override) {
+            managerSources.push(new OverrideConfigurationSource(this.args.override));
+        }
+
+        const mgr = ConfigurationManager.fromSources(managerSources, {
+            applyEnvOverrides: !this.args['no-env-overrides'],
+        });
+
+        const config = await mgr.load();
+
+        if (this.args['dump-config']) {
+            console.log(JSON.stringify(config, null, 2));
+            Deno.exit(0);
+        }
 
         return config;
     }
@@ -623,7 +686,7 @@ Examples:
             this.initCompiler();
 
             // Get configuration
-            const config = this.args.input ? this.createConfig() : await this.readConfig();
+            const config = this.args.input ? await this.createConfig() : await this.readConfig();
 
             this.logger.debug(`Configuration: ${JSON.stringify(config, null, 4)}`);
 
