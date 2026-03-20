@@ -76,3 +76,20 @@ Every auth failure, rate limit hit, Turnstile rejection, and CF Access denial MU
 - Don't access protected routes without a functional `CanActivateFn` guard
 - Don't attach auth tokens manually in component code — use the HTTP interceptor
 - Don't trust API responses without validation — treat the Worker API as an external untrusted service
+
+## Documentation Standards
+
+### Diagrams and Charts — Mandatory Rule
+
+**ALL diagrams, charts, architecture illustrations, flow diagrams, and any visual representations MUST use Mermaid fenced code blocks (` ```mermaid `). ASCII art diagrams are NEVER acceptable.**
+
+- Use `flowchart` / `graph` for architecture, request flows, and process flows
+- Use `sequenceDiagram` for API call sequences and request/response flows
+- Use `erDiagram` for database schemas and entity relationships
+- Use `classDiagram` for type/class relationships
+- Use `stateDiagram-v2` for state machines
+- Use `gitGraph` for branching strategies
+- Use `C4Context` for system context diagrams
+- NEVER use `+---+`, `|`, `-->` ASCII art, Unicode box-drawing characters (┌┐└┘│─), or any other ASCII/Unicode art in place of a diagram
+
+This rule applies to ALL markdown files: docs/, ideas/, worker/, frontend/, .github/, root-level .md files.

@@ -137,21 +137,16 @@ emitEvent('cache', {
 
 Extend the full AdGuard tool chain with DiffBuilder as the **final publishing stage**:
 
-```
-FiltersCompiler
-    └─ Resolves @include + platform config
-        ↓
-FiltersDownloader
-    └─ Resolves !#if / !#include preprocessor directives
-        ↓
-adblock-compiler
-    └─ AGTree parse → validate → deduplicate → transform
-        ↓
-DiffBuilder
-    └─ buildDiff() → generate RCS patch
-    └─ Patch stored in KV with TTL
-    └─ Clients call applyPatch() for incremental updates
-    └─ Full recompile on patch failure
+```mermaid
+flowchart TD
+    FC["FiltersCompiler\nResolves @include + platform config"]
+    FD["FiltersDownloader\nResolves !#if / !#include preprocessor directives"]
+    AC["adblock-compiler\nAGTree parse → validate → deduplicate → transform"]
+    DB["DiffBuilder\nbuildDiff() → generate RCS patch\nPatch stored in KV with TTL\nClients call applyPatch() for incremental updates\nFull recompile on patch failure"]
+
+    FC --> FD
+    FD --> AC
+    AC --> DB
 ```
 
 ```typescript

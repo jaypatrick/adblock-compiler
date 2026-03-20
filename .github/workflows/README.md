@@ -17,20 +17,25 @@ The main CI/CD pipeline runs on every push and pull request to master/main branc
 
 ### Jobs
 
-```
-┌─────────┐     ┌───────────┐     ┌─────────┐
-│   CI    │────▶│  Build    │────▶│ Docker  │ (main branch only)
-│ (tests) │     │ Artifacts │     │  Image  │
-└─────────┘     └───────────┘     └─────────┘
-     │
-     ├──────────▶ Security ───────▶ Deploy Worker ───▶ Smoke Test
-     │                    └───────▶ Deploy Pages
-     │
-     └──────────▶ Publish (JSR)
+```mermaid
+flowchart LR
+    CI["CI\n(tests)"]
+    Build["Build\nArtifacts"]
+    Docker["Docker Image\n(main branch only)"]
+    Security["Security"]
+    DeployWorker["Deploy Worker"]
+    SmokeTest["Smoke Test"]
+    DeployPages["Deploy Pages"]
+    Publish["Publish (JSR)"]
+    Benchmark["Benchmark\n(runs in parallel)"]
 
-┌───────────┐
-│ Benchmark │ (runs in parallel)
-└───────────┘
+    CI --> Build
+    Build --> Docker
+    CI --> Security
+    Security --> DeployWorker
+    DeployWorker --> SmokeTest
+    Security --> DeployPages
+    CI --> Publish
 ```
 
 #### 1. **CI** - Lint, Test & Type Check

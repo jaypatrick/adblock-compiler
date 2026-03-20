@@ -41,20 +41,16 @@ The Worker fetches source URLs (CORS proxy + cache), returns raw content to the 
 
 ## Architecture
 
-```
-┌──────────────────────────────────────────────────────────────────┐
-│                    Compilation Mode Selector                      │
-│              (already exists in compiler.component.ts)           │
-└──────────────────┬──────────────────┬───────────────────────────┘
-                   │                  │                  │
-                   ▼                  ▼                  ▼
-        ┌──────────────────┐  ┌───────────────┐  ┌──────────────────┐
-        │  Local / Client  │  │  Cloud (API)  │  │  Hybrid          │
-        │  Web Worker +    │  │  Cloudflare   │  │  local transform │
-        │  CORS proxy      │  │  Worker API   │  │  cloud persist   │
-        └──────────────────┘  └───────────────┘  └──────────────────┘
-           Anonymous free       Clerk JWT or         Pro tier
-           no server CPU         API key auth
+```mermaid
+flowchart TD
+    Selector["Compilation Mode Selector\n(already exists in compiler.component.ts)"]
+    Local["Local / Client\nWeb Worker + CORS proxy\nAnonymous free — no server CPU"]
+    Cloud["Cloud (API)\nCloudflare Worker API\nClerk JWT or API key auth"]
+    Hybrid["Hybrid\nlocal transform + cloud persist\nPro tier"]
+
+    Selector --> Local
+    Selector --> Cloud
+    Selector --> Hybrid
 ```
 
 ### CORS Proxy Requirement
