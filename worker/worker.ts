@@ -42,11 +42,8 @@ export class AdblockCompiler extends Container {
     }
 }
 
-// CORS helpers (needed in fetch() before delegation)
-import { getCorsHeaders, getPublicCorsHeaders, handleCorsPreflight, isPublicEndpoint } from './utils/cors.ts';
-
-// Router (all business-logic routing lives here)
-import { handleRequest } from './handlers/router.ts';
+// Hono app (handles routing, CORS, auth)
+import { app } from './hono-app.ts';
 
 // Scheduled cron handler
 import { handleScheduled } from './handlers/scheduled.ts';
@@ -69,15 +66,7 @@ export type { Env };
 // Worker handler
 // ============================================================================
 
-interface WorkerHandler extends ExportedHandler<Env> {
-    _handleRequest(
-        request: Request,
-        env: Env,
-        url: URL,
-        pathname: string,
-        ctx: ExecutionContext,
-    ): Promise<Response>;
-}
+interface WorkerHandler extends ExportedHandler<Env> {}
 
 const workerHandler: WorkerHandler = {
     async fetch(
@@ -88,25 +77,13 @@ const workerHandler: WorkerHandler = {
         const url = new URL(request.url);
         const { pathname } = url;
 
-        if (request.method === 'OPTIONS') {
-            return handleCorsPreflight(request, env);
-        }
-
-        const corsHeaders = isPublicEndpoint(pathname) ? getPublicCorsHeaders() : getCorsHeaders(request, env);
         const diagnostics = createDiagnosticsProvider(env);
         const requestSpan = diagnostics.startSpan(`http.${request.method}`, {
             url: pathname,
         });
 
-        let response: Response;
         try {
-            response = await this._handleRequest(
-                request,
-                env,
-                url,
-                pathname,
-                ctx,
-            );
+            return await app.fetch(request, env, ctx);
         } catch (err) {
             requestSpan.recordException(
                 err instanceof Error ? err : new Error(String(err)),
@@ -123,27 +100,6 @@ const workerHandler: WorkerHandler = {
             requestSpan.end();
             ctx.waitUntil(diagnostics.flush());
         }
-
-        if (response.status === 101) return response;
-
-        const newHeaders = new Headers(response.headers);
-        for (const [k, v] of Object.entries(corsHeaders)) newHeaders.set(k, v);
-        return new Response(response.body, {
-            status: response.status,
-            statusText: response.statusText,
-            headers: newHeaders,
-        });
-    },
-
-    /** @internal Delegates to the router; called by fetch() which wraps the response with CORS headers. */
-    _handleRequest(
-        request: Request,
-        env: Env,
-        url: URL,
-        pathname: string,
-        ctx: ExecutionContext,
-    ): Promise<Response> {
-        return handleRequest(request, env, url, pathname, ctx);
     },
 
     async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {

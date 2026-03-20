@@ -114,14 +114,15 @@ Deno.test('Integration: custom limit via environment variable', async () => {
     assertEquals(largeResult.valid, false);
 });
 
-Deno.test('Integration: router imports validateRequestSize successfully', async () => {
-    // This test verifies that router.ts can be imported and has the correct imports
+Deno.test('Integration: hono-app imports validateRequestSize successfully', async () => {
+    // This test verifies that hono-app.ts can be imported and has the correct imports
+    // (router.ts was deleted in Phase 1 Hono migration; hono-app.ts is the new router)
     try {
         // Just importing the module verifies that all dependencies resolve correctly
-        await import('../router.ts');
+        await import('../hono-app.ts');
         // If we get here, the import succeeded - no explicit assertion needed
     } catch (error) {
         // Fail the test if import fails
-        throw new Error(`Router import failed: ${error instanceof Error ? error.message : String(error)}`);
+        throw new Error(`Hono app import failed: ${error instanceof Error ? error.message : String(error)}`);
     }
 });

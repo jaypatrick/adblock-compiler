@@ -100,7 +100,8 @@
         "jose": "jsr:@panva/jose@^6.2.1",
         "@sentry/cloudflare": "npm:@sentry/cloudflare@^10.43.0",
         "svix": "npm:svix@^1.62.0",
-        "zod": "jsr:@zod/zod@^4.3.6"
+        "zod": "jsr:@zod/zod@^4.3.6",
+        "hono": "npm:hono@^4"
     },
     "lint": {
         "rules": {
