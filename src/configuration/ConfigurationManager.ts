@@ -32,7 +32,7 @@
 import type { IConfiguration, IFileSystem } from '../types/index.ts';
 import { ConfigurationSchema } from './schemas.ts';
 import { VALIDATION_DEFAULTS } from '../config/defaults.ts';
-import type { ZodError } from 'npm:zod';
+import type { ZodError } from 'zod';
 import {
     CliConfigurationSource,
     EnvConfigurationSource,
