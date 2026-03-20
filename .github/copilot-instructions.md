@@ -81,7 +81,7 @@ Every auth failure, rate limit hit, Turnstile rejection, and CF Access denial MU
 
 ### Diagrams and Charts — Mandatory Rule
 
-**ALL diagrams, charts, architecture illustrations, flow diagrams, and any visual representations MUST use Mermaid syntax (` ```mermaid ` fenced code blocks). ASCII art diagrams are NEVER acceptable.**
+**ALL diagrams, charts, architecture illustrations, flow diagrams, and any visual representations MUST use Mermaid fenced code blocks (` ```mermaid `). ASCII art diagrams are NEVER acceptable.**
 
 - Use `flowchart` / `graph` for architecture, request flows, and process flows
 - Use `sequenceDiagram` for API call sequences and request/response flows

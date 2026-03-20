@@ -7,7 +7,7 @@ from lowest to highest priority.
 flowchart TD
     A["1. FileConfigurationSource\n(or ObjectSource, etc.)\n← --config path.json"]
     B["2. EnvConfigurationSource\n← ADBLOCK_CONFIG_* env vars\n(skipped if --no-env-overrides)"]
-    C["3. OverrideConfigurationSrc\n← --override '{\"name\":\"...\"}'\n(optional, highest prio)"]
+    C["3. OverrideConfigurationSource\n← --override '{\"name\":\"...\"}'\n(optional, highest prio)"]
     D["ConfigurationManager.deepMerge(partials)\n· Scalars: last-defined wins\n· Arrays: last-defined fully replaces (no append)\n· undefined values do NOT override defined values"]
     E["Limit enforcement\n· sources.length > MAX_SOURCES(100) → truncate\n· exclusions.length > MAX_EXCLUSIONS(10 000) → truncate"]
     F["ConfigurationSchema.safeParse(merged)"]
