@@ -30,7 +30,7 @@ Each entry in `sources` must be an object:
 | Field | Type | Required | Description |
 |-------|------|----------|-------------|
 | `source` | `string` | **Yes** | URL or file path of the input rule list |
-| `type` | `"hosts"` \| `"adblock"` | **Yes** | Format of the source |
+| `type` | `"hosts"` \| `"adblock"` | No | Format of the source (optional; defaults inferred at compile time) |
 | `name` | `string` | No | Display name for this source |
 | `homepage` | `string (url)` | No | Homepage URL for this source |
 
@@ -40,17 +40,21 @@ Each entry in `sources` must be an object:
 
 | Value | Description |
 |-------|-------------|
-| `Deduplicate` | Remove duplicate rules |
-| `Validate` | Drop rules failing format validation |
-| `Compress` | Remove redundant rules subsumed by wider rules |
-| `TrimLines` | Trim whitespace from each rule line |
 | `RemoveComments` | Strip comment lines |
+| `Compress` | Remove redundant rules subsumed by wider rules |
 | `RemoveModifiers` | Strip cosmetic / option modifiers from rules |
-| `ConvertToHosts` | Convert adblock rules to hosts format |
-| `ConvertToAdblock` | Convert hosts rules to adblock format |
+| `Validate` | Drop rules failing format validation |
+| `ValidateAllowIp` | Validate rules, allowing IP addresses |
+| `Deduplicate` | Remove duplicate rules |
+| `InvertAllow` | Invert allowlist rules to blocklist rules |
+| `RemoveEmptyLines` | Remove empty lines |
+| `TrimLines` | Trim whitespace from each rule line |
+| `InsertFinalNewLine` | Ensure file ends with a newline |
+| `ConvertToAscii` | Convert non-ASCII domain names to Punycode (ASCII) |
+| `ConflictDetection` | Report conflicting allow/block rules |
+| `RuleOptimizer` | Merge and simplify rules for smaller output |
 
-> **Note:** `ConvertToHosts` and `ConvertToAdblock` are mutually exclusive.
-> The schema enforces valid transformation ordering via a `.refine()` rule.
+> **Note:** Combine transformations as an ordered array; each step is applied in sequence.
 
 ---
 

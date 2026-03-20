@@ -95,8 +95,13 @@ curl https://your-worker.example.com/api/configuration/defaults
 
 ```json
 {
-    "defaults": { "name": "My Filter List", "sources": [], ... },
-    "limits": { "maxSources": 100, "maxExclusions": 10000 }
+    "success": true,
+    "defaults": {
+        "compilation": { "... compilation defaults ..." },
+        "validation": { "MAX_SOURCES": 100, "MAX_EXCLUSIONS": 10000, "..." }
+    },
+    "limits": { "maxSources": 100, "maxExclusions": 10000 },
+    "supportedSourceTypes": ["adblock", "hosts"]
 }
 ```
 
@@ -108,8 +113,12 @@ errors when invalid.  Requires Free tier auth + Turnstile token.
 ```bash
 curl -X POST https://your-worker.example.com/api/configuration/validate \
     -H 'Content-Type: application/json' \
-    -d '{ "configuration": { "name": "Test", "sources": [...] }, "turnstileToken": "..." }'
+    -d '{ "config": { "name": "Test", "sources": [{ "source": "https://example.com/hosts.txt", "type": "hosts" }] }, "turnstileToken": "..." }'
 ```
+
+On success: `{ "success": true, "valid": true }`
+
+On validation failure: `{ "success": true, "valid": false, "errors": [{ "path": "sources", "message": "Required", "code": "invalid_type" }] }`
 
 ### `POST /api/configuration/resolve`
 
@@ -120,12 +129,17 @@ Requires Free tier auth + Turnstile token.
 curl -X POST https://your-worker.example.com/api/configuration/resolve \
     -H 'Content-Type: application/json' \
     -d '{
-        "base": { "name": "Base", "sources": [...] },
-        "override": "{\"name\":\"Final\"}",
+        "config": { "name": "Base", "sources": [{ "source": "https://example.com/hosts.txt", "type": "hosts" }] },
+        "override": { "name": "Final" },
         "applyEnvOverrides": false,
         "turnstileToken": "..."
     }'
 ```
+
+`override` is an **object** (not a JSON string) and is applied as the highest-priority layer.
+`applyEnvOverrides` defaults to `true`; pass `false` to skip `ADBLOCK_CONFIG_*` env vars.
+
+On success: `{ "success": true, "config": { "name": "Final", "sources": [...], ... } }`
 
 ---
 

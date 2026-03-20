@@ -18,7 +18,7 @@ import { VALIDATION_DEFAULTS } from '../config/defaults.ts';
 
 const minimalConfig = (): Partial<IConfiguration> => ({
     name: 'Test List',
-    sources: [{ source: 'https://example.com/hosts.txt', type: 'hosts' as never }],
+    sources: [{ source: 'https://example.com/hosts.txt', type: SourceType.Hosts }],
 });
 
 // ── fromObject ───────────────────────────────────────────────────────────────
@@ -74,8 +74,8 @@ Deno.test('deepMerge: undefined in later source does not override', () => {
 });
 
 Deno.test('deepMerge: later array fully replaces earlier array', () => {
-    const src1 = [{ source: 'a', type: 'hosts' as never }];
-    const src2 = [{ source: 'b', type: 'hosts' as never }];
+    const src1 = [{ source: 'a', type: SourceType.Hosts }];
+    const src2 = [{ source: 'b', type: SourceType.Hosts }];
     const result = ConfigurationManager.deepMerge([
         { sources: src1 },
         { sources: src2 },
@@ -142,7 +142,7 @@ Deno.test('applyEnvOverrides: false skips env source', async () => {
 Deno.test('enforceSourceLimit: truncates sources array to MAX_SOURCES', async () => {
     const tooManySources = Array.from({ length: VALIDATION_DEFAULTS.MAX_SOURCES + 10 }, (_, i) => ({
         source: `https://example.com/${i}.txt`,
-        type: 'hosts' as never,
+        type: SourceType.Hosts,
     }));
     const cfg = await ConfigurationManager.fromObject(
         { name: 'Limits Test', sources: tooManySources },

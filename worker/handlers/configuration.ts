@@ -9,10 +9,20 @@
  */
 
 import { COMPILATION_DEFAULTS, VALIDATION_DEFAULTS } from '../../src/config/defaults.ts';
-import { ConfigurationManager, ConfigurationValidationError, ObjectConfigurationSource, OverrideConfigurationSource } from '../../src/configuration/index.ts';
+import { ConfigurationManager, ConfigurationValidationError, ObjectConfigurationSource } from '../../src/configuration/index.ts';
 import { ConfigurationSchema } from '../../src/configuration/schemas.ts';
 import { JsonResponse } from '../utils/response.ts';
 import type { Env } from '../types.ts';
+import { z } from 'zod';
+
+// ── Request schemas ─────────────────────────────────────────────────────────
+
+const ResolveRequestSchema = z.object({
+    config: z.unknown(),
+    override: z.record(z.unknown()).optional(),
+    applyEnvOverrides: z.boolean().optional(),
+    turnstileToken: z.string().optional(),
+});
 
 // ============================================================================
 // GET /api/configuration/defaults
@@ -117,20 +127,23 @@ export async function handleConfigurationResolve(
         return JsonResponse.badRequest('Request body must contain a "config" field');
     }
 
-    const {
-        config,
-        override,
-        applyEnvOverrides = true,
-    } = body as { config: unknown; override?: unknown; applyEnvOverrides?: boolean };
+    const parsed = ResolveRequestSchema.safeParse(body);
+    if (!parsed.success) {
+        return JsonResponse.badRequest(
+            parsed.error.issues.map((i) => `${i.path.join('.') || 'body'}: ${i.message}`).join('; '),
+        );
+    }
+
+    const { config, override, applyEnvOverrides } = parsed.data;
 
     try {
         const sources = [new ObjectConfigurationSource(config as Record<string, unknown>)];
         if (override !== undefined) {
-            sources.push(new OverrideConfigurationSource(JSON.stringify(override)));
+            sources.push(new ObjectConfigurationSource(override));
         }
 
         const mgr = ConfigurationManager.fromSources(sources, {
-            applyEnvOverrides: Boolean(applyEnvOverrides),
+            applyEnvOverrides: applyEnvOverrides !== false,
         });
 
         const effective = await mgr.load();
@@ -142,10 +155,13 @@ export async function handleConfigurationResolve(
                 message: issue.message,
                 code: issue.code,
             }));
-            return Response.json({ success: false, error: 'Configuration validation failed', errors }, { status: 400 });
+            return Response.json(
+                { success: false, error: 'Configuration validation failed', errors },
+                { status: 400 },
+            );
         }
-        if (err instanceof SyntaxError) {
-            return JsonResponse.badRequest(`Invalid override JSON: ${err.message}`);
+        if (err instanceof Error) {
+            return JsonResponse.badRequest(`Failed to resolve configuration: ${err.message}`);
         }
         throw err;
     }

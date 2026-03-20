@@ -61,8 +61,9 @@ Client  →  POST /api/configuration/resolve
         verifyTurnstile()
                │
                ▼
-        ConfigurationManager.resolveObject(base, override, options)
-               │ (same pipeline as above, minus EnvConfigurationSource)
+        ConfigurationManager.fromSources(base, override, options)
+               │ (same pipeline as above; EnvConfigurationSource is applied
+               │  by default unless options.applyEnvOverrides === false)
                ▼
         { config: IConfiguration }  →  200 OK
 ```
