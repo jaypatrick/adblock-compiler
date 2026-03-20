@@ -107,6 +107,18 @@ Deno.test('OverrideConfigurationSource: throws on invalid JSON', () => {
     assertThrows(() => new OverrideConfigurationSource('not-json'), Error);
 });
 
+Deno.test('OverrideConfigurationSource: throws on null JSON', () => {
+    assertThrows(() => new OverrideConfigurationSource('null'), Error, 'must be an object');
+});
+
+Deno.test('OverrideConfigurationSource: throws on array JSON', () => {
+    assertThrows(() => new OverrideConfigurationSource('[1,2,3]'), Error, 'must be an object');
+});
+
+Deno.test('OverrideConfigurationSource: throws on scalar JSON', () => {
+    assertThrows(() => new OverrideConfigurationSource('"string"'), Error, 'must be an object');
+});
+
 // ── EnvConfigurationSource ────────────────────────────────────────────────────
 
 Deno.test('EnvConfigurationSource: reads ADBLOCK_CONFIG_NAME from injected reader', async () => {
@@ -324,6 +336,27 @@ Deno.test('deepMerge: single partial returns its values', () => {
     assertEquals(result.name, 'Only One');
 });
 
+Deno.test('deepMerge: null partial is skipped without throwing', () => {
+    // Passing null via unknown[] cast to test runtime guard
+    const result = ConfigurationManager.deepMerge([
+        { name: 'First' },
+        null as unknown as Partial<IConfiguration>,
+        { description: 'After Null' },
+    ]);
+    assertEquals(result.name, 'First');
+    assertEquals(result.description, 'After Null');
+});
+
+Deno.test('deepMerge: array partial is skipped without throwing', () => {
+    const result = ConfigurationManager.deepMerge([
+        { name: 'First' },
+        [] as unknown as Partial<IConfiguration>,
+        { description: 'After Array' },
+    ]);
+    assertEquals(result.name, 'First');
+    assertEquals(result.description, 'After Array');
+});
+
 // ── validateOnly edge cases ───────────────────────────────────────────────────
 
 Deno.test('validateOnly: null input returns valid: false', () => {
@@ -352,4 +385,28 @@ Deno.test('fromSources: override replaces sources array from base', async () => 
         new OverrideConfigurationSource(JSON.stringify({ sources: overrideSource })),
     ], { applyEnvOverrides: false }).load();
     assertEquals(cfg.sources[0].source, 'https://override.example.com/hosts.txt');
+});
+
+Deno.test('fromSources: OverrideConfigurationSource has higher precedence than EnvConfigurationSource', async () => {
+    // Env provides name='EnvName', but override provides name='OverrideName'.
+    // Override should win because it is a higher-priority source.
+    const cfg = await ConfigurationManager.fromSources([
+        new ObjectConfigurationSource(minimalConfig()),
+        new EnvConfigurationSource((k) => k === 'ADBLOCK_CONFIG_NAME' ? 'EnvName' : undefined),
+        new OverrideConfigurationSource('{"name":"OverrideName"}'),
+    ], { applyEnvOverrides: false }).load();
+    assertEquals(cfg.name, 'OverrideName');
+});
+
+Deno.test('load: env is applied between base sources and override sources by default', async () => {
+    // Base has name='Base'; env provides name='EnvName'; override provides name='OverrideName'.
+    // Expected: OverrideName (override wins over env, which wins over base).
+    const cfg = await ConfigurationManager.fromSources([
+        new ObjectConfigurationSource({ ...minimalConfig(), name: 'Base' }),
+        new OverrideConfigurationSource('{"name":"OverrideName"}'),
+    ], {
+        applyEnvOverrides: true,
+    }).load();
+    // Without a real ADBLOCK_CONFIG_NAME env var, env produces nothing — override wins.
+    assertEquals(cfg.name, 'OverrideName');
 });

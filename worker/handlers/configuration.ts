@@ -18,7 +18,7 @@ import { z } from 'zod';
 // ── Request schemas ─────────────────────────────────────────────────────────
 
 const ResolveRequestSchema = z.object({
-    config: z.unknown(),
+    config: z.record(z.string(), z.unknown()),
     override: z.record(z.string(), z.unknown()).optional(),
     applyEnvOverrides: z.boolean().optional(),
     turnstileToken: z.string().optional(),
@@ -137,7 +137,7 @@ export async function handleConfigurationResolve(
     const { config, override, applyEnvOverrides } = parsed.data;
 
     try {
-        const sources = [new ObjectConfigurationSource(config as Record<string, unknown>)];
+        const sources = [new ObjectConfigurationSource(config)];
         if (override !== undefined) {
             sources.push(new ObjectConfigurationSource(override));
         }

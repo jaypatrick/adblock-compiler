@@ -448,23 +448,39 @@ Examples:
 
             let config = await mgr.load();
 
-            // Apply CLI transformation overrides when any transformation flag is provided
-            if (this.hasAnyTransformationFlags()) {
-                config = { ...config, transformations: this.buildTransformations(config.transformations) };
-            }
+            // Determine whether any CLI overlays need to be applied post-load.
+            const hasCliOverlays =
+                this.hasAnyTransformationFlags() ||
+                this.args.exclude?.length ||
+                this.args['exclude-from']?.length ||
+                this.args.include?.length ||
+                this.args['include-from']?.length;
 
-            // Apply CLI filtering overlays
-            if (this.args.exclude?.length) {
-                config = { ...config, exclusions: [...(config.exclusions ?? []), ...this.args.exclude] };
-            }
-            if (this.args['exclude-from']?.length) {
-                config = { ...config, exclusions_sources: [...(config.exclusions_sources ?? []), ...this.args['exclude-from']] };
-            }
-            if (this.args.include?.length) {
-                config = { ...config, inclusions: [...(config.inclusions ?? []), ...this.args.include] };
-            }
-            if (this.args['include-from']?.length) {
-                config = { ...config, inclusions_sources: [...(config.inclusions_sources ?? []), ...this.args['include-from']] };
+            if (hasCliOverlays) {
+                // Build the overlaid config object by applying CLI-provided changes.
+                let overlaidConfig: Partial<typeof config> = { ...config };
+
+                if (this.hasAnyTransformationFlags()) {
+                    overlaidConfig = { ...overlaidConfig, transformations: this.buildTransformations(config.transformations) };
+                }
+                if (this.args.exclude?.length) {
+                    overlaidConfig = { ...overlaidConfig, exclusions: [...(config.exclusions ?? []), ...this.args.exclude] };
+                }
+                if (this.args['exclude-from']?.length) {
+                    overlaidConfig = { ...overlaidConfig, exclusions_sources: [...(config.exclusions_sources ?? []), ...this.args['exclude-from']] };
+                }
+                if (this.args.include?.length) {
+                    overlaidConfig = { ...overlaidConfig, inclusions: [...(config.inclusions ?? []), ...this.args.include] };
+                }
+                if (this.args['include-from']?.length) {
+                    overlaidConfig = { ...overlaidConfig, inclusions_sources: [...(config.inclusions_sources ?? []), ...this.args['include-from']] };
+                }
+
+                // Re-run through ConfigurationManager to enforce limits and re-validate.
+                config = await ConfigurationManager.fromSources(
+                    [new ObjectConfigurationSource(overlaidConfig)],
+                    { applyEnvOverrides: false },
+                ).load();
             }
 
             if (this.args['dump-config']) {
