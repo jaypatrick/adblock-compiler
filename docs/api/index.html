@@ -767,7 +767,22 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/CancelJobResponse"
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "cancelled": {
+                      "type": "boolean",
+                      "example": true,
+                      "description": "Whether the cancellation signal was recorded. This is a best-effort operation."
+                    },
+                    "requestId": {
+                      "type": "string",
+                      "description": "The requestId of the job."
+                    }
+                  }
                 }
               }
             }
@@ -778,42 +793,12 @@
           "401": {
             "$ref": "#/components/responses/Unauthorized"
           },
-          "404": {
-            "description": "Job not found.",
+          "403": {
+            "description": "Cloudflare Access JWT invalid or missing.",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "Job cannot be cancelled (already completed, failed, or cancelled).",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": false
-                    },
-                    "error": {
-                      "type": "string"
-                    },
-                    "requestId": {
-                      "type": "string"
-                    },
-                    "status": {
-                      "type": "string",
-                      "enum": [
-                        "completed",
-                        "failed",
-                        "cancelled"
-                      ]
-                    }
-                  }
                 }
               }
             }
@@ -858,6 +843,245 @@
           },
           "500": {
             "description": "Parse error"
+          }
+        }
+      }
+    },
+    "/configuration/defaults": {
+      "get": {
+        "tags": [
+          "Configuration"
+        ],
+        "operationId": "getConfigurationDefaults",
+        "summary": "Get system compilation defaults and limits",
+        "description": "Returns the system defaults and hard limits that apply to every compilation.\nNo authentication required (anonymous tier).\n",
+        "responses": {
+          "200": {
+            "description": "Defaults and limits.",
+            "headers": {
+              "Cache-Control": {
+                "schema": {
+                  "type": "string",
+                  "example": "public, max-age=3600"
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "defaults": {
+                      "type": "object",
+                      "properties": {
+                        "compilation": {
+                          "type": "object"
+                        },
+                        "validation": {
+                          "type": "object"
+                        }
+                      }
+                    },
+                    "limits": {
+                      "type": "object",
+                      "properties": {
+                        "maxSources": {
+                          "type": "integer",
+                          "example": 20
+                        },
+                        "maxExclusions": {
+                          "type": "integer",
+                          "example": 1000
+                        }
+                      }
+                    },
+                    "supportedSourceTypes": {
+                      "type": "array",
+                      "items": {
+                        "type": "string"
+                      },
+                      "example": [
+                        "adblock",
+                        "hosts"
+                      ]
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/configuration/validate": {
+      "post": {
+        "tags": [
+          "Configuration"
+        ],
+        "operationId": "validateConfiguration",
+        "summary": "Validate a configuration object against the schema",
+        "description": "Validates a configuration object against the Zod `ConfigurationSchema`.\nRequires a Cloudflare Turnstile token when `TURNSTILE_SECRET_KEY` is configured.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "config"
+                ],
+                "properties": {
+                  "config": {
+                    "type": "object",
+                    "description": "The configuration object to validate."
+                  },
+                  "turnstileToken": {
+                    "type": "string",
+                    "description": "Cloudflare Turnstile token (required when Turnstile is enabled)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validation result.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "valid": {
+                      "type": "boolean"
+                    },
+                    "errors": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "path": {
+                            "type": "string"
+                          },
+                          "message": {
+                            "type": "string"
+                          },
+                          "code": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "description": "Turnstile verification failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
+          }
+        }
+      }
+    },
+    "/configuration/resolve": {
+      "post": {
+        "tags": [
+          "Configuration"
+        ],
+        "operationId": "resolveConfiguration",
+        "summary": "Merge configuration layers and return effective IConfiguration",
+        "description": "Merges one or more configuration layers (base config + optional override) and\nreturns the effective `IConfiguration`. Useful for previewing the result of a\nconfig + environment overlay before submitting a compile job.\nRequires a Cloudflare Turnstile token when `TURNSTILE_SECRET_KEY` is configured.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "config"
+                ],
+                "properties": {
+                  "config": {
+                    "type": "object",
+                    "description": "Base configuration object."
+                  },
+                  "override": {
+                    "type": "object",
+                    "description": "Optional highest-priority JSON overlay merged on top of config."
+                  },
+                  "applyEnvOverrides": {
+                    "type": "boolean",
+                    "default": true,
+                    "description": "Whether to apply environment variable overrides."
+                  },
+                  "turnstileToken": {
+                    "type": "string",
+                    "description": "Cloudflare Turnstile token (required when Turnstile is enabled)."
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Resolved configuration.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "config": {
+                      "$ref": "#/components/schemas/Configuration"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "$ref": "#/components/responses/BadRequest"
+          },
+          "403": {
+            "description": "Turnstile verification failed.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimited"
           }
         }
       }

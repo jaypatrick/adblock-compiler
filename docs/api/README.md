@@ -351,8 +351,7 @@ Requires authentication (free tier or above).
 - `200`: Job cancelled successfully.
 - `400`: No description
 - `401`: No description
-- `404`: Job not found.
-- `409`: Job cannot be cancelled (already completed, failed, or cancelled).
+- `403`: Cloudflare Access JWT invalid or missing.
 - `429`: No description
 
 ---
@@ -394,6 +393,73 @@ Bidirectional WebSocket connection for real-time compilation with event streamin
 
 - `101`: WebSocket connection established
 - `426`: Upgrade required (not a WebSocket request)
+
+---
+
+### Configuration
+
+#### `GET /configuration/defaults`
+
+**Summary:** Get system compilation defaults and limits
+
+Returns the system defaults and hard limits that apply to every compilation.
+No authentication required (anonymous tier).
+
+
+**Operation ID:** `getConfigurationDefaults`
+
+**Responses:**
+
+- `200`: Defaults and limits.
+- `429`: No description
+
+---
+
+#### `POST /configuration/validate`
+
+**Summary:** Validate a configuration object against the schema
+
+Validates a configuration object against the Zod `ConfigurationSchema`.
+Requires a Cloudflare Turnstile token when `TURNSTILE_SECRET_KEY` is configured.
+
+
+**Operation ID:** `validateConfiguration`
+
+**Request Body:**
+
+- Content-Type: `application/json`
+
+**Responses:**
+
+- `200`: Validation result.
+- `400`: No description
+- `403`: Turnstile verification failed.
+- `429`: No description
+
+---
+
+#### `POST /configuration/resolve`
+
+**Summary:** Merge configuration layers and return effective IConfiguration
+
+Merges one or more configuration layers (base config + optional override) and
+returns the effective `IConfiguration`. Useful for previewing the result of a
+config + environment overlay before submitting a compile job.
+Requires a Cloudflare Turnstile token when `TURNSTILE_SECRET_KEY` is configured.
+
+
+**Operation ID:** `resolveConfiguration`
+
+**Request Body:**
+
+- Content-Type: `application/json`
+
+**Responses:**
+
+- `200`: Resolved configuration.
+- `400`: No description
+- `403`: Turnstile verification failed.
+- `429`: No description
 
 ---
 

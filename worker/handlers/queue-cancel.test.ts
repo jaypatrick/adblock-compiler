@@ -1,19 +1,24 @@
 /**
  * Comprehensive unit tests for handleQueueCancel
  *
+ * The cancel handler is best-effort and idempotent: it writes a
+ * `queue:cancel:<requestId>` signal to METRICS for queue consumers to
+ * check, and always returns 200 for authenticated requests with a valid
+ * requestId. No 404/409 are returned because no `queue:job:*` records
+ * are written by enqueue paths.
+ *
  * Tests:
- *   - Returns 401 when called anonymously
- *   - Returns 400 for an invalid requestId format
- *   - Returns 404 when the job key is not found in KV
- *   - Returns 409 when job exists but status is 'completed'
- *   - Returns 409 when job exists but status is 'failed'
- *   - Returns 200 { cancelled: true, requestId } when job is 'pending'
- *   - Verifies updateQueueStats is called (via KV mutation)
- *   - Verifies analytics security event is emitted
+ *   - Returns 401 when called anonymously (no auth)
+ *   - Returns 400 for an invalid requestId format (contains `..`)
+ *   - Returns 400 for an empty requestId
+ *   - Returns 400 for a requestId with spaces
+ *   - Returns 200 { cancelled: true, requestId } for any valid authenticated request
+ *   - Writes a `queue:cancel:<requestId>` KV record on success
+ *   - Emits an analytics security event on success
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import { makeEnv, makeInMemoryKv, makeKv } from '../test-helpers.ts';
+import { makeEnv, makeInMemoryKv } from '../test-helpers.ts';
 import { handleQueueCancel } from './queue.ts';
 import type { IAuthContext } from '../types.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
@@ -74,65 +79,11 @@ Deno.test('handleQueueCancel - returns 400 for requestId with spaces', async () 
 });
 
 // ============================================================================
-// KV lookup — not found
+// Happy path — best-effort signal (no 404/409)
 // ============================================================================
 
-Deno.test('handleQueueCancel - returns 404 when job key not found in KV', async () => {
-    const env = makeEnv({ METRICS: makeKv(null) });
-    const { service } = makeAnalytics();
-    const res = await handleQueueCancel(makeRequest('req-notfound'), env, AUTH_CTX, service, 'req-notfound');
-    assertEquals(res.status, 404);
-    const body = await res.json() as { success: boolean; error: string };
-    assertEquals(body.success, false);
-    assertExists(body.error);
-});
-
-// ============================================================================
-// KV lookup — non-pending status
-// ============================================================================
-
-Deno.test('handleQueueCancel - returns 409 when job status is completed', async () => {
-    const job = { status: 'completed', requestId: 'req-done' };
-    const kv = makeInMemoryKv(new Map([['queue:job:req-done', JSON.stringify(job)]]));
-    const env = makeEnv({ METRICS: kv });
-    const { service } = makeAnalytics();
-    const res = await handleQueueCancel(makeRequest('req-done'), env, AUTH_CTX, service, 'req-done');
-    assertEquals(res.status, 409);
-    const body = await res.json() as { success: boolean; status: string };
-    assertEquals(body.success, false);
-    assertEquals(body.status, 'completed');
-});
-
-Deno.test('handleQueueCancel - returns 409 when job status is failed', async () => {
-    const job = { status: 'failed', requestId: 'req-fail' };
-    const kv = makeInMemoryKv(new Map([['queue:job:req-fail', JSON.stringify(job)]]));
-    const env = makeEnv({ METRICS: kv });
-    const { service } = makeAnalytics();
-    const res = await handleQueueCancel(makeRequest('req-fail'), env, AUTH_CTX, service, 'req-fail');
-    assertEquals(res.status, 409);
-    const body = await res.json() as { success: boolean; status: string };
-    assertEquals(body.status, 'failed');
-});
-
-Deno.test('handleQueueCancel - returns 409 when job already cancelled', async () => {
-    const job = { status: 'cancelled', requestId: 'req-already' };
-    const kv = makeInMemoryKv(new Map([['queue:job:req-already', JSON.stringify(job)]]));
-    const env = makeEnv({ METRICS: kv });
-    const { service } = makeAnalytics();
-    const res = await handleQueueCancel(makeRequest('req-already'), env, AUTH_CTX, service, 'req-already');
-    assertEquals(res.status, 409);
-});
-
-// ============================================================================
-// Happy path
-// ============================================================================
-
-Deno.test('handleQueueCancel - returns 200 with cancelled:true for pending job', async () => {
-    const job = { status: 'pending', requestId: 'req-pending' };
-    const kv = makeInMemoryKv(new Map([
-        ['queue:job:req-pending', JSON.stringify(job)],
-        ['queue:stats', JSON.stringify({ pending: 1, completed: 0, failed: 0, cancelled: 0, history: [], depthHistory: [], totalProcessingTime: 0, averageProcessingTime: 0, processingRate: 0, queueLag: 0, lastUpdate: '' })],
-    ]));
+Deno.test('handleQueueCancel - returns 200 with cancelled:true for any valid authenticated request', async () => {
+    const kv = makeInMemoryKv();
     const env = makeEnv({ METRICS: kv });
     const { service } = makeAnalytics();
     const res = await handleQueueCancel(makeRequest('req-pending'), env, AUTH_CTX, service, 'req-pending');
@@ -143,30 +94,32 @@ Deno.test('handleQueueCancel - returns 200 with cancelled:true for pending job',
     assertEquals(body.requestId, 'req-pending');
 });
 
-Deno.test('handleQueueCancel - updates KV job status to cancelled', async () => {
-    const job = { status: 'pending', requestId: 'req-kv-check' };
-    const kv = makeInMemoryKv(new Map([
-        ['queue:job:req-kv-check', JSON.stringify(job)],
-        ['queue:stats', JSON.stringify({ pending: 1, completed: 0, failed: 0, cancelled: 0, history: [], depthHistory: [], totalProcessingTime: 0, averageProcessingTime: 0, processingRate: 0, queueLag: 0, lastUpdate: '' })],
-    ]));
-    const env = makeEnv({ METRICS: kv });
+Deno.test('handleQueueCancel - returns 200 even when no job record exists (best-effort)', async () => {
+    const env = makeEnv({ METRICS: makeInMemoryKv() });
     const { service } = makeAnalytics();
-    await handleQueueCancel(makeRequest('req-kv-check'), env, AUTH_CTX, service, 'req-kv-check');
-    const updated = await kv.get('queue:job:req-kv-check', 'json') as { status: string } | null;
-    assertExists(updated);
-    assertEquals(updated!.status, 'cancelled');
+    const res = await handleQueueCancel(makeRequest('req-nonexistent'), env, AUTH_CTX, service, 'req-nonexistent');
+    assertEquals(res.status, 200);
+    const body = await res.json() as { cancelled: boolean };
+    assertEquals(body.cancelled, true);
 });
 
-Deno.test('handleQueueCancel - emits analytics security event on success', async () => {
-    const job = { status: 'pending', requestId: 'req-audit' };
-    const kv = makeInMemoryKv(new Map([
-        ['queue:job:req-audit', JSON.stringify(job)],
-        ['queue:stats', JSON.stringify({ pending: 1, completed: 0, failed: 0, cancelled: 0, history: [], depthHistory: [], totalProcessingTime: 0, averageProcessingTime: 0, processingRate: 0, queueLag: 0, lastUpdate: '' })],
-    ]));
+Deno.test('handleQueueCancel - writes queue:cancel:<requestId> signal to KV', async () => {
+    const kv = makeInMemoryKv();
+    const env = makeEnv({ METRICS: kv });
+    const { service } = makeAnalytics();
+    await handleQueueCancel(makeRequest('req-signal'), env, AUTH_CTX, service, 'req-signal');
+    const signal = await kv.get('queue:cancel:req-signal', 'json') as { status: string; requestId: string } | null;
+    assertExists(signal);
+    assertEquals(signal!.status, 'cancelled');
+    assertEquals(signal!.requestId, 'req-signal');
+});
+
+Deno.test('handleQueueCancel - emits analytics audit event on success', async () => {
+    const kv = makeInMemoryKv();
     const env = makeEnv({ METRICS: kv });
     const { events, service } = makeAnalytics();
     await handleQueueCancel(makeRequest('req-audit'), env, AUTH_CTX, service, 'req-audit');
     assertEquals(events.length > 0, true);
-    const event = events[0] as { eventType: string | undefined; reason: string };
+    const event = events[0] as { reason: string };
     assertEquals(event.reason, 'queue_job_cancelled');
 });

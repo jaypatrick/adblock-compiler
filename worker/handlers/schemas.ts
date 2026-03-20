@@ -28,7 +28,7 @@ function zodSchemaToJsonSchema(schema: any, name: string): JsonSchema {
     return {
         $schema: 'http://json-schema.org/draft-07/schema#',
         title: name,
-        description: schema._def?.description ?? `Schema for ${name}`,
+        description: schema.description ?? `Schema for ${name}`,
         type: 'object',
     };
 }

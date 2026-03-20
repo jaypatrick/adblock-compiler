@@ -9,6 +9,7 @@ import { generateRequestId, JsonResponse } from '../utils/index.ts';
 import type { BatchCompileQueueMessage, CacheWarmQueueMessage, CompilationResult, CompileQueueMessage, Env, IAuthContext, JobInfo, QueueMessage, QueueStats } from '../types.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import { requireAuth } from '../middleware/auth.ts';
+import { verifyCfAccessJwt } from '../middleware/cf-access.ts';
 import { z } from 'zod';
 
 // ============================================================================
@@ -701,19 +702,18 @@ export const QueueCancelParamsSchema = z.object({
     requestId: z.string().min(1, 'requestId is required').regex(/^[a-zA-Z0-9_-]+$/, 'Invalid requestId format'),
 });
 
-const JobRowSchema = z.object({
-    status: z.string(),
-    requestId: z.string().optional(),
-});
-
 /**
  * Cancel a pending queue job by requestId.
  *
  * DELETE /queue/cancel/:requestId
  *
- * Looks up the pending job in KV (key: `queue:job:<requestId>`).
- * If found and status is `pending`, marks it `cancelled` and updates stats.
- * Returns 404 if not found or already completed/failed/cancelled.
+ * Because no `queue:job:*` record is written when async jobs are enqueued,
+ * cancellation is treated as a best-effort, idempotent signal: a
+ * `queue:cancel:<requestId>` key is written to METRICS so that downstream
+ * queue processors can consult it and skip the job if still pending.
+ *
+ * Always returns 200 for a valid, authenticated request — consumers of the
+ * queue should check for the cancel signal before processing.
  */
 export async function handleQueueCancel(
     request: Request,
@@ -725,6 +725,22 @@ export async function handleQueueCancel(
     const authError = requireAuth(authContext);
     if (authError) return authError;
 
+    // ZTA: Cloudflare Access verification (no-op when CF_ACCESS_AUD is not configured)
+    const cfAccess = await verifyCfAccessJwt(request, env);
+    if (!cfAccess.valid) {
+        analytics.trackSecurityEvent({
+            eventType: 'auth_failure',
+            path: `/queue/cancel/${requestId}`,
+            method: 'DELETE',
+            clientIpHash: AnalyticsService.hashIp(request.headers.get('CF-Connecting-IP') || 'unknown'),
+            reason: 'cf_access_jwt_invalid',
+        });
+        return Response.json(
+            { success: false, error: cfAccess.error ?? 'CF Access verification failed' },
+            { status: 403 },
+        );
+    }
+
     const parsed = QueueCancelParamsSchema.safeParse({ requestId });
     if (!parsed.success) {
         return JsonResponse.badRequest(
@@ -732,27 +748,14 @@ export async function handleQueueCancel(
         );
     }
 
-    const jobKey = `queue:job:${requestId}`;
-    const rawJob = await env.METRICS.get(jobKey, 'json');
-    const jobParsed = JobRowSchema.safeParse(rawJob);
-
-    if (!jobParsed.success || rawJob === null) {
-        return Response.json({ success: false, error: 'Job not found', requestId }, { status: 404 });
-    }
-
-    const job = jobParsed.data;
-
-    if (job.status !== 'pending') {
-        return Response.json(
-            { success: false, error: `Job cannot be cancelled (status: ${job.status})`, requestId, status: job.status },
-            { status: 409 },
-        );
-    }
-
-    await env.METRICS.put(jobKey, JSON.stringify({ status: 'cancelled', requestId, cancelledAt: new Date().toISOString() }), {
-        expirationTtl: 86400,
-    });
-    await updateQueueStats(env, 'cancelled', undefined, 1, { requestId });
+    // Best-effort: write a cancel signal so queue consumers can skip this job.
+    // No 404/409 — cancellation is idempotent and does not require a pre-existing job record.
+    const cancelKey = `queue:cancel:${requestId}`;
+    await env.METRICS.put(
+        cancelKey,
+        JSON.stringify({ requestId, status: 'cancelled', cancelledAt: new Date().toISOString() }),
+        { expirationTtl: 86400 },
+    );
 
     analytics.trackSecurityEvent({
         path: `/queue/cancel/${requestId}`,
@@ -843,14 +846,16 @@ export async function handleQueueResults(
 /**
  * Route handler for all /queue/* endpoints.
  *
- * ZTA: /queue/cancel/* requires authentication; other routes are public.
+ * ZTA: All /queue/* routes are gated by checkRoutePermission() in router.ts
+ * (Free tier or above). /queue/cancel/* additionally requires a valid app-level
+ * auth token AND a Cloudflare Access JWT when CF_ACCESS_AUD is configured.
  *
  * @param routePath   - Path with /api prefix stripped (e.g. "/queue/stats")
  * @param request     - Incoming request
  * @param env         - Worker environment bindings
  * @param authContext - Authenticated request context
  * @param analytics   - Analytics service instance
- * @param ip          - Client IP address
+ * @param _ip         - Client IP address (unused; auth is caller-resolved)
  */
 export async function routeQueue(
     routePath: string,

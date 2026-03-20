@@ -61,7 +61,6 @@ jobs:
             deno-${{ runner.os }}-
 
       - name: Regenerate OpenAPI documentation
-        continue-on-error: true
         run: |
           deno task openapi:docs
           deno task schema:cloudflare

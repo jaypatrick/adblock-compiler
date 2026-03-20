@@ -1,62 +1,82 @@
 /**
  * Unit tests for /poc/* route handling in router.ts
  *
- * These tests verify the routing logic directly rather than through the full router.
+ * These tests drive the real handleRequest() function to verify the
+ * actual router logic: ASSETS.fetch() delegation, 503 fallback when
+ * ASSETS is absent, and 429 rate-limit enforcement.
  */
 
 import { assertEquals } from '@std/assert';
-import { makeEnv } from '../test-helpers.ts';
+import { makeEnv, makeInMemoryKv } from '../test-helpers.ts';
+import { handleRequest } from './router.ts';
 
-// Helper: simulate the /poc/* routing logic
-async function routePoc(
-    pathname: string,
-    env: ReturnType<typeof makeEnv>,
-    rateLimitAllowed = true,
-): Promise<Response> {
-    // Simulate checkRateLimitTiered result
-    if (!rateLimitAllowed) {
-        return Response.json(
-            { success: false, error: 'Rate limit exceeded.' },
-            {
-                status: 429,
-                headers: {
-                    'Retry-After': '60',
-                    'X-RateLimit-Limit': '100',
-                    'X-RateLimit-Remaining': '0',
-                    'X-RateLimit-Reset': String(Date.now() + 60000),
-                },
-            },
-        );
-    }
-    if ((env as { ASSETS?: unknown }).ASSETS) {
-        const request = new Request(`http://localhost${pathname}`);
-        return (env as { ASSETS: { fetch: (r: Request) => Promise<Response> } }).ASSETS.fetch(request);
-    }
-    return Response.json({ success: false, error: 'PoC assets not available in this deployment' }, { status: 503 });
+// ============================================================================
+// Fixtures
+// ============================================================================
+
+function makeCtx(): ExecutionContext {
+    return {
+        waitUntil(_p: Promise<unknown>): void {},
+        passThroughOnException(): void {},
+    } as unknown as ExecutionContext;
 }
 
-Deno.test('poc-assets - returns ASSETS.fetch response when ASSETS binding present', async () => {
-    const assetResponse = new Response('<html>PoC App</html>', { status: 200, headers: { 'Content-Type': 'text/html' } });
+function makePocRequest(pathname = '/poc/react/'): Request {
+    return new Request(`http://localhost${pathname}`);
+}
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+Deno.test('poc-assets - returns ASSETS.fetch response when ASSETS binding is present', async () => {
+    const assetBody = '<html>PoC App</html>';
+    const assetResponse = new Response(assetBody, {
+        status: 200,
+        headers: { 'Content-Type': 'text/html' },
+    });
     const env = makeEnv({
         ASSETS: { fetch: async (_r: Request) => assetResponse } as unknown as Fetcher,
+        // Ensure rate limit KV returns null (first request → allowed)
+        RATE_LIMIT: makeInMemoryKv(),
     });
-    const res = await routePoc('/poc/react/', env);
+    const req = makePocRequest('/poc/react/');
+    const url = new URL(req.url);
+    const res = await handleRequest(req, env, url, url.pathname, makeCtx());
     assertEquals(res.status, 200);
 });
 
 Deno.test('poc-assets - returns 503 when ASSETS binding is absent', async () => {
-    const env = makeEnv({ ASSETS: undefined as unknown as Fetcher });
-    const res = await routePoc('/poc/react/', env);
+    const env = makeEnv({
+        ASSETS: undefined as unknown as Fetcher,
+        RATE_LIMIT: makeInMemoryKv(),
+    });
+    const req = makePocRequest('/poc/react/');
+    const url = new URL(req.url);
+    const res = await handleRequest(req, env, url, url.pathname, makeCtx());
     assertEquals(res.status, 503);
     const body = await res.json() as { success: boolean; error: string };
     assertEquals(body.success, false);
 });
 
-Deno.test('poc-assets - returns 429 when rate limit exceeded', async () => {
-    const env = makeEnv();
-    const res = await routePoc('/poc/react/', env, false);
+Deno.test('poc-assets - returns 429 and rate-limit headers when limit is exhausted', async () => {
+    // Fill the rate-limit KV with an exhausted window (count >= max, resetAt in the future)
+    const now = Date.now();
+    const resetAt = now + 60_000;
+    const kv = makeInMemoryKv(new Map([
+        ['ratelimit:ip:unknown', JSON.stringify({ count: 9999, resetAt })],
+    ]));
+    const env = makeEnv({
+        ASSETS: { fetch: async (_r: Request) => new Response('ok') } as unknown as Fetcher,
+        RATE_LIMIT: kv,
+    });
+    const req = makePocRequest('/poc/react/');
+    const url = new URL(req.url);
+    const res = await handleRequest(req, env, url, url.pathname, makeCtx());
     assertEquals(res.status, 429);
-    const body = await res.json() as { success: boolean; error: string };
+    const body = await res.json() as { success: boolean };
     assertEquals(body.success, false);
     assertEquals(res.headers.has('Retry-After'), true);
+    assertEquals(res.headers.has('X-RateLimit-Limit'), true);
+    assertEquals(res.headers.has('X-RateLimit-Remaining'), true);
 });

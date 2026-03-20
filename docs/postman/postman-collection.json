@@ -3165,6 +3165,150 @@
           }
         }
       ]
+    },
+    {
+      "name": "Configuration",
+      "description": "Compilation configuration defaults, validation, and resolution endpoints.",
+      "item": [
+        {
+          "name": "Get system compilation defaults and limits",
+          "description": "Returns the system defaults and hard limits that apply to every compilation.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/configuration/defaults",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "configuration",
+                "defaults"
+              ]
+            },
+            "description": "Returns the system defaults and hard limits that apply to every compilation.\nNo authentication required (anonymous tier).\n"
+          }
+        },
+        {
+          "name": "Validate a configuration object against the schema",
+          "description": "Validates a configuration object against the Zod `ConfigurationSchema`.",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/configuration/validate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "configuration",
+                "validate"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"config\": {},\n    \"turnstileToken\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Validates a configuration object against the Zod `ConfigurationSchema`.\nRequires a Cloudflare Turnstile token when `TURNSTILE_SECRET_KEY` is configured.\n"
+          }
+        },
+        {
+          "name": "Merge configuration layers and return effective IConfiguration",
+          "description": "Merges one or more configuration layers (base config + optional override) and",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/configuration/resolve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "configuration",
+                "resolve"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"config\": {},\n    \"override\": {},\n    \"applyEnvOverrides\": false,\n    \"turnstileToken\": \"string\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "description": "Merges one or more configuration layers (base config + optional override) and\nreturns the effective `IConfiguration`. Useful for previewing the result of a\nconfig + environment overlay before submitting a compile job.\nRequires a Cloudflare Turnstile token when `TURNSTILE_SECRET_KEY` is configured.\n"
+          }
+        }
+      ]
     }
   ]
 }
