@@ -291,22 +291,14 @@ if (compiled.ruleCount > limits.filtering_rules) {
 
 ## 8. 🔗 Full Pipeline: Compile → Validate → Sync → Monitor
 
-```
-adblock-compiler POST /compile
-    └─ FiltersDownloader: fetch + resolve !#if / !#include
-    └─ AGTree: parse → AST
-    └─ Transformations: Deduplicate, Validate, RemoveComments
-    └─ DiffBuilder: generate patch vs previous output
-        ↓
-AdGuard DNS Private API
-    └─ GET /oapi/v1/account/limits → guard rule count
-    └─ POST /oapi/v1/filtering_rules → push compiled rules
-    └─ GET /oapi/v1/devices → per-device sync
-        ↓
-Monitoring
-    └─ GET /oapi/v1/query_log → feedback loop
-    └─ GET /oapi/v1/stats → usage metrics
-    └─ Emit SSE/WebSocket events: dns:sync, metric, diagnostic
+```mermaid
+flowchart TD
+    AC["adblock-compiler POST /compile\nFiltersDownloader: fetch + resolve !#if / !#include\nAGTree: parse → AST\nTransformations: Deduplicate, Validate, RemoveComments\nDiffBuilder: generate patch vs previous output"]
+    AGDNS["AdGuard DNS Private API\nGET /oapi/v1/account/limits → guard rule count\nPOST /oapi/v1/filtering_rules → push compiled rules\nGET /oapi/v1/devices → per-device sync"]
+    Monitor["Monitoring\nGET /oapi/v1/query_log → feedback loop\nGET /oapi/v1/stats → usage metrics\nEmit SSE/WebSocket events: dns:sync, metric, diagnostic"]
+
+    AC --> AGDNS
+    AGDNS --> Monitor
 ```
 
 ---

@@ -364,11 +364,16 @@ build artifact, which means the same build artifact can run in any environment.
 > The DSN itself is intentionally public (Sentry uses it in every browser request), but the
 > endpoint still enforces rate limits. See `worker/utils/cors.ts` for the CORS policy.
 
-```
-Angular app boots
-  └── provideAppInitializer()
-        └── GET /api/sentry-config  →  { dsn: "https://..." | null }
-              └── initSentry(dsn)  →  Sentry.init({ browserTracing, replay, ... })
+```mermaid
+flowchart TD
+    Boot["Angular app boots"]
+    Init["provideAppInitializer()"]
+    Config["GET /api/sentry-config\n→ { dsn: 'https://...' | null }"]
+    Sentry["initSentry(dsn)\n→ Sentry.init({ browserTracing, replay, ... })"]
+
+    Boot --> Init
+    Init --> Config
+    Config --> Sentry
 ```
 
 If the endpoint is unreachable or `SENTRY_DSN` is unset, `initSentry()` is a

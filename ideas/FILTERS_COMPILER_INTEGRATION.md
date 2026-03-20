@@ -163,23 +163,14 @@ logInterceptor.on('line', (line) => {
 
 Combine all three AdGuard tools into one end-to-end pipeline:
 
-```
-FiltersCompiler
-    └─ Resolves @include directives with options (stripComments, addModifiers, exclude, etc.)
-    └─ Applies platform config (defines, removeRulePatterns, replacements)
-    └─ Outputs per-platform compiled rule sets
-        ↓
-FiltersDownloader
-    └─ Resolves !#if / !#else / !#endif preprocessor conditionals
-    └─ Resolves !#include sub-files
-    └─ Applies patch-based incremental updates (downloadWithRaw)
-        ↓
-adblock-compiler
-    └─ AGTree parse → AST
-    └─ Validate (Zod + AGTree modifier validation)
-    └─ Deduplicate
-    └─ Stream via SSE / WebSocket
-    └─ Emit per-platform compiled output
+```mermaid
+flowchart TD
+    FC["FiltersCompiler\nResolves @include directives (stripComments, addModifiers, exclude, etc.)\nApplies platform config (defines, removeRulePatterns, replacements)\nOutputs per-platform compiled rule sets"]
+    FD["FiltersDownloader\nResolves !#if / !#else / !#endif preprocessor conditionals\nResolves !#include sub-files\nApplies patch-based incremental updates (downloadWithRaw)"]
+    AC["adblock-compiler\nAGTree parse → AST\nValidate (Zod + AGTree modifier validation)\nDeduplicate\nStream via SSE / WebSocket\nEmit per-platform compiled output"]
+
+    FC --> FD
+    FD --> AC
 ```
 
 ```typescript

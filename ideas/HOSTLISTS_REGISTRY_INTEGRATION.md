@@ -34,10 +34,20 @@ It is the DNS counterpart to [`FiltersRegistry`](https://github.com/AdguardTeam/
 
 `adblock-compiler` sits squarely in the middle of this ecosystem:
 
-```
-[HostlistsRegistry sources] ─┐
-[FiltersRegistry sources]    ├──→ [adblock-compiler] ──→ compiled .txt ──→ [AdGuard Home / Pi-hole / AdGuard DNS]
-[Third-party sources]        ─┘
+```mermaid
+flowchart LR
+    HLR["HostlistsRegistry sources"]
+    FLR["FiltersRegistry sources"]
+    TPS["Third-party sources"]
+    AC["adblock-compiler"]
+    Output["compiled .txt"]
+    Consumers["AdGuard Home / Pi-hole / AdGuard DNS"]
+
+    HLR --> AC
+    FLR --> AC
+    TPS --> AC
+    AC --> Output
+    Output --> Consumers
 ```
 
 ---

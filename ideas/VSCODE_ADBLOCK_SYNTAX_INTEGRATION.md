@@ -104,15 +104,14 @@ interface RuleValidationError {
 
 ## 7. 🔗 AGLint + adblock-compiler Two-Stage Validation Pipeline
 
-```
-Developer edits filter file in VSCode
-    └─ VscodeAdblockSyntax: real-time AGLint linting + syntax highlighting
-        ↓
-CI: npx aglint
-    └─ Validates syntax across all supported platforms
-        ↓
-adblock-compiler POST /compile
-    └─ AGTree parse → Zod validate → Transform → Emit
+```mermaid
+flowchart TD
+    Dev["Developer edits filter file in VSCode\nVscodeAdblockSyntax: real-time AGLint linting + syntax highlighting"]
+    CI["CI: npx aglint\nValidates syntax across all supported platforms"]
+    AC["adblock-compiler POST /compile\nAGTree parse → Zod validate → Transform → Emit"]
+
+    Dev --> CI
+    CI --> AC
 ```
 
 ---

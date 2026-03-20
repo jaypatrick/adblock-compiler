@@ -28,13 +28,14 @@ This closes the loop: **AGH pulls from HostlistsRegistry → `adblock-compiler` 
 
 ## The Relationship
 
-```
-[HostlistsRegistry]
-        ↓  (vetted-filters script)
-[AdGuard Home] ←──────────────────────────── [adblock-compiler]
-        ↑                                            ↓
-  reads filter                              compiles + pushes
-  subscriptions                             via REST API
+```mermaid
+flowchart LR
+    HLR["HostlistsRegistry"]
+    AGH["AdGuard Home\n(reads filter subscriptions)"]
+    AC["adblock-compiler\n(compiles + pushes via REST API)"]
+
+    HLR -->|"vetted-filters script"| AGH
+    AC --> AGH
 ```
 
 `adblock-compiler` sits upstream of AdGuard Home in the filter pipeline and can also manage it downstream via the REST API.

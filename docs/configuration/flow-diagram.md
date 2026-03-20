@@ -3,69 +3,40 @@
 The diagram below shows how `ConfigurationManager.load()` processes sources
 from lowest to highest priority.
 
-```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                        ConfigurationManager.load()                      │
-│                                                                         │
-│   Sources (in constructor order)                                        │
-│   ┌─────────────────────────────┐                                       │
-│   │  1. FileConfigurationSource │  ← --config path.json                │
-│   │     (or ObjectSource, etc.) │                                       │
-│   └──────────────┬──────────────┘                                       │
-│                  │  Partial<IConfiguration>                             │
-│                  ▼                                                       │
-│   ┌─────────────────────────────┐                                       │
-│   │  2. EnvConfigurationSource  │  ← ADBLOCK_CONFIG_* env vars         │
-│   │     (auto-appended unless   │     (skipped if --no-env-overrides)  │
-│   │      applyEnvOverrides=false│                                       │
-│   └──────────────┬──────────────┘                                       │
-│                  │  Partial<IConfiguration>                             │
-│                  ▼                                                       │
-│   ┌─────────────────────────────┐                                       │
-│   │ 3. OverrideConfigurationSrc │  ← --override '{"name":"..."}'       │
-│   │    (optional, highest prio) │     (added by CLI / caller)          │
-│   └──────────────┬──────────────┘                                       │
-│                  │                                                       │
-│                  ▼                                                       │
-│   ┌─────────────────────────────────────────────────────────────────┐  │
-│   │  ConfigurationManager.deepMerge(partials)                       │  │
-│   │  · Scalars: last-defined wins                                   │  │
-│   │  · Arrays:  last-defined fully replaces (no append)             │  │
-│   │  · undefined values do NOT override defined values              │  │
-│   └──────────────────────────────┬──────────────────────────────────┘  │
-│                                  │  merged Partial<IConfiguration>      │
-│                                  ▼                                       │
-│   ┌─────────────────────────────────────────────────────────────────┐  │
-│   │  Limit enforcement                                              │  │
-│   │  · sources.length > MAX_SOURCES(100) → truncate                 │  │
-│   │  · exclusions.length > MAX_EXCLUSIONS(10 000) → truncate        │  │
-│   └──────────────────────────────┬──────────────────────────────────┘  │
-│                                  │                                       │
-│                                  ▼                                       │
-│   ┌─────────────────────────────────────────────────────────────────┐  │
-│   │  ConfigurationSchema.safeParse(merged)                          │  │
-│   │  · success → return IConfiguration  ✓                          │  │
-│   │  · failure → throw ConfigurationValidationError  ✗              │  │
-│   └─────────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A["1. FileConfigurationSource\n(or ObjectSource, etc.)\n← --config path.json"]
+    B["2. EnvConfigurationSource\n← ADBLOCK_CONFIG_* env vars\n(skipped if --no-env-overrides)"]
+    C["3. OverrideConfigurationSrc\n← --override '{\"name\":\"...\"}'\n(optional, highest prio)"]
+    D["ConfigurationManager.deepMerge(partials)\n· Scalars: last-defined wins\n· Arrays: last-defined fully replaces (no append)\n· undefined values do NOT override defined values"]
+    E["Limit enforcement\n· sources.length > MAX_SOURCES(100) → truncate\n· exclusions.length > MAX_EXCLUSIONS(10 000) → truncate"]
+    F["ConfigurationSchema.safeParse(merged)"]
+    G["✓ return IConfiguration"]
+    H["✗ throw ConfigurationValidationError"]
+
+    A -->|"Partial&lt;IConfiguration&gt;"| B
+    B -->|"Partial&lt;IConfiguration&gt;"| C
+    C --> D
+    D -->|"merged Partial&lt;IConfiguration&gt;"| E
+    E --> F
+    F -->|success| G
+    F -->|failure| H
 ```
 
 ---
 
 ## Worker API flow
 
-```
-Client  →  POST /api/configuration/resolve
-               │
-               ▼
-        verifyTurnstile()
-               │
-               ▼
-        ConfigurationManager.fromSources(base, override, options)
-               │ (same pipeline as above; EnvConfigurationSource is applied
-               │  by default unless options.applyEnvOverrides === false)
-               ▼
-        { config: IConfiguration }  →  200 OK
+```mermaid
+flowchart TD
+    Client["Client"]
+    Turnstile["verifyTurnstile()"]
+    Config["ConfigurationManager.fromSources(base, override, options)\n(same pipeline as above; EnvConfigurationSource is applied\nby default unless options.applyEnvOverrides === false)"]
+    Response["200 OK — { config: IConfiguration }"]
+
+    Client -->|"POST /api/configuration/resolve"| Turnstile
+    Turnstile --> Config
+    Config --> Response
 ```
 
 ---
