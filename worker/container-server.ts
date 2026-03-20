@@ -16,18 +16,27 @@
  */
 
 import { WorkerCompiler } from '../src/platform/index.ts';
-import type { IConfiguration } from '../src/types/index.ts';
+import { ConfigurationSchema } from '../src/configuration/index.ts';
 import { VERSION } from '../src/version.ts';
+import { z } from 'zod';
 
 const PORT = parseInt(Deno.env.get('PORT') ?? '8787', 10);
 
 /**
- * Request body accepted by `POST /compile`.
+ * Zod schema for the `POST /compile` request body.
+ *
+ * Using runtime validation here (rather than a bare `as` cast) ensures callers
+ * receive structured, field-level error messages when they send a malformed body,
+ * instead of a generic string error that is hard to act on.
  */
-interface ContainerCompileRequest {
-    configuration: IConfiguration;
-    preFetchedContent?: Record<string, string>;
-}
+const ContainerCompileRequestSchema = z.object({
+    // Validate configuration against the full IConfiguration schema so invalid
+    // configs produce a 400 (field-level detail) rather than a 500 from the
+    // compiler.  Using ConfigurationSchema here keeps runtime and type-level
+    // definitions in sync and avoids an unsafe `as IConfiguration` cast.
+    configuration: ConfigurationSchema,
+    preFetchedContent: z.record(z.string(), z.string()).optional(),
+});
 
 /**
  * HTTP handler for the container server.
@@ -65,17 +74,24 @@ export async function handler(request: Request): Promise<Response> {
             return new Response('Unauthorized', { status: 401 });
         }
 
-        let body: ContainerCompileRequest;
+        let rawBody: unknown;
         try {
-            body = await request.json() as ContainerCompileRequest;
+            rawBody = await request.json();
         } catch (err) {
             const message = err instanceof Error ? err.message : String(err);
             return new Response(`Invalid JSON body: ${message}`, { status: 400 });
         }
 
-        if (!body?.configuration) {
-            return new Response('Missing required field: configuration', { status: 400 });
+        // Validate the request body with Zod so callers get structured,
+        // field-level error messages instead of a generic string on bad input.
+        const parseResult = ContainerCompileRequestSchema.safeParse(rawBody);
+        if (!parseResult.success) {
+            return Response.json(
+                { error: 'Invalid request body', details: parseResult.error.format() },
+                { status: 400 },
+            );
         }
+        const body = parseResult.data;
 
         try {
             const compiler = new WorkerCompiler({

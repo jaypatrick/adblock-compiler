@@ -49,6 +49,7 @@
         "setup:hooks": "deno run --allow-read --allow-write --allow-run scripts/setup-hooks.ts",
         "test:contract": "SKIP_CONTRACT_TESTS=false deno test --allow-read --allow-write --allow-net --allow-env worker/openapi-contract.test.ts",
         "migrate:validate": "deno run --allow-read scripts/validate-migrations.ts",
+        "container:health": "deno run --allow-net --allow-env scripts/check-container-health.ts",
         "db:generate": "deno run -A --env=.envrc npm:prisma generate",
         "db:generate:d1": "deno run -A npm:prisma generate --schema=prisma/schema.d1.prisma",
         "db:push": "deno run -A --env=.envrc npm:prisma db push",
