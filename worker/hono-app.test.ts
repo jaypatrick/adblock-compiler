@@ -1,0 +1,137 @@
+/**
+ * Tests for the Hono-based request router (hono-app.ts).
+ *
+ * Verifies that the Phase 1 migration preserves all routing behaviours from
+ * the previous if/else chain in `worker/handlers/router.ts`.
+ */
+
+import { assertEquals, assertStringIncludes } from '@std/assert';
+import { makeEnv, makeInMemoryKv } from './test-helpers.ts';
+import { app } from './hono-app.ts';
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+/** Build a minimal ExecutionContext stub. */
+function makeCtx(): ExecutionContext {
+    return {
+        waitUntil: (_p: Promise<unknown>) => {},
+        passThroughOnException: () => {},
+    } as unknown as ExecutionContext;
+}
+
+/** Send a request through the Hono app and return the Response. */
+async function fetch(
+    path: string,
+    options: RequestInit & { env?: ReturnType<typeof makeEnv> } = {},
+): Promise<Response> {
+    const { env: envOverride, ...init } = options;
+    const env = envOverride ?? makeEnv();
+    const request = new Request(`https://worker.example.com${path}`, init);
+    return app.fetch(request, env, makeCtx());
+}
+
+// ── Tests ─────────────────────────────────────────────────────────────────────
+
+Deno.test('GET /health returns 200', async () => {
+    const res = await fetch('/health');
+    assertEquals(res.status, 200);
+});
+
+Deno.test('GET /api/health returns 200 (via /api prefix)', async () => {
+    const res = await fetch('/api/health');
+    assertEquals(res.status, 200);
+});
+
+Deno.test('GET /api/version returns version info (pre-auth meta route)', async () => {
+    const res = await fetch('/api/version');
+    // Returns 200 when a D1 database is configured, or 503 with version info when DB is absent.
+    assertEquals(res.status === 200 || res.status === 503, true);
+    const body = await res.json() as Record<string, unknown>;
+    // Either way the response must include a `version` string
+    assertEquals(typeof body.version, 'string');
+});
+
+Deno.test('GET /rules returns 401 for anonymous users', async () => {
+    const res = await fetch('/rules');
+    assertEquals(res.status, 401);
+});
+
+Deno.test('GET /api/rules returns 401 for anonymous users (via /api prefix)', async () => {
+    const res = await fetch('/api/rules');
+    assertEquals(res.status, 401);
+});
+
+Deno.test('POST /compile returns 401 for anonymous users (Free tier required)', async () => {
+    // /compile requires UserTier.Free per the route-permission registry.
+    // Anonymous requests are blocked before the rate-limit check is reached.
+    const res = await fetch('/compile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ rules: ['||example.com^'] }),
+    });
+    assertEquals(res.status, 401);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.success, false);
+});
+
+Deno.test('GET /configuration/defaults rate-limits anonymous users when quota is exhausted', async () => {
+    // /configuration/defaults is accessible to UserTier.Anonymous, so rate limiting
+    // is enforced before the handler runs — ideal for verifying the 429 path.
+    const store = new Map<string, string>();
+    const now = Date.now();
+    store.set('ratelimit:ip:unknown', JSON.stringify({ count: 9999, resetAt: now + 60_000 }));
+    const env = makeEnv({ RATE_LIMIT: makeInMemoryKv(store) });
+
+    const res = await fetch('/configuration/defaults', { env });
+    assertEquals(res.status, 429);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.success, false);
+    assertStringIncludes(String(body.error), 'Rate limit exceeded');
+});
+
+Deno.test('GET /poc returns 503 when ASSETS not configured', async () => {
+    const env = makeEnv({ ASSETS: undefined as unknown as Fetcher });
+    const res = await fetch('/poc', { env });
+    assertEquals(res.status, 503);
+});
+
+Deno.test('CORS middleware adds Access-Control-Allow-Origin for public endpoints', async () => {
+    const res = await fetch('/health', {
+        headers: { 'Origin': 'https://example.com' },
+    });
+    // Public endpoint: should have * or reflect origin
+    const acao = res.headers.get('Access-Control-Allow-Origin');
+    // Either wildcard or an origin header should be present
+    assertEquals(typeof acao, 'string');
+});
+
+Deno.test('OPTIONS preflight returns 200 or 204', async () => {
+    const res = await fetch('/compile', {
+        method: 'OPTIONS',
+        headers: {
+            'Origin': 'http://localhost:4200',
+            'Access-Control-Request-Method': 'POST',
+        },
+    });
+    // Hono cors() responds with 204 for preflight
+    assertEquals(res.status === 200 || res.status === 204, true);
+});
+
+Deno.test('GET /docs redirects to DOCS_SITE_URL', async () => {
+    const res = await fetch('/docs', { redirect: 'manual' });
+    assertEquals(res.status, 302);
+    const location = res.headers.get('Location');
+    assertEquals(typeof location, 'string');
+});
+
+Deno.test('404 for unknown routes', async () => {
+    const res = await fetch('/no-such-route-xyz');
+    // Static assets handler may return 404 or 503; at minimum should not be 200 or 500
+    assertEquals(res.status !== 200 && res.status !== 500, true);
+});
+
+Deno.test('GET /metrics returns 200', async () => {
+    const env = makeEnv({ METRICS: makeInMemoryKv(new Map()) });
+    const res = await fetch('/metrics', { env });
+    assertEquals(res.status, 200);
+});

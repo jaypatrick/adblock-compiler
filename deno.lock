@@ -32,6 +32,7 @@
     "npm:@prisma/client@^7.5.0": "7.5.0_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
     "npm:@sentry/cloudflare@10.43.0": "10.43.0_@cloudflare+workers-types@4.20260317.1",
     "npm:@sentry/cloudflare@^10.43.0": "10.43.0_@cloudflare+workers-types@4.20260317.1",
+    "npm:hono@^4.12.8": "4.12.8",
     "npm:jose@^6.2.1": "6.2.1",
     "npm:prisma@*": "7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
     "npm:prisma@^7.5.0": "7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
@@ -417,7 +418,7 @@
     "@hono/node-server@1.19.9_hono@4.11.4": {
       "integrity": "sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==",
       "dependencies": [
-        "hono"
+        "hono@4.11.4"
       ]
     },
     "@img/colour@1.1.0": {
@@ -602,7 +603,7 @@
         "eventsource-parser",
         "express",
         "express-rate-limit",
-        "hono",
+        "hono@4.12.8",
         "jose",
         "json-schema-typed",
         "pkce-challenge",
@@ -627,7 +628,7 @@
         "eventsource-parser",
         "express",
         "express-rate-limit",
-        "hono",
+        "hono@4.12.8",
         "jose",
         "json-schema-typed",
         "pkce-challenge",
@@ -719,7 +720,7 @@
         "@prisma/query-plan-executor",
         "foreground-child",
         "get-port-please",
-        "hono",
+        "hono@4.11.4",
         "http-status-codes",
         "pathe",
         "proper-lockfile",
@@ -1314,6 +1315,9 @@
     },
     "hono@4.11.4": {
       "integrity": "sha512-U7tt8JsyrxSRKspfhtLET79pU8K+tInj5QZXs1jSugO1Vq5dFj3kmZsRldo29mTBfcjDRVRXrEZ6LS63Cog9ZA=="
+    },
+    "hono@4.12.8": {
+      "integrity": "sha512-VJCEvtrezO1IAR+kqEYnxUOoStaQPGrCmX3j4wDTNOcD1uRPFpGlwQUIW8niPuvHXaTUxeOUl5MMDGrl+tmO9A=="
     },
     "http-errors@2.0.1": {
       "integrity": "sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==",
@@ -2269,6 +2273,7 @@
       "npm:@prisma/adapter-pg@^7.5.0",
       "npm:@prisma/client@^7.5.0",
       "npm:@sentry/cloudflare@^10.43.0",
+      "npm:hono@^4.12.8",
       "npm:prisma@^7.5.0",
       "npm:svix@^1.62.0",
       "npm:wrangler@^4.75.0"
@@ -2284,6 +2289,7 @@
         "npm:@prisma/adapter-d1@^7.5.0",
         "npm:@prisma/client@^7.5.0",
         "npm:@sentry/cloudflare@10.43.0",
+        "npm:hono@^4.12.8",
         "npm:jose@^6.2.1",
         "npm:svix@^1.88.0",
         "npm:wrangler@^4.75.0",
