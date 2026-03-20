@@ -14,6 +14,7 @@
   - [Streaming API](api/STREAMING_API.md)
   - [Validate Rule](api/VALIDATE_RULE.md)
   - [Zod Validation](api/ZOD_VALIDATION.md)
+  - [Configuration API](api/CONFIGURATION_API.md)
 - [Observability](observability/README.md)
   - [Sentry Integration](observability/SENTRY.md)
   - [Cloudflare Native Observability](observability/CLOUDFLARE_OBSERVABILITY.md)

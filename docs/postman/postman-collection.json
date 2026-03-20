@@ -493,8 +493,8 @@
           }
         },
         {
-          "name": "Cancel a queued job",
-          "description": "Marks a pending queue job as cancelled",
+          "name": "Cancel a pending queue job",
+          "description": "Cancels a pending queue job by its requestId.",
           "event": [
             {
               "listen": "test",
@@ -513,7 +513,7 @@
             }
           ],
           "request": {
-            "method": "POST",
+            "method": "DELETE",
             "header": [],
             "url": {
               "raw": "{{baseUrl}}/queue/cancel/:requestId",
@@ -533,7 +533,7 @@
                 }
               ]
             },
-            "description": "Marks a pending queue job as cancelled"
+            "description": "Cancels a pending queue job by its requestId.\nReturns 409 if the job is already completed, failed, or cancelled.\nRequires authentication (free tier or above).\n"
           }
         }
       ]
@@ -3120,6 +3120,48 @@
               }
             },
             "description": "Update the authenticated user's password.\nRequires a valid `Authorization: Bearer <jwt>` header and the correct current password.\n"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Info",
+      "description": "API metadata and self-describing schema endpoints (anonymous access, cached).",
+      "item": [
+        {
+          "name": "Get JSON Schemas for all public request/response types",
+          "description": "Returns JSON Schema representations of all public Zod schemas",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "pm.test('Response is JSON', function () {",
+                  "    pm.response.to.be.json;",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/schemas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "schemas"
+              ]
+            },
+            "description": "Returns JSON Schema representations of all public Zod schemas\n(ConfigurationSchema, CompileRequestSchema, SourceSchema, BenchmarkMetricsSchema)\nfor use by API testers and external tooling.\nAnonymous access. Cached for 1 hour.\n"
           }
         }
       ]

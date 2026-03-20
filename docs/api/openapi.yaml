@@ -55,6 +55,10 @@ tags:
       description: User-level authentication endpoints — API key management and webhook receivers. Requires Clerk JWT or API key auth.
     - name: LocalAuth
       description: Local JWT auth bridge — self-contained sign-up/login until Clerk is production-ready. When `CLERK_JWKS_URL` is set the provider auto-switches to Clerk and these endpoints are no longer used.
+    - name: Info
+      description: API metadata and self-describing schema endpoints (anonymous access, cached).
+    - name: Configuration
+      description: Compilation configuration defaults, validation, and resolution endpoints.
 
 paths:
     /api:
@@ -70,6 +74,36 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ApiInfo'
+
+    /api/schemas:
+        get:
+            tags: [Info]
+            operationId: getApiSchemas
+            summary: Get JSON Schemas for all public request/response types
+            description: |
+                Returns JSON Schema representations of all public Zod schemas
+                (ConfigurationSchema, CompileRequestSchema, SourceSchema, BenchmarkMetricsSchema)
+                for use by API testers and external tooling.
+                Anonymous access. Cached for 1 hour.
+            responses:
+                '200':
+                    description: JSON Schema definitions.
+                    headers:
+                        Cache-Control:
+                            schema: { type: string, example: 'public, max-age=3600' }
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success: { type: boolean, example: true }
+                                    schemas:
+                                        type: object
+                                        additionalProperties:
+                                            type: object
+                                            description: A JSON Schema definition object.
+                '429':
+                    $ref: '#/components/responses/RateLimited'
 
     /compile:
         post:
@@ -479,27 +513,55 @@ paths:
                                 $ref: '#/components/schemas/QueueHistoryResponse'
 
     /queue/cancel/{requestId}:
-        post:
+        delete:
             tags: [Queue]
-            summary: Cancel a queued job
-            description: Marks a pending queue job as cancelled
+            summary: Cancel a pending queue job
+            description: |
+                Cancels a pending queue job by its requestId.
+                Returns 409 if the job is already completed, failed, or cancelled.
+                Requires authentication (free tier or above).
             operationId: cancelQueueJob
+            security:
+                - BearerAuth: []
+                - ApiKeyAuth: []
             parameters:
                 - name: requestId
                   in: path
                   required: true
                   schema:
                       type: string
-                  description: Request ID of the job to cancel
+                      pattern: '^[a-zA-Z0-9_-]+$'
+                  description: The requestId of the queue job to cancel.
             responses:
                 '200':
-                    description: Job cancelled
+                    description: Job cancelled successfully.
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/CancelJobResponse'
                 '400':
-                    description: Invalid request ID
+                    $ref: '#/components/responses/BadRequest'
+                '401':
+                    $ref: '#/components/responses/Unauthorized'
+                '404':
+                    description: Job not found.
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '409':
+                    description: Job cannot be cancelled (already completed, failed, or cancelled).
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    success: { type: boolean, example: false }
+                                    error: { type: string }
+                                    requestId: { type: string }
+                                    status: { type: string, enum: [completed, failed, cancelled] }
+                '429':
+                    $ref: '#/components/responses/RateLimited'
 
     /ast/parse:
         post:
@@ -2120,6 +2182,13 @@ paths:
 
 components:
     schemas:
+        # Shared response schema
+        ErrorResponse:
+            type: object
+            properties:
+                success: { type: boolean, example: false }
+                error: { type: string }
+
         # Request Schemas
         CompileRequest:
             type: object
@@ -3773,6 +3842,46 @@ components:
                     description: Number of unreachable URLs.
 
     responses:
+        BadRequest:
+            description: Bad request - input validation failed
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success: { type: boolean, example: false }
+                            error: { type: string, example: 'requestId: Invalid requestId format' }
+
+        Unauthorized:
+            description: Unauthorized - authentication required
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success: { type: boolean, example: false }
+                            error: { type: string, example: 'Authentication required' }
+
+        RateLimited:
+            description: Rate limit exceeded
+            headers:
+                Retry-After:
+                    schema: { type: integer }
+                    description: Seconds until retry allowed
+                X-RateLimit-Limit:
+                    schema: { type: integer }
+                X-RateLimit-Remaining:
+                    schema: { type: integer }
+                X-RateLimit-Reset:
+                    schema: { type: integer }
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success: { type: boolean, example: false }
+                            error: { type: string, example: 'Rate limit exceeded.' }
+
         BadRequestError:
             description: Bad request - request body failed schema validation
             content:

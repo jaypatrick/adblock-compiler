@@ -39,7 +39,7 @@ export function handleInfo(request: Request, env: Env): Response {
             'GET /metrics': 'Request metrics and statistics',
             'GET /queue/stats': 'Queue statistics and diagnostics',
             'GET /queue/history': 'Job history and queue depth over time',
-            'POST /queue/cancel/:requestId': 'Cancel a pending queue job',
+            'DELETE /queue/cancel/:requestId': 'Cancel a pending queue job',
             'POST /compile': 'Compile a filter list (JSON response)',
             'POST /compile/stream': 'Compile with real-time progress (SSE)',
             'POST /compile/batch': 'Compile multiple filter lists in parallel',
@@ -53,6 +53,11 @@ export function handleInfo(request: Request, env: Env): Response {
             'PUT /rules/:id': 'Update a saved rule set by ID',
             'DELETE /rules/:id': 'Delete a saved rule set by ID',
             'POST /notify': 'Send a notification event to configured webhook targets',
+            'POST /ast/parse': 'Parse an adblock/hosts rule into an AST (AGTree)',
+            'GET /configuration/defaults': 'System compilation defaults and hard limits (anonymous)',
+            'POST /configuration/validate': 'Validate a configuration object against the schema',
+            'POST /configuration/resolve': 'Merge configuration layers and return effective IConfiguration',
+            'GET /api/schemas': 'Self-describing JSON Schemas for all public request/response types',
         },
         example: {
             method: 'POST',
@@ -186,6 +191,11 @@ export async function routeApiMeta(
 
     if (pathname === '/api/sentry-config') {
         return handleSentryConfig(env);
+    }
+
+    if (pathname === '/api/schemas') {
+        const { handleSchemas } = await import('./schemas.ts');
+        return handleSchemas(request, env);
     }
 
     return null;

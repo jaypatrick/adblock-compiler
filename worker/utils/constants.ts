@@ -26,6 +26,7 @@ export const SPA_SERVER_PREFIXES: readonly string[] = [
     '/ws',
     '/compile',
     '/ast',
+    '/poc',
 ];
 
 /** URL of the mdBook documentation site hosted on Cloudflare Pages. */

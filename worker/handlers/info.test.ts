@@ -190,3 +190,51 @@ Deno.test('routeApiMeta - unmatched path returns null', async () => {
     const result = await routeApiMeta('/api/unknown-path', req, url, makeEnv());
     assertEquals(result, null);
 });
+
+// ============================================================================
+// Endpoint registry assertions
+// ============================================================================
+
+Deno.test('handleInfo - endpoint registry contains DELETE /queue/cancel/:requestId (not POST)', async () => {
+    const req = makeRequest('/api', { headers: { 'Accept': 'application/json' } });
+    const env = makeEnv();
+    const res = handleInfo(req, env);
+    const body = await res.json() as { endpoints: Record<string, string> };
+    assertExists(body.endpoints['DELETE /queue/cancel/:requestId']);
+    assertEquals(body.endpoints['POST /queue/cancel/:requestId'], undefined);
+});
+
+Deno.test('handleInfo - endpoint registry contains POST /ast/parse', async () => {
+    const req = makeRequest('/api', { headers: { 'Accept': 'application/json' } });
+    const env = makeEnv();
+    const res = handleInfo(req, env);
+    const body = await res.json() as { endpoints: Record<string, string> };
+    assertExists(body.endpoints['POST /ast/parse']);
+});
+
+Deno.test('handleInfo - endpoint registry contains GET /configuration/defaults', async () => {
+    const req = makeRequest('/api', { headers: { 'Accept': 'application/json' } });
+    const env = makeEnv();
+    const res = handleInfo(req, env);
+    const body = await res.json() as { endpoints: Record<string, string> };
+    assertExists(body.endpoints['GET /configuration/defaults']);
+});
+
+Deno.test('handleInfo - endpoint registry contains GET /api/schemas', async () => {
+    const req = makeRequest('/api', { headers: { 'Accept': 'application/json' } });
+    const env = makeEnv();
+    const res = handleInfo(req, env);
+    const body = await res.json() as { endpoints: Record<string, string> };
+    assertExists(body.endpoints['GET /api/schemas']);
+});
+
+Deno.test('routeApiMeta - GET /api/schemas returns schemas response', async () => {
+    const req = makeRequest('/api/schemas');
+    const url = new URL(req.url);
+    const result = await routeApiMeta('/api/schemas', req, url, makeEnv());
+    assertExists(result);
+    assertEquals(result!.status, 200);
+    const body = await result!.json() as { success: boolean; schemas: Record<string, unknown> };
+    assertEquals(body.success, true);
+    assertExists(body.schemas);
+});
