@@ -22,7 +22,7 @@
  * ## Provider selection
  * Active when `BETTER_AUTH_SECRET` is set and `CLERK_JWKS_URL` is not.
  * See `worker/hono-app.ts` for the priority chain:
- *   Clerk > Better Auth > legacy local JWT
+ *   Clerk > Better Auth
  *
  * @see worker/lib/auth.ts — Better Auth factory
  * @see worker/types.ts — IAuthProvider interface
@@ -108,9 +108,12 @@ export class BetterAuthProvider implements IAuthProvider {
                 sessionId: session.session.id,
             };
         } catch (error) {
-            // Better Auth throws on invalid/expired tokens — treat as anonymous
-            const message = error instanceof Error ? error.message : String(error);
-            return { valid: false, error: message };
+            // Better Auth throws on invalid/expired tokens — treat as anonymous.
+            // Log the full error server-side but return a generic message to the
+            // caller to avoid leaking internal token-parsing details.
+            // deno-lint-ignore no-console
+            console.error('[better-auth] Token verification error:', error instanceof Error ? error.message : String(error));
+            return { valid: false, error: 'Authentication failed' };
         }
     }
 }

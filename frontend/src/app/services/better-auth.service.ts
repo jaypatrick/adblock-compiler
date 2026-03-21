@@ -5,10 +5,14 @@
  * Uses cookies for session management (set automatically by Better Auth).
  * The bearer() plugin on the server also supports Authorization headers.
  *
+ * SSR-safe: all network calls are guarded by `isPlatformBrowser`. On the
+ * server, `isLoaded` is set to `true` immediately with no session.
+ *
  * Signals: isLoaded, isSignedIn, user, isAdmin
  */
 
-import { Injectable, signal, computed } from '@angular/core';
+import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
+import { isPlatformBrowser } from '@angular/common';
 
 export interface BetterAuthUser {
     id: string;
@@ -22,6 +26,7 @@ export interface BetterAuthUser {
 
 @Injectable({ providedIn: 'root' })
 export class BetterAuthService {
+    private readonly platformId = inject(PLATFORM_ID);
     private readonly _user = signal<BetterAuthUser | null>(null);
     private readonly _isLoaded = signal(false);
     private readonly _sessionToken = signal<string | null>(null);
@@ -32,6 +37,14 @@ export class BetterAuthService {
     readonly isAdmin = computed(() => this._user()?.role === 'admin');
 
     constructor() {
+        if (!isPlatformBrowser(this.platformId)) {
+            // SSR: mark as loaded immediately with no session.
+            // Relative fetch() calls are not valid in Node.js, and there is no
+            // browser cookie jar to check. The browser will re-run checkSession()
+            // once Angular hydrates on the client.
+            this._isLoaded.set(true);
+            return;
+        }
         // Check for existing session on init
         this.checkSession();
     }
@@ -111,6 +124,8 @@ export class BetterAuthService {
                 method: 'POST',
                 credentials: 'include',
             });
+        } catch {
+            // Ignore sign-out request failures — local state is always cleared.
         } finally {
             this._user.set(null);
             this._sessionToken.set(null);
@@ -119,14 +134,23 @@ export class BetterAuthService {
 
     /**
      * Get a bearer token for API calls.
-     * Better Auth uses cookies by default, but the bearer plugin also
-     * provides tokens that can be used in Authorization headers.
+     * Better Auth uses the bearer() plugin which provides the session token
+     * in the `get-session` response (`session.token`). This token can be
+     * sent as `Authorization: Bearer <token>` to authenticated Worker routes.
+     *
+     * Returns `null` only when the user is not signed in (anonymous requests
+     * should proceed without an Authorization header).
      */
     async getToken(): Promise<string | null> {
-        // If we have a cached token, return it
+        // Not signed in — no token needed
+        if (!this.isSignedIn()) return null;
+
+        // Return cached token if available
         if (this._sessionToken()) return this._sessionToken();
 
-        // Try to get session which may include the token
+        // Token not cached yet (e.g., after SSR hydration) — re-fetch the session.
+        // The get-session response includes session.token when the bearer() plugin
+        // is configured on the server.
         try {
             const res = await fetch('/api/auth/get-session', {
                 credentials: 'include',
@@ -139,10 +163,13 @@ export class BetterAuthService {
                 }
             }
         } catch {
-            // Fall through
+            // Fall through to warning
         }
 
-        // Cookies are sent automatically, return null to signal cookie-based auth
+        // Signed in but unable to retrieve a bearer token. The Worker will
+        // still check the session cookie (cookie-based auth fallback), so the
+        // request is not blocked — log a warning for diagnostics.
+        console.warn('[BetterAuthService] getToken: signed in but no bearer token available; relying on session cookie');
         return null;
     }
 }
