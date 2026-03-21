@@ -1,11 +1,17 @@
 /**
- * Hono application — Phase 1 routing migration.
+ * Hono application — Phase 2 routing migration.
  *
  * All routing logic from `worker/handlers/router.ts` has been migrated to
  * Hono route declarations.  Handler function signatures are UNCHANGED.
  *
+ * Phase 2 extracts repeated inline middleware into reusable factories
+ * (`bodySizeMiddleware`, `rateLimitMiddleware`, `turnstileMiddleware`,
+ * `requireAuthMiddleware`) defined in `worker/middleware/hono-middleware.ts`.
+ * POST /compile also applies `@hono/zod-validator` for structural validation.
+ *
  * @see docs/architecture/hono-routing.md — architecture overview
  * @see worker/handlers/router.ts — thin re-export shim (backward compat)
+ * @see worker/middleware/hono-middleware.ts — Phase 2 middleware factories
  */
 
 /// <reference types="@cloudflare/workers-types" />
@@ -24,8 +30,9 @@ import { AnalyticsService } from '../src/services/AnalyticsService.ts';
 import { WORKER_DEFAULTS } from '../src/config/defaults.ts';
 
 // Middleware
-import { checkRateLimitTiered, validateRequestSize, verifyTurnstileToken } from './middleware/index.ts';
-import { authenticateRequestUnified, requireAuth } from './middleware/auth.ts';
+import { checkRateLimitTiered, verifyTurnstileToken } from './middleware/index.ts';
+import { authenticateRequestUnified } from './middleware/auth.ts';
+import { bodySizeMiddleware, rateLimitMiddleware, requireAuthMiddleware, turnstileMiddleware } from './middleware/hono-middleware.ts';
 import { ClerkAuthProvider } from './middleware/clerk-auth-provider.ts';
 import { LocalJwtAuthProvider } from './middleware/local-jwt-auth-provider.ts';
 
@@ -62,6 +69,9 @@ import { handleAdminGetUserUsage } from './handlers/admin-usage.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleMetrics } from './handlers/metrics.ts';
 import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './handlers/configuration.ts';
+
+import { zValidator } from '@hono/zod-validator';
+import { CompileRequestSchema } from '../src/configuration/schemas.ts';
 
 // Agent routing
 import { routeAgentRequest } from './agent-routing.ts';
@@ -115,55 +125,6 @@ type AppContext = Context<{ Bindings: Env; Variables: Variables }>;
 function routesPath(c: AppContext): string {
     const p = c.req.path;
     return p.startsWith('/api/') ? p.slice(4) : p;
-}
-
-/**
- * Verify Turnstile token from a cloned request body.
- * Returns null on success; a Response on failure.
- */
-async function checkTurnstile(c: AppContext): Promise<Response | null> {
-    if (!c.env.TURNSTILE_SECRET_KEY) return null;
-    let token = '';
-    try {
-        const body = await c.req.raw.clone().json() as { turnstileToken?: string };
-        token = body.turnstileToken || '';
-    } catch {
-        return c.json({ success: false, error: 'Invalid request body — could not extract Turnstile token' }, 400);
-    }
-    const result = await verifyTurnstileToken(c.env, token, c.get('ip'));
-    if (!result.success) {
-        return c.json({ success: false, error: result.error || 'Turnstile verification failed' }, 403);
-    }
-    return null;
-}
-
-/**
- * Returns a rate-limit exceeded JSON response with standard headers.
- */
-function rateLimitResponse(
-    c: AppContext,
-    limit: number,
-    resetAt: number,
-): Response {
-    const requestId = c.get('requestId');
-    const ip = c.get('ip');
-    const analytics = c.get('analytics');
-    analytics.trackRateLimitExceeded({
-        requestId,
-        clientIpHash: AnalyticsService.hashIp(ip),
-        rateLimit: limit,
-        windowSeconds: RATE_LIMIT_WINDOW,
-    });
-    return c.json(
-        { success: false, error: `Rate limit exceeded. Maximum ${limit} requests per ${RATE_LIMIT_WINDOW} seconds.` },
-        429,
-        {
-            'Retry-After': String(Math.ceil((resetAt - Date.now()) / 1000)),
-            'X-RateLimit-Limit': String(limit),
-            'X-RateLimit-Remaining': '0',
-            'X-RateLimit-Reset': String(resetAt),
-        },
-    );
 }
 
 // ============================================================================
@@ -432,56 +393,84 @@ routes.all('/queue/*', async (c) => {
 });
 
 // ── Compile routes ────────────────────────────────────────────────────────────
+//
+// All primary compile/validate routes share the same Phase 2 middleware stack:
+//   1. bodySizeMiddleware()    — reject oversized payloads (413) via clone
+//   2. rateLimitMiddleware()   — per-user/IP tiered quota (429)
+//   3. turnstileMiddleware()   — Cloudflare human verification (403) via clone
+//
+// POST /compile also applies @hono/zod-validator to perform structural
+// validation of the request body before the handler runs.  The validated,
+// typed payload is forwarded to handleCompileJson via a reconstructed Request
+// (necessary because zValidator consumes the original body stream).
+//
+// See docs/architecture/hono-routing.md — Phase 2 for the full middleware
+// extraction rationale and execution-order guarantees.
 
-routes.post('/compile', async (c) => {
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return rateLimitResponse(c, rl.limit, rl.resetAt);
-    const tsErr = await checkTurnstile(c);
-    if (tsErr) return tsErr;
-    return handleCompileJson(c.req.raw, c.env, c.get('analytics'), c.get('requestId'));
-});
+routes.post(
+    '/compile',
+    bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    turnstileMiddleware(),
+    // Zod body validation — rejects structurally invalid requests with 422
+    // before the compile handler runs.  Both `bodySizeMiddleware` and
+    // `turnstileMiddleware` above use Request.clone() so the original body
+    // stream is intact for zValidator to consume here.
+    //
+    // @hono/zod-validator types against npm:zod while this project uses
+    // jsr:@zod/zod — both are Zod v4 with identical runtime APIs; the cast
+    // to `any` avoids a module-identity mismatch that is type-only.
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', CompileRequestSchema as any, (result, c) => {
+        if (!result.success) {
+            return c.json({ success: false, error: 'Invalid request body', details: result.error }, 422);
+        }
+    }),
+    async (c) => {
+        // c.req.raw body stream was consumed by zValidator above.
+        // Reconstruct a Request from the validated (and sanitised) data so
+        // the existing handler signature (Request, Env, ...) is preserved.
+        const validatedBody = c.req.valid('json');
+        const syntheticReq = new Request(c.req.url, {
+            method: 'POST',
+            headers: c.req.raw.headers,
+            body: JSON.stringify(validatedBody),
+        });
+        return handleCompileJson(syntheticReq, c.env, c.get('analytics'), c.get('requestId'));
+    },
+);
 
-routes.post('/compile/stream', async (c) => {
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return rateLimitResponse(c, rl.limit, rl.resetAt);
-    const tsErr = await checkTurnstile(c);
-    if (tsErr) return tsErr;
-    return handleCompileStream(c.req.raw, c.env);
-});
+routes.post(
+    '/compile/stream',
+    bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    turnstileMiddleware(),
+    (c) => handleCompileStream(c.req.raw, c.env),
+);
 
-routes.post('/compile/batch', async (c) => {
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return rateLimitResponse(c, rl.limit, rl.resetAt);
-    const tsErr = await checkTurnstile(c);
-    if (tsErr) return tsErr;
-    return handleCompileBatch(c.req.raw, c.env);
-});
+routes.post(
+    '/compile/batch',
+    bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    turnstileMiddleware(),
+    (c) => handleCompileBatch(c.req.raw, c.env),
+);
 
-routes.post('/ast/parse', async (c) => {
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return rateLimitResponse(c, rl.limit, rl.resetAt);
-    const tsErr = await checkTurnstile(c);
-    if (tsErr) return tsErr;
-    return handleASTParseRequest(c.req.raw, c.env);
-});
+routes.post(
+    '/ast/parse',
+    bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    turnstileMiddleware(),
+    (c) => handleASTParseRequest(c.req.raw, c.env),
+);
 
-routes.post('/validate', async (c) => {
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return rateLimitResponse(c, rl.limit, rl.resetAt);
-    const tsErr = await checkTurnstile(c);
-    if (tsErr) return tsErr;
-    return handleValidate(c.req.raw);
-});
+routes.post(
+    '/validate',
+    bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    turnstileMiddleware(),
+    (c) => handleValidate(c.req.raw),
+);
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
 
@@ -499,183 +488,144 @@ routes.get('/ws/compile', async (c) => {
 
 // ── Validate-rule ─────────────────────────────────────────────────────────────
 
-routes.post('/validate-rule', async (c) => {
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) {
-        c.get('analytics').trackSecurityEvent({
-            eventType: 'rate_limit',
-            path: '/validate-rule',
-            method: 'POST',
-            clientIpHash: AnalyticsService.hashIp(c.get('ip')),
-            tier: c.get('authContext').tier,
-            reason: 'validate_rule_rate_limit_exceeded',
-        });
-        return c.json({ success: false, error: 'Rate limit exceeded' }, 429, {
-            'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
-        });
-    }
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    return handleValidateRule(c.req.raw, c.env);
-});
+routes.post(
+    '/validate-rule',
+    rateLimitMiddleware(),
+    bodySizeMiddleware(),
+    (c) => handleValidateRule(c.req.raw, c.env),
+);
 
 // ── Configuration ─────────────────────────────────────────────────────────────
 
-routes.get('/configuration/defaults', async (c) => {
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return rateLimitResponse(c, rl.limit, rl.resetAt);
-    return handleConfigurationDefaults(c.req.raw, c.env);
-});
+routes.get(
+    '/configuration/defaults',
+    rateLimitMiddleware(),
+    (c) => handleConfigurationDefaults(c.req.raw, c.env),
+);
 
-routes.post('/configuration/validate', async (c) => {
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return rateLimitResponse(c, rl.limit, rl.resetAt);
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const tsErr = await checkTurnstile(c);
-    if (tsErr) {
-        c.get('analytics').trackSecurityEvent({
-            eventType: 'auth_failure',
-            path: '/configuration/validate',
-            method: 'POST',
-            clientIpHash: AnalyticsService.hashIp(c.get('ip')),
-            tier: c.get('authContext').tier,
-            reason: 'turnstile_failed',
-        });
-        return tsErr;
-    }
-    return handleConfigurationValidate(c.req.raw, c.env);
-});
+routes.post(
+    '/configuration/validate',
+    rateLimitMiddleware(),
+    bodySizeMiddleware(),
+    turnstileMiddleware(),
+    (c) => handleConfigurationValidate(c.req.raw, c.env),
+);
 
-routes.post('/configuration/resolve', async (c) => {
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return rateLimitResponse(c, rl.limit, rl.resetAt);
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const tsErr = await checkTurnstile(c);
-    if (tsErr) {
-        c.get('analytics').trackSecurityEvent({
-            eventType: 'auth_failure',
-            path: '/configuration/resolve',
-            method: 'POST',
-            clientIpHash: AnalyticsService.hashIp(c.get('ip')),
-            tier: c.get('authContext').tier,
-            reason: 'turnstile_failed',
-        });
-        return tsErr;
-    }
-    return handleConfigurationResolve(c.req.raw, c.env);
-});
+routes.post(
+    '/configuration/resolve',
+    rateLimitMiddleware(),
+    bodySizeMiddleware(),
+    turnstileMiddleware(),
+    (c) => handleConfigurationResolve(c.req.raw, c.env),
+);
 
 // ── Rules (requireAuth) ───────────────────────────────────────────────────────
 
-routes.get('/rules', async (c) => {
-    const g = requireAuth(c.get('authContext'));
-    if (g) return g;
-    return handleRulesList(c.req.raw, c.env);
-});
+routes.get(
+    '/rules',
+    requireAuthMiddleware(),
+    (c) => handleRulesList(c.req.raw, c.env),
+);
 
-routes.post('/rules', async (c) => {
-    const g = requireAuth(c.get('authContext'));
-    if (g) return g;
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return JsonResponse.rateLimited(RATE_LIMIT_WINDOW);
-    return handleRulesCreate(c.req.raw, c.env);
-});
+routes.post(
+    '/rules',
+    requireAuthMiddleware(),
+    bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    (c) => handleRulesCreate(c.req.raw, c.env),
+);
 
-routes.get('/rules/:id', async (c) => {
-    const g = requireAuth(c.get('authContext'));
-    if (g) return g;
-    return handleRulesGet(c.req.param('id'), c.env);
-});
+routes.get(
+    '/rules/:id',
+    requireAuthMiddleware(),
+    (c) => handleRulesGet(c.req.param('id'), c.env),
+);
 
-routes.put('/rules/:id', async (c) => {
-    const g = requireAuth(c.get('authContext'));
-    if (g) return g;
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return JsonResponse.rateLimited(RATE_LIMIT_WINDOW);
-    return handleRulesUpdate(c.req.param('id'), c.req.raw, c.env);
-});
+routes.put(
+    '/rules/:id',
+    requireAuthMiddleware(),
+    bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    (c) => handleRulesUpdate(c.req.param('id'), c.req.raw, c.env),
+);
 
-routes.delete('/rules/:id', async (c) => {
-    const g = requireAuth(c.get('authContext'));
-    if (g) return g;
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return JsonResponse.rateLimited(RATE_LIMIT_WINDOW);
-    return handleRulesDelete(c.req.param('id'), c.env);
-});
+routes.delete(
+    '/rules/:id',
+    requireAuthMiddleware(),
+    rateLimitMiddleware(),
+    (c) => handleRulesDelete(c.req.param('id'), c.env),
+);
 
 // ── API Keys (requireAuth + Clerk JWT) ────────────────────────────────────────
 
-routes.post('/keys', async (c) => {
-    const g = requireAuth(c.get('authContext'));
-    if (g) return g;
-    if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
-    if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return JsonResponse.rateLimited(RATE_LIMIT_WINDOW);
-    return handleCreateApiKey(c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
-});
+routes.post(
+    '/keys',
+    requireAuthMiddleware(),
+    rateLimitMiddleware(),
+    async (c) => {
+        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
+        return handleCreateApiKey(c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
+    },
+);
 
-routes.get('/keys', async (c) => {
-    const g = requireAuth(c.get('authContext'));
-    if (g) return g;
-    if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
-    if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
-    return handleListApiKeys(c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
-});
+routes.get(
+    '/keys',
+    requireAuthMiddleware(),
+    async (c) => {
+        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
+        return handleListApiKeys(c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
+    },
+);
 
-routes.delete('/keys/:id', async (c) => {
-    const g = requireAuth(c.get('authContext'));
-    if (g) return g;
-    if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
-    if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
-    return handleRevokeApiKey(c.req.param('id'), c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
-});
+routes.delete(
+    '/keys/:id',
+    requireAuthMiddleware(),
+    async (c) => {
+        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
+        return handleRevokeApiKey(c.req.param('id'), c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
+    },
+);
 
-routes.patch('/keys/:id', async (c) => {
-    const g = requireAuth(c.get('authContext'));
-    if (g) return g;
-    if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
-    if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
-    return handleUpdateApiKey(c.req.param('id'), c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
-});
+routes.patch(
+    '/keys/:id',
+    requireAuthMiddleware(),
+    async (c) => {
+        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
+        return handleUpdateApiKey(c.req.param('id'), c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
+    },
+);
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────
 
 routes.post('/webhooks/clerk', (c) => handleClerkWebhook(c.req.raw, c.env));
 
-routes.post('/notify', async (c) => {
-    const g = requireAuth(c.get('authContext'));
-    if (g) return g;
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
-    if (!rl.allowed) return JsonResponse.rateLimited(RATE_LIMIT_WINDOW);
-    return handleNotify(c.req.raw, c.env);
-});
+routes.post(
+    '/notify',
+    requireAuthMiddleware(),
+    bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    (c) => handleNotify(c.req.raw, c.env),
+);
 
 // ── Async compile ─────────────────────────────────────────────────────────────
 
-routes.post('/compile/async', async (c) => {
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const tsErr = await checkTurnstile(c);
-    if (tsErr) return tsErr;
-    return handleCompileAsync(c.req.raw, c.env);
-});
+routes.post(
+    '/compile/async',
+    bodySizeMiddleware(),
+    turnstileMiddleware(),
+    (c) => handleCompileAsync(c.req.raw, c.env),
+);
 
-routes.post('/compile/batch/async', async (c) => {
-    const sz = await validateRequestSize(c.req.raw, c.env);
-    if (!sz.valid) return c.json({ success: false, error: sz.error || 'Request body too large' }, 413);
-    const tsErr = await checkTurnstile(c);
-    if (tsErr) return tsErr;
-    return handleCompileBatchAsync(c.req.raw, c.env);
-});
+routes.post(
+    '/compile/batch/async',
+    bodySizeMiddleware(),
+    turnstileMiddleware(),
+    (c) => handleCompileBatchAsync(c.req.raw, c.env),
+);
 
 // ── Workflow (lazy) ───────────────────────────────────────────────────────────
 

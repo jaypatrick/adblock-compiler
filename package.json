@@ -19,6 +19,7 @@
         "@prisma/adapter-d1": "^7.5.0",
         "@prisma/client": "^7.5.0",
         "@sentry/cloudflare": "10.43.0",
+        "@hono/zod-validator": "^0.4.3",
         "hono": "^4.12.8",
         "jose": "^6.2.1",
         "svix": "^1.88.0",
