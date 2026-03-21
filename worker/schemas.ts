@@ -827,7 +827,6 @@ export const UserTierRowSchema = z.object({
 
 export type UserTierRow = z.infer<typeof UserTierRowSchema>;
 
-
 // ============================================================================
 // Better Auth User Schemas
 //
@@ -1236,4 +1235,3 @@ export const AdminUsageDaysQuerySchema = z.object({
     days: z.coerce.number().int().default(30),
 });
 export type AdminUsageDays = z.infer<typeof AdminUsageDaysQuerySchema>;
-

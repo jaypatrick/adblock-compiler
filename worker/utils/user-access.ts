@@ -40,9 +40,7 @@ export async function checkUserApiAccess(
             .first<{ banned: number; banReason: string | null }>();
 
         if (row?.banned) {
-            const message = row.banReason
-                ? `Account has been suspended: ${row.banReason}`
-                : 'Account has been suspended';
+            const message = row.banReason ? `Account has been suspended: ${row.banReason}` : 'Account has been suspended';
             return JsonResponse.error(message, 403);
         }
         return null;

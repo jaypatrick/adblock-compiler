@@ -15,7 +15,7 @@
  */
 
 import { assertEquals } from '@std/assert';
-import { handleAdminDeleteUser, handleAdminGetUser, handleAdminListUsers, handleAdminUpdateUser, handleAdminBanUser, handleAdminUnbanUser } from './admin-users.ts';
+import { handleAdminBanUser, handleAdminDeleteUser, handleAdminGetUser, handleAdminListUsers, handleAdminUnbanUser, handleAdminUpdateUser } from './admin-users.ts';
 import { type Env, type IAuthContext, UserTier } from '../types.ts';
 
 // ============================================================================

@@ -74,7 +74,6 @@ export function createAuth(env: Env, baseURL?: string) {
             // Bearer token plugin — allows API authentication via Authorization: Bearer <token>
             // instead of browser cookies. Critical for this project's API-first architecture.
             bearer(),
-
             // Future plugins (uncomment when needed):
             // twoFactor(),    — TOTP/2FA for admin accounts
             // admin(),        — Better Auth's admin user management

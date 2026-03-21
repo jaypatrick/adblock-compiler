@@ -309,9 +309,7 @@ app.use('*', async (c, next) => {
 
     // Standard unified authentication
     startTime(c, 'auth', 'Authentication');
-    const authProvider = c.env.CLERK_JWKS_URL
-        ? new ClerkAuthProvider(c.env)
-        : new BetterAuthProvider(c.env);
+    const authProvider = c.env.CLERK_JWKS_URL ? new ClerkAuthProvider(c.env) : new BetterAuthProvider(c.env);
     const authResult = await authenticateRequestUnified(c.req.raw, c.env, createPgPool, authProvider);
     endTime(c, 'auth');
     if (authResult.response) return authResult.response;

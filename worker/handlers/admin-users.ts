@@ -22,13 +22,7 @@
 
 import { type Env, type IAuthContext, UserTier } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
-import {
-    AdminBanUserSchema,
-    AdminPaginationQuerySchema,
-    AdminUpdateUserSchema,
-    type BetterAuthUserRow,
-    BetterAuthUserPublicSchema,
-} from '../schemas.ts';
+import { AdminBanUserSchema, AdminPaginationQuerySchema, AdminUpdateUserSchema, BetterAuthUserPublicSchema, type BetterAuthUserRow } from '../schemas.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
 
 /** Map a raw D1 user row to its public shape (strips sensitive fields). */
@@ -91,7 +85,9 @@ export async function handleAdminListUsers(
 
         const [listResult, countResult] = await Promise.all([
             env.DB
-                .prepare(`SELECT id, email, name, emailVerified, image, tier, role, banned, banReason, banExpires, createdAt, updatedAt FROM "user" ${whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?`)
+                .prepare(
+                    `SELECT id, email, name, emailVerified, image, tier, role, banned, banReason, banExpires, createdAt, updatedAt FROM "user" ${whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?`,
+                )
                 .bind(...binds, limit, skip)
                 .all<BetterAuthUserRow>(),
             env.DB
