@@ -1,6 +1,6 @@
 # Authentication & Authorization
 
-The adblock-compiler uses a two-phase auth system: a **local JWT bridge** is active now (pre-production), with [Clerk](https://clerk.com) ready to activate via a single environment variable when needed. Both providers share identical JWT claim structures — no code changes are required to switch.
+The adblock-compiler uses a two-provider auth system: **Better Auth** (with Cloudflare D1) is the default provider, with [Clerk](https://clerk.com) ready to activate via a single environment variable when needed. Both providers are pluggable implementations of the `IAuthProvider` interface — no code changes are required to switch.
 
 > **Not sure which provider is active?** See [Auth Provider Selection](auth-provider-selection.md).
 
@@ -8,8 +8,7 @@ The adblock-compiler uses a two-phase auth system: a **local JWT bridge** is act
 
 | Document | Audience | Description |
 |----------|----------|-------------|
-| [Auth Provider Selection](auth-provider-selection.md) | All | How the system chooses Clerk vs local auth, and how to switch |
-| [Local JWT Bridge](local-jwt-bridge.md) | Developers / Operators | Temporary local auth bridge — active until Clerk is enabled |
+| [Auth Provider Selection](auth-provider-selection.md) | All | How the system chooses Clerk vs Better Auth, and how to switch |
 | [Clerk Dashboard Setup](clerk-setup.md) | Operators | Step-by-step Clerk application configuration |
 | [Configuration Guide](configuration.md) | Operators / DevOps | Environment variables, secrets, and deployment setup |
 | [Developer Guide](developer-guide.md) | Developers | Architecture, extensibility, and code patterns |
@@ -25,21 +24,22 @@ The adblock-compiler uses a two-phase auth system: a **local JWT bridge** is act
 
 ```mermaid
 flowchart LR
-    FE["Angular Frontend\n(ClerkService or LocalAuthService)"]
+    FE["Angular Frontend\n(ClerkService or BetterAuthService)"]
     W["Cloudflare Worker\n(Auth Middleware)"]
-    D1[("Cloudflare D1\n(User records)")]
+    D1[("Cloudflare D1\n(User records + sessions)")]
     PG[("PostgreSQL\n(Hyperdrive — API keys)")]
     WH["Clerk Webhooks\n(user.created\nuser.updated\nuser.deleted)"]
 
-    FE -->|"JWT / API Key"| W
-    W -->|"Tier lookup"| D1
+    FE -->|"Session / JWT / API Key"| W
+    W -->|"Session + user lookup"| D1
     W -->|"API key verify"| PG
     WH -->|"Sync user records"| W
     W -->|"Upsert / delete users"| D1
 
     subgraph W["Cloudflare Worker"]
         direction TB
-        JWT["JWT verify\n(Clerk or Local HS256)"]
+        BA["Better Auth session verify"]
+        JWT["Clerk JWT verify (JWKS)"]
         AK["API key verify"]
         CF["CF Access verify"]
         TE["Tier enforcement"]
@@ -50,13 +50,14 @@ flowchart LR
 
 ## Authentication Methods
 
-The system supports four authentication methods. The active JWT provider (Clerk or local) is
-determined by the `CLERK_JWKS_URL` environment variable — see
+The system supports four authentication methods. The active session/JWT provider (Clerk or
+Better Auth) is determined by the `CLERK_JWKS_URL` environment variable — see
 [Auth Provider Selection](auth-provider-selection.md) for details.
 
-1. **Local JWT** *(active now)* — HS256 JWT issued by `POST /auth/login` or `POST /auth/signup`.
-   Active when `CLERK_JWKS_URL` is **not** set. Frontend shows a native sign-in/sign-up form.
-2. **Clerk JWT** *(production)* — JWT issued by Clerk, verified via JWKS. Active when
+1. **Better Auth** *(default)* — Session-based auth using D1 for storage. Supports both cookie
+   and bearer token authentication. Active when `CLERK_JWKS_URL` is **not** set and
+   `BETTER_AUTH_SECRET` is configured. Frontend shows a native sign-in/sign-up form.
+2. **Clerk JWT** *(alternative)* — JWT issued by Clerk, verified via JWKS. Active when
    `CLERK_JWKS_URL` is set. Frontend mounts the hosted Clerk widget.
 3. **API Key** — For programmatic access. Users create API keys via the dashboard; sent as
    `Authorization: Bearer abc_...`.
@@ -73,7 +74,8 @@ determined by the `CLERK_JWKS_URL` environment variable — see
 
 ## Quick Links
 
+- **Better Auth Docs**: [better-auth.com/docs](https://www.better-auth.com/docs)
 - **Clerk Dashboard**: [dashboard.clerk.com](https://dashboard.clerk.com)
 - **Clerk Docs**: [clerk.com/docs](https://clerk.com/docs)
 - **Cloudflare Access**: [Cloudflare Zero Trust](https://one.dash.cloudflare.com)
-- **GitHub Issue**: [#980 — Implement Authentication & Authorization](https://github.com/jaypatrick/adblock-compiler/issues/980)
+- **GitHub Issue**: [#1241 — Better Auth Migration](https://github.com/jaypatrick/adblock-compiler/issues/1241)

@@ -219,7 +219,7 @@ export interface IAuthContext {
     /** Granted scopes (from API key permissions or JWT claims) */
     readonly scopes: readonly string[];
     /** Authentication method used for this request */
-    readonly authMethod: 'clerk-jwt' | 'api-key' | 'anonymous' | 'local-jwt';
+    readonly authMethod: 'clerk-jwt' | 'api-key' | 'anonymous' | 'better-auth';
 }
 
 /**
@@ -468,25 +468,14 @@ export interface Env {
     CLERK_JWKS_URL?: string;
     /** Clerk webhook signing secret for Svix signature verification (secret) */
     CLERK_WEBHOOK_SECRET?: string;
-    // --- Local JWT Auth (pre-Clerk bridge) ---
+    // --- Better Auth ---
     /**
-     * HS256 signing secret for LocalJwtAuthProvider.
-     *
-     * MIGRATION PATH: When Clerk is production-ready:
-     *   1. Set CLERK_JWKS_URL (wrangler.toml [vars] or `wrangler secret put`)
-     *   2. The provider auto-switches — this secret is no longer used
-     *   3. Optionally remove JWT_SECRET after migration is confirmed
-     *
-     * Local dev:  add `JWT_SECRET=<random-string>` to .dev.vars
-     * Production: `wrangler secret put JWT_SECRET`
+     * Signing secret for Better Auth session tokens.
+     * Must be a 32+ character random string.
+     * Local dev:  add `BETTER_AUTH_SECRET=<random-string>` to .dev.vars
+     * Production: `wrangler secret put BETTER_AUTH_SECRET`
      */
-    JWT_SECRET?: string;
-    /**
-     * Email of the first admin user. When set, POST /auth/bootstrap-admin
-     * promotes the signed-in user matching this email to the 'admin' role.
-     * Remove once the first admin is set.
-     */
-    INITIAL_ADMIN_EMAIL?: string;
+    BETTER_AUTH_SECRET?: string;
     // --- Cloudflare Access (admin route protection) ---
     /** Cloudflare Access team domain (e.g., 'myteam' for myteam.cloudflareaccess.com) */
     CF_ACCESS_TEAM_DOMAIN?: string;

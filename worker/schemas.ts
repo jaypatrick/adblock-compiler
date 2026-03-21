@@ -827,131 +827,55 @@ export const UserTierRowSchema = z.object({
 
 export type UserTierRow = z.infer<typeof UserTierRowSchema>;
 
+
 // ============================================================================
-// Local JWT Auth Schemas — LocalJwtAuthProvider bridge (pre-Clerk)
+// Better Auth User Schemas
 //
-// These schemas mirror the shape of their Clerk equivalents as closely as
-// possible so that the switch to ClerkAuthProvider requires zero schema changes.
-//
-// MIGRATION PATH: When Clerk is production-ready:
-//   1. Set CLERK_JWKS_URL → provider auto-switches, these schemas are unused.
-//   2. Delete this block once migration is confirmed.
-//
-// Identifier note: supports both email addresses and E.164 phone numbers,
-// matching Clerk's "identifier strategy" configuration.  No verification
-// emails or SMS are sent — format validation only.
+// Better Auth stores users in a `user` table with these columns:
+//   id, email, name, emailVerified, image, createdAt, updatedAt
+// Plus custom additionalFields: tier, role, banned, banReason, banExpires
 // ============================================================================
 
-/** Validates a login/signup identifier: email address OR E.164 phone number. */
-export const LocalIdentifierSchema = z.string().max(254).refine(
-    (val) => z.string().email().safeParse(val).success || /^\+?[1-9]\d{6,14}$/.test(val),
-    { message: 'Must be a valid email address or phone number (+E.164 format)' },
-);
-
-/**
- * Request body for POST /auth/signup.
- * All self-registered users receive the 'user' role; admin must be granted via the admin API.
- */
-export const LocalSignupRequestSchema = z.object({
-    identifier: LocalIdentifierSchema,
-    password: z.string().min(8).max(128),
+/** Raw D1 row shape for Better Auth's `user` table (admin queries only). */
+export const BetterAuthUserRowSchema = z.object({
+    id: z.string(),
+    email: z.string(),
+    name: z.string().nullable(),
+    emailVerified: z.union([z.boolean(), z.number()]).transform((v) => Boolean(v)),
+    image: z.string().nullable().optional(),
+    tier: z.string().nullable().optional(),
+    role: z.string().nullable().optional(),
+    banned: z.union([z.boolean(), z.number()]).transform((v) => Boolean(v)).optional(),
+    banReason: z.string().nullable().optional(),
+    banExpires: z.string().nullable().optional(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
 });
 
-export type LocalSignupRequest = z.infer<typeof LocalSignupRequestSchema>;
+export type BetterAuthUserRow = z.infer<typeof BetterAuthUserRowSchema>;
 
-/** Request body for POST /auth/login. */
-export const LocalLoginRequestSchema = z.object({
-    identifier: LocalIdentifierSchema,
-    password: z.string().min(1).max(128),
-});
+/** Public user shape for API responses — safe to return to admins. */
+export const BetterAuthUserPublicSchema = BetterAuthUserRowSchema;
+export type BetterAuthUserPublic = z.infer<typeof BetterAuthUserPublicSchema>;
 
-export type LocalLoginRequest = z.infer<typeof LocalLoginRequestSchema>;
-
-/** Request body for POST /auth/change-password. */
-export const LocalChangePasswordRequestSchema = z.object({
-    currentPassword: z.string().min(1).max(128),
-    newPassword: z.string().min(8).max(128),
-});
-
-export type LocalChangePasswordRequest = z.infer<typeof LocalChangePasswordRequestSchema>;
-
-/**
- * A row from the `local_auth_users` table.
- * Always Zod-validated before use — never trust raw DB data across a trust boundary.
- */
-export const LocalUserRowSchema = z.object({
-    id: z.string().uuid(),
-    identifier: z.string().min(1),
-    identifier_type: z.enum(['email', 'phone']),
-    password_hash: z.string(),
-    role: z.string(),
-    tier: z.nativeEnum(UserTier),
-    api_disabled: z.number().int().min(0).max(1).default(0),
-    created_at: z.string(),
-    updated_at: z.string(),
-});
-
-export type LocalUserRow = z.infer<typeof LocalUserRowSchema>;
-
-/**
- * JWT claims issued by LocalJwtAuthProvider (HS256).
- *
- * Structure intentionally mirrors {@link ClerkJWTClaimsSchema}:
- *   - `sub`      → user UUID          (same as Clerk sub)
- *   - `sid`      → session UUID       (same as Clerk sid)
- *   - `metadata` → tier + role object (same as Clerk publicMetadata)
- *
- * When switching to Clerk, ClerkAuthProvider reads the same `metadata.tier`
- * and `metadata.role` fields — no claim-mapping changes needed.
- */
-export const LocalJWTClaimsSchema = z.object({
-    /** User UUID from local_auth_users.id */
-    sub: z.string().min(1),
-    /** Always 'adblock-compiler-local' — easy to grep when migrating */
-    iss: z.literal('adblock-compiler-local'),
-    exp: z.number().int().positive(),
-    iat: z.number().int().min(0),
-    /** Session UUID — mirrors Clerk's sid claim */
-    sid: z.string().optional(),
-    /**
-     * User metadata — intentionally identical structure to Clerk's publicMetadata.
-     * ClerkAuthProvider.verifyToken() reads the same fields from Clerk JWTs.
-     */
-    metadata: z.object({
-        tier: z.nativeEnum(UserTier).optional(),
-        role: z.string().optional(),
-    }).optional(),
-});
-
-export type LocalJWTClaims = z.infer<typeof LocalJWTClaimsSchema>;
-
-/**
- * Public view of a local auth user — omits `password_hash`.
- * Used in all API responses (GET /auth/me, admin user list, etc.).
- * Mirrors the shape of Clerk's User object for easy migration.
- */
-export const LocalUserPublicSchema = LocalUserRowSchema.omit({ password_hash: true });
-export type LocalUserPublic = z.infer<typeof LocalUserPublicSchema>;
-
-/**
- * Request body for PATCH /admin/local-users/:id
- *
- * Allows an admin to independently update a user's tier and/or role.
- * Tier and role are separate (mirroring Clerk's publicMetadata model):
- *   - Changing role auto-suggests the default tier for that role
- *   - Setting tier explicitly overrides the role-derived default
- *   - e.g. role='user' + tier='pro' gives a user higher rate limits
- */
-export const AdminUpdateLocalUserSchema = z.object({
+/** Request body for PATCH /admin/users/:id — update tier and/or role. */
+export const AdminUpdateUserSchema = z.object({
     tier: z.nativeEnum(UserTier).optional(),
     role: z.string().min(1).max(64).optional(),
-    api_disabled: z.literal(0).or(z.literal(1)).optional(),
 }).refine(
-    (d) => d.tier !== undefined || d.role !== undefined || d.api_disabled !== undefined,
-    { message: 'At least one of tier, role, or api_disabled is required' },
+    (d) => d.tier !== undefined || d.role !== undefined,
+    { message: 'At least one of tier or role is required' },
 );
 
-export type AdminUpdateLocalUser = z.infer<typeof AdminUpdateLocalUserSchema>;
+export type AdminUpdateUser = z.infer<typeof AdminUpdateUserSchema>;
+
+/** Request body for POST /admin/users/:id/ban. */
+export const AdminBanUserSchema = z.object({
+    reason: z.string().max(500).optional(),
+    expires: z.string().datetime().optional(),
+});
+
+export type AdminBanUser = z.infer<typeof AdminBanUserSchema>;
 
 // ============================================================================
 // Admin System Schemas — ADMIN_DB trust boundary validation (#1054)
@@ -1313,12 +1237,3 @@ export const AdminUsageDaysQuerySchema = z.object({
 });
 export type AdminUsageDays = z.infer<typeof AdminUsageDaysQuerySchema>;
 
-/**
- * POST /admin/local-users — admin creates a user with optional role/tier override.
- * Extends LocalSignupRequestSchema so identifier/password validation is shared.
- */
-export const AdminCreateLocalUserRequestSchema = LocalSignupRequestSchema.extend({
-    role: z.string().min(1).max(64).optional(),
-    tier: z.nativeEnum(UserTier).optional(),
-});
-export type AdminCreateLocalUserRequest = z.infer<typeof AdminCreateLocalUserRequestSchema>;

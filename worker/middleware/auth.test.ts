@@ -6,7 +6,7 @@
  *   - requireAuth: returns 401 for anonymous users
  *   - requireTier: returns null when tier is sufficient
  *   - requireTier: returns 403 when tier is insufficient
- *   - requireScope: JWT/local-jwt users bypass scope checks
+ *   - requireScope: JWT/better-auth users bypass scope checks
  *   - requireScope: anonymous users get 401
  *   - requireScope: API-key users are scope-checked
  *   - authenticateRequestUnified: no token → anonymous context
@@ -77,8 +77,8 @@ Deno.test('requireAuth - returns null when user is authenticated via api-key', (
     assertEquals(result, null);
 });
 
-Deno.test('requireAuth - returns null when user is authenticated via local-jwt', () => {
-    const ctx = makeAuthenticatedContext({ authMethod: 'local-jwt' });
+Deno.test('requireAuth - returns null when user is authenticated via better-auth', () => {
+    const ctx = makeAuthenticatedContext({ authMethod: 'better-auth' });
     const result = requireAuth(ctx);
     assertEquals(result, null);
 });
@@ -146,8 +146,8 @@ Deno.test('requireScope - returns null for clerk-jwt user (bypasses scope check)
     assertEquals(requireScope(ctx, 'compile:write'), null);
 });
 
-Deno.test('requireScope - returns null for local-jwt user (bypasses scope check)', () => {
-    const ctx = makeAuthenticatedContext({ authMethod: 'local-jwt', scopes: [] });
+Deno.test('requireScope - returns null for better-auth user (bypasses scope check)', () => {
+    const ctx = makeAuthenticatedContext({ authMethod: 'better-auth', scopes: [] });
     assertEquals(requireScope(ctx, 'compile:write'), null);
 });
 

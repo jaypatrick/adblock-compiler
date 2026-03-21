@@ -1,12 +1,14 @@
 /**
- * Tests for Per-User API Access Control.
+ * Tests for Per-User API Access Control (Better Auth banned check).
  *
  * Covers:
  *   - Anonymous user → null (allowed)
  *   - User not in DB → null (allowed)
- *   - api_disabled = 0 → null (allowed)
- *   - api_disabled = 1 → 403 Response
+ *   - banned = 0 → null (allowed)
+ *   - banned = 1 → 403 Response
+ *   - banned = 1 with banReason → 403 with reason in message
  *   - DB not configured → null (allowed)
+ *   - DB error → null (fail-open)
  *
  * @see worker/utils/user-access.ts
  */
@@ -28,7 +30,7 @@ function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
         apiKeyId: null,
         sessionId: null,
         scopes: [],
-        authMethod: 'local-jwt',
+        authMethod: 'better-auth',
         ...overrides,
     };
 }
@@ -46,7 +48,7 @@ function makeAnonContext(): IAuthContext {
     };
 }
 
-function makeEnvWithDb(apiDisabled: number | null): Env {
+function makeEnvWithDb(banned: number | null, banReason: string | null = null): Env {
     return {
         COMPILER_VERSION: '1.0.0-test',
         COMPILATION_CACHE: undefined as unknown as KVNamespace,
@@ -57,8 +59,8 @@ function makeEnvWithDb(apiDisabled: number | null): Env {
             prepare: (_sql: string) => ({
                 bind: (..._args: unknown[]) => ({
                     first: async <T>() => {
-                        if (apiDisabled === null) return null;
-                        return { api_disabled: apiDisabled } as T;
+                        if (banned === null) return null;
+                        return { banned, banReason } as T;
                     },
                 }),
             }),
@@ -82,7 +84,7 @@ function makeEnvNoDb(): Env {
 
 Deno.test('checkUserApiAccess - anonymous user returns null (allowed)', async () => {
     const ctx = makeAnonContext();
-    const env = makeEnvWithDb(1); // even if DB says disabled
+    const env = makeEnvWithDb(1); // even if DB says banned
     const result = await checkUserApiAccess(ctx, env);
     assertEquals(result, null);
 });
@@ -94,14 +96,14 @@ Deno.test('checkUserApiAccess - user not in DB returns null (allowed)', async ()
     assertEquals(result, null);
 });
 
-Deno.test('checkUserApiAccess - api_disabled = 0 returns null (allowed)', async () => {
+Deno.test('checkUserApiAccess - banned = 0 returns null (allowed)', async () => {
     const ctx = makeAuthContext();
     const env = makeEnvWithDb(0);
     const result = await checkUserApiAccess(ctx, env);
     assertEquals(result, null);
 });
 
-Deno.test('checkUserApiAccess - api_disabled = 1 returns 403 Response', async () => {
+Deno.test('checkUserApiAccess - banned = 1 returns 403 Response', async () => {
     const ctx = makeAuthContext();
     const env = makeEnvWithDb(1);
     const result = await checkUserApiAccess(ctx, env);
@@ -110,6 +112,16 @@ Deno.test('checkUserApiAccess - api_disabled = 1 returns 403 Response', async ()
     const body = await result!.json() as Record<string, unknown>;
     assertEquals(body.success, false);
     assertEquals(typeof body.error, 'string');
+});
+
+Deno.test('checkUserApiAccess - banned = 1 with banReason includes reason in message', async () => {
+    const ctx = makeAuthContext();
+    const env = makeEnvWithDb(1, 'Spam');
+    const result = await checkUserApiAccess(ctx, env);
+    assertExists(result);
+    assertEquals(result!.status, 403);
+    const body = await result!.json() as Record<string, unknown>;
+    assertEquals((body.error as string).includes('Spam'), true);
 });
 
 Deno.test('checkUserApiAccess - DB not configured returns null (allowed)', async () => {
@@ -139,4 +151,11 @@ Deno.test('checkUserApiAccess - DB error returns null (fail-open)', async () => 
     };
     const result = await checkUserApiAccess(ctx, env);
     assertEquals(result, null); // fail-open
+});
+
+Deno.test('checkUserApiAccess - non-better-auth authMethod returns null (skipped)', async () => {
+    const ctx = makeAuthContext({ authMethod: 'clerk-jwt' });
+    const env = makeEnvWithDb(1); // banned in DB, but should be skipped
+    const result = await checkUserApiAccess(ctx, env);
+    assertEquals(result, null);
 });

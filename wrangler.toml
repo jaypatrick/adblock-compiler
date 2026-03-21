@@ -19,7 +19,7 @@
 #   wrangler secret put CLERK_SECRET_KEY
 #   wrangler secret put CLERK_WEBHOOK_SECRET
 #   wrangler secret put TURNSTILE_SECRET_KEY
-#   wrangler secret put JWT_SECRET
+#   wrangler secret put BETTER_AUTH_SECRET
 #   wrangler secret put CF_ACCESS_AUD
 #   wrangler secret put CORS_ALLOWED_ORIGINS
 #   wrangler secret put SENTRY_DSN

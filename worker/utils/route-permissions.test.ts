@@ -30,7 +30,7 @@ function makeContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
         apiKeyId: null,
         sessionId: null,
         scopes: [],
-        authMethod: 'local-jwt',
+        authMethod: 'better-auth',
         ...overrides,
     };
 }
@@ -59,27 +59,27 @@ Deno.test('resolveRoutePermission - returns null for unknown path', () => {
     assertEquals(result, null);
 });
 
-Deno.test('resolveRoutePermission - exact match: /auth/me', () => {
-    const result = resolveRoutePermission('/auth/me');
+Deno.test('resolveRoutePermission - exact match: /compile', () => {
+    const result = resolveRoutePermission('/compile');
     assertExists(result);
     assertEquals(result!.minTier, UserTier.Free);
 });
 
-Deno.test('resolveRoutePermission - exact match: /auth/change-password', () => {
-    const result = resolveRoutePermission('/auth/change-password');
+Deno.test('resolveRoutePermission - exact match: /keys', () => {
+    const result = resolveRoutePermission('/keys');
     assertExists(result);
     assertEquals(result!.minTier, UserTier.Free);
 });
 
-Deno.test('resolveRoutePermission - exact match: /admin/local-users', () => {
-    const result = resolveRoutePermission('/admin/local-users');
+Deno.test('resolveRoutePermission - exact match: /admin/users', () => {
+    const result = resolveRoutePermission('/admin/users');
     assertExists(result);
     assertEquals(result!.minTier, UserTier.Admin);
     assertEquals(result!.requiredRole, 'admin');
 });
 
-Deno.test('resolveRoutePermission - exact match: public /auth/signup → Anonymous', () => {
-    const result = resolveRoutePermission('/auth/signup');
+Deno.test('resolveRoutePermission - exact match: public /health → Anonymous', () => {
+    const result = resolveRoutePermission('/health');
     assertExists(result);
     assertEquals(result!.minTier, UserTier.Anonymous);
 });
@@ -94,13 +94,13 @@ Deno.test('resolveRoutePermission - prefix match: /admin/anything → admin/*', 
     assertEquals(result!.minTier, UserTier.Admin);
 });
 
-Deno.test('resolveRoutePermission - prefix match: /admin/local-users/uuid → local-users/* (longer prefix wins)', () => {
-    const result = resolveRoutePermission('/admin/local-users/abc-def-123');
+Deno.test('resolveRoutePermission - prefix match: /admin/users/uuid → users/* (longer prefix wins)', () => {
+    const result = resolveRoutePermission('/admin/users/abc-def-123');
     assertExists(result);
-    // /admin/local-users/* is more specific than /admin/* — longer prefix wins
+    // /admin/users/* is more specific than /admin/* — longer prefix wins
     assertEquals(result!.requiredRole, 'admin');
     assertEquals(result!.minTier, UserTier.Admin);
-    assertEquals(result!.description, 'Local user management (update tier/role)');
+    assertEquals(result!.description, 'User management (update tier/role, ban/unban)');
 });
 
 Deno.test('resolveRoutePermission - prefix match: /workflow/status/abc → workflow/*', () => {
@@ -119,12 +119,12 @@ Deno.test('resolveRoutePermission - prefix match: /keys/abc-uuid → keys/*', ()
 // checkRoutePermission — public endpoints always pass
 // ============================================================================
 
-Deno.test('checkRoutePermission - public endpoint /auth/login allows anonymous', () => {
-    assertEquals(checkRoutePermission('/auth/login', anonContext), null);
+Deno.test('checkRoutePermission - public endpoint /health allows anonymous', () => {
+    assertEquals(checkRoutePermission('/health', anonContext), null);
 });
 
-Deno.test('checkRoutePermission - public endpoint /auth/signup allows anonymous', () => {
-    assertEquals(checkRoutePermission('/auth/signup', anonContext), null);
+Deno.test('checkRoutePermission - public endpoint /docs allows anonymous', () => {
+    assertEquals(checkRoutePermission('/docs', anonContext), null);
 });
 
 Deno.test('checkRoutePermission - unknown path returns 401 for anonymous (ZTA deny-by-default)', () => {
@@ -155,14 +155,14 @@ Deno.test('checkRoutePermission - compile endpoint allows Free user', () => {
 // checkRoutePermission — anonymous gets 401 on protected routes
 // ============================================================================
 
-Deno.test('checkRoutePermission - /auth/me returns 401 for anonymous', () => {
-    const response = checkRoutePermission('/auth/me', anonContext);
+Deno.test('checkRoutePermission - /keys returns 401 for anonymous', () => {
+    const response = checkRoutePermission('/keys', anonContext);
     assertExists(response);
     assertEquals(response!.status, 401);
 });
 
-Deno.test('checkRoutePermission - /admin/local-users returns 401 for anonymous', () => {
-    const response = checkRoutePermission('/admin/local-users', anonContext);
+Deno.test('checkRoutePermission - /admin/users returns 401 for anonymous', () => {
+    const response = checkRoutePermission('/admin/users', anonContext);
     assertExists(response);
     assertEquals(response!.status, 401);
 });
@@ -183,8 +183,8 @@ Deno.test('checkRoutePermission - /workflow/compile returns 403 for Free tier', 
     assertEquals(response!.status, 403);
 });
 
-Deno.test('checkRoutePermission - /admin/local-users returns 403 for Pro user (not admin)', () => {
-    const response = checkRoutePermission('/admin/local-users', proContext);
+Deno.test('checkRoutePermission - /admin/users returns 403 for Pro user (not admin)', () => {
+    const response = checkRoutePermission('/admin/users', proContext);
     assertExists(response);
     assertEquals(response!.status, 403);
 });
@@ -193,17 +193,17 @@ Deno.test('checkRoutePermission - /admin/local-users returns 403 for Pro user (n
 // checkRoutePermission — role guard
 // ============================================================================
 
-Deno.test('checkRoutePermission - /admin/local-users returns 403 if tier=Admin but role!=admin', () => {
+Deno.test('checkRoutePermission - /admin/users returns 403 if tier=Admin but role!=admin', () => {
     // Admin tier but wrong role — role guard fires after tier check passes
     const highTierWrongRole = makeContext({ tier: UserTier.Admin, role: 'user' });
-    const response = checkRoutePermission('/admin/local-users', highTierWrongRole);
+    const response = checkRoutePermission('/admin/users', highTierWrongRole);
     assertExists(response);
     assertEquals(response!.status, 403);
 });
 
-Deno.test('checkRoutePermission - /admin/local-users/id returns 403 for wrong role', () => {
+Deno.test('checkRoutePermission - /admin/users/id returns 403 for wrong role', () => {
     const highTierWrongRole = makeContext({ tier: UserTier.Admin, role: 'user' });
-    const response = checkRoutePermission('/admin/local-users/some-uuid', highTierWrongRole);
+    const response = checkRoutePermission('/admin/users/some-uuid', highTierWrongRole);
     assertExists(response);
     assertEquals(response!.status, 403);
 });
@@ -212,8 +212,8 @@ Deno.test('checkRoutePermission - /admin/local-users/id returns 403 for wrong ro
 // checkRoutePermission — allowed returns null
 // ============================================================================
 
-Deno.test('checkRoutePermission - /auth/me allows Free user', () => {
-    assertEquals(checkRoutePermission('/auth/me', makeContext()), null);
+Deno.test('checkRoutePermission - /compile allows Free user', () => {
+    assertEquals(checkRoutePermission('/compile', makeContext()), null);
 });
 
 Deno.test('checkRoutePermission - /keys allows Free user', () => {
@@ -224,12 +224,12 @@ Deno.test('checkRoutePermission - /compile/async allows Pro user', () => {
     assertEquals(checkRoutePermission('/compile/async', proContext), null);
 });
 
-Deno.test('checkRoutePermission - /admin/local-users allows admin', () => {
-    assertEquals(checkRoutePermission('/admin/local-users', adminContext), null);
+Deno.test('checkRoutePermission - /admin/users allows admin', () => {
+    assertEquals(checkRoutePermission('/admin/users', adminContext), null);
 });
 
-Deno.test('checkRoutePermission - /admin/local-users/uuid allows admin', () => {
-    assertEquals(checkRoutePermission('/admin/local-users/abc-123', adminContext), null);
+Deno.test('checkRoutePermission - /admin/users/uuid allows admin', () => {
+    assertEquals(checkRoutePermission('/admin/users/abc-123', adminContext), null);
 });
 
 Deno.test('checkRoutePermission - /admin/anything allows admin (prefix match)', () => {
@@ -241,7 +241,7 @@ Deno.test('checkRoutePermission - /admin/anything allows admin (prefix match)', 
 // ============================================================================
 
 Deno.test('checkRoutePermission - 401 body says "Authentication required"', async () => {
-    const response = checkRoutePermission('/auth/me', anonContext);
+    const response = checkRoutePermission('/keys', anonContext);
     assertExists(response);
     const body = await response!.json() as Record<string, unknown>;
     assertEquals(body.success, false);
@@ -258,7 +258,7 @@ Deno.test('checkRoutePermission - 403 body says "Insufficient tier"', async () =
 });
 
 Deno.test('checkRoutePermission - 403 body says "Insufficient role"', async () => {
-    const response = checkRoutePermission('/admin/local-users', makeContext({ tier: UserTier.Admin, role: 'user' }));
+    const response = checkRoutePermission('/admin/users', makeContext({ tier: UserTier.Admin, role: 'user' }));
     assertExists(response);
     const body = await response!.json() as Record<string, unknown>;
     assertEquals(body.success, false);
@@ -289,45 +289,8 @@ Deno.test('ROUTE_PERMISSION_REGISTRY - is a Map (add entries at runtime for test
 });
 
 // ============================================================================
-// New routes added in PR: /auth/profile, /auth/bootstrap-admin, /docs, /docs/*,
-//   /admin/storage, /admin/storage/*
+// Routes: /docs, /docs/*, /admin/storage, /admin/storage/*
 // ============================================================================
-
-// ── /auth/profile ────────────────────────────────────────────────────────────
-
-Deno.test('resolveRoutePermission - /auth/profile resolves to Free tier', () => {
-    const result = resolveRoutePermission('/auth/profile');
-    assertExists(result);
-    assertEquals(result!.minTier, UserTier.Free);
-});
-
-Deno.test('checkRoutePermission - /auth/profile allows Free user (returns null)', () => {
-    assertEquals(checkRoutePermission('/auth/profile', makeContext()), null);
-});
-
-Deno.test('checkRoutePermission - /auth/profile returns 401 for anonymous', () => {
-    const response = checkRoutePermission('/auth/profile', anonContext);
-    assertExists(response);
-    assertEquals(response!.status, 401);
-});
-
-// ── /auth/bootstrap-admin ────────────────────────────────────────────────────
-
-Deno.test('resolveRoutePermission - /auth/bootstrap-admin resolves to Free tier', () => {
-    const result = resolveRoutePermission('/auth/bootstrap-admin');
-    assertExists(result);
-    assertEquals(result!.minTier, UserTier.Free);
-});
-
-Deno.test('checkRoutePermission - /auth/bootstrap-admin allows Free user (returns null)', () => {
-    assertEquals(checkRoutePermission('/auth/bootstrap-admin', makeContext()), null);
-});
-
-Deno.test('checkRoutePermission - /auth/bootstrap-admin returns 401 for anonymous', () => {
-    const response = checkRoutePermission('/auth/bootstrap-admin', anonContext);
-    assertExists(response);
-    assertEquals(response!.status, 401);
-});
 
 // ── /docs ────────────────────────────────────────────────────────────────────
 

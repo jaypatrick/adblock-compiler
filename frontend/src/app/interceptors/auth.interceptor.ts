@@ -1,9 +1,9 @@
 /**
- * Functional HTTP interceptor for JWT authentication.
+ * Functional HTTP interceptor for Bearer token authentication.
  *
- * Provider-aware via AuthFacadeService — works with both Clerk and local JWT.
+ * Provider-aware via AuthFacadeService — works with both Clerk and Better Auth.
  * Attaches `Authorization: Bearer <token>` to outgoing API requests when
- * the user is signed in. Skips public/health endpoints and local auth paths
+ * the user is signed in. Skips public/health endpoints and auth paths
  * (to avoid circular validation calls).
  */
 
@@ -20,10 +20,8 @@ const PUBLIC_PATHS = [
     '/api/clerk-config',
     '/api/deployments',
     '/api/metrics',
-    // Local auth endpoints — skip to avoid circular calls during token validation
-    '/api/auth/login',
-    '/api/auth/signup',
-    '/api/auth/me',
+    // Better Auth endpoints — skip to avoid circular calls during auth flow
+    '/api/auth/',
 ];
 
 export const authInterceptor: HttpInterceptorFn = (req, next) => {

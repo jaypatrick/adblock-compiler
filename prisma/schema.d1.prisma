@@ -185,34 +185,6 @@ model SourceAttempt {
 }
 
 // ============================================================================
-// LocalAuthUser — bridge auth table until Clerk is production-ready
+// Better Auth tables (user, session, account, verification) are managed by
+// Better Auth's programmatic migration — NOT by Prisma. Do not add them here.
 // ============================================================================
-//
-// Mirrors the Clerk user model for drop-in replacement:
-//   identifier      → Clerk primary email_address or phone_number
-//   identifier_type → 'email' | 'phone'
-//   role            → Clerk publicMetadata.role  ('user' | 'admin')
-//   tier            → Clerk publicMetadata.tier  ('free' | 'admin')
-//   api_disabled    → per-user API kill-switch (1 = disabled)
-//
-// Password hashing: PBKDF2 via Web Crypto API.
-//   Format: "<base64url-salt>:<base64url-derived-bits>"
-//   Passwords are never returned in API responses.
-//
-// Migration: once CLERK_JWKS_URL is set the worker auto-routes to
-// ClerkAuthProvider and this table is no longer used.
-
-model LocalAuthUser {
-  id             String   @id @default(uuid())
-  identifier     String   @unique               // email address or phone number
-  identifierType String   @default("email") @map("identifier_type") // 'email' | 'phone'
-  passwordHash   String   @map("password_hash") // "<base64url-salt>:<base64url-hash>"
-  role           String   @default("user")
-  tier           String   @default("free")
-  apiDisabled    Int      @default(0) @map("api_disabled") // SQLite boolean: 1 = disabled
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
-
-  @@index([identifier])
-  @@map("local_auth_users")
-}

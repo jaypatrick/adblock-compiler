@@ -25,7 +25,7 @@ function makeAuthContext(userId: string | null = 'user-001'): IAuthContext {
         apiKeyId: null,
         sessionId: null,
         scopes: [],
-        authMethod: 'local-jwt',
+        authMethod: 'better-auth',
     };
 }
 
