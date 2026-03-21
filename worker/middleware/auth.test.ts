@@ -12,12 +12,16 @@
  *   - authenticateRequestUnified: no token → anonymous context
  *   - authenticateRequestUnified: unrecognised token format → 401
  *   - authenticateRequestUnified: abc_-prefix token without Hyperdrive → 503
+ *   - authenticateRequestUnified: custom authProvider (Better Auth) — no token → cookie auth
+ *   - authenticateRequestUnified: custom authProvider — non-JWT session token → provider auth
+ *   - authenticateRequestUnified: custom authProvider — provider returns invalid → anonymous
+ *   - authenticateRequestUnified: custom authProvider — provider error + token → 401
  *   - hashToken/extractBearerToken: exercised via authenticateApiKey paths
  *   - isApiKeyToken / isJwtToken: exercised via authenticateRequestUnified
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import { ANONYMOUS_AUTH_CONTEXT, type Env, type HyperdriveBinding, type IAuthContext, UserTier } from '../types.ts';
+import { ANONYMOUS_AUTH_CONTEXT, type Env, type HyperdriveBinding, type IAuthContext, type IAuthProvider, type IAuthProviderResult, UserTier } from '../types.ts';
 import { authenticateRequestUnified, requireAuth, requireScope, requireTier } from './auth.ts';
 
 // ============================================================================
@@ -61,6 +65,16 @@ function makeRequest(bearerToken?: string): Request {
     return new Request('https://api.example.com/compile', { headers });
 }
 
+/**
+ * Minimal stub for IAuthProvider — returns a pre-configured result.
+ */
+function makeAuthProviderStub(result: IAuthProviderResult): IAuthProvider {
+    return {
+        name: 'stub-provider',
+        authMethod: 'better-auth' as const,
+        verifyToken: (_req: Request) => Promise.resolve(result),
+    };
+}
 // ============================================================================
 // requireAuth
 // ============================================================================
@@ -261,6 +275,87 @@ Deno.test('authenticateRequestUnified - returns 503 when abc_ token present but 
 
     // No createPool provided
     const result = await authenticateRequestUnified(req, env);
+    assertExists(result.response);
+    assertEquals(result.response!.status, 503);
+});
+
+// ============================================================================
+// authenticateRequestUnified — custom authProvider (Better Auth) paths
+// ============================================================================
+
+Deno.test('authenticateRequestUnified - custom provider authenticates via cookie (no Bearer token)', async () => {
+    const env = makeEnv({});
+    // No Authorization header — simulates a browser request with only a session cookie.
+    const req = new Request('https://api.example.com/compile', {
+        headers: { Cookie: 'better-auth.session_token=sess_abc123' },
+    });
+    const provider = makeAuthProviderStub({
+        valid: true,
+        providerUserId: 'ba_user_001',
+        tier: UserTier.Free,
+        role: 'user',
+        sessionId: 'sess_abc123',
+    });
+
+    const result = await authenticateRequestUnified(req, env, undefined, provider);
+    assertEquals(result.context.authMethod, 'better-auth');
+    assertEquals(result.context.clerkUserId, 'ba_user_001');
+    assertEquals(result.context.tier, UserTier.Free);
+    assertEquals(result.response, undefined);
+});
+
+Deno.test('authenticateRequestUnified - custom provider authenticates non-JWT session Bearer token', async () => {
+    const env = makeEnv({});
+    // A random session token (not a JWT, not an API key) sent as Bearer.
+    const req = makeRequest('sess_randomsessionid12345');
+    const provider = makeAuthProviderStub({
+        valid: true,
+        providerUserId: 'ba_user_002',
+        tier: UserTier.Pro,
+        role: 'user',
+        sessionId: 'sess_randomsessionid12345',
+    });
+
+    const result = await authenticateRequestUnified(req, env, undefined, provider);
+    assertEquals(result.context.authMethod, 'better-auth');
+    assertEquals(result.context.clerkUserId, 'ba_user_002');
+    assertEquals(result.context.tier, UserTier.Pro);
+    assertEquals(result.response, undefined);
+});
+
+Deno.test('authenticateRequestUnified - custom provider returns invalid with no error → anonymous (no token)', async () => {
+    const env = makeEnv({});
+    const req = makeRequest(); // no token
+    const provider = makeAuthProviderStub({ valid: false });
+
+    const result = await authenticateRequestUnified(req, env, undefined, provider);
+    assertEquals(result.context.authMethod, 'anonymous');
+    assertEquals(result.response, undefined);
+});
+
+Deno.test('authenticateRequestUnified - custom provider rejects Bearer token → 401', async () => {
+    const env = makeEnv({});
+    const req = makeRequest('sess_expiredtoken');
+    const provider = makeAuthProviderStub({ valid: false, error: 'Session expired' });
+
+    const result = await authenticateRequestUnified(req, env, undefined, provider);
+    assertEquals(result.context.authMethod, 'anonymous');
+    assertExists(result.response);
+    assertEquals(result.response!.status, 401);
+    const body = await result.response!.json() as { success: boolean; error: string };
+    assertEquals(body.success, false);
+    // Error must not leak internal details — generic message only
+    assertEquals(body.error, 'Authentication failed');
+});
+
+Deno.test('authenticateRequestUnified - API key is checked before custom provider', async () => {
+    const env = makeEnv({});
+    // An API key token is always routed to the API key path regardless of provider
+    const req = makeRequest('abc_apikey_test');
+    const provider = makeAuthProviderStub({ valid: true, providerUserId: 'should_not_be_used' });
+
+    const result = await authenticateRequestUnified(req, env, undefined, provider);
+    // No HYPERDRIVE configured → 503 from API key path (not reaching the provider)
     assertExists(result.response);
     assertEquals(result.response!.status, 503);
 });

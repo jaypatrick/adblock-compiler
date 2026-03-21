@@ -404,3 +404,46 @@ Deno.test('handleAdminUnbanUser - 404 for nonexistent user', async () => {
     const res = await handleAdminUnbanUser(req, env, makeAdminContext(), 'nonexistent');
     assertEquals(res.status, 404);
 });
+
+// ============================================================================
+// handleAdminListUsers — schema parse failure → 500
+// ============================================================================
+
+Deno.test('handleAdminListUsers - 500 when a row fails schema validation', async () => {
+    // Build a DB mock that returns a user row with a missing required field (email)
+    // to trigger BetterAuthUserPublicSchema.safeParse failure.
+    const badRow = {
+        id: crypto.randomUUID(),
+        // email is intentionally omitted to cause schema failure
+        name: 'Bad Row',
+        emailVerified: 1,
+        image: null,
+        role: 'user',
+        tier: 'free',
+        banned: 0,
+        banReason: null,
+        banExpires: null,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+    };
+    const db = {
+        prepare: (sql: string) => {
+            const stmt = {
+                bind: (..._args: unknown[]) => stmt,
+                all: async () => ({ results: [badRow] }),
+                first: async () => ({ total: 1 }),
+                run: async () => ({ success: true }),
+            };
+            // Silence unused variable; SQL is inspected at runtime
+            void sql;
+            return stmt;
+        },
+    };
+    const env = makeEnv({ DB: db as unknown as D1Database });
+    const req = new Request('http://localhost/admin/users');
+
+    const res = await handleAdminListUsers(req, env, makeAdminContext());
+    assertEquals(res.status, 500);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body.success, false);
+});

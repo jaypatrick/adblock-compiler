@@ -96,10 +96,29 @@ export async function handleAdminListUsers(
                 .first<{ total: number }>(),
         ]);
 
+        const parseErrors: { rowId: unknown; fields: string[] }[] = [];
         const users = listResult.results
-            .map((u) => BetterAuthUserPublicSchema.safeParse(u))
-            .filter((r) => r.success)
-            .map((r) => r.data);
+            .map((u) => {
+                const r = BetterAuthUserPublicSchema.safeParse(u);
+                if (!r.success) {
+                    // Log only the row ID and affected field names — not the full row — to
+                    // avoid writing PII (email addresses etc.) to server logs.
+                    const affectedFields = r.error.issues.map((i) => i.path.join('.'));
+                    // deno-lint-ignore no-console
+                    console.error('[admin/users] Row parse failure — schema/DB drift detected. Row id:', (u as Record<string, unknown>).id, 'Invalid fields:', affectedFields);
+                    parseErrors.push({ rowId: (u as Record<string, unknown>).id, fields: affectedFields });
+                    return null;
+                }
+                return r.data;
+            })
+            .filter((u): u is NonNullable<typeof u> => u !== null);
+
+        if (parseErrors.length > 0) {
+            return JsonResponse.serverError(
+                `User data is malformed: ${parseErrors.length} row(s) failed schema validation. Check server logs for details.`,
+            );
+        }
+
         const total = countResult?.total ?? 0;
 
         return JsonResponse.success({ users, total, limit, offset: skip });
