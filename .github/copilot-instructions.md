@@ -59,6 +59,72 @@ Every auth failure, rate limit hit, Turnstile rejection, and CF Access denial MU
 - **CORS handling**: Pre-fetch content server-side in Worker to avoid CORS issues; use explicit origin allowlists on all write endpoints, never `*`
 - **ZTA by default**: Every new handler, middleware, component, and service must be designed with Zero Trust from the start — security cannot be retrofitted
 
+## Cloudflare TypeScript SDK — Mandatory Rule
+
+**The official [`cloudflare`](https://github.com/cloudflare/cloudflare-typescript) TypeScript SDK (`cloudflare@^5.2.0`) MUST be used exclusively to interface with the Cloudflare REST API. This is not optional.**
+
+### The Rule
+
+> **Never write raw `fetch('https://api.cloudflare.com/...')` calls anywhere in this codebase.** All Cloudflare REST API interactions MUST go through `src/services/cloudflareApiService.ts` (which wraps the official SDK). If a Cloudflare resource or operation is not yet covered by `CloudflareApiService`, extend the service — do not bypass it.
+
+### Why
+
+- **Type-safe**: every resource, parameter, and response is fully typed by the SDK — no hand-rolled response shapes
+- **Pagination handled automatically**: SDK page objects expose `getPaginatedItems()` — no manual cursor loops
+- **Consistent error handling**: the SDK throws typed `APIError` subclasses (`AuthenticationError`, `PermissionDeniedError`, etc.) with a `.status` property
+- **Single integration point**: all Cloudflare API calls funnel through `CloudflareApiService`, keeping scripts and worker handlers thin and testable
+- **Security**: raw fetch calls risk leaking `Authorization` headers, mishandling retries, or skipping error classification — the SDK handles all of this correctly
+
+### Where the SDK Lives
+
+```
+src/services/cloudflareApiService.ts       # CloudflareApiService class + createCloudflareApiService factory
+src/services/cloudflareApiService.test.ts  # Unit tests (mock client)
+```
+
+### Usage
+
+```typescript
+import { createCloudflareApiService } from './src/services/cloudflareApiService.ts';
+
+const cfApi = createCloudflareApiService({ apiToken: Deno.env.get('CLOUDFLARE_API_TOKEN')! });
+
+// ✅ Query D1
+const { result } = await cfApi.queryD1<{ id: number }>(accountId, dbId, 'SELECT id FROM t WHERE x = ?', ['val']);
+
+// ✅ List KV namespaces
+const namespaces = await cfApi.listKvNamespaces(accountId);
+
+// ✅ List Workers
+const scripts = await cfApi.listWorkers(accountId);
+
+// ✅ List Queues
+const queues = await cfApi.listQueues(accountId);
+
+// ✅ Query Analytics Engine
+const data = await cfApi.queryAnalyticsEngine(accountId, 'SELECT ...');
+```
+
+### What Is Explicitly Forbidden
+
+```typescript
+// ❌ FORBIDDEN — raw fetch to Cloudflare REST API
+const res = await fetch(`https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${dbId}/query`, {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${token}` },
+  body: JSON.stringify({ sql }),
+});
+
+// ✅ REQUIRED — use CloudflareApiService
+const { result } = await cfApi.queryD1(accountId, dbId, sql, params);
+```
+
+### SDK Review Checklist (required for every PR touching scripts/ or worker/)
+- [ ] Does this code need to call the Cloudflare REST API?
+- [ ] Is it using `CloudflareApiService` / `createCloudflareApiService` rather than raw `fetch`?
+- [ ] If a new Cloudflare resource is needed, has `CloudflareApiService` been extended with a typed method?
+- [ ] Are mock clients used in tests rather than real API calls?
+
 ## Zero Trust Architecture
 
 ### Don't Do
