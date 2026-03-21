@@ -59,11 +59,19 @@ Deno.test('handleHealth - auth provider is "clerk" when CLERK_JWKS_URL is set', 
 });
 
 Deno.test('handleHealth - auth provider is "better-auth" when BETTER_AUTH_SECRET is set (no Clerk)', async () => {
-    const env = makeEnv({ BETTER_AUTH_SECRET: 'my-test-secret' });
+    const env = makeEnv({ BETTER_AUTH_SECRET: 'my-test-secret', DB: makeDb() });
     const res = await handleHealth(env);
     const body = await res.json() as { services: { auth: { provider: string; status: string } } };
     assertEquals(body.services.auth.provider, 'better-auth');
     assertEquals(body.services.auth.status, 'healthy');
+});
+
+Deno.test('handleHealth - auth status is "down" when better-auth is set but DB binding is missing', async () => {
+    const env = makeEnv({ BETTER_AUTH_SECRET: 'my-test-secret' }); // no DB
+    const res = await handleHealth(env);
+    const body = await res.json() as { services: { auth: { provider: string; status: string } } };
+    assertEquals(body.services.auth.provider, 'better-auth');
+    assertEquals(body.services.auth.status, 'down');
 });
 
 Deno.test('handleHealth - auth provider is "none" when no auth is configured', async () => {
