@@ -24,6 +24,15 @@ const ResolveRequestSchema = z.object({
     turnstileToken: z.string().optional(),
 });
 
+/**
+ * Schema for POST /configuration/validate request body.
+ * Exported for use in Hono route middleware.
+ */
+export const ConfigurationValidateRequestSchema = z.object({
+    config: z.record(z.string(), z.unknown()),
+    turnstileToken: z.string().optional(),
+});
+
 // ============================================================================
 // GET /api/configuration/defaults
 // ============================================================================

@@ -16,10 +16,13 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import type { Context } from 'hono';
+import { timing, startTime, endTime } from 'hono/timing';
+import { etag } from 'hono/etag';
+import { prettyJSON } from 'hono/pretty-json';
+import { OpenAPIHono } from '@hono/zod-openapi';
 
 // Types
 import type { Env, IAuthContext } from './types.ts';
@@ -71,7 +74,8 @@ import { handleMetrics } from './handlers/metrics.ts';
 import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './handlers/configuration.ts';
 
 import { zValidator } from '@hono/zod-validator';
-import { CompileRequestSchema } from '../src/configuration/schemas.ts';
+import { BatchRequestSyncSchema, CompileRequestSchema } from '../src/configuration/schemas.ts';
+import { ConfigurationValidateRequestSchema } from './handlers/configuration.ts';
 
 // Agent routing
 import { routeAgentRequest } from './agent-routing.ts';
@@ -105,6 +109,7 @@ const PRE_AUTH_PATHS = [
     '/api/turnstile-config',
     '/api/clerk-config',
     '/api/sentry-config',
+    '/api/openapi.json',
 ] as const;
 
 // ============================================================================
@@ -131,7 +136,10 @@ function routesPath(c: AppContext): string {
 // App setup
 // ============================================================================
 
-export const app = new Hono<{ Bindings: Env; Variables: Variables }>();
+export const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
+
+// ── 0. Server-Timing middleware (must be first to wrap all operations) ────────
+app.use('*', timing());
 
 // ── 1. Request metadata middleware ────────────────────────────────────────────
 app.use('*', async (c, next) => {
@@ -209,8 +217,10 @@ app.use('*', async (c, next) => {
     }
 
     // Standard unified authentication
+    startTime(c, 'auth', 'Authentication');
     const authProvider = c.env.CLERK_JWKS_URL ? new ClerkAuthProvider(c.env) : new LocalJwtAuthProvider(c.env);
     const authResult = await authenticateRequestUnified(c.req.raw, c.env, createPgPool, authProvider);
+    endTime(c, 'auth');
     if (authResult.response) return authResult.response;
     c.set('authContext', authResult.context);
     await next();
@@ -233,6 +243,9 @@ app.use(
 
 // ── 4. Secure headers ─────────────────────────────────────────────────────────
 app.use('*', secureHeaders());
+
+// ── 5. Pretty JSON (debug mode: add ?pretty=true to any response) ─────────────
+app.use('*', prettyJSON());
 
 // ============================================================================
 // PoC routes (static assets or 503) — handled in auth middleware
@@ -277,7 +290,7 @@ app.get('/api/sentry-config', handleApiMeta);
 // Business routes sub-app (with ZTA + permission check middleware)
 // ============================================================================
 
-const routes = new Hono<{ Bindings: Env; Variables: Variables }>();
+const routes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
 // ZTA: per-user API access gate + usage tracking
 routes.use('*', async (c, next) => {
@@ -382,8 +395,8 @@ routes.all('/admin/storage/*', async (c) => {
 
 // ── Metrics ───────────────────────────────────────────────────────────────────
 
-routes.get('/metrics/prometheus', (c) => handlePrometheusMetrics(c.req.raw, c.env));
-routes.get('/metrics', (c) => handleMetrics(c.env));
+routes.get('/metrics/prometheus', etag(), (c) => handlePrometheusMetrics(c.req.raw, c.env));
+routes.get('/metrics', etag(), (c) => handleMetrics(c.env));
 
 // ── Queue (lazy) ──────────────────────────────────────────────────────────────
 
@@ -464,16 +477,74 @@ routes.post(
     '/compile/stream',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
-    turnstileMiddleware(),
-    (c) => handleCompileStream(c.req.raw, c.env),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', CompileRequestSchema as any, (result, c) => {
+        if (!result.success) {
+            return c.json({ success: false, error: 'Invalid request body', details: result.error }, 422);
+        }
+    }),
+    async (c) => {
+        if (c.env.TURNSTILE_SECRET_KEY) {
+            // deno-lint-ignore no-explicit-any
+            const token = (c.req.valid('json') as any).turnstileToken ?? '';
+            const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
+            if (!tsResult.success) {
+                c.get('analytics').trackSecurityEvent({
+                    eventType: 'turnstile_rejection',
+                    path: c.req.path,
+                    method: c.req.method,
+                    clientIpHash: AnalyticsService.hashIp(c.get('ip')),
+                    tier: c.get('authContext').tier,
+                    reason: tsResult.error ?? 'turnstile_verification_failed',
+                });
+                return c.json({ success: false, error: tsResult.error ?? 'Turnstile verification failed' }, 403);
+            }
+        }
+        const validatedBody = c.req.valid('json');
+        const syntheticReq = new Request(c.req.url, {
+            method: 'POST',
+            headers: c.req.raw.headers,
+            body: JSON.stringify(validatedBody),
+        });
+        return handleCompileStream(syntheticReq, c.env);
+    },
 );
 
 routes.post(
     '/compile/batch',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
-    turnstileMiddleware(),
-    (c) => handleCompileBatch(c.req.raw, c.env),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', BatchRequestSyncSchema as any, (result, c) => {
+        if (!result.success) {
+            return c.json({ success: false, error: 'Invalid request body', details: result.error }, 422);
+        }
+    }),
+    async (c) => {
+        if (c.env.TURNSTILE_SECRET_KEY) {
+            // deno-lint-ignore no-explicit-any
+            const token = (c.req.valid('json') as any).turnstileToken ?? '';
+            const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
+            if (!tsResult.success) {
+                c.get('analytics').trackSecurityEvent({
+                    eventType: 'turnstile_rejection',
+                    path: c.req.path,
+                    method: c.req.method,
+                    clientIpHash: AnalyticsService.hashIp(c.get('ip')),
+                    tier: c.get('authContext').tier,
+                    reason: tsResult.error ?? 'turnstile_verification_failed',
+                });
+                return c.json({ success: false, error: tsResult.error ?? 'Turnstile verification failed' }, 403);
+            }
+        }
+        const validatedBody = c.req.valid('json');
+        const syntheticReq = new Request(c.req.url, {
+            method: 'POST',
+            headers: c.req.raw.headers,
+            body: JSON.stringify(validatedBody),
+        });
+        return handleCompileBatch(syntheticReq, c.env);
+    },
 );
 
 routes.post(
@@ -520,15 +591,53 @@ routes.post(
 routes.get(
     '/configuration/defaults',
     rateLimitMiddleware(),
-    (c) => handleConfigurationDefaults(c.req.raw, c.env),
+    async (c) => {
+        const res = await handleConfigurationDefaults(c.req.raw, c.env);
+        return new Response(res.body, {
+            status: res.status,
+            headers: {
+                ...Object.fromEntries(res.headers),
+                'Cache-Control': 'public, max-age=300, stale-while-revalidate=60',
+            },
+        });
+    },
 );
 
 routes.post(
     '/configuration/validate',
     rateLimitMiddleware(),
     bodySizeMiddleware(),
-    turnstileMiddleware(),
-    (c) => handleConfigurationValidate(c.req.raw, c.env),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', ConfigurationValidateRequestSchema as any, (result, c) => {
+        if (!result.success) {
+            return c.json({ success: false, error: 'Invalid request body', details: result.error }, 422);
+        }
+    }),
+    async (c) => {
+        if (c.env.TURNSTILE_SECRET_KEY) {
+            // deno-lint-ignore no-explicit-any
+            const token = (c.req.valid('json') as any).turnstileToken ?? '';
+            const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
+            if (!tsResult.success) {
+                c.get('analytics').trackSecurityEvent({
+                    eventType: 'turnstile_rejection',
+                    path: c.req.path,
+                    method: c.req.method,
+                    clientIpHash: AnalyticsService.hashIp(c.get('ip')),
+                    tier: c.get('authContext').tier,
+                    reason: tsResult.error ?? 'turnstile_verification_failed',
+                });
+                return c.json({ success: false, error: tsResult.error ?? 'Turnstile verification failed' }, 403);
+            }
+        }
+        const validatedBody = c.req.valid('json');
+        const syntheticReq = new Request(c.req.url, {
+            method: 'POST',
+            headers: c.req.raw.headers,
+            body: JSON.stringify(validatedBody),
+        });
+        return handleConfigurationValidate(syntheticReq, c.env);
+    },
 );
 
 routes.post(
@@ -657,12 +766,20 @@ routes.all('/workflow/*', async (c) => {
 
 // ── Health (lazy) ─────────────────────────────────────────────────────────────
 
-routes.get('/health', async (c) => {
+routes.get('/health', etag(), async (c) => {
     const { handleHealth } = await import('./handlers/health.ts');
-    return handleHealth(c.env);
+    const res = await handleHealth(c.env);
+    // Cache health checks for 30 seconds — stale-while-revalidate for availability
+    return new Response(res.body, {
+        status: res.status,
+        headers: {
+            ...Object.fromEntries(res.headers),
+            'Cache-Control': 'public, max-age=30, stale-while-revalidate=10',
+        },
+    });
 });
 
-routes.get('/health/latest', async (c) => {
+routes.get('/health/latest', etag(), async (c) => {
     const { handleHealthLatest } = await import('./handlers/health.ts');
     return handleHealthLatest(c.env);
 });
@@ -705,6 +822,27 @@ routes.get('*', async (c) => {
 // /api is registered first so that /api/* requests get correct Hono prefix-stripping
 // before the root-mount sub-app can intercept them as unrecognised paths.
 
+// ============================================================================
+// OpenAPI Spec endpoint — served at /api/openapi.json (and /openapi.json via /
+// mount) without authentication so it is publicly discoverable.
+// ============================================================================
+
+app.get('/api/openapi.json', (c) => {
+    const spec = app.getOpenAPIDocument({
+        openapi: '3.0.0',
+        info: {
+            title: 'Adblock Compiler API',
+            version: '2.0.0',
+            description:
+                'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.',
+            license: { name: 'GPL-3.0', url: 'https://github.com/jaypatrick/adblock-compiler/blob/master/LICENSE' },
+            contact: { name: 'Jayson Knight', url: 'https://github.com/jaypatrick/adblock-compiler' },
+        },
+        servers: [{ url: 'https://adblock-compiler.jayson-knight.workers.dev', description: 'Production server' }],
+    });
+    return c.json(spec);
+});
+
 app.route('/api', routes);
 app.route('/', routes);
 
@@ -729,3 +867,10 @@ export async function handleRequest(
 ): Promise<Response> {
     return app.fetch(request, env, ctx);
 }
+
+/**
+ * Typed RPC client type for use with `hono/client`'s `hc<AppType>()`.
+ *
+ * @see docs/architecture/hono-rpc-client.md
+ */
+export type AppType = typeof app;
