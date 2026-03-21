@@ -15,7 +15,7 @@ import type { Env } from '../types.ts';
  * Checks:
  *   - database   : D1 `SELECT 1` probe via env.DB
  *   - cache      : KV list probe via env.COMPILATION_CACHE
- *   - auth       : presence of CLERK_JWKS_URL / CLERK_SECRET_KEY or JWT_SECRET
+ *   - auth       : presence of CLERK_JWKS_URL or BETTER_AUTH_SECRET (+ DB binding)
  *   - compiler   : Durable Object namespace binding presence
  *   - gateway    : always healthy (we are responding)
  *
@@ -47,9 +47,18 @@ export async function handleHealth(env: Env): Promise<Response> {
         }),
     ]);
 
-    const authProvider: 'clerk' | 'local' | 'none' = env.CLERK_JWKS_URL ? 'clerk' : env.JWT_SECRET ? 'local' : 'none';
-    const auth: ServiceResult & { provider: 'clerk' | 'local' | 'none' } = {
-        status: authProvider !== 'none' ? 'healthy' : 'degraded',
+    const authProvider: 'clerk' | 'better-auth' | 'none' = env.CLERK_JWKS_URL ? 'clerk' : env.BETTER_AUTH_SECRET ? 'better-auth' : 'none';
+    let authStatus: ServiceStatus;
+    if (authProvider === 'none') {
+        authStatus = 'degraded';
+    } else if (authProvider === 'better-auth' && !env.DB) {
+        // Better Auth requires a D1 database binding; without it, auth cannot function.
+        authStatus = 'down';
+    } else {
+        authStatus = 'healthy';
+    }
+    const auth: ServiceResult & { provider: 'clerk' | 'better-auth' | 'none' } = {
+        status: authStatus,
         provider: authProvider,
     };
     const compiler: ServiceResult = { status: env.ADBLOCK_COMPILER ? 'healthy' : 'degraded' };

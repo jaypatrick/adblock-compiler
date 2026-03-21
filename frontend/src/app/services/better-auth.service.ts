@@ -173,4 +173,52 @@ export class BetterAuthService {
         // for cookie-first flows — no console output to keep logs clean.
         return null;
     }
+
+    /**
+     * Update the signed-in user's profile email.
+     * Calls Better Auth's update-user endpoint.
+     */
+    async updateProfile(email: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch('/api/auth/update-user', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ email }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to update profile.' };
+            }
+            const data = await res.json() as { user?: BetterAuthUser };
+            if (data?.user) {
+                this._user.set(data.user);
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to update profile.' };
+        }
+    }
+
+    /**
+     * Change the signed-in user's password.
+     * Calls Better Auth's change-password endpoint.
+     */
+    async changePassword(currentPassword: string, newPassword: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch('/api/auth/change-password', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ currentPassword, newPassword }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to change password.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to change password.' };
+        }
+    }
 }
