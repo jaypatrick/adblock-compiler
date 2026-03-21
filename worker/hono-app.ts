@@ -647,6 +647,39 @@ routes.post(
     (c) => handleCompileBatchAsync(c.req.raw, c.env),
 );
 
+routes.post(
+    '/compile/container',
+    bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    turnstileMiddleware(),
+    async (c) => {
+        if (!c.env.ADBLOCK_COMPILER) {
+            return c.json({ success: false, error: 'Container binding (ADBLOCK_COMPILER) is not available in this deployment' }, 503);
+        }
+        if (!c.env.CONTAINER_SECRET) {
+            return c.json({ success: false, error: 'CONTAINER_SECRET is not configured' }, 503);
+        }
+        const id = c.env.ADBLOCK_COMPILER.idFromName('default');
+        const stub = c.env.ADBLOCK_COMPILER.get(id);
+        const containerReq = new Request('http://container/compile', {
+            // Note: the URL hostname/scheme is irrelevant for DO stub.fetch() — the stub
+            // intercepts the call and routes it to the container's internal server.
+            // The path '/compile' maps to the POST /compile handler in container-server.ts.
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Container-Secret': c.env.CONTAINER_SECRET,
+            },
+            body: c.req.raw.body,
+        });
+        const containerRes = await stub.fetch(containerReq);
+        return new Response(containerRes.body, {
+            status: containerRes.status,
+            headers: containerRes.headers,
+        });
+    },
+);
+
 // ── Workflow (lazy) ───────────────────────────────────────────────────────────
 
 routes.all('/workflow/*', async (c) => {
