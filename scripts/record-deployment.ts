@@ -26,11 +26,18 @@
 
 import { parseArgs } from '@std/cli/parse-args';
 import { generateDeploymentId } from '../src/deployment/version.ts';
+import { createCloudflareApiService } from '../src/services/cloudflareApiService.ts';
+import type { D1Param } from '../src/services/cloudflareApiService.ts';
 
-interface D1QueryResult {
-    success: boolean;
-    result?: unknown[];
-    errors?: Array<{ code: number; message: string }>;
+/**
+ * Extract the HTTP status code from an SDK `APIError` (or any other thrown value).
+ * Returns 0 when the error does not carry a numeric `status` property.
+ */
+function getApiErrorStatus(error: unknown): number {
+    if (error !== null && typeof error === 'object' && 'status' in error && typeof (error as Record<string, unknown>).status === 'number') {
+        return (error as Record<string, unknown>).status as number;
+    }
+    return 0;
 }
 
 interface VersionInfo {
@@ -144,39 +151,6 @@ function getDeploymentMetadata(): DeploymentMetadata {
 }
 
 /**
- * Execute D1 query via REST API
- */
-async function queryD1(
-    accountId: string,
-    databaseId: string,
-    apiToken: string,
-    sql: string,
-    params: unknown[] = [],
-): Promise<D1QueryResult> {
-    const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
-
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${apiToken}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            sql,
-            params,
-        }),
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`D1 API error: ${response.status} ${response.statusText}\n${errorText}`);
-    }
-
-    const data = await response.json() as D1QueryResult;
-    return data;
-}
-
-/**
  * Record deployment in D1
  */
 async function recordDeployment(
@@ -208,7 +182,7 @@ async function recordDeployment(
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `;
 
-    const params = [
+    const params: D1Param[] = [
         id,
         versionInfo.version,
         versionInfo.buildNumber,
@@ -217,16 +191,13 @@ async function recordDeployment(
         gitBranch,
         deployedBy,
         status,
-        metadata.workflow_run_id || null,
-        metadata.workflow_run_url || null,
+        metadata.workflow_run_id ?? null,
+        metadata.workflow_run_url ?? null,
         metadataJson,
     ];
 
-    const result = await queryD1(accountId, databaseId, apiToken, sql, params);
-
-    if (!result.success) {
-        throw new Error(`Failed to record deployment: ${JSON.stringify(result.errors)}`);
-    }
+    const cfApi = createCloudflareApiService({ apiToken });
+    await cfApi.queryD1(accountId, databaseId, sql, params);
 
     console.log('✓ Deployment recorded successfully');
 }
@@ -283,9 +254,7 @@ async function main() {
         await recordDeployment(accountId, databaseId, apiToken, versionInfo, status);
     } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        // Error message format: "D1 API error: <statusCode> <statusText>\n<body>"
-        const statusCodeMatch = msg.match(/^D1 API error: (\d+)/);
-        const statusCode = statusCodeMatch ? parseInt(statusCodeMatch[1], 10) : 0;
+        const statusCode = getApiErrorStatus(error);
         const isPermissionError = statusCode === 401 || statusCode === 403;
         if (isPermissionError) {
             console.warn('⚠️  Could not record deployment to D1 (permission error).');
