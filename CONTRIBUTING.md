@@ -355,6 +355,57 @@ direnv allow                      # activate auto-loading
 
 See [docs/reference/ENV_CONFIGURATION.md](docs/reference/ENV_CONFIGURATION.md) for the full reference.
 
+## Cloudflare TypeScript SDK
+
+This project uses the official [`cloudflare`](https://github.com/cloudflare/cloudflare-typescript) TypeScript SDK (`cloudflare@^5.2.0`) instead of raw `fetch` calls for all Cloudflare REST API interactions.
+
+### Why the SDK?
+
+- **Type-safe**: every resource, parameter and response is fully typed.
+- **Pagination handled automatically**: SDK page objects expose `getPaginatedItems()` so callers never need to wire up cursor loops.
+- **Consistent error handling**: the SDK throws typed `APIError` subclasses (e.g. `AuthenticationError`, `PermissionDeniedError`) with a `.status` property, making HTTP-level error detection straightforward.
+- **Single integration point**: all Cloudflare API calls go through `src/services/cloudflareApiService.ts`, keeping scripts and worker handlers thin.
+
+### Location
+
+```
+src/services/cloudflareApiService.ts       # Service class + factory
+src/services/cloudflareApiService.test.ts  # Unit tests (mock client)
+```
+
+### Usage examples
+
+```typescript
+import { createCloudflareApiService } from './src/services/cloudflareApiService.ts';
+
+const cfApi = createCloudflareApiService({ apiToken: Deno.env.get('CLOUDFLARE_API_TOKEN')! });
+
+// Query D1
+const { result } = await cfApi.queryD1<{ id: number }>(
+    Deno.env.get('CLOUDFLARE_ACCOUNT_ID')!,
+    Deno.env.get('D1_DATABASE_ID')!,
+    'SELECT id FROM my_table WHERE name = ?',
+    ['example'],
+);
+
+// List KV namespaces
+const namespaces = await cfApi.listKvNamespaces(accountId);
+
+// List Worker scripts
+const scripts = await cfApi.listWorkers(accountId);
+
+// List Queues
+const queues = await cfApi.listQueues(accountId);
+
+// List Zones (with optional filter params)
+const zones = await cfApi.listZones({ account: { id: accountId } });
+```
+
+### Convention
+
+> **Scripts must use `CloudflareApiService` instead of raw `fetch` for all Cloudflare API calls.**
+> Never write ad-hoc `fetch('https://api.cloudflare.com/...')` calls; extend the service if a new resource is needed.
+
 ## Questions or Help?
 
 - Create an issue on GitHub

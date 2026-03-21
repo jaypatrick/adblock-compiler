@@ -20,12 +20,7 @@
  */
 
 import { formatFullVersion } from '../src/deployment/version.ts';
-
-interface D1QueryResult<T = unknown> {
-    success: boolean;
-    result: T[];
-    errors?: Array<{ code: number; message: string }>;
-}
+import { createCloudflareApiService } from '../src/services/cloudflareApiService.ts';
 
 interface DenoConfig {
     version: string;
@@ -66,48 +61,16 @@ async function readD1DatabaseId(): Promise<string | null> {
 }
 
 /**
- * Query D1 database via REST API
- */
-async function queryD1<T = unknown>(
-    accountId: string,
-    databaseId: string,
-    apiToken: string,
-    sql: string,
-    params: unknown[] = [],
-): Promise<D1QueryResult<T>> {
-    const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/d1/database/${databaseId}/query`;
-
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            'Authorization': `Bearer ${apiToken}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            sql,
-            params,
-        }),
-    });
-
-    if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(`D1 API error: ${response.status} ${response.statusText}\n${errorText}`);
-    }
-
-    const data = await response.json();
-    return data;
-}
-
-/**
  * Get the next build number from D1
  */
 async function getNextBuildNumber(accountId: string, databaseId: string, apiToken: string, version: string): Promise<number> {
+    const cfApi = createCloudflareApiService({ apiToken });
+
     try {
         // Get current build number
-        const result = await queryD1<{ last_build_number: number }>(
+        const result = await cfApi.queryD1<{ last_build_number: number }>(
             accountId,
             databaseId,
-            apiToken,
             'SELECT last_build_number FROM deployment_counter WHERE version = ?',
             [version],
         );
@@ -116,10 +79,9 @@ async function getNextBuildNumber(accountId: string, databaseId: string, apiToke
         const nextBuildNumber = currentBuildNumber + 1;
 
         // Update counter
-        await queryD1(
+        await cfApi.queryD1(
             accountId,
             databaseId,
-            apiToken,
             `INSERT INTO deployment_counter (version, last_build_number, updated_at)
              VALUES (?, ?, datetime('now'))
              ON CONFLICT(version) DO UPDATE SET
