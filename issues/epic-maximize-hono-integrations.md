@@ -8,7 +8,7 @@ This epic is broken into focused sub-issues, each independently actionable.
 
 ## Sub-Issues Checklist
 
-- [ ] **feat: Integrate @hono/zod-openapi to auto-generate cloudflare-schema.yaml**
+- [ ] **feat: Integrate @hono/zod-openapi to auto-generate cloudflare-schema.yaml snd openapi generation**
 - [ ] **feat: Integrate @hono/zod-validator for request body validation on all POST endpoints**
 - [ ] **feat: Replace homegrown authentication with Better Auth + Hono on Cloudflare Workers**
 - [ ] **feat: Adopt Hono examples patterns — Durable Objects, Queue, Prisma, Stripe, Timing, ETag, Compress, Cache**
