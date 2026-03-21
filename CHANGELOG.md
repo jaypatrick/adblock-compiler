@@ -120,6 +120,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.69.3] - 2026-03-21
+
+### Added### Fixed
+
+- wire Cloudflare Containers for local dev and production request routing
+
+
 ## [0.69.2] - 2026-03-20
 
 ### Added### Fixed
