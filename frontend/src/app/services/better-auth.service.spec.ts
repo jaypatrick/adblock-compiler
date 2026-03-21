@@ -10,7 +10,7 @@
  *   - getToken() when signed out: returns null without a fetch.
  *   - getToken() with cached token: returns token without a fetch.
  *   - getToken() without cached token: re-fetches session and returns token.
- *   - getToken() re-fetch returns no token: logs warning and returns null.
+ *   - getToken() re-fetch returns no token: handles cookie-auth fallback without warning and returns null.
  *   - signIn() success: sets user and caches token.
  *   - signIn() failure: throws with error body.
  *   - signUp() success: sets user and caches token.

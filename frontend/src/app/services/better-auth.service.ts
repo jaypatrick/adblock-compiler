@@ -5,8 +5,9 @@
  * Uses cookies for session management (set automatically by Better Auth).
  * The bearer() plugin on the server also supports Authorization headers.
  *
- * SSR-safe: all network calls are guarded by `isPlatformBrowser`. On the
- * server, `isLoaded` is set to `true` immediately with no session.
+ * SSR behavior: the constructor guards network calls with `isPlatformBrowser`.
+ * On the server, `isLoaded` is set to `true` immediately with no session, and
+ * other public methods are expected to be called only in a browser context.
  *
  * Signals: isLoaded, isSignedIn, user, isAdmin
  */
@@ -163,7 +164,7 @@ export class BetterAuthService {
                 }
             }
         } catch {
-            // Fall through to warning
+            // Silently ignore errors; fall back to cookie-based session auth without a bearer token.
         }
 
         // Signed in but unable to retrieve a bearer token from the session response.

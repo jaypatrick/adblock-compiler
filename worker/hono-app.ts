@@ -238,7 +238,7 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
     if (!c.env.DB) {
         // Misconfigured deployment: auth DB binding is missing. Fail predictably
         // instead of allowing createAuth() to throw at runtime with a non-actionable error.
-        return c.text('Authentication service is temporarily unavailable', 503);
+        return c.json({ error: 'Authentication service is temporarily unavailable' }, 503);
     }
     const url = new URL(c.req.url);
     const auth = createAuth(c.env, url.origin);

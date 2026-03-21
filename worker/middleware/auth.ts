@@ -211,16 +211,17 @@ function isJwtToken(token: string): boolean {
  *
  * The chain tries, **in order**:
  *
- * 1. **Custom auth provider (cookie / session-token)** — When an explicit
+ * 1. **API key (fast path, always checked first)** — If the Bearer token
+ *    starts with `abc_` it is hashed and looked up in PostgreSQL via
+ *    Hyperdrive. The authenticated user inherits their actual tier from the
+ *    `users` table (not hardcoded).
+ *
+ * 2. **Custom auth provider (cookie / session-token)** — When an explicit
  *    `authProvider` is supplied (e.g., {@link BetterAuthProvider}), it is
  *    consulted for *every* non-API-key request, including requests with no
  *    Bearer token at all (to support cookie-based sessions). The provider
  *    receives the full request object and can inspect both `Authorization`
  *    headers and `Cookie` headers.
- *
- * 2. **API key** — If the Bearer token starts with `abc_` it is hashed and
- *    looked up in PostgreSQL via Hyperdrive. The authenticated user inherits
- *    their actual tier from the `users` table (not hardcoded).
  *
  * 3. **JWT via Clerk** — If the Bearer token is a JWT (three dot-separated
  *    segments, not an `abc_` key) it is verified against the Clerk JWKS.
@@ -302,21 +303,23 @@ export async function authenticateRequestUnified(
         const providerResult = await authProvider.verifyToken(request);
 
         if (providerResult.valid && providerResult.providerUserId) {
-            // Attempt to resolve the internal DB userId from the provider's user ID.
+            // Attempt to resolve the internal DB userId from the provider's user ID
+            // when that ID is known to be a Clerk user id.
             //
             // When is `resolvedUserId` null vs. populated?
             //   - Better Auth: `providerUserId` is the user's D1 row id. The PostgreSQL
-            //     users table (accessed via HYPERDRIVE) has no row for it, so the query
-            //     returns null. This is EXPECTED — `clerkUserId` carries the BA user id,
-            //     and downstream handlers use that field for Better Auth user lookups.
+            //     users table (accessed via HYPERDRIVE) has no row for it, so we skip
+            //     the Hyperdrive lookup entirely. This is EXPECTED — `clerkUserId`
+            //     carries the BA user id, and downstream handlers use that field for
+            //     Better Auth user lookups.
             //   - Clerk-backed custom providers: `providerUserId` is the Clerk user id.
             //     The PostgreSQL users table has a matching `clerk_user_id` row, so
             //     `resolvedUserId` is populated with the internal `users.id`.
             //   - No HYPERDRIVE / no createPool: resolution is skipped; `resolvedUserId`
-            //     stays null for both providers (acceptable — handlers that need it must
+            //     stays null for all providers (acceptable — handlers that need it must
             //     check and handle null themselves).
             let resolvedUserId: string | null = null;
-            if (env.HYPERDRIVE && createPool) {
+            if (env.HYPERDRIVE && createPool && authProvider.authMethod !== 'better-auth') {
                 try {
                     resolvedUserId = await resolveUserIdByClerkId(
                         providerResult.providerUserId,
@@ -324,11 +327,13 @@ export async function authenticateRequestUnified(
                         createPool,
                     );
                 } catch (error) {
-                    const message = error instanceof Error ? error.message : String(error);
+                    // Log detailed error server-side without leaking internals to the client
+                    // deno-lint-ignore no-console
+                    console.error('Authentication user lookup failed during resolveUserIdByClerkId:', error);
                     return {
                         context: { ...ANONYMOUS_AUTH_CONTEXT },
                         response: new Response(
-                            JSON.stringify({ error: `Authentication user lookup failed: ${message}` }),
+                            JSON.stringify({ error: 'Authentication user lookup failed' }),
                             { status: 503, headers: { 'Content-Type': 'application/json' } },
                         ),
                     };
