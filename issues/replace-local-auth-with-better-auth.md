@@ -22,3 +22,4 @@
 ### Links to Reference
 - [Better Auth Documentation](https://better-auth.com/llms.txt)
 - [Hono Example with Better Auth](https://hono.dev/examples/better-auth-on-cloudflare)
+- [Hono Cloudflare Better Auth example](https://hono.dev/examples/better-auth-on-cloudflare)
