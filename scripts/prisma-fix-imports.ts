@@ -86,9 +86,13 @@ async function main(): Promise<void> {
                 console.log(`⚠️  ${dir} is not a directory — skipping`);
                 continue;
             }
-        } catch {
-            console.log(`⚠️  ${dir} does not exist yet — skipping`);
-            continue;
+        } catch (err) {
+            if (err instanceof Deno.errors.NotFound) {
+                console.log(`⚠️  ${dir} does not exist yet — skipping`);
+                continue;
+            }
+            console.error(`❌ Failed to stat ${dir}: ${err instanceof Error ? err.message : String(err)}`);
+            Deno.exit(1);
         }
 
         console.log(`\n🔍 Processing ${dir}...`);

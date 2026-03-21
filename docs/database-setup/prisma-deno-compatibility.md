@@ -87,8 +87,8 @@ flowchart TD
 
 ### Idempotency
 
-Running the script a second time with already-fixed files produces zero replacements
-and exits 0 immediately. It is safe to run on every `db:generate` invocation.
+Running the script a second time with already-fixed files still scans the `.ts` files but
+produces zero replacements and performs no writes. It is safe to run on every `db:generate` invocation.
 
 ## Wire-up in `deno.json`
 
