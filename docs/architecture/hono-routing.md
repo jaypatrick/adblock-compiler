@@ -90,7 +90,6 @@ sequenceDiagram
     participant C as Client
     participant B as bodySizeMiddleware
     participant R as rateLimitMiddleware
-    participant T as turnstileMiddleware
     participant Z as zValidator
     participant H as Route Handler
 
@@ -99,17 +98,24 @@ sequenceDiagram
     B-->>C: 413 if too large
     B->>R: next()
     R->>R: KV quota check (no body read)
-    R-->>C: 429 + Retry-After if exhausted
-    R->>T: next()
-    T->>T: clone() + extract turnstileToken
-    T-->>C: 400 invalid JSON / 403 bad token
-    T->>Z: next()
+    R-->>C: 429 + Retry-After + ZTA event if exhausted
+    R->>Z: next()
     Z->>Z: consume original body stream
     Z-->>C: 422 if schema invalid
     Z->>H: next() with c.req.valid('json')
+    H->>H: verify Turnstile from c.req.valid('json').turnstileToken
+    H-->>C: 403 + ZTA event if Turnstile fails
     H->>H: reconstruct Request from validated data
     H-->>C: 200 compile response
 ```
+
+> **Why `zValidator` runs before Turnstile on `/compile`**: `turnstileMiddleware()` on other
+> routes calls `Request.clone().json()` to extract the token while leaving the body intact.
+> On the `/compile` route, `zValidator` would parse the body a second time — doubling the
+> I/O for every compile request. By running `zValidator` first and reading
+> `c.req.valid('json').turnstileToken` in the handler, the body is parsed exactly once.
+> All other routes still use `turnstileMiddleware()` (clone-based) before any schema
+> validation step.
 
 ### Before / After example
 
@@ -127,18 +133,27 @@ routes.post('/compile', async (c) => {
 });
 ```
 
-**After (Phase 2 — factory stack):**
+**After (Phase 2 — factory stack with single-parse optimisation):**
 
 ```typescript
 routes.post(
     '/compile',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
-    turnstileMiddleware(),
+    // zValidator runs before Turnstile to avoid double body parsing
     zValidator('json', CompileRequestSchema as any, (result, c) => {
         if (!result.success) return c.json({ success: false, error: 'Invalid request body', details: result.error }, 422);
     }),
     async (c) => {
+        // Turnstile reads from already-validated body — no second clone/parse
+        if (c.env.TURNSTILE_SECRET_KEY) {
+            const token = (c.req.valid('json') as any).turnstileToken ?? '';
+            const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
+            if (!tsResult.success) {
+                c.get('analytics').trackSecurityEvent({ eventType: 'turnstile_rejection', ... });
+                return c.json({ success: false, error: tsResult.error ?? 'Turnstile verification failed' }, 403);
+            }
+        }
         const validatedBody = c.req.valid('json');
         const syntheticReq = new Request(c.req.url, { method: 'POST', headers: c.req.raw.headers, body: JSON.stringify(validatedBody) });
         return handleCompileJson(syntheticReq, c.env, c.get('analytics'), c.get('requestId'));
@@ -164,15 +179,21 @@ compile-time type mismatch that has no runtime effect:
 zValidator('json', CompileRequestSchema as any, (result, c) => { ... })
 ```
 
-### Body stream consumption
+### Body stream consumption and Turnstile ordering
 
-`zValidator` consumes the original `c.req.raw` body stream. Handlers that follow it
-**must** read validated data from `c.req.valid('json')` rather than re-reading
-`c.req.raw`. The compile route reconstructs a synthetic `Request` from the validated
-data to preserve the existing `handleCompileJson(req, env, ...)` signature:
+`zValidator` consumes the original `c.req.raw` body stream. On the `/compile` route,
+`zValidator` runs **before** Turnstile verification so the body is only parsed once.
+The Turnstile token is then read from the already-cached validated data:
 
 ```typescript
 async (c) => {
+    // Turnstile from validated body — no second clone/parse
+    if (c.env.TURNSTILE_SECRET_KEY) {
+        const token = (c.req.valid('json') as any).turnstileToken ?? '';
+        const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
+        if (!tsResult.success) { ... return 403; }
+    }
+    // Reconstruct Request for legacy handler signature
     const validatedBody = c.req.valid('json');
     const syntheticReq = new Request(c.req.url, {
         method: 'POST',

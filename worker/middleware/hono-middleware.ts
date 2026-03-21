@@ -31,11 +31,14 @@
  * The RECOMMENDED order to preserve correct body-stream semantics is:
  *
  *   1. `bodySizeMiddleware()` — reads body size via `Request.clone()`, leaves original intact
- *   2. `rateLimitMiddleware()` — no body read
- *   3. `turnstileMiddleware()` — reads Turnstile token via `Request.clone()`, leaves original intact
- *   4. `zValidator(...)` (optional) — reads and caches the body; subsequent handlers MUST
- *      use `c.req.valid('json')` rather than re-reading `c.req.raw`
- *   5. Route handler
+ *   2. `rateLimitMiddleware()` — no body read; emits `rate_limit` ZTA security event on 429
+ *   3. `turnstileMiddleware()` — reads Turnstile token via `Request.clone()`, leaves original intact;
+ *      emits `turnstile_rejection` ZTA security event on 400/403
+ *   4. Route handler
+ *
+ * **Exception — POST /compile**: `zValidator` is placed at step 3 (before Turnstile) to
+ * avoid double JSON parsing.  Turnstile verification is then inlined in the handler using
+ * `c.req.valid('json').turnstileToken` from the cached validated data.
  *
  * @module
  */
@@ -108,7 +111,8 @@ export function bodySizeMiddleware(): AppMiddleware {
  * Admin tier bypasses the check entirely (unlimited requests, no KV I/O).
  *
  * Returns **429 Too Many Requests** with standard `Retry-After` and
- * `X-RateLimit-*` headers, and emits a `rate_limit_exceeded` analytics event.
+ * `X-RateLimit-*` headers, and emits both a `rate_limit_exceeded` analytics
+ * event and a `rate_limit` ZTA security event for observability.
  *
  * @example
  * ```typescript
@@ -120,11 +124,21 @@ export function rateLimitMiddleware(): AppMiddleware {
         const rl = await checkRateLimitTiered(c.env, c.get('ip'), c.get('authContext'));
         if (!rl.allowed) {
             const analytics = c.get('analytics');
+            const clientIpHash = AnalyticsService.hashIp(c.get('ip'));
             analytics.trackRateLimitExceeded({
                 requestId: c.get('requestId'),
-                clientIpHash: AnalyticsService.hashIp(c.get('ip')),
+                clientIpHash,
                 rateLimit: rl.limit,
                 windowSeconds: RATE_LIMIT_WINDOW,
+            });
+            // ZTA security event — feeds real-time Zero Trust dashboards and SIEM pipelines.
+            analytics.trackSecurityEvent({
+                eventType: 'rate_limit',
+                path: c.req.path,
+                method: c.req.method,
+                clientIpHash,
+                tier: c.get('authContext').tier,
+                reason: 'rate_limit_exceeded',
             });
             return c.json(
                 {
@@ -174,11 +188,23 @@ export function turnstileMiddleware(): AppMiddleware {
             await next();
             return;
         }
+        const analytics = c.get('analytics');
+        const clientIpHash = AnalyticsService.hashIp(c.get('ip'));
+        const tier = c.get('authContext').tier;
         let token = '';
         try {
             const body = await c.req.raw.clone().json() as { turnstileToken?: string };
             token = body.turnstileToken ?? '';
         } catch {
+            // ZTA security event — body could not be parsed; emit before returning 400.
+            analytics.trackSecurityEvent({
+                eventType: 'turnstile_rejection',
+                path: c.req.path,
+                method: c.req.method,
+                clientIpHash,
+                tier,
+                reason: 'invalid_request_body_json',
+            });
             return c.json(
                 { success: false, error: 'Invalid request body — could not extract Turnstile token' },
                 400,
@@ -186,6 +212,15 @@ export function turnstileMiddleware(): AppMiddleware {
         }
         const result = await verifyTurnstileToken(c.env, token, c.get('ip'));
         if (!result.success) {
+            // ZTA security event — Turnstile challenge failed; emit before returning 403.
+            analytics.trackSecurityEvent({
+                eventType: 'turnstile_rejection',
+                path: c.req.path,
+                method: c.req.method,
+                clientIpHash,
+                tier,
+                reason: result.error ?? 'turnstile_verification_failed',
+            });
             return c.json(
                 { success: false, error: result.error ?? 'Turnstile verification failed' },
                 403,

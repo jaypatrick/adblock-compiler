@@ -399,10 +399,12 @@ routes.all('/queue/*', async (c) => {
 //   2. rateLimitMiddleware()   — per-user/IP tiered quota (429)
 //   3. turnstileMiddleware()   — Cloudflare human verification (403) via clone
 //
-// POST /compile also applies @hono/zod-validator to perform structural
-// validation of the request body before the handler runs.  The validated,
-// typed payload is forwarded to handleCompileJson via a reconstructed Request
-// (necessary because zValidator consumes the original body stream).
+// POST /compile differs from the other compile routes:
+//   - zValidator runs BEFORE Turnstile verification so the body stream is only
+//     parsed once (zValidator consumes it; Turnstile reads from the cached
+//     c.req.valid('json') in the final handler, avoiding a second clone+parse).
+//   - Turnstile verification is inlined in the final handler step rather than
+//     as a separate middleware, because it needs the already-validated body.
 //
 // See docs/architecture/hono-routing.md — Phase 2 for the full middleware
 // extraction rationale and execution-order guarantees.
@@ -411,11 +413,11 @@ routes.post(
     '/compile',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
-    turnstileMiddleware(),
     // Zod body validation — rejects structurally invalid requests with 422
-    // before the compile handler runs.  Both `bodySizeMiddleware` and
-    // `turnstileMiddleware` above use Request.clone() so the original body
-    // stream is intact for zValidator to consume here.
+    // BEFORE Turnstile is checked.  Running zValidator here (rather than after
+    // turnstileMiddleware) means the body stream is consumed exactly once:
+    // turnstileMiddleware would clone+parse and then zValidator would parse
+    // again, doubling the work for every compile request.
     //
     // @hono/zod-validator types against npm:zod while this project uses
     // jsr:@zod/zod — both are Zod v4 with identical runtime APIs; the cast
@@ -427,9 +429,27 @@ routes.post(
         }
     }),
     async (c) => {
-        // c.req.raw body stream was consumed by zValidator above.
-        // Reconstruct a Request from the validated (and sanitised) data so
-        // the existing handler signature (Request, Env, ...) is preserved.
+        // Turnstile verification — reads token from the already-validated body
+        // (c.req.raw body stream was consumed by zValidator above, so we must
+        // not attempt to re-read c.req.raw here).
+        if (c.env.TURNSTILE_SECRET_KEY) {
+            // deno-lint-ignore no-explicit-any
+            const token = (c.req.valid('json') as any).turnstileToken ?? '';
+            const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
+            if (!tsResult.success) {
+                c.get('analytics').trackSecurityEvent({
+                    eventType: 'turnstile_rejection',
+                    path: c.req.path,
+                    method: c.req.method,
+                    clientIpHash: AnalyticsService.hashIp(c.get('ip')),
+                    tier: c.get('authContext').tier,
+                    reason: tsResult.error ?? 'turnstile_verification_failed',
+                });
+                return c.json({ success: false, error: tsResult.error ?? 'Turnstile verification failed' }, 403);
+            }
+        }
+        // Reconstruct a Request from the validated (and sanitised) data so the
+        // existing handler signature (Request, Env, ...) is preserved.
         const validatedBody = c.req.valid('json');
         const syntheticReq = new Request(c.req.url, {
             method: 'POST',
