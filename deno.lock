@@ -26,6 +26,7 @@
     "npm:@cloudflare/workers-types@*": "4.20260317.1",
     "npm:@cloudflare/workers-types@^4.20260313.1": "4.20260317.1",
     "npm:@cloudflare/workers-types@^4.20260317.1": "4.20260317.1",
+    "npm:@hono/zod-validator@~0.4.3": "0.4.3_hono@4.12.8_zod@4.3.6",
     "npm:@opentelemetry/api@^1.9.0": "1.9.0",
     "npm:@prisma/adapter-d1@^7.5.0": "7.5.0",
     "npm:@prisma/adapter-pg@^7.5.0": "7.5.0",
@@ -419,6 +420,13 @@
       "integrity": "sha512-vHL6w3ecZsky+8P5MD+eFfaGTyCeOHUIFYMGpQGbrBTSmNNoxv0if69rEZ5giu36weC5saFuznL411gRX7bJDw==",
       "dependencies": [
         "hono@4.11.4"
+      ]
+    },
+    "@hono/zod-validator@0.4.3_hono@4.12.8_zod@4.3.6": {
+      "integrity": "sha512-xIgMYXDyJ4Hj6ekm9T9Y27s080Nl9NXHcJkOvkXPhubOLj8hZkOL8pDnnXfvCf5xEE8Q4oMFenQUZZREUY2gqQ==",
+      "dependencies": [
+        "hono@4.12.8",
+        "zod@4.3.6"
       ]
     },
     "@img/colour@1.1.0": {
@@ -2269,6 +2277,7 @@
       "npm:@cloudflare/playwright-mcp@^0.0.5",
       "npm:@cloudflare/playwright@^1.1.2",
       "npm:@cloudflare/workers-types@^4.20260313.1",
+      "npm:@hono/zod-validator@~0.4.3",
       "npm:@prisma/adapter-d1@^7.5.0",
       "npm:@prisma/adapter-pg@^7.5.0",
       "npm:@prisma/client@^7.5.0",
@@ -2285,6 +2294,7 @@
         "npm:@cloudflare/playwright-mcp@^0.0.5",
         "npm:@cloudflare/playwright@^1.1.2",
         "npm:@cloudflare/workers-types@^4.20260317.1",
+        "npm:@hono/zod-validator@~0.4.3",
         "npm:@opentelemetry/api@^1.9.0",
         "npm:@prisma/adapter-d1@^7.5.0",
         "npm:@prisma/client@^7.5.0",
