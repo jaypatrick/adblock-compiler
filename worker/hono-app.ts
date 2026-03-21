@@ -30,7 +30,7 @@
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import type { Context } from 'hono';
-import { timing, startTime, endTime } from 'hono/timing';
+import { endTime, startTime, timing } from 'hono/timing';
 import { etag } from 'hono/etag';
 import { prettyJSON } from 'hono/pretty-json';
 import { OpenAPIHono } from '@hono/zod-openapi';
@@ -849,13 +849,12 @@ export const OPENAPI_DOCUMENT_ARGS = {
     info: {
         title: 'Adblock Compiler API',
         version: '2.0.0',
-        description:
-            'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.',
+        description: 'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.',
         license: { name: 'GPL-3.0', url: 'https://github.com/jaypatrick/adblock-compiler/blob/master/LICENSE' },
         contact: { name: 'Jayson Knight', url: 'https://github.com/jaypatrick/adblock-compiler' },
     },
     servers: [{ url: 'https://adblock-compiler.jayson-knight.workers.dev', description: 'Production server' }],
-} as const;
+};
 
 app.get('/api/openapi.json', (c) => {
     const spec = app.getOpenAPIDocument(OPENAPI_DOCUMENT_ARGS);
@@ -864,8 +863,7 @@ app.get('/api/openapi.json', (c) => {
             {
                 error: 'OpenAPI specification is not yet configured for this deployment.',
                 status: 501,
-                detail:
-                    'No OpenAPI routes are currently registered. Migrate key endpoints to use .openapi(createRoute(...)) before relying on this schema.',
+                detail: 'No OpenAPI routes are currently registered. Migrate key endpoints to use .openapi(createRoute(...)) before relying on this schema.',
             },
             501,
         );
