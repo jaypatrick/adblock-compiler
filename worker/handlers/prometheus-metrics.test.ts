@@ -125,6 +125,10 @@ const MOCK_ANALYTICS_ROW = {
 /**
  * Patches globalThis.fetch for the duration of `fn`, then restores it.
  *
+ * The mock response includes `Content-Type: application/json` so that the
+ * Cloudflare SDK's response parser detects JSON and returns a parsed object
+ * (rather than a raw string).
+ *
  * Usage requirement: call this only from within a serialised t.step() block.
  * Calling it from a top-level Deno.test that runs concurrently with other
  * fetch-patching tests can cause flaky cross-test interference.
@@ -136,7 +140,11 @@ function withMockFetch(
 ): Promise<void> {
     const originalFetch = globalThis.fetch;
     // deno-lint-ignore no-explicit-any
-    (globalThis as any).fetch = async () => new Response(JSON.stringify(mockResponse), { status });
+    (globalThis as any).fetch = async (_url: unknown, _init?: unknown) =>
+        new Response(JSON.stringify(mockResponse), {
+            status,
+            headers: { 'Content-Type': 'application/json' },
+        });
     return fn().finally(() => {
         globalThis.fetch = originalFetch;
     });

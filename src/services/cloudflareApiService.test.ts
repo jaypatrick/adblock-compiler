@@ -66,6 +66,8 @@ function createMockCloudflareClient() {
                     makeMockPage([{ id: 'zone-id-1', name: 'example.com' }]),
                 ),
         },
+        post: (_path: string, _opts: unknown) =>
+            Promise.resolve({ data: [{ total_requests: 100 }] }),
     };
 }
 
@@ -405,5 +407,69 @@ Deno.test('CloudflareApiService - logger integration', async (t) => {
 
         assertEquals(infos.length >= 1, true);
         assertEquals(infos[0].includes('queryD1'), true);
+    });
+});
+
+// ─── queryAnalyticsEngine ─────────────────────────────────────────────────────
+
+Deno.test('CloudflareApiService - queryAnalyticsEngine', async (t) => {
+    await t.step('should return data rows from the SDK post() call', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            post: (_path: string, _opts: unknown) =>
+                Promise.resolve({ data: [{ total_requests: 42, error_requests: 3 }] }),
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        const result = await service.queryAnalyticsEngine('acct-1', 'SELECT 1');
+
+        assertEquals(result.data.length, 1);
+        assertEquals((result.data[0] as { total_requests: number }).total_requests, 42);
+    });
+
+    await t.step('should pass correct path and sql body to the SDK', async () => {
+        let capturedPath = '';
+        let capturedBody: unknown;
+
+        const mock = {
+            ...createMockCloudflareClient(),
+            post: (path: string, opts: { body: unknown }) => {
+                capturedPath = path;
+                capturedBody = opts.body;
+                return Promise.resolve({ data: [] });
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await service.queryAnalyticsEngine('my-acct', 'SELECT count() FROM dataset');
+
+        assertEquals(capturedPath, '/accounts/my-acct/analytics_engine/sql');
+        assertEquals((capturedBody as { query: string }).query, 'SELECT count() FROM dataset');
+    });
+
+    await t.step('should return empty data array when no rows match', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            post: (_path: string, _opts: unknown) => Promise.resolve({ data: [] }),
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        const result = await service.queryAnalyticsEngine('acct-1', 'SELECT 1 WHERE false');
+
+        assertEquals(result.data.length, 0);
+    });
+
+    await t.step('should propagate SDK errors', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            post: (_path: string, _opts: unknown) => Promise.reject(new Error('Analytics unavailable')),
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await assertRejects(
+            () => service.queryAnalyticsEngine('acct-1', 'SELECT 1'),
+            Error,
+            'Analytics unavailable',
+        );
     });
 });

@@ -185,6 +185,34 @@ export class CloudflareApiService {
         const page = await this.client.zones.list(params ?? {});
         return page.getPaginatedItems();
     }
+
+    // ── Analytics Engine ──────────────────────────────────────────────────────
+
+    /**
+     * Execute a SQL statement against the Cloudflare Analytics Engine SQL API.
+     *
+     * The Analytics Engine SQL API is not yet exposed as a typed resource in the
+     * `cloudflare` SDK, so this method calls the underlying HTTP endpoint via the
+     * SDK's low-level `post()` helper. All SDK features (auth headers, retries,
+     * error handling) still apply.
+     *
+     * @param accountId - Cloudflare account identifier.
+     * @param sql       - SQL statement to execute against the Analytics Engine dataset.
+     * @returns Object containing a `data` array of result rows.
+     *
+     * @see https://developers.cloudflare.com/analytics/analytics-engine/sql-api/
+     */
+    async queryAnalyticsEngine(
+        accountId: string,
+        sql: string,
+    ): Promise<{ data: Record<string, unknown>[] }> {
+        this.logger.info(`[CloudflareApiService] queryAnalyticsEngine`);
+
+        return await this.client.post<{ query: string }, { data: Record<string, unknown>[] }>(
+            `/accounts/${accountId}/analytics_engine/sql`,
+            { body: { query: sql } },
+        );
+    }
 }
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
@@ -196,6 +224,17 @@ export class CloudflareApiService {
  * @param options.logger   - Optional logger forwarded to the service instance.
  */
 export function createCloudflareApiService(options: { apiToken: string; logger?: IBasicLogger }): CloudflareApiService {
-    const client = new Cloudflare({ apiToken: options.apiToken });
+    const client = new Cloudflare({
+        apiToken: options.apiToken,
+        // Use a dynamic fetch wrapper so that globalThis.fetch patches (e.g. in unit tests)
+        // are honoured on every call rather than being snapshotted at initialisation time.
+        // The `any` annotations suppress the node-fetch vs. Web Fetch API `RequestInfo` /
+        // `Response` type mismatch that surfaces under Deno's module resolution.
+        // deno-lint-ignore no-explicit-any
+        fetch: (url: any, init?: any): any => globalThis.fetch(url, init),
+        // Disable SDK-level retries; callers (scripts, CI workflows) handle retry logic
+        // at the orchestration layer.  This also keeps tests fast and deterministic.
+        maxRetries: 0,
+    });
     return new CloudflareApiService(client, options.logger);
 }

@@ -37,42 +37,13 @@
  */
 
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
+import { createCloudflareApiService } from '../../src/services/cloudflareApiService.ts';
 import { verifyCfAccessJwt } from '../middleware/cf-access.ts';
 import type { Env } from '../types.ts';
 import { _clearRegistryForTesting, getRegisteredMetrics, registerPrometheusMetric, renderMetric } from './prometheus-metric-registry.ts';
 
 // Re-export so callers only need one import site for the public API.
 export { _clearRegistryForTesting, registerPrometheusMetric };
-
-// ---------------------------------------------------------------------------
-// Analytics Engine query helper
-// ---------------------------------------------------------------------------
-
-/**
- * Query the Analytics Engine SQL API.
- * The API token must have "Account Analytics Read" permission.
- */
-async function queryAnalyticsEngine(
-    sql: string,
-    accountId: string,
-    apiToken: string,
-): Promise<{ data: Record<string, unknown>[] }> {
-    const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/analytics_engine/sql`;
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-            Authorization: `Bearer ${apiToken}`,
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ query: sql }),
-    });
-
-    if (!response.ok) {
-        throw new Error(`Analytics Engine query failed: ${response.status} ${response.statusText}`);
-    }
-
-    return response.json() as Promise<{ data: Record<string, unknown>[] }>;
-}
 
 // ---------------------------------------------------------------------------
 // Built-in metric registration
@@ -106,11 +77,8 @@ async function fetchRow(env: Env): Promise<Record<string, number>> {
     if (!_pendingQuery) {
         _pendingQuery = (async () => {
             try {
-                const result = await queryAnalyticsEngine(
-                    SQL,
-                    env.ANALYTICS_ACCOUNT_ID!,
-                    env.ANALYTICS_API_TOKEN!,
-                );
+                const cfApi = createCloudflareApiService({ apiToken: env.ANALYTICS_API_TOKEN! });
+                const result = await cfApi.queryAnalyticsEngine(env.ANALYTICS_ACCOUNT_ID!, SQL);
                 const row = result.data[0] ?? {};
                 return Object.fromEntries(
                     Object.entries(row).map(([k, v]) => [k, Number(v ?? 0)]),
