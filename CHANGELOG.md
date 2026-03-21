@@ -121,6 +121,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.70.1] - 2026-03-21
+
+### Added### Fixed
+
+- resolve CI failures — formatting, TypeScript readonly, and pnpm lockfile
+
+
 ## [0.70.0] - 2026-03-21
 
 ### Added- migrate prometheus metrics handler to CloudflareApiService + add queryAnalyticsEngine
