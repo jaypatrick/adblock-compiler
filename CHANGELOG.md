@@ -120,6 +120,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.70.0] - 2026-03-21
+
+### Added- Phase 3 Hono migration - OpenAPIHono, timing, zValidator, ETag, RPC client
+
+### Fixed
+
+- apply second PR review round — shared OpenAPI constant, middleware order, compile removed from RPC client, docs, test rename
+- apply PR review comments — double /api prefix, CORS list, OpenAPI comment, 501 guard, test
+- wire Cloudflare Containers for local dev and production request routing
+
+
 ## [0.69.2] - 2026-03-20
 
 ### Added### Fixed
