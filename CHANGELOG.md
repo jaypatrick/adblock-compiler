@@ -122,6 +122,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.70.2] - 2026-03-21
+
+### Added### Fixed
+
+- apply deno fmt formatting to prisma-fix-imports.ts
+- narrow catch to NotFound; fix idempotency doc wording
+- remove --sloppy-imports by post-processing Prisma .js specifiers to .ts
+- use deno task check/test in release.yml to fix --sloppy-imports for worker tests
+
+
 ## [0.70.1] - 2026-03-21
 
 ### Added### Fixed
