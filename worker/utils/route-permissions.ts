@@ -99,6 +99,7 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/compile', { minTier: UserTier.Free, description: 'Compile filter lists' }],
     ['/compile/stream', { minTier: UserTier.Free, description: 'Streaming compile' }],
     ['/compile/batch', { minTier: UserTier.Free, description: 'Batch compile' }],
+    ['/compile/container', { minTier: UserTier.Free, description: 'Container-proxied compile' }],
     ['/ast/parse', { minTier: UserTier.Free, description: 'Parse rules to AST' }],
     ['/validate', { minTier: UserTier.Free, description: 'Validate filter rules' }],
     ['/validate-rule', { minTier: UserTier.Free, description: 'Validate single rule' }],
