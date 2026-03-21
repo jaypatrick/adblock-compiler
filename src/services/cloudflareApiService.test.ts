@@ -66,8 +66,7 @@ function createMockCloudflareClient() {
                     makeMockPage([{ id: 'zone-id-1', name: 'example.com' }]),
                 ),
         },
-        post: (_path: string, _opts: unknown) =>
-            Promise.resolve({ data: [{ total_requests: 100 }] }),
+        post: (_path: string, _opts: unknown) => Promise.resolve({ data: [{ total_requests: 100 }] }),
     };
 }
 
@@ -416,8 +415,7 @@ Deno.test('CloudflareApiService - queryAnalyticsEngine', async (t) => {
     await t.step('should return data rows from the SDK post() call', async () => {
         const mock = {
             ...createMockCloudflareClient(),
-            post: (_path: string, _opts: unknown) =>
-                Promise.resolve({ data: [{ total_requests: 42, error_requests: 3 }] }),
+            post: (_path: string, _opts: unknown) => Promise.resolve({ data: [{ total_requests: 42, error_requests: 3 }] }),
         };
 
         const service = new CloudflareApiService(mock as unknown as Cloudflare);
