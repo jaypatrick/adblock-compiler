@@ -100,10 +100,16 @@ async function main(): Promise<void> {
         totalFiles += result.files;
         totalChanged += result.changed;
         totalReplacements += result.replacements;
-        console.log(`✅ ${dir}: ${result.files} file${result.files === 1 ? '' : 's'} scanned, ${result.changed} changed, ${result.replacements} replacement${result.replacements === 1 ? '' : 's'}`);
+        console.log(
+            `✅ ${dir}: ${result.files} file${result.files === 1 ? '' : 's'} scanned, ${result.changed} changed, ${result.replacements} replacement${
+                result.replacements === 1 ? '' : 's'
+            }`,
+        );
     }
 
-    console.log(`\n🎉 Done: ${totalFiles} file${totalFiles === 1 ? '' : 's'} scanned, ${totalChanged} changed, ${totalReplacements} total replacement${totalReplacements === 1 ? '' : 's'}`);
+    console.log(
+        `\n🎉 Done: ${totalFiles} file${totalFiles === 1 ? '' : 's'} scanned, ${totalChanged} changed, ${totalReplacements} total replacement${totalReplacements === 1 ? '' : 's'}`,
+    );
 }
 
 if (import.meta.main) {
