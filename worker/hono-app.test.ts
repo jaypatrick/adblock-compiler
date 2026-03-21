@@ -136,7 +136,7 @@ Deno.test('GET /metrics returns 200', async () => {
     assertEquals(res.status, 200);
 });
 
-Deno.test('GET /api/openapi.json returns 200 with top-level OpenAPI fields', async () => {
+Deno.test('GET /api/openapi.json is publicly accessible and returns valid spec or 501 when not yet configured', async () => {
     const res = await fetch('/api/openapi.json');
     // The endpoint is publicly accessible (no auth required)
     // With no .openapi() routes registered it returns 501; once routes are migrated it returns 200.

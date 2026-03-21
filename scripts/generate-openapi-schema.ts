@@ -10,31 +10,11 @@
  */
 
 import { stringify } from '@std/yaml';
-import { app } from '../worker/hono-app.ts';
+import { app, OPENAPI_DOCUMENT_ARGS } from '../worker/hono-app.ts';
 
-const OPENAPI_INFO = {
-    openapi: '3.0.0' as const,
-    info: {
-        title: 'Adblock Compiler API',
-        version: '2.0.0',
-        description:
-            'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.',
-        license: {
-            name: 'GPL-3.0',
-            url: 'https://github.com/jaypatrick/adblock-compiler/blob/master/LICENSE',
-        },
-        contact: {
-            name: 'Jayson Knight',
-            url: 'https://github.com/jaypatrick/adblock-compiler',
-        },
-    },
-    servers: [
-        {
-            url: 'https://adblock-compiler.jayson-knight.workers.dev',
-            description: 'Production server',
-        },
-    ],
-};
+// Re-use the same metadata constant used by the live /api/openapi.json endpoint
+// so the title, version, server URL, and license never drift between the two.
+const OPENAPI_INFO = OPENAPI_DOCUMENT_ARGS;
 
 // Make a request to the app to get the generated OpenAPI spec.
 // The /api/openapi.json endpoint is unauthenticated and public.

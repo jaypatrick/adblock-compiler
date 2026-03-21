@@ -5,6 +5,13 @@
  * Uses `hc<AppType>()` from `hono/client` to provide end-to-end type-safe
  * API calls between the Angular frontend and the Cloudflare Worker.
  *
+ * ## Scope
+ * This client covers **public, unauthenticated** endpoints only.
+ * Authenticated endpoints (e.g. `POST /compile`, which requires Free tier)
+ * must continue to use the existing `HttpClient`-based services so that the
+ * Angular HTTP interceptors attach the Clerk `Authorization: Bearer ...` and
+ * `X-Trace-ID` headers automatically.
+ *
  * ## Usage
  * ```ts
  * import { ApiClientService } from './services/api-client';
@@ -37,15 +44,18 @@ import { API_BASE_URL } from '../tokens';
 // `"paths"` or a shared `@adblock-compiler/worker-types` package.
 //
 // For the initial rollout we inline a minimal type definition that mirrors the
-// routes covered by this client (compile, health, api/version).  Replace the
-// `type AppType` import once the worker types are published as a package.
+// public routes covered by this client (health, version, openapi.json).  Replace
+// the `type AppType` import once the worker types are published as a package.
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type TypedResponse<T> = Promise<ClientResponse<T>>;
 
 /**
- * Minimal AppType mirror for the three routes covered by this client.
- * Extend this as additional routes are onboarded to the typed RPC pattern.
+ * Minimal AppType mirror for the **public** routes covered by this client.
+ * Authenticated endpoints (e.g. POST /compile) use the existing HttpClient
+ * services so Angular interceptors can attach auth headers.
+ *
+ * Extend this as additional public routes are onboarded to the typed RPC pattern.
  *
  * To use the real AppType from the worker:
  * ```ts
@@ -73,44 +83,22 @@ export type AppType = {
             $get: () => TypedResponse<Record<string, unknown>>;
         };
     };
-    compile: {
-        $post: (args: {
-            json: {
-                configuration: {
-                    name: string;
-                    sources: Array<{ source: string; useBrowser?: boolean }>;
-                    transformations: string[];
-                };
-                benchmark?: boolean;
-                turnstileToken?: string;
-                priority?: 'standard' | 'high';
-            };
-        }) => TypedResponse<{
-            success: boolean;
-            rules?: string[];
-            ruleCount?: number;
-            sources?: number;
-            benchmark?: Record<string, unknown>;
-            metrics?: Record<string, unknown>;
-            compiledAt?: string;
-            error?: string;
-        }>;
-    };
 };
 /* eslint-enable @typescript-eslint/no-explicit-any */
 
 // ── Service ───────────────────────────────────────────────────────────────────
 
 /**
- * Typed RPC client for the Adblock Compiler Worker API.
+ * Typed RPC client for the Adblock Compiler Worker API — **public endpoints only**.
  *
  * Wraps `hc<AppType>()` from `hono/client` with Angular's DI system so the
  * base URL is injected from the `API_BASE_URL` token (which differs between
  * browser and SSR environments).
  *
- * Prefer this service over raw `HttpClient` calls for endpoints that have a
- * corresponding type in `AppType` — the compiler ensures request/response
- * shapes stay in sync with the worker.
+ * Use this service for unauthenticated endpoints (`/api/health`, `/api/version`,
+ * `/api/openapi.json`).  Endpoints that require authentication (e.g. `POST /compile`)
+ * must use the existing `HttpClient`-based services so that Angular's HTTP
+ * interceptors automatically attach `Authorization: Bearer ...` and `X-Trace-ID`.
  */
 @Injectable({ providedIn: 'root' })
 export class ApiClientService {

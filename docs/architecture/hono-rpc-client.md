@@ -5,6 +5,13 @@
 The Adblock Compiler uses [`hono/client`](https://hono.dev/docs/guides/rpc) to provide
 end-to-end type-safe HTTP calls from the Angular frontend to the Cloudflare Worker.
 
+> **Scope: public endpoints only.**
+> `ApiClientService` covers unauthenticated endpoints (`/api/health`, `/api/version`,
+> `/api/openapi.json`).  Endpoints that require authentication (e.g. `POST /compile`,
+> which requires at least Free tier) must continue to use the existing `HttpClient`-based
+> services so that Angular's HTTP interceptors attach `Authorization: Bearer …` and
+> `X-Trace-ID` headers automatically.
+
 ```mermaid
 sequenceDiagram
     participant A as Angular Component
@@ -14,10 +21,10 @@ sequenceDiagram
 
     A->>S: inject(ApiClientService)
     S->>H: hc<AppType>(baseUrl)
-    A->>H: client.compile.$post({ json: {...} })
-    H->>W: POST /compile (typed body)
+    A->>H: client.api.health.$get()
+    H->>W: GET /api/health (public, no auth)
     W-->>H: JSON response (typed)
-    H-->>A: ClientResponse<CompileResponse>
+    H-->>A: ClientResponse<HealthResponse>
 ```
 
 ## Architecture
@@ -67,38 +74,31 @@ export class HealthComponent {
 }
 ```
 
-### Compile endpoint example
-
-```typescript
-const res = await this.apiClient.client.compile.$post({
-  json: {
-    configuration: {
-      name: 'my-filter',
-      sources: [{ source: 'https://example.com/filter.txt' }],
-      transformations: ['deduplicate'],
-    },
-    benchmark: false,
-    turnstileToken: this.turnstileToken,
-  },
-});
-
-if (res.ok) {
-  const data = await res.json();
-  console.log(`Compiled ${data.ruleCount} rules`);
-}
-```
-
 ### OpenAPI spec endpoint
 
 ```typescript
-// Fetch the live OpenAPI spec document
+// Fetch the live OpenAPI spec document (public, no auth required)
 const res = await this.apiClient.client.api['openapi.json'].$get();
 const spec = await res.json();
 ```
 
+### Authenticated endpoints — use `HttpClient` instead
+
+`POST /compile` and other write endpoints require a Clerk JWT (`Authorization: Bearer …`).
+They must be called via the existing `HttpClient`-based services so that Angular's
+auth interceptor attaches the token automatically:
+
+```typescript
+// ✅ Correct — auth header attached by interceptor
+this.http.post('/api/compile', body).subscribe(/* ... */);
+
+// ❌ Incorrect — hc() client has no auth wiring
+// this.apiClient.client.compile.$post({ json: body }); // will 401
+```
+
 ## AppType Evolution
 
-Currently `AppType` in `api-client.ts` is a minimal inline mirror of the three
+Currently `AppType` in `api-client.ts` is a minimal inline mirror of the public
 routes the client covers.  As the project matures, replace it with the real type:
 
 ```typescript
@@ -135,16 +135,16 @@ const timing = res?.headers.get('Server-Timing');
 
 ## Route Coverage
 
-The following routes are covered by the typed RPC client:
+The following **public** routes are covered by the typed RPC client:
 
 | Method | Path | `ApiClientService` method |
 |---|---|---|
 | `GET` | `/api/health` | `client.api.health.$get()` |
 | `GET` | `/api/version` | `client.api.version.$get()` |
 | `GET` | `/api/openapi.json` | `client.api['openapi.json'].$get()` |
-| `POST` | `/compile` | `client.compile.$post({ json: {...} })` |
 
-Additional routes can be added to `AppType` in `api-client.ts` as needed.
+Additional public routes can be added to `AppType` in `api-client.ts` as needed.
+Authenticated routes must use `HttpClient`-based services with the auth interceptor.
 
 ## References
 

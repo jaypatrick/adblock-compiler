@@ -605,8 +605,8 @@ routes.get(
 
 routes.post(
     '/configuration/validate',
-    rateLimitMiddleware(),
     bodySizeMiddleware(),
+    rateLimitMiddleware(),
     // deno-lint-ignore no-explicit-any
     zValidator('json', ConfigurationValidateRequestSchema as any, zodValidationError),
     async (c) => {
@@ -837,19 +837,28 @@ routes.get('*', async (c) => {
 // so it is publicly discoverable.
 // ============================================================================
 
+/**
+ * Canonical OpenAPI document metadata shared between the live `/api/openapi.json`
+ * endpoint and the `deno task generate:schema` script.
+ *
+ * Import this in `scripts/generate-openapi-schema.ts` instead of duplicating
+ * the fields so the server URL, version, and info block never drift.
+ */
+export const OPENAPI_DOCUMENT_ARGS = {
+    openapi: '3.0.0' as const,
+    info: {
+        title: 'Adblock Compiler API',
+        version: '2.0.0',
+        description:
+            'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.',
+        license: { name: 'GPL-3.0', url: 'https://github.com/jaypatrick/adblock-compiler/blob/master/LICENSE' },
+        contact: { name: 'Jayson Knight', url: 'https://github.com/jaypatrick/adblock-compiler' },
+    },
+    servers: [{ url: 'https://adblock-compiler.jayson-knight.workers.dev', description: 'Production server' }],
+} as const;
+
 app.get('/api/openapi.json', (c) => {
-    const spec = app.getOpenAPIDocument({
-        openapi: '3.0.0',
-        info: {
-            title: 'Adblock Compiler API',
-            version: '2.0.0',
-            description:
-                'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.',
-            license: { name: 'GPL-3.0', url: 'https://github.com/jaypatrick/adblock-compiler/blob/master/LICENSE' },
-            contact: { name: 'Jayson Knight', url: 'https://github.com/jaypatrick/adblock-compiler' },
-        },
-        servers: [{ url: 'https://adblock-compiler.jayson-knight.workers.dev', description: 'Production server' }],
-    });
+    const spec = app.getOpenAPIDocument(OPENAPI_DOCUMENT_ARGS);
     if (!spec.paths || Object.keys(spec.paths).length === 0) {
         return c.json(
             {
