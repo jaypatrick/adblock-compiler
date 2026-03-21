@@ -272,8 +272,7 @@ jobs:
         needs: [validate]
         if: >-
             github.event_name == 'push' &&
-            github.ref == 'refs/heads/main' &&
-            (github.event_name != 'workflow_dispatch' || inputs.dry_run != true)
+            github.ref == 'refs/heads/main'
         env:
             # Expose secret presence as env vars; secrets context is not
             # available in step-level if: conditions.
