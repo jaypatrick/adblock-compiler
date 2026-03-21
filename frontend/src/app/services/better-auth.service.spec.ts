@@ -186,8 +186,7 @@ describe('BetterAuthService', () => {
             expect(token).toBe(MOCK_TOKEN);
         });
 
-        it('should log warning and return null when signed in but token unavailable', async () => {
-            const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+        it('should return null (without warning) when signed in but token unavailable — cookie auth fallback', async () => {
             mockFetch(
                 makeResponse({ user: MOCK_USER, session: {} }),   // checkSession: no token
                 makeResponse({ session: {} }),                     // getToken re-fetch: still no token
@@ -197,7 +196,7 @@ describe('BetterAuthService', () => {
 
             const token = await service.getToken();
             expect(token).toBeNull();
-            expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('bearer token'));
+            // No warning: cookie-based auth is a valid, non-error path
         });
     });
 

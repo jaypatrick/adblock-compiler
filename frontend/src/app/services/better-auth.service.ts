@@ -166,10 +166,10 @@ export class BetterAuthService {
             // Fall through to warning
         }
 
-        // Signed in but unable to retrieve a bearer token. The Worker will
-        // still check the session cookie (cookie-based auth fallback), so the
-        // request is not blocked — log a warning for diagnostics.
-        console.warn('[BetterAuthService] getToken: signed in but no bearer token available; relying on session cookie');
+        // Signed in but unable to retrieve a bearer token from the session response.
+        // The Worker will still authenticate via the session cookie (cookie-based
+        // auth is supported by the Better Auth provider). This is not an error state
+        // for cookie-first flows — no console output to keep logs clean.
         return null;
     }
 }

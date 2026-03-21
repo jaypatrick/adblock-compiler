@@ -303,9 +303,18 @@ export async function authenticateRequestUnified(
 
         if (providerResult.valid && providerResult.providerUserId) {
             // Attempt to resolve the internal DB userId from the provider's user ID.
-            // This is needed for Clerk-backed custom providers; for Better Auth the
-            // providerUserId IS the DB id so resolution is a no-op (returns null,
-            // which is fine — the clerkUserId field carries the BA user id).
+            //
+            // When is `resolvedUserId` null vs. populated?
+            //   - Better Auth: `providerUserId` is the user's D1 row id. The PostgreSQL
+            //     users table (accessed via HYPERDRIVE) has no row for it, so the query
+            //     returns null. This is EXPECTED — `clerkUserId` carries the BA user id,
+            //     and downstream handlers use that field for Better Auth user lookups.
+            //   - Clerk-backed custom providers: `providerUserId` is the Clerk user id.
+            //     The PostgreSQL users table has a matching `clerk_user_id` row, so
+            //     `resolvedUserId` is populated with the internal `users.id`.
+            //   - No HYPERDRIVE / no createPool: resolution is skipped; `resolvedUserId`
+            //     stays null for both providers (acceptable — handlers that need it must
+            //     check and handle null themselves).
             let resolvedUserId: string | null = null;
             if (env.HYPERDRIVE && createPool) {
                 try {

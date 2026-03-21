@@ -96,14 +96,17 @@ export async function handleAdminListUsers(
                 .first<{ total: number }>(),
         ]);
 
-        const parseErrors: { row: unknown; issues: unknown }[] = [];
+        const parseErrors: { rowId: unknown; fields: string[] }[] = [];
         const users = listResult.results
             .map((u) => {
                 const r = BetterAuthUserPublicSchema.safeParse(u);
                 if (!r.success) {
+                    // Log only the row ID and affected field names — not the full row — to
+                    // avoid writing PII (email addresses etc.) to server logs.
+                    const affectedFields = r.error.issues.map((i) => i.path.join('.'));
                     // deno-lint-ignore no-console
-                    console.error('[admin/users] Row parse failure — schema/DB drift detected. Row id:', (u as Record<string, unknown>).id, 'Issues:', r.error.issues);
-                    parseErrors.push({ row: u, issues: r.error.issues });
+                    console.error('[admin/users] Row parse failure — schema/DB drift detected. Row id:', (u as Record<string, unknown>).id, 'Invalid fields:', affectedFields);
+                    parseErrors.push({ rowId: (u as Record<string, unknown>).id, fields: affectedFields });
                     return null;
                 }
                 return r.data;

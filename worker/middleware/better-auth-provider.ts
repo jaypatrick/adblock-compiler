@@ -109,10 +109,10 @@ export class BetterAuthProvider implements IAuthProvider {
             };
         } catch (error) {
             // Better Auth throws on invalid/expired tokens — treat as anonymous.
-            // Log the full error server-side but return a generic message to the
-            // caller to avoid leaking internal token-parsing details.
+            // Log only the error type/name (not the full message which may contain token
+            // fragments) and return a generic message to avoid leaking internal details.
             // deno-lint-ignore no-console
-            console.error('[better-auth] Token verification error:', error instanceof Error ? error.message : String(error));
+            console.error('[better-auth] Token verification error:', error instanceof Error ? error.name : 'UnknownError');
             return { valid: false, error: 'Authentication failed' };
         }
     }
