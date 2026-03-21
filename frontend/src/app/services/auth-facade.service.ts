@@ -98,4 +98,22 @@ export class AuthFacadeService {
             return { error: msg };
         }
     }
+
+    /**
+     * Better Auth: update the signed-in user's profile email.
+     * No-op when Clerk is active (Clerk users manage their profile through Clerk's hosted UI).
+     */
+    async updateProfile(email: string): Promise<{ error?: string }> {
+        if (this.clerk.isAvailable()) return {};
+        return this.betterAuth.updateProfile(email);
+    }
+
+    /**
+     * Better Auth: change the signed-in user's password.
+     * No-op when Clerk is active.
+     */
+    async changePassword(currentPassword: string, newPassword: string): Promise<{ error?: string }> {
+        if (this.clerk.isAvailable()) return {};
+        return this.betterAuth.changePassword(currentPassword, newPassword);
+    }
 }

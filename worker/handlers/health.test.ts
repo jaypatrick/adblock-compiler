@@ -4,7 +4,7 @@
  * Covers:
  *   - handleHealth: all services healthy
  *   - handleHealth: database down when env.DB is missing
- *   - handleHealth: auth provider detection (clerk / local / none)
+ *   - handleHealth: auth provider detection (clerk / better-auth / none)
  *   - handleHealth: compiler degraded when ADBLOCK_COMPILER is missing
  *   - handleHealth: overall status is worst-of-all-services
  *   - handleHealthLatest: returns no-data message when METRICS has no entry
@@ -23,7 +23,7 @@ import { makeDb, makeEnv, makeFailingKv, makeKv } from '../test-helpers.ts';
 // ============================================================================
 
 Deno.test('handleHealth - returns JSON response', async () => {
-    const env = makeEnv({ JWT_SECRET: 'test-secret', DB: makeDb(), ADBLOCK_COMPILER: {} as DurableObjectNamespace });
+    const env = makeEnv({ BETTER_AUTH_SECRET: 'test-secret', DB: makeDb(), ADBLOCK_COMPILER: {} as DurableObjectNamespace });
     const res = await handleHealth(env);
     assertEquals(res.status, 200);
     const body = await res.json() as { status: string };
@@ -32,7 +32,7 @@ Deno.test('handleHealth - returns JSON response', async () => {
 
 Deno.test('handleHealth - overall status healthy when all services healthy', async () => {
     const env = makeEnv({
-        JWT_SECRET: 'test-secret',
+        BETTER_AUTH_SECRET: 'test-secret',
         DB: makeDb(),
         ADBLOCK_COMPILER: {} as DurableObjectNamespace,
     });
@@ -44,7 +44,7 @@ Deno.test('handleHealth - overall status healthy when all services healthy', asy
 });
 
 Deno.test('handleHealth - database down when env.DB is missing', async () => {
-    const env = makeEnv({ JWT_SECRET: 'test-secret' });
+    const env = makeEnv({ BETTER_AUTH_SECRET: 'test-secret' });
     const res = await handleHealth(env);
     const body = await res.json() as { status: string; services: Record<string, { status: string }> };
     assertEquals(body.services.database.status, 'down');
@@ -58,11 +58,11 @@ Deno.test('handleHealth - auth provider is "clerk" when CLERK_JWKS_URL is set', 
     assertEquals(body.services.auth.status, 'healthy');
 });
 
-Deno.test('handleHealth - auth provider is "local" when JWT_SECRET is set (no Clerk)', async () => {
-    const env = makeEnv({ JWT_SECRET: 'my-test-secret' });
+Deno.test('handleHealth - auth provider is "better-auth" when BETTER_AUTH_SECRET is set (no Clerk)', async () => {
+    const env = makeEnv({ BETTER_AUTH_SECRET: 'my-test-secret' });
     const res = await handleHealth(env);
     const body = await res.json() as { services: { auth: { provider: string; status: string } } };
-    assertEquals(body.services.auth.provider, 'local');
+    assertEquals(body.services.auth.provider, 'better-auth');
     assertEquals(body.services.auth.status, 'healthy');
 });
 
@@ -75,7 +75,7 @@ Deno.test('handleHealth - auth provider is "none" when no auth is configured', a
 });
 
 Deno.test('handleHealth - compiler degraded when ADBLOCK_COMPILER binding is missing', async () => {
-    const env = makeEnv({ JWT_SECRET: 'test-secret' });
+    const env = makeEnv({ BETTER_AUTH_SECRET: 'test-secret' });
     const res = await handleHealth(env);
     const body = await res.json() as { services: { compiler: { status: string } } };
     assertEquals(body.services.compiler.status, 'degraded');
@@ -91,7 +91,7 @@ Deno.test('handleHealth - overall status degrades when any service is degraded',
 Deno.test('handleHealth - cache down when COMPILATION_CACHE.list() throws', async () => {
     const env = makeEnv({
         COMPILATION_CACHE: makeFailingKv(),
-        JWT_SECRET: 'test-secret',
+        BETTER_AUTH_SECRET: 'test-secret',
     });
     const res = await handleHealth(env);
     const body = await res.json() as { services: { cache: { status: string } } };
@@ -99,7 +99,7 @@ Deno.test('handleHealth - cache down when COMPILATION_CACHE.list() throws', asyn
 });
 
 Deno.test('handleHealth - includes version in response', async () => {
-    const env = makeEnv({ COMPILER_VERSION: '2.0.0', JWT_SECRET: 'secret' });
+    const env = makeEnv({ COMPILER_VERSION: '2.0.0', BETTER_AUTH_SECRET: 'secret' });
     const res = await handleHealth(env);
     const body = await res.json() as { version: string };
     assertEquals(body.version, '2.0.0');

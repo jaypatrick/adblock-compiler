@@ -70,8 +70,8 @@ interface UserRecord {
 
 function createMockDb(initialUsers: UserRecord[] = []) {
     const users: UserRecord[] = [...initialUsers];
-    const sessions: { id: string; userId: string }[] = [];
-    const accounts: { id: string; userId: string }[] = [];
+    const _sessions: { id: string; userId: string }[] = [];
+    const _accounts: { id: string; userId: string }[] = [];
 
     const makeStatement = (sql: string) => {
         let boundValues: unknown[] = [];

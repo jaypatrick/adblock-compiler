@@ -20,7 +20,7 @@
  * @see worker/lib/auth.ts — Better Auth factory
  */
 
-import { type Env, type IAuthContext, UserTier } from '../types.ts';
+import { type Env, type IAuthContext } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { AdminBanUserSchema, AdminPaginationQuerySchema, AdminUpdateUserSchema, BetterAuthUserPublicSchema, type BetterAuthUserRow } from '../schemas.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
@@ -83,15 +83,21 @@ export async function handleAdminListUsers(
 
         const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
 
+        // whereClause is safe to concatenate: it is assembled exclusively from
+        // the static condition strings above ('tier = ?', 'role = ?', etc.) — no
+        // user-supplied data is ever interpolated into the SQL. All actual filter
+        // values are passed as positional parameters via .bind(...binds, ...).
+        const listSql = 'SELECT id, email, name, emailVerified, image, tier, role, banned, banReason, banExpires, createdAt, updatedAt FROM "user" ' +
+            whereClause + ' ORDER BY createdAt DESC LIMIT ? OFFSET ?';
+        const countSql = 'SELECT COUNT(*) AS total FROM "user" ' + whereClause;
+
         const [listResult, countResult] = await Promise.all([
             env.DB
-                .prepare(
-                    `SELECT id, email, name, emailVerified, image, tier, role, banned, banReason, banExpires, createdAt, updatedAt FROM "user" ${whereClause} ORDER BY createdAt DESC LIMIT ? OFFSET ?`,
-                )
+                .prepare(listSql)
                 .bind(...binds, limit, skip)
                 .all<BetterAuthUserRow>(),
             env.DB
-                .prepare(`SELECT COUNT(*) AS total FROM "user" ${whereClause}`)
+                .prepare(countSql)
                 .bind(...binds)
                 .first<{ total: number }>(),
         ]);
