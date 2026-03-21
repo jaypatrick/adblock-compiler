@@ -88,7 +88,7 @@ async function getNextBuildNumber(accountId: string, databaseId: string, apiToke
              ON CONFLICT(version) DO UPDATE SET
                 last_build_number = ?,
                 updated_at = datetime('now')`,
-            [version, nextBuildNumber, nextBuildNumber] satisfies D1Param[],
+            [version, nextBuildNumber, nextBuildNumber] as D1Param[],
         );
 
         return nextBuildNumber;

@@ -29,6 +29,17 @@ import { generateDeploymentId } from '../src/deployment/version.ts';
 import { createCloudflareApiService } from '../src/services/cloudflareApiService.ts';
 import type { D1Param } from '../src/services/cloudflareApiService.ts';
 
+/**
+ * Extract the HTTP status code from an SDK `APIError` (or any other thrown value).
+ * Returns 0 when the error does not carry a numeric `status` property.
+ */
+function getApiErrorStatus(error: unknown): number {
+    if (error !== null && typeof error === 'object' && 'status' in error && typeof (error as Record<string, unknown>).status === 'number') {
+        return (error as Record<string, unknown>).status as number;
+    }
+    return 0;
+}
+
 interface VersionInfo {
     version: string;
     buildNumber: number;
@@ -243,11 +254,7 @@ async function main() {
         await recordDeployment(accountId, databaseId, apiToken, versionInfo, status);
     } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        // Check for HTTP status on SDK errors (APIError has a numeric `status` property)
-        const sdkStatus = (error !== null && typeof error === 'object' && 'status' in error && typeof (error as Record<string, unknown>).status === 'number')
-            ? (error as Record<string, unknown>).status as number
-            : 0;
-        const isPermissionError = sdkStatus === 401 || sdkStatus === 403;
+        const isPermissionError = getApiErrorStatus(error) === 401 || getApiErrorStatus(error) === 403;
         if (isPermissionError) {
             console.warn('⚠️  Could not record deployment to D1 (permission error).');
             console.warn('   Ensure the CLOUDFLARE_API_TOKEN has D1:Edit permissions for this account.');

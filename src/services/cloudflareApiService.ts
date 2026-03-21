@@ -107,7 +107,8 @@ export class CloudflareApiService {
             // The SDK's `params` field is typed narrowly as `Array<string>`, but
             // D1 accepts any JSON primitive at runtime. We cast here after validating
             // that callers pass the `D1Param` union (string | number | boolean | null)
-            // rather than an unchecked `unknown[]`.
+            // rather than an unchecked `unknown[]`. `undefined` (not an empty array)
+            // must be passed when no params are provided so the SDK omits the field.
             params: params as Array<string> | undefined,
         });
 
