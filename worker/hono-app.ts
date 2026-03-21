@@ -1,5 +1,5 @@
 /**
- * Hono application — Phase 2 routing migration.
+ * Hono application — Phase 3 migration (progressive enhancement).
  *
  * All routing logic from `worker/handlers/router.ts` has been migrated to
  * Hono route declarations.  Handler function signatures are UNCHANGED.
@@ -7,9 +7,20 @@
  * Phase 2 extracts repeated inline middleware into reusable factories
  * (`bodySizeMiddleware`, `rateLimitMiddleware`, `turnstileMiddleware`,
  * `requireAuthMiddleware`) defined in `worker/middleware/hono-middleware.ts`.
- * POST /compile also applies `@hono/zod-validator` for structural validation.
+ *
+ * Phase 3 progressive enhancements:
+ *  - Migrates `app` and `routes` to `OpenAPIHono` (from `@hono/zod-openapi`)
+ *  - Extends `zValidator` to POST /compile/stream, /compile/batch, /configuration/validate
+ *  - Shared helpers: `zodValidationError`, `verifyTurnstileInline`, `buildSyntheticRequest`
+ *  - `timing()` middleware adds `Server-Timing` headers to every response
+ *  - `etag()` on GET /metrics and GET /health for conditional request support
+ *  - `prettyJSON()` globally (activate with `?pretty=true`)
+ *  - Cache-Control headers on /health (30 s) and /configuration/defaults (300 s)
+ *  - `GET /api/openapi.json` serves the auto-generated OpenAPI 3.0 spec
+ *  - `AppType` export enables `hc<AppType>()` typed RPC client in Angular
  *
  * @see docs/architecture/hono-routing.md — architecture overview
+ * @see docs/architecture/hono-rpc-client.md — typed RPC client pattern
  * @see worker/handlers/router.ts — thin re-export shim (backward compat)
  * @see worker/middleware/hono-middleware.ts — Phase 2 middleware factories
  */
@@ -130,6 +141,73 @@ type AppContext = Context<{ Bindings: Env; Variables: Variables }>;
 function routesPath(c: AppContext): string {
     const p = c.req.path;
     return p.startsWith('/api/') ? p.slice(4) : p;
+}
+
+/**
+ * Shared zValidator error callback — returns a 422 JSON response when Zod
+ * validation fails.  Used across all `zValidator('json', ...)` calls.
+ *
+ * @hono/zod-validator types against npm:zod while this project uses
+ * jsr:@zod/zod — both are Zod v4 with identical runtime APIs; the cast
+ * to `any` avoids a module-identity mismatch that is type-only.
+ *
+ * When validation fails, `result.error` is a `ZodError` instance from
+ * jsr:@zod/zod — typed as `unknown` here to bridge the module identity gap,
+ * but serialised as-is into the 422 response body so callers receive full
+ * structured error details.
+ *
+ * @example
+ * ```ts
+ * zValidator('json', SomeSchema as any, zodValidationError)
+ * ```
+ */
+// deno-lint-ignore no-explicit-any
+function zodValidationError(result: { success: boolean; error?: unknown }, c: AppContext): Response | void {
+    if (!result.success) {
+        return c.json({ success: false, error: 'Invalid request body', details: result.error }, 422);
+    }
+}
+
+/**
+ * Verify a Turnstile token extracted from an already-validated JSON body.
+ *
+ * Must be called AFTER `zValidator` has consumed the body stream (when the
+ * `turnstileToken` field is accessed via `c.req.valid('json')`).
+ *
+ * Returns the error `Response` (403) on rejection, or `null` when the
+ * Turnstile check passes (or when Turnstile is not configured).
+ */
+async function verifyTurnstileInline(c: AppContext, token: string): Promise<Response | null> {
+    if (!c.env.TURNSTILE_SECRET_KEY) return null;
+    const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
+    if (!tsResult.success) {
+        c.get('analytics').trackSecurityEvent({
+            eventType: 'turnstile_rejection',
+            path: c.req.path,
+            method: c.req.method,
+            clientIpHash: AnalyticsService.hashIp(c.get('ip')),
+            tier: c.get('authContext').tier,
+            reason: tsResult.error ?? 'turnstile_verification_failed',
+        });
+        return c.json({ success: false, error: tsResult.error ?? 'Turnstile verification failed' }, 403);
+    }
+    return null;
+}
+
+/**
+ * Reconstruct a synthetic `Request` from a validated body.
+ *
+ * When `zValidator` consumes the original body stream, the existing handler
+ * functions (which accept a `Request`) cannot re-read `c.req.raw`.  This
+ * helper creates a new `Request` that re-serialises the validated body so the
+ * handlers can continue using their existing `request.json()` API.
+ */
+function buildSyntheticRequest(c: AppContext, validatedBody: unknown): Request {
+    return new Request(c.req.url, {
+        method: 'POST',
+        headers: c.req.raw.headers,
+        body: JSON.stringify(validatedBody),
+    });
 }
 
 // ============================================================================
@@ -410,14 +488,15 @@ routes.all('/queue/*', async (c) => {
 // All primary compile/validate routes share the same Phase 2 middleware stack:
 //   1. bodySizeMiddleware()    — reject oversized payloads (413) via clone
 //   2. rateLimitMiddleware()   — per-user/IP tiered quota (429)
-//   3. turnstileMiddleware()   — Cloudflare human verification (403) via clone
+//   3. zValidator()            — structural body validation (422) — consumes body
+//   4. Inline Turnstile check  — reads token from c.req.valid('json')
+//   5. buildSyntheticRequest() — re-creates the Request for the handler
 //
-// POST /compile differs from the other compile routes:
-//   - zValidator runs BEFORE Turnstile verification so the body stream is only
-//     parsed once (zValidator consumes it; Turnstile reads from the cached
-//     c.req.valid('json') in the final handler, avoiding a second clone+parse).
-//   - Turnstile verification is inlined in the final handler step rather than
-//     as a separate middleware, because it needs the already-validated body.
+// These routes use `zValidator` BEFORE Turnstile verification so the body
+// stream is consumed exactly once.  `turnstileMiddleware()` would clone+parse,
+// then zValidator would parse again — doubling the work.  Instead, Turnstile
+// verification is inlined via `verifyTurnstileInline()` which reads the token
+// from the already-validated `c.req.valid('json')`.
 //
 // See docs/architecture/hono-routing.md — Phase 2 for the full middleware
 // extraction rationale and execution-order guarantees.
@@ -426,50 +505,17 @@ routes.post(
     '/compile',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
-    // Zod body validation — rejects structurally invalid requests with 422
-    // BEFORE Turnstile is checked.  Running zValidator here (rather than after
-    // turnstileMiddleware) means the body stream is consumed exactly once:
-    // turnstileMiddleware would clone+parse and then zValidator would parse
-    // again, doubling the work for every compile request.
-    //
-    // @hono/zod-validator types against npm:zod while this project uses
-    // jsr:@zod/zod — both are Zod v4 with identical runtime APIs; the cast
-    // to `any` avoids a module-identity mismatch that is type-only.
     // deno-lint-ignore no-explicit-any
-    zValidator('json', CompileRequestSchema as any, (result, c) => {
-        if (!result.success) {
-            return c.json({ success: false, error: 'Invalid request body', details: result.error }, 422);
-        }
-    }),
+    zValidator('json', CompileRequestSchema as any, zodValidationError),
     async (c) => {
         // Turnstile verification — reads token from the already-validated body
-        // (c.req.raw body stream was consumed by zValidator above, so we must
-        // not attempt to re-read c.req.raw here).
-        if (c.env.TURNSTILE_SECRET_KEY) {
-            // deno-lint-ignore no-explicit-any
-            const token = (c.req.valid('json') as any).turnstileToken ?? '';
-            const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
-            if (!tsResult.success) {
-                c.get('analytics').trackSecurityEvent({
-                    eventType: 'turnstile_rejection',
-                    path: c.req.path,
-                    method: c.req.method,
-                    clientIpHash: AnalyticsService.hashIp(c.get('ip')),
-                    tier: c.get('authContext').tier,
-                    reason: tsResult.error ?? 'turnstile_verification_failed',
-                });
-                return c.json({ success: false, error: tsResult.error ?? 'Turnstile verification failed' }, 403);
-            }
-        }
+        // (c.req.raw body stream was consumed by zValidator above).
+        // deno-lint-ignore no-explicit-any
+        const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
+        if (turnstileError) return turnstileError;
         // Reconstruct a Request from the validated (and sanitised) data so the
         // existing handler signature (Request, Env, ...) is preserved.
-        const validatedBody = c.req.valid('json');
-        const syntheticReq = new Request(c.req.url, {
-            method: 'POST',
-            headers: c.req.raw.headers,
-            body: JSON.stringify(validatedBody),
-        });
-        return handleCompileJson(syntheticReq, c.env, c.get('analytics'), c.get('requestId'));
+        return handleCompileJson(buildSyntheticRequest(c, c.req.valid('json')), c.env, c.get('analytics'), c.get('requestId'));
     },
 );
 
@@ -478,35 +524,12 @@ routes.post(
     bodySizeMiddleware(),
     rateLimitMiddleware(),
     // deno-lint-ignore no-explicit-any
-    zValidator('json', CompileRequestSchema as any, (result, c) => {
-        if (!result.success) {
-            return c.json({ success: false, error: 'Invalid request body', details: result.error }, 422);
-        }
-    }),
+    zValidator('json', CompileRequestSchema as any, zodValidationError),
     async (c) => {
-        if (c.env.TURNSTILE_SECRET_KEY) {
-            // deno-lint-ignore no-explicit-any
-            const token = (c.req.valid('json') as any).turnstileToken ?? '';
-            const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
-            if (!tsResult.success) {
-                c.get('analytics').trackSecurityEvent({
-                    eventType: 'turnstile_rejection',
-                    path: c.req.path,
-                    method: c.req.method,
-                    clientIpHash: AnalyticsService.hashIp(c.get('ip')),
-                    tier: c.get('authContext').tier,
-                    reason: tsResult.error ?? 'turnstile_verification_failed',
-                });
-                return c.json({ success: false, error: tsResult.error ?? 'Turnstile verification failed' }, 403);
-            }
-        }
-        const validatedBody = c.req.valid('json');
-        const syntheticReq = new Request(c.req.url, {
-            method: 'POST',
-            headers: c.req.raw.headers,
-            body: JSON.stringify(validatedBody),
-        });
-        return handleCompileStream(syntheticReq, c.env);
+        // deno-lint-ignore no-explicit-any
+        const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
+        if (turnstileError) return turnstileError;
+        return handleCompileStream(buildSyntheticRequest(c, c.req.valid('json')), c.env);
     },
 );
 
@@ -515,35 +538,12 @@ routes.post(
     bodySizeMiddleware(),
     rateLimitMiddleware(),
     // deno-lint-ignore no-explicit-any
-    zValidator('json', BatchRequestSyncSchema as any, (result, c) => {
-        if (!result.success) {
-            return c.json({ success: false, error: 'Invalid request body', details: result.error }, 422);
-        }
-    }),
+    zValidator('json', BatchRequestSyncSchema as any, zodValidationError),
     async (c) => {
-        if (c.env.TURNSTILE_SECRET_KEY) {
-            // deno-lint-ignore no-explicit-any
-            const token = (c.req.valid('json') as any).turnstileToken ?? '';
-            const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
-            if (!tsResult.success) {
-                c.get('analytics').trackSecurityEvent({
-                    eventType: 'turnstile_rejection',
-                    path: c.req.path,
-                    method: c.req.method,
-                    clientIpHash: AnalyticsService.hashIp(c.get('ip')),
-                    tier: c.get('authContext').tier,
-                    reason: tsResult.error ?? 'turnstile_verification_failed',
-                });
-                return c.json({ success: false, error: tsResult.error ?? 'Turnstile verification failed' }, 403);
-            }
-        }
-        const validatedBody = c.req.valid('json');
-        const syntheticReq = new Request(c.req.url, {
-            method: 'POST',
-            headers: c.req.raw.headers,
-            body: JSON.stringify(validatedBody),
-        });
-        return handleCompileBatch(syntheticReq, c.env);
+        // deno-lint-ignore no-explicit-any
+        const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
+        if (turnstileError) return turnstileError;
+        return handleCompileBatch(buildSyntheticRequest(c, c.req.valid('json')), c.env);
     },
 );
 
@@ -608,35 +608,12 @@ routes.post(
     rateLimitMiddleware(),
     bodySizeMiddleware(),
     // deno-lint-ignore no-explicit-any
-    zValidator('json', ConfigurationValidateRequestSchema as any, (result, c) => {
-        if (!result.success) {
-            return c.json({ success: false, error: 'Invalid request body', details: result.error }, 422);
-        }
-    }),
+    zValidator('json', ConfigurationValidateRequestSchema as any, zodValidationError),
     async (c) => {
-        if (c.env.TURNSTILE_SECRET_KEY) {
-            // deno-lint-ignore no-explicit-any
-            const token = (c.req.valid('json') as any).turnstileToken ?? '';
-            const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
-            if (!tsResult.success) {
-                c.get('analytics').trackSecurityEvent({
-                    eventType: 'turnstile_rejection',
-                    path: c.req.path,
-                    method: c.req.method,
-                    clientIpHash: AnalyticsService.hashIp(c.get('ip')),
-                    tier: c.get('authContext').tier,
-                    reason: tsResult.error ?? 'turnstile_verification_failed',
-                });
-                return c.json({ success: false, error: tsResult.error ?? 'Turnstile verification failed' }, 403);
-            }
-        }
-        const validatedBody = c.req.valid('json');
-        const syntheticReq = new Request(c.req.url, {
-            method: 'POST',
-            headers: c.req.raw.headers,
-            body: JSON.stringify(validatedBody),
-        });
-        return handleConfigurationValidate(syntheticReq, c.env);
+        // deno-lint-ignore no-explicit-any
+        const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
+        if (turnstileError) return turnstileError;
+        return handleConfigurationValidate(buildSyntheticRequest(c, c.req.valid('json')), c.env);
     },
 );
 

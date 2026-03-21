@@ -92,8 +92,15 @@ const jsonPath = './docs/api/cloudflare-openapi.json';
 await Deno.writeTextFile(jsonPath, JSON.stringify(fullSpec, null, 2));
 console.log(`✅ Written OpenAPI JSON to ${jsonPath}`);
 
-// Write YAML output (append header comment)
-const yamlContent = `# Auto-generated OpenAPI schema from Hono OpenAPIHono registry\n# Run 'deno task generate:schema' to regenerate\n# DO NOT EDIT DIRECTLY\n\n${stringify(fullSpec)}`;
+// Write YAML output
+const yamlHeader = [
+    '# Auto-generated OpenAPI schema from Hono OpenAPIHono registry',
+    "# Run 'deno task generate:schema' to regenerate",
+    '# DO NOT EDIT DIRECTLY',
+    '',
+    '',
+].join('\n');
+const yamlContent = yamlHeader + stringify(fullSpec);
 const yamlPath = './docs/api/cloudflare-openapi-generated.yaml';
 await Deno.writeTextFile(yamlPath, yamlContent);
 console.log(`✅ Written OpenAPI YAML to ${yamlPath}`);
