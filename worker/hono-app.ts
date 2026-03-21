@@ -833,8 +833,8 @@ routes.get('*', async (c) => {
 // before the root-mount sub-app can intercept them as unrecognised paths.
 
 // ============================================================================
-// OpenAPI Spec endpoint — served at /api/openapi.json (and /openapi.json via /
-// mount) without authentication so it is publicly discoverable.
+// OpenAPI Spec endpoint — served at /api/openapi.json without authentication
+// so it is publicly discoverable.
 // ============================================================================
 
 app.get('/api/openapi.json', (c) => {
@@ -850,6 +850,17 @@ app.get('/api/openapi.json', (c) => {
         },
         servers: [{ url: 'https://adblock-compiler.jayson-knight.workers.dev', description: 'Production server' }],
     });
+    if (!spec.paths || Object.keys(spec.paths).length === 0) {
+        return c.json(
+            {
+                error: 'OpenAPI specification is not yet configured for this deployment.',
+                status: 501,
+                detail:
+                    'No OpenAPI routes are currently registered. Migrate key endpoints to use .openapi(createRoute(...)) before relying on this schema.',
+            },
+            501,
+        );
+    }
     return c.json(spec);
 });
 

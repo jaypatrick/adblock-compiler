@@ -124,6 +124,12 @@ export class ApiClientService {
     readonly client: ReturnType<typeof hc<AppType>>;
 
     constructor() {
-        this.client = hc<AppType>(this.baseUrl);
+        // `API_BASE_URL` includes the `/api` prefix (e.g. `'/api'` in browser,
+        // `${origin}/api` in SSR), while the generated `AppType` tree also
+        // includes `/api` in its paths (e.g. `client.api.health` → `/api/health`).
+        // Normalize to the worker origin (no `/api` suffix) before passing to `hc`
+        // to avoid double-prefixing routes (`/api/api/health`).
+        const workerOriginBase = this.baseUrl.replace(/\/api\/?$/, '') || '/';
+        this.client = hc<AppType>(workerOriginBase);
     }
 }
