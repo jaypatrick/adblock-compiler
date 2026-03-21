@@ -40,3 +40,12 @@ The `Lint & Format Check` CI job runs `deno fmt --check` and fails fast. Always 
 ## Unused imports fail CI under strict TS settings
 
 `deno.json` sets `noUnusedLocals` and `noUnusedParameters` to `true`. Removing a dependency (like Prisma) must be accompanied by removing every import that was only used by that dependency. The compiler will reject the file even if the runtime would ignore the unused symbol.
+
+## Prisma generated files use .ts extensions, not .js
+
+`scripts/prisma-fix-imports.ts` rewrites all relative `.js` import specifiers in
+`prisma/generated/` and `prisma/generated-d1/` to `.ts` after each `prisma generate`
+run. This is what allows Deno to resolve the files without `--sloppy-imports`.
+Always use `deno task db:generate` / `deno task db:generate:d1` — never run
+`npx prisma generate` directly — or the `.js` specifiers will come back and
+break `deno task check:worker` and `deno task test:worker`.

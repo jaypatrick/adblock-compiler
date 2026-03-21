@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write --allow-env --sloppy-imports
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-env
 
 /**
  * Generate OpenAPI schema from the Hono app's OpenAPIHono registry.

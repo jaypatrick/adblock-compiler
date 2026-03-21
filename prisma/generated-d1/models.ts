@@ -8,12 +8,12 @@
  *
  * 🟢 You can import this file directly.
  */
-export type * from './models/User.js'
-export type * from './models/StorageEntry.js'
-export type * from './models/FilterCache.js'
-export type * from './models/CompilationMetadata.js'
-export type * from './models/SourceSnapshot.js'
-export type * from './models/SourceHealth.js'
-export type * from './models/SourceAttempt.js'
-export type * from './models/LocalAuthUser.js'
-export type * from './commonInputTypes.js'
+export type * from './models/User.ts'
+export type * from './models/StorageEntry.ts'
+export type * from './models/FilterCache.ts'
+export type * from './models/CompilationMetadata.ts'
+export type * from './models/SourceSnapshot.ts'
+export type * from './models/SourceHealth.ts'
+export type * from './models/SourceAttempt.ts'
+export type * from './models/LocalAuthUser.ts'
+export type * from './commonInputTypes.ts'
