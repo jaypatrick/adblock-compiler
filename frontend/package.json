@@ -33,6 +33,7 @@
         "@angular/service-worker": "^21.2.4",
         "@angular/ssr": "^21.2.2",
         "@clerk/clerk-js": "^6.3.0",
+        "hono": "^4.12.8",
         "@clerk/shared": "^4.3.0",
         "@fontsource/ibm-plex-sans": "^5.2.8",
         "@fontsource/jetbrains-mono": "^5.2.8",
