@@ -378,11 +378,12 @@ src/services/cloudflareApiService.test.ts  # Unit tests (mock client)
 ```typescript
 import { createCloudflareApiService } from './src/services/cloudflareApiService.ts';
 
+const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID')!;
 const cfApi = createCloudflareApiService({ apiToken: Deno.env.get('CLOUDFLARE_API_TOKEN')! });
 
 // Query D1
 const { result } = await cfApi.queryD1<{ id: number }>(
-    Deno.env.get('CLOUDFLARE_ACCOUNT_ID')!,
+    accountId,
     Deno.env.get('D1_DATABASE_ID')!,
     'SELECT id FROM my_table WHERE name = ?',
     ['example'],

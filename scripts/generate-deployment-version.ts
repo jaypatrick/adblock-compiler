@@ -80,6 +80,7 @@ async function getNextBuildNumber(accountId: string, databaseId: string, apiToke
         const nextBuildNumber = currentBuildNumber + 1;
 
         // Update counter
+        const params: D1Param[] = [version, nextBuildNumber, nextBuildNumber];
         await cfApi.queryD1(
             accountId,
             databaseId,
@@ -88,7 +89,7 @@ async function getNextBuildNumber(accountId: string, databaseId: string, apiToke
              ON CONFLICT(version) DO UPDATE SET
                 last_build_number = ?,
                 updated_at = datetime('now')`,
-            [version, nextBuildNumber, nextBuildNumber] as D1Param[],
+            params,
         );
 
         return nextBuildNumber;

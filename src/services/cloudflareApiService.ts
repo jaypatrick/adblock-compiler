@@ -217,24 +217,41 @@ export class CloudflareApiService {
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
+/** Options accepted by {@link createCloudflareApiService}. */
+export type CreateCloudflareApiServiceOptions = {
+    /** A Cloudflare API token with the required permissions. */
+    apiToken: string;
+    /** Optional logger forwarded to the service instance. */
+    logger?: IBasicLogger;
+} & Omit<ConstructorParameters<typeof Cloudflare>[0], 'apiToken' | 'fetch'>;
+
 /**
  * Create a production-ready {@link CloudflareApiService} authenticated with an API token.
  *
- * @param options.apiToken - A Cloudflare API token with the required permissions.
- * @param options.logger   - Optional logger forwarded to the service instance.
+ * All standard Cloudflare SDK `ClientOptions` (e.g. `baseURL`, `timeout`,
+ * `defaultHeaders`, `maxRetries`) are forwarded to the underlying SDK client,
+ * allowing callers to customise transport behaviour without touching the service.
+ *
+ * @param options.apiToken       - A Cloudflare API token with the required permissions.
+ * @param options.logger         - Optional logger forwarded to the service instance.
+ * @param options.[clientOption] - Any additional {@link ConstructorParameters<typeof Cloudflare>[0]}
+ *                                 field (e.g. `baseURL`, `timeout`, `defaultHeaders`).
  */
-export function createCloudflareApiService(options: { apiToken: string; logger?: IBasicLogger }): CloudflareApiService {
+export function createCloudflareApiService(options: CreateCloudflareApiServiceOptions): CloudflareApiService {
+    const { logger, ...sdkOptions } = options;
     const client = new Cloudflare({
-        apiToken: options.apiToken,
-        // Use a dynamic fetch wrapper so that globalThis.fetch patches (e.g. in unit tests)
-        // are honoured on every call rather than being snapshotted at initialisation time.
-        // The `any` annotations suppress the node-fetch vs. Web Fetch API `RequestInfo` /
-        // `Response` type mismatch that surfaces under Deno's module resolution.
+        // Apply caller-supplied SDK options first so our hardened defaults below
+        // take precedence where safety matters (fetch wrapper), but can still
+        // be overridden where flexibility is intended (e.g. maxRetries).
+        maxRetries: 0,
+        ...sdkOptions,
+        // Always use a dynamic fetch wrapper so that globalThis.fetch patches
+        // (e.g. in unit tests) are honoured on every call rather than being
+        // snapshotted at initialisation time. The `any` annotations suppress
+        // the node-fetch vs. Web Fetch API `RequestInfo` / `Response` type
+        // mismatch that surfaces under Deno's module resolution.
         // deno-lint-ignore no-explicit-any
         fetch: (url: any, init?: any): any => globalThis.fetch(url, init),
-        // Disable SDK-level retries; callers (scripts, CI workflows) handle retry logic
-        // at the orchestration layer.  This also keeps tests fast and deterministic.
-        maxRetries: 0,
     });
-    return new CloudflareApiService(client, options.logger);
+    return new CloudflareApiService(client, logger);
 }
