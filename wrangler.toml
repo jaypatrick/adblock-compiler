@@ -270,4 +270,4 @@ local_protocol = "http"
 # Set to true on Linux/macOS or WSL. Must be false on native Windows
 # because Cloudflare Containers requires a Linux Docker daemon.
 # See: https://developers.cloudflare.com/containers/
-enable_containers = false
+enable_containers = true
