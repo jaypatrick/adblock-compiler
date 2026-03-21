@@ -1,40 +1,8 @@
-/**
- * Prometheus-format metrics handler.
- *
- * Exposes compilation, cache, and error metrics from Cloudflare Analytics
- * Engine in the Prometheus text exposition format so that Grafana (or any
- * Prometheus-compatible scraper) can consume them directly.
- *
- * Route: GET /metrics/prometheus
- *
- * ## Adding custom metrics
- *
- * Import `registerPrometheusMetric` from `./prometheus-metric-registry.ts` in
- * any Worker module and call it at module load time.  No changes to this file
- * are required:
- *
- *   import { registerPrometheusMetric } from './prometheus-metric-registry.ts';
- *
- *   registerPrometheusMetric({
- *       name: 'adblock_workflow_active',
- *       type: 'gauge',
- *       help: 'Number of active compilation workflows.',
- *       collect: async (env) => countActiveWorkflows(env),
- *   });
- *
- * ## Wiring
- *
- * Add to worker/worker.ts (or worker/router.ts) before the catch-all handler:
- *
- *   if (pathname === '/metrics/prometheus' && request.method === 'GET') {
- *       return handlePrometheusMetrics(request, env);
- *   }
- *
- * ## Secrets required
- *
- *   wrangler secret put ANALYTICS_ACCOUNT_ID
- *   wrangler secret put ANALYTICS_API_TOKEN
- */
+// Prometheus-format metrics handler for GET /metrics/prometheus.
+// Exposes compilation, cache, and error metrics from Cloudflare Analytics Engine.
+//
+// Custom metrics: call registerPrometheusMetric() from any Worker module at load time.
+// Secrets required: ANALYTICS_ACCOUNT_ID, ANALYTICS_API_TOKEN (wrangler secret put)
 
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import { createCloudflareApiService } from '../../src/services/cloudflareApiService.ts';
@@ -51,7 +19,7 @@ export { _clearRegistryForTesting, registerPrometheusMetric };
 // These run once at module load time.  They query the Analytics Engine SQL API
 // in a single batched request for efficiency.
 
-/** Shared in-flight query promise to avoid N parallel requests on a single scrape. */
+// Shared in-flight query promise to avoid N parallel requests on a single scrape.
 let _pendingQuery: Promise<Record<string, number>> | null = null;
 
 // DATASET is a compile-time constant matching the binding name in wrangler.toml.
@@ -200,21 +168,15 @@ function registerBuiltinMetrics(): void {
 }
 registerBuiltinMetrics();
 
-/** For tests only — re-registers built-in metrics after _clearRegistryForTesting(). */
+// For tests only — re-registers built-in metrics after _clearRegistryForTesting().
 export const _registerBuiltinMetricsForTesting = registerBuiltinMetrics;
 
 // ---------------------------------------------------------------------------
 // Public handler
 // ---------------------------------------------------------------------------
 
-/**
- * Handle GET /metrics/prometheus
- *
- * Iterates all registered metrics (built-in + custom) and renders them as
- * Prometheus text exposition format (version 0.0.4).
- *
- * Protected by JWT Admin tier — checkRoutePermission in worker.ts enforces admin access.
- */
+// Handle GET /metrics/prometheus — renders all registered metrics in Prometheus text format 0.0.4.
+// Protected by CF Access JWT when CF_ACCESS_AUD is configured.
 export async function handlePrometheusMetrics(request: Request, env: Env): Promise<Response> {
     // ZTA Layer 1: verify Cloudflare Access JWT when CF_ACCESS_AUD is configured.
     // verifyCfAccessJwt() is a no-op when CF_ACCESS_TEAM_DOMAIN / CF_ACCESS_AUD are unset,

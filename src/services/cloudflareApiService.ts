@@ -1,34 +1,5 @@
-/**
- * Cloudflare API Service — typed wrapper around the official `cloudflare` TypeScript SDK.
- *
- * Centralises all Cloudflare REST API calls (D1, KV, Workers, Queues, Zones) so that
- * individual scripts and worker handlers never need to construct raw `fetch` requests.
- *
- * @see https://github.com/cloudflare/cloudflare-typescript
- *
- * ## Usage
- *
- * ```typescript
- * import { createCloudflareApiService } from './cloudflareApiService.ts';
- *
- * const cfApi = createCloudflareApiService({ apiToken: Deno.env.get('CLOUDFLARE_API_TOKEN')! });
- *
- * // Query D1
- * const { result } = await cfApi.queryD1<{ id: number }>('acct-id', 'db-id', 'SELECT id FROM t WHERE x = ?', ['val']);
- *
- * // List KV namespaces
- * const namespaces = await cfApi.listKvNamespaces('acct-id');
- *
- * // List Worker scripts
- * const scripts = await cfApi.listWorkers('acct-id');
- *
- * // List Queues
- * const queues = await cfApi.listQueues('acct-id');
- *
- * // List Zones
- * const zones = await cfApi.listZones();
- * ```
- */
+// Typed wrapper around the official `cloudflare` TypeScript SDK.
+// All Cloudflare REST API calls go through this service — never use raw fetch() to api.cloudflare.com.
 
 import Cloudflare from 'cloudflare';
 import type { ZoneListParams } from 'cloudflare/resources/zones/zones';
@@ -37,44 +8,22 @@ import { silentLogger } from '../utils/logger.ts';
 
 // ─── Return-type helpers ──────────────────────────────────────────────────────
 
-/**
- * Valid primitive types for D1 SQL positional parameters.
- *
- * The SDK types `params` as `Array<string>`, but the underlying SQLite/D1 REST API
- * accepts any JSON-serialisable primitive. Using this union at the service boundary
- * avoids an unchecked `unknown` cast while still matching real-world usage patterns
- * (e.g. mixing version strings with numeric build counters).
- */
+// D1 accepts string | number | boolean | null at runtime; SDK types `params` as Array<string>.
 export type D1Param = string | number | boolean | null;
 
-/**
- * Result returned by {@link CloudflareApiService.queryD1}.
- * Mirrors the shape that the raw Cloudflare REST API returned so existing call-sites
- * require minimal changes.
- */
 export interface D1QueryResult<T = unknown> {
-    /** Flattened rows from all result sets returned by the SQL statement. */
     result: T[];
-    /** Always `true` when the method returns; SDK throws on API errors. */
     success: boolean;
 }
 
 // ─── Service class ────────────────────────────────────────────────────────────
 
-/**
- * Thin, testable service wrapping the official `cloudflare` SDK.
- *
- * Construct via the {@link createCloudflareApiService} factory for production use,
- * or pass a mock client directly for unit testing.
- */
+// Thin, testable service wrapping the official `cloudflare` SDK.
+// Construct via createCloudflareApiService for production use, or pass a mock client for tests.
 export class CloudflareApiService {
     private readonly client: Cloudflare;
     private readonly logger: IBasicLogger;
 
-    /**
-     * @param client  - An initialised `Cloudflare` SDK instance (or a compatible mock).
-     * @param logger  - Optional logger; defaults to the silent no-op logger.
-     */
     constructor(client: Cloudflare, logger?: IBasicLogger) {
         this.client = client;
         this.logger = logger ?? silentLogger;
@@ -82,17 +31,6 @@ export class CloudflareApiService {
 
     // ── D1 ───────────────────────────────────────────────────────────────────
 
-    /**
-     * Execute a SQL statement against a D1 database.
-     *
-     * @param accountId  - Cloudflare account identifier.
-     * @param databaseId - D1 database identifier.
-     * @param sql        - SQL statement (supports `?` placeholders).
-     * @param params     - Optional positional parameters bound to the `?` placeholders.
-     *                     Accepts strings, numbers, booleans, and nulls — the full set
-     *                     of JSON primitives that D1 / SQLite accepts at runtime.
-     * @returns Flattened result rows cast to `T`, plus a `success` flag.
-     */
     async queryD1<T = unknown>(
         accountId: string,
         databaseId: string,
@@ -118,11 +56,6 @@ export class CloudflareApiService {
         return { result: rows, success: true };
     }
 
-    /**
-     * List all D1 databases in the account.
-     *
-     * @param accountId - Cloudflare account identifier.
-     */
     async listD1Databases(accountId: string) {
         this.logger.info(`[CloudflareApiService] listD1Databases`);
 
@@ -132,11 +65,6 @@ export class CloudflareApiService {
 
     // ── KV ───────────────────────────────────────────────────────────────────
 
-    /**
-     * List all KV namespaces in the account.
-     *
-     * @param accountId - Cloudflare account identifier.
-     */
     async listKvNamespaces(accountId: string) {
         this.logger.info(`[CloudflareApiService] listKvNamespaces`);
 
@@ -146,11 +74,6 @@ export class CloudflareApiService {
 
     // ── Workers ───────────────────────────────────────────────────────────────
 
-    /**
-     * List all Worker scripts in the account.
-     *
-     * @param accountId - Cloudflare account identifier.
-     */
     async listWorkers(accountId: string) {
         this.logger.info(`[CloudflareApiService] listWorkers`);
 
@@ -160,11 +83,6 @@ export class CloudflareApiService {
 
     // ── Queues ────────────────────────────────────────────────────────────────
 
-    /**
-     * List all Queues in the account.
-     *
-     * @param accountId - Cloudflare account identifier.
-     */
     async listQueues(accountId: string) {
         this.logger.info(`[CloudflareApiService] listQueues`);
 
@@ -174,11 +92,6 @@ export class CloudflareApiService {
 
     // ── Zones ─────────────────────────────────────────────────────────────────
 
-    /**
-     * List zones, optionally filtered by the supplied parameters.
-     *
-     * @param params - Optional filtering/pagination parameters forwarded to the SDK.
-     */
     async listZones(params?: ZoneListParams) {
         this.logger.info(`[CloudflareApiService] listZones`);
 
@@ -187,21 +100,8 @@ export class CloudflareApiService {
     }
 
     // ── Analytics Engine ──────────────────────────────────────────────────────
-
-    /**
-     * Execute a SQL statement against the Cloudflare Analytics Engine SQL API.
-     *
-     * The Analytics Engine SQL API is not yet exposed as a typed resource in the
-     * `cloudflare` SDK, so this method calls the underlying HTTP endpoint via the
-     * SDK's low-level `post()` helper. All SDK features (auth headers, retries,
-     * error handling) still apply.
-     *
-     * @param accountId - Cloudflare account identifier.
-     * @param sql       - SQL statement to execute against the Analytics Engine dataset.
-     * @returns Object containing a `data` array of result rows.
-     *
-     * @see https://developers.cloudflare.com/analytics/analytics-engine/sql-api/
-     */
+    // The Analytics Engine SQL API has no typed resource in the cloudflare SDK yet.
+    // All SDK features (auth headers, retries, error handling) still apply via post().
     async queryAnalyticsEngine(
         accountId: string,
         sql: string,
@@ -217,41 +117,21 @@ export class CloudflareApiService {
 
 // ─── Factory ──────────────────────────────────────────────────────────────────
 
-/** Options accepted by {@link createCloudflareApiService}. */
+// All standard Cloudflare SDK ClientOptions (baseURL, timeout, defaultHeaders, maxRetries)
+// are forwarded to the underlying SDK client.
 export type CreateCloudflareApiServiceOptions = {
-    /** A Cloudflare API token with the required permissions. */
     apiToken: string;
-    /** Optional logger forwarded to the service instance. */
     logger?: IBasicLogger;
 } & Omit<ConstructorParameters<typeof Cloudflare>[0], 'apiToken' | 'fetch'>;
 
-/**
- * Create a production-ready {@link CloudflareApiService} authenticated with an API token.
- *
- * All standard Cloudflare SDK `ClientOptions` (e.g. `baseURL`, `timeout`,
- * `defaultHeaders`, `maxRetries`) are forwarded to the underlying SDK client,
- * allowing callers to customise transport behaviour without touching the service.
- *
- * @param options.apiToken       - A Cloudflare API token with the required permissions.
- * @param options.logger         - Optional logger forwarded to the service instance.
- * @param options.[clientOption] - Any additional {@link ConstructorParameters<typeof Cloudflare>[0]}
- *                                 field (e.g. `baseURL`, `timeout`, `defaultHeaders`).
- */
 export function createCloudflareApiService(options: CreateCloudflareApiServiceOptions): CloudflareApiService {
     const { logger, ...sdkOptions } = options;
     const client = new Cloudflare({
-        // Apply caller-supplied SDK options first so our hardened defaults below
-        // take precedence where safety matters (fetch wrapper), but can still
-        // be overridden where flexibility is intended (e.g. maxRetries).
         maxRetries: 0,
         ...sdkOptions,
-        // Always use a dynamic fetch wrapper so that globalThis.fetch patches
-        // (e.g. in unit tests) are honoured on every call rather than being
-        // snapshotted at initialisation time. The `any` annotations suppress
-        // the node-fetch vs. Web Fetch API `RequestInfo` / `Response` type
-        // mismatch that surfaces under Deno's module resolution.
-        // deno-lint-ignore no-explicit-any
-        fetch: (url: any, init?: any): any => globalThis.fetch(url, init),
+        // Lambda ensures globalThis.fetch patches (e.g. in unit tests) are honoured at call time
+        // rather than being captured at construction time.
+        fetch: (url: string | URL, init?: RequestInit): Promise<Response> => globalThis.fetch(url, init),
     });
     return new CloudflareApiService(client, logger);
 }

@@ -1,47 +1,19 @@
-/**
- * Cloudflare Queue implementation of IQueueProvider.
- * Uses Cloudflare's Queue binding for async message processing.
- */
+// Cloudflare Queue implementation of IQueueProvider.
+// Uses Cloudflare's Queue binding for async message processing.
+
+/// <reference types="@cloudflare/workers-types" />
 
 import type { IBasicLogger } from '../types/index.ts';
 import { silentLogger } from '../utils/logger.ts';
 import type { AnyQueueMessage, IQueueProvider, QueueProviderOptions, ReceivedMessage, ReceiveResult, SendResult } from './IQueueProvider.ts';
 
-/**
- * Cloudflare Queue binding type
- */
-interface CloudflareQueue {
-    send(message: unknown): Promise<void>;
-    sendBatch(messages: Array<{ body: unknown }>): Promise<void>;
-}
-
-/**
- * Cloudflare message batch from queue consumer
- */
-interface CloudflareMessageBatch<T> {
-    messages: Array<{
-        id: string;
-        body: T;
-        timestamp: Date;
-        attempts: number;
-        ack(): void;
-        retry(): void;
-    }>;
-    queue: string;
-    ackAll(): void;
-    retryAll(): void;
-}
-
-/**
- * Cloudflare Queue provider implementation.
- * Integrates with Cloudflare Workers Queue binding.
- */
+// Cloudflare Queue provider — wraps the Workers Queue binding (env.MY_QUEUE).
 export class CloudflareQueueProvider implements IQueueProvider {
     readonly name = 'cloudflare';
 
-    private queue: CloudflareQueue | null = null;
+    private queue: Queue<unknown> | null = null;
     private options: Required<QueueProviderOptions>;
-    private pendingMessages: Map<string, CloudflareMessageBatch<unknown>['messages'][0]> = new Map();
+    private pendingMessages: Map<string, Message<unknown>> = new Map();
     private readonly logger: IBasicLogger;
 
     constructor(options?: QueueProviderOptions, logger?: IBasicLogger) {
@@ -54,11 +26,8 @@ export class CloudflareQueueProvider implements IQueueProvider {
         this.logger = logger ?? silentLogger;
     }
 
-    /**
-     * Initialize with Cloudflare Queue binding.
-     * Must be called before using send methods.
-     */
-    setBinding(queue: CloudflareQueue): void {
+    // Must be called before using send methods.
+    setBinding(queue: Queue<unknown>): void {
         this.queue = queue;
     }
 
@@ -127,12 +96,9 @@ export class CloudflareQueueProvider implements IQueueProvider {
         return results;
     }
 
-    /**
-     * Process a batch of messages from Cloudflare Queue consumer.
-     * Call this from your queue handler's `queue` event.
-     */
+    // Process a batch of messages from a Cloudflare Queue consumer (queue event handler).
     async processBatch<T extends AnyQueueMessage>(
-        batch: CloudflareMessageBatch<T>,
+        batch: MessageBatch<T>,
         handler: (message: T) => Promise<void>,
     ): Promise<{ processed: number; failed: number }> {
         let processed = 0;
@@ -170,12 +136,9 @@ export class CloudflareQueueProvider implements IQueueProvider {
         return { processed, failed };
     }
 
-    /**
-     * Wrap a Cloudflare message batch for use with the generic interface.
-     * Useful when you want to handle messages individually with ack/retry/fail semantics.
-     */
+    // Wrap a Cloudflare message batch for use with the generic ack/retry/fail interface.
     wrapBatch<T extends AnyQueueMessage>(
-        batch: CloudflareMessageBatch<T>,
+        batch: MessageBatch<T>,
     ): ReceiveResult<T> {
         const messages: ReceivedMessage<T>[] = batch.messages.map((msg) => {
             // Store reference for later operations
@@ -235,11 +198,9 @@ export class CloudflareQueueProvider implements IQueueProvider {
     }
 }
 
-/**
- * Create a Cloudflare Queue provider with optional binding.
- */
+// Factory: create a CloudflareQueueProvider, optionally pre-bound to a Queue binding.
 export function createCloudflareQueueProvider(
-    binding?: CloudflareQueue,
+    binding?: Queue<unknown>,
     options?: QueueProviderOptions,
     logger?: IBasicLogger,
 ): CloudflareQueueProvider {

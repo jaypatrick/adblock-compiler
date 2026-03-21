@@ -1,15 +1,6 @@
-/**
- * Cloudflare Worker for compiling hostlists.
- *
- * This worker demonstrates how to use the @jk-com/adblock-compiler
- * package in a Cloudflare Workers environment.
- *
- * Features:
- * - Compile filter lists from remote URLs
- * - Support for pre-fetched content
- * - Real-time progress events via Server-Sent Events
- * - JSON API for programmatic access
- */
+// Cloudflare Worker for compiling hostlists.
+// Legacy example demonstrating the @jk-com/adblock-compiler package in a Workers environment.
+// Production code lives in /worker/worker.ts.
 
 import {
     type ICompilerEvents,
@@ -18,9 +9,6 @@ import {
     WorkerCompiler,
 } from '../../../src/index.ts';
 
-/**
- * Environment bindings for the worker.
- */
 export interface Env {
     COMPILER_VERSION: string;
     // KV namespaces
@@ -31,45 +19,27 @@ export interface Env {
     ASSETS?: Fetcher;
 }
 
-/**
- * Compile request body structure.
- */
 interface CompileRequest {
     configuration: IConfiguration;
     preFetchedContent?: Record<string, string>;
     benchmark?: boolean;
 }
 
-/**
- * Rate limiting configuration
- */
 const RATE_LIMIT_WINDOW = 60; // 60 seconds
 const RATE_LIMIT_MAX_REQUESTS = 10; // 10 requests per minute
 
-/**
- * Cache TTL in seconds
- */
 const CACHE_TTL = 3600; // 1 hour
 
-/**
- * Metrics aggregation window
- */
 const METRICS_WINDOW = 300; // 5 minutes
 
-/**
- * In-memory map for request deduplication
- * Maps cache keys to pending compilation promises
- */
+// In-memory map for request deduplication — maps cache keys to pending compilation promises.
 const pendingCompilations = new Map<string, Promise<CompilationResult>>();
 
-/**
- * Result of a compilation with metrics
- */
 interface CompilationResult {
     success: boolean;
     rules?: string[];
     ruleCount?: number;
-    metrics?: any;
+    metrics?: Record<string, unknown>;
     error?: string;
     compiledAt?: string;
     previousVersion?: {
@@ -79,9 +49,6 @@ interface CompilationResult {
     };
 }
 
-/**
- * Check rate limit for an IP address
- */
 async function checkRateLimit(env: Env, ip: string): Promise<boolean> {
     const key = `ratelimit:${ip}`;
     const now = Date.now();
@@ -113,18 +80,12 @@ async function checkRateLimit(env: Env, ip: string): Promise<boolean> {
     return true;
 }
 
-/**
- * Generate cache key from configuration
- */
 function getCacheKey(config: IConfiguration): string {
     // Create deterministic hash of configuration
     const normalized = JSON.stringify(config, Object.keys(config).sort());
     return `cache:${hashString(normalized)}`;
 }
 
-/**
- * Simple string hash function
- */
 function hashString(str: string): string {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
@@ -135,9 +96,6 @@ function hashString(str: string): string {
     return Math.abs(hash).toString(36);
 }
 
-/**
- * Record request metrics
- */
 async function recordMetric(
     env: Env,
     endpoint: string,
@@ -151,13 +109,7 @@ async function recordMetric(
         const metricKey = `metrics:${windowKey}:${endpoint}`;
 
         // Get existing metrics
-        const existing = await env.METRICS.get(metricKey, 'json') as {
-            count: number;
-            success: number;
-            failed: number;
-            totalDuration: number;
-            errors: Record<string, number>;
-        } | null;
+        const existing = await env.METRICS.get(metricKey, 'json') as StoredMetricWindow | null;
 
         const metrics = existing || {
             count: 0,
@@ -192,14 +144,29 @@ async function recordMetric(
     }
 }
 
-/**
- * Get aggregated metrics
- */
-async function getMetrics(env: Env): Promise<any> {
+// Raw KV-stored metric window shape
+type StoredMetricWindow = {
+    count: number;
+    success: number;
+    failed: number;
+    totalDuration: number;
+    errors: Record<string, number>;
+};
+
+// Aggregated per-endpoint stats shape
+interface EndpointStats {
+    count: number;
+    success: number;
+    failed: number;
+    avgDuration: number;
+    errors: Record<string, number>;
+}
+
+async function getMetrics(env: Env): Promise<Record<string, unknown>> {
     const now = Date.now();
     const currentWindow = Math.floor(now / (METRICS_WINDOW * 1000));
 
-    const stats: Record<string, any> = {};
+    const stats: Record<string, EndpointStats> = {};
 
     // Get metrics from last 6 windows (30 minutes)
     for (let i = 0; i < 6; i++) {
@@ -207,7 +174,7 @@ async function getMetrics(env: Env): Promise<any> {
 
         for (const endpoint of ['/compile', '/compile/stream', '/compile/batch']) {
             const metricKey = `metrics:${windowKey}:${endpoint}`;
-            const data = await env.METRICS.get(metricKey, 'json') as any;
+            const data = await env.METRICS.get(metricKey, 'json') as StoredMetricWindow | null;
 
             if (data) {
                 if (!stats[endpoint]) {
@@ -229,8 +196,7 @@ async function getMetrics(env: Env): Promise<any> {
 
                 // Merge errors
                 for (const [err, count] of Object.entries(data.errors)) {
-                    stats[endpoint].errors[err] = (stats[endpoint].errors[err] || 0) +
-                        (count as number);
+                    stats[endpoint].errors[err] = (stats[endpoint].errors[err] || 0) + count;
                 }
             }
         }
@@ -243,9 +209,6 @@ async function getMetrics(env: Env): Promise<any> {
     };
 }
 
-/**
- * Compresses data using gzip
- */
 async function compress(data: string): Promise<ArrayBuffer> {
     const stream = new Response(data).body!.pipeThrough(
         new CompressionStream('gzip'),
@@ -253,9 +216,6 @@ async function compress(data: string): Promise<ArrayBuffer> {
     return new Response(stream).arrayBuffer();
 }
 
-/**
- * Decompresses gzipped data
- */
 async function decompress(data: ArrayBuffer): Promise<string> {
     const stream = new Response(data).body!.pipeThrough(
         new DecompressionStream('gzip'),
@@ -263,9 +223,6 @@ async function decompress(data: ArrayBuffer): Promise<string> {
     return new Response(stream).text();
 }
 
-/**
- * Creates a logger that sends events through a TransformStream.
- */
 function createStreamingLogger(writer: WritableStreamDefaultWriter<Uint8Array>) {
     const encoder = new TextEncoder();
 
@@ -286,9 +243,6 @@ function createStreamingLogger(writer: WritableStreamDefaultWriter<Uint8Array>) 
     };
 }
 
-/**
- * Creates compiler event handlers that stream progress via SSE.
- */
 function createStreamingEvents(
     sendEvent: (type: string, data: unknown) => void,
 ): ICompilerEvents {
@@ -307,9 +261,6 @@ function createStreamingEvents(
     };
 }
 
-/**
- * Handle compile requests with streaming response.
- */
 async function handleCompileStream(
     request: Request,
     env: Env,
@@ -371,9 +322,6 @@ async function handleCompileStream(
     });
 }
 
-/**
- * Handle compile requests with JSON response.
- */
 async function handleCompileJson(
     request: Request,
     env: Env,
@@ -513,9 +461,6 @@ async function handleCompileJson(
     });
 }
 
-/**
- * Handle batch compile requests.
- */
 async function handleCompileBatch(
     request: Request,
     env: Env,
@@ -689,9 +634,6 @@ async function handleCompileBatch(
     }
 }
 
-/**
- * Handle GET requests - return API info and example.
- */
 function handleInfo(env: Env): Response {
     const info = {
         name: 'Hostlist Compiler Worker',
@@ -730,9 +672,6 @@ function handleInfo(env: Env): Response {
     });
 }
 
-/**
- * Handle CORS preflight requests.
- */
 function handleCors(): Response {
     return new Response(null, {
         headers: {
@@ -744,9 +683,6 @@ function handleCors(): Response {
     });
 }
 
-/**
- * Serve the web UI HTML from static assets.
- */
 async function serveWebUI(env: Env): Promise<Response> {
     // Try to serve from ASSETS if available (modern approach)
     if (env.ASSETS) {
@@ -808,9 +744,6 @@ async function serveWebUI(env: Env): Promise<Response> {
     });
 }
 
-/**
- * Main fetch handler for the Cloudflare Worker.
- */
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
         const url = new URL(request.url);

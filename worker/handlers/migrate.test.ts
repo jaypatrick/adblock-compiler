@@ -1,9 +1,4 @@
-/**
- * Tests for the D1 → PostgreSQL migration handler.
- *
- * Covers test plan item: POST /admin/migrate/d1-to-pg?dryRun=true
- * These tests run without a live database by mocking D1 and the PgPool factory.
- */
+// Tests for the D1 → PostgreSQL migration handler.
 
 import { assertEquals, assertStringIncludes } from '@std/assert';
 import { handleMigrateD1ToPg } from './migrate.ts';
@@ -13,14 +8,14 @@ import type { D1Database, D1ExecResult, D1Result, Env, HyperdriveBinding } from 
 // Fixtures
 // ============================================================================
 
-const MOCK_HYPERDRIVE: HyperdriveBinding = {
+const MOCK_HYPERDRIVE = {
     connectionString: 'postgresql://test:test@localhost:5432/testdb',
     host: 'localhost',
     port: 5432,
     user: 'test',
     password: 'test',
     database: 'testdb',
-};
+} as unknown as HyperdriveBinding;
 
 type MockPgPool = {
     query<T>(text: string, values?: unknown[]): Promise<{ rows: T[]; rowCount: number | null }>;
@@ -28,10 +23,6 @@ type MockPgPool = {
 
 type MockPgFactory = (connectionString: string) => MockPgPool;
 
-/**
- * Creates a D1 mock backed by in-memory table data.
- * Supports COUNT(*) queries (via `first()`) and paginated SELECT queries (via `bind().all()`).
- */
 function createMockD1(tableData: Record<string, Array<Record<string, unknown>>>): D1Database {
     return {
         prepare: (query: string) => {
@@ -68,7 +59,6 @@ function createMockD1(tableData: Record<string, Array<Record<string, unknown>>>)
     } as unknown as D1Database;
 }
 
-/** Builds a minimal Env with an optional D1 database binding. */
 function makeEnv(db?: D1Database): Env {
     return {
         COMPILER_VERSION: 'test',
