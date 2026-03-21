@@ -38,6 +38,16 @@ import { silentLogger } from '../utils/logger.ts';
 // ─── Return-type helpers ──────────────────────────────────────────────────────
 
 /**
+ * Valid primitive types for D1 SQL positional parameters.
+ *
+ * The SDK types `params` as `Array<string>`, but the underlying SQLite/D1 REST API
+ * accepts any JSON-serialisable primitive. Using this union at the service boundary
+ * avoids an unchecked `unknown` cast while still matching real-world usage patterns
+ * (e.g. mixing version strings with numeric build counters).
+ */
+export type D1Param = string | number | boolean | null;
+
+/**
  * Result returned by {@link CloudflareApiService.queryD1}.
  * Mirrors the shape that the raw Cloudflare REST API returned so existing call-sites
  * require minimal changes.
@@ -79,20 +89,25 @@ export class CloudflareApiService {
      * @param databaseId - D1 database identifier.
      * @param sql        - SQL statement (supports `?` placeholders).
      * @param params     - Optional positional parameters bound to the `?` placeholders.
+     *                     Accepts strings, numbers, booleans, and nulls — the full set
+     *                     of JSON primitives that D1 / SQLite accepts at runtime.
      * @returns Flattened result rows cast to `T`, plus a `success` flag.
      */
     async queryD1<T = unknown>(
         accountId: string,
         databaseId: string,
         sql: string,
-        params?: unknown[],
+        params?: D1Param[],
     ): Promise<D1QueryResult<T>> {
         this.logger.info(`[CloudflareApiService] queryD1: ${sql.slice(0, 80)}`);
 
         const page = await this.client.d1.database.query(databaseId, {
             account_id: accountId,
             sql,
-            // The SDK types params as Array<string>, but D1 accepts any JSON primitive.
+            // The SDK's `params` field is typed narrowly as `Array<string>`, but
+            // D1 accepts any JSON primitive at runtime. We cast here after validating
+            // that callers pass the `D1Param` union (string | number | boolean | null)
+            // rather than an unchecked `unknown[]`.
             params: params as Array<string> | undefined,
         });
 

@@ -21,6 +21,7 @@
 
 import { formatFullVersion } from '../src/deployment/version.ts';
 import { createCloudflareApiService } from '../src/services/cloudflareApiService.ts';
+import type { D1Param } from '../src/services/cloudflareApiService.ts';
 
 interface DenoConfig {
     version: string;
@@ -87,7 +88,7 @@ async function getNextBuildNumber(accountId: string, databaseId: string, apiToke
              ON CONFLICT(version) DO UPDATE SET
                 last_build_number = ?,
                 updated_at = datetime('now')`,
-            [version, nextBuildNumber, nextBuildNumber],
+            [version, nextBuildNumber, nextBuildNumber] satisfies D1Param[],
         );
 
         return nextBuildNumber;

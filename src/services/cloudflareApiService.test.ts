@@ -6,6 +6,7 @@ import { assertEquals, assertRejects } from '@std/assert';
 import Cloudflare from 'cloudflare';
 import type { IBasicLogger } from '../types/index.ts';
 import { CloudflareApiService, createCloudflareApiService } from './cloudflareApiService.ts';
+import type { D1Param } from './cloudflareApiService.ts';
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
 
@@ -111,13 +112,13 @@ Deno.test('CloudflareApiService - queryD1', async (t) => {
     await t.step('should pass sql and params through to the client', async () => {
         let capturedDatabaseId = '';
         let capturedSql = '';
-        let capturedParams: unknown[] = [];
+        let capturedParams: D1Param[] = [];
 
         const mock = {
             ...createMockCloudflareClient(),
             d1: {
                 database: {
-                    query: (databaseId: string, params: { account_id: string; sql: string; params?: unknown[] }) => {
+                    query: (databaseId: string, params: { account_id: string; sql: string; params?: D1Param[] }) => {
                         capturedDatabaseId = databaseId;
                         capturedSql = params.sql;
                         capturedParams = params.params ?? [];

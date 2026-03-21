@@ -27,6 +27,7 @@
 import { parseArgs } from '@std/cli/parse-args';
 import { generateDeploymentId } from '../src/deployment/version.ts';
 import { createCloudflareApiService } from '../src/services/cloudflareApiService.ts';
+import type { D1Param } from '../src/services/cloudflareApiService.ts';
 
 interface VersionInfo {
     version: string;
@@ -170,7 +171,7 @@ async function recordDeployment(
         ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
     `;
 
-    const params = [
+    const params: D1Param[] = [
         id,
         versionInfo.version,
         versionInfo.buildNumber,
@@ -179,8 +180,8 @@ async function recordDeployment(
         gitBranch,
         deployedBy,
         status,
-        metadata.workflow_run_id || null,
-        metadata.workflow_run_url || null,
+        metadata.workflow_run_id ?? null,
+        metadata.workflow_run_url ?? null,
         metadataJson,
     ];
 
