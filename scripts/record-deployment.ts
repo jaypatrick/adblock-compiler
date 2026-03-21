@@ -254,7 +254,8 @@ async function main() {
         await recordDeployment(accountId, databaseId, apiToken, versionInfo, status);
     } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
-        const isPermissionError = getApiErrorStatus(error) === 401 || getApiErrorStatus(error) === 403;
+        const statusCode = getApiErrorStatus(error);
+        const isPermissionError = statusCode === 401 || statusCode === 403;
         if (isPermissionError) {
             console.warn('⚠️  Could not record deployment to D1 (permission error).');
             console.warn('   Ensure the CLOUDFLARE_API_TOKEN has D1:Edit permissions for this account.');
