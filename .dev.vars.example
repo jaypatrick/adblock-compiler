@@ -95,3 +95,8 @@ WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:passwor
 # WEBHOOK_URL=https://your-webhook-endpoint.example.com/hook
 # Datadog API key for POST /api/notify
 # DATADOG_API_KEY=your-datadog-api-key
+# ─── Cloudflare Containers ────────────────────────────────────────────────────
+# Required for local container dev (POST /compile/container).
+# Must match the value set in the container environment.
+# For production: wrangler secret put CONTAINER_SECRET
+CONTAINER_SECRET=dev-local-secret
