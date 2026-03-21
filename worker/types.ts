@@ -495,6 +495,14 @@ export interface Env {
     // --- CORS ---
     /** Comma-separated list of allowed origins for CORS (public, not a secret — set in [vars]) */
     CORS_ALLOWED_ORIGINS?: string;
+    // --- Cloudflare Containers ---
+    /**
+     * Shared secret for Worker → Container authentication (X-Container-Secret header).
+     * Must match the value in the container environment.
+     * Local dev:  add `CONTAINER_SECRET=dev-local-secret` to .dev.vars
+     * Production: `wrangler secret put CONTAINER_SECRET`
+     */
+    CONTAINER_SECRET?: string;
 }
 
 // ============================================================================

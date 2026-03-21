@@ -28,11 +28,11 @@ The `[dev]` section of `wrangler.toml` contains an `enable_containers` flag:
 [dev]
 # Set to true on Linux/macOS or WSL. Must be false on native Windows
 # because Cloudflare Containers requires a Linux Docker daemon.
-enable_containers = false
+enable_containers = true
 ```
 
-- **Linux / macOS / WSL** — set `enable_containers = true` to run containers in local `wrangler dev`.
-- **Native Windows** — leave it `false`; use WSL instead (see [Windows Limitation](#windows-limitation)).
+- **Linux / macOS / WSL** — `enable_containers = true` (the default in this repo) runs containers in local `wrangler dev`. Docker Desktop on Mac with Apple Silicon uses Rosetta 2 to run the `linux/amd64` image transparently.
+- **Native Windows** — set `enable_containers = false` and use WSL instead (see [Windows Limitation](#windows-limitation)).
 
 ### 3. `CONTAINER_SECRET` environment variable
 
@@ -67,6 +67,9 @@ name = "ADBLOCK_COMPILER"
 [[migrations]]
 new_sqlite_classes = ["AdblockCompiler"]
 tag = "v1"
+
+[dev]
+enable_containers = true
 ```
 
 ### `worker/worker.ts`
@@ -161,9 +164,10 @@ Visit http://localhost:8787 to access:
 - `/api` — API documentation
 - `/compile` — JSON compilation endpoint
 - `/compile/stream` — Streaming compilation with SSE
+- `/compile/container` — Container-proxied compilation endpoint
 - `/metrics` — Request metrics
 
-**Note:** The `ADBLOCK_COMPILER` Durable Object binding is available in local dev, but containers are disabled via `enable_containers = false` in the `[dev]` section of `wrangler.toml`.
+**Note:** The `ADBLOCK_COMPILER` Durable Object binding is available in local dev. With `enable_containers = true` (the default), `wrangler dev` will start the Docker container automatically. On native Windows without WSL, set `enable_containers = false` in the `[dev]` section of `wrangler.toml`.
 
 ### Health Check
 
@@ -215,6 +219,52 @@ export class AdblockCompiler extends Container {
 |--------|------------|---------------------------------------------|
 | GET    | `/health`  | Liveness probe — returns `{ status: 'ok' }` |
 | POST   | `/compile` | Compile a filter list, returns plain text   |
+
+## Container API Route
+
+The Worker exposes `POST /compile/container` which proxies requests to the `AdblockCompiler` Durable Object container via the `ADBLOCK_COMPILER` binding.
+
+### Endpoint
+
+`POST /compile/container`
+
+### Required Environment Variables
+
+| Variable | Description |
+|---|---|
+| `ADBLOCK_COMPILER` | Durable Object binding to the container (configured in `wrangler.toml`) |
+| `CONTAINER_SECRET` | Shared secret forwarded as `X-Container-Secret` header to authenticate Worker → Container requests |
+
+Set `CONTAINER_SECRET` locally in `.dev.vars`:
+
+```
+CONTAINER_SECRET=dev-local-secret
+```
+
+For production:
+
+```bash
+wrangler secret put CONTAINER_SECRET
+```
+
+### Request
+
+Same body as `POST /compile` — a JSON object matching `CompileRequestSchema` / `ConfigurationSchema`.
+
+### Response
+
+- **`200 OK`** — `text/plain` compiled filter list output
+- **`400 Bad Request`** — Invalid request body (Zod validation error from the container)
+- **`401 Unauthorized`** — `X-Container-Secret` header mismatch
+- **`503 Service Unavailable`** — `ADBLOCK_COMPILER` binding or `CONTAINER_SECRET` not configured, or container server has missing `CONTAINER_SECRET`
+
+### Middleware
+
+The route applies the same middleware stack as other compile routes:
+
+1. `bodySizeMiddleware()` — enforces `MAX_REQUEST_BODY_MB` limit
+2. `rateLimitMiddleware()` — tier-based rate limiting
+3. `turnstileMiddleware()` — Cloudflare Turnstile human verification
 
 ## Production Deployment Workflow
 
@@ -275,6 +325,7 @@ The container/worker has access to:
 - `env.ASSETS` — Static assets (HTML, CSS, JS)
 - `env.COMPILER_VERSION` — Version string
 - `env.ADBLOCK_COMPILER` — Durable Object binding to container
+- `env.CONTAINER_SECRET` — Shared secret for Worker → Container authentication (`X-Container-Secret` header)
 
 ## Cost Considerations
 
