@@ -123,6 +123,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.71.0] - 2026-03-22
+
+### Added- replace local JWT auth with Better Auth (#1241)
+
+### Fixed
+
+- resolve CI failures — fix TS2322 type error and Deno formatting in cloudflareApiService.ts
+- remove unused _sessions/_accounts variables in admin-users.test.ts (TS6133)
+- health auth status is 'down' when better-auth secret set but DB missing
+- resolve CI failures from Better Auth migration (lint, type errors, missing methods)
+- apply second-pass review comments on Better Auth (#1251)
+- address code review feedback (PII logging, doc clarity, cookie-auth fallback)
+- address review comments from PR #1250 (Better Auth improvements)
+- replace disallowed secrets context in step if-conditions in db-migrate.yml
+
+
 ## [0.70.2] - 2026-03-21
 
 ### Added### Fixed
