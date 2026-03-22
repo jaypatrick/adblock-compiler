@@ -97,7 +97,7 @@ DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
 Used by `wrangler dev` to override the Hyperdrive binding locally:
 
 ```env
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@localhost:5432/adblock_dev
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@localhost:5432/adblock_dev
 ```
 
 Copy `.dev.vars.example` as a starting point:

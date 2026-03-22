@@ -262,7 +262,7 @@ flowchart LR
     end
 
     subgraph "Local Dev (wrangler dev)"
-        LOCAL_W[Worker] -->|WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE\nfrom .env.local| LOCAL_PG[(Local PostgreSQL\nDocker / native)]
+        LOCAL_W[Worker] -->|CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE\nfrom .env.local| LOCAL_PG[(Local PostgreSQL\nDocker / native)]
     end
 
     subgraph "Prisma CLI (migrations)"

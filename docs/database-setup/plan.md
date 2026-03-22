@@ -126,7 +126,7 @@ For local dev, set the real connection string via env var (see `.env.example`):
 
 ```bash
 # .env.local (gitignored)
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev"
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev"
 ```
 
 ## Migration Phases

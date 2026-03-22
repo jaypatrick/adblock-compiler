@@ -144,7 +144,7 @@ mode = "smart"
 # ─── Hyperdrive ──────────────────────────────────────────────────────────────
 # Production connection string is set via `wrangler hyperdrive update`.
 # For local dev, set the connection string in .dev.vars (gitignored):
-#   WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://...
+#   CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://...
 # Do NOT put credentials in localConnectionString here.
 [[hyperdrive]]
 binding = "HYPERDRIVE"
@@ -284,7 +284,7 @@ This starts PostgreSQL 16 Alpine with:
 Add to `.dev.vars` (gitignored):
 
 ```bash
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev
 ```
 
 This tells `wrangler dev` to route Hyperdrive queries to your local PostgreSQL instead
@@ -344,7 +344,7 @@ flowchart TD
 
 | Variable | Required | Description |
 |---|---|---|
-| `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` | Local dev only | PostgreSQL connection string for `wrangler dev` to use instead of Neon. Points to Docker PostgreSQL (`127.0.0.1:5432`) or a Neon dev branch. |
+| `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` | Local dev only | PostgreSQL connection string for `wrangler dev` to use instead of Neon. Points to Docker PostgreSQL (`127.0.0.1:5432`) or a Neon dev branch. |
 
 > **Note:** In production, the Hyperdrive binding (`env.HYPERDRIVE`) provides the
 > connection string automatically. There is no `DATABASE_URL` needed at runtime.
@@ -448,7 +448,7 @@ docker compose logs postgres
 
 **Fix:** Ensure `.dev.vars` contains the Hyperdrive local connection string:
 ```bash
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev
 ```
 
 Then restart `wrangler dev` — it only reads `.dev.vars` at startup.
@@ -472,7 +472,7 @@ Do **not** use `npx prisma generate` — it skips the import path fixer that Den
 **Cause:** The Hyperdrive binding returned an invalid or empty connection string.
 
 **Fix:**
-- **Local dev:** Check that `.dev.vars` has the correct `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` value starting with `postgresql://`
+- **Local dev:** Check that `.dev.vars` has the correct `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` value starting with `postgresql://`
 - **Production:** Verify the Hyperdrive configuration has a valid connection string:
   ```bash
   npx wrangler hyperdrive get 800f7e2edc86488ab24e8621982e9ad7

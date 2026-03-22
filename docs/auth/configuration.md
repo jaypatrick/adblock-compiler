@@ -42,7 +42,7 @@ When `CLERK_JWKS_URL` is **not** set, the Worker uses Better Auth with D1. All `
 | -------------- | -------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `DATABASE_URL` | **Yes**  | PostgreSQL connection string | **Shell / Prisma tooling only** — used by Prisma CLI for migrations and schema introspection (`file:./data/adblock.db` in development, a direct Postgres URL otherwise). The Worker itself does **not** read this var. |
 
-> **Worker database binding:** The Cloudflare Worker connects to PostgreSQL via the **`HYPERDRIVE`** binding (configured in `wrangler.toml`), not via `DATABASE_URL`. For local `wrangler dev`, override the binding with `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.dev.vars`.
+> **Worker database binding:** The Cloudflare Worker connects to PostgreSQL via the **`HYPERDRIVE`** binding (configured in `wrangler.toml`), not via `DATABASE_URL`. For local `wrangler dev`, override the binding with `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.dev.vars`.
 
 ## Local Development Setup
 
@@ -99,7 +99,7 @@ TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8787
 
 # Optional: point Hyperdrive at a local PostgreSQL instance
-# WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:pw@127.0.0.1:5432/adblock_dev?sslmode=verify-full&sslrootcert=system
+# CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:pw@127.0.0.1:5432/adblock_dev?sslmode=verify-full&sslrootcert=system
 
 # Optional: CF Access
 # CF_ACCESS_TEAM_DOMAIN=your-team-name
@@ -207,7 +207,7 @@ Defined in `frontend/src/app/tokens.ts`:
 The auth system uses a **split database architecture**:
 
 - **Cloudflare D1 (SQLite)** — stores user records, synced from Clerk webhooks. Binding: `env.DB`.
-- **PostgreSQL via Hyperdrive** — stores API keys. Worker binding: `env.HYPERDRIVE` (configured in `wrangler.toml`). For local dev, override with `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.dev.vars`.
+- **PostgreSQL via Hyperdrive** — stores API keys. Worker binding: `env.HYPERDRIVE` (configured in `wrangler.toml`). For local dev, override with `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.dev.vars`.
 
 ### `users` Table (Cloudflare D1)
 

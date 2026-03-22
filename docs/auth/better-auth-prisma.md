@@ -54,7 +54,7 @@ id = "800f7e2edc86488ab24e8621982e9ad7"
 ### Local development (`.dev.vars`)
 
 ```env
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:password@localhost:5432/adblock_compiler
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:password@localhost:5432/adblock_compiler
 BETTER_AUTH_SECRET=your-secret-at-least-32-characters-long
 ```
 
@@ -169,7 +169,7 @@ import {
 ### "Hyperdrive binding not configured"
 
 Ensure `wrangler.toml` has the `[[hyperdrive]]` section and for local
-dev, set `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in
+dev, set `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in
 `.dev.vars`.
 
 ### "Invalid connection string"
