@@ -6,15 +6,7 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import {
-    type BatchSyncResult,
-    D1CacheSyncConfigSchema,
-    type ICacheSyncLogger,
-    invalidateRecord,
-    isCacheStale,
-    syncBatch,
-    syncRecord,
-} from './d1-cache-sync.ts';
+import { type BatchSyncResult, D1CacheSyncConfigSchema, type ICacheSyncLogger, invalidateRecord, isCacheStale, syncBatch, syncRecord } from './d1-cache-sync.ts';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -25,10 +17,18 @@ function createCapturingLogger(): ICacheSyncLogger & { messages: Array<{ level: 
     const messages: Array<{ level: string; msg: string }> = [];
     return {
         messages,
-        debug(msg: string) { messages.push({ level: 'debug', msg }); },
-        info(msg: string) { messages.push({ level: 'info', msg }); },
-        warn(msg: string) { messages.push({ level: 'warn', msg }); },
-        error(msg: string) { messages.push({ level: 'error', msg }); },
+        debug(msg: string) {
+            messages.push({ level: 'debug', msg });
+        },
+        info(msg: string) {
+            messages.push({ level: 'info', msg });
+        },
+        warn(msg: string) {
+            messages.push({ level: 'warn', msg });
+        },
+        error(msg: string) {
+            messages.push({ level: 'error', msg });
+        },
     };
 }
 
@@ -97,11 +97,13 @@ function createMockD1Prisma(
                 throw new Error('Simulated transaction failure');
             }
             // The transaction proxy exposes the same delegates.
-            await fn(new Proxy({}, {
-                get(_target, prop: string) {
-                    return getOrCreateDelegate(prop);
-                },
-            }));
+            await fn(
+                new Proxy({}, {
+                    get(_target, prop: string) {
+                        return getOrCreateDelegate(prop);
+                    },
+                }),
+            );
         },
     };
 
@@ -184,7 +186,7 @@ Deno.test('syncRecord: logs on success', async () => {
 
     await syncRecord('user', 'u-1', { email: 'test@test.com' }, prisma, logger);
 
-    const debugMsg = logger.messages.find(m => m.level === 'debug' && m.msg.includes('synced user/u-1'));
+    const debugMsg = logger.messages.find((m) => m.level === 'debug' && m.msg.includes('synced user/u-1'));
     assertExists(debugMsg);
 });
 
@@ -192,7 +194,9 @@ Deno.test('syncRecord: returns error on failure', async () => {
     // Provide a prisma whose delegate always throws.
     const broken = {
         filterCache: {
-            upsert: async () => { throw new Error('D1 write error'); },
+            upsert: async () => {
+                throw new Error('D1 write error');
+            },
         },
     };
     const logger = createCapturingLogger();
@@ -202,7 +206,7 @@ Deno.test('syncRecord: returns error on failure', async () => {
     assertEquals(result.success, false);
     assertExists(result.error);
     assertEquals(result.error!.includes('D1 write error'), true);
-    const errMsg = logger.messages.find(m => m.level === 'error');
+    const errMsg = logger.messages.find((m) => m.level === 'error');
     assertExists(errMsg);
 });
 
@@ -230,14 +234,16 @@ Deno.test('invalidateRecord: succeeds when record does not exist (P2025)', async
 
     assertEquals(result.success, true);
     // Should have logged a debug message about the record being absent.
-    const debugMsg = logger.messages.find(m => m.msg.includes('already absent'));
+    const debugMsg = logger.messages.find((m) => m.msg.includes('already absent'));
     assertExists(debugMsg);
 });
 
 Deno.test('invalidateRecord: returns error on unexpected failure', async () => {
     const broken = {
         filterCache: {
-            delete: async () => { throw new Error('unexpected'); },
+            delete: async () => {
+                throw new Error('unexpected');
+            },
         },
     };
 
@@ -304,14 +310,16 @@ Deno.test('isCacheStale: returns true when record has no timestamp fields', asyn
     const stale = await isCacheStale('filterCache', 'fc-1', prisma, 300, logger);
 
     assertEquals(stale, true);
-    const warnMsg = logger.messages.find(m => m.level === 'warn' && m.msg.includes('no timestamp'));
+    const warnMsg = logger.messages.find((m) => m.level === 'warn' && m.msg.includes('no timestamp'));
     assertExists(warnMsg);
 });
 
 Deno.test('isCacheStale: returns true on error (safe default)', async () => {
     const broken = {
         filterCache: {
-            findUnique: async () => { throw new Error('D1 read error'); },
+            findUnique: async () => {
+                throw new Error('D1 read error');
+            },
         },
     };
 
@@ -371,7 +379,7 @@ Deno.test('syncBatch: falls back to individual upserts when transaction fails', 
     assertEquals(result.success, true);
     assertEquals(result.synced, 2);
     // Logger should mention the transaction failure.
-    const warnMsg = logger.messages.find(m => m.level === 'warn' && m.msg.includes('transaction failed'));
+    const warnMsg = logger.messages.find((m) => m.level === 'warn' && m.msg.includes('transaction failed'));
     assertExists(warnMsg);
 });
 
@@ -390,7 +398,9 @@ Deno.test('syncBatch: reports partial failures in individual fallback', async ()
 
     const prisma = {
         filterCache: failingDelegate,
-        $transaction: async () => { throw new Error('force individual fallback'); },
+        $transaction: async () => {
+            throw new Error('force individual fallback');
+        },
     };
 
     const records = [
@@ -420,6 +430,6 @@ Deno.test('syncBatch: logs batch progress', async () => {
 
     await syncBatch('user', records, prisma, logger);
 
-    const infoMsg = logger.messages.find(m => m.level === 'info' && m.msg.includes('batch synced'));
+    const infoMsg = logger.messages.find((m) => m.level === 'info' && m.msg.includes('batch synced'));
     assertExists(infoMsg);
 });

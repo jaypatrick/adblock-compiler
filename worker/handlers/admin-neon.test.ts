@@ -317,18 +317,20 @@ Deno.test('handleAdminNeonCreateBranch — 201 on success', async () => {
 
 Deno.test('handleAdminNeonDeleteBranch — 200 on success', async () => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch(() => Response.json({
-        branch: {
-            id: 'br-1',
-            name: 'main',
-            project_id: 'test-project-id',
-            parent_id: null,
-            current_state: 'ready',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-06-20T00:00:00Z',
-        },
-        operations: [],
-    }));
+    globalThis.fetch = mockFetch(() =>
+        Response.json({
+            branch: {
+                id: 'br-1',
+                name: 'main',
+                project_id: 'test-project-id',
+                parent_id: null,
+                current_state: 'ready',
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-06-20T00:00:00Z',
+            },
+            operations: [],
+        })
+    );
     try {
         const req = new Request('http://localhost/admin/neon/branches/br-1', { method: 'DELETE' });
         const res = await handleAdminNeonDeleteBranch(req, makeEnv(), makeAdminContext(), 'br-1');
@@ -342,17 +344,19 @@ Deno.test('handleAdminNeonDeleteBranch — 200 on success', async () => {
 
 Deno.test('handleAdminNeonListEndpoints — 200 with endpoints', async () => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch(() => Response.json({
-        endpoints: [{
-            id: 'ep-1',
-            host: 'ep-1.us-east-2.aws.neon.tech',
-            branch_id: 'br-1',
-            type: 'read_write',
-            current_state: 'active',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-06-15T12:00:00Z',
-        }],
-    }));
+    globalThis.fetch = mockFetch(() =>
+        Response.json({
+            endpoints: [{
+                id: 'ep-1',
+                host: 'ep-1.us-east-2.aws.neon.tech',
+                branch_id: 'br-1',
+                type: 'read_write',
+                current_state: 'active',
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-06-15T12:00:00Z',
+            }],
+        })
+    );
     try {
         const req = new Request('http://localhost/admin/neon/endpoints');
         const res = await handleAdminNeonListEndpoints(req, makeEnv(), makeAdminContext());
@@ -367,16 +371,18 @@ Deno.test('handleAdminNeonListEndpoints — 200 with endpoints', async () => {
 
 Deno.test('handleAdminNeonListDatabases — 200 with databases', async () => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch(() => Response.json({
-        databases: [{
-            id: 1,
-            name: 'neondb',
-            branch_id: 'br-1',
-            owner_name: 'neondb_owner',
-            created_at: '2024-01-01T00:00:00Z',
-            updated_at: '2024-06-15T12:00:00Z',
-        }],
-    }));
+    globalThis.fetch = mockFetch(() =>
+        Response.json({
+            databases: [{
+                id: 1,
+                name: 'neondb',
+                branch_id: 'br-1',
+                owner_name: 'neondb_owner',
+                created_at: '2024-01-01T00:00:00Z',
+                updated_at: '2024-06-15T12:00:00Z',
+            }],
+        })
+    );
     try {
         const req = new Request('http://localhost/admin/neon/databases/br-1');
         const res = await handleAdminNeonListDatabases(req, makeEnv(), makeAdminContext(), 'br-1');
@@ -407,18 +413,20 @@ Deno.test('handleAdminNeonGetProject — maps Neon 404 to 404 response', async (
 
 Deno.test('handleAdminNeonCreateBranch — empty body treated as valid (all fields optional)', async () => {
     const originalFetch = globalThis.fetch;
-    globalThis.fetch = mockFetch(() => Response.json({
-        branch: {
-            id: 'br-auto',
-            name: 'auto-name',
-            project_id: 'test-project-id',
-            parent_id: 'br-1',
-            current_state: 'init',
-            created_at: '2024-06-20T00:00:00Z',
-            updated_at: '2024-06-20T00:00:00Z',
-        },
-        operations: [],
-    }));
+    globalThis.fetch = mockFetch(() =>
+        Response.json({
+            branch: {
+                id: 'br-auto',
+                name: 'auto-name',
+                project_id: 'test-project-id',
+                parent_id: 'br-1',
+                current_state: 'init',
+                created_at: '2024-06-20T00:00:00Z',
+                updated_at: '2024-06-20T00:00:00Z',
+            },
+            operations: [],
+        })
+    );
     try {
         const req = jsonRequest('http://localhost/admin/neon/branches', {});
         const res = await handleAdminNeonCreateBranch(req, makeEnv(), makeAdminContext());
@@ -430,12 +438,14 @@ Deno.test('handleAdminNeonCreateBranch — empty body treated as valid (all fiel
 
 // ── Missing env for all endpoints returns 503 ────────────────────────────────
 
-for (const [name, handler, makeReq] of [
-    ['ListBranches', handleAdminNeonListBranches, () => new Request('http://localhost/admin/neon/branches')],
-    ['GetBranch', handleAdminNeonGetBranch, () => new Request('http://localhost/admin/neon/branches/br-1')],
-    ['ListEndpoints', handleAdminNeonListEndpoints, () => new Request('http://localhost/admin/neon/endpoints')],
-    ['ListDatabases', handleAdminNeonListDatabases, () => new Request('http://localhost/admin/neon/databases/br-1')],
-] as const) {
+for (
+    const [name, handler, makeReq] of [
+        ['ListBranches', handleAdminNeonListBranches, () => new Request('http://localhost/admin/neon/branches')],
+        ['GetBranch', handleAdminNeonGetBranch, () => new Request('http://localhost/admin/neon/branches/br-1')],
+        ['ListEndpoints', handleAdminNeonListEndpoints, () => new Request('http://localhost/admin/neon/endpoints')],
+        ['ListDatabases', handleAdminNeonListDatabases, () => new Request('http://localhost/admin/neon/databases/br-1')],
+    ] as const
+) {
     Deno.test(`${name} — 503 when NEON_API_KEY missing`, async () => {
         const env = makeEnv({ NEON_API_KEY: undefined });
         const req = (makeReq as () => Request)();

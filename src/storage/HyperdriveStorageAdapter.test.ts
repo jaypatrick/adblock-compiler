@@ -8,23 +8,15 @@
  */
 
 import { assertEquals, assertExists, assertRejects } from '@std/assert';
-import {
-    HyperdriveStorageAdapter,
-    HyperdriveStorageConfigSchema,
-    createHyperdriveStorage,
-} from './HyperdriveStorageAdapter.ts';
-import type {
-    HyperdriveBinding,
-    IHyperdriveLogger,
-    PrismaClientFactory,
-} from './HyperdriveStorageAdapter.ts';
+import { createHyperdriveStorage, HyperdriveStorageAdapter, HyperdriveStorageConfigSchema } from './HyperdriveStorageAdapter.ts';
+import type { HyperdriveBinding, IHyperdriveLogger, PrismaClientFactory } from './HyperdriveStorageAdapter.ts';
 
 // ---------------------------------------------------------------------------
 // Test helper constants (valid UUIDs and hash strings for Zod validation)
 // ---------------------------------------------------------------------------
 const TEST_UUID_1 = '00000000-0000-4000-8000-000000000001';
 const TEST_UUID_2 = '00000000-0000-4000-8000-000000000002';
-const TEST_HASH_64 = 'a'.repeat(64);   // 64-char hex-like string
+const TEST_HASH_64 = 'a'.repeat(64); // 64-char hex-like string
 
 // ============================================================================
 // Test Helpers
@@ -47,10 +39,18 @@ function createCapturingLogger(): IHyperdriveLogger & { messages: Array<{ level:
     const messages: Array<{ level: string; msg: string }> = [];
     return {
         messages,
-        debug(msg: string) { messages.push({ level: 'debug', msg }); },
-        info(msg: string) { messages.push({ level: 'info', msg }); },
-        warn(msg: string) { messages.push({ level: 'warn', msg }); },
-        error(msg: string) { messages.push({ level: 'error', msg }); },
+        debug(msg: string) {
+            messages.push({ level: 'debug', msg });
+        },
+        info(msg: string) {
+            messages.push({ level: 'info', msg });
+        },
+        warn(msg: string) {
+            messages.push({ level: 'warn', msg });
+        },
+        error(msg: string) {
+            messages.push({ level: 'error', msg });
+        },
     };
 }
 

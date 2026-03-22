@@ -6,16 +6,8 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import {
-    chunkArray,
-    buildBatchInsert,
-    migrateTable,
-    TABLE_DEFINITIONS,
-    type D1Row,
-    type MigrationConfig,
-    type MigrationLogger,
-} from './migrate-d1-to-neon.ts';
-import type { D1QueryResult, CloudflareApiService } from '../src/services/cloudflareApiService.ts';
+import { buildBatchInsert, chunkArray, type D1Row, migrateTable, type MigrationConfig, type MigrationLogger, TABLE_DEFINITIONS } from './migrate-d1-to-neon.ts';
+import type { CloudflareApiService, D1QueryResult } from '../src/services/cloudflareApiService.ts';
 import type { NeonApiService } from '../src/services/neonApiService.ts';
 
 // ─── Test Helpers ────────────────────────────────────────────────────────────
@@ -285,7 +277,9 @@ Deno.test('migrateTable: handles D1 query failure gracefully', async () => {
     const { logger, logs } = createCapturingLogger();
 
     const failingCfService = {
-        queryD1: async () => { throw new Error('D1 unavailable'); },
+        queryD1: async () => {
+            throw new Error('D1 unavailable');
+        },
     } as unknown as CloudflareApiService;
 
     const result = await migrateTable(
@@ -305,7 +299,9 @@ Deno.test('migrateTable: handles Neon insert failure gracefully', async () => {
     const { logger, logs } = createCapturingLogger();
 
     const failingNeon = {
-        querySQL: async () => { throw new Error('Neon unavailable'); },
+        querySQL: async () => {
+            throw new Error('Neon unavailable');
+        },
     } as unknown as NeonApiService;
 
     const cfData = { users: [{ id: '1', email: 'a@b.com' }] };
@@ -343,9 +339,15 @@ Deno.test('TABLE_DEFINITIONS: users is first (parent table)', () => {
 Deno.test('TABLE_DEFINITIONS: covers all expected tables', () => {
     const tables = TABLE_DEFINITIONS.map((d) => d.d1Table);
     const expected = [
-        'users', 'api_keys', 'sessions', 'filter_sources',
-        'compiled_outputs', 'compilation_events',
-        'storage_entries', 'filter_cache', 'compilation_metadata',
+        'users',
+        'api_keys',
+        'sessions',
+        'filter_sources',
+        'compiled_outputs',
+        'compilation_events',
+        'storage_entries',
+        'filter_cache',
+        'compilation_metadata',
     ];
     for (const t of expected) {
         assertEquals(tables.includes(t), true, `Missing table definition for ${t}`);

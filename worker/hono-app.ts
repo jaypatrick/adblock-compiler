@@ -332,7 +332,10 @@ app.use('*', async (c, next) => {
     const authProvider = new BetterAuthProvider(c.env);
     const clerkFallbackEnabled = c.env.CLERK_JWKS_URL && c.env.DISABLE_CLERK_FALLBACK !== 'true';
     const authResult = await authenticateRequestUnified(
-        c.req.raw, c.env, createPgPool, authProvider,
+        c.req.raw,
+        c.env,
+        createPgPool,
+        authProvider,
         clerkFallbackEnabled ? new ClerkAuthProvider(c.env) : undefined,
     );
     endTime(c, 'auth');

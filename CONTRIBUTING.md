@@ -61,18 +61,18 @@ deno task db:generate
 
 Copy `.dev.vars.example` to `.dev.vars` and set:
 
-| Variable | Purpose |
-|---|---|
+| Variable                                                 | Purpose                                                                              |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------ |
 | `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` | Local PostgreSQL connection string (overrides Hyperdrive binding for `wrangler dev`) |
-| `BETTER_AUTH_SECRET` | Signing secret for Better Auth sessions (32+ chars) |
-| `BETTER_AUTH_URL` | Base URL for Better Auth (default: `http://localhost:8787`) |
+| `BETTER_AUTH_SECRET`                                     | Signing secret for Better Auth sessions (32+ chars)                                  |
+| `BETTER_AUTH_URL`                                        | Base URL for Better Auth (default: `http://localhost:8787`)                          |
 
 Optional (for admin/monitoring features):
 
-| Variable | Purpose |
-|---|---|
-| `NEON_API_KEY` | Neon admin API key (for admin endpoints) |
-| `NEON_PROJECT_ID` | Neon project ID |
+| Variable          | Purpose                                  |
+| ----------------- | ---------------------------------------- |
+| `NEON_API_KEY`    | Neon admin API key (for admin endpoints) |
+| `NEON_PROJECT_ID` | Neon project ID                          |
 
 ### Neon Branching on PRs
 

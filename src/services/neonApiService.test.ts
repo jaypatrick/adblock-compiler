@@ -11,11 +11,11 @@ import {
     type CreateBranchOptions,
     createNeonApiService,
     NeonApiError,
+    type NeonApiService,
     NeonApiServiceConfigSchema,
     NeonBranchSchema,
     NeonDatabaseSchema,
     NeonEndpointSchema,
-    type NeonApiService,
     NeonProjectSchema,
 } from './neonApiService.ts';
 

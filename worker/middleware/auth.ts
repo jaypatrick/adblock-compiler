@@ -399,7 +399,7 @@ export async function authenticateRequestUnified(
                 // deno-lint-ignore no-console
                 console.warn(
                     '[auth] Request authenticated via DEPRECATED Clerk fallback. ' +
-                    'Migrate this client to Better Auth. Set DISABLE_CLERK_FALLBACK=true to remove this path.',
+                        'Migrate this client to Better Auth. Set DISABLE_CLERK_FALLBACK=true to remove this path.',
                 );
 
                 let resolvedUserId: string | null = null;

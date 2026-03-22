@@ -41,16 +41,16 @@ export {
 
 // D1 cache sync utilities (Neon → D1 write-through / lazy sync)
 export {
-    D1CacheSyncConfigSchema,
-    type D1CacheSyncConfig,
-    type ICacheSyncLogger,
-    type CacheSyncResult,
     type BatchSyncResult,
-    type SyncTable,
-    syncRecord,
+    type CacheSyncResult,
+    type D1CacheSyncConfig,
+    D1CacheSyncConfigSchema,
+    type ICacheSyncLogger,
     invalidateRecord,
     isCacheStale,
     syncBatch,
+    syncRecord,
+    type SyncTable,
 } from './d1-cache-sync.ts';
 
 // Zod validation schemas for database models

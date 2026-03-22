@@ -9,7 +9,7 @@
  */
 
 import { assertEquals, assertRejects } from '@std/assert';
-import { D1StorageAdapter, createD1Storage } from './D1StorageAdapter.ts';
+import { createD1Storage, D1StorageAdapter } from './D1StorageAdapter.ts';
 
 // =============================================================================
 // Mock helpers
@@ -156,13 +156,14 @@ Deno.test('D1StorageAdapter: getCachedFilterList() throws when not open', async 
 Deno.test('D1StorageAdapter: storeCompilationMetadata() throws when not open', async () => {
     const adapter = new D1StorageAdapter(createMockD1());
     await assertRejects(
-        () => adapter.storeCompilationMetadata({
-            configName: 'test',
-            timestamp: Date.now(),
-            sourceCount: 1,
-            ruleCount: 10,
-            duration: 100,
-        }),
+        () =>
+            adapter.storeCompilationMetadata({
+                configName: 'test',
+                timestamp: Date.now(),
+                sourceCount: 1,
+                ruleCount: 10,
+                duration: 100,
+            }),
         Error,
         'not open',
     );

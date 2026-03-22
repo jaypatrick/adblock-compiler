@@ -35,13 +35,7 @@
  */
 
 import type { IStorageAdapter } from './IStorageAdapter.ts';
-import type {
-    CacheEntry,
-    CompilationMetadata,
-    QueryOptions,
-    StorageEntry,
-    StorageStats,
-} from './types.ts';
+import type { CacheEntry, CompilationMetadata, QueryOptions, StorageEntry, StorageStats } from './types.ts';
 import { PrismaClient } from '../../prisma/generated-d1/client.ts';
 import { PrismaD1 } from '@prisma/adapter-d1';
 
