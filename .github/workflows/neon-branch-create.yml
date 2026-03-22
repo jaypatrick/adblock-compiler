@@ -65,6 +65,8 @@ jobs:
       # pnpm must be installed BEFORE setup-node so the pnpm cache works
       - name: Install pnpm
         uses: pnpm/action-setup@v4
+        with:
+          version: 10.31.0
 
       - name: Set up Node.js
         uses: actions/setup-node@v4

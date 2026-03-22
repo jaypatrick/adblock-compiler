@@ -36,6 +36,21 @@ import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 
 /**
+ * Thrown when a required Worker binding or secret is absent at startup.
+ *
+ * Using a named subclass ensures `error.name === 'WorkerConfigurationError'`
+ * so that callers which only log `error.name` (e.g. BetterAuthProvider) can
+ * distinguish configuration failures from authentication failures without
+ * having to parse message strings.
+ */
+export class WorkerConfigurationError extends Error {
+    constructor(message: string) {
+        super(message);
+        this.name = 'WorkerConfigurationError';
+    }
+}
+
+/**
  * Create a Better Auth instance bound to the current request's environment.
  *
  * Uses the Prisma adapter backed by Neon PostgreSQL via Hyperdrive.
@@ -48,7 +63,7 @@ import { createPrismaClient } from './prisma.ts';
  */
 export function createAuth(env: Env, baseURL?: string) {
     if (!env.HYPERDRIVE?.connectionString) {
-        throw new Error(
+        throw new WorkerConfigurationError(
             'HYPERDRIVE binding is not configured.\n' +
                 '  → Production: add [[hyperdrive]] to wrangler.toml\n' +
                 '  → Local dev:  set WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE (preferred)\n' +
@@ -56,7 +71,7 @@ export function createAuth(env: Env, baseURL?: string) {
         );
     }
     if (!env.BETTER_AUTH_SECRET) {
-        throw new Error(
+        throw new WorkerConfigurationError(
             'BETTER_AUTH_SECRET is required but not set.\n' +
                 '  → Generate one: openssl rand -base64 32\n' +
                 '  → Then add it to .dev.vars (local) or wrangler secret put BETTER_AUTH_SECRET (production)',

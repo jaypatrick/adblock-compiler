@@ -12,8 +12,8 @@
  * @see worker/lib/auth.ts
  */
 
-import { assertEquals, assertExists, assertStringIncludes, assertThrows } from '@std/assert';
-import { createAuth } from './auth.ts';
+import { assertEquals, assertExists, assertInstanceOf, assertStringIncludes, assertThrows } from '@std/assert';
+import { createAuth, WorkerConfigurationError } from './auth.ts';
 import type { Auth } from './auth.ts';
 
 // ============================================================================
@@ -40,7 +40,7 @@ Deno.test('createAuth throws when HYPERDRIVE binding is absent', () => {
         HYPERDRIVE: undefined,
         BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
     } as unknown as import('../types.ts').Env;
-    assertThrows(() => createAuth(fakeEnv), Error, 'HYPERDRIVE binding is not configured');
+    assertThrows(() => createAuth(fakeEnv), WorkerConfigurationError, 'HYPERDRIVE binding is not configured');
 });
 
 Deno.test('createAuth throws when HYPERDRIVE.connectionString is absent', () => {
@@ -48,7 +48,7 @@ Deno.test('createAuth throws when HYPERDRIVE.connectionString is absent', () => 
         HYPERDRIVE: {},
         BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
     } as unknown as import('../types.ts').Env;
-    assertThrows(() => createAuth(fakeEnv), Error, 'HYPERDRIVE binding is not configured');
+    assertThrows(() => createAuth(fakeEnv), WorkerConfigurationError, 'HYPERDRIVE binding is not configured');
 });
 
 Deno.test('createAuth throws when BETTER_AUTH_SECRET is missing', () => {
@@ -56,12 +56,12 @@ Deno.test('createAuth throws when BETTER_AUTH_SECRET is missing', () => {
         HYPERDRIVE: { connectionString: 'postgresql://user:pass@localhost:5432/db' },
         BETTER_AUTH_SECRET: undefined,
     } as unknown as import('../types.ts').Env;
-    assertThrows(() => createAuth(fakeEnv), Error, 'BETTER_AUTH_SECRET is required');
+    assertThrows(() => createAuth(fakeEnv), WorkerConfigurationError, 'BETTER_AUTH_SECRET is required');
 });
 
 Deno.test('createAuth error message for missing HYPERDRIVE mentions wrangler.toml and dev.vars', () => {
     const fakeEnv = { HYPERDRIVE: undefined } as unknown as import('../types.ts').Env;
-    const err = assertThrows(() => createAuth(fakeEnv), Error);
+    const err = assertThrows(() => createAuth(fakeEnv), WorkerConfigurationError);
     assertStringIncludes(err.message, 'wrangler.toml');
     assertStringIncludes(err.message, '.dev.vars');
 });
@@ -71,8 +71,18 @@ Deno.test('createAuth error message for missing BETTER_AUTH_SECRET mentions open
         HYPERDRIVE: { connectionString: 'postgresql://user:pass@localhost:5432/db' },
         BETTER_AUTH_SECRET: '',
     } as unknown as import('../types.ts').Env;
-    const err = assertThrows(() => createAuth(fakeEnv), Error);
+    const err = assertThrows(() => createAuth(fakeEnv), WorkerConfigurationError);
     assertStringIncludes(err.message, 'openssl');
+});
+
+Deno.test('WorkerConfigurationError has distinctive name for caller identification', () => {
+    const fakeEnv = {
+        HYPERDRIVE: undefined,
+        BETTER_AUTH_SECRET: 'test-secret',
+    } as unknown as import('../types.ts').Env;
+    const err = assertThrows(() => createAuth(fakeEnv), WorkerConfigurationError);
+    assertInstanceOf(err, WorkerConfigurationError);
+    assertEquals(err.name, 'WorkerConfigurationError');
 });
 
 Deno.test('createAuth throws when HYPERDRIVE.connectionString is invalid', () => {

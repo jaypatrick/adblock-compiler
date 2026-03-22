@@ -241,12 +241,49 @@ function buildSyntheticRequest(c: AppContext, validatedBody: unknown): Request {
 // App setup
 // ============================================================================
 
+/**
+ * Applies CORS headers to an error response using the same allowlist-based
+ * policy as the CORS middleware. Called from `app.onError()` because the CORS
+ * middleware runs as a regular handler and has not yet executed when the global
+ * error handler fires.
+ */
+function applyErrorCorsHeaders(c: AppContext): void {
+    const origin = c.req.header('Origin');
+    if (!origin) return;
+    const allowed = matchOrigin(origin, c.env as Env);
+    if (!allowed) return;
+    c.header('Access-Control-Allow-Origin', allowed);
+    c.header('Vary', 'Origin');
+    c.header('Access-Control-Allow-Credentials', 'true');
+    c.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
+    c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
+}
+
 export const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
 // ── Global error handler — catches unhandled exceptions in all routes ─────────
 app.onError((err, c) => {
     const requestId = c.get('requestId') ?? 'unknown';
-    console.error(`[${requestId}] Unhandled error on ${c.req.method} ${c.req.path}:`, err);
+
+    // Normalize error details — handle non-Error throwables gracefully and
+    // preserve stack traces so production incidents can be traced in logs.
+    let errorDetails: string;
+    if (err instanceof Error) {
+        errorDetails = err.stack || err.message || String(err);
+    } else if (typeof err === 'string') {
+        errorDetails = err;
+    } else {
+        try {
+            errorDetails = JSON.stringify(err);
+        } catch {
+            errorDetails = String(err);
+        }
+    }
+    // deno-lint-ignore no-console
+    console.error(`[${requestId}] Unhandled error on ${c.req.method} ${c.req.path}:`, errorDetails);
+
+    applyErrorCorsHeaders(c);
+
     return c.json(
         { success: false, error: 'Internal server error', requestId },
         500,
