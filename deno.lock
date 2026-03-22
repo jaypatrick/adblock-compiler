@@ -36,12 +36,14 @@
     "npm:@prisma/internals@7.5.0": "7.5.0",
     "npm:@sentry/cloudflare@10.43.0": "10.43.0_@cloudflare+workers-types@4.20260317.1",
     "npm:@sentry/cloudflare@^10.43.0": "10.43.0_@cloudflare+workers-types@4.20260317.1",
-    "npm:better-auth@^1.5.5": "1.5.5_@prisma+client@7.5.0__prisma@7.5.0___@types+react@19.2.14___react@19.2.4___react-dom@19.2.4____react@19.2.4__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_mongodb@7.1.0_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_@cloudflare+workers-types@4.20260317.1",
+    "npm:better-auth@^1.5.5": "1.5.5_@prisma+client@7.5.0__prisma@7.5.0___@types+react@19.2.14___react@19.2.4___react-dom@19.2.4____react@19.2.4__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_pg@8.13.3_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4",
     "npm:cloudflare@5.2.0": "5.2.0",
     "npm:cloudflare@^5.2.0": "5.2.0",
     "npm:hono@^4.12.8": "4.12.8",
     "npm:jose@^6.2.1": "6.2.1",
+    "npm:pg@8.13.3": "8.13.3",
     "npm:prisma@*": "7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
+    "npm:prisma@7.5.0": "7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
     "npm:prisma@^7.5.0": "7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
     "npm:svix@^1.62.0": "1.88.0",
     "npm:svix@^1.88.0": "1.88.0",
@@ -806,7 +808,7 @@
       "dependencies": [
         "@prisma/driver-adapter-utils",
         "@types/pg@8.11.11",
-        "pg",
+        "pg@8.20.0",
         "postgres-array@3.0.4"
       ]
     },
@@ -1105,7 +1107,7 @@
     "aws-ssl-profiles@1.1.2": {
       "integrity": "sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g=="
     },
-    "better-auth@1.5.5_@prisma+client@7.5.0__prisma@7.5.0___@types+react@19.2.14___react@19.2.4___react-dom@19.2.4____react@19.2.4__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_mongodb@7.1.0_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_@cloudflare+workers-types@4.20260317.1": {
+    "better-auth@1.5.5_@prisma+client@7.5.0__prisma@7.5.0___@types+react@19.2.14___react@19.2.4___react-dom@19.2.4____react@19.2.4__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_pg@8.13.3_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4": {
       "integrity": "sha512-GpVPaV1eqr3mOovKfghJXXk6QvlcVeFbS3z+n+FPDid5rK/2PchnDtiaVCzWyXA9jH2KkirOfl+JhAUvnja0Eg==",
       "dependencies": [
         "@better-auth/core",
@@ -1126,12 +1128,14 @@
         "kysely",
         "mongodb",
         "nanostores",
+        "pg@8.13.3",
         "prisma",
         "zod@4.3.6"
       ],
       "optionalPeers": [
         "@prisma/client",
         "mongodb",
+        "pg@8.13.3",
         "prisma"
       ]
     },
@@ -1983,7 +1987,7 @@
     "pg-pool@3.13.0_pg@8.20.0": {
       "integrity": "sha512-gB+R+Xud1gLFuRD/QgOIgGOBE2KCQPaPwkzBBGC9oG69pHTkhQeIuejVIk3/cnDyX39av2AxomQiyPT13WKHQA==",
       "dependencies": [
-        "pg"
+        "pg@8.20.0"
       ]
     },
     "pg-protocol@1.13.0": {
@@ -2009,6 +2013,19 @@
         "postgres-date@2.1.0",
         "postgres-interval@3.0.0",
         "postgres-range"
+      ]
+    },
+    "pg@8.13.3": {
+      "integrity": "sha512-P6tPt9jXbL9HVu/SSRERNYaYG++MjnscnegFh9pPHihfoBSujsrka0hyuymMzeJKFWrcG8wvCKy8rCe8e5nDUQ==",
+      "dependencies": [
+        "pg-connection-string",
+        "pg-pool",
+        "pg-protocol",
+        "pg-types@2.2.0",
+        "pgpass"
+      ],
+      "optionalDependencies": [
+        "pg-cloudflare"
       ]
     },
     "pg@8.20.0": {
@@ -2751,6 +2768,7 @@
         "npm:cloudflare@^5.2.0",
         "npm:hono@^4.12.8",
         "npm:jose@^6.2.1",
+        "npm:prisma@7.5.0",
         "npm:svix@^1.88.0",
         "npm:wrangler@^4.75.0",
         "npm:zod@^4.3.6"

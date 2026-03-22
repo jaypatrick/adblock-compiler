@@ -60,7 +60,8 @@ CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8787
 # ─── Hyperdrive (local PostgreSQL override) ───────────────────────────────────
 # Overrides the Hyperdrive binding for `wrangler dev` with a direct connection.
 # See: https://developers.cloudflare.com/hyperdrive/configuration/local-development/
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:password@127.0.0.1:5432/adblock_dev?sslmode=verify-full&sslrootcert=system
+# Matches the Docker PostgreSQL service in docker-compose.yml
+WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@127.0.0.1:5433/adblock_dev
 
 # ─── Neon Admin API (optional — for admin endpoints) ─────────────────────────
 # Only needed for admin reporting endpoints that call the Neon platform API.

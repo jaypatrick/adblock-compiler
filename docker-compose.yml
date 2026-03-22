@@ -34,18 +34,38 @@ services:
     postgres:
         image: postgres:16-alpine
         ports:
-            - '5432:5432'
+            - '${POSTGRES_PORT:-5433}:5432'
         environment:
             POSTGRES_DB: adblock_dev
             POSTGRES_USER: adblock
             POSTGRES_PASSWORD: localdev
         volumes:
             - pgdata:/var/lib/postgresql/data
+            - ./scripts/docker-init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
         healthcheck:
-            test: ['CMD-SHELL', 'pg_isready -U adblock']
+            test: ['CMD-SHELL', 'pg_isready -U adblock -d adblock_dev']
             interval: 5s
             timeout: 5s
             retries: 5
+        networks:
+            - adblock-network
+
+    # One-shot migration runner — exits 0 after migrations succeed.
+    # Usage: docker compose up postgres db-migrate
+    db-migrate:
+        image: denoland/deno:2.3.3
+        working_dir: /app
+        volumes:
+            - .:/app
+            - deno-cache:/deno-dir
+        environment:
+            DENO_DIR: /deno-dir
+            DATABASE_URL: postgresql://adblock:localdev@postgres:5432/adblock_dev
+            DIRECT_DATABASE_URL: postgresql://adblock:localdev@postgres:5432/adblock_dev
+        depends_on:
+            postgres:
+                condition: service_healthy
+        entrypoint: ['deno', 'run', '-A', '--env=.env.local', 'npm:prisma', 'migrate', 'deploy']
         networks:
             - adblock-network
 
