@@ -137,6 +137,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.73.0] - 2026-03-22
+
+### Added- Complete Better Auth migration — drop Clerk, activate GitHub OAuth + admin plugin, add 2FA/session UI (#1282)
+
+### Fixed
+
+- **ci**: resolve mdbook.yml workflow failures and supply-chain hardening (#1284)
+
+
 ## [0.72.0] - 2026-03-22
 
 ### Added- tighter Hono + Better Auth + Neon + Cloudflare integration (#1273)
