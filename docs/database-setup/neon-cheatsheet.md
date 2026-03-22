@@ -182,9 +182,18 @@ The `20260322092000_add_two_factor_table` migration started at 2026-03-22 19:14:
 `_prisma_migrations` with `started_at` set but `finished_at` NULL. Every subsequent
 `prisma migrate deploy` sees the failed row and refuses to proceed.
 
-**Automatic fix:** The `neon-branch-create.yml` workflow detects P3009 and restores
-the PR branch to its `production` parent before re-running migrations. Push a new
-commit or click **Re-run jobs** to trigger recovery.
+> **Important — `prisma migrate status` exit codes:**
+> - Exit **0**: schema is in sync, nothing pending
+> - Exit **1**: migrations are pending *or* failed — both cases exit 1
+>
+> A non-zero exit code alone does **not** mean P3009. On every fresh PR branch there
+> will always be pending migrations that haven't been applied yet, and `migrate status`
+> exits 1 for those too. Only look for the literal string `P3009` in the output.
+
+**Automatic fix:** The `neon-branch-create.yml` workflow detects P3009 by grepping for
+the literal string `P3009` in the `migrate status` output (never by exit code alone)
+and restores the PR branch to its `production` parent before re-running migrations.
+Push a new commit or click **Re-run jobs** to trigger recovery.
 
 **Manual fix (Option A — resolve single migration):**
 ```bash

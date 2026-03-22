@@ -152,6 +152,48 @@ complementary:
 | `neon-branch-create.yml` | Create isolated PR branch + migrate | Any PR opened/updated |
 | `neon-branch-cleanup.yml` | Destroy PR branch | Any PR closed |
 
+## Git Branching Strategy
+
+### Your current workflow is correct
+
+```mermaid
+flowchart LR
+    F["fix/ feature/ docs branch"] -->|PR + merge| M["main"]
+    M -->|deploy| P["production"]
+
+    F -.->|"Neon creates pr-N branch\n(forked from Neon production)"| NP["Neon pr-N\n(ephemeral)"]
+    NP -.->|"PR closed/merged:\nNeon deletes pr-N"| X["🗑️ deleted"]
+```
+
+The standard git flow — `fix/`, `feature/`, or `docs/` branches → PR → merge into
+`main` → deploy to production — does **not** need to change. Neon branches are
+a CI concern only; they live and die with the PR automatically.
+
+### How Neon branches map to your environments
+
+| Git branch | Neon branch | Purpose |
+|---|---|---|
+| Any open PR | `pr-<number>` (auto-created) | Isolated migration testing for that PR |
+| `main` | `main` | Staging / pre-production schema snapshot |
+| _production deploy_ | `production` (**Default**) | Live production database |
+
+> **Note:** The `main` Neon branch visible in the console is a legacy branch that
+> predates the `production` branch being set as Default. PR branches fork from
+> `production` (not `main`) so they always have production-parity schema.
+> The `main` Neon branch can be kept as a staging target or deleted once a
+> proper staging environment is in place.
+
+### Do you need more Neon branches for multiple environments?
+
+Not yet. The current setup handles two environments:
+
+- **Production** — the `production` Neon branch, connected via Hyperdrive
+- **PR preview** — ephemeral `pr-N` branches, auto-created/deleted by CI
+
+If you add a dedicated **staging** environment later (e.g. a staging Cloudflare Worker
+deploy), create a persistent `staging` Neon branch and point your staging
+`DIRECT_DATABASE_URL` at it. No changes to the PR workflow would be needed.
+
 ## Troubleshooting
 
 ### Branch already exists

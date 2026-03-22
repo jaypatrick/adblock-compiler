@@ -128,10 +128,9 @@ jobs:
       # ── 5. Reset branch if a previous CI run left a failed migration ───────
       # Prisma error P3009 occurs when a migration is recorded as "failed" in
       # the _prisma_migrations table, blocking all future deploys on that branch.
-      # For PR branches (ephemeral, forked from production) the cleanest fix is
-      # to restore the branch to its parent tip — this resets the schema and
-      # migration history instantly via Neon's copy-on-write mechanism.
-      # The connection string (endpoint) is unchanged after a restore.
+      # NOTE: `prisma migrate status` exits non-zero when migrations are merely
+      # *pending* (unapplied) — that is normal on a fresh branch and must NOT
+      # trigger a restore.  We only restore on an explicit P3009 signal.
       - name: Reset branch if migration conflicts detected
         env:
           DATABASE_URL: ${{ steps.create-branch.outputs.db_url_with_pooler }}
@@ -142,13 +141,22 @@ jobs:
         run: |
           set +e
           STATUS=$(npx prisma migrate status 2>&1)
-          STATUS_EXIT=$?
           set -e
 
-          if [ $STATUS_EXIT -ne 0 ] || echo "$STATUS" | grep -qE "P3009|failed"; then
-            echo "⚠️  Migration conflict detected — restoring branch to production tip for a clean slate."
-            echo "    Prisma status output:"
-            echo "$STATUS" | sed 's/^/    /'
+          echo "Checking migration status..."
+          echo "$STATUS"
+
+          # Only restore when Prisma explicitly reports a stuck failed migration
+          # (error code P3009).  A non-zero exit code alone means "there are
+          # pending migrations to apply" — that is expected on every fresh branch
+          # and should NOT trigger a restore.
+          if echo "$STATUS" | grep -q "P3009"; then
+            echo "⚠️  P3009 detected — restoring branch to production tip for a clean slate."
+
+            if [ -z "$BRANCH_ID" ]; then
+              echo "::error::BRANCH_ID is empty. Cannot restore branch. Check create-branch step outputs."
+              exit 1
+            fi
 
             # Restore the branch to the tip of its parent (production).
             # This is equivalent to re-forking — instant and zero-cost (COW).
@@ -157,7 +165,9 @@ jobs:
               -H "Authorization: Bearer ${NEON_API_KEY}" \
               -H "Content-Type: application/json" \
               -d '{"source_type":"parent"}') || {
-              echo "::error::Neon branch restore API call failed. Check NEON_API_KEY and NEON_PROJECT_ID secrets."
+              echo "::error::Neon branch restore API call failed."
+              echo "::error::Verify NEON_API_KEY and NEON_PROJECT_ID are set in repository Secrets."
+              echo "::error::Project ID used: ${NEON_PROJECT_ID}, Branch ID used: ${BRANCH_ID}"
               exit 1
             }
 
@@ -169,7 +179,7 @@ jobs:
             sleep 5
             echo "✅ Branch restored. Migrations will be applied fresh."
           else
-            echo "✅ Migration state is clean."
+            echo "✅ No P3009 detected. Proceeding with migration deploy."
           fi
 
       # ── 6. Run Prisma migrations against the new branch ────────────────────
