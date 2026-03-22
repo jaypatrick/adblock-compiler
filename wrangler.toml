@@ -253,7 +253,7 @@ class_name = "HealthMonitoringWorkflow"
 # Do NOT put credentials in localConnectionString here.
 [[hyperdrive]]
 binding = "HYPERDRIVE"
-id = "126a652809674e4abc722e9777ee4140"
+id = "800f7e2edc86488ab24e8621982e9ad7"
 
 # ─── Cron Triggers ───────────────────────────────────────────────────────────
 [triggers]
