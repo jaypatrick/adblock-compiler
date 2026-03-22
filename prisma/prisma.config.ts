@@ -1,16 +1,10 @@
-import { defineConfig } from 'prisma/config';
-
-export default defineConfig({
-    schema: './schema.prisma',
-    migrations: {
-        path: './migrations',
-    },
-    datasource: {
-        // Prefer DIRECT_DATABASE_URL for migrations (bypasses connection pooling).
-        // Fall back to DATABASE_URL. Set these in .env.local (see .env.example).
-        // Run `cp .env.example .env.local` and fill in your connection strings.
-        url: process.env.DIRECT_DATABASE_URL
-            ?? process.env.DATABASE_URL
-            ?? (() => { throw new Error('DIRECT_DATABASE_URL or DATABASE_URL must be set. See .env.example for guidance.'); })(),
-    },
-});
+// ⚠️  Legacy stub: this file is intentionally left here for backwards navigation only.
+//
+// Prisma 7 discovers `prisma.config.ts` at the **project root**, not inside
+// the `prisma/` subdirectory. The authoritative config has been moved to:
+//
+//   /prisma.config.ts  (project root)
+//
+// Do NOT edit or reference this file from docs, CI, or tooling — always use
+// the root-level `/prisma.config.ts` instead. This file is never loaded by
+// the Prisma CLI.
