@@ -8,18 +8,20 @@ This document describes the two Cloudflare Workers deployments that make up the 
 
 The Adblock Compiler is deployed as **two separate Cloudflare Workers** from a single GitHub repository. Each has a distinct role:
 
-| | `adblock-compiler-backend` | `adblock-compiler-frontend` |
+| | `adblock-compiler` | `adblock-compiler-frontend` |
 |---|---|---|
 | **Wrangler config** | [`wrangler.toml`](../../wrangler.toml) | [`frontend/wrangler.toml`](../../frontend/wrangler.toml) |
 | **Entry point** | `worker/worker.ts` | `dist/adblock-compiler/server/server.mjs` |
 | **Role** | REST API + compilation engine | Angular 21 SSR UI |
 | **Source path** | `worker/` + `src/` | `frontend/` |
-| **Deploy command** | `wrangler deploy` (repo root) | `npm run deploy` (from `frontend/`) |
-| **Local dev port** | `8787` | `8787` (via `npm run preview`) |
+| **Deploy command** | `deno task wrangler:deploy` | `sh scripts/deploy-frontend.sh` (repo root) |
+| **CI deploy trigger** | `deploy` job in `ci.yml` (main push) | `deploy-frontend` job in `ci.yml` (main push) |
+| **Release deploy trigger** | `build-binaries` job in `release.yml` | `deploy-frontend` job in `release.yml` (tag push) |
+| **Local dev port** | `8787` | `8787` (via `pnpm --filter adblock-compiler-frontend run preview`) |
 
 ---
 
-## `adblock-compiler-backend` — The API Worker
+## `adblock-compiler` — The API Worker
 
 ### What It Does
 
@@ -37,11 +39,11 @@ The backend worker is the **compilation engine**. It:
 
 ```mermaid
 mindmap
-  root((adblock-compiler-backend))
+  root((adblock-compiler))
     worker["worker/"]
       workerTs["worker.ts — Cloudflare Workers fetch handler"]
     src["src/ — core compilation logic"]
-    wrangler["wrangler.toml — deployment configuration (name = adblock-compiler-backend)"]
+    wrangler["wrangler.toml — deployment configuration (name = adblock-compiler)"]
 ```
 
 ### Key Bindings
@@ -56,7 +58,7 @@ mindmap
 | `ADBLOCK_COMPILER` | Durable Object | Stateful compilation sessions |
 | `HYPERDRIVE` | Hyperdrive | Accelerated PostgreSQL access |
 | `ANALYTICS_ENGINE` | Analytics Engine | High-cardinality telemetry |
-| `ASSETS` | Static Assets | Serves compiled Angular frontend (bundled mode) |
+| `ASSETS` | Static Assets | Serves compiled Angular frontend as static assets (bundled/single-worker mode only) |
 
 ---
 
@@ -69,7 +71,7 @@ The frontend worker is the **Angular 21 SSR application**. It:
 - Server-side renders the Angular application at the Cloudflare edge using `AngularAppEngine`
 - Serves the home page as a prerendered static page (SSG); all other routes are SSR per-request
 - Serves JS/CSS/font bundles directly from Cloudflare's CDN via the `ASSETS` binding (the Worker never handles these requests)
-- Calls the `adblock-compiler-backend` worker's REST API for all compilation operations
+- Calls the `adblock-compiler` backend Worker's REST API for all compilation operations
 
 ### Source
 
@@ -87,6 +89,7 @@ mindmap
 | Binding | Type | Purpose |
 |---|---|---|
 | `ASSETS` | Static Assets | JS bundles, CSS, fonts — served from CDN before the Worker is invoked |
+| `API` | Service Binding | Reserved — bound to `adblock-compiler` backend on the internal Cloudflare network. Not yet consumed by `server.ts`; declared for future SSR→API internal routing without public network hops. |
 
 ### SSR Architecture
 
@@ -118,10 +121,18 @@ flowchart TD
 
     subgraph EDGE["Cloudflare Edge Network"]
         direction TB
-        FRONTEND["adblock-compiler-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding"]
-        FRONTEND -->|API calls| BACKEND
-        BACKEND["adblock-compiler-backend\n(TypeScript REST API Worker)\n\n• POST /compile\n• POST /compile/stream (SSE)\n• POST /compile/batch\n• GET /metrics  •  GET /health\n• KV, R2, D1, Durable Objects, Queues, Workflows, Hyperdrive"]
+        FRONTEND["adblock-compiler-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding\n• API service binding declared (reserved — not yet wired)"]
+        FRONTEND -->|"API calls (public network — service\nbinding not yet wired in server.ts)"| BACKEND
+        BACKEND["adblock-compiler\n(TypeScript REST API Worker)\n\n• POST /compile\n• POST /compile/stream (SSE)\n• POST /compile/batch\n• GET /metrics  •  GET /health\n• KV, R2, D1, Durable Objects, Queues, Workflows, Hyperdrive"]
     end
+
+    subgraph SVC["Service Binding (reserved / future)"]
+        direction LR
+        API_BINDING["[[services]]\nbinding = API\nservice = adblock-compiler\n\nWhen server.ts is updated to\nread env.API, SSR→API calls\nwill travel on the internal\nCloudflare network without\na public round-trip."]
+    end
+
+    FRONTEND -.->|"future internal route\nvia env.API.fetch()"| SVC
+    SVC -.->|"internal Cloudflare\nnetwork (no CORS)"| BACKEND
 ```
 
 ### Two Deployment Modes
@@ -144,10 +155,10 @@ This means a single `wrangler deploy` from the repo root deploys **both** the AP
 
 | | Bundled Mode | Independent SSR Mode |
 |---|---|---|
-| **Workers deployed** | 1 (`adblock-compiler-backend`) | 2 (backend + frontend) |
+| **Workers deployed** | 1 (`adblock-compiler`) | 2 (backend + frontend) |
 | **Frontend serving** | Static assets via CDN binding | `AngularAppEngine` SSR + CDN for assets |
 | **SSR support** | No (SPA only) | Yes (prerender + server rendering) |
-| **Deploy command** | `wrangler deploy` (root) | `wrangler deploy` (root) + `npm run deploy` (frontend/) |
+| **Deploy command** | `deno task wrangler:deploy` (root) | `deno task wrangler:deploy` (root) + `sh scripts/deploy-frontend.sh` |
 | **Use case** | Simpler deployment, CSR only | Full SSR, edge rendering, independent scaling |
 
 ---
@@ -158,42 +169,73 @@ This means a single `wrangler deploy` from the repo root deploys **both** the AP
 
 ```bash
 # From repo root
-wrangler deploy
+deno task wrangler:deploy
 ```
 
 ### Frontend (Independent SSR mode)
 
 ```bash
-cd frontend
-npm run build    # ng build — compiles Angular + server.mjs
-npm run deploy   # wrangler deploy
+# Preferred — builds, injects CF analytics token, and deploys in one step:
+sh scripts/deploy-frontend.sh
+
+# Or step by step (from repo root):
+pnpm --filter adblock-compiler-frontend run build
+sh scripts/build-worker.sh      # injects/removes {{CF_WEB_ANALYTICS_TOKEN}} in index.html
+pnpm --filter adblock-compiler-frontend run deploy
 ```
+
+> **Important:** Always run `scripts/build-worker.sh` after `ng build` and before `wrangler deploy`. It rewrites the `{{CF_WEB_ANALYTICS_TOKEN}}` placeholder in `dist/.../browser/index.html` (or removes the analytics `<script>` tag if `CF_WEB_ANALYTICS_TOKEN` is not set). Skipping this step leaves the placeholder in the deployed HTML.
+
+### CI/CD Automatic Deployment
+
+Both Workers are deployed automatically by GitHub Actions:
+
+```mermaid
+flowchart LR
+    push["Push to main"] --> ci_gate["ci-gate\n(all checks pass)"]
+    ci_gate --> deploy_backend["deploy job\n(adblock-compiler)"]
+    ci_gate --> frontend_build["frontend-build\n(artifact upload)"]
+    frontend_build --> deploy_frontend["deploy-frontend job\n(adblock-compiler-frontend)"]
+    deploy_frontend --> inject["Inject CF Web\nAnalytics token\n(build-worker.sh)"]
+    inject --> wrangler_deploy["pnpm run deploy\n(wrangler deploy)"]
+
+    tag["Tag push (v*)"] --> validate["validate"]
+    validate --> deploy_frontend_rel["deploy-frontend job\n(release.yml)"]
+    deploy_frontend_rel --> build_rel["pnpm run build\n(ng build)"]
+    build_rel --> inject_rel["Inject CF Web\nAnalytics token\n(build-worker.sh)"]
+    inject_rel --> wrangler_rel["pnpm run deploy\n(wrangler deploy)"]
+```
+
+| Trigger | Backend deploy | Frontend deploy |
+|---|---|---|
+| Push to `main` | `ci.yml` → `deploy` job | `ci.yml` → `deploy-frontend` job |
+| Tag push (`v*`) | `release.yml` → binary/docker builds | `release.yml` → `deploy-frontend` job |
 
 ### Local Development
 
 ```bash
 # Backend API
-wrangler dev                        # → http://localhost:8787
+deno task wrangler:dev                                         # → http://localhost:8787
 
 # Frontend (Angular dev server, CSR)
-cd frontend && npm start            # → http://localhost:4200
+pnpm --filter adblock-compiler-frontend run start             # → http://localhost:4200
 
 # Frontend (Cloudflare Workers preview, mirrors production SSR)
-cd frontend && npm run preview      # → http://localhost:8787
+pnpm --filter adblock-compiler-frontend run preview           # → http://localhost:8787
 ```
 
 ---
 
 ## Renaming Note
 
-> **These workers were renamed as of 2026-03-07.**
+> **These workers were renamed twice. Current names as of this PR:**
 >
-> | Old name | New name |
-> |---|---|
-> | `adblock-compiler` | `adblock-compiler-backend` |
-> | `adblock-compiler-angular-poc` | `adblock-compiler-frontend` |
-> |
-> If you have existing workers under the old names in your Cloudflare dashboard, they will continue to run until manually deleted. The next `wrangler deploy` will create new workers under the updated names.
+> | Old name | Interim name (2026-03-07) | Current name |
+> |---|---|---|
+> | `adblock-compiler` | `adblock-compiler-backend` | `adblock-compiler` |
+> | `adblock-compiler-angular-poc` | `adblock-compiler-frontend` | `adblock-compiler-frontend` |
+>
+> The backend was renamed back to `adblock-compiler` for brevity. If you have workers under old names in your Cloudflare dashboard, they continue to run until manually deleted. The next `wrangler deploy` creates workers under the current names.
 
 ---
 
