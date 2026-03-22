@@ -350,7 +350,7 @@ Deno.test('assignRole - creates assignment and returns row', async () => {
 
     const result = await assignRole(
         db,
-        { clerk_user_id: 'user_abc', role_name: 'editor' },
+        { user_id: 'user_abc', role_name: 'editor' },
         'user_admin',
     );
     assertExists(result);
@@ -362,7 +362,7 @@ Deno.test('assignRole - creates assignment and returns row', async () => {
 Deno.test('assignRole - returns null when db is undefined', async () => {
     const result = await assignRole(
         undefined,
-        { clerk_user_id: 'user_abc', role_name: 'editor' },
+        { user_id: 'user_abc', role_name: 'editor' },
         'user_admin',
     );
     assertEquals(result, null);

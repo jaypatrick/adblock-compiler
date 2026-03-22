@@ -52,9 +52,21 @@ function flushPromises(): Promise<void> {
  * Using ONE spy per test avoids stacked-spy issues when vi.spyOn is called
  * multiple times on the same property.
  */
+const MOCK_PROVIDERS_RESPONSE = makeResponse({
+    emailPassword: true,
+    github: false,
+    google: false,
+    mfa: false,
+});
+
 function mockFetch(...responses: Response[]) {
     let index = 0;
-    return vi.spyOn(globalThis, 'fetch').mockImplementation(() => {
+    return vi.spyOn(globalThis, 'fetch').mockImplementation((url: RequestInfo | URL) => {
+        // fetchProviders() is always fire-and-forget on browser init; handle it
+        // transparently so individual tests only need to mock session/auth calls.
+        if (String(url).includes('/auth/providers')) {
+            return Promise.resolve(MOCK_PROVIDERS_RESPONSE.clone());
+        }
         const resp = responses[index++];
         if (!resp) throw new Error(`Unexpected fetch call #${index}`);
         return Promise.resolve(resp);
@@ -148,7 +160,9 @@ describe('BetterAuthService', () => {
         });
 
         it('should set isLoaded true on network error', async () => {
-            vi.spyOn(globalThis, 'fetch').mockRejectedValueOnce(new Error('Network error'));
+            vi.spyOn(globalThis, 'fetch')
+                .mockResolvedValueOnce(MOCK_PROVIDERS_RESPONSE.clone()) // fetchProviders
+                .mockRejectedValueOnce(new Error('Network error'));       // get-session
             const service = createService();
             await flushPromises();
 
@@ -318,10 +332,11 @@ describe('BetterAuthService', () => {
 
         it('should clear user and token even when sign-out request fails', async () => {
             vi.spyOn(globalThis, 'fetch')
+                .mockResolvedValueOnce(MOCK_PROVIDERS_RESPONSE.clone())                  // fetchProviders
                 .mockResolvedValueOnce(
-                    makeResponse({ user: MOCK_USER, session: { token: MOCK_TOKEN } }),
+                    makeResponse({ user: MOCK_USER, session: { token: MOCK_TOKEN } }),   // checkSession
                 )
-                .mockRejectedValueOnce(new Error('Network error'));
+                .mockRejectedValueOnce(new Error('Network error'));                      // signOut
 
             const service = createService();
             await flushPromises();
