@@ -136,6 +136,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.72.0] - 2026-03-22
+
+### Added- tighter Hono + Better Auth + Neon + Cloudflare integration (#1273)
+- migrate database to Neon PostgreSQL with Better Auth + Prisma (#1257)
+
+### Fixed
+
+- rename misleading 401 test, fix two_factor migration conflict, and harden Neon Branch workflow (#1278)
+- address PR #1273 review comments — ZTA hardening, telemetry, schema, rate limits (#1275) (#1277)
+- WorkerConfigurationError class, improved error handler, pin pnpm version (#1268)
+- address Better Auth integration gaps (#1263) (#1269)
+
+
 ## [0.71.1] - 2026-03-22
 
 ### Added### Fixed
