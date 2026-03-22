@@ -1,283 +1,294 @@
 # Authentication Configuration Guide
 
-Complete reference for all environment variables and configuration needed to run the adblock-compiler authentication system.
+Complete reference for all environment variables and configuration needed to run the
+adblock-compiler authentication system with Better Auth.
+
+---
 
 ## Environment Variables
 
-### Clerk Authentication (Required for Clerk mode)
+### Better Auth (Required)
 
-| Variable                | Required | Source                                                 | Description                                                                                               |
-| ----------------------- | -------- | ------------------------------------------------------ | --------------------------------------------------------------------------------------------------------- |
-| `CLERK_PUBLISHABLE_KEY` | **Yes**  | Clerk Dashboard → API Keys                             | Public key for frontend Clerk initialization. Starts with `pk_test_` or `pk_live_`.                       |
-| `CLERK_SECRET_KEY`      | **Yes**  | Clerk Dashboard → API Keys                             | Secret key for backend operations. **Never expose.** Starts with `sk_test_` or `sk_live_`.                |
-| `CLERK_JWKS_URL`        | **Yes**  | Derived from Clerk Frontend API URL                    | JWKS endpoint for JWT verification. Format: `https://<instance>.clerk.accounts.dev/.well-known/jwks.json` |
-| `CLERK_WEBHOOK_SECRET`  | **Yes**  | Clerk Dashboard → Webhooks → Endpoint → Signing Secret | Svix signing secret for webhook signature verification. Starts with `whsec_`.                             |
+| Variable | Required | Source | Description |
+|---|---|---|---|
+| `BETTER_AUTH_SECRET` | **Yes** | `openssl rand -base64 32` | HMAC signing key for session tokens. Must be ≥ 32 characters. Never reuse across environments. Changing this invalidates all active sessions. |
+| `BETTER_AUTH_URL` | **Yes** | Your Worker's public URL | Base URL for OAuth callbacks and email links. Example: `https://your-worker.workers.dev` |
 
-### Better Auth (Required when Clerk is not configured)
+### Database (Required)
 
-When `CLERK_JWKS_URL` is **not** set, the Worker uses Better Auth with D1. All `/api/auth/*` endpoints become active.
+| Variable | Required | Source | Description |
+|---|---|---|---|
+| `HYPERDRIVE` | **Yes** | `wrangler.toml` Hyperdrive binding | Cloudflare Hyperdrive binding that proxies connections to Neon PostgreSQL. The Worker connects via `env.HYPERDRIVE.connectionString`. |
+| `DIRECT_DATABASE_URL` | Dev/CI only | Neon connection string | Direct PostgreSQL URL for Prisma CLI migrations (`prisma migrate dev/deploy`). **Never read by the Worker at runtime.** |
 
-| Variable               | Required | Source                                     | Description                                                                                                                                                 |
-| ---------------------- | -------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `BETTER_AUTH_SECRET`   | **Yes**  | Self-generated (`openssl rand -base64 32`) | Signing secret for Better Auth sessions. Must be at least 32 characters. Never reuse across environments.                                                   |
-| `DB`                   | **Yes**  | Cloudflare D1 binding in `wrangler.toml`   | D1 database binding. Better Auth stores users, sessions, and accounts in D1 tables (`user`, `session`, `account`, `verification`). Created automatically.   |
+### Social OAuth Providers (Optional)
 
-### Cloudflare Access (Optional — Defense-in-Depth)
-
-| Variable                | Required | Source                                                    | Description                                                                                       |
-| ----------------------- | -------- | --------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `CF_ACCESS_TEAM_DOMAIN` | Optional | Cloudflare Zero Trust Dashboard                           | Your Cloudflare Access team domain (e.g., `mycompany`). If not set, CF Access checks are skipped. |
-| `CF_ACCESS_AUD`         | Optional | CF Access → Applications → Application Audience (AUD) Tag | Audience claim for CF Access JWT verification. Required if `CF_ACCESS_TEAM_DOMAIN` is set.        |
+| Variable | Required | Source | Description |
+|---|---|---|---|
+| `GITHUB_CLIENT_ID` | Optional | GitHub → Settings → Developer Settings → OAuth Apps | Client ID for GitHub sign-in. GitHub is enabled only when **both** `GITHUB_CLIENT_ID` and `GITHUB_CLIENT_SECRET` are set. |
+| `GITHUB_CLIENT_SECRET` | Optional | GitHub OAuth App settings | Client secret for GitHub sign-in. |
+| `GOOGLE_CLIENT_ID` | Optional | Google Cloud Console → Credentials | Client ID for Google sign-in (reserved — enable by uncommenting in `auth.ts`). |
+| `GOOGLE_CLIENT_SECRET` | Optional | Google Cloud Console → Credentials | Client secret for Google sign-in. |
 
 ### Cloudflare Turnstile (Optional — Bot Protection)
 
-| Variable               | Required | Source                           | Description                                                                           |
-| ---------------------- | -------- | -------------------------------- | ------------------------------------------------------------------------------------- |
-| `TURNSTILE_SITE_KEY`   | Optional | Cloudflare Dashboard → Turnstile | Public site key for frontend widget. Returned to clients via `/api/turnstile-config`. |
-| `TURNSTILE_SECRET_KEY` | Optional | Cloudflare Dashboard → Turnstile | Secret key for server-side token verification. If not set, Turnstile is disabled.     |
+| Variable | Required | Source | Description |
+|---|---|---|---|
+| `TURNSTILE_SITE_KEY` | Optional | Cloudflare Dashboard → Turnstile | Public site key for the frontend widget. Returned via `GET /api/turnstile-config`. |
+| `TURNSTILE_SECRET_KEY` | Optional | Cloudflare Dashboard → Turnstile | Server-side verification key. Turnstile is disabled when not set. |
 
-### Database
+### Cloudflare Access (Optional — Defense-in-Depth)
 
-| Variable       | Required | Source                       | Description                                                                                                                                                                                                               |
-| -------------- | -------- | ---------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `DATABASE_URL` | **Yes**  | PostgreSQL connection string | **Shell / Prisma tooling only** — used by Prisma CLI for migrations and schema introspection (`file:./data/adblock.db` in development, a direct Postgres URL otherwise). The Worker itself does **not** read this var. |
+| Variable | Required | Source | Description |
+|---|---|---|---|
+| `CF_ACCESS_TEAM_DOMAIN` | Optional | Cloudflare Zero Trust Dashboard | Your Access team domain (e.g., `mycompany`). CF Access checks are skipped when not set. |
+| `CF_ACCESS_AUD` | Optional | CF Access → Applications → AUD Tag | Audience claim for CF Access JWT verification. Required if `CF_ACCESS_TEAM_DOMAIN` is set. |
 
-> **Worker database binding:** The Cloudflare Worker connects to PostgreSQL via the **`HYPERDRIVE`** binding (configured in `wrangler.toml`), not via `DATABASE_URL`. For local `wrangler dev`, override the binding with `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.dev.vars`.
+### Other Runtime Variables
+
+| Variable | Required | Source | Description |
+|---|---|---|---|
+| `CORS_ALLOWED_ORIGINS` | Optional | Comma-separated URLs | Allowed CORS origins. Example: `https://app.example.com,https://admin.example.com` |
+| `ENVIRONMENT` | Optional | `wrangler.toml` or `.dev.vars` | `development`, `staging`, or `production`. Used for log level and error detail. |
+
+---
 
 ## Local Development Setup
 
-This project uses **direnv** + `.envrc` for ALL local environment management. When you enter the project directory, the `.envrc` automatically loads the appropriate `.env` file(s) based on your git branch.
-
-### Step 1: Install direnv (one-time)
+### Quick Start
 
 ```bash
-# macOS
-brew install direnv
-
-# Add to your shell config (~/.zshrc or ~/.bashrc)
-eval "$(direnv hook zsh)"   # or bash
-```
-
-### Step 2: Allow the .envrc
-
-```bash
-cd adblock-compiler
-direnv allow
-```
-
-### Step 3: Create your .dev.vars
-
-Worker runtime vars (Clerk keys, Turnstile, CORS, Hyperdrive, etc.) all live in `.dev.vars`:
-
-```bash
+# 1. Copy the example file
 cp .dev.vars.example .dev.vars
+
+# 2. Edit with your values (see template below)
+# 3. Start the Worker
+wrangler dev
 ```
 
-Then edit `.dev.vars` with your real values:
+### `.dev.vars` Template
 
-```bash
+```ini
 # .dev.vars — NOT committed to git
-# Loaded by both `wrangler dev` and direnv (.envrc)
+# Loaded by wrangler dev. Overrides values in wrangler.toml [vars].
 
 ENVIRONMENT=development
 
-CLERK_PUBLISHABLE_KEY=pk_test_...
-CLERK_SECRET_KEY=sk_test_...
-CLERK_JWKS_URL=https://your-instance.clerk.accounts.dev/.well-known/jwks.json
-CLERK_WEBHOOK_SECRET=whsec_...
-
-# Local JWT auth (active when CLERK_JWKS_URL is unset)
+# ─── Better Auth ──────────────────────────────────────────────────────────────
 # Generate: openssl rand -base64 32
-JWT_SECRET=replace-with-openssl-rand-base64-32-output
-# First-admin bootstrap email (remove once first admin is set)
-# INITIAL_ADMIN_EMAIL=you@example.com
+BETTER_AUTH_SECRET=replace-with-openssl-rand-base64-32-output
+BETTER_AUTH_URL=http://localhost:8787
 
-# Use Cloudflare test keys (always pass) for local dev
+# ─── Database ─────────────────────────────────────────────────────────────────
+# Point the Hyperdrive binding at your local PostgreSQL instance:
+WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:pw@127.0.0.1:5432/adblock_dev
+
+# ─── Social OAuth (optional) ──────────────────────────────────────────────────
+# GITHUB_CLIENT_ID=your-github-client-id
+# GITHUB_CLIENT_SECRET=your-github-client-secret
+# GOOGLE_CLIENT_ID=your-google-client-id       # reserved
+# GOOGLE_CLIENT_SECRET=your-google-client-secret
+
+# ─── Turnstile (use Cloudflare test keys locally) ─────────────────────────────
 TURNSTILE_SITE_KEY=1x00000000000000000000AA
 TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 
+# ─── CORS ─────────────────────────────────────────────────────────────────────
 CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8787
-
-# Optional: point Hyperdrive at a local PostgreSQL instance
-# CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:pw@127.0.0.1:5432/adblock_dev?sslmode=verify-full&sslrootcert=system
-
-# Optional: CF Access
-# CF_ACCESS_TEAM_DOMAIN=your-team-name
-# CF_ACCESS_AUD=your-audience-tag
 ```
 
-For a complete annotated template see [`.dev.vars.example`](../../.dev.vars.example).
+### Local Database
 
-> If you also need to override a **shell-tooling** variable (e.g. point Prisma at a local
-> PostgreSQL instance instead of the SQLite default), create `.env.local` from
-> `.env.example`. You should not need it just to run `wrangler dev`.
+The project ships with a Docker-based PostgreSQL for local dev:
 
-### How .envrc loads your variables
+```bash
+# Start the local database
+deno task db:local:up
 
-The `.envrc` loads files in this order (later overrides earlier):
+# Apply pending migrations
+deno task db:migrate
 
+# Generate Prisma client
+deno task db:generate
+
+# Start the Worker (now using local DB via Hyperdrive local override)
+wrangler dev
 ```
-.env             ← committed base defaults (PORT, COMPILER_VERSION)
-.env.development ← committed dev shell defaults (DATABASE_URL, LOG_LEVEL=debug)
-.env.local       ← your shell overrides (gitignored)
-.dev.vars        ← Worker secrets + runtime vars (gitignored, highest precedence)
+
+---
+
+## Wrangler Bindings (`wrangler.toml`)
+
+The Worker's database connection uses a Cloudflare Hyperdrive binding — not a plain
+connection string. The binding is declared in `wrangler.toml`:
+
+```toml
+[[hyperdrive]]
+binding = "HYPERDRIVE"
+id      = "800f7e2edc86488ab24e8621982e9ad7"
 ```
+
+During `wrangler dev`, add this to `.dev.vars` to override with a local connection:
+
+```ini
+WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:pw@127.0.0.1:5432/adblock_dev
+```
+
+For full Hyperdrive setup, see [Better Auth Prisma Setup](better-auth-prisma.md).
 
 ---
 
 ## Production Deployment
 
-For production Cloudflare Workers deployments, use `wrangler secret put` for true secrets, and `wrangler.toml [vars]` **only** for static, non-sensitive runtime configuration that is not managed by `.env`:
+### Non-Secrets in `wrangler.toml [vars]`
 
-### Non-secrets in wrangler.toml [vars]
-
-Non-sensitive Worker runtime vars that are safe to commit:
+Static, non-sensitive values that are safe to commit:
 
 ```toml
 [vars]
 COMPILER_VERSION = "0.62.5"
-ENVIRONMENT = "production"
-CLERK_PUBLISHABLE_KEY = "pk_live_..."
-CLERK_JWKS_URL = "https://your-instance.clerk.accounts.dev/.well-known/jwks.json"
-TURNSTILE_SITE_KEY = "0x4AAA..."   # production site key — not a secret
+ENVIRONMENT      = "production"
+BETTER_AUTH_URL  = "https://your-worker.workers.dev"
+TURNSTILE_SITE_KEY = "0x4AAA..."   # public site key — not a secret
 ```
 
-During `wrangler dev`, `.dev.vars` overrides these with local/test values.
+### Secrets via `wrangler secret put`
 
-### Secrets (wrangler secret put)
-
-For production, set secrets via Cloudflare's secret management — **never** commit real keys to `wrangler.toml` or any `.env.*` file:
+**Never** commit secrets to `wrangler.toml` or any `.env.*` file:
 
 ```bash
-# Clerk authentication secrets
-wrangler secret put CLERK_SECRET_KEY
-wrangler secret put CLERK_WEBHOOK_SECRET
+# Better Auth — required
+wrangler secret put BETTER_AUTH_SECRET
 
-# Local JWT auth (only needed when Clerk is not active)
-wrangler secret put JWT_SECRET
-# wrangler secret put INITIAL_ADMIN_EMAIL  # remove after first admin is set
+# Social OAuth — if using GitHub
+wrangler secret put GITHUB_CLIENT_ID
+wrangler secret put GITHUB_CLIENT_SECRET
 
-# Cloudflare Access (admin route protection — optional)
-wrangler secret put CF_ACCESS_TEAM_DOMAIN
-wrangler secret put CF_ACCESS_AUD
+# Social OAuth — if using Google
+wrangler secret put GOOGLE_CLIENT_ID
+wrangler secret put GOOGLE_CLIENT_SECRET
 
-# Turnstile bot protection (secret key only — site key is in [vars])
+# Turnstile
 wrangler secret put TURNSTILE_SECRET_KEY
 
-# CORS allowlist
+# CORS
 wrangler secret put CORS_ALLOWED_ORIGINS
 
-# Observability
-wrangler secret put SENTRY_DSN
-wrangler secret put ANALYTICS_ACCOUNT_ID
-wrangler secret put ANALYTICS_API_TOKEN
-wrangler secret put OTEL_EXPORTER_OTLP_ENDPOINT
+# CF Access (optional)
+wrangler secret put CF_ACCESS_TEAM_DOMAIN
+wrangler secret put CF_ACCESS_AUD
 ```
 
-## Frontend Configuration
-
-The Angular frontend does **not** require build-time environment files. All auth configuration is fetched at runtime:
-
-| Endpoint                    | Response                            | Purpose                                                    |
-| --------------------------- | ----------------------------------- | ---------------------------------------------------------- |
-| `GET /api/clerk-config`     | `{ publishableKey: "pk_..." }`      | Clerk publishable key for `@clerk/clerk-js` initialization |
-| `GET /api/turnstile-config` | `{ siteKey: "...", enabled: true }` | Turnstile widget configuration                             |
-
-### How It Works
-
-1. Angular app starts → `app.config.ts` runs initialization
-2. Fetches `/api/turnstile-config` → configures Turnstile widget
-3. Fetches `/api/clerk-config` → initializes `ClerkService` with the publishable key
-4. `ClerkService` loads `@clerk/clerk-js` and listens for auth state changes
-5. `authInterceptor` automatically attaches JWT to API requests
-
-### Angular Injection Tokens
-
-Defined in `frontend/src/app/tokens.ts`:
-
-| Token                | Type                     | Default | Description               |
-| -------------------- | ------------------------ | ------- | ------------------------- |
-| `TURNSTILE_SITE_KEY` | `InjectionToken<string>` | `''`    | Turnstile public site key |
-| `API_BASE_URL`       | `InjectionToken<string>` | `/api`  | Base URL for API calls    |
-
-> **Note:** The Clerk publishable key is fetched from `GET /api/clerk-config` at runtime rather than provided as a static injection token, matching the Turnstile pattern.
+---
 
 ## Database Schema
 
-The auth system uses a **split database architecture**:
+Better Auth uses Neon PostgreSQL (accessed via Cloudflare Hyperdrive) with Prisma as the ORM.
+The schema is in `prisma/schema.prisma`.
 
-- **Cloudflare D1 (SQLite)** — stores user records, synced from Clerk webhooks. Binding: `env.DB`.
-- **PostgreSQL via Hyperdrive** — stores API keys. Worker binding: `env.HYPERDRIVE` (configured in `wrangler.toml`). For local dev, override with `CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` in `.dev.vars`.
+### Better Auth Core Tables
 
-### `users` Table (Cloudflare D1)
+| Table | Contents |
+|-------|----------|
+| `user` | User accounts — `id`, `name`, `email`, `tier`, `role`, `banned`, `emailVerified` |
+| `session` | Active sessions — `id`, `userId`, `token` (hashed), `expiresAt`, `ipAddress`, `userAgent` |
+| `account` | OAuth provider links — `userId`, `providerId`, `providerAccountId`, `accessToken` |
+| `verification` | Email verification and password-reset tokens |
+| `twoFactor` | TOTP secrets per user (added by `twoFactor()` plugin) |
 
-Managed by `prisma/schema.d1.prisma`; synced via the `POST /api/webhooks/clerk` handler.
+### Custom User Fields
 
-| Column          | Type     | Description                         |
-| --------------- | -------- | ----------------------------------- |
-| `id`            | UUID     | Primary key                         |
-| `clerk_user_id` | String   | Clerk user ID (unique, indexed)     |
-| `email`         | String   | Primary email from Clerk            |
-| `first_name`    | String?  | First name                          |
-| `last_name`     | String?  | Last name                           |
-| `image_url`     | String?  | Profile picture URL                 |
-| `tier`          | String   | `anonymous`, `free`, `pro`, `admin` |
-| `created_at`    | DateTime | Record creation time                |
-| `updated_at`    | DateTime | Last record update                  |
+Two custom fields are added to the `user` table via `additionalFields` in `auth.ts`:
 
-Apply the D1 migration before first deploy:
+| Field | Type | Default | `input` | Description |
+|-------|------|---------|---------|-------------|
+| `tier` | `string` | `free` | `false` | Determines rate limits and feature access. Not user-settable. |
+| `role` | `string` | `user` | `false` | `user` or `admin`. Not user-settable. |
+
+`input: false` means the field is excluded from sign-up/sign-in body parsing — only server-side
+code (migrations, admin endpoints) can write these fields.
+
+### Running Migrations
 
 ```bash
-wrangler d1 migrations apply adblock-compiler-d1-database --remote
+# Development — creates migration file + applies to local DB
+deno task db:migrate
+
+# Production / CI — applies pending migrations without prompting
+deno task db:migrate:deploy
+
+# Regenerate Prisma client after schema changes
+deno task db:generate
 ```
 
-### `api_keys` Table (PostgreSQL via Hyperdrive)
+---
 
-| Column               | Type      | Description                                       |
-| -------------------- | --------- | ------------------------------------------------- |
-| `id`                 | UUID      | Primary key                                       |
-| `userId`             | UUID      | Foreign key → `users.id`                          |
-| `keyHash`            | String    | SHA-256 hash of the plaintext key                 |
-| `keyPrefix`          | String    | First 8 characters for display (e.g., `abc_Xk9m`) |
-| `name`               | String    | User-provided key name (max 100 chars)            |
-| `scopes`             | String[]  | Authorized scopes: `compile`, `rules`, `admin`    |
-| `rateLimitPerMinute` | Int       | Per-key rate limit (default: 60)                  |
-| `expiresAt`          | DateTime? | Optional expiration (1–365 days)                  |
-| `revokedAt`          | DateTime? | Soft-delete timestamp                             |
-| `lastUsedAt`         | DateTime? | Last authentication timestamp                     |
-| `createdAt`          | DateTime  | Record creation time                              |
-| `updatedAt`          | DateTime  | Last record update                                |
+## Authentication Endpoints
+
+All auth routes are under `/api/auth/*` (configured by `basePath: '/api/auth'` in `auth.ts`).
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/api/auth/sign-up/email` | POST | Register with email + password |
+| `/api/auth/sign-in/email` | POST | Sign in with email + password |
+| `/api/auth/sign-out` | POST | Sign out (clears session) |
+| `/api/auth/sign-in/social?provider=github` | GET | Initiate GitHub OAuth flow |
+| `/api/auth/callback/github` | GET | GitHub OAuth callback (automatic) |
+| `/api/auth/forget-password` | POST | Request password-reset email |
+| `/api/auth/reset-password` | POST | Submit new password with reset token |
+| `/api/auth/two-factor/enable` | POST | Enable TOTP 2FA |
+| `/api/auth/two-factor/verify` | POST | Verify TOTP code |
+| `/api/auth/two-factor/disable` | POST | Disable TOTP 2FA |
+| `/api/auth/list-sessions` | GET | List all active sessions (auth required) |
+| `/api/auth/revoke-session` | POST | Revoke a session by ID |
+| `/api/auth/revoke-other-sessions` | POST | Revoke all sessions except current |
+| `/api/auth/admin/list-users` | GET | Admin: list all users |
+| `/api/auth/admin/set-role` | POST | Admin: change user role |
+| `/api/auth/admin/ban-user` | POST | Admin: ban a user |
+| `/api/auth/admin/unban-user` | POST | Admin: unban a user |
+| `/api/auth/admin/revoke-user-sessions` | POST | Admin: revoke all sessions for a user |
+| `/api/auth/providers` | GET | List active providers (emailPassword, github, mfa) |
+
+---
+
+## Session Configuration
+
+| Setting | Value | Location |
+|---------|-------|----------|
+| Session TTL | 7 days | `expiresIn: 60 * 60 * 24 * 7` in `auth.ts` |
+| Auto-refresh | Within 1 day of expiry | `updateAge: 60 * 60 * 24` |
+| Cookie cache | 5 minutes | `cookieCache: { enabled: true, maxAge: 5 * 60 }` |
+| Cookie prefix | `adblock` | `cookiePrefix: 'adblock'` |
+| Cookie name | `adblock.session_token` | Derived from prefix |
+
+---
 
 ## Deployment Checklist
 
 ### First-Time Setup
 
-1. [ ] Create Clerk application ([guide](clerk-setup.md))
-2. [ ] Configure Clerk sign-in/sign-up URLs
-3. [ ] Configure Clerk allowed origins
-4. [ ] Set up Clerk webhook endpoint
-5. [ ] Copy `.env.example` → `.env.local` and fill in all auth keys (local dev)
-6. [ ] Store all production secrets via `wrangler secret put` (production deploy)
-7. [ ] Apply D1 migration: `wrangler d1 migrations apply adblock-compiler-d1-database --remote`
-8. [ ] Deploy worker: `wrangler deploy`
-9. [ ] Test webhook delivery from Clerk dashboard
-10. [ ] Create first admin user (set `tier: admin` in Clerk public metadata)
-11. [ ] Verify end-to-end auth flow
+1. [ ] Provision Neon PostgreSQL database
+2. [ ] Create Cloudflare Hyperdrive configuration pointing to Neon
+3. [ ] Generate `BETTER_AUTH_SECRET`: `openssl rand -base64 32`
+4. [ ] Set `BETTER_AUTH_SECRET` and `BETTER_AUTH_URL` in `.dev.vars` (local) or via `wrangler secret put` (production)
+5. [ ] Run migrations: `deno task db:migrate`
+6. [ ] Deploy Worker: `wrangler deploy`
+7. [ ] Create first admin user (via Prisma Studio — set `role = admin`, `tier = admin`)
+8. [ ] Verify auth flow end-to-end
 
-### Production Upgrade
+### Adding GitHub OAuth
 
-1. [ ] Switch from `pk_test_` / `sk_test_` to `pk_live_` / `sk_live_` keys
-2. [ ] Update webhook endpoint URL to production domain
-3. [ ] Configure CF Access for admin routes (recommended)
-4. [ ] Enable Turnstile for bot protection
-5. [ ] Set up monitoring/alerts for auth failures
-6. [ ] If migrating from Local JWT Auth to Clerk, set `CLERK_JWKS_URL` and rotate/delete `JWT_SECRET`
+1. [ ] Create GitHub OAuth App (callback: `https://your-worker.workers.dev/api/auth/callback/github`)
+2. [ ] `wrangler secret put GITHUB_CLIENT_ID`
+3. [ ] `wrangler secret put GITHUB_CLIENT_SECRET`
+4. [ ] `wrangler deploy`
+5. [ ] Verify: `curl https://your-worker.workers.dev/api/auth/providers`
 
-## Conditional Feature Behavior
+---
 
-| Feature        | When Enabled                                  | When Disabled                                              |
-| -------------- | --------------------------------------------- | ---------------------------------------------------------- |
-| Clerk Auth     | `CLERK_JWKS_URL` is set                       | Falls back to LocalJwtAuthProvider (local JWT mode)        |
-| Local JWT Auth | `CLERK_JWKS_URL` is **not** set               | Auth handled by Clerk SDK                                  |
-| Turnstile      | `TURNSTILE_SECRET_KEY` is set                 | Bot protection disabled; compilation requests not verified |
-| CF Access      | `CF_ACCESS_TEAM_DOMAIN` + `CF_ACCESS_AUD` set | CF Access checks skipped on admin routes                   |
+## Related Documentation
+
+- [Better Auth Developer Guide](better-auth-developer-guide.md) — Plugin configuration
+- [Better Auth Prisma Setup](better-auth-prisma.md) — Hyperdrive + Prisma adapter
+- [Social Providers](social-providers.md) — GitHub/Google OAuth setup
+- [Better Auth Admin Guide](better-auth-admin-guide.md) — Secret rotation, user management
