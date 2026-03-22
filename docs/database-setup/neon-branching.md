@@ -96,7 +96,7 @@ psql "postgresql://neondb_owner:****@ep-xyz-123.eastus2.azure.neon.tech/adblock-
 DATABASE_URL="postgresql://neondb_owner:****@ep-xyz-123.eastus2.azure.neon.tech/adblock-compiler?sslmode=require"
 
 # Then run your local dev server — it will use the PR's isolated database
-pnpm run dev
+pnpm run ui:dev
 ```
 
 ### Using Prisma Studio
