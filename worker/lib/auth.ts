@@ -81,23 +81,30 @@ export function createAuth(env: Env, baseURL?: string) {
 
     const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
 
+    // Build social providers object — only include providers whose credentials are configured.
+    const socialProviders: Parameters<typeof betterAuth>[0]['socialProviders'] = {};
+    if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
+        socialProviders.github = {
+            clientId: env.GITHUB_CLIENT_ID,
+            clientSecret: env.GITHUB_CLIENT_SECRET,
+        };
+    }
+    // Google is wired but NOT exposed in the UI — activate later by setting
+    // GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in wrangler secrets:
+    // if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+    //     socialProviders.google = {
+    //         clientId: env.GOOGLE_CLIENT_ID,
+    //         clientSecret: env.GOOGLE_CLIENT_SECRET,
+    //     };
+    // }
+
     return betterAuth({
         database: prismaAdapter(prisma, { provider: 'postgresql' }),
         secret: env.BETTER_AUTH_SECRET,
         basePath: '/api/auth',
         baseURL: env.BETTER_AUTH_URL || baseURL,
 
-        socialProviders: {
-            github: {
-                clientId: env.GITHUB_CLIENT_ID ?? '',
-                clientSecret: env.GITHUB_CLIENT_SECRET ?? '',
-            },
-            // Google is wired but NOT exposed in the UI — activate later by uncommenting
-            // google: {
-            //     clientId: env.GOOGLE_CLIENT_ID ?? '',
-            //     clientSecret: env.GOOGLE_CLIENT_SECRET ?? '',
-            // },
-        },
+        socialProviders,
 
         emailAndPassword: {
             enabled: true,

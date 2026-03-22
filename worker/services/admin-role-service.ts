@@ -314,7 +314,7 @@ export async function assignRole(
 			 RETURNING *`,
         )
         .bind(
-            data.clerk_user_id,
+            data.user_id,
             data.role_name,
             assignedBy,
             now,

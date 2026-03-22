@@ -1037,7 +1037,7 @@ export type UpdateAdminRoleRequest = z.infer<typeof UpdateAdminRoleRequestSchema
 
 /** Assign / revoke a role to a user */
 export const AssignRoleRequestSchema = z.object({
-    clerk_user_id: z.string().min(1),
+    user_id: z.string().min(1),
     role_name: AdminRoleNameSchema,
     expires_at: z.string().datetime().nullable().optional(),
 });
