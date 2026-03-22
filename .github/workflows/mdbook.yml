@@ -41,7 +41,11 @@ jobs:
           curl -fsSL "https://github.com/badboy/mdbook-mermaid/releases/download/v${MERMAID_VERSION}/mdbook-mermaid-v${MERMAID_VERSION}-x86_64-unknown-linux-gnu.tar.gz" -o mdbook-mermaid.tar.gz
           mkdir -p /tmp/mdbook-mermaid-install
           tar xzf mdbook-mermaid.tar.gz -C /tmp/mdbook-mermaid-install
-          MERMAID_BIN=$(find /tmp/mdbook-mermaid-install -name "mdbook-mermaid" -type f | head -1)
+          MERMAID_BIN=$(find /tmp/mdbook-mermaid-install -type f -name "mdbook-mermaid" -print -quit)
+          if [ -z "$MERMAID_BIN" ]; then
+            echo "Error: mdbook-mermaid binary not found in extracted archive" >&2
+            exit 1
+          fi
           sudo mv "$MERMAID_BIN" /usr/local/bin/
           rm -rf mdbook-mermaid.tar.gz /tmp/mdbook-mermaid-install
 
@@ -92,6 +96,8 @@ jobs:
 
       - name: Upload PDF artifact
         uses: actions/upload-artifact@bbbca2ddaa1fdc540502cfa0106a1ce08ef1fa50 # v4
+        # NOTE: This workflow intentionally pins upload-artifact to this specific v4 SHA.
+        # It may differ from other workflows' v4 SHAs; see repository security docs for rationale.
         with:
           name: adblock-compiler-docs-pdf
           path: book/pdf/adblock-compiler.pdf
