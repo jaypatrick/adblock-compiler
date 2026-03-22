@@ -131,7 +131,8 @@ export function createCloudflareApiService(options: CreateCloudflareApiServiceOp
         ...sdkOptions,
         // Lambda ensures globalThis.fetch patches (e.g. in unit tests) are honoured at call time
         // rather than being captured at construction time.
-        fetch: (url: string | URL, init?: RequestInit): Promise<Response> => globalThis.fetch(url, init),
+        fetch: (...args: Parameters<typeof globalThis.fetch>): ReturnType<typeof globalThis.fetch> =>
+            globalThis.fetch(...args),
     });
     return new CloudflareApiService(client, logger);
 }

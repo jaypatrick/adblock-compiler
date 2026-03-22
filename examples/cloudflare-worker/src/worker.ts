@@ -17,6 +17,8 @@ export interface Env {
     METRICS: KVNamespace;
     // Static assets (modern assets binding)
     ASSETS?: Fetcher;
+    // Comma-separated list of allowed CORS origins. Defaults to localhost for dev.
+    CORS_ALLOWED_ORIGINS?: string;
 }
 
 interface CompileRequest {
@@ -47,6 +49,19 @@ interface CompilationResult {
         ruleCount: number;
         compiledAt: string;
     };
+}
+
+// Returns the allowed CORS origin for the incoming request.
+// Checks request Origin against CORS_ALLOWED_ORIGINS (comma-separated); falls back to
+// http://localhost:8787 for local dev when the env var is unset.
+// Write and authenticated endpoints must never use '*'.
+function getAllowedOrigin(request: Request, env: Env): string {
+    const requestOrigin = request.headers.get('Origin') ?? '';
+    const allowed = (env.CORS_ALLOWED_ORIGINS ?? 'http://localhost:8787')
+        .split(',')
+        .map((o) => o.trim())
+        .filter(Boolean);
+    return allowed.includes(requestOrigin) ? requestOrigin : allowed[0];
 }
 
 async function checkRateLimit(env: Env, ip: string): Promise<boolean> {
@@ -317,7 +332,7 @@ async function handleCompileStream(
             'Content-Type': 'text/event-stream',
             'Cache-Control': 'no-cache',
             'Connection': 'keep-alive',
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': getAllowedOrigin(request, env),
         },
     });
 }
@@ -351,7 +366,7 @@ async function handleCompileJson(
             }, {
                 headers: {
                     'X-Request-Deduplication': 'HIT',
-                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Origin': getAllowedOrigin(request, env),
                 },
             });
         }
@@ -376,7 +391,7 @@ async function handleCompileJson(
                 }, {
                     headers: {
                         'X-Cache': 'HIT',
-                        'Access-Control-Allow-Origin': '*',
+                        'Access-Control-Allow-Origin': getAllowedOrigin(request, env),
                     },
                 });
             } catch (error) {
@@ -445,7 +460,7 @@ async function handleCompileJson(
         return Response.json(result, {
             status: 500,
             headers: {
-                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Origin': getAllowedOrigin(request, env),
             },
         });
     }
@@ -456,7 +471,7 @@ async function handleCompileJson(
     return Response.json(result, {
         headers: {
             'X-Cache': 'MISS',
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': getAllowedOrigin(request, env),
         },
     });
 }
@@ -617,7 +632,7 @@ async function handleCompileBatch(
             { success: true, results },
             {
                 headers: {
-                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Origin': getAllowedOrigin(request, env),
                 },
             },
         );
@@ -634,7 +649,7 @@ async function handleCompileBatch(
     }
 }
 
-function handleInfo(env: Env): Response {
+function handleInfo(request: Request, env: Env): Response {
     const info = {
         name: 'Hostlist Compiler Worker',
         version: env.COMPILER_VERSION,
@@ -667,15 +682,15 @@ function handleInfo(env: Env): Response {
 
     return Response.json(info, {
         headers: {
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': getAllowedOrigin(request, env),
         },
     });
 }
 
-function handleCors(): Response {
+function handleCors(request: Request, env: Env): Response {
     return new Response(null, {
         headers: {
-            'Access-Control-Allow-Origin': '*',
+            'Access-Control-Allow-Origin': getAllowedOrigin(request, env),
             'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type',
             'Access-Control-Max-Age': '86400',
@@ -751,12 +766,12 @@ export default {
 
         // Handle CORS preflight
         if (request.method === 'OPTIONS') {
-            return handleCors();
+            return handleCors(request, env);
         }
 
         // Handle API routes
         if (pathname === '/api' && request.method === 'GET') {
-            return handleInfo(env);
+            return handleInfo(request, env);
         }
 
         // Handle metrics endpoint
@@ -764,7 +779,7 @@ export default {
             const metrics = await getMetrics(env);
             return Response.json(metrics, {
                 headers: {
-                    'Access-Control-Allow-Origin': '*',
+                    'Access-Control-Allow-Origin': getAllowedOrigin(request, env),
                     'Cache-Control': 'no-cache',
                 },
             });
@@ -788,7 +803,7 @@ export default {
                         status: 429,
                         headers: {
                             'Retry-After': '60',
-                            'Access-Control-Allow-Origin': '*',
+                            'Access-Control-Allow-Origin': getAllowedOrigin(request, env),
                         },
                     },
                 );

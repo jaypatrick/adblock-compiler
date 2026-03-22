@@ -176,7 +176,8 @@ export const _registerBuiltinMetricsForTesting = registerBuiltinMetrics;
 // ---------------------------------------------------------------------------
 
 // Handle GET /metrics/prometheus — renders all registered metrics in Prometheus text format 0.0.4.
-// Protected by CF Access JWT when CF_ACCESS_AUD is configured.
+// Protected by two layers: route-permission registry (admin tier required) AND optional CF Access
+// JWT when CF_ACCESS_AUD is configured. Both must pass for access to be granted.
 export async function handlePrometheusMetrics(request: Request, env: Env): Promise<Response> {
     // ZTA Layer 1: verify Cloudflare Access JWT when CF_ACCESS_AUD is configured.
     // verifyCfAccessJwt() is a no-op when CF_ACCESS_TEAM_DOMAIN / CF_ACCESS_AUD are unset,
