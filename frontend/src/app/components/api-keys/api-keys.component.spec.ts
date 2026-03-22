@@ -4,7 +4,6 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { provideRouter } from '@angular/router';
 import { ApiKeysComponent } from './api-keys.component';
 import { ApiKeyService, ApiKey } from '../../services/api-key.service';
-import { ClerkService } from '../../services/clerk.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 const MOCK_KEY: ApiKey = {

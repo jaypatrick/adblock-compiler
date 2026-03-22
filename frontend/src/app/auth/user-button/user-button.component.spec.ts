@@ -3,7 +3,6 @@ import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { UserButtonComponent } from './user-button.component';
-import { ClerkService } from '../../services/clerk.service';
 import { ThemeService } from '../../services/theme.service';
 
 describe('UserButtonComponent', () => {

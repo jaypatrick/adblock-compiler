@@ -3,7 +3,6 @@ import { provideZonelessChangeDetection } from '@angular/core';
 import { Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@angular/router';
 import { provideRouter } from '@angular/router';
 import { adminGuard } from './admin.guard';
-import { ClerkService } from '../services/clerk.service';
 import { provideTestBed } from '../../test-utils';
 
 describe('adminGuard', () => {

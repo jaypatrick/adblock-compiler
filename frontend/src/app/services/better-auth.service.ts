@@ -26,6 +26,16 @@ export interface BetterAuthUser {
     role: string;
 }
 
+export interface BetterAuthSession {
+    id: string;
+    userId: string;
+    userAgent: string | null;
+    ipAddress: string | null;
+    createdAt: string;
+    expiresAt: string;
+    isCurrent?: boolean;
+}
+
 @Injectable({ providedIn: 'root' })
 export class BetterAuthService {
     private readonly platformId = inject(PLATFORM_ID);
@@ -221,6 +231,116 @@ export class BetterAuthService {
             return {};
         } catch (err) {
             return { error: err instanceof Error ? err.message : 'Failed to change password.' };
+        }
+    }
+
+    signInWithSocial(provider: 'github'): void {
+        window.location.href = `${this.apiBaseUrl}/auth/sign-in/social?provider=${provider}&callbackURL=/api-keys`;
+    }
+
+    async enableTwoFactor(): Promise<{ qrCodeUrl?: string; backupCodes?: string[]; error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/two-factor/enable`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ password: '' }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to enable 2FA.' };
+            }
+            const data = await res.json() as { totpURI?: string; backupCodes?: string[] };
+            return { qrCodeUrl: data.totpURI, backupCodes: data.backupCodes };
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to enable 2FA.' };
+        }
+    }
+
+    async verifyTwoFactor(code: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/two-factor/verify-totp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ code }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Invalid code.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Verification failed.' };
+        }
+    }
+
+    async disableTwoFactor(password: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/two-factor/disable`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ password }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to disable 2FA.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to disable 2FA.' };
+        }
+    }
+
+    async listSessions(): Promise<{ sessions?: BetterAuthSession[]; error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/list-sessions`, {
+                credentials: 'include',
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to load sessions.' };
+            }
+            const data = await res.json() as { sessions?: BetterAuthSession[] } | BetterAuthSession[];
+            const sessions = Array.isArray(data) ? data : (data.sessions ?? []);
+            return { sessions };
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to load sessions.' };
+        }
+    }
+
+    async revokeSession(sessionId: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/revoke-session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ sessionId }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to revoke session.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to revoke session.' };
+        }
+    }
+
+    async revokeOtherSessions(): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/revoke-other-sessions`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to revoke sessions.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to revoke sessions.' };
         }
     }
 }

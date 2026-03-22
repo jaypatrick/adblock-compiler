@@ -3,7 +3,6 @@ import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SignUpComponent } from './sign-up.component';
-import { ClerkService } from '../../services/clerk.service';
 import { AuthFacadeService } from '../../services/auth-facade.service';
 import { ThemeService } from '../../services/theme.service';
 
