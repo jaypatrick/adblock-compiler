@@ -81,6 +81,19 @@ export function createAuth(env: Env, baseURL?: string) {
             expiresIn: 60 * 60 * 24 * 7,
             // Refresh session if it expires within 1 day
             updateAge: 60 * 60 * 24,
+            cookieCache: {
+                enabled: true,
+                maxAge: 60 * 5, // 5-minute cookie cache
+            },
+        },
+        advanced: {
+            cookiePrefix: 'adblock',
+            defaultCookieAttributes: {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'lax', // 'lax' allows OAuth redirects; 'strict' blocks them
+                path: '/',
+            },
         },
 
         plugins: [

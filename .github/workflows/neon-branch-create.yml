@@ -55,6 +55,9 @@ jobs:
           # Fork from the primary (production) branch
           parent: main
           api_key: ${{ secrets.NEON_API_KEY }}
+          # Neon project has multiple roles; specify which one to use for
+          # the connection string outputs (db_url, db_url_with_pooler).
+          role_name: neondb_owner
 
       # ── 3. Set up Node.js for Prisma CLI ───────────────────────────────────
       - name: Set up Node.js

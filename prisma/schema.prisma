@@ -105,6 +105,8 @@ model Account {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
+  @@unique([userId, providerId], map: "account_user_provider_unique")
+  @@index([userId], map: "account_user_id_idx")
   @@map("account")
 }
 

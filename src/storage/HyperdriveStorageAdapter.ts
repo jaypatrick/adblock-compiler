@@ -729,6 +729,7 @@ export class HyperdriveStorageAdapter implements IStorageAdapter {
         const session = await prisma.session.create({
             data: {
                 userId: validated.userId,
+                token: validated.token ?? crypto.randomUUID(),
                 tokenHash: validated.tokenHash,
                 ipAddress: validated.ipAddress ?? null,
                 userAgent: validated.userAgent ?? null,

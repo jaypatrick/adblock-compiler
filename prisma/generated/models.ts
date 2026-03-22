@@ -11,6 +11,8 @@
 export type * from './models/User.ts'
 export type * from './models/ApiKey.ts'
 export type * from './models/Session.ts'
+export type * from './models/Account.ts'
+export type * from './models/Verification.ts'
 export type * from './models/FilterSource.ts'
 export type * from './models/FilterListVersion.ts'
 export type * from './models/CompiledOutput.ts'

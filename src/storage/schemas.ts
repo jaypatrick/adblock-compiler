@@ -39,6 +39,7 @@ export const CreateApiKeySchema = z.object({
 
 export const CreateSessionSchema = z.object({
     userId: UuidSchema,
+    token: z.string().min(32).max(255).optional(),
     tokenHash: z.string().min(64).max(128),
     ipAddress: z.string().max(45).optional(),
     userAgent: z.string().max(500).optional(),
