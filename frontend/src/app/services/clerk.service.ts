@@ -1,4 +1,10 @@
 /**
+ * @deprecated Clerk is a legacy auth provider. Better Auth is now the primary
+ * authentication system. This service is retained only for backward compatibility
+ * with users who have existing Clerk sessions. All new sign-ins/sign-ups go
+ * through BetterAuthService. This service and its dependencies (`@clerk/clerk-js`,
+ * `@clerk/shared`) will be removed in a future release.
+ *
  * ClerkService — Signal-based wrapper around `@clerk/clerk-js`.
  *
  * Provides reactive auth state for Angular 21 via signals:
@@ -9,10 +15,6 @@
  *
  * SSR-safe: all Clerk operations are guarded by `isPlatformBrowser`.
  * Clerk JS is loaded lazily via dynamic import to keep the server bundle clean.
- *
- * Separate from LocalAuthService (local JWT bridge) — the two coexist:
- *   - ClerkService handles user identity (JWT, sign-in/out, user profile)
- *   - LocalAuthService handles local JWT authentication (pre-Clerk bridge)
  */
 
 import { Injectable, inject, signal, computed, PLATFORM_ID } from '@angular/core';
@@ -21,6 +23,7 @@ import type { Clerk } from '@clerk/clerk-js';
 import type { UserResource, SessionResource } from '@clerk/shared/types';
 import { ClerkAppearanceService } from './clerk-appearance.service';
 
+/** @deprecated Use BetterAuthService instead. Clerk is a legacy fallback. */
 @Injectable({ providedIn: 'root' })
 export class ClerkService {
     private readonly platformId = inject(PLATFORM_ID);
@@ -56,6 +59,7 @@ export class ClerkService {
     readonly userId = computed(() => this._user()?.id ?? null);
 
     /**
+     * @deprecated Clerk is a legacy auth provider.
      * Mark that the Clerk config fetch itself failed (e.g. network error or timeout
      * hitting `/api/clerk-config`). This is distinct from the key simply being absent —
      * consumers can use `configLoadFailed()` to show a transient-error message instead
@@ -66,6 +70,7 @@ export class ClerkService {
     }
 
     /**
+     * @deprecated Clerk is a legacy auth provider.
      * Initialise the Clerk SDK. Called from `provideAppInitializer` in app.config.ts.
      * No-op on the server (SSR-safe).
      */
@@ -104,6 +109,7 @@ export class ClerkService {
     }
 
     /**
+     * @deprecated Clerk is a legacy auth provider.
      * Get a fresh session JWT. Returns null when not signed in.
      * Used by the auth interceptor to attach `Authorization: Bearer <token>`.
      */
@@ -111,7 +117,7 @@ export class ClerkService {
         return (await this.clerkInstance?.session?.getToken()) ?? null;
     }
 
-    /** Mount Clerk's pre-built sign-in UI into the given DOM element. */
+    /** @deprecated Clerk is a legacy auth provider. Mount Clerk's pre-built sign-in UI into the given DOM element. */
     mountSignIn(element: HTMLDivElement, fallbackRedirectUrl?: string): void {
         if (!this.clerkInstance) return;
         this.clerkInstance.mountSignIn(element, {
@@ -120,36 +126,36 @@ export class ClerkService {
         });
     }
 
-    /** Unmount Clerk's sign-in UI from the given DOM element. */
+    /** @deprecated Clerk is a legacy auth provider. */
     unmountSignIn(element: HTMLDivElement): void {
         this.clerkInstance?.unmountSignIn(element);
     }
 
-    /** Mount Clerk's pre-built sign-up UI into the given DOM element. */
+    /** @deprecated Clerk is a legacy auth provider. */
     mountSignUp(element: HTMLDivElement): void {
         this.clerkInstance?.mountSignUp(element, {
             appearance: this.clerkAppearanceService.buildAppearance(),
         });
     }
 
-    /** Unmount Clerk's sign-up UI from the given DOM element. */
+    /** @deprecated Clerk is a legacy auth provider. */
     unmountSignUp(element: HTMLDivElement): void {
         this.clerkInstance?.unmountSignUp(element);
     }
 
-    /** Mount Clerk's user button (avatar + dropdown) into the given DOM element. */
+    /** @deprecated Clerk is a legacy auth provider. */
     mountUserButton(element: HTMLDivElement): void {
         this.clerkInstance?.mountUserButton(element, {
             appearance: this.clerkAppearanceService.buildAppearance(),
         });
     }
 
-    /** Unmount Clerk's user button from the given DOM element. */
+    /** @deprecated Clerk is a legacy auth provider. */
     unmountUserButton(element: HTMLDivElement): void {
         this.clerkInstance?.unmountUserButton(element);
     }
 
-    /** Sign the user out and clear local state. */
+    /** @deprecated Clerk is a legacy auth provider. Sign the user out and clear local state. */
     async signOut(): Promise<void> {
         await this.clerkInstance?.signOut();
         this._user.set(null);

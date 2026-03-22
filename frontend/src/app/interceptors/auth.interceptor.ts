@@ -1,10 +1,18 @@
 /**
  * Functional HTTP interceptor for Bearer token authentication.
  *
- * Provider-aware via AuthFacadeService — works with both Clerk and Better Auth.
- * Attaches `Authorization: Bearer <token>` to outgoing API requests when
- * the user is signed in. Skips public/health endpoints and auth paths
- * (to avoid circular validation calls).
+ * Provider-aware via AuthFacadeService — works with both Better Auth (primary)
+ * and Clerk (deprecated legacy fallback).
+ *
+ * **Auth model:**
+ * - Better Auth uses cookie-based session auth by default. The bearer() plugin
+ *   on the server *also* accepts `Authorization: Bearer <token>` headers. This
+ *   interceptor attaches the bearer token when available, giving the Worker two
+ *   ways to authenticate the request (cookie OR header).
+ * - Clerk uses JWT-based auth exclusively via `Authorization: Bearer <token>`.
+ *
+ * Skips public/health endpoints and `/api/auth/` paths to avoid circular
+ * validation calls during the auth flow.
  */
 
 import { HttpInterceptorFn } from '@angular/common/http';
@@ -17,7 +25,8 @@ const PUBLIC_PATHS = [
     '/api/version',
     '/api/health',
     '/api/turnstile-config',
-    '/api/clerk-config',
+    '/api/clerk-config',   // @deprecated: Clerk legacy config endpoint
+    '/api/sentry-config',
     '/api/deployments',
     '/api/metrics',
     // Better Auth endpoints — skip to avoid circular calls during auth flow

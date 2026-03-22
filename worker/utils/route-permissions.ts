@@ -140,6 +140,12 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/admin/storage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin operations' }],
     ['/admin/auth/api-keys', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key management' }],
     ['/admin/auth/api-keys/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key operations' }],
+    ['/admin/neon/project', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Neon project overview' }],
+    ['/admin/neon/branches', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List Neon branches' }],
+    ['/admin/neon/branches/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Neon branch operations (get/create/delete)' }],
+    ['/admin/neon/endpoints', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List Neon compute endpoints' }],
+    ['/admin/neon/databases/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List databases for a Neon branch' }],
+    ['/admin/neon/query', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Execute SQL via Neon serverless driver' }],
     ['/metrics/prometheus', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Prometheus metrics scrape' }],
 ]);
 

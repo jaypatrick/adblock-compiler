@@ -31,9 +31,28 @@ services:
         networks:
             - adblock-network
 
+    postgres:
+        image: postgres:16-alpine
+        ports:
+            - '5432:5432'
+        environment:
+            POSTGRES_DB: adblock_dev
+            POSTGRES_USER: adblock
+            POSTGRES_PASSWORD: localdev
+        volumes:
+            - pgdata:/var/lib/postgresql/data
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U adblock']
+            interval: 5s
+            timeout: 5s
+            retries: 5
+        networks:
+            - adblock-network
+
 volumes:
     deno-cache:
         name: adblock-compiler-deno-cache
+    pgdata:
 
 networks:
     adblock-network:

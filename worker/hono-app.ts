@@ -82,6 +82,16 @@ import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdate
 import { handleAdminBanUser, handleAdminDeleteUser, handleAdminGetUser, handleAdminListUsers, handleAdminUnbanUser, handleAdminUpdateUser } from './handlers/admin-users.ts';
 import { handleAdminAuthConfig } from './handlers/auth-config.ts';
 import { handleAdminGetUserUsage } from './handlers/admin-usage.ts';
+import {
+    handleAdminNeonCreateBranch,
+    handleAdminNeonDeleteBranch,
+    handleAdminNeonGetBranch,
+    handleAdminNeonGetProject,
+    handleAdminNeonListBranches,
+    handleAdminNeonListDatabases,
+    handleAdminNeonListEndpoints,
+    handleAdminNeonQuery,
+} from './handlers/admin-neon.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleMetrics } from './handlers/metrics.ts';
 import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './handlers/configuration.ts';
@@ -312,10 +322,19 @@ app.use('*', async (c, next) => {
         return;
     }
 
-    // Standard unified authentication
+    // ── Auth priority chain (P3 inversion): BA primary → Clerk fallback ──
+    //
+    // 1. Always try Better Auth first (cookie / bearer-plugin sessions).
+    // 2. If BA returns { valid: false } without an error (= "no session found"),
+    //    AND Clerk is still configured, try Clerk as a deprecated fallback.
+    // 3. DISABLE_CLERK_FALLBACK=true skips step 2 entirely.
     startTime(c, 'auth', 'Authentication');
-    const authProvider = c.env.CLERK_JWKS_URL ? new ClerkAuthProvider(c.env) : new BetterAuthProvider(c.env);
-    const authResult = await authenticateRequestUnified(c.req.raw, c.env, createPgPool, authProvider);
+    const authProvider = new BetterAuthProvider(c.env);
+    const clerkFallbackEnabled = c.env.CLERK_JWKS_URL && c.env.DISABLE_CLERK_FALLBACK !== 'true';
+    const authResult = await authenticateRequestUnified(
+        c.req.raw, c.env, createPgPool, authProvider,
+        clerkFallbackEnabled ? new ClerkAuthProvider(c.env) : undefined,
+    );
     endTime(c, 'auth');
     if (authResult.response) return authResult.response;
     c.set('authContext', authResult.context);
@@ -457,6 +476,17 @@ routes.all('/admin/storage/*', async (c) => {
     const { routeAdminStorage } = await import('./handlers/admin.ts');
     return routeAdminStorage(c.req.path, c.req.raw, c.env, c.get('authContext'));
 });
+
+// ── Admin Neon reporting ─────────────────────────────────────────────────────
+
+routes.get('/admin/neon/project', (c) => handleAdminNeonGetProject(c.req.raw, c.env, c.get('authContext')));
+routes.get('/admin/neon/branches', (c) => handleAdminNeonListBranches(c.req.raw, c.env, c.get('authContext')));
+routes.get('/admin/neon/branches/:branchId', (c) => handleAdminNeonGetBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')));
+routes.post('/admin/neon/branches', (c) => handleAdminNeonCreateBranch(c.req.raw, c.env, c.get('authContext')));
+routes.delete('/admin/neon/branches/:branchId', (c) => handleAdminNeonDeleteBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')));
+routes.get('/admin/neon/endpoints', (c) => handleAdminNeonListEndpoints(c.req.raw, c.env, c.get('authContext')));
+routes.get('/admin/neon/databases/:branchId', (c) => handleAdminNeonListDatabases(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')));
+routes.post('/admin/neon/query', (c) => handleAdminNeonQuery(c.req.raw, c.env, c.get('authContext')));
 
 // ── Metrics ───────────────────────────────────────────────────────────────────
 
@@ -649,14 +679,25 @@ routes.delete(
     (c) => handleRulesDelete(c.req.param('id'), c.env),
 );
 
-// ── API Keys (requireAuth + Clerk JWT) ────────────────────────────────────────
+// ── API Keys (requireAuth + interactive session — Better Auth primary, Clerk fallback) ──
+//
+// Only interactive user sessions (Better Auth cookie/bearer or Clerk JWT)
+// may manage API keys.  API-key-on-API-key and anonymous requests are
+// rejected by the INTERACTIVE_AUTH_METHODS guard.
+//
+// During the migration window, both Better Auth and Clerk sessions produce
+// a valid `authContext.userId` that the handlers use as `api_keys.user_id`.
+// See worker/handlers/api-keys.ts for column semantics.
+
+/** Auth methods that represent an interactive user session (not API key or anonymous). */
+const INTERACTIVE_AUTH_METHODS = new Set(['clerk-jwt', 'better-auth']);
 
 routes.post(
     '/keys',
     requireAuthMiddleware(),
     rateLimitMiddleware(),
     async (c) => {
-        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
         return handleCreateApiKey(c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
     },
@@ -666,7 +707,7 @@ routes.get(
     '/keys',
     requireAuthMiddleware(),
     async (c) => {
-        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
         return handleListApiKeys(c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
     },
@@ -676,7 +717,7 @@ routes.delete(
     '/keys/:id',
     requireAuthMiddleware(),
     async (c) => {
-        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
         return handleRevokeApiKey(c.req.param('id'), c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
     },
@@ -686,15 +727,32 @@ routes.patch(
     '/keys/:id',
     requireAuthMiddleware(),
     async (c) => {
-        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
         return handleUpdateApiKey(c.req.param('id'), c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
     },
 );
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────
+//
+// Clerk webhook is conditionally enabled:
+//   - Requires CLERK_WEBHOOK_SECRET to be set (existing check in handler)
+//   - Can be disabled at the route level with DISABLE_CLERK_WEBHOOKS=true
+// When disabled, returns 410 Gone so callers know the endpoint is retired.
 
-routes.post('/webhooks/clerk', (c) => handleClerkWebhook(c.req.raw, c.env));
+routes.post('/webhooks/clerk', (c) => {
+    if (c.env.DISABLE_CLERK_WEBHOOKS === 'true') {
+        return c.json(
+            {
+                success: false,
+                error: 'Clerk webhooks are disabled. Auth has migrated to Better Auth.',
+                code: 'CLERK_WEBHOOKS_DISABLED',
+            },
+            410,
+        );
+    }
+    return handleClerkWebhook(c.req.raw, c.env);
+});
 
 routes.post(
     '/notify',

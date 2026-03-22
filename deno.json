@@ -95,6 +95,8 @@
         "@cloudflare/playwright-mcp": "npm:@cloudflare/playwright-mcp@^0.0.5",
         "cloudflare": "npm:cloudflare@^5.2.0",
         "cloudflare:workers": "./worker/cloudflare-workers-shim.ts",
+        "@neondatabase/serverless": "npm:@neondatabase/serverless@^0.10.0",
+        "better-auth": "npm:better-auth@^1.5.5",
         "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.5.0",
         "@prisma/adapter-d1": "npm:@prisma/adapter-d1@^7.5.0",
         "@prisma/client": "npm:@prisma/client@^7.5.0",

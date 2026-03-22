@@ -121,12 +121,17 @@ export const appConfig: ApplicationConfig = {
                 // Non-fatal: Turnstile will be disabled if config can't be fetched or times out
             }
 
-            // Clerk SDK initialisation (browser only, non-fatal)
+            // @deprecated — Clerk SDK initialisation (browser only, non-fatal)
+            // Clerk is a legacy auth provider. Better Auth is now the primary auth
+            // system and initializes itself in BetterAuthService's constructor (calls
+            // checkSession() automatically on browser platforms). The Clerk init below
+            // is retained only to support users with existing Clerk sessions.
+            // TODO(auth-migration): Remove this block when Clerk support is fully dropped.
+            //
             // Fetches the publishable key from /api/clerk-config at runtime —
             // mirrors the Turnstile pattern above so no build-time env files are needed.
             // IMPORTANT: Always call initialize() even when the key is missing/null —
-            // this sets isLoaded=true so the header shows auth links (or an appropriate
-            // fallback) instead of rendering nothing.
+            // this sets isLoaded=true so the auth facade can determine provider priority.
             try {
                 const clerkConfig = await firstValueFrom(
                     http.get<{ publishableKey: string | null }>(`${apiBaseUrl}/clerk-config`)

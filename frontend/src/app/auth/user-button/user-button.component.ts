@@ -89,14 +89,17 @@ import { ThemeService } from '../../services/theme.service';
 })
 export class UserButtonComponent implements OnDestroy {
     protected readonly auth = inject(AuthFacadeService);
+    /** @deprecated TODO(auth-migration): Remove ClerkService injection when Clerk support is dropped. */
     private readonly clerk = inject(ClerkService);
     private readonly theme = inject(ThemeService);
 
+    /** @deprecated TODO(auth-migration): Remove Clerk mount container + mounted flag. */
     private readonly container = viewChild<ElementRef<HTMLDivElement>>('userButtonContainer');
     private mounted = false;
 
     private readonly _mount = afterNextRender(() => this.tryMount());
 
+    // TODO(auth-migration): Remove Clerk sign-in/mount effect when Clerk support is dropped.
     private readonly _signInEffect = effect(() => {
         const signedIn = this.auth.isSignedIn();
         const useClerk = this.auth.useClerk();
@@ -107,6 +110,7 @@ export class UserButtonComponent implements OnDestroy {
         }
     });
 
+    // TODO(auth-migration): Remove Clerk theme re-mount effect when Clerk support is dropped.
     private readonly _themeEffect = effect(() => {
         this.theme.isDark();
         if (this.mounted) {
@@ -119,6 +123,7 @@ export class UserButtonComponent implements OnDestroy {
         }
     });
 
+    // TODO(auth-migration): Remove Clerk unmount in ngOnDestroy when Clerk support is dropped.
     ngOnDestroy(): void {
         const el = this.container()?.nativeElement;
         if (el) this.clerk.unmountUserButton(el);
@@ -128,6 +133,7 @@ export class UserButtonComponent implements OnDestroy {
         await this.auth.signOut();
     }
 
+    /** @deprecated TODO(auth-migration): Remove Clerk mount logic when Clerk support is dropped. */
     private tryMount(): void {
         const el = this.container()?.nativeElement;
         if (el && !this.mounted && this.auth.useClerk()) {

@@ -204,6 +204,19 @@ Examples:
 | Cloudflare Workers deployment | [docs/deployment/cloudflare-pages.md](docs/deployment/cloudflare-pages.md) |
 | Angular frontend | [frontend/README.md](frontend/README.md) |
 
+## 🏗️ Tech Stack
+
+| Layer | Technology | Notes |
+|---|---|---|
+| **Runtime** | [Deno](https://deno.land/) 2.x, [Cloudflare Workers](https://workers.cloudflare.com/) | Edge-first execution |
+| **Framework** | [Hono](https://hono.dev/) | Lightweight web framework for Workers |
+| **Database** | [Neon PostgreSQL](https://neon.tech/) (primary), [Cloudflare D1](https://developers.cloudflare.com/d1/) (edge cache) | Neon via [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) connection pooling |
+| **ORM** | [Prisma](https://www.prisma.io/) 7.x | `@prisma/adapter-pg` for PostgreSQL, `@prisma/adapter-d1` for D1 |
+| **Authentication** | [Better Auth](https://www.better-auth.com/) (primary), [Clerk](https://clerk.com/) (deprecated fallback) | Better Auth for new sessions; Clerk for legacy tokens during migration |
+| **Storage** | [Cloudflare R2](https://developers.cloudflare.com/r2/), [KV](https://developers.cloudflare.com/kv/) | R2 for compiled outputs, KV for caching & rate limits |
+| **Frontend** | [Angular 21](https://angular.dev/) | Zoneless change detection, Material Design 3, SSR on Workers |
+| **Validation** | [Zod](https://zod.dev/) | Runtime schema validation at all trust boundaries |
+
 ## 🔧 Development
 
 ### Prerequisites

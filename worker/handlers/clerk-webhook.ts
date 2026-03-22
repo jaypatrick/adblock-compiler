@@ -11,6 +11,22 @@
  *
  * Security: Svix HMAC signature verification (no JWT / API-key auth).
  *
+ * ## Deprecation notice
+ *
+ * This handler exists only for the Clerk→Better Auth migration window.
+ * Once all users have been migrated the webhook endpoint should be
+ * disabled via `DISABLE_CLERK_WEBHOOKS=true` (see `worker/types.ts`).
+ * After the migration is complete this file and the associated route
+ * in `hono-app.ts` will be removed.
+ *
+ * @deprecated Scheduled for removal once the Clerk→Better Auth migration
+ *   is complete.  Set `DISABLE_CLERK_WEBHOOKS=true` in the environment to
+ *   disable this handler at the route level before full removal.
+ *
+ * @see worker/hono-app.ts — route-level disable guard
+ * @see worker/types.ts — DISABLE_CLERK_WEBHOOKS env var
+ * @see docs/auth/migration-clerk-to-better-auth.md — migration plan
+ *
  * Note: this handler intentionally does NOT use the Prisma-generated D1 client.
  * The `prisma-client` generator (v7) embeds a WASM-based query compiler that calls
  * `new WebAssembly.Module(base64Data)` at instantiation time — an operation blocked by
@@ -307,6 +323,14 @@ class D1UserStore implements PrismaLike {
 // Route handler
 // ---------------------------------------------------------------------------
 
+/**
+ * Process a Clerk webhook event: verify the Svix signature, parse the
+ * payload with Zod, and sync user data to D1.
+ *
+ * @deprecated Scheduled for removal once the Clerk→Better Auth migration
+ *   is complete.  The route-level guard in `hono-app.ts` already supports
+ *   disabling this handler via `DISABLE_CLERK_WEBHOOKS=true`.
+ */
 export async function handleClerkWebhook(
     request: Request,
     env: Env,

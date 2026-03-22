@@ -17,14 +17,41 @@ export { CachingDownloader, type CachingOptions, type DownloadResult } from './C
 // Storage abstraction layer
 export type { IStorageAdapter, StorageAdapterConfig, StorageAdapterFactory, StorageAdapterType } from './IStorageAdapter.ts';
 
-// Prisma storage adapter (default, uses SQLite)
+/**
+ * @deprecated Use {@link HyperdriveStorageAdapter} instead — it uses Prisma
+ * natively and is the canonical storage backend.
+ */
 export { PrismaStorageAdapter } from './PrismaStorageAdapter.ts';
 
 // Cloudflare D1 storage adapter (for edge deployments)
 export { createD1Storage, D1StorageAdapter, type D1StorageConfig } from './D1StorageAdapter.ts';
 
-// Cloudflare Hyperdrive storage adapter (for PlanetScale PostgreSQL)
-export { createHyperdriveStorage, type HyperdriveBinding, HyperdriveStorageAdapter, type HyperdriveStorageConfig, type PgPoolFactory } from './HyperdriveStorageAdapter.ts';
+// Cloudflare Hyperdrive storage adapter (for PostgreSQL via Prisma)
+export {
+    createHyperdriveStorage,
+    type HyperdriveBinding,
+    HyperdriveStorageAdapter,
+    type HyperdriveStorageConfig,
+    HyperdriveStorageConfigSchema,
+    type IHyperdriveLogger,
+    /** @deprecated Use PrismaClientFactory instead. */
+    type PgPoolFactory,
+    type PrismaClientFactory,
+} from './HyperdriveStorageAdapter.ts';
+
+// D1 cache sync utilities (Neon → D1 write-through / lazy sync)
+export {
+    D1CacheSyncConfigSchema,
+    type D1CacheSyncConfig,
+    type ICacheSyncLogger,
+    type CacheSyncResult,
+    type BatchSyncResult,
+    type SyncTable,
+    syncRecord,
+    invalidateRecord,
+    isCacheStale,
+    syncBatch,
+} from './d1-cache-sync.ts';
 
 // Zod validation schemas for database models
 export {

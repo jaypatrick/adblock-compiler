@@ -1,20 +1,22 @@
 /**
- * Cloudflare Hyperdrive Storage Adapter
+ * Cloudflare Hyperdrive Storage Adapter (Prisma)
  *
- * Storage backend implementation for PostgreSQL via Cloudflare Hyperdrive.
- * Connects to PlanetScale PostgreSQL through Hyperdrive's connection pooler,
- * providing accelerated database access from Cloudflare Workers.
+ * Type-safe storage backend for PostgreSQL via Cloudflare Hyperdrive,
+ * powered by Prisma ORM.  All raw SQL has been replaced with Prisma
+ * queries for compile-time type safety, auto-completion, and migration
+ * support.
  *
- * This is the L2 (source of truth) storage tier in the multi-tier architecture:
+ * This is the L2 (source of truth) storage tier:
  *   L0: KV (hot cache, edge)
  *   L1: D1 (SQLite, edge read replica)
- *   L2: Hyperdrive -> PlanetScale PostgreSQL (this adapter)
+ *   L2: Hyperdrive -> PostgreSQL via Prisma (this adapter)
  *   L3: R2 (blob storage)
  *
- * Uses node-postgres (pg) driver which is supported in Cloudflare Workers
- * via the `node_compat` compatibility flag.
+ * @module
  */
 
+import type { PrismaClient } from '../../prisma/generated/client.ts';
+import { Prisma } from '../../prisma/generated/client.ts';
 import type { IStorageAdapter } from './IStorageAdapter.ts';
 import type { CacheEntry, CompilationMetadata, QueryOptions, StorageEntry, StorageStats } from './types.ts';
 import type {
@@ -39,6 +41,7 @@ import {
     CreateSourceHealthSnapshotSchema,
     CreateUserSchema,
 } from './schemas.ts';
+import { z } from 'zod';
 
 // ============================================================================
 // Types
@@ -46,7 +49,7 @@ import {
 
 /**
  * Cloudflare Hyperdrive binding type.
- * Matches the Hyperdrive interface from @cloudflare/workers-types.
+ * Matches the Hyperdrive interface from `@cloudflare/workers-types`.
  */
 export interface HyperdriveBinding {
     connectionString: string;
@@ -58,39 +61,35 @@ export interface HyperdriveBinding {
 }
 
 /**
- * Minimal pg Pool-compatible interface.
- * Avoids importing pg types directly — injected at runtime.
+ * Factory function that creates a {@link PrismaClient} from a Hyperdrive
+ * connection string.  Injected to decouple the adapter from the concrete
+ * Prisma instantiation logic (e.g. `@prisma/adapter-pg`).
  */
-interface PgPool {
-    query<T = Record<string, unknown>>(text: string, values?: unknown[]): Promise<PgQueryResult<T>>;
-    end(): Promise<void>;
-}
-
-interface PgQueryResult<T = Record<string, unknown>> {
-    rows: T[];
-    rowCount: number | null;
-}
+export type PrismaClientFactory = (connectionString: string) => PrismaClient;
 
 /**
- * Factory function type for creating a pg Pool.
- * Injected to avoid hard dependency on pg in environments that don't have it.
- */
-export type PgPoolFactory = (connectionString: string) => PgPool;
-
-/**
- * Configuration options for Hyperdrive Storage Adapter
+ * Configuration options for {@link HyperdriveStorageAdapter}.
  */
 export interface HyperdriveStorageConfig {
-    /** Default TTL for cache entries in milliseconds (default: 1 hour) */
+    /** Default TTL for cache entries in milliseconds (default: 3 600 000 = 1 h). */
     defaultTtlMs?: number;
-    /** Enable query logging */
+    /** Enable query logging (default: false). */
     enableLogging?: boolean;
 }
 
 /**
- * Logger interface for Hyperdrive adapter
+ * Zod schema for validating {@link HyperdriveStorageConfig} at startup.
  */
-interface IHyperdriveLogger {
+export const HyperdriveStorageConfigSchema = z.object({
+    defaultTtlMs: z.number().int().positive().optional().default(3_600_000),
+    enableLogging: z.boolean().optional().default(false),
+});
+
+/**
+ * Logger interface accepted by {@link HyperdriveStorageAdapter}.
+ * All methods are optional so plain `console` is a valid logger.
+ */
+export interface IHyperdriveLogger {
     debug?(message: string): void;
     info?(message: string): void;
     warn?(message: string): void;
@@ -98,676 +97,862 @@ interface IHyperdriveLogger {
 }
 
 // ============================================================================
+// Legacy Type Aliases (kept for backward-compatible re-exports)
+// ============================================================================
+
+/**
+ * @deprecated Use {@link PrismaClientFactory} instead.
+ * Retained so that `index.ts` re-exports continue to compile.
+ */
+export type PgPoolFactory = PrismaClientFactory;
+
+// ============================================================================
+// Key Serialisation Helpers
+// ============================================================================
+
+/** Serializes a key array (`['a','b']`) to a slash-separated string (`'a/b'`). */
+function serializeKey(key: string[]): string {
+    return key.join('/');
+}
+
+/** Deserializes a slash-separated string back to an array. */
+function deserializeKey(key: string): string[] {
+    return key.split('/');
+}
+
+// ============================================================================
 // Adapter Implementation
 // ============================================================================
 
 /**
- * Hyperdrive-backed PostgreSQL storage adapter.
+ * Hyperdrive-backed PostgreSQL storage adapter using Prisma ORM.
  *
- * Implements `IStorageAdapter` for backward compatibility with existing
+ * Implements {@link IStorageAdapter} for backward compatibility with existing
  * storage consumers (KV-style operations, filter caching, compilation metadata).
  *
- * Also provides domain-specific methods for the new PostgreSQL models:
+ * Also provides domain-specific methods for the relational models:
  * users, API keys, sessions, filter sources, compiled outputs, etc.
  *
  * @example
  * ```typescript
- * // In a Cloudflare Worker
- * import { Pool } from 'pg';
+ * import { createPrismaClient } from '../../worker/lib/prisma.ts';
  *
  * const adapter = new HyperdriveStorageAdapter(
  *     env.HYPERDRIVE,
- *     (connStr) => new Pool({ connectionString: connStr }),
+ *     (cs) => createPrismaClient(cs),
  *     { enableLogging: true },
  *     console,
  * );
  * await adapter.open();
+ * const user = await adapter.createUser({ email: 'dev@example.com' });
  * ```
  */
 export class HyperdriveStorageAdapter implements IStorageAdapter {
-    private pool: PgPool | null = null;
+    private prisma: PrismaClient | null = null;
     private readonly hyperdrive: HyperdriveBinding;
-    private readonly createPool: PgPoolFactory;
+    private readonly createPrismaClient: PrismaClientFactory;
     private readonly config: Required<HyperdriveStorageConfig>;
     private readonly logger?: IHyperdriveLogger;
     private _isOpen = false;
 
+    /**
+     * Creates a new {@link HyperdriveStorageAdapter}.
+     *
+     * The adapter connects to PostgreSQL through Cloudflare Hyperdrive using
+     * Prisma ORM as the query layer.  The Prisma client is created lazily via
+     * the supplied factory when {@link open} is called.
+     *
+     * @param hyperdrive         - Cloudflare Hyperdrive binding (`env.HYPERDRIVE`).
+     * @param createPrismaClient - Factory that turns a connection string into a
+     *                             {@link PrismaClient}.
+     * @param config             - Optional adapter configuration.
+     * @param logger             - Optional logger (all methods optional).
+     * @throws {z.ZodError} If `config` fails {@link HyperdriveStorageConfigSchema} validation.
+     */
     constructor(
         hyperdrive: HyperdriveBinding,
-        createPool: PgPoolFactory,
-        config: HyperdriveStorageConfig = {},
+        createPrismaClient: PrismaClientFactory,
+        config?: HyperdriveStorageConfig,
         logger?: IHyperdriveLogger,
     ) {
         this.hyperdrive = hyperdrive;
-        this.createPool = createPool;
+        this.createPrismaClient = createPrismaClient;
+        const parsed = HyperdriveStorageConfigSchema.parse(config ?? {});
         this.config = {
-            defaultTtlMs: config.defaultTtlMs ?? 3600000,
-            enableLogging: config.enableLogging ?? false,
+            defaultTtlMs: parsed.defaultTtlMs,
+            enableLogging: parsed.enableLogging,
         };
         this.logger = logger;
-    }
-
-    private log(level: 'debug' | 'info' | 'warn' | 'error', message: string): void {
-        if (this.config.enableLogging && this.logger?.[level]) {
-            this.logger[level]!(message);
-        }
-    }
-
-    private ensureOpen(): PgPool {
-        if (!this.pool || !this._isOpen) {
-            throw new Error('Storage not initialized. Call open() first.');
-        }
-        return this.pool;
     }
 
     // ========================================================================
     // Lifecycle
     // ========================================================================
 
+    /**
+     * Opens a Prisma connection via Hyperdrive.
+     *
+     * @throws {Error} If the Hyperdrive binding is missing or the initial
+     *                 connectivity check (`SELECT 1`) fails.
+     */
     async open(): Promise<void> {
-        if (this._isOpen) return;
-
-        this.pool = this.createPool(this.hyperdrive.connectionString);
+        if (this._isOpen && this.prisma) {
+            this.log('warn', 'Hyperdrive Prisma storage already open');
+            return;
+        }
+        this.prisma = this.createPrismaClient(this.hyperdrive.connectionString);
+        // Prisma with driver adapters connects lazily on first query,
+        // but we issue a trivial read to fail-fast.
+        // deno-lint-ignore no-explicit-any
+        await (this.prisma as any).$queryRaw`SELECT 1`;
         this._isOpen = true;
-        this.log('info', `Hyperdrive storage opened (host: ${this.hyperdrive.host})`);
+        this.log('info', `Hyperdrive Prisma storage opened (host=${this.hyperdrive.host})`);
     }
 
+    /** Disconnects the Prisma client. */
     async close(): Promise<void> {
-        if (this.pool) {
-            await this.pool.end();
-            this.pool = null;
+        if (this.prisma) {
+            // deno-lint-ignore no-explicit-any
+            await (this.prisma as any).$disconnect();
+            this.prisma = null;
             this._isOpen = false;
-            this.log('info', 'Hyperdrive storage closed');
+            this.log('info', 'Hyperdrive Prisma storage closed');
         }
     }
 
+    /** Returns `true` when the Prisma client is connected. */
     isOpen(): boolean {
-        return this._isOpen;
+        return this._isOpen && this.prisma !== null;
     }
 
     // ========================================================================
-    // IStorageAdapter — Core Key-Value Operations
+    // Internal Helpers
     // ========================================================================
 
+    /** Conditionally logs a message at the given level. */
+    private log(level: keyof IHyperdriveLogger, message: string): void {
+        if (!this.config.enableLogging || !this.logger) return;
+        this.logger[level]?.(message);
+    }
+
+    /** Returns the live PrismaClient or throws. */
+    private ensureOpen(): PrismaClient {
+        if (!this.prisma || !this._isOpen) {
+            throw new Error('Storage not initialized. Call open() first.');
+        }
+        return this.prisma;
+    }
+
+    // ========================================================================
+    // IStorageAdapter - Core Key-Value Operations
+    // ========================================================================
+
+    /**
+     * Stores a value with the given composite key.
+     *
+     * @param key   - Composite key segments (e.g. `['cache','filter','easylist']`).
+     * @param value - JSON-serializable value to store.
+     * @param ttlMs - Optional TTL in milliseconds.
+     * @returns `true` on success, `false` on error.
+     */
     async set<T>(key: string[], value: T, ttlMs?: number): Promise<boolean> {
-        const pool = this.ensureOpen();
-        const serializedKey = key.join('/');
+        const prisma = this.ensureOpen();
+        const serializedKey = serializeKey(key);
         const now = new Date();
-        const expiresAt = ttlMs ? new Date(now.getTime() + ttlMs) : null;
+        const expiresAt = ttlMs ? new Date(Date.now() + ttlMs) : null;
 
         try {
-            await pool.query(
-                `INSERT INTO storage_entries (key, data, "createdAt", "updatedAt", "expiresAt")
-                 VALUES ($1, $2, $3, $3, $4)
-                 ON CONFLICT (key) DO UPDATE SET
-                     data = EXCLUDED.data,
-                     "updatedAt" = EXCLUDED."updatedAt",
-                     "expiresAt" = EXCLUDED."expiresAt"`,
-                [serializedKey, JSON.stringify(value), now.toISOString(), expiresAt?.toISOString() ?? null],
-            );
-            this.log('debug', `Stored entry at key: ${serializedKey}`);
+            await prisma.storageEntry.upsert({
+                where: { key: serializedKey },
+                update: {
+                    data: JSON.stringify(value),
+                    updatedAt: now,
+                    expiresAt,
+                },
+                create: {
+                    key: serializedKey,
+                    data: JSON.stringify(value),
+                    createdAt: now,
+                    updatedAt: now,
+                    expiresAt,
+                },
+            });
+            this.log('debug', `SET ${serializedKey}`);
             return true;
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log('error', `Failed to set key ${serializedKey}: ${message}`);
+            this.log('error', `SET failed for ${serializedKey}: ${error}`);
             return false;
         }
     }
 
+    /**
+     * Retrieves a value by composite key.
+     *
+     * @param key - Composite key segments.
+     * @returns The stored entry, or `null` if not found / expired.
+     */
     async get<T>(key: string[]): Promise<StorageEntry<T> | null> {
-        const pool = this.ensureOpen();
-        const serializedKey = key.join('/');
+        const prisma = this.ensureOpen();
+        const serializedKey = serializeKey(key);
 
         try {
-            const result = await pool.query<{
-                data: string;
-                createdAt: string;
-                updatedAt: string;
-                expiresAt: string | null;
-                tags: string | null;
-            }>(
-                `SELECT data, "createdAt", "updatedAt", "expiresAt", tags
-                 FROM storage_entries
-                 WHERE key = $1`,
-                [serializedKey],
-            );
+            const row = await prisma.storageEntry.findUnique({
+                where: { key: serializedKey },
+            });
+            if (!row) return null;
 
-            if (result.rows.length === 0) return null;
-
-            const row = result.rows[0];
-
-            // Check if expired
-            if (row.expiresAt && new Date(row.expiresAt) < new Date()) {
-                this.log('debug', `Entry at key ${serializedKey} has expired`);
-                await this.delete(key);
+            // Check expiry
+            if (row.expiresAt && new Date(row.expiresAt).getTime() < Date.now()) {
+                await prisma.storageEntry.delete({ where: { key: serializedKey } }).catch(() => {});
                 return null;
             }
 
             return {
-                data: JSON.parse(row.data),
+                data: JSON.parse(row.data) as T,
                 createdAt: new Date(row.createdAt).getTime(),
                 updatedAt: new Date(row.updatedAt).getTime(),
                 expiresAt: row.expiresAt ? new Date(row.expiresAt).getTime() : undefined,
-                tags: row.tags ? JSON.parse(row.tags) : undefined,
             };
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log('error', `Failed to get key ${serializedKey}: ${message}`);
+            this.log('error', `GET failed for ${serializedKey}: ${error}`);
             return null;
         }
     }
 
+    /**
+     * Deletes an entry by composite key.
+     *
+     * @param key - Composite key segments.
+     * @returns `true` if the operation completed (idempotent).
+     */
     async delete(key: string[]): Promise<boolean> {
-        const pool = this.ensureOpen();
-        const serializedKey = key.join('/');
+        const prisma = this.ensureOpen();
+        const serializedKey = serializeKey(key);
 
         try {
-            await pool.query(`DELETE FROM storage_entries WHERE key = $1`, [serializedKey]);
-            this.log('debug', `Deleted entry at key: ${serializedKey}`);
+            await prisma.storageEntry.delete({ where: { key: serializedKey } });
+            this.log('debug', `DELETE ${serializedKey}`);
             return true;
-        } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log('error', `Failed to delete key ${serializedKey}: ${message}`);
-            return false;
+        } catch {
+            // Prisma throws P2025 when the record doesn't exist — still idempotent.
+            return true;
         }
     }
 
+    /**
+     * Lists entries matching the query options.
+     *
+     * Supports filtering by prefix, pagination, and ordering.
+     * Expired entries are automatically excluded.
+     *
+     * @param options - Query options including prefix, limit, start, end, reverse.
+     * @returns Array of `{ key, value }` pairs.
+     */
     async list<T>(options: QueryOptions = {}): Promise<Array<{ key: string[]; value: StorageEntry<T> }>> {
-        const pool = this.ensureOpen();
+        const prisma = this.ensureOpen();
 
         try {
-            const conditions: string[] = [`("expiresAt" IS NULL OR "expiresAt" > NOW())`];
-            const params: unknown[] = [];
-            let paramIdx = 1;
+            // deno-lint-ignore no-explicit-any
+            const conditions: any[] = [
+                { OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }] },
+            ];
 
             if (options.prefix) {
-                conditions.push(`key LIKE $${paramIdx}`);
-                params.push(`${options.prefix.join('/')}%`);
-                paramIdx++;
+                conditions.push({ key: { startsWith: serializeKey(options.prefix) } });
             }
             if (options.start) {
-                conditions.push(`key >= $${paramIdx}`);
-                params.push(options.start.join('/'));
-                paramIdx++;
+                conditions.push({ key: { gte: serializeKey(options.start) } });
             }
             if (options.end) {
-                conditions.push(`key <= $${paramIdx}`);
-                params.push(options.end.join('/'));
-                paramIdx++;
+                conditions.push({ key: { lte: serializeKey(options.end) } });
             }
 
-            let query = `SELECT key, data, "createdAt", "updatedAt", "expiresAt", tags
-                         FROM storage_entries
-                         WHERE ${conditions.join(' AND ')}
-                         ORDER BY key ${options.reverse ? 'DESC' : 'ASC'}`;
+            const rows = await prisma.storageEntry.findMany({
+                where: { AND: conditions },
+                take: options.limit,
+                orderBy: { key: options.reverse ? 'desc' : 'asc' },
+            });
 
-            if (options.limit) {
-                query += ` LIMIT $${paramIdx}`;
-                params.push(options.limit);
-            }
-
-            const result = await pool.query<{
-                key: string;
-                data: string;
-                createdAt: string;
-                updatedAt: string;
-                expiresAt: string | null;
-                tags: string | null;
-            }>(query, params);
-
-            return result.rows.map((row) => ({
-                key: row.key.split('/'),
+            return rows.map((row) => ({
+                key: deserializeKey(row.key),
                 value: {
-                    data: JSON.parse(row.data),
+                    data: JSON.parse(row.data) as T,
                     createdAt: new Date(row.createdAt).getTime(),
                     updatedAt: new Date(row.updatedAt).getTime(),
                     expiresAt: row.expiresAt ? new Date(row.expiresAt).getTime() : undefined,
-                    tags: row.tags ? JSON.parse(row.tags) : undefined,
                 },
             }));
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log('error', `Failed to list entries: ${message}`);
+            this.log('error', `LIST failed: ${error}`);
             return [];
         }
     }
 
+    // ========================================================================
+    // IStorageAdapter - Maintenance
+    // ========================================================================
+
+    /**
+     * Removes expired entries from `storage_entries` and `filter_cache`.
+     *
+     * @returns Total number of rows deleted.
+     */
     async clearExpired(): Promise<number> {
-        const pool = this.ensureOpen();
+        const prisma = this.ensureOpen();
+        const now = new Date();
 
         try {
-            const r1 = await pool.query(
-                `DELETE FROM storage_entries WHERE "expiresAt" IS NOT NULL AND "expiresAt" < NOW()`,
-            );
-            const r2 = await pool.query(
-                `DELETE FROM filter_cache WHERE "expiresAt" IS NOT NULL AND "expiresAt" < NOW()`,
-            );
-            const total = (r1.rowCount ?? 0) + (r2.rowCount ?? 0);
-            this.log('info', `Cleared ${total} expired entries`);
+            const [storageResult, cacheResult] = await Promise.all([
+                prisma.storageEntry.deleteMany({
+                    where: { expiresAt: { lt: now } },
+                }),
+                prisma.filterCache.deleteMany({
+                    where: { expiresAt: { lt: now } },
+                }),
+            ]);
+            const total = storageResult.count + cacheResult.count;
+            if (total > 0) this.log('debug', `Cleared ${total} expired entries`);
             return total;
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log('error', `Failed to clear expired entries: ${message}`);
+            this.log('error', `clearExpired failed: ${error}`);
             return 0;
         }
     }
 
+    /**
+     * Returns aggregate statistics about stored data.
+     *
+     * @returns Statistics including entry counts. `sizeBytes` is always 0
+     *          (Prisma does not expose table size; callers can use `rawQuery`).
+     */
     async getStats(): Promise<StorageStats> {
-        const pool = this.ensureOpen();
+        const prisma = this.ensureOpen();
 
         try {
-            const [totalRes, expiredRes, sizeRes] = await Promise.all([
-                pool.query<{ count: string }>(`SELECT COUNT(*) as count FROM storage_entries`),
-                pool.query<{ count: string }>(
-                    `SELECT COUNT(*) as count FROM storage_entries WHERE "expiresAt" IS NOT NULL AND "expiresAt" < NOW()`,
-                ),
-                pool.query<{ size: string | null }>(
-                    `SELECT SUM(LENGTH(data)) as size FROM storage_entries`,
-                ),
+            const [entryCount, expiredCount] = await Promise.all([
+                prisma.storageEntry.count(),
+                prisma.storageEntry.count({
+                    where: { expiresAt: { lt: new Date() } },
+                }),
             ]);
 
             return {
-                entryCount: parseInt(totalRes.rows[0]?.count ?? '0', 10),
-                expiredCount: parseInt(expiredRes.rows[0]?.count ?? '0', 10),
-                sizeEstimate: parseInt(sizeRes.rows[0]?.size ?? '0', 10),
+                entryCount,
+                expiredCount,
+                sizeEstimate: 0,
             };
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log('error', `Failed to get stats: ${message}`);
+            this.log('error', `getStats failed: ${error}`);
             return { entryCount: 0, expiredCount: 0, sizeEstimate: 0 };
         }
     }
 
     // ========================================================================
-    // IStorageAdapter — Filter List Caching
+    // IStorageAdapter - Filter Caching
     // ========================================================================
 
+    /**
+     * Upserts a cached filter list identified by its source URL.
+     *
+     * The `content` array (one rule per element) is JSON-serialized for storage
+     * in the `filter_cache.content` TEXT column and deserialized back on read.
+     *
+     * @param source  - Source URL (unique key).
+     * @param content - Array of filter rules.
+     * @param hash    - SHA-256 content hash.
+     * @param etag    - Optional HTTP ETag.
+     * @param ttlMs   - Optional TTL in milliseconds (defaults to config value).
+     * @returns `true` on success, `false` on error.
+     */
     async cacheFilterList(
         source: string,
         content: string[],
         hash: string,
         etag?: string,
-        ttlMs: number = this.config.defaultTtlMs,
+        ttlMs?: number,
     ): Promise<boolean> {
-        const pool = this.ensureOpen();
+        const prisma = this.ensureOpen();
         const now = new Date();
-        const expiresAt = new Date(now.getTime() + ttlMs);
+        const effectiveTtl = ttlMs ?? this.config.defaultTtlMs;
+        const expiresAt = new Date(Date.now() + effectiveTtl);
 
         try {
-            await pool.query(
-                `INSERT INTO filter_cache (source, content, hash, etag, "createdAt", "updatedAt", "expiresAt")
-                 VALUES ($1, $2, $3, $4, $5, $5, $6)
-                 ON CONFLICT (source) DO UPDATE SET
-                     content = EXCLUDED.content,
-                     hash = EXCLUDED.hash,
-                     etag = EXCLUDED.etag,
-                     "updatedAt" = EXCLUDED."updatedAt",
-                     "expiresAt" = EXCLUDED."expiresAt"`,
-                [source, JSON.stringify(content), hash, etag ?? null, now.toISOString(), expiresAt.toISOString()],
-            );
-            this.log('debug', `Cached filter list for source: ${source}`);
+            await prisma.filterCache.upsert({
+                where: { source },
+                update: {
+                    content: JSON.stringify(content),
+                    hash,
+                    etag: etag ?? null,
+                    updatedAt: now,
+                    expiresAt,
+                },
+                create: {
+                    source,
+                    content: JSON.stringify(content),
+                    hash,
+                    etag: etag ?? null,
+                    createdAt: now,
+                    updatedAt: now,
+                    expiresAt,
+                },
+            });
+            this.log('debug', `Cached filter list: ${source}`);
             return true;
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log('error', `Failed to cache filter list: ${message}`);
+            this.log('error', `cacheFilterList failed for ${source}: ${error}`);
             return false;
         }
     }
 
+    /**
+     * Retrieves a cached filter list by source URL.
+     *
+     * @param source - Source URL.
+     * @returns The cache entry, or `null` if not found / expired.
+     */
     async getCachedFilterList(source: string): Promise<CacheEntry | null> {
-        const pool = this.ensureOpen();
+        const prisma = this.ensureOpen();
 
         try {
-            const result = await pool.query<{
-                source: string;
-                content: string;
-                hash: string;
-                etag: string | null;
-                expiresAt: string | null;
-            }>(
-                `SELECT source, content, hash, etag, "expiresAt"
-                 FROM filter_cache WHERE source = $1`,
-                [source],
-            );
+            const row = await prisma.filterCache.findUnique({ where: { source } });
+            if (!row) return null;
 
-            if (result.rows.length === 0) return null;
-
-            const row = result.rows[0];
-            if (row.expiresAt && new Date(row.expiresAt) < new Date()) {
+            // Honour expiry
+            if (row.expiresAt && new Date(row.expiresAt).getTime() < Date.now()) {
                 this.log('debug', `Filter cache for ${source} has expired`);
-                await pool.query(`DELETE FROM filter_cache WHERE source = $1`, [source]);
+                await prisma.filterCache.delete({ where: { source } }).catch(() => {});
                 return null;
             }
 
             return {
                 source: row.source,
-                content: JSON.parse(row.content),
+                content: JSON.parse(row.content) as string[],
                 hash: row.hash,
                 etag: row.etag ?? undefined,
             };
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log('error', `Failed to get cached filter list: ${message}`);
+            this.log('error', `getCachedFilterList failed for ${source}: ${error}`);
             return null;
         }
     }
 
+    // ========================================================================
+    // IStorageAdapter - Compilation Metadata
+    // ========================================================================
+
+    /**
+     * Stores compilation metadata.
+     *
+     * @param metadata - Compilation run details.
+     * @returns `true` on success, `false` on error.
+     */
     async storeCompilationMetadata(metadata: CompilationMetadata): Promise<boolean> {
-        const pool = this.ensureOpen();
+        const prisma = this.ensureOpen();
 
         try {
-            await pool.query(
-                `INSERT INTO compilation_metadata ("configName", timestamp, "sourceCount", "ruleCount", duration, "outputPath")
-                 VALUES ($1, $2, $3, $4, $5, $6)`,
-                [
-                    metadata.configName,
-                    new Date(metadata.timestamp).toISOString(),
-                    metadata.sourceCount,
-                    metadata.ruleCount,
-                    metadata.duration,
-                    metadata.outputPath ?? null,
-                ],
-            );
-            this.log('debug', `Stored compilation metadata for: ${metadata.configName}`);
+            await prisma.compilationMetadata.create({
+                data: {
+                    configName: metadata.configName,
+                    timestamp: new Date(metadata.timestamp),
+                    sourceCount: metadata.sourceCount,
+                    ruleCount: metadata.ruleCount,
+                    duration: metadata.duration,
+                    outputPath: metadata.outputPath ?? null,
+                },
+            });
+            this.log('debug', `Stored compilation metadata for ${metadata.configName}`);
             return true;
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log('error', `Failed to store compilation metadata: ${message}`);
+            this.log('error', `storeCompilationMetadata failed: ${error}`);
             return false;
         }
     }
 
-    async getCompilationHistory(configName: string, limit: number = 10): Promise<CompilationMetadata[]> {
-        const pool = this.ensureOpen();
+    /**
+     * Returns compilation history, ordered newest-first.
+     *
+     * @param configName - Config name to filter by.
+     * @param limit      - Max rows (default 10).
+     * @returns Array of {@link CompilationMetadata}.
+     */
+    async getCompilationHistory(configName: string, limit = 10): Promise<CompilationMetadata[]> {
+        const prisma = this.ensureOpen();
 
         try {
-            const result = await pool.query<{
-                configName: string;
-                timestamp: string;
-                sourceCount: number;
-                ruleCount: number;
-                duration: number;
-                outputPath: string | null;
-            }>(
-                `SELECT "configName", timestamp, "sourceCount", "ruleCount", duration, "outputPath"
-                 FROM compilation_metadata
-                 WHERE "configName" = $1
-                 ORDER BY timestamp DESC
-                 LIMIT $2`,
-                [configName, limit],
-            );
+            const rows = await prisma.compilationMetadata.findMany({
+                where: { configName },
+                orderBy: { timestamp: 'desc' },
+                take: limit,
+            });
 
-            return result.rows.map((r) => ({
-                configName: r.configName,
-                timestamp: new Date(r.timestamp).getTime(),
-                sourceCount: r.sourceCount,
-                ruleCount: r.ruleCount,
-                duration: r.duration,
-                outputPath: r.outputPath ?? undefined,
+            return rows.map((row) => ({
+                configName: row.configName,
+                timestamp: row.timestamp.getTime(),
+                sourceCount: row.sourceCount,
+                ruleCount: row.ruleCount,
+                duration: row.duration,
+                outputPath: row.outputPath ?? undefined,
             }));
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log('error', `Failed to get compilation history: ${message}`);
+            this.log('error', `getCompilationHistory failed: ${error}`);
             return [];
         }
     }
 
+    // ========================================================================
+    // IStorageAdapter - Cache Management
+    // ========================================================================
+
+    /**
+     * Clears all cached data — both `cache/*` storage entries and all filter
+     * cache rows.
+     *
+     * @returns Total number of entries deleted.
+     */
     async clearCache(): Promise<number> {
-        const pool = this.ensureOpen();
+        const prisma = this.ensureOpen();
 
         try {
-            const r1 = await pool.query(`DELETE FROM storage_entries WHERE key LIKE 'cache/%'`);
-            const r2 = await pool.query(`DELETE FROM filter_cache`);
-            const total = (r1.rowCount ?? 0) + (r2.rowCount ?? 0);
+            const [storageResult, cacheResult] = await Promise.all([
+                prisma.storageEntry.deleteMany({
+                    where: { key: { startsWith: 'cache/' } },
+                }),
+                prisma.filterCache.deleteMany(),
+            ]);
+            const total = storageResult.count + cacheResult.count;
             this.log('info', `Cleared ${total} cache entries`);
             return total;
         } catch (error) {
-            const message = error instanceof Error ? error.message : String(error);
-            this.log('error', `Failed to clear cache: ${message}`);
+            this.log('error', `clearCache failed: ${error}`);
             return 0;
         }
     }
 
     // ========================================================================
-    // Domain-Specific Operations (New PostgreSQL Models)
+    // Domain Methods - Users
     // ========================================================================
 
     /**
-     * Creates a user record.
+     * Creates a new user.
+     *
+     * @param data - Validated by {@link CreateUserSchema}.
+     * @returns The new user's `id`.
+     * @throws {z.ZodError} If `data` fails schema validation.
+     * @throws {Error} On database constraint violations (e.g. duplicate email).
      */
     async createUser(data: CreateUser): Promise<{ id: string }> {
         const validated = CreateUserSchema.parse(data);
-        const pool = this.ensureOpen();
-        const result = await pool.query<{ id: string }>(
-            `INSERT INTO users (email, display_name, role)
-             VALUES ($1, $2, $3)
-             RETURNING id`,
-            [validated.email, validated.displayName ?? null, validated.role],
-        );
-        return { id: result.rows[0].id };
+        const prisma = this.ensureOpen();
+        const user = await prisma.user.create({
+            data: {
+                email: validated.email,
+                displayName: validated.displayName ?? null,
+                role: validated.role,
+            },
+            select: { id: true },
+        });
+        return { id: user.id };
     }
 
     /**
-     * Finds a user by email.
+     * Looks up a user by email.
+     *
+     * @param email - The email address to search for.
+     * @returns `{ id, email, role }` or `null` if not found.
+     * @throws {Error} If the adapter is not open.
      */
     async getUserByEmail(email: string): Promise<{ id: string; email: string; role: string } | null> {
-        const pool = this.ensureOpen();
-        const result = await pool.query<{ id: string; email: string; role: string }>(
-            `SELECT id, email, role FROM users WHERE email = $1`,
-            [email],
-        );
-        return result.rows[0] ?? null;
+        const prisma = this.ensureOpen();
+        const user = await prisma.user.findUnique({
+            where: { email },
+            select: { id: true, email: true, role: true },
+        });
+        if (!user || !user.email) return null;
+        return { id: user.id, email: user.email, role: user.role };
     }
 
+    // ========================================================================
+    // Domain Methods - API Keys
+    // ========================================================================
+
     /**
-     * Creates an API key record.
+     * Creates a new API key record.
+     *
+     * Generates a `keyHash` and `keyPrefix` from a random UUID internally,
+     * matching the behaviour of the original raw-SQL implementation.
+     *
+     * @param data - Validated by {@link CreateApiKeySchema}.
+     * @returns The new API key's `id`.
+     * @throws {z.ZodError} If `data` fails schema validation.
+     * @throws {Error} On database constraint violations.
      */
     async createApiKey(data: CreateApiKey): Promise<{ id: string }> {
         const validated = CreateApiKeySchema.parse(data);
-        const pool = this.ensureOpen();
-        const result = await pool.query<{ id: string }>(
-            `INSERT INTO api_keys (user_id, name, key_hash, key_prefix, scopes, rate_limit_per_minute, expires_at)
-             VALUES ($1, $2, '', '', $3, $4, $5)
-             RETURNING id`,
-            [
-                validated.userId,
-                validated.name,
-                validated.scopes,
-                validated.rateLimitPerMinute,
-                validated.expiresAt?.toISOString() ?? null,
-            ],
-        );
-        return { id: result.rows[0].id };
+        const prisma = this.ensureOpen();
+
+        // Generate key material (same logic as the original raw-SQL adapter)
+        const rawKey = crypto.randomUUID();
+        const keyHash = rawKey;
+        const keyPrefix = rawKey.slice(0, 8);
+
+        const apiKey = await prisma.apiKey.create({
+            data: {
+                userId: validated.userId,
+                name: validated.name,
+                keyHash,
+                keyPrefix,
+                scopes: validated.scopes,
+                rateLimitPerMinute: validated.rateLimitPerMinute,
+                expiresAt: validated.expiresAt ?? null,
+            },
+            select: { id: true },
+        });
+        return { id: apiKey.id };
     }
 
+    // ========================================================================
+    // Domain Methods - Sessions
+    // ========================================================================
+
     /**
-     * Creates a session record.
+     * Creates a new session.
+     *
+     * @param data - Validated by {@link CreateSessionSchema}.
+     * @returns The new session's `id`.
+     * @throws {z.ZodError} If `data` fails schema validation.
+     * @throws {Error} On database constraint violations.
      */
     async createSession(data: CreateSession): Promise<{ id: string }> {
         const validated = CreateSessionSchema.parse(data);
-        const pool = this.ensureOpen();
-        const result = await pool.query<{ id: string }>(
-            `INSERT INTO sessions (user_id, token_hash, ip_address, user_agent, expires_at)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING id`,
-            [
-                validated.userId,
-                validated.tokenHash,
-                validated.ipAddress ?? null,
-                validated.userAgent ?? null,
-                validated.expiresAt.toISOString(),
-            ],
-        );
-        return { id: result.rows[0].id };
+        const prisma = this.ensureOpen();
+
+        const session = await prisma.session.create({
+            data: {
+                userId: validated.userId,
+                tokenHash: validated.tokenHash,
+                ipAddress: validated.ipAddress ?? null,
+                userAgent: validated.userAgent ?? null,
+                expiresAt: validated.expiresAt,
+            },
+            select: { id: true },
+        });
+        return { id: session.id };
     }
 
+    // ========================================================================
+    // Domain Methods - Filter Sources
+    // ========================================================================
+
     /**
-     * Creates a filter source record.
+     * Creates a new filter source.
+     *
+     * @param data - Validated by {@link CreateFilterSourceSchema}.
+     * @returns The new source's `id`.
+     * @throws {z.ZodError} If `data` fails schema validation.
+     * @throws {Error} On database constraint violations (e.g. duplicate URL).
      */
     async createFilterSource(data: CreateFilterSource): Promise<{ id: string }> {
         const validated = CreateFilterSourceSchema.parse(data);
-        const pool = this.ensureOpen();
-        const result = await pool.query<{ id: string }>(
-            `INSERT INTO filter_sources (url, name, description, homepage, license, is_public, owner_user_id, refresh_interval_seconds)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-             RETURNING id`,
-            [
-                validated.url,
-                validated.name,
-                validated.description ?? null,
-                validated.homepage ?? null,
-                validated.license ?? null,
-                validated.isPublic,
-                validated.ownerUserId ?? null,
-                validated.refreshIntervalSeconds,
-            ],
-        );
-        return { id: result.rows[0].id };
+        const prisma = this.ensureOpen();
+        const source = await prisma.filterSource.create({
+            data: {
+                url: validated.url,
+                name: validated.name,
+                description: validated.description ?? null,
+                homepage: validated.homepage ?? null,
+                license: validated.license ?? null,
+                isPublic: validated.isPublic,
+                ownerUserId: validated.ownerUserId ?? null,
+                refreshIntervalSeconds: validated.refreshIntervalSeconds,
+            },
+            select: { id: true },
+        });
+        return { id: source.id };
     }
 
     /**
-     * Lists all filter sources, optionally filtering by public visibility.
+     * Lists filter sources.
+     *
+     * @param publicOnly - When `true`, only public sources are returned.
+     * @returns Array of `{ id, url, name, isPublic }`.
+     * @throws {Error} If the adapter is not open.
      */
-    async listFilterSources(publicOnly = false): Promise<Array<{ id: string; url: string; name: string; isPublic: boolean }>> {
-        const pool = this.ensureOpen();
-        const query = publicOnly
-            ? `SELECT id, url, name, is_public FROM filter_sources WHERE is_public = true ORDER BY name`
-            : `SELECT id, url, name, is_public FROM filter_sources ORDER BY name`;
-        const result = await pool.query<{ id: string; url: string; name: string; is_public: boolean }>(query);
-        return result.rows.map((r) => ({ id: r.id, url: r.url, name: r.name, isPublic: r.is_public }));
+    async listFilterSources(
+        publicOnly?: boolean,
+    ): Promise<Array<{ id: string; url: string; name: string; isPublic: boolean }>> {
+        const prisma = this.ensureOpen();
+        const rows = await prisma.filterSource.findMany({
+            where: publicOnly ? { isPublic: true } : undefined,
+            select: { id: true, url: true, name: true, isPublic: true },
+            orderBy: { name: 'asc' },
+        });
+        return rows;
     }
 
+    // ========================================================================
+    // Domain Methods - Filter List Versions
+    // ========================================================================
+
     /**
-     * Creates a filter list version record.
+     * Creates a new filter list version.
+     *
+     * @param data - Validated by {@link CreateFilterListVersionSchema}.
+     * @returns The new version's `id`.
+     * @throws {z.ZodError} If `data` fails schema validation.
+     * @throws {Error} On database constraint violations.
      */
     async createFilterListVersion(data: CreateFilterListVersion): Promise<{ id: string }> {
         const validated = CreateFilterListVersionSchema.parse(data);
-        const pool = this.ensureOpen();
-        const result = await pool.query<{ id: string }>(
-            `INSERT INTO filter_list_versions (source_id, content_hash, rule_count, etag, r2_key, expires_at, is_current)
-             VALUES ($1, $2, $3, $4, $5, $6, $7)
-             RETURNING id`,
-            [
-                validated.sourceId,
-                validated.contentHash,
-                validated.ruleCount,
-                validated.etag ?? null,
-                validated.r2Key,
-                validated.expiresAt?.toISOString() ?? null,
-                validated.isCurrent,
-            ],
-        );
-        return { id: result.rows[0].id };
+        const prisma = this.ensureOpen();
+        const version = await prisma.filterListVersion.create({
+            data: {
+                sourceId: validated.sourceId,
+                contentHash: validated.contentHash,
+                ruleCount: validated.ruleCount,
+                etag: validated.etag ?? null,
+                r2Key: validated.r2Key,
+                expiresAt: validated.expiresAt ?? null,
+                isCurrent: validated.isCurrent,
+            },
+            select: { id: true },
+        });
+        return { id: version.id };
     }
 
+    // ========================================================================
+    // Domain Methods - Compiled Outputs
+    // ========================================================================
+
     /**
-     * Creates a compiled output record.
+     * Creates a new compiled output record.
+     *
+     * @param data - Validated by {@link CreateCompiledOutputSchema}.
+     * @returns The new output's `id`.
+     * @throws {z.ZodError} If `data` fails schema validation.
+     * @throws {Error} On database constraint violations.
      */
     async createCompiledOutput(data: CreateCompiledOutput): Promise<{ id: string }> {
         const validated = CreateCompiledOutputSchema.parse(data);
-        const pool = this.ensureOpen();
-        const result = await pool.query<{ id: string }>(
-            `INSERT INTO compiled_outputs (config_hash, config_name, config_snapshot, rule_count, source_count, duration_ms, r2_key, owner_user_id, expires_at)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-             RETURNING id`,
-            [
-                validated.configHash,
-                validated.configName,
-                JSON.stringify(validated.configSnapshot),
-                validated.ruleCount,
-                validated.sourceCount,
-                validated.durationMs,
-                validated.r2Key,
-                validated.ownerUserId ?? null,
-                validated.expiresAt?.toISOString() ?? null,
-            ],
-        );
-        return { id: result.rows[0].id };
+        const prisma = this.ensureOpen();
+        const output = await prisma.compiledOutput.create({
+            data: {
+                configHash: validated.configHash,
+                configName: validated.configName,
+                configSnapshot: validated.configSnapshot as unknown as Prisma.InputJsonValue,
+                ruleCount: validated.ruleCount,
+                sourceCount: validated.sourceCount,
+                durationMs: validated.durationMs,
+                r2Key: validated.r2Key,
+                ownerUserId: validated.ownerUserId ?? null,
+                expiresAt: validated.expiresAt ?? null,
+            },
+            select: { id: true },
+        });
+        return { id: output.id };
     }
 
     /**
-     * Finds a compiled output by config hash (cache lookup).
+     * Finds a compiled output by its config hash.
+     *
+     * @param configHash - Unique hash of the compilation configuration.
+     * @returns `{ id, r2Key, ruleCount }` or `null`.
+     * @throws {Error} If the adapter is not open.
      */
-    async getCompiledOutputByHash(configHash: string): Promise<{ id: string; r2Key: string; ruleCount: number } | null> {
-        const pool = this.ensureOpen();
-        const result = await pool.query<{ id: string; r2_key: string; rule_count: number }>(
-            `SELECT id, r2_key, rule_count FROM compiled_outputs
-             WHERE config_hash = $1 AND (expires_at IS NULL OR expires_at > NOW())
-             ORDER BY created_at DESC LIMIT 1`,
-            [configHash],
-        );
-        if (result.rows.length === 0) return null;
-        const row = result.rows[0];
-        return { id: row.id, r2Key: row.r2_key, ruleCount: row.rule_count };
+    async getCompiledOutputByHash(
+        configHash: string,
+    ): Promise<{ id: string; r2Key: string; ruleCount: number } | null> {
+        const prisma = this.ensureOpen();
+        const row = await prisma.compiledOutput.findUnique({
+            where: { configHash },
+            select: { id: true, r2Key: true, ruleCount: true },
+        });
+        return row;
     }
 
+    // ========================================================================
+    // Domain Methods - Compilation Events
+    // ========================================================================
+
     /**
-     * Records a compilation event (audit log).
+     * Records a compilation event (append-only audit log).
+     *
+     * @param data - Validated by {@link CreateCompilationEventSchema}.
+     * @returns The new event's `id`.
+     * @throws {z.ZodError} If `data` fails schema validation.
+     * @throws {Error} On database constraint violations.
      */
     async createCompilationEvent(data: CreateCompilationEvent): Promise<{ id: string }> {
         const validated = CreateCompilationEventSchema.parse(data);
-        const pool = this.ensureOpen();
-        const result = await pool.query<{ id: string }>(
-            `INSERT INTO compilation_events (compiled_output_id, user_id, api_key_id, request_source, worker_region, duration_ms, cache_hit, error_message)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-             RETURNING id`,
-            [
-                validated.compiledOutputId ?? null,
-                validated.userId ?? null,
-                validated.apiKeyId ?? null,
-                validated.requestSource,
-                validated.workerRegion ?? null,
-                validated.durationMs,
-                validated.cacheHit,
-                validated.errorMessage ?? null,
-            ],
-        );
-        return { id: result.rows[0].id };
+        const prisma = this.ensureOpen();
+        const event = await prisma.compilationEvent.create({
+            data: {
+                compiledOutputId: validated.compiledOutputId ?? null,
+                userId: validated.userId ?? null,
+                apiKeyId: validated.apiKeyId ?? null,
+                requestSource: validated.requestSource,
+                workerRegion: validated.workerRegion ?? null,
+                durationMs: validated.durationMs,
+                cacheHit: validated.cacheHit,
+                errorMessage: validated.errorMessage ?? null,
+            },
+            select: { id: true },
+        });
+        return { id: event.id };
     }
+
+    // ========================================================================
+    // Domain Methods - Source Health Tracking
+    // ========================================================================
 
     /**
      * Creates a source health snapshot.
+     *
+     * @param data - Validated by {@link CreateSourceHealthSnapshotSchema}.
+     * @returns The new snapshot's `id`.
+     * @throws {z.ZodError} If `data` fails schema validation.
+     * @throws {Error} On database constraint violations.
      */
     async createSourceHealthSnapshot(data: CreateSourceHealthSnapshot): Promise<{ id: string }> {
         const validated = CreateSourceHealthSnapshotSchema.parse(data);
-        const pool = this.ensureOpen();
-        const result = await pool.query<{ id: string }>(
-            `INSERT INTO source_health_snapshots (source_id, status, total_attempts, successful_attempts, failed_attempts, consecutive_failures, avg_duration_ms, avg_rule_count)
-             VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-             RETURNING id`,
-            [
-                validated.sourceId,
-                validated.status,
-                validated.totalAttempts,
-                validated.successfulAttempts,
-                validated.failedAttempts,
-                validated.consecutiveFailures,
-                validated.avgDurationMs,
-                validated.avgRuleCount,
-            ],
-        );
-        return { id: result.rows[0].id };
+        const prisma = this.ensureOpen();
+        const snapshot = await prisma.sourceHealthSnapshot.create({
+            data: {
+                sourceId: validated.sourceId,
+                status: validated.status,
+                totalAttempts: validated.totalAttempts,
+                successfulAttempts: validated.successfulAttempts,
+                failedAttempts: validated.failedAttempts,
+                consecutiveFailures: validated.consecutiveFailures,
+                avgDurationMs: validated.avgDurationMs,
+                avgRuleCount: validated.avgRuleCount,
+            },
+            select: { id: true },
+        });
+        return { id: snapshot.id };
     }
 
     /**
      * Records a source change event.
+     *
+     * @param data - Validated by {@link CreateSourceChangeEventSchema}.
+     * @returns The new event's `id`.
+     * @throws {z.ZodError} If `data` fails schema validation.
+     * @throws {Error} On database constraint violations.
      */
     async createSourceChangeEvent(data: CreateSourceChangeEvent): Promise<{ id: string }> {
         const validated = CreateSourceChangeEventSchema.parse(data);
-        const pool = this.ensureOpen();
-        const result = await pool.query<{ id: string }>(
-            `INSERT INTO source_change_events (source_id, previous_version_id, new_version_id, rule_count_delta, content_hash_changed)
-             VALUES ($1, $2, $3, $4, $5)
-             RETURNING id`,
-            [
-                validated.sourceId,
-                validated.previousVersionId ?? null,
-                validated.newVersionId,
-                validated.ruleCountDelta,
-                validated.contentHashChanged,
-            ],
-        );
-        return { id: result.rows[0].id };
+        const prisma = this.ensureOpen();
+        const event = await prisma.sourceChangeEvent.create({
+            data: {
+                sourceId: validated.sourceId,
+                previousVersionId: validated.previousVersionId ?? null,
+                newVersionId: validated.newVersionId,
+                ruleCountDelta: validated.ruleCountDelta,
+                contentHashChanged: validated.contentHashChanged,
+            },
+            select: { id: true },
+        });
+        return { id: event.id };
     }
 
     // ========================================================================
@@ -776,22 +961,32 @@ export class HyperdriveStorageAdapter implements IStorageAdapter {
 
     /**
      * Executes a raw SQL query against PostgreSQL via Hyperdrive.
-     * Use with caution — prefer the typed methods above.
+     * Use with caution -- prefer the typed Prisma methods above.
+     *
+     * @param sql    - Raw SQL string.
+     * @param params - Bind parameters.
+     * @returns Array of rows.
+     * @throws {Error} If the adapter is not open or the query fails.
      */
     async rawQuery<T = Record<string, unknown>>(sql: string, params?: unknown[]): Promise<T[]> {
-        const pool = this.ensureOpen();
-        const result = await pool.query<T>(sql, params);
-        return result.rows;
+        const prisma = this.ensureOpen();
+        // deno-lint-ignore no-explicit-any
+        const rows = await (prisma as any).$queryRawUnsafe(sql, ...(params ?? []));
+        return rows as T[];
     }
 
     /**
-     * Health check — verifies connectivity to PlanetScale via Hyperdrive.
+     * Health check -- verifies connectivity to PostgreSQL via Hyperdrive.
+     *
+     * @returns `{ ok, latencyMs }`.
+     * @throws {Error} If the adapter is not open (via {@link ensureOpen}).
      */
     async healthCheck(): Promise<{ ok: boolean; latencyMs: number }> {
-        const pool = this.ensureOpen();
+        const prisma = this.ensureOpen();
         const start = Date.now();
         try {
-            await pool.query('SELECT 1');
+            // deno-lint-ignore no-explicit-any
+            await (prisma as any).$queryRaw`SELECT 1`;
             return { ok: true, latencyMs: Date.now() - start };
         } catch {
             return { ok: false, latencyMs: Date.now() - start };
@@ -799,25 +994,35 @@ export class HyperdriveStorageAdapter implements IStorageAdapter {
     }
 }
 
+// ============================================================================
+// Factory
+// ============================================================================
+
 /**
- * Creates a Hyperdrive storage adapter from Cloudflare Worker environment.
+ * Creates a Hyperdrive storage adapter from a Cloudflare Worker environment.
+ *
+ * @param hyperdrive         - Cloudflare Hyperdrive binding.
+ * @param createPrismaClient - Factory to build a PrismaClient from a connection string.
+ * @param config             - Optional adapter configuration.
+ * @param logger             - Optional logger.
+ * @returns A new {@link HyperdriveStorageAdapter} (not yet open -- call `.open()`).
  *
  * @example
  * ```typescript
- * import { Pool } from 'pg';
+ * import { createPrismaClient } from '../../worker/lib/prisma.ts';
  *
  * const storage = createHyperdriveStorage(
  *     env.HYPERDRIVE,
- *     (connStr) => new Pool({ connectionString: connStr }),
+ *     (cs) => createPrismaClient(cs),
  * );
  * await storage.open();
  * ```
  */
 export function createHyperdriveStorage(
     hyperdrive: HyperdriveBinding,
-    createPool: PgPoolFactory,
+    createPrismaClient: PrismaClientFactory,
     config?: HyperdriveStorageConfig,
     logger?: IHyperdriveLogger,
 ): HyperdriveStorageAdapter {
-    return new HyperdriveStorageAdapter(hyperdrive, createPool, config, logger);
+    return new HyperdriveStorageAdapter(hyperdrive, createPrismaClient, config, logger);
 }

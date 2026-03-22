@@ -28,3 +28,25 @@ export {
 export { ASTViewerService, type ParsedRuleInfo, type RuleSummary } from './ASTViewerService.ts';
 export { PipelineService } from './PipelineService.ts';
 export type { PipelineBinding, PipelineEvent, PipelineEventType, PipelineMessage } from './PipelineService.ts';
+export {
+    createNeonApiService,
+    NeonApiError,
+    NeonApiServiceConfigSchema,
+    NeonBranchSchema,
+    NeonDatabaseSchema,
+    NeonEndpointSchema,
+    NeonOperationSchema,
+    NeonProjectSchema,
+} from './neonApiService.ts';
+export type {
+    ConnectionUriOptions,
+    CreateBranchOptions,
+    NeonApiService,
+    NeonApiServiceConfig,
+    NeonBranch,
+    NeonDatabase,
+    NeonEndpoint,
+    NeonOperation,
+    NeonProject,
+    SqlRow,
+} from './neonApiService.ts';

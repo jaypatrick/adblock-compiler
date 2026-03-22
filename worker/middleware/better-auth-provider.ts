@@ -6,7 +6,7 @@
  * shape consumed by {@link authenticateRequestUnified}.
  *
  * ## How it works
- * Better Auth stores sessions in D1 and authenticates via:
+ * Better Auth stores sessions in PostgreSQL (Neon via Hyperdrive) and authenticates via:
  *   - Cookie (`better-auth.session_token`) — for browser-based flows
  *   - Bearer token (`Authorization: Bearer <token>`) — for API clients
  *     (enabled by the `bearer()` plugin in `worker/lib/auth.ts`)
@@ -20,9 +20,9 @@
  * immediately on the next request.
  *
  * ## Provider selection
- * Active when `BETTER_AUTH_SECRET` is set and `CLERK_JWKS_URL` is not.
+ * Better Auth is the PRIMARY auth provider.
  * See `worker/hono-app.ts` for the priority chain:
- *   Clerk > Better Auth
+ *   API key → Better Auth → Clerk (deprecated fallback) → Anonymous
  *
  * @see worker/lib/auth.ts — Better Auth factory
  * @see worker/types.ts — IAuthProvider interface
@@ -62,7 +62,7 @@ export function resolveRole(role: string | null | undefined): string {
  * Better Auth implementation of {@link IAuthProvider}.
  *
  * Stateless per request — creates a fresh Better Auth instance using the
- * request's environment bindings (D1, secret).
+ * request's environment bindings (Hyperdrive, secret).
  */
 export class BetterAuthProvider implements IAuthProvider {
     readonly name = 'better-auth';
@@ -79,11 +79,11 @@ export class BetterAuthProvider implements IAuthProvider {
             };
         }
 
-        // Guard: D1 must be configured
-        if (!this.env.DB) {
+        // Guard: Hyperdrive must be configured (required for Prisma → PostgreSQL)
+        if (!this.env.HYPERDRIVE) {
             return {
                 valid: false,
-                error: 'D1 database not configured (env.DB is missing)',
+                error: 'Hyperdrive binding not configured (env.HYPERDRIVE is missing). Check wrangler.toml [[hyperdrive]] or .dev.vars',
             };
         }
 

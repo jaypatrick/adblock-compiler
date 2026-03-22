@@ -284,6 +284,36 @@ export const JobInfoSchema = z.object({
 });
 
 // ============================================================================
+// Auth Provider / Auth Result Schemas
+// ============================================================================
+
+/**
+ * Discriminated auth provider identifier.
+ *
+ * Used for observability logging and the auth priority chain:
+ *   1. `api-key`      — `abc_`-prefixed Bearer token (always first)
+ *   2. `better-auth`  — Primary session provider (cookie or bearer plugin)
+ *   3. `clerk`        — Fallback JWT provider (deprecated — migration period only)
+ *   4. `anonymous`    — No credentials presented
+ */
+export const AuthProviderSchema = z.enum(['better-auth', 'clerk', 'api-key', 'anonymous']);
+export type AuthProvider = z.infer<typeof AuthProviderSchema>;
+
+/**
+ * Structured result returned by the auth priority chain.
+ *
+ * Captures which provider authenticated the request, the resolved userId,
+ * the user's subscription tier, and the granted scope.
+ */
+export const AuthResultSchema = z.object({
+    provider: AuthProviderSchema,
+    userId: z.string().optional(),
+    tier: z.enum(['free', 'pro', 'admin']).default('free'),
+    scope: z.nativeEnum(AuthScope),
+});
+export type AuthResult = z.infer<typeof AuthResultSchema>;
+
+// ============================================================================
 // Admin Response Schemas
 // ============================================================================
 
@@ -1235,3 +1265,85 @@ export const AdminUsageDaysQuerySchema = z.object({
     days: z.coerce.number().int().default(30),
 });
 export type AdminUsageDays = z.infer<typeof AdminUsageDaysQuerySchema>;
+
+// ============================================================================
+// Admin Neon — request schemas for /admin/neon/* endpoints
+// ============================================================================
+
+/** POST /admin/neon/branches — create a new branch */
+export const AdminNeonCreateBranchSchema = z.object({
+    /** Optional branch name. Neon auto-generates one when omitted. */
+    name: z.string().max(128).optional(),
+    /** Parent branch ID to fork from. Defaults to the project's primary branch. */
+    parent_id: z.string().max(128).optional(),
+});
+export type AdminNeonCreateBranch = z.infer<typeof AdminNeonCreateBranchSchema>;
+
+/** POST /admin/neon/query — execute a SQL query via the Neon serverless driver */
+export const AdminNeonQuerySchema = z.object({
+    /** Full postgres:// connection string. */
+    connectionString: z.string().min(1, 'connectionString is required'),
+    /** SQL statement to execute. */
+    sql: z.string().min(1, 'SQL query is required'),
+    /** Optional positional parameters ($1, $2, …). */
+    params: z.array(z.unknown()).optional(),
+});
+export type AdminNeonQuery = z.infer<typeof AdminNeonQuerySchema>;
+
+// ============================================================================
+// Better Auth — Session / User response schemas
+// ============================================================================
+
+/**
+ * Better Auth user object returned inside session responses.
+ *
+ * Matches the shape emitted by `auth.api.getSession()` — core fields
+ * plus the project-specific `tier` and `role` additional fields.
+ */
+export const BetterAuthUserSchema = z.object({
+    id: z.string(),
+    email: z.string().email(),
+    name: z.string().optional(),
+    image: z.string().url().nullable().optional(),
+    emailVerified: z.boolean(),
+    createdAt: z.coerce.date(),
+    updatedAt: z.coerce.date(),
+    // Project-specific additional fields (see auth.ts → user.additionalFields)
+    tier: z.string().default('free'),
+    role: z.string().default('user'),
+});
+export type BetterAuthUser = z.infer<typeof BetterAuthUserSchema>;
+
+/**
+ * Better Auth session object returned by `auth.api.getSession()`.
+ *
+ * Contains the session metadata plus an embedded `user` object.
+ */
+export const BetterAuthSessionResponseSchema = z.object({
+    session: z.object({
+        id: z.string(),
+        userId: z.string(),
+        token: z.string(),
+        expiresAt: z.coerce.date(),
+        createdAt: z.coerce.date(),
+        updatedAt: z.coerce.date(),
+        ipAddress: z.string().nullable().optional(),
+        userAgent: z.string().nullable().optional(),
+    }),
+    user: BetterAuthUserSchema,
+});
+export type BetterAuthSessionResponse = z.infer<typeof BetterAuthSessionResponseSchema>;
+
+/**
+ * Zod schema for the Better Auth configuration object passed to `betterAuth()`.
+ *
+ * This is a compile-time documentation aid — it validates the shape of the
+ * config we construct in `createAuth()`, not runtime input. Useful in tests
+ * to assert that the factory produces a valid config.
+ */
+export const BetterAuthConfigSchema = z.object({
+    secret: z.string().min(32),
+    basePath: z.string().default('/api/auth'),
+    baseURL: z.string().url().optional(),
+    emailAndPassword: z.object({ enabled: z.boolean() }).optional(),
+});

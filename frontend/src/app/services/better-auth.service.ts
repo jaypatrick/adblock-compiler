@@ -14,6 +14,7 @@
 
 import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
+import { API_BASE_URL } from '../tokens';
 
 export interface BetterAuthUser {
     id: string;
@@ -28,6 +29,7 @@ export interface BetterAuthUser {
 @Injectable({ providedIn: 'root' })
 export class BetterAuthService {
     private readonly platformId = inject(PLATFORM_ID);
+    private readonly apiBaseUrl = inject(API_BASE_URL);
     private readonly _user = signal<BetterAuthUser | null>(null);
     private readonly _isLoaded = signal(false);
     private readonly _sessionToken = signal<string | null>(null);
@@ -53,7 +55,7 @@ export class BetterAuthService {
     /** Fetch the current session from the server. */
     async checkSession(): Promise<void> {
         try {
-            const res = await fetch('/api/auth/get-session', {
+            const res = await fetch(`${this.apiBaseUrl}/auth/get-session`, {
                 credentials: 'include',
             });
             if (res.ok) {
@@ -74,7 +76,7 @@ export class BetterAuthService {
 
     /** Sign in with email and password. */
     async signIn(email: string, password: string): Promise<void> {
-        const res = await fetch('/api/auth/sign-in/email', {
+        const res = await fetch(`${this.apiBaseUrl}/auth/sign-in/email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -97,7 +99,7 @@ export class BetterAuthService {
 
     /** Sign up with email, password, and optional name. */
     async signUp(email: string, password: string, name?: string): Promise<void> {
-        const res = await fetch('/api/auth/sign-up/email', {
+        const res = await fetch(`${this.apiBaseUrl}/auth/sign-up/email`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
@@ -121,7 +123,7 @@ export class BetterAuthService {
     /** Sign out and clear local state. */
     async signOut(): Promise<void> {
         try {
-            await fetch('/api/auth/sign-out', {
+            await fetch(`${this.apiBaseUrl}/auth/sign-out`, {
                 method: 'POST',
                 credentials: 'include',
             });
@@ -153,7 +155,7 @@ export class BetterAuthService {
         // The get-session response includes session.token when the bearer() plugin
         // is configured on the server.
         try {
-            const res = await fetch('/api/auth/get-session', {
+            const res = await fetch(`${this.apiBaseUrl}/auth/get-session`, {
                 credentials: 'include',
             });
             if (res.ok) {
@@ -180,7 +182,7 @@ export class BetterAuthService {
      */
     async updateProfile(email: string): Promise<{ error?: string }> {
         try {
-            const res = await fetch('/api/auth/update-user', {
+            const res = await fetch(`${this.apiBaseUrl}/auth/update-user`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
@@ -206,7 +208,7 @@ export class BetterAuthService {
      */
     async changePassword(currentPassword: string, newPassword: string): Promise<{ error?: string }> {
         try {
-            const res = await fetch('/api/auth/change-password', {
+            const res = await fetch(`${this.apiBaseUrl}/auth/change-password`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',

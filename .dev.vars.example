@@ -20,7 +20,17 @@
 # Overrides ENVIRONMENT="production" from wrangler.toml [vars] during local dev.
 ENVIRONMENT=development
 
-# ─── Clerk Authentication ────────────────────────────────────────────────────
+# ─── Better Auth (primary) ───────────────────────────────────────────────────
+# Better Auth is the primary authentication provider for new sessions.
+# Must be 32+ characters. Generate: openssl rand -base64 32
+# Production: `wrangler secret put BETTER_AUTH_SECRET`
+BETTER_AUTH_SECRET=replace-with-openssl-rand-base64-32-output
+# Base URL for Better Auth callbacks and redirects
+BETTER_AUTH_URL=http://localhost:8787
+
+# ─── Clerk Authentication (deprecated — remove after migration) ──────────────
+# Clerk is retained as a fallback for existing sessions during migration.
+# Set DISABLE_CLERK_FALLBACK=true to disable Clerk entirely.
 # Get keys from https://dashboard.clerk.com → API Keys
 # Publishable key (non-secret — production value lives in wrangler.toml [vars])
 CLERK_PUBLISHABLE_KEY=pk_test_...
@@ -30,12 +40,10 @@ CLERK_JWKS_URL=https://your-instance.clerk.accounts.dev/.well-known/jwks.json
 CLERK_SECRET_KEY=sk_test_...
 # Webhook signing secret (secret — production: `wrangler secret put CLERK_WEBHOOK_SECRET`)
 CLERK_WEBHOOK_SECRET=whsec_...
-
-# ─── Better Auth ─────────────────────────────────────────────────────────────
-# Signing secret for Better Auth session tokens (active when CLERK_JWKS_URL is unset).
-# Must be 32+ characters. Generate: openssl rand -base64 32
-# Production: `wrangler secret put BETTER_AUTH_SECRET`
-BETTER_AUTH_SECRET=replace-with-openssl-rand-base64-32-output
+# Set to 'true' to disable Clerk fallback authentication entirely
+DISABLE_CLERK_FALLBACK=false
+# Set to 'true' to disable Clerk webhook processing
+DISABLE_CLERK_WEBHOOKS=false
 
 # ─── Cloudflare Turnstile ────────────────────────────────────────────────────
 # Site key (non-secret — production value lives in wrangler.toml [vars])
@@ -53,6 +61,12 @@ CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8787
 # Overrides the Hyperdrive binding for `wrangler dev` with a direct connection.
 # See: https://developers.cloudflare.com/hyperdrive/configuration/local-development/
 WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:password@127.0.0.1:5432/adblock_dev?sslmode=verify-full&sslrootcert=system
+
+# ─── Neon Admin API (optional — for admin endpoints) ─────────────────────────
+# Only needed for admin reporting endpoints that call the Neon platform API.
+# Get from https://console.neon.tech/app/settings/api-keys
+# NEON_API_KEY=neon-api-key-here
+# NEON_PROJECT_ID=your-neon-project-id
 
 # ─── Cloudflare Access (optional — admin route defense-in-depth) ─────────────
 # Get from Zero Trust Dashboard → Access → Applications

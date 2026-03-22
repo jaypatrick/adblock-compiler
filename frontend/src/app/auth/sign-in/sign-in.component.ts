@@ -128,12 +128,14 @@ import { ThemeService } from '../../services/theme.service';
 })
 export class SignInComponent implements OnDestroy {
     protected readonly auth = inject(AuthFacadeService);
+    /** @deprecated TODO(auth-migration): Remove ClerkService injection when Clerk support is dropped. */
     private readonly clerk = inject(ClerkService);
     private readonly router = inject(Router);
     private readonly route = inject(ActivatedRoute);
     private readonly theme = inject(ThemeService);
     private readonly fb = inject(FormBuilder);
 
+    /** @deprecated TODO(auth-migration): Remove Clerk mount container + mounted flag. */
     private readonly container = viewChild<ElementRef<HTMLDivElement>>('signInContainer');
     private mounted = false;
 
@@ -147,6 +149,7 @@ export class SignInComponent implements OnDestroy {
 
     private readonly _mount = afterNextRender(() => this.tryMount());
 
+    // TODO(auth-migration): Remove Clerk theme re-mount effect when Clerk support is dropped.
     private readonly _themeEffect = effect(() => {
         this.theme.isDark();
         if (this.mounted) {
@@ -159,6 +162,7 @@ export class SignInComponent implements OnDestroy {
         }
     });
 
+    // TODO(auth-migration): Remove Clerk unmount in ngOnDestroy when Clerk support is dropped.
     ngOnDestroy(): void {
         const el = this.container()?.nativeElement;
         if (el) this.clerk.unmountSignIn(el);
@@ -184,6 +188,7 @@ export class SignInComponent implements OnDestroy {
         await this.router.navigateByUrl(returnUrl);
     }
 
+    /** @deprecated TODO(auth-migration): Remove Clerk mount logic when Clerk support is dropped. */
     private tryMount(): void {
         const el = this.container()?.nativeElement;
         if (el && !this.mounted && this.auth.useClerk()) {

@@ -6,6 +6,13 @@
  * pluggable provider interface — swapping to Auth0/Okta only requires
  * implementing the same interface.
  *
+ * ## Deprecation notice
+ * Clerk is now a **fallback-only** provider. Better Auth is the primary
+ * session provider (P3 auth priority inversion). This provider will be
+ * removed once all clients have migrated to Better Auth. Set
+ * `DISABLE_CLERK_FALLBACK=true` to opt-out of the Clerk fallback early.
+ *
+ * @deprecated Use {@link BetterAuthProvider} as the primary provider.
  * @see worker/middleware/clerk-jwt.ts — underlying JWT verification
  * @see worker/types.ts — IAuthProvider interface
  */
@@ -43,6 +50,8 @@ function resolveRoleFromMetadata(metadata: IClerkPublicMetadata | undefined): st
  * Verifies Clerk-issued JWTs and resolves user tier/role from Clerk's
  * public metadata. Thread-safe and stateless per request — the JWKS
  * resolver is cached at module level inside `clerk-jwt.ts`.
+ *
+ * @deprecated Clerk is now a fallback-only provider. Prefer {@link BetterAuthProvider}.
  */
 export class ClerkAuthProvider implements IAuthProvider {
     readonly name = 'clerk';
