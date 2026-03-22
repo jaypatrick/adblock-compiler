@@ -155,3 +155,31 @@ Deno.test('GET /api/openapi.json is publicly accessible and returns valid spec o
         assertEquals(body['status'], 501);
     }
 });
+
+// ── Admin session revocation — DELETE /admin/users/:id/sessions (#1275) ──────
+
+Deno.test('DELETE /admin/users/:id/sessions returns 401 for anonymous user', async () => {
+    const res = await fetch('/admin/users/user_123/sessions', { method: 'DELETE' });
+    assertEquals(res.status, 401);
+});
+
+Deno.test('DELETE /api/admin/users/:id/sessions returns 401 for anonymous (/api prefix)', async () => {
+    const res = await fetch('/api/admin/users/user_123/sessions', { method: 'DELETE' });
+    assertEquals(res.status, 401);
+});
+
+Deno.test('DELETE /admin/users/:id/sessions returns 401 for invalid bearer token', async () => {
+    // With an invalid Bearer token, the auth chain rejects with 401 (not 404, proving the route exists).
+    // To test 403, a real authenticated non-admin session would be required.
+    const res = await fetch('/admin/users/user_123/sessions', {
+        method: 'DELETE',
+        headers: { 'Authorization': 'Bearer invalid_token' },
+    });
+    assertEquals(res.status, 401);
+});
+
+Deno.test('DELETE /admin/users/:id/sessions route is registered (not 404)', async () => {
+    const res = await fetch('/admin/users/user_123/sessions', { method: 'DELETE' });
+    // Should be 401 (unauthorized) not 404 (not found)
+    assertEquals(res.status !== 404, true);
+});

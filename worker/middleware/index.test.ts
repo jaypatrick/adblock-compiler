@@ -357,3 +357,65 @@ Deno.test('cloneAndParseBody - parses body without consuming original request', 
     assertExists(result.data);
     assertEquals(result.data!.hello, 'world');
 });
+
+// ============================================================================
+// checkRateLimitTiered — Per-API-key rate limit override (#1275)
+// ============================================================================
+
+Deno.test('checkRateLimitTiered - per-API-key rate limit uses stricter of tier and key limit', async () => {
+    const kv: KVData = new Map();
+    const env = makeEnv({ RATE_LIMIT: makeKvNamespace(kv) });
+    // Free-tier user with a low per-key rate limit
+    const ctx: IAuthContext = {
+        ...ANONYMOUS_AUTH_CONTEXT,
+        userId: 'user_lowkey',
+        tier: UserTier.Free,
+        role: 'user',
+        authMethod: 'api-key',
+        apiKeyRateLimit: 5, // much lower than Free tier default
+    };
+
+    const result = await checkRateLimitTiered(env, '1.2.3.4', ctx);
+    assertEquals(result.allowed, true);
+    // The effective limit should be the per-key limit (5), not the tier default
+    assertEquals(result.limit, 5);
+});
+
+Deno.test('checkRateLimitTiered - apiKeyRateLimit=0 blocks request immediately', async () => {
+    const kv: KVData = new Map();
+    const env = makeEnv({ RATE_LIMIT: makeKvNamespace(kv) });
+    const ctx: IAuthContext = {
+        ...ANONYMOUS_AUTH_CONTEXT,
+        userId: 'user_disabled',
+        tier: UserTier.Free,
+        role: 'user',
+        authMethod: 'api-key',
+        apiKeyRateLimit: 0, // disabled key
+    };
+
+    const result = await checkRateLimitTiered(env, '1.2.3.4', ctx);
+    assertEquals(result.allowed, false);
+    assertEquals(result.limit, 0);
+    assertEquals(result.remaining, 0);
+    // KV should NOT have been touched (early return)
+    assertEquals(kv.size, 0);
+});
+
+Deno.test('checkRateLimitTiered - apiKeyRateLimit=null uses tier default', async () => {
+    const kv: KVData = new Map();
+    const env = makeEnv({ RATE_LIMIT: makeKvNamespace(kv) });
+    const ctx: IAuthContext = {
+        ...ANONYMOUS_AUTH_CONTEXT,
+        userId: 'user_nullkey',
+        tier: UserTier.Free,
+        role: 'user',
+        authMethod: 'api-key',
+        apiKeyRateLimit: null, // no per-key override
+    };
+
+    const result = await checkRateLimitTiered(env, '1.2.3.4', ctx);
+    assertEquals(result.allowed, true);
+    // Should use the Free tier default, not 0 or null
+    const freeConfig = getRateLimitConfig(UserTier.Free);
+    assertEquals(result.limit, freeConfig.maxRequests);
+});

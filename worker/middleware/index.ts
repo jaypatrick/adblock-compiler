@@ -67,9 +67,15 @@ export async function checkRateLimitTiered(
 ): Promise<IRateLimitResult> {
     let maxRequests = TIER_RATE_LIMITS[authContext.tier];
 
-    // Per-API-key rate limit: use the stricter of tier limit and key-specific limit
-    if (authContext.authMethod === 'api-key' && authContext.apiKeyRateLimit != null && authContext.apiKeyRateLimit > 0) {
+    // Per-API-key rate limit: use the stricter of tier limit and key-specific limit.
+    // A value of 0 means the key is disabled — block immediately.
+    if (authContext.authMethod === 'api-key' && authContext.apiKeyRateLimit != null && authContext.apiKeyRateLimit >= 0) {
         maxRequests = Math.min(maxRequests, authContext.apiKeyRateLimit);
+    }
+
+    // Disabled API key (maxRequests === 0): block without touching KV
+    if (maxRequests === 0) {
+        return { allowed: false, limit: 0, remaining: 0, resetAt: Date.now() + RATE_LIMIT_WINDOW * 1000 };
     }
 
     // Admin tier has unlimited requests — skip KV entirely

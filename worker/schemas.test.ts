@@ -28,6 +28,8 @@ import {
     RateLimitDataSchema,
     StorageStatsSchema,
     TurnstileVerifyResponseSchema,
+    TwoFactorBackupSchema,
+    TwoFactorVerifySchema,
     WorkflowCompilationResultSchema,
     WorkflowInstanceInfoSchema,
     WorkflowProgressEventSchema,
@@ -534,4 +536,57 @@ Deno.test('CacheWarmingResultSchema validates cache warming results', () => {
         totalDurationMs: 3000,
     };
     assertEquals(CacheWarmingResultSchema.safeParse(valid).success, true);
+});
+
+// ============================================================================
+// TwoFactorVerifySchema (#1275)
+// ============================================================================
+
+Deno.test('TwoFactorVerifySchema - accepts valid 6-digit TOTP code', () => {
+    assertEquals(TwoFactorVerifySchema.safeParse({ code: '123456' }).success, true);
+    assertEquals(TwoFactorVerifySchema.safeParse({ code: '000000' }).success, true);
+});
+
+Deno.test('TwoFactorVerifySchema - rejects non-digit input', () => {
+    assertEquals(TwoFactorVerifySchema.safeParse({ code: 'abcdef' }).success, false);
+    assertEquals(TwoFactorVerifySchema.safeParse({ code: '12345a' }).success, false);
+});
+
+Deno.test('TwoFactorVerifySchema - rejects wrong-length input', () => {
+    assertEquals(TwoFactorVerifySchema.safeParse({ code: '12345' }).success, false);
+    assertEquals(TwoFactorVerifySchema.safeParse({ code: '1234567' }).success, false);
+    assertEquals(TwoFactorVerifySchema.safeParse({ code: '' }).success, false);
+});
+
+Deno.test('TwoFactorVerifySchema - trims whitespace before validation', () => {
+    const result = TwoFactorVerifySchema.safeParse({ code: ' 123456 ' });
+    assertEquals(result.success, true);
+    if (result.success) {
+        assertEquals(result.data.code, '123456');
+    }
+});
+
+// ============================================================================
+// TwoFactorBackupSchema (#1275)
+// ============================================================================
+
+Deno.test('TwoFactorBackupSchema - accepts valid backup code', () => {
+    assertEquals(TwoFactorBackupSchema.safeParse({ code: 'abc123-def456' }).success, true);
+    assertEquals(TwoFactorBackupSchema.safeParse({ code: 'x' }).success, true);
+});
+
+Deno.test('TwoFactorBackupSchema - rejects empty string', () => {
+    assertEquals(TwoFactorBackupSchema.safeParse({ code: '' }).success, false);
+});
+
+Deno.test('TwoFactorBackupSchema - rejects whitespace-only string', () => {
+    assertEquals(TwoFactorBackupSchema.safeParse({ code: '   ' }).success, false);
+});
+
+Deno.test('TwoFactorBackupSchema - trims whitespace on valid code', () => {
+    const result = TwoFactorBackupSchema.safeParse({ code: '  abc123  ' });
+    assertEquals(result.success, true);
+    if (result.success) {
+        assertEquals(result.data.code, 'abc123');
+    }
 });
