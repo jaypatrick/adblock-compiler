@@ -168,14 +168,13 @@ Deno.test('DELETE /api/admin/users/:id/sessions returns 401 for anonymous (/api 
     assertEquals(res.status, 401);
 });
 
-Deno.test('DELETE /admin/users/:id/sessions returns 403 for non-admin authenticated user', async () => {
-    // Without a valid API key or session, auth chain falls back to anonymous → 401.
-    // This test verifies the route is registered (not 404) and the auth chain runs.
+Deno.test('DELETE /admin/users/:id/sessions returns 401 for invalid bearer token', async () => {
+    // With an invalid Bearer token, the auth chain rejects with 401 (not 404, proving the route exists).
+    // To test 403, a real authenticated non-admin session would be required.
     const res = await fetch('/admin/users/user_123/sessions', {
         method: 'DELETE',
         headers: { 'Authorization': 'Bearer invalid_token' },
     });
-    // Auth chain rejects → 401 (not 404, proving the route exists)
     assertEquals(res.status, 401);
 });
 
