@@ -11,9 +11,17 @@
 # Required repository secrets:
 #   NEON_API_KEY      – Neon API token (Settings → API Keys in the Neon console)
 #   NEON_PROJECT_ID   – Neon project ID (e.g. twilight-river-73901472)
-#   NEON_DATABASE_URL – Connection string for the *main* branch (used as a
-#                       template; the workflow overrides host/credentials for
-#                       the PR branch)
+#   NEON_DATABASE_URL – Connection string for the *production* branch.
+#                       Format: postgresql://ROLE:PASSWORD@HOST/DATABASE?sslmode=require
+#                       The database name and role are derived from this URL at
+#                       runtime — do NOT hardcode them in this file.
+#
+# NOTE — Why no Hyperdrive?
+#   Hyperdrive is a Cloudflare edge service.  It is only accessible from code
+#   running inside a Cloudflare Worker — GitHub Actions runners are standard
+#   Linux VMs that live outside Cloudflare's network and cannot reach it.
+#   Prisma migrations therefore connect directly to Neon via DIRECT_DATABASE_URL.
+#   The deployed Worker uses env.HYPERDRIVE.connectionString for all queries.
 
 name: 'Neon Branch: Create'
 
@@ -42,26 +50,65 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Create the Neon branch ──────────────────────────────────────────
-      # The action creates a new branch off `main` in the configured Neon
+      # ── 2. Resolve database config from NEON_DATABASE_URL ─────────────────
+      # NEON_DATABASE_URL is the single source of truth for the database name
+      # and role.  We extract them here so nothing is hardcoded in this file.
+      # URL format: postgresql://ROLE:PASSWORD@HOST/DATABASE?sslmode=require
+      - name: Resolve Neon database config
+        id: db-config
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          # Use Python's standard urlparse for robust URL parsing — handles
+          # special characters in passwords and any valid PostgreSQL URL format.
+          python3 - <<'PYEOF'
+          import os, sys
+          from urllib.parse import urlparse
+
+          raw = os.environ.get("NEON_DATABASE_URL", "")
+          if not raw:
+              print("::error::NEON_DATABASE_URL secret is not set.")
+              print("::error::Add it in repository Settings → Secrets and Variables → Actions.")
+              sys.exit(1)
+
+          url = urlparse(raw)
+          db_name = url.path.lstrip("/").split("?")[0]
+          db_role = url.username or ""
+
+          if not db_name or not db_role:
+              print("::error::Could not parse database name or role from NEON_DATABASE_URL.")
+              print("::error::Expected format: postgresql://ROLE:PASSWORD@HOST/DATABASE?sslmode=require")
+              sys.exit(1)
+
+          gho = os.environ.get("GITHUB_OUTPUT", "")
+          with open(gho, "a") as f:
+              f.write(f"db_name={db_name}\n")
+              f.write(f"db_role={db_role}\n")
+
+          print(f"Resolved: database={db_name}, role={db_role}")
+          PYEOF
+
+      # ── 3. Create the Neon branch ──────────────────────────────────────────
+      # The action creates a new branch off `production` in the configured Neon
       # project.  The branch is a zero-cost, copy-on-write clone — it shares
-      # storage with main until writes diverge.
+      # storage with production until writes diverge.
+      # If the branch already exists (re-run or force-push), the action returns
+      # the existing branch ID without error.
       - name: Create Neon database branch
         id: create-branch
         uses: neondatabase/create-branch-action@v5
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch_name: pr-${{ github.event.pull_request.number }}
-          # Fork from the primary (production) branch
-          parent: main
+          # Fork from the Default (production) branch so PR branches have
+          # production-parity schema and data.
+          parent: production
           api_key: ${{ secrets.NEON_API_KEY }}
-          # Neon project has multiple roles (authenticator, anonymous,
-          # authenticated, neondb_owner); v5 uses "username" for the
-          # --role-name CLI flag and "database" for --database-name.
-          username: neondb_owner
-          database: neondb
+          # Database name and role are derived from NEON_DATABASE_URL above.
+          username: ${{ steps.db-config.outputs.db_role }}
+          database: ${{ steps.db-config.outputs.db_name }}
 
-      # ── 3. Set up pnpm + Node.js for Prisma CLI ─────────────────────────
+      # ── 4. Set up pnpm + Node.js for Prisma CLI ─────────────────────────
       # pnpm must be installed BEFORE setup-node so the pnpm cache works
       - name: Install pnpm
         uses: pnpm/action-setup@v4
@@ -78,17 +125,68 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # ── 4. Run Prisma migrations against the new branch ────────────────────
+      # ── 5. Reset branch if a previous CI run left a failed migration ───────
+      # Prisma error P3009 occurs when a migration is recorded as "failed" in
+      # the _prisma_migrations table, blocking all future deploys on that branch.
+      # For PR branches (ephemeral, forked from production) the cleanest fix is
+      # to restore the branch to its parent tip — this resets the schema and
+      # migration history instantly via Neon's copy-on-write mechanism.
+      # The connection string (endpoint) is unchanged after a restore.
+      - name: Reset branch if migration conflicts detected
+        env:
+          DATABASE_URL: ${{ steps.create-branch.outputs.db_url_with_pooler }}
+          DIRECT_DATABASE_URL: ${{ steps.create-branch.outputs.db_url }}
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          BRANCH_ID: ${{ steps.create-branch.outputs.branch_id }}
+        run: |
+          set +e
+          STATUS=$(npx prisma migrate status 2>&1)
+          STATUS_EXIT=$?
+          set -e
+
+          if [ $STATUS_EXIT -ne 0 ] || echo "$STATUS" | grep -qE "P3009|failed"; then
+            echo "⚠️  Migration conflict detected — restoring branch to production tip for a clean slate."
+            echo "    Prisma status output:"
+            echo "$STATUS" | sed 's/^/    /'
+
+            # Restore the branch to the tip of its parent (production).
+            # This is equivalent to re-forking — instant and zero-cost (COW).
+            RESTORE_RESPONSE=$(curl -sf -X POST \
+              "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${BRANCH_ID}/restore" \
+              -H "Authorization: Bearer ${NEON_API_KEY}" \
+              -H "Content-Type: application/json" \
+              -d '{"source_type":"parent"}') || {
+              echo "::error::Neon branch restore API call failed. Check NEON_API_KEY and NEON_PROJECT_ID secrets."
+              exit 1
+            }
+
+            echo "$RESTORE_RESPONSE" | python3 -c \
+              "import sys,json; d=json.load(sys.stdin); print('Restored branch:', d.get('branch',{}).get('name','unknown'))" \
+              2>/dev/null || echo "Branch restore request sent."
+
+            # Allow a moment for the restore to propagate before running migrations.
+            sleep 5
+            echo "✅ Branch restored. Migrations will be applied fresh."
+          else
+            echo "✅ Migration state is clean."
+          fi
+
+      # ── 6. Run Prisma migrations against the new branch ────────────────────
       # `prisma migrate deploy` applies all pending migrations in order.
       # The DATABASE_URL is overridden to point at the newly created Neon
       # branch so that the PR gets a fully migrated, isolated database.
+      #
+      # NOTE: Hyperdrive cannot be used here — it is a Cloudflare edge service
+      # accessible only from within a Cloudflare Worker.  GitHub Actions runners
+      # are standard Linux VMs outside Cloudflare's network.  See file header.
       - name: Run Prisma migrations
         env:
           DATABASE_URL: ${{ steps.create-branch.outputs.db_url_with_pooler }}
           DIRECT_DATABASE_URL: ${{ steps.create-branch.outputs.db_url }}
         run: npx prisma migrate deploy
 
-      # ── 5. Post connection details as a PR comment ─────────────────────────
+      # ── 7. Post connection details as a PR comment ─────────────────────────
       # Leaves a collapsible comment with the branch connection string so
       # developers can connect from a local client for debugging.  The
       # comment is updated in-place on subsequent pushes (no spam).

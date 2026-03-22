@@ -7,7 +7,7 @@
 ## Overview
 
 When a pull request is opened (or updated), a GitHub Actions workflow creates a
-**Neon database branch** forked from `main`. Prisma migrations are applied to the
+**Neon database branch** forked from `production`. Prisma migrations are applied to the
 new branch, and the connection string is posted as a PR comment. When the PR is
 closed or merged the branch is deleted automatically.
 
@@ -28,7 +28,7 @@ sequenceDiagram
 
     Dev->>GH: Opens / updates Pull Request
     GH->>GA: Triggers neon-branch-create workflow
-    GA->>Neon: Create branch pr-<number> (parent: main)
+    GA->>Neon: Create branch pr-<number> (parent: production)
     Neon-->>GA: Returns connection string
     GA->>Prisma: npx prisma migrate deploy
     Prisma->>DB: Applies pending migrations
@@ -86,14 +86,14 @@ string. You can use this to connect from any PostgreSQL client:
 
 ```bash
 # Copy the connection string from the PR comment
-psql "postgresql://neondb_owner:****@ep-xyz-123.eastus2.azure.neon.tech/neondb?sslmode=require"
+psql "postgresql://neondb_owner:****@ep-xyz-123.eastus2.azure.neon.tech/adblock-compiler?sslmode=require"
 ```
 
 ### Using your local `.env`
 
 ```bash
 # Override DATABASE_URL in your local .env to point at the PR branch
-DATABASE_URL="postgresql://neondb_owner:****@ep-xyz-123.eastus2.azure.neon.tech/neondb?sslmode=require"
+DATABASE_URL="postgresql://neondb_owner:****@ep-xyz-123.eastus2.azure.neon.tech/adblock-compiler?sslmode=require"
 
 # Then run your local dev server — it will use the PR's isolated database
 pnpm run dev
@@ -133,7 +133,7 @@ flowchart LR
 
 - **Isolation** — each PR gets its own database; no cross-contamination between
   feature branches.
-- **Production parity** — branches fork from `main`, so they contain the same
+- **Production parity** — branches fork from `production`, so they contain the same
   schema and (optionally) the same data as production.
 - **Zero cost at rest** — Neon branches use copy-on-write storage; unchanged pages
   are shared with the parent.
@@ -159,14 +159,61 @@ complementary:
 If the Neon branch already exists (e.g. from a previous run), the create action
 will update it in place. No action needed.
 
+### Prisma error P3009 — failed migration blocking deploy
+
+**Symptom:**
+```
+Error: P3009
+migrate found failed migrations in the target database, new migrations will not be applied.
+The `<migration_name>` migration started at <timestamp> failed
+```
+
+**Cause:** A previous CI run failed mid-migration (e.g. due to a duplicate table,
+connection drop, or syntax error). Prisma records the migration as "failed" in the
+`_prisma_migrations` table and blocks all future deploys until it is resolved.
+
+**Automatic fix:** The `neon-branch-create.yml` workflow detects this condition and
+automatically restores the PR branch to its `production` parent tip before re-running
+migrations. Simply push a new commit (or click "Re-run jobs") to trigger a fresh run.
+
+**Manual fix (if automatic recovery fails):**
+```bash
+# Option 1 — resolve via Prisma CLI (marks the migration as rolled-back)
+DIRECT_DATABASE_URL="<branch-connection-string>" \
+  npx prisma migrate resolve --rolled-back <migration_name>
+
+# Option 2 — restore the entire branch to its parent state via the Neon API
+#             (safest for PR branches — completely fresh schema + migration history)
+curl -sf -X POST \
+  "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${BRANCH_ID}/restore" \
+  -H "Authorization: Bearer ${NEON_API_KEY}" \
+  -H "Content-Type: application/json" \
+  -d '{"source_type":"parent"}'
+```
+
 ### Migrations fail on the branch
 
 Check the GitHub Actions log for the `Run Prisma migrations` step. Common causes:
 
-1. **Migration drift** — the PR branch was created from `main` but `main` has
-   since received new migrations. Re-running the workflow (push a new commit or
-   use the "Re-run jobs" button) will recreate the branch from the latest `main`.
+1. **Migration drift** — a migration was applied to the branch but the file was
+   later removed from the repo. Push a new commit; the workflow's P3009 recovery
+   step will restore the branch and re-apply the canonical migration set.
 2. **Invalid migration SQL** — fix the migration in your PR and push again.
+
+### Why can't migrations go through Hyperdrive?
+
+**Hyperdrive is a Cloudflare edge service.** It is only accessible from code running
+inside a Cloudflare Worker on Cloudflare's global network. GitHub Actions runners are
+standard Linux VMs that live entirely outside Cloudflare's network.
+
+| Consumer | Connection path | Why |
+|----------|----------------|-----|
+| Cloudflare Worker (production) | `env.HYPERDRIVE.connectionString` → Neon | Edge-local pooling, warm connections, sub-ms overhead |
+| GitHub Actions CI (migrations) | `DIRECT_DATABASE_URL` → Neon directly | Hyperdrive unreachable outside Workers |
+| Local dev (Docker) | `postgresql://adblock:localdev@localhost:5432/adblock_dev` | Offline, no credentials |
+| Local dev (Neon branch) | `DIRECT_DATABASE_URL` → Neon directly | Same as CI path |
+
+This is correct and expected architecture — not a bug.
 
 ### Branch not deleted after merge
 

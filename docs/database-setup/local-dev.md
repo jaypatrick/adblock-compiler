@@ -128,8 +128,8 @@ DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
 
 ```env
 # .env.local
-DATABASE_URL="postgresql://user:password@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
-DIRECT_DATABASE_URL="postgresql://user:password@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/neondb?sslmode=require"
+DATABASE_URL="postgresql://user:password@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/adblock-compiler?sslmode=require"
+DIRECT_DATABASE_URL="postgresql://user:password@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require"
 ```
 
 > **Tip:** Keep both sets of connection strings in `.env.local` and comment/uncomment as needed.

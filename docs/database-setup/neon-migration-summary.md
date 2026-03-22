@@ -138,12 +138,12 @@ Two new workflows support Neon database branching for pull requests:
 
 Both workflows use `neondatabase/create-branch-action@v5`, which is a composite action wrapping the `neonctl` CLI. Key input/output mappings for v5:
 
-| Input | Purpose | Default |
+| Input | Purpose | This project |
 |-------|---------|---------|
-| `username` | Database role name | _(required)_ |
-| `database` | Database name | `neondb` |
-| `branch_name` | Name for the new branch | _(required)_ |
-| `parent` | Parent branch to fork from | `main` |
+| `username` | Database role name | Derived from `NEON_DATABASE_URL` |
+| `database` | Database name | Derived from `NEON_DATABASE_URL` (`adblock-compiler`) |
+| `branch_name` | Name for the new branch | `pr-<number>` |
+| `parent` | Parent branch to fork from | `production` |
 
 | Output | Purpose |
 |--------|---------|
