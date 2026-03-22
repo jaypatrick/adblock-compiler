@@ -304,8 +304,8 @@ describe('BetterAuthService', () => {
             await flushPromises();
             await service.signUp('john.doe@example.com', 'pass123');
 
-            // The signUp call is the second fetch (index 1)
-            const signUpArgs = spy.mock.calls[1]!;
+            // calls[0] = fetchProviders (fire-and-forget), calls[1] = get-session, calls[2] = signUp
+            const signUpArgs = spy.mock.calls[2]!;
             const body = JSON.parse(signUpArgs[1]!.body as string);
             expect(body.name).toBe('john.doe');
         });

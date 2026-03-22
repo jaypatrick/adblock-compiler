@@ -4,6 +4,7 @@ import { provideAnimationsAsync } from '@angular/platform-browser/animations/asy
 import { provideRouter } from '@angular/router';
 import { ApiKeysComponent } from './api-keys.component';
 import { ApiKeyService, ApiKey } from '../../services/api-key.service';
+import { AuthFacadeService } from '../../services/auth-facade.service';
 import { MatSnackBar } from '@angular/material/snack-bar';
 
 const MOCK_KEY: ApiKey = {
@@ -71,7 +72,13 @@ describe('ApiKeysComponent', () => {
                 provideRouter([]),
                 { provide: PLATFORM_ID, useValue: 'browser' },
                 { provide: ApiKeyService, useValue: mockApiKeyService },
-                { provide: ClerkService, useValue: mockClerkService },
+                {
+                    provide: AuthFacadeService,
+                    useValue: {
+                        isSignedIn: isSignedInSignal.asReadonly(),
+                        isLoaded: isLoadedSignal.asReadonly(),
+                    },
+                },
                 { provide: MatSnackBar, useValue: { open: vi.fn() } },
             ],
         }).compileComponents();

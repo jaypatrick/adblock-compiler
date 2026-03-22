@@ -3,6 +3,7 @@ import { provideZonelessChangeDetection, signal, WritableSignal } from '@angular
 import { provideHttpClient, withInterceptors, HttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
 import { authInterceptor } from './auth.interceptor';
+import { AuthFacadeService } from '../services/auth-facade.service';
 
 describe('authInterceptor', () => {
     let http: HttpClient;
@@ -20,10 +21,8 @@ describe('authInterceptor', () => {
                 provideHttpClient(withInterceptors([authInterceptor])),
                 provideHttpClientTesting(),
                 {
-                    provide: ClerkService,
+                    provide: AuthFacadeService,
                     useValue: {
-                        isAvailable: vi.fn().mockReturnValue(true),
-                        isLoaded: vi.fn().mockReturnValue(true),
                         isSignedIn: isSignedInSignal.asReadonly(),
                         getToken: mockGetToken,
                     },

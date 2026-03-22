@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, provideRouter } from '@angular/router';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SignInComponent } from './sign-in.component';
 import { AuthFacadeService } from '../../services/auth-facade.service';
@@ -13,8 +13,9 @@ function makeMockAuth(overrides: Partial<{ isLoaded: boolean; isSignedIn: boolea
     return {
         isLoaded: signal(overrides.isLoaded ?? true),
         isSignedIn: signal(overrides.isSignedIn ?? false),
+        providers: signal({ emailPassword: true, github: false, google: false, mfa: false }),
         login: vi.fn().mockResolvedValue({}),
-        signInWithSocial: vi.fn(),
+        signInWithSocial: vi.fn().mockResolvedValue({}),
     };
 }
 
@@ -30,6 +31,7 @@ describe('SignInComponent', () => {
             imports: [SignInComponent],
             providers: [
                 provideZonelessChangeDetection(),
+                provideRouter([{ path: '**', redirectTo: '' }]),
                 { provide: AuthFacadeService, useValue: mockAuth },
                 { provide: ActivatedRoute, useValue: makeRoute() },
             ],

@@ -5,8 +5,6 @@
  *   - Component creation
  *   - saveProfile(): success, error, invalid form guard
  *   - changePassword(): success, error, password-mismatch guard
- *   - Clerk mode: displays Clerk message when auth.useClerk() is true
- *
  * Uses a mock AuthFacadeService to avoid real HTTP calls.
  * Form interactions are driven via the reactive form API; results are verified
  * through DOM assertions to keep tests behaviour-oriented.
@@ -22,13 +20,11 @@ import { ProfileComponent } from './profile.component';
 import { AuthFacadeService } from '../services/auth-facade.service';
 
 function makeAuthMock(overrides: Partial<{
-    useClerk: boolean;
     userIdentifier: string | null;
     updateProfile: (id: string) => Promise<{ error?: string }>;
     changePassword: (current: string, next: string) => Promise<{ error?: string }>;
 }> = {}) {
     return {
-        useClerk: vi.fn().mockReturnValue(overrides.useClerk ?? false),
         userIdentifier: vi.fn().mockReturnValue(overrides.userIdentifier ?? 'user@example.com'),
         updateProfile: vi.fn().mockImplementation(
             overrides.updateProfile ?? (() => Promise.resolve({})),
@@ -164,15 +160,6 @@ describe('ProfileComponent', () => {
         });
     });
 
-    describe('Clerk mode', () => {
-        it('should display Clerk message when auth.useClerk() is true', async () => {
-            TestBed.resetTestingModule();
-            await setup({ useClerk: true });
-            fixture.detectChanges();
-
-            const el: HTMLElement = fixture.nativeElement;
-            expect(el.textContent).toContain('Profile management is handled through Clerk');
-        });
-    });
 });
+
 
