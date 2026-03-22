@@ -97,8 +97,21 @@ import { handleMetrics } from './handlers/metrics.ts';
 import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './handlers/configuration.ts';
 
 import { zValidator } from '@hono/zod-validator';
-import { BatchRequestSyncSchema, CompileRequestSchema } from '../src/configuration/schemas.ts';
-import { ConfigurationValidateRequestSchema } from './handlers/configuration.ts';
+import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../src/configuration/schemas.ts';
+import { ConfigurationValidateRequestSchema, ResolveRequestSchema } from './handlers/configuration.ts';
+import {
+    AdminBanUserSchema,
+    AdminNeonCreateBranchSchema,
+    AdminNeonQuerySchema,
+    AstParseRequestSchema,
+    CreateApiKeyRequestSchema,
+    RuleSetCreateSchema,
+    RuleSetUpdateSchema,
+    UpdateApiKeyRequestSchema,
+    ValidateRequestSchema,
+    ValidateRuleRequestSchema,
+    WebhookNotifyRequestSchema,
+} from './schemas.ts';
 
 // Agent routing
 import { routeAgentRequest } from './agent-routing.ts';
@@ -465,13 +478,18 @@ routes.use('*', async (c, next) => {
 routes.get('/admin/auth/config', (c) => handleAdminAuthConfig(c.req.raw, c.env, c.get('authContext')));
 
 routes.get('/admin/users', (c) => handleAdminListUsers(c.req.raw, c.env, c.get('authContext')));
-routes.get('/admin/users/:id', (c) => handleAdminGetUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
-routes.patch('/admin/users/:id', (c) => handleAdminUpdateUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
-routes.delete('/admin/users/:id', (c) => handleAdminDeleteUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
-routes.post('/admin/users/:id/ban', (c) => handleAdminBanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
-routes.post('/admin/users/:id/unban', (c) => handleAdminUnbanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
+routes.get('/admin/users/:id', (c) => handleAdminGetUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
+routes.patch('/admin/users/:id', (c) => handleAdminUpdateUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
+routes.delete('/admin/users/:id', (c) => handleAdminDeleteUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
+routes.post(
+    '/admin/users/:id/ban',
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', AdminBanUserSchema as any, zodValidationError),
+    (c) => handleAdminBanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!),
+);
+routes.post('/admin/users/:id/unban', (c) => handleAdminUnbanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
 
-routes.get('/admin/usage/:userId', (c) => handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')));
+routes.get('/admin/usage/:userId', (c) => handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')!));
 
 routes.all('/admin/storage/*', async (c) => {
     // Permission check already ran in the routes middleware above; this handler
@@ -484,12 +502,22 @@ routes.all('/admin/storage/*', async (c) => {
 
 routes.get('/admin/neon/project', (c) => handleAdminNeonGetProject(c.req.raw, c.env, c.get('authContext')));
 routes.get('/admin/neon/branches', (c) => handleAdminNeonListBranches(c.req.raw, c.env, c.get('authContext')));
-routes.get('/admin/neon/branches/:branchId', (c) => handleAdminNeonGetBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')));
-routes.post('/admin/neon/branches', (c) => handleAdminNeonCreateBranch(c.req.raw, c.env, c.get('authContext')));
-routes.delete('/admin/neon/branches/:branchId', (c) => handleAdminNeonDeleteBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')));
+routes.get('/admin/neon/branches/:branchId', (c) => handleAdminNeonGetBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!));
+routes.post(
+    '/admin/neon/branches',
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', AdminNeonCreateBranchSchema as any, zodValidationError),
+    (c) => handleAdminNeonCreateBranch(c.req.raw, c.env, c.get('authContext')),
+);
+routes.delete('/admin/neon/branches/:branchId', (c) => handleAdminNeonDeleteBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!));
 routes.get('/admin/neon/endpoints', (c) => handleAdminNeonListEndpoints(c.req.raw, c.env, c.get('authContext')));
-routes.get('/admin/neon/databases/:branchId', (c) => handleAdminNeonListDatabases(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')));
-routes.post('/admin/neon/query', (c) => handleAdminNeonQuery(c.req.raw, c.env, c.get('authContext')));
+routes.get('/admin/neon/databases/:branchId', (c) => handleAdminNeonListDatabases(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!));
+routes.post(
+    '/admin/neon/query',
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', AdminNeonQuerySchema as any, zodValidationError),
+    (c) => handleAdminNeonQuery(c.req.raw, c.env, c.get('authContext')),
+);
 
 // ── Metrics ───────────────────────────────────────────────────────────────────
 
@@ -571,6 +599,8 @@ routes.post(
     '/ast/parse',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', AstParseRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
     (c) => handleASTParseRequest(c.req.raw, c.env),
 );
@@ -579,6 +609,8 @@ routes.post(
     '/validate',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', ValidateRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
     (c) => handleValidate(c.req.raw),
 );
@@ -601,8 +633,10 @@ routes.get('/ws/compile', async (c) => {
 
 routes.post(
     '/validate-rule',
-    rateLimitMiddleware(),
     bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', ValidateRuleRequestSchema as any, zodValidationError),
     (c) => handleValidateRule(c.req.raw, c.env),
 );
 
@@ -639,8 +673,10 @@ routes.post(
 
 routes.post(
     '/configuration/resolve',
-    rateLimitMiddleware(),
     bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', ResolveRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
     (c) => handleConfigurationResolve(c.req.raw, c.env),
 );
@@ -658,13 +694,15 @@ routes.post(
     requireAuthMiddleware(),
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', RuleSetCreateSchema as any, zodValidationError),
     (c) => handleRulesCreate(c.req.raw, c.env),
 );
 
 routes.get(
     '/rules/:id',
     requireAuthMiddleware(),
-    (c) => handleRulesGet(c.req.param('id'), c.env),
+    (c) => handleRulesGet(c.req.param('id')!, c.env),
 );
 
 routes.put(
@@ -672,14 +710,16 @@ routes.put(
     requireAuthMiddleware(),
     bodySizeMiddleware(),
     rateLimitMiddleware(),
-    (c) => handleRulesUpdate(c.req.param('id'), c.req.raw, c.env),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', RuleSetUpdateSchema as any, zodValidationError),
+    (c) => handleRulesUpdate(c.req.param('id')!, c.req.raw, c.env),
 );
 
 routes.delete(
     '/rules/:id',
     requireAuthMiddleware(),
     rateLimitMiddleware(),
-    (c) => handleRulesDelete(c.req.param('id'), c.env),
+    (c) => handleRulesDelete(c.req.param('id')!, c.env),
 );
 
 // ── API Keys (requireAuth + interactive session — Better Auth primary, Clerk fallback) ──
@@ -699,6 +739,8 @@ routes.post(
     '/keys',
     requireAuthMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', CreateApiKeyRequestSchema as any, zodValidationError),
     async (c) => {
         if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
@@ -722,17 +764,19 @@ routes.delete(
     async (c) => {
         if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
-        return handleRevokeApiKey(c.req.param('id'), c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
+        return handleRevokeApiKey(c.req.param('id')!, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
     },
 );
 
 routes.patch(
     '/keys/:id',
     requireAuthMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', UpdateApiKeyRequestSchema as any, zodValidationError),
     async (c) => {
         if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
-        return handleUpdateApiKey(c.req.param('id'), c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
+        return handleUpdateApiKey(c.req.param('id')!, c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
     },
 );
 
@@ -762,6 +806,8 @@ routes.post(
     requireAuthMiddleware(),
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', WebhookNotifyRequestSchema as any, zodValidationError),
     (c) => handleNotify(c.req.raw, c.env),
 );
 
@@ -770,6 +816,8 @@ routes.post(
 routes.post(
     '/compile/async',
     bodySizeMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', CompileRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
     (c) => handleCompileAsync(c.req.raw, c.env),
 );
@@ -777,6 +825,8 @@ routes.post(
 routes.post(
     '/compile/batch/async',
     bodySizeMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', BatchRequestAsyncSchema as any, zodValidationError),
     turnstileMiddleware(),
     (c) => handleCompileBatchAsync(c.req.raw, c.env),
 );
@@ -785,6 +835,8 @@ routes.post(
     '/compile/container',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', CompileRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
     async (c) => {
         if (!c.env.ADBLOCK_COMPILER) {

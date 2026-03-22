@@ -17,7 +17,7 @@ import { z } from 'zod';
 
 // ── Request schemas ─────────────────────────────────────────────────────────
 
-const ResolveRequestSchema = z.object({
+export const ResolveRequestSchema = z.object({
     config: z.record(z.string(), z.unknown()),
     override: z.record(z.string(), z.unknown()).optional(),
     applyEnvOverrides: z.boolean().optional(),

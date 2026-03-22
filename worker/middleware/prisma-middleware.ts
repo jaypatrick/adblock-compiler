@@ -62,6 +62,9 @@ export interface PrismaVariables {
  */
 export function prismaMiddleware() {
     return createMiddleware<{ Bindings: Env; Variables: PrismaVariables }>(async (c, next) => {
+        if (!c.env.HYPERDRIVE) {
+            throw new Error('HYPERDRIVE binding is not configured');
+        }
         const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
         c.set('prisma', prisma);
         await next();

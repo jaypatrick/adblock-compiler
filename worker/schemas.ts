@@ -1231,6 +1231,15 @@ export const AstParseRequestSchema = z.object({
 );
 export type AstParseRequest = z.infer<typeof AstParseRequestSchema>;
 
+/** POST /validate — batch rule validation */
+export const ValidateRequestSchema = z.object({
+    /** Array of adblock filter rules to validate. */
+    rules: z.array(z.string()).optional().default([]),
+    /** When true, treat warnings as errors. */
+    strict: z.boolean().optional().default(false),
+});
+export type ValidateRequest = z.infer<typeof ValidateRequestSchema>;
+
 /** POST /admin/auth/api-keys/revoke — one of apiKeyId or keyPrefix required */
 export const RevokeApiKeyRequestSchema = z.object({
     apiKeyId: z.string().optional(),
