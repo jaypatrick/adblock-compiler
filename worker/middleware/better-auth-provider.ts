@@ -31,6 +31,7 @@
 
 import { type Env, type IAuthProvider, type IAuthProviderResult, UserTier } from '../types.ts';
 import { createAuth } from '../lib/auth.ts';
+import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 
 // ============================================================================
 // Helpers (exported for unit testing)
@@ -106,6 +107,8 @@ export class BetterAuthProvider implements IAuthProvider {
                 tier: resolveTier((session.user as Record<string, unknown>).tier as string | undefined),
                 role: resolveRole((session.user as Record<string, unknown>).role as string | undefined),
                 sessionId: session.session.id,
+                email: session.user.email ?? null,
+                displayName: session.user.name ?? null,
             };
         } catch (error) {
             // Better Auth throws on invalid/expired tokens — treat as anonymous.
@@ -113,6 +116,15 @@ export class BetterAuthProvider implements IAuthProvider {
             // fragments) and return a generic message to avoid leaking internal details.
             // deno-lint-ignore no-console
             console.error('[better-auth] Token verification error:', error instanceof Error ? error.name : 'UnknownError');
+
+            // ZTA telemetry: emit auth failure event
+            if (this.env.ANALYTICS_ENGINE) {
+                new AnalyticsService(this.env.ANALYTICS_ENGINE).trackSecurityEvent({
+                    eventType: 'auth_failure',
+                    reason: 'better_auth_verification_error',
+                });
+            }
+
             return { valid: false, error: 'Authentication failed' };
         }
     }

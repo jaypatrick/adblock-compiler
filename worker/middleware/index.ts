@@ -65,7 +65,12 @@ export async function checkRateLimitTiered(
     ip: string,
     authContext: IAuthContext,
 ): Promise<IRateLimitResult> {
-    const maxRequests = TIER_RATE_LIMITS[authContext.tier];
+    let maxRequests = TIER_RATE_LIMITS[authContext.tier];
+
+    // Per-API-key rate limit: use the stricter of tier limit and key-specific limit
+    if (authContext.authMethod === 'api-key' && authContext.apiKeyRateLimit != null && authContext.apiKeyRateLimit > 0) {
+        maxRequests = Math.min(maxRequests, authContext.apiKeyRateLimit);
+    }
 
     // Admin tier has unlimited requests — skip KV entirely
     if (maxRequests === Infinity) {

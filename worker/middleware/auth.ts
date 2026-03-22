@@ -28,6 +28,7 @@ import { ClerkAuthProvider } from './clerk-auth-provider.ts';
 import { runTokenValidators } from './token-validator.ts';
 import { ApiKeyRowSchema, UserTierRowSchema } from '../schemas.ts';
 import { z } from 'zod';
+import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 
 // ============================================================================
 // Types
@@ -41,6 +42,7 @@ export interface ApiKeyAuthResult {
     userId?: string;
     apiKeyId?: string;
     scopes?: string[];
+    rateLimitPerMinute?: number | null;
     error?: string;
 }
 
@@ -187,6 +189,7 @@ export async function authenticateApiKey(
             userId: apiKey.user_id,
             apiKeyId: apiKey.id,
             scopes: apiKey.scopes,
+            rateLimitPerMinute: apiKey.rate_limit_per_minute ?? null,
         };
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -287,7 +290,18 @@ export async function authenticateRequestUnified(
                 sessionId: null,
                 scopes: result.scopes ?? [],
                 authMethod: 'api-key',
+                apiKeyRateLimit: result.rateLimitPerMinute ?? null,
             };
+
+            // ZTA telemetry: track successful API key authentication
+            if (env.ANALYTICS_ENGINE) {
+                new AnalyticsService(env.ANALYTICS_ENGINE).trackSecurityEvent({
+                    eventType: 'auth_success',
+                    reason: 'api_key',
+                    userId: result.userId,
+                });
+            }
+
             return { context };
         }
 
@@ -357,6 +371,9 @@ export async function authenticateRequestUnified(
                 sessionId: providerResult.sessionId ?? null,
                 scopes: [],
                 authMethod: authProvider.authMethod,
+                email: providerResult.email ?? null,
+                displayName: providerResult.displayName ?? null,
+                apiKeyRateLimit: null,
             };
 
             // ZTA: run all registered token validators (tamper detection, revocation, etc.)
@@ -370,6 +387,15 @@ export async function authenticateRequestUnified(
                         { status: 401, headers: { 'Content-Type': 'application/json' } },
                     ),
                 };
+            }
+
+            // ZTA telemetry: track successful session auth
+            if (env.ANALYTICS_ENGINE) {
+                new AnalyticsService(env.ANALYTICS_ENGINE).trackSecurityEvent({
+                    eventType: 'auth_success',
+                    reason: authProvider.authMethod,
+                    userId: resolvedUserId ?? undefined,
+                });
             }
 
             return { context };

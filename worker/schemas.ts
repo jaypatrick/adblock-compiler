@@ -912,6 +912,24 @@ export const AdminUnbanUserSchema = z.object({}).passthrough();
 export type AdminUnbanUser = z.infer<typeof AdminUnbanUserSchema>;
 
 // ============================================================================
+// Two-Factor Authentication Schemas
+// ============================================================================
+
+/** Schema for 2FA TOTP code verification (6-digit code) */
+export const TwoFactorVerifySchema = z.object({
+    code: z.string().length(6).regex(/^\d{6}$/, 'TOTP code must be exactly 6 digits'),
+});
+
+export type TwoFactorVerify = z.infer<typeof TwoFactorVerifySchema>;
+
+/** Schema for 2FA backup code verification */
+export const TwoFactorBackupSchema = z.object({
+    code: z.string().min(1, 'Backup code is required'),
+});
+
+export type TwoFactorBackup = z.infer<typeof TwoFactorBackupSchema>;
+
+// ============================================================================
 // Admin System Schemas — ADMIN_DB trust boundary validation (#1054)
 // ============================================================================
 

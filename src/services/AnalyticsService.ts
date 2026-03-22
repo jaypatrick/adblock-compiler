@@ -196,13 +196,17 @@ export interface RateLimitEventData extends BaseEventData {
  */
 export interface SecurityEventData extends BaseEventData {
     /** Type of security event */
-    eventType?: 'auth_failure' | 'rate_limit' | 'turnstile_rejection' | 'cors_rejection' | 'cf_access_denial' | 'size_limit';
+    eventType?: 'auth_failure' | 'auth_success' | 'rate_limit' | 'turnstile_rejection' | 'cors_rejection' | 'cf_access_denial' | 'size_limit';
     /** Request path */
     path?: string;
     /** HTTP method */
     method?: string;
     /** Client IP address (hashed for privacy) */
     clientIpHash?: string;
+    /** Authenticated user ID (for auth success/failure events) */
+    userId?: string;
+    /** Authentication method used */
+    authMethod?: string;
     /** Auth tier of the requester (if known) */
     tier?: string;
     /** Reason for the security event */
