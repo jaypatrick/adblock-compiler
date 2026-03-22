@@ -142,7 +142,7 @@ describe('DashboardComponent', () => {
                     gateway:  { status: 'healthy' },
                     database: { status: 'healthy', latency_ms: 12 },
                     compiler: { status: 'healthy' },
-                    auth:     { status: 'healthy', provider: 'clerk' },
+                    auth:     { status: 'healthy', provider: 'better-auth' },
                     cache:    { status: 'healthy' },
                 },
             };

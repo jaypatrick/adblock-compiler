@@ -49,6 +49,7 @@ const NAV_GROUPS: NavGroup[] = [
             { label: 'Users', icon: 'people', route: 'users', permission: 'admin:users:read' },
             { label: 'Roles & Permissions', icon: 'admin_panel_settings', route: 'roles', permission: 'admin:roles:read' },
             { label: 'API Keys', icon: 'vpn_key', route: 'api-keys', permission: 'admin:api-keys:read' },
+            { label: 'Auth Settings', icon: 'lock', route: 'auth-settings', permission: 'admin:auth:read' },
         ],
     },
     {

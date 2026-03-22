@@ -80,6 +80,7 @@ import { handleNotify } from './handlers/webhook.ts';
 import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdateApiKey } from './handlers/api-keys.ts';
 import { handleAdminBanUser, handleAdminDeleteUser, handleAdminGetUser, handleAdminListUsers, handleAdminUnbanUser, handleAdminUpdateUser } from './handlers/admin-users.ts';
 import { handleAdminAuthConfig } from './handlers/auth-config.ts';
+import { handleAuthProviders } from './handlers/auth-providers.ts';
 import { handleAdminGetUserUsage } from './handlers/admin-usage.ts';
 import {
     handleAdminNeonCreateBranch,
@@ -146,6 +147,7 @@ const PRE_AUTH_PATHS = [
     '/api/turnstile-config',
     '/api/sentry-config',
     '/api/openapi.json',
+    '/api/auth/providers',
 ] as const;
 
 // ============================================================================
@@ -382,7 +384,7 @@ app.use('*', async (c, next) => {
         return;
     }
 
-    // ── Auth: Better Auth (cookie / bearer-plugin sessions) ──
+    // ── Better Auth session provider ──────────────────────────────────────────
     startTime(c, 'auth', 'Authentication');
     const authProvider = new BetterAuthProvider(c.env);
     const authResult = await authenticateRequestUnified(
@@ -504,6 +506,8 @@ app.get('/api/deployments', handleApiMeta);
 app.get('/api/deployments/*', handleApiMeta);
 app.get('/api/turnstile-config', handleApiMeta);
 app.get('/api/sentry-config', handleApiMeta);
+// Public: returns which auth providers are active — used by frontend to conditionally render social login buttons.
+app.get('/api/auth/providers', (c) => handleAuthProviders(c.req.raw, c.env));
 
 // ============================================================================
 // Business routes sub-app (with ZTA + permission check middleware)
@@ -834,12 +838,11 @@ routes.delete(
     (c) => handleRulesDelete(c.req.param('id')!, c.env),
 );
 
-// ── API Keys (requireAuth + interactive session — Better Auth) ──
+// ── API Keys (requireAuth + interactive session — Better Auth only) ──
 //
-// Only interactive user sessions (Better Auth cookie/bearer)
-// may manage API keys.  API-key-on-API-key and anonymous requests are
-// rejected by the INTERACTIVE_AUTH_METHODS guard.
-//
+// Only interactive user sessions (Better Auth cookie/bearer) may manage
+// API keys. API-key-on-API-key and anonymous requests are rejected.
+
 /** Auth methods that represent an interactive user session (not API key or anonymous). */
 const INTERACTIVE_AUTH_METHODS = new Set(['better-auth']);
 

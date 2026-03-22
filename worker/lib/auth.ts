@@ -32,7 +32,6 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { admin, bearer, multiSession, twoFactor } from 'better-auth/plugins';
-import { github } from 'better-auth/social-providers';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 

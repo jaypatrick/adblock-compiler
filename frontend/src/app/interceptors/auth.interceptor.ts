@@ -25,7 +25,6 @@ const PUBLIC_PATHS = [
     '/api/version',
     '/api/health',
     '/api/turnstile-config',
-    '/api/clerk-config',   // @deprecated: Clerk legacy config endpoint
     '/api/sentry-config',
     '/api/deployments',
     '/api/metrics',
