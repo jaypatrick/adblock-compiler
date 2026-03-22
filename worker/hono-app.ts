@@ -243,6 +243,16 @@ function buildSyntheticRequest(c: AppContext, validatedBody: unknown): Request {
 
 export const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
+// ── Global error handler — catches unhandled exceptions in all routes ─────────
+app.onError((err, c) => {
+    const requestId = c.get('requestId') ?? 'unknown';
+    console.error(`[${requestId}] Unhandled error on ${c.req.method} ${c.req.path}:`, err);
+    return c.json(
+        { success: false, error: 'Internal server error', requestId },
+        500,
+    );
+});
+
 // ── 0. Server-Timing middleware (must be first to wrap all operations) ────────
 app.use('*', timing());
 

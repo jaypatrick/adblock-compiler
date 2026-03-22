@@ -55,22 +55,22 @@ jobs:
           # Fork from the primary (production) branch
           parent: main
           api_key: ${{ secrets.NEON_API_KEY }}
-          # Neon project has multiple roles; specify which one to use for
-          # the connection string outputs (db_url, db_url_with_pooler).
-          role_name: neondb_owner
+          # Neon project has multiple roles (authenticator, anonymous,
+          # authenticated, neondb_owner); v5 uses "username" for the
+          # --role-name CLI flag and "database" for --database-name.
+          username: neondb_owner
+          database: neondb
 
-      # ── 3. Set up Node.js for Prisma CLI ───────────────────────────────────
+      # ── 3. Set up pnpm + Node.js for Prisma CLI ─────────────────────────
+      # pnpm must be installed BEFORE setup-node so the pnpm cache works
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
-
-      # pnpm is used as the project package manager (see pnpm-workspace.yaml)
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       # Install only the dependencies needed for Prisma migrations
       - name: Install dependencies

@@ -47,11 +47,27 @@ import { createPrismaClient } from './prisma.ts';
  * @returns Configured Better Auth instance
  */
 export function createAuth(env: Env, baseURL?: string) {
-    const prisma = createPrismaClient(env.HYPERDRIVE!.connectionString);
+    if (!env.HYPERDRIVE?.connectionString) {
+        throw new Error(
+            'HYPERDRIVE binding is not configured.\n' +
+                '  → Production: add [[hyperdrive]] to wrangler.toml\n' +
+                '  → Local dev:  set WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE (preferred)\n' +
+                '                or CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE in .dev.vars',
+        );
+    }
+    if (!env.BETTER_AUTH_SECRET) {
+        throw new Error(
+            'BETTER_AUTH_SECRET is required but not set.\n' +
+                '  → Generate one: openssl rand -base64 32\n' +
+                '  → Then add it to .dev.vars (local) or wrangler secret put BETTER_AUTH_SECRET (production)',
+        );
+    }
+
+    const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
 
     return betterAuth({
         database: prismaAdapter(prisma, { provider: 'postgresql' }),
-        secret: env.BETTER_AUTH_SECRET!,
+        secret: env.BETTER_AUTH_SECRET,
         basePath: '/api/auth',
         baseURL: env.BETTER_AUTH_URL || baseURL,
 
