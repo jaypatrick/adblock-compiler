@@ -37,11 +37,12 @@ jobs:
           sudo mv mdbook /usr/local/bin/
           rm mdbook.tar.gz
 
-          MERMAID_VERSION=0.14.0
+          MERMAID_VERSION=0.17.0
           curl -fsSL "https://github.com/badboy/mdbook-mermaid/releases/download/v${MERMAID_VERSION}/mdbook-mermaid-v${MERMAID_VERSION}-x86_64-unknown-linux-gnu.tar.gz" -o mdbook-mermaid.tar.gz
           mkdir -p /tmp/mdbook-mermaid-install
           tar xzf mdbook-mermaid.tar.gz -C /tmp/mdbook-mermaid-install
-          sudo mv /tmp/mdbook-mermaid-install/mdbook-mermaid /usr/local/bin/
+          MERMAID_BIN=$(find /tmp/mdbook-mermaid-install -name "mdbook-mermaid" -type f | head -1)
+          sudo mv "$MERMAID_BIN" /usr/local/bin/
           rm -rf mdbook-mermaid.tar.gz /tmp/mdbook-mermaid-install
 
       - name: Set up Deno
@@ -67,7 +68,9 @@ jobs:
           deno task postman:collection
 
       - name: Build mdBook
-        run: mdbook build
+        run: |
+          set -euo pipefail
+          mdbook build
 
       - name: Generate PDF with headless Chromium
         run: |
@@ -78,7 +81,7 @@ jobs:
             echo "⚠️ print.html not found — skipping PDF generation"
             exit 0
           fi
-          chromium-browser \
+          google-chrome \
             --headless \
             --disable-gpu \
             --no-sandbox \
@@ -88,7 +91,7 @@ jobs:
           echo "✅ PDF generated at book/pdf/adblock-compiler.pdf"
 
       - name: Upload PDF artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@bbbca2ddaa1fdc540502cfa0106a1ce08ef1fa50 # v4
         with:
           name: adblock-compiler-docs-pdf
           path: book/pdf/adblock-compiler.pdf
@@ -131,6 +134,8 @@ jobs:
           # shellcheck source=.github/scripts/retry.sh
           source .github/scripts/retry.sh
           echo "Deploying documentation to Cloudflare Pages..."
+          # --commit-dirty=true: required because regenerated OpenAPI/Postman docs modify
+          # in-tree files (docs/api/, docs/postman/) before this step runs.
           retry_command 3 15 deno task wrangler pages deploy book \
             --project-name="${{ env.CLOUDFLARE_PAGES_PROJECT }}" \
             --branch=main \
