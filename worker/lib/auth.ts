@@ -1,15 +1,19 @@
 /**
  * Better Auth Configuration Factory
  *
- * Creates a Better Auth instance configured for Cloudflare Workers + D1.
+ * Creates a Better Auth instance configured for Cloudflare Workers + Prisma
+ * backed by Neon PostgreSQL via Cloudflare Hyperdrive.
  *
- * Better Auth v1.5+ has native D1 support — pass `env.DB` directly to
- * `database` and it auto-detects D1 via Kysely under the hood.
+ * ## Database adapter
+ * Uses `prismaAdapter` from `better-auth/adapters/prisma` with a PrismaClient
+ * created per request via {@link createPrismaClient}. Hyperdrive IS the
+ * connection pool — it proxies connections locally, so per-request
+ * instantiation connects to a local proxy socket, not directly to PostgreSQL.
  *
  * ## Per-request factory pattern
- * Cloudflare Workers expose D1 bindings via `env`, which is only available
+ * Cloudflare Workers expose bindings via `env`, which is only available
  * inside the fetch handler. This factory creates a fresh auth instance per
- * request, passing the live `env.DB` binding.
+ * request, passing the live `env.HYPERDRIVE` binding.
  *
  * ## Plugin extensibility
  * The `plugins` array is ready for future additions:
@@ -20,27 +24,36 @@
  *   - `organization()` — multi-tenancy
  *
  * @see https://better-auth.com/docs/concepts/database
+ * @see https://better-auth.com/docs/adapters/prisma
  * @see https://better-auth.com/docs/integrations/hono
  * @see worker/middleware/better-auth-provider.ts — IAuthProvider implementation
  */
 
 import { betterAuth } from 'better-auth';
+import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { bearer } from 'better-auth/plugins';
 import type { Env } from '../types.ts';
+import { createPrismaClient } from './prisma.ts';
 
 /**
  * Create a Better Auth instance bound to the current request's environment.
  *
- * @param env - Cloudflare Worker environment bindings (must include DB and BETTER_AUTH_SECRET)
+ * Uses the Prisma adapter backed by Neon PostgreSQL via Hyperdrive.
+ * A fresh PrismaClient is created per request using the Hyperdrive
+ * connection string — this is safe because Hyperdrive proxies locally.
+ *
+ * @param env - Cloudflare Worker environment bindings (must include HYPERDRIVE and BETTER_AUTH_SECRET)
  * @param baseURL - The base URL for the auth endpoints (derived from the request)
  * @returns Configured Better Auth instance
  */
 export function createAuth(env: Env, baseURL?: string) {
+    const prisma = createPrismaClient(env.HYPERDRIVE!.connectionString);
+
     return betterAuth({
-        database: env.DB!,
+        database: prismaAdapter(prisma, { provider: 'postgresql' }),
         secret: env.BETTER_AUTH_SECRET!,
         basePath: '/api/auth',
-        baseURL,
+        baseURL: env.BETTER_AUTH_URL || baseURL,
 
         emailAndPassword: {
             enabled: true,
@@ -68,6 +81,19 @@ export function createAuth(env: Env, baseURL?: string) {
             expiresIn: 60 * 60 * 24 * 7,
             // Refresh session if it expires within 1 day
             updateAge: 60 * 60 * 24,
+            cookieCache: {
+                enabled: true,
+                maxAge: 60 * 5, // 5-minute cookie cache
+            },
+        },
+        advanced: {
+            cookiePrefix: 'adblock',
+            defaultCookieAttributes: {
+                httpOnly: true,
+                secure: true,
+                sameSite: 'lax', // 'lax' allows OAuth redirects; 'strict' blocks them
+                path: '/',
+            },
         },
 
         plugins: [

@@ -126,11 +126,13 @@ describe('AuthFacadeService', () => {
         });
 
         it('isAdmin delegates to betterAuth.isAdmin', () => {
+            baMock.isSignedIn.mockReturnValue(true);
             baMock.isAdmin.mockReturnValue(true);
             expect(service.isAdmin()).toBe(true);
         });
 
         it('userIdentifier returns Better Auth user email', () => {
+            baMock.isSignedIn.mockReturnValue(true);
             baMock.user.mockReturnValue(MOCK_BA_USER);
             expect(service.userIdentifier()).toBe('user@example.com');
         });
@@ -141,6 +143,7 @@ describe('AuthFacadeService', () => {
         });
 
         it('getToken delegates to betterAuth.getToken', async () => {
+            baMock.isSignedIn.mockReturnValue(true);
             baMock.getToken.mockResolvedValue('ba-session-token');
             const token = await service.getToken();
             expect(token).toBe('ba-session-token');
@@ -148,6 +151,7 @@ describe('AuthFacadeService', () => {
         });
 
         it('signOut delegates to betterAuth.signOut', async () => {
+            baMock.isSignedIn.mockReturnValue(true);
             await service.signOut();
             expect(baMock.signOut).toHaveBeenCalled();
         });
@@ -227,7 +231,7 @@ describe('AuthFacadeService', () => {
     });
 
     describe('login() — Clerk active (no-op)', () => {
-        beforeEach(() => setup({ isAvailable: true }));
+        beforeEach(() => setup({ isAvailable: true, isSignedIn: true }));
 
         it('returns empty object without calling betterAuth.signIn', async () => {
             const result = await service.login('clerk@example.com', 'pass');
@@ -254,7 +258,7 @@ describe('AuthFacadeService', () => {
     });
 
     describe('signup() — Clerk active (no-op)', () => {
-        beforeEach(() => setup({ isAvailable: true }));
+        beforeEach(() => setup({ isAvailable: true, isSignedIn: true }));
 
         it('returns empty object without calling betterAuth.signUp', async () => {
             const result = await service.signup('clerk@example.com', 'pass');

@@ -1,135 +1,259 @@
 # Local Development Database Setup
 
-## Option A: Docker (Recommended)
+This guide covers setting up a local PostgreSQL database for development using Docker.
 
-Run PostgreSQL locally via Docker. No installation needed.
+## Prerequisites
 
-```bash
-# Start PostgreSQL 18 in Docker
-docker run -d \
-  --name adblock-postgres \
-  -e POSTGRES_USER=<user> \
-  -e POSTGRES_PASSWORD=<password> \
-  -e POSTGRES_DB=adblock_dev \
-  -p 5432:5432 \
-  postgres:18-alpine
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose)
+- [Deno](https://deno.land/) ≥ 2.x (for running Prisma tasks)
+- [direnv](https://direnv.net/) (optional, for automatic env loading)
 
-# Verify it's running
-docker ps | grep adblock-postgres
-```
-
-Connection string: `postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev`
-
-See `.env.example` for the variable names to set in `.env.local`.
-
-### Docker Compose (alternative)
-
-Add to a `docker-compose.yml` at the project root:
-
-```yaml
-services:
-  postgres:
-    image: postgres:18-alpine
-    ports:
-      - "5432:5432"
-    environment:
-      POSTGRES_USER: <user>
-      POSTGRES_PASSWORD: <password>
-      POSTGRES_DB: adblock_dev
-    volumes:
-      - pgdata:/var/lib/postgresql/data
-
-volumes:
-  pgdata:
-```
+## Quick Start
 
 ```bash
-docker compose up -d
+# 1. Start the local PostgreSQL container
+deno task db:local:up
+
+# 2. Push the Prisma schema to create all tables
+deno task db:local:push
+
+# 3. Start the Worker dev server (connects via Hyperdrive local override)
+deno task wrangler:dev
 ```
 
-## Option B: Native PostgreSQL (macOS)
+## Architecture
+
+```mermaid
+flowchart LR
+    subgraph Local["Local Machine"]
+        W["wrangler dev<br/>(Worker)"]
+        P["Prisma CLI<br/>(migrations)"]
+        S["Prisma Studio<br/>(GUI)"]
+    end
+
+    subgraph Docker["Docker"]
+        PG["PostgreSQL 16<br/>port 5432"]
+    end
+
+    W -->|"Hyperdrive local<br/>override"| PG
+    P -->|"DIRECT_DATABASE_URL"| PG
+    S -->|"DIRECT_DATABASE_URL"| PG
+```
+
+### Custom Port
+
+If port 5432 is in use, override with the `POSTGRES_PORT` environment variable:
 
 ```bash
-# Install via Homebrew
-brew install postgresql@18
-
-# Start the service
-brew services start postgresql@18
-
-# Create the development database and user
-createdb adblock_dev
-createuser <user> --createdb
-psql -c "ALTER USER <user> PASSWORD '<password>';"
+POSTGRES_PORT=5555 docker compose up -d postgres
+# Then update connection strings in .env.local and .dev.vars to match
 ```
 
-Connection string: `postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev`
+## Deno Task Reference
 
-## Configure Environment
+| Task | Description |
+|------|-------------|
+| `deno task db:local:up` | Start Docker PostgreSQL container |
+| `deno task db:local:down` | Stop Docker PostgreSQL container |
+| `deno task db:local:push` | Sync Prisma schema → local DB (creates all tables) |
+| `deno task db:local:migrate` | Run pending Prisma migrations against local DB |
+| `deno task db:local:reset` | Destroy volume + recreate DB + push schema (fresh start) |
+| `deno task db:local:studio` | Open Prisma Studio GUI for local DB |
 
-Set `DATABASE_URL` in your `.env.local` (not committed to git):
+## Docker Services
+
+### `postgres` — PostgreSQL 16 Alpine
+
+| Property | Value |
+|----------|-------|
+| Image | `postgres:16-alpine` |
+| Host port | `5432` (configurable via `$POSTGRES_PORT`) |
+| Database | `adblock_dev` |
+| User | `adblock` |
+| Password | `localdev` |
+| Extensions | `pgcrypto`, `citext` (auto-enabled on first start) |
+
+### `db-migrate` — One-Shot Migration Runner
+
+Runs `prisma migrate deploy` inside Docker (useful for CI or when you don't have Deno locally):
 
 ```bash
-# Copy the example file and fill in your local credentials
-cp .env.example .env.local
-# Then edit .env.local and set:
-# DATABASE_URL="postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev"
-# DIRECT_DATABASE_URL="postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev"
+docker compose up postgres db-migrate
 ```
 
-The `.envrc` file loads `.env.local` automatically via `direnv`.
+## Environment Files
 
-## Apply Migrations
+### `.env.local` (gitignored)
+
+Used by Prisma CLI for migrations and schema operations:
+
+```env
+DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
+DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
+```
+
+### `.dev.vars` (gitignored)
+
+Used by `wrangler dev` to override the Hyperdrive binding locally:
+
+```env
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@localhost:5432/adblock_dev
+```
+
+Copy `.dev.vars.example` as a starting point:
 
 ```bash
-# Generate Prisma client + apply migrations
-npx prisma migrate dev
-
-# Or just apply existing migrations without creating new ones
-npx prisma migrate deploy
-
-# Open Prisma Studio to browse data
-npx prisma studio
+cp .dev.vars.example .dev.vars
 ```
 
-## Seed Data (optional)
+### `.envrc` (direnv)
+
+Loads `.env`, `.env.local`, and `.dev.vars` automatically when you `cd` into the project:
 
 ```bash
-# Seed with sample filter sources
-npx prisma db seed
+direnv allow .
 ```
 
-## Wrangler Local Dev
+## Switching Between Local and Neon
 
-Wrangler uses the `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` env var (or the
-`localConnectionString` placeholder in `wrangler.toml`) for the Hyperdrive binding during
-`wrangler dev`. Set the real value in `.env.local`:
+### Local Docker (default for development)
+
+```env
+# .env.local
+DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
+DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
+```
+
+### Neon Direct (for testing against production-like DB)
+
+```env
+# .env.local
+DATABASE_URL="postgresql://user:password@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/neondb?sslmode=require"
+DIRECT_DATABASE_URL="postgresql://user:password@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/neondb?sslmode=require"
+```
+
+> **Tip:** Keep both sets of connection strings in `.env.local` and comment/uncomment as needed.
+
+## Common Workflows
+
+### First-Time Setup
 
 ```bash
-# .env.local (gitignored)
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev"
+# Start postgres
+deno task db:local:up
+
+# Create all tables from Prisma schema
+deno task db:local:push
+
+# Generate Prisma client (for IDE autocomplete)
+deno task db:generate
+
+# Start dev server
+deno task wrangler:dev
 ```
 
-When you run `deno task wrangler:dev` (which calls `wrangler dev`), the Hyperdrive binding resolves to your local PostgreSQL instance.
+### After Pulling New Schema Changes
 
-## Switching Environments
+```bash
+# Apply any new migrations
+deno task db:local:migrate
 
-| Environment | DATABASE_URL | How |
-|-------------|-------------|-----|
-| Local dev | `postgresql://<user>:<password>@localhost:5432/adblock_dev` | `.env.local` |
-| CI/staging | PlanetScale `development` branch connection string | GitHub Actions secret |
-| Production | PlanetScale `main` branch connection string | `wrangler secret put DATABASE_URL` |
+# Regenerate Prisma client
+deno task db:generate
+```
 
-The Prisma schema provider is always `postgresql` — only the connection string changes.
+### Fresh Reset (Nuclear Option)
+
+```bash
+# Destroys the Docker volume, recreates everything
+deno task db:local:reset
+```
+
+### Inspect Data with Prisma Studio
+
+```bash
+deno task db:local:studio
+# Opens browser at http://localhost:5555
+```
+
+### Create a New Migration
+
+```bash
+# Make changes to prisma/schema.prisma, then:
+deno task db:migrate --name describe_your_change
+```
+
+This creates a migration file in `prisma/migrations/` and applies it to your local DB.
 
 ## Troubleshooting
 
-**"Connection refused" on port 5432:**
-- Docker: `docker ps` to verify the container is running
-- Native: `brew services list` to check PostgreSQL status
+### "Port 5432 already in use"
 
-**"Database does not exist":**
-- Run `createdb adblock_dev` or restart the Docker container
+Another process is using the port. Check with:
 
-**Prisma migration errors:**
-- `npx prisma migrate reset` to drop and recreate the database (destructive!)
-- Check that `DATABASE_URL` in `.env.local` is correct
+```bash
+lsof -i :5432
+```
+
+Override the port:
+
+```bash
+POSTGRES_PORT=5434 docker compose up -d postgres
+# Update connection strings in .env.local and .dev.vars to match
+```
+
+### "role 'adblock' does not exist"
+
+You're connecting to a **locally-installed** PostgreSQL instead of Docker. This happens when
+a Homebrew or PGlite postgres is running on the same port. Verify Docker is running:
+
+```bash
+docker compose ps postgres
+```
+
+And ensure your connection string uses port **5432** (not 5432). Check for port conflicts:
+
+```bash
+lsof -i :5432
+```
+
+### "Cannot find module 'prisma/config'"
+
+The Prisma CLI npm package isn't installed. Run:
+
+```bash
+pnpm install
+```
+
+Or use Deno directly (the `db:local:*` tasks do this automatically):
+
+```bash
+deno run -A npm:prisma db push
+```
+
+### Migration Fails on Fresh DB
+
+The incremental migrations assume existing tables. For a fresh local database, use `db push` first:
+
+```bash
+deno task db:local:push
+```
+
+Then mark existing migrations as applied:
+
+```bash
+DIRECT_DATABASE_URL=postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev \
+  deno run -A npm:prisma migrate resolve --applied <migration_name>
+```
+
+### Extensions Not Available
+
+If `gen_random_uuid()` or `citext` functions fail, the init script may not have run.
+Reset the volume:
+
+```bash
+deno task db:local:reset
+```
+
+The `scripts/docker-init-db.sql` init script enables `pgcrypto` and `citext` extensions
+on first volume creation.

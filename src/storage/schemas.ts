@@ -39,11 +39,49 @@ export const CreateApiKeySchema = z.object({
 
 export const CreateSessionSchema = z.object({
     userId: UuidSchema,
+    token: z.string().min(32).max(255).optional(),
     tokenHash: z.string().min(64).max(128),
     ipAddress: z.string().max(45).optional(),
     userAgent: z.string().max(500).optional(),
     expiresAt: z.coerce.date(),
 });
+
+// ============================================================================
+// Better Auth — Accounts & Verification
+// ============================================================================
+
+/** Validates a complete Better Auth Account record (all fields). */
+export const AccountSchema = z.object({
+    id: UuidSchema,
+    userId: UuidSchema,
+    accountId: z.string(),
+    providerId: z.string(),
+    accessToken: z.string().nullable().optional(),
+    refreshToken: z.string().nullable().optional(),
+    accessTokenExpiresAt: z.coerce.date().nullable().optional(),
+    refreshTokenExpiresAt: z.coerce.date().nullable().optional(),
+    scope: z.string().nullable().optional(),
+    idToken: z.string().nullable().optional(),
+    password: z.string().nullable().optional(),
+    createdAt: z.coerce.date(),
+    updatedAt: z.coerce.date(),
+});
+
+/** Validates input for creating a new Better Auth Account (auto-generated fields omitted). */
+export const CreateAccountSchema = AccountSchema.omit({ id: true, createdAt: true, updatedAt: true });
+
+/** Validates a complete Better Auth Verification record (all fields). */
+export const VerificationSchema = z.object({
+    id: UuidSchema,
+    identifier: z.string(),
+    value: z.string(),
+    expiresAt: z.coerce.date(),
+    createdAt: z.coerce.date(),
+    updatedAt: z.coerce.date(),
+});
+
+/** Validates input for creating a new Better Auth Verification (auto-generated fields omitted). */
+export const CreateVerificationSchema = VerificationSchema.omit({ id: true, createdAt: true, updatedAt: true });
 
 // ============================================================================
 // Filter Sources
@@ -131,6 +169,10 @@ export const CreateSourceChangeEventSchema = z.object({
 export type CreateUser = z.infer<typeof CreateUserSchema>;
 export type CreateApiKey = z.infer<typeof CreateApiKeySchema>;
 export type CreateSession = z.infer<typeof CreateSessionSchema>;
+export type Account = z.infer<typeof AccountSchema>;
+export type CreateAccount = z.infer<typeof CreateAccountSchema>;
+export type Verification = z.infer<typeof VerificationSchema>;
+export type CreateVerification = z.infer<typeof CreateVerificationSchema>;
 export type CreateFilterSource = z.infer<typeof CreateFilterSourceSchema>;
 export type CreateFilterListVersion = z.infer<typeof CreateFilterListVersionSchema>;
 export type CreateCompiledOutput = z.infer<typeof CreateCompiledOutputSchema>;

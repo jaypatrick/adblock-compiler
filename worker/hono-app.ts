@@ -82,13 +82,36 @@ import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdate
 import { handleAdminBanUser, handleAdminDeleteUser, handleAdminGetUser, handleAdminListUsers, handleAdminUnbanUser, handleAdminUpdateUser } from './handlers/admin-users.ts';
 import { handleAdminAuthConfig } from './handlers/auth-config.ts';
 import { handleAdminGetUserUsage } from './handlers/admin-usage.ts';
+import {
+    handleAdminNeonCreateBranch,
+    handleAdminNeonDeleteBranch,
+    handleAdminNeonGetBranch,
+    handleAdminNeonGetProject,
+    handleAdminNeonListBranches,
+    handleAdminNeonListDatabases,
+    handleAdminNeonListEndpoints,
+    handleAdminNeonQuery,
+} from './handlers/admin-neon.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleMetrics } from './handlers/metrics.ts';
 import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './handlers/configuration.ts';
 
 import { zValidator } from '@hono/zod-validator';
-import { BatchRequestSyncSchema, CompileRequestSchema } from '../src/configuration/schemas.ts';
-import { ConfigurationValidateRequestSchema } from './handlers/configuration.ts';
+import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../src/configuration/schemas.ts';
+import { ConfigurationValidateRequestSchema, ResolveRequestSchema } from './handlers/configuration.ts';
+import {
+    AdminBanUserSchema,
+    AdminNeonCreateBranchSchema,
+    AdminNeonQuerySchema,
+    AstParseRequestSchema,
+    CreateApiKeyRequestSchema,
+    RuleSetCreateSchema,
+    RuleSetUpdateSchema,
+    UpdateApiKeyRequestSchema,
+    ValidateRequestSchema,
+    ValidateRuleRequestSchema,
+    WebhookNotifyRequestSchema,
+} from './schemas.ts';
 
 // Agent routing
 import { routeAgentRequest } from './agent-routing.ts';
@@ -312,10 +335,22 @@ app.use('*', async (c, next) => {
         return;
     }
 
-    // Standard unified authentication
+    // ── Auth priority chain (P3 inversion): BA primary → Clerk fallback ──
+    //
+    // 1. Always try Better Auth first (cookie / bearer-plugin sessions).
+    // 2. If BA returns { valid: false } without an error (= "no session found"),
+    //    AND Clerk is still configured, try Clerk as a deprecated fallback.
+    // 3. DISABLE_CLERK_FALLBACK=true skips step 2 entirely.
     startTime(c, 'auth', 'Authentication');
-    const authProvider = c.env.CLERK_JWKS_URL ? new ClerkAuthProvider(c.env) : new BetterAuthProvider(c.env);
-    const authResult = await authenticateRequestUnified(c.req.raw, c.env, createPgPool, authProvider);
+    const authProvider = new BetterAuthProvider(c.env);
+    const clerkFallbackEnabled = c.env.CLERK_JWKS_URL && c.env.DISABLE_CLERK_FALLBACK !== 'true';
+    const authResult = await authenticateRequestUnified(
+        c.req.raw,
+        c.env,
+        createPgPool,
+        authProvider,
+        clerkFallbackEnabled ? new ClerkAuthProvider(c.env) : undefined,
+    );
     endTime(c, 'auth');
     if (authResult.response) return authResult.response;
     c.set('authContext', authResult.context);
@@ -443,13 +478,18 @@ routes.use('*', async (c, next) => {
 routes.get('/admin/auth/config', (c) => handleAdminAuthConfig(c.req.raw, c.env, c.get('authContext')));
 
 routes.get('/admin/users', (c) => handleAdminListUsers(c.req.raw, c.env, c.get('authContext')));
-routes.get('/admin/users/:id', (c) => handleAdminGetUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
-routes.patch('/admin/users/:id', (c) => handleAdminUpdateUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
-routes.delete('/admin/users/:id', (c) => handleAdminDeleteUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
-routes.post('/admin/users/:id/ban', (c) => handleAdminBanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
-routes.post('/admin/users/:id/unban', (c) => handleAdminUnbanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
+routes.get('/admin/users/:id', (c) => handleAdminGetUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
+routes.patch('/admin/users/:id', (c) => handleAdminUpdateUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
+routes.delete('/admin/users/:id', (c) => handleAdminDeleteUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
+routes.post(
+    '/admin/users/:id/ban',
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', AdminBanUserSchema as any, zodValidationError),
+    (c) => handleAdminBanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!),
+);
+routes.post('/admin/users/:id/unban', (c) => handleAdminUnbanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
 
-routes.get('/admin/usage/:userId', (c) => handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')));
+routes.get('/admin/usage/:userId', (c) => handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')!));
 
 routes.all('/admin/storage/*', async (c) => {
     // Permission check already ran in the routes middleware above; this handler
@@ -457,6 +497,27 @@ routes.all('/admin/storage/*', async (c) => {
     const { routeAdminStorage } = await import('./handlers/admin.ts');
     return routeAdminStorage(c.req.path, c.req.raw, c.env, c.get('authContext'));
 });
+
+// ── Admin Neon reporting ─────────────────────────────────────────────────────
+
+routes.get('/admin/neon/project', (c) => handleAdminNeonGetProject(c.req.raw, c.env, c.get('authContext')));
+routes.get('/admin/neon/branches', (c) => handleAdminNeonListBranches(c.req.raw, c.env, c.get('authContext')));
+routes.get('/admin/neon/branches/:branchId', (c) => handleAdminNeonGetBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!));
+routes.post(
+    '/admin/neon/branches',
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', AdminNeonCreateBranchSchema as any, zodValidationError),
+    (c) => handleAdminNeonCreateBranch(c.req.raw, c.env, c.get('authContext')),
+);
+routes.delete('/admin/neon/branches/:branchId', (c) => handleAdminNeonDeleteBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!));
+routes.get('/admin/neon/endpoints', (c) => handleAdminNeonListEndpoints(c.req.raw, c.env, c.get('authContext')));
+routes.get('/admin/neon/databases/:branchId', (c) => handleAdminNeonListDatabases(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!));
+routes.post(
+    '/admin/neon/query',
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', AdminNeonQuerySchema as any, zodValidationError),
+    (c) => handleAdminNeonQuery(c.req.raw, c.env, c.get('authContext')),
+);
 
 // ── Metrics ───────────────────────────────────────────────────────────────────
 
@@ -538,6 +599,8 @@ routes.post(
     '/ast/parse',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', AstParseRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
     (c) => handleASTParseRequest(c.req.raw, c.env),
 );
@@ -546,6 +609,8 @@ routes.post(
     '/validate',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', ValidateRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
     (c) => handleValidate(c.req.raw),
 );
@@ -568,8 +633,10 @@ routes.get('/ws/compile', async (c) => {
 
 routes.post(
     '/validate-rule',
-    rateLimitMiddleware(),
     bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', ValidateRuleRequestSchema as any, zodValidationError),
     (c) => handleValidateRule(c.req.raw, c.env),
 );
 
@@ -606,8 +673,10 @@ routes.post(
 
 routes.post(
     '/configuration/resolve',
-    rateLimitMiddleware(),
     bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', ResolveRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
     (c) => handleConfigurationResolve(c.req.raw, c.env),
 );
@@ -625,13 +694,15 @@ routes.post(
     requireAuthMiddleware(),
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', RuleSetCreateSchema as any, zodValidationError),
     (c) => handleRulesCreate(c.req.raw, c.env),
 );
 
 routes.get(
     '/rules/:id',
     requireAuthMiddleware(),
-    (c) => handleRulesGet(c.req.param('id'), c.env),
+    (c) => handleRulesGet(c.req.param('id')!, c.env),
 );
 
 routes.put(
@@ -639,24 +710,39 @@ routes.put(
     requireAuthMiddleware(),
     bodySizeMiddleware(),
     rateLimitMiddleware(),
-    (c) => handleRulesUpdate(c.req.param('id'), c.req.raw, c.env),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', RuleSetUpdateSchema as any, zodValidationError),
+    (c) => handleRulesUpdate(c.req.param('id')!, c.req.raw, c.env),
 );
 
 routes.delete(
     '/rules/:id',
     requireAuthMiddleware(),
     rateLimitMiddleware(),
-    (c) => handleRulesDelete(c.req.param('id'), c.env),
+    (c) => handleRulesDelete(c.req.param('id')!, c.env),
 );
 
-// ── API Keys (requireAuth + Clerk JWT) ────────────────────────────────────────
+// ── API Keys (requireAuth + interactive session — Better Auth primary, Clerk fallback) ──
+//
+// Only interactive user sessions (Better Auth cookie/bearer or Clerk JWT)
+// may manage API keys.  API-key-on-API-key and anonymous requests are
+// rejected by the INTERACTIVE_AUTH_METHODS guard.
+//
+// During the migration window, both Better Auth and Clerk sessions produce
+// a valid `authContext.userId` that the handlers use as `api_keys.user_id`.
+// See worker/handlers/api-keys.ts for column semantics.
+
+/** Auth methods that represent an interactive user session (not API key or anonymous). */
+const INTERACTIVE_AUTH_METHODS = new Set(['clerk-jwt', 'better-auth']);
 
 routes.post(
     '/keys',
     requireAuthMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', CreateApiKeyRequestSchema as any, zodValidationError),
     async (c) => {
-        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
         return handleCreateApiKey(c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
     },
@@ -666,7 +752,7 @@ routes.get(
     '/keys',
     requireAuthMiddleware(),
     async (c) => {
-        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
         return handleListApiKeys(c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
     },
@@ -676,31 +762,52 @@ routes.delete(
     '/keys/:id',
     requireAuthMiddleware(),
     async (c) => {
-        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
-        return handleRevokeApiKey(c.req.param('id'), c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
+        return handleRevokeApiKey(c.req.param('id')!, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
     },
 );
 
 routes.patch(
     '/keys/:id',
     requireAuthMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', UpdateApiKeyRequestSchema as any, zodValidationError),
     async (c) => {
-        if (c.get('authContext').authMethod !== 'clerk-jwt') return JsonResponse.forbidden('API key management requires Clerk authentication');
+        if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
-        return handleUpdateApiKey(c.req.param('id'), c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
+        return handleUpdateApiKey(c.req.param('id')!, c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool);
     },
 );
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────
+//
+// Clerk webhook is conditionally enabled:
+//   - Requires CLERK_WEBHOOK_SECRET to be set (existing check in handler)
+//   - Can be disabled at the route level with DISABLE_CLERK_WEBHOOKS=true
+// When disabled, returns 410 Gone so callers know the endpoint is retired.
 
-routes.post('/webhooks/clerk', (c) => handleClerkWebhook(c.req.raw, c.env));
+routes.post('/webhooks/clerk', (c) => {
+    if (c.env.DISABLE_CLERK_WEBHOOKS === 'true') {
+        return c.json(
+            {
+                success: false,
+                error: 'Clerk webhooks are disabled. Auth has migrated to Better Auth.',
+                code: 'CLERK_WEBHOOKS_DISABLED',
+            },
+            410,
+        );
+    }
+    return handleClerkWebhook(c.req.raw, c.env);
+});
 
 routes.post(
     '/notify',
     requireAuthMiddleware(),
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', WebhookNotifyRequestSchema as any, zodValidationError),
     (c) => handleNotify(c.req.raw, c.env),
 );
 
@@ -709,6 +816,8 @@ routes.post(
 routes.post(
     '/compile/async',
     bodySizeMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', CompileRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
     (c) => handleCompileAsync(c.req.raw, c.env),
 );
@@ -716,6 +825,8 @@ routes.post(
 routes.post(
     '/compile/batch/async',
     bodySizeMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', BatchRequestAsyncSchema as any, zodValidationError),
     turnstileMiddleware(),
     (c) => handleCompileBatchAsync(c.req.raw, c.env),
 );
@@ -724,6 +835,8 @@ routes.post(
     '/compile/container',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', CompileRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
     async (c) => {
         if (!c.env.ADBLOCK_COMPILER) {

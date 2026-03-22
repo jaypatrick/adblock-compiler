@@ -38,6 +38,46 @@ Thank you for your interest in contributing to the Adblock Compiler project! Thi
    pnpm --filter adblock-compiler-frontend run test     # Frontend tests (Vitest)
    ```
 
+## Database Setup
+
+The project uses **Neon PostgreSQL** as the primary database, accessed via **Prisma ORM** and **Cloudflare Hyperdrive** for connection pooling. Cloudflare D1 is retained as an edge cache layer.
+
+### Local Development Database
+
+```bash
+# Start PostgreSQL locally (Docker Compose)
+docker compose up postgres -d
+
+# Apply Prisma migrations
+deno task db:migrate
+
+# Generate Prisma client (NEVER use `npx prisma generate`)
+deno task db:generate
+```
+
+> **⚠️ Important:** Always use `deno task db:generate` and `deno task db:migrate` for Prisma commands. Never run `npx prisma generate` or `npx prisma migrate` directly — the Deno tasks configure the correct environment and apply post-generation import fixes.
+
+### Required Environment Variables
+
+Copy `.dev.vars.example` to `.dev.vars` and set:
+
+| Variable                                                 | Purpose                                                                              |
+| -------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| `WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` | Local PostgreSQL connection string (overrides Hyperdrive binding for `wrangler dev`) |
+| `BETTER_AUTH_SECRET`                                     | Signing secret for Better Auth sessions (32+ chars)                                  |
+| `BETTER_AUTH_URL`                                        | Base URL for Better Auth (default: `http://localhost:8787`)                          |
+
+Optional (for admin/monitoring features):
+
+| Variable          | Purpose                                  |
+| ----------------- | ---------------------------------------- |
+| `NEON_API_KEY`    | Neon admin API key (for admin endpoints) |
+| `NEON_PROJECT_ID` | Neon project ID                          |
+
+### Neon Branching on PRs
+
+When a PR is opened, CI can create a Neon branch from `main` for isolated testing. See [`docs/database-setup/neon-branching.md`](docs/database-setup/neon-branching.md) for details on the branching strategy and how preview deployments use per-PR database branches.
+
 ## Commit Message Guidelines
 
 We use **Conventional Commits** for automatic version bumping and changelog generation.

@@ -34,7 +34,7 @@ database_id = "<paste-your-database-id-here>"
 migrations_dir = "admin-migrations"
 ```
 
-> **Why a separate database?** The admin system uses its own D1 instance (`ADMIN_DB`) instead of the application's `DB` binding. This provides blast-radius isolation — a bad admin migration or runaway query cannot corrupt application data.
+> **Why a separate database?** The admin system uses its own D1 instance (`ADMIN_DB`) as an **edge cache**, with **Neon PostgreSQL** (via Hyperdrive) as the authoritative data store. D1 provides low-latency reads at the edge while Neon holds the durable source of truth. The `ADMIN_DB` binding is separate from the application's `DB` binding for blast-radius isolation — a bad admin migration or runaway query cannot corrupt application data.
 
 ## 2. Run Migrations
 

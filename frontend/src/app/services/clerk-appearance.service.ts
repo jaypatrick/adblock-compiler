@@ -1,4 +1,8 @@
 /**
+ * @deprecated Clerk is a legacy auth provider. This service will be removed
+ * when Clerk support is fully dropped. Better Auth is now the primary
+ * authentication system and does not require appearance theming.
+ *
  * ClerkAppearanceService — Builds Clerk `Appearance` objects from the app's
  * Material Design 3 CSS custom properties.
  *
@@ -48,6 +52,7 @@ const DARK_FALLBACKS: Record<string, string> = {
     '--app-success': '#059669',
 };
 
+/** @deprecated Clerk is a legacy auth provider. Use Better Auth instead. */
 @Injectable({ providedIn: 'root' })
 export class ClerkAppearanceService {
     private readonly platformId = inject(PLATFORM_ID);

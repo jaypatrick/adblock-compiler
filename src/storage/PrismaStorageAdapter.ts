@@ -45,7 +45,10 @@ function deserializeKey(key: string): string[] {
 }
 
 /**
- * Prisma-based storage adapter implementation
+ * @deprecated Use {@link HyperdriveStorageAdapter} instead — it uses Prisma
+ * natively and is the canonical storage backend.
+ *
+ * Prisma-based storage adapter implementation.
  *
  * Default storage backend using Prisma ORM with SQLite.
  * Supports SQLite, PostgreSQL, MySQL, and MongoDB.
@@ -58,9 +61,10 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     private _isOpen = false;
 
     /**
-     * Creates a new PrismaStorageAdapter instance
-     * @param logger - Logger for diagnostic messages
-     * @param config - Storage adapter configuration
+     * @deprecated Use {@link HyperdriveStorageAdapter} instead.
+     * Creates a new PrismaStorageAdapter instance.
+     * @param logger - Logger for diagnostic messages.
+     * @param config - Storage adapter configuration.
      */
     constructor(logger: IDetailedLogger, config: StorageAdapterConfig = { type: 'prisma' }) {
         this.logger = logger;
@@ -73,7 +77,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Opens the Prisma client connection
+     * @deprecated Use {@link HyperdriveStorageAdapter.open} instead.
+     * Opens the Prisma client connection.
      */
     async open(): Promise<void> {
         if (this._isOpen) {
@@ -117,7 +122,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Closes the Prisma client connection
+     * @deprecated Use {@link HyperdriveStorageAdapter.close} instead.
+     * Closes the Prisma client connection.
      */
     async close(): Promise<void> {
         if (this.cleanupInterval) {
@@ -134,7 +140,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Checks if the storage is open
+     * @deprecated Use {@link HyperdriveStorageAdapter.isOpen} instead.
+     * Checks if the storage is open.
      */
     isOpen(): boolean {
         return this._isOpen;
@@ -174,7 +181,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     // ========================================================================
 
     /**
-     * Stores a value with the given key
+     * @deprecated Use {@link HyperdriveStorageAdapter.set} instead.
+     * Stores a value with the given key.
      */
     async set<T>(key: string[], value: T, ttlMs?: number): Promise<boolean> {
         const prisma = this.ensureOpen();
@@ -213,7 +221,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Retrieves a value by key
+     * @deprecated Use {@link HyperdriveStorageAdapter.get} instead.
+     * Retrieves a value by key.
      */
     async get<T>(key: string[]): Promise<StorageEntry<T> | null> {
         const prisma = this.ensureOpen();
@@ -253,7 +262,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Deletes a value by key
+     * @deprecated Use {@link HyperdriveStorageAdapter.delete} instead.
+     * Deletes a value by key.
      */
     async delete(key: string[]): Promise<boolean> {
         const prisma = this.ensureOpen();
@@ -277,7 +287,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Lists entries matching the query options
+     * @deprecated Use {@link HyperdriveStorageAdapter.list} instead.
+     * Lists entries matching the query options.
      */
     async list<T>(options: QueryOptions = {}): Promise<Array<{ key: string[]; value: StorageEntry<T> }>> {
         const prisma = this.ensureOpen();
@@ -340,7 +351,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Clears all expired entries
+     * @deprecated Use {@link HyperdriveStorageAdapter.clearExpired} instead.
+     * Clears all expired entries.
      */
     async clearExpired(): Promise<number> {
         const prisma = this.ensureOpen();
@@ -375,7 +387,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Gets storage statistics
+     * @deprecated Use {@link HyperdriveStorageAdapter.getStats} instead.
+     * Gets storage statistics.
      */
     async getStats(): Promise<StorageStats> {
         const prisma = this.ensureOpen();
@@ -419,7 +432,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     // ========================================================================
 
     /**
-     * Stores a cache entry for a filter list download
+     * @deprecated Use {@link HyperdriveStorageAdapter.cacheFilterList} instead.
+     * Stores a cache entry for a filter list download.
      */
     async cacheFilterList(
         source: string,
@@ -459,7 +473,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Retrieves a cached filter list
+     * @deprecated Use {@link HyperdriveStorageAdapter.getCachedFilterList} instead.
+     * Retrieves a cached filter list.
      */
     async getCachedFilterList(source: string): Promise<CacheEntry | null> {
         const prisma = this.ensureOpen();
@@ -494,7 +509,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Stores compilation metadata
+     * @deprecated Use {@link HyperdriveStorageAdapter.storeCompilationMetadata} instead.
+     * Stores compilation metadata.
      */
     async storeCompilationMetadata(metadata: CompilationMetadata): Promise<boolean> {
         const prisma = this.ensureOpen();
@@ -521,7 +537,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Retrieves recent compilation metadata
+     * @deprecated Use {@link HyperdriveStorageAdapter.getCompilationHistory} instead.
+     * Retrieves recent compilation metadata.
      */
     async getCompilationHistory(configName: string, limit: number = 10): Promise<CompilationMetadata[]> {
         const prisma = this.ensureOpen();
@@ -558,7 +575,8 @@ export class PrismaStorageAdapter implements IStorageAdapter {
     }
 
     /**
-     * Clears all cache entries
+     * @deprecated Use {@link HyperdriveStorageAdapter.clearCache} instead.
+     * Clears all cache entries.
      */
     async clearCache(): Promise<number> {
         const prisma = this.ensureOpen();

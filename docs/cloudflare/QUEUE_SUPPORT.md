@@ -12,7 +12,7 @@ The adblock-compiler worker now supports asynchronous compilation through Cloudf
 - **Rate limit bypass** - Queue requests that would otherwise be rate-limited
 - **Priority processing** - Premium users and urgent compilations get faster processing
 
-**See Also:** [Queue Architecture Diagram](./QUEUE_ARCHITECTURE.md) for visual representation of the queue flow.
+**See Also:** The queue architecture is documented inline below and in the [Cloudflare Queues docs](https://developers.cloudflare.com/queues/).
 
 ## Queue Configuration
 

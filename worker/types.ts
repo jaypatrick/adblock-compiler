@@ -228,7 +228,15 @@ export interface Env {
     DB?: D1Database;
     // Admin D1 Database binding (isolated admin config: roles, flags, audit, tiers, scopes)
     ADMIN_DB?: D1Database;
-    // Hyperdrive binding (optional - for PlanetScale PostgreSQL via Hyperdrive)
+    /**
+     * Hyperdrive binding — required for Prisma (Neon PostgreSQL).
+     *
+     * Better Auth's Prisma adapter and all database access routes use this
+     * binding. Wrangler binds it automatically from [[hyperdrive]] in
+     * wrangler.toml. For local dev, set the local connection string in
+     * `.dev.vars`:
+     *   WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://...
+     */
     HYPERDRIVE?: HyperdriveBinding;
     // Request body size limit in megabytes (optional - defaults to 1MB)
     MAX_REQUEST_BODY_MB?: string;
@@ -285,6 +293,28 @@ export interface Env {
      * Production: `wrangler secret put BETTER_AUTH_SECRET`
      */
     BETTER_AUTH_SECRET?: string;
+    /**
+     * Public base URL for Better Auth callbacks and redirects.
+     * Defaults to the request origin if not set.
+     *
+     * @example `"https://adblock-compiler.example.com"`
+     */
+    BETTER_AUTH_URL?: string;
+    /**
+     * When `'true'`, disables the Clerk JWT fallback entirely.
+     * Set this after all clients have migrated to Better Auth.
+     *
+     * @deprecated Will be removed once the Clerk→Better Auth migration is complete.
+     */
+    DISABLE_CLERK_FALLBACK?: string;
+    /**
+     * When set to `"true"`, the `/api/webhooks/clerk` endpoint returns
+     * 410 Gone without processing the payload.  Use this to disable Clerk
+     * webhook user-sync after all users have been migrated to Better Auth.
+     *
+     * @deprecated Will be removed once the Clerk→Better Auth migration is complete.
+     */
+    DISABLE_CLERK_WEBHOOKS?: string;
     // --- Cloudflare Access (admin route protection) ---
     CF_ACCESS_TEAM_DOMAIN?: string;
     CF_ACCESS_AUD?: string;
@@ -293,6 +323,11 @@ export interface Env {
     // --- Cloudflare Containers ---
     // Shared secret for Worker→Container auth (X-Container-Secret). Must match container env. Set via `wrangler secret put CONTAINER_SECRET`.
     CONTAINER_SECRET?: string;
+    // --- Neon (admin reporting) ---
+    /** Neon API key for admin reporting endpoints. Set via `wrangler secret put NEON_API_KEY`. */
+    NEON_API_KEY?: string;
+    /** Default Neon project ID for admin reporting endpoints. */
+    NEON_PROJECT_ID?: string;
 }
 
 // ============================================================================

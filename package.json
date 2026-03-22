@@ -17,8 +17,10 @@
         "@adguard/agtree": "^4.0.1",
         "@hono/zod-openapi": "^1.2.2",
         "@hono/zod-validator": "^0.4.3",
+        "@neondatabase/serverless": "^0.10.0",
         "@opentelemetry/api": "^1.9.0",
         "@prisma/adapter-d1": "^7.5.0",
+        "@prisma/adapter-pg": "^7.5.0",
         "@prisma/client": "^7.5.0",
         "@sentry/cloudflare": "10.43.0",
         "better-auth": "^1.5.5",
@@ -33,6 +35,7 @@
         "@cloudflare/playwright": "^1.1.2",
         "@cloudflare/playwright-mcp": "^0.0.5",
         "@cloudflare/workers-types": "^4.20260317.1",
+        "prisma": "7.5.0",
         "wrangler": "^4.75.0"
     }
 }

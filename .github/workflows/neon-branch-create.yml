@@ -1,0 +1,161 @@
+# Neon Database Branch — Create
+#
+# Creates an isolated Neon PostgreSQL branch for every pull request so that
+# schema migrations, seed data, and integration tests can run against a
+# disposable copy of the production database.  The branch is named
+# `pr-<number>` and is automatically deleted by neon-branch-cleanup.yml
+# when the PR is closed or merged.
+#
+# Phase 0 of the Neon PostgreSQL migration.
+#
+# Required repository secrets:
+#   NEON_API_KEY      – Neon API token (Settings → API Keys in the Neon console)
+#   NEON_PROJECT_ID   – Neon project ID (e.g. twilight-river-73901472)
+#   NEON_DATABASE_URL – Connection string for the *main* branch (used as a
+#                       template; the workflow overrides host/credentials for
+#                       the PR branch)
+
+name: 'Neon Branch: Create'
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+# Only one branch-create job per PR at a time; cancel stale runs when a
+# new commit is pushed.
+concurrency:
+  group: neon-branch-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  pull-requests: write          # Needed to post the PR comment
+
+jobs:
+  create-neon-branch:
+    name: Create Neon Branch
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      # ── 1. Checkout ────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Create the Neon branch ──────────────────────────────────────────
+      # The action creates a new branch off `main` in the configured Neon
+      # project.  The branch is a zero-cost, copy-on-write clone — it shares
+      # storage with main until writes diverge.
+      - name: Create Neon database branch
+        id: create-branch
+        uses: neondatabase/create-branch-action@v5
+        with:
+          project_id: ${{ secrets.NEON_PROJECT_ID }}
+          branch_name: pr-${{ github.event.pull_request.number }}
+          # Fork from the primary (production) branch
+          parent: main
+          api_key: ${{ secrets.NEON_API_KEY }}
+          # Neon project has multiple roles; specify which one to use for
+          # the connection string outputs (db_url, db_url_with_pooler).
+          role_name: neondb_owner
+
+      # ── 3. Set up Node.js for Prisma CLI ───────────────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      # pnpm is used as the project package manager (see pnpm-workspace.yaml)
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      # Install only the dependencies needed for Prisma migrations
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      # ── 4. Run Prisma migrations against the new branch ────────────────────
+      # `prisma migrate deploy` applies all pending migrations in order.
+      # The DATABASE_URL is overridden to point at the newly created Neon
+      # branch so that the PR gets a fully migrated, isolated database.
+      - name: Run Prisma migrations
+        env:
+          DATABASE_URL: ${{ steps.create-branch.outputs.db_url_with_pooler }}
+          DIRECT_DATABASE_URL: ${{ steps.create-branch.outputs.db_url }}
+        run: npx prisma migrate deploy
+
+      # ── 5. Post connection details as a PR comment ─────────────────────────
+      # Leaves a collapsible comment with the branch connection string so
+      # developers can connect from a local client for debugging.  The
+      # comment is updated in-place on subsequent pushes (no spam).
+      - name: Comment on PR with branch details
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const branchName = `pr-${{ github.event.pull_request.number }}`;
+            const dbUrl      = `${{ steps.create-branch.outputs.db_url_with_pooler }}`;
+            const projectId  = `${{ secrets.NEON_PROJECT_ID }}`;
+
+            // Marker used to find and update previous comments from this action
+            const marker = `<!-- neon-branch-comment -->`;
+
+            const body = [
+              marker,
+              `## 🐘 Neon Database Branch Created`,
+              ``,
+              `| Property | Value |`,
+              `|----------|-------|`,
+              `| **Branch name** | \`${branchName}\` |`,
+              `| **Neon project** | \`${projectId}\` |`,
+              `| **Migrations** | ✅ Applied successfully |`,
+              ``,
+              `<details>`,
+              `<summary>🔗 Connection string (click to expand)</summary>`,
+              ``,
+              `\`\`\``,
+              `${dbUrl}`,
+              `\`\`\``,
+              ``,
+              `> **Tip:** Use this connection string in your local \`.env\` to test`,
+              `> against this PR's isolated database branch.`,
+              `</details>`,
+              ``,
+              `<details>`,
+              `<summary>ℹ️ What is this?</summary>`,
+              ``,
+              `This PR has an isolated Neon database branch that is a copy-on-write`,
+              `clone of the \`main\` branch. All Prisma migrations have been applied.`,
+              `The branch will be **automatically deleted** when this PR is closed or merged.`,
+              ``,
+              `See [docs/database-setup/neon-branching.md](../docs/database-setup/neon-branching.md) for details.`,
+              `</details>`,
+            ].join('\n');
+
+            // Look for an existing comment from this action
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body.includes(marker));
+
+            if (existing) {
+              // Update the previous comment in-place
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              // First run — create a new comment
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo:  context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

@@ -1,14 +1,14 @@
 /**
  * Tests for the Better Auth Provider.
  *
- * BetterAuthProvider.verifyToken() calls createAuth() which needs a real D1
- * database and Better Auth secret, so we cannot unit-test the full flow.
- * Instead, we test:
+ * BetterAuthProvider.verifyToken() calls createAuth() which needs a real
+ * PostgreSQL database (via Hyperdrive) and Better Auth secret, so we cannot
+ * unit-test the full flow.  Instead, we test:
  *
  *   - resolveTier: correct tier mapping, fallback to Free
  *   - resolveRole: correct role mapping, fallback to 'user'
  *   - verifyToken guard: missing BETTER_AUTH_SECRET → structured error
- *   - verifyToken guard: missing DB → structured error
+ *   - verifyToken guard: missing HYPERDRIVE → structured error
  *
  * @see worker/middleware/better-auth-provider.ts
  */
@@ -95,16 +95,16 @@ Deno.test('BetterAuthProvider.verifyToken - returns error when BETTER_AUTH_SECRE
     assertEquals(result.error!.includes('BETTER_AUTH_SECRET'), true);
 });
 
-Deno.test('BetterAuthProvider.verifyToken - returns error when DB is missing', async () => {
+Deno.test('BetterAuthProvider.verifyToken - returns error when HYPERDRIVE is missing', async () => {
     const env = makeEnv({ BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!' });
-    // env.DB is not set by makeEnv
+    // env.HYPERDRIVE is not set by makeEnv
     const provider = new BetterAuthProvider(env);
     const req = new Request('http://localhost/test');
 
     const result = await provider.verifyToken(req);
     assertEquals(result.valid, false);
     assertEquals(typeof result.error, 'string');
-    assertEquals(result.error!.includes('D1'), true);
+    assertEquals(result.error!.includes('Hyperdrive'), true);
 });
 
 Deno.test('BetterAuthProvider - has correct name', () => {
