@@ -32,7 +32,7 @@ flowchart LR
     end
 
     subgraph Docker["Docker"]
-        PG["PostgreSQL 16<br/>port 5433"]
+        PG["PostgreSQL 16<br/>port 5432"]
     end
 
     W -->|"Hyperdrive local<br/>override"| PG
@@ -40,14 +40,13 @@ flowchart LR
     S -->|"DIRECT_DATABASE_URL"| PG
 ```
 
-### Why Port 5433?
+### Custom Port
 
-The Docker container maps to host port **5433** (not 5432) to avoid conflicts with any
-locally-installed PostgreSQL (Homebrew, PGlite, etc.). The internal container port remains 5432.
-You can override this with the `POSTGRES_PORT` environment variable:
+If port 5432 is in use, override with the `POSTGRES_PORT` environment variable:
 
 ```bash
 POSTGRES_PORT=5555 docker compose up -d postgres
+# Then update connection strings in .env.local and .dev.vars to match
 ```
 
 ## Deno Task Reference
@@ -68,7 +67,7 @@ POSTGRES_PORT=5555 docker compose up -d postgres
 | Property | Value |
 |----------|-------|
 | Image | `postgres:16-alpine` |
-| Host port | `5433` (configurable via `$POSTGRES_PORT`) |
+| Host port | `5432` (configurable via `$POSTGRES_PORT`) |
 | Database | `adblock_dev` |
 | User | `adblock` |
 | Password | `localdev` |
@@ -89,8 +88,8 @@ docker compose up postgres db-migrate
 Used by Prisma CLI for migrations and schema operations:
 
 ```env
-DATABASE_URL="postgresql://adblock:localdev@localhost:5433/adblock_dev"
-DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5433/adblock_dev"
+DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
+DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
 ```
 
 ### `.dev.vars` (gitignored)
@@ -98,7 +97,7 @@ DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5433/adblock_dev"
 Used by `wrangler dev` to override the Hyperdrive binding locally:
 
 ```env
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@localhost:5433/adblock_dev
+WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@localhost:5432/adblock_dev
 ```
 
 Copy `.dev.vars.example` as a starting point:
@@ -121,8 +120,8 @@ direnv allow .
 
 ```env
 # .env.local
-DATABASE_URL="postgresql://adblock:localdev@localhost:5433/adblock_dev"
-DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5433/adblock_dev"
+DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
+DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
 ```
 
 ### Neon Direct (for testing against production-like DB)
@@ -188,12 +187,12 @@ This creates a migration file in `prisma/migrations/` and applies it to your loc
 
 ## Troubleshooting
 
-### "Port 5433 already in use"
+### "Port 5432 already in use"
 
 Another process is using the port. Check with:
 
 ```bash
-lsof -i :5433
+lsof -i :5432
 ```
 
 Override the port:
@@ -212,10 +211,10 @@ a Homebrew or PGlite postgres is running on the same port. Verify Docker is runn
 docker compose ps postgres
 ```
 
-And ensure your connection string uses port **5433** (not 5432). Check for port conflicts:
+And ensure your connection string uses port **5432** (not 5432). Check for port conflicts:
 
 ```bash
-lsof -i :5433
+lsof -i :5432
 ```
 
 ### "Cannot find module 'prisma/config'"
@@ -243,7 +242,7 @@ deno task db:local:push
 Then mark existing migrations as applied:
 
 ```bash
-DIRECT_DATABASE_URL=postgresql://adblock:localdev@127.0.0.1:5433/adblock_dev \
+DIRECT_DATABASE_URL=postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev \
   deno run -A npm:prisma migrate resolve --applied <migration_name>
 ```
 
