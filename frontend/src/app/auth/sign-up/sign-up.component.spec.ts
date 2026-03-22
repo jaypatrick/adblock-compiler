@@ -4,6 +4,7 @@ import { ActivatedRoute } from '@angular/router';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SignUpComponent } from './sign-up.component';
 import { ClerkService } from '../../services/clerk.service';
+import { AuthFacadeService } from '../../services/auth-facade.service';
 import { ThemeService } from '../../services/theme.service';
 
 /** Build a minimal ActivatedRoute stub with the given query params snapshot. */
@@ -21,6 +22,17 @@ function makeMockClerk(overrides: Partial<{ isLoaded: boolean; isAvailable: bool
     };
 }
 
+/** Mock the AuthFacadeService which controls template branching (Clerk vs local auth). */
+function makeMockAuth(overrides: Partial<{ isLoaded: boolean; useClerk: boolean }> = {}) {
+    return {
+        isLoaded: signal(overrides.isLoaded ?? true),
+        useClerk: signal(overrides.useClerk ?? true),
+        useBetterAuth: signal(!(overrides.useClerk ?? true)),
+        isSignedIn: signal(false),
+        signup: vi.fn().mockResolvedValue({}),
+    };
+}
+
 function makeMockTheme(dark = false) {
     return { isDark: signal(dark) };
 }
@@ -29,10 +41,12 @@ describe('SignUpComponent', () => {
     let component: SignUpComponent;
     let fixture: ComponentFixture<SignUpComponent>;
     let mockClerkService: ReturnType<typeof makeMockClerk>;
+    let mockAuthService: ReturnType<typeof makeMockAuth>;
     let mockThemeService: ReturnType<typeof makeMockTheme>;
 
     beforeEach(async () => {
         mockClerkService = makeMockClerk();
+        mockAuthService = makeMockAuth();
         mockThemeService = makeMockTheme();
 
         await TestBed.configureTestingModule({
@@ -40,6 +54,7 @@ describe('SignUpComponent', () => {
             providers: [
                 provideZonelessChangeDetection(),
                 { provide: ClerkService, useValue: mockClerkService },
+                { provide: AuthFacadeService, useValue: mockAuthService },
                 { provide: ThemeService, useValue: mockThemeService },
                 { provide: ActivatedRoute, useValue: makeRoute() },
             ],
@@ -54,8 +69,8 @@ describe('SignUpComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should show loading spinner while Clerk is not loaded', () => {
-        mockClerkService.isLoaded.set(false);
+    it('should show loading spinner while auth facade is not loaded', () => {
+        mockAuthService.isLoaded.set(false);
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
@@ -65,8 +80,7 @@ describe('SignUpComponent', () => {
     });
 
     it('should show local auth form when Clerk is loaded but not available', () => {
-        mockClerkService.isLoaded.set(true);
-        mockClerkService.isAvailable.set(false);
+        mockAuthService.useClerk.set(false);
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
@@ -76,9 +90,7 @@ describe('SignUpComponent', () => {
     });
 
     it('should show local auth form when configLoadFailed is true', () => {
-        mockClerkService.isLoaded.set(true);
-        mockClerkService.isAvailable.set(false);
-        mockClerkService.configLoadFailed.set(true);
+        mockAuthService.useClerk.set(false);
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
@@ -87,9 +99,7 @@ describe('SignUpComponent', () => {
     });
 
     it('should show local auth form when not available and configLoadFailed is false', () => {
-        mockClerkService.isLoaded.set(true);
-        mockClerkService.isAvailable.set(false);
-        mockClerkService.configLoadFailed.set(false);
+        mockAuthService.useClerk.set(false);
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
@@ -98,8 +108,8 @@ describe('SignUpComponent', () => {
     });
 
     it('should show Clerk container when loaded and available', () => {
-        mockClerkService.isLoaded.set(true);
-        mockClerkService.isAvailable.set(true);
+        mockAuthService.isLoaded.set(true);
+        mockAuthService.useClerk.set(true);
         fixture.detectChanges();
 
         const compiled = fixture.nativeElement as HTMLElement;
@@ -135,6 +145,7 @@ describe('SignUpComponent', () => {
             providers: [
                 provideZonelessChangeDetection(),
                 { provide: ClerkService, useValue: clerk },
+                { provide: AuthFacadeService, useValue: makeMockAuth({ useClerk: false }) },
                 { provide: ThemeService, useValue: makeMockTheme() },
                 { provide: ActivatedRoute, useValue: makeRoute() },
             ],
@@ -163,6 +174,7 @@ describe('SignUpComponent', () => {
             providers: [
                 provideZonelessChangeDetection(),
                 { provide: ClerkService, useValue: makeMockClerk() },
+                { provide: AuthFacadeService, useValue: makeMockAuth() },
                 { provide: ThemeService, useValue: makeMockTheme() },
                 { provide: ActivatedRoute, useValue: makeRoute() },
             ],
@@ -185,6 +197,7 @@ describe('SignUpComponent', () => {
             providers: [
                 provideZonelessChangeDetection(),
                 { provide: ClerkService, useValue: mockClerkNoMount },
+                { provide: AuthFacadeService, useValue: makeMockAuth() },
                 { provide: ThemeService, useValue: makeMockTheme() },
                 { provide: ActivatedRoute, useValue: makeRoute() },
             ],
@@ -229,6 +242,7 @@ describe('SignUpComponent', () => {
             providers: [
                 provideZonelessChangeDetection(),
                 { provide: ClerkService, useValue: clerk },
+                { provide: AuthFacadeService, useValue: makeMockAuth({ useClerk: false }) },
                 { provide: ThemeService, useValue: theme },
                 { provide: ActivatedRoute, useValue: makeRoute() },
             ],

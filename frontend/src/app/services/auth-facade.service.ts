@@ -104,6 +104,7 @@ export class AuthFacadeService {
      * Returns `{ error }` on failure.
      */
     async login(identifier: string, password: string): Promise<{ error?: string }> {
+        if (this.activeProvider() === 'clerk') return {}; // @deprecated: Clerk users are already signed in
         try {
             await this.betterAuth.signIn(identifier, password);
             return {};
@@ -119,6 +120,7 @@ export class AuthFacadeService {
      * Returns `{ error }` on failure.
      */
     async signup(identifier: string, password: string): Promise<{ error?: string }> {
+        if (this.activeProvider() === 'clerk') return {}; // @deprecated: Clerk users are already signed in
         try {
             await this.betterAuth.signUp(identifier, password);
             return {};
