@@ -1,16 +1,4 @@
-/**
- * Tests for the Scheduled (CRON) handler.
- *
- * Covers:
- *   - handleScheduled: starts cache warming workflow on '0 *\/6 * * *' pattern
- *   - handleScheduled: logs warning when CACHE_WARMING_WORKFLOW is missing
- *   - handleScheduled: starts health monitoring workflow on '0 * * * *' pattern
- *   - handleScheduled: logs warning when HEALTH_MONITORING_WORKFLOW is missing
- *   - handleScheduled: handles workflow.create() errors gracefully (no throw)
- *   - handleScheduled: does nothing for unknown cron patterns
- *
- * @see worker/handlers/scheduled.ts
- */
+// Tests for the Scheduled (CRON) handler.
 
 import { assertEquals } from '@std/assert';
 import { handleScheduled } from './scheduled.ts';
@@ -34,13 +22,14 @@ interface HealthMonitoringParams {
 
 function makeWorkflow<T>(): { workflow: Workflow<T>; calls: Array<{ id: string; params: T }> } {
     const calls: Array<{ id: string; params: T }> = [];
-    const workflow: Workflow<T> = {
-        create: async (options) => {
+    const workflow = {
+        create: async (options?: { id?: string; params?: T }) => {
             calls.push({ id: options?.id ?? '', params: options?.params as T });
-            return { id: options?.id ?? 'mock-instance' } as WorkflowInstance;
+            return { id: options?.id ?? 'mock-instance' } as unknown as WorkflowInstance;
         },
-        get: async (_id: string) => ({ id: _id }) as WorkflowInstance,
-    };
+        get: async (_id: string) => ({ id: _id }) as unknown as WorkflowInstance,
+        createBatch: async () => ([] as WorkflowInstance[]),
+    } as unknown as Workflow<T>;
     return { workflow, calls };
 }
 
@@ -52,7 +41,7 @@ function makeFailingWorkflow<T>(): Workflow<T> {
         get: async () => {
             throw new Error('workflow get failed');
         },
-    };
+    } as unknown as Workflow<T>;
 }
 
 function makeController(cron: string): ScheduledController {

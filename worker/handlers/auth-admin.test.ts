@@ -1,9 +1,4 @@
-/**
- * Tests for auth admin handlers and the full API key lifecycle.
- *
- * Covers test plan item: API key create → authenticate → revoke lifecycle
- * These tests run without a live database by using an in-memory PgPool mock.
- */
+// Tests for auth admin handlers and the full API key lifecycle.
 
 import { assertEquals } from '@std/assert';
 import { handleCreateApiKey, handleCreateUser, handleListApiKeys, handleRevokeApiKey, handleValidateApiKey } from './auth-admin.ts';
@@ -25,14 +20,14 @@ type PgPoolFactory = (connectionString: string) => PgPool;
 // Fixtures
 // ============================================================================
 
-const MOCK_HYPERDRIVE: HyperdriveBinding = {
+const MOCK_HYPERDRIVE = {
     connectionString: 'postgresql://test:test@localhost:5432/testdb',
     host: 'localhost',
     port: 5432,
     user: 'test',
     password: 'test',
     database: 'testdb',
-};
+} as unknown as HyperdriveBinding;
 
 // A valid RFC 4122 UUID (used for userId in isolation tests where we don't create the user first)
 const VALID_UUID = 'f47ac10b-58cc-4372-a567-0e02b2c3d479';

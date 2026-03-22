@@ -1,7 +1,5 @@
-/**
- * Cloudflare Worker for compiling hostlists.
- * This is a bundled version that imports directly from the source.
- */
+// Cloudflare Worker for compiling hostlists (bundled version — imports directly from source).
+// Legacy example: production code lives in /worker/worker.ts.
 
 import {
     WorkerCompiler,
@@ -10,27 +8,18 @@ import {
     type WorkerCompilationResult,
 } from '../../src/index.ts';
 
-/**
- * Environment bindings for the worker.
- */
 export interface Env {
     COMPILER_VERSION: string;
     // Optional KV binding for caching
     FILTER_CACHE?: KVNamespace;
 }
 
-/**
- * Compile request body structure.
- */
 interface CompileRequest {
     configuration: IConfiguration;
     preFetchedContent?: Record<string, string>;
     benchmark?: boolean;
 }
 
-/**
- * Creates a logger that sends events through a TransformStream.
- */
 function createStreamingLogger(writer: WritableStreamDefaultWriter<Uint8Array>) {
     const encoder = new TextEncoder();
 
@@ -50,9 +39,6 @@ function createStreamingLogger(writer: WritableStreamDefaultWriter<Uint8Array>) 
     };
 }
 
-/**
- * Creates compiler event handlers that stream progress via SSE.
- */
 function createStreamingEvents(
     sendEvent: (type: string, data: unknown) => void,
 ): ICompilerEvents {
@@ -74,9 +60,6 @@ function createStreamingEvents(
     };
 }
 
-/**
- * Handle compile requests with streaming response.
- */
 async function handleCompileStream(
     request: Request,
     env: Env,
@@ -131,9 +114,6 @@ async function handleCompileStream(
     });
 }
 
-/**
- * Handle compile requests with JSON response.
- */
 async function handleCompileJson(
     request: Request,
     env: Env,
@@ -163,9 +143,6 @@ async function handleCompileJson(
     }
 }
 
-/**
- * Handle GET requests - return API info and example.
- */
 function handleInfo(env: Env): Response {
     const info = {
         name: 'Hostlist Compiler Worker',
@@ -200,9 +177,6 @@ function handleInfo(env: Env): Response {
     });
 }
 
-/**
- * Handle CORS preflight requests.
- */
 function handleCors(): Response {
     return new Response(null, {
         headers: {
@@ -214,9 +188,6 @@ function handleCors(): Response {
     });
 }
 
-/**
- * Main fetch handler for the Cloudflare Worker.
- */
 export default {
     async fetch(request: Request, env: Env): Promise<Response> {
         const url = new URL(request.url);
