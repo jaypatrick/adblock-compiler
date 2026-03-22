@@ -101,3 +101,41 @@ Deno.test('handleAdminAuthConfig - response includes non-empty routes array', as
     assertExists(body.routes);
     assertEquals(body.routes.length > 0, true);
 });
+
+// ============================================================================
+// New fields: social providers, MFA, session, betterAuth, clerk
+// ============================================================================
+
+Deno.test('handleAdminAuthConfig - response includes socialProviders with boolean flags', async () => {
+    const res = await handleAdminAuthConfig(req, makeEnv(), makeAdminContext());
+    const body = await res.json() as { socialProviders: { github: { configured: boolean }; google: { configured: boolean } } };
+    assertExists(body.socialProviders);
+    assertEquals(typeof body.socialProviders.github.configured, 'boolean');
+    assertEquals(typeof body.socialProviders.google.configured, 'boolean');
+    // No env vars set → both false
+    assertEquals(body.socialProviders.github.configured, false);
+    assertEquals(body.socialProviders.google.configured, false);
+});
+
+Deno.test('handleAdminAuthConfig - github configured=true when both GITHUB env vars set', async () => {
+    const env = makeEnv({ GITHUB_CLIENT_ID: 'gh_id', GITHUB_CLIENT_SECRET: 'gh_secret' });
+    const res = await handleAdminAuthConfig(req, env, makeAdminContext());
+    const body = await res.json() as { socialProviders: { github: { configured: boolean } } };
+    assertEquals(body.socialProviders.github.configured, true);
+});
+
+Deno.test('handleAdminAuthConfig - response includes mfa, session, betterAuth, clerk', async () => {
+    const res = await handleAdminAuthConfig(req, makeEnv({ BETTER_AUTH_SECRET: 'test-secret' }), makeAdminContext());
+    const body = await res.json() as {
+        mfa: { enabled: boolean };
+        session: { expiresIn: number; updateAge: number; cookieCacheMaxAge: number };
+        betterAuth: { secretConfigured: boolean; baseUrl: string | null };
+        clerk: { enabled: boolean; publishableKeyConfigured: boolean };
+    };
+    assertEquals(body.mfa.enabled, true);
+    assertEquals(body.session.expiresIn, 604800);
+    assertEquals(body.session.updateAge, 86400);
+    assertEquals(body.session.cookieCacheMaxAge, 300);
+    assertEquals(body.betterAuth.secretConfigured, true);
+    assertEquals(body.clerk.enabled, false);
+});
