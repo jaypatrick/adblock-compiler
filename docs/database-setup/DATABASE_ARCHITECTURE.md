@@ -1,6 +1,6 @@
 # Database Architecture
 
-> Visual reference for the multi-tier storage architecture introduced in Phase 1 of the PlanetScale PostgreSQL + Cloudflare Hyperdrive integration.
+> Visual reference for the multi-tier storage architecture using Neon PostgreSQL (primary) with Cloudflare Hyperdrive, KV (L1 cache), D1 (L2 edge cache), and R2 (object storage).
 
 ## Table of Contents
 
@@ -24,19 +24,19 @@ flowchart TB
         W[Worker Request Handler]
     end
 
-    subgraph "L0 · KV — Hot Cache (1–5 ms)"
+    subgraph "L1 · KV — Hot Cache (1–5 ms)"
         KV_CACHE[(COMPILATION_CACHE)]
         KV_METRICS[(METRICS)]
         KV_RATE[(RATE_LIMIT)]
     end
 
-    subgraph "L1 · D1 — Edge SQLite (1–10 ms)"
-        D1[(D1 SQLite\nstructured cache)]
+    subgraph "L2 · D1 — Edge SQLite (1–10 ms)"
+        D1[(D1 SQLite\nedge read replica)]
     end
 
-    subgraph "L2 · Hyperdrive → PlanetScale PostgreSQL (20–80 ms)"
+    subgraph "Primary · Hyperdrive → Neon PostgreSQL (20–80 ms)"
         HD[Hyperdrive\nconnection pool]
-        PG[(PlanetScale\nPostgreSQL\nsource of truth)]
+        PG[(Neon\nPostgreSQL\nsource of truth)]
         HD --> PG
     end
 
@@ -60,10 +60,10 @@ flowchart TB
 
 | Tier | Binding | Technology | Role |
 |------|---------|-----------|------|
-| **L0** | `COMPILATION_CACHE`, `METRICS`, `RATE_LIMIT` | Cloudflare KV | Hot-path key-value cache |
-| **L1** | `DB` | Cloudflare D1 (SQLite) | Edge read cache for structured lookups |
-| **L2** | `HYPERDRIVE` | Hyperdrive → PlanetScale PostgreSQL | Primary relational store (source of truth) |
-| **Blob** | `FILTER_STORAGE` | Cloudflare R2 | Large compiled outputs, raw filter content |
+| **Primary** | `HYPERDRIVE` | Hyperdrive → Neon PostgreSQL | Primary relational store (source of truth) |
+| **L1 Cache** | `COMPILATION_CACHE`, `METRICS`, `RATE_LIMIT` | Cloudflare KV | Hot-path key-value cache (config, rate limits) |
+| **L2 Cache** | `DB`, `ADMIN_DB` | Cloudflare D1 (SQLite) | Edge read replicas, admin DB |
+| **Object Storage** | `FILTER_STORAGE` | Cloudflare R2 | Large compiled outputs, raw filter content |
 
 ---
 
@@ -71,7 +71,7 @@ flowchart TB
 
 ### Current behaviour (Phase 1)
 
-The compile handler today only consults the KV cache (`COMPILATION_CACHE`). D1, PostgreSQL, and R2 are **not** in the hot compile path yet:
+The compile handler today only consults the KV cache (`COMPILATION_CACHE`). D1, Neon PostgreSQL, and R2 are **not** in the hot compile path yet:
 
 ```mermaid
 flowchart TD
@@ -79,7 +79,7 @@ flowchart TD
 
     KV_CHECK -->|Hit| RETURN_KV([Return cached result\n~1–5 ms])
     KV_CHECK -->|Miss| DO_COMPILE[Run in-memory\ntransformation pipeline]
-    DO_COMPILE --> KV_WRITE[L0: SET compiled result\nin COMPILATION_CACHE\nTTL 60 s]
+    DO_COMPILE --> KV_WRITE[L1: SET compiled result\nin COMPILATION_CACHE\nTTL 60 s]
     KV_WRITE --> RESPOND([Return response])
 
     style RETURN_KV fill:#fff9c4,stroke:#fbc02d
@@ -95,13 +95,13 @@ flowchart TD
     AUTH -->|No| REJECT([401 Unauthorized])
     AUTH -->|Yes| KV_CHECK{L0 KV\ncache hit?}
 
-    KV_CHECK -->|Hit| RETURN_KV([Return cached result\n~1–5 ms])
+    KV_CHECK -->|Hit| RETURN_KV([Return cached result\n~1–5 ms from L1])
 
-    KV_CHECK -->|Miss| D1_CHECK{L1 D1\ncache hit?}
+    KV_CHECK -->|Miss| D1_CHECK{L2 D1\ncache hit?}
 
-    D1_CHECK -->|Hit| RETURN_D1([Return result\npopulate L0 KV\n~1–10 ms])
+    D1_CHECK -->|Hit| RETURN_D1([Return result\npopulate L1 KV\n~1–10 ms])
 
-    D1_CHECK -->|Miss| PG_META[L2: Query PlanetScale\nfor filter metadata]
+    D1_CHECK -->|Miss| PG_META[Primary: Query Neon PG\nfor filter metadata]
     PG_META --> R2_READ[Blob: Read compiled\noutput from R2]
     R2_READ --> COMPILE{Needs\nrecompile?}
 
@@ -109,9 +109,9 @@ flowchart TD
     COMPILE -->|Yes| DO_COMPILE[Run compilation\npipeline]
 
     DO_COMPILE --> R2_WRITE[Blob: Write new\ncompiled output to R2]
-    R2_WRITE --> PG_WRITE[L2: Write metadata\n+ CompilationEvent to PG]
-    PG_WRITE --> D1_WRITE[L1: Update D1\ncache entry]
-    D1_WRITE --> KV_WRITE[L0: Store result\nin KV cache]
+    R2_WRITE --> PG_WRITE[Primary: Write metadata\n+ CompilationEvent to Neon PG]
+    PG_WRITE --> D1_WRITE[L2: Update D1\ncache entry]
+    D1_WRITE --> KV_WRITE[L1: Store result\nin KV cache]
     KV_WRITE --> RESPOND([Return response])
 
     SERVE_CACHED --> KV_WRITE
@@ -137,7 +137,7 @@ Today `POST /compile` writes only to the KV cache:
 sequenceDiagram
     participant C as Client
     participant W as Worker
-    participant KV as L0 KV (COMPILATION_CACHE)
+    participant KV as KV L1 Cache (COMPILATION_CACHE)
 
     C->>W: POST /compile (with filter sources)
 
@@ -155,10 +155,10 @@ Once Phase 2–5 are implemented, writes will propagate through all tiers:
 sequenceDiagram
     participant C as Client
     participant W as Worker
-    participant PG as L2 PostgreSQL
-    participant R2 as Blob R2
-    participant D1 as L1 D1
-    participant KV as L0 KV
+    participant PG as Neon PostgreSQL (Primary)
+    participant R2 as R2 Object Storage
+    participant D1 as D1 (L2 Cache)
+    participant KV as KV (L1 Cache)
 
     C->>W: POST /compile (with filter sources)
     W->>PG: Read FilterSource + latest version metadata
@@ -171,8 +171,8 @@ sequenceDiagram
     W->>R2: PUT new compiled blob → new r2_key
     W->>PG: INSERT CompiledOutput (config_hash, r2_key, rule_count)
     W->>PG: INSERT CompilationEvent (duration_ms, cache_hit)
-    W->>D1: UPSERT cache entry (TTL 60–300s)
-    W->>KV: SET cached result (TTL 60s)
+    W->>D1: UPSERT D1 cache entry (TTL 60–300s)
+    W->>KV: SET KV cached result (TTL 60s)
     W-->>C: 200 OK (compiled filter list)
 ```
 
@@ -190,7 +190,7 @@ flowchart TD
     HAS_HD -->|No| ADMIN_HEADER
     HAS_HD -->|Yes| EXTRACT[Extract token\nfrom Authorization header]
     EXTRACT --> HASH[SHA-256 hash\nthe raw token]
-    HASH --> PG_LOOKUP[L2: SELECT api_keys\nWHERE key_hash = $1]
+    HASH --> PG_LOOKUP[Primary: SELECT api_keys\nfrom Neon PG\nWHERE key_hash = $1]
 
     PG_LOOKUP --> FOUND{Key found?}
     FOUND -->|No| REJECT([401 Unauthorized])
@@ -222,7 +222,7 @@ flowchart TD
 
 ## D1 → PostgreSQL Migration Flow
 
-One-time migration from the legacy D1 SQLite store to PlanetScale PostgreSQL:
+One-time migration from the legacy D1 SQLite store to Neon PostgreSQL:
 
 ```mermaid
 flowchart TD
@@ -258,7 +258,7 @@ How the worker resolves its database connection string depending on the environm
 flowchart LR
     subgraph "Production (Cloudflare Workers)"
         PROD_W[Worker] -->|env.HYPERDRIVE\n.connectionString| HD_PROD[Hyperdrive\nconnection pool]
-        HD_PROD --> PS[(PlanetScale\nPostgreSQL)]
+        HD_PROD --> PS[(Neon\nPostgreSQL)]
     end
 
     subgraph "Local Dev (wrangler dev)"

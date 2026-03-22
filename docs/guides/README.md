@@ -8,6 +8,7 @@ User guides for getting started, migration, troubleshooting, and client librarie
 - [Client Libraries](clients.md) - Client examples for Python, TypeScript, and Go
 - [Troubleshooting](TROUBLESHOOTING.md) - Common issues and solutions
 - [Validation Errors](VALIDATION_ERRORS.md) - Understanding validation errors and reporting
+- [User Migration Guide](USER_MIGRATION_GUIDE.md) - Migrating from D1 to Neon PostgreSQL
 
 ## Related
 

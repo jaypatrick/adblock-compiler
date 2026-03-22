@@ -6,17 +6,18 @@
 
 ## Overview
 
-The storage architecture is organised in **four tiers** (L0–L3). Each tier
-trades off latency, capacity, and durability differently. By layering them
-together we can serve the vast majority of reads from edge caches while
-keeping a durable, strongly consistent source of truth in PostgreSQL.
+The storage architecture uses **Neon PostgreSQL as the primary database** with
+multiple cache tiers at the edge. Each tier trades off latency, capacity,
+and durability differently. By layering them together we can serve the vast
+majority of reads from edge caches while keeping a durable, strongly
+consistent source of truth in Neon PostgreSQL.
 
 | Tier | Technology | Role | Latency | Capacity |
 |------|-----------|------|---------|----------|
-| **L0** | Cloudflare KV | Edge key-value cache | &lt; 1 ms | 25 MiB / value |
-| **L1** | Cloudflare D1 (SQLite) | Edge relational read-replica | ~ 1 ms | 10 GB |
-| **L2** | Hyperdrive → Neon PostgreSQL | Source of truth | ~ 10–50 ms | Unlimited |
-| **L3** | Cloudflare R2 | Blob / artifact storage | ~ 10 ms | 10 TiB+ |
+| **Primary** | Hyperdrive → Neon PostgreSQL | Source of truth | ~ 10–50 ms | Unlimited |
+| **L1 Cache** | Cloudflare KV | Edge key-value cache (config, rate limits) | &lt; 1 ms | 25 MiB / value |
+| **L2 Cache** | Cloudflare D1 (SQLite) | Edge read replicas, admin DB | ~ 1 ms | 10 GB |
+| **Object Storage** | Cloudflare R2 | Blob / artifact storage | ~ 10 ms | 10 TiB+ |
 
 ## Data Flow
 
@@ -26,19 +27,19 @@ When a new compilation or record is created the write follows this path:
 
 ```mermaid
 flowchart LR
-    A[Write Request] --> B[Neon PostgreSQL — L2]
+    A[Write Request] --> B[Neon PostgreSQL — Primary]
     B --> C{Write-Through Sync}
-    C --> D[D1 Edge Replica — L1]
-    D --> E[KV Edge Cache — L0]
-    C -.->|Large blobs| F[R2 Object Store — L3]
+    C --> D[D1 Edge Replica — L2 Cache]
+    D --> E[KV Edge Cache — L1 Cache]
+    C -.->|Large blobs| F[R2 Object Store]
 ```
 
-1. The **write request** is always applied to **Neon (L2)** first — it is the
+1. The **write request** is always applied to **Neon PostgreSQL (Primary)** first — it is the
    single source of truth.
 2. On success the **D1 cache sync** utility (`d1-cache-sync.ts`) performs a
-   write-through upsert to **D1 (L1)**.
-3. The KV layer (**L0**) is populated either eagerly or on the next read.
-4. Large compiled artefacts (full filter lists) are stored in **R2 (L3)**.
+   write-through upsert to **D1 (L2 Cache)**.
+3. The KV layer (**L1 Cache**) is populated either eagerly or on the next read.
+4. Large compiled artefacts (full filter lists) are stored in **R2 (Object Storage)**.
 
 ### Read Path (Cache-Miss Waterfall)
 
@@ -47,9 +48,9 @@ Reads cascade through the tiers until a fresh value is found:
 ```mermaid
 sequenceDiagram
     participant Client
-    participant KV as KV (L0)
-    participant D1 as D1 (L1)
-    participant Neon as Neon (L2)
+    participant KV as KV (L1 Cache)
+    participant D1 as D1 (L2 Cache)
+    participant Neon as Neon PostgreSQL (Primary)
 
     Client->>KV: GET key
     alt KV hit & fresh
@@ -58,12 +59,12 @@ sequenceDiagram
         Client->>D1: SELECT … WHERE id = ?
         alt D1 hit & fresh
             D1-->>Client: Return row
-            Client->>KV: PUT (populate L0)
+            Client->>KV: PUT (populate L1 Cache)
         else D1 miss or stale
             Client->>Neon: SELECT … WHERE id = ?
             Neon-->>Client: Return row
-            Client->>D1: UPSERT (populate L1)
-            Client->>KV: PUT (populate L0)
+            Client->>D1: UPSERT (populate L2 Cache)
+            Client->>KV: PUT (populate L1 Cache)
         end
     end
 ```
@@ -147,8 +148,8 @@ all optional).
 ## Error Handling Philosophy
 
 Cache operations are **never fatal**.  A failed D1 write or read simply
-means the next request will fall through to Neon.  This ensures edge
-availability is not gated on the health of the D1 replica:
+means the next request will fall through to Neon PostgreSQL (the primary).
+This ensures edge availability is not gated on the health of the D1 edge cache:
 
 - `syncRecord` / `syncBatch` return a result object with `success: false` and an `error` string.
 - `invalidateRecord` treats a missing record as success (idempotent delete).
