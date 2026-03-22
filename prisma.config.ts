@@ -8,6 +8,15 @@ import { defineConfig } from 'prisma/config';
 const datasourceUrl = process.env.DIRECT_DATABASE_URL?.trim() ||
     process.env.DATABASE_URL?.trim();
 
+if (!datasourceUrl) {
+    throw new Error(
+        'Database URL is not configured.\n' +
+            '  Set DIRECT_DATABASE_URL or DATABASE_URL in .env.local\n' +
+            '  → cp .env.example .env.local   # then fill in your Neon connection string\n' +
+            '  → See docs/database-setup/neon-setup.md for details',
+    );
+}
+
 export default defineConfig({
     schema: './prisma/schema.prisma',
     migrations: {

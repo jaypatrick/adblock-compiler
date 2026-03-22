@@ -9,6 +9,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
+- **database**: Migrate primary database from Cloudflare D1 to Neon PostgreSQL via Cloudflare Hyperdrive — 14 Prisma models, full initial migration, HyperdriveStorageAdapter replaces raw SQL; D1 retained as edge cache layer; see `docs/database-setup/DATABASE_ARCHITECTURE.md`
+- **auth**: Integrate Better Auth as primary authentication provider (replaces Clerk) — Prisma adapter, cookie security, bearer token plugin, AuthFacadeService for runtime provider switching; see `docs/auth/auth-chain-reference.md`
+- **worker**: Global Hono `app.onError()` handler — unhandled exceptions return structured JSON with `requestId` instead of generic 500
+- **worker**: Startup environment validation — `HYPERDRIVE`, `BETTER_AUTH_SECRET`, and `DATABASE_URL` throw actionable error messages when missing
+- **worker**: Migrate all 15 POST/PUT/PATCH routes to `zValidator('json', Schema)` middleware with structured 422 error responses
+- **dx**: Add `deno task setup` — single-command onboarding (copies env templates, generates Prisma client, installs git hooks)
+- **dx**: Docker `db:local:up` now uses `--wait` flag (respects healthcheck instead of hardcoded sleep)
+- **infra**: NeonApiService for admin reporting and branch management via Neon REST API
+- **infra**: GitHub Actions workflows for Neon branch creation/cleanup on PRs
+- **infra**: D1-to-Neon migration script with dry-run and verification modes (`deno task db:migrate:d1-to-neon`)
+- **docs**: 8 new guides — user migration, production secrets, disaster recovery, developer onboarding, Neon troubleshooting, database testing, auth chain reference, Prisma schema reference
 - **frontend**: Integrate TailwindCSS v4 with Angular Material Design 3 via `@theme inline` bridge — maps key `--mat-sys-*` role tokens to semantic Tailwind utilities (`bg-surface-variant`, `text-primary`, etc.); dark mode handled automatically through CSS variable swapping; see `docs/frontend/TAILWIND_CSS.md`
 - **frontend**: Add `scripts/postbuild.js` and `npm postbuild` lifecycle hook — copies `index.csr.html` → `index.html` after `ng build` so the Cloudflare Worker `ASSETS` binding and Cloudflare Pages serve the Angular SPA shell correctly when `RenderMode.Client` routes are used
 - **frontend**: Add `src/_redirects` with `/* /index.html 200` for Cloudflare Pages SPA routing fallback; include in Angular build via `assets` array in `angular.json`
