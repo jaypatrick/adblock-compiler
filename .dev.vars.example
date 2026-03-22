@@ -63,11 +63,12 @@ CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8787
 # Matches the Docker PostgreSQL service in docker-compose.yml
 WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev
 
-# ─── Neon Admin API (optional — for admin endpoints) ─────────────────────────
-# Only needed for admin reporting endpoints that call the Neon platform API.
-# Get from https://console.neon.tech/app/settings/api-keys
-# NEON_API_KEY=neon-api-key-here
-# NEON_PROJECT_ID=your-neon-project-id
+# ─── Neon Admin API (optional — for /admin/neon/* endpoints) ──────────────────
+# Needed for admin reporting endpoints that call the Neon platform REST API.
+# Get API key from https://console.neon.tech/app/settings/api-keys
+# Get project ID from Neon Console → Project Settings → General
+NEON_API_KEY=neon-api-key-here
+NEON_PROJECT_ID=your-neon-project-id
 
 # ─── Cloudflare Access (optional — admin route defense-in-depth) ─────────────
 # Get from Zero Trust Dashboard → Access → Applications
@@ -103,6 +104,7 @@ WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:loca
 # WEBHOOK_URL=https://your-webhook-endpoint.example.com/hook
 # Datadog API key for POST /api/notify
 # DATADOG_API_KEY=your-datadog-api-key
+
 # ─── Cloudflare Containers ────────────────────────────────────────────────────
 # Required for local container dev (POST /compile/container).
 # Must match the value set in the container environment.
