@@ -123,6 +123,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.70.3] - 2026-03-22
+
+### Added### Fixed
+
+- replace disallowed secrets context in step if-conditions in db-migrate.yml
+
+
 ## [0.70.2] - 2026-03-21
 
 ### Added### Fixed
