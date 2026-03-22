@@ -28,7 +28,7 @@ import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 // ============================================================================
 
 const ANONYMOUS_CTX: IAuthContext = { authMethod: 'anonymous', tier: 'anonymous' } as unknown as IAuthContext;
-const AUTH_CTX: IAuthContext = { authMethod: 'clerk-jwt', tier: 'free', userId: 'user-test' } as unknown as IAuthContext;
+const AUTH_CTX: IAuthContext = { authMethod: 'better-auth', tier: 'free', userId: 'user-test' } as unknown as IAuthContext;
 
 function makeRequest(requestId: string): Request {
     return new Request(`http://localhost/api/queue/cancel/${requestId}`, { method: 'DELETE' });

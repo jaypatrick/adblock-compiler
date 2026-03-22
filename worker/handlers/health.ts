@@ -15,7 +15,7 @@ import type { Env } from '../types.ts';
  * Checks:
  *   - database   : D1 `SELECT 1` probe via env.DB
  *   - cache      : KV list probe via env.COMPILATION_CACHE
- *   - auth       : presence of CLERK_JWKS_URL or BETTER_AUTH_SECRET (+ DB binding)
+ *   - auth       : presence of BETTER_AUTH_SECRET (+ DB binding)
  *   - compiler   : Durable Object namespace binding presence
  *   - gateway    : always healthy (we are responding)
  *
@@ -47,7 +47,7 @@ export async function handleHealth(env: Env): Promise<Response> {
         }),
     ]);
 
-    const authProvider: 'clerk' | 'better-auth' | 'none' = env.CLERK_JWKS_URL ? 'clerk' : env.BETTER_AUTH_SECRET ? 'better-auth' : 'none';
+    const authProvider: 'better-auth' | 'none' = env.BETTER_AUTH_SECRET ? 'better-auth' : 'none';
     let authStatus: ServiceStatus;
     if (authProvider === 'none') {
         authStatus = 'degraded';
@@ -57,7 +57,7 @@ export async function handleHealth(env: Env): Promise<Response> {
     } else {
         authStatus = 'healthy';
     }
-    const auth: ServiceResult & { provider: 'clerk' | 'better-auth' | 'none' } = {
+    const auth: ServiceResult & { provider: 'better-auth' | 'none' } = {
         status: authStatus,
         provider: authProvider,
     };

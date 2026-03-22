@@ -1,6 +1,15 @@
 # Clerk → Better Auth Migration Guide
 
-> **Status:** In Progress (Phase 3 — Better Auth primary, Clerk fallback)
+> **✅ MIGRATION COMPLETE.**
+> Better Auth is now the sole authentication provider. Clerk has been fully removed.
+> This document is preserved as a historical record of the migration process.
+> See [Better Auth User Guide](better-auth-user-guide.md) for current documentation.
+
+<!--
+Original migration guide preserved below for historical reference.
+-->
+
+> **Status:** ~~In Progress (Phase 3 — Better Auth primary, Clerk fallback)~~ **COMPLETE**
 >
 > **Last updated:** <!-- keep in sync with changes --> 2025-01-01
 

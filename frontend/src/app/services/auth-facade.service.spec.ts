@@ -1,12 +1,11 @@
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection } from '@angular/core';
+import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AuthFacadeService } from './auth-facade.service';
-import { ClerkService } from './clerk.service';
-import { BetterAuthService, type BetterAuthUser } from './better-auth.service';
+import { BetterAuthService, type BetterAuthUser, type AuthProvidersConfig } from './better-auth.service';
 
-const MOCK_BA_USER: BetterAuthUser = {
-    id: 'ba-1',
+const MOCK_USER: BetterAuthUser = {
+    id: 'ba-user-1',
     email: 'user@example.com',
     name: 'Test User',
     emailVerified: true,
@@ -15,239 +14,168 @@ const MOCK_BA_USER: BetterAuthUser = {
     role: 'user',
 };
 
-const MOCK_ADMIN_BA_USER: BetterAuthUser = {
-    ...MOCK_BA_USER,
-    role: 'admin',
+const DEFAULT_PROVIDERS: AuthProvidersConfig = {
+    emailPassword: true,
+    github: false,
+    google: false,
+    mfa: false,
 };
-
-type MockClerkUser = {
-    id: string;
-    primaryEmailAddress: { emailAddress: string } | null;
-    publicMetadata: Record<string, unknown>;
-};
-
-function makeClerkMock(overrides: Partial<{
-    isLoaded: boolean;
-    isAvailable: boolean;
-    isSignedIn: boolean;
-    user: MockClerkUser | null;
-    getToken: () => Promise<string | null>;
-    signOut: () => Promise<void>;
-}> = {}) {
-    return {
-        isLoaded: vi.fn().mockReturnValue(overrides.isLoaded ?? true),
-        isAvailable: vi.fn().mockReturnValue(overrides.isAvailable ?? false),
-        isSignedIn: vi.fn().mockReturnValue(overrides.isSignedIn ?? false),
-        user: vi.fn().mockReturnValue(overrides.user ?? null),
-        getToken: vi.fn().mockImplementation(overrides.getToken ?? (() => Promise.resolve(null))),
-        signOut: vi.fn().mockImplementation(overrides.signOut ?? (() => Promise.resolve())),
-    };
-}
 
 function makeBetterAuthMock(overrides: Partial<{
     isLoaded: boolean;
     isSignedIn: boolean;
     isAdmin: boolean;
     user: BetterAuthUser | null;
-    getToken: () => Promise<string | null>;
-    signIn: (email: string, pw: string) => Promise<void>;
-    signUp: (email: string, pw: string, name?: string) => Promise<void>;
-    signOut: () => Promise<void>;
+    providers: AuthProvidersConfig;
 }> = {}) {
     return {
-        isLoaded: vi.fn().mockReturnValue(overrides.isLoaded ?? true),
-        isSignedIn: vi.fn().mockReturnValue(overrides.isSignedIn ?? false),
-        isAdmin: vi.fn().mockReturnValue(overrides.isAdmin ?? false),
-        user: vi.fn().mockReturnValue(overrides.user ?? null),
-        getToken: vi.fn().mockImplementation(overrides.getToken ?? (() => Promise.resolve(null))),
-        signIn: vi.fn().mockImplementation(overrides.signIn ?? (() => Promise.resolve())),
-        signUp: vi.fn().mockImplementation(overrides.signUp ?? (() => Promise.resolve())),
-        signOut: vi.fn().mockImplementation(overrides.signOut ?? (() => Promise.resolve())),
+        isLoaded: signal(overrides.isLoaded ?? true),
+        isSignedIn: signal(overrides.isSignedIn ?? false),
+        isAdmin: signal(overrides.isAdmin ?? false),
+        user: signal<BetterAuthUser | null>(overrides.user ?? null),
+        providers: signal<AuthProvidersConfig>(overrides.providers ?? DEFAULT_PROVIDERS),
+        getToken: vi.fn<[], Promise<string | null>>().mockResolvedValue(null),
+        signIn: vi.fn<[string, string], Promise<void>>().mockResolvedValue(undefined),
+        signUp: vi.fn<[string, string], Promise<void>>().mockResolvedValue(undefined),
+        signOut: vi.fn<[], Promise<void>>().mockResolvedValue(undefined),
+        updateProfile: vi.fn<[string], Promise<{ error?: string }>>().mockResolvedValue({}),
+        changePassword: vi.fn<[string, string], Promise<{ error?: string }>>().mockResolvedValue({}),
+        signInWithSocial: vi.fn<['github'], Promise<void>>().mockResolvedValue(undefined),
     };
 }
 
 describe('AuthFacadeService', () => {
     let service: AuthFacadeService;
-    let clerkMock: ReturnType<typeof makeClerkMock>;
     let baMock: ReturnType<typeof makeBetterAuthMock>;
 
-    function setup(
-        clerkOverrides: Parameters<typeof makeClerkMock>[0] = {},
-        baOverrides: Parameters<typeof makeBetterAuthMock>[0] = {},
-    ) {
-        clerkMock = makeClerkMock(clerkOverrides);
-        baMock = makeBetterAuthMock(baOverrides);
-
+    function setup(overrides: Parameters<typeof makeBetterAuthMock>[0] = {}) {
+        baMock = makeBetterAuthMock(overrides);
         TestBed.configureTestingModule({
             providers: [
                 provideZonelessChangeDetection(),
-                { provide: ClerkService, useValue: clerkMock },
                 { provide: BetterAuthService, useValue: baMock },
             ],
         });
         service = TestBed.inject(AuthFacadeService);
     }
 
-    describe('provider selection — Better Auth active (Clerk not available)', () => {
-        beforeEach(() => setup({ isAvailable: false }));
+    beforeEach(() => setup());
 
-        it('should be created', () => {
-            expect(service).toBeTruthy();
-        });
+    it('should be created', () => {
+        expect(service).toBeTruthy();
+    });
 
-        it('useClerk should return false', () => {
-            expect(service.useClerk()).toBe(false);
-        });
+    // ──────────────────────────────────────────────────────────────────────────
+    // Computed signals — delegation to BetterAuthService
+    // ──────────────────────────────────────────────────────────────────────────
 
-        it('useBetterAuth should return true', () => {
-            expect(service.useBetterAuth()).toBe(true);
-        });
-
-        it('isLoaded delegates to clerk.isLoaded then betterAuth.isLoaded', () => {
-            clerkMock.isLoaded.mockReturnValue(true);
-            baMock.isLoaded.mockReturnValue(true);
+    describe('isLoaded', () => {
+        it('returns true when betterAuth is loaded', () => {
             expect(service.isLoaded()).toBe(true);
         });
 
-        it('isLoaded is false when clerk is not yet loaded', () => {
-            clerkMock.isLoaded.mockReturnValue(false);
+        it('returns false when betterAuth is not yet loaded', () => {
+            baMock.isLoaded.set(false);
             expect(service.isLoaded()).toBe(false);
         });
+    });
 
-        it('isLoaded waits for betterAuth.isLoaded when clerk is loaded but unavailable', () => {
-            clerkMock.isLoaded.mockReturnValue(true);
-            baMock.isLoaded.mockReturnValue(false);
-            expect(service.isLoaded()).toBe(false);
+    describe('isSignedIn', () => {
+        it('returns false when not signed in', () => {
+            expect(service.isSignedIn()).toBe(false);
         });
 
-        it('isSignedIn delegates to betterAuth.isSignedIn', () => {
-            baMock.isSignedIn.mockReturnValue(true);
+        it('returns true when betterAuth is signed in', () => {
+            baMock.isSignedIn.set(true);
             expect(service.isSignedIn()).toBe(true);
         });
+    });
 
-        it('isAdmin delegates to betterAuth.isAdmin', () => {
-            baMock.isSignedIn.mockReturnValue(true);
-            baMock.isAdmin.mockReturnValue(true);
+    describe('isAdmin', () => {
+        it('returns false by default', () => {
+            expect(service.isAdmin()).toBe(false);
+        });
+
+        it('returns true when betterAuth user is admin', () => {
+            baMock.isAdmin.set(true);
             expect(service.isAdmin()).toBe(true);
         });
+    });
 
-        it('userIdentifier returns Better Auth user email', () => {
-            baMock.isSignedIn.mockReturnValue(true);
-            baMock.user.mockReturnValue(MOCK_BA_USER);
-            expect(service.userIdentifier()).toBe('user@example.com');
-        });
-
-        it('userIdentifier returns null when no user', () => {
-            baMock.user.mockReturnValue(null);
+    describe('userIdentifier', () => {
+        it('returns null when no user is signed in', () => {
             expect(service.userIdentifier()).toBeNull();
         });
 
-        it('getToken delegates to betterAuth.getToken', async () => {
-            baMock.isSignedIn.mockReturnValue(true);
-            baMock.getToken.mockResolvedValue('ba-session-token');
-            const token = await service.getToken();
-            expect(token).toBe('ba-session-token');
+        it('returns the user email when signed in', () => {
+            baMock.user.set(MOCK_USER);
+            expect(service.userIdentifier()).toBe('user@example.com');
+        });
+    });
+
+    describe('providers', () => {
+        it('returns default providers', () => {
+            expect(service.providers()).toEqual(DEFAULT_PROVIDERS);
+        });
+
+        it('reflects provider config from betterAuth', () => {
+            const provs: AuthProvidersConfig = { emailPassword: true, github: true, google: false, mfa: false };
+            baMock.providers.set(provs);
+            expect(service.providers()).toEqual(provs);
+        });
+    });
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // Async methods
+    // ──────────────────────────────────────────────────────────────────────────
+
+    describe('getToken()', () => {
+        it('delegates to betterAuth.getToken', async () => {
+            baMock.getToken.mockResolvedValue('token-abc');
+            expect(await service.getToken()).toBe('token-abc');
             expect(baMock.getToken).toHaveBeenCalled();
         });
 
-        it('signOut delegates to betterAuth.signOut', async () => {
-            baMock.isSignedIn.mockReturnValue(true);
+        it('returns null when betterAuth returns null', async () => {
+            baMock.getToken.mockResolvedValue(null);
+            expect(await service.getToken()).toBeNull();
+        });
+    });
+
+    describe('signOut()', () => {
+        it('delegates to betterAuth.signOut', async () => {
             await service.signOut();
             expect(baMock.signOut).toHaveBeenCalled();
         });
     });
 
-    describe('provider selection — Clerk active', () => {
-        const clerkUser: MockClerkUser = {
-            id: 'clerk-user-1',
-            primaryEmailAddress: { emailAddress: 'clerk@example.com' },
-            publicMetadata: { role: 'user' },
-        };
-
-        beforeEach(() =>
-            setup({
-                isAvailable: true,
-                isLoaded: true,
-                isSignedIn: true,
-                user: clerkUser,
-                getToken: () => Promise.resolve('clerk-jwt'),
-            }),
-        );
-
-        it('useClerk should return true', () => {
-            expect(service.useClerk()).toBe(true);
-        });
-
-        it('useBetterAuth should return false', () => {
-            expect(service.useBetterAuth()).toBe(false);
-        });
-
-        it('isSignedIn delegates to clerk.isSignedIn', () => {
-            clerkMock.isSignedIn.mockReturnValue(true);
-            expect(service.isSignedIn()).toBe(true);
-        });
-
-        it('isAdmin returns true for clerk user with admin role', () => {
-            clerkMock.user.mockReturnValue({
-                ...clerkUser,
-                publicMetadata: { role: 'admin' },
-            });
-            expect(service.isAdmin()).toBe(true);
-        });
-
-        it('getToken delegates to clerk.getToken', async () => {
-            const token = await service.getToken();
-            expect(token).toBe('clerk-jwt');
-            expect(clerkMock.getToken).toHaveBeenCalled();
-        });
-
-        it('signOut delegates to clerk.signOut', async () => {
-            await service.signOut();
-            expect(clerkMock.signOut).toHaveBeenCalled();
-        });
-    });
-
-    describe('login() — Better Auth active', () => {
-        beforeEach(() => setup({ isAvailable: false }));
-
-        it('returns empty object on success', async () => {
+    describe('login()', () => {
+        it('calls betterAuth.signIn and returns empty object on success', async () => {
             baMock.signIn.mockResolvedValue(undefined);
-            const result = await service.login('user@example.com', 'password');
+            const result = await service.login('user@example.com', 'pass123');
             expect(result).toEqual({});
-            expect(baMock.signIn).toHaveBeenCalledWith('user@example.com', 'password');
+            expect(baMock.signIn).toHaveBeenCalledWith('user@example.com', 'pass123');
         });
 
-        it('returns error message on failure', async () => {
+        it('returns error message from betterAuth error body', async () => {
             baMock.signIn.mockRejectedValue({ error: { message: 'Invalid credentials' } });
             const result = await service.login('user@example.com', 'wrong');
             expect(result.error).toBe('Invalid credentials');
         });
 
-        it('returns fallback message when error is not an Error instance', async () => {
-            baMock.signIn.mockRejectedValue('unexpected string');
+        it('returns fallback message for unexpected error shapes', async () => {
+            baMock.signIn.mockRejectedValue('unexpected');
             const result = await service.login('user@example.com', 'pass');
             expect(result.error).toBe('Sign in failed. Please check your credentials.');
         });
     });
 
-    describe('login() — Clerk active (no-op)', () => {
-        beforeEach(() => setup({ isAvailable: true, isSignedIn: true }));
-
-        it('returns empty object without calling betterAuth.signIn', async () => {
-            const result = await service.login('clerk@example.com', 'pass');
-            expect(result).toEqual({});
-            expect(baMock.signIn).not.toHaveBeenCalled();
-        });
-    });
-
-    describe('signup() — Better Auth active', () => {
-        beforeEach(() => setup({ isAvailable: false }));
-
-        it('returns empty object on success', async () => {
+    describe('signup()', () => {
+        it('calls betterAuth.signUp and returns empty object on success', async () => {
             baMock.signUp.mockResolvedValue(undefined);
-            const result = await service.signup('new@example.com', 'password');
+            const result = await service.signup('new@example.com', 'pass123');
             expect(result).toEqual({});
-            expect(baMock.signUp).toHaveBeenCalledWith('new@example.com', 'password');
+            expect(baMock.signUp).toHaveBeenCalledWith('new@example.com', 'pass123');
         });
 
         it('returns error message on failure', async () => {
@@ -255,15 +183,54 @@ describe('AuthFacadeService', () => {
             const result = await service.signup('taken@example.com', 'pass');
             expect(result.error).toBe('Email already taken');
         });
+
+        it('returns fallback message for unexpected signup errors', async () => {
+            baMock.signUp.mockRejectedValue('oops');
+            const result = await service.signup('user@example.com', 'pass');
+            expect(result.error).toBeDefined();
+        });
     });
 
-    describe('signup() — Clerk active (no-op)', () => {
-        beforeEach(() => setup({ isAvailable: true, isSignedIn: true }));
+    describe('updateProfile()', () => {
+        it('delegates to betterAuth.updateProfile', async () => {
+            baMock.updateProfile.mockResolvedValue({});
+            expect(await service.updateProfile('new@example.com')).toEqual({});
+            expect(baMock.updateProfile).toHaveBeenCalledWith('new@example.com');
+        });
 
-        it('returns empty object without calling betterAuth.signUp', async () => {
-            const result = await service.signup('clerk@example.com', 'pass');
+        it('passes through error response', async () => {
+            baMock.updateProfile.mockResolvedValue({ error: 'Email already in use' });
+            const result = await service.updateProfile('taken@example.com');
+            expect(result.error).toBe('Email already in use');
+        });
+    });
+
+    describe('changePassword()', () => {
+        it('delegates to betterAuth.changePassword', async () => {
+            baMock.changePassword.mockResolvedValue({});
+            expect(await service.changePassword('old', 'new')).toEqual({});
+            expect(baMock.changePassword).toHaveBeenCalledWith('old', 'new');
+        });
+
+        it('passes through error response', async () => {
+            baMock.changePassword.mockResolvedValue({ error: 'Incorrect current password' });
+            const result = await service.changePassword('wrong', 'new');
+            expect(result.error).toBe('Incorrect current password');
+        });
+    });
+
+    describe('signInWithSocial()', () => {
+        it('calls betterAuth.signInWithSocial and returns empty object on success', async () => {
+            baMock.signInWithSocial.mockResolvedValue(undefined);
+            const result = await service.signInWithSocial('github');
             expect(result).toEqual({});
-            expect(baMock.signUp).not.toHaveBeenCalled();
+            expect(baMock.signInWithSocial).toHaveBeenCalledWith('github');
+        });
+
+        it('returns error message on failure', async () => {
+            baMock.signInWithSocial.mockRejectedValue({ error: { message: 'OAuth error' } });
+            const result = await service.signInWithSocial('github');
+            expect(result.error).toBe('OAuth error');
         });
     });
 });

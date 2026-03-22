@@ -3,40 +3,36 @@ import { provideZonelessChangeDetection, signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { UserButtonComponent } from './user-button.component';
-import { ClerkService } from '../../services/clerk.service';
-import { ThemeService } from '../../services/theme.service';
+import { AuthFacadeService } from '../../services/auth-facade.service';
+
+function makeMockAuth(overrides: Partial<{
+    isLoaded: boolean;
+    isSignedIn: boolean;
+    userIdentifier: string | null;
+    isAdmin: boolean;
+}> = {}) {
+    return {
+        isLoaded: signal(overrides.isLoaded ?? true),
+        isSignedIn: signal(overrides.isSignedIn ?? false),
+        userIdentifier: signal<string | null>(overrides.userIdentifier ?? null),
+        isAdmin: signal(overrides.isAdmin ?? false),
+        signOut: vi.fn().mockResolvedValue(undefined),
+    };
+}
 
 describe('UserButtonComponent', () => {
     let component: UserButtonComponent;
     let fixture: ComponentFixture<UserButtonComponent>;
-    let mockClerkService: {
-        isAvailable: ReturnType<typeof signal<boolean>>;
-        isLoaded: ReturnType<typeof signal<boolean>>;
-        isSignedIn: ReturnType<typeof signal<boolean>>;
-        configLoadFailed: ReturnType<typeof signal<boolean>>;
-        mountUserButton: ReturnType<typeof vi.fn>;
-        unmountUserButton: ReturnType<typeof vi.fn>;
-    };
-    let mockThemeService: { isDark: ReturnType<typeof signal<boolean>> };
+    let mockAuth: ReturnType<typeof makeMockAuth>;
 
     beforeEach(async () => {
-        mockClerkService = {
-            isAvailable: signal(true),
-            isLoaded: signal(true),
-            isSignedIn: signal(false),
-            configLoadFailed: signal(false),
-            mountUserButton: vi.fn(),
-            unmountUserButton: vi.fn(),
-        };
-        mockThemeService = { isDark: signal(false) };
-
+        mockAuth = makeMockAuth();
         await TestBed.configureTestingModule({
             imports: [UserButtonComponent],
             providers: [
                 provideZonelessChangeDetection(),
                 provideRouter([]),
-                { provide: ClerkService, useValue: mockClerkService },
-                { provide: ThemeService, useValue: mockThemeService },
+                { provide: AuthFacadeService, useValue: mockAuth },
             ],
         }).compileComponents();
 
@@ -49,261 +45,106 @@ describe('UserButtonComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should not render anything while Clerk is loading', () => {
-        mockClerkService.isLoaded.set(false);
-        mockClerkService.isSignedIn.set(false);
+    it('should not render content while auth is loading', () => {
+        mockAuth.isLoaded.set(false);
         fixture.detectChanges();
 
-        const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.user-button-container')).toBeNull();
-        expect(compiled.querySelector('.auth-links')).toBeNull();
+        const el = fixture.nativeElement as HTMLElement;
+        expect(el.querySelector('.local-user')).toBeNull();
+        expect(el.querySelector('.auth-links')).toBeNull();
     });
 
-    it('should render sign-in/sign-up links when loaded and not signed in', () => {
-        mockClerkService.isLoaded.set(true);
-        mockClerkService.isSignedIn.set(false);
+    it('should show auth-links when loaded and signed out', () => {
+        mockAuth.isLoaded.set(true);
+        mockAuth.isSignedIn.set(false);
         fixture.detectChanges();
 
-        const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.auth-links')).toBeTruthy();
-        expect(compiled.querySelector('a[href="/sign-in"]')).toBeTruthy();
-        expect(compiled.querySelector('a[href="/sign-up"]')).toBeTruthy();
-        expect(compiled.querySelector('.user-button-container')).toBeNull();
+        const el = fixture.nativeElement as HTMLElement;
+        expect(el.querySelector('.auth-links')).toBeTruthy();
+        expect(el.querySelector('.local-user')).toBeNull();
     });
 
-    it('should not render user button container when not signed in', () => {
-        mockClerkService.isLoaded.set(true);
-        mockClerkService.isSignedIn.set(false);
+    it('should show sign-in and sign-up links when not signed in', () => {
+        mockAuth.isLoaded.set(true);
+        mockAuth.isSignedIn.set(false);
         fixture.detectChanges();
 
-        const compiled = fixture.nativeElement as HTMLElement;
-        const container = compiled.querySelector('.user-button-container');
-        expect(container).toBeNull();
+        const links = (fixture.nativeElement as HTMLElement).querySelectorAll('a');
+        const hrefs = Array.from(links).map(a => a.getAttribute('routerlink') ?? a.getAttribute('href'));
+        expect(hrefs).toContain('/sign-in');
+        expect(hrefs).toContain('/sign-up');
     });
 
-    it('should render user button container when signed in', () => {
-        mockClerkService.isSignedIn.set(true);
+    it('should show local-user section when signed in', () => {
+        mockAuth.isLoaded.set(true);
+        mockAuth.isSignedIn.set(true);
+        mockAuth.userIdentifier.set('user@example.com');
         fixture.detectChanges();
 
-        const compiled = fixture.nativeElement as HTMLElement;
-        const container = compiled.querySelector('.user-button-container');
-        expect(container).toBeTruthy();
-        expect(compiled.querySelector('.auth-links')).toBeNull();
+        const el = fixture.nativeElement as HTMLElement;
+        expect(el.querySelector('.local-user')).toBeTruthy();
+        expect(el.querySelector('.auth-links')).toBeNull();
     });
 
-    it('should mount user button when signed in and container is available', async () => {
-        mockClerkService.isSignedIn.set(true);
+    it('should display the user email when signed in', () => {
+        mockAuth.isLoaded.set(true);
+        mockAuth.isSignedIn.set(true);
+        mockAuth.userIdentifier.set('alice@example.com');
         fixture.detectChanges();
 
-        // Wait for microtask queue to flush (queueMicrotask in component)
-        await new Promise((resolve) => setTimeout(resolve, 0));
-
-        expect(mockClerkService.mountUserButton).toHaveBeenCalled();
-        const callArg = mockClerkService.mountUserButton.mock.calls[0][0];
-        expect(callArg).toBeInstanceOf(HTMLDivElement);
+        const el = fixture.nativeElement as HTMLElement;
+        expect(el.querySelector('.local-user-email')?.textContent?.trim()).toBe('alice@example.com');
     });
 
-    it('should not mount user button multiple times', async () => {
-        mockClerkService.isSignedIn.set(true);
+    it('should show Admin link for admin users', () => {
+        mockAuth.isLoaded.set(true);
+        mockAuth.isSignedIn.set(true);
+        mockAuth.isAdmin.set(true);
         fixture.detectChanges();
 
-        // Wait for initial mount
-        await new Promise((resolve) => setTimeout(resolve, 0));
-
-        const initialCallCount = mockClerkService.mountUserButton.mock.calls.length;
-
-        // Trigger another change detection cycle
-        fixture.detectChanges();
-        await new Promise((resolve) => setTimeout(resolve, 0));
-
-        // Should not have called mount again
-        expect(mockClerkService.mountUserButton).toHaveBeenCalledTimes(initialCallCount);
+        const el = fixture.nativeElement as HTMLElement;
+        expect(el.querySelector('a[routerlink="/admin"]')).toBeTruthy();
     });
 
-    it('should remount when user signs in after component creation', async () => {
-        // Start signed out
-        mockClerkService.isLoaded.set(true);
-        mockClerkService.isSignedIn.set(false);
+    it('should hide Admin link for non-admin users', () => {
+        mockAuth.isLoaded.set(true);
+        mockAuth.isSignedIn.set(true);
+        mockAuth.isAdmin.set(false);
         fixture.detectChanges();
 
-        expect(mockClerkService.mountUserButton).not.toHaveBeenCalled();
-
-        // Sign in
-        mockClerkService.isSignedIn.set(true);
-        TestBed.flushEffects();
-        fixture.detectChanges();
-
-        // Wait for microtask to complete
-        await new Promise((resolve) => setTimeout(resolve, 0));
-
-        expect(mockClerkService.mountUserButton).toHaveBeenCalledTimes(1);
+        const el = fixture.nativeElement as HTMLElement;
+        expect(el.querySelector('a[routerlink="/admin"]')).toBeNull();
     });
 
-    it('should unmount user button on destroy', () => {
-        mockClerkService.isSignedIn.set(true);
+    it('should call auth.signOut when sign-out button is clicked', async () => {
+        mockAuth.isLoaded.set(true);
+        mockAuth.isSignedIn.set(true);
         fixture.detectChanges();
 
-        const compiled = fixture.nativeElement as HTMLElement;
-        const containerElement = compiled.querySelector('.user-button-container') as HTMLDivElement;
+        const btn = (fixture.nativeElement as HTMLElement).querySelector('button') as HTMLButtonElement;
+        btn.click();
+        await fixture.whenStable();
 
-        fixture.destroy();
-
-        expect(mockClerkService.unmountUserButton).toHaveBeenCalledTimes(1);
-        expect(mockClerkService.unmountUserButton).toHaveBeenCalledWith(containerElement);
+        expect(mockAuth.signOut).toHaveBeenCalled();
     });
 
-    it('should handle missing container gracefully on destroy', () => {
-        const mockClerkNoContainer = {
-            isLoaded: signal(true),
-            isSignedIn: signal(false),
-            configLoadFailed: signal(false),
-            mountUserButton: vi.fn(),
-            unmountUserButton: vi.fn(),
-        };
+    it('should toggle between signed-out and signed-in states reactively', () => {
+        const el = fixture.nativeElement as HTMLElement;
 
-        TestBed.resetTestingModule();
-        TestBed.configureTestingModule({
-            imports: [UserButtonComponent],
-            providers: [
-                provideZonelessChangeDetection(),
-                provideRouter([]),
-                { provide: ClerkService, useValue: mockClerkNoContainer },
-                { provide: ThemeService, useValue: { isDark: signal(false) } },
-            ],
-        });
-
-        const tempFixture = TestBed.createComponent(UserButtonComponent);
-        const tempComponent = tempFixture.componentInstance;
-
-        // Manually set container to undefined to simulate missing element
-        (tempComponent as any).container = () => undefined;
-
-        // Should not throw when destroying
-        expect(() => tempFixture.destroy()).not.toThrow();
-        expect(mockClerkNoContainer.unmountUserButton).not.toHaveBeenCalled();
-    });
-
-    it('should reset mounted flag when user signs out', async () => {
-        // Sign in and mount
-        mockClerkService.isSignedIn.set(true);
-        TestBed.flushEffects();
+        mockAuth.isLoaded.set(true);
+        mockAuth.isSignedIn.set(false);
         fixture.detectChanges();
-        await new Promise((resolve) => setTimeout(resolve, 0));
+        expect(el.querySelector('.auth-links')).toBeTruthy();
+        expect(el.querySelector('.local-user')).toBeNull();
 
-        const initialMountCalls = mockClerkService.mountUserButton.mock.calls.length;
-        expect(initialMountCalls).toBeGreaterThan(0);
-
-        // Sign out
-        mockClerkService.isSignedIn.set(false);
-        TestBed.flushEffects();
+        mockAuth.isSignedIn.set(true);
         fixture.detectChanges();
+        expect(el.querySelector('.local-user')).toBeTruthy();
+        expect(el.querySelector('.auth-links')).toBeNull();
 
-        // Sign back in
-        mockClerkService.isSignedIn.set(true);
-        TestBed.flushEffects();
+        mockAuth.isSignedIn.set(false);
         fixture.detectChanges();
-        await new Promise((resolve) => setTimeout(resolve, 0));
-
-        // Should have mounted again
-        expect(mockClerkService.mountUserButton.mock.calls.length).toBeGreaterThan(initialMountCalls);
-    });
-
-    it('should use correct CSS class for container', () => {
-        mockClerkService.isSignedIn.set(true);
-        fixture.detectChanges();
-
-        const compiled = fixture.nativeElement as HTMLElement;
-        const container = compiled.querySelector('.user-button-container');
-
-        expect(container).toBeTruthy();
-        expect(container?.classList.contains('user-button-container')).toBe(true);
-    });
-
-    it('should conditionally render based on isSignedIn signal', () => {
-        // Test @if control flow
-        mockClerkService.isLoaded.set(true);
-        mockClerkService.isSignedIn.set(false);
-        fixture.detectChanges();
-        let compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.user-button-container')).toBeNull();
-        expect(compiled.querySelector('.auth-links')).toBeTruthy();
-
-        mockClerkService.isSignedIn.set(true);
-        fixture.detectChanges();
-        compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.user-button-container')).toBeTruthy();
-        expect(compiled.querySelector('.auth-links')).toBeNull();
-
-        mockClerkService.isSignedIn.set(false);
-        fixture.detectChanges();
-        compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.user-button-container')).toBeNull();
-        expect(compiled.querySelector('.auth-links')).toBeTruthy();
-    });
-
-    it('should show auth links when Clerk loaded but user not signed in (configLoadFailed ignored)', () => {
-        mockClerkService.isLoaded.set(true);
-        mockClerkService.isSignedIn.set(false);
-        mockClerkService.configLoadFailed.set(true);
-        fixture.detectChanges();
-
-        const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.auth-links')).toBeTruthy();
-        expect(compiled.querySelector('.user-button-container')).toBeNull();
-    });
-
-    it('should show auth links when signed out regardless of configLoadFailed', () => {
-        mockClerkService.isLoaded.set(true);
-        mockClerkService.isSignedIn.set(false);
-        mockClerkService.configLoadFailed.set(false);
-        fixture.detectChanges();
-
-        const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.auth-links')).toBeTruthy();
-        expect(compiled.querySelector('.user-button-container')).toBeNull();
-    });
-
-    it('should show user button container when signed in even if configLoadFailed', () => {
-        mockClerkService.isLoaded.set(true);
-        mockClerkService.isSignedIn.set(true);
-        mockClerkService.configLoadFailed.set(true);
-        fixture.detectChanges();
-
-        const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.user-button-container')).toBeTruthy();
-        expect(compiled.querySelector('.auth-links')).toBeNull();
-    });
-
-    it('should unmount and remount when theme changes while signed in', async () => {
-        // Sign in and wait for the widget to mount
-        mockClerkService.isSignedIn.set(true);
-        TestBed.flushEffects();
-        fixture.detectChanges();
-        await new Promise((resolve) => setTimeout(resolve, 0));
-
-        const mountCallsBefore = mockClerkService.mountUserButton.mock.calls.length;
-        expect(mountCallsBefore).toBeGreaterThan(0);
-
-        // Toggle theme while the widget is mounted
-        mockThemeService.isDark.set(true);
-        TestBed.flushEffects();
-
-        // Widget should have been unmounted once and then remounted
-        expect(mockClerkService.unmountUserButton).toHaveBeenCalledTimes(1);
-        expect(mockClerkService.mountUserButton.mock.calls.length).toBeGreaterThan(mountCallsBefore);
-    });
-
-    it('should not remount when theme changes before initial mount', () => {
-        // isSignedIn is false — no container, nothing mounted
-        mockClerkService.isSignedIn.set(false);
-        fixture.detectChanges();
-
-        mockThemeService.isDark.set(true);
-        TestBed.flushEffects();
-
-        // No unmount or mount should occur since the widget was never mounted
-        expect(mockClerkService.unmountUserButton).not.toHaveBeenCalled();
-        // mountUserButton may have been called 0 times from afterNextRender (no container)
-        expect(mockClerkService.mountUserButton).not.toHaveBeenCalled();
+        expect(el.querySelector('.auth-links')).toBeTruthy();
+        expect(el.querySelector('.local-user')).toBeNull();
     });
 });

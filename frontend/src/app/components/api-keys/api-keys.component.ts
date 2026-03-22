@@ -28,7 +28,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { DatePipe } from '@angular/common';
 import { ApiKeyService, CreateApiKeyRequest } from '../../services/api-key.service';
-import { ClerkService } from '../../services/clerk.service';
+import { AuthFacadeService } from '../../services/auth-facade.service';
 
 @Component({
     selector: 'app-api-keys',
@@ -53,7 +53,7 @@ import { ClerkService } from '../../services/clerk.service';
         <h1 class="mat-headline-4">API Keys</h1>
         <p class="subtitle mat-body-1">Manage your personal API keys for programmatic access</p>
 
-        @if (!clerk.isSignedIn()) {
+        @if (!auth.isSignedIn()) {
             <mat-card appearance="outlined" class="mb-2">
                 <mat-card-content>
                     <p>Please <a routerLink="/sign-in">sign in</a> to manage API keys.</p>
@@ -258,7 +258,7 @@ import { ClerkService } from '../../services/clerk.service';
 })
 export class ApiKeysComponent implements OnInit {
     protected readonly apiKeys = inject(ApiKeyService);
-    protected readonly clerk = inject(ClerkService);
+    protected readonly auth = inject(AuthFacadeService);
     private readonly snackBar = inject(MatSnackBar);
     private readonly platformId = inject(PLATFORM_ID);
 
@@ -275,7 +275,7 @@ export class ApiKeysComponent implements OnInit {
     protected readonly newKeyPlaintext = signal<string | null>(null);
 
     ngOnInit(): void {
-        if (isPlatformBrowser(this.platformId) && this.clerk.isSignedIn()) {
+        if (isPlatformBrowser(this.platformId) && this.auth.isSignedIn()) {
             this.apiKeys.loadKeys();
         }
     }

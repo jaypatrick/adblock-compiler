@@ -1,7 +1,6 @@
 /**
  * ProfileComponent — User profile editing + password change.
  *
- * Local-auth only (Clerk users manage their profile through Clerk's hosted UI).
  * Protected by authGuard — only reachable when signed in.
  */
 
@@ -52,38 +51,33 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
                     <mat-card-subtitle>{{ auth.userIdentifier() }}</mat-card-subtitle>
                 </mat-card-header>
                 <mat-card-content>
-                    @if (auth.useClerk()) {
-                        <p class="mat-body-2">Profile management is handled through Clerk. Use the user button in the header.</p>
-                    } @else {
-                        @if (profileSuccess()) {
-                            <div class="success-msg" role="status">Email updated successfully.</div>
-                        }
-                        @if (profileError()) {
-                            <div class="error-msg" role="alert">{{ profileError() }}</div>
-                        }
-                        <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
-                            <mat-form-field appearance="outline" class="full-width">
-                                <mat-label>Email</mat-label>
-                                <input matInput type="email" formControlName="identifier" autocomplete="email" />
-                                @if (profileForm.controls.identifier.invalid && profileForm.controls.identifier.touched) {
-                                    <mat-error>A valid email is required</mat-error>
-                                }
-                            </mat-form-field>
-                            <button mat-flat-button color="primary" type="submit"
-                                [disabled]="profileLoading() || profileForm.invalid">
-                                @if (profileLoading()) { <mat-spinner diameter="20" /> }
-                                @else { Save Changes }
-                            </button>
-                        </form>
+                    @if (profileSuccess()) {
+                        <div class="success-msg" role="status">Email updated successfully.</div>
                     }
+                    @if (profileError()) {
+                        <div class="error-msg" role="alert">{{ profileError() }}</div>
+                    }
+                    <form [formGroup]="profileForm" (ngSubmit)="saveProfile()" novalidate>
+                        <mat-form-field appearance="outline" class="full-width">
+                            <mat-label>Email</mat-label>
+                            <input matInput type="email" formControlName="identifier" autocomplete="email" />
+                            @if (profileForm.controls.identifier.invalid && profileForm.controls.identifier.touched) {
+                                <mat-error>A valid email is required</mat-error>
+                            }
+                        </mat-form-field>
+                        <button mat-flat-button color="primary" type="submit"
+                            [disabled]="profileLoading() || profileForm.invalid">
+                            @if (profileLoading()) { <mat-spinner diameter="20" /> }
+                            @else { Save Changes }
+                        </button>
+                    </form>
                 </mat-card-content>
             </mat-card>
 
             <mat-divider class="section-divider" />
 
             <!-- Change password card -->
-            @if (!auth.useClerk()) {
-                <mat-card appearance="outlined" class="profile-card">
+            <mat-card appearance="outlined" class="profile-card">
                     <mat-card-header>
                         <mat-icon mat-card-avatar aria-hidden="true">lock</mat-icon>
                         <mat-card-title>Change Password</mat-card-title>
@@ -125,7 +119,6 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
                         </form>
                     </mat-card-content>
                 </mat-card>
-            }
         </div>
     `,
     styles: [`

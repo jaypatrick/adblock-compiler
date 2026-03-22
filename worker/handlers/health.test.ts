@@ -4,7 +4,7 @@
  * Covers:
  *   - handleHealth: all services healthy
  *   - handleHealth: database down when env.DB is missing
- *   - handleHealth: auth provider detection (clerk / better-auth / none)
+ *   - handleHealth: auth provider detection (better-auth / none)
  *   - handleHealth: compiler degraded when ADBLOCK_COMPILER is missing
  *   - handleHealth: overall status is worst-of-all-services
  *   - handleHealthLatest: returns no-data message when METRICS has no entry
@@ -50,15 +50,7 @@ Deno.test('handleHealth - database down when env.DB is missing', async () => {
     assertEquals(body.services.database.status, 'down');
 });
 
-Deno.test('handleHealth - auth provider is "clerk" when CLERK_JWKS_URL is set', async () => {
-    const env = makeEnv({ CLERK_JWKS_URL: 'https://example.clerk.accounts.dev/.well-known/jwks.json' });
-    const res = await handleHealth(env);
-    const body = await res.json() as { services: { auth: { provider: string; status: string } } };
-    assertEquals(body.services.auth.provider, 'clerk');
-    assertEquals(body.services.auth.status, 'healthy');
-});
-
-Deno.test('handleHealth - auth provider is "better-auth" when BETTER_AUTH_SECRET is set (no Clerk)', async () => {
+Deno.test('handleHealth - auth provider is "better-auth" when BETTER_AUTH_SECRET is set', async () => {
     const env = makeEnv({ BETTER_AUTH_SECRET: 'my-test-secret', DB: makeDb() });
     const res = await handleHealth(env);
     const body = await res.json() as { services: { auth: { provider: string; status: string } } };

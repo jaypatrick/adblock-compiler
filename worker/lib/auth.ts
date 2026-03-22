@@ -31,9 +31,23 @@
 
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { bearer, multiSession, twoFactor } from 'better-auth/plugins';
+import { admin, bearer, multiSession, twoFactor } from 'better-auth/plugins';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
+
+/**
+ * Session duration constants — single source of truth consumed by both
+ * {@link createAuth} and the admin `/admin/auth/config` inspector endpoint.
+ * Changing these values here automatically propagates to both.
+ */
+export const AUTH_SESSION_CONFIG = {
+    /** Session expiry in seconds (7 days). */
+    expiresIn: 60 * 60 * 24 * 7,
+    /** Refresh session token when this many seconds remain (1 day). */
+    updateAge: 60 * 60 * 24,
+    /** Cookie-level session cache duration in seconds (5 minutes). */
+    cookieCacheMaxAge: 60 * 5,
+} as const;
 
 /**
  * Thrown when a required Worker binding or secret is absent at startup.
@@ -80,11 +94,30 @@ export function createAuth(env: Env, baseURL?: string) {
 
     const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
 
+    // Build social providers object — only include providers whose credentials are configured.
+    const socialProviders: Parameters<typeof betterAuth>[0]['socialProviders'] = {};
+    if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
+        socialProviders.github = {
+            clientId: env.GITHUB_CLIENT_ID,
+            clientSecret: env.GITHUB_CLIENT_SECRET,
+        };
+    }
+    // Google is wired but NOT exposed in the UI — activate later by setting
+    // GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET in wrangler secrets:
+    // if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+    //     socialProviders.google = {
+    //         clientId: env.GOOGLE_CLIENT_ID,
+    //         clientSecret: env.GOOGLE_CLIENT_SECRET,
+    //     };
+    // }
+
     return betterAuth({
         database: prismaAdapter(prisma, { provider: 'postgresql' }),
         secret: env.BETTER_AUTH_SECRET,
         basePath: '/api/auth',
         baseURL: env.BETTER_AUTH_URL || baseURL,
+
+        socialProviders,
 
         emailAndPassword: {
             enabled: true,
@@ -109,12 +142,12 @@ export function createAuth(env: Env, baseURL?: string) {
 
         session: {
             // 7-day session expiry
-            expiresIn: 60 * 60 * 24 * 7,
+            expiresIn: AUTH_SESSION_CONFIG.expiresIn,
             // Refresh session if it expires within 1 day
-            updateAge: 60 * 60 * 24,
+            updateAge: AUTH_SESSION_CONFIG.updateAge,
             cookieCache: {
                 enabled: true,
-                maxAge: 60 * 5, // 5-minute cookie cache
+                maxAge: AUTH_SESSION_CONFIG.cookieCacheMaxAge,
             },
         },
         advanced: {
@@ -143,8 +176,15 @@ export function createAuth(env: Env, baseURL?: string) {
             //   POST   /api/auth/revoke-session               — revoke a specific session
             //   POST   /api/auth/revoke-other-sessions        — revoke all except current
             multiSession(),
+            // Better Auth admin plugin — auto-exposes:
+            //   GET    /api/auth/admin/list-users        — list all users
+            //   POST   /api/auth/admin/set-role          — change user role
+            //   POST   /api/auth/admin/ban-user          — ban a user
+            //   POST   /api/auth/admin/unban-user        — unban a user
+            //   POST   /api/auth/admin/impersonate-user  — impersonate a user
+            //   POST   /api/auth/admin/revoke-user-sessions — revoke sessions
+            admin(),
             // Future plugins (uncomment when needed):
-            // admin(),        — Better Auth's admin user management
             // apiKey(),       — Built-in API key management (we use custom impl)
             // organization(), — Multi-tenancy
         ],

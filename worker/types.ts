@@ -119,44 +119,19 @@ export function isValidScope(value: string): value is AuthScope {
 
 export interface IAuthContext {
     readonly userId: string | null;
-    readonly clerkUserId: string | null;
     readonly tier: UserTier;
     readonly role: string;
     readonly apiKeyId: string | null;
     readonly sessionId: string | null;
     readonly scopes: readonly string[];
     /** Authentication method used for this request */
-    readonly authMethod: 'clerk-jwt' | 'api-key' | 'anonymous' | 'better-auth';
+    readonly authMethod: 'api-key' | 'anonymous' | 'better-auth';
     /** User email from auth session (avoids extra DB round-trips) */
     readonly email?: string | null;
     /** User display name from auth session */
     readonly displayName?: string | null;
     /** Per-API-key rate limit override (requests/minute). null = use tier default */
     readonly apiKeyRateLimit?: number | null;
-}
-
-export interface IClerkClaims {
-    readonly sub: string;
-    readonly iss: string;
-    readonly exp: number;
-    readonly nbf?: number;
-    readonly iat: number;
-    readonly azp?: string;
-    readonly sid?: string;
-    readonly org_id?: string;
-    readonly org_role?: string;
-    readonly metadata?: IClerkPublicMetadata;
-}
-
-export interface IClerkPublicMetadata {
-    readonly role?: string;
-    readonly tier?: UserTier;
-}
-
-export interface IJwtVerificationResult {
-    readonly valid: boolean;
-    readonly claims?: IClerkClaims;
-    readonly error?: string;
 }
 
 export interface IAuthMiddlewareResult {
@@ -203,7 +178,6 @@ export interface ICfAccessClaims {
 
 export const ANONYMOUS_AUTH_CONTEXT: IAuthContext = {
     userId: null,
-    clerkUserId: null,
     tier: UserTier.Anonymous,
     role: 'anonymous',
     apiKeyId: null,
@@ -291,13 +265,6 @@ export interface Env {
     WEBHOOK_URL?: string;
     // Datadog API key for POST /api/notify (optional third-party integration)
     DATADOG_API_KEY?: string;
-    // --- Clerk Authentication ---
-    // Clerk secret key for backend API calls — set via `wrangler secret put`.
-    CLERK_SECRET_KEY?: string;
-    CLERK_PUBLISHABLE_KEY?: string;
-    CLERK_JWKS_URL?: string;
-    // Clerk webhook signing secret for Svix signature verification — secret.
-    CLERK_WEBHOOK_SECRET?: string;
     // --- Better Auth ---
     /**
      * Signing secret for Better Auth session tokens.
@@ -313,21 +280,12 @@ export interface Env {
      * @example `"https://adblock-compiler.example.com"`
      */
     BETTER_AUTH_URL?: string;
-    /**
-     * When `'true'`, disables the Clerk JWT fallback entirely.
-     * Set this after all clients have migrated to Better Auth.
-     *
-     * @deprecated Will be removed once the Clerk→Better Auth migration is complete.
-     */
-    DISABLE_CLERK_FALLBACK?: string;
-    /**
-     * When set to `"true"`, the `/api/webhooks/clerk` endpoint returns
-     * 410 Gone without processing the payload.  Use this to disable Clerk
-     * webhook user-sync after all users have been migrated to Better Auth.
-     *
-     * @deprecated Will be removed once the Clerk→Better Auth migration is complete.
-     */
-    DISABLE_CLERK_WEBHOOKS?: string;
+    // GitHub OAuth provider (required for social login via GitHub)
+    GITHUB_CLIENT_ID?: string;
+    GITHUB_CLIENT_SECRET?: string;
+    // Google OAuth is wired but not yet exposed in the UI — activate by setting these secrets
+    GOOGLE_CLIENT_ID?: string;
+    GOOGLE_CLIENT_SECRET?: string;
     // --- Cloudflare Access (admin route protection) ---
     CF_ACCESS_TEAM_DOMAIN?: string;
     CF_ACCESS_AUD?: string;

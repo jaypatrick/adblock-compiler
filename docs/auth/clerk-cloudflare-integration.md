@@ -1,5 +1,14 @@
 # Clerk + Cloudflare Integration Guide
 
+> **⛔ DEPRECATED — Historical reference only.**
+> The project has fully migrated to Better Auth. Clerk is no longer used.
+> See [Better Auth Prisma Setup](better-auth-prisma.md) and
+> [Developer Guide](developer-guide.md) for current integration details.
+
+<!--
+Original content preserved below for historical reference.
+-->
+
 This document explains how Clerk authentication integrates with the Cloudflare Workers platform. It covers every touchpoint between Clerk and Cloudflare services — JWT verification, KV rate limiting, D1 user sync, Hyperdrive API key storage, webhook handling, Turnstile bot protection, frontend deployment, and analytics.
 
 > **See also:** [Cloudflare Access](cloudflare-access.md) for the separate defense-in-depth layer on admin routes.

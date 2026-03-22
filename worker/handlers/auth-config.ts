@@ -2,7 +2,11 @@
  * Auth Configuration Inspector — GET /admin/auth/config
  *
  * Returns a read-only view of auth configuration at runtime:
- *   - Active auth provider (clerk or better-auth)
+ *   - Active auth provider (better-auth)
+ *   - Social provider credential presence (github, google)
+ *   - MFA plugin status
+ *   - Session duration settings
+ *   - Better Auth secret / base URL status
  *   - TIER_REGISTRY — all tiers with rate limits and ordering
  *   - ROUTE_PERMISSION_REGISTRY — all registered route permissions
  *
@@ -15,6 +19,7 @@
 import { type Env, type IAuthContext, TIER_REGISTRY } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { checkRoutePermission, ROUTE_PERMISSION_REGISTRY } from '../utils/route-permissions.ts';
+import { AUTH_SESSION_CONFIG } from '../lib/auth.ts';
 
 export async function handleAdminAuthConfig(
     _request: Request,
@@ -24,8 +29,8 @@ export async function handleAdminAuthConfig(
     const denied = checkRoutePermission('/admin/auth/config', authContext);
     if (denied) return denied;
 
-    // Determine active provider
-    const provider = env.CLERK_JWKS_URL ? 'clerk' : 'better-auth';
+    // Always Better Auth — Clerk has been removed
+    const provider = 'better-auth';
 
     // Serialize TIER_REGISTRY
     const tiers = Object.entries(TIER_REGISTRY).map(([tier, config]) => ({
@@ -46,6 +51,22 @@ export async function handleAdminAuthConfig(
 
     return JsonResponse.success({
         provider,
+        socialProviders: {
+            github: { configured: Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) },
+            google: { configured: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) },
+        },
+        mfa: {
+            enabled: true,
+        },
+        session: {
+            expiresIn: AUTH_SESSION_CONFIG.expiresIn,
+            updateAge: AUTH_SESSION_CONFIG.updateAge,
+            cookieCacheMaxAge: AUTH_SESSION_CONFIG.cookieCacheMaxAge,
+        },
+        betterAuth: {
+            secretConfigured: Boolean(env.BETTER_AUTH_SECRET),
+            baseUrl: env.BETTER_AUTH_URL ?? null,
+        },
         tiers,
         routes,
     });

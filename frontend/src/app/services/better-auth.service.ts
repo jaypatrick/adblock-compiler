@@ -16,6 +16,14 @@ import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core
 import { isPlatformBrowser } from '@angular/common';
 import { API_BASE_URL } from '../tokens';
 
+/** Shape of the GET /api/auth/providers response */
+export interface AuthProvidersConfig {
+    readonly emailPassword: boolean;
+    readonly github: boolean;
+    readonly google: boolean;
+    readonly mfa: boolean;
+}
+
 export interface BetterAuthUser {
     id: string;
     email: string;
@@ -24,6 +32,19 @@ export interface BetterAuthUser {
     image: string | null;
     tier: string;
     role: string;
+    twoFactorEnabled?: boolean;
+}
+
+export interface BetterAuthSession {
+    id: string;
+    token: string;
+    userId: string;
+    expiresAt: string;
+    createdAt: string;
+    updatedAt: string;
+    ipAddress?: string | null;
+    userAgent?: string | null;
+    isCurrent?: boolean;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -33,11 +54,19 @@ export class BetterAuthService {
     private readonly _user = signal<BetterAuthUser | null>(null);
     private readonly _isLoaded = signal(false);
     private readonly _sessionToken = signal<string | null>(null);
+    private readonly _providers = signal<AuthProvidersConfig>({
+        emailPassword: true,
+        github: false,
+        google: false,
+        mfa: true,
+    });
 
     readonly user = this._user.asReadonly();
     readonly isLoaded = this._isLoaded.asReadonly();
     readonly isSignedIn = computed(() => this._user() !== null);
     readonly isAdmin = computed(() => this._user()?.role === 'admin');
+    /** Active auth providers — populated from GET /api/auth/providers on init. */
+    readonly providers = this._providers.asReadonly();
 
     constructor() {
         if (!isPlatformBrowser(this.platformId)) {
@@ -54,6 +83,8 @@ export class BetterAuthService {
 
     /** Fetch the current session from the server. */
     async checkSession(): Promise<void> {
+        // Fire-and-forget providers fetch in parallel with session fetch (non-fatal).
+        this.fetchProviders();
         try {
             const res = await fetch(`${this.apiBaseUrl}/auth/get-session`, {
                 credentials: 'include',
@@ -221,6 +252,178 @@ export class BetterAuthService {
             return {};
         } catch (err) {
             return { error: err instanceof Error ? err.message : 'Failed to change password.' };
+        }
+    }
+
+    // =========================================================================
+    // Social sign-in
+    // =========================================================================
+
+    /**
+     * Initiate OAuth flow for a social provider.
+     * Redirects the browser to the provider's authorization URL via Better Auth.
+     * On success the provider redirects back to /api/auth/callback/<provider>
+     * which sets a session cookie and redirects to `callbackURL`.
+     */
+    async signInWithSocial(
+        provider: 'github' | 'google',
+        callbackURL = '/dashboard',
+    ): Promise<void> {
+        const res = await fetch(`${this.apiBaseUrl}/auth/sign-in/social`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ provider, callbackURL }),
+        });
+        if (!res.ok) {
+            const body = await res.json().catch(() => ({})) as { message?: string };
+            throw new Error(body.message ?? `Failed to initiate ${provider} sign-in.`);
+        }
+        const data = await res.json() as { url?: string };
+        if (data?.url) {
+            // Better Auth returns a redirect URL — follow it to start the OAuth flow.
+            window.location.href = data.url;
+        }
+    }
+
+    // =========================================================================
+    // Two-factor authentication (twoFactor plugin)
+    // =========================================================================
+
+    /** Enable TOTP 2FA for the current user. Returns the TOTP URI for QR display. */
+    async enableTwoFactor(password: string): Promise<{ totpURI?: string; error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/two-factor/enable`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ password }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to enable two-factor authentication.' };
+            }
+            const data = await res.json() as { totpURI?: string };
+            return { totpURI: data.totpURI };
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to enable two-factor authentication.' };
+        }
+    }
+
+    /** Verify a TOTP code to confirm 2FA setup or authenticate a 2FA challenge. */
+    async verifyTwoFactor(code: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/two-factor/verify-totp`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ code }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Invalid code. Please try again.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Verification failed.' };
+        }
+    }
+
+    /** Disable 2FA for the current user (requires password confirmation). */
+    async disableTwoFactor(password: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/two-factor/disable`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ password }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to disable two-factor authentication.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to disable two-factor authentication.' };
+        }
+    }
+
+    // =========================================================================
+    // Session management (multiSession plugin)
+    // =========================================================================
+
+    /** List all active sessions for the current user. */
+    async listSessions(): Promise<{ sessions?: BetterAuthSession[]; error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/list-sessions`, {
+                credentials: 'include',
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to load sessions.' };
+            }
+            const sessions = await res.json() as BetterAuthSession[];
+            return { sessions };
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to load sessions.' };
+        }
+    }
+
+    /** Revoke a specific session by token. */
+    async revokeSession(token: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/revoke-session`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ token }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to revoke session.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to revoke session.' };
+        }
+    }
+
+    /** Revoke all sessions except the current one. */
+    async revokeOtherSessions(): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/revoke-other-sessions`, {
+                method: 'POST',
+                credentials: 'include',
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to revoke sessions.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to revoke sessions.' };
+        }
+    }
+
+    /** Fetch supported auth providers from the server and update the providers signal. */
+    private async fetchProviders(): Promise<void> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/providers`);
+            if (res.ok) {
+                const raw = await res.json() as { data?: AuthProvidersConfig } | AuthProvidersConfig;
+                const config = (raw as { data?: AuthProvidersConfig }).data ?? (raw as AuthProvidersConfig);
+                if (
+                    config &&
+                    typeof config.github === 'boolean' &&
+                    typeof config.google === 'boolean' &&
+                    typeof config.emailPassword === 'boolean' &&
+                    typeof config.mfa === 'boolean'
+                ) {
+                    this._providers.set(config);
+                }
+            }
+        } catch {
+            console.warn('[BetterAuthService] Failed to fetch auth providers; using defaults.');
         }
     }
 }

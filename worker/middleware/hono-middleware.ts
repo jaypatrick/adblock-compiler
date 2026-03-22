@@ -238,7 +238,7 @@ export function turnstileMiddleware(): AppMiddleware {
  * Returns a Hono middleware that requires the caller to be authenticated.
  *
  * Returns **401 Unauthorized** if the request context is anonymous
- * (no valid Clerk JWT or API key was presented).
+ * (no valid Better Auth session or API key was presented).
  *
  * Route handlers protected by this middleware can safely assume
  * `c.get('authContext').userId` is non-null.

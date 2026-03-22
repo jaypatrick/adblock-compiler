@@ -7,7 +7,7 @@
  *
  * ## Built-in validators
  * 1. SessionRevocationValidator — checks RATE_LIMIT KV for revoked session IDs
- * 2. ClaimsIntegrityValidator  — verifies clerkUserId, tier, and role integrity
+ * 2. ClaimsIntegrityValidator  — verifies userId, tier, and role integrity
  *
  * ## Extensibility
  * Push custom validators to TOKEN_VALIDATOR_REGISTRY after module load:
@@ -97,10 +97,10 @@ export const SessionRevocationValidator: ITokenValidator = {
 // ============================================================================
 
 /**
- * Verifies the integrity of JWT claims embedded in the auth context.
+ * Verifies the integrity of claims embedded in the auth context.
  *
  * For any authenticated (non-anonymous) request, asserts:
- *   - clerkUserId is a non-empty string (providerUserId was resolved)
+ *   - userId is a non-empty string (providerUserId was resolved)
  *   - tier is a recognised UserTier value
  *   - role is a non-empty string
  *
@@ -114,7 +114,7 @@ export const ClaimsIntegrityValidator: ITokenValidator = {
             return Promise.resolve({ valid: true });
         }
 
-        if (!authContext.clerkUserId || authContext.clerkUserId.length === 0) {
+        if (!authContext.userId || authContext.userId.length === 0) {
             return Promise.resolve({
                 valid: false,
                 error: 'Token claims integrity check failed: missing providerUserId',

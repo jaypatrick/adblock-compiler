@@ -22,13 +22,12 @@ function makeAnonymousContext(): IAuthContext {
 function makeAuthenticatedContext(tier: UserTier = UserTier.Free): IAuthContext {
     return {
         userId: 'db_user_123',
-        clerkUserId: 'user_test123',
         tier,
         role: tier === UserTier.Admin ? 'admin' : 'user',
         apiKeyId: null,
         sessionId: 'sess_abc',
         scopes: ['compile:read', 'compile:write'],
-        authMethod: 'clerk-jwt',
+        authMethod: 'better-auth',
     };
 }
 

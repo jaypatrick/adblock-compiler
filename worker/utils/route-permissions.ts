@@ -17,15 +17,11 @@
  * ## Match priority
  * Exact matches take precedence. Among prefix matches, the longest prefix wins.
  *
- * ## Clerk migration
- * Each entry maps directly to a Clerk "Permission" attached to a role:
- * - `minTier: UserTier.Anonymous` → public (no Clerk permission needed)
- * - `minTier: UserTier.Free`      → assign to Clerk `org:member` role
- * - `minTier: UserTier.Pro`       → assign to Clerk `org:pro` role
- * - `minTier: UserTier.Admin`     → assign to Clerk `org:admin` role
- *
- * When switching to Clerk, configure these same requirements in the Clerk
- * dashboard under "Roles & Permissions" — no code changes needed here.
+ * ## Tier access model
+ * - `minTier: UserTier.Anonymous` → public (no auth needed)
+ * - `minTier: UserTier.Free`      → any authenticated user
+ * - `minTier: UserTier.Pro`       → paid/upgraded tier
+ * - `minTier: UserTier.Admin`     → administrators only
  *
  * @see worker/types.ts — UserTier enum and TIER_REGISTRY
  */
@@ -39,8 +35,8 @@ import { type IAuthContext, isTierSufficient, TIER_REGISTRY, UserTier } from '..
 /**
  * Access requirement for a single route.
  *
- * Mirrors Clerk's "Permission" concept — a tier + optional role guard that can
- * be configured centrally and applied at the routing layer.
+ * A tier + optional role guard that can be configured centrally
+ * and applied at the routing layer.
  */
 export interface IRoutePermission {
     /**
@@ -54,8 +50,6 @@ export interface IRoutePermission {
     /**
      * Optional role guard. When set, the authenticated user's role must
      * match this value in addition to the tier check.
-     *
-     * Mirrors Clerk's per-permission role assignment.
      * @example `'admin'` — only users with role === 'admin' may access
      */
     readonly requiredRole?: string;
@@ -85,7 +79,7 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/health', { minTier: UserTier.Anonymous, description: 'Health check' }],
     ['/health/*', { minTier: UserTier.Anonymous, description: 'Health sub-endpoints' }],
     ['/metrics', { minTier: UserTier.Anonymous, description: 'Public aggregate metrics' }],
-    // Clerk webhook uses SVIX signature — not a user JWT
+    // Webhook receivers use self-authentication (HMAC/signatures)
     ['/webhooks/*', { minTier: UserTier.Anonymous, description: 'Webhook receivers (self-authenticated)' }],
     // API documentation — publicly readable
     ['/docs', { minTier: UserTier.Anonymous, description: 'API documentation' }],
@@ -215,7 +209,7 @@ export function checkRoutePermission(
     const permission = resolveRoutePermission(routePath);
 
     // Route not explicitly registered → default to Free tier (ZTA: deny-by-default).
-    // Public platform endpoints (/version, /deployments, /turnstile-config, /clerk-config,
+    // Public platform endpoints (/version, /deployments, /turnstile-config,
     // /sentry-config, /favicon.ico, /assets/*) are handled before auth runs in worker.ts
     // via early-return routing and never reach this permission check.
     if (!permission) {

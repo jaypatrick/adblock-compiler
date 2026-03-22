@@ -22,11 +22,10 @@
  * ## Provider selection
  * Better Auth is the PRIMARY auth provider.
  * See `worker/hono-app.ts` for the priority chain:
- *   API key → Better Auth → Clerk (deprecated fallback) → Anonymous
+ *   API key → Better Auth → Anonymous
  *
  * @see worker/lib/auth.ts — Better Auth factory
  * @see worker/types.ts — IAuthProvider interface
- * @see worker/middleware/clerk-auth-provider.ts — Clerk equivalent
  */
 
 import { type Env, type IAuthProvider, type IAuthProviderResult, UserTier } from '../types.ts';
@@ -97,7 +96,7 @@ export class BetterAuthProvider implements IAuthProvider {
 
             if (!session) {
                 // No session found — signal anonymous flow (no error = not a failure,
-                // just no credentials present). Same convention as clerk-jwt.ts.
+                // just no credentials present).
                 return { valid: false };
             }
 

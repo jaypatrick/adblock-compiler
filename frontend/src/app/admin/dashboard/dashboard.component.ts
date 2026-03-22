@@ -63,7 +63,7 @@ interface HealthResponse {
         readonly gateway?:  { readonly status: ServiceStatus };
         readonly database?: { readonly status: ServiceStatus; readonly latency_ms?: number };
         readonly compiler?: { readonly status: ServiceStatus };
-        readonly auth?:     { readonly status: ServiceStatus; readonly provider?: 'clerk' | 'local' | 'none' };
+        readonly auth?:     { readonly status: ServiceStatus; readonly provider?: 'better-auth' | 'local' | 'none' };
         readonly cache?:    { readonly status: ServiceStatus };
     };
 }
@@ -370,9 +370,9 @@ export class DashboardComponent {
             return 'red';
         };
 
-        const authProviderLabel = (provider: 'clerk' | 'local' | 'none' | undefined): string | undefined => {
+        const authProviderLabel = (provider: 'better-auth' | 'local' | 'none' | undefined): string | undefined => {
             switch (provider) {
-                case 'clerk': return 'Clerk (Active)';
+                case 'better-auth': return 'Better Auth (Active)';
                 case 'local': return 'Local JWT (Active)';
                 case 'none':  return 'Unconfigured';
                 default:      return undefined;

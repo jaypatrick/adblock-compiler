@@ -293,10 +293,9 @@ export const JobInfoSchema = z.object({
  * Used for observability logging and the auth priority chain:
  *   1. `api-key`      — `abc_`-prefixed Bearer token (always first)
  *   2. `better-auth`  — Primary session provider (cookie or bearer plugin)
- *   3. `clerk`        — Fallback JWT provider (deprecated — migration period only)
- *   4. `anonymous`    — No credentials presented
+ *   3. `anonymous`    — No credentials presented
  */
-export const AuthProviderSchema = z.enum(['better-auth', 'clerk', 'api-key', 'anonymous']);
+export const AuthProviderSchema = z.enum(['better-auth', 'api-key', 'anonymous']);
 export type AuthProvider = z.infer<typeof AuthProviderSchema>;
 
 /**
@@ -721,88 +720,6 @@ export const WebhookNotifyResponseSchema = z.object({
 // The group field is added to queue messages to support grouped job processing.
 // Consumers can use this to batch related jobs or apply shared cancellation.
 
-// ============================================================================
-// Clerk Auth Schemas
-// ============================================================================
-
-/**
- * A single email address entry in a Clerk user event payload.
- */
-export const ClerkEmailAddressSchema = z.object({
-    id: z.string().min(1),
-    email_address: z.string().email(),
-    verification: z.object({
-        status: z.enum(['verified', 'unverified', 'failed', 'expired']),
-    }).nullable().optional(),
-});
-
-export type ClerkEmailAddress = z.infer<typeof ClerkEmailAddressSchema>;
-
-/**
- * Full user data shape sent by Clerk for `user.created` and `user.updated` events.
- * Uses `.passthrough()` to allow unknown fields Clerk may add in future versions.
- */
-export const ClerkWebhookUserDataSchema = z.object({
-    id: z.string().min(1),
-    email_addresses: z.array(ClerkEmailAddressSchema).optional(),
-    primary_email_address_id: z.string().nullable().optional(),
-    first_name: z.string().max(100).nullable().optional(),
-    last_name: z.string().max(100).nullable().optional(),
-    image_url: z.string().url().nullable().optional(),
-    public_metadata: z.object({
-        tier: z.nativeEnum(UserTier).optional(),
-        role: z.string().optional(),
-    }).optional(),
-    last_sign_in_at: z.number().int().min(0).nullable().optional(),
-}).passthrough();
-
-export type ClerkWebhookUserData = z.infer<typeof ClerkWebhookUserDataSchema>;
-
-/**
- * Minimal base schema for any Clerk webhook event.
- * Accepts unknown event types so the handler can gracefully acknowledge them
- * (Svix retries on 4xx; unknown-type events should still return 200).
- */
-export const ClerkWebhookEventBaseSchema = z.object({
-    type: z.string().min(1),
-    data: z.object({ id: z.string().min(1) }).passthrough(),
-});
-
-export type ClerkWebhookEventBase = z.infer<typeof ClerkWebhookEventBaseSchema>;
-
-/**
- * Strict schema for the three Clerk user lifecycle events this worker handles.
- * Use for documentation and validation within known-type branches.
- */
-export const ClerkWebhookEventSchema = z.object({
-    type: z.enum(['user.created', 'user.updated', 'user.deleted']),
-    data: ClerkWebhookUserDataSchema,
-});
-
-export type ClerkWebhookEvent = z.infer<typeof ClerkWebhookEventSchema>;
-
-/**
- * Shape of a verified Clerk JWT payload after `jwtVerify()` succeeds.
- * Uses `.passthrough()` so additional JWKS claims do not cause parse failures.
- */
-export const ClerkJWTClaimsSchema = z.object({
-    sub: z.string().min(1, 'sub (user ID) is required'),
-    iss: z.string().url(),
-    exp: z.number().int().positive(),
-    nbf: z.number().int().min(0).optional(),
-    iat: z.number().int().min(0),
-    azp: z.string().optional(),
-    sid: z.string().optional(),
-    org_id: z.string().optional(),
-    org_role: z.string().optional(),
-    metadata: z.object({
-        tier: z.nativeEnum(UserTier).optional(),
-        role: z.string().optional(),
-    }).optional(),
-}).passthrough();
-
-export type ClerkJWTClaims = z.infer<typeof ClerkJWTClaimsSchema>;
-
 /**
  * Request body for POST /api/keys (create a new API key).
  */
@@ -999,6 +916,7 @@ export type AdminRoleRow = z.infer<typeof AdminRoleRowSchema>;
 /** Row from `admin_role_assignments` table */
 export const AdminRoleAssignmentRowSchema = z.object({
     id: z.number(),
+    /** @deprecated DB column still named `clerk_user_id` — will be renamed to `user_id` in a future migration */
     clerk_user_id: z.string(),
     role_name: AdminRoleNameSchema,
     assigned_by: z.string(),
@@ -1118,9 +1036,9 @@ export const UpdateAdminRoleRequestSchema = z.object({
 });
 export type UpdateAdminRoleRequest = z.infer<typeof UpdateAdminRoleRequestSchema>;
 
-/** Assign / revoke a role to a Clerk user */
+/** Assign / revoke a role to a user */
 export const AssignRoleRequestSchema = z.object({
-    clerk_user_id: z.string().min(1),
+    user_id: z.string().min(1),
     role_name: AdminRoleNameSchema,
     expires_at: z.string().datetime().nullable().optional(),
 });
@@ -1233,6 +1151,7 @@ export const AdminListResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =
 
 /** Resolved admin user context (from KV cache or D1 lookup) */
 export const ResolvedAdminContextSchema = z.object({
+    /** @deprecated DB column still named `clerk_user_id` — will be renamed to `user_id` in a future migration */
     clerk_user_id: z.string(),
     role_name: AdminRoleNameSchema,
     permissions: z.array(AdminPermissionSchema),

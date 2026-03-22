@@ -157,7 +157,7 @@ Deno.test('handleQueueCancel - valid requestId with pending job returns 200', as
     const pendingJob = { status: 'pending', requestId: 'req-abc123' };
     const kv = makeInMemoryKv(new Map([['queue:job:req-abc123', JSON.stringify(pendingJob)]]));
     const env = makeEnv({ METRICS: kv });
-    const authContext = { authMethod: 'clerk-jwt', tier: 'free', userId: 'user-1' } as unknown as import('../types.ts').IAuthContext;
+    const authContext = { authMethod: 'better-auth', tier: 'free', userId: 'user-1' } as unknown as import('../types.ts').IAuthContext;
     const analytics = { trackSecurityEvent: () => {} } as unknown as import('../../src/services/AnalyticsService.ts').AnalyticsService;
     const request = new Request('http://localhost/api/queue/cancel/req-abc123', { method: 'DELETE' });
     const res = await handleQueueCancel(request, env, authContext, analytics, 'req-abc123');
@@ -169,7 +169,7 @@ Deno.test('handleQueueCancel - valid requestId with pending job returns 200', as
 
 Deno.test('handleQueueCancel - invalid requestId format returns 400', async () => {
     const env = makeEnv();
-    const authContext = { authMethod: 'clerk-jwt', tier: 'free', userId: 'user-1' } as unknown as import('../types.ts').IAuthContext;
+    const authContext = { authMethod: 'better-auth', tier: 'free', userId: 'user-1' } as unknown as import('../types.ts').IAuthContext;
     const analytics = { trackSecurityEvent: () => {} } as unknown as import('../../src/services/AnalyticsService.ts').AnalyticsService;
     const request = new Request('http://localhost/api/queue/cancel/bad..id', { method: 'DELETE' });
     const res = await handleQueueCancel(request, env, authContext, analytics, 'bad..id');

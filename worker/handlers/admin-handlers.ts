@@ -291,7 +291,7 @@ export async function handleAdminListAssignments(
 }
 
 /**
- * POST — Assign a role to a Clerk user.
+ * POST — Assign a role to a user.
  * Permission: `roles:assign`
  */
 export async function handleAdminAssignRole(
@@ -319,13 +319,13 @@ export async function handleAdminAssignRole(
         if (!assignment) return JsonResponse.error('Failed to assign role', 500);
 
         // Invalidate the target user's role cache so next request fetches fresh context.
-        await invalidateRoleCache(env.RATE_LIMIT, parsed.data.clerk_user_id);
+        await invalidateRoleCache(env.RATE_LIMIT, parsed.data.user_id);
 
         await writeAuditLog(env.ADMIN_DB!, {
             ...createAuditContext(request, guard.adminContext),
             action: 'role.assign',
             resource_type: 'admin_role_assignment',
-            resource_id: `${parsed.data.clerk_user_id}:${parsed.data.role_name}`,
+            resource_id: `${parsed.data.user_id}:${parsed.data.role_name}`,
             new_values: assignment,
             status: 'success',
         });
@@ -333,7 +333,7 @@ export async function handleAdminAssignRole(
         trackAdminAction(env, {
             action: 'role.assign',
             resourceType: 'admin_role_assignment',
-            resourceId: parsed.data.clerk_user_id,
+            resourceId: parsed.data.user_id,
             actorId: guard.adminContext.clerk_user_id,
             ip: getIp(request),
             success: true,
@@ -344,9 +344,9 @@ export async function handleAdminAssignRole(
 }
 
 /**
- * DELETE — Revoke a role from a Clerk user.
+ * DELETE — Revoke a role from a user.
  * Permission: `roles:assign`
- * Body: `{ clerk_user_id, role_name }`
+ * Body: `{ user_id, role_name }`
  */
 export async function handleAdminRevokeRole(
     request: Request,
@@ -362,7 +362,7 @@ export async function handleAdminRevokeRole(
     const body = await parseJsonBody(request);
     if (body instanceof Response) return body;
 
-    // Reuse AssignRoleRequestSchema — same shape (clerk_user_id + role_name).
+    // Reuse AssignRoleRequestSchema — same shape (user_id + role_name).
     const parsed = AssignRoleRequestSchema.safeParse(body.data);
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
@@ -370,25 +370,25 @@ export async function handleAdminRevokeRole(
     const logger = createAdminLogger(reqId).withOperation('role.revoke').withActor(guard.adminContext.clerk_user_id);
 
     return withAdminTracing(logger, 'role.revoke', async () => {
-        const deleted = await revokeRole(asCfDb(env.ADMIN_DB), parsed.data.clerk_user_id, parsed.data.role_name);
+        const deleted = await revokeRole(asCfDb(env.ADMIN_DB), parsed.data.user_id, parsed.data.role_name);
         if (!deleted) return JsonResponse.error('Role assignment not found', 404);
 
         // Invalidate the target user's role cache.
-        await invalidateRoleCache(env.RATE_LIMIT, parsed.data.clerk_user_id);
+        await invalidateRoleCache(env.RATE_LIMIT, parsed.data.user_id);
 
         await writeAuditLog(env.ADMIN_DB!, {
             ...createAuditContext(request, guard.adminContext),
             action: 'role.revoke',
             resource_type: 'admin_role_assignment',
-            resource_id: `${parsed.data.clerk_user_id}:${parsed.data.role_name}`,
-            old_values: { clerk_user_id: parsed.data.clerk_user_id, role_name: parsed.data.role_name },
+            resource_id: `${parsed.data.user_id}:${parsed.data.role_name}`,
+            old_values: { user_id: parsed.data.user_id, role_name: parsed.data.role_name },
             status: 'success',
         });
 
         trackAdminAction(env, {
             action: 'role.revoke',
             resourceType: 'admin_role_assignment',
-            resourceId: parsed.data.clerk_user_id,
+            resourceId: parsed.data.user_id,
             actorId: guard.adminContext.clerk_user_id,
             ip: getIp(request),
             success: true,

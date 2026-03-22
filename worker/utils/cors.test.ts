@@ -96,10 +96,6 @@ Deno.test('isPublicEndpoint - /api/turnstile-config is public', () => {
     assertEquals(isPublicEndpoint('/api/turnstile-config'), true);
 });
 
-Deno.test('isPublicEndpoint - /api/clerk-config is public', () => {
-    assertEquals(isPublicEndpoint('/api/clerk-config'), true);
-});
-
 Deno.test('isPublicEndpoint - /metrics is public', () => {
     assertEquals(isPublicEndpoint('/metrics'), true);
 });
@@ -199,7 +195,7 @@ Deno.test('handleCorsPreflight - includes Authorization in allowed headers', () 
 Deno.test('handleCorsPreflight - does NOT include X-Admin-Key in allowed headers (ZTA: header removed)', () => {
     // ZTA cleanup: X-Admin-Key was removed from Access-Control-Allow-Headers so
     // browsers never send it cross-origin.  Auth now flows exclusively through
-    // standard Bearer tokens (Clerk JWT / API key in Authorization header).
+    // standard Bearer tokens (API key in Authorization header or session cookie).
     const req = makeRequest('http://localhost:4200');
     const res = handleCorsPreflight(req);
     const allowed = res.headers.get('Access-Control-Allow-Headers') ?? '';

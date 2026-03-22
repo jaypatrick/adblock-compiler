@@ -17,7 +17,6 @@ function createMockAuthFacadeService(signedIn = false) {
         isLoaded: signal(true),
         isSignedIn: signal(signedIn),
         isAdmin: signal(signedIn),
-        useClerk: signal(false),
         userIdentifier: signal(signedIn ? 'admin@example.com' : null),
     };
 }
