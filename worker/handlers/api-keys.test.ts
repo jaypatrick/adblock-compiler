@@ -34,13 +34,12 @@ const CONNECTION_STRING = 'postgresql://test:test@localhost:5432/testdb';
 function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
     return {
         userId: 'user-uuid-001',
-        clerkUserId: 'clerk_abc123',
         tier: UserTier.Pro,
         role: 'user',
         apiKeyId: null,
         sessionId: 'sess_001',
         scopes: ['compile', 'rules'],
-        authMethod: 'clerk-jwt',
+        authMethod: 'better-auth',
         ...overrides,
     };
 }

@@ -47,7 +47,6 @@ import { WORKER_DEFAULTS } from '../src/config/defaults.ts';
 import { checkRateLimitTiered, verifyTurnstileToken } from './middleware/index.ts';
 import { authenticateRequestUnified } from './middleware/auth.ts';
 import { bodySizeMiddleware, rateLimitMiddleware, requireAuthMiddleware, turnstileMiddleware } from './middleware/hono-middleware.ts';
-import { ClerkAuthProvider } from './middleware/clerk-auth-provider.ts';
 import { BetterAuthProvider } from './middleware/better-auth-provider.ts';
 import { verifyCfAccessJwt } from './middleware/cf-access.ts';
 
@@ -78,7 +77,6 @@ import {
 import { handleValidateRule } from './handlers/validate-rule.ts';
 import { handleRulesCreate, handleRulesDelete, handleRulesGet, handleRulesList, handleRulesUpdate } from './handlers/rules.ts';
 import { handleNotify } from './handlers/webhook.ts';
-import { handleClerkWebhook } from './handlers/clerk-webhook.ts';
 import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdateApiKey } from './handlers/api-keys.ts';
 import { handleAdminBanUser, handleAdminDeleteUser, handleAdminGetUser, handleAdminListUsers, handleAdminUnbanUser, handleAdminUpdateUser } from './handlers/admin-users.ts';
 import { handleAdminAuthConfig } from './handlers/auth-config.ts';
@@ -146,7 +144,6 @@ const PRE_AUTH_PATHS = [
     '/api/version',
     '/api/schemas',
     '/api/turnstile-config',
-    '/api/clerk-config',
     '/api/sentry-config',
     '/api/openapi.json',
 ] as const;
@@ -385,21 +382,14 @@ app.use('*', async (c, next) => {
         return;
     }
 
-    // ── Auth priority chain (P3 inversion): BA primary → Clerk fallback ──
-    //
-    // 1. Always try Better Auth first (cookie / bearer-plugin sessions).
-    // 2. If BA returns { valid: false } without an error (= "no session found"),
-    //    AND Clerk is still configured, try Clerk as a deprecated fallback.
-    // 3. DISABLE_CLERK_FALLBACK=true skips step 2 entirely.
+    // ── Auth: Better Auth (cookie / bearer-plugin sessions) ──
     startTime(c, 'auth', 'Authentication');
     const authProvider = new BetterAuthProvider(c.env);
-    const clerkFallbackEnabled = c.env.CLERK_JWKS_URL && c.env.DISABLE_CLERK_FALLBACK !== 'true';
     const authResult = await authenticateRequestUnified(
         c.req.raw,
         c.env,
         createPgPool,
         authProvider,
-        clerkFallbackEnabled ? new ClerkAuthProvider(c.env) : undefined,
     );
     endTime(c, 'auth');
     if (authResult.response) return authResult.response;
@@ -513,7 +503,6 @@ app.get('/api/schemas', handleApiMeta);
 app.get('/api/deployments', handleApiMeta);
 app.get('/api/deployments/*', handleApiMeta);
 app.get('/api/turnstile-config', handleApiMeta);
-app.get('/api/clerk-config', handleApiMeta);
 app.get('/api/sentry-config', handleApiMeta);
 
 // ============================================================================
@@ -546,10 +535,10 @@ routes.use('*', async (c, next) => {
     await next();
 });
 
-// Route permission check (skip for auth/* routes which handle their own 404 for Clerk)
+// Route permission check
 routes.use('*', async (c, next) => {
     const path = routesPath(c);
-    // Skip permission check for /auth/* — the route handlers return 404 when Clerk is active
+    // Skip permission check for /auth/* — Better Auth handles its own routing
     if (path.startsWith('/auth/')) {
         await next();
         return;
@@ -845,18 +834,14 @@ routes.delete(
     (c) => handleRulesDelete(c.req.param('id')!, c.env),
 );
 
-// ── API Keys (requireAuth + interactive session — Better Auth primary, Clerk fallback) ──
+// ── API Keys (requireAuth + interactive session — Better Auth) ──
 //
-// Only interactive user sessions (Better Auth cookie/bearer or Clerk JWT)
+// Only interactive user sessions (Better Auth cookie/bearer)
 // may manage API keys.  API-key-on-API-key and anonymous requests are
 // rejected by the INTERACTIVE_AUTH_METHODS guard.
 //
-// During the migration window, both Better Auth and Clerk sessions produce
-// a valid `authContext.userId` that the handlers use as `api_keys.user_id`.
-// See worker/handlers/api-keys.ts for column semantics.
-
 /** Auth methods that represent an interactive user session (not API key or anonymous). */
-const INTERACTIVE_AUTH_METHODS = new Set(['clerk-jwt', 'better-auth']);
+const INTERACTIVE_AUTH_METHODS = new Set(['better-auth']);
 
 routes.post(
     '/keys',
@@ -906,25 +891,6 @@ routes.patch(
 );
 
 // ── Webhooks ──────────────────────────────────────────────────────────────────
-//
-// Clerk webhook is conditionally enabled:
-//   - Requires CLERK_WEBHOOK_SECRET to be set (existing check in handler)
-//   - Can be disabled at the route level with DISABLE_CLERK_WEBHOOKS=true
-// When disabled, returns 410 Gone so callers know the endpoint is retired.
-
-routes.post('/webhooks/clerk', (c) => {
-    if (c.env.DISABLE_CLERK_WEBHOOKS === 'true') {
-        return c.json(
-            {
-                success: false,
-                error: 'Clerk webhooks are disabled. Auth has migrated to Better Auth.',
-                code: 'CLERK_WEBHOOKS_DISABLED',
-            },
-            410,
-        );
-    }
-    return handleClerkWebhook(c.req.raw, c.env);
-});
 
 routes.post(
     '/notify',

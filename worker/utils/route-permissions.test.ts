@@ -24,7 +24,6 @@ import { type IAuthContext, UserTier } from '../types.ts';
 function makeContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
     return {
         userId: 'user-001',
-        clerkUserId: 'user-001',
         tier: UserTier.Free,
         role: 'user',
         apiKeyId: null,
@@ -37,7 +36,6 @@ function makeContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
 
 const anonContext = makeContext({
     userId: null,
-    clerkUserId: null,
     tier: UserTier.Anonymous,
     role: 'anonymous',
     authMethod: 'anonymous',

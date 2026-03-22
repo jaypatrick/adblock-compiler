@@ -291,7 +291,7 @@ export async function handleAdminListAssignments(
 }
 
 /**
- * POST — Assign a role to a Clerk user.
+ * POST — Assign a role to a user.
  * Permission: `roles:assign`
  */
 export async function handleAdminAssignRole(
@@ -344,7 +344,7 @@ export async function handleAdminAssignRole(
 }
 
 /**
- * DELETE — Revoke a role from a Clerk user.
+ * DELETE — Revoke a role from a user.
  * Permission: `roles:assign`
  * Body: `{ clerk_user_id, role_name }`
  */

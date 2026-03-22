@@ -6,7 +6,6 @@
  * GET /api/deployments         — deployment history
  * GET /api/deployments/stats   — deployment statistics
  * GET /api/turnstile-config    — Turnstile site key for frontend
- * GET /api/clerk-config        — Clerk publishable key for frontend
  */
 
 import { VERSION } from '../../src/version.ts';
@@ -178,13 +177,6 @@ export async function routeApiMeta(
     if (pathname === '/api/turnstile-config') {
         return Response.json(
             { siteKey: env.TURNSTILE_SITE_KEY || null, enabled: !!env.TURNSTILE_SECRET_KEY },
-            { headers: { 'Cache-Control': 'public, max-age=3600' } },
-        );
-    }
-
-    if (pathname === '/api/clerk-config') {
-        return Response.json(
-            { publishableKey: env.CLERK_PUBLISHABLE_KEY || null },
             { headers: { 'Cache-Control': 'public, max-age=3600' } },
         );
     }

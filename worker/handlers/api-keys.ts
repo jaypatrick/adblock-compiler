@@ -7,23 +7,16 @@
  *   - DELETE /api/keys/:id   — Revoke a key
  *   - PATCH  /api/keys/:id   — Update key name or scopes
  *
- * ## Dual-auth support (P3 auth priority inversion)
+ * ## Authentication
  *
- * These endpoints accept **both** Better Auth sessions (primary) and Clerk
- * JWTs (deprecated fallback).  The upstream auth middleware
- * (`authenticateRequestUnified`) resolves credentials from either provider
- * and populates {@link IAuthContext}.  Route-level guards in `hono-app.ts`
- * enforce that only interactive session methods (`better-auth` or
- * `clerk-jwt`) can manage keys — API-key-on-API-key and anonymous requests
- * are rejected.
+ * These endpoints accept Better Auth sessions.  The upstream auth middleware
+ * (`authenticateRequestUnified`) resolves credentials and populates
+ * {@link IAuthContext}.  Route-level guards in `hono-app.ts` enforce that
+ * only interactive session methods (`better-auth`) can manage keys —
+ * API-key-on-API-key and anonymous requests are rejected.
  *
- * The `api_keys.user_id` column stores a **provider-agnostic** user ID:
- *   - Better Auth users  → `user.id` (UUID from the `users` table)
- *   - Clerk users        → `claims.sub` (Clerk user ID, e.g. `user_xxx`)
- *
- * During the migration window both ID formats coexist; callers should
- * treat `user_id` as an opaque string.  Once Clerk is fully retired the
- * column will contain only Better Auth UUIDs.
+ * The `api_keys.user_id` column stores the Better Auth user UUID from the
+ * `users` table.
  *
  * Keys are generated with a `abc_` prefix and stored as SHA-256 hashes —
  * the plaintext is returned **only once** on creation.
@@ -125,9 +118,8 @@ function requireUserId(authContext: IAuthContext): Response | null {
 /**
  * POST /api/keys — Create a new API key.
  *
- * Supports dual-auth: the `authContext.userId` is resolved from either a
- * Better Auth session (primary) or Clerk JWT (deprecated fallback).  The
- * resulting `user_id` stored in `api_keys` is provider-agnostic.
+ * The `authContext.userId` is the authenticated Better Auth user ID.
+ * The resulting `user_id` stored in `api_keys` is the Better Auth user UUID.
  *
  * The plaintext key is returned in the response body **once**. The caller must
  * store it securely; only the SHA-256 hash is persisted.
@@ -222,8 +214,7 @@ export async function handleCreateApiKey(
 /**
  * GET /api/keys — List the authenticated user's API keys.
  *
- * Supports dual-auth: keys are filtered by `authContext.userId` which is
- * resolved from either Better Auth (primary) or Clerk JWT (fallback).
+ * Keys are filtered by `authContext.userId` (Better Auth user ID).
  *
  * Returns metadata only (never the key hash or plaintext).
  */
@@ -268,8 +259,7 @@ export async function handleListApiKeys(
 /**
  * DELETE /api/keys/:id — Revoke an API key (soft-delete).
  *
- * Supports dual-auth: ownership is verified against `authContext.userId`
- * (Better Auth or Clerk).
+ * Ownership is verified against `authContext.userId` (Better Auth user ID).
  *
  * Sets `revoked_at` to the current timestamp. The key remains in the
  * database for audit purposes but is no longer valid for authentication.
@@ -304,8 +294,7 @@ export async function handleRevokeApiKey(
 /**
  * PATCH /api/keys/:id — Update an API key's name or scopes.
  *
- * Supports dual-auth: ownership is verified against `authContext.userId`
- * (Better Auth or Clerk).
+ * Ownership is verified against `authContext.userId` (Better Auth user ID).
  *
  * Request body is validated against {@link UpdateApiKeyRequestSchema}.
  * The returned row is validated against {@link ApiKeyRowSchema}.

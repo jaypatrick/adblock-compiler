@@ -70,10 +70,9 @@ function makeUserCtx(tier: UserTier = UserTier.Free, userId = 'user_001'): IAuth
     return {
         ...ANONYMOUS_AUTH_CONTEXT,
         userId,
-        clerkUserId: 'user_clerk_001',
         tier,
         role: 'user',
-        authMethod: 'clerk-jwt',
+        authMethod: 'better-auth',
     };
 }
 

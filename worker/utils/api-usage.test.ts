@@ -19,7 +19,6 @@ import { type Env, type IAuthContext, UserTier } from '../types.ts';
 function makeAuthContext(userId: string | null = 'user-001'): IAuthContext {
     return {
         userId,
-        clerkUserId: userId,
         tier: UserTier.Free,
         role: 'user',
         apiKeyId: null,
@@ -32,7 +31,6 @@ function makeAuthContext(userId: string | null = 'user-001'): IAuthContext {
 function makeAnonContext(): IAuthContext {
     return {
         userId: null,
-        clerkUserId: null,
         tier: UserTier.Anonymous,
         role: 'anonymous',
         apiKeyId: null,

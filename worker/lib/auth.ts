@@ -31,7 +31,8 @@
 
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { bearer, multiSession, twoFactor } from 'better-auth/plugins';
+import { admin, bearer, multiSession, twoFactor } from 'better-auth/plugins';
+import { github } from 'better-auth/social-providers';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 
@@ -85,6 +86,18 @@ export function createAuth(env: Env, baseURL?: string) {
         secret: env.BETTER_AUTH_SECRET,
         basePath: '/api/auth',
         baseURL: env.BETTER_AUTH_URL || baseURL,
+
+        socialProviders: {
+            github: {
+                clientId: env.GITHUB_CLIENT_ID ?? '',
+                clientSecret: env.GITHUB_CLIENT_SECRET ?? '',
+            },
+            // Google is wired but NOT exposed in the UI — activate later by uncommenting
+            // google: {
+            //     clientId: env.GOOGLE_CLIENT_ID ?? '',
+            //     clientSecret: env.GOOGLE_CLIENT_SECRET ?? '',
+            // },
+        },
 
         emailAndPassword: {
             enabled: true,
@@ -143,8 +156,15 @@ export function createAuth(env: Env, baseURL?: string) {
             //   POST   /api/auth/revoke-session               — revoke a specific session
             //   POST   /api/auth/revoke-other-sessions        — revoke all except current
             multiSession(),
+            // Better Auth admin plugin — auto-exposes:
+            //   GET    /api/auth/admin/list-users        — list all users
+            //   POST   /api/auth/admin/set-role          — change user role
+            //   POST   /api/auth/admin/ban-user          — ban a user
+            //   POST   /api/auth/admin/unban-user        — unban a user
+            //   POST   /api/auth/admin/impersonate-user  — impersonate a user
+            //   POST   /api/auth/admin/revoke-user-sessions — revoke sessions
+            admin(),
             // Future plugins (uncomment when needed):
-            // admin(),        — Better Auth's admin user management
             // apiKey(),       — Built-in API key management (we use custom impl)
             // organization(), — Multi-tenancy
         ],

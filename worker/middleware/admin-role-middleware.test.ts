@@ -5,26 +5,26 @@
  *   - requireAdminPermission() — authorized with context when permission exists
  *   - requireAdminPermission() — 403 when permission missing
  *   - requireAdminPermission() — 503 when ADMIN_DB missing
- *   - requireAdminPermission() — 401 when no JWT
+ *   - requireAdminPermission() — 401 when no auth session
  *   - requireAnyAdminPermission() — succeeds if at least one permission matches
  *   - requireAllAdminPermissions() — fails if any permission missing
  *   - extractAdminContext() — returns context without permission check
  *   - Super-admin bypasses all permission checks
  *
- * These tests mock the ClerkAuthProvider and resolveAdminContext to isolate
+ * These tests mock the BetterAuthProvider and resolveAdminContext to isolate
  * the middleware logic.
  */
 
 import { assertEquals, assertExists } from '@std/assert';
 
-// We need to mock ClerkAuthProvider and resolveAdminContext.
+// We need to mock BetterAuthProvider and resolveAdminContext.
 // Since the middleware imports them directly, we use a different approach:
 // we test through the public guard functions by controlling the Env and
 // mocking at the module boundary.
 
 // The middleware functions internally:
 //  1. Check env.ADMIN_DB exists (503 if not)
-//  2. Create ClerkAuthProvider and call verifyToken(request)
+//  2. Create BetterAuthProvider and call verifyToken(request)
 //  3. Check authResult.role === 'admin'
 //  4. Call resolveAdminContext(env, providerUserId)
 //  5. Check permissions
@@ -35,13 +35,13 @@ import { assertEquals, assertExists } from '@std/assert';
 
 import type { Env } from '../types.ts';
 
-// We test by providing real-looking env and intercepting at the ClerkAuthProvider level.
-// The ClerkAuthProvider calls verifyClerkJWT which needs CLERK_PUBLISHABLE_KEY etc.
+// We test by providing real-looking env and intercepting at the BetterAuthProvider level.
+// The BetterAuthProvider calls the Better Auth API which requires HYPERDRIVE etc.
 // Instead of full integration, we'll test the guard functions by understanding their
 // behavior through controlled env inputs.
 
 // For a cleaner test, we'll import and test the guard functions, accepting that
-// without JWT mock we need to simulate the auth failure paths and the ADMIN_DB check.
+// without auth mock we need to simulate the auth failure paths and the ADMIN_DB check.
 
 import { extractAdminContext, requireAdminPermission, requireAllAdminPermissions, requireAnyAdminPermission } from './admin-role-middleware.ts';
 
@@ -70,20 +70,20 @@ Deno.test('requireAdminPermission - returns 503 when ADMIN_DB is not configured'
 });
 
 // ============================================================================
-// requireAdminPermission — 401 when no JWT / invalid JWT
+// requireAdminPermission — 401 when no auth / invalid auth
 // ============================================================================
 
 Deno.test('requireAdminPermission - returns 401 when no Authorization header', async () => {
     const guard = requireAdminPermission('config:read');
     const env = {
         ADMIN_DB: { prepare: () => ({}) },
-        // No CLERK_PUBLISHABLE_KEY etc — JWT verification will fail
+        // No HYPERDRIVE etc — Better Auth verification will fail
     } as unknown as Env;
 
     const result = await guard(makeRequest(), env);
     assertEquals(result.authorized, false);
     if (!result.authorized) {
-        // Either 401 (no token) or 500 (verification error) depending on ClerkAuthProvider
+        // Either 401 (no session) or 500 (verification error) depending on BetterAuthProvider
         assertEquals(result.statusCode === 401 || result.statusCode === 500, true);
     }
 });

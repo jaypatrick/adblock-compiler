@@ -6,7 +6,7 @@
  *   - Tier registry (TIER_REGISTRY, isTierSufficient)
  *   - requireScope() guard
  *   - requireTier() with registry-based ordering
- *   - IAuthProvider interface (ClerkAuthProvider structure)
+ *   - IAuthProvider interface structure
  *   - API key tier resolution from DB
  */
 
@@ -24,7 +24,6 @@ import {
     VALID_SCOPES,
 } from '../types.ts';
 import { authenticateRequestUnified, requireAuth, requireScope, requireTier } from './auth.ts';
-import { ClerkAuthProvider, resolveTierFromMetadata } from './clerk-auth-provider.ts';
 
 // ============================================================================
 // Fixtures
@@ -33,13 +32,12 @@ import { ClerkAuthProvider, resolveTierFromMetadata } from './clerk-auth-provide
 function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
     return {
         userId: 'user_123',
-        clerkUserId: 'clerk_abc',
         tier: UserTier.Free,
         role: 'user',
         apiKeyId: null,
         sessionId: null,
         scopes: [],
-        authMethod: 'clerk-jwt',
+        authMethod: 'better-auth',
         ...overrides,
     };
 }
@@ -47,7 +45,6 @@ function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
 function makeApiKeyContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
     return {
         userId: 'user_123',
-        clerkUserId: null,
         tier: UserTier.Free,
         role: 'user',
         apiKeyId: 'key_abc',
@@ -61,7 +58,6 @@ function makeApiKeyContext(overrides: Partial<IAuthContext> = {}): IAuthContext 
 function makeAnonContext(): IAuthContext {
     return {
         userId: null,
-        clerkUserId: null,
         tier: UserTier.Anonymous,
         role: 'anonymous',
         apiKeyId: null,
@@ -166,8 +162,8 @@ Deno.test('requireTier - returns 403 when tier is insufficient', async () => {
 // requireScope
 // ============================================================================
 
-Deno.test('requireScope - JWT users bypass scope checks', () => {
-    const ctx = makeAuthContext({ authMethod: 'clerk-jwt', scopes: [] });
+Deno.test('requireScope - Better Auth users bypass scope checks', () => {
+    const ctx = makeAuthContext({ authMethod: 'better-auth', scopes: [] });
     assertEquals(requireScope(ctx, 'compile'), null);
     assertEquals(requireScope(ctx, 'admin'), null);
 });
@@ -212,59 +208,6 @@ Deno.test('requireScope - anonymous returns 401', async () => {
 });
 
 // ============================================================================
-// resolveTierFromMetadata
-// ============================================================================
-
-Deno.test('resolveTierFromMetadata - returns Free when metadata is undefined', () => {
-    assertEquals(resolveTierFromMetadata(undefined), UserTier.Free);
-});
-
-Deno.test('resolveTierFromMetadata - returns Free when tier is absent from metadata', () => {
-    assertEquals(resolveTierFromMetadata({} as { tier?: UserTier }), UserTier.Free);
-});
-
-Deno.test('resolveTierFromMetadata - returns Free for unrecognised tier (e.g. "enterprise")', () => {
-    assertEquals(resolveTierFromMetadata({ tier: 'enterprise' as unknown as UserTier }), UserTier.Free);
-});
-
-Deno.test('resolveTierFromMetadata - returns valid tier when recognised', () => {
-    assertEquals(resolveTierFromMetadata({ tier: UserTier.Pro }), UserTier.Pro);
-    assertEquals(resolveTierFromMetadata({ tier: UserTier.Free }), UserTier.Free);
-    assertEquals(resolveTierFromMetadata({ tier: UserTier.Admin }), UserTier.Admin);
-    assertEquals(resolveTierFromMetadata({ tier: UserTier.Anonymous }), UserTier.Anonymous);
-});
-
-// ============================================================================
-// ClerkAuthProvider
-// ============================================================================
-
-Deno.test('ClerkAuthProvider - has correct name and authMethod', () => {
-    const env = { CLERK_JWKS_URL: 'https://example.clerk.accounts.dev/.well-known/jwks.json' } as never;
-    const provider = new ClerkAuthProvider(env);
-    assertEquals(provider.name, 'clerk');
-    assertEquals(provider.authMethod, 'clerk-jwt');
-});
-
-Deno.test('ClerkAuthProvider - returns invalid when no token present', async () => {
-    const env = { CLERK_JWKS_URL: 'https://example.clerk.accounts.dev/.well-known/jwks.json' } as never;
-    const provider = new ClerkAuthProvider(env);
-    const req = new Request('https://example.com/api/test');
-    const result = await provider.verifyToken(req);
-    assertEquals(result.valid, false);
-    assertEquals(result.error, undefined);
-});
-
-Deno.test('ClerkAuthProvider - returns invalid when CLERK_JWKS_URL is not set', async () => {
-    const env = {} as never;
-    const provider = new ClerkAuthProvider(env);
-    const req = new Request('https://example.com/api/test', {
-        headers: { Authorization: 'Bearer fake.jwt.token' },
-    });
-    const result = await provider.verifyToken(req);
-    assertEquals(result.valid, false);
-});
-
-// ============================================================================
 // Integration: requireAuth + requireScope chain
 // ============================================================================
 
@@ -294,27 +237,17 @@ Deno.test('auth guard chain - authenticated API key without scope fails at scope
 // Unified auth user resolution
 // ============================================================================
 
-Deno.test('authenticateRequestUnified - resolves DB userId from clerk_user_id for JWT auth', async () => {
+Deno.test('authenticateRequestUnified - resolves userId from providerUserId for Better Auth', async () => {
     const env = {
         HYPERDRIVE: { connectionString: 'postgresql://test' },
     } as Env;
 
-    const createPool = (_connectionString: string) => ({
-        query: async <T = Record<string, unknown>>(_text: string, values?: unknown[]) => {
-            const clerkUserId = values?.[0];
-            if (clerkUserId === 'clerk_abc') {
-                return { rows: [{ id: 'user-db-123' }] as T[], rowCount: 1 };
-            }
-            return { rows: [] as T[], rowCount: 0 };
-        },
-    });
-
     const provider: IAuthProvider = {
-        name: 'mock-provider',
-        authMethod: 'clerk-jwt',
+        name: 'mock-better-auth',
+        authMethod: 'better-auth',
         verifyToken: async (_request: Request) => ({
             valid: true,
-            providerUserId: 'clerk_abc',
+            providerUserId: 'ba-user-123',
             tier: UserTier.Free,
             role: 'user',
             sessionId: 'sess_123',
@@ -322,12 +255,11 @@ Deno.test('authenticateRequestUnified - resolves DB userId from clerk_user_id fo
     };
 
     const request = new Request('https://example.com/api/keys', {
-        headers: { Authorization: 'Bearer header.payload.signature' },
+        headers: { Cookie: 'adblock-session=abc123' },
     });
 
-    const result = await authenticateRequestUnified(request, env, createPool, provider);
+    const result = await authenticateRequestUnified(request, env, undefined, provider);
     assertEquals(result.response, undefined);
-    assertEquals(result.context.userId, 'user-db-123');
-    assertEquals(result.context.clerkUserId, 'clerk_abc');
-    assertEquals(result.context.authMethod, 'clerk-jwt');
+    assertEquals(result.context.userId, 'ba-user-123');
+    assertEquals(result.context.authMethod, 'better-auth');
 });

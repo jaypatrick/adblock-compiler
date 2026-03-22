@@ -2,7 +2,7 @@
  * Auth Configuration Inspector — GET /admin/auth/config
  *
  * Returns a read-only view of auth configuration at runtime:
- *   - Active auth provider (clerk or better-auth)
+ *   - Active auth provider (better-auth)
  *   - TIER_REGISTRY — all tiers with rate limits and ordering
  *   - ROUTE_PERMISSION_REGISTRY — all registered route permissions
  *
@@ -25,7 +25,7 @@ export async function handleAdminAuthConfig(
     if (denied) return denied;
 
     // Determine active provider
-    const provider = env.CLERK_JWKS_URL ? 'clerk' : 'better-auth';
+    const provider = 'better-auth';
 
     // Serialize TIER_REGISTRY
     const tiers = Object.entries(TIER_REGISTRY).map(([tier, config]) => ({

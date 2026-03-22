@@ -151,7 +151,7 @@ Deno.test('requireAuthMiddleware: passes for authenticated user', async () => {
         ...ANONYMOUS_AUTH_CONTEXT,
         userId: 'user_abc',
         tier: UserTier.Free,
-        authMethod: 'clerk-jwt',
+        authMethod: 'better-auth',
     };
     const app = new Hono();
     app.use('*', makeContextMiddleware({ authContext }));

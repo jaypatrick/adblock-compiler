@@ -66,9 +66,6 @@ export { handleRulesCreate, handleRulesDelete, handleRulesGet, handleRulesList, 
 // Webhook / notification handler (POST /api/notify)
 export { handleNotify } from './webhook.ts';
 
-// Clerk webhook handler (POST /api/webhooks/clerk)
-export { handleClerkWebhook } from './clerk-webhook.ts';
-
 // Prometheus metrics handler (GET /metrics/prometheus)
 export { handlePrometheusMetrics } from './prometheus-metrics.ts';
 

@@ -4,8 +4,7 @@
  * Covers:
  *   - 401 for anonymous/unauthenticated callers
  *   - 403 for non-admin tiers or non-admin roles
- *   - 200 with provider=better-auth when CLERK_JWKS_URL is absent
- *   - 200 with provider=clerk when CLERK_JWKS_URL is set
+ *   - 200 with provider=better-auth
  *   - Response shape: tiers array sorted by order
  *   - Response shape: non-empty routes array
  *
@@ -20,7 +19,6 @@ import { ANONYMOUS_AUTH_CONTEXT, type IAuthContext, UserTier } from '../types.ts
 function makeAdminContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
     return {
         userId: 'u_admin',
-        clerkUserId: null,
         tier: UserTier.Admin,
         role: 'admin',
         apiKeyId: null,
@@ -45,7 +43,6 @@ Deno.test('handleAdminAuthConfig - returns 401 for anonymous auth context', asyn
 Deno.test('handleAdminAuthConfig - returns 403 for free-tier user', async () => {
     const ctx: IAuthContext = {
         userId: 'u_free',
-        clerkUserId: null,
         tier: UserTier.Free,
         role: 'user',
         apiKeyId: null,
@@ -66,20 +63,12 @@ Deno.test('handleAdminAuthConfig - returns 403 for admin-tier with non-admin rol
 // Happy-path: provider detection
 // ============================================================================
 
-Deno.test('handleAdminAuthConfig - returns 200 with provider=better-auth when no CLERK_JWKS_URL', async () => {
+Deno.test('handleAdminAuthConfig - returns 200 with provider=better-auth', async () => {
     const res = await handleAdminAuthConfig(req, makeEnv(), makeAdminContext());
     assertEquals(res.status, 200);
     const body = await res.json() as { success: boolean; provider: string };
     assertEquals(body.success, true);
     assertEquals(body.provider, 'better-auth');
-});
-
-Deno.test('handleAdminAuthConfig - returns 200 with provider=clerk when CLERK_JWKS_URL is set', async () => {
-    const env = makeEnv({ CLERK_JWKS_URL: 'https://example.clerk.accounts.dev/.well-known/jwks.json' });
-    const res = await handleAdminAuthConfig(req, env, makeAdminContext());
-    assertEquals(res.status, 200);
-    const body = await res.json() as { success: boolean; provider: string };
-    assertEquals(body.provider, 'clerk');
 });
 
 // ============================================================================
