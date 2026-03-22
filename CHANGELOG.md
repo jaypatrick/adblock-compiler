@@ -136,6 +136,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.72.0] - 2026-03-22
+
+### Added- migrate database to Neon PostgreSQL with Better Auth + Prisma (#1257)
+
+### Fixed
+
+- address Better Auth integration gaps (#1263) (#1269)
+
+
 ## [0.71.1] - 2026-03-22
 
 ### Added### Fixed
