@@ -3,8 +3,11 @@
 # Run from the repo root.
 set -e
 echo "Building Angular SSR bundle..."
-cd frontend
-npm run build
+pnpm --filter adblock-compiler-frontend run build
+echo "Injecting CF Web Analytics token..."
+# build-worker.sh skips the Angular build (dist already present) and only
+# rewrites the {{CF_WEB_ANALYTICS_TOKEN}} placeholder in index.html.
+sh scripts/build-worker.sh
 echo "Deploying adblock-compiler-frontend to Cloudflare Workers..."
-npm run deploy
+pnpm --filter adblock-compiler-frontend run deploy
 echo "Done."

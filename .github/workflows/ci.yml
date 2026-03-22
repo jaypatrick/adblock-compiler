@@ -529,6 +529,11 @@ jobs:
                   name: frontend-dist
                   path: frontend/dist/
 
+            - name: Inject CF Web Analytics token into built HTML
+              env:
+                  CF_WEB_ANALYTICS_TOKEN: ${{ secrets.CF_WEB_ANALYTICS_TOKEN }}
+              run: sh scripts/build-worker.sh
+
             - name: Deploy Frontend Worker
               if: env.CLOUDFLARE_API_TOKEN != ''
               working-directory: frontend

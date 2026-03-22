@@ -320,13 +320,13 @@ The stack consists of two separate Cloudflare Workers. Both must be deployed whe
 deno task wrangler:deploy
 
 # Deploy the frontend SSR Worker (adblock-compiler-frontend)
-# Run from the repo root — the script handles the build and deploy:
+# Run from the repo root — the script handles the build, analytics injection, and deploy:
 sh scripts/deploy-frontend.sh
 
-# Or manually:
-cd frontend
-npm run build
-npm run deploy
+# Or manually (from the repo root, using pnpm workspace filter):
+pnpm --filter adblock-compiler-frontend run build
+sh scripts/build-worker.sh  # injects/removes {{CF_WEB_ANALYTICS_TOKEN}} in index.html
+pnpm --filter adblock-compiler-frontend run deploy
 ```
 
 CI (`ci.yml`) deploys both Workers automatically on every push to `main`.
