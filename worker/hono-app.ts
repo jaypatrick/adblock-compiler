@@ -554,6 +554,37 @@ routes.post(
     (c) => handleAdminUnbanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!),
 );
 
+// Admin session revocation — revoke all sessions for a specific user
+routes.delete(
+    '/admin/users/:id/sessions',
+    rateLimitMiddleware(),
+    async (c) => {
+        const authContext = c.get('authContext');
+        if (authContext.role !== 'admin') {
+            return c.json({ success: false, error: 'Admin access required' }, 403);
+        }
+        const userId = c.req.param('id')!;
+        try {
+            if (!c.env.HYPERDRIVE) {
+                return c.json({ success: false, error: 'Database not configured' }, 503);
+            }
+            const pool = createPgPool(c.env.HYPERDRIVE.connectionString);
+            const result = await pool.query(
+                'DELETE FROM sessions WHERE user_id = $1',
+                [userId],
+            );
+            return c.json({
+                success: true,
+                message: `Revoked ${result.rowCount ?? 0} session(s) for user ${userId}`,
+            });
+        } catch (error) {
+            // deno-lint-ignore no-console
+            console.error('[admin] Session revocation error:', error instanceof Error ? error.message : 'unknown');
+            return c.json({ success: false, error: 'Failed to revoke sessions' }, 500);
+        }
+    },
+);
+
 routes.get('/admin/usage/:userId', (c) => handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')!));
 
 routes.all('/admin/storage/*', async (c) => {

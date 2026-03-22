@@ -127,6 +127,12 @@ export interface IAuthContext {
     readonly scopes: readonly string[];
     /** Authentication method used for this request */
     readonly authMethod: 'clerk-jwt' | 'api-key' | 'anonymous' | 'better-auth';
+    /** User email from auth session (avoids extra DB round-trips) */
+    readonly email?: string | null;
+    /** User display name from auth session */
+    readonly displayName?: string | null;
+    /** Per-API-key rate limit override (requests/minute). null = use tier default */
+    readonly apiKeyRateLimit?: number | null;
 }
 
 export interface IClerkClaims {
@@ -169,6 +175,10 @@ export interface IAuthProviderResult {
     readonly role?: string;
     readonly sessionId?: string | null;
     readonly error?: string;
+    /** User email resolved from auth session */
+    readonly email?: string | null;
+    /** User display name resolved from auth session */
+    readonly displayName?: string | null;
 }
 
 export interface IAuthProvider {
@@ -200,6 +210,9 @@ export const ANONYMOUS_AUTH_CONTEXT: IAuthContext = {
     sessionId: null,
     scopes: [],
     authMethod: 'anonymous',
+    email: null,
+    displayName: null,
+    apiKeyRateLimit: null,
 } as const;
 
 // ============================================================================

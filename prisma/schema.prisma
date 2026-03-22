@@ -44,9 +44,13 @@ model User {
   emailVerified  Boolean   @default(false) @map("email_verified")
   lastSignInAt   DateTime? @map("last_sign_in_at") @db.Timestamptz
 
-  apiKeys  ApiKey[]
-  sessions Session[]
-  accounts Account[]
+  // Better Auth: two-factor authentication status
+  twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
+
+  apiKeys    ApiKey[]
+  sessions   Session[]
+  accounts   Account[]
+  twoFactor  TwoFactor[]
 
   @@map("users")
 }
@@ -86,6 +90,19 @@ model Session {
 
   @@index([userId])
   @@map("sessions")
+}
+
+/// Better Auth twoFactor plugin — stores TOTP secrets and backup codes per user.
+model TwoFactor {
+  id          String @id @default(uuid()) @db.Uuid
+  userId      String @map("user_id") @db.Uuid
+  secret      String // encrypted TOTP secret
+  backupCodes String @map("backup_codes") // JSON-encoded backup code array
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("two_factor")
 }
 
 model Account {

@@ -31,7 +31,7 @@
 
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { bearer } from 'better-auth/plugins';
+import { bearer, multiSession, twoFactor } from 'better-auth/plugins';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 
@@ -131,11 +131,21 @@ export function createAuth(env: Env, baseURL?: string) {
             // Bearer token plugin — allows API authentication via Authorization: Bearer <token>
             // instead of browser cookies. Critical for this project's API-first architecture.
             bearer(),
+            // TOTP-based two-factor authentication — auto-exposes:
+            //   POST /api/auth/two-factor/enable   — generate TOTP secret + QR URI
+            //   POST /api/auth/two-factor/verify    — verify TOTP code (enables 2FA)
+            //   POST /api/auth/two-factor/disable   — remove 2FA for the current user
+            twoFactor({
+                issuer: 'adblock-compiler',
+            }),
+            // Multi-session management — auto-exposes:
+            //   GET    /api/auth/list-sessions                — list all active sessions
+            //   POST   /api/auth/revoke-session               — revoke a specific session
+            //   POST   /api/auth/revoke-other-sessions        — revoke all except current
+            multiSession(),
             // Future plugins (uncomment when needed):
-            // twoFactor(),    — TOTP/2FA for admin accounts
             // admin(),        — Better Auth's admin user management
-            // apiKey(),       — Built-in API key management
-            // multiSession(), — Multiple active sessions per user
+            // apiKey(),       — Built-in API key management (we use custom impl)
             // organization(), — Multi-tenancy
         ],
     });
