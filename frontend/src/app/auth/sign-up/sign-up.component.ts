@@ -16,6 +16,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { ClerkService } from '../../services/clerk.service';
 import { AuthFacadeService } from '../../services/auth-facade.service';
 import { ThemeService } from '../../services/theme.service';
+import { BetterAuthService } from '../../services/better-auth.service';
 
 function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
     const password = control.get('password')?.value as string | null;
@@ -94,6 +95,20 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
                             }
                         </button>
                     </form>
+                    @if (betterAuth.providers().github) {
+                        <div class="social-divider">
+                            <span>or</span>
+                        </div>
+                        <button
+                            mat-stroked-button
+                            type="button"
+                            class="full-width social-btn"
+                            [disabled]="loading()"
+                            (click)="signUpWithGitHub()"
+                        >
+                            Sign up with GitHub
+                        </button>
+                    }
                     <p class="auth-switch">Already have an account? <a routerLink="/sign-in" class="auth-link">Sign in</a></p>
                 </div>
             }
@@ -141,10 +156,32 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
         .auth-switch { margin-top: 1rem; text-align: center; font-size: 0.875rem; color: var(--mat-sys-on-surface-variant); }
         .auth-link { color: var(--mat-sys-primary); text-decoration: none; font-weight: 500; }
         .auth-link:hover { text-decoration: underline; }
+        .social-divider {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin: 1rem 0;
+            color: var(--mat-sys-on-surface-variant);
+            font-size: 0.875rem;
+        }
+        .social-divider::before,
+        .social-divider::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: var(--mat-sys-outline-variant);
+        }
+        .social-btn {
+            margin-bottom: 0.75rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
     `],
 })
 export class SignUpComponent implements OnDestroy {
     protected readonly auth = inject(AuthFacadeService);
+    protected readonly betterAuth = inject(BetterAuthService);
     /** @deprecated TODO(auth-migration): Remove ClerkService injection when Clerk support is dropped. */
     private readonly clerk = inject(ClerkService);
     private readonly router = inject(Router);
@@ -213,6 +250,34 @@ export class SignUpComponent implements OnDestroy {
         if (el && !this.mounted && this.auth.useClerk()) {
             this.clerk.mountSignUp(el);
             this.mounted = true;
+        }
+    }
+
+    protected async signUpWithGitHub(): Promise<void> {
+        this.loading.set(true);
+        this.errorMessage.set(null);
+        try {
+            const res = await fetch('/api/auth/sign-in/social', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider: 'github', callbackURL: '/api-keys' }),
+                credentials: 'include',
+            });
+            if (res.ok) {
+                // Better Auth may return the redirect URL either at the top level ({ url })
+                // or nested under data ({ data: { url } }) depending on the plugin version.
+                const data = await res.json() as { data?: { url?: string }; url?: string };
+                const redirectUrl = data?.data?.url ?? data?.url;
+                if (redirectUrl) {
+                    window.location.href = redirectUrl;
+                    return;
+                }
+            }
+            this.errorMessage.set('GitHub sign-up is not available. Please use email/password.');
+        } catch {
+            this.errorMessage.set('GitHub sign-up failed. Please try again.');
+        } finally {
+            this.loading.set(false);
         }
     }
 }

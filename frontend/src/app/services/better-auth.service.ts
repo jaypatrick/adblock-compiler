@@ -16,6 +16,14 @@ import { Injectable, signal, computed, inject, PLATFORM_ID } from '@angular/core
 import { isPlatformBrowser } from '@angular/common';
 import { API_BASE_URL } from '../tokens';
 
+/** Shape of the GET /api/auth/providers response */
+export interface AuthProvidersConfig {
+    readonly emailPassword: boolean;
+    readonly github: boolean;
+    readonly google: boolean;
+    readonly mfa: boolean;
+}
+
 export interface BetterAuthUser {
     id: string;
     email: string;
@@ -33,11 +41,19 @@ export class BetterAuthService {
     private readonly _user = signal<BetterAuthUser | null>(null);
     private readonly _isLoaded = signal(false);
     private readonly _sessionToken = signal<string | null>(null);
+    private readonly _providers = signal<AuthProvidersConfig>({
+        emailPassword: true,
+        github: false,
+        google: false,
+        mfa: true,
+    });
 
     readonly user = this._user.asReadonly();
     readonly isLoaded = this._isLoaded.asReadonly();
     readonly isSignedIn = computed(() => this._user() !== null);
     readonly isAdmin = computed(() => this._user()?.role === 'admin');
+    /** Active auth providers — populated from GET /api/auth/providers on init. */
+    readonly providers = this._providers.asReadonly();
 
     constructor() {
         if (!isPlatformBrowser(this.platformId)) {
@@ -54,6 +70,8 @@ export class BetterAuthService {
 
     /** Fetch the current session from the server. */
     async checkSession(): Promise<void> {
+        // Fire-and-forget providers fetch in parallel with session fetch (non-fatal).
+        this.fetchProviders();
         try {
             const res = await fetch(`${this.apiBaseUrl}/auth/get-session`, {
                 credentials: 'include',
@@ -71,6 +89,30 @@ export class BetterAuthService {
             // No session — user is not signed in
         } finally {
             this._isLoaded.set(true);
+        }
+    }
+
+    /** Fetch supported auth providers from the server and update the providers signal. */
+    private async fetchProviders(): Promise<void> {
+        try {
+            const res = await fetch('/api/auth/providers');
+            if (res.ok) {
+                // The endpoint may return the config directly ({ emailPassword, github, ... })
+                // or wrapped in a JsonResponse.success envelope ({ data: { ... } }).
+                const raw = await res.json() as { data?: AuthProvidersConfig } | AuthProvidersConfig;
+                const config = (raw as { data?: AuthProvidersConfig }).data ?? (raw as AuthProvidersConfig);
+                if (
+                    config &&
+                    typeof config.github === 'boolean' &&
+                    typeof config.google === 'boolean' &&
+                    typeof config.emailPassword === 'boolean' &&
+                    typeof config.mfa === 'boolean'
+                ) {
+                    this._providers.set(config);
+                }
+            }
+        } catch {
+            // Non-fatal — keep defaults (github: false, google: false)
         }
     }
 

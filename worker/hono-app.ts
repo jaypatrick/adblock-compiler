@@ -82,6 +82,7 @@ import { handleClerkWebhook } from './handlers/clerk-webhook.ts';
 import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdateApiKey } from './handlers/api-keys.ts';
 import { handleAdminBanUser, handleAdminDeleteUser, handleAdminGetUser, handleAdminListUsers, handleAdminUnbanUser, handleAdminUpdateUser } from './handlers/admin-users.ts';
 import { handleAdminAuthConfig } from './handlers/auth-config.ts';
+import { handleAuthProviders } from './handlers/auth-providers.ts';
 import { handleAdminGetUserUsage } from './handlers/admin-usage.ts';
 import {
     handleAdminNeonCreateBranch,
@@ -149,6 +150,7 @@ const PRE_AUTH_PATHS = [
     '/api/clerk-config',
     '/api/sentry-config',
     '/api/openapi.json',
+    '/api/auth/providers',
 ] as const;
 
 // ============================================================================
@@ -515,6 +517,8 @@ app.get('/api/deployments/*', handleApiMeta);
 app.get('/api/turnstile-config', handleApiMeta);
 app.get('/api/clerk-config', handleApiMeta);
 app.get('/api/sentry-config', handleApiMeta);
+// Public: returns which auth providers are active — used by frontend to conditionally render social login buttons.
+app.get('/api/auth/providers', (c) => handleAuthProviders(c.req.raw, c.env));
 
 // ============================================================================
 // Business routes sub-app (with ZTA + permission check middleware)

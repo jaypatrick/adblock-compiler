@@ -1,3 +1,5 @@
+// DISABLED: Clerk is not active. To re-enable, set CLERK_JWKS_URL and CLERK_WEBHOOK_SECRET.
+// @see docs/auth/clerk-setup.md — re-enablement instructions
 /**
  * Handler for POST /api/webhooks/clerk
  *

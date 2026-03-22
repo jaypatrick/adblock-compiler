@@ -51,6 +51,36 @@ export class WorkerConfigurationError extends Error {
 }
 
 /**
+ * Build the socialProviders config from environment variables.
+ *
+ * GitHub is active when both GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET are set.
+ * Google is wired but commented-out — uncomment and set env vars to activate.
+ */
+function buildSocialProviders(env: Env): { socialProviders?: Record<string, unknown> } {
+    const providers: Record<string, unknown> = {};
+
+    // GitHub OAuth — activate by setting GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.
+    // Callback URL: <BETTER_AUTH_URL>/api/auth/callback/github
+    if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
+        providers['github'] = {
+            clientId: env.GITHUB_CLIENT_ID,
+            clientSecret: env.GITHUB_CLIENT_SECRET,
+        };
+    }
+
+    // Google OAuth — reserved for future activation.
+    // To enable: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, then uncomment below.
+    // if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
+    //     providers['google'] = {
+    //         clientId: env.GOOGLE_CLIENT_ID,
+    //         clientSecret: env.GOOGLE_CLIENT_SECRET,
+    //     };
+    // }
+
+    return Object.keys(providers).length > 0 ? { socialProviders: providers } : {};
+}
+
+/**
  * Create a Better Auth instance bound to the current request's environment.
  *
  * Uses the Prisma adapter backed by Neon PostgreSQL via Hyperdrive.
@@ -126,6 +156,8 @@ export function createAuth(env: Env, baseURL?: string) {
                 path: '/',
             },
         },
+
+        ...(buildSocialProviders(env)),
 
         plugins: [
             // Bearer token plugin — allows API authentication via Authorization: Bearer <token>

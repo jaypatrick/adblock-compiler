@@ -313,6 +313,28 @@ export interface Env {
      * @example `"https://adblock-compiler.example.com"`
      */
     BETTER_AUTH_URL?: string;
+    // --- Social Authentication Providers ---
+    /**
+     * GitHub OAuth client ID — required for GitHub social login.
+     * Local dev:  add `GITHUB_CLIENT_ID=...` to .dev.vars
+     * Production: `wrangler secret put GITHUB_CLIENT_ID`
+     */
+    GITHUB_CLIENT_ID?: string;
+    /**
+     * GitHub OAuth client secret — required for GitHub social login.
+     * Production: `wrangler secret put GITHUB_CLIENT_SECRET`
+     */
+    GITHUB_CLIENT_SECRET?: string;
+    /**
+     * Google OAuth client ID — reserved for future Google social login.
+     * Not active in the current release.
+     */
+    GOOGLE_CLIENT_ID?: string;
+    /**
+     * Google OAuth client secret — reserved for future Google social login.
+     * Not active in the current release.
+     */
+    GOOGLE_CLIENT_SECRET?: string;
     /**
      * When `'true'`, disables the Clerk JWT fallback entirely.
      * Set this after all clients have migrated to Better Auth.
