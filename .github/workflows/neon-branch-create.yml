@@ -55,9 +55,11 @@ jobs:
           # Fork from the primary (production) branch
           parent: main
           api_key: ${{ secrets.NEON_API_KEY }}
-          # Neon project has multiple roles; specify which one to use for
-          # the connection string outputs (db_url, db_url_with_pooler).
-          role_name: neondb_owner
+          # Neon project has multiple roles (authenticator, anonymous,
+          # authenticated, neondb_owner); the action parameter is "role"
+          # (not "role_name") per action.yml.
+          role: neondb_owner
+          database: neondb
 
       # ── 3. Set up Node.js for Prisma CLI ───────────────────────────────────
       - name: Set up Node.js
@@ -82,7 +84,7 @@ jobs:
       # branch so that the PR gets a fully migrated, isolated database.
       - name: Run Prisma migrations
         env:
-          DATABASE_URL: ${{ steps.create-branch.outputs.db_url_with_pooler }}
+          DATABASE_URL: ${{ steps.create-branch.outputs.db_url_pooled }}
           DIRECT_DATABASE_URL: ${{ steps.create-branch.outputs.db_url }}
         run: npx prisma migrate deploy
 
@@ -95,7 +97,7 @@ jobs:
         with:
           script: |
             const branchName = `pr-${{ github.event.pull_request.number }}`;
-            const dbUrl      = `${{ steps.create-branch.outputs.db_url_with_pooler }}`;
+            const dbUrl      = `${{ steps.create-branch.outputs.db_url_pooled }}`;
             const projectId  = `${{ secrets.NEON_PROJECT_ID }}`;
 
             // Marker used to find and update previous comments from this action
