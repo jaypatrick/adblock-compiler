@@ -917,14 +917,14 @@ export type AdminUnbanUser = z.infer<typeof AdminUnbanUserSchema>;
 
 /** Schema for 2FA TOTP code verification (6-digit code) */
 export const TwoFactorVerifySchema = z.object({
-    code: z.string().length(6).regex(/^\d{6}$/, 'TOTP code must be exactly 6 digits'),
+    code: z.string().trim().length(6).regex(/^\d{6}$/, 'TOTP code must be exactly 6 digits'),
 });
 
 export type TwoFactorVerify = z.infer<typeof TwoFactorVerifySchema>;
 
 /** Schema for 2FA backup code verification */
 export const TwoFactorBackupSchema = z.object({
-    code: z.string().min(1, 'Backup code is required'),
+    code: z.string().trim().min(1, 'Backup code is required'),
 });
 
 export type TwoFactorBackup = z.infer<typeof TwoFactorBackupSchema>;

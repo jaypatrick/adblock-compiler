@@ -162,6 +162,60 @@ Deno.test('checkRateLimitTiered - authenticated user keyed by userId not IP', as
 });
 
 // ============================================================================
+// checkRateLimitTiered — Per-API-key rate limit override
+// ============================================================================
+
+function makeApiKeyCtx(apiKeyRateLimit: number | null, tier: UserTier = UserTier.Free, userId = 'user_api001'): IAuthContext {
+    return {
+        ...ANONYMOUS_AUTH_CONTEXT,
+        userId,
+        clerkUserId: null,
+        tier,
+        role: 'user',
+        authMethod: 'api-key',
+        apiKeyId: 'key_001',
+        apiKeyRateLimit,
+    };
+}
+
+Deno.test('checkRateLimitTiered - API key with lower per-key limit is enforced', async () => {
+    const kv: KVData = new Map();
+    const env = makeEnv({ RATE_LIMIT: makeKvNamespace(kv) });
+    // Set apiKeyRateLimit to 5 (far below tier default)
+    const ctx = makeApiKeyCtx(5);
+
+    const result = await checkRateLimitTiered(env, '1.2.3.4', ctx);
+    // First request should be allowed
+    assertEquals(result.allowed, true);
+    // The limit should be the per-key value (5), not the tier default
+    assertEquals(result.limit, 5);
+});
+
+Deno.test('checkRateLimitTiered - API key with per-key limit 0 blocks all requests', async () => {
+    const kv: KVData = new Map();
+    const env = makeEnv({ RATE_LIMIT: makeKvNamespace(kv) });
+    // apiKeyRateLimit = 0 should block all requests (fully disabled key)
+    const ctx = makeApiKeyCtx(0);
+
+    const result = await checkRateLimitTiered(env, '1.2.3.4', ctx);
+    assertEquals(result.allowed, false);
+    assertEquals(result.limit, 0);
+    assertEquals(result.remaining, 0);
+});
+
+Deno.test('checkRateLimitTiered - API key with null per-key limit uses tier default', async () => {
+    const kv: KVData = new Map();
+    const env = makeEnv({ RATE_LIMIT: makeKvNamespace(kv) });
+    // null apiKeyRateLimit means no override — tier limit applies
+    const ctx = makeApiKeyCtx(null);
+
+    const result = await checkRateLimitTiered(env, '1.2.3.4', ctx);
+    assertEquals(result.allowed, true);
+    // Should use the tier limit, not 0
+    assertEquals(result.limit > 0, true);
+});
+
+// ============================================================================
 // checkRateLimit — delegates to tiered (anonymous path)
 // ============================================================================
 

@@ -119,9 +119,14 @@ export class BetterAuthProvider implements IAuthProvider {
 
             // ZTA telemetry: emit auth failure event
             if (this.env.ANALYTICS_ENGINE) {
+                const url = new URL(request.url);
                 new AnalyticsService(this.env.ANALYTICS_ENGINE).trackSecurityEvent({
                     eventType: 'auth_failure',
+                    authMethod: 'better-auth',
                     reason: 'better_auth_verification_error',
+                    path: url.pathname,
+                    method: request.method,
+                    clientIpHash: AnalyticsService.hashIp(request.headers.get('CF-Connecting-IP') ?? 'unknown'),
                 });
             }
 

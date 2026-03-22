@@ -95,6 +95,7 @@ import {
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleMetrics } from './handlers/metrics.ts';
 import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './handlers/configuration.ts';
+import { verifyCfAccessJwt } from './middleware/cf-access.ts';
 
 import { zValidator } from '@hono/zod-validator';
 import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../src/configuration/schemas.ts';
@@ -555,34 +556,53 @@ routes.post(
 );
 
 // Admin session revocation — revoke all sessions for a specific user
+export async function handleAdminRevokeUserSessions(
+    c: Context<{ Bindings: Env; Variables: { authContext: IAuthContext } }>,
+): Promise<Response> {
+    const authContext = c.get('authContext');
+    if (authContext.role !== 'admin') {
+        return c.json({ success: false, error: 'Admin access required' }, 403);
+    }
+
+    // ZTA: Defense-in-depth — verify Cloudflare Access JWT (no-op when CF Access is not configured)
+    const cfAccess = await verifyCfAccessJwt(c.req.raw, c.env);
+    if (!cfAccess.valid) {
+        if (c.env.ANALYTICS_ENGINE) {
+            new AnalyticsService(c.env.ANALYTICS_ENGINE).trackSecurityEvent({
+                eventType: 'cf_access_denial',
+                path: c.req.path,
+                method: c.req.method,
+                reason: cfAccess.error ?? 'CF Access verification failed',
+            });
+        }
+        return c.json({ success: false, error: cfAccess.error ?? 'CF Access verification failed' }, 403);
+    }
+
+    const userId = c.req.param('id')!;
+    try {
+        if (!c.env.HYPERDRIVE) {
+            return c.json({ success: false, error: 'Database not configured' }, 503);
+        }
+        const pool = createPgPool(c.env.HYPERDRIVE.connectionString);
+        const result = await pool.query(
+            'DELETE FROM sessions WHERE user_id = $1',
+            [userId],
+        );
+        return c.json({
+            success: true,
+            message: `Revoked ${result.rowCount ?? 0} session(s) for user ${userId}`,
+        });
+    } catch (error) {
+        // deno-lint-ignore no-console
+        console.error('[admin] Session revocation error:', error instanceof Error ? error.message : 'unknown');
+        return c.json({ success: false, error: 'Failed to revoke sessions' }, 500);
+    }
+}
+
 routes.delete(
     '/admin/users/:id/sessions',
     rateLimitMiddleware(),
-    async (c) => {
-        const authContext = c.get('authContext');
-        if (authContext.role !== 'admin') {
-            return c.json({ success: false, error: 'Admin access required' }, 403);
-        }
-        const userId = c.req.param('id')!;
-        try {
-            if (!c.env.HYPERDRIVE) {
-                return c.json({ success: false, error: 'Database not configured' }, 503);
-            }
-            const pool = createPgPool(c.env.HYPERDRIVE.connectionString);
-            const result = await pool.query(
-                'DELETE FROM sessions WHERE user_id = $1',
-                [userId],
-            );
-            return c.json({
-                success: true,
-                message: `Revoked ${result.rowCount ?? 0} session(s) for user ${userId}`,
-            });
-        } catch (error) {
-            // deno-lint-ignore no-console
-            console.error('[admin] Session revocation error:', error instanceof Error ? error.message : 'unknown');
-            return c.json({ success: false, error: 'Failed to revoke sessions' }, 500);
-        }
-    },
+    handleAdminRevokeUserSessions,
 );
 
 routes.get('/admin/usage/:userId', (c) => handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')!));

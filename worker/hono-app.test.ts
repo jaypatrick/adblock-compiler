@@ -155,3 +155,16 @@ Deno.test('GET /api/openapi.json is publicly accessible and returns valid spec o
         assertEquals(body['status'], 501);
     }
 });
+
+// ── Admin session revocation ───────────────────────────────────────────────
+
+Deno.test('DELETE /admin/users/:id/sessions returns 401 for anonymous users', async () => {
+    // Anonymous users are blocked by the route-permission middleware before reaching the handler
+    const res = await fetch('/admin/users/user-123/sessions', { method: 'DELETE' });
+    assertEquals(res.status, 401);
+});
+
+Deno.test('DELETE /api/admin/users/:id/sessions returns 401 for anonymous users (via /api prefix)', async () => {
+    const res = await fetch('/api/admin/users/user-123/sessions', { method: 'DELETE' });
+    assertEquals(res.status, 401);
+});
