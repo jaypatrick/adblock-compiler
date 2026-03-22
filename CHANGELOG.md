@@ -10,7 +10,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - **database**: Migrate primary database from Cloudflare D1 to Neon PostgreSQL via Cloudflare Hyperdrive — 14 Prisma models, full initial migration, HyperdriveStorageAdapter replaces raw SQL; D1 retained as edge cache layer; see `docs/database-setup/DATABASE_ARCHITECTURE.md`
-- **auth**: Integrate Better Auth as primary authentication provider (replaces Clerk) — Prisma adapter, cookie security, bearer token plugin, AuthFacadeService for runtime provider switching; see `docs/auth/auth-chain-reference.md`
+- **auth**: Integrate Better Auth as the primary authentication provider while retaining Clerk as a temporary fallback in the Worker auth chain (Clerk slated for deprecation) — Prisma adapter, cookie security, bearer token plugin, AuthFacadeService for runtime provider switching; see `docs/auth/auth-chain-reference.md`
 - **worker**: Global Hono `app.onError()` handler — unhandled exceptions return structured JSON with `requestId` instead of generic 500
 - **worker**: Startup environment validation — `HYPERDRIVE`, `BETTER_AUTH_SECRET`, and `DATABASE_URL` throw actionable error messages when missing
 - **worker**: Migrate all 15 POST/PUT/PATCH routes to `zValidator('json', Schema)` middleware with structured 422 error responses

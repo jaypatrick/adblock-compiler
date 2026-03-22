@@ -12,7 +12,7 @@
  * @see worker/lib/auth.ts
  */
 
-import { assertEquals, assertExists } from '@std/assert';
+import { assertEquals, assertExists, assertStringIncludes, assertThrows } from '@std/assert';
 import { createAuth } from './auth.ts';
 import type { Auth } from './auth.ts';
 
@@ -35,33 +35,60 @@ Deno.test('Auth type is compatible with ReturnType<typeof createAuth>', () => {
 // Factory guard behaviour
 // ============================================================================
 
+Deno.test('createAuth throws when HYPERDRIVE binding is absent', () => {
+    const fakeEnv = {
+        HYPERDRIVE: undefined,
+        BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
+    } as unknown as import('../types.ts').Env;
+    assertThrows(() => createAuth(fakeEnv), Error, 'HYPERDRIVE binding is not configured');
+});
+
+Deno.test('createAuth throws when HYPERDRIVE.connectionString is absent', () => {
+    const fakeEnv = {
+        HYPERDRIVE: {},
+        BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
+    } as unknown as import('../types.ts').Env;
+    assertThrows(() => createAuth(fakeEnv), Error, 'HYPERDRIVE binding is not configured');
+});
+
+Deno.test('createAuth throws when BETTER_AUTH_SECRET is missing', () => {
+    const fakeEnv = {
+        HYPERDRIVE: { connectionString: 'postgresql://user:pass@localhost:5432/db' },
+        BETTER_AUTH_SECRET: undefined,
+    } as unknown as import('../types.ts').Env;
+    assertThrows(() => createAuth(fakeEnv), Error, 'BETTER_AUTH_SECRET is required');
+});
+
+Deno.test('createAuth error message for missing HYPERDRIVE mentions wrangler.toml and dev.vars', () => {
+    const fakeEnv = { HYPERDRIVE: undefined } as unknown as import('../types.ts').Env;
+    const err = assertThrows(() => createAuth(fakeEnv), Error);
+    assertStringIncludes(err.message, 'wrangler.toml');
+    assertStringIncludes(err.message, '.dev.vars');
+});
+
+Deno.test('createAuth error message for missing BETTER_AUTH_SECRET mentions openssl', () => {
+    const fakeEnv = {
+        HYPERDRIVE: { connectionString: 'postgresql://user:pass@localhost:5432/db' },
+        BETTER_AUTH_SECRET: '',
+    } as unknown as import('../types.ts').Env;
+    const err = assertThrows(() => createAuth(fakeEnv), Error);
+    assertStringIncludes(err.message, 'openssl');
+});
+
 Deno.test('createAuth throws when HYPERDRIVE.connectionString is invalid', () => {
     // createPrismaClient (called inside createAuth) validates the connection
     // string via Zod — an empty or non-postgresql URL should throw.
-    let threw = false;
-    try {
-        // Minimal stub with an invalid connection string
-        const fakeEnv = {
-            HYPERDRIVE: { connectionString: '' },
-            BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
-        } as unknown as import('../types.ts').Env;
-        createAuth(fakeEnv);
-    } catch {
-        threw = true;
-    }
-    assertEquals(threw, true);
+    const fakeEnv = {
+        HYPERDRIVE: { connectionString: '' },
+        BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
+    } as unknown as import('../types.ts').Env;
+    assertThrows(() => createAuth(fakeEnv), Error);
 });
 
 Deno.test('createAuth throws when connectionString is a non-postgresql URL', () => {
-    let threw = false;
-    try {
-        const fakeEnv = {
-            HYPERDRIVE: { connectionString: 'mysql://user:pass@localhost:3306/db' },
-            BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
-        } as unknown as import('../types.ts').Env;
-        createAuth(fakeEnv);
-    } catch {
-        threw = true;
-    }
-    assertEquals(threw, true);
+    const fakeEnv = {
+        HYPERDRIVE: { connectionString: 'mysql://user:pass@localhost:3306/db' },
+        BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
+    } as unknown as import('../types.ts').Env;
+    assertThrows(() => createAuth(fakeEnv), Error);
 });
