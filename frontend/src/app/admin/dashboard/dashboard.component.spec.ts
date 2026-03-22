@@ -142,7 +142,7 @@ describe('DashboardComponent', () => {
                     gateway:  { status: 'healthy' },
                     database: { status: 'healthy', latency_ms: 12 },
                     compiler: { status: 'healthy' },
-                    auth:     { status: 'healthy', provider: 'clerk' },
+                    auth:     { status: 'healthy', provider: 'better-auth' },
                     cache:    { status: 'healthy' },
                 },
             };
@@ -152,7 +152,7 @@ describe('DashboardComponent', () => {
             const checks = component.healthChecks();
             expect(checks.every(c => c.status === 'green')).toBe(true);
             expect(checks.find(c => c.label === 'Database')?.detail).toBe('12 ms');
-            expect(checks.find(c => c.label === 'Auth Service')?.detail).toBe('Clerk (Active)');
+            expect(checks.find(c => c.label === 'Auth Service')?.detail).toBe('Better Auth (Active)');
         });
 
         it('maps degraded services to yellow health checks', () => {

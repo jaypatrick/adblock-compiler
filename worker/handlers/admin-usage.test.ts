@@ -21,7 +21,6 @@ import { type Env, type IAuthContext, UserTier } from '../types.ts';
 function makeAdminContext(): IAuthContext {
     return {
         userId: 'admin-001',
-        clerkUserId: 'admin-001',
         tier: UserTier.Admin,
         role: 'admin',
         apiKeyId: null,
@@ -34,7 +33,6 @@ function makeAdminContext(): IAuthContext {
 function makeUserContext(): IAuthContext {
     return {
         userId: 'user-001',
-        clerkUserId: 'user-001',
         tier: UserTier.Free,
         role: 'user',
         apiKeyId: null,

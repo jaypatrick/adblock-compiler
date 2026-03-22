@@ -13,7 +13,7 @@ import { z } from 'zod';
 // ---------------------------------------------------------------------------
 
 /** Active authentication provider identifier. */
-export const AuthProviderSchema = z.enum(['better-auth', 'clerk']);
+export const AuthProviderSchema = z.enum(['better-auth']);
 export type AuthProvider = z.infer<typeof AuthProviderSchema>;
 
 // ---------------------------------------------------------------------------

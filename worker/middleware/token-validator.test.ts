@@ -20,7 +20,6 @@ import { type Env, type IAuthContext, UserTier } from '../types.ts';
 function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
     return {
         userId: 'user-001',
-        clerkUserId: 'clerk-user-001',
         tier: UserTier.Free,
         role: 'user',
         apiKeyId: null,
@@ -34,7 +33,6 @@ function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
 function makeAnonContext(): IAuthContext {
     return {
         userId: null,
-        clerkUserId: null,
         tier: UserTier.Anonymous,
         role: 'anonymous',
         apiKeyId: null,
@@ -113,7 +111,7 @@ Deno.test('ClaimsIntegrityValidator - passes for anonymous context', async () =>
 
 Deno.test('ClaimsIntegrityValidator - passes for valid authenticated context', async () => {
     const ctx = makeAuthContext({
-        clerkUserId: 'clerk-user-abc',
+        userId: 'ba-user-abc',
         tier: UserTier.Pro,
         role: 'user',
     });
@@ -122,8 +120,8 @@ Deno.test('ClaimsIntegrityValidator - passes for valid authenticated context', a
     assertEquals(result.valid, true);
 });
 
-Deno.test('ClaimsIntegrityValidator - fails when clerkUserId is null', async () => {
-    const ctx = makeAuthContext({ clerkUserId: null });
+Deno.test('ClaimsIntegrityValidator - fails when userId is null', async () => {
+    const ctx = makeAuthContext({ userId: null });
     const env = makeEnv();
     const result = await ClaimsIntegrityValidator.validate('token', ctx, env);
     assertEquals(result.valid, false);
@@ -131,8 +129,8 @@ Deno.test('ClaimsIntegrityValidator - fails when clerkUserId is null', async () 
     assertEquals(result.error!.includes('providerUserId'), true);
 });
 
-Deno.test('ClaimsIntegrityValidator - fails when clerkUserId is empty string', async () => {
-    const ctx = makeAuthContext({ clerkUserId: '' });
+Deno.test('ClaimsIntegrityValidator - fails when userId is empty string', async () => {
+    const ctx = makeAuthContext({ userId: '' });
     const env = makeEnv();
     const result = await ClaimsIntegrityValidator.validate('token', ctx, env);
     assertEquals(result.valid, false);
@@ -159,7 +157,7 @@ Deno.test('ClaimsIntegrityValidator - passes for all valid tiers', async () => {
     const env = makeEnv();
     for (const tier of Object.values(UserTier)) {
         if (tier === UserTier.Anonymous) continue; // anonymous skips
-        const ctx = makeAuthContext({ tier, clerkUserId: 'clerk-abc', role: 'user' });
+        const ctx = makeAuthContext({ tier, userId: 'ba-user-abc', role: 'user' });
         const result = await ClaimsIntegrityValidator.validate('token', ctx, env);
         assertEquals(result.valid, true, `Should pass for tier: ${tier}`);
     }

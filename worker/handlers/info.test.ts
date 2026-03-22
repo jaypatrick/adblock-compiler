@@ -11,7 +11,6 @@
  *   - routeApiMeta: GET /api/deployments → 503 when DB missing
  *   - routeApiMeta: GET /api/deployments/stats → 503 when DB missing
  *   - routeApiMeta: GET /api/turnstile-config → siteKey and enabled
- *   - routeApiMeta: GET /api/clerk-config → publishableKey
  *   - routeApiMeta: GET /api/sentry-config → delegates to handleSentryConfig
  *   - routeApiMeta: unmatched path → returns null
  *
@@ -153,25 +152,6 @@ Deno.test('routeApiMeta - GET /api/turnstile-config returns siteKey:null when un
     assertExists(result);
     const body = await result!.json() as { siteKey: null };
     assertEquals(body.siteKey, null);
-});
-
-Deno.test('routeApiMeta - GET /api/clerk-config returns publishableKey', async () => {
-    const req = makeRequest('/api/clerk-config');
-    const url = new URL(req.url);
-    const env = makeEnv({ CLERK_PUBLISHABLE_KEY: 'pk_test_abc123' });
-    const result = await routeApiMeta('/api/clerk-config', req, url, env);
-    assertExists(result);
-    const body = await result!.json() as { publishableKey: string };
-    assertEquals(body.publishableKey, 'pk_test_abc123');
-});
-
-Deno.test('routeApiMeta - GET /api/clerk-config returns null when key is unset', async () => {
-    const req = makeRequest('/api/clerk-config');
-    const url = new URL(req.url);
-    const result = await routeApiMeta('/api/clerk-config', req, url, makeEnv());
-    assertExists(result);
-    const body = await result!.json() as { publishableKey: null };
-    assertEquals(body.publishableKey, null);
 });
 
 Deno.test('routeApiMeta - GET /api/sentry-config delegates to handleSentryConfig', async () => {

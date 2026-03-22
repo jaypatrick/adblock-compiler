@@ -1,62 +1,41 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection, signal } from '@angular/core';
-import { ActivatedRoute } from '@angular/router';
+import { provideRouter } from '@angular/router';
+import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { SignUpComponent } from './sign-up.component';
-import { ClerkService } from '../../services/clerk.service';
 import { AuthFacadeService } from '../../services/auth-facade.service';
-import { ThemeService } from '../../services/theme.service';
+import type { AuthProvidersConfig } from '../../services/better-auth.service';
 
-/** Build a minimal ActivatedRoute stub with the given query params snapshot. */
-function makeRoute(queryParams: Record<string, string> = {}) {
-    return { snapshot: { queryParams } };
-}
-
-function makeMockClerk(overrides: Partial<{ isLoaded: boolean; isAvailable: boolean; configLoadFailed: boolean }> = {}) {
+function makeMockAuth(overrides: Partial<{
+    isLoaded: boolean;
+    providers: AuthProvidersConfig;
+}> = {}) {
     return {
         isLoaded: signal(overrides.isLoaded ?? true),
-        isAvailable: signal(overrides.isAvailable ?? true),
-        configLoadFailed: signal(overrides.configLoadFailed ?? false),
-        mountSignUp: vi.fn(),
-        unmountSignUp: vi.fn(),
-    };
-}
-
-/** Mock the AuthFacadeService which controls template branching (Clerk vs local auth). */
-function makeMockAuth(overrides: Partial<{ isLoaded: boolean; useClerk: boolean }> = {}) {
-    return {
-        isLoaded: signal(overrides.isLoaded ?? true),
-        useClerk: signal(overrides.useClerk ?? true),
-        useBetterAuth: signal(!(overrides.useClerk ?? true)),
-        isSignedIn: signal(false),
+        providers: signal<AuthProvidersConfig>(
+            overrides.providers ?? { emailPassword: true, github: false, google: false, mfa: false },
+        ),
         signup: vi.fn().mockResolvedValue({}),
+        signInWithSocial: vi.fn().mockResolvedValue({}),
     };
-}
-
-function makeMockTheme(dark = false) {
-    return { isDark: signal(dark) };
 }
 
 describe('SignUpComponent', () => {
     let component: SignUpComponent;
     let fixture: ComponentFixture<SignUpComponent>;
-    let mockClerkService: ReturnType<typeof makeMockClerk>;
-    let mockAuthService: ReturnType<typeof makeMockAuth>;
-    let mockThemeService: ReturnType<typeof makeMockTheme>;
+    let mockAuth: ReturnType<typeof makeMockAuth>;
 
     beforeEach(async () => {
-        mockClerkService = makeMockClerk();
-        mockAuthService = makeMockAuth();
-        mockThemeService = makeMockTheme();
+        mockAuth = makeMockAuth();
 
         await TestBed.configureTestingModule({
             imports: [SignUpComponent],
             providers: [
                 provideZonelessChangeDetection(),
-                { provide: ClerkService, useValue: mockClerkService },
-                { provide: AuthFacadeService, useValue: mockAuthService },
-                { provide: ThemeService, useValue: mockThemeService },
-                { provide: ActivatedRoute, useValue: makeRoute() },
+                provideAnimationsAsync(),
+                provideRouter([]),
+                { provide: AuthFacadeService, useValue: mockAuth },
             ],
         }).compileComponents();
 
@@ -69,195 +48,62 @@ describe('SignUpComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should show loading spinner while auth facade is not loaded', () => {
-        mockAuthService.isLoaded.set(false);
+    it('should render .auth-page wrapper', () => {
+        expect((fixture.nativeElement as HTMLElement).querySelector('.auth-page')).toBeTruthy();
+    });
+
+    it('should show loading spinner while auth is not loaded', () => {
+        mockAuth.isLoaded.set(false);
         fixture.detectChanges();
 
-        const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.auth-loading')).toBeTruthy();
-        expect(compiled.querySelector('.clerk-container')).toBeNull();
-        expect(compiled.querySelector('.auth-error')).toBeNull();
+        const el = fixture.nativeElement as HTMLElement;
+        expect(el.querySelector('.auth-loading')).toBeTruthy();
+        expect(el.querySelector('.local-auth-card')).toBeNull();
     });
 
-    it('should show local auth form when Clerk is loaded but not available', () => {
-        mockAuthService.useClerk.set(false);
+    it('should show local auth card when auth is loaded', () => {
+        const el = fixture.nativeElement as HTMLElement;
+        expect(el.querySelector('.local-auth-card')).toBeTruthy();
+        expect(el.querySelector('.auth-loading')).toBeNull();
+    });
+
+    it('should NOT show GitHub button when providers.github is false', () => {
+        mockAuth.providers.set({ emailPassword: true, github: false, google: false, mfa: false });
         fixture.detectChanges();
 
-        const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.local-auth-card')).toBeTruthy();
-        expect(compiled.querySelector('.clerk-container')).toBeNull();
-        expect(compiled.querySelector('.auth-loading')).toBeNull();
+        expect((fixture.nativeElement as HTMLElement).querySelector('.github-btn')).toBeNull();
     });
 
-    it('should show local auth form when configLoadFailed is true', () => {
-        mockAuthService.useClerk.set(false);
+    it('should show GitHub button when providers.github is true', () => {
+        mockAuth.providers.set({ emailPassword: true, github: true, google: false, mfa: false });
         fixture.detectChanges();
 
-        const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.local-auth-card')).toBeTruthy();
-        expect(compiled.querySelector('.clerk-container')).toBeNull();
+        expect((fixture.nativeElement as HTMLElement).querySelector('.github-btn')).toBeTruthy();
     });
 
-    it('should show local auth form when not available and configLoadFailed is false', () => {
-        mockAuthService.useClerk.set(false);
+    it('should call auth.signInWithSocial("github") when GitHub button is clicked', async () => {
+        mockAuth.providers.set({ emailPassword: true, github: true, google: false, mfa: false });
         fixture.detectChanges();
 
-        const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.local-auth-card')).toBeTruthy();
-        expect(compiled.querySelector('.clerk-container')).toBeNull();
+        const githubBtn = (fixture.nativeElement as HTMLElement).querySelector('.github-btn') as HTMLButtonElement;
+        githubBtn.click();
+        await fixture.whenStable();
+
+        expect(mockAuth.signInWithSocial).toHaveBeenCalledWith('github');
     });
 
-    it('should show Clerk container when loaded and available', () => {
-        mockAuthService.isLoaded.set(true);
-        mockAuthService.useClerk.set(true);
+    it('should show an error message when set on the component', () => {
+        (component as any).errorMessage.set('Email already taken');
         fixture.detectChanges();
 
-        const compiled = fixture.nativeElement as HTMLElement;
-        expect(compiled.querySelector('.clerk-container')).toBeTruthy();
-        expect(compiled.querySelector('.auth-loading')).toBeNull();
-        expect(compiled.querySelector('.auth-error')).toBeNull();
+        const el = fixture.nativeElement as HTMLElement;
+        expect(el.querySelector('.auth-error')?.textContent?.trim()).toBe('Email already taken');
     });
 
-    it('should render the sign-up container element', () => {
-        const compiled = fixture.nativeElement as HTMLElement;
-        const container = compiled.querySelector('.clerk-container');
-        expect(container).toBeTruthy();
-    });
-
-    it('should have auth-page wrapper with correct styling', () => {
-        const compiled = fixture.nativeElement as HTMLElement;
-        const authPage = compiled.querySelector('.auth-page');
-        expect(authPage).toBeTruthy();
-    });
-
-    it('should mount Clerk sign-up UI after render', () => {
-        expect(mockClerkService.mountSignUp).toHaveBeenCalledTimes(1);
-        const callArg = mockClerkService.mountSignUp.mock.calls[0][0];
-        expect(callArg).toBeInstanceOf(HTMLDivElement);
-    });
-
-    it('should not mount when Clerk is not available', async () => {
-        TestBed.resetTestingModule();
-        const clerk = makeMockClerk({ isLoaded: true, isAvailable: false });
-
-        await TestBed.configureTestingModule({
-            imports: [SignUpComponent],
-            providers: [
-                provideZonelessChangeDetection(),
-                { provide: ClerkService, useValue: clerk },
-                { provide: AuthFacadeService, useValue: makeMockAuth({ useClerk: false }) },
-                { provide: ThemeService, useValue: makeMockTheme() },
-                { provide: ActivatedRoute, useValue: makeRoute() },
-            ],
-        }).compileComponents();
-
-        const f = TestBed.createComponent(SignUpComponent);
-        f.detectChanges();
-
-        expect(clerk.mountSignUp).not.toHaveBeenCalled();
-    });
-
-    it('should unmount Clerk sign-up UI on destroy', () => {
-        const compiled = fixture.nativeElement as HTMLElement;
-        const containerElement = compiled.querySelector('.clerk-container') as HTMLDivElement;
-
-        fixture.destroy();
-
-        expect(mockClerkService.unmountSignUp).toHaveBeenCalledTimes(1);
-        expect(mockClerkService.unmountSignUp).toHaveBeenCalledWith(containerElement);
-    });
-
-    it('should handle missing container gracefully on destroy', () => {
-        TestBed.resetTestingModule();
-        TestBed.configureTestingModule({
-            imports: [SignUpComponent],
-            providers: [
-                provideZonelessChangeDetection(),
-                { provide: ClerkService, useValue: makeMockClerk() },
-                { provide: AuthFacadeService, useValue: makeMockAuth() },
-                { provide: ThemeService, useValue: makeMockTheme() },
-                { provide: ActivatedRoute, useValue: makeRoute() },
-            ],
-        });
-
-        const tempFixture = TestBed.createComponent(SignUpComponent);
-        const tempComponent = tempFixture.componentInstance;
-
-        (tempComponent as any).container = () => undefined;
-
-        expect(() => tempFixture.destroy()).not.toThrow();
-    });
-
-    it('should handle null container element gracefully on mount', () => {
-        const mockClerkNoMount = makeMockClerk();
-
-        TestBed.resetTestingModule();
-        TestBed.configureTestingModule({
-            imports: [SignUpComponent],
-            providers: [
-                provideZonelessChangeDetection(),
-                { provide: ClerkService, useValue: mockClerkNoMount },
-                { provide: AuthFacadeService, useValue: makeMockAuth() },
-                { provide: ThemeService, useValue: makeMockTheme() },
-                { provide: ActivatedRoute, useValue: makeRoute() },
-            ],
-        });
-
-        const tempFixture = TestBed.createComponent(SignUpComponent);
-        tempFixture.detectChanges();
-
-        expect(() => tempFixture.detectChanges()).not.toThrow();
-    });
-
-    it('should use correct CSS classes for layout', () => {
-        const compiled = fixture.nativeElement as HTMLElement;
-        const authPage = compiled.querySelector('.auth-page');
-        const container = compiled.querySelector('.clerk-container');
-
-        expect(authPage).toBeTruthy();
-        expect(container).toBeTruthy();
-        expect(container?.classList.contains('clerk-container')).toBe(true);
-    });
-
-    it('should unmount and remount when theme changes while mounted', () => {
-        // afterNextRender fired in beforeEach — component is mounted
-        expect(mockClerkService.mountSignUp).toHaveBeenCalledTimes(1);
-
-        // Toggle theme
-        mockThemeService.isDark.set(true);
-        TestBed.flushEffects();
-
-        // Should have unmounted the old widget and remounted with new appearance
-        expect(mockClerkService.unmountSignUp).toHaveBeenCalledTimes(1);
-        expect(mockClerkService.mountSignUp).toHaveBeenCalledTimes(2);
-    });
-
-    it('should not remount when theme changes before initial mount', () => {
-        TestBed.resetTestingModule();
-        const clerk = makeMockClerk({ isLoaded: true, isAvailable: false });
-        const theme = makeMockTheme();
-
-        TestBed.configureTestingModule({
-            imports: [SignUpComponent],
-            providers: [
-                provideZonelessChangeDetection(),
-                { provide: ClerkService, useValue: clerk },
-                { provide: AuthFacadeService, useValue: makeMockAuth({ useClerk: false }) },
-                { provide: ThemeService, useValue: theme },
-                { provide: ActivatedRoute, useValue: makeRoute() },
-            ],
-        });
-
-        // isAvailable is false → no container → widget never mounted
-        const f = TestBed.createComponent(SignUpComponent);
-        f.detectChanges();
-        expect(clerk.mountSignUp).not.toHaveBeenCalled();
-
-        // Toggling theme with nothing mounted should not call unmount/mount
-        theme.isDark.set(true);
-        TestBed.flushEffects();
-
-        expect(clerk.unmountSignUp).not.toHaveBeenCalled();
-        expect(clerk.mountSignUp).not.toHaveBeenCalled();
+    it('should show a sign-in link', () => {
+        const el = fixture.nativeElement as HTMLElement;
+        const links = Array.from(el.querySelectorAll('a'));
+        const hrefs = links.map(a => a.getAttribute('routerlink') ?? a.getAttribute('href'));
+        expect(hrefs).toContain('/sign-in');
     });
 });

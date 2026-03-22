@@ -6,7 +6,7 @@
  *   - requireAuth: returns 401 for anonymous users
  *   - requireTier: returns null when tier is sufficient
  *   - requireTier: returns 403 when tier is insufficient
- *   - requireScope: JWT/better-auth users bypass scope checks
+ *   - requireScope: better-auth users bypass scope checks
  *   - requireScope: anonymous users get 401
  *   - requireScope: API-key users are scope-checked
  *   - authenticateRequestUnified: no token → anonymous context
@@ -17,7 +17,7 @@
  *   - authenticateRequestUnified: custom authProvider — provider returns invalid → anonymous
  *   - authenticateRequestUnified: custom authProvider — provider error + token → 401
  *   - hashToken/extractBearerToken: exercised via authenticateApiKey paths
- *   - isApiKeyToken / isJwtToken: exercised via authenticateRequestUnified
+ *   - isApiKeyToken: exercised via authenticateRequestUnified
  */
 
 import { assertEquals, assertExists } from '@std/assert';
@@ -39,13 +39,12 @@ function makeAnonymousContext(): IAuthContext {
 function makeAuthenticatedContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
     return {
         userId: 'db_user_abc',
-        clerkUserId: 'user_clerk123',
         tier: UserTier.Free,
         role: 'user',
         apiKeyId: null,
         sessionId: 'sess_xyz',
         scopes: [],
-        authMethod: 'clerk-jwt',
+        authMethod: 'better-auth',
         ...overrides,
     };
 }
@@ -54,7 +53,6 @@ function makeApiKeyContext(scopes: string[] = []): IAuthContext {
     return makeAuthenticatedContext({
         authMethod: 'api-key',
         apiKeyId: 'apikey_001',
-        clerkUserId: null,
         scopes,
     });
 }
@@ -79,8 +77,8 @@ function makeAuthProviderStub(result: IAuthProviderResult): IAuthProvider {
 // requireAuth
 // ============================================================================
 
-Deno.test('requireAuth - returns null when user is authenticated via clerk-jwt', () => {
-    const ctx = makeAuthenticatedContext({ authMethod: 'clerk-jwt' });
+Deno.test('requireAuth - returns null when user is authenticated via better-auth', () => {
+    const ctx = makeAuthenticatedContext({ authMethod: 'better-auth' });
     const result = requireAuth(ctx);
     assertEquals(result, null);
 });
@@ -155,8 +153,8 @@ Deno.test('requireTier - error message includes tier names', async () => {
 // requireScope
 // ============================================================================
 
-Deno.test('requireScope - returns null for clerk-jwt user (bypasses scope check)', () => {
-    const ctx = makeAuthenticatedContext({ authMethod: 'clerk-jwt', scopes: [] });
+Deno.test('requireScope - returns null for better-auth user (bypasses scope check)', () => {
+    const ctx = makeAuthenticatedContext({ authMethod: 'better-auth', scopes: [] });
     assertEquals(requireScope(ctx, 'compile:write'), null);
 });
 
@@ -249,12 +247,12 @@ Deno.test('authenticateRequestUnified - returns 503 when abc_ token present but 
 });
 
 // ============================================================================
-// authenticateRequestUnified — JWT token path (no Clerk config → 401)
+// authenticateRequestUnified — JWT-like token without authProvider → 401
 // ============================================================================
 
-Deno.test('authenticateRequestUnified - returns 401 when JWT token fails Clerk verification', async () => {
-    const env = makeEnv({}); // no CLERK_JWKS_URL or CLERK_PUBLISHABLE_KEY
-    // A token with three dot-separated parts looks like a JWT
+Deno.test('authenticateRequestUnified - returns 401 when JWT-like token is present but no authProvider handles it', async () => {
+    const env = makeEnv({});
+    // A token with three dot-separated parts looks like a JWT but no auth provider is set
     const fakeJwt = 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJ1c2VyX3Rlc3QifQ.invalidsignature';
     const req = makeRequest(fakeJwt);
 
@@ -299,7 +297,7 @@ Deno.test('authenticateRequestUnified - custom provider authenticates via cookie
 
     const result = await authenticateRequestUnified(req, env, undefined, provider);
     assertEquals(result.context.authMethod, 'better-auth');
-    assertEquals(result.context.clerkUserId, 'ba_user_001');
+    assertEquals(result.context.userId, 'ba_user_001');
     assertEquals(result.context.tier, UserTier.Free);
     assertEquals(result.response, undefined);
 });
@@ -318,7 +316,7 @@ Deno.test('authenticateRequestUnified - custom provider authenticates non-JWT se
 
     const result = await authenticateRequestUnified(req, env, undefined, provider);
     assertEquals(result.context.authMethod, 'better-auth');
-    assertEquals(result.context.clerkUserId, 'ba_user_002');
+    assertEquals(result.context.userId, 'ba_user_002');
     assertEquals(result.context.tier, UserTier.Pro);
     assertEquals(result.response, undefined);
 });

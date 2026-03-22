@@ -24,7 +24,6 @@ import { type Env, type IAuthContext, UserTier } from '../types.ts';
 function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
     return {
         userId: 'user-001',
-        clerkUserId: 'clerk-001',
         tier: UserTier.Free,
         role: 'user',
         apiKeyId: null,
@@ -38,7 +37,6 @@ function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
 function makeAnonContext(): IAuthContext {
     return {
         userId: null,
-        clerkUserId: null,
         tier: UserTier.Anonymous,
         role: 'anonymous',
         apiKeyId: null,
@@ -153,8 +151,8 @@ Deno.test('checkUserApiAccess - DB error returns null (fail-open)', async () => 
     assertEquals(result, null); // fail-open
 });
 
-Deno.test('checkUserApiAccess - non-better-auth authMethod returns null (skipped)', async () => {
-    const ctx = makeAuthContext({ authMethod: 'clerk-jwt' });
+Deno.test('checkUserApiAccess - api-key authMethod returns null (skipped)', async () => {
+    const ctx = makeAuthContext({ authMethod: 'api-key' });
     const env = makeEnvWithDb(1); // banned in DB, but should be skipped
     const result = await checkUserApiAccess(ctx, env);
     assertEquals(result, null);

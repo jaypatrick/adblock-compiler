@@ -74,4 +74,9 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () => import('./webhooks/webhooks.component').then((m) => m.WebhooksComponent),
         title: 'Webhooks',
     },
+    {
+        path: 'auth-settings',
+        loadComponent: () => import('./auth-settings/auth-settings.component').then((m) => m.AuthSettingsComponent),
+        title: 'Auth Settings',
+    },
 ];

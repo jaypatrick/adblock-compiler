@@ -3,7 +3,7 @@
  *
  * Permission-checking middleware for the admin system.
  *
- * Provides higher-order guard functions that verify Clerk JWT authentication
+ * Provides higher-order guard functions that verify Better Auth authentication
  * and check granular permissions against the admin role system.  Each guard
  * returns an {@link AdminGuardResult} discriminated union so callers can
  * branch on `authorized` without type narrowing gymnastics.
@@ -14,7 +14,7 @@
 
 import type { Env } from '../types.ts';
 import type { ResolvedAdminContext } from '../schemas.ts';
-import { ClerkAuthProvider } from './clerk-auth-provider.ts';
+import { BetterAuthProvider } from './better-auth-provider.ts';
 import { type AdminEnv, resolveAdminContext } from '../services/admin-role-service.ts';
 
 /* ------------------------------------------------------------------ */
@@ -47,7 +47,7 @@ type AdminGuardFn = (request: Request, env: Env) => Promise<AdminGuardResult>;
 /* ------------------------------------------------------------------ */
 
 /**
- * Shared pipeline that authenticates a Clerk JWT, enforces the `admin`
+ * Shared pipeline that authenticates a Better Auth session, enforces the `admin`
  * entry-gate role, and resolves the full admin context (sub-role +
  * permissions) via D1/KV.
  *
@@ -65,13 +65,13 @@ async function resolveAuthenticatedAdmin(
         return { ok: false, error: 'Admin system not configured', statusCode: 503 };
     }
 
-    /* 1 — Verify the Clerk JWT from the Authorization header. */
-    const provider = new ClerkAuthProvider(env);
+    /* 1 — Verify the Better Auth session from the Authorization header or cookie. */
+    const provider = new BetterAuthProvider(env);
     let authResult;
     try {
         authResult = await provider.verifyToken(request);
     } catch (err) {
-        console.error('[admin-role-middleware] JWT verification threw:', err);
+        console.error('[admin-role-middleware] Auth verification threw:', err);
         return { ok: false, error: 'Internal error during authentication', statusCode: 500 };
     }
 
@@ -83,7 +83,7 @@ async function resolveAuthenticatedAdmin(
         };
     }
 
-    /* 2 — Entry gate: Clerk publicMetadata.role must be 'admin'. */
+    /* 2 — Entry gate: user role must be 'admin'. */
     if (authResult.role !== 'admin') {
         console.warn(
             `[admin-role-middleware] Non-admin role attempted admin access: ` +

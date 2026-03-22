@@ -1,21 +1,17 @@
 /**
- * SignUpComponent — Mounts Clerk's pre-built sign-up UI when Clerk is active,
- * or shows a reactive local-auth registration form when Clerk is unavailable.
- *
- * Uses AuthFacadeService as the single source of auth truth.
- * `@if (auth.useClerk())` drives the provider branch — no commented-out code.
+ * SignUpComponent — Email/password registration form with GitHub social sign-up.
+ * Uses BetterAuth as the sole authentication provider via AuthFacadeService.
  */
 
-import { Component, ElementRef, afterNextRender, inject, viewChild, OnDestroy, effect, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { Router, RouterLink } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, Validators, AbstractControl, ValidationErrors } from '@angular/forms';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
-import { ClerkService } from '../../services/clerk.service';
+import { MatDividerModule } from '@angular/material/divider';
 import { AuthFacadeService } from '../../services/auth-facade.service';
-import { ThemeService } from '../../services/theme.service';
 
 function passwordMatchValidator(control: AbstractControl): ValidationErrors | null {
     const password = control.get('password')?.value as string | null;
@@ -36,6 +32,7 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
         MatFormFieldModule,
         MatInputModule,
         MatButtonModule,
+        MatDividerModule,
     ],
     template: `
         <div class="auth-page">
@@ -43,11 +40,7 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
                 <div class="auth-loading" aria-label="Loading sign-up">
                     <mat-spinner diameter="40" />
                 </div>
-            } @else if (auth.useClerk()) {
-                <!-- Clerk branch: mount the hosted sign-up widget -->
-                <div #signUpContainer class="clerk-container"></div>
             } @else {
-                <!-- Local auth branch: reactive registration form -->
                 <div class="local-auth-card">
                     <h2 class="local-auth-title">Create account</h2>
 
@@ -94,6 +87,22 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
                             }
                         </button>
                     </form>
+
+                    @if (auth.providers()?.github) {
+                        <mat-divider class="divider" />
+
+                        <button
+                            mat-stroked-button
+                            type="button"
+                            class="full-width github-btn"
+                            [disabled]="loading()"
+                            (click)="signUpWithGitHub()"
+                        >
+                            <span class="github-icon" aria-hidden="true">&#xe800;</span>
+                            Sign up with GitHub
+                        </button>
+                    }
+
                     <p class="auth-switch">Already have an account? <a routerLink="/sign-in" class="auth-link">Sign in</a></p>
                 </div>
             }
@@ -107,7 +116,6 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
             padding: 2rem;
             min-height: 60vh;
         }
-        .clerk-container { min-width: 320px; }
         .auth-loading {
             display: flex;
             justify-content: center;
@@ -138,22 +146,18 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
         }
         .full-width { width: 100%; }
         .submit-btn { margin-top: 0.5rem; }
+        .divider { margin: 1.25rem 0; }
+        .github-btn { margin-bottom: 0.5rem; }
+        .github-icon { margin-right: 0.5rem; font-size: 1rem; }
         .auth-switch { margin-top: 1rem; text-align: center; font-size: 0.875rem; color: var(--mat-sys-on-surface-variant); }
         .auth-link { color: var(--mat-sys-primary); text-decoration: none; font-weight: 500; }
         .auth-link:hover { text-decoration: underline; }
     `],
 })
-export class SignUpComponent implements OnDestroy {
+export class SignUpComponent {
     protected readonly auth = inject(AuthFacadeService);
-    /** @deprecated TODO(auth-migration): Remove ClerkService injection when Clerk support is dropped. */
-    private readonly clerk = inject(ClerkService);
     private readonly router = inject(Router);
-    private readonly theme = inject(ThemeService);
     private readonly fb = inject(FormBuilder);
-
-    /** @deprecated TODO(auth-migration): Remove Clerk mount container + mounted flag. */
-    private readonly container = viewChild<ElementRef<HTMLDivElement>>('signUpContainer');
-    private mounted = false;
 
     protected readonly loading = signal(false);
     protected readonly errorMessage = signal<string | null>(null);
@@ -166,27 +170,6 @@ export class SignUpComponent implements OnDestroy {
         },
         { validators: passwordMatchValidator },
     );
-
-    private readonly _mount = afterNextRender(() => this.tryMount());
-
-    // TODO(auth-migration): Remove Clerk theme re-mount effect when Clerk support is dropped.
-    private readonly _themeEffect = effect(() => {
-        this.theme.isDark();
-        if (this.mounted) {
-            const el = this.container()?.nativeElement;
-            if (el) {
-                this.clerk.unmountSignUp(el);
-                this.mounted = false;
-                this.tryMount();
-            }
-        }
-    });
-
-    // TODO(auth-migration): Remove Clerk unmount in ngOnDestroy when Clerk support is dropped.
-    ngOnDestroy(): void {
-        const el = this.container()?.nativeElement;
-        if (el) this.clerk.unmountSignUp(el);
-    }
 
     protected async submit(): Promise<void> {
         this.form.markAllAsTouched();
@@ -207,12 +190,11 @@ export class SignUpComponent implements OnDestroy {
         await this.router.navigateByUrl('/api-keys');
     }
 
-    /** @deprecated TODO(auth-migration): Remove Clerk mount logic when Clerk support is dropped. */
-    private tryMount(): void {
-        const el = this.container()?.nativeElement;
-        if (el && !this.mounted && this.auth.useClerk()) {
-            this.clerk.mountSignUp(el);
-            this.mounted = true;
+    protected async signUpWithGitHub(): Promise<void> {
+        this.errorMessage.set(null);
+        const result = await this.auth.signInWithSocial('github');
+        if (result.error) {
+            this.errorMessage.set(result.error);
         }
     }
 }

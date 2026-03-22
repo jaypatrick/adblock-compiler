@@ -1,4 +1,18 @@
-# Clerk Dashboard Setup Guide
+# Clerk Dashboard Setup Guide — Archived
+
+> **⚠️ Archived: Clerk integration has been fully removed from the codebase.**
+> Better Auth is the active and only supported auth provider. Re-enabling Clerk
+> would require reintroducing Clerk-related code (middleware, routes, env vars, etc.),
+> not just setting environment variables. This document is retained for historical
+> reference only.
+>
+> See [Better Auth User Guide](better-auth-user-guide.md) and
+> [Configuration Guide](configuration.md) for current setup instructions.
+
+<!--
+Original content preserved below for historical reference.
+-->
+> (see [auth-provider-selection.md](auth-provider-selection.md)).
 
 This guide walks you through creating and configuring a Clerk application for the adblock-compiler.
 

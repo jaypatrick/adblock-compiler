@@ -5,7 +5,7 @@
  * Returns null if access is allowed, or a 403 Response if banned.
  *
  * ZTA compliance: every authenticated better-auth request passes this check before routing.
- * Anonymous users and Clerk/API-key users are allowed through (checked by their own auth path).
+ * Anonymous users and API-key users are allowed through (checked by their own auth path).
  */
 
 import type { Env, IAuthContext } from '../types.ts';
@@ -15,7 +15,7 @@ import { JsonResponse } from '../utils/response.ts';
  * Check if the authenticated Better Auth user has been banned.
  *
  * Returns null if:
- *   - The user is not authenticated via better-auth (Clerk/api-key/anonymous: their own path)
+ *   - The user is not authenticated via better-auth (api-key/anonymous: their own path)
  *   - The user is not banned
  *   - DB is not configured (fail-open to avoid breaking non-D1 deployments)
  *
@@ -27,7 +27,7 @@ export async function checkUserApiAccess(
     authContext: IAuthContext,
     env: Env,
 ): Promise<Response | null> {
-    // Only enforced for better-auth users; Clerk and API-key users have their own access controls
+    // Only enforced for better-auth users; API-key and anonymous users have their own access controls
     if (authContext.authMethod !== 'better-auth') return null;
     // No userId means token is malformed — let auth pipeline reject it
     if (!authContext.userId) return null;
