@@ -1,9 +1,4 @@
-/**
- * Tests for the PostgreSQL admin handlers, focusing on backend health status.
- *
- * Covers test plan item: GET /admin/backends
- * These tests run without a live database by mocking D1 and the PgPool factory.
- */
+// Tests for the PostgreSQL admin handlers, focusing on backend health status.
 
 import { assertEquals } from '@std/assert';
 import { handleBackendStatus } from './pg-admin.ts';
@@ -13,14 +8,14 @@ import type { D1Database, D1ExecResult, D1Result, Env, HyperdriveBinding } from 
 // Fixtures
 // ============================================================================
 
-const MOCK_HYPERDRIVE: HyperdriveBinding = {
+const MOCK_HYPERDRIVE = {
     connectionString: 'postgresql://test:test@localhost:5432/testdb',
     host: 'test-pg-host',
     port: 5432,
     user: 'test',
     password: 'test',
     database: 'testdb',
-};
+} as unknown as HyperdriveBinding;
 
 type MockPgPool = {
     query<T>(text: string, values?: unknown[]): Promise<{ rows: T[]; rowCount: number | null }>;
@@ -28,7 +23,6 @@ type MockPgPool = {
 
 type MockPgFactory = (connectionString: string) => MockPgPool;
 
-/** Creates a healthy D1 mock (SELECT 1 succeeds). */
 function createHealthyD1(): D1Database {
     return {
         prepare: (_query: string) => {
@@ -47,7 +41,6 @@ function createHealthyD1(): D1Database {
     } as unknown as D1Database;
 }
 
-/** Creates a D1 mock that throws on every query. */
 function createFaultyD1(message = 'D1 connection failed'): D1Database {
     return {
         prepare: (_query: string) => {
@@ -74,7 +67,6 @@ function createFaultyD1(message = 'D1 connection failed'): D1Database {
     } as unknown as D1Database;
 }
 
-/** Builds a minimal Env with optional bindings. */
 function makeEnv(overrides: Partial<Env> = {}): Env {
     return {
         COMPILER_VERSION: 'test',
