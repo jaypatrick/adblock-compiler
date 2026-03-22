@@ -51,7 +51,8 @@ export function createAuth(env: Env, baseURL?: string) {
         throw new Error(
             'HYPERDRIVE binding is not configured.\n' +
                 '  → Production: add [[hyperdrive]] to wrangler.toml\n' +
-                '  → Local dev:  set CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE in .dev.vars',
+                '  → Local dev:  set WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE (preferred)\n' +
+                '                or CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE in .dev.vars',
         );
     }
     if (!env.BETTER_AUTH_SECRET) {
