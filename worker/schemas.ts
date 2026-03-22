@@ -906,6 +906,11 @@ export const AdminBanUserSchema = z.object({
 
 export type AdminBanUser = z.infer<typeof AdminBanUserSchema>;
 
+/** Request body for POST /admin/users/:id/unban. No body required — clears ban fields. */
+export const AdminUnbanUserSchema = z.object({}).passthrough();
+
+export type AdminUnbanUser = z.infer<typeof AdminUnbanUserSchema>;
+
 // ============================================================================
 // Admin System Schemas — ADMIN_DB trust boundary validation (#1054)
 // ============================================================================
@@ -1356,3 +1361,62 @@ export const BetterAuthConfigSchema = z.object({
     baseURL: z.string().url().optional(),
     emailAndPassword: z.object({ enabled: z.boolean() }).optional(),
 });
+
+// ============================================================================
+// WebSocket Client Message Schemas — ZTA trust-boundary validation
+// ============================================================================
+// All incoming WebSocket messages must be Zod-validated before dispatch.
+// The discriminated union uses the `type` field to match message variants.
+
+/** Schema for compile request messages from WebSocket clients. */
+export const WsCompileRequestSchema = z.object({
+    type: z.literal('compile'),
+    sessionId: z.string().min(1).max(128),
+    configuration: z.record(z.string(), z.unknown()),
+    preFetchedContent: z.record(z.string(), z.string()).optional(),
+    benchmark: z.boolean().optional(),
+    messageId: z.string().optional(),
+    timestamp: z.string().optional(),
+});
+
+/** Schema for cancel request messages from WebSocket clients. */
+export const WsCancelRequestSchema = z.object({
+    type: z.literal('cancel'),
+    sessionId: z.string().min(1).max(128),
+    messageId: z.string().optional(),
+    timestamp: z.string().optional(),
+});
+
+/** Schema for pause request messages from WebSocket clients. */
+export const WsPauseRequestSchema = z.object({
+    type: z.literal('pause'),
+    sessionId: z.string().min(1).max(128),
+    messageId: z.string().optional(),
+    timestamp: z.string().optional(),
+});
+
+/** Schema for resume request messages from WebSocket clients. */
+export const WsResumeRequestSchema = z.object({
+    type: z.literal('resume'),
+    sessionId: z.string().min(1).max(128),
+    messageId: z.string().optional(),
+    timestamp: z.string().optional(),
+});
+
+/** Schema for ping messages from WebSocket clients. */
+export const WsPingSchema = z.object({
+    type: z.literal('ping'),
+    messageId: z.string().optional(),
+    timestamp: z.string().optional(),
+});
+
+/** Discriminated union of all valid client-to-server WebSocket messages. */
+export const ClientMessageSchema = z.discriminatedUnion('type', [
+    WsCompileRequestSchema,
+    WsCancelRequestSchema,
+    WsPauseRequestSchema,
+    WsResumeRequestSchema,
+    WsPingSchema,
+]);
+
+export type ValidatedClientMessage = z.infer<typeof ClientMessageSchema>;
