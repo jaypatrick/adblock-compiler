@@ -103,6 +103,8 @@ import {
     AdminBanUserSchema,
     AdminNeonCreateBranchSchema,
     AdminNeonQuerySchema,
+    AdminUnbanUserSchema,
+    AdminUpdateUserSchema,
     AstParseRequestSchema,
     CreateApiKeyRequestSchema,
     RuleSetCreateSchema,
@@ -258,9 +260,9 @@ app.use('*', async (c, next) => {
 // than verifying existing ones.
 app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
     if (!c.env.BETTER_AUTH_SECRET) return c.notFound();
-    if (!c.env.DB) {
-        // Misconfigured deployment: auth DB binding is missing. Fail predictably
-        // instead of allowing createAuth() to throw at runtime with a non-actionable error.
+    if (!c.env.HYPERDRIVE) {
+        // Misconfigured deployment: Hyperdrive (Neon PostgreSQL) binding is missing.
+        // Better Auth uses PostgreSQL via Hyperdrive, not D1.
         return c.json({ error: 'Authentication service is temporarily unavailable' }, 503);
     }
     const url = new URL(c.req.url);
@@ -479,15 +481,31 @@ routes.get('/admin/auth/config', (c) => handleAdminAuthConfig(c.req.raw, c.env, 
 
 routes.get('/admin/users', (c) => handleAdminListUsers(c.req.raw, c.env, c.get('authContext')));
 routes.get('/admin/users/:id', (c) => handleAdminGetUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
-routes.patch('/admin/users/:id', (c) => handleAdminUpdateUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
-routes.delete('/admin/users/:id', (c) => handleAdminDeleteUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
+routes.patch(
+    '/admin/users/:id',
+    rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', AdminUpdateUserSchema as any, zodValidationError),
+    (c) => handleAdminUpdateUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!),
+);
+routes.delete(
+    '/admin/users/:id',
+    rateLimitMiddleware(),
+    (c) => handleAdminDeleteUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!),
+);
 routes.post(
     '/admin/users/:id/ban',
     // deno-lint-ignore no-explicit-any
     zValidator('json', AdminBanUserSchema as any, zodValidationError),
     (c) => handleAdminBanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!),
 );
-routes.post('/admin/users/:id/unban', (c) => handleAdminUnbanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
+routes.post(
+    '/admin/users/:id/unban',
+    rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', AdminUnbanUserSchema as any, zodValidationError),
+    (c) => handleAdminUnbanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!),
+);
 
 routes.get('/admin/usage/:userId', (c) => handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')!));
 
@@ -761,6 +779,7 @@ routes.get(
 routes.delete(
     '/keys/:id',
     requireAuthMiddleware(),
+    rateLimitMiddleware(),
     async (c) => {
         if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
         if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
@@ -771,6 +790,7 @@ routes.delete(
 routes.patch(
     '/keys/:id',
     requireAuthMiddleware(),
+    rateLimitMiddleware(),
     // deno-lint-ignore no-explicit-any
     zValidator('json', UpdateApiKeyRequestSchema as any, zodValidationError),
     async (c) => {
@@ -816,6 +836,7 @@ routes.post(
 routes.post(
     '/compile/async',
     bodySizeMiddleware(),
+    rateLimitMiddleware(),
     // deno-lint-ignore no-explicit-any
     zValidator('json', CompileRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
@@ -825,6 +846,7 @@ routes.post(
 routes.post(
     '/compile/batch/async',
     bodySizeMiddleware(),
+    rateLimitMiddleware(),
     // deno-lint-ignore no-explicit-any
     zValidator('json', BatchRequestAsyncSchema as any, zodValidationError),
     turnstileMiddleware(),
