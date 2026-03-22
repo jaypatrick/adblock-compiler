@@ -92,7 +92,7 @@ export function makeDb(): D1Database {
  * Override any binding by passing it in `overrides`.
  *
  * @example
- * const env = makeEnv({ JWT_SECRET: 'my-secret', DB: makeDb() });
+ * const env = makeEnv({ BETTER_AUTH_SECRET: 'my-secret', DB: makeDb() });
  */
 export function makeEnv(overrides: Partial<Env> = {}): Env {
     return {

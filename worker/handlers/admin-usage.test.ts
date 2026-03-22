@@ -27,7 +27,7 @@ function makeAdminContext(): IAuthContext {
         apiKeyId: null,
         sessionId: null,
         scopes: [],
-        authMethod: 'local-jwt',
+        authMethod: 'better-auth',
     };
 }
 
@@ -40,7 +40,7 @@ function makeUserContext(): IAuthContext {
         apiKeyId: null,
         sessionId: null,
         scopes: [],
-        authMethod: 'local-jwt',
+        authMethod: 'better-auth',
     };
 }
 

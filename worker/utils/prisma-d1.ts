@@ -6,7 +6,7 @@
  *
  * Usage:
  *   const prisma = getPrismaD1(env.DB);
- *   const user = await prisma.localAuthUser.findUnique({ where: { identifier } });
+ *   const record = await prisma.deploymentHistory.findFirst();
  *
  * The factory caches one client per D1 binding reference so repeated calls
  * within the same Worker request reuse the same instance (no extra overhead).

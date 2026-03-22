@@ -27,8 +27,7 @@
  * When switching to Clerk, configure these same requirements in the Clerk
  * dashboard under "Roles & Permissions" — no code changes needed here.
  *
- * @see worker/utils/local-auth-roles.ts — role → tier mapping
- * @see worker/types.ts                  — UserTier enum and TIER_REGISTRY
+ * @see worker/types.ts — UserTier enum and TIER_REGISTRY
  */
 
 import { type IAuthContext, isTierSufficient, TIER_REGISTRY, UserTier } from '../types.ts';
@@ -86,8 +85,6 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/health', { minTier: UserTier.Anonymous, description: 'Health check' }],
     ['/health/*', { minTier: UserTier.Anonymous, description: 'Health sub-endpoints' }],
     ['/metrics', { minTier: UserTier.Anonymous, description: 'Public aggregate metrics' }],
-    ['/auth/signup', { minTier: UserTier.Anonymous, description: 'Register new account' }],
-    ['/auth/login', { minTier: UserTier.Anonymous, description: 'Authenticate' }],
     // Clerk webhook uses SVIX signature — not a user JWT
     ['/webhooks/*', { minTier: UserTier.Anonymous, description: 'Webhook receivers (self-authenticated)' }],
     // API documentation — publicly readable
@@ -104,11 +101,6 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/validate', { minTier: UserTier.Free, description: 'Validate filter rules' }],
     ['/validate-rule', { minTier: UserTier.Free, description: 'Validate single rule' }],
     ['/ws/compile', { minTier: UserTier.Free, description: 'WebSocket compile (Free+)' }],
-    // User identity & settings
-    ['/auth/me', { minTier: UserTier.Free, description: 'Current user profile' }],
-    ['/auth/change-password', { minTier: UserTier.Free, description: 'Update password' }],
-    ['/auth/profile', { minTier: UserTier.Free, description: 'Update profile' }],
-    ['/auth/bootstrap-admin', { minTier: UserTier.Free, description: 'One-time admin bootstrap (email-gated)' }],
     // API keys (user-owned)
     ['/keys', { minTier: UserTier.Free, description: 'API key management' }],
     ['/keys/*', { minTier: UserTier.Free, description: 'API key operations' }],
@@ -141,8 +133,8 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/admin/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin operations (catch-all)' }],
     // Explicit entries (same tier — kept for documentation clarity)
     ['/admin/auth/config', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Auth configuration inspector' }],
-    ['/admin/local-users', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List local auth users' }],
-    ['/admin/local-users/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Local user management (update tier/role)' }],
+    ['/admin/users', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List users' }],
+    ['/admin/users/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'User management (update tier/role, ban/unban)' }],
     ['/admin/usage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Per-user API usage statistics' }],
     ['/admin/storage', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin panel' }],
     ['/admin/storage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin operations' }],

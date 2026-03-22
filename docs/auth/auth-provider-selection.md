@@ -1,6 +1,6 @@
-# Auth Provider Selection: Local JWT Bridge vs. Clerk
+# Auth Provider Selection: Better Auth vs. Clerk
 
-> **TL;DR** — The auth provider (local JWT or Clerk) is determined entirely by environment
+> **TL;DR** — The auth provider (Better Auth or Clerk) is determined entirely by environment
 > variables. No code changes are required to switch between them.
 
 ## Overview
@@ -9,9 +9,9 @@ The system has two fully operational auth providers that coexist in the codebase
 
 | Provider | Active when | Used by |
 |---|---|---|
-| `LocalJwtAuthProvider` | `CLERK_JWKS_URL` is **absent** | Worker (back-end) |
+| `BetterAuthProvider` | `CLERK_JWKS_URL` is **absent** and `BETTER_AUTH_SECRET` is **set** | Worker (back-end) |
 | `ClerkAuthProvider` | `CLERK_JWKS_URL` is **set** | Worker (back-end) |
-| Local auth form (`LocalAuthService`) | `CLERK_PUBLISHABLE_KEY` returns **null** from `/api/clerk-config` | Angular frontend |
+| Better Auth form (`BetterAuthService`) | `CLERK_PUBLISHABLE_KEY` returns **null** from `/api/clerk-config` | Angular frontend |
 | Clerk hosted UI (`ClerkService`) | `CLERK_PUBLISHABLE_KEY` returns a **real key** from `/api/clerk-config` | Angular frontend |
 
 Both halves (Worker + frontend) switch independently based on their respective env vars, but they
@@ -23,16 +23,20 @@ should always be set or unset together for a consistent experience.
 
 ### Worker (back-end)
 
-In `worker/worker.ts`, the provider is selected once per request before the auth middleware runs:
+In `worker/hono-app.ts`, the provider is selected once per request before the auth middleware runs:
 
 ```typescript
-const authProvider = env.CLERK_JWKS_URL
-    ? new ClerkAuthProvider(env)      // ← production: verifies Clerk JWTs via JWKS
-    : new LocalJwtAuthProvider(env);  // ← bridge: verifies HS256 JWTs from /auth/login
+const authProvider = c.env.CLERK_JWKS_URL
+    ? new ClerkAuthProvider(c.env)      // ← production: verifies Clerk JWTs via JWKS
+    : new BetterAuthProvider(c.env);    // ← Better Auth: verifies sessions via D1
 ```
 
-`CLERK_JWKS_URL` is checked — not `CLERK_PUBLISHABLE_KEY`. Setting only one of the two will
-produce a mismatched state (see [Troubleshooting](#troubleshooting)).
+Clerk takes priority when `CLERK_JWKS_URL` is set. Otherwise, Better Auth is used (requires
+`BETTER_AUTH_SECRET` and a D1 database binding `DB`).
+
+Better Auth also registers a catch-all route handler at `/api/auth/*` that handles sign-up,
+sign-in, sign-out, and session management endpoints. This route is mounted **before** the unified
+auth middleware so that Better Auth can manage its own session/cookie flow.
 
 ### Frontend (Angular)
 
@@ -46,71 +50,54 @@ const clerkConfig = await firstValueFrom(
 await clerkService.initialize(clerkConfig.publishableKey ?? '');
 ```
 
-The Worker endpoint (`/api/clerk-config`) returns:
+When Clerk is not available, `AuthFacadeService` delegates to `BetterAuthService`, which
+communicates with the Better Auth endpoints at `/api/auth/*` using cookies and bearer tokens.
 
-```json
-{ "publishableKey": "pk_live_..." }   // Clerk active
-{ "publishableKey": null }            // local auth active
-```
-
-`ClerkService.initialize()` sets `_isAvailable` to `true` **only** when a non-empty publishable
-key is provided and the Clerk SDK loads successfully. When the key is empty or missing,
-`isAvailable()` stays `false` and `isLoaded()` is set to `true` so the UI doesn't spin forever.
-
-`AuthFacadeService` exposes a single computed signal that all components use:
+`AuthFacadeService` exposes computed signals that all components use:
 
 ```typescript
 readonly useClerk = computed(() => this.clerk.isAvailable());
+readonly useBetterAuth = computed(() => this.clerk.isLoaded() && !this.clerk.isAvailable());
 ```
 
 ### Sign-up / Sign-in page behavior
 
-`SignUpComponent` (and `SignInComponent`) branch on this signal:
+`SignUpComponent` (and `SignInComponent`) branch on the `useClerk()` signal:
 
 ```html
 @if (auth.useClerk()) {
     <!-- Clerk branch: mounts the hosted Clerk sign-up widget -->
     <div #signUpContainer class="clerk-container"></div>
 } @else {
-    <!-- Local auth branch: reactive registration form hitting POST /auth/signup -->
+    <!-- Better Auth branch: reactive registration form hitting POST /api/auth/sign-up/email -->
     <div class="local-auth-card">...</div>
 }
 ```
-
-**If `/sign-up` is showing the Clerk widget**, it means `CLERK_PUBLISHABLE_KEY` is set in the
-Worker environment and `/api/clerk-config` is returning a real key. This is correct, expected
-behavior — not a bug.
 
 ---
 
 ## Switching Between Providers
 
-### Use local auth (bridge mode) — Clerk is not yet configured
+### Use Better Auth — Clerk is not configured
 
-Ensure **both** variables are absent or empty:
-
-```toml
-# wrangler.toml [vars]
-# CLERK_PUBLISHABLE_KEY =   ← omit entirely, or set to empty string
-# CLERK_JWKS_URL =          ← omit entirely
-```
-
-For local development, ensure `.dev.vars` does **not** contain these keys (or sets them to empty):
+Ensure Clerk variables are absent or empty, and Better Auth secret is set:
 
 ```ini
 # .dev.vars
-CLERK_PUBLISHABLE_KEY=
+BETTER_AUTH_SECRET=your-secret-at-least-32-characters-long
+# CLERK_PUBLISHABLE_KEY not set
 # CLERK_JWKS_URL not set
 ```
 
 Result:
 - `/api/clerk-config` → `{ "publishableKey": null }`
-- Frontend: `useClerk()` = `false` → local auth form shown at `/sign-in` and `/sign-up`
-- Worker: `LocalJwtAuthProvider` used → verifies HS256 JWTs from `POST /auth/login`
+- Frontend: `useClerk()` = `false`, `useBetterAuth()` = `true` → Better Auth form shown
+- Worker: `BetterAuthProvider` used → verifies sessions via D1
+- Better Auth endpoints active: `/api/auth/sign-up/email`, `/api/auth/sign-in/email`, etc.
 
 ### Use Clerk (production mode)
 
-Set **both** variables:
+Set **both** Clerk variables:
 
 ```toml
 # wrangler.toml [vars]
@@ -120,8 +107,9 @@ CLERK_JWKS_URL        = "https://your-instance.clerk.accounts.dev/.well-known/jw
 
 Result:
 - `/api/clerk-config` → `{ "publishableKey": "pk_live_..." }`
-- Frontend: `useClerk()` = `true` → Clerk hosted widget shown at `/sign-in` and `/sign-up`
+- Frontend: `useClerk()` = `true` → Clerk hosted widget shown
 - Worker: `ClerkAuthProvider` used → verifies Clerk JWTs via JWKS
+- Better Auth endpoints return 404
 
 ---
 
@@ -135,42 +123,52 @@ curl https://adblock-compiler.jayson-knight.workers.dev/api/clerk-config
 
 | Response | Meaning |
 |---|---|
-| `{ "publishableKey": "pk_live_..." }` | **Clerk is active.** Frontend will show Clerk UI. Worker will use `ClerkAuthProvider`. |
-| `{ "publishableKey": null }` | **Local auth is active.** Frontend will show the local form. Worker will use `LocalJwtAuthProvider`. |
+| `{ "publishableKey": "pk_live_..." }` | **Clerk is active.** Frontend shows Clerk UI. Worker uses `ClerkAuthProvider`. |
+| `{ "publishableKey": null }` | **Better Auth is active.** Frontend shows the Better Auth form. Worker uses `BetterAuthProvider`. |
+
+For admin-level diagnostics, authenticated admins can hit:
+
+```bash
+curl -H "Authorization: Bearer <token>" https://adblock-compiler.jayson-knight.workers.dev/api/admin/auth/config
+```
+
+This returns the active provider, tier configuration, and route permissions.
 
 ---
 
 ## Troubleshooting
 
-### `/sign-up` shows the Clerk widget but I expected the local form
-
-`CLERK_PUBLISHABLE_KEY` is set in the Worker environment. The system is working correctly —
-Clerk has been activated. To revert to local auth, remove `CLERK_PUBLISHABLE_KEY` from
-`wrangler.toml [vars]` (and `CLERK_JWKS_URL`) and redeploy.
-
 ### Sign-in works but API calls fail with 401
 
 The frontend provider and the Worker provider are mismatched:
 
-- **Frontend on Clerk, Worker on local** — `CLERK_PUBLISHABLE_KEY` is set but `CLERK_JWKS_URL`
-  is not. The frontend issues Clerk JWTs but the Worker tries to verify them as HS256 local
-  tokens. Fix: add `CLERK_JWKS_URL` to `wrangler.toml [vars]`.
+- **Frontend on Clerk, Worker on Better Auth** — `CLERK_PUBLISHABLE_KEY` is set but `CLERK_JWKS_URL`
+  is not. The frontend issues Clerk JWTs but the Worker tries to verify them as Better Auth sessions.
+  Fix: add `CLERK_JWKS_URL` to `wrangler.toml [vars]`.
 
-- **Frontend on local, Worker on Clerk** — `CLERK_JWKS_URL` is set but `CLERK_PUBLISHABLE_KEY`
-  is not (or is empty). The Worker expects Clerk JWTs but the frontend issues local HS256 tokens.
+- **Frontend on Better Auth, Worker on Clerk** — `CLERK_JWKS_URL` is set but `CLERK_PUBLISHABLE_KEY`
+  is not. The Worker expects Clerk JWTs but the frontend issues Better Auth session cookies.
   Fix: add `CLERK_PUBLISHABLE_KEY` to `wrangler.toml [vars]`.
 
 ### The sign-up page shows a spinner and never loads
 
 `/api/clerk-config` failed to respond within the 5-second timeout (network issue). The catch
 block in `app.config.ts` calls `clerkService.markConfigLoadFailed()` and then
-`clerkService.initialize('')`, which sets `isLoaded=true` and `isAvailable=false`. The local
-auth form will be shown. Check Worker logs with `wrangler tail` for errors.
+`clerkService.initialize('')`, which sets `isLoaded=true` and `isAvailable=false`. The Better Auth
+form will be shown. Check Worker logs with `wrangler tail` for errors.
 
-### `ClerkService.configLoadFailed()` is `true` in the browser
+### Better Auth returns "BETTER_AUTH_SECRET not configured"
 
-The `/api/clerk-config` fetch timed out or returned a non-2xx response. This is a transient
-network error, not a misconfiguration. Refreshing the page retries the fetch.
+The `BETTER_AUTH_SECRET` environment variable is missing. Add it to `.dev.vars` for local
+development or set it as a Cloudflare secret:
+
+```bash
+# Local development
+echo 'BETTER_AUTH_SECRET=your-secret-at-least-32-characters-long' >> .dev.vars
+
+# Production
+wrangler secret put BETTER_AUTH_SECRET
+```
 
 ---
 
@@ -178,16 +176,16 @@ network error, not a misconfiguration. Refreshing the page retries the fetch.
 
 | File | Role |
 |---|---|
-| `worker/worker.ts` | Provider selection (`ClerkAuthProvider` vs `LocalJwtAuthProvider`) |
-| `worker/middleware/local-jwt-auth-provider.ts` | Local HS256 JWT verification |
+| `worker/hono-app.ts` | Provider selection (`ClerkAuthProvider` vs `BetterAuthProvider`) |
+| `worker/lib/auth.ts` | Better Auth factory (D1, bearer plugin, additionalFields) |
+| `worker/middleware/better-auth-provider.ts` | Better Auth session verification |
 | `worker/middleware/clerk-auth-provider.ts` | Clerk JWKS JWT verification |
 | `frontend/src/app/app.config.ts` | Fetches `/api/clerk-config`, initializes `ClerkService` |
 | `frontend/src/app/services/clerk.service.ts` | Wraps Clerk SDK; exposes `isAvailable()` signal |
-| `frontend/src/app/services/local-auth.service.ts` | Local JWT storage and `/auth/*` calls |
-| `frontend/src/app/services/auth-facade.service.ts` | Single `useClerk()` signal consumed by all components |
+| `frontend/src/app/services/better-auth.service.ts` | Better Auth session management |
+| `frontend/src/app/services/auth-facade.service.ts` | Single `useClerk()`/`useBetterAuth()` signals consumed by all components |
 | `frontend/src/app/auth/sign-up/sign-up.component.ts` | Branches on `auth.useClerk()` |
 | `frontend/src/app/auth/sign-in/sign-in.component.ts` | Branches on `auth.useClerk()` |
-| `docs/auth/local-jwt-bridge.md` | Full local auth bridge documentation |
 | `docs/auth/clerk-setup.md` | Clerk dashboard setup guide |
 | `docs/auth/configuration.md` | Complete environment variable reference |
 
@@ -195,7 +193,6 @@ network error, not a misconfiguration. Refreshing the page retries the fetch.
 
 ## Related Documentation
 
-- [Local JWT Bridge](local-jwt-bridge.md) — Details on the temporary auth bridge
 - [Configuration Guide](configuration.md) — Full environment variable reference
 - [Clerk + Cloudflare Integration](clerk-cloudflare-integration.md) — Production Clerk setup
 - [Clerk Dashboard Setup](clerk-setup.md) — Step-by-step Clerk configuration

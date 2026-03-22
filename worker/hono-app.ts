@@ -48,7 +48,10 @@ import { checkRateLimitTiered, verifyTurnstileToken } from './middleware/index.t
 import { authenticateRequestUnified } from './middleware/auth.ts';
 import { bodySizeMiddleware, rateLimitMiddleware, requireAuthMiddleware, turnstileMiddleware } from './middleware/hono-middleware.ts';
 import { ClerkAuthProvider } from './middleware/clerk-auth-provider.ts';
-import { LocalJwtAuthProvider } from './middleware/local-jwt-auth-provider.ts';
+import { BetterAuthProvider } from './middleware/better-auth-provider.ts';
+
+// Auth
+import { createAuth } from './lib/auth.ts';
 
 // Utils
 import { generateRequestId } from './utils/index.ts';
@@ -76,8 +79,7 @@ import { handleRulesCreate, handleRulesDelete, handleRulesGet, handleRulesList, 
 import { handleNotify } from './handlers/webhook.ts';
 import { handleClerkWebhook } from './handlers/clerk-webhook.ts';
 import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdateApiKey } from './handlers/api-keys.ts';
-import { handleLocalBootstrapAdmin, handleLocalChangePassword, handleLocalLogin, handleLocalMe, handleLocalSignup, handleLocalUpdateProfile } from './handlers/local-auth.ts';
-import { handleAdminCreateLocalUser, handleAdminDeleteLocalUser, handleAdminGetLocalUser, handleAdminListLocalUsers, handleAdminUpdateLocalUser } from './handlers/admin-users.ts';
+import { handleAdminBanUser, handleAdminDeleteUser, handleAdminGetUser, handleAdminListUsers, handleAdminUnbanUser, handleAdminUpdateUser } from './handlers/admin-users.ts';
 import { handleAdminAuthConfig } from './handlers/auth-config.ts';
 import { handleAdminGetUserUsage } from './handlers/admin-usage.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
@@ -227,6 +229,22 @@ app.use('*', async (c, next) => {
     await next();
 });
 
+// ── 1b. Better Auth route handler ──────────────────────────────────────────────
+// Better Auth handles its own routes (sign-up, sign-in, sign-out, get-session,
+// etc.) — these must bypass unified auth because they CREATE sessions rather
+// than verifying existing ones.
+app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
+    if (!c.env.BETTER_AUTH_SECRET) return c.notFound();
+    if (!c.env.DB) {
+        // Misconfigured deployment: auth DB binding is missing. Fail predictably
+        // instead of allowing createAuth() to throw at runtime with a non-actionable error.
+        return c.json({ error: 'Authentication service is temporarily unavailable' }, 503);
+    }
+    const url = new URL(c.req.url);
+    const auth = createAuth(c.env, url.origin);
+    return auth.handler(c.req.raw);
+});
+
 // ── 2. MCP Agent routing + auth (combined to avoid double-pass) ──────────────
 app.use('*', async (c, next) => {
     // MCP Agent routes: must run before auth
@@ -296,7 +314,7 @@ app.use('*', async (c, next) => {
 
     // Standard unified authentication
     startTime(c, 'auth', 'Authentication');
-    const authProvider = c.env.CLERK_JWKS_URL ? new ClerkAuthProvider(c.env) : new LocalJwtAuthProvider(c.env);
+    const authProvider = c.env.CLERK_JWKS_URL ? new ClerkAuthProvider(c.env) : new BetterAuthProvider(c.env);
     const authResult = await authenticateRequestUnified(c.req.raw, c.env, createPgPool, authProvider);
     endTime(c, 'auth');
     if (authResult.response) return authResult.response;
@@ -420,47 +438,16 @@ routes.use('*', async (c, next) => {
     await next();
 });
 
-// ── Auth routes (local JWT only; 404 when Clerk is active) ───────────────────
-
-routes.post('/auth/signup', (c) => {
-    if (c.env.CLERK_JWKS_URL) return c.json({ success: false, error: 'Not found' }, 404);
-    return handleLocalSignup(c.req.raw, c.env, c.get('analytics'), c.get('ip'));
-});
-
-routes.post('/auth/login', (c) => {
-    if (c.env.CLERK_JWKS_URL) return c.json({ success: false, error: 'Not found' }, 404);
-    return handleLocalLogin(c.req.raw, c.env, c.get('analytics'), c.get('ip'));
-});
-
-routes.get('/auth/me', (c) => {
-    if (c.env.CLERK_JWKS_URL) return c.json({ success: false, error: 'Not found' }, 404);
-    return handleLocalMe(c.req.raw, c.env, c.get('authContext'));
-});
-
-routes.post('/auth/change-password', (c) => {
-    if (c.env.CLERK_JWKS_URL) return c.json({ success: false, error: 'Not found' }, 404);
-    return handleLocalChangePassword(c.req.raw, c.env, c.get('authContext'), c.get('analytics'), c.get('ip'));
-});
-
-routes.post('/auth/bootstrap-admin', (c) => {
-    if (c.env.CLERK_JWKS_URL) return c.json({ success: false, error: 'Not found' }, 404);
-    return handleLocalBootstrapAdmin(c.req.raw, c.env, c.get('authContext'), c.get('analytics'), c.get('ip'));
-});
-
-routes.patch('/auth/profile', (c) => {
-    if (c.env.CLERK_JWKS_URL) return c.json({ success: false, error: 'Not found' }, 404);
-    return handleLocalUpdateProfile(c.req.raw, c.env, c.get('authContext'), c.get('analytics'), c.get('ip'));
-});
-
 // ── Admin routes ──────────────────────────────────────────────────────────────
 
 routes.get('/admin/auth/config', (c) => handleAdminAuthConfig(c.req.raw, c.env, c.get('authContext')));
 
-routes.get('/admin/local-users', (c) => handleAdminListLocalUsers(c.req.raw, c.env, c.get('authContext')));
-routes.post('/admin/local-users', (c) => handleAdminCreateLocalUser(c.req.raw, c.env, c.get('authContext')));
-routes.get('/admin/local-users/:id', (c) => handleAdminGetLocalUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
-routes.patch('/admin/local-users/:id', (c) => handleAdminUpdateLocalUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
-routes.delete('/admin/local-users/:id', (c) => handleAdminDeleteLocalUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
+routes.get('/admin/users', (c) => handleAdminListUsers(c.req.raw, c.env, c.get('authContext')));
+routes.get('/admin/users/:id', (c) => handleAdminGetUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
+routes.patch('/admin/users/:id', (c) => handleAdminUpdateUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
+routes.delete('/admin/users/:id', (c) => handleAdminDeleteUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
+routes.post('/admin/users/:id/ban', (c) => handleAdminBanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
+routes.post('/admin/users/:id/unban', (c) => handleAdminUnbanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')));
 
 routes.get('/admin/usage/:userId', (c) => handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')));
 

@@ -26,7 +26,7 @@ function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
         apiKeyId: null,
         sessionId: 'sess-001',
         scopes: [],
-        authMethod: 'local-jwt',
+        authMethod: 'better-auth',
         ...overrides,
     };
 }

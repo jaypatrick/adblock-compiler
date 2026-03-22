@@ -31,18 +31,11 @@ CLERK_SECRET_KEY=sk_test_...
 # Webhook signing secret (secret — production: `wrangler secret put CLERK_WEBHOOK_SECRET`)
 CLERK_WEBHOOK_SECRET=whsec_...
 
-# ─── Local JWT Auth (pre-Clerk bridge) ───────────────────────────────────────
-# HS256 signing secret for LocalJwtAuthProvider (active when CLERK_JWKS_URL is unset).
-# Generate: openssl rand -base64 32
-# Production: `wrangler secret put JWT_SECRET`
-# MIGRATION: once CLERK_JWKS_URL is set above, this key is no longer used.
-JWT_SECRET=replace-with-openssl-rand-base64-32-output
-
-# ─── Bootstrap Admin ─────────────────────────────────────────────────────────
-# Email of the first admin user. When set, POST /auth/bootstrap-admin promotes
-# the signed-in user matching this email to the 'admin' role.
-# Remove once the first admin is set.
-# INITIAL_ADMIN_EMAIL=you@example.com
+# ─── Better Auth ─────────────────────────────────────────────────────────────
+# Signing secret for Better Auth session tokens (active when CLERK_JWKS_URL is unset).
+# Must be 32+ characters. Generate: openssl rand -base64 32
+# Production: `wrangler secret put BETTER_AUTH_SECRET`
+BETTER_AUTH_SECRET=replace-with-openssl-rand-base64-32-output
 
 # ─── Cloudflare Turnstile ────────────────────────────────────────────────────
 # Site key (non-secret — production value lives in wrangler.toml [vars])

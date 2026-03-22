@@ -12,18 +12,25 @@ import { UsersComponent } from './users.component';
 const EMPTY_USER_RESPONSE = { success: true, users: [], total: 0, limit: 25, offset: 0 };
 
 function makeUser(overrides: Partial<{
-    id: string; identifier: string; identifier_type: 'email' | 'phone';
-    role: string; tier: string; api_disabled: number; created_at: string; updated_at: string;
+    id: string; email: string; name: string | null;
+    emailVerified: boolean; image: string | null;
+    role: string; tier: string; banned: boolean;
+    banReason: string | null; banExpires: string | null;
+    createdAt: string; updatedAt: string;
 }> = {}) {
     return {
         id: 'user-1',
-        identifier: 'test@example.com',
-        identifier_type: 'email' as const,
+        email: 'test@example.com',
+        name: 'Test User',
+        emailVerified: true,
+        image: null,
         role: 'user',
         tier: 'free',
-        api_disabled: 0,
-        created_at: '2024-01-01T00:00:00Z',
-        updated_at: '2024-01-01T00:00:00Z',
+        banned: false,
+        banReason: null,
+        banExpires: null,
+        createdAt: '2024-01-01T00:00:00Z',
+        updatedAt: '2024-01-01T00:00:00Z',
         ...overrides,
     };
 }
@@ -85,7 +92,7 @@ describe('UsersComponent', () => {
             const user = makeUser();
             component.loadData();
 
-            const req = httpTesting.expectOne(r => r.url.includes('/admin/local-users'));
+            const req = httpTesting.expectOne(r => r.url.includes('/api/admin/users'));
             expect(req.request.method).toBe('GET');
             req.flush({ success: true, users: [user], total: 1, limit: 25, offset: 0 });
 
@@ -97,13 +104,13 @@ describe('UsersComponent', () => {
         it('sets loading true while request is in-flight', () => {
             component.loadData();
             expect(component.loading()).toBe(true);
-            httpTesting.expectOne(r => r.url.includes('/admin/local-users')).flush(EMPTY_USER_RESPONSE);
+            httpTesting.expectOne(r => r.url.includes('/api/admin/users')).flush(EMPTY_USER_RESPONSE);
         });
 
         it('clears users and totalCount on HTTP error', () => {
             component.loadData();
             httpTesting
-                .expectOne(r => r.url.includes('/admin/local-users'))
+                .expectOne(r => r.url.includes('/api/admin/users'))
                 .flush('Internal Server Error', { status: 500, statusText: 'Server Error' });
 
             expect(component.users()).toEqual([]);
@@ -117,7 +124,7 @@ describe('UsersComponent', () => {
             component.filterRole = 'admin';
             component.loadData();
 
-            const req = httpTesting.expectOne(r => r.url.includes('/admin/local-users'));
+            const req = httpTesting.expectOne(r => r.url.includes('/api/admin/users'));
             expect(req.request.params.get('search')).toBe('alice');
             expect(req.request.params.get('tier')).toBe('pro');
             expect(req.request.params.get('role')).toBe('admin');
@@ -126,7 +133,7 @@ describe('UsersComponent', () => {
 
         it('omits optional params when filters are blank', () => {
             component.loadData();
-            const req = httpTesting.expectOne(r => r.url.includes('/admin/local-users'));
+            const req = httpTesting.expectOne(r => r.url.includes('/api/admin/users'));
             expect(req.request.params.has('search')).toBe(false);
             expect(req.request.params.has('tier')).toBe(false);
             expect(req.request.params.has('role')).toBe(false);
@@ -136,7 +143,7 @@ describe('UsersComponent', () => {
         it('sends correct offset for non-zero pageIndex', () => {
             component.pageIndex.set(2);
             component.loadData();
-            const req = httpTesting.expectOne(r => r.url.includes('/admin/local-users'));
+            const req = httpTesting.expectOne(r => r.url.includes('/api/admin/users'));
             expect(req.request.params.get('offset')).toBe('50');
             req.flush(EMPTY_USER_RESPONSE);
         });
@@ -152,7 +159,7 @@ describe('UsersComponent', () => {
             component.applyFilters();
 
             expect(component.pageIndex()).toBe(0);
-            httpTesting.expectOne(r => r.url.includes('/admin/local-users')).flush(EMPTY_USER_RESPONSE);
+            httpTesting.expectOne(r => r.url.includes('/api/admin/users')).flush(EMPTY_USER_RESPONSE);
         });
     });
 
@@ -174,7 +181,7 @@ describe('UsersComponent', () => {
             expect(component.filterRole).toBe('');
             expect(component.pageIndex()).toBe(0);
 
-            const req = httpTesting.expectOne(r => r.url.includes('/admin/local-users'));
+            const req = httpTesting.expectOne(r => r.url.includes('/api/admin/users'));
             expect(req.request.params.has('search')).toBe(false);
             req.flush(EMPTY_USER_RESPONSE);
         });
@@ -188,7 +195,7 @@ describe('UsersComponent', () => {
         it('updates pageIndex and calls loadData()', () => {
             component.onPage({ pageIndex: 2, pageSize: 25, length: 100 });
             expect(component.pageIndex()).toBe(2);
-            httpTesting.expectOne(r => r.url.includes('/admin/local-users')).flush(EMPTY_USER_RESPONSE);
+            httpTesting.expectOne(r => r.url.includes('/api/admin/users')).flush(EMPTY_USER_RESPONSE);
         });
     });
 
@@ -244,7 +251,7 @@ describe('UsersComponent', () => {
     describe('saveTier()', () => {
         it('does nothing when no tierOverlayUser is set', () => {
             component.saveTier();
-            httpTesting.expectNone(r => r.url.includes('/admin/local-users'));
+            httpTesting.expectNone(r => r.url.includes('/api/admin/users'));
         });
 
         it('PATCHes the correct endpoint with tier payload on success', () => {
@@ -256,13 +263,13 @@ describe('UsersComponent', () => {
             expect(component.saving()).toBe(true);
 
             const patchReq = httpTesting.expectOne(r =>
-                r.url.includes('/admin/local-users/u-42') && r.method === 'PATCH',
+                r.url.includes('/api/admin/users/u-42') && r.method === 'PATCH',
             );
             expect(patchReq.request.body).toEqual({ tier: 'pro' });
             patchReq.flush({ success: true });
 
             // saveTier calls loadData() after success
-            httpTesting.match(r => r.url.includes('/admin/local-users')).forEach(r =>
+            httpTesting.match(r => r.url.includes('/api/admin/users')).forEach(r =>
                 r.flush(EMPTY_USER_RESPONSE),
             );
 
@@ -278,7 +285,7 @@ describe('UsersComponent', () => {
             component.saveTier();
 
             httpTesting
-                .expectOne(r => r.url.includes('/admin/local-users/u-99') && r.method === 'PATCH')
+                .expectOne(r => r.url.includes('/api/admin/users/u-99') && r.method === 'PATCH')
                 .flush('Forbidden', { status: 403, statusText: 'Forbidden' });
 
             expect(component.saving()).toBe(false);
@@ -294,7 +301,7 @@ describe('UsersComponent', () => {
     describe('saveRole()', () => {
         it('does nothing when no roleOverlayUser is set', () => {
             component.saveRole();
-            httpTesting.expectNone(r => r.url.includes('/admin/local-users'));
+            httpTesting.expectNone(r => r.url.includes('/api/admin/users'));
         });
 
         it('PATCHes with role payload and reloads on success', () => {
@@ -306,12 +313,12 @@ describe('UsersComponent', () => {
             expect(component.saving()).toBe(true);
 
             const patchReq = httpTesting.expectOne(r =>
-                r.url.includes('/admin/local-users/u-7') && r.method === 'PATCH',
+                r.url.includes('/api/admin/users/u-7') && r.method === 'PATCH',
             );
             expect(patchReq.request.body).toEqual({ role: 'admin' });
             patchReq.flush({ success: true });
 
-            httpTesting.match(r => r.url.includes('/admin/local-users')).forEach(r =>
+            httpTesting.match(r => r.url.includes('/api/admin/users')).forEach(r =>
                 r.flush(EMPTY_USER_RESPONSE),
             );
 
@@ -327,7 +334,7 @@ describe('UsersComponent', () => {
             component.saveRole();
 
             httpTesting
-                .expectOne(r => r.url.includes('/admin/local-users/u-8') && r.method === 'PATCH')
+                .expectOne(r => r.url.includes('/api/admin/users/u-8') && r.method === 'PATCH')
                 .flush('Server Error', { status: 500, statusText: 'Server Error' });
 
             expect(component.saving()).toBe(false);

@@ -125,7 +125,8 @@ export interface IAuthContext {
     readonly apiKeyId: string | null;
     readonly sessionId: string | null;
     readonly scopes: readonly string[];
-    readonly authMethod: 'clerk-jwt' | 'api-key' | 'anonymous' | 'local-jwt';
+    /** Authentication method used for this request */
+    readonly authMethod: 'clerk-jwt' | 'api-key' | 'anonymous' | 'better-auth';
 }
 
 export interface IClerkClaims {
@@ -276,11 +277,14 @@ export interface Env {
     CLERK_JWKS_URL?: string;
     // Clerk webhook signing secret for Svix signature verification — secret.
     CLERK_WEBHOOK_SECRET?: string;
-    // --- Local JWT Auth (pre-Clerk bridge) ---
-    // HS256 signing secret. Migration: set CLERK_JWKS_URL to switch providers, then remove JWT_SECRET. Set via `wrangler secret put JWT_SECRET`.
-    JWT_SECRET?: string;
-    // First admin user email for POST /auth/bootstrap-admin. Remove after first admin is set.
-    INITIAL_ADMIN_EMAIL?: string;
+    // --- Better Auth ---
+    /**
+     * Signing secret for Better Auth session tokens.
+     * Must be a 32+ character random string.
+     * Local dev:  add `BETTER_AUTH_SECRET=<random-string>` to .dev.vars
+     * Production: `wrangler secret put BETTER_AUTH_SECRET`
+     */
+    BETTER_AUTH_SECRET?: string;
     // --- Cloudflare Access (admin route protection) ---
     CF_ACCESS_TEAM_DOMAIN?: string;
     CF_ACCESS_AUD?: string;

@@ -4,9 +4,8 @@
  * Covers:
  *   - 401 for anonymous/unauthenticated callers
  *   - 403 for non-admin tiers or non-admin roles
- *   - 200 with provider=local-jwt when CLERK_JWKS_URL is absent
+ *   - 200 with provider=better-auth when CLERK_JWKS_URL is absent
  *   - 200 with provider=clerk when CLERK_JWKS_URL is set
- *   - Response shape: non-empty roles array
  *   - Response shape: tiers array sorted by order
  *   - Response shape: non-empty routes array
  *
@@ -27,7 +26,7 @@ function makeAdminContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
         apiKeyId: null,
         sessionId: null,
         scopes: [],
-        authMethod: 'local-jwt',
+        authMethod: 'better-auth',
         ...overrides,
     };
 }
@@ -52,7 +51,7 @@ Deno.test('handleAdminAuthConfig - returns 403 for free-tier user', async () => 
         apiKeyId: null,
         sessionId: null,
         scopes: [],
-        authMethod: 'local-jwt',
+        authMethod: 'better-auth',
     };
     const res = await handleAdminAuthConfig(req, makeEnv(), ctx);
     assertEquals(res.status, 403);
@@ -67,12 +66,12 @@ Deno.test('handleAdminAuthConfig - returns 403 for admin-tier with non-admin rol
 // Happy-path: provider detection
 // ============================================================================
 
-Deno.test('handleAdminAuthConfig - returns 200 with provider=local-jwt when no CLERK_JWKS_URL', async () => {
+Deno.test('handleAdminAuthConfig - returns 200 with provider=better-auth when no CLERK_JWKS_URL', async () => {
     const res = await handleAdminAuthConfig(req, makeEnv(), makeAdminContext());
     assertEquals(res.status, 200);
     const body = await res.json() as { success: boolean; provider: string };
     assertEquals(body.success, true);
-    assertEquals(body.provider, 'local-jwt');
+    assertEquals(body.provider, 'better-auth');
 });
 
 Deno.test('handleAdminAuthConfig - returns 200 with provider=clerk when CLERK_JWKS_URL is set', async () => {
@@ -86,13 +85,6 @@ Deno.test('handleAdminAuthConfig - returns 200 with provider=clerk when CLERK_JW
 // ============================================================================
 // Response shape
 // ============================================================================
-
-Deno.test('handleAdminAuthConfig - response includes non-empty roles array', async () => {
-    const res = await handleAdminAuthConfig(req, makeEnv(), makeAdminContext());
-    const body = await res.json() as { roles: { role: string }[] };
-    assertExists(body.roles);
-    assertEquals(body.roles.length > 0, true);
-});
 
 Deno.test('handleAdminAuthConfig - tiers array is sorted by order ascending', async () => {
     const res = await handleAdminAuthConfig(req, makeEnv(), makeAdminContext());

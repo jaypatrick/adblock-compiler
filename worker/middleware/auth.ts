@@ -211,16 +211,25 @@ function isJwtToken(token: string): boolean {
  *
  * The chain tries, **in order**:
  *
- * 1. **JWT via auth provider** — If the Bearer token is a JWT (contains dots,
- *    not an `abc_` key) it is verified by the configured {@link IAuthProvider}.
- *    Defaults to {@link ClerkAuthProvider} when no provider is supplied.
+ * 1. **API key (fast path, always checked first)** — If the Bearer token
+ *    starts with `abc_` it is hashed and looked up in PostgreSQL via
+ *    Hyperdrive. The authenticated user inherits their actual tier from the
+ *    `users` table (not hardcoded).
  *
- * 2. **API key** — If the Bearer token starts with `abc_` it is hashed and
- *    looked up in PostgreSQL via Hyperdrive. The authenticated user inherits
- *    their actual tier from the `users` table (not hardcoded).
+ * 2. **Custom auth provider (cookie / session-token)** — When an explicit
+ *    `authProvider` is supplied (e.g., {@link BetterAuthProvider}), it is
+ *    consulted for *every* non-API-key request, including requests with no
+ *    Bearer token at all (to support cookie-based sessions). The provider
+ *    receives the full request object and can inspect both `Authorization`
+ *    headers and `Cookie` headers.
  *
- * 3. **Anonymous** — When no credentials are present the request proceeds as
- *    {@link ANONYMOUS_AUTH_CONTEXT} (10 req/min rate limit, basic features).
+ * 3. **JWT via Clerk** — If the Bearer token is a JWT (three dot-separated
+ *    segments, not an `abc_` key) it is verified against the Clerk JWKS.
+ *    Only applies when no custom `authProvider` is supplied.
+ *
+ * 4. **Anonymous** — When no credentials are present (and no custom provider
+ *    is configured) the request proceeds as {@link ANONYMOUS_AUTH_CONTEXT}
+ *    (10 req/min rate limit, basic features).
  *
  * The function **never throws**. Auth failures are signalled via the optional
  * `response` field on the result — callers should check for a `response` and
@@ -229,7 +238,7 @@ function isJwtToken(token: string): boolean {
  * @param request      - Incoming HTTP request
  * @param env          - Worker env bindings (must include Clerk + optional Hyperdrive vars)
  * @param createPool   - Optional pg Pool factory for API key lookups
- * @param authProvider - Optional pluggable auth provider (defaults to Clerk)
+ * @param authProvider - Optional pluggable auth provider (defaults to Clerk for JWT tokens)
  * @returns A {@link IAuthMiddlewareResult} with the resolved auth context
  */
 export async function authenticateRequestUnified(
@@ -240,13 +249,8 @@ export async function authenticateRequestUnified(
 ): Promise<IAuthMiddlewareResult> {
     const token = extractBearerToken(request);
 
-    // --- No token → anonymous ---
-    if (!token) {
-        return { context: { ...ANONYMOUS_AUTH_CONTEXT } };
-    }
-
-    // --- API key path ---
-    if (isApiKeyToken(token)) {
+    // --- API key path (always checked first regardless of provider) ---
+    if (token && isApiKeyToken(token)) {
         if (!env.HYPERDRIVE || !createPool) {
             return {
                 context: { ...ANONYMOUS_AUTH_CONTEXT },
@@ -288,9 +292,104 @@ export async function authenticateRequestUnified(
         };
     }
 
-    // --- JWT path (via pluggable auth provider) ---
+    // --- Custom auth provider path (Better Auth and others) ---
+    // When an explicit authProvider is supplied, delegate all non-API-key requests to it.
+    // This covers:
+    //   - No Bearer token: provider can check session cookies (e.g., Better Auth cookies)
+    //   - Non-JWT Bearer token: provider handles session-ID tokens from the bearer plugin
+    //   - JWT Bearer token: provider handles standard JWT verification
+    // The provider receives the full request so it can inspect Authorization and Cookie headers.
+    if (authProvider) {
+        const providerResult = await authProvider.verifyToken(request);
+
+        if (providerResult.valid && providerResult.providerUserId) {
+            // Attempt to resolve the internal DB userId from the provider's user ID
+            // when that ID is known to be a Clerk user id.
+            //
+            // When is `resolvedUserId` null vs. populated?
+            //   - Better Auth: `providerUserId` is the user's D1 row id. The PostgreSQL
+            //     users table (accessed via HYPERDRIVE) has no row for it, so we skip
+            //     the Hyperdrive lookup entirely. This is EXPECTED — `clerkUserId`
+            //     carries the BA user id, and downstream handlers use that field for
+            //     Better Auth user lookups.
+            //   - Clerk-backed custom providers: `providerUserId` is the Clerk user id.
+            //     The PostgreSQL users table has a matching `clerk_user_id` row, so
+            //     `resolvedUserId` is populated with the internal `users.id`.
+            //   - No HYPERDRIVE / no createPool: resolution is skipped; `resolvedUserId`
+            //     stays null for all providers (acceptable — handlers that need it must
+            //     check and handle null themselves).
+            let resolvedUserId: string | null = null;
+            if (env.HYPERDRIVE && createPool && authProvider.authMethod !== 'better-auth') {
+                try {
+                    resolvedUserId = await resolveUserIdByClerkId(
+                        providerResult.providerUserId,
+                        env.HYPERDRIVE,
+                        createPool,
+                    );
+                } catch (error) {
+                    // Log detailed error server-side without leaking internals to the client
+                    // deno-lint-ignore no-console
+                    console.error('Authentication user lookup failed during resolveUserIdByClerkId:', error);
+                    return {
+                        context: { ...ANONYMOUS_AUTH_CONTEXT },
+                        response: new Response(
+                            JSON.stringify({ error: 'Authentication user lookup failed' }),
+                            { status: 503, headers: { 'Content-Type': 'application/json' } },
+                        ),
+                    };
+                }
+            }
+
+            const context: IAuthContext = {
+                userId: resolvedUserId,
+                clerkUserId: providerResult.providerUserId,
+                tier: providerResult.tier ?? UserTier.Free,
+                role: providerResult.role ?? 'user',
+                apiKeyId: null,
+                sessionId: providerResult.sessionId ?? null,
+                scopes: [],
+                authMethod: authProvider.authMethod,
+            };
+
+            // ZTA: run all registered token validators (tamper detection, revocation, etc.)
+            // Pass the token (or empty string for cookie-based auth) to the validators.
+            const validationResult = await runTokenValidators(token ?? '', context, env);
+            if (!validationResult.valid) {
+                return {
+                    context: { ...ANONYMOUS_AUTH_CONTEXT },
+                    response: new Response(
+                        JSON.stringify({ success: false, error: validationResult.error ?? 'Token validation failed' }),
+                        { status: 401, headers: { 'Content-Type': 'application/json' } },
+                    ),
+                };
+            }
+
+            return { context };
+        }
+
+        // Provider found no valid session. If a Bearer token was present and the
+        // provider rejected it, return 401. If no token, treat as anonymous.
+        if (token && providerResult.error) {
+            return {
+                context: { ...ANONYMOUS_AUTH_CONTEXT },
+                response: new Response(
+                    JSON.stringify({ success: false, error: 'Authentication failed' }),
+                    { status: 401, headers: { 'Content-Type': 'application/json' } },
+                ),
+            };
+        }
+
+        return { context: { ...ANONYMOUS_AUTH_CONTEXT } };
+    }
+
+    // --- No token → anonymous (default Clerk mode, no custom provider) ---
+    if (!token) {
+        return { context: { ...ANONYMOUS_AUTH_CONTEXT } };
+    }
+
+    // --- JWT path (Clerk, default when no custom authProvider is supplied) ---
     if (isJwtToken(token)) {
-        const provider = authProvider ?? new ClerkAuthProvider(env);
+        const provider = new ClerkAuthProvider(env);
         const providerResult = await provider.verifyToken(request);
 
         if (providerResult.valid && providerResult.providerUserId) {
@@ -349,7 +448,7 @@ export async function authenticateRequestUnified(
         };
     }
 
-    // --- Unrecognised token format ---
+    // --- Unrecognised token format (Clerk mode only; custom providers handle all formats above) ---
     return {
         context: { ...ANONYMOUS_AUTH_CONTEXT },
         response: new Response(
@@ -478,10 +577,10 @@ export function requireTier(context: IAuthContext, minTier: UserTier): Response 
  * ```
  */
 export function requireScope(context: IAuthContext, ...requiredScopes: string[]): Response | null {
-    // JWT-authenticated users (Clerk session or local JWT bridge) bypass scope
+    // JWT/session-authenticated users (Clerk or Better Auth) bypass scope
     // checks — they own the account and are limited only by tier, not by
     // API-key scopes.
-    if (context.authMethod === 'clerk-jwt' || context.authMethod === 'local-jwt') {
+    if (context.authMethod === 'clerk-jwt' || context.authMethod === 'better-auth') {
         return null;
     }
 

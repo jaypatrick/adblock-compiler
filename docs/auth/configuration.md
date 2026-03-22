@@ -13,14 +13,14 @@ Complete reference for all environment variables and configuration needed to run
 | `CLERK_JWKS_URL`        | **Yes**  | Derived from Clerk Frontend API URL                    | JWKS endpoint for JWT verification. Format: `https://<instance>.clerk.accounts.dev/.well-known/jwks.json` |
 | `CLERK_WEBHOOK_SECRET`  | **Yes**  | Clerk Dashboard → Webhooks → Endpoint → Signing Secret | Svix signing secret for webhook signature verification. Starts with `whsec_`.                             |
 
-### Local JWT Auth (Required when Clerk is not configured)
+### Better Auth (Required when Clerk is not configured)
 
-When `CLERK_JWKS_URL` is **not** set, the Worker uses a local HS256 JWT provider. All `POST /auth/*` endpoints become active.
+When `CLERK_JWKS_URL` is **not** set, the Worker uses Better Auth with D1. All `/api/auth/*` endpoints become active.
 
-| Variable               | Required | Source                              | Description                                                                                                                                  |
-| ---------------------- | -------- | ----------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| `JWT_SECRET`           | **Yes**  | Self-generated (`openssl rand -base64 32`) | HS256 signing secret for `LocalJwtAuthProvider`. Issued JWTs are valid for 1 hour (ZTA). Never reuse across environments.              |
-| `INITIAL_ADMIN_EMAIL`  | Optional | Self-configured                     | Email address of the designated first admin. When set, `POST /auth/bootstrap-admin` promotes the matching signed-in user to `admin` role. Unset this variable once the first admin is established. |
+| Variable               | Required | Source                                     | Description                                                                                                                                                 |
+| ---------------------- | -------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `BETTER_AUTH_SECRET`   | **Yes**  | Self-generated (`openssl rand -base64 32`) | Signing secret for Better Auth sessions. Must be at least 32 characters. Never reuse across environments.                                                   |
+| `DB`                   | **Yes**  | Cloudflare D1 binding in `wrangler.toml`   | D1 database binding. Better Auth stores users, sessions, and accounts in D1 tables (`user`, `session`, `account`, `verification`). Created automatically.   |
 
 ### Cloudflare Access (Optional — Defense-in-Depth)
 
