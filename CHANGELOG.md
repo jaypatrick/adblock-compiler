@@ -124,6 +124,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.71.1] - 2026-03-22
+
+### Added### Fixed
+
+- apply deno fmt to prisma.config.ts (move || to end of line)
+- apply review suggestions to prisma.config.ts and prisma/prisma.config.ts
+- add node:process import to prisma.config.ts to fix deno lint error
+- move prisma.config.ts to project root to fix database migration CI failure
+
+
 ## [0.71.0] - 2026-03-22
 
 ### Added- replace local JWT auth with Better Auth (#1241)
