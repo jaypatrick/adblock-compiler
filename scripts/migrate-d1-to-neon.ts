@@ -81,6 +81,14 @@ export interface TableDefinition {
 /**
  * All tables to migrate, in dependency order (parents before children).
  * Each entry declares the D1 source query, PG target, and optional transform.
+ *
+ * NOTE: The following Prisma models are intentionally EXCLUDED because they
+ * have no D1 counterpart — they are NEW tables introduced with Neon/Better Auth:
+ *   - account        (Better Auth OAuth provider accounts)
+ *   - verification   (Better Auth email verification tokens)
+ *   - filter_list_versions    (new versioning system)
+ *   - source_health_snapshots (new health monitoring)
+ *   - source_change_events    (new audit trail)
  */
 export const TABLE_DEFINITIONS: TableDefinition[] = [
     {

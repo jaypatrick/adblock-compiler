@@ -294,6 +294,13 @@ export interface Env {
      */
     BETTER_AUTH_SECRET?: string;
     /**
+     * Public base URL for Better Auth callbacks and redirects.
+     * Defaults to the request origin if not set.
+     *
+     * @example `"https://adblock-compiler.example.com"`
+     */
+    BETTER_AUTH_URL?: string;
+    /**
      * When `'true'`, disables the Clerk JWT fallback entirely.
      * Set this after all clients have migrated to Better Auth.
      *

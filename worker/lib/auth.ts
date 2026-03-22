@@ -53,7 +53,7 @@ export function createAuth(env: Env, baseURL?: string) {
         database: prismaAdapter(prisma, { provider: 'postgresql' }),
         secret: env.BETTER_AUTH_SECRET!,
         basePath: '/api/auth',
-        baseURL,
+        baseURL: env.BETTER_AUTH_URL || baseURL,
 
         emailAndPassword: {
             enabled: true,
