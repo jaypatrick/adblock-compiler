@@ -50,7 +50,7 @@ To activate in a future release:
    wrangler secret put GOOGLE_CLIENT_ID
    wrangler secret put GOOGLE_CLIENT_SECRET
    ```
-4. Uncomment the Google block in `worker/lib/auth.ts` (`buildSocialProviders` function).
+4. Uncomment the Google block in `worker/lib/auth.ts` where the `socialProviders` object is built (the `google: { ... }` entry inside the conditional block), and set `google: false` to `true` in `worker/handlers/auth-providers.ts`.
 
 ---
 

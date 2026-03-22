@@ -408,7 +408,7 @@ export class BetterAuthService {
     /** Fetch supported auth providers from the server and update the providers signal. */
     private async fetchProviders(): Promise<void> {
         try {
-            const res = await fetch('/api/auth/providers');
+            const res = await fetch(`${this.apiBaseUrl}/auth/providers`);
             if (res.ok) {
                 const raw = await res.json() as { data?: AuthProvidersConfig } | AuthProvidersConfig;
                 const config = (raw as { data?: AuthProvidersConfig }).data ?? (raw as AuthProvidersConfig);

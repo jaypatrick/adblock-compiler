@@ -88,17 +88,20 @@ function passwordMatchValidator(control: AbstractControl): ValidationErrors | nu
                         </button>
                     </form>
 
-                    <mat-divider class="divider" />
+                    @if (auth.providers()?.github) {
+                        <mat-divider class="divider" />
 
-                    <button
-                        mat-stroked-button
-                        type="button"
-                        class="full-width github-btn"
-                        (click)="signUpWithGitHub()"
-                    >
-                        <span class="github-icon" aria-hidden="true">&#xe800;</span>
-                        Sign up with GitHub
-                    </button>
+                        <button
+                            mat-stroked-button
+                            type="button"
+                            class="full-width github-btn"
+                            [disabled]="loading()"
+                            (click)="signUpWithGitHub()"
+                        >
+                            <span class="github-icon" aria-hidden="true">&#xe800;</span>
+                            Sign up with GitHub
+                        </button>
+                    }
 
                     <p class="auth-switch">Already have an account? <a routerLink="/sign-in" class="auth-link">Sign in</a></p>
                 </div>
@@ -187,7 +190,11 @@ export class SignUpComponent {
         await this.router.navigateByUrl('/api-keys');
     }
 
-    protected signUpWithGitHub(): void {
-        this.auth.signInWithSocial('github');
+    protected async signUpWithGitHub(): Promise<void> {
+        this.errorMessage.set(null);
+        const result = await this.auth.signInWithSocial('github');
+        if (result.error) {
+            this.errorMessage.set(result.error);
+        }
     }
 }

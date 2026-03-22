@@ -1,9 +1,11 @@
-# Clerk Dashboard Setup Guide
+# Clerk Dashboard Setup Guide — Archived
 
-> **⛔ DEPRECATED — Historical reference only.**
-> The project has fully migrated to Better Auth. Clerk is no longer used.
-> This document is preserved for historical reference. Do not follow these
-> instructions for new deployments.
+> **⚠️ Archived: Clerk integration has been fully removed from the codebase.**
+> Better Auth is the active and only supported auth provider. Re-enabling Clerk
+> would require reintroducing Clerk-related code (middleware, routes, env vars, etc.),
+> not just setting environment variables. This document is retained for historical
+> reference only.
+>
 > See [Better Auth User Guide](better-auth-user-guide.md) and
 > [Configuration Guide](configuration.md) for current setup instructions.
 

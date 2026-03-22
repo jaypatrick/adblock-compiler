@@ -71,17 +71,20 @@ import { AuthFacadeService } from '../../services/auth-facade.service';
                         </button>
                     </form>
 
-                    <mat-divider class="divider" />
+                    @if (auth.providers()?.github) {
+                        <mat-divider class="divider" />
 
-                    <button
-                        mat-stroked-button
-                        type="button"
-                        class="full-width github-btn"
-                        (click)="signInWithGitHub()"
-                    >
-                        <span class="github-icon" aria-hidden="true">&#xe800;</span>
-                        Sign in with GitHub
-                    </button>
+                        <button
+                            mat-stroked-button
+                            type="button"
+                            class="full-width github-btn"
+                            [disabled]="loading()"
+                            (click)="signInWithGitHub()"
+                        >
+                            <span class="github-icon" aria-hidden="true">&#xe800;</span>
+                            Sign in with GitHub
+                        </button>
+                    }
 
                     <p class="auth-switch">Don't have an account? <a routerLink="/sign-up" class="auth-link">Sign up</a></p>
                 </div>
@@ -168,7 +171,11 @@ export class SignInComponent {
         await this.router.navigateByUrl(returnUrl);
     }
 
-    protected signInWithGitHub(): void {
-        this.auth.signInWithSocial('github');
+    protected async signInWithGitHub(): Promise<void> {
+        this.errorMessage.set(null);
+        const result = await this.auth.signInWithSocial('github');
+        if (result.error) {
+            this.errorMessage.set(result.error);
+        }
     }
 }

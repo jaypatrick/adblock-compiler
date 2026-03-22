@@ -19,11 +19,7 @@
 import { type Env, type IAuthContext, TIER_REGISTRY } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { checkRoutePermission, ROUTE_PERMISSION_REGISTRY } from '../utils/route-permissions.ts';
-
-// Session constants — mirrored from worker/lib/auth.ts for display purposes.
-const SESSION_EXPIRES_IN = 60 * 60 * 24 * 7; // 7 days in seconds
-const SESSION_UPDATE_AGE = 60 * 60 * 24; // 1 day in seconds
-const SESSION_COOKIE_CACHE_MAX_AGE = 60 * 5; // 5 minutes in seconds
+import { AUTH_SESSION_CONFIG } from '../lib/auth.ts';
 
 export async function handleAdminAuthConfig(
     _request: Request,
@@ -63,9 +59,9 @@ export async function handleAdminAuthConfig(
             enabled: true,
         },
         session: {
-            expiresIn: SESSION_EXPIRES_IN,
-            updateAge: SESSION_UPDATE_AGE,
-            cookieCacheMaxAge: SESSION_COOKIE_CACHE_MAX_AGE,
+            expiresIn: AUTH_SESSION_CONFIG.expiresIn,
+            updateAge: AUTH_SESSION_CONFIG.updateAge,
+            cookieCacheMaxAge: AUTH_SESSION_CONFIG.cookieCacheMaxAge,
         },
         betterAuth: {
             secretConfigured: Boolean(env.BETTER_AUTH_SECRET),

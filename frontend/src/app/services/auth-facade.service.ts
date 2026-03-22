@@ -18,6 +18,8 @@ export class AuthFacadeService {
     readonly isSignedIn = computed(() => this.betterAuth.isSignedIn());
     readonly isAdmin = computed(() => this.betterAuth.isAdmin());
     readonly userIdentifier = computed<string | null>(() => this.betterAuth.user()?.email ?? null);
+    /** Active auth providers — reflects the server's configured social login options. */
+    readonly providers = computed(() => this.betterAuth.providers());
 
     async getToken(): Promise<string | null> {
         return this.betterAuth.getToken();
@@ -57,7 +59,16 @@ export class AuthFacadeService {
         return this.betterAuth.changePassword(currentPassword, newPassword);
     }
 
-    signInWithSocial(provider: 'github'): void {
-        this.betterAuth.signInWithSocial(provider);
+    async signInWithSocial(provider: 'github'): Promise<{ error?: string }> {
+        try {
+            await this.betterAuth.signInWithSocial(provider);
+            return {};
+        } catch (err) {
+            const httpBody = (err as { error?: { message?: string } })?.error;
+            const msg =
+                httpBody?.message ??
+                (err instanceof Error ? err.message : 'Social sign in failed. Please try again.');
+            return { error: msg };
+        }
     }
 }

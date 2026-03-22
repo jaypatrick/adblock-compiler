@@ -30,9 +30,12 @@ export function handleAuthProviders(_request: Request, env: Env): Response {
         github: Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET),
         /**
          * Google OAuth — reserved for a future release.
-         * Wire is present but will always return false until activated.
+         * Hard-coded false: the provider block in worker/lib/auth.ts is commented
+         * out, so even if GOOGLE_CLIENT_ID/SECRET are set the provider is inactive.
+         * Activate by uncommenting the google block in createAuth() and removing
+         * the hard-coded `false` here.
          */
-        google: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET),
+        google: false,
         /** TOTP-based 2FA is always active via the twoFactor() Better Auth plugin. */
         mfa: true,
     });

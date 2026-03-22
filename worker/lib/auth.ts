@@ -36,6 +36,20 @@ import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 
 /**
+ * Session duration constants — single source of truth consumed by both
+ * {@link createAuth} and the admin `/admin/auth/config` inspector endpoint.
+ * Changing these values here automatically propagates to both.
+ */
+export const AUTH_SESSION_CONFIG = {
+    /** Session expiry in seconds (7 days). */
+    expiresIn: 60 * 60 * 24 * 7,
+    /** Refresh session token when this many seconds remain (1 day). */
+    updateAge: 60 * 60 * 24,
+    /** Cookie-level session cache duration in seconds (5 minutes). */
+    cookieCacheMaxAge: 60 * 5,
+} as const;
+
+/**
  * Thrown when a required Worker binding or secret is absent at startup.
  *
  * Using a named subclass ensures `error.name === 'WorkerConfigurationError'`
@@ -128,12 +142,12 @@ export function createAuth(env: Env, baseURL?: string) {
 
         session: {
             // 7-day session expiry
-            expiresIn: 60 * 60 * 24 * 7,
+            expiresIn: AUTH_SESSION_CONFIG.expiresIn,
             // Refresh session if it expires within 1 day
-            updateAge: 60 * 60 * 24,
+            updateAge: AUTH_SESSION_CONFIG.updateAge,
             cookieCache: {
                 enabled: true,
-                maxAge: 60 * 5, // 5-minute cookie cache
+                maxAge: AUTH_SESSION_CONFIG.cookieCacheMaxAge,
             },
         },
         advanced: {
