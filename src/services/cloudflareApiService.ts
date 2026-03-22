@@ -130,9 +130,12 @@ export function createCloudflareApiService(options: CreateCloudflareApiServiceOp
         maxRetries: 0,
         ...sdkOptions,
         // Lambda ensures globalThis.fetch patches (e.g. in unit tests) are honoured at call time
-        // rather than being captured at construction time.
-        fetch: (...args: Parameters<typeof globalThis.fetch>): ReturnType<typeof globalThis.fetch> =>
-            globalThis.fetch(...args),
+        // rather than being captured at construction time. @ts-expect-error below suppresses a
+        // cross-environment type conflict: the SDK's Fetch type uses Cloudflare Workers' RequestInfo
+        // (which includes URLLike), while Deno's globalThis.fetch uses the standard DOM RequestInfo.
+        // They are functionally compatible at runtime; the mismatch is purely in type-level declarations.
+        // @ts-expect-error TS2322 — Deno's RequestInfo|URL ≠ Workers URLLike; compatible at runtime
+        fetch: (...args: Parameters<typeof globalThis.fetch>): ReturnType<typeof globalThis.fetch> => globalThis.fetch(...args),
     });
     return new CloudflareApiService(client, logger);
 }
