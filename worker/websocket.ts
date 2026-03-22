@@ -8,7 +8,9 @@
 import { createTracingContext, WorkerCompiler } from '../src/index.ts';
 import { VERSION } from '../src/version.ts';
 import type { Env } from './worker.ts';
-import type { ClientMessage, CompilationSession, ServerMessage, WebSocketConnectionState } from '../src/types/websocket.ts';
+import type { CompilationSession, ServerMessage, WebSocketConnectionState } from '../src/types/websocket.ts';
+import type { ClientMessage } from '../src/types/websocket.ts';
+import { ClientMessageSchema } from './schemas.ts';
 
 /**
  * WebSocket handler configuration
@@ -99,7 +101,12 @@ function setupWebSocketHandlers(
                 return;
             }
 
-            const message = JSON.parse(data) as ClientMessage;
+            const parsed = ClientMessageSchema.safeParse(JSON.parse(data));
+            if (!parsed.success) {
+                sendError(ws, `Invalid message: ${parsed.error.issues[0]?.message ?? 'unknown format'}`, 'INVALID_MESSAGE');
+                return;
+            }
+            const message = parsed.data as ClientMessage;
             await handleClientMessage(ws, message, state, env);
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
