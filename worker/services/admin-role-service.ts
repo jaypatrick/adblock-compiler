@@ -314,7 +314,7 @@ export async function assignRole(
 			 RETURNING *`,
         )
         .bind(
-            data.user_id,
+            data.user_id, // maps to `clerk_user_id` DB column — to be renamed in a future DB migration
             data.role_name,
             assignedBy,
             now,

@@ -916,6 +916,7 @@ export type AdminRoleRow = z.infer<typeof AdminRoleRowSchema>;
 /** Row from `admin_role_assignments` table */
 export const AdminRoleAssignmentRowSchema = z.object({
     id: z.number(),
+    /** @deprecated DB column still named `clerk_user_id` — will be renamed to `user_id` in a future migration */
     clerk_user_id: z.string(),
     role_name: AdminRoleNameSchema,
     assigned_by: z.string(),
@@ -1150,6 +1151,7 @@ export const AdminListResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =
 
 /** Resolved admin user context (from KV cache or D1 lookup) */
 export const ResolvedAdminContextSchema = z.object({
+    /** @deprecated DB column still named `clerk_user_id` — will be renamed to `user_id` in a future migration */
     clerk_user_id: z.string(),
     role_name: AdminRoleNameSchema,
     permissions: z.array(AdminPermissionSchema),
