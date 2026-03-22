@@ -297,12 +297,21 @@ export async function authenticateRequestUnified(
             if (env.ANALYTICS_ENGINE) {
                 new AnalyticsService(env.ANALYTICS_ENGINE).trackSecurityEvent({
                     eventType: 'auth_success',
-                    reason: 'api_key',
+                    authMethod: 'api-key',
                     userId: result.userId,
                 });
             }
 
             return { context };
+        }
+
+        // ZTA telemetry: track failed API key authentication
+        if (env.ANALYTICS_ENGINE) {
+            new AnalyticsService(env.ANALYTICS_ENGINE).trackSecurityEvent({
+                eventType: 'auth_failure',
+                authMethod: 'api-key',
+                reason: result.error ?? 'Invalid API key',
+            });
         }
 
         return {
@@ -393,8 +402,8 @@ export async function authenticateRequestUnified(
             if (env.ANALYTICS_ENGINE) {
                 new AnalyticsService(env.ANALYTICS_ENGINE).trackSecurityEvent({
                     eventType: 'auth_success',
-                    reason: authProvider.authMethod,
-                    userId: resolvedUserId ?? undefined,
+                    authMethod: authProvider.authMethod,
+                    userId: resolvedUserId ?? providerResult.providerUserId ?? undefined,
                 });
             }
 

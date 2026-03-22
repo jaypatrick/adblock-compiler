@@ -19,6 +19,7 @@ The adblock-compiler uses a two-provider auth system: **Better Auth** (with Clou
 | [Cloudflare Access](cloudflare-access.md) | Operators / DevOps | Cloudflare Zero Trust Access setup for admin routes |
 | [CLI Authentication](cli-authentication.md) | CLI Users / DevOps | Using the CLI with authenticated queue endpoints |
 | [Clerk + Cloudflare Integration](clerk-cloudflare-integration.md) | Developers / DevOps | How Clerk integrates with Workers, KV, D1, Hyperdrive, Turnstile |
+| [ZTA Review Fixes](zta-review-fixes.md) | Developers | PR #1273 follow-up: telemetry, rate-limit, schema, and admin hardening fixes |
 
 ## Architecture Overview
 

@@ -50,7 +50,7 @@ model User {
   apiKeys    ApiKey[]
   sessions   Session[]
   accounts   Account[]
-  twoFactor  TwoFactor[]
+  twoFactor  TwoFactor?
 
   @@map("users")
 }
@@ -101,7 +101,7 @@ model TwoFactor {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  @@unique([userId])
   @@map("two_factor")
 }
 

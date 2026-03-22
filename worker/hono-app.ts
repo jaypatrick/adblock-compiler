@@ -49,6 +49,7 @@ import { authenticateRequestUnified } from './middleware/auth.ts';
 import { bodySizeMiddleware, rateLimitMiddleware, requireAuthMiddleware, turnstileMiddleware } from './middleware/hono-middleware.ts';
 import { ClerkAuthProvider } from './middleware/clerk-auth-provider.ts';
 import { BetterAuthProvider } from './middleware/better-auth-provider.ts';
+import { verifyCfAccessJwt } from './middleware/cf-access.ts';
 
 // Auth
 import { createAuth } from './lib/auth.ts';
@@ -457,6 +458,55 @@ async function handleApiMeta(c: AppContext): Promise<Response> {
     return res ?? c.json({ success: false, error: 'Not found' }, 404);
 }
 
+/**
+ * Admin session revocation handler — revoke all sessions for a specific user.
+ *
+ * ZTA compliance:
+ *  - Requires admin role
+ *  - Verifies Cloudflare Access JWT (defense-in-depth)
+ *  - Emits `cf_access_denial` security event on CF Access failure
+ */
+export async function handleAdminRevokeUserSessions(c: AppContext): Promise<Response> {
+    const authContext = c.get('authContext');
+    if (authContext.role !== 'admin') {
+        return c.json({ success: false, error: 'Admin access required' }, 403);
+    }
+
+    // Defense-in-depth: verify CF Access JWT when configured
+    const cfAccess = await verifyCfAccessJwt(c.req.raw, c.env);
+    if (!cfAccess.valid) {
+        if (c.env.ANALYTICS_ENGINE) {
+            new AnalyticsService(c.env.ANALYTICS_ENGINE).trackSecurityEvent({
+                eventType: 'cf_access_denial',
+                path: c.req.path,
+                method: c.req.method,
+                reason: cfAccess.error ?? 'CF Access verification failed',
+            });
+        }
+        return c.json({ success: false, error: cfAccess.error ?? 'CF Access verification failed' }, 403);
+    }
+
+    const userId = c.req.param('id')!;
+    try {
+        if (!c.env.HYPERDRIVE) {
+            return c.json({ success: false, error: 'Database not configured' }, 503);
+        }
+        const pool = createPgPool(c.env.HYPERDRIVE.connectionString);
+        const result = await pool.query(
+            'DELETE FROM sessions WHERE user_id = $1',
+            [userId],
+        );
+        return c.json({
+            success: true,
+            message: `Revoked ${result.rowCount ?? 0} session(s) for user ${userId}`,
+        });
+    } catch (error) {
+        // deno-lint-ignore no-console
+        console.error('[admin] Session revocation error:', error instanceof Error ? error.message : 'unknown');
+        return c.json({ success: false, error: 'Failed to revoke sessions' }, 500);
+    }
+}
+
 app.get('/api', handleApiMeta);
 app.get('/api/version', handleApiMeta);
 app.get('/api/schemas', handleApiMeta);
@@ -555,34 +605,11 @@ routes.post(
 );
 
 // Admin session revocation — revoke all sessions for a specific user
+// Extracted to a named handler for testability and ZTA compliance.
 routes.delete(
     '/admin/users/:id/sessions',
     rateLimitMiddleware(),
-    async (c) => {
-        const authContext = c.get('authContext');
-        if (authContext.role !== 'admin') {
-            return c.json({ success: false, error: 'Admin access required' }, 403);
-        }
-        const userId = c.req.param('id')!;
-        try {
-            if (!c.env.HYPERDRIVE) {
-                return c.json({ success: false, error: 'Database not configured' }, 503);
-            }
-            const pool = createPgPool(c.env.HYPERDRIVE.connectionString);
-            const result = await pool.query(
-                'DELETE FROM sessions WHERE user_id = $1',
-                [userId],
-            );
-            return c.json({
-                success: true,
-                message: `Revoked ${result.rowCount ?? 0} session(s) for user ${userId}`,
-            });
-        } catch (error) {
-            // deno-lint-ignore no-console
-            console.error('[admin] Session revocation error:', error instanceof Error ? error.message : 'unknown');
-            return c.json({ success: false, error: 'Failed to revoke sessions' }, 500);
-        }
-    },
+    async (c) => handleAdminRevokeUserSessions(c),
 );
 
 routes.get('/admin/usage/:userId', (c) => handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')!));

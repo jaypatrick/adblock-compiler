@@ -122,6 +122,7 @@
   - [Clerk + Cloudflare Integration](auth/clerk-cloudflare-integration.md)
   - [Cloudflare Access](auth/cloudflare-access.md)
   - [Postman Auth Testing](auth/postman-testing.md)
+  - [ZTA Review Fixes](auth/zta-review-fixes.md)
 - [Admin System](admin/README.md)
   - [Roles & Permissions](admin/roles-permissions.md)
   - [API Reference](admin/api-reference.md)

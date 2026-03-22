@@ -117,11 +117,16 @@ export class BetterAuthProvider implements IAuthProvider {
             // deno-lint-ignore no-console
             console.error('[better-auth] Token verification error:', error instanceof Error ? error.name : 'UnknownError');
 
-            // ZTA telemetry: emit auth failure event
+            // ZTA telemetry: emit auth failure event with enriched fields
             if (this.env.ANALYTICS_ENGINE) {
+                const url = new URL(request.url);
                 new AnalyticsService(this.env.ANALYTICS_ENGINE).trackSecurityEvent({
                     eventType: 'auth_failure',
+                    authMethod: 'better-auth',
                     reason: 'better_auth_verification_error',
+                    path: url.pathname,
+                    method: request.method,
+                    clientIpHash: AnalyticsService.hashIp(request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for') ?? 'unknown'),
                 });
             }
 
