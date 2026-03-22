@@ -61,9 +61,9 @@ interface AuthConfigResponse {
 }
 
 function formatDuration(seconds: number): string {
-    if (seconds >= 86400) { const d = seconds / 86400; return `${d} day${d !== 1 ? 's' : ''}`; }
-    if (seconds >= 3600)  { const h = seconds / 3600;  return `${h} hour${h !== 1 ? 's' : ''}`; }
-    if (seconds >= 60)    { const m = seconds / 60;    return `${m} min${m !== 1 ? 's' : ''}`;  }
+    if (seconds >= 86400) { const d = Math.floor(seconds / 86400); return `${d} day${d !== 1 ? 's' : ''}`; }
+    if (seconds >= 3600)  { const h = Math.floor(seconds / 3600);  return `${h} hour${h !== 1 ? 's' : ''}`; }
+    if (seconds >= 60)    { const m = Math.floor(seconds / 60);    return `${m} min${m !== 1 ? 's' : ''}`;  }
     return `${seconds}s`;
 }
 

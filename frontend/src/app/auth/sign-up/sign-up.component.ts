@@ -273,9 +273,9 @@ export class SignUpComponent implements OnDestroy {
                     return;
                 }
             }
-            this.errorMessage.set('GitHub sign-up is not available. Please use email/password.');
+            this.errorMessage.set('Unable to start GitHub sign-up. Please try again or use email/password.');
         } catch {
-            this.errorMessage.set('GitHub sign-up failed. Please try again.');
+            this.errorMessage.set('GitHub sign-up is temporarily unavailable. Please use email/password.');
         } finally {
             this.loading.set(false);
         }

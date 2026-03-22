@@ -50,19 +50,31 @@ export class WorkerConfigurationError extends Error {
     }
 }
 
+/** OAuth client credential pair used by Better Auth's social provider config. */
+interface OAuthClientCredentials {
+    clientId: string;
+    clientSecret: string;
+}
+
+/** Shape of Better Auth's `socialProviders` config object. */
+interface SocialProviderConfig {
+    github?: OAuthClientCredentials;
+    // google?: OAuthClientCredentials;  // Uncomment when Google is activated
+}
+
 /**
  * Build the socialProviders config from environment variables.
  *
  * GitHub is active when both GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET are set.
  * Google is wired but commented-out — uncomment and set env vars to activate.
  */
-function buildSocialProviders(env: Env): { socialProviders?: Record<string, unknown> } {
-    const providers: Record<string, unknown> = {};
+function buildSocialProviders(env: Env): { socialProviders?: SocialProviderConfig } {
+    const providers: SocialProviderConfig = {};
 
     // GitHub OAuth — activate by setting GITHUB_CLIENT_ID and GITHUB_CLIENT_SECRET.
     // Callback URL: <BETTER_AUTH_URL>/api/auth/callback/github
     if (env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) {
-        providers['github'] = {
+        providers.github = {
             clientId: env.GITHUB_CLIENT_ID,
             clientSecret: env.GITHUB_CLIENT_SECRET,
         };
@@ -71,7 +83,7 @@ function buildSocialProviders(env: Env): { socialProviders?: Record<string, unkn
     // Google OAuth — reserved for future activation.
     // To enable: set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, then uncomment below.
     // if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
-    //     providers['google'] = {
+    //     providers.google = {
     //         clientId: env.GOOGLE_CLIENT_ID,
     //         clientSecret: env.GOOGLE_CLIENT_SECRET,
     //     };

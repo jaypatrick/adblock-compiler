@@ -112,7 +112,9 @@ export class BetterAuthService {
                 }
             }
         } catch {
-            // Non-fatal — keep defaults (github: false, google: false)
+            // Non-fatal — keep defaults (github: false, google: false).
+            // Log at warn level to aid debugging if the endpoint is unexpectedly unavailable.
+            console.warn('[BetterAuthService] Failed to fetch auth providers; using defaults.');
         }
     }
 
