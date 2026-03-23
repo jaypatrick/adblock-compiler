@@ -22,7 +22,7 @@
  *   deno task wrangler:dev    (uses wrangler.toml — mirrors production)
  *
  * Deployment:
- *   deno task wrangler:deploy (after `pnpm --filter adblock-compiler-frontend run build`)
+ *   deno task wrangler:deploy (after `pnpm --filter adblock-frontend run build`)
  */
 
 // ɵsetAngularAppEngineManifest is an Angular-internal (ɵ-prefixed) API.

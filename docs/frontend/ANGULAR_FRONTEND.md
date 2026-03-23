@@ -1151,7 +1151,7 @@ graph LR
 ### `wrangler.toml` Key Settings
 
 ```toml
-name            = "adblock-compiler-frontend"
+name            = "adblock-frontend"
 main            = "dist/frontend/server/server.mjs"
 compatibility_date = "2025-01-01"
 
