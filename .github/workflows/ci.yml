@@ -693,5 +693,5 @@ jobs:
               if: env.CLOUDFLARE_API_TOKEN != ''
               working-directory: frontend
               run: |
-                  echo "Deploying adblock-compiler-frontend..."
+                  echo "Deploying adblock-frontend..."
                   pnpm run deploy

@@ -18,8 +18,8 @@ flowchart TD
     CFAccess["☁️ Cloudflare Access\n(Zero Trust / WAF)"]
     CFTurnstile["🛡️ Cloudflare Turnstile\n(Human Verification)"]
 
-    %% ── Angular Frontend (separate SSR Worker — adblock-compiler-frontend) ──────
-    subgraph FrontendWorker["adblock-compiler-frontend  (separate SSR Worker)"]
+    %% ── Angular Frontend (separate SSR Worker — adblock-frontend) ──────
+    subgraph FrontendWorker["adblock-frontend  (separate SSR Worker)"]
         Frontend["📱 Angular 21 SSR SPA\n(AngularAppEngine)"]
         FrontendAssets["ASSETS binding\n(JS/CSS/fonts — CDN)"]
         FrontendAPI["[[services]] API binding\n(reserved — not yet wired in server.ts)"]
@@ -155,7 +155,7 @@ flowchart TD
 
 ### Summary
 
-The current system is a **monolith**: every concern — compilation, transformation, storage, queuing, diagnostics, plugins, and formatters — lives inside a single Cloudflare Worker alongside its Hono router and request handlers. The Angular SSR frontend is now deployed as its **own separate Worker** (`adblock-compiler-frontend`) using `AngularAppEngine`; a `[[services]]` binding to the backend is declared in `frontend/wrangler.toml` but not yet wired into `server.ts` (SSR→API calls still travel over the public network until that is implemented). Cloudflare Access and Turnstile form the Zero Trust perimeter before any request reaches either Worker, and external services (Clerk, Sentry, OpenTelemetry, PostgreSQL, and filter-list sources) are consumed directly from within the single backend process. A dedicated `adblock-compiler-tail` Worker (configured via `[[tail_consumers]]`) acts as the log sink, forwarding structured logs to Sentry and OTel. This coupling makes it difficult to evolve, version, or deploy individual capabilities independently.
+The current system is a **monolith**: every concern — compilation, transformation, storage, queuing, diagnostics, plugins, and formatters — lives inside a single Cloudflare Worker alongside its Hono router and request handlers. The Angular SSR frontend is now deployed as its **own separate Worker** (`adblock-frontend`) using `AngularAppEngine`; a `[[services]]` binding to the backend is declared in `frontend/wrangler.toml` but not yet wired into `server.ts` (SSR→API calls still travel over the public network until that is implemented). Cloudflare Access and Turnstile form the Zero Trust perimeter before any request reaches either Worker, and external services (Clerk, Sentry, OpenTelemetry, PostgreSQL, and filter-list sources) are consumed directly from within the single backend process. A dedicated `adblock-compiler-tail` Worker (configured via `[[tail_consumers]]`) acts as the log sink, forwarding structured logs to Sentry and OTel. This coupling makes it difficult to evolve, version, or deploy individual capabilities independently.
 
 ---
 
@@ -174,7 +174,7 @@ flowchart TD
     CFTurnstile["🛡️ Cloudflare Turnstile\n(Human Verification)"]
 
     %% ── Angular Frontend (served via API Worker ASSETS binding) ─────────────
-    subgraph FrontendApp["adblock-compiler-frontend  (Worker ASSETS binding)"]
+    subgraph FrontendApp["adblock-frontend  (Worker ASSETS binding)"]
         AngularSSR["Angular 21 SSR SPA"]
         HonoRPC["Hono RPC Client\nhc&lt;AppType&gt;()"]
         AngularSSR --> HonoRPC
