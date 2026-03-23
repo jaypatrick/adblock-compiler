@@ -12,10 +12,10 @@ The Adblock Compiler is deployed as **two separate Cloudflare Workers** from a s
 |---|---|---|
 | **Wrangler config** | [`wrangler.toml`](../../wrangler.toml) | [`frontend/wrangler.toml`](../../frontend/wrangler.toml) |
 | **Entry point** | `worker/worker.ts` | `dist/adblock-compiler/server/server.mjs` |
-| **Role** | REST API + compilation engine | Angular 21 SSR UI |
+| **Role** | REST API + compilation engine; also serves the Angular SPA as bundled static assets (CSR only) | Angular 21 SSR UI — **canonical home URL for the app** |
 | **Source path** | `worker/` + `src/` | `frontend/` |
 | **Deploy command** | `deno task wrangler:deploy` | `sh scripts/deploy-frontend.sh` (repo root) |
-| **CI deploy trigger** | `deploy` job in `ci.yml` (main push) | `deploy-frontend` job in `ci.yml` (main push) |
+| **CI deploy trigger** | `deploy` job in `ci.yml` (main push) | `deploy-frontend` job in `ci.yml` (main push, or `workflow_dispatch` with `force_deploy_frontend: true`) |
 | **Release deploy trigger** | `build-binaries` job in `release.yml` | `deploy-frontend` job in `release.yml` (tag push) |
 | **Local dev port** | `8787` | `8787` (via `pnpm --filter adblock-frontend run preview`) |
 
@@ -208,8 +208,25 @@ flowchart LR
 
 | Trigger | Backend deploy | Frontend deploy |
 |---|---|---|
-| Push to `main` | `ci.yml` → `deploy` job | `ci.yml` → `deploy-frontend` job |
+| Push to `main` | `ci.yml` → `deploy` job | `ci.yml` → `deploy-frontend` job (when `frontend/**` changed) |
 | Tag push (`v*`) | `release.yml` → binary/docker builds | `release.yml` → `deploy-frontend` job |
+| Manual dispatch | — | `ci.yml` → `deploy-frontend` job (set `force_deploy_frontend: true`) |
+
+### Manual Force-Redeploy
+
+If the frontend worker shows **"Assets have not yet been deployed"**, it means the `adblock-compiler-frontend` worker was registered on Cloudflare without its build artifacts (`dist/adblock-compiler/browser`). This typically happens when:
+
+- The `deploy-frontend` CI job was skipped because no `frontend/**` files changed.
+- The worker was first registered before the build artifact was available.
+
+To fix it immediately without a code change:
+
+1. Go to **GitHub Actions → CI → Run workflow**.
+2. Select the `main` branch.
+3. Set **`force_deploy_frontend`** to `true`.
+4. Click **Run workflow**.
+
+This forces `frontend-build` and `deploy-frontend` to run regardless of which files changed.
 
 ### Local Development
 

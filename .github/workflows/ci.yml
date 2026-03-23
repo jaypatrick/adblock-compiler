@@ -6,6 +6,15 @@ on:
     pull_request:
         branches: [main]
     workflow_dispatch:
+        inputs:
+            force_deploy_frontend:
+                description: 'Force deploy the frontend worker even if no frontend files changed'
+                required: false
+                default: 'false'
+                type: choice
+                options:
+                    - 'false'
+                    - 'true'
 
 env:
     DENO_VERSION: '2.x'
@@ -31,7 +40,7 @@ jobs:
 
             - name: Detect changed paths
               id: filter
-              uses: dorny/paths-filter@de90cc6fb38505f5d5be431a3a40218ffe0f1879 # v3
+              uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
               with:
                   filters: |
                       compiler:
@@ -123,7 +132,7 @@ jobs:
 
             - name: Upload coverage to Codecov
               if: always() && hashFiles('coverage/lcov.info') != ''
-              uses: codecov/codecov-action@ab904c41d6ece82784817410c45d8b8341df0aa8 # v4
+              uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
               continue-on-error: true
               with:
                   files: coverage/lcov.info
@@ -206,7 +215,11 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 15
         needs: [changes]
-        if: needs.changes.outputs.frontend == 'true'
+        if: >-
+            needs.changes.outputs.frontend == 'true' ||
+            needs.changes.outputs.worker == 'true' ||
+            needs.changes.outputs.compiler == 'true' ||
+            (github.event.inputs.force_deploy_frontend || 'false') == 'true'
         permissions:
             contents: read
         steps:
@@ -360,6 +373,78 @@ jobs:
 
             - name: Validate migration file naming and ordering
               run: deno task migrate:validate
+
+    zta-lint:
+        name: ZTA Lint
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        needs: [changes]
+        if: needs.changes.outputs.worker == 'true' || needs.changes.outputs.frontend == 'true'
+        permissions:
+            contents: read
+        continue-on-error: false
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: Check for wildcard CORS on authenticated endpoints
+              run: |
+                  set -euo pipefail
+                  # cors.ts intentionally uses '*' for public read-only endpoints via getPublicCorsHeaders();
+                  # test files assert the correct '*' response — both are expected and safe to exclude.
+                  if grep -rn --exclude='cors.ts' --exclude='*.test.*' 'Access-Control-Allow-Origin.*[*]' worker/ src/ frontend/src/ 2>/dev/null; then
+                      echo "❌ ZTA VIOLATION: Wildcard CORS (Access-Control-Allow-Origin: *) found outside the public CORS helper"
+                      exit 1
+                  fi
+                  echo "✅ No wildcard CORS found (excluding public CORS helper and tests)"
+
+            - name: Check for hardcoded secrets
+              run: |
+                  set -euo pipefail
+                  if grep -rPn "ADMIN_KEY\s*=\s*[\"'][^\$]" worker/ src/ frontend/src/ 2>/dev/null; then
+                      echo "❌ ZTA VIOLATION: Possible hardcoded ADMIN_KEY secret found in worker/, src/, or frontend/src/"
+                      exit 1
+                  fi
+                  echo "✅ No hardcoded secrets detected"
+
+            - name: Check for eval and new Function usage
+              run: |
+                  set -euo pipefail
+                  # Only check worker/ and frontend/src/ — these are the internet-facing surfaces.
+                  # src/ is the build-time compiler and legitimately uses new Function() to
+                  # evaluate adblock filter conditions at compile time (ConditionalEvaluator.ts).
+                  if grep -rPn "\beval\s*\(" worker/ frontend/src/ 2>/dev/null; then
+                      echo "❌ ZTA VIOLATION: eval() usage found in worker/ or frontend/src/"
+                      exit 1
+                  fi
+                  if grep -rPn "\bnew\s+Function\s*\(" worker/ frontend/src/ 2>/dev/null; then
+                      echo "❌ ZTA VIOLATION: new Function() usage found in worker/ or frontend/src/"
+                      exit 1
+                  fi
+                  echo "✅ No eval() or new Function() usage found"
+
+            - name: Check for string-interpolated SQL
+              run: |
+                  set -euo pipefail
+                  # Flag template literals containing SQL keywords with variable interpolation.
+                  # All D1 queries must use .prepare().bind() for parameterized values.
+                  # Excluded files have known-safe dynamic SQL patterns:
+                  #   migrate.ts           — interpolates an allowlist-validated table *name* in .prepare()
+                  #   admin-*-service.ts   — dynamic SET clause builders; structure interpolated, values via .bind()
+                  #   admin-users.ts       — same SET clause builder pattern
+                  # Pattern: backtick-delimited template literal containing SQL keyword + ${...} interpolation.
+                  # Use a variable to avoid shell quoting conflicts with backtick characters.
+                  SQL_TMPL_PATTERN='`[^`]*(SELECT|INSERT|UPDATE|DELETE)\b[^`]*\$\{'
+                  if grep -rPn \
+                      --exclude='migrate.ts' \
+                      --exclude='admin-feature-flag-service.ts' \
+                      --exclude='admin-config-service.ts' \
+                      --exclude='admin-role-service.ts' \
+                      --exclude='admin-users.ts' \
+                      "$SQL_TMPL_PATTERN" worker/ 2>/dev/null; then
+                      echo "❌ ZTA VIOLATION: String-interpolated SQL found in worker/ — use .prepare().bind() instead"
+                      exit 1
+                  fi
+                  echo "✅ No string-interpolated SQL found"
 
     ci-gate:
         name: CI Gate
@@ -536,8 +621,8 @@ jobs:
         needs: [ci-gate, changes, frontend-build]
         # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
         # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
-        # frontend-build may be skipped when only worker/compiler files changed — that is fine;
-        # in that case the deploy runs without a fresh frontend artifact (existing deployment unchanged).
+        # frontend-build always runs when worker or compiler files change (same triggers as this
+        # job), so the frontend artifact is always available when the deploy runs.
         if: >-
             always() &&
             needs.ci-gate.result == 'success' &&
@@ -655,14 +740,15 @@ jobs:
             always() &&
             needs.ci-gate.result == 'success' &&
             needs.frontend-build.result == 'success' &&
-            github.event_name == 'push' &&
             github.ref == 'refs/heads/main' &&
-            needs.changes.outputs.frontend == 'true'
+            (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
+            (needs.changes.outputs.frontend == 'true' || (github.event.inputs.force_deploy_frontend || 'false') == 'true')
         permissions:
             contents: read
         env:
             CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
             CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+            CF_WEB_ANALYTICS_TOKEN: ${{ secrets.CF_WEB_ANALYTICS_TOKEN }}
         steps:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
