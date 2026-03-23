@@ -147,9 +147,10 @@ async function processItems(items: BookItem[]): Promise<void> {
 
 const bookItems = book.items ?? book.sections;
 if (!bookItems) {
-    console.error('[last-updated] Warning: book structure has neither "items" nor "sections" field — no chapters will be processed. Check for mdBook version incompatibility.');
+    console.error('[last-updated] Error: book structure has neither "items" nor "sections" field — no chapters will be processed. Check for mdBook version incompatibility.');
+    Deno.exit(1);
 }
-await processItems(bookItems ?? []);
+await processItems(bookItems);
 
 // ── Emit modified book ────────────────────────────────────────────────────────
 
