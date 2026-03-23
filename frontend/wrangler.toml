@@ -93,10 +93,6 @@ ENVIRONMENT = "production"
 # IMPORTANT: adblock-compiler-tail must be deployed before this Worker.
 tail_consumers = [{ service = "adblock-compiler-tail" }]
 
-[observability]
-enabled = false
-head_sampling_rate = 1
-
 [observability.logs]
 enabled = true
 destinations = [ "sentry-logs" ]
