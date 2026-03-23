@@ -32,6 +32,25 @@ if [ -f "$INDEX_HTML" ]; then
     fi
 fi
 
+# ── Substitute URL_FRONTEND placeholder in index.html ────────────────────────
+# The placeholder {{URL_FRONTEND}} in frontend/src/index.html is replaced with
+# the value of the URL_FRONTEND environment variable at build time, mirroring
+# the CF_WEB_ANALYTICS_TOKEN injection above.
+if [ -f "$INDEX_HTML" ]; then
+    if [ -n "${URL_FRONTEND:-}" ]; then
+        # Escape sed special characters in the replacement string.
+        # The outer sed uses '|' as delimiter, so '/' in the URL is safe.
+        # We escape '&' (means "matched text"), '|' (our delimiter), and '\'.
+        ESCAPED_URL_FRONTEND=$(printf '%s' "$URL_FRONTEND" | sed 's/[&|\\]/\\&/g')
+        sed "s|{{URL_FRONTEND}}|$ESCAPED_URL_FRONTEND|g" "$INDEX_HTML" > "$INDEX_HTML.tmp" && mv "$INDEX_HTML.tmp" "$INDEX_HTML"
+        echo "build-worker.sh: substituted URL_FRONTEND in $INDEX_HTML."
+    else
+        # Remove the placeholder, falling back to a relative-URL-safe empty string.
+        sed "s|{{URL_FRONTEND}}||g" "$INDEX_HTML" > "$INDEX_HTML.tmp" && mv "$INDEX_HTML.tmp" "$INDEX_HTML"
+        echo "build-worker.sh: URL_FRONTEND not set — placeholder removed from $INDEX_HTML."
+    fi
+fi
+
 # Patch polyfills.server.mjs for Cloudflare Workers compatibility.
 # Angular's SSR build generates polyfills.server.mjs that calls
 # createRequire(import.meta.url) at module scope. In Cloudflare Workers,

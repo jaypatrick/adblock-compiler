@@ -97,7 +97,15 @@ ENVIRONMENT = "production"
 # Public Turnstile site key — not a secret; safe to commit.
 # For local dev, .dev.vars overrides this with the always-pass test key (1x000...AA).
 TURNSTILE_SITE_KEY = "0x4AAAAAACMKiPZdJh8I8IEM"
+# Keep in sync with URL_FRONTEND, URL_API, and URL_DOCS below.
+# For production, prefer: wrangler secret put CORS_ALLOWED_ORIGINS
 CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787,https://adblock-compiler.jayson-knight.workers.dev,https://adblock-frontend.jayson-knight.workers.dev"
+# ─── Project URLs ─────────────────────────────────────────────────────────────
+# Single source of truth for all public-facing service URLs.
+# When you switch to a custom domain, update these three values only.
+URL_FRONTEND = "https://adblock-frontend.jayson-knight.workers.dev"
+URL_API      = "https://adblock-compiler.jayson-knight.workers.dev"
+URL_DOCS     = "https://adblock-compiler-docs.pages.dev"
 
 # ─── KV Namespaces ───────────────────────────────────────────────────────────
 # `wrangler dev` binds to these live namespaces by default.

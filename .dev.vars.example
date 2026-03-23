@@ -111,3 +111,9 @@ NEON_PROJECT_ID=your-neon-project-id
 # Must match the value set in the container environment.
 # For production: wrangler secret put CONTAINER_SECRET
 CONTAINER_SECRET=dev-local-secret
+
+# ─── Project URLs (non-secret — production values live in wrangler.toml [vars]) ─
+# Override these for local dev; they default to the *.workers.dev production URLs.
+URL_FRONTEND=http://localhost:4200
+URL_API=http://localhost:8787
+URL_DOCS=https://adblock-compiler-docs.pages.dev

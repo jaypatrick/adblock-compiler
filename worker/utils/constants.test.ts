@@ -5,6 +5,8 @@
  *   - API_DOCS_REDIRECT is a non-empty string
  *   - SPA_SERVER_PREFIXES is a non-empty readonly array of strings
  *   - DOCS_SITE_URL is a valid https URL
+ *   - DOCS_SITE_URL_FALLBACK is a valid https URL
+ *   - getProjectUrls returns env values with fallbacks
  *   - ASSETS_BASE_URL is a non-empty string
  *   - FILE_EXTENSION_RE matches file extension paths
  *   - FILE_EXTENSION_RE does not match paths without extensions
@@ -13,7 +15,7 @@
  */
 
 import { assertEquals, assertMatch } from '@std/assert';
-import { API_DOCS_REDIRECT, ASSETS_BASE_URL, DOCS_SITE_URL, FILE_EXTENSION_RE, SPA_SERVER_PREFIXES } from './constants.ts';
+import { API_DOCS_REDIRECT, ASSETS_BASE_URL, DOCS_SITE_URL, DOCS_SITE_URL_FALLBACK, FILE_EXTENSION_RE, getProjectUrls, SPA_SERVER_PREFIXES } from './constants.ts';
 
 // ============================================================================
 // API_DOCS_REDIRECT
@@ -52,11 +54,47 @@ Deno.test('SPA_SERVER_PREFIXES - contains /compile', () => {
 });
 
 // ============================================================================
-// DOCS_SITE_URL
+// DOCS_SITE_URL (legacy export — kept for backward compat)
 // ============================================================================
 
 Deno.test('DOCS_SITE_URL - is a valid https URL', () => {
     assertMatch(DOCS_SITE_URL, /^https:\/\//);
+});
+
+// ============================================================================
+// DOCS_SITE_URL_FALLBACK
+// ============================================================================
+
+Deno.test('DOCS_SITE_URL_FALLBACK - is a valid https URL', () => {
+    assertMatch(DOCS_SITE_URL_FALLBACK, /^https:\/\//);
+});
+
+// ============================================================================
+// getProjectUrls
+// ============================================================================
+
+Deno.test('getProjectUrls - returns fallback URLs when env is empty', () => {
+    const urls = getProjectUrls({});
+    assertMatch(urls.frontend, /^https:\/\//);
+    assertMatch(urls.api, /^https:\/\//);
+    assertMatch(urls.docs, /^https:\/\//);
+    assertEquals(urls.docs.endsWith('/'), true);
+});
+
+Deno.test('getProjectUrls - returns env values when provided', () => {
+    const urls = getProjectUrls({
+        URL_FRONTEND: 'http://localhost:4200',
+        URL_API: 'http://localhost:8787',
+        URL_DOCS: 'http://localhost:3000',
+    });
+    assertEquals(urls.frontend, 'http://localhost:4200');
+    assertEquals(urls.api, 'http://localhost:8787');
+    assertEquals(urls.docs, 'http://localhost:3000/');
+});
+
+Deno.test('getProjectUrls - ensures docs URL has trailing slash', () => {
+    const urls = getProjectUrls({ URL_DOCS: 'https://example.com/docs' });
+    assertEquals(urls.docs.endsWith('/'), true);
 });
 
 // ============================================================================
