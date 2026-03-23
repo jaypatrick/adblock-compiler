@@ -27,7 +27,7 @@ jobs:
     lighthouse:
         name: Lighthouse Audit
         runs-on: ubuntu-latest
-        timeout-minutes: 15
+        timeout-minutes: 20
         # Scores are advisory initially — regressions warn, not block
         continue-on-error: true
         if: >-

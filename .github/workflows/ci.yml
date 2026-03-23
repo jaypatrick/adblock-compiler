@@ -75,6 +75,19 @@ jobs:
               env:
                   DENO_TLS_CA_STORE: system
 
+            - name: Generate coverage report
+              if: success() || failure()
+              run: deno coverage coverage --lcov --output=coverage/lcov.info
+
+            - name: Upload coverage to Codecov
+              if: always() && hashFiles('coverage/lcov.info') != ''
+              uses: codecov/codecov-action@ab904c41d6ece82784817410c45d8b8341df0aa8 # v4
+              continue-on-error: true
+              with:
+                  files: coverage/lcov.info
+                  flags: deno
+                  fail_ci_if_error: false
+
     security:
         name: Security Scan
         runs-on: ubuntu-latest
@@ -116,6 +129,19 @@ jobs:
             - name: Setup pnpm
               uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
 
+            - name: Get pnpm store directory
+              id: pnpm-cache
+              shell: bash
+              run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+            - name: Cache pnpm store
+              uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+              with:
+                  path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+                  key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+                  restore-keys: |
+                      ${{ runner.os }}-pnpm-store-
+
             - name: Setup Node.js
               uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
               with:
@@ -142,6 +168,19 @@ jobs:
 
             - name: Setup pnpm
               uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+
+            - name: Get pnpm store directory
+              id: pnpm-cache
+              shell: bash
+              run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_OUTPUT
+
+            - name: Cache pnpm store
+              uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+              with:
+                  path: ${{ steps.pnpm-cache.outputs.STORE_PATH }}
+                  key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+                  restore-keys: |
+                      ${{ runner.os }}-pnpm-store-
 
             - name: Setup Node.js
               uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -278,7 +317,26 @@ jobs:
                   print('All checks passed')
                   PY
 
-    # Only publish on main pushes, and gate on all checks
+            - name: Write CI summary
+              if: always()
+              env:
+                  NEEDS_JSON: ${{ toJSON(needs) }}
+              run: |
+                  python3 - <<'PY'
+                  import os, json
+                  needs = json.loads(os.environ['NEEDS_JSON'])
+                  lines = ["## CI Gate Summary", "", "| Job | Result |", "|---|---|"]
+                  icons = {'success': '✅', 'failure': '❌', 'skipped': '⏭️', 'cancelled': '🚫'}
+                  for name, data in needs.items():
+                      result = data['result']
+                      icon = icons.get(result, '❓')
+                      lines.append(f"| `{name}` | {icon} {result} |")
+                  print('\n'.join(lines))
+                  with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+                      f.write('\n'.join(lines) + '\n')
+                  PY
+
+
     publish:
         name: Publish to JSR
         runs-on: ubuntu-latest
