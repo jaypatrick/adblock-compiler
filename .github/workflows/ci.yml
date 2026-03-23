@@ -361,6 +361,60 @@ jobs:
             - name: Validate migration file naming and ordering
               run: deno task migrate:validate
 
+    zta-lint:
+        name: ZTA Lint
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        needs: [changes]
+        if: needs.changes.outputs.worker == 'true' || needs.changes.outputs.frontend == 'true'
+        permissions:
+            contents: read
+        continue-on-error: false
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: Check for wildcard CORS on authenticated endpoints
+              run: |
+                  set -euo pipefail
+                  if grep -rn 'Access-Control-Allow-Origin.*\*' worker/ src/ 2>/dev/null; then
+                      echo "❌ ZTA VIOLATION: Wildcard CORS (Access-Control-Allow-Origin: *) found in worker/ or src/"
+                      exit 1
+                  fi
+                  echo "✅ No wildcard CORS found"
+
+            - name: Check for hardcoded secrets
+              run: |
+                  set -euo pipefail
+                  if grep -rPn 'ADMIN_KEY\s*=\s*["'"'"'][^\$]' worker/ src/ 2>/dev/null; then
+                      echo "❌ ZTA VIOLATION: Possible hardcoded ADMIN_KEY secret found in worker/ or src/"
+                      exit 1
+                  fi
+                  echo "✅ No hardcoded secrets detected"
+
+            - name: Check for eval and new Function usage
+              run: |
+                  set -euo pipefail
+                  if grep -rPn '\beval\s*\(' worker/ src/ 2>/dev/null; then
+                      echo "❌ ZTA VIOLATION: eval() usage found in worker/ or src/"
+                      exit 1
+                  fi
+                  if grep -rPn '\bnew\s+Function\s*\(' worker/ src/ 2>/dev/null; then
+                      echo "❌ ZTA VIOLATION: new Function() usage found in worker/ or src/"
+                      exit 1
+                  fi
+                  echo "✅ No eval() or new Function() usage found"
+
+            - name: Check for string-interpolated SQL
+              run: |
+                  set -euo pipefail
+                  # Flag template literals containing SQL keywords with variable interpolation
+                  # All D1 queries must use .prepare().bind() — never string-interpolated SQL
+                  if grep -rPn '`[^`]*(SELECT|INSERT|UPDATE|DELETE)\b[^`]*\$\{' worker/ 2>/dev/null; then
+                      echo "❌ ZTA VIOLATION: String-interpolated SQL found in worker/ — use .prepare().bind() instead"
+                      exit 1
+                  fi
+                  echo "✅ No string-interpolated SQL found"
+
     ci-gate:
         name: CI Gate
         runs-on: ubuntu-latest
