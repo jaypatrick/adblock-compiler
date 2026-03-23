@@ -3,8 +3,18 @@ name: ZTA Lint
 on:
     push:
         branches: [main]
+        paths:
+            - 'worker/**'
+            - 'frontend/src/**'
+            - 'wrangler.toml'
+            - 'frontend/wrangler.toml'
     pull_request:
         branches: [main]
+        paths:
+            - 'worker/**'
+            - 'frontend/src/**'
+            - 'wrangler.toml'
+            - 'frontend/wrangler.toml'
     workflow_dispatch:
 
 concurrency:
