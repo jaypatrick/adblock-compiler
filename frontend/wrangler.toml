@@ -61,16 +61,6 @@ main = "dist/adblock-compiler/server/server.mjs"
 # .mjs files as ESModule type when walking the import graph for upload.
 no_bundle = true
 
-# ─── Module rules ─────────────────────────────────────────────────────────────
-# Required with no_bundle = true: explicitly marks all .mjs files in the build
-# output as ES modules so wrangler can resolve and upload the full import graph
-# (server.mjs → polyfills.server.mjs, chunk-*.mjs, etc.).
-# Without this, Cloudflare error 10021 occurs at deploy: wrangler uploads
-# server.mjs but cannot find the modules it imports.
-[[rules]]
-type = "ESModule"
-globs = ["**/*.mjs"]
-
 # Keep in sync with the main worker's compatibility_date in /wrangler.toml.
 compatibility_date = "2026-01-01"
 
@@ -83,6 +73,19 @@ compatibility_flags = ["nodejs_compat"]
 # multiple producers for a single tail consumer — no extra infrastructure needed.
 # IMPORTANT: adblock-compiler-tail must be deployed before this Worker.
 tail_consumers = [{ service = "adblock-compiler-tail" }]
+
+# ─── Module rules ─────────────────────────────────────────────────────────────
+# Required with no_bundle = true: explicitly marks all .mjs files in the build
+# output as ES modules so wrangler can resolve and upload the full import graph
+# (server.mjs → polyfills.server.mjs, chunk-*.mjs, etc.).
+# Without this, Cloudflare error 10021 occurs at deploy: wrangler uploads
+# server.mjs but cannot find the modules it imports.
+# IMPORTANT: [[rules]] must appear after all top-level key-value pairs.
+# In TOML, bare keys after an array-of-tables header are parsed as members
+# of that table entry, not top-level keys.
+[[rules]]
+type = "ESModule"
+globs = ["**/*.mjs"]
 
 # ─── Static assets ──────────────────────────────────────────────────────────
 # Cloudflare serves these directly from the CDN edge before the Worker fetch
