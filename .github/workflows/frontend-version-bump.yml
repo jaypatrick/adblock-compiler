@@ -1,0 +1,205 @@
+name: Frontend Version Bump
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - 'frontend/**'
+            - 'pnpm-lock.yaml'
+    workflow_dispatch:
+        inputs:
+            bump_type:
+                description: 'Version bump type (leave empty for auto-detect from commits)'
+                required: false
+                type: choice
+                options:
+                    - ''
+                    - patch
+                    - minor
+                    - major
+
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    frontend-version-bump:
+        name: Frontend Version Bump
+        runs-on: ubuntu-latest
+        # Skip if commit was made by github-actions bot (prevent loops)
+        # or if commit message contains [skip ci] or [skip version]
+        if: |
+            github.event_name == 'workflow_dispatch' || (
+                github.event.head_commit &&
+                !contains(github.event.head_commit.message, '[skip ci]') &&
+                !contains(github.event.head_commit.message, '[skip version]') &&
+                github.event.head_commit.author.name != 'github-actions[bot]'
+            )
+        outputs:
+            old_version: ${{ steps.bump.outputs.old }}
+            new_version: ${{ steps.bump.outputs.new }}
+            tag: ${{ steps.bump.outputs.tag }}
+        steps:
+            - name: Checkout
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+              with:
+                  fetch-depth: 0
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+              with:
+                  node-version: '22'
+
+            - name: Determine version bump type
+              id: determine_bump
+              run: |
+                  set -euo pipefail
+
+                  # If bump_type input is provided, use it
+                  if [ -n "${{ inputs.bump_type }}" ]; then
+                    BUMP_TYPE="${{ inputs.bump_type }}"
+                    echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
+                    echo "Using manual bump type: $BUMP_TYPE"
+                    exit 0
+                  fi
+
+                  # Find the last frontend-v* tag as the anchor point
+                  LAST_FRONTEND_TAG=$(git describe --tags --match "frontend-v*" --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
+                  echo "Analyzing commits since: $LAST_FRONTEND_TAG"
+
+                  # Get commit messages and bodies for commits touching frontend/**
+                  COMMITS=$(git log "${LAST_FRONTEND_TAG}..HEAD" --format="%s%n%b" -- frontend/ pnpm-lock.yaml || echo "")
+
+                  if [ -z "$COMMITS" ]; then
+                    echo "No frontend commits to analyze, skipping version bump"
+                    echo "bump_type=none" >> "$GITHUB_OUTPUT"
+                    exit 0
+                  fi
+
+                  BUMP_TYPE="none"
+
+                  while IFS= read -r line; do
+                    [ -z "$line" ] && continue
+
+                    # Breaking change → major
+                    if echo "$line" | grep -qiE "^(feat|fix|perf|refactor)(\(.+\))?!:|BREAKING CHANGE:"; then
+                      BUMP_TYPE="major"
+                      echo "Found breaking change: $line"
+                      break
+                    fi
+
+                    # Feature → minor
+                    if echo "$line" | grep -qiE "^feat(\(.+\))?:"; then
+                      if [ "$BUMP_TYPE" != "major" ]; then
+                        BUMP_TYPE="minor"
+                        echo "Found feature: $line"
+                      fi
+                    fi
+
+                    # Fix or perf → patch
+                    if echo "$line" | grep -qiE "^(fix|perf)(\(.+\))?:"; then
+                      if [ "$BUMP_TYPE" != "major" ] && [ "$BUMP_TYPE" != "minor" ]; then
+                        BUMP_TYPE="patch"
+                        echo "Found fix/perf: $line"
+                      fi
+                    fi
+                  done <<< "$COMMITS"
+
+                  echo "Determined bump type: $BUMP_TYPE"
+                  echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
+
+            - name: Bump frontend version
+              id: bump
+              if: steps.determine_bump.outputs.bump_type != 'none'
+              run: |
+                  set -euo pipefail
+
+                  BUMP_TYPE="${{ steps.determine_bump.outputs.bump_type }}"
+                  PKG="frontend/package.json"
+
+                  OLD=$(node -e "process.stdout.write(require('./${PKG}').version)")
+                  echo "old=$OLD" >> "$GITHUB_OUTPUT"
+
+                  IFS='.' read -r major minor patch <<< "$OLD"
+
+                  case "$BUMP_TYPE" in
+                    major) NEW="$((major + 1)).0.0" ;;
+                    minor) NEW="$major.$((minor + 1)).0" ;;
+                    patch) NEW="$major.$minor.$((patch + 1))" ;;
+                    *)
+                      echo "Error: Unknown bump type '$BUMP_TYPE'" >&2
+                      exit 1
+                      ;;
+                  esac
+
+                  echo "new=$NEW" >> "$GITHUB_OUTPUT"
+                  echo "tag=frontend-v${NEW}" >> "$GITHUB_OUTPUT"
+                  echo "Bumping frontend version: $OLD → $NEW ($BUMP_TYPE)"
+
+                  # Update version in frontend/package.json
+                  NEW_VERSION="$NEW" node -e "
+                    const fs = require('fs');
+                    const pkg = JSON.parse(fs.readFileSync('${PKG}', 'utf8'));
+                    pkg.version = process.env.NEW_VERSION;
+                    fs.writeFileSync('${PKG}', JSON.stringify(pkg, null, 4) + '\n');
+                  "
+                  echo "Updated ${PKG} to version ${NEW}"
+
+            - name: Commit, tag, and push
+              if: steps.determine_bump.outputs.bump_type != 'none'
+              run: |
+                  set -euo pipefail
+
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+
+                  if git diff --quiet; then
+                    echo "No changes detected, skipping commit"
+                    exit 0
+                  fi
+
+                  git add frontend/package.json
+                  git commit -m "chore(frontend): bump version to ${{ steps.bump.outputs.new }} [skip version]"
+
+                  TAG_NAME="${{ steps.bump.outputs.tag }}"
+                  git tag -a "$TAG_NAME" -m "Frontend release ${{ steps.bump.outputs.new }}"
+
+                  git push origin main
+                  git push origin "$TAG_NAME"
+
+                  echo "Committed and tagged $TAG_NAME"
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Summary
+              if: steps.determine_bump.outputs.bump_type != 'none'
+              run: |
+                  cat <<EOF >> $GITHUB_STEP_SUMMARY
+                  ## 🏷️ Frontend Version Bump
+
+                  - **Old Version**: ${{ steps.bump.outputs.old }}
+                  - **New Version**: ${{ steps.bump.outputs.new }}
+                  - **Tag**: ${{ steps.bump.outputs.tag }}
+                  - **Bump Type**: ${{ steps.determine_bump.outputs.bump_type }}
+
+                  The \`frontend-v${{ steps.bump.outputs.new }}\` tag has been created.
+                  EOF
+
+            - name: Skip summary
+              if: steps.determine_bump.outputs.bump_type == 'none'
+              run: |
+                  cat <<EOF >> $GITHUB_STEP_SUMMARY
+                  ## ℹ️ No Frontend Version Bump Required
+
+                  No frontend commits requiring a version bump were found since the last \`frontend-v*\` tag.
+
+                  Commits that trigger a frontend version bump:
+                  - \`feat:\` / \`feat(frontend):\` → minor bump
+                  - \`fix:\` / \`fix(frontend):\` → patch bump
+                  - \`perf:\` / \`perf(frontend):\` → patch bump
+                  - \`BREAKING CHANGE:\` or \`feat!:\` → major bump
+                  EOF
