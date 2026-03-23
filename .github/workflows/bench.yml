@@ -1,0 +1,53 @@
+name: Benchmark
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - 'src/**'
+            - 'deno.json'
+            - 'deno.lock'
+    pull_request:
+        branches: [main]
+        paths:
+            - 'src/**'
+            - 'deno.json'
+            - 'deno.lock'
+    workflow_dispatch:
+
+env:
+    DENO_VERSION: '2.x'
+
+jobs:
+    bench:
+        name: Run Benchmarks
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+            - name: Setup Deno environment
+              uses: ./.github/actions/setup-deno-env
+              with:
+                  deno-version: ${{ env.DENO_VERSION }}
+
+            - name: Run benchmarks (JSON output)
+              run: deno task bench:json > bench-results.json || deno bench --allow-read --allow-write --allow-net --allow-env --json src/**/*.bench.ts > bench-results.json
+
+            - name: Upload benchmark results
+              uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+              with:
+                  name: bench-results-${{ github.sha }}
+                  path: bench-results.json
+                  retention-days: 90
+
+            - name: Post benchmark summary
+              if: always() && hashFiles('bench-results.json') != ''
+              run: |
+                  echo "## Benchmark Results" >> $GITHUB_STEP_SUMMARY
+                  echo "" >> $GITHUB_STEP_SUMMARY
+                  echo '```json' >> $GITHUB_STEP_SUMMARY
+                  cat bench-results.json >> $GITHUB_STEP_SUMMARY
+                  echo '```' >> $GITHUB_STEP_SUMMARY
