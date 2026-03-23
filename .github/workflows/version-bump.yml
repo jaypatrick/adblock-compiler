@@ -46,7 +46,7 @@ jobs:
             compiler_changed: ${{ steps.determine_bump.outputs.compiler_changed || 'false' }}
         steps:
             - name: Checkout
-              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+              uses: actions/checkout@v6
               with:
                   fetch-depth: 0 # full history required: git log --grep searches all commits to find last version bump
                   token: ${{ secrets.GITHUB_TOKEN }}
@@ -380,7 +380,7 @@ jobs:
             actions: write
         steps:
             - name: Trigger release workflow
-              uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+              uses: actions/github-script@v8
               with:
                   script: |
                       await github.rest.actions.createWorkflowDispatch({
