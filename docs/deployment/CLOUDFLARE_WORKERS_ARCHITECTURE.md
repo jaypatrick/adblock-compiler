@@ -214,7 +214,7 @@ flowchart LR
 
 ### Manual Force-Redeploy
 
-If the frontend worker shows **"Assets have not yet been deployed"**, it means the `adblock-compiler-frontend` worker was registered on Cloudflare without its build artifacts (`dist/adblock-compiler/browser`). This typically happens when:
+If the frontend worker shows **"Assets have not yet been deployed"**, it means the `adblock-frontend` worker was registered on Cloudflare without its build artifacts (`dist/adblock-compiler/browser`). This typically happens when:
 
 - The `deploy-frontend` CI job was skipped because no `frontend/**` files changed.
 - The worker was first registered before the build artifact was available.
