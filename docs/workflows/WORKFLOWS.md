@@ -24,8 +24,9 @@ The repository uses four main workflows:
 3. **Type Check** - TypeScript type checking for all entry points
 4. **Test** - Run test suite with coverage; coverage artifact uploaded on both PRs and main push
 5. **Security** - Trivy vulnerability scanning
-6. **Frontend Build** - Angular frontend lint, test, build, and artifact upload (single merged job)
-7. **Validate Cloudflare Schema** - Runs `deno task schema:cloudflare` and verifies that `docs/api/cloudflare-schema.yaml` (Cloudflare API Shield schema generated from the OpenAPI spec) is up to date
+6. **Frontend Lint & Test** (`frontend-lint-test`) - Angular frontend lint and test
+7. **Frontend Build** (`frontend-build`) - Angular frontend build and artifact upload
+8. **Validate Cloudflare Schema** - Runs `deno task schema:cloudflare` and verifies that `docs/api/cloudflare-schema.yaml` (Cloudflare API Shield schema generated from the OpenAPI spec) is up to date
 
 #### PR-Only Parallel Job (needs `frontend-build` artifact)
 
@@ -58,7 +59,7 @@ All composite actions live in `.github/actions/` and are called with `uses: ./.g
 - name: Setup pnpm and Node.js
   uses: ./.github/actions/setup-pnpm-node
   with:
-      node-version: '22'   # optional, defaults to '22'
+    node-version: '22'   # optional, defaults to '22'
 ```
 
 #### `zta-checks`
@@ -81,7 +82,7 @@ All composite actions live in `.github/actions/` and are called with `uses: ./.g
 - name: Deploy worker
   uses: ./.github/actions/deploy-worker
   with:
-      github-sha: ${{ github.sha }}
+    github-sha: ${{ github.sha }}
 ```
 
 Requires `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CF_WEB_ANALYTICS_TOKEN` to be set in the job-level `env:` (inherited automatically; no need to pass as inputs).

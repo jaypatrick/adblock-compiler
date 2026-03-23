@@ -45,11 +45,44 @@ runs:
         - name: Setup Cloudflare resources
           shell: bash
           run: |
-              echo "Creating Cloudflare resources..."
-              deno task wrangler queues create adblock-compiler-worker-queue 2>/dev/null || echo "Queue already exists"
-              deno task wrangler queues create adblock-compiler-worker-queue-high-priority 2>/dev/null || echo "High priority queue already exists"
-              deno task wrangler queues create adblock-compiler-dlq 2>/dev/null || echo "DLQ already exists"
-              deno task wrangler r2 bucket create adblock-compiler-r2-storage 2>/dev/null || echo "R2 bucket already exists"
+              set -euo pipefail
+
+              create_or_confirm_queue() {
+                  local name="$1"
+                  echo "Ensuring queue '$name' exists..."
+                  if output=$(deno task wrangler queues create "$name" 2>&1); then
+                      echo "$output"
+                      return 0
+                  fi
+                  echo "$output"
+                  if echo "$output" | grep -qi 'already exists'; then
+                      echo "Queue '$name' already exists"
+                      return 0
+                  fi
+                  echo "❌ Failed to create queue '$name'. See error above."
+                  exit 1
+              }
+
+              create_or_confirm_r2_bucket() {
+                  local name="$1"
+                  echo "Ensuring R2 bucket '$name' exists..."
+                  if output=$(deno task wrangler r2 bucket create "$name" 2>&1); then
+                      echo "$output"
+                      return 0
+                  fi
+                  echo "$output"
+                  if echo "$output" | grep -qi 'already exists'; then
+                      echo "R2 bucket '$name' already exists"
+                      return 0
+                  fi
+                  echo "❌ Failed to create R2 bucket '$name'. See error above."
+                  exit 1
+              }
+
+              create_or_confirm_queue "adblock-compiler-worker-queue"
+              create_or_confirm_queue "adblock-compiler-worker-queue-high-priority"
+              create_or_confirm_queue "adblock-compiler-dlq"
+              create_or_confirm_r2_bucket "adblock-compiler-r2-storage"
 
         - name: Deploy Tail Worker
           if: env.CLOUDFLARE_API_TOKEN != ''
