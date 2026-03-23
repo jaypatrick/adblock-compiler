@@ -92,7 +92,6 @@ export default {
     },
 };
 
-// AFTER — promote to a real exported interface
 /**
  * Cloudflare Workers environment bindings.
  * Declared in frontend/wrangler.toml and injected by the runtime.
@@ -104,17 +103,3 @@ export interface Env {
      *  Calls travel on the internal Cloudflare network — no public hop, no CORS. */
     API: Fetcher;
 }
-
-/**
- * Cloudflare Workers environment bindings.
- *
- * Add KV namespaces, D1 databases, R2 buckets, or secret variables here as
- * the app grows. These are declared in `wrangler.toml` and injected by the
- * runtime into the `env` parameter of `fetch()`.
- *
- * Example:
- *   interface Env {
- *     MY_KV: KVNamespace;
- *     API_SECRET: string;
- *   }
- */
