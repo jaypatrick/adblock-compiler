@@ -66,6 +66,12 @@ compatibility_date = "2026-01-01"
 # Angular's SSR runtime depends on when running on the Workers platform.
 compatibility_flags = ["nodejs_compat"]
 
+# ─── Tail Worker ─────────────────────────────────────────────────────────────
+# Same adblock-compiler-tail worker used by the backend. Cloudflare supports
+# multiple producers for a single tail consumer — no extra infrastructure needed.
+# IMPORTANT: adblock-compiler-tail must be deployed before this Worker.
+tail_consumers = [{ service = "adblock-compiler-tail" }]
+
 # ─── Static assets ──────────────────────────────────────────────────────────
 # Cloudflare serves these directly from the CDN edge before the Worker fetch
 # handler is invoked, so Angular's SSR handler only receives HTML document
@@ -95,12 +101,6 @@ local_protocol = "http"
 #   SENTRY_RELEASE — injected at deploy time via --var, not a secret
 [vars]
 ENVIRONMENT = "production"
-
-# ─── Tail Worker ─────────────────────────────────────────────────────────────
-# Same adblock-compiler-tail worker used by the backend. Cloudflare supports
-# multiple producers for a single tail consumer — no extra infrastructure needed.
-# IMPORTANT: adblock-compiler-tail must be deployed before this Worker.
-tail_consumers = [{ service = "adblock-compiler-tail" }]
 
 [observability.logs]
 enabled = true
