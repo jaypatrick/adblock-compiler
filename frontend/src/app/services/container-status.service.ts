@@ -14,6 +14,7 @@ import { interval, Subscription, switchMap, catchError, of, startWith, map } fro
 import { API_BASE_URL } from '../tokens';
 import { ContainerStatusResponseSchema, validateResponse } from '../schemas/api-responses';
 
+/** Statuses returned by the API backend */
 export type ContainerLifecycleStatus = 'running' | 'starting' | 'sleeping' | 'error' | 'unavailable' | 'unknown';
 
 export interface ContainerStatus {

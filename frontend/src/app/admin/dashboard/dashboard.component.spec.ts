@@ -5,7 +5,7 @@ import { provideHttpClientTesting, HttpTestingController } from '@angular/common
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { DashboardComponent } from './dashboard.component';
 
-/** Flush all four parallel requests that loadData() fires. */
+/** Flush all parallel requests that loadData() fires plus any container-status widget polls. */
 function flushDashboard(
     httpTesting: HttpTestingController,
     opts: {
@@ -54,6 +54,11 @@ function flushDashboard(
     } else {
         healthReq.flush(health);
     }
+
+    // Drain any container-status widget polling requests (from ContainerStatusWidgetComponent autoPoll)
+    httpTesting.match(r => r.url.includes('/container/status')).forEach(r =>
+        r.flush({ status: 'unavailable', checkedAt: new Date().toISOString() }),
+    );
 }
 
 describe('DashboardComponent', () => {
@@ -75,11 +80,28 @@ describe('DashboardComponent', () => {
         component = fixture.componentInstance;
         httpTesting = TestBed.inject(HttpTestingController);
         fixture.detectChanges();
-        // Drain any afterNextRender HTTP calls (4 parallel requests from loadData)
-        httpTesting.match(() => true).forEach(r => r.flush({ success: true, items: [], total: 0 }));
+        // Drain any afterNextRender HTTP calls: 4 from loadData(), plus widget poll
+        httpTesting.match(r => r.url.includes('/container/status')).forEach(r => {
+            if (!r.cancelled) {
+                r.flush({ status: 'unavailable', checkedAt: new Date().toISOString() });
+            }
+        });
+        httpTesting.match(() => true).forEach(r => {
+            if (!r.cancelled) {
+                r.flush({ success: true, items: [], total: 0 });
+            }
+        });
     });
 
-    afterEach(() => httpTesting.verify());
+    afterEach(() => {
+        // Drain any remaining container-status widget polling requests before verify()
+        httpTesting.match(r => r.url.includes('/container/status')).forEach(r => {
+            if (!r.cancelled) {
+                r.flush({ status: 'unavailable', checkedAt: new Date().toISOString() });
+            }
+        });
+        httpTesting.verify();
+    });
 
     it('should create', () => {
         expect(component).toBeTruthy();

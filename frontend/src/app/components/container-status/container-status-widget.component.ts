@@ -85,18 +85,18 @@ import { ContainerStatusService } from '../../services/container-status.service'
         gap: 6px;
     }
 
-    /* Reuse global status-dot from styles.css */
+    /* Local status-dot styling using theme variables for colors */
     .status-dot {
         width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0;
     }
-    .dot-green  { background: #4caf50; }
-    .dot-yellow { background: #ff9800; }
-    .dot-red    { background: #f44336; }
+    .dot-green  { background: var(--app-success); }
+    .dot-yellow { background: var(--app-warning); }
+    .dot-red    { background: var(--app-error); }
     .dot-grey   { background: var(--mat-sys-on-surface-variant); opacity: 0.4; }
 
     @keyframes pulse-slow {
-        0%, 100% { box-shadow: 0 0 0 0 rgba(76,175,80,0.5); }
-        50%       { box-shadow: 0 0 0 5px rgba(76,175,80,0); }
+        0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--app-success) 50%, transparent); }
+        50%       { box-shadow: 0 0 0 5px color-mix(in srgb, var(--app-success) 0%, transparent); }
     }
     .pulse-slow { animation: pulse-slow 2.5s ease-in-out infinite; }
 

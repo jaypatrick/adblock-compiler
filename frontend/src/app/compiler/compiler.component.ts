@@ -739,7 +739,10 @@ export class CompilerComponent {
         });
 
         // Clean up SSE connection when component is destroyed
-        this.destroyRef.onDestroy(() => this.sseConnection()?.close());
+        this.destroyRef.onDestroy(() => {
+            this.sseConnection()?.close();
+            this.containerStatusService.stopPolling();
+        });
 
         // When a container compilation resolves or errors, switch to slow background polling
         effect(() => {

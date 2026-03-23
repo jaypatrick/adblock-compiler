@@ -77,9 +77,9 @@ export async function handleContainerStatus(c: Context<{ Bindings: Env }>): Prom
             clearTimeout(timeout);
             const latencyMs = Date.now() - t0;
             const isTimeout = err instanceof Error && err.name === 'AbortError';
-            // AbortError after ~0ms means DO exists but container hasn't started yet
+            // AbortError from our 3s timeout likely means DO exists but container hasn't started yet
             return c.json<ContainerStatusResponse>({
-                status: isTimeout ? 'starting' : 'sleeping',
+                status: isTimeout ? 'starting' : 'error',
                 latencyMs,
                 checkedAt,
             }, 200);
