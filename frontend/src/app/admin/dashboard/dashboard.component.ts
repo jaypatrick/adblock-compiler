@@ -21,6 +21,7 @@ import { MatListModule } from '@angular/material/list';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatDividerModule } from '@angular/material/divider';
+import { ContainerStatusWidgetComponent } from '../../components/container-status/container-status-widget.component';
 
 interface AuditLogEntry {
     readonly id: number;
@@ -98,6 +99,7 @@ interface HealthCheck {
         MatProgressSpinnerModule,
         MatTooltipModule,
         MatDividerModule,
+        ContainerStatusWidgetComponent,
     ],
     template: `
     <mat-card appearance="outlined" class="mb-2">
@@ -199,10 +201,27 @@ interface HealthCheck {
                 </mat-card-content>
             </mat-card>
         </div>
+
+        <!-- Container Runtime Card -->
+        <mat-card appearance="outlined" class="mb-2">
+            <mat-card-header>
+                <mat-icon mat-card-avatar aria-hidden="true">memory</mat-icon>
+                <mat-card-title>Container Runtime</mat-card-title>
+                <mat-card-subtitle>Cloudflare Container lifecycle — AdblockCompiler Durable Object</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+                <app-container-status-widget [autoPoll]="true" [pollIntervalMs]="30000" />
+                <p class="mat-caption text-muted mt-1">
+                    The container handles CPU-intensive compilations. It sleeps after 10 min of inactivity
+                    and cold-starts automatically on the next request.
+                </p>
+            </mat-card-content>
+        </mat-card>
     }
     `,
     styles: [`
     .mb-2 { margin-bottom: 16px; }
+    .mt-1 { margin-top: 8px; }
     .loading-container { display: flex; justify-content: center; padding: 48px; }
     .empty-state { text-align: center; color: var(--mat-sys-on-surface-variant); padding: 24px; }
     .text-muted { color: var(--mat-sys-on-surface-variant); font-size: 12px; }

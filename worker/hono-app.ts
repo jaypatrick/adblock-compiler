@@ -1000,6 +1000,11 @@ routes.get('/health/latest', etag(), async (c) => {
     return handleHealthLatest(c.env);
 });
 
+routes.get('/container/status', async (c) => {
+    const { handleContainerStatus } = await import('./handlers/container-status.ts');
+    return handleContainerStatus(c);
+});
+
 // ── Docs redirect ─────────────────────────────────────────────────────────────
 
 /**

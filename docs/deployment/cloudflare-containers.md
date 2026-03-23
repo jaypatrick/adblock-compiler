@@ -58,19 +58,33 @@ Cloudflare Workers have a **10ms–30ms CPU time limit** per request (soft/hard)
 
 ---
 
-## UI Container Status Widget — Not Yet Implemented
+## UI Container Status Widget
 
-> **⚠️ Status: Missing**
+The Angular frontend includes a real-time container status widget that keeps users informed during cold starts and warm-up delays.
 
-There is currently **no UI widget** in the Angular frontend that displays when the container is active, spinning up, or sleeping. The admin dashboard and performance page show general API health from `/api/health`, but this does not reflect container lifecycle.
+### How It Works
 
-A container status indicator would be useful to show users when they hit `/compile/container` and the container is cold-starting (which adds latency). This would require:
+- **Backend:** `GET /api/container/status` pings the container's `/health` endpoint via the `ADBLOCK_COMPILER` Durable Object binding and returns the current lifecycle state (`running`, `starting`, `sleeping`, `error`, or `unavailable`) along with the round-trip latency and a timestamp.
+- **Frontend service:** `ContainerStatusService` polls the endpoint at a configurable interval (default 5 s) using RxJS `interval` + `switchMap`. Polling cadence can be tuned per context — e.g. 2 s during active compilation, 30 s for background monitoring.
+- **UI component:** `ContainerStatusWidgetComponent` is a standalone, zoneless-compatible Angular component that renders a pulsing status dot, a label, optional latency, and an animated "waking up" message when the container is starting or sleeping.
 
-1. **Backend:** A new `GET /api/container/status` endpoint that checks the container's state via the Durable Object binding
-2. **Frontend service:** An Angular service polling or subscribing to that endpoint
-3. **UI component:** A status chip/badge showing `sleeping`, `starting`, or `running` with an appropriate visual indicator (e.g. the pulsing `.status-dot` already defined in `styles.css`)
+### Where It Appears
 
-This is tracked as a future enhancement. See [GitHub Issues](https://github.com/jaypatrick/adblock-compiler/issues) to create a tracking issue.
+| Location | Polling interval | Notes |
+|---|---|---|
+| **Compiler page** | 2 s (fast) during compilation, 30 s after | Shown when `container` mode is selected or status is noteworthy |
+| **Admin Dashboard** | 30 s (background) | Dedicated "Container Runtime" card below System Health |
+| **Performance page** | 15 s | Inline row inside the System Health card below the status chips |
+
+### Status Values
+
+| Status | Meaning |
+|---|---|
+| `running` | Container is warm and responded to `/health` |
+| `starting` | Container is cold-starting (AbortError after timeout) |
+| `sleeping` | Container is idle / stopped |
+| `error` | Container responded with a non-OK HTTP status |
+| `unavailable` | `ADBLOCK_COMPILER` binding not present in this deployment |
 
 ---
 
@@ -475,7 +489,7 @@ If you see `Cannot find module '@cloudflare/containers'`:
 
 4. **Update container configuration** as needed in `wrangler.toml` and `worker/worker.ts`
 
-5. **Implement container status UI widget** — see the [UI Container Status Widget](#ui-container-status-widget--not-yet-implemented) section above for requirements.
+5. **Monitor container lifecycle** — use the built-in container status widget on the Compiler page, Admin Dashboard, or Performance page. See the [UI Container Status Widget](#ui-container-status-widget) section above for details.
 
 ## Resources
 
