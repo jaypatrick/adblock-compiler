@@ -57,7 +57,7 @@ import { createAuth } from './lib/auth.ts';
 import { generateRequestId } from './utils/index.ts';
 import { createAnalyticsService } from './utils/analytics.ts';
 import { createPgPool } from './utils/pg-pool.ts';
-import { DOCS_SITE_URL } from './utils/constants.ts';
+import { getProjectUrls } from './utils/constants.ts';
 import { checkRoutePermission } from './utils/route-permissions.ts';
 import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
@@ -1023,7 +1023,7 @@ function buildDocsRedirectUrl(c: AppContext): string {
     const pathname = c.req.path;
     const docsSubpath = pathname.startsWith('/docs/') ? pathname.slice('/docs'.length) : '/';
     const url = new URL(c.req.url);
-    const target = new URL(docsSubpath, DOCS_SITE_URL);
+    const target = new URL(docsSubpath, getProjectUrls(c.env).docs);
     if (url.search) target.search = url.search;
     return target.toString();
 }
