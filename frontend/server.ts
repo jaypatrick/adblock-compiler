@@ -25,11 +25,11 @@
  *   deno task wrangler:deploy (after `pnpm --filter adblock-frontend run build`)
  */
 
-import { AngularAppEngine } from '@angular/ssr';
-// Side-effect import: loading main.server registers the Angular application with
-// AngularAppEngine's global app registry. Without this import the engine has no
-// application to render, even though the symbol itself is not referenced directly.
-import './src/main.server';
+// ɵsetAngularAppEngineManifest is an Angular-internal (ɵ-prefixed) API.
+// In Angular 21 the builder no longer calls it automatically — the server entry
+// must import and call it before constructing AngularAppEngine.
+// Watch for a stable public replacement in future Angular minor/major releases.
+import { AngularAppEngine, ɵsetAngularAppEngineManifest as setAngularAppEngineManifest } from '@angular/ssr';
 
 // Minimal Cloudflare Workers type stubs.
 // These are declared as module-scoped interfaces (this file has import/export statements,
@@ -47,10 +47,55 @@ interface WorkersFetcher {
     fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
 }
 
-// Instantiate the Angular SSR engine once at module scope so it is reused
-// across requests within the same Worker isolate — avoids re-initialising the
-// Angular application on every request.
-const angularApp = new AngularAppEngine();
+// Lazy, race-safe initialiser for AngularAppEngine.
+//
+// Angular 21 changed the manifest API: `angular-app-engine-manifest.mjs` is now
+// a pure data export (it no longer calls `setAngularAppEngineManifest()` as a
+// side effect).  We must call `setAngularAppEngineManifest()` ourselves before
+// constructing `AngularAppEngine`, otherwise it throws at module load time.
+//
+// The manifest file is a *build artifact* — it lives alongside `server.mjs` in
+// `dist/.../server/` after `ng build`, not in the TypeScript source tree.  We
+// therefore use a *variable* import path so that:
+//   • esbuild (Angular builder) does not attempt to bundle it during compilation
+//     (esbuild only traces dynamic imports with *string literals*), and
+//   • at runtime in Cloudflare Workers the module is resolved from the uploaded
+//     bundle (all *.mjs files are uploaded via the [[rules]] glob in wrangler.toml).
+//
+// The promise is stored at module scope so the setup runs only once even when
+// multiple concurrent requests arrive before initialisation completes.
+let angularAppPromise: Promise<AngularAppEngine> | null = null;
+
+function getAngularApp(): Promise<AngularAppEngine> {
+    if (!angularAppPromise) {
+        angularAppPromise = (async () => {
+            // Variable path → esbuild does not bundle; resolved at runtime.
+            try {
+                // Variable path → esbuild does not bundle; resolved at runtime.
+                const manifestPath = './angular-app-engine-manifest.mjs';
+                let manifest: unknown;
+                try {
+                    ({ default: manifest } = await import(manifestPath));
+                } catch (err) {
+                    throw new Error(
+                        `[server.ts] Failed to load angular-app-engine-manifest.mjs. ` +
+                        `Ensure the Angular app was built with @angular/build:application before deploying. ` +
+                        `Original error: ${err instanceof Error ? err.message : String(err)}`,
+                    );
+                }
+                setAngularAppEngineManifest(
+                    manifest as Parameters<typeof setAngularAppEngineManifest>[0],
+                );
+                return new AngularAppEngine();
+            } catch (err) {
+                // Reset the cached promise on failure so future requests can retry initialization.
+                angularAppPromise = null;
+                throw err;
+            }
+        })();
+    }
+    return angularAppPromise;
+}
 
 /**
  * Cloudflare Workers fetch handler.
@@ -80,7 +125,7 @@ const handler = {
         // Delegate the request to AngularAppEngine.
         // Returns a fully-formed Response (with HTML + headers) for Angular routes,
         // or null if the engine cannot handle the request (e.g. unrecognised path).
-        const response = await angularApp.handle(request);
+        const response = await (await getAngularApp()).handle(request);
         if (!response) return new Response('Not found', { status: 404 });
 
         // Item 2: Add Content-Security-Policy headers to HTML responses
