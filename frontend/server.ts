@@ -26,7 +26,6 @@
  */
 
 import { AngularAppEngine } from '@angular/ssr';
-import * as SentryCloudflare from '@sentry/cloudflare';
 // Side-effect import: loading main.server registers the Angular application with
 // AngularAppEngine's global app registry. Without this import the engine has no
 // application to render, even though the symbol itself is not referenced directly.
@@ -36,6 +35,12 @@ import './src/main.server';
 // across requests within the same Worker isolate — avoids re-initialising the
 // Angular application on every request.
 const angularApp = new AngularAppEngine();
+
+// Lazily-initialised Sentry-wrapped handler. Set on the first request that has
+// SENTRY_DSN configured; null until then so local dev pays zero overhead.
+// The @sentry/cloudflare module is only imported (and bundled into the hot path)
+// when a DSN is actually present — mirrors the pattern in worker/services/sentry-init.ts.
+let sentryHandler: typeof handler | null = null;
 
 /**
  * Cloudflare Workers fetch handler.
@@ -105,19 +110,19 @@ export default {
         if (!env.SENTRY_DSN) {
             return handler.fetch(request, env, ctx);
         }
-        return SentryCloudflare.withSentry(
-            () => ({
-                dsn: env.SENTRY_DSN!,
-                release: env.SENTRY_RELEASE,
-                environment: env.ENVIRONMENT ?? 'production',
-                tracesSampleRate: 0.1,
-            }),
-            {
-                async fetch(req: Request, e: Env, c: ExecutionContext): Promise<Response> {
-                    return handler.fetch(req, e, c);
-                },
-            } as ExportedHandler<Env>,
-        ).fetch!(request, env, ctx);
+        if (!sentryHandler) {
+            const Sentry = await import('@sentry/cloudflare');
+            sentryHandler = Sentry.withSentry(
+                (e: Env) => ({
+                    dsn: e.SENTRY_DSN!,
+                    release: e.SENTRY_RELEASE,
+                    environment: e.ENVIRONMENT ?? 'production',
+                    tracesSampleRate: 0.1,
+                }),
+                handler as unknown as ExportedHandler<Env>,
+            ) as typeof handler;
+        }
+        return sentryHandler.fetch(request, env, ctx);
     },
 };
 

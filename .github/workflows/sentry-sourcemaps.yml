@@ -42,7 +42,7 @@ jobs:
             --project "${{ vars.SENTRY_PROJECT }}" \
             --release "${{ github.sha }}" \
             --url-prefix "~/" \
-            ./dist
+            ./dist/adblock-compiler/browser
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
