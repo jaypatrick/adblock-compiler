@@ -131,7 +131,7 @@ export interface Variables {
     analytics: AnalyticsService;
     requestId: string;
     ip: string;
-    isSSR: boolean;  // true when the request originated from the SSR Worker via env.API.fetch()
+    isSSR: boolean; // true when the request originated from the SSR Worker via env.API.fetch()
 }
 
 // ============================================================================
