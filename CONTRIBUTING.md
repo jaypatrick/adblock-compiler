@@ -6,11 +6,11 @@ Thank you for your interest in contributing to the Adblock Compiler project! Thi
 
 > **⚠️ Important:** This project uses **pnpm** (for the Angular frontend workspace) and **Deno** (for the Worker backend). **Never use `npm` commands directly** — doing so will generate `package-lock.json` files that must not be committed and can create version-mismatch issues.
 >
-> | Scope                    | Tool                 | Example                                             |
-> | ------------------------ | -------------------- | --------------------------------------------------- |
-> | Angular frontend         | `pnpm`               | `pnpm --filter adblock-compiler-frontend run build` |
-> | Worker / backend         | `deno`               | `deno task dev`                                     |
-> | Wrangler (Worker deploy) | `deno task wrangler` | `deno task wrangler deploy`                         |
+> | Scope                    | Tool                 | Example                                    |
+> | ------------------------ | -------------------- | ------------------------------------------ |
+> | Angular frontend         | `pnpm`               | `pnpm --filter adblock-frontend run build` |
+> | Worker / backend         | `deno`               | `deno task dev`                            |
+> | Wrangler (Worker deploy) | `deno task wrangler` | `deno task wrangler deploy`                |
 >
 > The single source of truth for Node package versions is `pnpm-lock.yaml`. If you accidentally run `npm install` and a `package-lock.json` appears, delete it before committing.
 
@@ -35,7 +35,7 @@ Thank you for your interest in contributing to the Adblock Compiler project! Thi
 3. **Run Tests**
    ```bash
    deno task test                                       # Backend tests (Deno)
-   pnpm --filter adblock-compiler-frontend run test     # Frontend tests (Vitest)
+   pnpm --filter adblock-frontend run test     # Frontend tests (Vitest)
    ```
 
 ## Database Setup
@@ -176,9 +176,9 @@ update code                # Too vague, missing type
    deno task schema:generate    # Regenerates cloudflare-schema.yaml and postman-collection.json
 
    # Frontend (Angular)
-   pnpm --filter adblock-compiler-frontend run test     # Vitest unit tests
-   pnpm --filter adblock-compiler-frontend run lint     # ESLint
-   pnpm --filter adblock-compiler-frontend run build    # Production build
+   pnpm --filter adblock-frontend run test     # Vitest unit tests
+   pnpm --filter adblock-frontend run lint     # ESLint
+   pnpm --filter adblock-frontend run build    # Production build
    ```
 
    > **Tip:** After running `deno task setup:hooks`, the pre-push hook will automatically
@@ -231,7 +231,7 @@ Run `deno task fmt` to automatically format your code.
   deno task test:coverage     # With coverage
 
   # Frontend
-  pnpm --filter adblock-compiler-frontend run test
+  pnpm --filter adblock-frontend run test
   ```
 
 ### Mandatory checklist before opening a PR
@@ -305,7 +305,7 @@ The frontend is an Angular 21 app in `frontend/` using:
 ### Running Locally
 
 ```bash
-pnpm --filter adblock-compiler-frontend run start    # Angular dev server (http://localhost:4200)
+pnpm --filter adblock-frontend run start    # Angular dev server (http://localhost:4200)
 deno task wrangler:dev                               # Worker API (http://localhost:8787)
 ```
 
@@ -319,14 +319,14 @@ The stack consists of two separate Cloudflare Workers. Both must be deployed whe
 # Deploy the backend API Worker (adblock-compiler)
 deno task wrangler:deploy
 
-# Deploy the frontend SSR Worker (adblock-compiler-frontend)
+# Deploy the frontend SSR Worker (adblock-frontend)
 # Run from the repo root — the script handles the build, analytics injection, and deploy:
 sh scripts/deploy-frontend.sh
 
 # Or manually (from the repo root, using pnpm workspace filter):
-pnpm --filter adblock-compiler-frontend run build
+pnpm --filter adblock-frontend run build
 sh scripts/build-worker.sh  # injects/removes {{CF_WEB_ANALYTICS_TOKEN}} in index.html
-pnpm --filter adblock-compiler-frontend run deploy
+pnpm --filter adblock-frontend run deploy
 ```
 
 CI (`ci.yml`) deploys both Workers automatically on every push to `main`.

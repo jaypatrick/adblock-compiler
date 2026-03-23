@@ -32,7 +32,7 @@ jobs:
               run: pnpm install --frozen-lockfile
 
             - name: Build Angular frontend (with source maps)
-              run: pnpm --filter adblock-compiler-frontend run build -- --source-map=true
+              run: pnpm --filter adblock-frontend run build -- --source-map=true
               env:
                   NODE_ENV: production
 
@@ -68,10 +68,10 @@ jobs:
                   cache: 'pnpm'
 
             - name: Install frontend dependencies
-              run: pnpm install --frozen-lockfile --filter adblock-compiler-frontend
+              run: pnpm install --frozen-lockfile --filter adblock-frontend
 
             - name: Build Angular frontend SSR bundle (with source maps)
-              run: pnpm --filter adblock-compiler-frontend run build -- --source-map=true
+              run: pnpm --filter adblock-frontend run build -- --source-map=true
               env:
                   NODE_ENV: production
                   CF_WEB_ANALYTICS_TOKEN: ''

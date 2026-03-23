@@ -36,7 +36,7 @@ HTTP Request
                 → WorkerCompiler (AGTree AST parsing, filter compilation)
 ```
 
-The Durable Object is the "brain" — it has a 1:1 relationship with the Container instance and manages when it starts and stops. The Angular frontend and the SSR Worker (`adblock-compiler-frontend`) never interact with the container directly.
+The Durable Object is the "brain" — it has a 1:1 relationship with the Container instance and manages when it starts and stops. The Angular frontend and the SSR Worker (`adblock-frontend`) never interact with the container directly.
 
 ---
 

@@ -2,7 +2,7 @@
 # This Dockerfile creates a container that can run both the compiler CLI and the web UI
 # Builds the Angular 21 frontend dist artifacts needed by wrangler dev.
 # In production the frontend runs as a separate Cloudflare Worker
-# (adblock-compiler-frontend) connected to the backend via a service binding.
+# (adblock-frontend) connected to the backend via a service binding.
 # Docker is used for local development convenience only.
 # Version: 0.8.9
 
@@ -75,13 +75,13 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY frontend/package.json ./frontend/
 
 # Install only the frontend workspace dependencies using the shared lockfile
-RUN pnpm install --frozen-lockfile --filter adblock-compiler-frontend
+RUN pnpm install --frozen-lockfile --filter adblock-frontend
 
 # Copy frontend source (node_modules excluded via .dockerignore)
 COPY frontend/ ./frontend/
 
 # Build Angular production bundle (SSR + browser assets)
-RUN pnpm --filter adblock-compiler-frontend run build
+RUN pnpm --filter adblock-frontend run build
 
 # Stage 3: Backend dependencies and build
 FROM node-base AS builder
