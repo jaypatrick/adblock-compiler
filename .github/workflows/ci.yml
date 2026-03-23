@@ -294,6 +294,9 @@ jobs:
             - frontend-build
             - check-slow-types
             - verify-deploy
+            # zta-lint uses path filters and will be skipped when no relevant files change;
+            # the gate's Python logic treats 'skipped' as passing, so this is safe to include.
+            - zta-lint
         if: ${{ always() && !cancelled() }}
         steps:
             - name: Check all jobs passed

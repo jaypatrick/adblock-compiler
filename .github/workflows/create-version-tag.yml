@@ -19,34 +19,47 @@ jobs:
             startsWith(github.event.pull_request.head.ref, 'auto-version-bump-')
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
               with:
                   fetch-depth: 0
                   ref: main
 
             - name: Setup Deno
-              uses: denoland/setup-deno@v2
+              uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2
               with:
                   deno-version: '2.x'
+
+            - name: Detect tag prefix
+              id: detect_prefix
+              run: |
+                  PR_BODY="${{ github.event.pull_request.body }}"
+                  if echo "$PR_BODY" | grep -qiE "compiler version bump|compiler-only"; then
+                    TAG_PREFIX="compiler-v"
+                  else
+                    TAG_PREFIX="v"
+                  fi
+                  echo "tag_prefix=$TAG_PREFIX" >> "$GITHUB_OUTPUT"
 
             - name: Get version from deno.json
               id: get_version
               run: |
                   VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
+                  TAG_PREFIX="${{ steps.detect_prefix.outputs.tag_prefix }}"
                   echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-                  echo "tag=v$VERSION" >> "$GITHUB_OUTPUT"
+                  echo "tag=${TAG_PREFIX}${VERSION}" >> "$GITHUB_OUTPUT"
                   echo "Version: $VERSION"
-                  echo "Tag: v$VERSION"
+                  echo "Tag: ${TAG_PREFIX}${VERSION}"
 
             - name: Check if tag exists
               id: check_tag
               run: |
-                  if git rev-parse "v${{ steps.get_version.outputs.version }}" >/dev/null 2>&1; then
+                  TAG="${{ steps.get_version.outputs.tag }}"
+                  if git rev-parse "$TAG" >/dev/null 2>&1; then
                     echo "exists=true" >> "$GITHUB_OUTPUT"
-                    echo "Tag v${{ steps.get_version.outputs.version }} already exists"
+                    echo "Tag $TAG already exists"
                   else
                     echo "exists=false" >> "$GITHUB_OUTPUT"
-                    echo "Tag v${{ steps.get_version.outputs.version }} does not exist"
+                    echo "Tag $TAG does not exist"
                   fi
 
             - name: Create and push tag
@@ -55,7 +68,7 @@ jobs:
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
 
-                  TAG_NAME="v${{ steps.get_version.outputs.version }}"
+                  TAG_NAME="${{ steps.get_version.outputs.tag }}"
                   git tag -a "$TAG_NAME" -m "Release ${{ steps.get_version.outputs.version }}"
                   git push origin "$TAG_NAME"
 
@@ -71,8 +84,14 @@ jobs:
             - name: Summary
               if: steps.check_tag.outputs.exists == 'false'
               run: |
+                  TAG_PREFIX="${{ steps.detect_prefix.outputs.tag_prefix }}"
+                  if [ "$TAG_PREFIX" = "compiler-v" ]; then
+                    TITLE="🏷️ Compiler Version Tag Created"
+                  else
+                    TITLE="🏷️ Version Tag Created"
+                  fi
                   cat <<EOF >> $GITHUB_STEP_SUMMARY
-                  ## 🏷️ Version Tag Created
+                  ## $TITLE
 
                   - **Version**: ${{ steps.get_version.outputs.version }}
                   - **Tag**: ${{ steps.get_version.outputs.tag }}
