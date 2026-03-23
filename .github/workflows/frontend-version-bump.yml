@@ -170,7 +170,7 @@ jobs:
                     exit 0
                   fi
 
-                  BRANCH_NAME="chore/frontend-version-bump-${NEW_VERSION}"
+                  BRANCH_NAME="chore/frontend-version-bump-${NEW_VERSION}-${GITHUB_RUN_ID}"
 
                   git checkout -b "$BRANCH_NAME"
                   git add frontend/package.json
@@ -190,7 +190,10 @@ jobs:
                     --json number \
                     --jq '.number')
 
-                  gh pr merge "$PR_NUMBER" --auto --squash
+                  # Use --merge (not --squash) so the tagged commit stays in main history
+                  # and git describe --match "frontend-v*" can find the tag from main.
+                  # --delete-branch cleans up the short-lived bump branch automatically.
+                  gh pr merge "$PR_NUMBER" --auto --merge --delete-branch
 
                   echo "Committed, tagged $TAG_NAME, and opened PR from $BRANCH_NAME into main"
 
