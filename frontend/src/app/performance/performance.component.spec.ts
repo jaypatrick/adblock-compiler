@@ -84,6 +84,56 @@ describe('PerformanceComponent', () => {
         expect(component.healthStatusColor()).toBe('var(--mat-sys-on-surface-variant)');
     });
 
+    describe('healthStatusColor', () => {
+        function reloadWithStatus(status: 'healthy' | 'degraded' | 'down'): void {
+            component.healthResource.reload();
+            httpTesting.expectOne('/api/health').flush(
+                { status, version: '1.0.0', timestamp: new Date().toISOString() },
+            );
+            fixture.detectChanges();
+        }
+
+        it('should return primary color for healthy status', () => {
+            reloadWithStatus('healthy');
+            expect(component.healthStatusColor()).toBe('var(--mat-sys-primary)');
+        });
+
+        it('should return tertiary color for degraded status', () => {
+            reloadWithStatus('degraded');
+            expect(component.healthStatusColor()).toBe('var(--mat-sys-tertiary)');
+        });
+
+        it('should return error color for down status', () => {
+            reloadWithStatus('down');
+            expect(component.healthStatusColor()).toBe('var(--mat-sys-error)');
+        });
+    });
+
+    describe('healthStatusIcon', () => {
+        function reloadWithStatus(status: 'healthy' | 'degraded' | 'down'): void {
+            component.healthResource.reload();
+            httpTesting.expectOne('/api/health').flush(
+                { status, version: '1.0.0', timestamp: new Date().toISOString() },
+            );
+            fixture.detectChanges();
+        }
+
+        it('should return check_circle icon for healthy status', () => {
+            reloadWithStatus('healthy');
+            expect(component.healthStatusIcon()).toBe('check_circle');
+        });
+
+        it('should return warning icon for degraded status', () => {
+            reloadWithStatus('degraded');
+            expect(component.healthStatusIcon()).toBe('warning');
+        });
+
+        it('should return error icon for down status', () => {
+            reloadWithStatus('down');
+            expect(component.healthStatusIcon()).toBe('error');
+        });
+    });
+
     it('should render the page heading', () => {
         fixture.detectChanges();
         const el: HTMLElement = fixture.nativeElement;

@@ -455,6 +455,14 @@ jobs:
                   # Read the JSR package name from deno.json so the check stays in sync
                   # even if the package scope/name is changed in the future.
                   PACKAGE=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).name)")
+                  if [ -z "${VERSION}" ] || [ "${VERSION}" = "undefined" ]; then
+                    echo "Error: deno.json.version is missing, empty, or undefined. Cannot check/publish to JSR." >&2
+                    exit 1
+                  fi
+                  if [ -z "${PACKAGE}" ] || [ "${PACKAGE}" = "undefined" ]; then
+                    echo "Error: deno.json.name (JSR package name) is missing, empty, or undefined. Cannot check/publish to JSR." >&2
+                    exit 1
+                  fi
                   echo "version=$VERSION" >> "$GITHUB_OUTPUT"
                   echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
                   HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
@@ -462,9 +470,13 @@ jobs:
                   if [ "$HTTP_STATUS" = "200" ]; then
                     echo "already_published=true" >> "$GITHUB_OUTPUT"
                     echo "[SKIP] Version ${VERSION} already on JSR (HTTP 200) — skipping publish"
-                  else
+                  elif [ "$HTTP_STATUS" = "404" ]; then
                     echo "already_published=false" >> "$GITHUB_OUTPUT"
-                    echo "Version ${VERSION} not yet on JSR (HTTP ${HTTP_STATUS}) — will publish"
+                    echo "Version ${VERSION} not yet on JSR (HTTP 404) — will publish"
+                  else
+                    echo "Failed to probe JSR for ${PACKAGE}@${VERSION}. HTTP status: ${HTTP_STATUS}" >&2
+                    echo "Treating this as a connectivity/auth error so CI can surface the real issue." >&2
+                    exit 1
                   fi
 
             - name: Publish to JSR

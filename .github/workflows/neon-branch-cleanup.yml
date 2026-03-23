@@ -101,14 +101,40 @@ jobs:
           fi
 
       # ── 2. Delete the Neon branch ──────────────────────────────────────────
-      # The action calls the Neon API to remove the branch.  Many git branches
-      # (e.g. copilot agent branches, hotfix branches) never have a corresponding
-      # Neon branch created.  In that case the action exits with code 1 ("branch
-      # not found"), which is expected and should not fail the workflow.
-      # continue-on-error: true ensures the job passes regardless.
+      # First check whether the branch actually exists in the Neon project.
+      # Many git branches (e.g. copilot agent branches, hotfix branches) never
+      # have a corresponding Neon branch created; in those cases we skip
+      # deletion silently rather than suppressing all errors with
+      # continue-on-error which would hide real failures like auth errors.
+      - name: Check if Neon branch exists
+        id: neon_check
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+          BRANCH_NAME: ${{ steps.branch.outputs.branch_name }}
+        run: |
+          set -euo pipefail
+          HTTP_STATUS=$(curl -s -o /tmp/neon_branches.json -w "%{http_code}" \
+            -H "Authorization: Bearer ${NEON_API_KEY}" \
+            "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches")
+          if [ "$HTTP_STATUS" != "200" ]; then
+            echo "Neon API returned HTTP ${HTTP_STATUS} when listing branches." >&2
+            cat /tmp/neon_branches.json >&2
+            exit 1
+          fi
+          BRANCH_ID=$(jq -r --arg name "${BRANCH_NAME}" \
+            '.branches[] | select(.name == $name) | .id // empty' /tmp/neon_branches.json)
+          if [ -n "$BRANCH_ID" ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Neon branch '${BRANCH_NAME}' found (id: ${BRANCH_ID}) — will delete."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "Neon branch '${BRANCH_NAME}' not found — skipping deletion."
+          fi
+
       - name: Delete Neon database branch
+        if: steps.neon_check.outputs.exists == 'true'
         uses: neondatabase/delete-branch-action@c2005bb7d7caeba12ba3ec63857e9c9f9a4d695a
-        continue-on-error: true
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch: ${{ steps.branch.outputs.branch_name }}

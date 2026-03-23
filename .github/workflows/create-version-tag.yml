@@ -22,7 +22,7 @@ jobs:
         # Run when:
         #   • a version-bump PR is merged (branch name matches any version-bump pattern), OR
         #   • triggered manually via workflow_dispatch.
-        # Accepted branch name patterns (case-insensitive):
+        # Accepted branch name patterns (case-sensitive):
         #   - auto-version-bump-*   (canonical pattern used by version-bump.yml)
         #   - chore/version-bump-*  (alternative conventional-commits style)
         #   - *version-bump*        (catch-all for re-runs / renamed branches)
@@ -108,7 +108,7 @@ jobs:
                   echo "Created and pushed tag $TAG_NAME"
 
             - name: Delete version bump branch
-              if: steps.check_tag.outputs.exists == 'false'
+              if: steps.check_tag.outputs.exists == 'false' && github.event_name == 'pull_request'
               env:
                   BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
               run: |
@@ -122,18 +122,24 @@ jobs:
                   VERSION: ${{ steps.get_version.outputs.version }}
                   TAG: ${{ steps.get_version.outputs.tag }}
                   PR_NUMBER: ${{ github.event.pull_request.number }}
+                  EVENT_NAME: ${{ github.event_name }}
               run: |
                   if [ "$TAG_PREFIX" = "compiler-v" ]; then
                     TITLE="🏷️ Compiler Version Tag Created"
                   else
                     TITLE="🏷️ Version Tag Created"
                   fi
+                  if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$PR_NUMBER" ]; then
+                    TRIGGER_LINE="- **PR**: #${PR_NUMBER}"
+                  else
+                    TRIGGER_LINE="- **Triggered**: manual workflow_dispatch"
+                  fi
                   cat <<EOF >> $GITHUB_STEP_SUMMARY
                   ## $TITLE
 
                   - **Version**: $VERSION
                   - **Tag**: $TAG
-                  - **PR**: #$PR_NUMBER
+                  $TRIGGER_LINE
 
                   The release workflow will be automatically triggered by the new tag.
                   EOF
