@@ -27,11 +27,26 @@
 #   origin via ssrApiBaseUrlFactory in app.config.server.ts — no manual
 #   configuration needed for same-origin deploys.
 #
+# SERVICE BINDING (reserved):
+#   The [[services]] block below binds this Worker to the backend API Worker
+#   (adblock-compiler) on the internal Cloudflare network. This is a
+#   configuration-level dependency only — the compiled SSR entrypoint does not
+#   yet read `env.API`. Once server.ts is updated to accept `env` and forward
+#   requests via `env.API.fetch()`, SSR-time API calls will travel on the
+#   internal network with no public round-trip and no CORS overhead.
+#
 # SECRETS (wrangler secret put --name adblock-compiler-frontend):
 #   None required for this worker — the API Worker owns all secrets.
+#   CF_WEB_ANALYTICS_TOKEN must be injected into dist/.../browser/index.html
+#   at build time by the CI/deploy pipeline (scripts/build-worker.sh handles
+#   this — it runs after `ng build` and rewrites the {{CF_WEB_ANALYTICS_TOKEN}}
+#   placeholder, or removes the analytics tag if the token is absent).
 # ============================================================================
 
 name = "adblock-compiler-frontend"
+
+# Expose the worker on the *.workers.dev subdomain after deployment.
+workers_dev = true
 
 # Compiled server entry point output by `ng build` when ssr.entry = "server.ts"
 main = "dist/adblock-compiler/server/server.mjs"
@@ -63,3 +78,10 @@ not_found_handling = "single-page-application"
 [dev]
 port = 4200
 local_protocol = "http"
+
+# ─── Service binding to backend API Worker ────────────────────────────────────
+# Allows the SSR Worker to call the backend on the internal Cloudflare network
+# (no public network hop, no CORS negotiation).
+[[services]]
+binding = "API"
+service = "adblock-compiler"

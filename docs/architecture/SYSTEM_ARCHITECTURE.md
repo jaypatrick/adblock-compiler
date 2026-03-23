@@ -18,8 +18,12 @@ flowchart TD
     CFAccess["☁️ Cloudflare Access\n(Zero Trust / WAF)"]
     CFTurnstile["🛡️ Cloudflare Turnstile\n(Human Verification)"]
 
-    %% ── Angular Frontend (served via Worker ASSETS binding) ──────────────────
-    Frontend["📱 Angular 21 SSR SPA\n(served via Worker ASSETS binding)"]
+    %% ── Angular Frontend (separate SSR Worker — adblock-compiler-frontend) ──────
+    subgraph FrontendWorker["adblock-compiler-frontend  (separate SSR Worker)"]
+        Frontend["📱 Angular 21 SSR SPA\n(AngularAppEngine)"]
+        FrontendAssets["ASSETS binding\n(JS/CSS/fonts — CDN)"]
+        FrontendAPI["[[services]] API binding\n(reserved — not yet wired in server.ts)"]
+    end
 
     %% ── Tail Worker (separate deployed service — adblock-compiler-tail) ──────
     TailWorker["adblock-compiler-tail\n(Tail Worker / Log Sink)"]
@@ -91,12 +95,13 @@ flowchart TD
     MCPAgent --> CFAccess
     CICD --> CFAccess
     Browser --> CFTurnstile
-    CFAccess --> Frontend
+    CFAccess --> FrontendWorker
     CFAccess --> MonolithWorker
     CFTurnstile --> MonolithWorker
     CLIUser --> CoreLib
 
     Frontend --> MonolithWorker
+    FrontendAPI -.->|"future internal route\n(env.API not yet wired)"| MonolithWorker
 
     MonolithWorker --> CFAssets
     MonolithWorker --> KV_Cache
@@ -138,7 +143,7 @@ flowchart TD
 
     class Browser,CLIUser,CICD,MCPAgent client
     class CFAccess,CFTurnstile edge
-    class Frontend,TailWorker worker
+    class Frontend,FrontendAssets,FrontendAPI,TailWorker worker
     class WorkerEntry,HonoApp,Handlers,Workflows,MCPAgentWorker worker
     class Compiler,Transformations,Downloader,Config,Services,Formatters,Diff,Plugins,Utils corelib
     class Storage,D1_DB,D1_Admin,KV_Cache,KV_RateLimit,KV_Metrics,CFQueues,CFAssets,R2_Filter,R2_Logs,HyperdriveBinding,PostgreSQL storage
@@ -150,7 +155,7 @@ flowchart TD
 
 ### Summary
 
-The current system is a **monolith**: every concern — compilation, transformation, storage, queuing, diagnostics, plugins, and formatters — lives inside a single Cloudflare Worker alongside its Hono router and request handlers. The Angular SSR frontend is served by the same Worker via the `ASSETS` binding (the standalone Cloudflare Pages project has been retired). Cloudflare Access and Turnstile form the Zero Trust perimeter before any request reaches the Worker, and external services (Clerk, Sentry, OpenTelemetry, PostgreSQL, and filter-list sources) are consumed directly from within the single process. A dedicated `adblock-compiler-tail` Worker (configured via `[[tail_consumers]]`) acts as the log sink, forwarding structured logs to Sentry and OTel. This coupling makes it difficult to evolve, version, or deploy individual capabilities independently.
+The current system is a **monolith**: every concern — compilation, transformation, storage, queuing, diagnostics, plugins, and formatters — lives inside a single Cloudflare Worker alongside its Hono router and request handlers. The Angular SSR frontend is now deployed as its **own separate Worker** (`adblock-compiler-frontend`) using `AngularAppEngine`; a `[[services]]` binding to the backend is declared in `frontend/wrangler.toml` but not yet wired into `server.ts` (SSR→API calls still travel over the public network until that is implemented). Cloudflare Access and Turnstile form the Zero Trust perimeter before any request reaches either Worker, and external services (Clerk, Sentry, OpenTelemetry, PostgreSQL, and filter-list sources) are consumed directly from within the single backend process. A dedicated `adblock-compiler-tail` Worker (configured via `[[tail_consumers]]`) acts as the log sink, forwarding structured logs to Sentry and OTel. This coupling makes it difficult to evolve, version, or deploy individual capabilities independently.
 
 ---
 

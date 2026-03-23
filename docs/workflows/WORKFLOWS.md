@@ -35,7 +35,8 @@ The repository uses four main workflows:
 
 9. **CI Gate** - Python script verifying all upstream jobs passed or were acceptably skipped; blocks publish and deploy
 10. **Publish** - Publish to JSR (main only, after CI gate passes)
-11. **Deploy** - Deploy to Cloudflare (main only, when enabled, after CI gate passes)
+11. **Deploy** - Deploy `adblock-compiler` backend Worker to Cloudflare (main only, when enabled, after CI gate passes)
+12. **Deploy Frontend** - Deploy `adblock-compiler-frontend` SSR Worker to Cloudflare; downloads the `frontend-dist` artifact, runs `scripts/build-worker.sh` to inject/remove the `CF_WEB_ANALYTICS_TOKEN` placeholder, then runs `pnpm run deploy`. Triggered on main push (after `ci-gate` + `frontend-build` pass); also deployed on tag push via `release.yml` `deploy-frontend` job (full `pnpm run build` + token injection + deploy)
 
 ### Composite Actions
 
@@ -61,6 +62,7 @@ The action is defined in `.github/actions/deno-install/action.yml` and is used b
 - ✅ **Better Caching**: Includes `deno.lock` in cache key for more precise invalidation
 - ✅ **Comprehensive Type Checking**: Checks all entry points (index.ts, cli.ts, worker.ts, tail.ts)
 - ✅ **Consolidated Worker Deployment**: Main and tail Cloudflare Workers deployed from a single CI deploy job (no separate Pages deployment)
+- ✅ **Frontend Worker CI Deployment**: `deploy-frontend` job deploys `adblock-compiler-frontend` on every main push, after the `frontend-build` artifact is available; `CF_WEB_ANALYTICS_TOKEN` is injected/removed by `scripts/build-worker.sh` before `wrangler deploy`
 - ✅ **Migration Error Handling**: `run_migration()` shell function distinguishes real errors from "already applied" idempotency messages
 
 ### Performance Gains
@@ -79,6 +81,7 @@ The action is defined in `.github/actions/deno-install/action.yml` and is used b
 2. **Build Binaries** - Build native binaries for all platforms (parallel matrix)
 3. **Build Docker** - Build and push multi-platform Docker images
 4. **Create Release** - Generate GitHub release with all artifacts
+5. **Deploy Frontend** - Deploy `adblock-compiler-frontend` SSR Worker to Cloudflare after `validate` passes; full `pnpm run build` + `scripts/build-worker.sh` token injection + `pnpm run deploy`
 
 ### Key Improvements
 

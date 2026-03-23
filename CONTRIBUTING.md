@@ -311,6 +311,27 @@ deno task wrangler:dev                               # Worker API (http://localh
 
 The Angular dev server proxies `/api` requests to the Worker.
 
+### Deploying the Full Stack
+
+The stack consists of two separate Cloudflare Workers. Both must be deployed when making changes that affect the full stack:
+
+```bash
+# Deploy the backend API Worker (adblock-compiler)
+deno task wrangler:deploy
+
+# Deploy the frontend SSR Worker (adblock-compiler-frontend)
+# Run from the repo root — the script handles the build, analytics injection, and deploy:
+sh scripts/deploy-frontend.sh
+
+# Or manually (from the repo root, using pnpm workspace filter):
+pnpm --filter adblock-compiler-frontend run build
+sh scripts/build-worker.sh  # injects/removes {{CF_WEB_ANALYTICS_TOKEN}} in index.html
+pnpm --filter adblock-compiler-frontend run deploy
+```
+
+CI (`ci.yml`) deploys both Workers automatically on every push to `main`.
+`release.yml` deploys the frontend Worker on every tagged release.
+
 ### SSE Integration Pattern
 
 The compiler supports real-time Server-Sent Events (SSE) streaming. The `SseService` (`frontend/src/app/services/sse.service.ts`) wraps the native `EventSource` API and exposes each connection as a signal-based `SseConnection` object:
