@@ -101,11 +101,14 @@ jobs:
           fi
 
       # ── 2. Delete the Neon branch ──────────────────────────────────────────
-      # The action calls the Neon API to remove the branch.  If the branch
-      # does not exist (e.g. the create workflow was never triggered), the
-      # action exits gracefully — it will not fail the workflow.
+      # The action calls the Neon API to remove the branch.  Many git branches
+      # (e.g. copilot agent branches, hotfix branches) never have a corresponding
+      # Neon branch created.  In that case the action exits with code 1 ("branch
+      # not found"), which is expected and should not fail the workflow.
+      # continue-on-error: true ensures the job passes regardless.
       - name: Delete Neon database branch
         uses: neondatabase/delete-branch-action@c2005bb7d7caeba12ba3ec63857e9c9f9a4d695a
+        continue-on-error: true
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch: ${{ steps.branch.outputs.branch_name }}
