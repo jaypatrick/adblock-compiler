@@ -40,22 +40,60 @@ The repository uses four main workflows:
 
 ### Composite Actions
 
-A reusable composite action handles Deno dependency installation with a 3-attempt retry loop and `DENO_TLS_CA_STORE=system`:
+All composite actions live in `.github/actions/` and are called with `uses: ./.github/actions/<name>`.
+
+| Action | Purpose | Used by |
+|---|---|---|
+| `deno-install` | 3-attempt retry loop for `deno install` with `DENO_TLS_CA_STORE=system` | `setup-deno-env` |
+| `setup-deno-env` | Install Deno, cache `~/.cache/deno` + `~/.deno`, optionally run `deno install` | `lint-format`, `typecheck`, `test`, `validate-artifacts`, `check-slow-types`, `audit-public-surface`, `validate-migrations`, `verify-deploy`, `deploy`, `publish` |
+| `setup-env` | Load `.env` / `.env.<branch>` files into the runner environment | `test`, `verify-deploy`, `deploy` |
+| `setup-pnpm-node` | Setup pnpm, cache the pnpm store, and install Node.js | `frontend-lint-test`, `frontend-build` |
+| `zta-checks` | Run all four ZTA security lint checks (wildcard CORS, hardcoded secrets, eval/new Function, string-interpolated SQL) | `zta-lint` |
+| `validate-wrangler-toml` | Assert that `wrangler.toml` contains no placeholder binding IDs before deploying | `verify-deploy`, `deploy` |
+| `deploy-worker` | Run D1 migrations, generate version, set up queues/R2, deploy tail worker + main worker, record outcome | `deploy` |
+
+#### `setup-pnpm-node`
 
 ```yaml
-# Used in all jobs that require Deno deps
-- uses: ./.github/actions/deno-install
+- name: Setup pnpm and Node.js
+  uses: ./.github/actions/setup-pnpm-node
+  with:
+      node-version: '22'   # optional, defaults to '22'
 ```
 
-The action is defined in `.github/actions/deno-install/action.yml` and is used by the `typecheck`, `test`, `publish`, `verify-deploy`, and `deploy` jobs.
+#### `zta-checks`
+
+```yaml
+- name: Run ZTA security checks
+  uses: ./.github/actions/zta-checks
+```
+
+#### `validate-wrangler-toml`
+
+```yaml
+- name: Validate wrangler.toml
+  uses: ./.github/actions/validate-wrangler-toml
+```
+
+#### `deploy-worker`
+
+```yaml
+- name: Deploy worker
+  uses: ./.github/actions/deploy-worker
+  with:
+      github-sha: ${{ github.sha }}
+```
+
+Requires `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`, and `CF_WEB_ANALYTICS_TOKEN` to be set in the job-level `env:` (inherited automatically; no need to pass as inputs).
 
 ### Key Improvements
 
 - ✅ **Parallelization**: Lint, format, typecheck, test, and security scans run simultaneously
 - ✅ **Proper Gating**: `ci-gate` blocks publish/deploy until lint, format, typecheck, test, security, frontend-build, and verify-deploy all pass
 - ✅ **Worker Build Verified on PRs**: `verify-deploy` runs a Cloudflare Worker dry-run on every PR so Worker build failures are caught before merge
-- ✅ **Composite Action**: `deno install` retry logic extracted to `.github/actions/deno-install` — no duplication across jobs
-- ✅ **Merged Frontend Jobs**: `frontend` (lint+test) and `frontend-build` (build+artifact) are now a single `frontend-build` job — one `pnpm install` per run
+- ✅ **Composite Actions**: Repeated step sequences extracted to `.github/actions/` — no duplication across jobs
+- ✅ **Modular CI**: `ci.yml` reduced from 783 → 609 lines (−22%) by delegating step logic to focused composite actions
+- ✅ **Separate Frontend Jobs**: `frontend-lint-test` (lint + test) and `frontend-build` (build + artifact upload) run as independent parallel jobs so a lint failure does not block the build artifact from being produced
 - ✅ **Frozen Lockfile**: `pnpm install --frozen-lockfile` enforced — CI fails if `pnpm-lock.yaml` drifts from `package.json`
 - ✅ **Coverage on PRs**: Test coverage artifact uploaded on pull requests, not just main push
 - ✅ **SHA-Pinned Actions**: All third-party actions pinned to full commit SHAs with version comments (supply-chain hardening)
@@ -63,7 +101,8 @@ The action is defined in `.github/actions/deno-install/action.yml` and is used b
 - ✅ **Comprehensive Type Checking**: Checks all entry points (index.ts, cli.ts, worker.ts, tail.ts)
 - ✅ **Consolidated Worker Deployment**: Main and tail Cloudflare Workers deployed from a single CI deploy job (no separate Pages deployment)
 - ✅ **Frontend Worker CI Deployment**: `deploy-frontend` job deploys `adblock-frontend` on every main push, after the `frontend-build` artifact is available; `CF_WEB_ANALYTICS_TOKEN` is injected/removed by `scripts/build-worker.sh` before `wrangler deploy`
-- ✅ **Migration Error Handling**: `run_migration()` shell function distinguishes real errors from "already applied" idempotency messages
+- ✅ **Migration Error Handling**: D1 migration retry loop distinguishes auth errors from transient failures and surfaces actionable remediation steps
+- ✅ **wrangler.toml Validation**: Both `verify-deploy` (PRs) and `deploy` (main) validate that no placeholder binding IDs exist before any Cloudflare operation
 
 ### Performance Gains
 

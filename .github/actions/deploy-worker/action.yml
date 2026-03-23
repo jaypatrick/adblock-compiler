@@ -1,0 +1,93 @@
+name: 'Deploy Worker to Cloudflare'
+description: 'Run database migrations, generate deployment version, set up Cloudflare resources, deploy the tail worker and main worker, and record the deployment outcome.'
+
+inputs:
+    github-sha:
+        description: 'GitHub commit SHA for Sentry release tracking'
+        required: true
+
+runs:
+    using: composite
+    steps:
+        - name: Run database migrations
+          shell: bash
+          run: |
+              echo "Running D1 migrations..."
+              for i in 1 2 3; do
+                  if output=$(deno task wrangler d1 migrations apply adblock-compiler-d1-database --remote 2>&1); then
+                      echo "$output"
+                      echo "✅ All migrations applied"
+                      break
+                  fi
+                  echo "$output"
+                  if echo "$output" | grep -qiE 'Authentication error|10000'; then
+                      echo ""
+                      echo "🔐 CLOUDFLARE_API_TOKEN is missing D1:Edit permission."
+                      echo "   Update your API token at: https://dash.cloudflare.com/profile/api-tokens"
+                      echo "   Required permissions: D1:Edit (for database migrations)"
+                      exit 1
+                  fi
+                  if [ "$i" -lt 3 ]; then
+                      echo "Attempt $i failed, retrying in 15s..."
+                      sleep 15
+                  else
+                      echo "All 3 attempts failed."
+                      exit 1
+                  fi
+              done
+
+        - name: Generate deployment version
+          id: version
+          shell: bash
+          run: |
+              deno run --allow-read --allow-write --allow-net --allow-env scripts/generate-deployment-version.ts
+
+        - name: Setup Cloudflare resources
+          shell: bash
+          run: |
+              echo "Creating Cloudflare resources..."
+              deno task wrangler queues create adblock-compiler-worker-queue 2>/dev/null || echo "Queue already exists"
+              deno task wrangler queues create adblock-compiler-worker-queue-high-priority 2>/dev/null || echo "High priority queue already exists"
+              deno task wrangler queues create adblock-compiler-dlq 2>/dev/null || echo "DLQ already exists"
+              deno task wrangler r2 bucket create adblock-compiler-r2-storage 2>/dev/null || echo "R2 bucket already exists"
+
+        - name: Deploy Tail Worker
+          if: env.CLOUDFLARE_API_TOKEN != ''
+          shell: bash
+          run: |
+              echo "Deploying tail worker (adblock-compiler-tail)..."
+              deno run -A npm:wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }}
+
+        - name: Verify Docker for container build
+          if: env.CLOUDFLARE_API_TOKEN != ''
+          shell: bash
+          env:
+              DOCKER_BUILDKIT: '1'
+          run: |
+              echo "Pre-building Dockerfile.container to surface errors before wrangler deploy..."
+              docker build \
+                --platform linux/amd64 \
+                -f Dockerfile.container \
+                --no-cache \
+                . 2>&1
+              echo "✅ Dockerfile.container pre-build succeeded"
+
+        - name: Deploy Worker
+          id: deploy
+          if: env.CLOUDFLARE_API_TOKEN != ''
+          shell: bash
+          run: |
+              echo "Deploying version: ${{ steps.version.outputs.full_version }}"
+              deno run -A npm:wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }}
+
+        - name: Record deployment
+          if: success() && env.CLOUDFLARE_API_TOKEN != ''
+          shell: bash
+          run: |
+              deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts --status=success
+
+        - name: Record failed deployment
+          if: failure() && env.CLOUDFLARE_API_TOKEN != ''
+          shell: bash
+          run: |
+              deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts --status=failed || true
