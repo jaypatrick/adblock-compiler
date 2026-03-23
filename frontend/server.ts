@@ -70,20 +70,28 @@ function getAngularApp(): Promise<AngularAppEngine> {
     if (!angularAppPromise) {
         angularAppPromise = (async () => {
             // Variable path → esbuild does not bundle; resolved at runtime.
-            const manifestPath = './angular-app-engine-manifest.mjs';
-            let manifest: unknown;
             try {
-                ({ default: manifest } = await import(manifestPath));
-            } catch (err) {
-                throw new Error(
-                    `[server.ts] Failed to load angular-app-engine-manifest.mjs. ` +
-                    `Ensure the Angular app was built with @angular/build:application before deploying. ` +
-                    `Original error: ${err instanceof Error ? err.message : String(err)}`,
-                    { cause: err },
+                // Variable path → esbuild does not bundle; resolved at runtime.
+                const manifestPath = './angular-app-engine-manifest.mjs';
+                let manifest: unknown;
+                try {
+                    ({ default: manifest } = await import(manifestPath));
+                } catch (err) {
+                    throw new Error(
+                        `[server.ts] Failed to load angular-app-engine-manifest.mjs. ` +
+                        `Ensure the Angular app was built with @angular/build:application before deploying. ` +
+                        `Original error: ${err instanceof Error ? err.message : String(err)}`,
+                    );
+                }
+                setAngularAppEngineManifest(
+                    manifest as Parameters<typeof setAngularAppEngineManifest>[0],
                 );
+                return new AngularAppEngine();
+            } catch (err) {
+                // Reset the cached promise on failure so future requests can retry initialization.
+                angularAppPromise = null;
+                throw err;
             }
-            setAngularAppEngineManifest(manifest as Parameters<typeof setAngularAppEngineManifest>[0]);
-            return new AngularAppEngine();
         })();
     }
     return angularAppPromise;
