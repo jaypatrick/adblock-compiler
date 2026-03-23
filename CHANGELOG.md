@@ -57,90 +57,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **frontend**: `REQUEST` injection token imported from `@angular/core` (not `@angular/ssr`) — fixes `TS2305` build error that broke the Docker CI pipeline
 - **worker**: Remove dead `hasFileExtension` function and stale `async serveWebUI(env)` overload that referenced a non-existent `serveStaticFile` helper — fixes `TS2393`/`TS6133` type-check failures in CI
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 ## [0.73.0] - 2026-03-23
 
-### Added- Add real-time Cloudflare Container status widget (#1316)
+### Added
+
+- Add real-time Cloudflare Container status widget (#1316)
 - **observability**: wire tail worker + Sentry server-side SDK to frontend Worker (#1311)
 - Complete Better Auth migration — drop Clerk, activate GitHub OAuth + admin plugin, add 2FA/session UI (#1282)
 
@@ -154,7 +75,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.72.0] - 2026-03-22
 
-### Added- tighter Hono + Better Auth + Neon + Cloudflare integration (#1273)
+### Added
+
+- tighter Hono + Better Auth + Neon + Cloudflare integration (#1273)
 - migrate database to Neon PostgreSQL with Better Auth + Prisma (#1257)
 
 ### Fixed

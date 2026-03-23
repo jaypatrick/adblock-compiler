@@ -41,27 +41,29 @@ jobs:
             tag: ${{ steps.bump.outputs.tag }}
         steps:
             - name: Checkout
-              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   fetch-depth: 0
                   token: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Setup pnpm
-              uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+              uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
 
             - name: Setup Node.js
-              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+              uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
               with:
                   node-version: '22'
 
             - name: Determine version bump type
               id: determine_bump
+              env:
+                  INPUT_BUMP_TYPE: ${{ inputs.bump_type }}
               run: |
                   set -euo pipefail
 
                   # If bump_type input is provided, use it
-                  if [ -n "${{ inputs.bump_type }}" ]; then
-                    BUMP_TYPE="${{ inputs.bump_type }}"
+                  if [ -n "$INPUT_BUMP_TYPE" ]; then
+                    BUMP_TYPE="$INPUT_BUMP_TYPE"
                     echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
                     echo "Using manual bump type: $BUMP_TYPE"
                     exit 0
@@ -115,13 +117,14 @@ jobs:
             - name: Bump frontend version
               id: bump
               if: steps.determine_bump.outputs.bump_type != 'none'
+              env:
+                  BUMP_TYPE: ${{ steps.determine_bump.outputs.bump_type }}
               run: |
                   set -euo pipefail
 
-                  BUMP_TYPE="${{ steps.determine_bump.outputs.bump_type }}"
                   PKG="frontend/package.json"
 
-                  OLD=$(node -e "process.stdout.write(require('./${PKG}').version)")
+                  OLD=$(PKG_FILE="$PKG" node -e "process.stdout.write(require('./' + process.env.PKG_FILE).version)")
                   echo "old=$OLD" >> "$GITHUB_OUTPUT"
 
                   IFS='.' read -r major minor patch <<< "$OLD"
@@ -141,16 +144,21 @@ jobs:
                   echo "Bumping frontend version: $OLD → $NEW ($BUMP_TYPE)"
 
                   # Update version in frontend/package.json
-                  NEW_VERSION="$NEW" node -e "
+                  PKG_PATH="frontend/package.json"
+                  NEW_VERSION="$NEW" PKG_FILE="$PKG_PATH" node -e "
                     const fs = require('fs');
-                    const pkg = JSON.parse(fs.readFileSync('${PKG}', 'utf8'));
+                    const pkg = JSON.parse(fs.readFileSync(process.env.PKG_FILE, 'utf8'));
                     pkg.version = process.env.NEW_VERSION;
-                    fs.writeFileSync('${PKG}', JSON.stringify(pkg, null, 4) + '\n');
+                    fs.writeFileSync(process.env.PKG_FILE, JSON.stringify(pkg, null, 4) + '\n');
                   "
-                  echo "Updated ${PKG} to version ${NEW}"
+                  echo "Updated ${PKG_PATH} to version ${NEW}"
 
             - name: Commit, tag, and push
               if: steps.determine_bump.outputs.bump_type != 'none'
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+                  NEW_VERSION: ${{ steps.bump.outputs.new }}
+                  TAG_NAME: ${{ steps.bump.outputs.tag }}
               run: |
                   set -euo pipefail
 
@@ -163,30 +171,32 @@ jobs:
                   fi
 
                   git add frontend/package.json
-                  git commit -m "chore(frontend): bump version to ${{ steps.bump.outputs.new }} [skip version]"
+                  git commit -m "chore(frontend): bump version to $NEW_VERSION [skip version]"
 
-                  TAG_NAME="${{ steps.bump.outputs.tag }}"
-                  git tag -a "$TAG_NAME" -m "Frontend release ${{ steps.bump.outputs.new }}"
+                  git tag -a "$TAG_NAME" -m "Frontend release $NEW_VERSION"
 
                   git push origin main
                   git push origin "$TAG_NAME"
 
                   echo "Committed and tagged $TAG_NAME"
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Summary
               if: steps.determine_bump.outputs.bump_type != 'none'
+              env:
+                  OLD_VERSION: ${{ steps.bump.outputs.old }}
+                  NEW_VERSION: ${{ steps.bump.outputs.new }}
+                  TAG: ${{ steps.bump.outputs.tag }}
+                  BUMP_TYPE: ${{ steps.determine_bump.outputs.bump_type }}
               run: |
                   cat <<EOF >> $GITHUB_STEP_SUMMARY
                   ## 🏷️ Frontend Version Bump
 
-                  - **Old Version**: ${{ steps.bump.outputs.old }}
-                  - **New Version**: ${{ steps.bump.outputs.new }}
-                  - **Tag**: ${{ steps.bump.outputs.tag }}
-                  - **Bump Type**: ${{ steps.determine_bump.outputs.bump_type }}
+                  - **Old Version**: $OLD_VERSION
+                  - **New Version**: $NEW_VERSION
+                  - **Tag**: $TAG
+                  - **Bump Type**: $BUMP_TYPE
 
-                  The \`frontend-v${{ steps.bump.outputs.new }}\` tag has been created.
+                  The \`$TAG\` tag has been created.
                   EOF
 
             - name: Skip summary

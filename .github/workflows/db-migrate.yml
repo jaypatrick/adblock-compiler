@@ -58,7 +58,7 @@ jobs:
             changed_admin: ${{ steps.detect.outputs.changed_admin }}
             has_changes: ${{ steps.detect.outputs.has_changes }}
         steps:
-            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   # Full history so we can diff against the base branch on PRs
                   fetch-depth: 0
@@ -116,7 +116,7 @@ jobs:
             HAS_CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
             HAS_DIRECT_DB_URL: ${{ secrets.DIRECT_DATABASE_URL != '' }}
         steps:
-            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Setup Deno environment
               uses: ./.github/actions/setup-deno-env
@@ -182,7 +182,7 @@ jobs:
               if: >-
                   github.event_name == 'pull_request' &&
                   github.event.pull_request.head.repo.full_name == github.repository
-              uses: actions/github-script@60a0d83039c74a4aee543508d2ffcb1c3799cdea # v7
+              uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
               with:
                   github-token: ${{ secrets.GITHUB_TOKEN }}
                   script: |
@@ -279,7 +279,7 @@ jobs:
             HAS_CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
             HAS_DIRECT_DB_URL: ${{ secrets.DIRECT_DATABASE_URL != '' }}
         steps:
-            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Setup Deno environment
               uses: ./.github/actions/setup-deno-env
