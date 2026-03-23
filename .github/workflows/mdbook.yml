@@ -95,9 +95,7 @@ jobs:
           echo "✅ PDF generated at book/pdf/adblock-compiler.pdf"
 
       - name: Upload PDF artifact
-        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0.6.2 # v7.0.0
-        # NOTE: This workflow intentionally pins upload-artifact to this specific v4 SHA.
-        # It may differ from other workflows' v4 SHAs; see repository security docs for rationale.
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
         with:
           name: adblock-compiler-docs-pdf
           path: book/pdf/adblock-compiler.pdf
