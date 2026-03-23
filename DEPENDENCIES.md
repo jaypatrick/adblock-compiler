@@ -107,8 +107,8 @@ Runtime dependencies for the Angular 21 frontend (`frontend/`).
 
 | Package | Version | Purpose |
 |---|---|---|
-| `@clerk/clerk-js` | `^6.3.0` | Clerk frontend auth SDK (vanilla JS, loaded into Angular) |
-| `@clerk/shared` | `^4.3.0` | Shared Clerk TypeScript types and utilities |
+| `@clerk/clerk-js` | `^6.3.2` | Clerk frontend auth SDK (vanilla JS, loaded into Angular) |
+| `@clerk/shared` | `^4.3.2` | Shared Clerk TypeScript types and utilities |
 
 ### Observability
 
