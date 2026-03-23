@@ -40,25 +40,22 @@ permissions:
   pull-requests: write          # Needed to post the PR comment
 
 jobs:
-  # ── Preflight: verify required secrets are available ─────────────────────
-  # For dependency-bump PRs and other bot-generated PRs the Neon secrets may
-  # not yet be configured.  Rather than failing loudly we emit a warning and
-  # skip branch creation entirely so the PR is not blocked.
   check-prerequisites:
-    name: Check Neon secrets
+    name: Check Prerequisites
     runs-on: ubuntu-latest
+    timeout-minutes: 2
     outputs:
       ready: ${{ steps.check.outputs.ready }}
     steps:
-      - name: Verify NEON_DATABASE_URL is configured
+      - name: Check required secrets
         id: check
         env:
           NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
         run: |
           if [ -z "$NEON_DATABASE_URL" ]; then
             echo "ready=false" >> "$GITHUB_OUTPUT"
-            echo "::warning::NEON_DATABASE_URL is not configured in repository secrets."
-            echo "::warning::Skipping Neon branch creation. Add NEON_DATABASE_URL in Settings → Secrets and Variables → Actions."
+            echo "::warning::NEON_DATABASE_URL is not configured. Skipping Neon branch creation."
+            echo "::warning::Add NEON_DATABASE_URL, NEON_API_KEY, and NEON_PROJECT_ID in repository Settings → Secrets and Variables → Actions."
           else
             echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
@@ -73,7 +70,7 @@ jobs:
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────────────
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # ── 2. Resolve database config from NEON_DATABASE_URL ─────────────────
       # NEON_DATABASE_URL is the single source of truth for the database name
@@ -126,7 +123,7 @@ jobs:
       - name: Create Neon database branch
         if: steps.db-config.outputs.skip != 'true'
         id: create-branch
-        uses: neondatabase/create-branch-action@v5
+        uses: neondatabase/create-branch-action@v6
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch_name: pr-${{ github.event.pull_request.number }}
