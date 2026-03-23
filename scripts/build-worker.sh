@@ -31,3 +31,16 @@ if [ -f "$INDEX_HTML" ]; then
         echo "CF_WEB_ANALYTICS_TOKEN not set — analytics script removed from $INDEX_HTML."
     fi
 fi
+
+# Patch polyfills.server.mjs for Cloudflare Workers compatibility.
+# Angular's SSR build generates polyfills.server.mjs that calls
+# createRequire(import.meta.url) at module scope. In Cloudflare Workers,
+# import.meta.url is undefined at script-validation time, causing error 10021.
+# Patch to use optional chaining with a safe fallback URL so the module
+# initialises without error in the Workers runtime.
+POLYFILLS_FILE="frontend/dist/adblock-compiler/server/polyfills.server.mjs"
+if [ -f "$POLYFILLS_FILE" ]; then
+    sed "s|createRequire(import\.meta\.url)|createRequire(import.meta?.url ?? 'file:///worker')|g" \
+        "$POLYFILLS_FILE" > "$POLYFILLS_FILE.tmp" && mv "$POLYFILLS_FILE.tmp" "$POLYFILLS_FILE"
+    echo "Patched $POLYFILLS_FILE for Cloudflare Workers (createRequire fallback)."
+fi
