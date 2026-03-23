@@ -1,6 +1,9 @@
 # Multi-stage build for adblock-compiler with Cloudflare Worker support
 # This Dockerfile creates a container that can run both the compiler CLI and the web UI
-# Includes Angular 21 frontend build for the SSR dashboard
+# Builds the Angular 21 frontend dist artifacts needed by wrangler dev.
+# In production the frontend runs as a separate Cloudflare Worker
+# (adblock-compiler-frontend) connected to the backend via a service binding.
+# Docker is used for local development convenience only.
 # Version: 0.8.9
 
 # Build argument for Deno version

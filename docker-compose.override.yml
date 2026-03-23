@@ -9,6 +9,9 @@ services:
             - ./src:/app/src
             - ./worker:/app/worker
             - ./public:/app/public
+            # Optional: mount frontend source for live reload when developing inside Docker.
+            # Most developers run `ng serve` on the host instead and can omit this.
+            - ./frontend/src:/app/frontend/src
         # Add development secrets here (or use .env.local with env_file).
         # Example (uncomment and fill in your actual values):
         # environment:
