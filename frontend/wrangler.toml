@@ -33,8 +33,9 @@
 #   requests are forwarded via env.API.fetch() in server.ts — no public
 #   round-trip, no CORS negotiation.
 #
-# SECRETS (wrangler secret put --name adblock-compiler-frontend):
-#   None required for this worker — the API Worker owns all secrets.
+# SECRETS (wrangler secret put <NAME> --config frontend/wrangler.toml):
+#   SENTRY_DSN     — Sentry DSN for server-side SSR error capture
+#   SENTRY_RELEASE — injected at deploy time via --var, not a secret
 #   CF_WEB_ANALYTICS_TOKEN must be injected into dist/.../browser/index.html
 #   at build time by the CI/deploy pipeline (scripts/build-worker.sh handles
 #   this — it runs after `ng build` and rewrites the {{CF_WEB_ANALYTICS_TOKEN}}
@@ -76,6 +77,21 @@ not_found_handling = "single-page-application"
 [dev]
 port = 4200
 local_protocol = "http"
+
+# ─── Runtime variables ───────────────────────────────────────────────────────
+# Static vars injected into env at runtime. SENTRY_RELEASE is NOT listed here
+# because it is injected at deploy time via `--var SENTRY_RELEASE:$GITHUB_SHA`.
+# Secrets (wrangler secret put <NAME> --config frontend/wrangler.toml):
+#   SENTRY_DSN     — Sentry DSN for server-side SSR error capture
+#   SENTRY_RELEASE — injected at deploy time via --var, not a secret
+[vars]
+ENVIRONMENT = "production"
+
+# ─── Tail Worker ─────────────────────────────────────────────────────────────
+# Same adblock-compiler-tail worker used by the backend. Cloudflare supports
+# multiple producers for a single tail consumer — no extra infrastructure needed.
+# IMPORTANT: adblock-compiler-tail must be deployed before this Worker.
+tail_consumers = [{ service = "adblock-compiler-tail" }]
 
 # ─── Service binding to backend API Worker ────────────────────────────────────
 # Allows the SSR Worker to call the backend on the internal Cloudflare network

@@ -62,6 +62,8 @@ Then redeploy the main worker:
 deno task wrangler:deploy
 ```
 
+> **Multiple producers, one consumer:** Cloudflare supports multiple producer Workers feeding a single tail consumer. The `adblock-compiler-frontend` Worker is also wired to this same tail worker — add `tail_consumers = [{ service = "adblock-compiler-tail" }]` to `frontend/wrangler.toml` and redeploy the frontend Worker. No extra infrastructure needed; `adblock-compiler-tail` must be deployed before any producer Worker that references it.
+
 ### 4. (Optional) Configure Error Webhook
 
 To forward critical errors to an external endpoint, set the `ERROR_WEBHOOK_URL` environment variable in `wrangler.tail.toml`:
