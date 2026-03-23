@@ -110,9 +110,17 @@ This workflow is registered as a **required status check** in branch protection,
 self-hosted-runner:
     labels:
         - macos-15-intel
+
+ignore:
+    - 'string should not be empty'
+    - 'unknown permission scope "models"'
 ```
 
-Any runner label that isn't in GitHub's published list (e.g. a self-hosted or Intel-slice runner) must be added here to prevent false-positive `[runner-label]` errors. When a new custom runner is added to the repo's workflows, add its label to this file at the same time.
+**`self-hosted-runner.labels`** — any runner label that isn't in GitHub's published list (e.g. a self-hosted or Intel-slice runner) must be declared here to prevent false-positive `[runner-label]` errors. When a new custom runner is added to the repo's workflows, add its label to this file at the same time.
+
+**`ignore`** — regex patterns suppressing known false positives in pre-existing workflows:
+- `string should not be empty` — actionlint v1.7.7 incorrectly flags the empty-string entry (`- ''`) used as the default choice in `workflow_dispatch` `type: choice` inputs; this is valid GitHub Actions syntax
+- `unknown permission scope "models"` — the `models: read` GitHub Models permission was introduced after actionlint v1.7.7; the ignore can be removed once actionlint is upgraded to a version that includes it
 
 ## Versions
 
