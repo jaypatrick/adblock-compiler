@@ -5,6 +5,12 @@ on:
         types: [closed]
         branches:
             - main
+    workflow_dispatch:
+        inputs:
+            version:
+                description: 'Version to tag (e.g. 1.2.3). Leave empty to read from deno.json.'
+                required: false
+                type: string
 
 permissions:
     contents: write
@@ -13,10 +19,21 @@ jobs:
     create-tag:
         name: Create Version Tag
         runs-on: ubuntu-latest
-        # Only run if PR was merged and the branch name starts with "auto-version-bump-"
+        # Run when:
+        #   • a version-bump PR is merged (branch name matches any version-bump pattern), OR
+        #   • triggered manually via workflow_dispatch.
+        # Accepted branch name patterns (case-insensitive):
+        #   - auto-version-bump-*   (canonical pattern used by version-bump.yml)
+        #   - chore/version-bump-*  (alternative conventional-commits style)
+        #   - *version-bump*        (catch-all for re-runs / renamed branches)
         if: |
-            github.event.pull_request.merged == true &&
-            startsWith(github.event.pull_request.head.ref, 'auto-version-bump-')
+            github.event_name == 'workflow_dispatch' || (
+                github.event.pull_request.merged == true && (
+                    startsWith(github.event.pull_request.head.ref, 'auto-version-bump-') ||
+                    startsWith(github.event.pull_request.head.ref, 'chore/version-bump-') ||
+                    contains(github.event.pull_request.head.ref, 'version-bump')
+                )
+            )
         steps:
             - name: Checkout
               uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
@@ -45,8 +62,19 @@ jobs:
               id: get_version
               env:
                   TAG_PREFIX: ${{ steps.detect_prefix.outputs.tag_prefix }}
+                  MANUAL_VERSION: ${{ inputs.version }}
               run: |
-                  VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
+                  set -euo pipefail
+                  if [ -n "${MANUAL_VERSION}" ]; then
+                    # Validate that the manually supplied version is a valid semver (X.Y.Z)
+                    if ! echo "${MANUAL_VERSION}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+                      echo "::error::Invalid version format '${MANUAL_VERSION}'. Expected X.Y.Z (e.g. 1.2.3)."
+                      exit 1
+                    fi
+                    VERSION="${MANUAL_VERSION}"
+                  else
+                    VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
+                  fi
                   echo "version=$VERSION" >> "$GITHUB_OUTPUT"
                   echo "tag=${TAG_PREFIX}${VERSION}" >> "$GITHUB_OUTPUT"
                   echo "Version: $VERSION"
@@ -120,3 +148,34 @@ jobs:
 
                   Tag $TAG already exists. Skipping tag creation.
                   EOF
+
+    # Runs only on pull_request.closed when the branch name did NOT match any
+    # version-bump pattern, making the skip visible in the Actions UI instead of
+    # silently doing nothing.
+    notify-skipped:
+        name: Notify Skipped (branch mismatch)
+        runs-on: ubuntu-latest
+        if: |
+            github.event_name == 'pull_request' &&
+            github.event.pull_request.merged == true && !(
+                startsWith(github.event.pull_request.head.ref, 'auto-version-bump-') ||
+                startsWith(github.event.pull_request.head.ref, 'chore/version-bump-') ||
+                contains(github.event.pull_request.head.ref, 'version-bump')
+            )
+        steps:
+            - name: Write skip notice to job summary
+              env:
+                  BRANCH: ${{ github.event.pull_request.head.ref }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
+              run: |
+                  cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+                  ## ⚠️ Create-Version-Tag Skipped
+
+                  PR #${PR_NUMBER} was merged but branch **\`${BRANCH}\`** does not match
+                  any version-bump pattern (\`auto-version-bump-*\`, \`chore/version-bump-*\`,
+                  or \`*version-bump*\`), so no tag was created.
+
+                  If a version tag is needed, trigger this workflow manually via
+                  **Actions → Create Version Tag → Run workflow** and supply the version number.
+                  EOF
+                  echo "::warning::create-version-tag skipped — branch '${BRANCH}' did not match a version-bump pattern (PR #${PR_NUMBER})"
