@@ -150,6 +150,9 @@ importers:
       '@sentry/angular':
         specifier: ^10.43.0
         version: 10.43.0(@angular/common@21.2.4(@angular/core@21.2.4(@angular/compiler@21.2.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.2.4(@angular/compiler@21.2.4)(rxjs@7.8.2))(@angular/router@21.2.4(@angular/common@21.2.4(@angular/core@21.2.4(@angular/compiler@21.2.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.2.4(@angular/compiler@21.2.4)(rxjs@7.8.2))(@angular/platform-browser@21.2.4(@angular/animations@21.2.4(@angular/core@21.2.4(@angular/compiler@21.2.4)(rxjs@7.8.2)))(@angular/common@21.2.4(@angular/core@21.2.4(@angular/compiler@21.2.4)(rxjs@7.8.2))(rxjs@7.8.2))(@angular/core@21.2.4(@angular/compiler@21.2.4)(rxjs@7.8.2)))(rxjs@7.8.2))(rxjs@7.8.2)
+      '@sentry/cloudflare':
+        specifier: ^10.43.0
+        version: 10.43.0(@cloudflare/workers-types@4.20260313.1)
       hono:
         specifier: ^4.12.8
         version: 4.12.8
@@ -11011,6 +11014,13 @@ snapshots:
       '@sentry/cli-win32-arm64': 3.3.3
       '@sentry/cli-win32-i686': 3.3.3
       '@sentry/cli-win32-x64': 3.3.3
+
+  '@sentry/cloudflare@10.43.0(@cloudflare/workers-types@4.20260313.1)':
+    dependencies:
+      '@opentelemetry/api': 1.9.0
+      '@sentry/core': 10.43.0
+    optionalDependencies:
+      '@cloudflare/workers-types': 4.20260313.1
 
   '@sentry/cloudflare@10.43.0(@cloudflare/workers-types@4.20260317.1)':
     dependencies:
