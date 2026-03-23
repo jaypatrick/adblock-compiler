@@ -31,10 +31,10 @@ brew install pre-commit
 Then install the hooks from the repo root:
 
 ```bash
-pre-commit install --hook-type pre-push
+pre-commit install
 ```
 
-After installation, `actionlint` will run automatically on every `git push` against any changed workflow files. Broken workflow YAML is caught **before** the code leaves the developer's machine — no CI runner time consumed, no waiting for a failed check.
+The `default_install_hook_types: [pre-push]` key in `.pre-commit-config.yaml` tells pre-commit to install the pre-push hook automatically — no `--hook-type pre-push` flag required. The `stages: [pre-push]` entry on the `actionlint` hook ensures it only fires on `git push`, not on every commit.
 
 To run it manually against all workflow files at any time:
 
