@@ -142,6 +142,7 @@
   - [Neon Troubleshooting](troubleshooting/neon-troubleshooting.md)
 - [Workflows](workflows/README.md)
   - [Workflows Reference](workflows/WORKFLOWS.md)
+  - [Workflow Linting (actionlint)](workflows/ACTIONLINT.md)
   - [Environment Setup](workflows/ENV_SETUP.md)
   - [Workflow Diagrams](workflows/WORKFLOW_DIAGRAMS.md)
   - [Workflow Improvements](workflows/WORKFLOW_IMPROVEMENTS.md)
