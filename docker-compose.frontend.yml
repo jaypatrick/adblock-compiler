@@ -54,13 +54,17 @@ services:
         volumes:
             # Mount frontend wrangler config so the correct Worker definition is used
             - ./frontend/wrangler.toml:/app/frontend/wrangler.toml:ro
-            # Mount frontend source for live reloading (requires ng build --watch on host
-            # to rebuild frontend/dist — wrangler serves the built assets, not the source)
+            # Mount frontend source so it stays in sync with the image (e.g. for editors/tooling).
+            # Note: wrangler still serves built assets from /app/frontend/dist inside the container.
+            # To have host-side `ng build --watch` control the served assets, also mount:
+            #   - ./frontend/dist:/app/frontend/dist
             - ./frontend/src:/app/frontend/src
         restart: unless-stopped
         healthcheck:
-            # curl is installed in the runtime stage via apt-get
-            test: ['CMD', 'curl', '-f', 'http://localhost:4200/health']
+            # curl is installed in the runtime stage via apt-get.
+            # The frontend Angular SSR worker does not expose a /health route; probe /
+            # to verify the SSR entry point is responding.
+            test: ['CMD', 'curl', '-f', 'http://localhost:4200/']
             interval: 30s
             timeout: 5s
             retries: 3
