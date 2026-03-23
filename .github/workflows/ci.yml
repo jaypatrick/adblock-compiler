@@ -217,6 +217,8 @@ jobs:
         needs: [changes]
         if: >-
             needs.changes.outputs.frontend == 'true' ||
+            needs.changes.outputs.worker == 'true' ||
+            needs.changes.outputs.compiler == 'true' ||
             (github.event.inputs.force_deploy_frontend || 'false') == 'true'
         permissions:
             contents: read
@@ -619,8 +621,8 @@ jobs:
         needs: [ci-gate, changes, frontend-build]
         # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
         # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
-        # frontend-build may be skipped when only worker/compiler files changed — that is fine;
-        # in that case the deploy runs without a fresh frontend artifact (existing deployment unchanged).
+        # frontend-build always runs when worker or compiler files change (same triggers as this
+        # job), so the frontend artifact is always available when the deploy runs.
         if: >-
             always() &&
             needs.ci-gate.result == 'success' &&
