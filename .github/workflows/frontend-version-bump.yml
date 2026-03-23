@@ -170,15 +170,29 @@ jobs:
                     exit 0
                   fi
 
+                  BRANCH_NAME="chore/frontend-version-bump-${NEW_VERSION}"
+
+                  git checkout -b "$BRANCH_NAME"
                   git add frontend/package.json
                   git commit -m "chore(frontend): bump version to $NEW_VERSION [skip version]"
 
                   git tag -a "$TAG_NAME" -m "Frontend release $NEW_VERSION"
 
-                  git push origin main
+                  git push origin "$BRANCH_NAME"
                   git push origin "$TAG_NAME"
 
-                  echo "Committed and tagged $TAG_NAME"
+                  PR_NUMBER=$(gh pr create \
+                    --base main \
+                    --head "$BRANCH_NAME" \
+                    --title "chore(frontend): bump version to $NEW_VERSION" \
+                    --body "Automated frontend version bump to \`$NEW_VERSION\` ([skip version])." \
+                    --label "automated" \
+                    --json number \
+                    --jq '.number')
+
+                  gh pr merge "$PR_NUMBER" --auto --squash
+
+                  echo "Committed, tagged $TAG_NAME, and opened PR from $BRANCH_NAME into main"
 
             - name: Summary
               if: steps.determine_bump.outputs.bump_type != 'none'
