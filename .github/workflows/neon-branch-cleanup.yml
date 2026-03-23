@@ -1,11 +1,17 @@
 # Neon Database Branch — Cleanup
 #
-# Deletes the Neon database branch associated with a pull request after it
-# is closed (either merged or abandoned).  This keeps the Neon project tidy
-# and avoids accumulating stale branches that count against quotas.
+# Deletes a Neon database branch when it is no longer needed.
+# Triggered by three events:
 #
-# The branch name convention is `pr-<number>`, matching what
-# neon-branch-create.yml produces.
+#   1. pull_request [closed] — PR merged or abandoned; deletes `pr-<number>`.
+#   2. delete               — Git branch deleted directly (CLI, GitHub UI, API,
+#                             Copilot agent branches, etc.); deletes a Neon
+#                             branch with the same name as the deleted git branch.
+#   3. workflow_dispatch    — Manual cleanup of any named Neon branch.
+#
+# This keeps the Neon project tidy and avoids accumulating stale branches
+# that count against quotas.  The branch name convention for PR branches is
+# `pr-<number>`, matching what neon-branch-create.yml produces.
 #
 # Phase 0 of the Neon PostgreSQL migration.
 #
@@ -18,27 +24,89 @@ name: 'Neon Branch: Cleanup'
 on:
   pull_request:
     types: [closed]
+  delete:
+  workflow_dispatch:
+    inputs:
+      branch_name:
+        description: 'Neon branch name to delete (e.g. pr-123 or feat/my-feature)'
+        required: true
+        type: string
 
 permissions:
   contents: read
 
 jobs:
+  check-prerequisites:
+    name: Check Prerequisites
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    # Skip for Dependabot PRs — no branch was created for them (see
+    # neon-branch-create.yml), and repository secrets are not available.
+    # Also skip tag deletions; this workflow only cares about deleted branches.
+    if: >
+      (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') &&
+      (github.event_name != 'delete' || github.event.ref_type == 'branch')
+    steps:
+      - name: Check required secrets
+        id: check
+        env:
+          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
+        run: |
+          ready=true
+
+          if [ -z "$NEON_API_KEY" ]; then
+            ready=false
+            echo "::warning::NEON_API_KEY is not configured. Skipping Neon branch deletion."
+          fi
+
+          if [ -z "$NEON_PROJECT_ID" ]; then
+            ready=false
+            echo "::warning::NEON_PROJECT_ID is not configured. Skipping Neon branch deletion."
+          fi
+
+          if [ "$ready" != "true" ]; then
+            echo "::warning::Add NEON_API_KEY and NEON_PROJECT_ID in repository Settings → Secrets and Variables → Actions."
+          fi
+
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
+
   delete-neon-branch:
     name: Delete Neon Branch
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    # Skip for Dependabot PRs — no branch was created for them (see
-    # neon-branch-create.yml), and repository secrets are not available.
-    if: github.actor != 'dependabot[bot]'
+    needs: [check-prerequisites]
+    if: |
+      needs.check-prerequisites.outputs.ready == 'true' &&
+      (github.event_name != 'delete' || github.event.ref_type == 'branch')
 
     steps:
-      # ── 1. Delete the Neon branch ──────────────────────────────────────────
+      # ── 1. Resolve the Neon branch name from the trigger context ───────────
+      - name: Resolve branch name
+        id: branch
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          DELETED_REF: ${{ github.event.ref }}
+          DISPATCH_BRANCH: ${{ inputs.branch_name }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "branch_name=pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+          elif [ "$EVENT_NAME" = "delete" ]; then
+            echo "branch_name=${DELETED_REF}" >> "$GITHUB_OUTPUT"
+          else
+            echo "branch_name=${DISPATCH_BRANCH}" >> "$GITHUB_OUTPUT"
+          fi
+
+      # ── 2. Delete the Neon branch ──────────────────────────────────────────
       # The action calls the Neon API to remove the branch.  If the branch
       # does not exist (e.g. the create workflow was never triggered), the
       # action exits gracefully — it will not fail the workflow.
       - name: Delete Neon database branch
-        uses: neondatabase/delete-branch-action@v3
+        uses: neondatabase/delete-branch-action@c2005bb7d7caeba12ba3ec63857e9c9f9a4d695a
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
-          branch: pr-${{ github.event.pull_request.number }}
+          branch: ${{ steps.branch.outputs.branch_name }}
           api_key: ${{ secrets.NEON_API_KEY }}
