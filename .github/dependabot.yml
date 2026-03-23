@@ -1,0 +1,45 @@
+version: 2
+updates:
+    # GitHub Actions — keep all workflow action SHAs up to date
+    - package-ecosystem: github-actions
+      directory: /
+      schedule:
+          interval: weekly
+          day: monday
+          time: '09:00'
+          timezone: America/New_York
+      open-pull-requests-limit: 5
+      commit-message:
+          prefix: 'chore(ci)'
+      labels:
+          - dependencies
+          - ci
+      groups:
+          actions:
+              patterns:
+                  - '*'
+
+    # npm packages (used via deno.json npm: imports)
+    - package-ecosystem: npm
+      directory: /
+      schedule:
+          interval: weekly
+          day: monday
+          time: '09:00'
+          timezone: America/New_York
+      open-pull-requests-limit: 5
+      commit-message:
+          prefix: 'chore(deps)'
+      labels:
+          - dependencies
+      ignore:
+          # Prisma adapters should be bumped together
+          - dependency-name: '@prisma/*'
+            update-types: ['version-update:semver-patch']
+
+    # Angular frontend is part of the root pnpm workspace.
+    # Its dependencies are updated via the root npm entry (directory: /)
+    # to keep the single pnpm-lock.yaml at the repo root in sync.
+    # A separate /frontend entry would update frontend/package.json without
+    # touching the root pnpm-lock.yaml, causing `pnpm install --frozen-lockfile`
+    # to fail in CI.
