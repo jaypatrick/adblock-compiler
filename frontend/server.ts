@@ -36,12 +36,14 @@ import './src/main.server';
 // so it is a TypeScript module). They only affect this file and do not pollute the global
 // namespace for the rest of the Angular app compilation, which avoids type conflicts with
 // libraries such as better-auth that rely on the standard DOM `Response.json()` signature.
-interface ExecutionContext {
+// The `Workers` prefix avoids shadowing the real Cloudflare globals if
+// @cloudflare/workers-types is ever included for this compilation unit.
+interface WorkersExecutionContext {
     waitUntil(promise: Promise<unknown>): void;
     passThroughOnException(): void;
 }
 
-interface Fetcher {
+interface WorkersFetcher {
     fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
 }
 
@@ -62,7 +64,7 @@ const angularApp = new AngularAppEngine();
  * @returns A `Response` — either SSR-rendered HTML from Angular or a 404.
  */
 export default {
-    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    async fetch(request: Request, env: Env, ctx: WorkersExecutionContext): Promise<Response> {
         // Route SSR-time API calls to the backend on the internal Cloudflare network.
         // This avoids a public round-trip and bypasses CORS negotiation entirely.
         if (new URL(request.url).pathname.startsWith('/api/')) {
@@ -119,8 +121,8 @@ export default {
  */
 export interface Env {
     /** Static asset binding — serves JS/CSS/fonts from the CDN edge. */
-    ASSETS: Fetcher;
+    ASSETS: WorkersFetcher;
     /** Service binding to the adblock-compiler backend Worker.
      *  Calls travel on the internal Cloudflare network — no public hop, no CORS. */
-    API: Fetcher;
+    API: WorkersFetcher;
 }
