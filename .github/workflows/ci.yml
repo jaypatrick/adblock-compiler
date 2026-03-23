@@ -36,6 +36,7 @@ jobs:
                   filters: |
                       compiler:
                           - 'src/**'
+                          - '!src/**/*.test.ts'
                           - 'deno.json'
                           - 'deno.lock'
                       frontend:
