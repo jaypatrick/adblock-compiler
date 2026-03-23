@@ -31,7 +31,7 @@ Use **two separate Sentry projects** under the `jkcom` organisation:
 | Project slug | Platform | What it captures |
 |-------------|----------|------------------|
 | `adblock-compiler` | Cloudflare Workers | Main Worker errors, scheduled jobs, queue handlers, tail worker exceptions |
-| `adblock-compiler-frontend` | JavaScript/Browser | Angular RUM errors, browser traces, session replay |
+| `adblock-frontend` | JavaScript/Browser | Angular RUM errors, browser traces, session replay |
 
 Using separate projects allows independent quotas, alert routing, and source
 map management. Both share the same `SENTRY_DSN` secret if you choose one project,

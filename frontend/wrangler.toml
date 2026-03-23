@@ -42,7 +42,7 @@
 #   placeholder, or removes the analytics tag if the token is absent).
 # ============================================================================
 
-name = "adblock-compiler-frontend"
+name = "adblock-frontend"
 
 # Expose the worker on the *.workers.dev subdomain after deployment.
 workers_dev = true

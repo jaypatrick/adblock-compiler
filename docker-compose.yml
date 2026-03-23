@@ -1,7 +1,7 @@
 services:
     # Main adblock-compiler backend Worker service (wrangler dev).
     # NOTE: The frontend is NOT a separate container here. In production the
-    # frontend runs as a separate Cloudflare Worker (adblock-compiler-frontend)
+    # frontend runs as a separate Cloudflare Worker (adblock-frontend)
     # connected to this backend via a Cloudflare service binding. Locally,
     # `wrangler dev` emulates that service binding transparently, so no
     # separate frontend container is needed for everyday development.

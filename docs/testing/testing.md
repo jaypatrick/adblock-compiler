@@ -8,9 +8,9 @@ This project uses a layered testing strategy spanning three frameworks:
 |-------|-----------|-----------|--------|
 | Deno backend (CLI + core) | Deno native (`@std/assert`, `@std/testing/mock`) | `src/` | `deno task test:src` |
 | Cloudflare Worker | Deno native | `worker/` | `deno task test:worker` |
-| Angular frontend | Vitest + `@analogjs/vitest-angular` | `frontend/` | `pnpm --filter adblock-compiler-frontend run test` |
+| Angular frontend | Vitest + `@analogjs/vitest-angular` | `frontend/` | `pnpm --filter adblock-frontend run test` |
 | E2E (Worker) | Deno native | `worker/*.e2e.test.ts` | included in `test:worker` |
-| E2E (Frontend) | Playwright | `frontend/e2e/` | `pnpm --filter adblock-compiler-frontend run test:e2e` |
+| E2E (Frontend) | Playwright | `frontend/e2e/` | `pnpm --filter adblock-frontend run test:e2e` |
 
 All test files are **co-located** next to their source files using the `*.test.ts` naming convention.
 
@@ -56,10 +56,10 @@ deno task test:src
 deno task test:worker
 
 # Frontend unit tests
-pnpm --filter adblock-compiler-frontend run test
+pnpm --filter adblock-frontend run test
 
 # Frontend E2E
-pnpm --filter adblock-compiler-frontend run test:e2e
+pnpm --filter adblock-frontend run test:e2e
 
 # Single file
 deno test --no-check src/utils/AGTreeParser.roundtrip.test.ts
@@ -117,7 +117,7 @@ Deno.test('my handler test', async () => {
 Tests run automatically in GitHub Actions (`ci.yml`) on push to `main`, pull requests, and workflow dispatch:
 
 1. **Deno tests** — `deno task test:src` + `deno task test:worker`
-2. **Frontend Vitest** — `pnpm --filter adblock-compiler-frontend run test`
+2. **Frontend Vitest** — `pnpm --filter adblock-frontend run test`
 3. **Wrangler verify** — `wrangler deploy --dry-run` (retried up to 3× with 15s backoff)
 
 ## Coverage Targets

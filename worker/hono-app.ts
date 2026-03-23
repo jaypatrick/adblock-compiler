@@ -303,7 +303,7 @@ app.use('*', async (c, next) => {
 });
 
 // ── 1a. SSR origin detection ──────────────────────────────────────────────────
-// Identifies requests forwarded internally from the adblock-compiler-frontend
+// Identifies requests forwarded internally from the adblock-frontend
 // SSR Worker via env.API.fetch(). These are trusted internal calls — Turnstile
 // and rate limiting are not applicable to them.
 app.use('*', async (c, next) => {

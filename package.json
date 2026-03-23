@@ -5,11 +5,11 @@
     "homepage": "https://adblock-compiler.jayson-knight.workers.dev/",
     "type": "module",
     "scripts": {
-        "ui:build": "pnpm --filter adblock-compiler-frontend run build",
-        "ui:dev": "pnpm --filter adblock-compiler-frontend run start",
-        "ui:test": "pnpm --filter adblock-compiler-frontend run test",
-        "ui:lint": "pnpm --filter adblock-compiler-frontend run lint",
-        "build:worker": "pnpm install && pnpm --filter adblock-compiler-frontend run build"
+        "ui:build": "pnpm --filter adblock-frontend run build",
+        "ui:dev": "pnpm --filter adblock-frontend run start",
+        "ui:test": "pnpm --filter adblock-frontend run test",
+        "ui:lint": "pnpm --filter adblock-frontend run lint",
+        "build:worker": "pnpm install && pnpm --filter adblock-frontend run build"
     },
     "packageManager": "pnpm@10.31.0",
     "_syncNote": "Dependency versions here must match those pinned in deno.json's import map; keep them in sync (for example via the existing version:sync-style task).",

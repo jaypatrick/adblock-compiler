@@ -285,20 +285,20 @@ The primary frontend is an Angular 21 SPA in `frontend/`. It uses:
 
 ```bash
 # Development server (http://localhost:4200)
-pnpm --filter adblock-compiler-frontend run start
+pnpm --filter adblock-frontend run start
 
 # Production build
-pnpm --filter adblock-compiler-frontend run build
+pnpm --filter adblock-frontend run build
 
 # Run tests
-pnpm --filter adblock-compiler-frontend run test
+pnpm --filter adblock-frontend run test
 ```
 
 For full-stack local development:
 
 ```bash
 deno task wrangler:dev        # Worker on :8787
-pnpm --filter adblock-compiler-frontend run start  # Angular on :4200 → proxies /api to :8787
+pnpm --filter adblock-frontend run start  # Angular on :4200 → proxies /api to :8787
 ```
 
 **Pages:**
