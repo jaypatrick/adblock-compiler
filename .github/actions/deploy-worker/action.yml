@@ -55,7 +55,7 @@ runs:
                       return 0
                   fi
                   echo "$output"
-                  if echo "$output" | grep -qi 'already exists'; then
+                  if echo "$output" | grep -qiE 'already (exists|taken)|11009'; then
                       echo "Queue '$name' already exists"
                       return 0
                   fi
@@ -71,7 +71,7 @@ runs:
                       return 0
                   fi
                   echo "$output"
-                  if echo "$output" | grep -qi 'already exists'; then
+                  if echo "$output" | grep -qiE 'already (exists|taken)|11009'; then
                       echo "R2 bucket '$name' already exists"
                       return 0
                   fi
