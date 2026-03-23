@@ -34,7 +34,7 @@ jobs:
                   deno-version: ${{ env.DENO_VERSION }}
 
             - name: Run benchmarks (JSON output)
-              run: deno task bench:json > bench-results.json 2>&1 || deno bench --allow-read --allow-write --allow-net --allow-env --json src/**/*.bench.ts > bench-results.json
+              run: deno task bench:json > bench-results.json || deno bench --allow-read --allow-write --allow-net --allow-env --json src/**/*.bench.ts > bench-results.json
 
             - name: Upload benchmark results
               uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

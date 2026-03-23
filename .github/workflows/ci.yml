@@ -76,7 +76,8 @@ jobs:
                   DENO_TLS_CA_STORE: system
 
             - name: Generate coverage report
-              if: success() || failure()
+              if: always() && hashFiles('coverage/**') != ''
+              continue-on-error: true
               run: deno coverage coverage --lcov --output=coverage/lcov.info
 
             - name: Upload coverage to Codecov

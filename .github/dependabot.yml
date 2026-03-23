@@ -37,17 +37,9 @@ updates:
           - dependency-name: '@prisma/*'
             update-types: ['version-update:semver-patch']
 
-    # Angular frontend (pnpm workspace)
-    - package-ecosystem: npm
-      directory: /frontend
-      schedule:
-          interval: weekly
-          day: tuesday
-          time: '09:00'
-          timezone: America/New_York
-      open-pull-requests-limit: 5
-      commit-message:
-          prefix: 'chore(frontend/deps)'
-      labels:
-          - dependencies
-          - frontend
+    # Angular frontend is part of the root pnpm workspace.
+    # Its dependencies are updated via the root npm entry (directory: /)
+    # to keep the single pnpm-lock.yaml at the repo root in sync.
+    # A separate /frontend entry would update frontend/package.json without
+    # touching the root pnpm-lock.yaml, causing `pnpm install --frozen-lockfile`
+    # to fail in CI.
