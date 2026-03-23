@@ -27,6 +27,9 @@ jobs:
     name: Delete Neon Branch
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # Skip for Dependabot PRs — no branch was created for them (see
+    # neon-branch-create.yml), and repository secrets are not available.
+    if: github.actor != 'dependabot[bot]'
 
     steps:
       # ── 1. Delete the Neon branch ──────────────────────────────────────────
