@@ -52,7 +52,11 @@ export default {
         // Route SSR-time API calls to the backend on the internal Cloudflare network.
         // This avoids a public round-trip and bypasses CORS negotiation entirely.
         if (new URL(request.url).pathname.startsWith('/api/')) {
-            return env.API.fetch(request);
+            try {
+                return await env.API.fetch(request);
+            } catch (err) {
+                return new Response('API unavailable', { status: 502 });
+            }
         }
         // Delegate the request to AngularAppEngine.
         // Returns a fully-formed Response (with HTML + headers) for Angular routes,
@@ -69,7 +73,7 @@ export default {
                 "style-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev",
                 "img-src 'self' data: https://img.clerk.com https://*.clerk.com",
                 "font-src 'self'",
-                "connect-src 'self' https://*.clerk.accounts.dev https://o*.ingest.sentry.io https://o*.ingest.us.sentry.io",
+                "connect-src 'self' https://adblock-compiler.jayson-knight.workers.dev https://*.clerk.accounts.dev https://o*.ingest.sentry.io https://o*.ingest.us.sentry.io",
                 "frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev",
                 "object-src 'none'",
                 "base-uri 'self'",
