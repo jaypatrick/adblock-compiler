@@ -291,6 +291,13 @@ export interface Env {
     CF_ACCESS_AUD?: string;
     // --- CORS ---
     CORS_ALLOWED_ORIGINS?: string;
+    // --- Project URLs (non-secret; set in wrangler.toml [vars]) ---
+    /** Public URL of the Angular frontend worker. Set in wrangler.toml [vars]. */
+    URL_FRONTEND?: string;
+    /** Public URL of the backend / API worker. Set in wrangler.toml [vars]. */
+    URL_API?: string;
+    /** Public URL of the mdBook documentation site. Set in wrangler.toml [vars]. */
+    URL_DOCS?: string;
     // --- Cloudflare Containers ---
     // Shared secret for Worker→Container auth (X-Container-Secret). Must match container env. Set via `wrangler secret put CONTAINER_SECRET`.
     CONTAINER_SECRET?: string;

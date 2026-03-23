@@ -208,4 +208,10 @@ export interface Env {
     SENTRY_RELEASE?: string;
     /** Deployment environment name (e.g. "production"). Defaults to "production" if absent. */
     ENVIRONMENT?: string;
+    /** Public URL of this frontend worker. Set in frontend/wrangler.toml [vars]. */
+    URL_FRONTEND?: string;
+    /** Public URL of the backend / API worker. Set in frontend/wrangler.toml [vars]. */
+    URL_API?: string;
+    /** Public URL of the mdBook documentation site. Set in frontend/wrangler.toml [vars]. */
+    URL_DOCS?: string;
 }

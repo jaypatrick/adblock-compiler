@@ -116,6 +116,12 @@ local_protocol = "http"
 #   SENTRY_RELEASE — injected at deploy time via --var, not a secret
 [vars]
 ENVIRONMENT = "production"
+# ─── Project URLs ─────────────────────────────────────────────────────────────
+# Single source of truth for all public-facing service URLs.
+# When you switch to a custom domain, update these three values only.
+URL_FRONTEND = "https://adblock-frontend.jayson-knight.workers.dev"
+URL_API      = "https://adblock-compiler.jayson-knight.workers.dev"
+URL_DOCS     = "https://adblock-compiler-docs.pages.dev"
 
 [observability.logs]
 enabled = true
