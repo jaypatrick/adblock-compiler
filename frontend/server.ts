@@ -31,6 +31,22 @@ import { AngularAppEngine } from '@angular/ssr';
 // application to render, even though the symbol itself is not referenced directly.
 import './src/main.server';
 
+// Minimal Cloudflare Workers type stubs.
+// These are declared as module-scoped interfaces (this file has import/export statements,
+// so it is a TypeScript module). They only affect this file and do not pollute the global
+// namespace for the rest of the Angular app compilation, which avoids type conflicts with
+// libraries such as better-auth that rely on the standard DOM `Response.json()` signature.
+// The `Workers` prefix avoids shadowing the real Cloudflare globals if
+// @cloudflare/workers-types is ever included for this compilation unit.
+interface WorkersExecutionContext {
+    waitUntil(promise: Promise<unknown>): void;
+    passThroughOnException(): void;
+}
+
+interface WorkersFetcher {
+    fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
+}
+
 // Instantiate the Angular SSR engine once at module scope so it is reused
 // across requests within the same Worker isolate — avoids re-initialising the
 // Angular application on every request.
@@ -48,7 +64,7 @@ const angularApp = new AngularAppEngine();
  * @returns A `Response` — either SSR-rendered HTML from Angular or a 404.
  */
 export default {
-    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    async fetch(request: Request, env: Env, ctx: WorkersExecutionContext): Promise<Response> {
         // Route SSR-time API calls to the backend on the internal Cloudflare network.
         // This avoids a public round-trip and bypasses CORS negotiation entirely.
         if (new URL(request.url).pathname.startsWith('/api/')) {
@@ -105,8 +121,8 @@ export default {
  */
 export interface Env {
     /** Static asset binding — serves JS/CSS/fonts from the CDN edge. */
-    ASSETS: Fetcher;
+    ASSETS: WorkersFetcher;
     /** Service binding to the adblock-compiler backend Worker.
      *  Calls travel on the internal Cloudflare network — no public hop, no CORS. */
-    API: Fetcher;
+    API: WorkersFetcher;
 }
