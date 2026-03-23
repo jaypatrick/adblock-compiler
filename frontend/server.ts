@@ -48,7 +48,12 @@ const angularApp = new AngularAppEngine();
  * @returns A `Response` — either SSR-rendered HTML from Angular or a 404.
  */
 export default {
-    async fetch(request: Request): Promise<Response> {
+    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+        // Route SSR-time API calls to the backend on the internal Cloudflare network.
+        // This avoids a public round-trip and bypasses CORS negotiation entirely.
+        if (new URL(request.url).pathname.startsWith('/api/')) {
+            return env.API.fetch(request);
+        }
         // Delegate the request to AngularAppEngine.
         // Returns a fully-formed Response (with HTML + headers) for Angular routes,
         // or null if the engine cannot handle the request (e.g. unrecognised path).
@@ -86,6 +91,19 @@ export default {
         return response;
     },
 };
+
+// AFTER — promote to a real exported interface
+/**
+ * Cloudflare Workers environment bindings.
+ * Declared in frontend/wrangler.toml and injected by the runtime.
+ */
+export interface Env {
+    /** Static asset binding — serves JS/CSS/fonts from the CDN edge. */
+    ASSETS: Fetcher;
+    /** Service binding to the adblock-compiler backend Worker.
+     *  Calls travel on the internal Cloudflare network — no public hop, no CORS. */
+    API: Fetcher;
+}
 
 /**
  * Cloudflare Workers environment bindings.
