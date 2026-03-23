@@ -112,4 +112,3 @@ head_sampling_rate = 1
 [[services]]
 binding = "API"
 service = "adblock-compiler"
-environment = "local"
