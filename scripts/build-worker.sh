@@ -33,10 +33,23 @@ if [ -f "$INDEX_HTML" ]; then
 fi
 
 # ── Substitute URL_FRONTEND placeholder in index.html ────────────────────────
-# The placeholder {{URL_FRONTEND}} in frontend/src/index.html is replaced with
-# the value of the URL_FRONTEND environment variable at build time, mirroring
-# the CF_WEB_ANALYTICS_TOKEN injection above.
+# The placeholder {{URL_FRONTEND}} in frontend/src/index.html is replaced at
+# build time.  Resolution order:
+#   1. URL_FRONTEND env var (explicit override — CI deploy, local dev)
+#   2. URL_FRONTEND value from wrangler.toml [vars] (automatic fallback so
+#      CI dry-run / verify-deploy works without a separate env var)
+#   3. Hard failure — we never deploy index.html with an un-substituted placeholder.
 if [ -f "$INDEX_HTML" ]; then
+    # If URL_FRONTEND is not set in the environment, try to read it from wrangler.toml.
+    if [ -z "${URL_FRONTEND:-}" ]; then
+        WRANGLER_URL_FRONTEND=$(grep -m1 '^URL_FRONTEND[[:space:]]*=' wrangler.toml 2>/dev/null \
+            | sed 's/^URL_FRONTEND[[:space:]]*=[[:space:]]*"\(.*\)"/\1/')
+        if [ -n "$WRANGLER_URL_FRONTEND" ]; then
+            URL_FRONTEND="$WRANGLER_URL_FRONTEND"
+            echo "build-worker.sh: URL_FRONTEND not set in env — using value from wrangler.toml: $URL_FRONTEND"
+        fi
+    fi
+
     if [ -n "${URL_FRONTEND:-}" ]; then
         # Normalize URL_FRONTEND by stripping a single trailing slash.
         NORMALIZED_URL_FRONTEND=${URL_FRONTEND%/}
@@ -47,14 +60,15 @@ if [ -f "$INDEX_HTML" ]; then
         sed "s|{{URL_FRONTEND}}|$ESCAPED_URL_FRONTEND|g" "$INDEX_HTML" > "$INDEX_HTML.tmp" && mv "$INDEX_HTML.tmp" "$INDEX_HTML"
         echo "build-worker.sh: substituted URL_FRONTEND in $INDEX_HTML."
     else
-        # If URL_FRONTEND is not set but the placeholder is still present, fail the build
-        # so we never deploy index.html with invalid canonical/og:url/JSON-LD metadata.
+        # Neither env var nor wrangler.toml provided the URL.  If the placeholder
+        # is still present, fail the build so we never deploy invalid metadata.
         if grep -q '{{URL_FRONTEND}}' "$INDEX_HTML"; then
-            echo "Error: URL_FRONTEND is not set, but '{{URL_FRONTEND}}' placeholder remains in $INDEX_HTML." >&2
-            echo "Please set the URL_FRONTEND environment variable before building." >&2
+            echo "Error: URL_FRONTEND is not set and could not be read from wrangler.toml," >&2
+            echo "       but '{{URL_FRONTEND}}' placeholder remains in $INDEX_HTML." >&2
+            echo "       Set URL_FRONTEND in the environment or add it to wrangler.toml [vars]." >&2
             exit 1
         else
-            echo "build-worker.sh: URL_FRONTEND not set, but no {{URL_FRONTEND}} placeholder found in $INDEX_HTML — skipping substitution."
+            echo "build-worker.sh: URL_FRONTEND not set — no {{URL_FRONTEND}} placeholder found in $INDEX_HTML, skipping."
         fi
     fi
 fi

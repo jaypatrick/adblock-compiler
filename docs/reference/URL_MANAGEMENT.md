@@ -26,9 +26,10 @@ new URLs without env overrides, also updating the fallback constants in
 3. Update `CORS_ALLOWED_ORIGINS` in `wrangler.toml` to include the new frontend origin.
 4. *(Optional)* Update the fallback constants in `worker/utils/constants.ts` if you want tests
    and CLI tools to use the new URLs without an explicit env override.
-5. Set `URL_FRONTEND` as a CI/CD environment variable so `scripts/build-worker.sh` can inject
-   the correct canonical URL into `frontend/src/index.html` at build time — the build will
-   **fail** if the `{{URL_FRONTEND}}` placeholder is present but the variable is unset.
+5. `scripts/build-worker.sh` injects `URL_FRONTEND` into `frontend/src/index.html` at build time.
+   Resolution order: (1) `URL_FRONTEND` env var, (2) `URL_FRONTEND` from `wrangler.toml` `[vars]`
+   (automatic fallback used by CI dry-run), (3) hard failure if neither is available and the
+   placeholder is still present.
 6. Run `wrangler deploy` (backend) and `pnpm --filter adblock-frontend run deploy` (frontend).
 
 ## Local dev overrides
