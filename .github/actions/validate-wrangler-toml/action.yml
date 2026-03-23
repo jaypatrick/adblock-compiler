@@ -1,0 +1,25 @@
+name: 'Validate wrangler.toml'
+description: 'Verify that wrangler.toml contains no placeholder binding IDs (all-zeros pattern or PLACEHOLDER_ prefix) before deploying.'
+
+runs:
+    using: composite
+    steps:
+        - name: Validate wrangler.toml has no placeholder binding IDs
+          shell: bash
+          run: |
+              FAIL=0
+              # Check for all-zeros pattern (e.g. 000000000000000000000000000000000000)
+              if grep -P 'id\s*=\s*"0{10,}' wrangler.toml; then
+                  echo "❌ wrangler.toml contains placeholder binding IDs (all-zeros pattern)!"
+                  FAIL=1
+              fi
+              # Check for PLACEHOLDER text (e.g. PLACEHOLDER_RUN_WRANGLER_D1_CREATE)
+              if grep -iP 'id\s*=\s*"PLACEHOLDER' wrangler.toml; then
+                  echo "❌ wrangler.toml contains PLACEHOLDER binding IDs!"
+                  FAIL=1
+              fi
+              if [ "$FAIL" -eq 1 ]; then
+                  echo "Create real namespaces/resources and update wrangler.toml before merging."
+                  exit 1
+              fi
+              echo "✅ No placeholder binding IDs in wrangler.toml"
