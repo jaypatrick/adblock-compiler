@@ -22,12 +22,26 @@ import { MetricsStore } from '../store/metrics.store';
 import { API_BASE_URL } from '../tokens';
 import { ContainerStatusWidgetComponent } from '../components/container-status/container-status-widget.component';
 
-/** Health response shape from /api/health */
+/** Health response shape from /api/health — mirrors worker/handlers/health.ts */
+interface HealthServiceResult {
+    readonly status: 'healthy' | 'degraded' | 'down';
+    readonly latency_ms?: number;
+    readonly provider?: 'better-auth' | 'none';
+}
+
 interface HealthResponse {
-    readonly status: 'healthy' | 'degraded' | 'unhealthy';
-    readonly uptime: number;
+    readonly status: 'healthy' | 'degraded' | 'down';
+    /** Not currently returned by the worker; kept optional for forward compatibility. */
+    readonly uptime?: number;
     readonly version: string;
     readonly timestamp: string;
+    readonly services?: {
+        readonly gateway: HealthServiceResult;
+        readonly database: HealthServiceResult;
+        readonly compiler: HealthServiceResult;
+        readonly auth: HealthServiceResult & { readonly provider: 'better-auth' | 'none' };
+        readonly cache: HealthServiceResult;
+    };
 }
 
 @Component({
@@ -77,7 +91,9 @@ interface HealthResponse {
                         <mat-chip highlighted [color]="h.status === 'healthy' ? 'primary' : 'warn'">
                             {{ h.status | titlecase }}
                         </mat-chip>
-                        <mat-chip>Uptime: {{ formatUptime(h.uptime) }}</mat-chip>
+                        @if (h.uptime != null) {
+                            <mat-chip>Uptime: {{ formatUptime(h.uptime) }}</mat-chip>
+                        }
                         <mat-chip>v{{ h.version }}</mat-chip>
                     </mat-chip-set>
                     <div class="container-status-row">
@@ -238,8 +254,9 @@ export class PerformanceComponent {
         if (!health) return 'var(--mat-sys-on-surface-variant)';
         switch (health.status) {
             case 'healthy': return 'var(--mat-sys-primary)';
-            case 'degraded': return 'var(--mat-sys-error)';
-            case 'unhealthy': return 'var(--mat-sys-error)';
+            case 'degraded': return 'var(--mat-sys-tertiary)';
+            case 'down': return 'var(--mat-sys-error)';
+            default: return 'var(--mat-sys-error)';
         }
     });
 
@@ -249,7 +266,8 @@ export class PerformanceComponent {
         switch (health.status) {
             case 'healthy': return 'check_circle';
             case 'degraded': return 'warning';
-            case 'unhealthy': return 'error';
+            case 'down': return 'error';
+            default: return 'error';
         }
     });
 
