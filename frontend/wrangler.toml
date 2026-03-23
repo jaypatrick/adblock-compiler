@@ -83,3 +83,4 @@ local_protocol = "http"
 [[services]]
 binding = "API"
 service = "adblock-compiler"
+environment = "local"
