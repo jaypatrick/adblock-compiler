@@ -50,6 +50,15 @@ workers_dev = true
 # Compiled server entry point output by `ng build` when ssr.entry = "server.ts"
 main = "dist/adblock-compiler/server/server.mjs"
 
+# Do NOT re-bundle the Angular SSR output. `ng build` already produces a valid
+# ES-module server bundle. If wrangler re-bundles it with esbuild, imports get
+# inlined and `import.meta.url` inside `polyfills.server.mjs` becomes `undefined`,
+# causing `createRequire(undefined)` to throw at startup (Cloudflare error 10021).
+# With no_bundle = true, wrangler uploads server.mjs and all its imported modules
+# (including polyfills.server.mjs) as separate ES modules, so import.meta.url
+# is correctly set for each file in the Workers runtime.
+no_bundle = true
+
 # Keep in sync with the main worker's compatibility_date in /wrangler.toml.
 compatibility_date = "2026-01-01"
 
