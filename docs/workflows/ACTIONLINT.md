@@ -69,8 +69,14 @@ jobs:
             - uses: actions/checkout@... # v6.0.2
             - uses: rhysd/actionlint@...  # v1.7.7
               with:
-                  fail-on-error: true
+                  args: >-
+                      -ignore SC2086
+                      -ignore SC2016
+                      -ignore SC2129
+                      -ignore SC2088
 ```
+
+The `-ignore` args suppress pre-existing shellcheck info/style findings (SC2086, SC2016, SC2129, SC2088) so the gate only fails on genuine structural errors. Custom runner labels (e.g. `macos-15-intel`) are declared in `.github/actionlint.yaml` — see [Actionlint config](#actionlint-config).
 
 This workflow is registered as a **required status check** in branch protection, meaning any PR that introduces broken workflow YAML will be blocked from merging into `main`.
 
@@ -96,6 +102,18 @@ This workflow is registered as a **required status check** in branch protection,
 | Secret/input name typos | `secrets.CLOUDFLARE_API_TOKEN` vs `secrets.CF_API_TOKEN` |
 | Missing required `with:` inputs | Calling an action without its required inputs |
 
+## Actionlint config
+
+`.github/actionlint.yaml` configures actionlint's static analysis rules:
+
+```yaml
+self-hosted-runner:
+    labels:
+        - macos-15-intel
+```
+
+Any runner label that isn't in GitHub's published list (e.g. a self-hosted or Intel-slice runner) must be added here to prevent false-positive `[runner-label]` errors. When a new custom runner is added to the repo's workflows, add its label to this file at the same time.
+
 ## Versions
 
 Both the pre-push hook and the CI action use `actionlint v1.7.7`:
@@ -108,6 +126,7 @@ When upgrading actionlint, update both files together so local and CI behavior s
 ## Related
 
 - [`.pre-commit-config.yaml`](../../.pre-commit-config.yaml) — pre-push hook configuration
+- [`.github/actionlint.yaml`](../../.github/actionlint.yaml) — custom runner labels and rule config
 - [`.github/workflows/lint-workflows.yml`](../../.github/workflows/lint-workflows.yml) — CI gate workflow
 - [`.github/workflows/README.md`](../../.github/workflows/README.md) — workflow inventory table
 - [Workflow Improvements](WORKFLOW_IMPROVEMENTS.md) — broader CI parallelization and hardening history

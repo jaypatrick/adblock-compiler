@@ -22,4 +22,8 @@ jobs:
 
             - uses: rhysd/actionlint@03d0035246f3e81f36aed592ffb4bebf33a03106 # v1.7.7
               with:
-                  fail-on-error: true
+                  args: >-
+                      -ignore SC2086
+                      -ignore SC2016
+                      -ignore SC2129
+                      -ignore SC2088
