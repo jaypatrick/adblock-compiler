@@ -311,11 +311,6 @@ app.use('*', async (c, next) => {
     await next();
 });
 
-// ── 1b. Better Auth route handler ─────────────────────────────────────────────
-app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
-    // ... existing code unchanged
-});
-
 // ── 1b. Better Auth route handler ──────────────────────────────────────────────
 // Better Auth handles its own routes (sign-up, sign-in, sign-out, get-session,
 // etc.) — these must bypass unified auth because they CREATE sessions rather
