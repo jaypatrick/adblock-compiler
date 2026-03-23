@@ -79,6 +79,7 @@ function getAngularApp(): Promise<AngularAppEngine> {
                     `[server.ts] Failed to load angular-app-engine-manifest.mjs. ` +
                     `Ensure the Angular app was built with @angular/build:application before deploying. ` +
                     `Original error: ${err instanceof Error ? err.message : String(err)}`,
+                    { cause: err },
                 );
             }
             setAngularAppEngineManifest(manifest as Parameters<typeof setAngularAppEngineManifest>[0]);
