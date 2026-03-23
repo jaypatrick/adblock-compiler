@@ -28,7 +28,7 @@ jobs:
                   deno-version: v2.x
 
             - name: Build Worker bundle (dry-run for source maps)
-              run: deno run --allow-read --allow-net --allow-env --allow-run npm:wrangler deploy --dry-run --outdir dist/worker
+              run: deno run --allow-read --allow-net --allow-env --allow-run --allow-write=dist/worker npm:wrangler deploy --dry-run --outdir dist/worker
 
             - name: Upload Worker source maps to Sentry
               run: |

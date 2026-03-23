@@ -151,7 +151,10 @@ jobs:
                   if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
                     VERSION="${{ inputs.version }}"
                   else
-                    VERSION="${GITHUB_REF#refs/tags/v}"
+                    TAG="${GITHUB_REF#refs/tags/}"
+                    # Strip tag prefix: handles both 'v1.2.3' and 'compiler-v1.2.3'
+                    VERSION="${TAG#compiler-v}"
+                    VERSION="${VERSION#v}"
                   fi
                   
                   # Validate version format (must not start with . and must be semver-like)
@@ -262,8 +265,12 @@ jobs:
                     echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
                     echo "tag=v${{ inputs.version }}" >> "$GITHUB_OUTPUT"
                   else
-                    echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-                    echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+                    TAG="${GITHUB_REF#refs/tags/}"
+                    # Strip tag prefix: handles both 'v1.2.3' and 'compiler-v1.2.3'
+                    VERSION="${TAG#compiler-v}"
+                    VERSION="${VERSION#v}"
+                    echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                    echo "tag=$TAG" >> "$GITHUB_OUTPUT"
                   fi
 
             - name: Download all artifacts

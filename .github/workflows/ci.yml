@@ -291,7 +291,7 @@ jobs:
                   set -euo pipefail
                   # Capture the dry-run output; grep for lines listing files to be published
                   # deno publish --dry-run prints each file it would publish, one per line
-                  PUBLISHED=$(deno publish --dry-run --allow-dirty 2>&1 | grep -oP '(?<=  )\S+\.ts' || true)
+                  PUBLISHED=$(deno publish --dry-run --allow-dirty 2>&1 | grep -oP '(?<=  )\S+' || true)
                   LEAKED=$(echo "$PUBLISHED" | grep -E "^(worker/|frontend/|prisma/|migrations/)" || true)
                   if [ -n "$LEAKED" ]; then
                     echo "❌ IP LEAK DETECTED: The following files from private packages are in the JSR publish surface:"
@@ -473,12 +473,15 @@ jobs:
         name: Deploy to Cloudflare
         runs-on: ubuntu-latest
         timeout-minutes: 30
-        needs: [ci-gate, changes]
+        needs: [ci-gate, changes, frontend-build]
         # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
         # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
+        # frontend-build may be skipped when only worker/compiler files changed — that is fine;
+        # in that case the deploy runs without a fresh frontend artifact (existing deployment unchanged).
         if: >-
             always() &&
             needs.ci-gate.result == 'success' &&
+            (needs.frontend-build.result == 'success' || needs.frontend-build.result == 'skipped') &&
             github.event_name == 'push' &&
             github.ref == 'refs/heads/main' &&
             (needs.changes.outputs.worker == 'true' || needs.changes.outputs.compiler == 'true')
@@ -500,6 +503,7 @@ jobs:
                   deno-version: ${{ env.DENO_VERSION }}
 
             - name: Download frontend build artifact
+              if: needs.frontend-build.result == 'success'
               uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
               with:
                   name: frontend-dist
