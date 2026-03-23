@@ -47,19 +47,34 @@ wrangler kv:namespace create TAIL_LOGS
 
 ### 3. Enable Tail Consumer
 
-After the tail worker is deployed, enable it as a consumer of the main worker by uncommenting the `tail_consumers` section in `wrangler.toml`:
+After the tail worker is deployed, enable it as a consumer by adding the `tail_consumers` section to `wrangler.toml` for any Worker that should send events to it.
+
+**Backend Worker (`wrangler.toml`):**
 
 ```toml
-# Uncomment these lines:
 tail_consumers = [
     { service = "adblock-compiler-tail" }
 ]
 ```
 
-Then redeploy the main worker:
+**Frontend SSR Worker (`frontend/wrangler.toml`):**
+
+```toml
+tail_consumers = [
+    { service = "adblock-compiler-tail" }
+]
+```
+
+> **Multiple producers**: Cloudflare supports multiple producer Workers feeding a single tail consumer. Both the backend (`adblock-compiler`) and frontend (`adblock-compiler-frontend`) Workers send their events to the same `adblock-compiler-tail` tail worker — no additional infrastructure required. The `scriptName` field on each tail event identifies which Worker produced it.
+
+Redeploy any Worker after adding or changing `tail_consumers`:
 
 ```bash
+# Backend
 deno task wrangler:deploy
+
+# Frontend
+pnpm --filter adblock-compiler-frontend run deploy
 ```
 
 ### 4. (Optional) Configure Error Webhook
@@ -182,12 +197,14 @@ Log keys are in the format `log:{timestamp}` where timestamp is the event's Unix
 
 ```mermaid
 flowchart TD
-    main["Main Worker<br/>(worker.ts)<br/>- Handles requests<br/>- Emits logs<br/>- May throw errors"]
+    main["Backend Worker<br/>(worker.ts)<br/>- Handles API requests<br/>- Emits logs<br/>- May throw errors"]
+    frontend["Frontend SSR Worker<br/>(server.ts)<br/>- Handles SSR requests<br/>- Emits logs<br/>- May throw errors"]
     tail["Tail Worker<br/>(tail.ts)<br/>- Receives events<br/>- Stores logs<br/>- Forwards errors"]
     kv["KV Storage (optional)"]
     webhook["Webhook (optional)"]
 
     main -->|Events, logs, exceptions| tail
+    frontend -->|Events, logs, exceptions| tail
     tail --> kv
     tail --> webhook
 ```

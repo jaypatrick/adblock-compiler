@@ -26,6 +26,7 @@
  */
 
 import { AngularAppEngine } from '@angular/ssr';
+import * as Sentry from '@sentry/cloudflare';
 // Side-effect import: loading main.server registers the Angular application with
 // AngularAppEngine's global app registry. Without this import the engine has no
 // application to render, even though the symbol itself is not referenced directly.
@@ -47,7 +48,13 @@ const angularApp = new AngularAppEngine();
  * @param ctx      - Execution context — used for `ctx.waitUntil()` / `ctx.passThroughOnException()`.
  * @returns A `Response` — either SSR-rendered HTML from Angular or a 404.
  */
-export default {
+
+/**
+ * Inner handler containing all SSR business logic.
+ * Kept separate so the Sentry wrapper can delegate to it without
+ * duplicating any of the routing / header-injection logic.
+ */
+const handler = {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         // Route SSR-time API calls to the backend on the internal Cloudflare network.
         // This avoids a public round-trip and bypasses CORS negotiation entirely.
@@ -99,6 +106,31 @@ export default {
     },
 };
 
+export default {
+    async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+        // Zero-overhead passthrough when SENTRY_DSN is not configured — no SDK
+        // imported, identical behaviour to before this change.
+        // Note: the tail worker (adblock-compiler-tail) still captures unhandled
+        // exceptions from the Worker runtime even without the Sentry SDK initialised.
+        if (!env.SENTRY_DSN) {
+            return handler.fetch(request, env, ctx);
+        }
+        return Sentry.withSentry(
+            () => ({
+                dsn: env.SENTRY_DSN!,
+                release: env.SENTRY_RELEASE,
+                environment: env.ENVIRONMENT ?? 'production',
+                tracesSampleRate: 0.1,
+            }),
+            {
+                async fetch(req: Request, e: Env, c: ExecutionContext) {
+                    return handler.fetch(req, e, c);
+                },
+            } as ExportedHandler<Env>,
+        ).fetch!(request, env, ctx);
+    },
+};
+
 /**
  * Cloudflare Workers environment bindings.
  * Declared in frontend/wrangler.toml and injected by the runtime.
@@ -109,4 +141,10 @@ export interface Env {
     /** Service binding to the adblock-compiler backend Worker.
      *  Calls travel on the internal Cloudflare network — no public hop, no CORS. */
     API: Fetcher;
+    /** Sentry DSN for server-side SSR error capture. Set via `wrangler secret put SENTRY_DSN`. */
+    SENTRY_DSN?: string;
+    /** Git SHA injected at deploy time via `--var SENTRY_RELEASE:<sha>`. Links events to source maps. */
+    SENTRY_RELEASE?: string;
+    /** Deployment environment name forwarded to Sentry. Default: "production". */
+    ENVIRONMENT?: string;
 }

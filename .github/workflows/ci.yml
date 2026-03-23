@@ -539,4 +539,4 @@ jobs:
               working-directory: frontend
               run: |
                   echo "Deploying adblock-compiler-frontend..."
-                  pnpm run deploy
+                  pnpm run deploy -- --var SENTRY_RELEASE:${{ github.sha }}

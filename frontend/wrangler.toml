@@ -33,8 +33,8 @@
 #   requests are forwarded via env.API.fetch() in server.ts — no public
 #   round-trip, no CORS negotiation.
 #
-# SECRETS (wrangler secret put --name adblock-compiler-frontend):
-#   None required for this worker — the API Worker owns all secrets.
+# SECRETS (wrangler secret put <NAME> --config frontend/wrangler.toml):
+#   SENTRY_DSN — Sentry DSN for server-side SSR error capture (optional; passthrough if absent)
 #   CF_WEB_ANALYTICS_TOKEN must be injected into dist/.../browser/index.html
 #   at build time by the CI/deploy pipeline (scripts/build-worker.sh handles
 #   this — it runs after `ng build` and rewrites the {{CF_WEB_ANALYTICS_TOKEN}}
@@ -54,7 +54,16 @@ compatibility_date = "2026-01-01"
 
 # nodejs_compat exposes Node.js built-in shims (Buffer, crypto, etc.) that
 # Angular's SSR runtime depends on when running on the Workers platform.
+# Also required by the @sentry/cloudflare SDK (imports node:async_hooks internally).
 compatibility_flags = ["nodejs_compat"]
+
+# ─── Tail Worker: observability ──────────────────────────────────────────────
+# The same tail worker used by the backend. Centralises all log/error capture in
+# one place — no additional infrastructure. adblock-compiler-tail must be deployed
+# before this Worker (CI deploys it first).
+tail_consumers = [
+    { service = "adblock-compiler-tail" }
+]
 
 # ─── Static assets ──────────────────────────────────────────────────────────
 # Cloudflare serves these directly from the CDN edge before the Worker fetch
@@ -76,6 +85,14 @@ not_found_handling = "single-page-application"
 [dev]
 port = 4200
 local_protocol = "http"
+
+# ─── Runtime vars (non-secret) ───────────────────────────────────────────────
+[vars]
+ENVIRONMENT = "production"
+# SENTRY_RELEASE is injected at deploy time via --var SENTRY_RELEASE:<git-sha> (not a secret)
+
+# ─── Secrets (set with: wrangler secret put <NAME> --config frontend/wrangler.toml) ──
+# SENTRY_DSN     — Sentry DSN for server-side SSR error capture
 
 # ─── Service binding to backend API Worker ────────────────────────────────────
 # Allows the SSR Worker to call the backend on the internal Cloudflare network

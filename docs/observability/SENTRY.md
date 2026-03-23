@@ -307,6 +307,8 @@ wrangler dev
 | `src/diagnostics/SentryDiagnosticsProvider.ts` | Fine-grained span / error capture |
 | `src/diagnostics/IDiagnosticsProvider.ts` | `IDiagnosticsProvider` interface (NoOp + Console) |
 | `worker/tail.ts` | Tail worker — Sentry fully wired: `captureException()` + `flush()` |
+| `frontend/server.ts` | Cloudflare Worker SSR handler — wrapped with `Sentry.withSentry()` for server-side error capture |
+| `frontend/wrangler.toml` | `tail_consumers` registration + `SENTRY_DSN`/`SENTRY_RELEASE` secrets declaration |
 | `frontend/src/app/sentry.ts` | `initSentry()` — browser SDK init helper |
 | `frontend/src/app/error/global-error-handler.ts` | Forwards Angular errors to Sentry via `captureException` |
 | `.github/workflows/sentry-sourcemaps.yml` | Source map upload CI workflow |

@@ -46,6 +46,24 @@ jobs:
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
+      - name: Upload frontend SSR source maps to Sentry
+        working-directory: frontend
+        continue-on-error: true
+        if: secrets.SENTRY_AUTH_TOKEN
+        env:
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+        run: |
+          SENTRY_FRONTEND_PROJECT="${{ vars.SENTRY_FRONTEND_PROJECT }}"
+          if [ -z "$SENTRY_FRONTEND_PROJECT" ]; then
+            SENTRY_FRONTEND_PROJECT="${{ vars.SENTRY_PROJECT }}"
+          fi
+          npx @sentry/cli sourcemaps upload \
+            --org "${{ vars.SENTRY_ORG }}" \
+            --project "$SENTRY_FRONTEND_PROJECT" \
+            --release "${{ github.sha }}" \
+            --url-prefix "~/" \
+            dist/adblock-compiler/server/
+
   upload-worker:
     name: Upload Worker Source Maps to Sentry
     runs-on: ubuntu-latest
