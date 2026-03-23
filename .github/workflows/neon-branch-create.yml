@@ -42,6 +42,9 @@ permissions:
 jobs:
   create-neon-branch:
     name: Create Neon Branch
+    # Dependabot PRs run without access to repository secrets; a Neon branch
+    # is not needed for dependency-only bumps.
+    if: github.actor != 'dependabot[bot]'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
