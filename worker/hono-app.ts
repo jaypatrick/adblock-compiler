@@ -131,6 +131,7 @@ export interface Variables {
     analytics: AnalyticsService;
     requestId: string;
     ip: string;
+    isSSR: boolean;  // true when the request originated from the SSR Worker via env.API.fetch()
 }
 
 // ============================================================================
@@ -299,6 +300,20 @@ app.use('*', async (c, next) => {
     c.set('ip', c.req.raw.headers.get('CF-Connecting-IP') || 'unknown');
     c.set('analytics', createAnalyticsService(c.env));
     await next();
+});
+
+// ── 1a. SSR origin detection ──────────────────────────────────────────────────
+// Identifies requests forwarded internally from the adblock-compiler-frontend
+// SSR Worker via env.API.fetch(). These are trusted internal calls — Turnstile
+// and rate limiting are not applicable to them.
+app.use('*', async (c, next) => {
+    c.set('isSSR', c.req.header('CF-Worker-Source') === 'ssr');
+    await next();
+});
+
+// ── 1b. Better Auth route handler ─────────────────────────────────────────────
+app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
+    // ... existing code unchanged
 });
 
 // ── 1b. Better Auth route handler ──────────────────────────────────────────────
