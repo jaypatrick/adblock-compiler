@@ -43,9 +43,10 @@ jobs:
 
             - name: Get version from deno.json
               id: get_version
+              env:
+                  TAG_PREFIX: ${{ steps.detect_prefix.outputs.tag_prefix }}
               run: |
                   VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
-                  TAG_PREFIX="${{ steps.detect_prefix.outputs.tag_prefix }}"
                   echo "version=$VERSION" >> "$GITHUB_OUTPUT"
                   echo "tag=${TAG_PREFIX}${VERSION}" >> "$GITHUB_OUTPUT"
                   echo "Version: $VERSION"
@@ -53,8 +54,9 @@ jobs:
 
             - name: Check if tag exists
               id: check_tag
+              env:
+                  TAG: ${{ steps.get_version.outputs.tag }}
               run: |
-                  TAG="${{ steps.get_version.outputs.tag }}"
                   if git rev-parse "$TAG" >/dev/null 2>&1; then
                     echo "exists=true" >> "$GITHUB_OUTPUT"
                     echo "Tag $TAG already exists"
@@ -65,27 +67,34 @@ jobs:
 
             - name: Create and push tag
               if: steps.check_tag.outputs.exists == 'false'
+              env:
+                  TAG_NAME: ${{ steps.get_version.outputs.tag }}
+                  VERSION: ${{ steps.get_version.outputs.version }}
               run: |
                   git config user.name "github-actions[bot]"
                   git config user.email "github-actions[bot]@users.noreply.github.com"
 
-                  TAG_NAME="${{ steps.get_version.outputs.tag }}"
-                  git tag -a "$TAG_NAME" -m "Release ${{ steps.get_version.outputs.version }}"
+                  git tag -a "$TAG_NAME" -m "Release $VERSION"
                   git push origin "$TAG_NAME"
 
                   echo "Created and pushed tag $TAG_NAME"
 
             - name: Delete version bump branch
               if: steps.check_tag.outputs.exists == 'false'
+              env:
+                  BRANCH_NAME: ${{ github.event.pull_request.head.ref }}
               run: |
-                  BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
                   git push origin --delete "$BRANCH_NAME" || echo "Branch already deleted"
                   echo "Deleted branch $BRANCH_NAME"
 
             - name: Summary
               if: steps.check_tag.outputs.exists == 'false'
+              env:
+                  TAG_PREFIX: ${{ steps.detect_prefix.outputs.tag_prefix }}
+                  VERSION: ${{ steps.get_version.outputs.version }}
+                  TAG: ${{ steps.get_version.outputs.tag }}
+                  PR_NUMBER: ${{ github.event.pull_request.number }}
               run: |
-                  TAG_PREFIX="${{ steps.detect_prefix.outputs.tag_prefix }}"
                   if [ "$TAG_PREFIX" = "compiler-v" ]; then
                     TITLE="🏷️ Compiler Version Tag Created"
                   else
@@ -94,18 +103,20 @@ jobs:
                   cat <<EOF >> $GITHUB_STEP_SUMMARY
                   ## $TITLE
 
-                  - **Version**: ${{ steps.get_version.outputs.version }}
-                  - **Tag**: ${{ steps.get_version.outputs.tag }}
-                  - **PR**: #${{ github.event.pull_request.number }}
+                  - **Version**: $VERSION
+                  - **Tag**: $TAG
+                  - **PR**: #$PR_NUMBER
 
                   The release workflow will be automatically triggered by the new tag.
                   EOF
 
             - name: Skip summary
               if: steps.check_tag.outputs.exists == 'true'
+              env:
+                  TAG: ${{ steps.get_version.outputs.tag }}
               run: |
                   cat <<EOF >> $GITHUB_STEP_SUMMARY
                   ## ℹ️ Tag Already Exists
 
-                  Tag ${{ steps.get_version.outputs.tag }} already exists. Skipping tag creation.
+                  Tag $TAG already exists. Skipping tag creation.
                   EOF
