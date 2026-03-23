@@ -43,7 +43,10 @@ type BookItem =
     | { PartTitle: string };
 
 interface Book {
-    sections: BookItem[];
+    /** mdBook 0.5.x renamed sections → items */
+    items?: BookItem[];
+    /** mdBook 0.4.x used sections */
+    sections?: BookItem[];
 }
 
 interface PreprocessorContext {
@@ -142,7 +145,12 @@ async function processItems(items: BookItem[]): Promise<void> {
     }
 }
 
-await processItems(book.sections);
+const bookItems = book.items ?? book.sections;
+if (!bookItems) {
+    console.error('[last-updated] Error: book structure has neither "items" nor "sections" field — no chapters will be processed. Check for mdBook version incompatibility.');
+    Deno.exit(1);
+}
+await processItems(bookItems);
 
 // ── Emit modified book ────────────────────────────────────────────────────────
 
