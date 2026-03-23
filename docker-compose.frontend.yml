@@ -14,7 +14,8 @@
 # Usage:
 #   docker compose -f docker-compose.yml -f docker-compose.frontend.yml up
 #
-# The frontend worker will be available at http://localhost:${FRONTEND_PORT:-8788}
+# The frontend worker will be available at http://localhost:${FRONTEND_PORT:-4200}
+# (port 4200 matches the [dev].port configured in frontend/wrangler.toml)
 
 services:
     adblock-compiler-frontend:
@@ -22,23 +23,44 @@ services:
         build:
             context: .
             dockerfile: Dockerfile
-            target: frontend-builder
+            # Use the runtime stage: it includes curl (for healthchecks), the
+            # wrangler binary (via root node_modules), and the built frontend/dist
+            # artifacts. The frontend-builder stage only produces the dist output
+            # and does not include wrangler.
+            target: runtime
         container_name: adblock-compiler-frontend
         ports:
-            - '${FRONTEND_PORT:-8788}:8788'
+            - '${FRONTEND_PORT:-4200}:4200'
         env_file:
             - .env
             - .env.${ENV:-development}
-        environment:
-            - DENO_DIR=/app/.deno
+        # Run wrangler dev for the frontend Worker using its own wrangler.toml.
+        # The runtime image already contains the built frontend/dist artifacts;
+        # the wrangler.toml is mounted below so the config is always current.
+        # Port 4200 matches [dev].port in frontend/wrangler.toml.
+        command:
+            [
+                'pnpm',
+                'exec',
+                'wrangler',
+                'dev',
+                '--config',
+                'frontend/wrangler.toml',
+                '--ip',
+                '0.0.0.0',
+                '--port',
+                '4200',
+            ]
         volumes:
-            # Persist Deno cache
-            - deno-cache:/app/.deno
-            # Mount frontend source for live reloading
+            # Mount frontend wrangler config so the correct Worker definition is used
+            - ./frontend/wrangler.toml:/app/frontend/wrangler.toml:ro
+            # Mount frontend source for live reloading (requires ng build --watch on host
+            # to rebuild frontend/dist — wrangler serves the built assets, not the source)
             - ./frontend/src:/app/frontend/src
         restart: unless-stopped
         healthcheck:
-            test: ['CMD', 'curl', '-f', 'http://localhost:8788/health']
+            # curl is installed in the runtime stage via apt-get
+            test: ['CMD', 'curl', '-f', 'http://localhost:4200/health']
             interval: 30s
             timeout: 5s
             retries: 3
