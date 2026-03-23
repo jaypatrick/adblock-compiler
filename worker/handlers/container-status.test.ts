@@ -33,8 +33,7 @@ function healthyFetch(version?: string): (req: Request) => Promise<Response> {
 }
 
 /** Container fetch stub that returns a non-200 response. */
-const errorFetch = async (_req: Request): Promise<Response> =>
-    new Response('Service Unavailable', { status: 503 });
+const errorFetch = async (_req: Request): Promise<Response> => new Response('Service Unavailable', { status: 503 });
 
 /** Container fetch stub that throws an AbortError (simulating the 3s timeout). */
 const timeoutFetch = async (_req: Request): Promise<Response> => {
