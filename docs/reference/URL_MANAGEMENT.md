@@ -1,8 +1,15 @@
 # URL Management
 
 All public-facing service URLs are managed as Wrangler environment variables.
-This means changing a domain requires editing exactly two files:
-`wrangler.toml` and `frontend/wrangler.toml`.
+Changing a domain requires editing two files for runtime (`wrangler.toml` and
+`frontend/wrangler.toml`) and, if you want tests and CLI tools to reflect the
+new URLs without env overrides, also updating the fallback constants in
+`worker/utils/constants.ts`.
+
+> **Note:** The fallback constants (`DOCS_SITE_URL_FALLBACK`, `FRONTEND_URL_FALLBACK`,
+> `API_URL_FALLBACK`) are intentionally static — they exist solely for unit-test
+> and CLI contexts where the Workers runtime is not present. The production worker
+> always reads the env bindings set in `wrangler.toml`.
 
 ## URL variables
 
@@ -17,8 +24,12 @@ This means changing a domain requires editing exactly two files:
 1. Update `URL_FRONTEND`, `URL_API`, and `URL_DOCS` in **`wrangler.toml`** `[vars]`.
 2. Update the same three vars in **`frontend/wrangler.toml`** `[vars]`.
 3. Update `CORS_ALLOWED_ORIGINS` in `wrangler.toml` to include the new frontend origin.
-4. Run `wrangler deploy` (backend) and `pnpm --filter adblock-frontend run deploy` (frontend).
-5. The `scripts/build-worker.sh` build step will substitute `URL_FRONTEND` into `frontend/src/index.html` automatically.
+4. *(Optional)* Update the fallback constants in `worker/utils/constants.ts` if you want tests
+   and CLI tools to use the new URLs without an explicit env override.
+5. Set `URL_FRONTEND` as a CI/CD environment variable so `scripts/build-worker.sh` can inject
+   the correct canonical URL into `frontend/src/index.html` at build time — the build will
+   **fail** if the `{{URL_FRONTEND}}` placeholder is present but the variable is unset.
+6. Run `wrangler deploy` (backend) and `pnpm --filter adblock-frontend run deploy` (frontend).
 
 ## Local dev overrides
 

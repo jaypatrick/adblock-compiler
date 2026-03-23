@@ -38,16 +38,24 @@ fi
 # the CF_WEB_ANALYTICS_TOKEN injection above.
 if [ -f "$INDEX_HTML" ]; then
     if [ -n "${URL_FRONTEND:-}" ]; then
+        # Normalize URL_FRONTEND by stripping a single trailing slash.
+        NORMALIZED_URL_FRONTEND=${URL_FRONTEND%/}
         # Escape sed special characters in the replacement string.
         # The outer sed uses '|' as delimiter, so '/' in the URL is safe.
         # We escape '&' (means "matched text"), '|' (our delimiter), and '\'.
-        ESCAPED_URL_FRONTEND=$(printf '%s' "$URL_FRONTEND" | sed 's/[&|\\]/\\&/g')
+        ESCAPED_URL_FRONTEND=$(printf '%s' "$NORMALIZED_URL_FRONTEND" | sed 's/[&|\\]/\\&/g')
         sed "s|{{URL_FRONTEND}}|$ESCAPED_URL_FRONTEND|g" "$INDEX_HTML" > "$INDEX_HTML.tmp" && mv "$INDEX_HTML.tmp" "$INDEX_HTML"
         echo "build-worker.sh: substituted URL_FRONTEND in $INDEX_HTML."
     else
-        # Remove the placeholder, falling back to a relative-URL-safe empty string.
-        sed "s|{{URL_FRONTEND}}||g" "$INDEX_HTML" > "$INDEX_HTML.tmp" && mv "$INDEX_HTML.tmp" "$INDEX_HTML"
-        echo "build-worker.sh: URL_FRONTEND not set — placeholder removed from $INDEX_HTML."
+        # If URL_FRONTEND is not set but the placeholder is still present, fail the build
+        # so we never deploy index.html with invalid canonical/og:url/JSON-LD metadata.
+        if grep -q '{{URL_FRONTEND}}' "$INDEX_HTML"; then
+            echo "Error: URL_FRONTEND is not set, but '{{URL_FRONTEND}}' placeholder remains in $INDEX_HTML." >&2
+            echo "Please set the URL_FRONTEND environment variable before building." >&2
+            exit 1
+        else
+            echo "build-worker.sh: URL_FRONTEND not set, but no {{URL_FRONTEND}} placeholder found in $INDEX_HTML — skipping substitution."
+        fi
     fi
 fi
 

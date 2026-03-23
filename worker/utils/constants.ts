@@ -30,14 +30,13 @@ export const SPA_SERVER_PREFIXES: readonly string[] = [
 ];
 
 /** URL of the mdBook documentation site hosted on Cloudflare Pages. */
-export const DOCS_SITE_URL = 'https://adblock-compiler-docs.pages.dev/';
+export const DOCS_SITE_URL_FALLBACK = 'https://adblock-compiler-docs.pages.dev/';
 
 /**
- * Fallback URL for the mdBook documentation site, used when the env binding
- * is not available (e.g. in unit tests or CLI contexts).
- * At runtime the worker always reads env.URL_DOCS instead.
+ * @deprecated Use {@link getProjectUrls}`(env).docs` at runtime; this re-export exists only for
+ * backward compatibility (e.g. legacy tests that import `DOCS_SITE_URL` by name).
  */
-export const DOCS_SITE_URL_FALLBACK = 'https://adblock-compiler-docs.pages.dev/';
+export const DOCS_SITE_URL = DOCS_SITE_URL_FALLBACK;
 
 /**
  * Fallback URL for the frontend worker, used when env.URL_FRONTEND is absent.

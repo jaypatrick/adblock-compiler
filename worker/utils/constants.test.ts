@@ -61,6 +61,10 @@ Deno.test('DOCS_SITE_URL - is a valid https URL', () => {
     assertMatch(DOCS_SITE_URL, /^https:\/\//);
 });
 
+Deno.test('DOCS_SITE_URL - equals DOCS_SITE_URL_FALLBACK (single source of truth)', () => {
+    assertEquals(DOCS_SITE_URL, DOCS_SITE_URL_FALLBACK);
+});
+
 // ============================================================================
 // DOCS_SITE_URL_FALLBACK
 // ============================================================================
