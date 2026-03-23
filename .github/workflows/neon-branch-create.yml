@@ -40,10 +40,32 @@ permissions:
   pull-requests: write          # Needed to post the PR comment
 
 jobs:
+  check-prerequisites:
+    name: Check Prerequisites
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - name: Check required secrets
+        id: check
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          if [ -z "$NEON_DATABASE_URL" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::NEON_DATABASE_URL is not configured. Skipping Neon branch creation."
+            echo "::warning::Add NEON_DATABASE_URL, NEON_API_KEY, and NEON_PROJECT_ID in repository Settings → Secrets and Variables → Actions."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
   create-neon-branch:
     name: Create Neon Branch
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    needs: [check-prerequisites]
+    if: needs.check-prerequisites.outputs.ready == 'true'
 
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────────────
