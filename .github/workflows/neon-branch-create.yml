@@ -70,7 +70,7 @@ jobs:
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────────────
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v6.0.2
 
       # ── 2. Resolve database config from NEON_DATABASE_URL ─────────────────
       # NEON_DATABASE_URL is the single source of truth for the database name
@@ -133,12 +133,12 @@ jobs:
       # ── 4. Set up pnpm + Node.js for Prisma CLI ─────────────────────────
       # pnpm must be installed BEFORE setup-node so the pnpm cache works
       - name: Install pnpm
-        uses: pnpm/action-setup@v5
+        uses: pnpm/action-setup@v5.0.0
         with:
           version: 10.31.0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: '20'
           cache: 'pnpm'

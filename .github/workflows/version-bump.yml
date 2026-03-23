@@ -46,13 +46,13 @@ jobs:
             compiler_changed: ${{ steps.determine_bump.outputs.compiler_changed || 'false' }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v6
+              uses: actions/checkout@v6.0.2
               with:
                   fetch-depth: 0 # full history required: git log --grep searches all commits to find last version bump
                   token: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Setup Deno
-              uses: denoland/setup-deno@909a7e9e53f0e3b7b78db96f44ecba1d7700e3f7 # v2
+              uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2
               with:
                   deno-version: '2.x'
 

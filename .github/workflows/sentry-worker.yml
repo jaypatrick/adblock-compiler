@@ -20,10 +20,10 @@ jobs:
             contents: read
         if: ${{ vars.SENTRY_ORG != '' && vars.SENTRY_PROJECT_WORKER != '' }}
         steps:
-            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Setup Deno
-              uses: denoland/setup-deno@909a7e9e53f0e3b7b78db96f44ecba1d7700e3f7 # v2
+              uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2
               with:
                   deno-version: v2.x
 
