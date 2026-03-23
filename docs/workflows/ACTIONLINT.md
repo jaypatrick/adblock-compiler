@@ -74,9 +74,16 @@ jobs:
                       -ignore SC2016
                       -ignore SC2129
                       -ignore SC2088
+                      -ignore "string should not be empty"
+                      -ignore "unknown permission scope"
 ```
 
-The `-ignore` args suppress pre-existing shellcheck info/style findings (SC2086, SC2016, SC2129, SC2088) so the gate only fails on genuine structural errors. Custom runner labels (e.g. `macos-15-intel`) are declared in `.github/actionlint.yaml` — see [Actionlint config](#actionlint-config).
+The `-ignore` args suppress pre-existing findings that are known false positives or shellcheck info/style codes — the gate only fails on genuine structural errors:
+- `SC2086`, `SC2016`, `SC2129`, `SC2088` — shellcheck info/style warnings in pre-existing `run:` steps
+- `string should not be empty` — actionlint v1.7.7 incorrectly flags the empty-string entry (`- ''`) used as the default choice in `workflow_dispatch` `type: choice` inputs; this is valid GitHub Actions syntax
+- `unknown permission scope` — the `models: read` GitHub Models permission was introduced after actionlint v1.7.7; this ignore can be removed once actionlint is upgraded to a version that includes it
+
+Custom runner labels (e.g. `macos-15-intel`) are declared in `.github/actionlint.yaml` — see [Actionlint config](#actionlint-config).
 
 This workflow is registered as a **required status check** in branch protection, meaning any PR that introduces broken workflow YAML will be blocked from merging into `main`.
 
@@ -110,17 +117,11 @@ This workflow is registered as a **required status check** in branch protection,
 self-hosted-runner:
     labels:
         - macos-15-intel
-
-ignore:
-    - 'string should not be empty'
-    - 'unknown permission scope "models"'
 ```
 
 **`self-hosted-runner.labels`** — any runner label that isn't in GitHub's published list (e.g. a self-hosted or Intel-slice runner) must be declared here to prevent false-positive `[runner-label]` errors. When a new custom runner is added to the repo's workflows, add its label to this file at the same time.
 
-**`ignore`** — regex patterns suppressing known false positives in pre-existing workflows:
-- `string should not be empty` — actionlint v1.7.7 incorrectly flags the empty-string entry (`- ''`) used as the default choice in `workflow_dispatch` `type: choice` inputs; this is valid GitHub Actions syntax
-- `unknown permission scope "models"` — the `models: read` GitHub Models permission was introduced after actionlint v1.7.7; the ignore can be removed once actionlint is upgraded to a version that includes it
+> **Note:** The `-ignore` regex patterns for suppressing known false positives (shellcheck codes and `models` permission) are passed as command-line args in [`lint-workflows.yml`](../../.github/workflows/lint-workflows.yml), not in this config file. The `ignore:` key is not supported in `.github/actionlint.yaml`.
 
 ## Versions
 

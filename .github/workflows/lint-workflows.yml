@@ -27,3 +27,5 @@ jobs:
                       -ignore SC2016
                       -ignore SC2129
                       -ignore SC2088
+                      -ignore "string should not be empty"
+                      -ignore "unknown permission scope"
