@@ -5,6 +5,7 @@ Documentation for GitHub Actions CI/CD workflows, automation, and environment se
 ## Contents
 
 - [GitHub Actions Workflows](WORKFLOWS.md) - CI/CD workflow documentation and best practices
+- [Workflow Linting (actionlint)](ACTIONLINT.md) - Pre-push hook and CI gate for catching broken workflow YAML
 - [Workflow Diagrams](WORKFLOW_DIAGRAMS.md) - System architecture and flow diagrams
 - [Workflow Improvements](WORKFLOW_IMPROVEMENTS.md) - Summary of workflow parallelization improvements
 - [Workflow Cleanup Summary](WORKFLOW_CLEANUP_SUMMARY.md) - Summary of workflow consolidation changes
