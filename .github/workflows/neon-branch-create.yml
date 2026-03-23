@@ -40,8 +40,33 @@ permissions:
   pull-requests: write          # Needed to post the PR comment
 
 jobs:
+  # ── Preflight: verify required secrets are available ─────────────────────
+  # For dependency-bump PRs and other bot-generated PRs the Neon secrets may
+  # not yet be configured.  Rather than failing loudly we emit a warning and
+  # skip branch creation entirely so the PR is not blocked.
+  check-prerequisites:
+    name: Check Neon secrets
+    runs-on: ubuntu-latest
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - name: Verify NEON_DATABASE_URL is configured
+        id: check
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          if [ -z "$NEON_DATABASE_URL" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::NEON_DATABASE_URL is not configured in repository secrets."
+            echo "::warning::Skipping Neon branch creation. Add NEON_DATABASE_URL in Settings → Secrets and Variables → Actions."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
   create-neon-branch:
     name: Create Neon Branch
+    needs: [check-prerequisites]
+    if: needs.check-prerequisites.outputs.ready == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
