@@ -1,0 +1,25 @@
+name: Lint Workflows
+
+on:
+    push:
+        paths:
+            - '.github/workflows/**'
+            - '.github/actions/**'
+    pull_request:
+        paths:
+            - '.github/workflows/**'
+            - '.github/actions/**'
+
+jobs:
+    actionlint:
+        name: Lint Workflows
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - uses: rhysd/actionlint@03d0035246f3e81f36aed592ffb4bebf33a03106 # v1.7.7
+              with:
+                  fail-on-error: true
