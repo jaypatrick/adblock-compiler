@@ -15,13 +15,13 @@ jobs:
     # Only run if SENTRY_ORG is configured — skip silently otherwise
     if: ${{ vars.SENTRY_ORG != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'pnpm'
@@ -54,7 +54,7 @@ jobs:
     # Only run if SENTRY_PROJECT_WORKER is configured
     if: ${{ vars.SENTRY_ORG != '' && vars.SENTRY_PROJECT_WORKER != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup Deno
         uses: denoland/setup-deno@v2
@@ -83,13 +83,13 @@ jobs:
     # Only run if SENTRY_ORG is configured
     if: ${{ vars.SENTRY_ORG != '' }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '22'
           cache: 'pnpm'

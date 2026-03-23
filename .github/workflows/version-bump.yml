@@ -45,7 +45,7 @@ jobs:
             bump_type: ${{ steps.determine_bump.outputs.bump_type }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6
               with:
                   fetch-depth: 0 # full history required: git log --grep searches all commits to find last version bump
                   token: ${{ secrets.GITHUB_TOKEN }}
@@ -361,7 +361,7 @@ jobs:
             actions: write
         steps:
             - name: Trigger release workflow
-              uses: actions/github-script@v7
+              uses: actions/github-script@v8
               with:
                   script: |
                       await github.rest.actions.createWorkflowDispatch({
