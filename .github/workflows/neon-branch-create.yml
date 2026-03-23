@@ -48,7 +48,7 @@ jobs:
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────────────
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       # ── 2. Resolve database config from NEON_DATABASE_URL ─────────────────
       # NEON_DATABASE_URL is the single source of truth for the database name
@@ -96,7 +96,7 @@ jobs:
       # the existing branch ID without error.
       - name: Create Neon database branch
         id: create-branch
-        uses: neondatabase/create-branch-action@v5
+        uses: neondatabase/create-branch-action@v6
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch_name: pr-${{ github.event.pull_request.number }}
@@ -111,12 +111,12 @@ jobs:
       # ── 4. Set up pnpm + Node.js for Prisma CLI ─────────────────────────
       # pnpm must be installed BEFORE setup-node so the pnpm cache works
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5
         with:
           version: 10.31.0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -201,7 +201,7 @@ jobs:
       # developers can connect from a local client for debugging.  The
       # comment is updated in-place on subsequent pushes (no spam).
       - name: Comment on PR with branch details
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const branchName = `pr-${{ github.event.pull_request.number }}`;
