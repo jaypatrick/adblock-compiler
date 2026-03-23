@@ -27,13 +27,11 @@
 #   origin via ssrApiBaseUrlFactory in app.config.server.ts — no manual
 #   configuration needed for same-origin deploys.
 #
-# SERVICE BINDING (reserved):
+# SERVICE BINDING:
 #   The [[services]] block below binds this Worker to the backend API Worker
-#   (adblock-compiler) on the internal Cloudflare network. This is a
-#   configuration-level dependency only — the compiled SSR entrypoint does not
-#   yet read `env.API`. Once server.ts is updated to accept `env` and forward
-#   requests via `env.API.fetch()`, SSR-time API calls will travel on the
-#   internal network with no public round-trip and no CORS overhead.
+#   (adblock-compiler) on the internal Cloudflare network. SSR-time /api/*
+#   requests are forwarded via env.API.fetch() in server.ts — no public
+#   round-trip, no CORS negotiation.
 #
 # SECRETS (wrangler secret put --name adblock-compiler-frontend):
 #   None required for this worker — the API Worker owns all secrets.
