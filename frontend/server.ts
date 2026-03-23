@@ -53,11 +53,14 @@ export default {
         // This avoids a public round-trip and bypasses CORS negotiation entirely.
         if (new URL(request.url).pathname.startsWith('/api/')) {
             try {
-                return await env.API.fetch(request);
-            } catch (err) {
-                return new Response('API unavailable', { status: 502 });
-            }
-        }
+                const internalReq = new Request(request, {
+                    headers: { ...Object.fromEntries(request.headers), 'CF-Worker-Source': 'ssr' }
+            });
+        return await env.API.fetch(internalReq);
+    } catch (err) {
+        return new Response('API unavailable', { status: 502 });
+    }
+}
         // Delegate the request to AngularAppEngine.
         // Returns a fully-formed Response (with HTML + headers) for Angular routes,
         // or null if the engine cannot handle the request (e.g. unrecognised path).
