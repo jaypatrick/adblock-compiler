@@ -52,12 +52,6 @@ interface WorkersFetcher {
 // Angular application on every request.
 const angularApp = new AngularAppEngine();
 
-// Lazily-initialised Sentry-wrapped handler. Set on the first request that has
-// SENTRY_DSN configured; null until then so local dev pays zero overhead.
-// The @sentry/cloudflare module is only imported (and bundled into the hot path)
-// when a DSN is actually present — mirrors the pattern in worker/services/sentry-init.ts.
-let sentryHandler: typeof handler | null = null;
-
 /**
  * Cloudflare Workers fetch handler.
  *
@@ -121,6 +115,13 @@ const handler = {
     },
 };
 
+// Lazily-initialised Sentry-wrapped handler. Set on the first request that has
+// SENTRY_DSN configured; null until then so local dev pays zero overhead.
+// The @sentry/cloudflare module is only imported (and bundled into the hot path)
+// when a DSN is actually present — mirrors the pattern in worker/services/sentry-init.ts.
+// Declared after `handler` so `typeof handler` resolves correctly.
+let sentryHandler: typeof handler | null = null;
+
 export default {
     async fetch(request: Request, env: Env, ctx: WorkersExecutionContext): Promise<Response> {
         if (!env.SENTRY_DSN) {
@@ -135,7 +136,11 @@ export default {
                     environment: e.ENVIRONMENT ?? 'production',
                     tracesSampleRate: 0.1,
                 }),
-                handler as unknown as ExportedHandler<Env>,
+                // `ExportedHandler` from @cloudflare/workers-types is suppressed by
+                // tsconfig.app.json `types: []`. Cast via `any` to bridge the gap —
+                // safe because `handler` structurally matches the expected shape.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                handler as any,
             ) as typeof handler;
         }
         return sentryHandler.fetch(request, env, ctx);
