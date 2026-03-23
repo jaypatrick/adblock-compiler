@@ -40,19 +40,37 @@ permissions:
   pull-requests: write          # Needed to post the PR comment
 
 jobs:
+  check-prerequisites:
+    name: Check Prerequisites
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      ready: ${{ steps.check.outputs.ready }}
+    steps:
+      - name: Check required secrets
+        id: check
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          if [ -z "$NEON_DATABASE_URL" ]; then
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::NEON_DATABASE_URL is not configured. Skipping Neon branch creation."
+            echo "::warning::Add NEON_DATABASE_URL, NEON_API_KEY, and NEON_PROJECT_ID in repository Settings → Secrets and Variables → Actions."
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
   create-neon-branch:
     name: Create Neon Branch
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # Skip for Dependabot PRs — repository secrets are not available to
-    # Dependabot (only Dependabot secrets are), and dependency-bump PRs
-    # never involve schema migrations that need an isolated DB branch.
-    if: github.actor != 'dependabot[bot]'
+    needs: [check-prerequisites]
+    if: needs.check-prerequisites.outputs.ready == 'true'
 
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────────────
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       # ── 2. Resolve database config from NEON_DATABASE_URL ─────────────────
       # NEON_DATABASE_URL is the single source of truth for the database name
@@ -100,7 +118,7 @@ jobs:
       # the existing branch ID without error.
       - name: Create Neon database branch
         id: create-branch
-        uses: neondatabase/create-branch-action@v5
+        uses: neondatabase/create-branch-action@v6
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch_name: pr-${{ github.event.pull_request.number }}
@@ -115,12 +133,12 @@ jobs:
       # ── 4. Set up pnpm + Node.js for Prisma CLI ─────────────────────────
       # pnpm must be installed BEFORE setup-node so the pnpm cache works
       - name: Install pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@v5.0.0
         with:
           version: 10.31.0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -205,7 +223,7 @@ jobs:
       # developers can connect from a local client for debugging.  The
       # comment is updated in-place on subsequent pushes (no spam).
       - name: Comment on PR with branch details
-        uses: actions/github-script@v7
+        uses: actions/github-script@v8
         with:
           script: |
             const branchName = `pr-${{ github.event.pull_request.number }}`;

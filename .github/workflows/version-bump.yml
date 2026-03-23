@@ -43,15 +43,16 @@ jobs:
             old_version: ${{ steps.bump.outputs.old }}
             new_version: ${{ steps.bump.outputs.new }}
             bump_type: ${{ steps.determine_bump.outputs.bump_type }}
+            compiler_changed: ${{ steps.determine_bump.outputs.compiler_changed || 'false' }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v4
+              uses: actions/checkout@v6.0.2
               with:
                   fetch-depth: 0 # full history required: git log --grep searches all commits to find last version bump
                   token: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Setup Deno
-              uses: denoland/setup-deno@v2
+              uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2
               with:
                   deno-version: '2.x'
 
@@ -78,6 +79,18 @@ jobs:
 
                   echo "Analyzing commits since $LAST_VERSION_COMMIT"
 
+                  # Detect if any src/** files (excluding tests) changed since last version bump
+                  CHANGED_SRC=$(git diff --name-only $LAST_VERSION_COMMIT..HEAD -- 'src/' | grep -E '\.ts$' | grep -v '\.test\.ts$' || true)
+                  if [ -z "$CHANGED_SRC" ]; then
+                    echo "No compiler source files changed, skipping version bump"
+                    echo "bump_type=none" >> "$GITHUB_OUTPUT"
+                    echo "compiler_changed=false" >> "$GITHUB_OUTPUT"
+                    exit 0
+                  fi
+                  echo "compiler_changed=true" >> "$GITHUB_OUTPUT"
+                  echo "Compiler source files changed:"
+                  echo "$CHANGED_SRC"
+
                   # Get commit messages since last version bump
                   COMMITS=$(git log --format="%s" $LAST_VERSION_COMMIT..HEAD || echo "")
 
@@ -86,6 +99,12 @@ jobs:
                     echo "bump_type=none" >> "$GITHUB_OUTPUT"
                     exit 0
                   fi
+
+                  # Filter to compiler-relevant commits: no scope or compiler scope only
+                  # Exclude commits explicitly scoped to non-compiler packages
+                  # Keep: unscoped (feat:, fix:), compiler-scoped (feat(compiler):), breaking (feat!:)
+                  # Exclude: scoped to frontend, db, worker, migrations, prisma, docker, ci, deps, admin
+                  COMPILER_COMMITS=$(echo "$COMMITS" | grep -vE "^(feat|fix|perf|refactor|chore|build|ci|docs|style|test)\((frontend|db|worker|migrations|prisma|docker|ci|deps|admin)\)(!)?:" || true)
 
                   # Determine bump type based on conventional commits
                   BUMP_TYPE="none"
@@ -123,7 +142,7 @@ jobs:
                         echo "Found performance improvement: $commit"
                       fi
                     fi
-                  done <<< "$COMMITS"
+                  done <<< "$COMPILER_COMMITS"
 
                   echo "Determined bump type: $BUMP_TYPE"
                   echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
@@ -288,7 +307,7 @@ jobs:
                   gh pr create \
                     --title "chore: bump version to ${{ steps.bump.outputs.new }}" \
                     --body "$(cat <<'EOF'
-                  ## Automated Version Bump
+                  ## Compiler Version Bump
 
                   This PR was automatically created by the version-bump workflow.
 
@@ -361,7 +380,7 @@ jobs:
             actions: write
         steps:
             - name: Trigger release workflow
-              uses: actions/github-script@v7
+              uses: actions/github-script@v8
               with:
                   script: |
                       await github.rest.actions.createWorkflowDispatch({

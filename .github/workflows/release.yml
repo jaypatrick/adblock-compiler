@@ -4,6 +4,7 @@ on:
     push:
         tags:
             - 'v*'
+            - 'compiler-v*'
     workflow_dispatch:
         inputs:
             version:
@@ -24,15 +25,15 @@ jobs:
         name: Validate Release
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6.0.2
 
             - name: Setup Deno
-              uses: denoland/setup-deno@v2
+              uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2
               with:
                   deno-version: ${{ env.DENO_VERSION }}
 
             - name: Cache Deno dependencies
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: |
                       ~/.cache/deno
@@ -89,15 +90,15 @@ jobs:
               if: runner.os == 'Windows'
               run: git config --global core.longpaths true
 
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6.0.2
 
             - name: Setup Deno
-              uses: denoland/setup-deno@v2
+              uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2
               with:
                   deno-version: ${{ env.DENO_VERSION }}
 
             - name: Cache Deno dependencies
-              uses: actions/cache@v4
+              uses: actions/cache@v5
               with:
                   path: |
                       ~/.cache/deno
@@ -126,7 +127,7 @@ jobs:
                   fi
 
             - name: Upload artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: ${{ matrix.artifact }}
                   path: compressed/*
@@ -136,11 +137,12 @@ jobs:
         name: Build Docker Image
         runs-on: ubuntu-latest
         needs: validate
+        if: startsWith(github.ref, 'refs/tags/v') && !startsWith(github.ref, 'refs/tags/compiler-v')
         permissions:
             contents: read
             packages: write
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6.0.2
 
             - name: Get version
               id: version
@@ -149,7 +151,10 @@ jobs:
                   if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
                     VERSION="${{ inputs.version }}"
                   else
-                    VERSION="${GITHUB_REF#refs/tags/v}"
+                    TAG="${GITHUB_REF#refs/tags/}"
+                    # Strip tag prefix: handles both 'v1.2.3' and 'compiler-v1.2.3'
+                    VERSION="${TAG#compiler-v}"
+                    VERSION="${VERSION#v}"
                   fi
                   
                   # Validate version format (must not start with . and must be semver-like)
@@ -162,20 +167,20 @@ jobs:
                   echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
             - name: Set up QEMU
-              uses: docker/setup-qemu-action@v3
+              uses: docker/setup-qemu-action@v4
 
             - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v3
+              uses: docker/setup-buildx-action@v4
 
             - name: Log in to GitHub Container Registry
-              uses: docker/login-action@v3
+              uses: docker/login-action@v4
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Build and push Docker image
-              uses: docker/build-push-action@v6
+              uses: docker/build-push-action@v7
               with:
                   context: .
                   push: true
@@ -196,7 +201,7 @@ jobs:
         runs-on: ubuntu-latest
         needs: validate
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6.0.2
 
             - name: Install mdBook, mdbook-mermaid, and mdbook-pdf
               run: |
@@ -234,7 +239,7 @@ jobs:
                   fi
 
             - name: Upload PDF artifact
-              uses: actions/upload-artifact@v4
+              uses: actions/upload-artifact@v7
               with:
                   name: adblock-compiler-docs-pdf
                   path: pdf-release/adblock-compiler-docs.pdf
@@ -244,9 +249,13 @@ jobs:
     create-release:
         name: Create GitHub Release
         runs-on: ubuntu-latest
-        needs: [build-binaries, build-docker, build-docs-pdf]
+        needs: [build-binaries, build-docs-pdf]
+        if: >-
+            always() &&
+            needs.build-binaries.result == 'success' &&
+            (needs.build-docs-pdf.result == 'success' || needs.build-docs-pdf.result == 'skipped')
         steps:
-            - uses: actions/checkout@v4
+            - uses: actions/checkout@v6.0.2
 
             - name: Get version
               id: version
@@ -256,12 +265,16 @@ jobs:
                     echo "version=${{ inputs.version }}" >> "$GITHUB_OUTPUT"
                     echo "tag=v${{ inputs.version }}" >> "$GITHUB_OUTPUT"
                   else
-                    echo "version=${GITHUB_REF#refs/tags/v}" >> "$GITHUB_OUTPUT"
-                    echo "tag=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+                    TAG="${GITHUB_REF#refs/tags/}"
+                    # Strip tag prefix: handles both 'v1.2.3' and 'compiler-v1.2.3'
+                    VERSION="${TAG#compiler-v}"
+                    VERSION="${VERSION#v}"
+                    echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                    echo "tag=$TAG" >> "$GITHUB_OUTPUT"
                   fi
 
             - name: Download all artifacts
-              uses: actions/download-artifact@v4
+              uses: actions/download-artifact@v8
               with:
                   path: artifacts
                   pattern: adblock-compiler-*
@@ -349,7 +362,7 @@ jobs:
                   fi
 
             - name: Create GitHub Release
-              uses: softprops/action-gh-release@v2
+              uses: softprops/action-gh-release@153bb8e04406b158c6c84fc1615b65b24149a1fe # v2
               with:
                   tag_name: ${{ steps.version.outputs.tag }}
                   name: v${{ steps.version.outputs.version }}
@@ -359,40 +372,3 @@ jobs:
                   prerelease: ${{ contains(steps.version.outputs.version, '-') }}
               env:
                   GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-    deploy-frontend:
-        name: Deploy Frontend Worker
-        runs-on: ubuntu-latest
-        needs: [validate]
-        steps:
-            - uses: actions/checkout@v4
-
-            - name: Setup pnpm
-              uses: pnpm/action-setup@v4
-
-            - name: Setup Node
-              uses: actions/setup-node@v4
-              with:
-                  node-version: '22'
-                  cache: 'pnpm'
-
-            - name: Install frontend dependencies
-              run: pnpm install --frozen-lockfile
-
-            - name: Build Angular SSR bundle
-              working-directory: frontend
-              run: pnpm run build
-              env:
-                  CF_WEB_ANALYTICS_TOKEN: ${{ secrets.CF_WEB_ANALYTICS_TOKEN }}
-
-            - name: Inject CF Web Analytics token into built HTML
-              env:
-                  CF_WEB_ANALYTICS_TOKEN: ${{ secrets.CF_WEB_ANALYTICS_TOKEN }}
-              run: sh scripts/build-worker.sh
-
-            - name: Deploy to Cloudflare Workers
-              working-directory: frontend
-              run: pnpm run deploy
-              env:
-                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
