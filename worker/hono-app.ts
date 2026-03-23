@@ -1000,6 +1000,19 @@ routes.get('/health/latest', etag(), async (c) => {
     return handleHealthLatest(c.env);
 });
 
+routes.get('/container/status', etag(), async (c) => {
+    const { handleContainerStatus } = await import('./handlers/container-status.ts');
+    const res = await handleContainerStatus(c.env);
+    // Cache container status briefly to reduce DO load from frequent polling
+    return new Response(res.body, {
+        status: res.status,
+        headers: {
+            ...Object.fromEntries(res.headers),
+            'Cache-Control': 'public, max-age=15, stale-while-revalidate=5',
+        },
+    });
+});
+
 // ── Docs redirect ─────────────────────────────────────────────────────────────
 
 /**

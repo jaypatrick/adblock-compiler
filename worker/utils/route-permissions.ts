@@ -78,6 +78,7 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     // Health and auth entry-points are intentionally public.
     ['/health', { minTier: UserTier.Anonymous, description: 'Health check' }],
     ['/health/*', { minTier: UserTier.Anonymous, description: 'Health sub-endpoints' }],
+    ['/container/status', { minTier: UserTier.Anonymous, description: 'Container lifecycle status (public probe)' }],
     ['/metrics', { minTier: UserTier.Anonymous, description: 'Public aggregate metrics' }],
     // Webhook receivers use self-authentication (HMAC/signatures)
     ['/webhooks/*', { minTier: UserTier.Anonymous, description: 'Webhook receivers (self-authenticated)' }],

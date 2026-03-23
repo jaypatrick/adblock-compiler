@@ -132,4 +132,42 @@ describe('CompilerService', () => {
         });
         req.flush(mockResponse);
     });
+
+    it('should POST to /api/compile/container with correct payload', () => {
+        const urls = ['https://easylist.to/easylist/easylist.txt'];
+        const transformations = ['RemoveComments', 'Deduplicate'];
+        const mockResponse = {
+            success: true,
+            rules: ['||example.com^'],
+            ruleCount: 5000,
+            compiledAt: '2024-01-01T00:00:00.000Z',
+        };
+
+        service.compileContainer(urls, transformations).subscribe(result => {
+            expect(result).toEqual(mockResponse);
+        });
+
+        const req = httpTesting.expectOne('/api/compile/container');
+        expect(req.request.method).toBe('POST');
+        expect(req.request.body).toEqual({
+            configuration: {
+                name: 'Container Compilation',
+                sources: [{ source: urls[0] }],
+                transformations,
+            },
+            benchmark: true,
+        });
+        req.flush(mockResponse);
+    });
+
+    it('should include turnstileToken in container compilation when provided', () => {
+        const urls = ['https://example.com/list.txt'];
+        const token = 'cf-turnstile-token-abc';
+
+        service.compileContainer(urls, [], token).subscribe();
+
+        const req = httpTesting.expectOne('/api/compile/container');
+        expect(req.request.body.turnstileToken).toBe(token);
+        req.flush({ success: true, ruleCount: 0, compiledAt: '2024-01-01T00:00:00.000Z' });
+    });
 });

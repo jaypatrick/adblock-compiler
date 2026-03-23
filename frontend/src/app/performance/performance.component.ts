@@ -20,6 +20,7 @@ import { SkeletonCardComponent } from '../skeleton/skeleton-card.component';
 import { SparklineComponent } from '../sparkline/sparkline.component';
 import { MetricsStore } from '../store/metrics.store';
 import { API_BASE_URL } from '../tokens';
+import { ContainerStatusWidgetComponent } from '../components/container-status/container-status-widget.component';
 
 /** Health response shape from /api/health */
 interface HealthResponse {
@@ -43,6 +44,7 @@ interface HealthResponse {
         MatTableModule,
         SkeletonCardComponent,
         SparklineComponent,
+        ContainerStatusWidgetComponent,
     ],
     template: `
     <div class="page-content">
@@ -78,6 +80,11 @@ interface HealthResponse {
                         <mat-chip>Uptime: {{ formatUptime(h.uptime) }}</mat-chip>
                         <mat-chip>v{{ h.version }}</mat-chip>
                     </mat-chip-set>
+                    <div class="container-status-row">
+                        <mat-icon class="container-row-icon">memory</mat-icon>
+                        <span class="container-row-label">Container:</span>
+                        <app-container-status-widget [compact]="true" [autoPoll]="true" [pollIntervalMs]="15000" />
+                    </div>
                 </mat-card-content>
             }
         </mat-card>
@@ -196,6 +203,9 @@ interface HealthResponse {
     .subtitle { color: var(--mat-sys-on-surface-variant); margin-bottom: 24px; }
     .metric-icon { font-size: 32px; width: 32px; height: 32px; margin-bottom: 8px; }
     .error-card { border-color: var(--mat-sys-error); }
+    .container-status-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+    .container-row-icon { font-size: 18px; width: 18px; height: 18px; color: var(--mat-sys-on-surface-variant); }
+    .container-row-label { font-size: 13px; font-weight: 500; color: var(--mat-sys-on-surface-variant); }
   `],
 })
 export class PerformanceComponent {

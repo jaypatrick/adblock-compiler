@@ -44,9 +44,11 @@ import { LogService } from '../services/log.service';
 import { MatProgressBarModule } from '@angular/material/progress-bar';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
+import { ContainerStatusWidgetComponent } from '../components/container-status/container-status-widget.component';
+import { ContainerStatusService } from '../services/container-status.service';
 
 /** Compilation mode */
-type CompileMode = 'json' | 'stream' | 'async' | 'batch' | 'batch-async';
+type CompileMode = 'json' | 'stream' | 'async' | 'batch' | 'batch-async' | 'container';
 
 /** Named preset configurations */
 interface Preset {
@@ -76,6 +78,7 @@ interface Preset {
         MatButtonToggleModule,
         ScrollingModule,
         TurnstileComponent,
+        ContainerStatusWidgetComponent,
     ],
     template: `
     <div class="page-content">
@@ -105,6 +108,9 @@ interface Preset {
                     </mat-button-toggle>
                     <mat-button-toggle value="batch-async" matTooltip="Queue batch for background">
                         <mat-icon>queue</mat-icon> Batch+Async
+                    </mat-button-toggle>
+                    <mat-button-toggle value="container" matTooltip="Compile via Cloudflare Container — for large lists">
+                        <mat-icon>memory</mat-icon> Container
                     </mat-button-toggle>
                 </mat-button-toggle-group>
                 <p class="mode-hint mat-caption mt-1">{{ modeDescription() }}</p>
@@ -295,6 +301,23 @@ interface Preset {
                     [mode]="compileMode === 'stream' ? 'buffer' : 'indeterminate'"
                     class="mt-1" />
             }
+
+            <!-- Container lifecycle status — shown when compiling via container mode or when container is active -->
+            @if (compileMode === 'container' || containerStatusService.isNoteworthyState()) {
+                <div class="container-status-banner">
+                    <mat-icon class="container-icon">memory</mat-icon>
+                    <div class="container-status-text">
+                        <span class="container-status-title">Cloudflare Container</span>
+                        <app-container-status-widget [compact]="true" [autoPoll]="false" />
+                    </div>
+                    @if (containerStatusService.status().status === 'starting' || containerStatusService.status().status === 'sleeping') {
+                        <span class="container-status-hint mat-caption">
+                            Container is spinning up — compilation will begin automatically once it's ready.
+                            Cold starts typically take 1–3 seconds.
+                        </span>
+                    }
+                </div>
+            }
         </form>
 
         <!-- Error state -->
@@ -434,6 +457,11 @@ interface Preset {
     .stream-log { max-height: 400px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
     .stream-event { display: flex; align-items: flex-start; gap: 8px; }
     .event-data { background: var(--mat-sys-surface-variant); padding: 8px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12px; overflow-x: auto; margin: 0; flex: 1; }
+    .container-status-banner { display: flex; align-items: flex-start; gap: 10px; margin-top: 12px; padding: 10px 14px; border-radius: var(--mat-sys-corner-small); background: var(--mat-sys-surface-container); border-left: 3px solid var(--mat-sys-tertiary); font-size: 13px; }
+    .container-icon { color: var(--mat-sys-tertiary); margin-top: 2px; }
+    .container-status-text { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+    .container-status-title { font-weight: 600; font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mat-sys-on-surface-variant); }
+    .container-status-hint { color: var(--mat-sys-on-surface-variant); margin-top: 4px; font-style: italic; display: block; }
   `],
 })
 export class CompilerComponent {
@@ -514,11 +542,22 @@ export class CompilerComponent {
      */
     readonly compileResource = rxResource<CompileResponse, CompileRequest | undefined>({
         params: (): CompileRequest | undefined => this.pendingRequest(),
-        stream: ({ params }) => params ? this.compilerService.compile(
-            params.configuration.sources.map((s) => s.source),
-            params.configuration.transformations,
-            params.turnstileToken,
-        ) : EMPTY,
+        stream: ({ params }) => {
+            if (!params) return EMPTY;
+            const urls = params.configuration.sources.map((s) => s.source);
+            if (this.compileMode === 'container') {
+                return this.compilerService.compileContainer(
+                    urls,
+                    params.configuration.transformations,
+                    params.turnstileToken,
+                );
+            }
+            return this.compilerService.compile(
+                urls,
+                params.configuration.transformations,
+                params.turnstileToken,
+            );
+        },
     });
 
     readonly availableTransformations: readonly string[];
@@ -537,6 +576,7 @@ export class CompilerComponent {
     readonly store                   = inject(MetricsStore);
     private readonly notifications   = inject(NotificationService);
     private readonly log             = inject(LogService);
+    readonly containerStatusService  = inject(ContainerStatusService);
 
     readonly turnstileSiteKey = this.turnstileService.siteKey;
 
@@ -626,6 +666,7 @@ export class CompilerComponent {
             case 'async': return 'Queue Async';
             case 'batch': return 'Batch Compile';
             case 'batch-async': return 'Queue Batch';
+            case 'container': return 'Compile (Container)';
         }
     });
 
@@ -637,6 +678,7 @@ export class CompilerComponent {
             case 'async': return 'Queue compilation for background processing via Cloudflare Queue. You\'ll be notified on completion.';
             case 'batch': return 'Compile multiple filter list configurations in a single request.';
             case 'batch-async': return 'Queue multiple configurations for background batch processing.';
+            case 'container': return 'Compile via the Cloudflare Container — handles large lists that exceed Worker CPU limits.';
         }
     });
 
@@ -697,7 +739,19 @@ export class CompilerComponent {
         });
 
         // Clean up SSE connection when component is destroyed
-        this.destroyRef.onDestroy(() => this.sseConnection()?.close());
+        this.destroyRef.onDestroy(() => {
+            this.sseConnection()?.close();
+            this.containerStatusService.stopPolling();
+        });
+
+        // When a container compilation resolves or errors, switch to slow background polling
+        effect(() => {
+            if (this.compileMode !== 'container') return;
+            const status = this.compileResource.status();
+            if (status === 'resolved' || status === 'error') {
+                this.containerStatusService.startPolling(30000);
+            }
+        });
     }
 
     private initializeForm(): void {
@@ -826,6 +880,10 @@ export class CompilerComponent {
             case 'batch-async':
                 this.submitBatchAsync([request.configuration], selectedTransformations);
                 break;
+
+            case 'container':
+                this.submitContainer(urlEntries.map(e => e.source), selectedTransformations);
+                break;
         }
 
         if (urlEntries[0]?.source) {
@@ -874,6 +932,20 @@ export class CompilerComponent {
         } finally {
             this.asyncLoading.set(false);
         }
+    }
+
+    /** Submit container compilation */
+    private submitContainer(urls: string[], transformations: string[]): void {
+        this.containerStatusService.startPolling(2000);
+        this.pendingRequest.set({
+            configuration: {
+                name: 'Container Compilation',
+                sources: urls.map(source => ({ source })),
+                transformations,
+            },
+            benchmark: true,
+            turnstileToken: this.turnstileService.token() || undefined,
+        });
     }
 
     /** Drag-and-drop handlers for file upload */

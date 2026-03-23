@@ -151,6 +151,22 @@ export class CompilerService {
             .pipe(map((raw) => validateResponse(AsyncCompileResponseSchema, raw, 'POST /compile/batch/async')));
     }
 
+    /** POST /compile/container — compile via the Cloudflare Container Durable Object */
+    compileContainer(urls: string[], transformations: string[], turnstileToken?: string): Observable<CompileResponse> {
+        const payload: CompileRequest = {
+            configuration: {
+                name: 'Container Compilation',
+                sources: urls.map((url) => ({ source: url })),
+                transformations,
+            },
+            benchmark: true,
+            turnstileToken,
+        };
+        return this.http
+            .post<unknown>(`${this.apiBaseUrl}/compile/container`, payload)
+            .pipe(map((raw) => validateResponse(CompileResponseSchema, raw, 'POST /compile/container')));
+    }
+
     /** POST /ast/parse — parse filter rules into AST */
     astParse(rules: string[]): Observable<ASTResult> {
         return this.http

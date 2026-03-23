@@ -123,6 +123,19 @@ export const ASTResultSchema = z.object({
 });
 
 // ---------------------------------------------------------------------------
+// Container Status
+// ---------------------------------------------------------------------------
+
+export const ContainerLifecycleStatusSchema = z.enum(['running', 'starting', 'sleeping', 'error', 'unavailable']);
+
+export const ContainerStatusResponseSchema = z.object({
+    status: ContainerLifecycleStatusSchema,
+    version: z.string().optional(),
+    latencyMs: z.number().optional(),
+    checkedAt: z.string(),
+});
+
+// ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
 
