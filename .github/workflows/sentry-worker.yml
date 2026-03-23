@@ -1,0 +1,41 @@
+name: Sentry Source Maps (Worker)
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - 'worker/**'
+            - 'src/**'
+            - 'wrangler.toml'
+        tags:
+            - 'compiler-v*'
+            - 'v*'
+    workflow_dispatch:
+
+jobs:
+    upload-worker:
+        name: Upload Worker Source Maps to Sentry
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        if: ${{ vars.SENTRY_ORG != '' && vars.SENTRY_PROJECT_WORKER != '' }}
+        steps:
+            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+            - name: Setup Deno
+              uses: denoland/setup-deno@909a7e9e53f0e3b7b78db96f44ecba1d7700e3f7 # v2
+              with:
+                  deno-version: v2.x
+
+            - name: Build Worker bundle (dry-run for source maps)
+              run: deno run --allow-read --allow-net --allow-env --allow-run --allow-write=dist/worker npm:wrangler deploy --dry-run --outdir dist/worker
+
+            - name: Upload Worker source maps to Sentry
+              run: |
+                  npx @sentry/cli sourcemaps upload \
+                    --org "${{ vars.SENTRY_ORG }}" \
+                    --project "${{ vars.SENTRY_PROJECT_WORKER }}" \
+                    --release "${{ github.sha }}" \
+                    ./dist/worker
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
