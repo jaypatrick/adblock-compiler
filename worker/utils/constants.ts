@@ -57,8 +57,8 @@ export function getProjectUrls(env: { URL_FRONTEND?: string; URL_API?: string; U
     const rawDocs = env.URL_DOCS ?? DOCS_SITE_URL_FALLBACK;
     return {
         frontend: env.URL_FRONTEND ?? FRONTEND_URL_FALLBACK,
-        api:      env.URL_API      ?? API_URL_FALLBACK,
-        docs:     rawDocs.endsWith('/') ? rawDocs : rawDocs + '/', // ensure trailing slash
+        api: env.URL_API ?? API_URL_FALLBACK,
+        docs: rawDocs.endsWith('/') ? rawDocs : rawDocs + '/', // ensure trailing slash
     } as const;
 }
 
