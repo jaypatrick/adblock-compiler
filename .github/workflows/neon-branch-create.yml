@@ -44,6 +44,10 @@ jobs:
     name: Create Neon Branch
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # Skip for Dependabot PRs — repository secrets are not available to
+    # Dependabot (only Dependabot secrets are), and dependency-bump PRs
+    # never involve schema migrations that need an isolated DB branch.
+    if: github.actor != 'dependabot[bot]'
 
     steps:
       # ── 1. Checkout ────────────────────────────────────────────────────────
