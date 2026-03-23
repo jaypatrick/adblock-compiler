@@ -149,7 +149,7 @@ jobs:
                   "
                   echo "Updated ${PKG} to version ${NEW}"
 
-            - name: Commit, tag, and push
+            - name: Create PR with version bump
               if: steps.determine_bump.outputs.bump_type != 'none'
               run: |
                   set -euo pipefail
@@ -162,16 +162,39 @@ jobs:
                     exit 0
                   fi
 
+                  BRANCH_NAME="auto-frontend-version-bump-v${{ steps.bump.outputs.new }}"
+
+                  # Delete existing remote branch if it exists (from a previous failed run)
+                  git push origin --delete "$BRANCH_NAME" 2>/dev/null || true
+
+                  git checkout -b "$BRANCH_NAME"
                   git add frontend/package.json
                   git commit -m "chore(frontend): bump version to ${{ steps.bump.outputs.new }} [skip version]"
+                  git push -u origin "$BRANCH_NAME"
 
-                  TAG_NAME="${{ steps.bump.outputs.tag }}"
-                  git tag -a "$TAG_NAME" -m "Frontend release ${{ steps.bump.outputs.new }}"
+                  gh pr create \
+                    --title "chore(frontend): bump version to ${{ steps.bump.outputs.new }}" \
+                    --body "$(cat <<'EOF'
+                  ## Automated Frontend Version Bump
 
-                  git push origin main
-                  git push origin "$TAG_NAME"
+                  This PR was automatically created by the frontend-version-bump workflow.
 
-                  echo "Committed and tagged $TAG_NAME"
+                  - **Old Version**: ${{ steps.bump.outputs.old }}
+                  - **New Version**: ${{ steps.bump.outputs.new }}
+                  - **Bump Type**: ${{ steps.determine_bump.outputs.bump_type }}
+
+                  ### Changes
+                  - Updated version in \`frontend/package.json\`
+
+                  ### Next Steps
+                  After this PR is merged:
+                  1. A release tag \`frontend-v${{ steps.bump.outputs.new }}\` will be created automatically
+                  EOF
+                  )" \
+                    --base main \
+                    --label "dependencies"
+
+                  echo "Created PR for frontend version bump to ${{ steps.bump.outputs.new }}"
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -186,7 +209,7 @@ jobs:
                   - **Tag**: ${{ steps.bump.outputs.tag }}
                   - **Bump Type**: ${{ steps.determine_bump.outputs.bump_type }}
 
-                  The \`frontend-v${{ steps.bump.outputs.new }}\` tag has been created.
+                  A PR has been created to merge the version bump. The \`frontend-v${{ steps.bump.outputs.new }}\` tag will be created after the PR is merged.
                   EOF
 
             - name: Skip summary

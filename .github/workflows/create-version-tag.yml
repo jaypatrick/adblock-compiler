@@ -108,3 +108,82 @@ jobs:
 
                   Tag ${{ steps.get_version.outputs.tag }} already exists. Skipping tag creation.
                   EOF
+
+    create-frontend-tag:
+        name: Create Frontend Version Tag
+        runs-on: ubuntu-latest
+        # Only run if PR was merged and the branch name starts with "auto-frontend-version-bump-"
+        if: |
+            github.event.pull_request.merged == true &&
+            startsWith(github.event.pull_request.head.ref, 'auto-frontend-version-bump-')
+        steps:
+            - name: Checkout
+              uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+              with:
+                  fetch-depth: 0
+                  ref: main
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+              with:
+                  node-version: '22'
+
+            - name: Get version from frontend/package.json
+              id: get_version
+              run: |
+                  VERSION=$(node -e "process.stdout.write(require('./frontend/package.json').version)")
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                  echo "tag=frontend-v${VERSION}" >> "$GITHUB_OUTPUT"
+                  echo "Version: $VERSION"
+                  echo "Tag: frontend-v${VERSION}"
+
+            - name: Check if tag exists
+              id: check_tag
+              run: |
+                  TAG="${{ steps.get_version.outputs.tag }}"
+                  if git rev-parse "$TAG" >/dev/null 2>&1; then
+                    echo "exists=true" >> "$GITHUB_OUTPUT"
+                    echo "Tag $TAG already exists"
+                  else
+                    echo "exists=false" >> "$GITHUB_OUTPUT"
+                    echo "Tag $TAG does not exist"
+                  fi
+
+            - name: Create and push tag
+              if: steps.check_tag.outputs.exists == 'false'
+              run: |
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+
+                  TAG_NAME="${{ steps.get_version.outputs.tag }}"
+                  git tag -a "$TAG_NAME" -m "Frontend release ${{ steps.get_version.outputs.version }}"
+                  git push origin "$TAG_NAME"
+
+                  echo "Created and pushed tag $TAG_NAME"
+
+            - name: Delete frontend version bump branch
+              if: steps.check_tag.outputs.exists == 'false'
+              run: |
+                  BRANCH_NAME="${{ github.event.pull_request.head.ref }}"
+                  git push origin --delete "$BRANCH_NAME" || echo "Branch already deleted"
+                  echo "Deleted branch $BRANCH_NAME"
+
+            - name: Summary
+              if: steps.check_tag.outputs.exists == 'false'
+              run: |
+                  cat <<EOF >> $GITHUB_STEP_SUMMARY
+                  ## 🏷️ Frontend Version Tag Created
+
+                  - **Version**: ${{ steps.get_version.outputs.version }}
+                  - **Tag**: ${{ steps.get_version.outputs.tag }}
+                  - **PR**: #${{ github.event.pull_request.number }}
+                  EOF
+
+            - name: Skip summary
+              if: steps.check_tag.outputs.exists == 'true'
+              run: |
+                  cat <<EOF >> $GITHUB_STEP_SUMMARY
+                  ## ℹ️ Tag Already Exists
+
+                  Tag ${{ steps.get_version.outputs.tag }} already exists. Skipping tag creation.
+                  EOF
