@@ -1,5 +1,12 @@
 services:
-    # Main adblock-compiler service
+    # Main adblock-compiler backend Worker service (wrangler dev).
+    # NOTE: The frontend is NOT a separate container here. In production the
+    # frontend runs as a separate Cloudflare Worker (adblock-compiler-frontend)
+    # connected to this backend via a Cloudflare service binding. Locally,
+    # `wrangler dev` emulates that service binding transparently, so no
+    # separate frontend container is needed for everyday development.
+    # To simulate the exact split-worker production topology locally, use the
+    # optional overlay: docker compose -f docker-compose.yml -f docker-compose.frontend.yml up
     adblock-compiler:
         image: jaysonknight/adblock-compiler:latest
         build:
@@ -23,7 +30,7 @@ services:
             - deno-cache:/app/.deno
         restart: unless-stopped
         healthcheck:
-            test: ['CMD', 'curl', '-f', 'http://localhost:8787/api']
+            test: ['CMD', 'curl', '-f', 'http://localhost:8787/health']
             interval: 30s
             timeout: 3s
             retries: 3

@@ -9,6 +9,13 @@ services:
             - ./src:/app/src
             - ./worker:/app/worker
             - ./public:/app/public
+            # Optional: mount frontend source when developing the Angular app inside Docker.
+            # Note: the Worker serves built assets from /app/frontend/dist inside the container.
+            # If you run `ng build --watch` on the host, you must ALSO mount ./frontend/dist
+            # into /app/frontend/dist (see the commented volume below) so wrangler sees updates.
+            - ./frontend/src:/app/frontend/src
+            # To mount the built assets directly from the host (required for host-side `ng build --watch`):
+            # - ./frontend/dist:/app/frontend/dist
         # Add development secrets here (or use .env.local with env_file).
         # Example (uncomment and fill in your actual values):
         # environment:
