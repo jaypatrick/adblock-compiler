@@ -63,7 +63,7 @@ const angularApp = new AngularAppEngine();
  * @param ctx      - Execution context — used for `ctx.waitUntil()` / `ctx.passThroughOnException()`.
  * @returns A `Response` — either SSR-rendered HTML from Angular or a 404.
  */
-export default {
+const handler = {
     async fetch(request: Request, env: Env, ctx: WorkersExecutionContext): Promise<Response> {
         // Route SSR-time API calls to the backend on the internal Cloudflare network.
         // This avoids a public round-trip and bypasses CORS negotiation entirely.
@@ -115,6 +115,38 @@ export default {
     },
 };
 
+// Lazily-initialised Sentry-wrapped handler. Set on the first request that has
+// SENTRY_DSN configured; null until then so local dev pays zero overhead.
+// The @sentry/cloudflare module is only imported (and bundled into the hot path)
+// when a DSN is actually present — mirrors the pattern in worker/services/sentry-init.ts.
+// Declared after `handler` so `typeof handler` resolves correctly.
+let sentryHandler: typeof handler | null = null;
+
+export default {
+    async fetch(request: Request, env: Env, ctx: WorkersExecutionContext): Promise<Response> {
+        if (!env.SENTRY_DSN) {
+            return handler.fetch(request, env, ctx);
+        }
+        if (!sentryHandler) {
+            const Sentry = await import('@sentry/cloudflare');
+            sentryHandler = Sentry.withSentry(
+                (e: Env) => ({
+                    dsn: e.SENTRY_DSN!,
+                    release: e.SENTRY_RELEASE,
+                    environment: e.ENVIRONMENT ?? 'production',
+                    tracesSampleRate: 0.1,
+                }),
+                // `ExportedHandler` from @cloudflare/workers-types is suppressed by
+                // tsconfig.app.json `types: []`. Cast via `any` to bridge the gap —
+                // safe because `handler` structurally matches the expected shape.
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                handler as any,
+            ) as typeof handler;
+        }
+        return sentryHandler.fetch(request, env, ctx);
+    },
+};
+
 /**
  * Cloudflare Workers environment bindings.
  * Declared in frontend/wrangler.toml and injected by the runtime.
@@ -125,4 +157,10 @@ export interface Env {
     /** Service binding to the adblock-compiler backend Worker.
      *  Calls travel on the internal Cloudflare network — no public hop, no CORS. */
     API: WorkersFetcher;
+    /** Sentry DSN for server-side SSR error capture. Set via `wrangler secret put SENTRY_DSN`. */
+    SENTRY_DSN?: string;
+    /** Sentry release identifier. Injected at deploy time via `--var SENTRY_RELEASE:$GITHUB_SHA`. */
+    SENTRY_RELEASE?: string;
+    /** Deployment environment name (e.g. "production"). Defaults to "production" if absent. */
+    ENVIRONMENT?: string;
 }

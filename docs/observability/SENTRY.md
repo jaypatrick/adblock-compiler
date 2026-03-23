@@ -309,6 +309,8 @@ wrangler dev
 | `worker/tail.ts` | Tail worker — Sentry fully wired: `captureException()` + `flush()` |
 | `frontend/src/app/sentry.ts` | `initSentry()` — browser SDK init helper |
 | `frontend/src/app/error/global-error-handler.ts` | Forwards Angular errors to Sentry via `captureException` |
+| `frontend/server.ts` | Frontend Worker SSR handler — wrapped with `SentryCloudflare.withSentry()` |
+| `frontend/wrangler.toml` | Declares `tail_consumers`, `SENTRY_DSN` and documents how `SENTRY_RELEASE` is injected at deploy time for the frontend Worker |
 | `.github/workflows/sentry-sourcemaps.yml` | Source map upload CI workflow |
 | `.env.example` | `SENTRY_DSN` stub (search `Error Reporting`) |
 
