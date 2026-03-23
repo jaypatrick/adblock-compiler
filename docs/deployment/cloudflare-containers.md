@@ -6,6 +6,74 @@ This guide explains how to deploy the Adblock Compiler to Cloudflare Containers.
 
 Cloudflare Containers allows you to deploy Docker containers globally alongside your Workers. The container configuration is set up in `wrangler.toml` and the container image is defined in `Dockerfile.container`.
 
+---
+
+## What is a Cloudflare Container? (And how is it different from Docker?)
+
+This is one of the most commonly misunderstood aspects of the platform. **Cloudflare Containers use a Docker/OCI image format**, but the lifecycle and management model is completely different from a traditional Docker container.
+
+### The mental model
+
+| | Cloudflare Container | Traditional Docker Container |
+|---|---|---|
+| **Image format** | Standard OCI/Docker image ✅ | Standard OCI/Docker image ✅ |
+| **You manage the host** | No — Cloudflare handles it | Yes — your server, Kubernetes, ECS, etc. |
+| **Startup trigger** | On-demand, by a Durable Object | Manual, orchestrator, or scheduled |
+| **Always on?** | No — sleeps after idle timeout | Can be long-running, always-on |
+| **Scaling** | Cloudflare handles globally | You configure replicas/HPA/etc. |
+| **State** | Ephemeral by default | Can be stateful with volumes |
+| **Your entire app stack on the image?** | No — only the computation layer | Yes, typically |
+
+**Key point:** Unlike a traditional "self-contained" Docker app where your entire stack (web server, app, dependencies) lives on the image, Cloudflare Containers are **one layer** of a larger Workers platform architecture. The Worker handles HTTP routing, auth, rate limiting, and CORS. The Container handles only the heavy computation that exceeds Worker CPU limits.
+
+### This app's architecture
+
+```
+HTTP Request
+    → Cloudflare Worker (stateless, handles auth/routing/rate-limiting)
+        → AdblockCompiler Durable Object (stateful, owns container lifecycle)
+            → Container (Linux process — runs container-server.ts)
+                → WorkerCompiler (AGTree AST parsing, filter compilation)
+```
+
+The Durable Object is the "brain" — it has a 1:1 relationship with the Container instance and manages when it starts and stops. The Angular frontend and the SSR Worker (`adblock-compiler-frontend`) never interact with the container directly.
+
+---
+
+## When does the Container activate?
+
+The container is **not always running**. It follows an on-demand lifecycle:
+
+1. A request hits `POST /compile/container` on the backend Worker
+2. The Worker resolves the `ADBLOCK_COMPILER` Durable Object via `env.ADBLOCK_COMPILER.get(id)`
+3. The Durable Object (which extends `Container`) **automatically starts the container** if it isn't already running
+4. The container cold-starts from the Docker image (typically a few hundred milliseconds to ~2 seconds)
+5. The Durable Object proxies the request to `container-server.ts` on port 8787
+6. `container-server.ts` handles the compilation using `WorkerCompiler` and returns the result
+7. After **10 minutes of inactivity** (`sleepAfter = '10m'`), the container is automatically suspended — no charges while idle
+
+### Why use a Container instead of a Worker directly?
+
+Cloudflare Workers have a **10ms–30ms CPU time limit** per request (soft/hard). For large blocklist compilations — full AGTree AST parsing across hundreds of sources — this limit can be hit. The Container has no such CPU time limit and runs as a normal Linux process.
+
+---
+
+## UI Container Status Widget — Not Yet Implemented
+
+> **⚠️ Status: Missing**
+
+There is currently **no UI widget** in the Angular frontend that displays when the container is active, spinning up, or sleeping. The admin dashboard and performance page show general API health from `/api/health`, but this does not reflect container lifecycle.
+
+A container status indicator would be useful to show users when they hit `/compile/container` and the container is cold-starting (which adds latency). This would require:
+
+1. **Backend:** A new `GET /api/container/status` endpoint that checks the container's state via the Durable Object binding
+2. **Frontend service:** An Angular service polling or subscribing to that endpoint
+3. **UI component:** A status chip/badge showing `sleeping`, `starting`, or `running` with an appropriate visual indicator (e.g. the pulsing `.status-dot` already defined in `styles.css`)
+
+This is tracked as a future enhancement. See [GitHub Issues](https://github.com/jaypatrick/adblock-compiler/issues) to create a tracking issue.
+
+---
+
 ## Known Gotchas
 
 These are the most common configuration mistakes that cause silent or hard-to-diagnose failures.
@@ -80,11 +148,19 @@ The `AdblockCompiler` class extends the `Container` class from `@cloudflare/cont
 import { Container } from '@cloudflare/containers';
 
 export class AdblockCompiler extends Container {
-    defaultPort = 8787;
-    sleepAfter = '10m';
+    override defaultPort = 8787;
+    override sleepAfter = '10m';
 
-    override onStart() {
+    override onStart(): void {
         console.log('[AdblockCompiler] Container started');
+    }
+
+    override onStop(_: { exitCode: number; reason: string }): void {
+        console.log('[AdblockCompiler] Container stopped');
+    }
+
+    override onError(error: unknown): void {
+        console.error('[AdblockCompiler] Container error:', error);
     }
 }
 ```
@@ -97,14 +173,14 @@ A minimal Deno image that runs `worker/container-server.ts` — a lightweight HT
 
 1. **Docker must be running** — Wrangler uses Docker to build and push images
    ```bash
-   docker info
-   ```
+docker info
+```
    If this fails, start Docker Desktop or your Docker daemon.
 
 2. **Wrangler authentication** — Authenticate with your Cloudflare account:
    ```bash
-   deno task wrangler login
-   ```
+deno task wrangler login
+```
 
 3. **Container support in your Cloudflare plan** — Containers are available on the Workers Paid plan.
 
@@ -209,7 +285,7 @@ export class AdblockCompiler extends Container {
 3. The `AdblockCompiler` (which extends `Container`) starts a container instance if one isn't already running
 4. The container (`Dockerfile.container`) runs `worker/container-server.ts` — a Deno HTTP server
 5. The server handles the compilation request using `WorkerCompiler` and returns the result
-6. The container sleeps after 10 minutes of inactivity (`sleepAfter = '10m'`)
+6. The container sleeps after 10 minutes of inactivity (`sleepAfter = '10m')
 
 ### Container Server Endpoints
 
@@ -330,7 +406,7 @@ The container/worker has access to:
 ## Cost Considerations
 
 - Containers are billed per millisecond of runtime (10ms granularity)
-- Automatically scale to zero when not in use (`sleepAfter = '10m'`)
+- Automatically scale to zero when not in use (`sleepAfter = '10m')`
 - No charges when idle
 - Container registry storage is free (backed by R2)
 
@@ -399,6 +475,8 @@ If you see `Cannot find module '@cloudflare/containers'`:
 
 4. **Update container configuration** as needed in `wrangler.toml` and `worker/worker.ts`
 
+5. **Implement container status UI widget** — see the [UI Container Status Widget](#ui-container-status-widget--not-yet-implemented) section above for requirements.
+
 ## Resources
 
 - [Cloudflare Containers Documentation](https://developers.cloudflare.com/containers/)
@@ -413,4 +491,3 @@ For issues or questions:
 
 - GitHub Issues: https://github.com/jaypatrick/adblock-compiler/issues
 - Cloudflare Discord: https://discord.gg/cloudflaredev
-
