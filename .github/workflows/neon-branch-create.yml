@@ -88,10 +88,14 @@ jobs:
           from urllib.parse import urlparse
 
           raw = os.environ.get("NEON_DATABASE_URL", "")
+          gho = os.environ.get("GITHUB_OUTPUT", "")
+
           if not raw:
-              print("::error::NEON_DATABASE_URL secret is not set.")
-              print("::error::Add it in repository Settings → Secrets and Variables → Actions.")
-              sys.exit(1)
+              print("::warning::NEON_DATABASE_URL secret is not set — skipping Neon branch creation.")
+              print("::warning::Add it in repository Settings → Secrets and Variables → Actions.")
+              with open(gho, "a") as f:
+                  f.write("skip=true\n")
+              sys.exit(0)
 
           url = urlparse(raw)
           db_name = url.path.lstrip("/").split("?")[0]
@@ -102,8 +106,8 @@ jobs:
               print("::error::Expected format: postgresql://ROLE:PASSWORD@HOST/DATABASE?sslmode=require")
               sys.exit(1)
 
-          gho = os.environ.get("GITHUB_OUTPUT", "")
           with open(gho, "a") as f:
+              f.write("skip=false\n")
               f.write(f"db_name={db_name}\n")
               f.write(f"db_role={db_role}\n")
 
@@ -117,6 +121,7 @@ jobs:
       # If the branch already exists (re-run or force-push), the action returns
       # the existing branch ID without error.
       - name: Create Neon database branch
+        if: steps.db-config.outputs.skip != 'true'
         id: create-branch
         uses: neondatabase/create-branch-action@v6
         with:
@@ -133,18 +138,21 @@ jobs:
       # ── 4. Set up pnpm + Node.js for Prisma CLI ─────────────────────────
       # pnpm must be installed BEFORE setup-node so the pnpm cache works
       - name: Install pnpm
-        uses: pnpm/action-setup@v5
+        if: steps.db-config.outputs.skip != 'true'
+        uses: pnpm/action-setup@v4
         with:
           version: 10.31.0
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        if: steps.db-config.outputs.skip != 'true'
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
 
       # Install only the dependencies needed for Prisma migrations
       - name: Install dependencies
+        if: steps.db-config.outputs.skip != 'true'
         run: pnpm install --frozen-lockfile
 
       # ── 5. Reset branch if a previous CI run left a failed migration ───────
@@ -154,6 +162,7 @@ jobs:
       # *pending* (unapplied) — that is normal on a fresh branch and must NOT
       # trigger a restore.  We only restore on an explicit P3009 signal.
       - name: Reset branch if migration conflicts detected
+        if: steps.db-config.outputs.skip != 'true'
         env:
           DATABASE_URL: ${{ steps.create-branch.outputs.db_url_with_pooler }}
           DIRECT_DATABASE_URL: ${{ steps.create-branch.outputs.db_url }}
@@ -213,6 +222,7 @@ jobs:
       # accessible only from within a Cloudflare Worker.  GitHub Actions runners
       # are standard Linux VMs outside Cloudflare's network.  See file header.
       - name: Run Prisma migrations
+        if: steps.db-config.outputs.skip != 'true'
         env:
           DATABASE_URL: ${{ steps.create-branch.outputs.db_url_with_pooler }}
           DIRECT_DATABASE_URL: ${{ steps.create-branch.outputs.db_url }}
@@ -223,7 +233,8 @@ jobs:
       # developers can connect from a local client for debugging.  The
       # comment is updated in-place on subsequent pushes (no spam).
       - name: Comment on PR with branch details
-        uses: actions/github-script@v8
+        if: steps.db-config.outputs.skip != 'true'
+        uses: actions/github-script@v7
         with:
           script: |
             const branchName = `pr-${{ github.event.pull_request.number }}`;
