@@ -7,6 +7,7 @@ This directory contains the GitHub Actions workflows for the adblock-compiler pr
 | Workflow                  | Trigger                       | Purpose                                                  |
 | ------------------------- | ----------------------------- | -------------------------------------------------------- |
 | `ci.yml`                  | Push, PR                      | Main CI/CD pipeline with tests, security, and deployment |
+| `lint-workflows.yml`      | Push, PR (workflow paths)     | Lints workflow YAML using `actionlint` on changes to `.github/workflows/**` or `.github/actions/**`. Required status check blocking broken workflow config from landing on `main`. |
 | `version-bump.yml`        | Push to main, Manual          | Automatic or manual version bumping with changelog       |
 | `create-version-tag.yml`  | PR closed (version bump PRs)  | Creates release tags for merged version bump PRs         |
 | `release.yml`             | Tag push, Manual              | Create GitHub releases with binaries                     |
