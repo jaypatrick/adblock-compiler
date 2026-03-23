@@ -44,20 +44,34 @@ jobs:
       ready: ${{ steps.check.outputs.ready }}
     # Skip for Dependabot PRs — no branch was created for them (see
     # neon-branch-create.yml), and repository secrets are not available.
-    if: github.event_name != 'pull_request' || github.actor != 'dependabot[bot]'
+    # Also skip tag deletions; this workflow only cares about deleted branches.
+    if: >
+      (github.event_name != 'pull_request' || github.actor != 'dependabot[bot]') &&
+      (github.event_name != 'delete' || github.event.ref_type == 'branch')
     steps:
       - name: Check required secrets
         id: check
         env:
           NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
+          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
         run: |
+          ready=true
+
           if [ -z "$NEON_API_KEY" ]; then
-            echo "ready=false" >> "$GITHUB_OUTPUT"
+            ready=false
             echo "::warning::NEON_API_KEY is not configured. Skipping Neon branch deletion."
-            echo "::warning::Add NEON_API_KEY and NEON_PROJECT_ID in repository Settings → Secrets and Variables → Actions."
-          else
-            echo "ready=true" >> "$GITHUB_OUTPUT"
           fi
+
+          if [ -z "$NEON_PROJECT_ID" ]; then
+            ready=false
+            echo "::warning::NEON_PROJECT_ID is not configured. Skipping Neon branch deletion."
+          fi
+
+          if [ "$ready" != "true" ]; then
+            echo "::warning::Add NEON_API_KEY and NEON_PROJECT_ID in repository Settings → Secrets and Variables → Actions."
+          fi
+
+          echo "ready=$ready" >> "$GITHUB_OUTPUT"
 
   delete-neon-branch:
     name: Delete Neon Branch
