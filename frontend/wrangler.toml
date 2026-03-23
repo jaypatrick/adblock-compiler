@@ -99,4 +99,3 @@ tail_consumers = [{ service = "adblock-compiler-tail" }]
 [[services]]
 binding = "API"
 service = "adblock-compiler"
-environment = "local"
