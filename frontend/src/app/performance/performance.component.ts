@@ -91,7 +91,7 @@ interface HealthResponse {
                         <mat-chip highlighted [color]="h.status === 'healthy' ? 'primary' : 'warn'">
                             {{ h.status | titlecase }}
                         </mat-chip>
-                        @if (h.uptime != null) {
+                        @if (h.uptime !== null && h.uptime !== undefined) {
                             <mat-chip>Uptime: {{ formatUptime(h.uptime) }}</mat-chip>
                         }
                         <mat-chip>v{{ h.version }}</mat-chip>
