@@ -1,0 +1,88 @@
+name: Sentry Source Maps (Frontend)
+
+on:
+    push:
+        branches: [main]
+        paths:
+            - 'frontend/**'
+            - 'pnpm-lock.yaml'
+        tags: ['v*']
+    workflow_dispatch:
+
+jobs:
+    upload-sourcemaps:
+        name: Upload Frontend Source Maps to Sentry
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        if: ${{ vars.SENTRY_ORG != '' }}
+        steps:
+            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+              with:
+                  node-version: '22'
+                  cache: 'pnpm'
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
+
+            - name: Build Angular frontend (with source maps)
+              run: pnpm --filter adblock-compiler-frontend run build -- --source-map=true
+              env:
+                  NODE_ENV: production
+
+            - name: Upload source maps to Sentry
+              working-directory: frontend
+              run: |
+                  npx @sentry/cli sourcemaps upload \
+                    --org "${{ vars.SENTRY_ORG }}" \
+                    --project "${{ vars.SENTRY_PROJECT }}" \
+                    --release "${{ github.sha }}" \
+                    --url-prefix "~/" \
+                    ./dist/adblock-compiler/browser
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+
+    upload-frontend-ssr:
+        name: Upload Frontend SSR Source Maps to Sentry
+        runs-on: ubuntu-latest
+        continue-on-error: true
+        permissions:
+            contents: read
+        if: ${{ vars.SENTRY_ORG != '' }}
+        steps:
+            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@41ff72655975bd51cab0327fa583b6e92b6d3061 # v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+              with:
+                  node-version: '22'
+                  cache: 'pnpm'
+
+            - name: Install frontend dependencies
+              run: pnpm install --frozen-lockfile --filter adblock-compiler-frontend
+
+            - name: Build Angular frontend SSR bundle (with source maps)
+              run: pnpm --filter adblock-compiler-frontend run build -- --source-map=true
+              env:
+                  NODE_ENV: production
+                  CF_WEB_ANALYTICS_TOKEN: ''
+
+            - name: Upload frontend SSR source maps to Sentry
+              working-directory: frontend
+              run: |
+                  npx @sentry/cli sourcemaps upload \
+                    --org "${{ vars.SENTRY_ORG }}" \
+                    --project "${{ vars.SENTRY_FRONTEND_PROJECT != '' && vars.SENTRY_FRONTEND_PROJECT || vars.SENTRY_PROJECT }}" \
+                    --release "${{ github.sha }}" \
+                    ./dist/adblock-compiler/server
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

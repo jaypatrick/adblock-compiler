@@ -15,10 +15,46 @@ concurrency:
     cancel-in-progress: true
 
 jobs:
+    changes:
+        name: Detect Changed Paths
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        outputs:
+            compiler: ${{ steps.filter.outputs.compiler }}
+            frontend: ${{ steps.filter.outputs.frontend }}
+            migrations: ${{ steps.filter.outputs.migrations }}
+            worker: ${{ steps.filter.outputs.worker }}
+        steps:
+            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+            - name: Detect changed paths
+              id: filter
+              uses: dorny/paths-filter@de90cc6fb38505f5d5be431a3a40218ffe0f1879 # v3
+              with:
+                  filters: |
+                      compiler:
+                          - 'src/**'
+                          - 'deno.json'
+                          - 'deno.lock'
+                      frontend:
+                          - 'frontend/**'
+                          - 'pnpm-lock.yaml'
+                      migrations:
+                          - 'migrations/**'
+                          - 'admin-migrations/**'
+                      worker:
+                          - 'worker/**'
+                          - 'src/**'
+                          - 'wrangler.toml'
+
     lint-format:
         name: Lint & Format Check
         runs-on: ubuntu-latest
         timeout-minutes: 10
+        needs: [changes]
+        if: needs.changes.outputs.compiler == 'true'
         permissions:
             contents: read
         steps:
@@ -40,6 +76,8 @@ jobs:
         name: Type Check
         runs-on: ubuntu-latest
         timeout-minutes: 10
+        needs: [changes]
+        if: needs.changes.outputs.compiler == 'true'
         permissions:
             contents: read
         steps:
@@ -57,6 +95,8 @@ jobs:
         name: Test
         runs-on: ubuntu-latest
         timeout-minutes: 20
+        needs: [changes]
+        if: needs.changes.outputs.compiler == 'true'
         permissions:
             contents: read
         steps:
@@ -108,6 +148,8 @@ jobs:
         name: Frontend (lint, test)
         runs-on: ubuntu-latest
         timeout-minutes: 15
+        needs: [changes]
+        if: needs.changes.outputs.frontend == 'true'
         permissions:
             contents: read
         steps:
@@ -135,6 +177,8 @@ jobs:
         name: Frontend (build)
         runs-on: ubuntu-latest
         timeout-minutes: 15
+        needs: [changes]
+        if: needs.changes.outputs.frontend == 'true'
         permissions:
             contents: read
         steps:
@@ -166,6 +210,8 @@ jobs:
         name: Validate Generated Artifacts
         runs-on: ubuntu-latest
         timeout-minutes: 10
+        needs: [changes]
+        if: needs.changes.outputs.compiler == 'true'
         permissions:
             contents: read
         steps:
@@ -209,6 +255,8 @@ jobs:
         name: Check Slow Types
         runs-on: ubuntu-latest
         timeout-minutes: 10
+        needs: [changes]
+        if: needs.changes.outputs.compiler == 'true'
         permissions:
             contents: read
         steps:
@@ -222,10 +270,42 @@ jobs:
             - name: Check for slow types
               run: deno publish --dry-run --allow-dirty
 
+    audit-public-surface:
+        name: Audit Public Surface (IP Protection)
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        needs: [changes]
+        if: needs.changes.outputs.compiler == 'true'
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+            - name: Setup Deno environment
+              uses: ./.github/actions/setup-deno-env
+              with:
+                  deno-version: ${{ env.DENO_VERSION }}
+
+            - name: Audit public surface for IP leaks
+              run: |
+                  set -euo pipefail
+                  # Capture the dry-run output; grep for lines listing files to be published
+                  # deno publish --dry-run prints each file it would publish, one per line
+                  PUBLISHED=$(deno publish --dry-run --allow-dirty 2>&1 | grep -oP '(?<=  )\S+\.ts' || true)
+                  LEAKED=$(echo "$PUBLISHED" | grep -E "^(worker/|frontend/|prisma/|migrations/)" || true)
+                  if [ -n "$LEAKED" ]; then
+                    echo "❌ IP LEAK DETECTED: The following files from private packages are in the JSR publish surface:"
+                    echo "$LEAKED"
+                    exit 1
+                  fi
+                  echo "✅ Public surface audit passed — no private package files detected"
+
     validate-migrations:
         name: Validate Migrations
         runs-on: ubuntu-latest
         timeout-minutes: 5
+        needs: [changes]
+        if: needs.changes.outputs.migrations == 'true'
         permissions:
             contents: read
         steps:
@@ -245,6 +325,7 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 5
         needs:
+            - changes
             - lint-format
             - typecheck
             - test
@@ -253,6 +334,7 @@ jobs:
             - frontend-lint-test
             - frontend-build
             - check-slow-types
+            - audit-public-surface
             - verify-deploy
         if: ${{ always() && !cancelled() }}
         steps:
@@ -283,14 +365,15 @@ jobs:
         name: Publish to JSR
         runs-on: ubuntu-latest
         timeout-minutes: 10
-        needs: [ci-gate]
+        needs: [ci-gate, changes]
         # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
         # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
         if: >-
             always() &&
             needs.ci-gate.result == 'success' &&
             github.event_name == 'push' &&
-            github.ref == 'refs/heads/main'
+            github.ref == 'refs/heads/main' &&
+            needs.changes.outputs.compiler == 'true'
         permissions:
             contents: read
             id-token: write
@@ -324,10 +407,12 @@ jobs:
         name: Verify Worker Build
         runs-on: ubuntu-latest
         timeout-minutes: 15
-        needs: [frontend-build]
+        needs: [changes, frontend-build]
         if: >-
-            github.event_name == 'pull_request' ||
-            github.event_name == 'workflow_dispatch'
+            always() &&
+            (needs.frontend-build.result == 'success' || needs.frontend-build.result == 'skipped') &&
+            (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') &&
+            (needs.changes.outputs.worker == 'true' || needs.changes.outputs.frontend == 'true')
         permissions:
             contents: read
         steps:
@@ -361,6 +446,7 @@ jobs:
                   deno-version: ${{ env.DENO_VERSION }}
 
             - name: Download frontend build artifact
+              if: needs.frontend-build.result == 'success'
               uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
               with:
                   name: frontend-dist
@@ -384,14 +470,15 @@ jobs:
         name: Deploy to Cloudflare
         runs-on: ubuntu-latest
         timeout-minutes: 30
-        needs: [ci-gate]
+        needs: [ci-gate, changes]
         # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
         # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
         if: >-
             always() &&
             needs.ci-gate.result == 'success' &&
             github.event_name == 'push' &&
-            github.ref == 'refs/heads/main'
+            github.ref == 'refs/heads/main' &&
+            (needs.changes.outputs.worker == 'true' || needs.changes.outputs.compiler == 'true')
         permissions:
             contents: read
         env:
@@ -494,7 +581,7 @@ jobs:
         name: Deploy Frontend Worker
         runs-on: ubuntu-latest
         timeout-minutes: 15
-        needs: [ci-gate, frontend-build]
+        needs: [ci-gate, changes, frontend-build]
         # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
         # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
         if: >-
@@ -502,7 +589,8 @@ jobs:
             needs.ci-gate.result == 'success' &&
             needs.frontend-build.result == 'success' &&
             github.event_name == 'push' &&
-            github.ref == 'refs/heads/main'
+            github.ref == 'refs/heads/main' &&
+            needs.changes.outputs.frontend == 'true'
         permissions:
             contents: read
         env:
