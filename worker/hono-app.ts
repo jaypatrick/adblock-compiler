@@ -1002,7 +1002,7 @@ routes.get('/health/latest', etag(), async (c) => {
 
 routes.get('/container/status', etag(), async (c) => {
     const { handleContainerStatus } = await import('./handlers/container-status.ts');
-    const res = await handleContainerStatus(c);
+    const res = await handleContainerStatus(c.env);
     // Cache container status briefly to reduce DO load from frequent polling
     return new Response(res.body, {
         status: res.status,

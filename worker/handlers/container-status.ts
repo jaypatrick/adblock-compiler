@@ -20,9 +20,7 @@
  *   checkedAt: string,     // ISO timestamp
  * }
  */
-import type { Context } from 'hono';
 import type { Env } from '../types.ts';
-import { getContainer } from '@cloudflare/containers';
 import { z } from 'zod';
 
 export type ContainerLifecycleStatus = 'running' | 'starting' | 'sleeping' | 'error' | 'unavailable';
@@ -39,52 +37,77 @@ const ContainerHealthBodySchema = z.object({
     version: z.string().optional(),
 }).passthrough();
 
-export async function handleContainerStatus(c: Context<{ Bindings: Env }>): Promise<Response> {
+function jsonResponse(body: ContainerStatusResponse, status = 200): Response {
+    return Response.json(body, { status });
+}
+
+/**
+ * Build the container fetch function from the ADBLOCK_COMPILER binding.
+ *
+ * `@cloudflare/containers` is dynamically imported so that unit tests running
+ * in Deno (where the package's internal CJS-style resolution fails) can inject
+ * a `containerFetch` stub instead of relying on the real package.
+ */
+async function buildContainerFetch(
+    ns: DurableObjectNamespace,
+): Promise<(req: Request, init?: RequestInit) => Promise<Response>> {
+    const { getContainer } = await import('@cloudflare/containers');
+    // deno-lint-ignore no-explicit-any
+    const stub = getContainer(ns as any);
+    return (req, init) => stub.fetch(req, init as RequestInit);
+}
+
+/**
+ * @param env - Worker environment bindings.
+ * @param containerFetch - Optional injectable fetch for the container /health
+ *   endpoint. Defaults to the real `@cloudflare/containers` stub when omitted.
+ *   Pass a stub in unit tests to avoid the package's CJS module resolution issue.
+ */
+export async function handleContainerStatus(
+    env: Env,
+    containerFetch?: (req: Request, init?: RequestInit) => Promise<Response>,
+): Promise<Response> {
     const checkedAt = new Date().toISOString();
 
-    if (!c.env.ADBLOCK_COMPILER) {
-        return c.json<ContainerStatusResponse>({ status: 'unavailable', checkedAt }, 200);
+    if (!env.ADBLOCK_COMPILER) {
+        return jsonResponse({ status: 'unavailable', checkedAt });
     }
 
-    const t0 = Date.now();
-    try {
-        // getContainer() returns a Durable Object stub — the URL hostname is irrelevant;
-        // the DO intercepts the call and routes it to the container's internal server.
-        // This is not an outbound network request, so SSRF protections do not apply.
-        const stub = getContainer(c.env.ADBLOCK_COMPILER);
-        // Use a short timeout so this endpoint stays fast even on cold start
-        const ac = new AbortController();
-        const timeout = setTimeout(() => ac.abort(), 3000);
-        try {
-            const res = await stub.fetch(new Request('http://container/health'), { signal: ac.signal } as RequestInit);
-            clearTimeout(timeout);
-            const latencyMs = Date.now() - t0;
+    const fetchFn = containerFetch ?? await buildContainerFetch(env.ADBLOCK_COMPILER);
 
-            if (res.ok) {
-                let version: string | undefined;
-                try {
-                    const rawBody = await res.json();
-                    const parsed = ContainerHealthBodySchema.safeParse(rawBody);
-                    if (parsed.success) {
-                        version = parsed.data.version;
-                    }
-                } catch { /* ignore — version is optional */ }
-                return c.json<ContainerStatusResponse>({ status: 'running', version, latencyMs, checkedAt }, 200);
-            } else {
-                return c.json<ContainerStatusResponse>({ status: 'error', latencyMs, checkedAt }, 200);
-            }
-        } catch (err) {
-            clearTimeout(timeout);
-            const latencyMs = Date.now() - t0;
-            const isTimeout = err instanceof Error && err.name === 'AbortError';
-            // AbortError from our 3s timeout likely means DO exists but container hasn't started yet
-            return c.json<ContainerStatusResponse>({
-                status: isTimeout ? 'starting' : 'error',
-                latencyMs,
-                checkedAt,
-            }, 200);
+    const t0 = Date.now();
+    // Use a short timeout so this endpoint stays fast even on cold start
+    const ac = new AbortController();
+    const timeout = setTimeout(() => ac.abort(), 3000);
+    try {
+        // The URL hostname is irrelevant; the DO stub intercepts the call and
+        // routes it to the container's internal server. Not an outbound request.
+        const res = await fetchFn(new Request('http://container/health'), { signal: ac.signal });
+        clearTimeout(timeout);
+        const latencyMs = Date.now() - t0;
+
+        if (res.ok) {
+            let version: string | undefined;
+            try {
+                const rawBody = await res.json();
+                const parsed = ContainerHealthBodySchema.safeParse(rawBody);
+                if (parsed.success) {
+                    version = parsed.data.version;
+                }
+            } catch { /* ignore — version is optional */ }
+            return jsonResponse({ status: 'running', version, latencyMs, checkedAt });
+        } else {
+            return jsonResponse({ status: 'error', latencyMs, checkedAt });
         }
-    } catch {
-        return c.json<ContainerStatusResponse>({ status: 'unavailable', checkedAt }, 200);
+    } catch (err) {
+        clearTimeout(timeout);
+        const latencyMs = Date.now() - t0;
+        const isTimeout = err instanceof Error && err.name === 'AbortError';
+        // AbortError from our 3s timeout likely means DO exists but container hasn't started yet
+        return jsonResponse({
+            status: isTimeout ? 'starting' : 'error',
+            latencyMs,
+            checkedAt,
+        });
     }
 }
