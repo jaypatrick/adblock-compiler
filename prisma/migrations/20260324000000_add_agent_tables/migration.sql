@@ -70,3 +70,6 @@ CREATE INDEX "agent_audit_logs_created_at_idx" ON "agent_audit_logs"("created_at
 
 -- AddForeignKey: agent_invocations --> agent_sessions (cascade delete)
 ALTER TABLE "agent_invocations" ADD CONSTRAINT "agent_invocations_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "agent_sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey: agent_sessions --> users (cascade delete, mirrors ApiKey/Session pattern)
+ALTER TABLE "agent_sessions" ADD CONSTRAINT "agent_sessions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;

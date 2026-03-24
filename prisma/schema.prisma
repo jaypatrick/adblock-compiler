@@ -47,10 +47,11 @@ model User {
   // Better Auth: two-factor authentication status
   twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
 
-  apiKeys    ApiKey[]
-  sessions   Session[]
-  accounts   Account[]
-  twoFactor  TwoFactor?
+  apiKeys       ApiKey[]
+  sessions      Session[]
+  accounts      Account[]
+  twoFactor     TwoFactor?
+  agentSessions AgentSession[]
 
   @@map("users")
 }
@@ -333,6 +334,7 @@ model AgentSession {
   metadata        Json?     @db.JsonB
 
   invocations AgentInvocation[]
+  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([agentSlug])

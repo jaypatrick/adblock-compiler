@@ -49,12 +49,13 @@ export function parseAgentPath(
 // ---------------------------------------------------------------------------
 
 /**
- * Writes an `AgentAuditLog` row to Neon. Errors are swallowed so an audit
- * write failure never propagates to the request path.
+ * Writes both the `AgentAuditLog` and (optionally) the `AgentSession` row
+ * to Neon using a single PrismaClient. Errors are swallowed so a DB write
+ * failure never propagates to the request path.
  */
-async function writeAuditLog(
+async function writeSessionAndAuditLog(
     env: Env,
-    entry: {
+    audit: {
         actorUserId?: string | null;
         agentSlug?: string | null;
         instanceId?: string | null;
@@ -65,35 +66,7 @@ async function writeAuditLog(
         reason?: string | null;
         metadata?: Record<string, unknown> | null;
     },
-): Promise<void> {
-    if (!env.HYPERDRIVE?.connectionString) return;
-    try {
-        const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
-        await prisma.agentAuditLog.create({
-            data: {
-                actorUserId: entry.actorUserId ?? null,
-                agentSlug: entry.agentSlug ?? null,
-                instanceId: entry.instanceId ?? null,
-                action: entry.action,
-                status: entry.status,
-                ipAddress: entry.ipAddress ?? null,
-                userAgent: entry.userAgent ?? null,
-                reason: entry.reason ?? null,
-                metadata: entry.metadata ?? undefined,
-            },
-        });
-    } catch (err) {
-        console.error('[agent-auth] writeAuditLog failed:', err instanceof Error ? err.message : err);
-    }
-}
-
-/**
- * Writes an `AgentSession` row to Neon. Errors are swallowed so a DB write
- * failure never blocks the WebSocket upgrade response.
- */
-async function writeAgentSession(
-    env: Env,
-    session: {
+    session?: {
         userId: string;
         agentSlug: string;
         agentBindingKey: string;
@@ -102,25 +75,45 @@ async function writeAgentSession(
         clientIp?: string | null;
         userAgent?: string | null;
         workerRegion?: string | null;
-    },
+    } | null,
 ): Promise<void> {
     if (!env.HYPERDRIVE?.connectionString) return;
     try {
         const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
-        await prisma.agentSession.create({
-            data: {
-                userId: session.userId,
-                agentSlug: session.agentSlug,
-                agentBindingKey: session.agentBindingKey,
-                instanceId: session.instanceId,
-                transport: session.transport,
-                clientIp: session.clientIp ?? null,
-                userAgent: session.userAgent ?? null,
-                workerRegion: session.workerRegion ?? null,
-            },
-        });
+        const writes: Promise<unknown>[] = [
+            prisma.agentAuditLog.create({
+                data: {
+                    actorUserId: audit.actorUserId ?? null,
+                    agentSlug: audit.agentSlug ?? null,
+                    instanceId: audit.instanceId ?? null,
+                    action: audit.action,
+                    status: audit.status,
+                    ipAddress: audit.ipAddress ?? null,
+                    userAgent: audit.userAgent ?? null,
+                    reason: audit.reason ?? null,
+                    metadata: audit.metadata ?? undefined,
+                },
+            }),
+        ];
+        if (session) {
+            writes.push(
+                prisma.agentSession.create({
+                    data: {
+                        userId: session.userId,
+                        agentSlug: session.agentSlug,
+                        agentBindingKey: session.agentBindingKey,
+                        instanceId: session.instanceId,
+                        transport: session.transport,
+                        clientIp: session.clientIp ?? null,
+                        userAgent: session.userAgent ?? null,
+                        workerRegion: session.workerRegion ?? null,
+                    },
+                }),
+            );
+        }
+        await Promise.all(writes);
     } catch (err) {
-        console.error('[agent-auth] writeAgentSession failed:', err instanceof Error ? err.message : err);
+        console.error('[agent-auth] writeSessionAndAuditLog failed:', err instanceof Error ? err.message : err);
     }
 }
 
@@ -142,7 +135,8 @@ export interface AgentAuthResult {
  * via `ctx.waitUntil`) and a 401/403 `Response` is returned.
  *
  * On successful upgrade, both an `AgentAuditLog` and an `AgentSession` record
- * are written fire-and-forget via `ctx.waitUntil`.
+ * are written fire-and-forget via a single `ctx.waitUntil` call (one Prisma
+ * client, two parallel inserts) to minimise connection churn.
  *
  * @param request     - Incoming fetch request (used for IP / User-Agent extraction)
  * @param env         - Worker environment bindings
@@ -169,7 +163,7 @@ export function verifyAgentAuth(
         const reason = isAnon ? 'unauthenticated' : 'insufficient-tier';
 
         ctx.waitUntil(
-            writeAuditLog(env, {
+            writeSessionAndAuditLog(env, {
                 actorUserId: authContext.userId,
                 agentSlug,
                 instanceId,
@@ -197,7 +191,7 @@ export function verifyAgentAuth(
     // ── Role check: admin role required ────────────────────────────────────
     if (authContext.role !== 'admin') {
         ctx.waitUntil(
-            writeAuditLog(env, {
+            writeSessionAndAuditLog(env, {
                 actorUserId: authContext.userId,
                 agentSlug,
                 instanceId,
@@ -218,38 +212,61 @@ export function verifyAgentAuth(
         };
     }
 
-    // ── Auth success: write audit log + session record ──────────────────────
-    const userId = authContext.userId!;
+    // ── userId must be present for an admin — guard against malformed context ─
+    if (!authContext.userId) {
+        ctx.waitUntil(
+            writeSessionAndAuditLog(env, {
+                actorUserId: null,
+                agentSlug,
+                instanceId,
+                action: 'auth.denied',
+                status: 'error',
+                ipAddress: clientIp,
+                userAgent,
+                reason: 'missing-user-id',
+            }),
+        );
+        return {
+            allowed: false,
+            response: new Response(
+                JSON.stringify({ success: false, error: 'Authentication required' }),
+                { status: 401, headers: { 'Content-Type': 'application/json' } },
+            ),
+        };
+    }
+
+    // ── Auth success: write audit log + session record in a single waitUntil ─
+    const userId = authContext.userId;
     const agentBindingKey = agentSlug ? agentNameToBindingKey(agentSlug) : '';
     const isWebSocket = request.headers.get('upgrade')?.toLowerCase() === 'websocket';
     const transport = isWebSocket ? 'websocket' : 'sse';
 
     ctx.waitUntil(
-        writeAuditLog(env, {
-            actorUserId: userId,
-            agentSlug,
-            instanceId,
-            action: 'session.started',
-            status: 'success',
-            ipAddress: clientIp,
-            userAgent,
-        }),
-    );
-
-    if (agentSlug && instanceId) {
-        ctx.waitUntil(
-            writeAgentSession(env, {
-                userId,
+        writeSessionAndAuditLog(
+            env,
+            {
+                actorUserId: userId,
                 agentSlug,
-                agentBindingKey,
                 instanceId,
-                transport,
-                clientIp,
+                action: 'session.started',
+                status: 'success',
+                ipAddress: clientIp,
                 userAgent,
-                workerRegion: (request as Request & { cf?: { colo?: string } }).cf?.colo ?? null,
-            }),
-        );
-    }
+            },
+            agentSlug && instanceId
+                ? {
+                    userId,
+                    agentSlug,
+                    agentBindingKey,
+                    instanceId,
+                    transport,
+                    clientIp,
+                    userAgent,
+                    workerRegion: (request as Request & { cf?: { colo?: string } }).cf?.colo ?? null,
+                }
+                : null,
+        ),
+    );
 
     return { allowed: true };
 }

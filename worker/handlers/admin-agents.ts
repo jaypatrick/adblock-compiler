@@ -4,19 +4,19 @@
  * Admin-only endpoints for querying and managing agent sessions and audit logs
  * stored in Neon PostgreSQL via Prisma.
  *
- *   GET    /admin/agents/sessions           — paginated list of AgentSession records
- *   GET    /admin/agents/sessions/:id       — single session with its invocations
- *   GET    /admin/agents/audit              — paginated AgentAuditLog records
- *   DELETE /admin/agents/sessions/:id       — terminate/end an active session
+ *   GET    /admin/agents/sessions           -- paginated list of AgentSession records
+ *   GET    /admin/agents/sessions/:id       -- single session with its invocations
+ *   GET    /admin/agents/audit              -- paginated AgentAuditLog records
+ *   DELETE /admin/agents/sessions/:id       -- terminate/end an active session
  *
  * ZTA compliance:
  *   - checkRoutePermission() applied on every handler (Admin tier + role)
- *   - All queries use Prisma ORM (parameterised) — no raw SQL
+ *   - All queries use Prisma ORM (parameterised) -- no raw SQL
  *   - Audit log entry emitted on every admin-terminated session
  *
- * @see worker/utils/route-permissions.ts — /admin/agents/* entries
- * @see worker/lib/prisma.ts              — PrismaClient factory
- * @see prisma/schema.prisma              — AgentSession, AgentInvocation, AgentAuditLog models
+ * @see worker/utils/route-permissions.ts -- /admin/agents/* entries
+ * @see worker/lib/prisma.ts              -- PrismaClient factory
+ * @see prisma/schema.prisma              -- AgentSession, AgentInvocation, AgentAuditLog models
  */
 
 import { type Env, type IAuthContext } from '../types.ts';
@@ -24,6 +24,9 @@ import { JsonResponse } from '../utils/response.ts';
 import { AdminPaginationQuerySchema } from '../schemas.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
 import { createPrismaClient } from '../lib/prisma.ts';
+
+// Shared UUID regex for path-param validation (avoids a Postgres syntax error on invalid UUIDs)
+const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 // ============================================================================
 // GET /admin/agents/sessions
@@ -88,6 +91,10 @@ export async function handleAdminGetAgentSession(
 ): Promise<Response> {
     const denied = checkRoutePermission('/admin/agents/sessions/*', authContext);
     if (denied) return denied;
+
+    if (!UUID_REGEX.test(sessionId)) {
+        return JsonResponse.badRequest('sessionId must be a valid UUID');
+    }
 
     if (!env.HYPERDRIVE?.connectionString) {
         return JsonResponse.serviceUnavailable('Database not configured');
@@ -165,8 +172,9 @@ export async function handleAdminListAgentAuditLog(
 
 /**
  * Terminate an active agent session.
- * Sets `endedAt` to now, computes `durationMs`, sets `closedReason` to
- * `'admin-terminated'`, and writes an `AgentAuditLog` entry.
+ * Returns 400 on invalid UUID, 404 when not found, and 409 when the session
+ * is already ended (to protect historical billing/audit accuracy).
+ * On success: sets `endedAt`, computes `durationMs`, writes an `AgentAuditLog`.
  */
 export async function handleAdminTerminateAgentSession(
     _request: Request,
@@ -177,6 +185,10 @@ export async function handleAdminTerminateAgentSession(
     const denied = checkRoutePermission('/admin/agents/sessions/*', authContext);
     if (denied) return denied;
 
+    if (!UUID_REGEX.test(sessionId)) {
+        return JsonResponse.badRequest('sessionId must be a valid UUID');
+    }
+
     if (!env.HYPERDRIVE?.connectionString) {
         return JsonResponse.serviceUnavailable('Database not configured');
     }
@@ -184,13 +196,21 @@ export async function handleAdminTerminateAgentSession(
     try {
         const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
 
-        // Fetch first to check existence and compute duration
+        // Fetch first to check existence, guard against double-termination, and compute duration
         const session = await prisma.agentSession.findUnique({
             where: { id: sessionId },
         });
 
         if (!session) {
             return JsonResponse.notFound('Agent session not found');
+        }
+
+        // Guard: do not mutate historical records (protects billing/audit accuracy)
+        if (session.endedAt !== null) {
+            return new Response(
+                JSON.stringify({ success: false, error: 'Session has already ended' }),
+                { status: 409, headers: { 'Content-Type': 'application/json' } },
+            );
         }
 
         const now = new Date();
