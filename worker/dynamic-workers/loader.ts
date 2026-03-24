@@ -219,9 +219,7 @@ export async function getOrCreateUserAgent(
                 compatibilityDate: '2026-01-01',
                 mainModule: 'agent-main.js',
                 modules: {
-                    // TODO: Replace with bundled AiAgent source from @cloudflare/worker-bundler.
-                    // The bundle should include the agents SDK AiAgent + tool definitions,
-                    // bypassing the esbuild/async_hooks incompatibility in the main Worker.
+                // TODO(#1386): Replace with bundled ASTViewerService once @cloudflare/worker-bundler
                     'agent-main.js': getAgentWorkerSource(),
                 },
                 // Agents DO need outbound for LLM API calls — inherit parent outbound.
