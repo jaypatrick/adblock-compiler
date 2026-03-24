@@ -80,7 +80,10 @@ export const AGENT_REGISTRY: readonly AgentRegistryEntry[] = [
         displayName: 'Playwright MCP Agent',
         description: 'Browser automation agent via Cloudflare Browser Rendering + Model Context Protocol',
         requiredTier: UserTier.Admin,
-        requiredScopes: [],
+        // API-key callers must hold the 'agents' scope in addition to the Admin
+        // tier requirement.  Session-based callers (better-auth) bypass scope
+        // checks entirely (requireScope() is a no-op for session auth).
+        requiredScopes: ['agents'],
         enabled: true,
         // SSE is used for backward compatibility with existing MCP clients
         // (GitHub Copilot, Claude Desktop, etc.) that connect via /sse.

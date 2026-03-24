@@ -93,12 +93,10 @@ Deno.test('applyAgentAuthChecks - admin tier → allowed (null)', async () => {
 });
 
 Deno.test('applyAgentAuthChecks - API key missing required scope → 403', async () => {
-    // Synthesise a registry entry that requires a scope
-    const entryWithScope = { ...mcpEntry, requiredScopes: ['agents'] as readonly string[] };
-    // API-key user WITHOUT the 'agents' scope
+    // mcp-agent requires 'agents' scope; API-key user WITHOUT it should get 403
     const ctx = makeAuthCtx(UserTier.Admin, 'api-key', ['compile']);
     const req = new Request('https://example.com/agents/mcp-agent/default');
-    const result = await applyAgentAuthChecks(ctx, entryWithScope, req, makeEnv());
+    const result = await applyAgentAuthChecks(ctx, mcpEntry, req, makeEnv());
     assertExists(result);
     assertEquals(result.status, 403);
     const body = await result.json() as { success: boolean; error: string };
@@ -106,10 +104,10 @@ Deno.test('applyAgentAuthChecks - API key missing required scope → 403', async
 });
 
 Deno.test('applyAgentAuthChecks - API key with required scope → allowed (null)', async () => {
-    const entryWithScope = { ...mcpEntry, requiredScopes: ['agents'] as readonly string[] };
+    // mcp-agent requires 'agents' scope; API-key user WITH it should pass
     const ctx = makeAuthCtx(UserTier.Admin, 'api-key', ['agents']);
     const req = new Request('https://example.com/agents/mcp-agent/default');
-    const result = await applyAgentAuthChecks(ctx, entryWithScope, req, makeEnv());
+    const result = await applyAgentAuthChecks(ctx, mcpEntry, req, makeEnv());
     assertEquals(result, null, 'API-key user with required scope should be allowed');
 });
 

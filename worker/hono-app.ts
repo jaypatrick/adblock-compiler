@@ -362,6 +362,26 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
 //
 // The agent router is mounted directly on `app` (not under `/api`) so the
 // agents SDK URL pattern `/agents/{slug}/{instanceId}` is preserved exactly.
+//
+// NOTE: agentRouter handlers return a Response without calling `next()`, so
+// the global CORS and secureHeaders middlewares (registered below) never run
+// for `/agents/*` requests.  We must attach them explicitly here — before the
+// sub-app mount — so browser clients (SSE connections in particular) receive
+// the correct CORS allowlist enforcement and security headers.
+app.use(
+    '/agents/*',
+    cors({
+        origin: (origin, c) => {
+            if (isPublicEndpoint(new URL(c.req.url).pathname)) return '*';
+            return matchOrigin(origin, c.env as Env) ?? undefined;
+        },
+        allowMethods: ['GET', 'POST', 'OPTIONS'],
+        allowHeaders: ['Content-Type', 'Authorization'],
+        maxAge: 86400,
+        credentials: true,
+    }),
+);
+app.use('/agents/*', secureHeaders());
 app.route('/', agentRouter);
 
 // ── 3. Unified auth + rate limiting ──────────────────────────────────────────

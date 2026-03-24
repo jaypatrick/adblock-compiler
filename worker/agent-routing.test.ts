@@ -6,8 +6,8 @@
  *
  * The custom shim and SDK fallback probe (`isSdkRouteAvailable`) have been
  * retired — the router now delegates directly to the official `agents` SDK.
- * These tests cover only the preserved utility function (`agentNameToBindingKey`)
- * and the public contract of `routeAgentRequest` (non-matching paths → null).
+ * These tests currently cover only the preserved utility function
+ * (`agentNameToBindingKey`).
  */
 
 import { assertEquals } from '@std/assert';

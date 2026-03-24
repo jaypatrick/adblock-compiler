@@ -122,7 +122,9 @@ Deno.test('AGENT_REGISTRY - mcp-agent entry has correct metadata', () => {
     assertEquals(mcp.bindingKey, 'MCP_AGENT');
     assertEquals(mcp.requiredTier, 'admin');
     assertEquals(mcp.enabled, true);
+    // mcp-agent requires the 'agents' scope for API-key callers
     assertEquals(Array.isArray(mcp.requiredScopes), true);
+    assertEquals(mcp.requiredScopes.includes('agents'), true);
 });
 
 Deno.test('validateAgentRegistry - returns no errors for valid registry', () => {
