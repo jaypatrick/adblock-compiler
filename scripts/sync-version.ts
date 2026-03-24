@@ -13,7 +13,7 @@
  */
 
 /**
- * Extract VERSION from src/version.ts using a regex.
+ * Read the VERSION constant from src/version.ts and validate it.
  */
 import { VERSION } from '../src/version.ts';
 import { isValidSemver } from '../src/deployment/version.ts';
