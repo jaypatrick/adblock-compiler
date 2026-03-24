@@ -140,6 +140,18 @@ export interface Variables {
 
 const RATE_LIMIT_WINDOW = WORKER_DEFAULTS.RATE_LIMIT_WINDOW_SECONDS;
 
+// Dashboard monitoring endpoints — read-only, no PII, publicly accessible by design.
+// Used by Angular MetricsStore (unauthenticated SWR polling).
+// Anonymous-tier rate limiting (ANONYMOUS_AUTH_CONTEXT) is still applied via
+// `checkRateLimitTiered`, so abuse is throttled despite the auth bypass.
+const MONITORING_API_PATHS = [
+    '/api/health',
+    '/api/health/latest',
+    '/api/metrics',
+    '/api/queue/stats',
+    '/api/queue/history',
+] as const;
+
 // Pre-auth API meta paths (bypass unified auth, use anonymous context)
 const PRE_AUTH_PATHS = [
     '/api',
@@ -149,7 +161,13 @@ const PRE_AUTH_PATHS = [
     '/api/sentry-config',
     '/api/openapi.json',
     '/api/auth/providers',
+    ...MONITORING_API_PATHS,
 ] as const;
+
+// Bare-path variants of MONITORING_API_PATHS — needed when the `routes` sub-app
+// is mounted at `/` (in addition to `/api`), so that requests arriving as
+// `/health`, `/metrics`, etc. also bypass auth.
+const MONITORING_BARE_PATHS = new Set(MONITORING_API_PATHS.map(p => p.slice(4)));
 
 // ============================================================================
 // Helper functions
@@ -367,7 +385,9 @@ app.use('*', async (c, next) => {
     // Pre-auth API meta routes: apply anonymous-tier rate limiting, skip unified auth
     const isPreAuth = c.req.method === 'GET' && (
         PRE_AUTH_PATHS.includes(pathname as typeof PRE_AUTH_PATHS[number]) ||
-        pathname.startsWith('/api/deployments')
+        pathname.startsWith('/api/deployments') ||
+        // Bare-path monitoring endpoints (routes sub-app mounted at /)
+        MONITORING_BARE_PATHS.has(pathname)
     );
     if (isPreAuth) {
         const rl = await checkRateLimitTiered(c.env, ip, ANONYMOUS_AUTH_CONTEXT);
