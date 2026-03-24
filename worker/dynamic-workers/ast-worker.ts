@@ -61,9 +61,7 @@ async function handleParse(rules?: string[], text?: string): Promise<Response> {
         );
     }
 
-    // TODO: Replace with bundled ASTViewerService once @cloudflare/worker-bundler
-    // integration is wired up in the build pipeline (see issue #1386).
-    // For now, returns a structured placeholder to validate the invocation path.
+    // TODO(#1386): Replace with bundled ASTViewerService once @cloudflare/worker-bundler
     return Response.json({
         success: true,
         parsedRules: [],
@@ -81,8 +79,7 @@ async function handleParse(rules?: string[], text?: string): Promise<Response> {
 async function handleValidate(rules: string[], _strict: boolean): Promise<Response> {
     const startTime = Date.now();
 
-    // TODO: Replace with bundled ASTViewerService once @cloudflare/worker-bundler
-    // integration is complete (see issue #1386).
+    // TODO(#1386): Replace with bundled ASTViewerService once @cloudflare/worker-bundler
     const duration = `${Date.now() - startTime}ms`;
 
     return Response.json({
