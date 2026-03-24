@@ -249,27 +249,29 @@ export class PerformanceComponent {
         );
     });
 
-    readonly healthStatusColor = computed(() => {
-        const health = this.healthResource.value();
-        if (!health) return 'var(--mat-sys-on-surface-variant)';
-        switch (health.status) {
+    readonly healthStatusColor = computed(() => this.getHealthColor(this.healthResource.value()?.status));
+
+    readonly healthStatusIcon = computed(() => this.getHealthIcon(this.healthResource.value()?.status));
+
+    /** Pure mapping from health status → CSS color token. Public for unit testing. */
+    getHealthColor(status: 'healthy' | 'degraded' | 'down' | undefined): string {
+        switch (status) {
             case 'healthy': return 'var(--mat-sys-primary)';
             case 'degraded': return 'var(--mat-sys-tertiary)';
             case 'down': return 'var(--mat-sys-error)';
-            default: return 'var(--mat-sys-error)';
+            default: return 'var(--mat-sys-on-surface-variant)';
         }
-    });
+    }
 
-    readonly healthStatusIcon = computed(() => {
-        const health = this.healthResource.value();
-        if (!health) return 'help_outline';
-        switch (health.status) {
+    /** Pure mapping from health status → Material icon name. Public for unit testing. */
+    getHealthIcon(status: 'healthy' | 'degraded' | 'down' | undefined): string {
+        switch (status) {
             case 'healthy': return 'check_circle';
             case 'degraded': return 'warning';
             case 'down': return 'error';
-            default: return 'error';
+            default: return 'help_outline';
         }
-    });
+    }
 
     refreshMetrics(): void {
         this.store.refresh();
