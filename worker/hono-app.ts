@@ -169,7 +169,7 @@ const PRE_AUTH_PATHS = [
 // Bare-path variants of MONITORING_API_PATHS — needed when the `routes` sub-app
 // is mounted at `/` (in addition to `/api`), so that requests arriving as
 // `/health`, `/metrics`, etc. also bypass auth.
-const MONITORING_BARE_PATHS = new Set(MONITORING_API_PATHS.map(p => p.slice(4)));
+const MONITORING_BARE_PATHS = new Set(MONITORING_API_PATHS.map((p) => p.slice(4)));
 
 // ============================================================================
 // Helper functions
