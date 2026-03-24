@@ -31,7 +31,7 @@
         "zod": "^4.3.6"
     },
     "devDependencies": {
-        "@cloudflare/agents": "^0.0.16",
+        "agents": "^0.8.0",
         "@cloudflare/containers": "^0.1.1",
         "@cloudflare/playwright": "^1.1.2",
         "@cloudflare/playwright-mcp": "^0.0.5",
