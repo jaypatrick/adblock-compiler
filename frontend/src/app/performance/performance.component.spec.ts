@@ -84,52 +84,79 @@ describe('PerformanceComponent', () => {
         expect(component.healthStatusColor()).toBe('var(--mat-sys-on-surface-variant)');
     });
 
+    // Helper: creates a fresh fixture (separate from the outer `fixture`) so we can
+    // control the initial /api/health response independently.  httpResource does not
+    // expose a synchronous mechanism to override its value in tests — using reload()
+    // only schedules a re-fetch on the next effect tick, which doesn't fire during
+    // synchronous test execution.  Creating a new fixture lets us respond to its
+    // initial request with the desired status before detectChanges() commits the
+    // value to the signal.
+    function createFixtureWithHealthStatus(
+        status: 'healthy' | 'degraded' | 'down',
+    ): { sf: ComponentFixture<PerformanceComponent>; sc: PerformanceComponent } {
+        const sf = TestBed.createComponent(PerformanceComponent);
+        const sc = sf.componentInstance;
+        // The outer fixture's initial requests were already flushed in beforeEach.
+        // Flush only the new fixture's requests here.
+        httpTesting.match('/api/metrics').forEach(req => req.flush({
+            totalRequests: 0, averageDuration: 0, p95Duration: 0, p99Duration: 0,
+            successRate: 0, cacheHitRate: 0, endpoints: [],
+        }));
+        httpTesting.match('/api/health').forEach(req => req.flush({
+            status, version: '1.0.0', timestamp: new Date().toISOString(),
+        }));
+        // Run change detection so the httpResource commits the response to its signal.
+        sf.detectChanges();
+        // Flush any extra requests triggered by rendering (e.g. ContainerStatusWidget
+        // initial poll for /api/queue/stats).
+        httpTesting.match(() => true).forEach(req => req.flush({}));
+        return { sf, sc };
+    }
+
     describe('healthStatusColor', () => {
-        function reloadWithStatus(status: 'healthy' | 'degraded' | 'down'): void {
-            component.healthResource.reload();
-            httpTesting.expectOne('/api/health').flush(
-                { status, version: '1.0.0', timestamp: new Date().toISOString() },
-            );
-            fixture.detectChanges();
-        }
+        let sf: ComponentFixture<PerformanceComponent>;
+
+        afterEach(() => {
+            httpTesting.match(() => true).forEach(req => req.flush({}));
+            sf?.destroy();
+        });
 
         it('should return primary color for healthy status', () => {
-            reloadWithStatus('healthy');
+            ({ sf, sc: component } = createFixtureWithHealthStatus('healthy'));
             expect(component.healthStatusColor()).toBe('var(--mat-sys-primary)');
         });
 
         it('should return tertiary color for degraded status', () => {
-            reloadWithStatus('degraded');
+            ({ sf, sc: component } = createFixtureWithHealthStatus('degraded'));
             expect(component.healthStatusColor()).toBe('var(--mat-sys-tertiary)');
         });
 
         it('should return error color for down status', () => {
-            reloadWithStatus('down');
+            ({ sf, sc: component } = createFixtureWithHealthStatus('down'));
             expect(component.healthStatusColor()).toBe('var(--mat-sys-error)');
         });
     });
 
     describe('healthStatusIcon', () => {
-        function reloadWithStatus(status: 'healthy' | 'degraded' | 'down'): void {
-            component.healthResource.reload();
-            httpTesting.expectOne('/api/health').flush(
-                { status, version: '1.0.0', timestamp: new Date().toISOString() },
-            );
-            fixture.detectChanges();
-        }
+        let sf: ComponentFixture<PerformanceComponent>;
+
+        afterEach(() => {
+            httpTesting.match(() => true).forEach(req => req.flush({}));
+            sf?.destroy();
+        });
 
         it('should return check_circle icon for healthy status', () => {
-            reloadWithStatus('healthy');
+            ({ sf, sc: component } = createFixtureWithHealthStatus('healthy'));
             expect(component.healthStatusIcon()).toBe('check_circle');
         });
 
         it('should return warning icon for degraded status', () => {
-            reloadWithStatus('degraded');
+            ({ sf, sc: component } = createFixtureWithHealthStatus('degraded'));
             expect(component.healthStatusIcon()).toBe('warning');
         });
 
         it('should return error icon for down status', () => {
-            reloadWithStatus('down');
+            ({ sf, sc: component } = createFixtureWithHealthStatus('down'));
             expect(component.healthStatusIcon()).toBe('error');
         });
     });
