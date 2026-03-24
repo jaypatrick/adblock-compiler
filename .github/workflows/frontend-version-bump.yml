@@ -141,6 +141,14 @@ jobs:
 
                   echo "new=$NEW" >> "$GITHUB_OUTPUT"
                   echo "tag=frontend-v${NEW}" >> "$GITHUB_OUTPUT"
+
+                  # Fix 2: Short-circuit if package.json is already at the target version.
+                  # This prevents re-bumping when a previous run created the tag but the
+                  # PR wasn't merged yet (so the anchor falls back past the tag).
+                  if [ "$OLD" = "$NEW" ]; then
+                    echo "frontend/package.json is already at $NEW — nothing to do"
+                    exit 0
+                  fi
                   echo "Bumping frontend version: $OLD → $NEW ($BUMP_TYPE)"
 
                   # Update version in frontend/package.json
@@ -176,10 +184,18 @@ jobs:
                   git add frontend/package.json
                   git commit -m "chore(frontend): bump version to $NEW_VERSION [skip version]"
 
-                  git tag -a "$TAG_NAME" -m "Frontend release $NEW_VERSION"
+                  if git ls-remote --tags origin "refs/tags/$TAG_NAME" | grep -q "$TAG_NAME"; then
+                    echo "Tag $TAG_NAME already exists on remote, skipping tag creation"
+                    TAG_EXISTS=1
+                  else
+                    git tag -a "$TAG_NAME" -m "Frontend release $NEW_VERSION"
+                    TAG_EXISTS=0
+                  fi
 
                   git push origin "$BRANCH_NAME"
-                  git push origin "$TAG_NAME"
+                  if [ "$TAG_EXISTS" -eq 0 ]; then
+                    git push origin "$TAG_NAME"
+                  fi
 
                   PR_NUMBER=$(gh pr create \
                     --base main \
