@@ -330,7 +330,7 @@ Deno.test('handleAdminTerminateAgentSession — 200 terminates active session', 
         assertEquals(auditCreated, true);
         // Ensure endedAt is set on the returned session
         const data = body as Record<string, unknown>;
-        assertEquals(data.closedReason, 'admin-terminated');
+        assertEquals(data.endReason, 'admin_terminate');
     } finally {
         prismaStub.restore();
     }

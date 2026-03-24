@@ -839,18 +839,17 @@ export type AdminUnbanUser = z.infer<typeof AdminUnbanUserSchema>;
 /** Raw Neon/PostgreSQL row shape for the `agent_sessions` table. */
 export const AgentSessionRowSchema = z.object({
     id: z.string().uuid(),
-    user_id: z.string().uuid(),
     agent_slug: z.string(),
-    agent_binding_key: z.string(),
     instance_id: z.string(),
-    transport: z.string().default('websocket'),
+    user_id: z.string().uuid().nullable().optional(),
+    clerk_user_id: z.string().nullable().optional(),
     started_at: z.string(),
     ended_at: z.string().nullable().optional(),
-    duration_ms: z.number().int().nullable().optional(),
-    closed_reason: z.string().nullable().optional(),
+    end_reason: z.string().nullable().optional(),
+    message_count: z.number().int().default(0),
+    transport: z.string().default('websocket'),
     client_ip: z.string().nullable().optional(),
     user_agent: z.string().nullable().optional(),
-    worker_region: z.string().nullable().optional(),
     metadata: z.unknown().nullable().optional(),
 });
 

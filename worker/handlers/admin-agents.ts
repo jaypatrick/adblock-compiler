@@ -174,7 +174,7 @@ export async function handleAdminListAgentAuditLog(
  * Terminate an active agent session.
  * Returns 400 on invalid UUID, 404 when not found, and 409 when the session
  * is already ended (to protect historical billing/audit accuracy).
- * On success: sets `endedAt`, computes `durationMs`, writes an `AgentAuditLog`.
+ * On success: sets `endedAt` and `endReason`, writes an `AgentAuditLog`.
  */
 export async function handleAdminTerminateAgentSession(
     _request: Request,
@@ -214,14 +214,12 @@ export async function handleAdminTerminateAgentSession(
         }
 
         const now = new Date();
-        const durationMs = now.getTime() - new Date(session.startedAt).getTime();
 
         const updated = await prisma.agentSession.update({
             where: { id: sessionId },
             data: {
                 endedAt: now,
-                durationMs,
-                closedReason: 'admin-terminated',
+                endReason: 'admin_terminate',
             },
         });
 

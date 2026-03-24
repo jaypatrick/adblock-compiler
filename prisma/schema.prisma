@@ -280,66 +280,32 @@ model SourceChangeEvent {
 }
 
 // ============================================================================
-// Legacy: Generic Key-Value Storage (retained for backward compatibility)
+// Agent Sessions — tracks active and historical Cloudflare Agents connections
 // ============================================================================
 
-model StorageEntry {
-  id        String    @id @default(cuid())
-  key       String    @unique
-  data      String
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  expiresAt DateTime? @map("expires_at")
-  tags      String?
-
-  @@index([key])
-  @@index([expiresAt])
-  @@map("storage_entries")
-}
-
-model FilterCache {
-  id        String    @id @default(cuid())
-  source    String    @unique
-  content   String
-  hash      String
-  etag      String?
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-  expiresAt DateTime? @map("expires_at")
-
-  @@index([source])
-  @@index([expiresAt])
-  @@map("filter_cache")
-}
-
-// ============================================================================
-// Agent Session Tracking
-// ============================================================================
-
-/// Tracks a single agent session lifecycle (WebSocket connection from open to close).
 model AgentSession {
-  id              String    @id @default(uuid()) @db.Uuid
-  userId          String    @map("user_id") @db.Uuid
-  agentSlug       String    @map("agent_slug")
-  agentBindingKey String    @map("agent_binding_key")
-  instanceId      String    @map("instance_id")
-  transport       String    @default("websocket")
-  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamptz
-  endedAt         DateTime? @map("ended_at") @db.Timestamptz
-  durationMs      Int?      @map("duration_ms")
-  closedReason    String?   @map("closed_reason")
-  clientIp        String?   @map("client_ip")
-  userAgent       String?   @map("user_agent")
-  workerRegion    String?   @map("worker_region")
-  metadata        Json?     @db.JsonB
+  id           String    @id @default(uuid()) @db.Uuid
+  agentSlug    String    @map("agent_slug") // from AGENT_REGISTRY slug
+  instanceId   String    @map("instance_id") // Durable Object instance name
+  userId       String?   @map("user_id") @db.Uuid
+  clerkUserId  String?   @map("clerk_user_id")
+  startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  endedAt      DateTime? @map("ended_at") @db.Timestamptz // NULL = still active
+  endReason    String?   @map("end_reason") // 'client_disconnect' | 'server_error' | 'admin_terminate' | 'timeout'
+  messageCount Int       @default(0) @map("message_count") // incremented on each WS message
+  transport    String    @default("websocket") // 'websocket' | 'sse'
+  clientIp     String?   @map("client_ip")
+  userAgent    String?   @map("user_agent")
+  metadata     Json?     // JSON blob for future extensibility
 
+  user        User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
   invocations AgentInvocation[]
-  user        User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([clerkUserId])
   @@index([agentSlug])
   @@index([startedAt])
-  @@index([endedAt])
+  @@index([userId, endedAt], name: "agent_sessions_user_active_idx") // "active sessions per user"
   @@map("agent_sessions")
 }
 
@@ -382,6 +348,39 @@ model AgentAuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("agent_audit_logs")
+}
+
+// ============================================================================
+// Legacy: Generic Key-Value Storage (retained for backward compatibility)
+// ============================================================================
+
+model StorageEntry {
+  id        String    @id @default(cuid())
+  key       String    @unique
+  data      String
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  expiresAt DateTime? @map("expires_at")
+  tags      String?
+
+  @@index([key])
+  @@index([expiresAt])
+  @@map("storage_entries")
+}
+
+model FilterCache {
+  id        String    @id @default(cuid())
+  source    String    @unique
+  content   String
+  hash      String
+  etag      String?
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  expiresAt DateTime? @map("expires_at")
+
+  @@index([source])
+  @@index([expiresAt])
+  @@map("filter_cache")
 }
 
 // ============================================================================

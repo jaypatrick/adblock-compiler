@@ -121,8 +121,8 @@ import {
     WebhookNotifyRequestSchema,
 } from './schemas.ts';
 
-// Agent routing
-import { routeAgentRequest } from './agent-routing.ts';
+// Agent routing (authenticated)
+import { agentRouter } from './agents/index.ts';
 import { handleWebSocketUpgrade } from './websocket.ts';
 
 // ============================================================================
@@ -353,12 +353,19 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
     return auth.handler(c.req.raw);
 });
 
-// ── 2. MCP Agent routing + auth (combined to avoid double-pass) ──────────────
-app.use('*', async (c, next) => {
-    // MCP Agent routes: must run before auth
-    const agentResponse = await routeAgentRequest(c.req.raw, c.env);
-    if (agentResponse) return agentResponse;
+// ── 2. Agent router (authenticated) ──────────────────────────────────────────
+// Agent routes are handled by the dedicated agent sub-app, which enforces ZTA
+// authentication BEFORE forwarding requests to the Durable Object.  This
+// replaces the previous pattern where routeAgentRequest() was called before
+// auth ran, creating a security gap where any unauthenticated request could
+// reach agent endpoints.
+//
+// The agent router is mounted directly on `app` (not under `/api`) so the
+// agents SDK URL pattern `/agents/{slug}/{instanceId}` is preserved exactly.
+app.route('/', agentRouter);
 
+// ── 3. Unified auth + rate limiting ──────────────────────────────────────────
+app.use('*', async (c, next) => {
     const pathname = c.req.path;
     const ip = c.get('ip');
     const analytics = c.get('analytics');
@@ -447,7 +454,7 @@ app.use('*', async (c, next) => {
     await next();
 });
 
-// ── 3. CORS middleware ────────────────────────────────────────────────────────
+// ── 4. CORS middleware ────────────────────────────────────────────────────────
 app.use(
     '*',
     cors({
@@ -462,10 +469,10 @@ app.use(
     }),
 );
 
-// ── 4. Secure headers ─────────────────────────────────────────────────────────
+// ── 5. Secure headers ─────────────────────────────────────────────────────────
 app.use('*', secureHeaders());
 
-// ── 5. Pretty JSON (debug mode: add ?pretty=true to any response) ─────────────
+// ── 6. Pretty JSON (debug mode: add ?pretty=true to any response) ─────────────
 app.use('*', prettyJSON());
 
 // ============================================================================
