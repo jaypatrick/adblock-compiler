@@ -23,7 +23,7 @@ import { type Env, type IAuthContext } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { AdminPaginationQuerySchema } from '../schemas.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
-import { createPrismaClient } from '../lib/prisma.ts';
+import { _internals } from '../lib/prisma.ts';
 
 // Shared UUID regex for path-param validation (avoids a Postgres syntax error on invalid UUIDs)
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -59,7 +59,7 @@ export async function handleAdminListAgentSessions(
     const { limit, offset: skip } = paginationParsed.data;
 
     try {
-        const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
+        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
         const [items, total] = await Promise.all([
             prisma.agentSession.findMany({
                 orderBy: { startedAt: 'desc' },
@@ -101,7 +101,7 @@ export async function handleAdminGetAgentSession(
     }
 
     try {
-        const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
+        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
         const session = await prisma.agentSession.findUnique({
             where: { id: sessionId },
             include: { invocations: { orderBy: { invokedAt: 'asc' } } },
@@ -149,7 +149,7 @@ export async function handleAdminListAgentAuditLog(
     const { limit, offset: skip } = paginationParsed.data;
 
     try {
-        const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
+        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
         const [items, total] = await Promise.all([
             prisma.agentAuditLog.findMany({
                 orderBy: { createdAt: 'desc' },
@@ -194,7 +194,7 @@ export async function handleAdminTerminateAgentSession(
     }
 
     try {
-        const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
+        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
 
         // Fetch first to check existence, guard against double-termination, and compute duration
         const session = await prisma.agentSession.findUnique({

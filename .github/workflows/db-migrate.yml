@@ -183,15 +183,23 @@ jobs:
                   github.event_name == 'pull_request' &&
                   github.event.pull_request.head.repo.full_name == github.repository
               uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd # v7
+              env:
+                  CHANGED_D1: ${{ needs.validate.outputs.changed_d1 }}
+                  CHANGED_ADMIN: ${{ needs.validate.outputs.changed_admin }}
+                  D1_MAIN: ${{ steps.d1_main_pending.outputs.d1_main_pending }}
+                  D1_ADMIN: ${{ steps.d1_admin_pending.outputs.d1_admin_pending }}
+                  PG_INFO: ${{ steps.pg_pending.outputs.pg_pending }}
+                  RUN_NUMBER: ${{ github.run_number }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
               with:
                   github-token: ${{ secrets.GITHUB_TOKEN }}
                   script: |
-                      const changed_d1    = `${{ needs.validate.outputs.changed_d1 }}`.trim();
-                      const changed_admin = `${{ needs.validate.outputs.changed_admin }}`.trim();
+                      const changed_d1    = (process.env.CHANGED_D1    || '').trim();
+                      const changed_admin = (process.env.CHANGED_ADMIN || '').trim();
 
-                      const d1Main  = `${{ steps.d1_main_pending.outputs.d1_main_pending }}`.trim();
-                      const d1Admin = `${{ steps.d1_admin_pending.outputs.d1_admin_pending }}`.trim();
-                      const pgInfo  = `${{ steps.pg_pending.outputs.pg_pending }}`.trim();
+                      const d1Main  = (process.env.D1_MAIN  || '').trim();
+                      const d1Admin = (process.env.D1_ADMIN || '').trim();
+                      const pgInfo  = (process.env.PG_INFO  || '').trim();
 
                       const hasCloudflare = d1Main || d1Admin;
                       const hasPostgres   = pgInfo;
@@ -235,7 +243,7 @@ jobs:
                       }
 
                       body += '---\n';
-                      body += `_Validation run: [#${{ github.run_number }}](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})_`;
+                      body += `_Validation run: [#${process.env.RUN_NUMBER}](${process.env.RUN_URL})_`;
 
                       // Upsert (create or update) a single sticky comment per PR
                       const marker = '<!-- db-migration-plan -->';

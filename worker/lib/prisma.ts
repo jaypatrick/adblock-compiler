@@ -40,3 +40,25 @@ export function createPrismaClient(hyperdriveConnectionString: string): Instance
     const adapter = new PrismaPg({ connectionString: hyperdriveConnectionString });
     return new PrismaClient({ adapter }) as InstanceType<typeof PrismaClient>;
 }
+
+/**
+ * Mutable indirection object used by handlers that need `createPrismaClient`
+ * to be stubbable in unit tests.
+ *
+ * ES module namespace exports are non-configurable, so `@std/testing/mock`
+ * `stub()` cannot replace them directly. Handlers should call
+ * `_internals.createPrismaClient(...)` and tests can stub the property on
+ * this plain object.
+ *
+ * @example
+ * ```typescript
+ * // In production handler:
+ * import { _internals } from '../lib/prisma.ts';
+ * const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+ *
+ * // In test:
+ * import { _internals } from '../lib/prisma.ts';
+ * const s = stub(_internals, 'createPrismaClient', () => mockClient);
+ * ```
+ */
+export const _internals = { createPrismaClient };
