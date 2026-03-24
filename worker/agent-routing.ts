@@ -19,18 +19,20 @@
  * backwards compatibility and is still used by tests and the registry
  * integrity validator.
  *
- * @see https://developers.cloudflare.com/agents/getting-started/add-to-existing-project/
+ * @see worker/agents/registry.ts — AGENT_REGISTRY (single source of truth for agents)
+ * @see worker/agents/agent-auth.ts — ZTA authentication middleware (auth runs BEFORE DO)
+ * @see https://github.com/jaypatrick/adblock-compiler/issues/1377
  */
 
 import type { Env } from './types.ts';
 import { getOrCreateUserAgent } from './dynamic-workers/index.ts';
 
 // ---------------------------------------------------------------------------
-// SDK lazy-loader
+// SDK lazy import — cached after first /agents/* request
 // ---------------------------------------------------------------------------
 
 /** Signature of the `routeAgentRequest` function exported by the `agents` SDK. */
-type SdkRouteAgentRequest = (request: Request, env: unknown) => Promise<Response | null>;
+type SdkRouteAgentRequest = (request: Request, env: Record<string, unknown>) => Promise<Response | null>;
 
 /** Cached import promise — populated on the first /agents/* request. */
 let sdkImportPromise: Promise<SdkRouteAgentRequest> | null = null;
@@ -113,7 +115,7 @@ export async function routeAgentRequest(request: Request, env: Env): Promise<Res
     const userId = request.headers.get('X-User-Id');
     if (userId && env.LOADER) {
         try {
-            const dynamicResponse = await getOrCreateUserAgent(env, userId, request);
+            const dynamicResponse = await getOrCreateUserAgent(userId, request, env);
             if (dynamicResponse) return dynamicResponse;
         } catch (err) {
             // deno-lint-ignore no-console
@@ -127,7 +129,7 @@ export async function routeAgentRequest(request: Request, env: Env): Promise<Res
     // ── Standard SDK path ────────────────────────────────────────────────────
     try {
         const sdkFn = await getSdkRouteAgentRequest();
-        return await sdkFn(request, env as unknown);
+        return await sdkFn(request, env as unknown as Record<string, unknown>);
     } catch (err) {
         // deno-lint-ignore no-console
         console.error('[agent-routing] agents SDK call failed:', err instanceof Error ? err.message : String(err));

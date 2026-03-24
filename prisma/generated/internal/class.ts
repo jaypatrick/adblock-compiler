@@ -327,6 +327,36 @@ export interface PrismaClient<
     * ```
     */
   get compilationMetadata(): Prisma.CompilationMetadataDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.agentSession`: Exposes CRUD operations for the **AgentSession** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more AgentSessions
+    * const agentSessions = await prisma.agentSession.findMany()
+    * ```
+    */
+  get agentSession(): Prisma.AgentSessionDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.agentInvocation`: Exposes CRUD operations for the **AgentInvocation** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more AgentInvocations
+    * const agentInvocations = await prisma.agentInvocation.findMany()
+    * ```
+    */
+  get agentInvocation(): Prisma.AgentInvocationDelegate<ExtArgs, { omit: OmitOpts }>;
+
+  /**
+   * `prisma.agentAuditLog`: Exposes CRUD operations for the **AgentAuditLog** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more AgentAuditLogs
+    * const agentAuditLogs = await prisma.agentAuditLog.findMany()
+    * ```
+    */
+  get agentAuditLog(): Prisma.AgentAuditLogDelegate<ExtArgs, { omit: OmitOpts }>;
 }
 
 export function getPrismaClientClass(): PrismaClientConstructor {

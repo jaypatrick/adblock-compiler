@@ -140,6 +140,8 @@ export enum AuthScope {
     Compile = 'compile',
     Rules = 'rules',
     Admin = 'admin',
+    /** Access to AI agent endpoints (admin-only) */
+    Agents = 'agents',
 }
 
 export interface IScopeConfig {
@@ -162,6 +164,11 @@ export const SCOPE_REGISTRY: Readonly<Record<AuthScope, IScopeConfig>> = {
     [AuthScope.Admin]: {
         displayName: 'Admin',
         description: 'Full administrative access — manage users, keys, and system config',
+        requiredTier: UserTier.Admin,
+    },
+    [AuthScope.Agents]: {
+        displayName: 'Agents',
+        description: 'Access to AI agent endpoints (admin-only)',
         requiredTier: UserTier.Admin,
     },
 } as const;

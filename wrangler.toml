@@ -155,10 +155,31 @@ database_id = "7d5a2704-5033-4433-911f-d8368f36dcdf"
 migrations_dir = "admin-migrations"
 
 # ─── Durable Objects ─────────────────────────────────────────────────────────
+#
+# How to add a new agent Durable Object:
+#
+#   1. Create the DO class in worker/<agent-name>.ts and export it from worker/worker.ts.
+#   2. Add a [[durable_objects.bindings]] entry below with:
+#        name       = "MY_AGENT"          (UPPER_SNAKE_CASE — must match Env binding key)
+#        class_name = "MyAgentClass"      (exported DO class name)
+#   3. Add a [[migrations]] entry below with `new_sqlite_classes = ["MyAgentClass"]`
+#      (SQLite-backed DOs support DO storage API without KV; use `new_classes` for non-SQLite).
+#   4. Add the corresponding binding to the Env interface in worker/types.ts.
+#   5. Add a registry entry to worker/agents/registry.ts — this wires routing, auth, and
+#      route-permission entries automatically.
+#   6. Run `wrangler deploy` to provision the new DO class in Cloudflare.
+#
+# Agent endpoints are secured by ZTA authentication middleware (worker/agents/agent-auth.ts)
+# before the DO stub is invoked.  Only UserTier.Admin can connect by default.
+# See: https://developers.cloudflare.com/agents/getting-started/add-to-existing-project/
+
 [[durable_objects.bindings]]
 class_name = "AdblockCompiler"
 name = "ADBLOCK_COMPILER"
 
+# MCP_AGENT — Playwright MCP Agent (Cloudflare Browser Rendering + Model Context Protocol)
+# Slug: mcp-agent  →  /agents/mcp-agent/{instanceId}
+# Auth: UserTier.Admin only (see worker/agents/registry.ts)
 [[durable_objects.bindings]]
 class_name = "PlaywrightMcpAgent"
 name = "MCP_AGENT"
