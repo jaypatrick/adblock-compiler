@@ -23,7 +23,6 @@
  */
 
 import type { Env, IAuthContext } from '../types.ts';
-import { UserTier } from '../types.ts';
 import { authenticateRequestUnified, requireAuth, requireScope, requireTier } from '../middleware/auth.ts';
 import { checkRateLimitTiered } from '../middleware/index.ts';
 import { createPgPool } from '../utils/pg-pool.ts';
