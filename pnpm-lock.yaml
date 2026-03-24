@@ -54,6 +54,9 @@ importers:
         specifier: ^4.3.6
         version: 4.3.6
     devDependencies:
+      '@cloudflare/agents':
+        specifier: ^0.0.16
+        version: 0.0.16(@cloudflare/workers-types@4.20260317.1)
       '@cloudflare/containers':
         specifier: ^0.1.1
         version: 0.1.1
@@ -1373,6 +1376,10 @@ packages:
         optional: true
       react-dom:
         optional: true
+
+  '@cloudflare/agents@0.0.16':
+    resolution: {integrity: sha512-7xx7b60Z0PA7V2NRcxl+iHgT82B8At0RIigW5/yW1sKNDDhY23SgD/E+cFWMGzGcvoYHwlhmx34JIB2o1VRc3Q==}
+    deprecated: This package has been renamed to agents-sdk
 
   '@cloudflare/containers@0.1.1':
     resolution: {integrity: sha512-YTdobRTnTlUOUPMFemufH367A9Z8pDfZ+UboYMLbGpO0VlvEXZDiioSmXPQMHld2vRtkL31mcRii3bcbQU6fdw==}
@@ -4862,6 +4869,10 @@ packages:
     resolution: {integrity: sha512-i/2XbnSz/uxRCU6+NdVJgKWDTM427+MqYbkQzD321DuCQJUqOuJKIA0IM2+W2xtYHdKOmZ4dR6fExsd4SXL+WQ==}
     engines: {node: '>=6'}
 
+  event-target-shim@6.0.2:
+    resolution: {integrity: sha512-8q3LsZjRezbFZ2PN+uP+Q7pnHUMmAOziU2vA2OwoFaKIXxlxl38IylhSSgUorWu/rf4er67w0ikBqjBFk/pomA==}
+    engines: {node: '>=10.13.0'}
+
   eventemitter3@4.0.7:
     resolution: {integrity: sha512-8guHBZCwKnFhYdHr2ysuRWErTwhoN2X8XELRlrRwpmfeY2jjuUN4taQMsULKUVo1K4DvZl+0pgfyoysHxvmvEw==}
 
@@ -6399,10 +6410,18 @@ packages:
     resolution: {integrity: sha512-CiyeOxFT/JZyN5m0z9PfXw4SCBJ6Sygz1Dpl0wqjlhDEGGBP1GnsUVEL0p63hoG1fcj3fHynXi9NYO4nWOL+qQ==}
     engines: {node: '>= 0.8'}
 
+  partyserver@0.0.64:
+    resolution: {integrity: sha512-DuEdsGt2kvss6+P517PRY0PgW/C6v3hQaF2XaVCx0ZmLVSAcsYhDjurHvIFwh5Q1Hp5pJ8vvFAEXvfKEZw8Q8Q==}
+    peerDependencies:
+      '@cloudflare/workers-types': ^4.20240729.0
+
   partyserver@0.0.72:
     resolution: {integrity: sha512-mYkCQ6Q4KBIy4lFFuA6upmvNeD/FC+CQVTd4V3DYU6nsitKVI3NXxBrNNvmIxJLSwk3JQzYcEOPBkebB7ITVpQ==}
     peerDependencies:
       '@cloudflare/workers-types': ^4.20240729.0
+
+  partysocket@0.0.0-548c226:
+    resolution: {integrity: sha512-sPY8fFu+Y6um9E2K9Hf2s1UFm9JD+sg5bawJZGX/NZG8ZW/ZkQ6XP1uDlfXqdCFg8FwTM4BojKuIZfKHf31n3g==}
 
   partysocket@1.1.4:
     resolution: {integrity: sha512-jXP7PFj2h5/v4UjDS8P7MZy6NJUQ7sspiFyxL4uc/+oKOL+KdtXzHnTV8INPGxBrLTXgalyG3kd12Qm7WrYc3A==}
@@ -9527,6 +9546,15 @@ snapshots:
     optionalDependencies:
       react: 19.2.4
       react-dom: 19.2.4(react@19.2.4)
+
+  '@cloudflare/agents@0.0.16(@cloudflare/workers-types@4.20260317.1)':
+    dependencies:
+      cron-schedule: 5.0.4
+      nanoid: 5.1.6
+      partyserver: 0.0.64(@cloudflare/workers-types@4.20260317.1)
+      partysocket: 0.0.0-548c226
+    transitivePeerDependencies:
+      - '@cloudflare/workers-types'
 
   '@cloudflare/containers@0.1.1': {}
 
@@ -13130,6 +13158,8 @@ snapshots:
 
   event-target-shim@5.0.1: {}
 
+  event-target-shim@6.0.2: {}
+
   eventemitter3@4.0.7: {}
 
   eventemitter3@5.0.1: {}
@@ -14885,10 +14915,19 @@ snapshots:
 
   parseurl@1.3.3: {}
 
+  partyserver@0.0.64(@cloudflare/workers-types@4.20260317.1):
+    dependencies:
+      '@cloudflare/workers-types': 4.20260317.1
+      nanoid: 5.1.6
+
   partyserver@0.0.72(@cloudflare/workers-types@4.20260317.1):
     dependencies:
       '@cloudflare/workers-types': 4.20260317.1
       nanoid: 5.1.6
+
+  partysocket@0.0.0-548c226:
+    dependencies:
+      event-target-shim: 6.0.2
 
   partysocket@1.1.4:
     dependencies:

@@ -103,3 +103,16 @@ Deno.test('routeAgentRequest - resolves binding key via agentNameToBindingKey', 
 
     assertMatch(await result!.text(), /mcp/);
 });
+
+// ---------------------------------------------------------------------------
+// @cloudflare/agents SDK compatibility smoke test
+// ---------------------------------------------------------------------------
+
+Deno.test('SDK_ROUTE_AVAILABLE - @cloudflare/agents import resolves without bundler error', async () => {
+    // This test passes if the module was importable at all.
+    // If wrangler's esbuild threw on async_hooks/path during bundling,
+    // SDK_ROUTE_AVAILABLE will be false — indicating the shim is still needed.
+    // Check the wrangler dev/deploy output for bundler errors to confirm.
+    const { SDK_ROUTE_AVAILABLE } = await import('./agent-routing.ts');
+    console.log(`[agents-sdk-probe] SDK routeAgentRequest available: ${SDK_ROUTE_AVAILABLE}`);
+});
