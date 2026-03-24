@@ -27,6 +27,7 @@
 - [Cloudflare Integration](cloudflare/README.md)
   - [Services Overview](cloudflare/CLOUDFLARE_SERVICES.md)
   - [Admin Dashboard](cloudflare/ADMIN_DASHBOARD.md)
+  - [Agents SDK](cloudflare/AGENTS.md)
   - [Analytics](cloudflare/CLOUDFLARE_ANALYTICS.md)
   - [Browser Rendering](cloudflare/BROWSER_RENDERING.md)
   - [D1 Database](cloudflare/CLOUDFLARE_D1.md)

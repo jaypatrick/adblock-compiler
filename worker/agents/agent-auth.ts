@@ -273,22 +273,38 @@ export async function handleAgentRequest(
     const url = new URL(request.url);
     if (!url.pathname.startsWith('/agents/')) return null;
 
-    const result = await runAgentAuthGate(request, env);
+    try {
+        const result = await runAgentAuthGate(request, env);
 
-    if (!result.allowed) {
-        return result.response;
+        if (!result.allowed) {
+            return result.response;
+        }
+
+        // Auth passed — forward to the Durable Object via the SDK/shim
+        const agentResponse = await routeAgentRequest(request, env);
+        if (agentResponse) return agentResponse;
+
+        // The slug exists in the registry but the DO binding returned null
+        // (e.g. binding absent in env). This is a misconfiguration.
+        return new Response(
+            JSON.stringify({ success: false, error: 'Agent binding unavailable' }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } },
+        );
+    } catch (err) {
+        console.error('[agent] handleAgentRequest unexpected error:', err instanceof Error ? (err.stack ?? err.message) : err);
+        emitSecurityEvent(env, {
+            eventType: 'auth_failure',
+            path: url.pathname,
+            method: request.method,
+            // 'auth_failure' is the closest available event type for unexpected errors.
+            // The reason field makes the root cause distinguishable in dashboards.
+            reason: `unexpected_error: ${err instanceof Error ? err.message : String(err)}`,
+        });
+        return new Response(
+            JSON.stringify({ success: false, error: 'Internal server error' }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } },
+        );
     }
-
-    // Auth passed — forward to the Durable Object via the SDK/shim
-    const agentResponse = await routeAgentRequest(request, env);
-    if (agentResponse) return agentResponse;
-
-    // The slug exists in the registry but the DO binding returned null
-    // (e.g. binding absent in env). This is a misconfiguration.
-    return new Response(
-        JSON.stringify({ success: false, error: 'Agent binding unavailable' }),
-        { status: 503, headers: { 'Content-Type': 'application/json' } },
-    );
 }
 
 // ============================================================================
