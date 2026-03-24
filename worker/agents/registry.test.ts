@@ -95,7 +95,7 @@ Deno.test('AGENT_REGISTRY - all slugs are kebab-case', () => {
 });
 
 Deno.test('AGENT_REGISTRY - all transport values are valid', () => {
-    const validTransports = new Set(['websocket', 'sse']);
+    const validTransports = new Set(['websocket', 'sse', 'dynamic-worker']);
     for (const entry of AGENT_REGISTRY) {
         assertEquals(
             validTransports.has(entry.transport),

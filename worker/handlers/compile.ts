@@ -14,6 +14,7 @@ import { compress, decompress, emitDiagnosticsToTailWorker, getCacheKey, QUEUE_B
 import type { BatchRequest, CompilationResult, CompileQueueMessage, CompileRequest, Env, PreviousVersion, Priority } from '../types.ts';
 import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../../src/configuration/schemas.ts';
 import { AstParseRequestSchema } from '../schemas.ts';
+import { dispatchToDynamicWorker, isDynamicWorkerAvailable, AST_PARSE_WORKER_SOURCE } from '../dynamic-workers/index.ts';
 
 // ============================================================================
 // Configuration
@@ -764,7 +765,7 @@ async function queueBatchCompileJob(
  */
 export async function handleASTParseRequest(
     request: Request,
-    _env: Env,
+    env: Env,
 ): Promise<Response> {
     try {
         const rawBody = await request.json();
@@ -773,6 +774,16 @@ export async function handleASTParseRequest(
             return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
         }
         const body = parsed.data;
+
+        // Feature-flag: dispatch to a Dynamic Worker isolate when the binding is available.
+        if (isDynamicWorkerAvailable(env)) {
+            const result = await dispatchToDynamicWorker(env, AST_PARSE_WORKER_SOURCE, {
+                type: 'ast-parse',
+                payload: body,
+                requestId: generateRequestId('ast-parse'),
+            });
+            return JsonResponse.success(result);
+        }
 
         const { ASTViewerService } = await import('../../src/services/ASTViewerService.ts');
 
