@@ -113,7 +113,7 @@ export async function routeAgentRequest(request: Request, env: Env): Promise<Res
     const userId = request.headers.get('X-User-Id');
     if (userId && env.LOADER) {
         try {
-            const dynamicResponse = await getOrCreateUserAgent(env, userId, request);
+            const dynamicResponse = await getOrCreateUserAgent(userId, request, env);
             if (dynamicResponse) return dynamicResponse;
         } catch (err) {
             // deno-lint-ignore no-console
