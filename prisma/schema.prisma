@@ -47,10 +47,11 @@ model User {
   // Better Auth: two-factor authentication status
   twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
 
-  apiKeys    ApiKey[]
-  sessions   Session[]
-  accounts   Account[]
-  twoFactor  TwoFactor?
+  apiKeys       ApiKey[]
+  sessions      Session[]
+  accounts      Account[]
+  twoFactor     TwoFactor?
+  agentSessions AgentSession[]
 
   @@map("users")
 }
@@ -276,6 +277,35 @@ model SourceChangeEvent {
   @@index([sourceId])
   @@index([detectedAt(sort: Desc)])
   @@map("source_change_events")
+}
+
+// ============================================================================
+// Agent Sessions — tracks active and historical Cloudflare Agents connections
+// ============================================================================
+
+model AgentSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  agentSlug    String    @map("agent_slug") // from AGENT_REGISTRY slug
+  instanceId   String    @map("instance_id") // Durable Object instance name
+  userId       String?   @map("user_id") @db.Uuid
+  clerkUserId  String?   @map("clerk_user_id")
+  startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  endedAt      DateTime? @map("ended_at") @db.Timestamptz // NULL = still active
+  endReason    String?   @map("end_reason") // 'client_disconnect' | 'server_error' | 'admin_terminate' | 'timeout'
+  messageCount Int       @default(0) @map("message_count") // incremented on each WS message
+  transport    String    @default("websocket") // 'websocket' | 'sse'
+  clientIp     String?   @map("client_ip")
+  userAgent    String?   @map("user_agent")
+  metadata     Json?     // JSON blob for future extensibility
+
+  user User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([clerkUserId])
+  @@index([agentSlug])
+  @@index([startedAt])
+  @@index([userId, endedAt], name: "agent_sessions_user_active_idx") // "active sessions per user"
+  @@map("agent_sessions")
 }
 
 // ============================================================================

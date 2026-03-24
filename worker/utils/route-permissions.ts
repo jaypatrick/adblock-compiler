@@ -24,9 +24,11 @@
  * - `minTier: UserTier.Admin`     → administrators only
  *
  * @see worker/types.ts — UserTier enum and TIER_REGISTRY
+ * @see worker/agents/registry.ts — AGENT_REGISTRY (agent routes added dynamically below)
  */
 
 import { type IAuthContext, isTierSufficient, TIER_REGISTRY, UserTier } from '../types.ts';
+import { AGENT_REGISTRY } from '../agents/registry.ts';
 
 // ============================================================================
 // Types
@@ -142,6 +144,19 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/admin/neon/databases/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List databases for a Neon branch' }],
     ['/admin/neon/query', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Execute SQL via Neon serverless driver' }],
     ['/metrics/prometheus', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Prometheus metrics scrape' }],
+
+    // ── Agent routes — derived from AGENT_REGISTRY ────────────────────────────
+    // Each enabled agent gets a wildcard entry so the permission checker knows
+    // these endpoints require admin tier.  The agent router (worker/agents/
+    // agent-router.ts) enforces auth independently before the DO is invoked;
+    // this entry ensures the main permission middleware also blocks non-admins
+    // even if a request somehow bypasses the agent router.
+    ...AGENT_REGISTRY
+        .filter((entry) => entry.enabled)
+        .map((entry) => [
+            `/agents/${entry.slug}/*`,
+            { minTier: entry.requiredTier, description: entry.displayName },
+        ] as [string, IRoutePermission]),
 ]);
 
 // ============================================================================

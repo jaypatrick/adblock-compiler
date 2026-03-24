@@ -1,0 +1,88 @@
+/**
+ * Agent Router — dedicated Hono sub-app for all `/agents/*` routes.
+ *
+ * This sub-app isolates agent routing from the main `hono-app.ts` and handles
+ * authentication internally via `agent-auth.ts` **before** forwarding requests
+ * to the Durable Object.
+ *
+ * ## Route pattern
+ * - `GET  /agents/:slug/:instanceId/*`  — WebSocket upgrade + SDK routing
+ * - `POST /agents/:slug/:instanceId/*`  — HTTP POST for MCP protocol
+ * - All other methods return 405 Method Not Allowed
+ *
+ * ## Static assets note
+ * The `ASSETS` binding in `wrangler.toml` serves the Angular SPA from the
+ * Cloudflare CDN.  Asset paths are matched against the `frontend/dist/` build
+ * output, which contains no `/agents/*` paths — so agent routes are **never**
+ * captured by the assets handler.  This is confirmed by the wrangler asset
+ * binding configuration (`directory = "frontend/dist/adblock-compiler/browser"`).
+ *
+ * @see worker/agents/agent-auth.ts — ZTA authentication middleware
+ * @see worker/agents/registry.ts — AGENT_REGISTRY entries
+ * @see https://developers.cloudflare.com/agents/getting-started/add-to-existing-project/
+ */
+
+import { Hono } from 'hono';
+import type { Env } from '../types.ts';
+import { handleAgentRequest } from './agent-auth.ts';
+import { AGENT_REGISTRY } from './registry.ts';
+
+// ============================================================================
+// Sub-app
+// ============================================================================
+
+/**
+ * Hono sub-app that handles all `/agents/*` routes with ZTA authentication.
+ *
+ * Mounted in `hono-app.ts` before the unified auth middleware, because this
+ * router manages its own auth chain via `handleAgentRequest`.
+ */
+export const agentRouter = new Hono<{ Bindings: Env }>();
+
+// ── Allowed methods for agent routes ─────────────────────────────────────────
+// GET: WebSocket upgrade (agents SDK negotiates the upgrade) + SSE
+// POST: MCP protocol HTTP transport (some clients POST tool calls)
+const ALLOWED_METHODS = new Set(['GET', 'POST']);
+
+// ── Agent route handler ───────────────────────────────────────────────────────
+// The pattern captures: slug, instanceId, and any trailing sub-path.
+// Auth is handled inside handleAgentRequest before the DO is invoked.
+agentRouter.all('/agents/:slug/:instanceId/*', async (c) => {
+    if (!ALLOWED_METHODS.has(c.req.method)) {
+        return c.json(
+            { success: false, error: `Method ${c.req.method} not allowed on agent endpoints` },
+            405,
+            { Allow: 'GET, POST' },
+        );
+    }
+    const response = await handleAgentRequest(c.req.raw, c.env);
+    if (response) return response;
+    // Fallback: path matched the pattern but handleAgentRequest returned null —
+    // should not occur under normal operation.
+    return c.json({ success: false, error: 'Agent not found' }, 404);
+});
+
+// Also handle the base /:slug/:instanceId path (without trailing slash/sub-path)
+agentRouter.all('/agents/:slug/:instanceId', async (c) => {
+    if (!ALLOWED_METHODS.has(c.req.method)) {
+        return c.json(
+            { success: false, error: `Method ${c.req.method} not allowed on agent endpoints` },
+            405,
+            { Allow: 'GET, POST' },
+        );
+    }
+    const response = await handleAgentRequest(c.req.raw, c.env);
+    if (response) return response;
+    return c.json({ success: false, error: 'Agent not found' }, 404);
+});
+
+// ── Agent listing endpoint (admin-only, read-only) ────────────────────────────
+// Returns the list of registered enabled agents without sensitive metadata.
+// The auth check here is lightweight — handled by the main app's middleware
+// since this is a plain /agents GET (no slug/instanceId).
+agentRouter.get('/agents', (c) => {
+    const agents = AGENT_REGISTRY
+        .filter((a) => a.enabled)
+        .map(({ bindingKey: _bk, requiredScopes: _rs, ...rest }) => rest);
+    return c.json({ success: true, agents });
+});
