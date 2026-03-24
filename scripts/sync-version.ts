@@ -11,18 +11,23 @@
  *   deno task version:sync
  *   deno run --allow-read --allow-write scripts/sync-version.ts
  */
-
+import { VERSION } from "../src/version.ts";
 /**
  * Extract VERSION from src/version.ts using a regex.
  */
 async function readVersionFromSource(): Promise<string> {
-    const content = await Deno.readTextFile('src/version.ts');
-    const match = content.match(/export const VERSION = '([^']+)'/);
+    // const content = await Deno.readTextFile("../src/version.ts");
+    // const content = "../src/version.ts";
+    const semver =
+        /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*)(?:\.(?:0|[1-9]\d*|\d*[a-zA-Z-][0-9a-zA-Z-]*))*))?(?:\+([0-9a-zA-Z-]+(?:\.[0-9a-zA-Z-]+)*))?$/;
+    const match = semver.test(VERSION);
     if (!match) {
-        console.error('Could not find VERSION constant in src/version.ts');
-        Deno.exit(1);
+        console.error("Could not find VERSION constant in src/version.ts");
+        await Promise.reject(
+            new Error("VERSION not found or invalid in src/version.ts"),
+        );
     }
-    return match[1];
+    return await Promise.resolve(VERSION);
 }
 
 /**
