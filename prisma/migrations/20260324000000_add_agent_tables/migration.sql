@@ -1,4 +1,4 @@
--- CreateTable: agent_sessions — tracks a single agent session lifecycle
+-- CreateTable: agent_sessions -- tracks a single agent session lifecycle
 CREATE TABLE "agent_sessions" (
     "id" UUID NOT NULL,
     "user_id" UUID NOT NULL,
@@ -18,7 +18,7 @@ CREATE TABLE "agent_sessions" (
     CONSTRAINT "agent_sessions_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable: agent_invocations — tracks individual tool calls within a session
+-- CreateTable: agent_invocations -- tracks individual tool calls within a session
 CREATE TABLE "agent_invocations" (
     "id" UUID NOT NULL,
     "session_id" UUID NOT NULL,
@@ -34,7 +34,7 @@ CREATE TABLE "agent_invocations" (
     CONSTRAINT "agent_invocations_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable: agent_audit_logs — append-only audit log for agent security events
+-- CreateTable: agent_audit_logs -- append-only audit log for agent security events
 CREATE TABLE "agent_audit_logs" (
     "id" UUID NOT NULL,
     "actor_user_id" UUID,
@@ -68,5 +68,5 @@ CREATE INDEX "agent_audit_logs_agent_slug_idx" ON "agent_audit_logs"("agent_slug
 CREATE INDEX "agent_audit_logs_action_idx" ON "agent_audit_logs"("action");
 CREATE INDEX "agent_audit_logs_created_at_idx" ON "agent_audit_logs"("created_at");
 
--- AddForeignKey: agent_invocations → agent_sessions (cascade delete)
+-- AddForeignKey: agent_invocations --> agent_sessions (cascade delete)
 ALTER TABLE "agent_invocations" ADD CONSTRAINT "agent_invocations_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "agent_sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;

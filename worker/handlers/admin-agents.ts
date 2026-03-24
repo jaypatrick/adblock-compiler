@@ -212,7 +212,7 @@ export async function handleAdminTerminateAgentSession(
                 instanceId: session.instanceId,
                 action: 'admin.terminated',
                 status: 'success',
-                reason: `Session terminated by admin ${authContext.userId ?? 'unknown'}`,
+                reason: `Session terminated by admin ${authContext.userId}`,
                 metadata: { sessionId },
             },
         });
