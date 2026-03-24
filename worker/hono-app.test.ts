@@ -136,6 +136,35 @@ Deno.test('GET /metrics returns 200', async () => {
     assertEquals(res.status, 200);
 });
 
+// ── Monitoring endpoint pre-auth bypass (#1370) ───────────────────────────────
+// /health and /metrics are Anonymous-tier per ROUTE_PERMISSION_REGISTRY.
+// /queue/stats and /queue/history remain Free-tier (authenticated only).
+
+Deno.test('GET /api/metrics is publicly accessible (pre-auth bypass)', async () => {
+    const env = makeEnv({ METRICS: makeInMemoryKv(new Map()) });
+    const res = await fetch('/api/metrics', { env });
+    assertEquals(res.status, 200);
+});
+
+Deno.test('GET /api/health/latest is publicly accessible (pre-auth bypass)', async () => {
+    const res = await fetch('/api/health/latest');
+    // Returns 200 (healthy) or 503 (degraded) — never 401/403 for anonymous callers.
+    assertEquals(res.status === 200 || res.status === 503, true);
+});
+
+Deno.test('GET /api/queue/stats returns 401 for anonymous users (Free tier required)', async () => {
+    // /queue/stats requires UserTier.Free per ROUTE_PERMISSION_REGISTRY and must NOT
+    // be in the pre-auth list — anonymous SWR callers should be rejected.
+    const res = await fetch('/api/queue/stats');
+    assertEquals(res.status, 401);
+});
+
+Deno.test('GET /queue/stats returns 401 for anonymous users (bare path, Free tier required)', async () => {
+    // Same as above but via the bare-path mount at /.
+    const res = await fetch('/queue/stats');
+    assertEquals(res.status, 401);
+});
+
 Deno.test('GET /api/openapi.json is publicly accessible and returns valid spec or 501 when not yet configured', async () => {
     const res = await fetch('/api/openapi.json');
     // The endpoint is publicly accessible (no auth required)

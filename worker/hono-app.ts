@@ -144,12 +144,14 @@ const RATE_LIMIT_WINDOW = WORKER_DEFAULTS.RATE_LIMIT_WINDOW_SECONDS;
 // Used by Angular MetricsStore (unauthenticated SWR polling).
 // Anonymous-tier rate limiting (ANONYMOUS_AUTH_CONTEXT) is still applied via
 // `checkRateLimitTiered`, so abuse is throttled despite the auth bypass.
+//
+// NOTE: /api/queue/stats and /api/queue/history are intentionally excluded because
+// they require UserTier.Free per ROUTE_PERMISSION_REGISTRY. Including them here
+// would force ANONYMOUS_AUTH_CONTEXT and break them for authenticated callers.
 const MONITORING_API_PATHS = [
     '/api/health',
     '/api/health/latest',
     '/api/metrics',
-    '/api/queue/stats',
-    '/api/queue/history',
 ] as const;
 
 // Pre-auth API meta paths (bypass unified auth, use anonymous context)
@@ -392,11 +394,21 @@ app.use('*', async (c, next) => {
     if (isPreAuth) {
         const rl = await checkRateLimitTiered(c.env, ip, ANONYMOUS_AUTH_CONTEXT);
         if (!rl.allowed) {
+            const clientIpHash = AnalyticsService.hashIp(ip);
             analytics.trackRateLimitExceeded({
                 requestId,
-                clientIpHash: AnalyticsService.hashIp(ip),
+                clientIpHash,
                 rateLimit: rl.limit,
                 windowSeconds: RATE_LIMIT_WINDOW,
+            });
+            // ZTA security event — feeds real-time Zero Trust dashboards and SIEM pipelines.
+            analytics.trackSecurityEvent({
+                eventType: 'rate_limit',
+                path: pathname,
+                method: c.req.method,
+                clientIpHash,
+                tier: ANONYMOUS_AUTH_CONTEXT.tier,
+                reason: 'rate_limit_exceeded',
             });
             return c.json(
                 { success: false, error: `Rate limit exceeded. Maximum ${rl.limit} requests per ${RATE_LIMIT_WINDOW} seconds.` },
