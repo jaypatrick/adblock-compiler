@@ -312,6 +312,77 @@ model FilterCache {
 }
 
 // ============================================================================
+// Agent Session Tracking
+// ============================================================================
+
+/// Tracks a single agent session lifecycle (WebSocket connection from open to close).
+model AgentSession {
+  id              String    @id @default(uuid()) @db.Uuid
+  userId          String    @map("user_id") @db.Uuid
+  agentSlug       String    @map("agent_slug")
+  agentBindingKey String    @map("agent_binding_key")
+  instanceId      String    @map("instance_id")
+  transport       String    @default("websocket")
+  startedAt       DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  endedAt         DateTime? @map("ended_at") @db.Timestamptz
+  durationMs      Int?      @map("duration_ms")
+  closedReason    String?   @map("closed_reason")
+  clientIp        String?   @map("client_ip")
+  userAgent       String?   @map("user_agent")
+  workerRegion    String?   @map("worker_region")
+  metadata        Json?     @db.JsonB
+
+  invocations AgentInvocation[]
+
+  @@index([userId])
+  @@index([agentSlug])
+  @@index([startedAt])
+  @@index([endedAt])
+  @@map("agent_sessions")
+}
+
+/// Tracks individual tool calls / actions within a session.
+model AgentInvocation {
+  id            String       @id @default(uuid()) @db.Uuid
+  sessionId     String       @map("session_id") @db.Uuid
+  session       AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  toolName      String       @map("tool_name")
+  inputSummary  String?      @map("input_summary")
+  outputSummary String?      @map("output_summary")
+  durationMs    Int?         @map("duration_ms")
+  success       Boolean      @default(true)
+  errorMessage  String?      @map("error_message")
+  invokedAt     DateTime     @default(now()) @map("invoked_at") @db.Timestamptz
+  metadata      Json?        @db.JsonB
+
+  @@index([sessionId])
+  @@index([toolName])
+  @@index([invokedAt])
+  @@map("agent_invocations")
+}
+
+/// Append-only audit log for all agent-related security events.
+model AgentAuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  agentSlug   String?  @map("agent_slug")
+  instanceId  String?  @map("instance_id")
+  action      String
+  status      String   @default("success")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  reason      String?
+  metadata    Json?    @db.JsonB
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([actorUserId])
+  @@index([agentSlug])
+  @@index([action])
+  @@index([createdAt])
+  @@map("agent_audit_logs")
+}
+
+// ============================================================================
 // Legacy: Compilation Metadata (retained for backward compatibility with PrismaStorageAdapter)
 // ============================================================================
 // TODO(Phase 2): Migrate callers to use CompiledOutput + CompilationEvent instead.

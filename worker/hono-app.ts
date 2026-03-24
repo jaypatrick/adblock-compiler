@@ -92,6 +92,12 @@ import {
     handleAdminNeonListEndpoints,
     handleAdminNeonQuery,
 } from './handlers/admin-neon.ts';
+import {
+    handleAdminListAgentSessions,
+    handleAdminGetAgentSession,
+    handleAdminListAgentAuditLog,
+    handleAdminTerminateAgentSession,
+} from './handlers/admin-agents.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleMetrics } from './handlers/metrics.ts';
 import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './handlers/configuration.ts';
@@ -675,6 +681,17 @@ routes.post(
     // deno-lint-ignore no-explicit-any
     zValidator('json', AdminNeonQuerySchema as any, zodValidationError),
     (c) => handleAdminNeonQuery(c.req.raw, c.env, c.get('authContext')),
+);
+
+// ── Admin agent data ──────────────────────────────────────────────────────────
+
+routes.get('/admin/agents/sessions', (c) => handleAdminListAgentSessions(c.req.raw, c.env, c.get('authContext')));
+routes.get('/admin/agents/sessions/:sessionId', (c) => handleAdminGetAgentSession(c.req.raw, c.env, c.get('authContext'), c.req.param('sessionId')!));
+routes.get('/admin/agents/audit', (c) => handleAdminListAgentAuditLog(c.req.raw, c.env, c.get('authContext')));
+routes.delete(
+    '/admin/agents/sessions/:sessionId',
+    rateLimitMiddleware(),
+    (c) => handleAdminTerminateAgentSession(c.req.raw, c.env, c.get('authContext'), c.req.param('sessionId')!),
 );
 
 // ── Metrics ───────────────────────────────────────────────────────────────────
