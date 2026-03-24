@@ -57,6 +57,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **frontend**: `REQUEST` injection token imported from `@angular/core` (not `@angular/ssr`) — fixes `TS2305` build error that broke the Docker CI pipeline
 - **worker**: Remove dead `hasFileExtension` function and stale `async serveWebUI(env)` overload that referenced a non-existent `serveStaticFile` helper — fixes `TS2393`/`TS6133` type-check failures in CI
 
+
+## [0.74.0] - 2026-03-24
+
+### Added- centralize project URLs as single source of truth via wrangler env vars (#1366)
+
+### Fixed
+
+- add monitoring endpoints to PRE_AUTH_PATHS to resolve permanent "Data may be stale" banner (#1370)
+- resolve CI pipeline regressions blocking deploy, JSR publish, release chain, Neon cleanup, and PerformanceComponent health display (#1369)
+- broaden idempotency guards to match Cloudflare's "already taken" error (code 11009) (#1367)
+- **neon**: add delete trigger, workflow_dispatch, prereq check, and SHA pin to branch cleanup (#1357)
+- **ci**: bypass branch protection via PR flow; drop broken PDF steps (#1362)
+- **frontend**: Angular 21 engine manifest not set — Cloudflare error 10021 on deploy (#1360)
+- **ci**: run frontend-build whenever worker or compiler files change (#1356)
+- **ci**: skip Neon branch workflows for Dependabot PRs (#1339)
+
+
 ## [0.73.0] - 2026-03-23
 
 ### Added
