@@ -47,6 +47,9 @@ name = "adblock-frontend"
 # Expose the worker on the *.workers.dev subdomain after deployment.
 workers_dev = true
 
+# Enable logpush for the frontend worker
+logpush = true
+
 # Compiled server entry point output by `ng build` when ssr.entry = "server.ts"
 main = "dist/adblock-compiler/server/server.mjs"
 
