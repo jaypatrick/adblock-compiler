@@ -370,7 +370,11 @@ jobs:
             - frontend-build
             - check-slow-types
             - audit-public-surface
-            - verify-deploy
+            # verify-deploy is a PR-only safety check (it is skipped on push to main).
+            # Keeping it in needs caused GitHub Actions to propagate the 'skipped' result
+            # upward, which could cause ci-gate itself to be treated as skipped, silently
+            # preventing deploy and publish from running on push.  verify-deploy remains
+            # a standalone job and still runs on every pull_request.
             # zta-lint uses path filters and will be skipped when no relevant files change;
             # the gate's Python logic treats 'skipped' as passing, so this is safe to include.
             - zta-lint
@@ -423,8 +427,9 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 10
         needs: [ci-gate, changes]
-        # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
-        # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
+        # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
+        # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
+        # is the real gate.
         if: >-
             always() &&
             needs.ci-gate.result == 'success' &&
@@ -442,7 +447,40 @@ jobs:
               with:
                   deno-version: ${{ env.DENO_VERSION }}
 
+            - name: Check if version already published on JSR
+              id: jsr_check
+              run: |
+                  set -euo pipefail
+                  VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
+                  # Read the JSR package name from deno.json so the check stays in sync
+                  # even if the package scope/name is changed in the future.
+                  PACKAGE=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).name)")
+                  if [ -z "${VERSION}" ] || [ "${VERSION}" = "undefined" ]; then
+                    echo "Error: deno.json.version is missing, empty, or undefined. Cannot check/publish to JSR." >&2
+                    exit 1
+                  fi
+                  if [ -z "${PACKAGE}" ] || [ "${PACKAGE}" = "undefined" ]; then
+                    echo "Error: deno.json.name (JSR package name) is missing, empty, or undefined. Cannot check/publish to JSR." >&2
+                    exit 1
+                  fi
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                  echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+                  HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                    "https://jsr.io/${PACKAGE}/${VERSION}_meta.json")
+                  if [ "$HTTP_STATUS" = "200" ]; then
+                    echo "already_published=true" >> "$GITHUB_OUTPUT"
+                    echo "[SKIP] Version ${VERSION} already on JSR (HTTP 200) — skipping publish"
+                  elif [ "$HTTP_STATUS" = "404" ]; then
+                    echo "already_published=false" >> "$GITHUB_OUTPUT"
+                    echo "Version ${VERSION} not yet on JSR (HTTP 404) — will publish"
+                  else
+                    echo "Failed to probe JSR for ${PACKAGE}@${VERSION}. HTTP status: ${HTTP_STATUS}" >&2
+                    echo "Treating this as a connectivity/auth error so CI can surface the real issue." >&2
+                    exit 1
+                  fi
+
             - name: Publish to JSR
+              if: steps.jsr_check.outputs.already_published == 'false'
               run: |
                   set -euo pipefail
                   if ! OUTPUT="$(deno publish --allow-dirty 2>&1)"; then
@@ -455,6 +493,32 @@ jobs:
                     exit 1
                   fi
                   echo "Successfully published to JSR"
+
+            - name: Publish summary
+              if: always()
+              env:
+                  VERSION: ${{ steps.jsr_check.outputs.version }}
+                  PACKAGE: ${{ steps.jsr_check.outputs.package }}
+                  ALREADY_PUBLISHED: ${{ steps.jsr_check.outputs.already_published }}
+              run: |
+                  set -euo pipefail
+                  if [ "${ALREADY_PUBLISHED}" = "true" ]; then
+                    cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+                  ## ⏭️ JSR Publish Skipped
+
+                  Version **${VERSION}** was already published on JSR.
+
+                  📦 https://jsr.io/${PACKAGE}@${VERSION}
+                  EOF
+                  else
+                    cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+                  ## 📦 Published to JSR
+
+                  Version **${VERSION}** has been published.
+
+                  📦 https://jsr.io/${PACKAGE}@${VERSION}
+                  EOF
+                  fi
 
     # Verify the worker bundles correctly on every PR — catches build failures
     # before they reach main. No secrets required; --dry-run bundles without
@@ -512,8 +576,9 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 30
         needs: [ci-gate, changes, frontend-build]
-        # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
-        # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
+        # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
+        # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
+        # is the real gate.
         # frontend-build always runs when worker or compiler files change (same triggers as this
         # job), so the frontend artifact is always available when the deploy runs.
         if: >-
@@ -555,13 +620,21 @@ jobs:
               with:
                   github-sha: ${{ github.sha }}
 
+            - name: Show deploy version
+              if: always()
+              run: |
+                  set -euo pipefail
+                  VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
+                  echo "## 🚀 Deploying version $VERSION to Cloudflare" >> "$GITHUB_STEP_SUMMARY"
+
     deploy-frontend:
         name: Deploy Frontend Worker
         runs-on: ubuntu-latest
         timeout-minutes: 15
         needs: [ci-gate, changes, frontend-build]
-        # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
-        # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
+        # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
+        # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
+        # is the real gate.
         if: >-
             always() &&
             needs.ci-gate.result == 'success' &&
