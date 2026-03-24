@@ -41,11 +41,21 @@ on:
       - 'worker/middleware/better-auth-provider.ts'
       - 'worker/middleware/prisma-middleware.ts'
   workflow_dispatch:
+    inputs:
+      pr_number:
+        description: 'PR number to create a Neon branch for (produces branch name pr-<N>)'
+        required: false
+        type: string
+      branch_name:
+        description: 'Custom Neon branch name (overrides pr_number; use for branches not tied to a PR)'
+        required: false
+        type: string
 
 # Only one branch-create job per PR at a time; cancel stale runs when a
-# new commit is pushed.
+# new commit is pushed.  For manual dispatches without a PR number, use
+# the run ID so each dispatch gets its own concurrency slot.
 concurrency:
-  group: neon-branch-${{ github.event.pull_request.number }}
+  group: neon-branch-${{ github.event.pull_request.number || inputs.pr_number || github.run_id }}
   cancel-in-progress: true
 
 permissions:
@@ -81,6 +91,32 @@ jobs:
     if: needs.check-prerequisites.outputs.ready == 'true'
 
     steps:
+      # ── 0. Resolve branch name and PR number from trigger context ──────────
+      # pull_request:    branch_name = pr-<N>,   pr_number = <N>
+      # workflow_dispatch with pr_number:   branch_name = pr-<N>,   pr_number = <N>
+      # workflow_dispatch with branch_name: branch_name = <custom>, pr_number = (empty)
+      - name: Resolve branch context
+        id: context
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          INPUT_PR_NUMBER: ${{ inputs.pr_number }}
+          INPUT_BRANCH_NAME: ${{ inputs.branch_name }}
+        run: |
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            echo "branch_name=pr-${PR_NUMBER}" >> "$GITHUB_OUTPUT"
+            echo "pr_number=${PR_NUMBER}"       >> "$GITHUB_OUTPUT"
+          elif [ -n "$INPUT_PR_NUMBER" ]; then
+            echo "branch_name=pr-${INPUT_PR_NUMBER}" >> "$GITHUB_OUTPUT"
+            echo "pr_number=${INPUT_PR_NUMBER}"       >> "$GITHUB_OUTPUT"
+          elif [ -n "$INPUT_BRANCH_NAME" ]; then
+            echo "branch_name=${INPUT_BRANCH_NAME}" >> "$GITHUB_OUTPUT"
+            echo "pr_number="                        >> "$GITHUB_OUTPUT"
+          else
+            echo "::error::No branch context could be resolved for workflow_dispatch. Provide either pr_number or branch_name input."
+            exit 1
+          fi
+
       # ── 1. Checkout ────────────────────────────────────────────────────────
       - name: Checkout repository
         uses: actions/checkout@v6.0.2
@@ -134,7 +170,7 @@ jobs:
         uses: neondatabase/create-branch-action@v6
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
-          branch_name: pr-${{ github.event.pull_request.number }}
+          branch_name: ${{ steps.context.outputs.branch_name }}
           # Fork from the Default (production) branch so PR branches have
           # production-parity schema and data.
           parent: production
@@ -235,11 +271,18 @@ jobs:
       # Leaves a collapsible comment with the branch connection string so
       # developers can connect from a local client for debugging.  The
       # comment is updated in-place on subsequent pushes (no spam).
+      # Skipped for workflow_dispatch runs that are not tied to a PR (i.e.
+      # when branch_name was provided instead of pr_number).
       - name: Comment on PR with branch details
+        if: steps.context.outputs.pr_number != ''
         uses: actions/github-script@v8
         with:
           script: |
-            const branchName = `pr-${{ github.event.pull_request.number }}`;
+            const branchName = `${{ steps.context.outputs.branch_name }}`;
+            // Validate pr_number is a positive integer — required by the GitHub issues API.
+            const rawPrNum   = `${{ steps.context.outputs.pr_number }}`;
+            const prNumber   = parseInt(rawPrNum, 10);
+            if (isNaN(prNumber) || prNumber <= 0) { core.setFailed(`Invalid pr_number: '${rawPrNum}'. Must be a positive integer.`); return; }
             const dbUrl      = `${{ steps.create-branch.outputs.db_url_with_pooler }}`;
             const projectId  = `${{ secrets.NEON_PROJECT_ID }}`;
 
@@ -282,7 +325,7 @@ jobs:
             const { data: comments } = await github.rest.issues.listComments({
               owner: context.repo.owner,
               repo:  context.repo.repo,
-              issue_number: context.issue.number,
+              issue_number: prNumber,
             });
 
             const existing = comments.find(c => c.body.includes(marker));
@@ -300,7 +343,7 @@ jobs:
               await github.rest.issues.createComment({
                 owner: context.repo.owner,
                 repo:  context.repo.repo,
-                issue_number: context.issue.number,
+                issue_number: prNumber,
                 body,
               });
             }
