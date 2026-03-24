@@ -81,27 +81,28 @@ fi
 # initialises without error in the Workers runtime.
 POLYFILLS_FILE="frontend/dist/adblock-compiler/server/polyfills.server.mjs"
 if [ -f "$POLYFILLS_FILE" ]; then
-    # Ensure the expected pattern exists before attempting to patch.
+    # Check whether the pattern still exists before attempting to patch.
+    # Angular 21.2+ may no longer emit createRequire(import.meta.url) at module
+    # scope, in which case no patch is needed and we skip silently.
     if ! grep -qF 'createRequire(import.meta.url)' "$POLYFILLS_FILE"; then
-        echo "Error: expected pattern 'createRequire(import.meta.url)' not found in $POLYFILLS_FILE; Angular output may have changed." >&2
-        exit 1
-    fi
+        echo "build-worker.sh: 'createRequire(import.meta.url)' not found in $POLYFILLS_FILE — Angular output may have changed or no longer requires this patch. Skipping."
+    else
+        # Apply the patch into a temporary file.
+        if ! sed "s|createRequire(import\.meta\.url)|createRequire(import.meta.url ?? 'file:///worker')|g" \
+            "$POLYFILLS_FILE" > "$POLYFILLS_FILE.tmp"; then
+            echo "Error: failed to patch $POLYFILLS_FILE (sed exited with an error)." >&2
+            rm -f "$POLYFILLS_FILE.tmp"
+            exit 1
+        fi
 
-    # Apply the patch into a temporary file.
-    if ! sed "s|createRequire(import\.meta\.url)|createRequire(import.meta.url ?? 'file:///worker')|g" \
-        "$POLYFILLS_FILE" > "$POLYFILLS_FILE.tmp"; then
-        echo "Error: failed to patch $POLYFILLS_FILE (sed exited with an error)." >&2
-        rm -f "$POLYFILLS_FILE.tmp"
-        exit 1
-    fi
+        # Verify that the replacement was actually applied.
+        if ! grep -qF "createRequire(import.meta.url ?? 'file:///worker')" "$POLYFILLS_FILE.tmp"; then
+            echo "Error: patch verification failed for $POLYFILLS_FILE; replacement not found in patched output." >&2
+            rm -f "$POLYFILLS_FILE.tmp"
+            exit 1
+        fi
 
-    # Verify that the replacement was actually applied.
-    if ! grep -qF "createRequire(import.meta.url ?? 'file:///worker')" "$POLYFILLS_FILE.tmp"; then
-        echo "Error: patch verification failed for $POLYFILLS_FILE; replacement not found in patched output." >&2
-        rm -f "$POLYFILLS_FILE.tmp"
-        exit 1
+        mv "$POLYFILLS_FILE.tmp" "$POLYFILLS_FILE"
+        echo "Patched $POLYFILLS_FILE for Cloudflare Workers (createRequire fallback)."
     fi
-
-    mv "$POLYFILLS_FILE.tmp" "$POLYFILLS_FILE"
-    echo "Patched $POLYFILLS_FILE for Cloudflare Workers (createRequire fallback)."
 fi
