@@ -1,10 +1,15 @@
 # Neon Database Branch — Create
 #
-# Creates an isolated Neon PostgreSQL branch for every pull request so that
-# schema migrations, seed data, and integration tests can run against a
-# disposable copy of the production database.  The branch is named
-# `pr-<number>` and is automatically deleted by neon-branch-cleanup.yml
-# when the PR is closed or merged.
+# Creates an isolated Neon PostgreSQL branch for pull requests that touch
+# Neon-relevant files (schema, migrations, Prisma config, auth/DB middleware).
+# The branch is named `pr-<number>` and is automatically deleted by
+# neon-branch-cleanup.yml when the PR is closed or merged.
+#
+# Path-gating: the `pull_request` trigger uses a `paths` filter so this
+# workflow is skipped entirely for PRs that only touch frontend code, docs,
+# workflow files, etc.  This prevents unnecessary billable Neon branches.
+# The `workflow_dispatch` trigger has no `paths` filter so a branch can
+# always be created manually for a PR that needs one.
 #
 # Phase 0 of the Neon PostgreSQL migration.
 #
@@ -28,6 +33,14 @@ name: 'Neon Branch: Create'
 on:
   pull_request:
     types: [opened, reopened, synchronize]
+    paths:
+      - 'prisma/**'
+      - 'prisma.config.ts'
+      - 'worker/lib/auth.ts'
+      - 'worker/lib/prisma.ts'
+      - 'worker/middleware/better-auth-provider.ts'
+      - 'worker/middleware/prisma-middleware.ts'
+  workflow_dispatch:
 
 # Only one branch-create job per PR at a time; cancel stale runs when a
 # new commit is pushed.
