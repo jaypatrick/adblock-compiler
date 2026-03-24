@@ -45,9 +45,7 @@ let sdkImportPromise: Promise<SdkRouteAgentRequest | null> | null = null;
 function getSdkRouteAgentRequest(): Promise<SdkRouteAgentRequest | null> {
     if (sdkImportPromise === null) {
         sdkImportPromise = import('agents')
-            .then((m) => (typeof m.routeAgentRequest === 'function'
-                ? m.routeAgentRequest as SdkRouteAgentRequest
-                : null))
+            .then((m) => (typeof m.routeAgentRequest === 'function' ? m.routeAgentRequest as SdkRouteAgentRequest : null))
             .catch(() => null);
     }
     return sdkImportPromise;
