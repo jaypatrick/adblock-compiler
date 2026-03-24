@@ -84,20 +84,20 @@ describe('PerformanceComponent', () => {
         expect(component.healthStatusColor()).toBe('var(--mat-sys-on-surface-variant)');
     });
 
-    // Helper: creates a fresh fixture (separate from the outer `fixture`) so we can
-    // control the initial /api/health response independently.  httpResource does not
-    // expose a synchronous mechanism to override its value in tests — using reload()
-    // only schedules a re-fetch on the next effect tick, which doesn't fire during
-    // synchronous test execution.  Creating a new fixture lets us respond to its
-    // initial request with the desired status before detectChanges() commits the
-    // value to the signal.
+    // Helper: creates a fresh fixture so we can control the /api/health response.
+    // Angular's httpResource uses effects that only run during change detection;
+    // requests are not queued until detectChanges() fires.  The correct order is:
+    //   1. detectChanges()  → effects run → HTTP requests are queued
+    //   2. flush requests   → desired data delivered to the signal synchronously
+    //   3. flush remainder  → clean up ContainerStatusWidget polls etc.
     function createFixtureWithHealthStatus(
         status: 'healthy' | 'degraded' | 'down',
     ): { sf: ComponentFixture<PerformanceComponent>; sc: PerformanceComponent } {
         const sf = TestBed.createComponent(PerformanceComponent);
         const sc = sf.componentInstance;
-        // The outer fixture's initial requests were already flushed in beforeEach.
-        // Flush only the new fixture's requests here.
+        // Step 1: run change detection so httpResource effects fire and queue requests.
+        sf.detectChanges();
+        // Step 2: flush the now-queued requests with the desired health status.
         httpTesting.match('/api/metrics').forEach(req => req.flush({
             totalRequests: 0, averageDuration: 0, p95Duration: 0, p99Duration: 0,
             successRate: 0, cacheHitRate: 0, endpoints: [],
@@ -105,10 +105,7 @@ describe('PerformanceComponent', () => {
         httpTesting.match('/api/health').forEach(req => req.flush({
             status, version: '1.0.0', timestamp: new Date().toISOString(),
         }));
-        // Run change detection so the httpResource commits the response to its signal.
-        sf.detectChanges();
-        // Flush any extra requests triggered by rendering (e.g. ContainerStatusWidget
-        // initial poll for /api/queue/stats).
+        // Step 3: flush any remaining requests (e.g. ContainerStatusWidget /api/queue/stats).
         httpTesting.match(() => true).forEach(req => req.flush({}));
         return { sf, sc };
     }
