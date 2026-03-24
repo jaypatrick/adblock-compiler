@@ -111,3 +111,6 @@ export { evaluateBooleanExpression, getKnownPlatforms, isKnownPlatform } from '.
 // Circuit breaker for resilience
 export { CircuitBreaker, CircuitBreakerOpenError, CircuitBreakerState } from './CircuitBreaker.ts';
 export type { CircuitBreakerOptions } from './CircuitBreaker.ts';
+
+// Semantic versioning utilities
+export { isValidSemver, SEMVER_REGEX } from './semver.ts';
