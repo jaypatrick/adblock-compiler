@@ -2008,3 +2008,72 @@ export type PrismaAction =
  */
 export type TransactionClient = Omit<DefaultPrismaClient, runtime.ITXClientDenyList>
 
+// ============================================================================
+// Agent models — stub delegates (replaced on next `prisma generate`)
+// ============================================================================
+
+export type AgentSessionDelegate<_ExtArgs = any, _OmitOpts = any> = {
+  create(args: any): Promise<any>
+  findMany(args?: any): Promise<any[]>
+  findUnique(args: any): Promise<any | null>
+  update(args: any): Promise<any>
+  count(args?: any): Promise<number>
+}
+
+export type AgentInvocationDelegate<_ExtArgs = any, _OmitOpts = any> = {
+  create(args: any): Promise<any>
+  findMany(args?: any): Promise<any[]>
+  findUnique(args: any): Promise<any | null>
+  count(args?: any): Promise<number>
+}
+
+export type AgentAuditLogDelegate<_ExtArgs = any, _OmitOpts = any> = {
+  create(args: any): Promise<any>
+  findMany(args?: any): Promise<any[]>
+  count(args?: any): Promise<number>
+}
+
+export type AgentSessionModel = {
+  id: string
+  userId: string
+  agentSlug: string
+  agentBindingKey: string
+  instanceId: string
+  transport: string
+  startedAt: Date
+  endedAt: Date | null
+  durationMs: number | null
+  closedReason: string | null
+  clientIp: string | null
+  userAgent: string | null
+  workerRegion: string | null
+  metadata: any | null
+}
+
+export type AgentInvocationModel = {
+  id: string
+  sessionId: string
+  toolName: string
+  inputSummary: string | null
+  outputSummary: string | null
+  durationMs: number | null
+  success: boolean
+  errorMessage: string | null
+  invokedAt: Date
+  metadata: any | null
+}
+
+export type AgentAuditLogModel = {
+  id: string
+  actorUserId: string | null
+  agentSlug: string | null
+  instanceId: string | null
+  action: string
+  status: string
+  ipAddress: string | null
+  userAgent: string | null
+  reason: string | null
+  metadata: any | null
+  createdAt: Date
+}
+
