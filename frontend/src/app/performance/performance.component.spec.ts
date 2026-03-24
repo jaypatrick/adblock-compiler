@@ -85,19 +85,20 @@ describe('PerformanceComponent', () => {
     });
 
     // Helper: creates a fresh fixture so we can control the /api/health response.
-    // Angular's httpResource uses effects that only run during change detection;
-    // requests are not queued until detectChanges() fires.  The correct order is:
-    //   1. detectChanges()  → effects run → HTTP requests are queued
-    //   2. flush requests   → desired data delivered to the signal synchronously
-    //   3. flush remainder  → clean up ContainerStatusWidget polls etc.
+    // Angular's httpResource uses effects that only run during change detection.
+    // The correct sequence is:
+    //   1. detectChanges()        → effects run → HTTP requests are queued
+    //   2. flush requests         → responses delivered, signal update scheduled
+    //   3. detectChanges() again  → scheduled effect runs → value() committed to signal
+    //   4. flush remainder        → clean up ContainerStatusWidget polls etc.
     function createFixtureWithHealthStatus(
         status: 'healthy' | 'degraded' | 'down',
     ): { sf: ComponentFixture<PerformanceComponent>; sc: PerformanceComponent } {
         const sf = TestBed.createComponent(PerformanceComponent);
         const sc = sf.componentInstance;
-        // Step 1: run change detection so httpResource effects fire and queue requests.
+        // Step 1: run change detection to trigger httpResource effects and queue requests.
         sf.detectChanges();
-        // Step 2: flush the now-queued requests with the desired health status.
+        // Step 2: flush the queued requests with the desired data.
         httpTesting.match('/api/metrics').forEach(req => req.flush({
             totalRequests: 0, averageDuration: 0, p95Duration: 0, p99Duration: 0,
             successRate: 0, cacheHitRate: 0, endpoints: [],
@@ -105,7 +106,9 @@ describe('PerformanceComponent', () => {
         httpTesting.match('/api/health').forEach(req => req.flush({
             status, version: '1.0.0', timestamp: new Date().toISOString(),
         }));
-        // Step 3: flush any remaining requests (e.g. ContainerStatusWidget /api/queue/stats).
+        // Step 3: run change detection again to commit the HTTP responses to the signals.
+        sf.detectChanges();
+        // Step 4: flush any remaining requests (e.g. ContainerStatusWidget /api/queue/stats).
         httpTesting.match(() => true).forEach(req => req.flush({}));
         return { sf, sc };
     }
