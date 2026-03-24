@@ -92,6 +92,7 @@ import {
     handleAdminNeonListEndpoints,
     handleAdminNeonQuery,
 } from './handlers/admin-neon.ts';
+import { handleAdminGetAgentSession, handleAdminListAgentAuditLog, handleAdminListAgentSessions, handleAdminTerminateAgentSession } from './handlers/admin-agents.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleMetrics } from './handlers/metrics.ts';
 import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './handlers/configuration.ts';
@@ -115,8 +116,8 @@ import {
     WebhookNotifyRequestSchema,
 } from './schemas.ts';
 
-// Agent routing
-import { routeAgentRequest } from './agent-routing.ts';
+// Agent routing (authenticated)
+import { agentRouter } from './agents/index.ts';
 import { handleWebSocketUpgrade } from './websocket.ts';
 
 // ============================================================================
@@ -347,12 +348,39 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
     return auth.handler(c.req.raw);
 });
 
-// ── 2. MCP Agent routing + auth (combined to avoid double-pass) ──────────────
-app.use('*', async (c, next) => {
-    // MCP Agent routes: must run before auth
-    const agentResponse = await routeAgentRequest(c.req.raw, c.env);
-    if (agentResponse) return agentResponse;
+// ── 2. Agent router (authenticated) ──────────────────────────────────────────
+// Agent routes are handled by the dedicated agent sub-app, which enforces ZTA
+// authentication BEFORE forwarding requests to the Durable Object.  This
+// replaces the previous pattern where routeAgentRequest() was called before
+// auth ran, creating a security gap where any unauthenticated request could
+// reach agent endpoints.
+//
+// The agent router is mounted directly on `app` (not under `/api`) so the
+// agents SDK URL pattern `/agents/{slug}/{instanceId}` is preserved exactly.
+//
+// NOTE: agentRouter handlers return a Response without calling `next()`, so
+// the global CORS and secureHeaders middlewares (registered below) never run
+// for `/agents/*` requests.  We must attach them explicitly here — before the
+// sub-app mount — so browser clients (SSE connections in particular) receive
+// the correct CORS allowlist enforcement and security headers.
+app.use(
+    '/agents/*',
+    cors({
+        origin: (origin, c) => {
+            if (isPublicEndpoint(new URL(c.req.url).pathname)) return '*';
+            return matchOrigin(origin, c.env as Env) ?? undefined;
+        },
+        allowMethods: ['GET', 'POST', 'OPTIONS'],
+        allowHeaders: ['Content-Type', 'Authorization'],
+        maxAge: 86400,
+        credentials: true,
+    }),
+);
+app.use('/agents/*', secureHeaders());
+app.route('/', agentRouter);
 
+// ── 3. Unified auth + rate limiting ──────────────────────────────────────────
+app.use('*', async (c, next) => {
     const pathname = c.req.path;
     const ip = c.get('ip');
     const analytics = c.get('analytics');
@@ -441,7 +469,7 @@ app.use('*', async (c, next) => {
     await next();
 });
 
-// ── 3. CORS middleware ────────────────────────────────────────────────────────
+// ── 4. CORS middleware ────────────────────────────────────────────────────────
 app.use(
     '*',
     cors({
@@ -456,10 +484,10 @@ app.use(
     }),
 );
 
-// ── 4. Secure headers ─────────────────────────────────────────────────────────
+// ── 5. Secure headers ─────────────────────────────────────────────────────────
 app.use('*', secureHeaders());
 
-// ── 5. Pretty JSON (debug mode: add ?pretty=true to any response) ─────────────
+// ── 6. Pretty JSON (debug mode: add ?pretty=true to any response) ─────────────
 app.use('*', prettyJSON());
 
 // ============================================================================
@@ -675,6 +703,17 @@ routes.post(
     // deno-lint-ignore no-explicit-any
     zValidator('json', AdminNeonQuerySchema as any, zodValidationError),
     (c) => handleAdminNeonQuery(c.req.raw, c.env, c.get('authContext')),
+);
+
+// ── Admin agent data ──────────────────────────────────────────────────────────
+
+routes.get('/admin/agents/sessions', (c) => handleAdminListAgentSessions(c.req.raw, c.env, c.get('authContext')));
+routes.get('/admin/agents/sessions/:sessionId', (c) => handleAdminGetAgentSession(c.req.raw, c.env, c.get('authContext'), c.req.param('sessionId')!));
+routes.get('/admin/agents/audit', (c) => handleAdminListAgentAuditLog(c.req.raw, c.env, c.get('authContext')));
+routes.delete(
+    '/admin/agents/sessions/:sessionId',
+    rateLimitMiddleware(),
+    (c) => handleAdminTerminateAgentSession(c.req.raw, c.env, c.get('authContext'), c.req.param('sessionId')!),
 );
 
 // ── Metrics ───────────────────────────────────────────────────────────────────

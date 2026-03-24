@@ -47,10 +47,11 @@ model User {
   // Better Auth: two-factor authentication status
   twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
 
-  apiKeys    ApiKey[]
-  sessions   Session[]
-  accounts   Account[]
-  twoFactor  TwoFactor?
+  apiKeys       ApiKey[]
+  sessions      Session[]
+  accounts      Account[]
+  twoFactor     TwoFactor?
+  agentSessions AgentSession[]
 
   @@map("users")
 }
@@ -276,6 +277,77 @@ model SourceChangeEvent {
   @@index([sourceId])
   @@index([detectedAt(sort: Desc)])
   @@map("source_change_events")
+}
+
+// ============================================================================
+// Agent Sessions — tracks active and historical Cloudflare Agents connections
+// ============================================================================
+
+model AgentSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  agentSlug    String    @map("agent_slug") // from AGENT_REGISTRY slug
+  instanceId   String    @map("instance_id") // Durable Object instance name
+  userId       String?   @map("user_id") @db.Uuid
+  clerkUserId  String?   @map("clerk_user_id")
+  startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  endedAt      DateTime? @map("ended_at") @db.Timestamptz // NULL = still active
+  endReason    String?   @map("end_reason") // 'client_disconnect' | 'server_error' | 'admin_terminate' | 'timeout'
+  messageCount Int       @default(0) @map("message_count") // incremented on each WS message
+  transport    String    @default("websocket") // 'websocket' | 'sse'
+  clientIp     String?   @map("client_ip")
+  userAgent    String?   @map("user_agent")
+  metadata     Json?     // JSON blob for future extensibility
+
+  user        User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  invocations AgentInvocation[]
+
+  @@index([userId])
+  @@index([clerkUserId])
+  @@index([agentSlug])
+  @@index([startedAt])
+  @@index([userId, endedAt], name: "agent_sessions_user_active_idx") // "active sessions per user"
+  @@map("agent_sessions")
+}
+
+/// Tracks individual tool calls / actions within a session.
+model AgentInvocation {
+  id            String       @id @default(uuid()) @db.Uuid
+  sessionId     String       @map("session_id") @db.Uuid
+  session       AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  toolName      String       @map("tool_name")
+  inputSummary  String?      @map("input_summary")
+  outputSummary String?      @map("output_summary")
+  durationMs    Int?         @map("duration_ms")
+  success       Boolean      @default(true)
+  errorMessage  String?      @map("error_message")
+  invokedAt     DateTime     @default(now()) @map("invoked_at") @db.Timestamptz
+  metadata      Json?        @db.JsonB
+
+  @@index([sessionId])
+  @@index([toolName])
+  @@index([invokedAt])
+  @@map("agent_invocations")
+}
+
+/// Append-only audit log for all agent-related security events.
+model AgentAuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  agentSlug   String?  @map("agent_slug")
+  instanceId  String?  @map("instance_id")
+  action      String
+  status      String   @default("success")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  reason      String?
+  metadata    Json?    @db.JsonB
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([actorUserId])
+  @@index([agentSlug])
+  @@index([action])
+  @@index([createdAt])
+  @@map("agent_audit_logs")
 }
 
 // ============================================================================

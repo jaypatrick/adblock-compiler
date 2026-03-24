@@ -111,3 +111,18 @@ export type FilterCache = Prisma.FilterCacheModel
  * 
  */
 export type CompilationMetadata = Prisma.CompilationMetadataModel
+/**
+ * Model AgentSession
+ * 
+ */
+export type AgentSession = Prisma.AgentSessionModel
+/**
+ * Model AgentInvocation
+ * 
+ */
+export type AgentInvocation = Prisma.AgentInvocationModel
+/**
+ * Model AgentAuditLog
+ * 
+ */
+export type AgentAuditLog = Prisma.AgentAuditLogModel

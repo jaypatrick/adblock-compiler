@@ -1,13 +1,17 @@
 /**
- * Unit tests for the self-contained DO agent router.
+ * Unit tests for the DO agent router utility module.
  *
  * No Node.js built-ins are imported, so these tests run directly under
  * `deno test` without any Cloudflare Workers runtime (no skip/ignore needed).
+ *
+ * The custom shim and SDK fallback probe (`isSdkRouteAvailable`) have been
+ * retired — the router now delegates directly to the official `agents` SDK.
+ * These tests currently cover only the preserved utility function
+ * (`agentNameToBindingKey`).
  */
 
-import { assertEquals, assertMatch } from '@std/assert';
-import { agentNameToBindingKey, routeAgentRequest } from './agent-routing.ts';
-import type { Env } from './types.ts';
+import { assertEquals } from '@std/assert';
+import { agentNameToBindingKey } from './agent-routing.ts';
 
 // ---------------------------------------------------------------------------
 // agentNameToBindingKey
@@ -25,95 +29,10 @@ Deno.test('agentNameToBindingKey - already uppercase is preserved', () => {
     assertEquals(agentNameToBindingKey('AGENT'), 'AGENT');
 });
 
-// ---------------------------------------------------------------------------
-// routeAgentRequest — non-matching paths → null
-// ---------------------------------------------------------------------------
-
-Deno.test('routeAgentRequest - returns null for a non-agent path', async () => {
-    const req = new Request('https://example.com/api/compile');
-    assertEquals(await routeAgentRequest(req, {} as Env), null);
+Deno.test('agentNameToBindingKey - single word (no hyphens)', () => {
+    assertEquals(agentNameToBindingKey('agent'), 'AGENT');
 });
 
-Deno.test('routeAgentRequest - returns null for root path', async () => {
-    const req = new Request('https://example.com/');
-    assertEquals(await routeAgentRequest(req, {} as Env), null);
-});
-
-Deno.test('routeAgentRequest - returns null for /agents with no further segments', async () => {
-    const req = new Request('https://example.com/agents');
-    assertEquals(await routeAgentRequest(req, {} as Env), null);
-});
-
-Deno.test('routeAgentRequest - returns null for /agents/<name> (no instance ID)', async () => {
-    const req = new Request('https://example.com/agents/mcp-agent');
-    assertEquals(await routeAgentRequest(req, {} as Env), null);
-});
-
-Deno.test('routeAgentRequest - returns null when binding is absent from env', async () => {
-    const req = new Request('https://example.com/agents/mcp-agent/default/sse');
-    assertEquals(await routeAgentRequest(req, {} as Env), null);
-});
-
-// ---------------------------------------------------------------------------
-// routeAgentRequest — matching path with mock DO binding
-// ---------------------------------------------------------------------------
-
-Deno.test('routeAgentRequest - forwards matching request to the DO stub', async () => {
-    const mockBody = 'agent response';
-    const mockResponse = new Response(mockBody, { status: 200 });
-
-    const mockNs = {
-        idFromName: (_name: string) => ({ toString: () => 'mock-id' }),
-        get: (_id: unknown) => ({ fetch: (_req: Request) => Promise.resolve(mockResponse) }),
-    } as unknown as DurableObjectNamespace;
-
-    const env = { MCP_AGENT: mockNs } as unknown as Env;
-    const req = new Request('https://example.com/agents/mcp-agent/default/sse');
-    const result = await routeAgentRequest(req, env);
-
-    assertEquals(result, mockResponse);
-    assertEquals(await result!.text(), mockBody);
-});
-
-Deno.test('routeAgentRequest - uses instanceId from URL as the DO name', async () => {
-    let capturedName = '';
-
-    const mockNs = {
-        idFromName: (name: string) => {
-            capturedName = name;
-            return { toString: () => name };
-        },
-        get: (_id: unknown) => ({ fetch: (_req: Request) => Promise.resolve(new Response('ok')) }),
-    } as unknown as DurableObjectNamespace;
-
-    const env = { MCP_AGENT: mockNs } as unknown as Env;
-    await routeAgentRequest(new Request('https://example.com/agents/mcp-agent/my-session/sse'), env);
-
-    assertEquals(capturedName, 'my-session');
-});
-
-Deno.test('routeAgentRequest - resolves binding key via agentNameToBindingKey', async () => {
-    const mockNs = {
-        idFromName: (_name: string) => ({ toString: () => 'id' }),
-        get: (_id: unknown) => ({ fetch: (_req: Request) => Promise.resolve(new Response('mcp')) }),
-    } as unknown as DurableObjectNamespace;
-
-    const env = { MCP_AGENT: mockNs } as unknown as Env;
-    const result = await routeAgentRequest(new Request('https://example.com/agents/mcp-agent/default'), env);
-
-    assertMatch(await result!.text(), /mcp/);
-});
-
-// ---------------------------------------------------------------------------
-// agents SDK compatibility smoke test
-// ---------------------------------------------------------------------------
-
-Deno.test('SDK_ROUTE_AVAILABLE - runtime SDK import compatibility probe', async () => {
-    // This test passes if the module and isSdkRouteAvailable() are importable
-    // under the current test runner (Deno) without throwing at runtime.
-    // It does NOT verify wrangler/esbuild bundling; bundler failures should be
-    // caught by wrangler build/dev/deploy steps rather than by this unit test.
-    const { isSdkRouteAvailable: probe } = await import('./agent-routing.ts');
-    console.log(`[agents-sdk-probe] SDK import triggered (sdkImportPromise set): ${probe()}`);
-    // The import itself not throwing is the meaningful assertion here.
+Deno.test('agentNameToBindingKey - multiple hyphens', () => {
+    assertEquals(agentNameToBindingKey('foo-bar-baz'), 'FOO_BAR_BAZ');
 });
