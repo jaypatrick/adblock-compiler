@@ -1,19 +1,24 @@
 /**
- * Minimal, dependency-free Durable Object agent request router.
+ * Durable Object agent request router.
  *
- * Routes requests matching `/agents/{name}/{instanceId}[/…]` to the
- * corresponding Durable Object binding in `env`, with no Node.js built-in
- * dependencies (avoids `async_hooks`, `path`, etc. that the `agents` SDK
- * pulls in and that break wrangler's esbuild bundler).
+ * The fallback shim (below) is dependency-free and routes requests matching
+ * `/agents/{name}/{instanceId}[/…]` to the corresponding DO binding in `env`
+ * with no Node.js built-in dependencies.
  *
- * SDK COMPATIBILITY TEST: We now attempt to import `routeAgentRequest` from
- * `@cloudflare/agents` to verify that wrangler v4 + `nodejs_compat` resolves
- * the historical bundler incompatibility. If the SDK import is available and
- * bundles cleanly, `sdkRouteAgentRequest` will be non-null and the SDK version
- * is used. Otherwise, the custom implementation below is used as a fallback.
+ * SDK COMPATIBILITY TEST: On the first matching `/agents/…` request, this
+ * module attempts a lazy import of `routeAgentRequest` from the `agents` SDK
+ * (formerly `@cloudflare/agents`, then `agents-sdk`; import specifier is now
+ * simply `agents`). If the import succeeds, the SDK version is used; otherwise
+ * the dependency-free shim handles the request. The SDK import result is cached
+ * so subsequent requests pay no additional cost.
  *
- * If `wrangler dev` and `wrangler deploy` succeed without bundler errors after
- * this change, the custom shim in this file can be retired in a follow-up PR.
+ * Bundling compatibility must be validated via `wrangler dev` or
+ * `wrangler deploy` — a successful build confirms the SDK bundles cleanly
+ * under wrangler v4 + `nodejs_compat`. If the build fails on `async_hooks`
+ * or `path`, the shim remains the only active path.
+ *
+ * If `wrangler dev` and `wrangler deploy` succeed without bundler errors,
+ * the custom shim in this file can be retired in a follow-up PR.
  *
  * @see https://github.com/jaypatrick/adblock-compiler/issues/1377
  */
@@ -21,27 +26,31 @@
 import type { Env } from './types.ts';
 
 // ---------------------------------------------------------------------------
-// SDK compatibility probe
+// SDK compatibility probe — lazy-loaded on the first /agents/* request
 // ---------------------------------------------------------------------------
 
-/**
- * Attempt to import routeAgentRequest from the official @cloudflare/agents SDK.
- * This import is the canary: if esbuild/wrangler fails here due to async_hooks
- * or path, the bundler error will surface in `wrangler dev` output.
- */
 type SdkRouteAgentRequest = (request: Request, env: unknown) => Promise<Response | null>;
 
-let sdkRouteAgentRequest: SdkRouteAgentRequest | null = null;
+// Cached Promise so the import runs at most once across all requests.
+let sdkImportPromise: Promise<SdkRouteAgentRequest | null> | null = null;
 
-try {
-    // Dynamic import so that a bundler error here is isolated and observable.
-    const agentsSdk = await import('@cloudflare/agents');
-    if (typeof agentsSdk.routeAgentRequest === 'function') {
-        sdkRouteAgentRequest = agentsSdk.routeAgentRequest as SdkRouteAgentRequest;
+/**
+ * Returns the SDK's `routeAgentRequest` function if the `agents` package
+ * imports successfully at runtime, or `null` otherwise.
+ *
+ * This is a runtime availability probe — it does NOT catch build-time bundler
+ * failures. Bundler compatibility is validated by `wrangler dev`/`deploy`
+ * completing without errors.
+ */
+function getSdkRouteAgentRequest(): Promise<SdkRouteAgentRequest | null> {
+    if (sdkImportPromise === null) {
+        sdkImportPromise = import('agents')
+            .then((m) => (typeof m.routeAgentRequest === 'function'
+                ? m.routeAgentRequest as SdkRouteAgentRequest
+                : null))
+            .catch(() => null);
     }
-} catch {
-    // SDK not available or bundler cannot resolve it — fall back to custom shim below.
-    sdkRouteAgentRequest = null;
+    return sdkImportPromise;
 }
 
 // ---------------------------------------------------------------------------
@@ -81,21 +90,33 @@ async function customRouteAgentRequest(request: Request, env: Env): Promise<Resp
  * Routes incoming requests to the appropriate Durable Object agent and returns
  * the agent's Response, or `null` when the URL does not match an agents path.
  *
- * Delegates to the official `@cloudflare/agents` SDK when available (SDK
- * compatibility test), otherwise falls back to the custom shim.
+ * Delegates to the official `agents` SDK when available (lazy-loaded on first
+ * `/agents/…` request), otherwise falls back to the custom shim.
  *
  * URL pattern: `/agents/{binding-kebab-case}/{agentId}[/*]`
  * Example SSE endpoint: `GET /agents/mcp-agent/default/sse`
  */
 export async function routeAgentRequest(request: Request, env: Env): Promise<Response | null> {
-    if (sdkRouteAgentRequest) {
-        return sdkRouteAgentRequest(request, env);
-    }
+    const url = new URL(request.url);
+    // Only attempt SDK import for /agents/* paths — avoids any cost on normal API traffic.
+    if (!url.pathname.startsWith('/agents/')) return customRouteAgentRequest(request, env);
+
+    const sdkFn = await getSdkRouteAgentRequest();
+    if (sdkFn) return sdkFn(request, env);
     return customRouteAgentRequest(request, env);
 }
 
 /**
- * Indicates whether the @cloudflare/agents SDK was successfully imported.
- * Exported for use in tests and diagnostics.
+ * Indicates whether a lazy SDK import has been triggered by an `/agents/…`
+ * request. Returns `false` until the first such request is processed.
+ *
+ * Note: `true` means the import was *attempted* — not that it succeeded.
+ * The import may have resolved to `null` if the `agents` package was
+ * unavailable, in which case the fallback shim handles requests.
+ * Exported for diagnostics only.
  */
-export const SDK_ROUTE_AVAILABLE = sdkRouteAgentRequest !== null;
+export function isSdkRouteAvailable(): boolean {
+    // Returns true once the import has been triggered (i.e., after first /agents/ request),
+    // regardless of whether it resolved successfully.
+    return sdkImportPromise !== null;
+}

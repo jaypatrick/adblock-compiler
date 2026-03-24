@@ -100,7 +100,7 @@
         "@std/testing": "jsr:@std/testing@^1.0.17",
         "@std/async": "jsr:@std/async@^1.2.0",
         "@std/yaml": "jsr:@std/yaml@^1.0.12",
-        "@cloudflare/agents": "npm:@cloudflare/agents@^0.0.16",
+        "@cloudflare/agents": "npm:agents@^0.8.0",
         "@cloudflare/workers-types": "npm:@cloudflare/workers-types@^4.20260313.1",
         "@cloudflare/containers": "npm:@cloudflare/containers@^0.1.1",
         "@cloudflare/playwright": "npm:@cloudflare/playwright@^1.1.2",
