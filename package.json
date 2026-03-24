@@ -32,10 +32,10 @@
     },
     "devDependencies": {
         "@cloudflare/containers": "^0.1.1",
-        "@cloudflare/playwright": "^1.1.2",
+        "@cloudflare/playwright": "^1.2.0",
         "@cloudflare/playwright-mcp": "^0.0.5",
         "@cloudflare/workers-types": "^4.20260317.1",
         "prisma": "7.5.0",
-        "wrangler": "^4.75.0"
+        "wrangler": "^4.77.0"
     }
 }

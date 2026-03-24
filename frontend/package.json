@@ -51,7 +51,7 @@
         "@angular-eslint/builder": "^21.3.0",
         "@angular/cli": "^21.2.2",
         "@angular/compiler-cli": "^21.2.4",
-        "@cloudflare/workers-types": "^4.20260313.1",
+        "@cloudflare/workers-types": "^4.20260317.1",
         "@eslint/js": "^10.0.1",
         "@playwright/test": "^1.58.2",
         "@sentry/cli": "^3.3.3",
