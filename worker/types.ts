@@ -37,6 +37,61 @@ export type WorkflowInstance = globalThis.WorkflowInstance;
 export type HyperdriveBinding = globalThis.Hyperdrive;
 
 // ============================================================================
+// Dynamic Workers (Cloudflare Dynamic Workers — open beta, March 2026)
+// ============================================================================
+
+/**
+ * Type alias for the Cloudflare Dynamic Dispatch Namespace binding.
+ * Provides `load()` for one-shot ephemeral Workers and `get()` for
+ * named, persistent, hibernating Dynamic Workers (DO-backed).
+ *
+ * Requires wrangler.toml:
+ *   [[dynamic_dispatch_namespaces]]
+ *   binding = "LOADER"
+ *   namespace = "adblock-compiler-dynamic"
+ *
+ * @see https://developers.cloudflare.com/dynamic-workers/
+ */
+export type DynamicDispatchNamespace = {
+    /**
+     * Load a one-shot ephemeral Worker from a module map.
+     * Ideal for stateless transforms: AST parsing, rule validation, single-file compilation.
+     * The Worker is destroyed after the response completes.
+     */
+    load(options: DynamicWorkerLoadOptions): Promise<DynamicWorkerEntrypoint>;
+    /**
+     * Get-or-create a named, persistent Dynamic Worker.
+     * The Worker stays warm between requests and hibernates when idle (DO semantics).
+     * Ideal for per-user AiAgent instances or long-lived orchestration workers.
+     */
+    get(id: string, factory: DynamicWorkerFactory): Promise<DynamicWorkerEntrypoint>;
+};
+
+export interface DynamicWorkerLoadOptions {
+    /** Compatibility date for the dynamic Worker's V8 runtime. */
+    compatibilityDate: string;
+    /** The entry point module name (must be a key in `modules`). */
+    mainModule: string;
+    /** Map of module name → source code string. Pre-bundle with @cloudflare/worker-bundler. */
+    modules: Record<string, string>;
+    /**
+     * Set to `null` to fully lock down outbound network access (Zero Trust).
+     * Set to a `Fetcher` to allow outbound via a specific service binding.
+     * Omit to inherit the parent Worker's outbound behaviour.
+     */
+    globalOutbound?: null | Fetcher;
+    /** Bindings granted to the dynamic Worker. Only include what it actually needs. */
+    bindings?: Partial<Env>;
+}
+
+export type DynamicWorkerFactory = (id: string) => DynamicWorkerLoadOptions;
+
+export interface DynamicWorkerEntrypoint {
+    /** Dispatch an HTTP request into the dynamic Worker's `fetch` handler. */
+    fetch(request: Request): Promise<Response>;
+}
+
+// ============================================================================
 // Authentication & Authorization Types
 // ============================================================================
 
@@ -259,6 +314,8 @@ export interface Env {
     MCP_AGENT?: DurableObjectNamespace;
     // Adblock Compiler container Durable Object namespace
     ADBLOCK_COMPILER?: DurableObjectNamespace;
+    // Dynamic Workers dispatch namespace (optional — requires [[dynamic_dispatch_namespaces]] in wrangler.toml)
+    LOADER?: DynamicDispatchNamespace;
     // KV namespace for persisted user rule sets (POST/GET/PUT/DELETE /api/rules)
     RULES_KV?: KVNamespace;
     // Webhook target URL for POST /api/notify (generic HTTP endpoint)

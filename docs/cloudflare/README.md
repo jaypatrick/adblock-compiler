@@ -9,6 +9,7 @@ Documentation for Cloudflare-specific features, services, and integrations.
 - [Cloudflare Analytics Engine](CLOUDFLARE_ANALYTICS.md) - High-cardinality metrics and telemetry
 - [Cloudflare D1](CLOUDFLARE_D1.md) - Edge database integration
 - [Cloudflare Workflows](CLOUDFLARE_WORKFLOWS.md) - Durable execution for long-running compilations
+- [Dynamic Workers](DYNAMIC_WORKERS.md) - Ephemeral V8 isolates for pure transforms and per-user AI agents
 - [Queue Support](QUEUE_SUPPORT.md) - Async compilation via Cloudflare Queues
 - [Queue Diagnostics](QUEUE_DIAGNOSTICS.md) - Diagnostic events for queue-based compilation
 - [Worker E2E Tests](WORKER_E2E_TESTS.md) - Automated end-to-end test suite

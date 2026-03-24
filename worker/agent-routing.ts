@@ -88,17 +88,27 @@ async function customRouteAgentRequest(request: Request, env: Env): Promise<Resp
  * Routes incoming requests to the appropriate Durable Object agent and returns
  * the agent's Response, or `null` when the URL does not match an agents path.
  *
- * Delegates to the official `agents` SDK when available (lazy-loaded on first
- * `/agents/…` request), otherwise falls back to the custom shim.
+ * Attempts the Dynamic Worker path first (when `env.LOADER` is configured),
+ * then delegates to the official `agents` SDK when available (lazy-loaded on
+ * first `/agents/…` request), otherwise falls back to the custom shim.
  *
  * URL pattern: `/agents/{binding-kebab-case}/{agentId}[/*]`
  * Example SSE endpoint: `GET /agents/mcp-agent/default/sse`
  */
 export async function routeAgentRequest(request: Request, env: Env): Promise<Response | null> {
     const url = new URL(request.url);
-    // Only attempt SDK import for /agents/* paths — avoids any cost on normal API traffic.
     if (!url.pathname.startsWith('/agents/')) return customRouteAgentRequest(request, env);
 
+    // Dynamic Worker fast path — attempt per-user agent Worker via LOADER binding.
+    // Extracts userId from X-User-Id header (set by auth middleware upstream).
+    const userId = request.headers.get('X-User-Id');
+    if (userId) {
+        const { getOrCreateUserAgent } = await import('./dynamic-workers/loader.ts');
+        const dynamicResponse = await getOrCreateUserAgent(userId, request, env);
+        if (dynamicResponse !== null) return dynamicResponse;
+    }
+
+    // Fall through to SDK probe → shim logic (unchanged)
     const sdkFn = await getSdkRouteAgentRequest();
     if (sdkFn) return sdkFn(request, env);
     return customRouteAgentRequest(request, env);

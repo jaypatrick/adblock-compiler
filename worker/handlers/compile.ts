@@ -764,7 +764,7 @@ async function queueBatchCompileJob(
  */
 export async function handleASTParseRequest(
     request: Request,
-    _env: Env,
+    env: Env,
 ): Promise<Response> {
     try {
         const rawBody = await request.json();
@@ -774,6 +774,17 @@ export async function handleASTParseRequest(
         }
         const body = parsed.data;
 
+        // Attempt Dynamic Worker path first (Zero Trust isolated execution)
+        const { runAstParseInDynamicWorker } = await import('../dynamic-workers/loader.ts');
+        const dynamicResult = await runAstParseInDynamicWorker({ rules: body.rules, text: body.text }, env);
+        if (dynamicResult !== null) {
+            // Dynamic Worker executed — return its response directly
+            return dynamicResult.success
+                ? JsonResponse.success(dynamicResult.data)
+                : JsonResponse.serverError(dynamicResult.error ?? 'Dynamic Worker error');
+        }
+
+        // Fallback: in-process handler (LOADER binding not configured)
         const { ASTViewerService } = await import('../../src/services/ASTViewerService.ts');
 
         let parsedRules;
@@ -801,10 +812,23 @@ export async function handleASTParseRequest(
  * Validate an array of adblock rules and return per-rule parse results.
  * POST /api/validate
  */
-export async function handleValidate(request: Request): Promise<Response> {
+export async function handleValidate(request: Request, env?: Env): Promise<Response> {
     try {
         const body = await request.json() as { rules?: string[]; strict?: boolean };
         const rules = Array.isArray(body.rules) ? body.rules : [];
+
+        // Attempt Dynamic Worker path first (Zero Trust isolated execution)
+        if (env) {
+            const { runValidateInDynamicWorker } = await import('../dynamic-workers/loader.ts');
+            const dynamicResult = await runValidateInDynamicWorker({ rules, strict: body.strict }, env);
+            if (dynamicResult !== null) {
+                return dynamicResult.success
+                    ? Response.json(dynamicResult.data)
+                    : Response.json({ success: false, error: dynamicResult.error }, { status: 500 });
+            }
+        }
+
+        // Fallback: in-process handler
         const startTime = Date.now();
         const errors: Array<{
             line: number;
