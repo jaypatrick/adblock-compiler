@@ -16,11 +16,11 @@
  * Read the VERSION constant from src/version.ts and validate it.
  */
 import { VERSION } from '../src/version.ts';
-import { isValidSemver } from '../src/deployment/version.ts';
+import { isValidSemver } from '../src/utils/semver.ts';
 
 async function readVersionFromSource(): Promise<string> {
     if (!isValidSemver(VERSION)) {
-        await Promise.reject(new Error('VERSION not found or invalid in src/version.ts'));
+        throw new Error('VERSION has an invalid format in src/version.ts');
     }
     return VERSION;
 }
