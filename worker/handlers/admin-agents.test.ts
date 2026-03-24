@@ -28,7 +28,6 @@ import * as prismaLib from '../lib/prisma.ts';
 // ============================================================================
 
 const VALID_UUID = '00000000-0000-0000-0000-000000000001';
-const VALID_UUID_2 = '00000000-0000-0000-0000-000000000002';
 
 function makeAdminContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
     return {
@@ -323,7 +322,7 @@ Deno.test('handleAdminTerminateAgentSession — 200 terminates active session', 
     });
     const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as ReturnType<typeof prismaLib.createPrismaClient>);
     try {
-        const req = new Request(`http://localhost/admin/agents/sessions/${VALID_UUID_2}`, { method: 'DELETE' });
+        const req = new Request(`http://localhost/admin/agents/sessions/${VALID_UUID}`, { method: 'DELETE' });
         const res = await handleAdminTerminateAgentSession(req, makeEnv(), makeAdminContext(), VALID_UUID);
         assertEquals(res.status, 200);
         const body = await res.json() as Record<string, unknown>;
