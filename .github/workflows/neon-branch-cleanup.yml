@@ -4,10 +4,17 @@
 # Triggered by three events:
 #
 #   1. pull_request [closed] — PR merged or abandoned; deletes `pr-<number>`.
+#                              Uses the same `paths` filter as neon-branch-create.yml
+#                              so cleanup only runs when a branch could have been
+#                              created in the first place.
 #   2. delete               — Git branch deleted directly (CLI, GitHub UI, API,
 #                             Copilot agent branches, etc.); deletes a Neon
 #                             branch with the same name as the deleted git branch.
+#                             GitHub does not support `paths` on the `delete` event;
+#                             the neondatabase/delete-branch-action handles missing
+#                             branches gracefully (exits without error).
 #   3. workflow_dispatch    — Manual cleanup of any named Neon branch.
+#                             No `paths` filter so manual runs always work.
 #
 # This keeps the Neon project tidy and avoids accumulating stale branches
 # that count against quotas.  The branch name convention for PR branches is
@@ -24,6 +31,13 @@ name: 'Neon Branch: Cleanup'
 on:
   pull_request:
     types: [closed]
+    paths:
+      - 'prisma/**'
+      - 'prisma.config.ts'
+      - 'worker/lib/auth.ts'
+      - 'worker/lib/prisma.ts'
+      - 'worker/middleware/better-auth-provider.ts'
+      - 'worker/middleware/prisma-middleware.ts'
   delete:
   workflow_dispatch:
     inputs:
