@@ -829,6 +829,66 @@ export const AdminUnbanUserSchema = z.object({}).passthrough();
 export type AdminUnbanUser = z.infer<typeof AdminUnbanUserSchema>;
 
 // ============================================================================
+// Agent Session / Invocation / Audit Log Row Schemas
+//
+// Validated DB row shapes for the three new agent tables:
+//   agent_sessions, agent_invocations, agent_audit_logs
+// Follow the same pattern as ApiKeyRowSchema / BetterAuthUserRowSchema.
+// ============================================================================
+
+/** Raw Neon/PostgreSQL row shape for the `agent_sessions` table. */
+export const AgentSessionRowSchema = z.object({
+    id: z.string().uuid(),
+    agent_slug: z.string(),
+    instance_id: z.string(),
+    user_id: z.string().uuid().nullable().optional(),
+    clerk_user_id: z.string().nullable().optional(),
+    started_at: z.string(),
+    ended_at: z.string().nullable().optional(),
+    end_reason: z.string().nullable().optional(),
+    message_count: z.number().int().default(0),
+    transport: z.string().default('websocket'),
+    client_ip: z.string().nullable().optional(),
+    user_agent: z.string().nullable().optional(),
+    metadata: z.unknown().nullable().optional(),
+});
+
+export type AgentSessionRow = z.infer<typeof AgentSessionRowSchema>;
+
+/** Raw Neon/PostgreSQL row shape for the `agent_invocations` table. */
+export const AgentInvocationRowSchema = z.object({
+    id: z.string().uuid(),
+    session_id: z.string().uuid(),
+    tool_name: z.string(),
+    input_summary: z.string().nullable().optional(),
+    output_summary: z.string().nullable().optional(),
+    duration_ms: z.number().int().nullable().optional(),
+    success: z.boolean().default(true),
+    error_message: z.string().nullable().optional(),
+    invoked_at: z.string(),
+    metadata: z.unknown().nullable().optional(),
+});
+
+export type AgentInvocationRow = z.infer<typeof AgentInvocationRowSchema>;
+
+/** Raw Neon/PostgreSQL row shape for the `agent_audit_logs` table. */
+export const AgentAuditLogRowSchema = z.object({
+    id: z.string().uuid(),
+    actor_user_id: z.string().uuid().nullable().optional(),
+    agent_slug: z.string().nullable().optional(),
+    instance_id: z.string().nullable().optional(),
+    action: z.string(),
+    status: z.string().default('success'),
+    ip_address: z.string().nullable().optional(),
+    user_agent: z.string().nullable().optional(),
+    reason: z.string().nullable().optional(),
+    metadata: z.unknown().nullable().optional(),
+    created_at: z.string(),
+});
+
+export type AgentAuditLogRow = z.infer<typeof AgentAuditLogRowSchema>;
+
+// ============================================================================
 // Two-Factor Authentication Schemas
 // ============================================================================
 
