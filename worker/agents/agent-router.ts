@@ -25,7 +25,6 @@
 import { Hono } from 'hono';
 import type { Env } from '../types.ts';
 import { handleAgentRequest } from './agent-auth.ts';
-import { AGENT_REGISTRY } from './registry.ts';
 
 // ============================================================================
 // Sub-app
@@ -74,15 +73,4 @@ agentRouter.all('/agents/:slug/:instanceId', async (c) => {
     const response = await handleAgentRequest(c.req.raw, c.env);
     if (response) return response;
     return c.json({ success: false, error: 'Agent not found' }, 404);
-});
-
-// ── Agent listing endpoint (admin-only, read-only) ────────────────────────────
-// Returns the list of registered enabled agents without sensitive metadata.
-// The auth check here is lightweight — handled by the main app's middleware
-// since this is a plain /agents GET (no slug/instanceId).
-agentRouter.get('/agents', (c) => {
-    const agents = AGENT_REGISTRY
-        .filter((a) => a.enabled)
-        .map(({ bindingKey: _bk, requiredScopes: _rs, ...rest }) => rest);
-    return c.json({ success: true, agents });
 });

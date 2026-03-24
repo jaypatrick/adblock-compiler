@@ -73,10 +73,16 @@ export const AGENT_REGISTRY: readonly AgentRegistryEntry[] = [
         requiredTier: UserTier.Admin,
         requiredScopes: [],
         enabled: true,
-        // TODO(hibernation): upgrade to 'websocket' once @cloudflare/playwright-mcp
-        // exposes an Agent base-class that supports ctx.acceptWebSocket().
-        // Tracked in issue #1377.  SSE is kept for backward compatibility with
-        // existing MCP clients (GitHub Copilot, Claude Desktop, etc.).
+        // SSE is used for backward compatibility with existing MCP clients
+        // (GitHub Copilot, Claude Desktop, etc.) that connect via /sse.
+        // The agents SDK's routeAgentRequest handles both SSE and WebSocket
+        // upgrade requests transparently — the transport field here indicates
+        // the *preferred* transport for new client connections.
+        //
+        // TODO(hibernation): Verify that @cloudflare/playwright-mcp's Agent
+        // base class calls this.ctx.acceptWebSocket() to enable DO hibernation.
+        // If not, a wrapper class extending the SDK Agent base will be needed.
+        // Tracked in issue #1377.
         transport: 'websocket',
     },
     // ── Add new agents here ─────────────────────────────────────────────────

@@ -230,9 +230,5 @@ function emitSecurityEvent(
     },
 ): void {
     if (!env.ANALYTICS_ENGINE) return;
-    new AnalyticsService(env.ANALYTICS_ENGINE).trackSecurityEvent({
-        ...data,
-        path: data.path,
-        method: data.method,
-    });
+    new AnalyticsService(env.ANALYTICS_ENGINE).trackSecurityEvent(data);
 }
