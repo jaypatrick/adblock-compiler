@@ -14,12 +14,7 @@
 
 import { assertEquals } from '@std/assert';
 import { stub } from '@std/testing/mock';
-import {
-    handleAdminGetAgentSession,
-    handleAdminListAgentAuditLog,
-    handleAdminListAgentSessions,
-    handleAdminTerminateAgentSession,
-} from './admin-agents.ts';
+import { handleAdminGetAgentSession, handleAdminListAgentAuditLog, handleAdminListAgentSessions, handleAdminTerminateAgentSession } from './admin-agents.ts';
 import { type Env, type HyperdriveBinding, type IAuthContext, UserTier } from '../types.ts';
 import * as prismaLib from '../lib/prisma.ts';
 
@@ -81,7 +76,7 @@ function makeMockPrisma(overrides: Record<string, unknown> = {}) {
             findMany: async () => [],
             findUnique: async () => null,
             count: async () => 0,
-            update: async (args: { data: unknown; where: unknown }) => ({ id: VALID_UUID, ...args.data }),
+            update: async (args: { data: unknown; where: unknown }) => ({ id: VALID_UUID, ...(args.data as Record<string, unknown>) }),
         },
         agentAuditLog: {
             findMany: async () => [],
@@ -114,7 +109,7 @@ Deno.test('handleAdminListAgentSessions — 503 when Hyperdrive missing', async 
 
 Deno.test('handleAdminListAgentSessions — 400 on invalid pagination params', async () => {
     const req = new Request('http://localhost/admin/agents/sessions?limit=0');
-    const prismaStub = stub(prismaLib, 'createPrismaClient', () => makeMockPrisma() as ReturnType<typeof prismaLib.createPrismaClient>);
+    const prismaStub = stub(prismaLib, 'createPrismaClient', () => makeMockPrisma() as unknown as ReturnType<typeof prismaLib.createPrismaClient>);
     try {
         const res = await handleAdminListAgentSessions(req, makeEnv(), makeAdminContext());
         assertEquals(res.status, 400);
@@ -131,7 +126,7 @@ Deno.test('handleAdminListAgentSessions — 200 returns items and total', async 
             count: async () => 1,
         },
     });
-    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as ReturnType<typeof prismaLib.createPrismaClient>);
+    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof prismaLib.createPrismaClient>);
     try {
         const req = new Request('http://localhost/admin/agents/sessions');
         const res = await handleAdminListAgentSessions(req, makeEnv(), makeAdminContext());
@@ -171,7 +166,7 @@ Deno.test('handleAdminGetAgentSession — 503 when Hyperdrive missing', async ()
 
 Deno.test('handleAdminGetAgentSession — 404 when session not found', async () => {
     const mockPrisma = makeMockPrisma();
-    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as ReturnType<typeof prismaLib.createPrismaClient>);
+    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof prismaLib.createPrismaClient>);
     try {
         const req = new Request(`http://localhost/admin/agents/sessions/${VALID_UUID}`);
         const res = await handleAdminGetAgentSession(req, makeEnv(), makeAdminContext(), VALID_UUID);
@@ -188,7 +183,7 @@ Deno.test('handleAdminGetAgentSession — 200 returns session with invocations',
             findUnique: async () => fakeSession,
         },
     });
-    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as ReturnType<typeof prismaLib.createPrismaClient>);
+    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof prismaLib.createPrismaClient>);
     try {
         const req = new Request(`http://localhost/admin/agents/sessions/${VALID_UUID}`);
         const res = await handleAdminGetAgentSession(req, makeEnv(), makeAdminContext(), VALID_UUID);
@@ -225,7 +220,7 @@ Deno.test('handleAdminListAgentAuditLog — 200 returns audit entries', async ()
             count: async () => 1,
         },
     });
-    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as ReturnType<typeof prismaLib.createPrismaClient>);
+    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof prismaLib.createPrismaClient>);
     try {
         const req = new Request('http://localhost/admin/agents/audit');
         const res = await handleAdminListAgentAuditLog(req, makeEnv(), makeAdminContext());
@@ -264,7 +259,7 @@ Deno.test('handleAdminTerminateAgentSession — 503 when Hyperdrive missing', as
 
 Deno.test('handleAdminTerminateAgentSession — 404 when session not found', async () => {
     const mockPrisma = makeMockPrisma();
-    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as ReturnType<typeof prismaLib.createPrismaClient>);
+    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof prismaLib.createPrismaClient>);
     try {
         const req = new Request(`http://localhost/admin/agents/sessions/${VALID_UUID}`, { method: 'DELETE' });
         const res = await handleAdminTerminateAgentSession(req, makeEnv(), makeAdminContext(), VALID_UUID);
@@ -287,7 +282,7 @@ Deno.test('handleAdminTerminateAgentSession — 409 when session already ended',
             findUnique: async () => endedSession,
         },
     });
-    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as ReturnType<typeof prismaLib.createPrismaClient>);
+    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof prismaLib.createPrismaClient>);
     try {
         const req = new Request(`http://localhost/admin/agents/sessions/${VALID_UUID}`, { method: 'DELETE' });
         const res = await handleAdminTerminateAgentSession(req, makeEnv(), makeAdminContext(), VALID_UUID);
@@ -311,7 +306,7 @@ Deno.test('handleAdminTerminateAgentSession — 200 terminates active session', 
     const mockPrisma = makeMockPrisma({
         agentSession: {
             findUnique: async () => activeSession,
-            update: async (args: { data: unknown }) => ({ ...activeSession, ...args.data }),
+            update: async (args: { data: unknown }) => ({ ...activeSession, ...(args.data as Record<string, unknown>) }),
         },
         agentAuditLog: {
             create: async () => {
@@ -320,7 +315,7 @@ Deno.test('handleAdminTerminateAgentSession — 200 terminates active session', 
             },
         },
     });
-    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as ReturnType<typeof prismaLib.createPrismaClient>);
+    const prismaStub = stub(prismaLib, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof prismaLib.createPrismaClient>);
     try {
         const req = new Request(`http://localhost/admin/agents/sessions/${VALID_UUID}`, { method: 'DELETE' });
         const res = await handleAdminTerminateAgentSession(req, makeEnv(), makeAdminContext(), VALID_UUID);

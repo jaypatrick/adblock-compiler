@@ -92,12 +92,7 @@ import {
     handleAdminNeonListEndpoints,
     handleAdminNeonQuery,
 } from './handlers/admin-neon.ts';
-import {
-    handleAdminListAgentSessions,
-    handleAdminGetAgentSession,
-    handleAdminListAgentAuditLog,
-    handleAdminTerminateAgentSession,
-} from './handlers/admin-agents.ts';
+import { handleAdminGetAgentSession, handleAdminListAgentAuditLog, handleAdminListAgentSessions, handleAdminTerminateAgentSession } from './handlers/admin-agents.ts';
 import { handlePrometheusMetrics } from './handlers/prometheus-metrics.ts';
 import { handleMetrics } from './handlers/metrics.ts';
 import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './handlers/configuration.ts';
