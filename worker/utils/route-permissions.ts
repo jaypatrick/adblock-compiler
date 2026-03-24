@@ -156,10 +156,12 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     // even if a request somehow bypasses the agent router.
     ...AGENT_REGISTRY
         .filter((entry) => entry.enabled)
-        .map((entry) => [
-            `/agents/${entry.slug}/*`,
-            { minTier: entry.requiredTier, description: entry.displayName },
-        ] as [string, IRoutePermission]),
+        .map((entry) =>
+            [
+                `/agents/${entry.slug}/*`,
+                { minTier: entry.requiredTier, description: entry.displayName },
+            ] as [string, IRoutePermission]
+        ),
 ]);
 
 // ============================================================================

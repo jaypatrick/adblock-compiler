@@ -141,7 +141,7 @@ Deno.test('validateAgentRegistry - detects bindingKey ↔ slug mismatch', () => 
     // call the validation logic directly to verify the mismatch is caught.
     const badEntry: AgentRegistryEntry = {
         bindingKey: 'WRONG_KEY' as keyof Env,
-        slug: 'mcp-agent',   // agentNameToBindingKey('mcp-agent') = 'MCP_AGENT', not 'WRONG_KEY'
+        slug: 'mcp-agent', // agentNameToBindingKey('mcp-agent') = 'MCP_AGENT', not 'WRONG_KEY'
         displayName: 'Test',
         description: 'Test entry',
         requiredTier: UserTier.Admin,
@@ -162,7 +162,10 @@ Deno.test('validateAgentRegistry - detects duplicate slugs', () => {
     const seen = new Set<string>();
     let foundDuplicate = false;
     for (const s of slugs) {
-        if (seen.has(s)) { foundDuplicate = true; break; }
+        if (seen.has(s)) {
+            foundDuplicate = true;
+            break;
+        }
         seen.add(s);
     }
     assertEquals(foundDuplicate, true);

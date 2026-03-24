@@ -213,9 +213,7 @@ export async function runAgentAuthGate(
     }
 
     // ── 2. Authenticate ───────────────────────────────────────────────────────
-    const authProvider = env.BETTER_AUTH_SECRET && env.HYPERDRIVE
-        ? new BetterAuthProvider(env)
-        : undefined;
+    const authProvider = env.BETTER_AUTH_SECRET && env.HYPERDRIVE ? new BetterAuthProvider(env) : undefined;
 
     const { context: authContext, response: authErrorResponse } = await authenticateRequestUnified(
         request,

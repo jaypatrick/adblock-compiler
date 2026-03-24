@@ -116,8 +116,7 @@ Deno.test('applyAgentAuthChecks - rate limit exhausted → 429', async () => {
     const req = new Request('https://example.com/agents/mcp-agent/default');
     // Mock RATE_LIMIT KV that simulates an exhausted window for this user
     const mockKv = {
-        get: (_key: string, _type: string) =>
-            Promise.resolve({ count: 999, resetAt: Date.now() + 60_000 }),
+        get: (_key: string, _type: string) => Promise.resolve({ count: 999, resetAt: Date.now() + 60_000 }),
         put: (_key: string, _value: string, _opts: unknown) => Promise.resolve(),
     };
     const env = makeEnv({ RATE_LIMIT: mockKv as unknown as KVNamespace });
@@ -184,4 +183,3 @@ Deno.test('AGENT_REGISTRY - every entry has a non-empty displayName and descript
         assertEquals(entry.description.length > 0, true, `Missing description for slug '${entry.slug}'`);
     }
 });
-
