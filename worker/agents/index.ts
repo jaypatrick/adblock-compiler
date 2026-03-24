@@ -5,7 +5,7 @@
  * Hono sub-app router that mounts all `/agents/*` routes.
  */
 
-export { AGENT_REGISTRY, getAgentBySlug, getEnabledAgents } from './registry.ts';
+export { AGENT_REGISTRY, getAgentBySlug, getEnabledAgents, validateAgentRegistry } from './registry.ts';
 export type { AgentRegistryEntry } from './registry.ts';
-export { handleAgentRequest, runAgentAuthGate } from './agent-auth.ts';
+export { applyAgentAuthChecks, handleAgentRequest, runAgentAuthGate } from './agent-auth.ts';
 export { agentRouter } from './agent-router.ts';

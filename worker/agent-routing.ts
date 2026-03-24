@@ -15,8 +15,9 @@
  * test runner).  The import result is cached so subsequent requests pay no
  * additional cost.
  *
- * The `agentNameToBindingKey` utility function is preserved here as it is
- * still used by tests and the agent registry.
+ * The `agentNameToBindingKey` utility function is preserved here for
+ * backwards compatibility and is still used by tests and the registry
+ * integrity validator.
  *
  * @see worker/agents/registry.ts — AGENT_REGISTRY (single source of truth for agents)
  * @see worker/agents/agent-auth.ts — ZTA authentication middleware (auth runs BEFORE DO)
@@ -39,6 +40,9 @@ let sdkImportPromise: Promise<SdkRouteAgentRequest> | null = null;
  * Returns the SDK's `routeAgentRequest` function, lazy-loaded on first use.
  * The `agents` package uses cloudflare: scheme imports that are only available
  * inside the Workers runtime — lazy loading avoids crashes in Deno test runs.
+ *
+ * On import failure the cached promise is cleared so subsequent requests can
+ * retry (rather than caching a permanent rejection).
  */
 function getSdkRouteAgentRequest(): Promise<SdkRouteAgentRequest> {
     if (sdkImportPromise === null) {
@@ -47,6 +51,11 @@ function getSdkRouteAgentRequest(): Promise<SdkRouteAgentRequest> {
                 throw new Error('agents SDK: routeAgentRequest is not a function');
             }
             return m.routeAgentRequest as SdkRouteAgentRequest;
+        }).catch((err) => {
+            // Clear the cache so the next request retries the import rather than
+            // receiving a permanently-rejected promise.
+            sdkImportPromise = null;
+            throw err;
         });
     }
     return sdkImportPromise;
@@ -79,6 +88,10 @@ export function agentNameToBindingKey(name: string): string {
  *
  * Delegates to the official `agents` SDK (`routeAgentRequest`).
  *
+ * If the SDK import fails (e.g. misconfigured runtime, missing binding), returns
+ * a structured 503 JSON response so failures degrade predictably rather than
+ * surfacing as unhandled 500 errors.
+ *
  * **Authentication note:** This function does NOT perform any authentication.
  * All agent routes must be authenticated before calling this function.
  * Use `handleAgentRequest` from `worker/agents/agent-auth.ts` which enforces
@@ -90,7 +103,16 @@ export function agentNameToBindingKey(name: string): string {
 export async function routeAgentRequest(request: Request, env: Env): Promise<Response | null> {
     const url = new URL(request.url);
     if (!url.pathname.match(AGENT_PATH_RE)) return null;
-    const sdkFn = await getSdkRouteAgentRequest();
-    return sdkFn(request, env as unknown as Record<string, unknown>);
+    try {
+        const sdkFn = await getSdkRouteAgentRequest();
+        return await sdkFn(request, env as unknown as Record<string, unknown>);
+    } catch (err) {
+        // deno-lint-ignore no-console
+        console.error('[agent-routing] agents SDK call failed:', err instanceof Error ? err.message : String(err));
+        return new Response(
+            JSON.stringify({ success: false, error: 'Agent SDK unavailable — please retry' }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } },
+        );
+    }
 }
 

@@ -16,6 +16,7 @@
 
 import type { Env } from '../types.ts';
 import { UserTier } from '../types.ts';
+import { agentNameToBindingKey } from '../agent-routing.ts';
 
 // ============================================================================
 // Types
@@ -24,9 +25,17 @@ import { UserTier } from '../types.ts';
 /**
  * A single registered agent entry describing everything needed to route,
  * authenticate, and document an agent endpoint.
+ *
+ * ## `bindingKey` ↔ `slug` invariant
+ * `bindingKey` MUST equal `agentNameToBindingKey(slug)`.
+ * i.e. `'mcp-agent'` → `'MCP_AGENT'`.
+ * This invariant is enforced at test time by `validateAgentRegistry()`.
  */
 export interface AgentRegistryEntry {
-    /** Binding key in Env (UPPER_SNAKE_CASE), e.g. 'MCP_AGENT'. Must match wrangler.toml. */
+    /**
+     * Binding key in Env (UPPER_SNAKE_CASE), e.g. 'MCP_AGENT'. Must match wrangler.toml.
+     * Must equal `agentNameToBindingKey(slug)` — validated by `validateAgentRegistry()`.
+     */
     readonly bindingKey: keyof Env;
     /** URL slug used in /agents/{slug}/{instanceId}. Must be kebab-case. */
     readonly slug: string;
@@ -111,4 +120,44 @@ export function getAgentBySlug(slug: string): AgentRegistryEntry | undefined {
  */
 export function getEnabledAgents(): readonly AgentRegistryEntry[] {
     return AGENT_REGISTRY.filter((a) => a.enabled);
+}
+
+/**
+ * Validates that the `AGENT_REGISTRY` is internally consistent.
+ *
+ * Checks enforced:
+ * - All slugs are unique.
+ * - Each `bindingKey` equals `agentNameToBindingKey(slug)` — prevents slug↔binding drift.
+ *
+ * @returns An array of error messages. Empty array = registry is valid.
+ *
+ * @example
+ * ```typescript
+ * const errors = validateAgentRegistry();
+ * if (errors.length > 0) throw new Error(errors.join('\n'));
+ * ```
+ */
+export function validateAgentRegistry(): readonly string[] {
+    const errors: string[] = [];
+    const slugsSeen = new Set<string>();
+
+    for (const entry of AGENT_REGISTRY) {
+        // 1. Unique slugs
+        if (slugsSeen.has(entry.slug)) {
+            errors.push(`Duplicate slug '${entry.slug}' in AGENT_REGISTRY`);
+        }
+        slugsSeen.add(entry.slug);
+
+        // 2. bindingKey must match agentNameToBindingKey(slug)
+        const expected = agentNameToBindingKey(entry.slug);
+        if (String(entry.bindingKey) !== expected) {
+            errors.push(
+                `Registry entry '${entry.slug}': bindingKey '${String(entry.bindingKey)}' ` +
+                    `does not match agentNameToBindingKey('${entry.slug}') = '${expected}'. ` +
+                    `They must be kept in sync.`,
+            );
+        }
+    }
+
+    return errors;
 }

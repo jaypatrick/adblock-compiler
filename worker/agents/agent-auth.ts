@@ -9,22 +9,29 @@
  * 1. Parse `/agents/{slug}/{instanceId}` from the request URL.
  * 2. Look up the slug in `AGENT_REGISTRY` — return 404 if not found or disabled.
  * 3. Run `authenticateRequestUnified()` to resolve an `IAuthContext`.
- * 4. Call `requireTier()` — return 403 if tier is insufficient.
- * 5. If `entry.requiredScopes.length > 0`, call `requireScope()` — return 403
+ * 4. If anonymous, return 401 (consistent with rest of the worker).
+ * 5. Call `requireTier()` — return 403 if tier is insufficient.
+ * 6. If `entry.requiredScopes.length > 0`, call `requireScope()` — return 403
  *    if any required scope is missing.
- * 6. Emit a security event to Analytics Engine for every connection attempt
+ * 7. Apply tiered rate limiting keyed by resolved auth context.
+ * 8. Emit a security event to Analytics Engine for every connection attempt
  *    (both successful and denied).
- * 7. On success, forward to the Durable Object via `routeAgentRequest`.
+ * 9. On success, forward to the Durable Object via `routeAgentRequest`.
  *
  * @see worker/agents/registry.ts — AGENT_REGISTRY entries
  * @see https://developers.cloudflare.com/agents/configuration/authentication/
  */
 
 import type { Env, IAuthContext } from '../types.ts';
-import { authenticateRequestUnified, requireScope, requireTier } from '../middleware/auth.ts';
+import { UserTier } from '../types.ts';
+import { authenticateRequestUnified, requireAuth, requireScope, requireTier } from '../middleware/auth.ts';
+import { checkRateLimitTiered } from '../middleware/index.ts';
 import { createPgPool } from '../utils/pg-pool.ts';
 import { BetterAuthProvider } from '../middleware/better-auth-provider.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
+// SecurityEventData.eventType includes 'auth_failure' | 'auth_success' | 'rate_limit' | ...
+// All event types used in this file are covered by that union.
+import type { SecurityEventData } from '../../src/services/AnalyticsService.ts';
 import { routeAgentRequest } from '../agent-routing.ts';
 import { getAgentBySlug } from './registry.ts';
 import type { AgentRegistryEntry } from './registry.ts';
@@ -54,6 +61,105 @@ function parseAgentPath(pathname: string): [string, string] | null {
     const match = pathname.match(AGENT_PATH_RE);
     if (!match) return null;
     return [match[1], match[2]];
+}
+
+// ============================================================================
+// Core auth logic (exported for unit-testability)
+// ============================================================================
+
+/**
+ * Applies the tier, scope, and rate limit checks to an already-resolved
+ * `IAuthContext` for the given registry entry.
+ *
+ * Exported so that unit tests can inject a mock `IAuthContext` directly
+ * without needing to mock the database-backed `authenticateRequestUnified`.
+ *
+ * @param authContext - The resolved auth context.
+ * @param entry       - The matching registry entry.
+ * @param request     - Original request (used for IP extraction in rate limiting).
+ * @param env         - Worker bindings.
+ */
+export async function applyAgentAuthChecks(
+    authContext: IAuthContext,
+    entry: AgentRegistryEntry,
+    request: Request,
+    env: Env,
+): Promise<Response | null> {
+    const url = new URL(request.url);
+
+    // ── 1. Anonymous → 401 (consistent with checkRoutePermission behaviour) ────
+    const authDenied = requireAuth(authContext);
+    if (authDenied) {
+        emitSecurityEvent(env, {
+            eventType: 'auth_failure',
+            path: url.pathname,
+            method: request.method,
+            tier: authContext.tier,
+            reason: 'unauthenticated',
+        });
+        return authDenied;
+    }
+
+    // ── 2. Tier check ─────────────────────────────────────────────────────────
+    const tierDenied = requireTier(authContext, entry.requiredTier);
+    if (tierDenied) {
+        emitSecurityEvent(env, {
+            eventType: 'auth_failure',
+            path: url.pathname,
+            method: request.method,
+            userId: authContext.userId ?? undefined,
+            tier: authContext.tier,
+            reason: `insufficient_tier: requires ${entry.requiredTier}, has ${authContext.tier}`,
+        });
+        return tierDenied;
+    }
+
+    // ── 3. Scope check (API key requests only) ────────────────────────────────
+    if (entry.requiredScopes.length > 0) {
+        const scopeDenied = requireScope(authContext, ...entry.requiredScopes);
+        if (scopeDenied) {
+            emitSecurityEvent(env, {
+                eventType: 'auth_failure',
+                path: url.pathname,
+                method: request.method,
+                userId: authContext.userId ?? undefined,
+                tier: authContext.tier,
+                reason: `missing_scopes: ${entry.requiredScopes.join(', ')}`,
+            });
+            return scopeDenied;
+        }
+    }
+
+    // ── 4. Rate limiting (keyed by auth context — admin tier short-circuits) ──
+    if (env.RATE_LIMIT) {
+        const ip = request.headers.get('CF-Connecting-IP') ?? 'unknown';
+        const rl = await checkRateLimitTiered(env, ip, authContext);
+        if (!rl.allowed) {
+            emitSecurityEvent(env, {
+                eventType: 'rate_limit',
+                path: url.pathname,
+                method: request.method,
+                userId: authContext.userId ?? undefined,
+                tier: authContext.tier,
+                reason: 'rate_limit_exceeded',
+            });
+            return new Response(
+                JSON.stringify({ success: false, error: 'Rate limit exceeded' }),
+                {
+                    status: 429,
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+                        'X-RateLimit-Limit': String(rl.limit),
+                        'X-RateLimit-Remaining': '0',
+                        'X-RateLimit-Reset': String(rl.resetAt),
+                    },
+                },
+            );
+        }
+    }
+
+    return null; // all checks passed
 }
 
 // ============================================================================
@@ -129,37 +235,13 @@ export async function runAgentAuthGate(
         return { allowed: false, response: authErrorResponse };
     }
 
-    // ── 3. Tier check ─────────────────────────────────────────────────────────
-    const tierDenied = requireTier(authContext, entry.requiredTier);
-    if (tierDenied) {
-        emitSecurityEvent(env, {
-            eventType: 'auth_failure',
-            path: url.pathname,
-            method: request.method,
-            userId: authContext.userId ?? undefined,
-            tier: authContext.tier,
-            reason: `insufficient_tier: requires ${entry.requiredTier}, has ${authContext.tier}`,
-        });
-        return { allowed: false, response: tierDenied };
+    // ── 3. Tier, scope, and rate limit checks ─────────────────────────────────
+    const denied = await applyAgentAuthChecks(authContext, entry, request, env);
+    if (denied) {
+        return { allowed: false, response: denied };
     }
 
-    // ── 4. Scope check (API key requests only) ────────────────────────────────
-    if (entry.requiredScopes.length > 0) {
-        const scopeDenied = requireScope(authContext, ...entry.requiredScopes);
-        if (scopeDenied) {
-            emitSecurityEvent(env, {
-                eventType: 'auth_failure',
-                path: url.pathname,
-                method: request.method,
-                userId: authContext.userId ?? undefined,
-                tier: authContext.tier,
-                reason: `missing_scopes: ${entry.requiredScopes.join(', ')}`,
-            });
-            return { allowed: false, response: scopeDenied };
-        }
-    }
-
-    // ── 5. Success ────────────────────────────────────────────────────────────
+    // ── 4. Success ────────────────────────────────────────────────────────────
     emitSecurityEvent(env, {
         eventType: 'auth_success',
         path: url.pathname,
@@ -185,7 +267,7 @@ export async function runAgentAuthGate(
  *
  * @param request - The incoming request (HTTP or WebSocket upgrade).
  * @param env     - Worker environment bindings.
- * @returns A Response (possibly a 4xx error), or `null` if path doesn't match.
+ * @returns A Response (possibly a 4xx/429 error), or `null` if path doesn't match.
  */
 export async function handleAgentRequest(
     request: Request,
@@ -217,18 +299,7 @@ export async function handleAgentRequest(
 // ============================================================================
 
 /** Emits a security event to Analytics Engine if the binding is available. */
-function emitSecurityEvent(
-    env: Env,
-    data: {
-        eventType: 'auth_failure' | 'auth_success';
-        path?: string;
-        method?: string;
-        userId?: string;
-        authMethod?: string;
-        tier?: string;
-        reason?: string;
-    },
-): void {
+function emitSecurityEvent(env: Env, data: SecurityEventData): void {
     if (!env.ANALYTICS_ENGINE) return;
     new AnalyticsService(env.ANALYTICS_ENGINE).trackSecurityEvent(data);
 }

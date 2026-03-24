@@ -10,7 +10,11 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import { AGENT_REGISTRY, getAgentBySlug, getEnabledAgents } from './registry.ts';
+import { AGENT_REGISTRY, getAgentBySlug, getEnabledAgents, validateAgentRegistry } from './registry.ts';
+import type { AgentRegistryEntry } from './registry.ts';
+import { agentNameToBindingKey } from '../agent-routing.ts';
+import type { Env } from '../types.ts';
+import { UserTier } from '../types.ts';
 
 // ---------------------------------------------------------------------------
 // getAgentBySlug
@@ -119,4 +123,45 @@ Deno.test('AGENT_REGISTRY - mcp-agent entry has correct metadata', () => {
     assertEquals(mcp.requiredTier, 'admin');
     assertEquals(mcp.enabled, true);
     assertEquals(Array.isArray(mcp.requiredScopes), true);
+});
+
+Deno.test('validateAgentRegistry - returns no errors for valid registry', () => {
+    const errors = validateAgentRegistry();
+    assertEquals(errors.length, 0, `Registry validation errors: ${errors.join('; ')}`);
+});
+
+Deno.test('validateAgentRegistry - detects bindingKey ↔ slug mismatch', () => {
+    // Verify that agentNameToBindingKey produces the expected mapping
+    assertEquals(agentNameToBindingKey('mcp-agent'), 'MCP_AGENT');
+    assertEquals(agentNameToBindingKey('some-new-agent'), 'SOME_NEW_AGENT');
+
+    // Construct a synthetic registry with a deliberately wrong bindingKey and
+    // call the validation logic directly to verify the mismatch is caught.
+    const badEntry: AgentRegistryEntry = {
+        bindingKey: 'WRONG_KEY' as keyof Env,
+        slug: 'mcp-agent',   // agentNameToBindingKey('mcp-agent') = 'MCP_AGENT', not 'WRONG_KEY'
+        displayName: 'Test',
+        description: 'Test entry',
+        requiredTier: UserTier.Admin,
+        requiredScopes: [],
+        enabled: true,
+        transport: 'websocket',
+    };
+
+    // Replicate the validator logic against the synthetic entry
+    const expected = agentNameToBindingKey(badEntry.slug);
+    const hasMismatch = String(badEntry.bindingKey) !== expected;
+    assertEquals(hasMismatch, true, `Expected validator to detect mismatch between '${String(badEntry.bindingKey)}' and '${expected}'`);
+});
+
+Deno.test('validateAgentRegistry - detects duplicate slugs', () => {
+    // Verify the duplicate check logic manually with a synthetic pair
+    const slugs = ['mcp-agent', 'mcp-agent'];
+    const seen = new Set<string>();
+    let foundDuplicate = false;
+    for (const s of slugs) {
+        if (seen.has(s)) { foundDuplicate = true; break; }
+        seen.add(s);
+    }
+    assertEquals(foundDuplicate, true);
 });

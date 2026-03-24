@@ -54,11 +54,9 @@ agentRouter.all('/agents/:slug/:instanceId/*', async (c) => {
             { Allow: 'GET, POST' },
         );
     }
-    const response = await handleAgentRequest(c.req.raw, c.env);
-    if (response) return response;
-    // Fallback: path matched the pattern but handleAgentRequest returned null —
-    // should not occur under normal operation.
-    return c.json({ success: false, error: 'Agent not found' }, 404);
+    // handleAgentRequest always returns a Response for /agents/* paths —
+    // the null branch is structurally unreachable from these matched routes.
+    return await handleAgentRequest(c.req.raw, c.env) as Response;
 });
 
 // Also handle the base /:slug/:instanceId path (without trailing slash/sub-path)
@@ -70,7 +68,5 @@ agentRouter.all('/agents/:slug/:instanceId', async (c) => {
             { Allow: 'GET, POST' },
         );
     }
-    const response = await handleAgentRequest(c.req.raw, c.env);
-    if (response) return response;
-    return c.json({ success: false, error: 'Agent not found' }, 404);
+    return await handleAgentRequest(c.req.raw, c.env) as Response;
 });
