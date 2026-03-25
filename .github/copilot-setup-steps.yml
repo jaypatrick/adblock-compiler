@@ -1,7 +1,7 @@
 # Prepares the Coding Agent environment before it starts working on issues.
-# Installs all toolchains and warms caches so the agent can lint, type-check,
-# run tests, and interact with the database schema without hitting cold-start
-# failures or timeouts.
+# Installs all toolchains, warms caches, generates Prisma clients, and verifies
+# a clean baseline so the agent can lint, type-check, run tests, and interact
+# with the database schema without hitting cold-start failures or timeouts.
 
 name: Copilot Setup Steps
 
@@ -33,6 +33,16 @@ jobs:
             - name: Install Node dependencies
               run: pnpm install --frozen-lockfile
 
+            # Pre-warm the Angular build cache so the agent's first frontend
+            # change doesn't hit a cold compiler.
+            - name: Cache Angular build cache
+              uses: actions/cache@v4
+              with:
+                  path: frontend/.angular/cache
+                  key: ng-cache-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml', 'frontend/angular.json') }}
+                  restore-keys: |
+                      ng-cache-${{ runner.os }}-
+
             # ── Deno ──────────────────────────────────────────────────────
             # Required for: all compiler tasks, type-checking, linting,
             # tests, wrangler, and Prisma via deno run -A npm:prisma.
@@ -55,17 +65,30 @@ jobs:
               run: deno install
 
             # ── Prisma ────────────────────────────────────────────────────
-            # Required for: any task that touches database models or types.
+            # Generates both clients (Neon/pg and D1) so the agent has full
+            # type information for all database models from the start.
             # Without this the agent has no knowledge of the schema and
             # TypeScript will fail to resolve Prisma client imports.
-            - name: Generate Prisma client
+            - name: Generate Prisma client (PostgreSQL / Neon)
               run: deno task db:generate
               env:
                   DATABASE_URL: ${{ secrets.COPILOT_MCP_DATABASE_URL }}
                   DIRECT_DATABASE_URL: ${{ secrets.COPILOT_MCP_DIRECT_DATABASE_URL }}
+
+            - name: Generate Prisma client (D1)
+              run: deno task db:generate:d1
 
             # ── Wrangler warm-up ──────────────────────────────────────────
             # Pre-fetches the wrangler npm package so the agent doesn't time
             # out waiting for it to download on first use.
             - name: Warm wrangler cache
               run: deno task wrangler --version
+
+            # ── Baseline verification ─────────────────────────────────────
+            # Runs the full preflight check (fmt, lint, typecheck, OpenAPI
+            # validate, schema generate, drift check) so the agent starts
+            # from a known-clean state. continue-on-error prevents
+            # pre-existing minor drift from blocking the agent entirely.
+            - name: Verify clean baseline (preflight)
+              run: deno task preflight
+              continue-on-error: true
