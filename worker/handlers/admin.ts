@@ -8,9 +8,10 @@
  */
 
 import { JsonResponse } from '../utils/index.ts';
-import type { Env, IAuthContext, StorageStats, TableInfo } from '../types.ts';
+import type { Env, IAuthContext, TableInfo } from '../types.ts';
 import { AdminQueryRequestSchema } from '../schemas.ts';
 import { verifyCfAccessJwt } from '../middleware/cf-access.ts';
+import { _internals } from '../lib/prisma.ts';
 
 // ============================================================================
 // Storage Statistics
@@ -20,29 +21,29 @@ import { verifyCfAccessJwt } from '../middleware/cf-access.ts';
  * Handle GET /admin/storage/stats request.
  */
 export async function handleAdminStorageStats(env: Env): Promise<Response> {
-    if (!env.DB) {
-        return JsonResponse.serviceUnavailable('D1 database not configured');
+    if (!env.HYPERDRIVE) {
+        return JsonResponse.serviceUnavailable('Database not configured');
     }
 
     try {
-        const [storageCount, filterCacheCount, compilationCount, expiredStorage, expiredCache] = await env.DB.batch([
-            env.DB.prepare(`SELECT COUNT(*) as count FROM storage_entries`),
-            env.DB.prepare(`SELECT COUNT(*) as count FROM filter_cache`),
-            env.DB.prepare(`SELECT COUNT(*) as count FROM compilation_metadata`),
-            env.DB.prepare(`SELECT COUNT(*) as count FROM storage_entries WHERE expiresAt IS NOT NULL AND expiresAt < datetime('now')`),
-            env.DB.prepare(`SELECT COUNT(*) as count FROM filter_cache WHERE expiresAt IS NOT NULL AND expiresAt < datetime('now')`),
+        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+        const now = new Date();
+        const [storageCount, filterCacheCount, compilationCount, expiredStorage, expiredCache] = await Promise.all([
+            prisma.storageEntry.count(),
+            prisma.filterCache.count(),
+            prisma.compilationMetadata.count(),
+            prisma.storageEntry.count({ where: { expiresAt: { lt: now } } }),
+            prisma.filterCache.count({ where: { expiresAt: { lt: now } } }),
         ]);
 
-        const stats: StorageStats = {
-            storage_entries: ((storageCount.results as Array<{ count: number }>) || [])[0]?.count || 0,
-            filter_cache: ((filterCacheCount.results as Array<{ count: number }>) || [])[0]?.count || 0,
-            compilation_metadata: ((compilationCount.results as Array<{ count: number }>) || [])[0]?.count || 0,
-            expired_storage: ((expiredStorage.results as Array<{ count: number }>) || [])[0]?.count || 0,
-            expired_cache: ((expiredCache.results as Array<{ count: number }>) || [])[0]?.count || 0,
-        };
-
         return JsonResponse.success({
-            stats,
+            stats: {
+                storage_entries: storageCount,
+                filter_cache: filterCacheCount,
+                compilation_metadata: compilationCount,
+                expired_storage: expiredStorage,
+                expired_cache: expiredCache,
+            },
             timestamp: new Date().toISOString(),
         });
     } catch (error) {
@@ -58,17 +59,19 @@ export async function handleAdminStorageStats(env: Env): Promise<Response> {
  * Handle POST /admin/storage/clear-expired request.
  */
 export async function handleAdminClearExpired(env: Env): Promise<Response> {
-    if (!env.DB) {
-        return JsonResponse.serviceUnavailable('D1 database not configured');
+    if (!env.HYPERDRIVE) {
+        return JsonResponse.serviceUnavailable('Database not configured');
     }
 
     try {
-        const [storageResult, cacheResult] = await env.DB.batch([
-            env.DB.prepare(`DELETE FROM storage_entries WHERE expiresAt IS NOT NULL AND expiresAt < datetime('now')`),
-            env.DB.prepare(`DELETE FROM filter_cache WHERE expiresAt IS NOT NULL AND expiresAt < datetime('now')`),
+        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+        const now = new Date();
+        const [storageResult, cacheResult] = await Promise.all([
+            prisma.storageEntry.deleteMany({ where: { expiresAt: { lt: now } } }),
+            prisma.filterCache.deleteMany({ where: { expiresAt: { lt: now } } }),
         ]);
 
-        const deleted = (storageResult.meta?.changes || 0) + (cacheResult.meta?.changes || 0);
+        const deleted = storageResult.count + cacheResult.count;
 
         return JsonResponse.success({
             deleted,
@@ -83,17 +86,18 @@ export async function handleAdminClearExpired(env: Env): Promise<Response> {
  * Handle POST /admin/storage/clear-cache request.
  */
 export async function handleAdminClearCache(env: Env): Promise<Response> {
-    if (!env.DB) {
-        return JsonResponse.serviceUnavailable('D1 database not configured');
+    if (!env.HYPERDRIVE) {
+        return JsonResponse.serviceUnavailable('Database not configured');
     }
 
     try {
-        const [storageResult, cacheResult] = await env.DB.batch([
-            env.DB.prepare(`DELETE FROM storage_entries WHERE key LIKE 'cache/%'`),
-            env.DB.prepare(`DELETE FROM filter_cache`),
+        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+        const [storageResult, cacheResult] = await Promise.all([
+            prisma.storageEntry.deleteMany({ where: { key: { startsWith: 'cache/' } } }),
+            prisma.filterCache.deleteMany({}),
         ]);
 
-        const deleted = (storageResult.meta?.changes || 0) + (cacheResult.meta?.changes || 0);
+        const deleted = storageResult.count + cacheResult.count;
 
         return JsonResponse.success({
             deleted,
@@ -112,22 +116,23 @@ export async function handleAdminClearCache(env: Env): Promise<Response> {
  * Handle GET /admin/storage/export request.
  */
 export async function handleAdminExport(env: Env): Promise<Response> {
-    if (!env.DB) {
-        return JsonResponse.serviceUnavailable('D1 database not configured');
+    if (!env.HYPERDRIVE) {
+        return JsonResponse.serviceUnavailable('Database not configured');
     }
 
     try {
-        const [storageEntries, filterCache, compilationMetadata] = await env.DB.batch([
-            env.DB.prepare(`SELECT * FROM storage_entries LIMIT 1000`),
-            env.DB.prepare(`SELECT * FROM filter_cache LIMIT 100`),
-            env.DB.prepare(`SELECT * FROM compilation_metadata ORDER BY timestamp DESC LIMIT 100`),
+        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+        const [storageEntries, filterCache, compilationMetadata] = await Promise.all([
+            prisma.storageEntry.findMany({ take: 1000 }),
+            prisma.filterCache.findMany({ take: 100 }),
+            prisma.compilationMetadata.findMany({ orderBy: { timestamp: 'desc' }, take: 100 }),
         ]);
 
         const exportData = {
             exportedAt: new Date().toISOString(),
-            storage_entries: storageEntries.results || [],
-            filter_cache: filterCache.results || [],
-            compilation_metadata: compilationMetadata.results || [],
+            storage_entries: storageEntries,
+            filter_cache: filterCache,
+            compilation_metadata: compilationMetadata,
         };
 
         return JsonResponse.success(exportData, {

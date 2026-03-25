@@ -54,6 +54,7 @@ export const ModelName = {
   User: 'User',
   ApiKey: 'ApiKey',
   Session: 'Session',
+  TwoFactor: 'TwoFactor',
   Account: 'Account',
   Verification: 'Verification',
   FilterSource: 'FilterSource',
@@ -62,9 +63,14 @@ export const ModelName = {
   CompilationEvent: 'CompilationEvent',
   SourceHealthSnapshot: 'SourceHealthSnapshot',
   SourceChangeEvent: 'SourceChangeEvent',
+  AgentSession: 'AgentSession',
+  AgentInvocation: 'AgentInvocation',
+  AgentAuditLog: 'AgentAuditLog',
   StorageEntry: 'StorageEntry',
   FilterCache: 'FilterCache',
-  CompilationMetadata: 'CompilationMetadata'
+  CompilationMetadata: 'CompilationMetadata',
+  DeploymentHistory: 'DeploymentHistory',
+  DeploymentCounter: 'DeploymentCounter'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -96,7 +102,11 @@ export const UserScalarFieldEnum = {
   lastName: 'lastName',
   imageUrl: 'imageUrl',
   emailVerified: 'emailVerified',
-  lastSignInAt: 'lastSignInAt'
+  lastSignInAt: 'lastSignInAt',
+  twoFactorEnabled: 'twoFactorEnabled',
+  banned: 'banned',
+  banReason: 'banReason',
+  banExpires: 'banExpires'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -133,6 +143,16 @@ export const SessionScalarFieldEnum = {
 } as const
 
 export type SessionScalarFieldEnum = (typeof SessionScalarFieldEnum)[keyof typeof SessionScalarFieldEnum]
+
+
+export const TwoFactorScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  secret: 'secret',
+  backupCodes: 'backupCodes'
+} as const
+
+export type TwoFactorScalarFieldEnum = (typeof TwoFactorScalarFieldEnum)[keyof typeof TwoFactorScalarFieldEnum]
 
 
 export const AccountScalarFieldEnum = {
@@ -265,6 +285,58 @@ export const SourceChangeEventScalarFieldEnum = {
 export type SourceChangeEventScalarFieldEnum = (typeof SourceChangeEventScalarFieldEnum)[keyof typeof SourceChangeEventScalarFieldEnum]
 
 
+export const AgentSessionScalarFieldEnum = {
+  id: 'id',
+  agentSlug: 'agentSlug',
+  instanceId: 'instanceId',
+  userId: 'userId',
+  clerkUserId: 'clerkUserId',
+  startedAt: 'startedAt',
+  endedAt: 'endedAt',
+  endReason: 'endReason',
+  messageCount: 'messageCount',
+  transport: 'transport',
+  clientIp: 'clientIp',
+  userAgent: 'userAgent',
+  metadata: 'metadata'
+} as const
+
+export type AgentSessionScalarFieldEnum = (typeof AgentSessionScalarFieldEnum)[keyof typeof AgentSessionScalarFieldEnum]
+
+
+export const AgentInvocationScalarFieldEnum = {
+  id: 'id',
+  sessionId: 'sessionId',
+  toolName: 'toolName',
+  inputSummary: 'inputSummary',
+  outputSummary: 'outputSummary',
+  durationMs: 'durationMs',
+  success: 'success',
+  errorMessage: 'errorMessage',
+  invokedAt: 'invokedAt',
+  metadata: 'metadata'
+} as const
+
+export type AgentInvocationScalarFieldEnum = (typeof AgentInvocationScalarFieldEnum)[keyof typeof AgentInvocationScalarFieldEnum]
+
+
+export const AgentAuditLogScalarFieldEnum = {
+  id: 'id',
+  actorUserId: 'actorUserId',
+  agentSlug: 'agentSlug',
+  instanceId: 'instanceId',
+  action: 'action',
+  status: 'status',
+  ipAddress: 'ipAddress',
+  userAgent: 'userAgent',
+  reason: 'reason',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+} as const
+
+export type AgentAuditLogScalarFieldEnum = (typeof AgentAuditLogScalarFieldEnum)[keyof typeof AgentAuditLogScalarFieldEnum]
+
+
 export const StorageEntryScalarFieldEnum = {
   id: 'id',
   key: 'key',
@@ -305,6 +377,34 @@ export const CompilationMetadataScalarFieldEnum = {
 export type CompilationMetadataScalarFieldEnum = (typeof CompilationMetadataScalarFieldEnum)[keyof typeof CompilationMetadataScalarFieldEnum]
 
 
+export const DeploymentHistoryScalarFieldEnum = {
+  id: 'id',
+  version: 'version',
+  buildNumber: 'buildNumber',
+  fullVersion: 'fullVersion',
+  gitCommit: 'gitCommit',
+  gitBranch: 'gitBranch',
+  deployedAt: 'deployedAt',
+  deployedBy: 'deployedBy',
+  status: 'status',
+  deploymentDuration: 'deploymentDuration',
+  workflowRunId: 'workflowRunId',
+  workflowRunUrl: 'workflowRunUrl',
+  metadata: 'metadata'
+} as const
+
+export type DeploymentHistoryScalarFieldEnum = (typeof DeploymentHistoryScalarFieldEnum)[keyof typeof DeploymentHistoryScalarFieldEnum]
+
+
+export const DeploymentCounterScalarFieldEnum = {
+  version: 'version',
+  lastBuildNumber: 'lastBuildNumber',
+  updatedAt: 'updatedAt'
+} as const
+
+export type DeploymentCounterScalarFieldEnum = (typeof DeploymentCounterScalarFieldEnum)[keyof typeof DeploymentCounterScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -318,6 +418,14 @@ export const JsonNullValueInput = {
 } as const
 
 export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const QueryMode = {
