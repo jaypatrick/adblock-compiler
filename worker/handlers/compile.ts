@@ -14,7 +14,7 @@ import { compress, decompress, emitDiagnosticsToTailWorker, getCacheKey, QUEUE_B
 import type { BatchRequest, CompilationResult, CompileQueueMessage, CompileRequest, Env, PreviousVersion, Priority } from '../types.ts';
 import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../../src/configuration/schemas.ts';
 import { AstParseRequestSchema } from '../schemas.ts';
-import { dispatchToDynamicWorker, isDynamicWorkerAvailable, AST_PARSE_WORKER_SOURCE } from '../dynamic-workers/index.ts';
+import { AST_PARSE_WORKER_SOURCE, dispatchToDynamicWorker, isDynamicWorkerAvailable } from '../dynamic-workers/index.ts';
 
 // ============================================================================
 // Configuration
