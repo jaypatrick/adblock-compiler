@@ -139,6 +139,7 @@
   - [Postman Testing](testing/POSTMAN_TESTING.md)
 - [Troubleshooting](troubleshooting/README.md)
   - [KB-001: API Not Available](troubleshooting/KB-001-api-not-available.md)
+  - [KB-002: Hyperdrive Database Down](troubleshooting/KB-002-hyperdrive-database-down.md)
   - [Neon Troubleshooting](troubleshooting/neon-troubleshooting.md)
 - [Workflows](workflows/README.md)
   - [Workflows Reference](workflows/WORKFLOWS.md)

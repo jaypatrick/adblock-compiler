@@ -199,7 +199,7 @@ All four config endpoints are **intentionally pre-auth** — they expose no secr
 
 ## Related KB Articles
 
-- *(planned)* KB-002 — Clerk JWT auth degraded / local JWT fallback
+- [KB-002](./KB-002-hyperdrive-database-down.md) — Hyperdrive binding connected but `database` service reports `down`
 - *(planned)* KB-003 — Cloudflare Queue consumer not processing messages
 - *(planned)* KB-004 — Angular SPA serves stale build after worker deploy
 
