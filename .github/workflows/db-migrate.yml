@@ -128,7 +128,7 @@ jobs:
             # Expose secret presence as env vars; secrets context is not
             # available in step-level if: conditions.
             HAS_CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
-            HAS_DIRECT_DB_URL: ${{ secrets.DIRECT_DATABASE_URL_STAGING != '' }}
+            HAS_DIRECT_DB_URL: ${{ secrets.DIRECT_DATABASE_URL_STAGING != '' || secrets.DIRECT_DATABASE_URL != '' }}
         steps:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
