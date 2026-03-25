@@ -133,6 +133,7 @@ export default {
                 headers: { 'Content-Type': 'application/json' },
             });
         } catch (err) {
+            // deno-lint-ignore no-console
             console.error('AST parse worker error:', err);
             return new Response(
                 JSON.stringify({ success: false, error: 'Internal server error' }),
