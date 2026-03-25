@@ -1,6 +1,13 @@
 import { assertEquals } from '@std/assert';
 import { PrismaClientConfigSchema } from './prisma-config.ts';
 
+Deno.test('PrismaClientConfigSchema validates postgres:// shorthand (Hyperdrive)', () => {
+    const result = PrismaClientConfigSchema.safeParse({
+        connectionString: 'postgres://user:pass@localhost:5432/db',
+    });
+    assertEquals(result.success, true);
+});
+
 Deno.test('PrismaClientConfigSchema validates valid PostgreSQL URL', () => {
     const result = PrismaClientConfigSchema.safeParse({
         connectionString: 'postgresql://user:pass@localhost:5432/db',

@@ -26,6 +26,7 @@ import type { Env } from '../types.ts';
 export async function handleHealth(env: Env): Promise<Response> {
     type ServiceStatus = 'healthy' | 'degraded' | 'down';
     type ServiceResult = { status: ServiceStatus; latency_ms?: number };
+    type DatabaseResult = ServiceResult & { db_name?: string; hyperdrive_host?: string };
 
     const probe = async (fn: () => Promise<void>): Promise<ServiceResult> => {
         const t0 = Date.now();
@@ -37,13 +38,46 @@ export async function handleHealth(env: Env): Promise<Response> {
         }
     };
 
+    // Extended database probe: verify connectivity AND confirm we're on the correct
+    // production database. Returns db_name and hyperdrive_host for observability.
+    const databaseProbe = async (): Promise<DatabaseResult> => {
+        if (!env.HYPERDRIVE) {
+            return { status: 'down' };
+        }
+        const t0 = Date.now();
+        try {
+            const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+            const rows = await prisma.$queryRaw<Array<{ db_name: string }>>`
+                SELECT current_database() AS db_name
+            `;
+            const dbName = rows[0]?.db_name ?? 'unknown';
+            const latency_ms = Date.now() - t0;
+            // Fail-fast guard: warn if connected to wrong database
+            if (dbName !== 'adblock-compiler') {
+                return {
+                    status: 'degraded',
+                    latency_ms,
+                    db_name: dbName,
+                    hyperdrive_host: env.HYPERDRIVE.host,
+                };
+            }
+            return {
+                status: 'healthy',
+                latency_ms,
+                db_name: dbName,
+                hyperdrive_host: env.HYPERDRIVE.host,
+            };
+        } catch {
+            return {
+                status: 'down',
+                latency_ms: Date.now() - t0,
+                hyperdrive_host: env.HYPERDRIVE?.host,
+            };
+        }
+    };
+
     const [database, cache] = await Promise.all([
-        env.HYPERDRIVE
-            ? probe(async () => {
-                const prisma = _internals.createPrismaClient(env.HYPERDRIVE!.connectionString);
-                await prisma.$queryRaw`SELECT 1`;
-            })
-            : Promise.resolve<ServiceResult>({ status: 'down' }),
+        databaseProbe(),
         probe(async () => {
             await env.COMPILATION_CACHE.list({ limit: 1 });
         }),
