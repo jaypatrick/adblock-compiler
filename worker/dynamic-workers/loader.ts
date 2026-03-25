@@ -43,30 +43,27 @@ import { isLoaderAvailable, makeAgentWorkerId } from './types.ts';
  */
 function getAstWorkerSource(): string {
     // Inline stub — replace with bundled output in production.
-    return `
-export default {
-  async fetch(request) {
-    const body = await request.json();
-    const { operation, rules = [], text } = body;
-    const startTime = Date.now();
-    if (operation === 'parse') {
-      return Response.json({
-        success: true, parsedRules: [], summary: { total: rules.length ?? 0 },
-        executedIn: 'dynamic-worker-isolate', duration: \\`
-\${Date.now() - startTime}ms\`,
-      });
-    }
-    if (operation === 'validate') {
-      return Response.json({
-        success: true, valid: true, totalRules: rules.length, validRules: rules.length,
-        invalidRules: 0, errors: [], warnings: [], executedIn: 'dynamic-worker-isolate',
-        duration: \\`
-\${Date.now() - startTime}ms\`,
-      });
-    }
-    return Response.json({ error: 'Unknown operation' }, { status: 400 });
-  }
-};`;
+    return 'export default {\n' +
+        '  async fetch(request) {\n' +
+        '    const body = await request.json();\n' +
+        '    const { operation, rules = [], text } = body;\n' +
+        '    const startTime = Date.now();\n' +
+        '    if (operation === ' + "'parse'" + ') {\n' +
+        '      return Response.json({\n' +
+        '        success: true, parsedRules: [], summary: { total: rules.length ?? 0 },\n' +
+        "        executedIn: 'dynamic-worker-isolate', duration: `${Date.now() - startTime}ms`,\n" +
+        '      });\n' +
+        '    }\n' +
+        '    if (operation === ' + "'validate'" + ') {\n' +
+        '      return Response.json({\n' +
+        "        success: true, valid: true, totalRules: rules.length, validRules: rules.length,\n" +
+        "        invalidRules: 0, errors: [], warnings: [], executedIn: 'dynamic-worker-isolate',\n" +
+        "        duration: `${Date.now() - startTime}ms`,\n" +
+        '      });\n' +
+        '    }\n' +
+        "    return Response.json({ error: 'Unknown operation' }, { status: 400 });\n" +
+        '  }\n' +
+        '};';
 }
 
 // ---------------------------------------------------------------------------
