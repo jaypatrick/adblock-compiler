@@ -132,12 +132,12 @@ Dynamic Workers are a ZTA-native primitive. This project enforces:
 
 | Control | Implementation |
 |---|---|
-| Minimum bindings | Spawned isolates receive only `COMPILATION_CACHE`, `RATE_LIMIT`, `COMPILER_VERSION` — never the full `Env` |
+| Minimum bindings | **DYNAMIC_WORKER_LOADER** isolates: `COMPILATION_CACHE`, `RATE_LIMIT`, `COMPILER_VERSION` only — enforced via `DynamicWorkerBindings`; **LOADER** AST/validate isolates: no bindings (`bindings: {}`); **LOADER** per-user agent Workers: `COMPILATION_CACHE` + `METRICS` when present — enforced via `DynamicWorkerSafeBindings` |
 | No outbound network | `globalOutbound: null` enforced for all ephemeral Workers (AST parse, validate) |
 | No persistent state | Each ephemeral invocation spawns a fresh isolate; no shared memory between requests |
 | Input validation | `AstParseRequestSchema` (Zod) validates the request body before it reaches the isolate |
 | Auth before dispatch | All dynamic Worker paths are behind Turnstile + rate-limit middleware |
-| Least-privilege agents | Per-user agent Workers receive only `COMPILATION_CACHE` and `METRICS` |
+| Least-privilege agents | Per-user agent Workers receive only `COMPILATION_CACHE` and `METRICS` (when present) via `DynamicWorkerSafeBindings` — auth secrets, D1, DO namespaces, and R2 are structurally excluded |
 
 ---
 

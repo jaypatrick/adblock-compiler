@@ -782,11 +782,27 @@ export async function handleASTParseRequest(
             const loaderResult = await runAstParseInDynamicWorker(body, env);
             if (loaderResult !== null) {
                 if (loaderResult.success) {
-                    return JsonResponse.success(loaderResult.data);
+                    // Only trust the LOADER result if it contains real AST data.
+                    // The current stub always returns parsedRules: [] — fall through
+                    // until a real implementation is wired up (#1386).
+                    const data: unknown = loaderResult.data;
+                    // deno-lint-ignore no-explicit-any
+                    const parsedRules = (data as any)?.parsedRules;
+                    // deno-lint-ignore no-explicit-any
+                    const summary = (data as any)?.summary;
+                    const hasNonEmptyParsedRules = Array.isArray(parsedRules) && parsedRules.length > 0;
+                    const hasSummary = summary !== undefined && summary !== null;
+                    if (hasNonEmptyParsedRules && hasSummary) {
+                        return JsonResponse.success(loaderResult.data);
+                    }
+                    // LOADER returned no usable results — fall through to legacy parser.
+                    // deno-lint-ignore no-console
+                    console.warn('[compile] LOADER AST-parse path returned no usable results; falling back to legacy parser.');
+                } else {
+                    // Non-null but failed → log and fall through to next path.
+                    // deno-lint-ignore no-console
+                    console.warn('[compile] LOADER AST-parse path failed:', loaderResult.error);
                 }
-                // Non-null but failed → log and fall through to next path.
-                // deno-lint-ignore no-console
-                console.warn('[compile] LOADER AST-parse path failed:', loaderResult.error);
             }
         }
 

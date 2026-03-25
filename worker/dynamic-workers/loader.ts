@@ -19,7 +19,7 @@
  * @see https://github.com/jaypatrick/adblock-compiler/issues/1386
  */
 
-import type { Env } from '../types.ts';
+import type { DynamicWorkerSafeBindings, Env } from '../types.ts';
 import type { DynamicAstParseOptions, DynamicValidateOptions, DynamicWorkerResult, DynamicWorkerTask } from './types.ts';
 import { isLoaderAvailable, makeAgentWorkerId } from './types.ts';
 
@@ -320,7 +320,7 @@ export async function getOrCreateUserAgent(
 
     const workerId = makeAgentWorkerId(userId);
 
-    const agentBindings: Partial<Env> = {};
+    const agentBindings: DynamicWorkerSafeBindings = {};
     if (env.COMPILATION_CACHE) agentBindings.COMPILATION_CACHE = env.COMPILATION_CACHE;
     if (env.METRICS) agentBindings.METRICS = env.METRICS;
 

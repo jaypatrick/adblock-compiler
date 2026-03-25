@@ -80,8 +80,14 @@ export interface DynamicWorkerLoadOptions {
      * Omit to inherit the parent Worker's outbound behaviour.
      */
     globalOutbound?: null | Fetcher;
-    /** Bindings granted to the dynamic Worker. Only include what it actually needs. */
-    bindings?: Partial<Env>;
+    /**
+     * Bindings granted to the dynamic Worker.
+     * Restricted to `DynamicWorkerSafeBindings` — a least-privilege allowlist of KV
+     * namespaces and read-only config values. Auth secrets, D1 databases, Durable
+     * Object namespaces, and R2 buckets are structurally excluded to prevent
+     * accidental privilege escalation inside isolates.
+     */
+    bindings?: DynamicWorkerSafeBindings;
 }
 
 export type DynamicWorkerFactory = (id: string) => DynamicWorkerLoadOptions;
@@ -379,6 +385,20 @@ export interface Env {
     /** Default Neon project ID for admin reporting endpoints. */
     NEON_PROJECT_ID?: string;
 }
+
+/**
+ * Least-privilege binding subset permitted for dynamic Workers loaded via `LOADER`.
+ *
+ * Only KV namespaces and read-only config values are allowed — never auth secrets,
+ * D1 databases, Durable Object namespaces, or R2 buckets. This makes it
+ * structurally impossible to accidentally grant privileged bindings to an isolate.
+ *
+ * Used as the `bindings` field type in `DynamicWorkerLoadOptions`.
+ *
+ * @see DynamicWorkerLoadOptions
+ * @see DynamicWorkerBindings — equivalent type for the DYNAMIC_WORKER_LOADER model
+ */
+export type DynamicWorkerSafeBindings = Partial<Pick<Env, 'COMPILATION_CACHE' | 'RATE_LIMIT' | 'METRICS' | 'COMPILER_VERSION'>>;
 
 // ============================================================================
 // Request Types

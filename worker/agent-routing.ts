@@ -26,6 +26,7 @@
 
 import type { Env } from './types.ts';
 import { getOrCreateUserAgent } from './dynamic-workers/index.ts';
+import { getAgentBySlug } from './agents/registry.ts';
 
 // ---------------------------------------------------------------------------
 // SDK lazy import — cached after first /agents/* request
@@ -106,11 +107,13 @@ export async function routeAgentRequest(request: Request, env: Env): Promise<Res
     const pathMatch = url.pathname.match(AGENT_PATH_RE);
     if (!pathMatch) return null;
 
-    // Dynamic Worker fast-path: if LOADER is configured and the agentId matches a
-    // user-scoped agent pattern, dispatch to the persistent per-user dynamic Worker.
-    // Falls back to the SDK path if LOADER is absent or the dispatch returns null.
+    // Dynamic Worker fast-path: only dispatch to a per-user dynamic Worker isolate when the
+    // agent registry entry explicitly opts in via `transport: 'dynamic-worker'`. This prevents
+    // the stub isolate from shadowing working SDK-based agents (e.g. mcp-agent uses SSE).
+    const agentName = pathMatch[1];
     const agentId = pathMatch[2];
-    if (agentId) {
+    const registryEntry = getAgentBySlug(agentName);
+    if (registryEntry?.transport === 'dynamic-worker' && agentId) {
         try {
             const dynamicResponse = await getOrCreateUserAgent(agentId, request, env);
             if (dynamicResponse !== null) {
