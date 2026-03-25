@@ -1,0 +1,94 @@
+# Prepares the Coding Agent environment before it starts working on issues.
+# Installs all toolchains, warms caches, generates Prisma clients, and verifies
+# a clean baseline so the agent can lint, type-check, run tests, and interact
+# with the database schema without hitting cold-start failures or timeouts.
+
+name: Copilot Setup Steps
+
+on:
+    copilot_setup_steps:
+
+jobs:
+    copilot-setup-steps:
+        name: Copilot Setup Steps
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            # ── Node.js / pnpm ────────────────────────────────────────────
+            # Required for: frontend build, mcp-remote (Neon MCP proxy),
+            # and any pnpm-managed tooling.
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 10.31.0
+
+            - name: Setup Node.js 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: 'pnpm'
+
+            - name: Install Node dependencies
+              run: pnpm install --frozen-lockfile
+
+            # Pre-warm the Angular build cache so the agent's first frontend
+            # change doesn't hit a cold compiler.
+            - name: Cache Angular build cache
+              uses: actions/cache@v4
+              with:
+                  path: frontend/.angular/cache
+                  key: ng-cache-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml', 'frontend/angular.json') }}
+                  restore-keys: |
+                      ng-cache-${{ runner.os }}-
+
+            # ── Deno ──────────────────────────────────────────────────────
+            # Required for: all compiler tasks, type-checking, linting,
+            # tests, wrangler, and Prisma via deno run -A npm:prisma.
+            - name: Setup Deno
+              uses: denoland/setup-deno@v2
+              with:
+                  deno-version: '2.x'
+
+            - name: Cache Deno dependencies
+              uses: actions/cache@v4
+              with:
+                  path: |
+                      ~/.cache/deno
+                      ~/.deno
+                  key: deno-${{ runner.os }}-${{ hashFiles('deno.json', 'deno.lock') }}
+                  restore-keys: |
+                      deno-${{ runner.os }}-
+
+            - name: Install Deno dependencies
+              run: deno install
+
+            # ── Prisma ────────────────────────────────────────────────────
+            # Generates both clients (Neon/pg and D1) so the agent has full
+            # type information for all database models from the start.
+            # Without this the agent has no knowledge of the schema and
+            # TypeScript will fail to resolve Prisma client imports.
+            - name: Generate Prisma client (PostgreSQL / Neon)
+              run: deno task db:generate
+              env:
+                  DATABASE_URL: ${{ secrets.COPILOT_MCP_DATABASE_URL }}
+                  DIRECT_DATABASE_URL: ${{ secrets.COPILOT_MCP_DIRECT_DATABASE_URL }}
+
+            - name: Generate Prisma client (D1)
+              run: deno task db:generate:d1
+
+            # ── Wrangler warm-up ──────────────────────────────────────────
+            # Pre-fetches the wrangler npm package so the agent doesn't time
+            # out waiting for it to download on first use.
+            - name: Warm wrangler cache
+              run: deno task wrangler --version
+
+            # ── Baseline verification ─────────────────────────────────────
+            # Runs the full preflight check (fmt, lint, typecheck, OpenAPI
+            # validate, schema generate, drift check) so the agent starts
+            # from a known-clean state. continue-on-error prevents
+            # pre-existing minor drift from blocking the agent entirely.
+            - name: Verify clean baseline (preflight)
+              run: deno task preflight
+              continue-on-error: true
