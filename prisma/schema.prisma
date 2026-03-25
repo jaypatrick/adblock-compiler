@@ -1,15 +1,15 @@
 // Prisma Schema for AdBlock Compiler
 //
-// PostgreSQL via PlanetScale or Neon, accessed through Cloudflare Hyperdrive.
-// Local development uses a local PostgreSQL instance (Docker or native).
+// PostgreSQL via Neon, accessed through Cloudflare Hyperdrive.
+// Local development uses a Neon branch (see https://neon.com/guides/local-development-with-neon).
 //
 // Usage:
-//   Local:      DATABASE_URL="postgresql://<user>:<password>@127.0.0.1:5432/<db_name>"  # See .env.example or docs/database-setup/local-dev.md
-//   Production: Set via `wrangler secret put DATABASE_URL` (PlanetScale/Neon connection string)
+//   Local:      DIRECT_DATABASE_URL="<neon-branch-connection-string>"  # See .env.example or docs/database-setup/neon-cheatsheet.md
+//   Production: Set via `wrangler secret put DATABASE_URL` (Neon main branch connection string)
 //
 // Migrations:
-//   npx prisma migrate dev --name <description>   # Create + apply migration locally
-//   npx prisma migrate deploy                      # Apply pending migrations (CI/prod)
+//   deno task db:migrate            # Create + apply migration locally
+//   deno task db:migrate:deploy     # Apply pending migrations (CI/prod)
 
 generator client {
   provider = "prisma-client"
@@ -47,6 +47,11 @@ model User {
 
   // Better Auth: two-factor authentication status
   twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
+
+  // Better Auth: ban management
+  banned     Boolean   @default(false)
+  banReason  String?   @map("ban_reason")
+  banExpires DateTime? @map("ban_expires") @db.Timestamptz
 
   apiKeys       ApiKey[]
   sessions      Session[]
@@ -401,4 +406,40 @@ model CompilationMetadata {
   @@index([configName])
   @@index([timestamp])
   @@map("compilation_metadata")
+}
+
+// ============================================================================
+// Deployment History — tracks worker deployments (migrated from D1)
+// ============================================================================
+
+model DeploymentHistory {
+  id                 String    @id
+  version            String
+  buildNumber        Int       @map("build_number")
+  fullVersion        String    @unique @map("full_version")
+  gitCommit          String    @map("git_commit")
+  gitBranch          String    @map("git_branch")
+  deployedAt         DateTime  @default(now()) @map("deployed_at") @db.Timestamptz
+  deployedBy         String    @map("deployed_by")
+  status             String    @default("success")
+  deploymentDuration Int?      @map("deployment_duration")
+  workflowRunId      String?   @map("workflow_run_id")
+  workflowRunUrl     String?   @map("workflow_run_url")
+  metadata           Json?     @db.JsonB
+
+  @@unique([version, buildNumber], name: "deployment_history_unique_deployment")
+  @@index([version])
+  @@index([buildNumber])
+  @@index([deployedAt(sort: Desc)])
+  @@index([status])
+  @@index([gitCommit])
+  @@map("deployment_history")
+}
+
+model DeploymentCounter {
+  version         String   @id
+  lastBuildNumber Int      @default(0) @map("last_build_number")
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("deployment_counter")
 }

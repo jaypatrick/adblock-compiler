@@ -24,6 +24,7 @@ import { type Env, type IAuthContext } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { AdminBanUserSchema, AdminPaginationQuerySchema, AdminUpdateUserSchema, BetterAuthUserPublicSchema, type BetterAuthUserRow } from '../schemas.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
+import { _internals } from '../lib/prisma.ts';
 
 /** Map a raw D1 user row to its public shape (strips sensitive fields). */
 function toPublicUser(u: BetterAuthUserRow) {
@@ -258,30 +259,14 @@ export async function handleAdminDeleteUser(
     const denied = checkRoutePermission('/admin/users/*', authContext);
     if (denied) return denied;
 
-    if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
+    if (!env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
 
     try {
-        // Delete sessions first (foreign key dependency)
-        await env.DB
-            .prepare('DELETE FROM "session" WHERE userId = ?')
-            .bind(userId)
-            .run();
-
-        // Delete accounts (OAuth providers linked to user)
-        await env.DB
-            .prepare('DELETE FROM "account" WHERE userId = ?')
-            .bind(userId)
-            .run();
-
-        // Delete the user
-        const result = await env.DB
-            .prepare('DELETE FROM "user" WHERE id = ?')
-            .bind(userId)
-            .run();
-
-        if (result.meta.changes === 0) {
-            return JsonResponse.notFound('User not found');
-        }
+        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+        await prisma.session.deleteMany({ where: { userId } });
+        await prisma.account.deleteMany({ where: { userId } });
+        const user = await prisma.user.delete({ where: { id: userId } }).catch(() => null);
+        if (!user) return JsonResponse.notFound('User not found');
 
         return JsonResponse.success({ message: 'User deleted' });
     } catch (error) {
@@ -306,7 +291,7 @@ export async function handleAdminBanUser(
     const denied = checkRoutePermission('/admin/users/*', authContext);
     if (denied) return denied;
 
-    if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
+    if (!env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
 
     let body: unknown = {};
     try {
@@ -322,26 +307,23 @@ export async function handleAdminBanUser(
     }
 
     try {
-        const now = new Date().toISOString();
-        const result = await env.DB
-            .prepare('UPDATE "user" SET banned = 1, banReason = ?, banExpires = ?, updatedAt = ? WHERE id = ?')
-            .bind(
-                parsed.data.reason ?? null,
-                parsed.data.expires ?? null,
-                now,
-                userId,
-            )
-            .run();
+        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+        const result = await prisma.user.updateMany({
+            where: { id: userId },
+            data: {
+                banned: true,
+                banReason: parsed.data.reason ?? null,
+                banExpires: parsed.data.expires ? new Date(parsed.data.expires) : null,
+                updatedAt: new Date(),
+            },
+        });
 
-        if (result.meta.changes === 0) {
+        if (result.count === 0) {
             return JsonResponse.notFound('User not found');
         }
 
         // Revoke all active sessions for the banned user
-        await env.DB
-            .prepare('DELETE FROM "session" WHERE userId = ?')
-            .bind(userId)
-            .run();
+        await prisma.session.deleteMany({ where: { userId } });
 
         return JsonResponse.success({ message: 'User banned' });
     } catch (error) {
@@ -366,16 +348,21 @@ export async function handleAdminUnbanUser(
     const denied = checkRoutePermission('/admin/users/*', authContext);
     if (denied) return denied;
 
-    if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
+    if (!env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
 
     try {
-        const now = new Date().toISOString();
-        const result = await env.DB
-            .prepare('UPDATE "user" SET banned = 0, banReason = NULL, banExpires = NULL, updatedAt = ? WHERE id = ?')
-            .bind(now, userId)
-            .run();
+        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+        const result = await prisma.user.updateMany({
+            where: { id: userId },
+            data: {
+                banned: false,
+                banReason: null,
+                banExpires: null,
+                updatedAt: new Date(),
+            },
+        });
 
-        if (result.meta.changes === 0) {
+        if (result.count === 0) {
             return JsonResponse.notFound('User not found');
         }
 
