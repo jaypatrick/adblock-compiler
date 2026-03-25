@@ -778,10 +778,19 @@ export async function handleASTParseRequest(
         const { runAstParseInDynamicWorker } = await import('../dynamic-workers/loader.ts');
         const dynamicResult = await runAstParseInDynamicWorker({ rules: body.rules, text: body.text }, env);
         if (dynamicResult !== null) {
-            // Dynamic Worker executed — return its response directly
-            return dynamicResult.success
-                ? JsonResponse.success(dynamicResult.data)
-                : JsonResponse.serverError(dynamicResult.error ?? 'Dynamic Worker error');
+            if (dynamicResult.success) {
+                // Wrap in `result` to avoid merging isolate fields into JsonResponse top-level
+                return JsonResponse.success({ result: dynamicResult.data ?? null });
+            }
+            const errorStatus = typeof dynamicResult.status === 'number' &&
+                dynamicResult.status >= 400 && dynamicResult.status < 600
+                ? dynamicResult.status
+                : 500;
+            const errorMessage = dynamicResult.error ?? 'Dynamic Worker error';
+            return new Response(JSON.stringify({ success: false, error: errorMessage }), {
+                status: errorStatus,
+                headers: { 'content-type': 'application/json' },
+            });
         }
 
         // Fallback: in-process handler (LOADER binding not configured)
@@ -822,9 +831,15 @@ export async function handleValidate(request: Request, env?: Env): Promise<Respo
             const { runValidateInDynamicWorker } = await import('../dynamic-workers/loader.ts');
             const dynamicResult = await runValidateInDynamicWorker({ rules, strict: body.strict }, env);
             if (dynamicResult !== null) {
-                return dynamicResult.success
-                    ? Response.json(dynamicResult.data)
-                    : Response.json({ success: false, error: dynamicResult.error }, { status: 500 });
+                if (dynamicResult.success) {
+                    return Response.json(dynamicResult.data);
+                }
+                const errorStatus = typeof dynamicResult.status === 'number' &&
+                    dynamicResult.status >= 400 && dynamicResult.status < 600
+                    ? dynamicResult.status
+                    : 500;
+                const errorMessage = dynamicResult.error ?? 'Dynamic Worker error';
+                return Response.json({ success: false, error: errorMessage }, { status: errorStatus });
             }
         }
 

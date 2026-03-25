@@ -87,10 +87,10 @@ export function agentNameToBindingKey(name: string): string {
  * Routes incoming requests to the appropriate Durable Object agent and returns
  * the agent's Response, or `null` when the URL does not match an agents path.
  *
- * Dynamic Workers fast-path: if `env.LOADER` is bound and the request carries
- * an authenticated `X-User-Id` header, the request is first offered to a
- * per-user Dynamic Worker via `getOrCreateUserAgent()`. Falls back to the
- * agents SDK when the LOADER binding is absent or the Dynamic Worker returns null.
+ * Dynamic Workers fast-path: if `env.LOADER` is bound, the request is first
+ * offered to a dynamic Worker keyed by the authenticated `X-User-Id` header
+ * (when present) or a shared 'shared' key. Falls back to the agents SDK when
+ * LOADER is absent or the Dynamic Worker returns null.
  *
  * Delegates to the official `agents` SDK (`routeAgentRequest`).
  *
@@ -110,12 +110,15 @@ export async function routeAgentRequest(request: Request, env: Env): Promise<Res
     const url = new URL(request.url);
     if (!url.pathname.match(AGENT_PATH_RE)) return null;
 
-    // ── Dynamic Workers fast-path (per-user isolate) ─────────────────────────
-    // Only attempted when LOADER is bound and a verified user ID is present.
-    const userId = request.headers.get('X-User-Id');
-    if (userId && env.LOADER) {
+    // ── Dynamic Workers fast-path (per-user or shared isolate) ───────────────
+    // Attempted whenever LOADER is bound. If an authenticated user ID header
+    // is present, it is used as the partition key; otherwise a shared key is
+    // used so the fast-path remains reachable even when X-User-Id is absent.
+    const userIdHeader = request.headers.get('X-User-Id');
+    if (env.LOADER) {
+        const workerKey = userIdHeader ?? 'shared';
         try {
-            const dynamicResponse = await getOrCreateUserAgent(userId, request, env);
+            const dynamicResponse = await getOrCreateUserAgent(workerKey, request, env);
             if (dynamicResponse) return dynamicResponse;
         } catch (err) {
             // deno-lint-ignore no-console

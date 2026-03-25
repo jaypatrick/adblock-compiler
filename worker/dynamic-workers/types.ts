@@ -18,6 +18,8 @@ export interface DynamicWorkerResult<T = unknown> {
     success: boolean;
     data?: T;
     error?: string;
+    /** HTTP status code from the isolate response (4xx/5xx preserved for callers). */
+    status?: number;
     /** Execution time in milliseconds (populated by the invocation helpers). */
     durationMs?: number;
 }
@@ -42,13 +44,13 @@ export interface DynamicValidateOptions {
 
 /**
  * Identity type for per-user dynamic agent Workers.
- * Uses the authenticated user's Clerk/BetterAuth user ID as the stable Worker name.
+ * Uses the authenticated user's Better Auth user ID as the stable Worker name.
  */
 export type AgentWorkerId = `agent-${string}`;
 
 /**
  * Creates a stable, prefixed worker ID for a user's AI agent instance.
- * @param userId - The authenticated user's ID (from Clerk/BetterAuth).
+ * @param userId - The authenticated user's ID from the current Better Auth provider.
  */
 export function makeAgentWorkerId(userId: string): AgentWorkerId {
     return `agent-${userId}`;
@@ -56,9 +58,13 @@ export function makeAgentWorkerId(userId: string): AgentWorkerId {
 
 /**
  * Checks whether the LOADER binding is available in the current environment.
+ * Verifies both `.load()` (ephemeral Workers) and `.get()` (persistent Workers)
+ * are present before callers attempt either operation.
  * Use this before calling any dynamic Worker functions.
  */
 export function isLoaderAvailable(env: { LOADER?: unknown }): boolean {
-    return typeof env.LOADER === 'object' && env.LOADER !== null &&
-        typeof (env.LOADER as { load?: unknown }).load === 'function';
+    const loader = env.LOADER as { load?: unknown; get?: unknown } | null | undefined;
+    return typeof loader === 'object' && loader !== null &&
+        typeof loader.load === 'function' &&
+        typeof loader.get === 'function';
 }
