@@ -58,6 +58,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **worker**: Remove dead `hasFileExtension` function and stale `async serveWebUI(env)` overload that referenced a non-existent `serveStaticFile` helper — fixes `TS2393`/`TS6133` type-check failures in CI
 
 
+
+## [0.75.0] - 2026-03-25
+
+### Added- add Dynamic Workers LOADER model, per-user agent dispatch, and validate fast-path (#1387)
+- scaffold Cloudflare Dynamic Workers support (#1386)
+- **agents**: add Prisma schema, migration, Zod schemas, agent-auth middleware, and admin endpoints for agent session tracking
+- **agents**: implement Cloudflare Agents SDK integration for issue #1377
+
+### Fixed
+
+- revert RegExp.escape to manual replace - native impl over-escapes in Deno
+- add missing runAstParseInDynamicWorker and runValidateInDynamicWorker imports to compile.ts
+- address PR review — restrict agent fast-path, fix body consumption, add DynamicWorkerSafeBindings, gate LOADER stub, add Model B tests
+- **ci**: use literal block scalar for yamllint run step to pass yamllint self-check
+- restore handleValidate dynamic worker fast-path, fix import order, and fix yamllint trailing spaces
+- add diagnostic logging for LOADER path failures in agent-routing and compile handlers
+- **ci**: collapse export type to single line (deno fmt) and fix wrangler.toml TOML syntax
+- **fmt**: add blank lines between export statements to satisfy deno fmt
+- address review comments — response shape, validation, fallback, tests, and security fixes
+- address review comments — response shape, validation, fallback, and tests
+- sort named imports alphabetically in compile.ts to satisfy deno fmt
+- **ci**: fix test stubbing (non-configurable stub) and workflow template literal injection
+- **test**: fix TS2698/TS2352 type errors and deno fmt formatting
+- **agents**: CORS/secureHeaders for /agents/*, mcp-agent scope, stale test comment
+- **agents**: address all 7 PR review comments
+- remove UUID_2 inconsistency in terminate session test
+- address review comments -- FK relation on AgentSession, UUID validation, idempotent terminate (409), consolidated Prisma client, null userId guard, unit tests
+- address code review feedback -- SQL comment characters, userId null guard removal
+- **agents**: address code review feedback
+- address PR #1378 review — use agents pkg, lazy-load SDK, fix comments/tests
+- **ci**: make frontend version bump idempotent against duplicate tags and re-bumps (#1376)
+
+
 ## [0.74.0] - 2026-03-24
 
 ### Added- centralize project URLs as single source of truth via wrangler env vars (#1366)
