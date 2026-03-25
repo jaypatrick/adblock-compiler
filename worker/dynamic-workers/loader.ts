@@ -11,10 +11,11 @@
  * All ephemeral Workers are created with `globalOutbound: null` (zero network
  * access) because AST parsing and rule validation are pure transforms.
  *
- * The per-user agent Workers are persistent (DO-backed hibernation) and are
- * granted only the bindings they need for conversational AI (cache read,
- * metrics write). They do NOT get R2, D1, Queue, or outbound network access
- * by default.
+ * The per-user agent Workers are persistent (DO-backed hibernation). Outbound
+ * network access is explicitly disabled by default to enforce ZTA — wire in
+ * dedicated LLM service/fetcher bindings when AI capabilities are needed.
+ * They receive only the bindings they need for conversational AI (cache read,
+ * metrics write) when those optional bindings are present in `env`.
  *
  * @see ideas/CLOUDFLARE_DYNAMIC_WORKERS_PIVOT.md
  * @see https://github.com/jaypatrick/adblock-compiler/issues/1386
@@ -51,14 +52,14 @@ export default {
     if (operation === 'parse') {
       return Response.json({
         success: true, parsedRules: [], summary: { total: rules.length ?? 0 },
-        executedIn: 'dynamic-worker-isolate', durationMs: Date.now() - startTime,
+        executedIn: 'dynamic-worker-isolate', duration: \`\${Date.now() - startTime}ms\`,
       });
     }
     if (operation === 'validate') {
       return Response.json({
         success: true, valid: true, totalRules: rules.length, validRules: rules.length,
         invalidRules: 0, errors: [], warnings: [], executedIn: 'dynamic-worker-isolate',
-        durationMs: Date.now() - startTime,
+        duration: \`\${Date.now() - startTime}ms\`,
       });
     }
     return Response.json({ error: 'Unknown operation' }, { status: 400 });
@@ -69,6 +70,26 @@ export default {
 // ---------------------------------------------------------------------------
 // Ephemeral Worker helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Extracts a human-readable error message from a non-OK isolate Response.
+ * Tries to parse `error` or `message` fields from JSON; falls back to the raw
+ * response text, then a generic string.
+ */
+async function parseIsolateErrorMessage(response: Response): Promise<string> {
+    try {
+        const maybeJson = await response.json() as Record<string, unknown>;
+        if (typeof maybeJson.error === 'string' && maybeJson.error) return maybeJson.error;
+        if (typeof maybeJson.message === 'string' && maybeJson.message) return maybeJson.message;
+        return JSON.stringify(maybeJson);
+    } catch {
+        try {
+            const text = await response.text();
+            if (text) return text;
+        } catch { /* fall through */ }
+    }
+    return 'Dynamic Worker error';
+}
 
 /**
  * Runs AST parsing inside an ephemeral dynamic Worker isolate.
@@ -110,11 +131,19 @@ export async function runAstParseInDynamicWorker(
             }),
         );
 
+        const durationMs = Date.now() - startTime;
+
+        if (!response.ok) {
+            const errorMessage = await parseIsolateErrorMessage(response);
+            return { success: false, status: response.status, error: errorMessage, durationMs };
+        }
+
         const data = await response.json();
         return {
-            success: response.ok,
+            success: true,
+            status: response.status,
             data,
-            durationMs: Date.now() - startTime,
+            durationMs,
         };
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -160,11 +189,19 @@ export async function runValidateInDynamicWorker(
             }),
         );
 
+        const validateDurationMs = Date.now() - startTime;
+
+        if (!response.ok) {
+            const errorMessage = await parseIsolateErrorMessage(response);
+            return { success: false, status: response.status, error: errorMessage, durationMs: validateDurationMs };
+        }
+
         const data = await response.json();
         return {
-            success: response.ok,
+            success: true,
+            status: response.status,
             data,
-            durationMs: Date.now() - startTime,
+            durationMs: validateDurationMs,
         };
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -184,17 +221,17 @@ export async function runValidateInDynamicWorker(
  * Gets or creates a persistent dynamic Worker for the given authenticated user.
  *
  * The Worker is identified by `agent-{userId}` — a stable name tied to the
- * user's Clerk/BetterAuth ID. It stays warm between requests and hibernates
+ * user's Better Auth user ID. It stays warm between requests and hibernates
  * when idle (Durable Object hibernation semantics).
  *
- * Bindings granted:
+ * Bindings granted (only when present in `env`):
  *   - `COMPILATION_CACHE` (KV read) — for context-aware compilation suggestions
  *   - `METRICS` (KV write) — for per-agent telemetry
- *   - NO R2, D1, Queue, or outbound network access
+ *   - NO R2, D1, Queue, or outbound network access (ZTA default)
  *
  * Returns `null` if `env.LOADER` is not configured (LOADER binding absent).
  *
- * @param userId - The authenticated user's ID (Clerk/BetterAuth userId).
+ * @param userId - The authenticated user's Better Auth user ID.
  * @param request - The incoming HTTP request to dispatch into the agent Worker.
  * @param env - The Worker environment bindings.
  *
@@ -212,6 +249,12 @@ export async function getOrCreateUserAgent(
 
     const workerId = makeAgentWorkerId(userId);
 
+    // Build bindings object — only include keys that are actually defined in env
+    // to avoid passing `undefined` values into the dynamic Worker loader.
+    const agentBindings: Partial<Env> = {};
+    if (env.COMPILATION_CACHE) agentBindings.COMPILATION_CACHE = env.COMPILATION_CACHE;
+    if (env.METRICS) agentBindings.METRICS = env.METRICS;
+
     try {
         const agentWorker = await env.LOADER!.get(
             workerId,
@@ -222,16 +265,10 @@ export async function getOrCreateUserAgent(
                 // TODO(#1386): Replace with bundled ASTViewerService once @cloudflare/worker-bundler
                     'agent-main.js': getAgentWorkerSource(),
                 },
-                // Agents DO need outbound for LLM API calls — inherit parent outbound.
-                // Restrict further once specific LLM service bindings are available.
-                globalOutbound: undefined,
-                bindings: {
-                    // Read access to the compilation cache for context
-                    COMPILATION_CACHE: env.COMPILATION_CACHE,
-                    // Write access for per-agent metrics
-                    METRICS: env.METRICS,
-                    // No R2, D1, Queue, or other bindings — principle of least privilege
-                },
+                // Outbound is explicitly disabled for dynamic agents by default to enforce ZTA.
+                // When LLM/service bindings are introduced, wire them here instead of inheriting parent outbound.
+                globalOutbound: null,
+                bindings: agentBindings,
             }),
         );
 
