@@ -58,11 +58,13 @@ TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8787
 
 # ─── Hyperdrive (local connection override) ───────────────────────────────────
-# Overrides the Hyperdrive binding for `wrangler dev` with a direct connection.
+# wrangler dev does NOT use the HYPERDRIVE binding — it uses this env var as a
+# passthrough to the Postgres URL you provide. Point this at your personal Neon
+# development branch (create one at https://console.neon.tech → your project →
+# Branches → New Branch). Use the "Direct connection" string (not pooled).
+# See: https://neon.com/guides/local-development-with-neon
 # See: https://developers.cloudflare.com/hyperdrive/configuration/local-development/
-# Default: Neon pooler (matches production — zero config needed)
-# Docker local fallback: postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev
-CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:pass@ep-xxx-pooler.region.neon.tech/dbname?sslmode=require
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require
 
 # ─── Neon Admin API (optional — for /admin/neon/* endpoints) ──────────────────
 # Needed for admin reporting endpoints that call the Neon platform REST API.
