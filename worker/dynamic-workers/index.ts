@@ -17,10 +17,10 @@ export {
 } from './loader.ts';
 
 export type {
+    AgentWorkerId,
     DynamicAstParseOptions,
     DynamicValidateOptions,
     DynamicWorkerResult,
-    AgentWorkerId,
 } from './types.ts';
 
 export {
