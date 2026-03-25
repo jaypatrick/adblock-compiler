@@ -66,11 +66,12 @@ sequenceDiagram
     participant PR as Pull Request
     participant Main as main branch
     participant Staging as Neon staging
+    participant PRDB as Neon pr-NNNN branch
     participant Prod as Neon production
     participant Worker as Cloudflare Worker
 
     Dev->>PR: Open PR (forks pr-NNNN from staging)
-    PR->>Staging: Prisma migrations applied to pr-NNNN
+    PR->>PRDB: Prisma migrations applied to pr-NNNN branch
     Dev->>Main: Merge PR to main
     Main->>Staging: Prisma migrations applied to staging
     Main->>Worker: D1 edge-cache migrations applied
