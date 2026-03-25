@@ -33,6 +33,11 @@ export type ApiKey = Prisma.ApiKeyModel
  */
 export type Session = Prisma.SessionModel
 /**
+ * Model TwoFactor
+ * Better Auth twoFactor plugin — stores TOTP secrets and backup codes per user.
+ */
+export type TwoFactor = Prisma.TwoFactorModel
+/**
  * Model Account
  * 
  */
@@ -73,6 +78,21 @@ export type SourceHealthSnapshot = Prisma.SourceHealthSnapshotModel
  */
 export type SourceChangeEvent = Prisma.SourceChangeEventModel
 /**
+ * Model AgentSession
+ * 
+ */
+export type AgentSession = Prisma.AgentSessionModel
+/**
+ * Model AgentInvocation
+ * Tracks individual tool calls / actions within a session.
+ */
+export type AgentInvocation = Prisma.AgentInvocationModel
+/**
+ * Model AgentAuditLog
+ * Append-only audit log for all agent-related security events.
+ */
+export type AgentAuditLog = Prisma.AgentAuditLogModel
+/**
  * Model StorageEntry
  * 
  */
@@ -87,3 +107,13 @@ export type FilterCache = Prisma.FilterCacheModel
  * 
  */
 export type CompilationMetadata = Prisma.CompilationMetadataModel
+/**
+ * Model DeploymentHistory
+ * 
+ */
+export type DeploymentHistory = Prisma.DeploymentHistoryModel
+/**
+ * Model DeploymentCounter
+ * 
+ */
+export type DeploymentCounter = Prisma.DeploymentCounterModel

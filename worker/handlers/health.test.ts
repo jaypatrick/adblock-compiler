@@ -15,15 +15,18 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
+import { stub } from '@std/testing/mock';
 import { handleHealth, handleHealthLatest } from './health.ts';
-import { makeDb, makeEnv, makeFailingKv, makeKv } from '../test-helpers.ts';
+import { type HyperdriveBinding } from '../types.ts';
+import { _internals } from '../lib/prisma.ts';
+import { makeEnv, makeFailingKv, makeKv } from '../test-helpers.ts';
 
 // ============================================================================
 // handleHealth
 // ============================================================================
 
 Deno.test('handleHealth - returns JSON response', async () => {
-    const env = makeEnv({ BETTER_AUTH_SECRET: 'test-secret', DB: makeDb(), ADBLOCK_COMPILER: {} as DurableObjectNamespace });
+    const env = makeEnv({ BETTER_AUTH_SECRET: 'test-secret', ADBLOCK_COMPILER: {} as DurableObjectNamespace });
     const res = await handleHealth(env);
     assertEquals(res.status, 200);
     const body = await res.json() as { status: string };
@@ -31,19 +34,25 @@ Deno.test('handleHealth - returns JSON response', async () => {
 });
 
 Deno.test('handleHealth - overall status healthy when all services healthy', async () => {
-    const env = makeEnv({
-        BETTER_AUTH_SECRET: 'test-secret',
-        DB: makeDb(),
-        ADBLOCK_COMPILER: {} as DurableObjectNamespace,
-    });
-    const res = await handleHealth(env);
-    const body = await res.json() as { status: string; services: Record<string, { status: string }> };
-    assertEquals(body.services.gateway.status, 'healthy');
-    assertEquals(body.services.auth.status, 'healthy');
-    assertEquals(body.services.compiler.status, 'healthy');
+    const mockPrisma = { $queryRaw: async () => [{ '?column?': 1 }] };
+    const s = stub(_internals, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    try {
+        const env = makeEnv({
+            BETTER_AUTH_SECRET: 'test-secret',
+            HYPERDRIVE: { connectionString: 'postgresql://test' } as unknown as HyperdriveBinding,
+            ADBLOCK_COMPILER: {} as DurableObjectNamespace,
+        });
+        const res = await handleHealth(env);
+        const body = await res.json() as { status: string; services: Record<string, { status: string }> };
+        assertEquals(body.services.gateway.status, 'healthy');
+        assertEquals(body.services.auth.status, 'healthy');
+        assertEquals(body.services.compiler.status, 'healthy');
+    } finally {
+        s.restore();
+    }
 });
 
-Deno.test('handleHealth - database down when env.DB is missing', async () => {
+Deno.test('handleHealth - database down when env.HYPERDRIVE is missing', async () => {
     const env = makeEnv({ BETTER_AUTH_SECRET: 'test-secret' });
     const res = await handleHealth(env);
     const body = await res.json() as { status: string; services: Record<string, { status: string }> };
@@ -51,15 +60,24 @@ Deno.test('handleHealth - database down when env.DB is missing', async () => {
 });
 
 Deno.test('handleHealth - auth provider is "better-auth" when BETTER_AUTH_SECRET is set', async () => {
-    const env = makeEnv({ BETTER_AUTH_SECRET: 'my-test-secret', DB: makeDb() });
-    const res = await handleHealth(env);
-    const body = await res.json() as { services: { auth: { provider: string; status: string } } };
-    assertEquals(body.services.auth.provider, 'better-auth');
-    assertEquals(body.services.auth.status, 'healthy');
+    const mockPrisma = { $queryRaw: async () => [{ '?column?': 1 }] };
+    const s = stub(_internals, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    try {
+        const env = makeEnv({
+            BETTER_AUTH_SECRET: 'my-test-secret',
+            HYPERDRIVE: { connectionString: 'postgresql://test' } as unknown as HyperdriveBinding,
+        });
+        const res = await handleHealth(env);
+        const body = await res.json() as { services: { auth: { provider: string; status: string } } };
+        assertEquals(body.services.auth.provider, 'better-auth');
+        assertEquals(body.services.auth.status, 'healthy');
+    } finally {
+        s.restore();
+    }
 });
 
-Deno.test('handleHealth - auth status is "down" when better-auth is set but DB binding is missing', async () => {
-    const env = makeEnv({ BETTER_AUTH_SECRET: 'my-test-secret' }); // no DB
+Deno.test('handleHealth - auth status is "down" when better-auth is set but HYPERDRIVE binding is missing', async () => {
+    const env = makeEnv({ BETTER_AUTH_SECRET: 'my-test-secret' }); // no HYPERDRIVE
     const res = await handleHealth(env);
     const body = await res.json() as { services: { auth: { provider: string; status: string } } };
     assertEquals(body.services.auth.provider, 'better-auth');

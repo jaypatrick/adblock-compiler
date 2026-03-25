@@ -7,6 +7,7 @@
  */
 
 import { VERSION } from '../../src/version.ts';
+import { _internals } from '../lib/prisma.ts';
 import type { Env } from '../types.ts';
 
 /**
@@ -37,9 +38,10 @@ export async function handleHealth(env: Env): Promise<Response> {
     };
 
     const [database, cache] = await Promise.all([
-        env.DB
+        env.HYPERDRIVE
             ? probe(async () => {
-                await env.DB!.prepare('SELECT 1').first();
+                const prisma = _internals.createPrismaClient(env.HYPERDRIVE!.connectionString);
+                await prisma.$queryRaw`SELECT 1`;
             })
             : Promise.resolve<ServiceResult>({ status: 'down' }),
         probe(async () => {
@@ -51,8 +53,8 @@ export async function handleHealth(env: Env): Promise<Response> {
     let authStatus: ServiceStatus;
     if (authProvider === 'none') {
         authStatus = 'degraded';
-    } else if (authProvider === 'better-auth' && !env.DB) {
-        // Better Auth requires a D1 database binding; without it, auth cannot function.
+    } else if (authProvider === 'better-auth' && !env.HYPERDRIVE) {
+        // Better Auth requires a Hyperdrive binding for Neon PostgreSQL access; without it, auth cannot function.
         authStatus = 'down';
     } else {
         authStatus = 'healthy';
