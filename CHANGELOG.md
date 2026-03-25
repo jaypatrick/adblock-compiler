@@ -59,6 +59,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.76.0] - 2026-03-25
+
+### Added- Option B1 staging→production promotion pipeline (Neon branching)
+- complete D1→Neon migration - port all handlers to Prisma via Hyperdrive
+
+### Fixed
+
+- accept postgres:// scheme in PrismaClientConfigSchema + extended health database probe
+- simplify $queryRaw type cast in health.ts probe (code review)
+- add prisma/migrations/** to db-migrate.yml path triggers and detect changed Prisma migrations
+
+
 ## [0.75.0] - 2026-03-25
 
 ### Added- add Dynamic Workers LOADER model, per-user agent dispatch, and validate fast-path (#1387)
