@@ -37,6 +37,67 @@ export type WorkflowInstance = globalThis.WorkflowInstance;
 export type HyperdriveBinding = globalThis.Hyperdrive;
 
 // ============================================================================
+// Dynamic Workers (Cloudflare Dynamic Workers — open beta, March 2026)
+// ============================================================================
+
+/**
+ * Type alias for the Cloudflare Dynamic Dispatch Namespace binding.
+ * Provides `load()` for one-shot ephemeral Workers and `get()` for
+ * named, persistent, hibernating Dynamic Workers (DO-backed).
+ *
+ * Requires wrangler.toml:
+ *   [[dynamic_dispatch_namespaces]]
+ *   binding = "LOADER"
+ *   namespace = "adblock-compiler-dynamic"
+ *
+ * @see https://developers.cloudflare.com/dynamic-workers/
+ */
+export type DynamicDispatchNamespace = {
+    /**
+     * Load a one-shot ephemeral Worker from a module map.
+     * Ideal for stateless transforms: AST parsing, rule validation, single-file compilation.
+     * The Worker is destroyed after the response completes.
+     */
+    load(options: DynamicWorkerLoadOptions): Promise<DynamicWorkerEntrypoint>;
+    /**
+     * Get-or-create a named, persistent Dynamic Worker.
+     * The Worker stays warm between requests and hibernates when idle (DO semantics).
+     * Ideal for per-user AiAgent instances or long-lived orchestration workers.
+     */
+    get(id: string, factory: DynamicWorkerFactory): Promise<DynamicWorkerEntrypoint>;
+};
+
+export interface DynamicWorkerLoadOptions {
+    /** Compatibility date for the dynamic Worker's V8 runtime. */
+    compatibilityDate: string;
+    /** The entry point module name (must be a key in `modules`). */
+    mainModule: string;
+    /** Map of module name → source code string. Pre-bundle with @cloudflare/worker-bundler. */
+    modules: Record<string, string>;
+    /**
+     * Set to `null` to fully lock down outbound network access (Zero Trust).
+     * Set to a `Fetcher` to allow outbound via a specific service binding.
+     * Omit to inherit the parent Worker's outbound behaviour.
+     */
+    globalOutbound?: null | Fetcher;
+    /**
+     * Bindings granted to the dynamic Worker.
+     * Restricted to `DynamicWorkerSafeBindings` — a least-privilege allowlist of KV
+     * namespaces and read-only config values. Auth secrets, D1 databases, Durable
+     * Object namespaces, and R2 buckets are structurally excluded to prevent
+     * accidental privilege escalation inside isolates.
+     */
+    bindings?: DynamicWorkerSafeBindings;
+}
+
+export type DynamicWorkerFactory = (id: string) => DynamicWorkerLoadOptions;
+
+export interface DynamicWorkerEntrypoint {
+    /** Dispatch an HTTP request into the dynamic Worker's `fetch` handler. */
+    fetch(request: Request): Promise<Response>;
+}
+
+// ============================================================================
 // Authentication & Authorization Types
 // ============================================================================
 
@@ -266,6 +327,11 @@ export interface Env {
     MCP_AGENT?: DurableObjectNamespace;
     // Adblock Compiler container Durable Object namespace
     ADBLOCK_COMPILER?: DurableObjectNamespace;
+    // Dynamic Dispatch Namespace binding (optional — add to wrangler.toml to enable)
+    // [[dynamic_dispatch_namespaces]], binding = "LOADER", namespace = "adblock-compiler-dynamic"
+    // @see https://developers.cloudflare.com/dynamic-workers/
+    // @see https://github.com/jaypatrick/adblock-compiler/issues/1386
+    LOADER?: DynamicDispatchNamespace;
     // Dynamic Workers loader binding (optional — add to wrangler.toml to enable)
     // type = "dynamic_worker_loader", name = "DYNAMIC_WORKER_LOADER"
     // @see https://developers.cloudflare.com/dynamic-workers/
@@ -319,6 +385,20 @@ export interface Env {
     /** Default Neon project ID for admin reporting endpoints. */
     NEON_PROJECT_ID?: string;
 }
+
+/**
+ * Least-privilege binding subset permitted for dynamic Workers loaded via `LOADER`.
+ *
+ * Only KV namespaces and read-only config values are allowed — never auth secrets,
+ * D1 databases, Durable Object namespaces, or R2 buckets. This makes it
+ * structurally impossible to accidentally grant privileged bindings to an isolate.
+ *
+ * Used as the `bindings` field type in `DynamicWorkerLoadOptions`.
+ *
+ * @see DynamicWorkerLoadOptions
+ * @see DynamicWorkerBindings — equivalent type for the DYNAMIC_WORKER_LOADER model
+ */
+export type DynamicWorkerSafeBindings = Partial<Pick<Env, 'COMPILATION_CACHE' | 'RATE_LIMIT' | 'METRICS' | 'COMPILER_VERSION'>>;
 
 // ============================================================================
 // Request Types
