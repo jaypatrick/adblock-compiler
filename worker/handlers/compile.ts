@@ -15,3 +15,601 @@ import type { BatchRequest, CompilationResult, CompileQueueMessage, CompileReque
 import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../../src/configuration/schemas.ts';
 import { AstParseRequestSchema } from '../schemas.ts';
 import { AST_PARSE_WORKER_SOURCE, dispatchToDynamicWorker, type DynamicWorkerTask, isDynamicWorkerAvailable } from '../dynamic-workers/index.ts';
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+const CACHE_TTL = WORKER_DEFAULTS.CACHE_TTL_SECONDS;
+
+/**
+ * In-memory map for request deduplication.
+ * Maps cache keys to pending compilation promises.
+ */
+const pendingCompilations = new Map<string, Promise<CompilationResult>>();
+
+// ============================================================================
+// Streaming Logger
+// ============================================================================
+
+/**
+ * Creates a logger that sends events through a TransformStream.
+ */
+function createStreamingLogger(writer: WritableStreamDefaultWriter<Uint8Array>) {
+    const encoder = new TextEncoder();
+
+    const sendEvent = (type: string, data: unknown) => {
+        const event = `event: ${type}\ndata: ${JSON.stringify(data)}\n\n`;
+        writer.write(encoder.encode(event));
+    };
+
+    return {
+        sendEvent,
+        logger: {
+            info: (message: string) => sendEvent('log', { level: 'info', message }),
+            warn: (message: string) => sendEvent('log', { level: 'warn', message }),
+            error: (message: string) => sendEvent('log', { level: 'error', message }),
+            debug: (message: string) => sendEvent('log', { level: 'debug', message }),
+            trace: (message: string) => sendEvent('log', { level: 'trace', message }),
+        },
+    };
+}
+
+/**
+ * Creates compiler event handlers that stream progress via SSE.
+ */
+function createStreamingEvents(
+    sendEvent: (type: string, data: unknown) => void,
+): ICompilerEvents {
+    return {
+        onSourceStart: (event) => sendEvent('source:start', event),
+        onSourceComplete: (event) => sendEvent('source:complete', event),
+        onSourceError: (event) =>
+            sendEvent('source:error', {
+                ...event,
+                error: event.error.message,
+            }),
+        onTransformationStart: (event) => sendEvent('transformation:start', event),
+        onTransformationComplete: (event) => sendEvent('transformation:complete', event),
+        onProgress: (event) => sendEvent('progress', event),
+        onCompilationComplete: (event) => sendEvent('compilation:complete', event),
+    };
+}
+
+// ============================================================================
+// JSON Compilation Handler
+// ============================================================================
+
+/**
+ * Handle compile requests with JSON response.
+ */
+export async function handleCompileJson(
+    request: Request,
+    env: Env,
+    analytics?: AnalyticsService,
+    requestId?: string,
+): Promise<Response> {
+    const startTime = Date.now();
+
+    // Parse and validate request body
+    let body: CompileRequest;
+    try {
+        const rawBody = await request.json();
+        const validationResult = CompileRequestSchema.safeParse(rawBody);
+
+        if (!validationResult.success) {
+            const errors = validationResult.error.issues
+                .map((issue) => `/${issue.path.join('/')}: ${issue.message}`)
+                .join(', ');
+            return JsonResponse.badRequest(`Invalid request body: ${errors}`);
+        }
+
+        body = validationResult.data;
+    } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        return JsonResponse.badRequest(`Failed to parse request body: ${errorMessage}`);
+    }
+
+    const { configuration, preFetchedContent, benchmark } = body;
+    const configName = configuration.name || 'unnamed';
+    const sourceCount = configuration.sources?.length || 0;
+
+    // Track compilation request
+    analytics?.trackCompilationRequest({
+        requestId,
+        configName,
+        sourceCount,
+    });
+
+    // Check cache if no pre-fetched content
+    const cacheKey = (!preFetchedContent || Object.keys(preFetchedContent).length === 0) ? await getCacheKey(configuration) : null;
+
+    let previousCachedVersion: PreviousVersion | undefined;
+
+    if (cacheKey) {
+        // Check for in-flight request deduplication
+        const pending = pendingCompilations.get(cacheKey);
+        if (pending) {
+            const result = await pending;
+            analytics?.trackCacheHit({
+                requestId,
+                configName,
+                cacheKey,
+                ruleCount: result.ruleCount,
+                durationMs: Date.now() - startTime,
+            });
+            return JsonResponse.success({
+                ...result,
+                deduplicated: true,
+            }, {
+                headers: { 'X-Request-Deduplication': 'HIT' },
+            });
+        }
+
+        // Check KV cache
+        const cached = await env.COMPILATION_CACHE.get(cacheKey, 'arrayBuffer');
+        if (cached) {
+            try {
+                const decompressed = await decompress(cached);
+                const result = JSON.parse(decompressed) as CompilationResult;
+
+                previousCachedVersion = {
+                    rules: result.rules || [],
+                    ruleCount: result.ruleCount || 0,
+                    compiledAt: result.compiledAt || new Date().toISOString(),
+                };
+
+                analytics?.trackCacheHit({
+                    requestId,
+                    configName,
+                    cacheKey,
+                    ruleCount: result.ruleCount,
+                    outputSizeBytes: cached.byteLength,
+                    durationMs: Date.now() - startTime,
+                });
+
+                return JsonResponse.success({
+                    ...result,
+                    cached: true,
+                }, {
+                    headers: { 'X-Cache': 'HIT' },
+                });
+            } catch (error) {
+                // deno-lint-ignore no-console
+                console.error('Cache decompression failed:', error);
+            }
+        }
+
+        analytics?.trackCacheMiss({
+            requestId,
+            configName,
+            cacheKey,
+        });
+    }
+
+    // Create compilation promise for deduplication
+    const compilationPromise = (async (): Promise<CompilationResult> => {
+        try {
+            const tracingContext = createTracingContext({
+                metadata: {
+                    endpoint: '/compile',
+                    configName: configuration.name,
+                },
+            });
+
+            const compiler = new WorkerCompiler({
+                preFetchedContent,
+                tracingContext,
+            });
+
+            const result = await compiler.compileWithMetrics(configuration, benchmark ?? false);
+
+            if (result.diagnostics) {
+                emitDiagnosticsToTailWorker(result.diagnostics);
+            }
+
+            const response: CompilationResult = {
+                success: true,
+                rules: result.rules,
+                ruleCount: result.rules.length,
+                metrics: result.metrics,
+                compiledAt: new Date().toISOString(),
+                previousVersion: previousCachedVersion,
+            };
+
+            // Cache the result
+            if (cacheKey) {
+                try {
+                    const compressed = await compress(JSON.stringify(response));
+                    await env.COMPILATION_CACHE.put(
+                        cacheKey,
+                        compressed,
+                        { expirationTtl: CACHE_TTL },
+                    );
+                } catch (error) {
+                    // deno-lint-ignore no-console
+                    console.error('Cache compression failed:', error);
+                }
+            }
+
+            return response;
+        } catch (error) {
+            const errorObj = ErrorUtils.toError(error);
+
+            // Report compilation errors to centralized error reporting
+            const errorReporter = createWorkerErrorReporter(env);
+            errorReporter.reportSync(errorObj, {
+                requestId,
+                path: '/compile',
+                configName: configuration.name,
+                sourceCount: configuration.sources?.length,
+            });
+
+            const message = errorObj.message;
+            return { success: false, error: message };
+        } finally {
+            if (cacheKey) {
+                pendingCompilations.delete(cacheKey);
+            }
+        }
+    })();
+
+    if (cacheKey) {
+        pendingCompilations.set(cacheKey, compilationPromise);
+    }
+
+    const result = await compilationPromise;
+    const duration = Date.now() - startTime;
+
+    if (!result.success) {
+        await recordMetric(env, '/compile', duration, false, result.error);
+        analytics?.trackCompilationError({
+            requestId,
+            configName,
+            sourceCount,
+            durationMs: duration,
+            error: result.error,
+            cacheKey: cacheKey || undefined,
+        });
+
+        return JsonResponse.serverError(result.error || 'Compilation failed');
+    }
+
+    await recordMetric(env, '/compile', duration, true);
+
+    const outputSize = result.rules ? JSON.stringify(result.rules).length : 0;
+    analytics?.trackCompilationSuccess({
+        requestId,
+        configName,
+        sourceCount,
+        ruleCount: result.ruleCount,
+        durationMs: duration,
+        outputSizeBytes: outputSize,
+        cacheKey: cacheKey || undefined,
+    });
+
+    return JsonResponse.success(result, {
+        headers: { 'X-Cache': 'MISS' },
+    });
+}
+
+// ============================================================================
+// Streaming Compilation Handler
+// ============================================================================
+
+/**
+ * Handle compile requests with streaming response (SSE).
+ */
+export async function handleCompileStream(
+    request: Request,
+    env: Env,
+): Promise<Response> {
+    const startTime = Date.now();
+    let rawBody: unknown;
+    try {
+        rawBody = await request.json();
+    } catch {
+        // Discard parse error — a generic 400 is returned instead of exposing internal details
+        return JsonResponse.badRequest('Invalid JSON in request body');
+    }
+    const parsed = CompileRequestSchema.safeParse(rawBody);
+    if (!parsed.success) {
+        const errors = parsed.error.issues.map((i) => `/${i.path.join('/')}: ${i.message}`).join(', ');
+        return JsonResponse.badRequest(`Invalid request body: ${errors}`);
+    }
+    const { configuration, preFetchedContent, benchmark } = parsed.data;
+
+    const cacheKey = (!preFetchedContent || Object.keys(preFetchedContent).length === 0) ? await getCacheKey(configuration) : null;
+
+    let previousCachedVersion: PreviousVersion | undefined;
+
+    if (cacheKey) {
+        const cached = await env.COMPILATION_CACHE.get(cacheKey, 'arrayBuffer');
+        if (cached) {
+            try {
+                const decompressed = await decompress(cached);
+                const result = JSON.parse(decompressed) as CompilationResult;
+                previousCachedVersion = {
+                    rules: result.rules || [],
+                    ruleCount: result.ruleCount || 0,
+                    compiledAt: result.compiledAt || new Date().toISOString(),
+                };
+            } catch (error) {
+                // deno-lint-ignore no-console
+                console.error('Cache decompression failed:', error);
+            }
+        }
+    }
+
+    const { readable, writable } = new TransformStream<Uint8Array>();
+    const writer = writable.getWriter();
+    const encoder = new TextEncoder();
+
+    // Start compilation in the background
+    (async () => {
+        try {
+            const { sendEvent, logger } = createStreamingLogger(writer);
+            const events = createStreamingEvents(sendEvent);
+
+            const tracingContext = createTracingContext({
+                metadata: {
+                    endpoint: '/compile/stream',
+                    configName: configuration.name,
+                },
+            });
+
+            const compiler = new WorkerCompiler({
+                logger,
+                events,
+                preFetchedContent,
+                tracingContext,
+            });
+
+            const result = await compiler.compileWithMetrics(configuration, benchmark ?? false);
+
+            if (result.diagnostics && result.diagnostics.length > 0) {
+                for (const diagEvent of result.diagnostics) {
+                    switch (diagEvent.category) {
+                        case 'cache':
+                            sendEvent('cache', diagEvent);
+                            break;
+                        case 'network':
+                            sendEvent('network', diagEvent);
+                            break;
+                        case 'performance':
+                            sendEvent('metric', diagEvent);
+                            break;
+                        default:
+                            sendEvent('diagnostic', diagEvent);
+                    }
+                }
+                emitDiagnosticsToTailWorker(result.diagnostics);
+            }
+
+            sendEvent('result', {
+                rules: result.rules,
+                ruleCount: result.rules.length,
+                metrics: result.metrics,
+                previousVersion: previousCachedVersion,
+            });
+
+            await writer.write(encoder.encode('event: done\ndata: {}\n\n'));
+
+            // Cache the result
+            if (cacheKey) {
+                try {
+                    const compilationResult: CompilationResult = {
+                        success: true,
+                        rules: result.rules,
+                        ruleCount: result.rules.length,
+                        metrics: result.metrics,
+                        compiledAt: new Date().toISOString(),
+                    };
+                    const compressed = await compress(JSON.stringify(compilationResult));
+                    await env.COMPILATION_CACHE.put(
+                        cacheKey,
+                        compressed,
+                        { expirationTtl: CACHE_TTL },
+                    );
+                } catch (error) {
+                    // deno-lint-ignore no-console
+                    console.error('Cache compression failed:', error);
+                }
+            }
+
+            await recordMetric(env, '/compile/stream', Date.now() - startTime, true);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            await writer.write(
+                encoder.encode(`event: error\ndata: ${JSON.stringify({ error: message })}\n\n`),
+            );
+            await recordMetric(env, '/compile/stream', Date.now() - startTime, false, message);
+        } finally {
+            await writer.close();
+        }
+    })();
+
+    return new Response(readable, {
+        headers: {
+            'Content-Type': 'text/event-stream',
+            'Cache-Control': 'no-cache',
+            'Connection': 'keep-alive',
+        },
+    });
+}
+
+// ============================================================================
+// Batch Compilation Handler
+// ============================================================================
+
+/**
+ * Handle batch compile requests.
+ */
+export async function handleCompileBatch(
+    request: Request,
+    env: Env,
+): Promise<Response> {
+    const startTime = Date.now();
+
+    try {
+        // Parse and validate request body
+        const rawBody = await request.json();
+        const validationResult = BatchRequestSyncSchema.safeParse(rawBody);
+
+        if (!validationResult.success) {
+            const errors = validationResult.error.issues
+                .map((issue) => `/${issue.path.join('/')}: ${issue.message}`)
+                .join(', ');
+            return JsonResponse.badRequest(`Invalid batch request: ${errors}`);
+        }
+
+        const body = validationResult.data;
+        const { requests } = body;
+
+        // Process all requests in parallel
+        const results = await Promise.all(
+            requests.map(async (req) => {
+                try {
+                    const { configuration, preFetchedContent, benchmark } = req;
+
+                    const cacheKey = (!preFetchedContent || Object.keys(preFetchedContent).length === 0) ? await getCacheKey(configuration) : null;
+
+                    if (cacheKey) {
+                        const pending = pendingCompilations.get(cacheKey);
+                        if (pending) {
+                            const result = await pending;
+                            return { id: req.id, ...result, deduplicated: true };
+                        }
+
+                        const cached = await env.COMPILATION_CACHE.get(cacheKey, 'arrayBuffer');
+                        if (cached) {
+                            try {
+                                const decompressed = await decompress(cached);
+                                const result = JSON.parse(decompressed) as CompilationResult;
+                                return { id: req.id, ...result, cached: true };
+                            } catch (error) {
+                                // deno-lint-ignore no-console
+                                console.error('Cache decompression failed:', error);
+                            }
+                        }
+                    }
+
+                    const compilationPromise = (async (): Promise<CompilationResult> => {
+                        try {
+                            const tracingContext = createTracingContext({
+                                metadata: {
+                                    endpoint: '/compile/batch',
+                                    configName: configuration.name,
+                                    batchId: req.id,
+                                },
+                            });
+
+                            const compiler = new WorkerCompiler({
+                                preFetchedContent,
+                                tracingContext,
+                            });
+
+                            const result = await compiler.compileWithMetrics(
+                                configuration,
+                                benchmark ?? false,
+                            );
+
+                            if (result.diagnostics) {
+                                emitDiagnosticsToTailWorker(result.diagnostics);
+                            }
+
+                            const response: CompilationResult = {
+                                success: true,
+                                rules: result.rules,
+                                ruleCount: result.rules.length,
+                                metrics: result.metrics,
+                                compiledAt: new Date().toISOString(),
+                            };
+
+                            if (cacheKey) {
+                                try {
+                                    const compressed = await compress(JSON.stringify(response));
+                                    await env.COMPILATION_CACHE.put(
+                                        cacheKey,
+                                        compressed,
+                                        { expirationTtl: CACHE_TTL },
+                                    );
+                                } catch (error) {
+                                    // deno-lint-ignore no-console
+                                    console.error('Cache compression failed:', error);
+                                }
+                            }
+
+                            return response;
+                        } catch (error) {
+                            const message = error instanceof Error ? error.message : String(error);
+                            return { success: false, error: message };
+                        } finally {
+                            if (cacheKey) {
+                                pendingCompilations.delete(cacheKey);
+                            }
+                        }
+                    })();
+
+                    if (cacheKey) {
+                        pendingCompilations.set(cacheKey, compilationPromise);
+                    }
+
+                    const result = await compilationPromise;
+                    return { id: req.id, ...result };
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : String(error);
+                    return { id: req.id, success: false, error: message };
+                }
+            }),
+        );
+
+        await recordMetric(env, '/compile/batch', Date.now() - startTime, true);
+
+        return JsonResponse.success({ results });
+    } catch (error) {
+        const errorObj = ErrorUtils.toError(error);
+
+        // Report batch compilation errors to centralized error reporting
+        const errorReporter = createWorkerErrorReporter(env);
+        errorReporter.reportSync(errorObj, {
+            requestId: crypto.randomUUID(),
+            path: '/compile/batch',
+        });
+
+        const message = errorObj.message;
+        await recordMetric(env, '/compile/batch', Date.now() - startTime, false, message);
+        return JsonResponse.serverError(message);
+    }
+}
+
+// ============================================================================
+// Async Compilation Handlers
+// ============================================================================
+
+/**
+ * Handle async compile requests by sending to queue.
+ */
+export async function handleCompileAsync(
+    request: Request,
+    env: Env,
+): Promise<Response> {
+    const startTime = Date.now();
+
+    try {
+        // Parse and validate request body
+        const rawBody = await request.json();
+        const validationResult = CompileRequestSchema.safeParse(rawBody);
+
+        if (!validationResult.success) {
+            const errors = validationResult.error.issues
+                .map((issue) => `/${issue.path.join('/')}: ${issue.message}`)
+                .join(', ');
+            return JsonResponse.badRequest(`Invalid request body: ${errors}`);
+        }
+
+        const body = validationResult.data;
+        const { configuration, preFetchedContent, benchmark, priority = 'standard' } = body;
+
+        // deno-lint-ignore no-console
+        console.log(`[API:ASYNC] Queueing compilation for \
