@@ -56,10 +56,13 @@ export interface AgentRegistryEntry {
     /**
      * Transport protocol.
      * - 'websocket': recommended for new agents; supports DO hibernation
-     * - 'sse': Server-Sent Events; supported for backward compatibility with MCP clients
-     * All new agents MUST use 'websocket'.
+     * - 'sse': Server-Sent Events; backward compatibility with MCP clients
+     * - 'dynamic-worker': ephemeral V8 isolate via DYNAMIC_WORKER_LOADER; for stateless tasks
+     *
+     * @see https://developers.cloudflare.com/dynamic-workers/
+     * @see https://github.com/jaypatrick/adblock-compiler/issues/1386
      */
-    readonly transport: 'websocket' | 'sse';
+    readonly transport: 'websocket' | 'sse' | 'dynamic-worker';
 }
 
 // ============================================================================

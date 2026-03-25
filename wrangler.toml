@@ -289,7 +289,7 @@ class_name = "HealthMonitoringWorkflow"
 binding = "HYPERDRIVE"
 id = "800f7e2edc86488ab24e8621982e9ad7"
 
-[[HYPERDRIVE}}
+[[hyperdrive]]
 binding = "HYPERDRIVE_DEV"
 id = "e3e2fe5c95e2435fbfe6430d0db22fdf"
 
@@ -309,3 +309,11 @@ local_protocol = "http"
 # because Cloudflare Containers requires a Linux Docker daemon.
 # See: https://developers.cloudflare.com/containers/
 enable_containers = true
+
+# ── Dynamic Workers loader (optional — requires Cloudflare Dynamic Workers beta access)
+# Uncomment when your account has Dynamic Workers enabled.
+# See: https://developers.cloudflare.com/dynamic-workers/
+# See: https://github.com/jaypatrick/adblock-compiler/issues/1386
+# [[bindings]]
+# type = "dynamic_worker_loader"
+# name = "DYNAMIC_WORKER_LOADER"

@@ -266,6 +266,11 @@ export interface Env {
     MCP_AGENT?: DurableObjectNamespace;
     // Adblock Compiler container Durable Object namespace
     ADBLOCK_COMPILER?: DurableObjectNamespace;
+    // Dynamic Workers loader binding (optional — add to wrangler.toml to enable)
+    // type = "dynamic_worker_loader", name = "DYNAMIC_WORKER_LOADER"
+    // @see https://developers.cloudflare.com/dynamic-workers/
+    // @see https://github.com/jaypatrick/adblock-compiler/issues/1386
+    DYNAMIC_WORKER_LOADER?: import('./dynamic-workers/types.ts').DynamicWorkerLoader;
     // KV namespace for persisted user rule sets (POST/GET/PUT/DELETE /api/rules)
     RULES_KV?: KVNamespace;
     // Webhook target URL for POST /api/notify (generic HTTP endpoint)
