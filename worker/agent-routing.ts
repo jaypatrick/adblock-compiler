@@ -116,8 +116,9 @@ export async function routeAgentRequest(request: Request, env: Env): Promise<Res
             if (dynamicResponse !== null) {
                 return dynamicResponse;
             }
-        } catch {
-            // Fall through to the SDK path below.
+        } catch (err) {
+            // deno-lint-ignore no-console
+            console.warn('[agent-routing] Dynamic Worker fast-path failed, falling back to SDK:', err instanceof Error ? err.message : String(err));
         }
     }
 

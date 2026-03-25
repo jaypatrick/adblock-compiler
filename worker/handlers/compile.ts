@@ -784,7 +784,9 @@ export async function handleASTParseRequest(
                 if (loaderResult.success) {
                     return JsonResponse.success(loaderResult.data);
                 }
-                // Non-null but failed → fall through to next path.
+                // Non-null but failed → log and fall through to next path.
+                // deno-lint-ignore no-console
+                console.warn('[compile] LOADER AST-parse path failed:', loaderResult.error);
             }
         }
 
@@ -841,10 +843,14 @@ export async function handleValidate(request: Request, env?: Env): Promise<Respo
         // Try the newer DynamicDispatchNamespace binding first when env is provided.
         if (env) {
             const loaderResult = await runValidateInDynamicWorker({ rules, strict: body.strict }, env);
-            if (loaderResult !== null && loaderResult.success) {
-                return Response.json(loaderResult.data);
+            if (loaderResult !== null) {
+                if (loaderResult.success) {
+                    return Response.json(loaderResult.data);
+                }
+                // Non-null but failed → log and fall through to inline path.
+                // deno-lint-ignore no-console
+                console.warn('[compile] LOADER validate path failed:', loaderResult.error);
             }
-            // Non-null but failed, or null (LOADER absent) → fall through to inline path.
         }
 
         const startTime = Date.now();
