@@ -14,12 +14,14 @@
 # Phase 0 of the Neon PostgreSQL migration.
 #
 # Required repository secrets:
-#   NEON_API_KEY      – Neon API token (Settings → API Keys in the Neon console)
-#   NEON_PROJECT_ID   – Neon project ID (e.g. twilight-river-73901472)
-#   NEON_DATABASE_URL – Connection string for the *production* branch.
-#                       Format: postgresql://ROLE:PASSWORD@HOST/DATABASE?sslmode=require
-#                       The database name and role are derived from this URL at
-#                       runtime — do NOT hardcode them in this file.
+#   NEON_API_KEY                – Neon API token (Settings → API Keys in the Neon console)
+#   NEON_PROJECT_ID             – Neon project ID (e.g. twilight-river-73901472)
+#   NEON_DATABASE_URL           – Connection string for the *staging* Neon branch.
+#                                 This corresponds to the branch that acts as the parent for new PR branches,
+#                                 but the parent branch itself is configured explicitly in this workflow (e.g. `parent: staging`).
+#                                 Format: postgresql://ROLE:PASSWORD@HOST/DATABASE?sslmode=require
+#                                 The database name and role are derived from this URL at
+#                                 runtime — do NOT hardcode them in this file.
 #
 # NOTE — Why no Hyperdrive?
 #   Hyperdrive is a Cloudflare edge service.  It is only accessible from code
@@ -160,9 +162,9 @@ jobs:
           PYEOF
 
       # ── 3. Create the Neon branch ──────────────────────────────────────────
-      # The action creates a new branch off `production` in the configured Neon
+      # The action creates a new branch off `staging` in the configured Neon
       # project.  The branch is a zero-cost, copy-on-write clone — it shares
-      # storage with production until writes diverge.
+      # storage with staging until writes diverge.
       # If the branch already exists (re-run or force-push), the action returns
       # the existing branch ID without error.
       - name: Create Neon database branch
@@ -171,9 +173,9 @@ jobs:
         with:
           project_id: ${{ secrets.NEON_PROJECT_ID }}
           branch_name: ${{ steps.context.outputs.branch_name }}
-          # Fork from the Default (production) branch so PR branches have
-          # production-parity schema and data.
-          parent: production
+          # Fork from the staging branch so PR branches have staging-parity
+          # schema and data (staging is the parent of all PR branches).
+          parent: staging
           api_key: ${{ secrets.NEON_API_KEY }}
           # Database name and role are derived from NEON_DATABASE_URL above.
           username: ${{ steps.db-config.outputs.db_role }}
@@ -222,7 +224,7 @@ jobs:
           # pending migrations to apply" — that is expected on every fresh branch
           # and should NOT trigger a restore.
           if echo "$STATUS" | grep -q "P3009"; then
-            echo "⚠️  P3009 detected — restoring branch to production tip for a clean slate."
+            echo "⚠️  P3009 detected — restoring branch to staging tip for a clean slate."
 
             if [ -z "$BRANCH_ID" ]; then
               echo "::error::BRANCH_ID is empty. Cannot restore branch. Check create-branch step outputs."
