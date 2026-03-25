@@ -159,3 +159,78 @@ const { result } = await cfApi.queryD1(accountId, dbId, sql, params);
 - NEVER use `+---+`, `|`, `-->` ASCII art, Unicode box-drawing characters (┌┐└┘│─), or any other ASCII/Unicode art in place of a diagram
 
 This rule applies to ALL markdown files: docs/, ideas/, worker/, frontend/, .github/, root-level .md files.
+
+## CI Standards — Mandatory Rule (Copilot Coding Agent)
+
+**Every line of code written by Copilot MUST pass all CI checks before the PR is declared ready for review. This is non-negotiable. Declaring a PR done without a green CI run is a critical failure.**
+
+### The Deno Formatting Rules (memorized, no exceptions)
+
+These are sourced directly from `deno.json` in this repository:
+
+| Rule | Value |
+|---|---|
+| Formatter | `deno fmt` |
+| Indent | 4 spaces (no tabs) |
+| Line width | 180 characters max |
+| Semicolons | required |
+| Quotes | single quotes |
+| Prose wrap | preserve |
+
+### The CI-Green Contract
+
+Before pushing **any** commit on a Copilot-authored branch, the following checklist MUST be mentally simulated in full. If any item would fail, the code must be fixed before committing:
+
+- [ ] `deno fmt --check` passes — every file formatted exactly as `deno fmt` would produce it: 4-space indent, single quotes, semicolons, ≤180 char lines, no trailing whitespace, no extra blank lines at end of file
+- [ ] `deno lint` passes — no lint errors; `ban-untagged-todo` is active; `no-explicit-any`, `require-await`, `no-console` are excluded per `deno.json`
+- [ ] `deno task check` passes — type-checks both `src/` and `worker/` entry points; `strict`, `noImplicitAny`, `strictNullChecks`, `noUnusedLocals`, `noUnusedParameters` are all enabled
+- [ ] `deno task test` passes — all unit tests in `src/` and `worker/` pass
+- [ ] `deno publish --dry-run --allow-dirty` passes — no slow types in the public API surface
+- [ ] No IP leak — `worker/`, `frontend/`, `prisma/`, `migrations/` files are NOT in the JSR publish surface
+- [ ] All generated artifacts are up to date — `deno task schema:generate` produces no diff in `docs/api/cloudflare-schema.yaml`, `docs/postman/postman-collection.json`, `docs/postman/postman-environment.json`
+- [ ] `wrangler.toml` is valid TOML — all section headers use correct `[[table]]` syntax; no `[[TABLE}}` or other malformed headers
+- [ ] No trailing whitespace on any line in any file touched by this PR
+- [ ] No extra blank lines inserted at the end of any file
+
+### What "Done" Means
+
+A PR is **not done** until:
+1. CI is actually green — not "I believe it should pass", not "I fixed the issue I saw" — green.
+2. Every file touched has been mentally run through `deno fmt` rules above before being committed.
+3. The PR description accurately reflects what changed and does not claim CI passes unless it does.
+
+### The Preflight Command
+
+Before declaring any work complete, mentally simulate running:
+
+```sh
+deno task preflight:full
+```
+
+Which expands to:
+```sh
+deno task fmt:check && deno task lint && deno task check && deno task openapi:validate && deno task schema:generate && deno task check:drift && deno task test && deno task check:slow-types
+```
+
+If any step in this chain would fail, the code is not ready to commit.
+
+> **Note:** `deno task check:slow-types` runs `deno publish --dry-run` without `--allow-dirty`. Ensure your working tree is clean before running the preflight command; do not rely on `--allow-dirty` here.
+
+### Common Failure Patterns to Prevent
+
+These are the recurring CI failures that MUST be caught before committing:
+
+1. **Trailing whitespace** — `deno fmt` removes all trailing whitespace; never write `// comment ` with a space after it
+2. **Wrong indentation** — always 4 spaces; never 2 spaces, never tabs
+3. **Double quotes** — always single quotes: `'value'` not `"value"` (except in JSON files)
+4. **Missing semicolons** — every statement must end with `;`
+5. **Lines over 180 chars** — multi-line export statements, long import lists, and long function signatures must be broken up
+6. **Multi-line barrel exports that exceed line width** — barrel `index.ts` files with many exports must be split across lines correctly so each line is ≤180 chars
+7. **Malformed TOML** — `wrangler.toml` section headers must be `[[lowercase]]`; never `[[UPPERCASE}}` or mixed syntax
+8. **Unused variables/parameters** — `noUnusedLocals` and `noUnusedParameters` are enabled; remove or prefix with `_`
+9. **Untagged TODOs** — `ban-untagged-todo` is active; always write `// TODO(issue-number): ...`
+10. **Generated artifact drift** — if `src/` schemas or API definitions change, run `deno task schema:generate` and commit the updated docs
+
+### No Excuses
+
+There is no acceptable reason for a Copilot PR to fail `deno fmt --check` or `deno lint`. These tools are deterministic. The rules are encoded in `deno.json`. Copilot must apply them exactly when writing every line of code — not after CI flags them.
