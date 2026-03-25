@@ -54,7 +54,7 @@ On every PR that touches `prisma/**`, schema, or DB middleware:
 |---|---|
 | `NEON_API_KEY` | Neon API token (Settings → API Keys in the Neon console) |
 | `NEON_PROJECT_ID` | Neon project ID (e.g. `twilight-river-73901472`) |
-| `NEON_DATABASE_URL` | Connection string for the **staging** branch; used by `neon-branch-create.yml` to resolve the DB name/role and as the parent reference for new PR branches (not used for migrations directly) |
+| `NEON_DATABASE_URL` | Connection string for the **staging** branch; used by `neon-branch-create.yml` to resolve the DB name/role and keep the DB+role pairing consistent for PR branches (the branch parent is configured separately as `staging`; not used for migrations directly) |
 | `DIRECT_DATABASE_URL_STAGING` | Direct connection string for the **staging** branch; used by Prisma `migrate deploy` on push to `main` |
 | `DIRECT_DATABASE_URL` | Direct connection string for the **production** branch; used by Prisma `migrate deploy` on GitHub Release |
 
