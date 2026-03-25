@@ -41,7 +41,7 @@ export async function handleHealth(env: Env): Promise<Response> {
         env.HYPERDRIVE
             ? probe(async () => {
                 const prisma = _internals.createPrismaClient(env.HYPERDRIVE!.connectionString);
-                await (prisma as unknown as { $queryRaw: (query: TemplateStringsArray) => Promise<unknown> }).$queryRaw`SELECT 1`;
+                await prisma.$queryRaw`SELECT 1`;
             })
             : Promise.resolve<ServiceResult>({ status: 'down' }),
         probe(async () => {
