@@ -20,11 +20,10 @@ export type {
     DynamicAstParseOptions,
     DynamicValidateOptions,
     DynamicWorkerResult,
+    AgentWorkerId,
 } from './types.ts';
 
 export {
     isLoaderAvailable,
     makeAgentWorkerId,
 } from './types.ts';
-
-export type { AgentWorkerId } from './types.ts';
