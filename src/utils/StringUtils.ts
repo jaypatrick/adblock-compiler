@@ -98,7 +98,7 @@ export function splitByDelimiterWithEscapeCharacter(
  * ```
  */
 export function escapeRegExp(str: string): string {
-    return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    return RegExp.escape(str);
 }
 
 /**

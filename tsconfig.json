@@ -2,7 +2,8 @@
     "compilerOptions": {
         "target": "ESNEXT",
         "module": "ESNext",
-        "lib": ["ES2022"],
+        "lib": ["ES2022", "ES2025", "ESNext"],
+        "types": ["node"],
         "outDir": "./dist",
         "rootDir": "./src",
         "strict": true,
@@ -13,7 +14,7 @@
         "declaration": true,
         "declarationMap": true,
         "sourceMap": true,
-        "moduleResolution": "node",
+        "moduleResolution": "bundler",
         "allowSyntheticDefaultImports": true,
         "noImplicitAny": true,
         "noImplicitReturns": true,

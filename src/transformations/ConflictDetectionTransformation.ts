@@ -137,13 +137,9 @@ export class ConflictDetectionTransformation extends SyncTransformation {
             }
 
             if (isException) {
-                const existing = allowingByDomain.get(hostname) || [];
-                existing.push({ rule, index: i });
-                allowingByDomain.set(hostname, existing);
+                allowingByDomain.getOrInsertComputed(hostname, () => []).push({ rule, index: i });
             } else {
-                const existing = blockingByDomain.get(hostname) || [];
-                existing.push({ rule, index: i });
-                blockingByDomain.set(hostname, existing);
+                blockingByDomain.getOrInsertComputed(hostname, () => []).push({ rule, index: i });
             }
         }
 
