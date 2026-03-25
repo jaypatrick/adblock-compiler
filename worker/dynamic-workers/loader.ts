@@ -331,7 +331,7 @@ export async function getOrCreateUserAgent(
                 compatibilityDate: '2026-01-01',
                 mainModule: 'agent-main.js',
                 modules: {
-                    // TODO(#1386): Replace with bundled ASTViewerService once @cloudflare/worker-bundler
+                    // TODO(#1386): Replace with bundled agents SDK AiAgent source once @cloudflare/worker-bundler
                     'agent-main.js': getAgentWorkerSource(),
                 },
                 globalOutbound: null,

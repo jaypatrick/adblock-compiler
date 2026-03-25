@@ -61,7 +61,7 @@ function handleParse(rules?: string[], text?: string): Response {
         );
     }
 
-    // TODO(#1386): Replace with bundled ASTViewerService once @cloudflare/worker-bundler
+    // TODO(#1386): Replace with bundled ASTViewerService.parseRules() once @cloudflare/worker-bundler
     return Response.json({
         success: true,
         parsedRules: [],
@@ -79,7 +79,7 @@ function handleParse(rules?: string[], text?: string): Response {
 function handleValidate(rules: string[], _strict: boolean): Response {
     const startTime = Date.now();
 
-    // TODO(#1386): Replace with bundled ASTViewerService once @cloudflare/worker-bundler
+    // TODO(#1386): Replace with bundled ASTViewerService.parseRule() validation loop once @cloudflare/worker-bundler
     const duration = `${Date.now() - startTime}ms`;
 
     return Response.json({
