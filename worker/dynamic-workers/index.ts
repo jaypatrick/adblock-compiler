@@ -23,7 +23,4 @@ export type {
     DynamicWorkerResult,
 } from './types.ts';
 
-export {
-    isLoaderAvailable,
-    makeAgentWorkerId,
-} from './types.ts';
+export { isLoaderAvailable, makeAgentWorkerId } from './types.ts';
