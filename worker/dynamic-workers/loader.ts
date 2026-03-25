@@ -52,14 +52,14 @@ export default {
     if (operation === 'parse') {
       return Response.json({
         success: true, parsedRules: [], summary: { total: rules.length ?? 0 },
-        executedIn: 'dynamic-worker-isolate', duration: String(Date.now() - startTime) + 'ms',
+        executedIn: 'dynamic-worker-isolate', duration: \`\${Date.now() - startTime}ms\`,
       });
     }
     if (operation === 'validate') {
       return Response.json({
         success: true, valid: true, totalRules: rules.length, validRules: rules.length,
         invalidRules: 0, errors: [], warnings: [], executedIn: 'dynamic-worker-isolate',
-        duration: String(Date.now() - startTime) + 'ms',
+        duration: \`\${Date.now() - startTime}ms\`,
       });
     }
     return Response.json({ error: 'Unknown operation' }, { status: 400 });
@@ -70,6 +70,26 @@ export default {
 // ---------------------------------------------------------------------------
 // Ephemeral Worker helpers
 // ---------------------------------------------------------------------------
+
+/**
+ * Extracts a human-readable error message from a non-OK isolate Response.
+ * Tries to parse `error` or `message` fields from JSON; falls back to the raw
+ * response text, then a generic string.
+ */
+async function parseIsolateErrorMessage(response: Response): Promise<string> {
+    try {
+        const maybeJson = await response.json() as Record<string, unknown>;
+        if (typeof maybeJson.error === 'string' && maybeJson.error) return maybeJson.error;
+        if (typeof maybeJson.message === 'string' && maybeJson.message) return maybeJson.message;
+        return JSON.stringify(maybeJson);
+    } catch {
+        try {
+            const text = await response.text();
+            if (text) return text;
+        } catch { /* fall through */ }
+    }
+    return 'Dynamic Worker error';
+}
 
 /**
  * Runs AST parsing inside an ephemeral dynamic Worker isolate.
@@ -114,22 +134,7 @@ export async function runAstParseInDynamicWorker(
         const durationMs = Date.now() - startTime;
 
         if (!response.ok) {
-            let errorMessage = 'Dynamic Worker error';
-            try {
-                const maybeJson = await response.json() as Record<string, unknown>;
-                if (typeof maybeJson.error === 'string' && maybeJson.error) {
-                    errorMessage = maybeJson.error;
-                } else if (typeof maybeJson.message === 'string' && maybeJson.message) {
-                    errorMessage = maybeJson.message;
-                } else {
-                    errorMessage = JSON.stringify(maybeJson);
-                }
-            } catch {
-                try {
-                    const text = await response.text();
-                    if (text) errorMessage = text;
-                } catch { /* keep default */ }
-            }
+            const errorMessage = await parseIsolateErrorMessage(response);
             return { success: false, status: response.status, error: errorMessage, durationMs };
         }
 
@@ -187,22 +192,7 @@ export async function runValidateInDynamicWorker(
         const validateDurationMs = Date.now() - startTime;
 
         if (!response.ok) {
-            let errorMessage = 'Dynamic Worker error';
-            try {
-                const maybeJson = await response.json() as Record<string, unknown>;
-                if (typeof maybeJson.error === 'string' && maybeJson.error) {
-                    errorMessage = maybeJson.error;
-                } else if (typeof maybeJson.message === 'string' && maybeJson.message) {
-                    errorMessage = maybeJson.message;
-                } else {
-                    errorMessage = JSON.stringify(maybeJson);
-                }
-            } catch {
-                try {
-                    const text = await response.text();
-                    if (text) errorMessage = text;
-                } catch { /* keep default */ }
-            }
+            const errorMessage = await parseIsolateErrorMessage(response);
             return { success: false, status: response.status, error: errorMessage, durationMs: validateDurationMs };
         }
 
