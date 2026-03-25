@@ -289,6 +289,10 @@ class_name = "HealthMonitoringWorkflow"
 binding = "HYPERDRIVE"
 id = "800f7e2edc86488ab24e8621982e9ad7"
 
+[[HYPERDRIVE}}
+binding = "HYPERDRIVE_DEV"
+id = "e3e2fe5c95e2435fbfe6430d0db22fdf"
+
 # ─── Cron Triggers ───────────────────────────────────────────────────────────
 [triggers]
 crons = [
