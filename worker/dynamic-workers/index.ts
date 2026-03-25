@@ -12,5 +12,7 @@ export type {
     DynamicWorkerTaskType,
     DynamicWorkerTransport,
 } from './types.ts';
+
 export { dispatchToDynamicWorker, isDynamicWorkerAvailable } from './loader.ts';
+
 export { AST_PARSE_WORKER_SOURCE } from './sources.ts';
