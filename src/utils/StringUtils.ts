@@ -98,13 +98,6 @@ export function splitByDelimiterWithEscapeCharacter(
  * ```
  */
 export function escapeRegExp(str: string): string {
-    // Use the ES2025 RegExp.escape built-in where available, falling back to a
-    // manual replacement for environments that don't yet support it (Node <24,
-    // older browsers, and Cloudflare Workers runtimes prior to the V8 upgrade).
-    const nativeEscape = (RegExp as unknown as { escape?: (s: string) => string }).escape;
-    if (typeof nativeEscape === 'function') {
-        return nativeEscape(str);
-    }
     return str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
