@@ -156,14 +156,14 @@ jobs:
                     VERSION="${TAG#compiler-v}"
                     VERSION="${VERSION#v}"
                   fi
-                  
+
                   # Validate version format (must not start with . and must be semver-like)
                   if [[ ! "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+ ]]; then
                     echo "Error: Invalid version format '$VERSION'. Must start with a number (e.g., 0.11.6 or 0.11.6-beta.1)" >&2
                     echo "If this is a tag issue, the tag may have been created incorrectly (e.g., 'v.0.11.6' instead of 'v0.11.6')" >&2
                     exit 1
                   fi
-                  
+
                   echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
             - name: Set up QEMU

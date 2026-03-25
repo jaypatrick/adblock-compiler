@@ -20,7 +20,7 @@ runs:
       shell: bash
       run: |
         BRANCH="${{ inputs.branch }}"
-        
+
         # Map branch to environment (same logic as .envrc)
         case "$BRANCH" in
           main)
@@ -37,7 +37,7 @@ runs:
             fi
             ;;
         esac
-        
+
         echo "environment=$ENV" >> $GITHUB_OUTPUT
         echo "Detected environment: $ENV (branch: $BRANCH)"
 
@@ -51,22 +51,22 @@ runs:
           while IFS= read -r line || [ -n "$line" ]; do
             # Skip comments and empty lines
             [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-            
+
             # Extract key=value, stripping leading/trailing whitespace
             line="${line#"${line%%[![:space:]]*}"}"
             line="${line%"${line##*[![:space:]]}"}"
-            
+
             # Skip if not a valid assignment
             [[ ! "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && continue
-            
+
             key="${line%%=*}"
             value="${line#*=}"
-            
+
             # Strip surrounding quotes (both single and double)
             if [[ "$value" =~ ^\"(.*)\"$ ]] || [[ "$value" =~ ^\'(.*)\'$ ]]; then
               value="${BASH_REMATCH[1]}"
             fi
-            
+
             # Write to GITHUB_ENV
             echo "$key=$value" >> $GITHUB_ENV
           done < .env
@@ -83,22 +83,22 @@ runs:
           while IFS= read -r line || [ -n "$line" ]; do
             # Skip comments and empty lines
             [[ -z "$line" || "$line" =~ ^[[:space:]]*# ]] && continue
-            
+
             # Extract key=value, stripping leading/trailing whitespace
             line="${line#"${line%%[![:space:]]*}"}"
             line="${line%"${line##*[![:space:]]}"}"
-            
+
             # Skip if not a valid assignment
             [[ ! "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] && continue
-            
+
             key="${line%%=*}"
             value="${line#*=}"
-            
+
             # Strip surrounding quotes (both single and double)
             if [[ "$value" =~ ^\"(.*)\"$ ]] || [[ "$value" =~ ^\'(.*)\'$ ]]; then
               value="${BASH_REMATCH[1]}"
             fi
-            
+
             # Write to GITHUB_ENV
             echo "$key=$value" >> $GITHUB_ENV
           done < "$ENV_FILE"

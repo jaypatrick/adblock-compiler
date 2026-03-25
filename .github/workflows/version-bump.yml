@@ -253,7 +253,7 @@ jobs:
                     if grep -q "^## \[" CHANGELOG.md; then
                       # Get line number of first released version entry (skip [Unreleased])
                       FIRST_VERSION_LINE=$(grep -n "^## \[" CHANGELOG.md | grep -v "## \[Unreleased\]" | head -1 | cut -d: -f1)
-                      
+
                       # Verify we got a valid line number
                       if [ -n "$FIRST_VERSION_LINE" ] && [ "$FIRST_VERSION_LINE" -gt 0 ]; then
                         # Create temporary file with new entry inserted before the first versioned release
