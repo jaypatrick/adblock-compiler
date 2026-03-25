@@ -17,7 +17,8 @@
 #   NEON_API_KEY                – Neon API token (Settings → API Keys in the Neon console)
 #   NEON_PROJECT_ID             – Neon project ID (e.g. twilight-river-73901472)
 #   NEON_DATABASE_URL           – Connection string for the *staging* Neon branch.
-#                                 Used as the parent for new PR branches.
+#                                 This corresponds to the branch that acts as the parent for new PR branches,
+#                                 but the parent branch itself is configured explicitly in this workflow (e.g. `parent: staging`).
 #                                 Format: postgresql://ROLE:PASSWORD@HOST/DATABASE?sslmode=require
 #                                 The database name and role are derived from this URL at
 #                                 runtime — do NOT hardcode them in this file.
