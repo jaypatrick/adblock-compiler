@@ -809,7 +809,7 @@ routes.post(
     // deno-lint-ignore no-explicit-any
     zValidator('json', ValidateRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
-    (c) => handleValidate(c.req.raw),
+    (c) => handleValidate(c.req.raw, c.env),
 );
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────

@@ -25,6 +25,7 @@
  */
 
 import type { Env } from './types.ts';
+import { getOrCreateUserAgent } from './dynamic-workers/index.ts';
 
 // ---------------------------------------------------------------------------
 // SDK lazy import — cached after first /agents/* request
@@ -102,7 +103,24 @@ export function agentNameToBindingKey(name: string): string {
  */
 export async function routeAgentRequest(request: Request, env: Env): Promise<Response | null> {
     const url = new URL(request.url);
-    if (!url.pathname.match(AGENT_PATH_RE)) return null;
+    const pathMatch = url.pathname.match(AGENT_PATH_RE);
+    if (!pathMatch) return null;
+
+    // Dynamic Worker fast-path: if LOADER is configured and the agentId matches a
+    // user-scoped agent pattern, dispatch to the persistent per-user dynamic Worker.
+    // Falls back to the SDK path if LOADER is absent or the dispatch returns null.
+    const agentId = pathMatch[2];
+    if (agentId) {
+        try {
+            const dynamicResponse = await getOrCreateUserAgent(agentId, request, env);
+            if (dynamicResponse !== null) {
+                return dynamicResponse;
+            }
+        } catch {
+            // Fall through to the SDK path below.
+        }
+    }
+
     try {
         const sdkFn = await getSdkRouteAgentRequest();
         return await sdkFn(request, env as unknown as Record<string, unknown>);
