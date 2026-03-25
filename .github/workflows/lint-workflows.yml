@@ -24,12 +24,11 @@ jobs:
               run: pip install yamllint
 
             - name: Lint YAML structure
-              run: >-
-                  yamllint -d "{extends: relaxed, rules: {line-length: {max: 240},
-                  trailing-spaces: enable, new-line-at-end-of-file: enable,
-                  empty-lines: {max: 2}}}"
-                  .github/workflows/
-                  .github/actions/
+              run: |
+                  yamllint \
+                    -d "{extends: relaxed, rules: {line-length: {max: 240}, trailing-spaces: enable, new-line-at-end-of-file: enable, empty-lines: {max: 2}}}" \
+                    .github/workflows/ \
+                    .github/actions/
 
             - name: Lint workflow logic (actionlint)
               uses: rhysd/actionlint@03d0035246f3e81f36aed592ffb4bebf33a03106 # v1.7.7
