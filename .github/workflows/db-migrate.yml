@@ -172,12 +172,20 @@ jobs:
                   } >> "$GITHUB_OUTPUT"
 
             # ── PostgreSQL dry-run ───────────────────────────────────────────
+            # Secret selection for the dry-run target:
+            #   - pull_request (any):                               → DIRECT_DATABASE_URL_STAGING
+            #   - workflow_dispatch with target=staging|both:       → DIRECT_DATABASE_URL_STAGING
+            #   - workflow_dispatch with target=production:         → DIRECT_DATABASE_URL
             - name: PostgreSQL — validate pending migrations
               id: pg_pending
               if: env.HAS_DIRECT_DB_URL == 'true'
               env:
-                  # prisma/prisma.config.ts prefers DIRECT_DATABASE_URL over DATABASE_URL
-                  DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL_STAGING }}
+                  # prisma/prisma.config.ts prefers DIRECT_DATABASE_URL over DATABASE_URL.
+                  # Select production secret only when explicitly dispatched for production.
+                  DIRECT_DATABASE_URL: >-
+                      ${{ (github.event_name == 'workflow_dispatch' && inputs.target == 'production')
+                          && secrets.DIRECT_DATABASE_URL
+                          || secrets.DIRECT_DATABASE_URL_STAGING }}
               run: |
                   echo "=== Pending PostgreSQL migrations ==="
                   # Use Prisma to report pending migrations without applying them
