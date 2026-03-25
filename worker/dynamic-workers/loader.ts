@@ -179,7 +179,7 @@ export async function runAstParseInDynamicWorker(
 /**
  * Runs rule validation inside an ephemeral dynamic Worker isolate.
  *
- * Same isolation model as `runAstParseInDynamicWorker()`: 
+ * Same isolation model as `runAstParseInDynamicWorker()`:
  * `globalOutbound: null`, no bindings, pure transform.
  */
 export async function runValidateInDynamicWorker(
