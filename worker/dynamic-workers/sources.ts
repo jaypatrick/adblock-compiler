@@ -12,16 +12,25 @@
  */
 
 /**
- * Minified/inlined source for the AST Parse Dynamic Worker.
+ * Inlined source for the AST Parse Dynamic Worker.
  *
- * In development this points to the readable source file.
- * In production a build step should inline the bundled output here.
- *
- * For now, this exports a human-readable stub that works for the pilot.
+ * Returns `{ parsedRules, summary }` matching the canonical `/ast/parse`
+ * response contract. A future build step should generate this from
+ * ast-parse-worker.ts automatically — tracked in #1386.
  */
 export const AST_PARSE_WORKER_SOURCE = `
+function classifyRule(rule) {
+  if (rule.startsWith('!')) return { category: 'Comment', type: 'Comment' };
+  if (rule.includes('##') || rule.includes('#@#') || rule.includes('#?#')) {
+    return { category: 'Cosmetic', type: 'CosmeticRule' };
+  }
+  if (/^\\d+\\.\\d+\\.\\d+\\.\\d+/.test(rule)) {
+    return { category: 'Network', type: 'HostRule' };
+  }
+  return { category: 'Network', type: 'NetworkRule' };
+}
 export default {
-  async fetch(request, env) {
+  async fetch(request, _env) {
     if (request.method !== 'POST') {
       return new Response(JSON.stringify({ success: false, error: 'Method not allowed' }), {
         status: 405, headers: { 'Content-Type': 'application/json' },
@@ -34,23 +43,32 @@ export default {
       });
     }
     const payload = body?.payload;
-    if (!payload || (!payload.rules?.length && !payload.text)) {
+    if (!payload || (payload.rules === undefined && !payload.text)) {
       return new Response(JSON.stringify({ success: false, error: 'Payload must contain rules[] or text' }), {
         status: 422, headers: { 'Content-Type': 'application/json' },
       });
     }
     const lines = payload.text
-      ? payload.text.split('\\n').filter(l => l.trim() && !l.startsWith('!'))
+      ? payload.text.split('\\n').map(l => l.trim()).filter(l => l.length > 0)
       : (payload.rules ?? []);
-    const nodes = lines.map((rule, i) => ({
-      index: i, raw: rule,
-      type: rule.startsWith('@@') ? 'exception' : rule.startsWith('||') ? 'network' : 'host',
-    }));
-    return new Response(JSON.stringify({
-      success: true, nodeCount: nodes.length, nodes,
-      workerVersion: env.COMPILER_VERSION ?? 'unknown',
-      parsedAt: new Date().toISOString(),
-    }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+    const parsedRules = lines.map(rule => {
+      const { category, type } = classifyRule(rule);
+      return { ruleText: rule, success: true, category, type };
+    });
+    const summary = {
+      total: parsedRules.length,
+      successful: parsedRules.filter(r => r.success).length,
+      failed: parsedRules.filter(r => !r.success).length,
+      byCategory: {},
+      byType: {},
+    };
+    for (const r of parsedRules) {
+      if (r.category) summary.byCategory[r.category] = (summary.byCategory[r.category] ?? 0) + 1;
+      if (r.type) summary.byType[r.type] = (summary.byType[r.type] ?? 0) + 1;
+    }
+    return new Response(JSON.stringify({ parsedRules, summary }), {
+      status: 200, headers: { 'Content-Type': 'application/json' },
+    });
   }
 };
 `.trim();

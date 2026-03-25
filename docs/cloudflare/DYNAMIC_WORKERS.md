@@ -162,7 +162,7 @@ function and its corresponding test accept this value as valid.
 ## References
 
 - Issue [#1386](https://github.com/jaypatrick/adblock-compiler/issues/1386) — tracking issue
-- Issue [#1382](https://github.com/jaypatrick/adblock-compiler/issues/1382) — Cloudflare Agents SDK integration
+- PR [#1382](https://github.com/jaypatrick/adblock-compiler/pull/1382) — Cloudflare Agents SDK integration
 - <https://blog.cloudflare.com/dynamic-workers/> — announcement post
 - <https://developers.cloudflare.com/dynamic-workers/> — API reference
 - `ideas/CLOUDFLARE_DYNAMIC_WORKERS.md` — architecture/investment document

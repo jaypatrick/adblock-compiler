@@ -776,13 +776,20 @@ export async function handleASTParseRequest(
         const body = parsed.data;
 
         // Feature-flag: dispatch to a Dynamic Worker isolate when the binding is available.
+        // If the Dynamic Worker path fails (loader/spawn/isolate error), fall back to the
+        // inline ASTViewerService implementation — avoids turning a transient beta-API
+        // issue into an endpoint outage.
         if (isDynamicWorkerAvailable(env)) {
-            const result = await dispatchToDynamicWorker(env, AST_PARSE_WORKER_SOURCE, {
-                type: 'ast-parse',
-                payload: body,
-                requestId: generateRequestId('ast-parse'),
-            });
-            return JsonResponse.success(result);
+            try {
+                const result = await dispatchToDynamicWorker(env, AST_PARSE_WORKER_SOURCE, {
+                    type: 'ast-parse',
+                    payload: body,
+                    requestId: generateRequestId('ast-parse'),
+                });
+                return JsonResponse.success(result);
+            } catch {
+                // Fall through to the inline ASTViewerService path below.
+            }
         }
 
         const { ASTViewerService } = await import('../../src/services/ASTViewerService.ts');
