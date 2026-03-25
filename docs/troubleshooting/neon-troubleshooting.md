@@ -484,3 +484,80 @@ npx wrangler dev --log-level=debug
 - [Better Auth + Prisma](../auth/better-auth-prisma.md) — Prisma adapter configuration
 - [Neon Documentation](https://neon.tech/docs) — Official Neon docs
 - [Cloudflare Hyperdrive](https://developers.cloudflare.com/hyperdrive/) — Hyperdrive troubleshooting
+
+---
+
+## Live Troubleshooting Session — 2026-03-25
+
+This section documents the full sequence of events from the live debugging session that occurred on 2026-03-25. It is captured here as a reference for future on-call engineers.
+
+### Sequence of Events
+
+1. **User noticed** UI banners — "Degraded performance — v0.75.0" and "Data may be stale" — on every page visit, regardless of login state
+2. **Initial diagnosis** — `curl /api/health` showed `database.status: "down"` with `latency_ms: 0`
+3. **Checked Hyperdrive dashboard** — zero traffic. Neon dashboard showed migration activity (migrations had run direct via `DIRECT_DATABASE_URL`, not through Hyperdrive)
+4. **Ran `wrangler hyperdrive get`** — confirmed `"scheme": "postgres"` in the Hyperdrive binding config
+5. **Found root cause** — `PrismaClientConfigSchema` only accepted `postgresql://`; Hyperdrive returns `postgres://`
+6. **Applied schema fix** — updated the regex to accept both schemes; deployed at v0.76.0
+7. **Database still down at v0.76.0** — `latency_ms: 0` persisted; catch block was silently swallowing errors
+8. **Added error surfacing** — new `error_code` and `error_message` fields in the health response catch block
+9. **Added smoke test endpoint** — `GET /api/health/db-smoke` for detailed post-deploy diagnostics
+
+### What `.hyperdrive.local` Means (Important)
+
+When you see `hyperdrive_host: "11f7f957eaae03a9fe9365c78e6eb4ed.hyperdrive.local"` in the health response, this is **correct and expected** for a deployed Cloudflare Worker. It is the Cloudflare-managed internal proxy socket address that Hyperdrive injects at runtime. It is NOT a sign of a misconfiguration.
+
+The `.hyperdrive.local` host is Hyperdrive's local connection proxy. When your Worker runs `env.HYPERDRIVE.connectionString`, Cloudflare resolves this to a `postgres://...hyperdrive.local/...` URL that routes through the Hyperdrive proxy to your origin database. This is the architecture working as intended.
+
+**Bottom line:** seeing `.hyperdrive.local` in `hyperdrive_host` means the binding IS connected to the proxy. The issue is always further down the stack.
+
+### Zero Hyperdrive Dashboard Traffic vs Non-Zero Neon Traffic
+
+If the Hyperdrive dashboard shows zero queries but Neon shows activity, it means:
+
+- **Migrations ran directly** via `DIRECT_DATABASE_URL` / `DATABASE_URL` (which use the real Neon pooler URL, bypassing Hyperdrive)
+- **Worker queries are failing at instantiation** — the Prisma client is never created, so no queries ever reach Hyperdrive
+
+This pattern is consistent with a Zod validation failure (`latency_ms: 0`) — the probe throws before opening any connection.
+
+### The `latency_ms: 0` Instant Failure Pattern
+
+| `latency_ms` value | What it means |
+|---|---|
+| `0` | Failure happened synchronously — at schema validation or client construction. No network I/O occurred. |
+| `1–50` | Very fast failure — connection was attempted but immediately refused (port unreachable, wrong host). |
+| `1000–5000` | TCP timeout — host is reachable but not responding. |
+| `5000` (exactly) | Probe timeout — Worker hit the 5s timeout guard added in the hardening PR. |
+
+### `wrangler tail` as the First Step for Production Debugging
+
+**Always run `wrangler tail` first when diagnosing a production issue.** It shows the actual exception thrown by your Worker in real time, including `ZodError` messages with field paths that pinpoint exactly which validation failed.
+
+```bash
+wrangler tail --format=pretty
+# Look for: ZodError, connection refused, P2024, PROBE_TIMEOUT, etc.
+```
+
+Without `wrangler tail`, the health response's `status: "down"` is the only signal — with it, you get the full stack trace.
+
+### The Smoke Test Endpoint as the Canonical Post-Deploy Check
+
+After every production deploy, run:
+
+```bash
+curl -s https://<your-worker>.workers.dev/api/health/db-smoke | jq .
+```
+
+This endpoint (`GET /api/health/db-smoke`) runs `current_database()`, `version()`, `now()`, and `COUNT(*)` on `information_schema.tables` to verify:
+
+1. The Hyperdrive connection reaches Neon
+2. The correct database is selected
+3. The public schema has tables (migrations have run)
+4. The query latency is reasonable
+
+If it returns `ok: false`, the `error` field (redacted of any credentials) will identify the failure layer immediately — no `wrangler tail` required.
+
+### Note on Future Sentry Integration
+
+The current hardening captures `error_code` and `error_message` in the health response. A future improvement is to emit these as Sentry events via `withSentryWorker()` so production failures are automatically alerted rather than requiring manual health checks. See the Sentry integration docs for details.
+

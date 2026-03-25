@@ -27,6 +27,8 @@ interface HealthServiceResult {
     readonly status: 'healthy' | 'degraded' | 'down';
     readonly latency_ms?: number;
     readonly provider?: 'better-auth' | 'none';
+    readonly db_name?: string;
+    readonly error_message?: string;
 }
 
 interface HealthResponse {
@@ -96,6 +98,20 @@ interface HealthResponse {
                         }
                         <mat-chip>v{{ h.version }}</mat-chip>
                     </mat-chip-set>
+                    @if (h.services?.database && (h.services.database.status === 'down' || h.services.database.status === 'degraded')) {
+                        <div class="db-error-row">
+                            <mat-icon class="db-error-icon">storage</mat-icon>
+                            <span class="db-error-text">
+                                Database {{ h.services.database.status }}
+                                @if (h.services.database.db_name) {
+                                    — <strong>{{ h.services.database.db_name }}</strong>
+                                }
+                                @if (h.services.database.error_message) {
+                                    : {{ h.services.database.error_message }}
+                                }
+                            </span>
+                        </div>
+                    }
                     <div class="container-status-row">
                         <mat-icon class="container-row-icon">memory</mat-icon>
                         <span class="container-row-label">Container:</span>
@@ -222,6 +238,9 @@ interface HealthResponse {
     .container-status-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
     .container-row-icon { font-size: 18px; width: 18px; height: 18px; color: var(--mat-sys-on-surface-variant); }
     .container-row-label { font-size: 13px; font-weight: 500; color: var(--mat-sys-on-surface-variant); }
+    .db-error-row { display: flex; align-items: center; gap: 6px; margin-top: 10px; color: var(--mat-sys-error); }
+    .db-error-icon { font-size: 16px; width: 16px; height: 16px; }
+    .db-error-text { font-size: 13px; }
   `],
 })
 export class PerformanceComponent {

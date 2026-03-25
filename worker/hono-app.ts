@@ -152,6 +152,7 @@ const RATE_LIMIT_WINDOW = WORKER_DEFAULTS.RATE_LIMIT_WINDOW_SECONDS;
 const MONITORING_API_PATHS = [
     '/api/health',
     '/api/health/latest',
+    '/api/health/db-smoke',
     '/api/metrics',
 ] as const;
 
@@ -1069,6 +1070,11 @@ routes.get('/health', etag(), async (c) => {
 routes.get('/health/latest', etag(), async (c) => {
     const { handleHealthLatest } = await import('./handlers/health.ts');
     return handleHealthLatest(c.env);
+});
+
+routes.get('/health/db-smoke', async (c) => {
+    const { handleDbSmoke } = await import('./handlers/health.ts');
+    return handleDbSmoke(c.env);
 });
 
 routes.get('/container/status', etag(), async (c) => {

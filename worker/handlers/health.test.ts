@@ -7,19 +7,45 @@
  *   - handleHealth: auth provider detection (better-auth / none)
  *   - handleHealth: compiler degraded when ADBLOCK_COMPILER is missing
  *   - handleHealth: overall status is worst-of-all-services
+ *   - handleHealth: error_code and error_message surfaced when Prisma throws
+ *   - handleHealth: error_message does not contain postgres:// credentials
+ *   - handleHealth: timeout scenario results in status down with PROBE_TIMEOUT error_code
  *   - handleHealthLatest: returns no-data message when METRICS has no entry
  *   - handleHealthLatest: returns cached data when available
  *   - handleHealthLatest: returns 500 on KV error
+ *   - handleDbSmoke: happy path returns ok:true with diagnostic fields
+ *   - handleDbSmoke: Prisma error returns ok:false with status 503
+ *   - handleDbSmoke: missing HYPERDRIVE returns status 400
  *
  * @see worker/handlers/health.ts
  */
 
-import { assertEquals, assertExists } from '@std/assert';
+import { assertEquals, assertExists, assertStringIncludes } from '@std/assert';
 import { stub } from '@std/testing/mock';
-import { handleHealth, handleHealthLatest } from './health.ts';
+import { handleHealth, handleHealthLatest, handleDbSmoke } from './health.ts';
 import { type HyperdriveBinding } from '../types.ts';
 import { _internals } from '../lib/prisma.ts';
 import { makeEnv, makeFailingKv, makeKv } from '../test-helpers.ts';
+
+// ============================================================================
+// Shared mock factory helpers
+// ============================================================================
+
+/** Build a minimal mock Prisma client that returns healthy DB rows. */
+function makeHealthyPrisma() {
+    return {
+        $queryRaw: async () => [{ db_name: 'adblock-compiler' }],
+        $disconnect: async () => {},
+    };
+}
+
+/** Build a mock Prisma client whose $queryRaw always throws. */
+function makeFailingPrisma(err: Error) {
+    return {
+        $queryRaw: async () => { throw err; },
+        $disconnect: async () => {},
+    };
+}
 
 // ============================================================================
 // handleHealth
@@ -34,8 +60,7 @@ Deno.test('handleHealth - returns JSON response', async () => {
 });
 
 Deno.test('handleHealth - overall status healthy when all services healthy', async () => {
-    const mockPrisma = { $queryRaw: async () => [{ db_name: 'adblock-compiler' }] };
-    const s = stub(_internals, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    const s = stub(_internals, 'createPrismaClient', () => makeHealthyPrisma() as unknown as ReturnType<typeof _internals.createPrismaClient>);
     try {
         const env = makeEnv({
             BETTER_AUTH_SECRET: 'test-secret',
@@ -60,8 +85,7 @@ Deno.test('handleHealth - database down when env.HYPERDRIVE is missing', async (
 });
 
 Deno.test('handleHealth - auth provider is "better-auth" when BETTER_AUTH_SECRET is set', async () => {
-    const mockPrisma = { $queryRaw: async () => [{ db_name: 'adblock-compiler' }] };
-    const s = stub(_internals, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    const s = stub(_internals, 'createPrismaClient', () => makeHealthyPrisma() as unknown as ReturnType<typeof _internals.createPrismaClient>);
     try {
         const env = makeEnv({
             BETTER_AUTH_SECRET: 'my-test-secret',
@@ -133,7 +157,7 @@ Deno.test('handleHealth - includes ISO timestamp in response', async () => {
 });
 
 Deno.test('handleHealth - database degraded when connected to wrong database', async () => {
-    const mockPrisma = { $queryRaw: async () => [{ db_name: 'neondb' }] };
+    const mockPrisma = { $queryRaw: async () => [{ db_name: 'neondb' }], $disconnect: async () => {} };
     const s = stub(_internals, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof _internals.createPrismaClient>);
     try {
         const env = makeEnv({
@@ -148,8 +172,7 @@ Deno.test('handleHealth - database degraded when connected to wrong database', a
 });
 
 Deno.test('handleHealth - database response includes db_name when healthy', async () => {
-    const mockPrisma = { $queryRaw: async () => [{ db_name: 'adblock-compiler' }] };
-    const s = stub(_internals, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    const s = stub(_internals, 'createPrismaClient', () => makeHealthyPrisma() as unknown as ReturnType<typeof _internals.createPrismaClient>);
     try {
         const env = makeEnv({
             HYPERDRIVE: { connectionString: 'postgresql://test', host: 'ep-test-pooler.eastus2.azure.neon.tech' } as unknown as HyperdriveBinding,
@@ -164,8 +187,7 @@ Deno.test('handleHealth - database response includes db_name when healthy', asyn
 });
 
 Deno.test('handleHealth - database response includes hyperdrive_host when healthy', async () => {
-    const mockPrisma = { $queryRaw: async () => [{ db_name: 'adblock-compiler' }] };
-    const s = stub(_internals, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    const s = stub(_internals, 'createPrismaClient', () => makeHealthyPrisma() as unknown as ReturnType<typeof _internals.createPrismaClient>);
     try {
         const env = makeEnv({
             HYPERDRIVE: { connectionString: 'postgresql://test', host: 'ep-test-pooler.eastus2.azure.neon.tech' } as unknown as HyperdriveBinding,
@@ -179,12 +201,7 @@ Deno.test('handleHealth - database response includes hyperdrive_host when health
 });
 
 Deno.test('handleHealth - database down when $queryRaw throws', async () => {
-    const mockPrisma = {
-        $queryRaw: async () => {
-            throw new Error('connection refused');
-        },
-    };
-    const s = stub(_internals, 'createPrismaClient', () => mockPrisma as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    const s = stub(_internals, 'createPrismaClient', () => makeFailingPrisma(new Error('connection refused')) as unknown as ReturnType<typeof _internals.createPrismaClient>);
     try {
         const env = makeEnv({
             HYPERDRIVE: { connectionString: 'postgresql://test', host: 'ep-test-pooler.eastus2.azure.neon.tech' } as unknown as HyperdriveBinding,
@@ -192,6 +209,60 @@ Deno.test('handleHealth - database down when $queryRaw throws', async () => {
         const res = await handleHealth(env);
         const body = await res.json() as { services: { database: { status: string } } };
         assertEquals(body.services.database.status, 'down');
+    } finally {
+        s.restore();
+    }
+});
+
+Deno.test('handleHealth - database error includes error_code and error_message when Prisma throws', async () => {
+    const err = new Error('connection refused');
+    const s = stub(_internals, 'createPrismaClient', () => makeFailingPrisma(err) as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    try {
+        const env = makeEnv({
+            HYPERDRIVE: { connectionString: 'postgresql://test', host: 'ep-test-pooler.eastus2.azure.neon.tech' } as unknown as HyperdriveBinding,
+        });
+        const res = await handleHealth(env);
+        const body = await res.json() as { services: { database: { status: string; error_code: string; error_message: string } } };
+        assertEquals(body.services.database.status, 'down');
+        assertExists(body.services.database.error_code);
+        assertExists(body.services.database.error_message);
+    } finally {
+        s.restore();
+    }
+});
+
+Deno.test('handleHealth - error_message does not contain postgres:// credentials', async () => {
+    const err = new Error('connect ECONNREFUSED postgres://neondb_owner:super-secret@ep-example.neon.tech/adblock-compiler');
+    const s = stub(_internals, 'createPrismaClient', () => makeFailingPrisma(err) as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    try {
+        const env = makeEnv({
+            HYPERDRIVE: { connectionString: 'postgresql://test', host: 'ep-test-pooler.eastus2.azure.neon.tech' } as unknown as HyperdriveBinding,
+        });
+        const res = await handleHealth(env);
+        const body = await res.json() as { services: { database: { error_message: string } } };
+        assertEquals(body.services.database.error_message.includes('postgres://'), false);
+        assertEquals(body.services.database.error_message.includes('super-secret'), false);
+        assertStringIncludes(body.services.database.error_message, '[redacted]');
+    } finally {
+        s.restore();
+    }
+});
+
+Deno.test('handleHealth - timeout scenario results in status down with PROBE_TIMEOUT error_code', async () => {
+    // Mock Prisma that never resolves — the 5s timeout in databaseProbe should fire first.
+    // We use a short real wait (1ms) to simulate quick timeout in tests by using a Prisma
+    // that rejects with a PROBE_TIMEOUT code (simulating what the probe itself injects).
+    const timeoutErr = new Error('Database probe timed out after 5000ms');
+    (timeoutErr as unknown as Record<string, unknown>)['code'] = 'PROBE_TIMEOUT';
+    const s = stub(_internals, 'createPrismaClient', () => makeFailingPrisma(timeoutErr) as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    try {
+        const env = makeEnv({
+            HYPERDRIVE: { connectionString: 'postgresql://test', host: 'ep-test-pooler.eastus2.azure.neon.tech' } as unknown as HyperdriveBinding,
+        });
+        const res = await handleHealth(env);
+        const body = await res.json() as { services: { database: { status: string; error_code: string } } };
+        assertEquals(body.services.database.status, 'down');
+        assertEquals(body.services.database.error_code, 'PROBE_TIMEOUT');
     } finally {
         s.restore();
     }
@@ -226,4 +297,91 @@ Deno.test('handleHealthLatest - returns 500 on KV error', async () => {
     const body = await res.json() as { success: boolean; error: string };
     assertEquals(body.success, false);
     assertExists(body.error);
+});
+
+// ============================================================================
+// handleDbSmoke
+// ============================================================================
+
+Deno.test('handleDbSmoke - returns 400 when HYPERDRIVE is not configured', async () => {
+    const env = makeEnv(); // no HYPERDRIVE
+    const res = await handleDbSmoke(env);
+    assertEquals(res.status, 400);
+    const body = await res.json() as { ok: boolean; error: string };
+    assertEquals(body.ok, false);
+    assertExists(body.error);
+});
+
+Deno.test('handleDbSmoke - happy path: returns ok:true with diagnostic fields', async () => {
+    const serverTime = new Date('2026-03-25T21:59:15.917Z');
+    const smokeMock = {
+        $queryRaw: async (strings: TemplateStringsArray) => {
+            // Return different results based on which query is being called
+            const sql = strings.join('');
+            if (sql.includes('current_database')) {
+                return [{ db_name: 'adblock-compiler', pg_version: 'PostgreSQL 16.2', server_time: serverTime }];
+            }
+            if (sql.includes('information_schema')) {
+                return [{ table_count: BigInt(17) }];
+            }
+            return [];
+        },
+        $disconnect: async () => {},
+    };
+    const s = stub(_internals, 'createPrismaClient', () => smokeMock as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    try {
+        const env = makeEnv({
+            HYPERDRIVE: { connectionString: 'postgresql://test', host: 'ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech' } as unknown as HyperdriveBinding,
+        });
+        const res = await handleDbSmoke(env);
+        assertEquals(res.status, 200);
+        const body = await res.json() as {
+            ok: boolean; db_name: string; pg_version: string; server_time: string;
+            table_count: number; latency_ms: number; hyperdrive_host: string;
+        };
+        assertEquals(body.ok, true);
+        assertEquals(body.db_name, 'adblock-compiler');
+        assertEquals(body.pg_version, 'PostgreSQL 16.2');
+        assertEquals(body.table_count, 17);
+        assertEquals(body.hyperdrive_host, 'ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech');
+        assertExists(body.latency_ms);
+        assertExists(body.server_time);
+    } finally {
+        s.restore();
+    }
+});
+
+Deno.test('handleDbSmoke - sad path: Prisma throws → ok:false, status 503', async () => {
+    const s = stub(_internals, 'createPrismaClient', () => makeFailingPrisma(new Error('connection refused')) as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    try {
+        const env = makeEnv({
+            HYPERDRIVE: { connectionString: 'postgresql://test', host: 'ep-test-pooler.eastus2.azure.neon.tech' } as unknown as HyperdriveBinding,
+        });
+        const res = await handleDbSmoke(env);
+        assertEquals(res.status, 503);
+        const body = await res.json() as { ok: boolean; error: string; hyperdrive_host: string };
+        assertEquals(body.ok, false);
+        assertExists(body.error);
+        assertEquals(body.hyperdrive_host, 'ep-test-pooler.eastus2.azure.neon.tech');
+    } finally {
+        s.restore();
+    }
+});
+
+Deno.test('handleDbSmoke - error message is redacted when it contains postgres:// credentials', async () => {
+    const err = new Error('failed: postgres://neondb_owner:secret@ep-example.neon.tech/db');
+    const s = stub(_internals, 'createPrismaClient', () => makeFailingPrisma(err) as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    try {
+        const env = makeEnv({
+            HYPERDRIVE: { connectionString: 'postgresql://test', host: 'ep-test-pooler.eastus2.azure.neon.tech' } as unknown as HyperdriveBinding,
+        });
+        const res = await handleDbSmoke(env);
+        const body = await res.json() as { ok: boolean; error: string };
+        assertEquals(body.ok, false);
+        assertEquals(body.error.includes('postgres://'), false);
+        assertEquals(body.error.includes('secret'), false);
+        assertStringIncludes(body.error, '[redacted]');
+    } finally {
+        s.restore();
+    }
 });

@@ -7,6 +7,96 @@
 
 ---
 
+## Session Log — 2026-03-25
+
+This section captures the live troubleshooting session that led to the discovery of this KB article and the subsequent hardening work in v0.76.0+.
+
+### Symptoms Observed
+
+- UI showed **"Degraded performance — v0.75.0"** and **"Data may be stale"** banners on every page load
+- `/api/health` returned `database.status: "down"` with `latency_ms: 0`
+- Cloudflare Hyperdrive admin page showed **zero traffic** despite Neon dashboard showing migration activity
+- Health response showed `hyperdrive_host: "11f7f957eaae03a9fe9365c78e6eb4ed.hyperdrive.local"` — which is the correct Hyperdrive local proxy address (not a bug)
+
+### Diagnosis Steps Taken
+
+```bash
+# Step 1: Inspect the full health response
+curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health | jq .services.database
+# Result:
+# {
+#   "status": "down",
+#   "latency_ms": 0,
+#   "hyperdrive_host": "11f7f957eaae03a9fe9365c78e6eb4ed.hyperdrive.local"
+# }
+
+# Step 2: Check the Hyperdrive binding configuration
+wrangler hyperdrive get 800f7e2edc86488ab24e8621982e9ad7
+# Result showed "scheme": "postgres" — Hyperdrive uses postgres://, not postgresql://
+
+# Step 3: Check deployed version
+curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health | jq .version
+# "0.76.0" — schema fix was deployed
+
+# Step 4: Tail live worker logs
+wrangler tail --format=pretty
+# Revealed: ZodError thrown before any network call when parsing connectionString
+```
+
+### Key Diagnostic Insight: `.hyperdrive.local` Is Correct
+
+The `hyperdrive_host: "11f7f957eaae03a9fe9365c78e6eb4ed.hyperdrive.local"` host is the **Cloudflare-managed local proxy address** inside a deployed Worker. This is expected and correct — it means the `HYPERDRIVE` binding is wired up properly. The failure was happening _before_ any query reached this proxy.
+
+### Root Cause Found
+
+`PrismaClientConfigSchema` in `worker/lib/prisma-config.ts` was only accepting `postgresql://` as a valid scheme. Cloudflare Hyperdrive returns `postgres://` from `env.HYPERDRIVE.connectionString`. This caused a `ZodError` to be thrown synchronously before any TCP connection was attempted — hence `latency_ms: 0`.
+
+The fix (accepting both schemes via `.regex(/^postgre(?:s|sql):\/\//)`) was already applied in the first PR.
+
+### Remaining Issue at v0.76.0
+
+Even after the schema fix was deployed at v0.76.0, the database was still `down`. The `latency_ms: 0` pattern continued, meaning the error was still at instantiation time, not at query time. At this point there were two hypotheses:
+
+1. **The schema fix wasn't actually deployed** — `wrangler deployments list` should confirm the version
+2. **Query-level failure** — the `PrismaClient` was being created but the query itself was failing silently (catch block swallowed the error)
+
+The original `databaseProbe` catch block did not capture `error_code` or `error_message`, making it impossible to distinguish these cases from the health response alone.
+
+### Resolution Path
+
+The hardening work in this PR added:
+
+1. **`error_code` and `error_message`** in the `databaseProbe` catch block — redacted of any connection string fragments
+2. **5-second timeout** via `Promise.race` — a hung Hyperdrive connection no longer blocks the health response indefinitely
+3. **`$disconnect()` in a `finally` block** — prevents connection pool leaks after each probe
+4. **New `GET /api/health/db-smoke` endpoint** — runs `current_database()`, `pg_version`, `now()`, and `table_count` as a richer smoke test. This is the canonical way to verify DB connectivity after every production deploy.
+
+### Using the New Smoke Test Endpoint
+
+After deploying, run:
+
+```bash
+curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health/db-smoke | jq .
+```
+
+Expected healthy output:
+
+```json
+{
+  "ok": true,
+  "db_name": "adblock-compiler",
+  "pg_version": "PostgreSQL 16.x ...",
+  "server_time": "2026-03-25T21:59:15.917Z",
+  "table_count": 17,
+  "latency_ms": 42,
+  "hyperdrive_host": "ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech"
+}
+```
+
+If it returns `ok: false`, the `error` field will now contain a redacted error message that pinpoints the failure layer.
+
+---
+
 ## Symptom
 
 The live site at `https://adblock-frontend.jayson-knight.workers.dev/` displays two error banners:
@@ -195,8 +285,9 @@ Confirm that `db_name` matches the expected Neon database name. If it returns a 
 ## Related KB Articles
 
 - [KB-001](./KB-001-api-not-available.md) — "Getting API is not available" on the main page
-- *(planned)* KB-003 — Cloudflare Queue consumer not processing messages
-- *(planned)* KB-004 — Angular SPA serves stale build after worker deploy
+- [KB-003](./KB-003-neon-hyperdrive-live-session-2026-03-25.md) — Database Down After Deploy — Live Debugging Session (2026-03-25)
+- *(planned)* KB-004 — Cloudflare Queue consumer not processing messages
+- *(planned)* KB-005 — Angular SPA serves stale build after worker deploy
 
 ---
 
