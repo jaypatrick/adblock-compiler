@@ -52,16 +52,15 @@ function getAstWorkerSource(): string {
         '      return Response.json({\n' +
         '        success: true, parsedRules: [], summary: { total: rules.length ?? 0 },\n' +
         "        executedIn: 'dynamic-worker-isolate', duration: `${Date.now() - startTime}ms`,\n" +
-        '      });\n' +
-        '    }\n' +
+        executedIn: 'dynamic-worker-isolate',
+        duration: '' + (Date.now() - startTime) + 'ms',
         '    if (operation === ' + "'validate'" + ') {\n' +
         '      return Response.json({\n' +
         "        success: true, valid: true, totalRules: rules.length, validRules: rules.length,\n" +
         "        invalidRules: 0, errors: [], warnings: [], executedIn: 'dynamic-worker-isolate',\n" +
         "        duration: `${Date.now() - startTime}ms`,\n" +
         '      });\n' +
-        '    }\n' +
-        "    return Response.json({ error: 'Unknown operation' }, { status: 400 });\n" +
+        duration: '' + (Date.now() - startTime) + 'ms',
         '  }\n' +
         '};';
 }
