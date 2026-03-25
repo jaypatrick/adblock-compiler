@@ -439,6 +439,11 @@ jobs:
               uses: ./.github/actions/setup-deno-env
               with:
                   deno-version: ${{ env.DENO_VERSION }}
+            - name: Ensure DIRECT_DATABASE_URL is set for production migrations
+              run: |
+                  if [ -z "${{ env.DIRECT_DATABASE_URL }}" ]; then
+                      echo "ERROR: DIRECT_DATABASE_URL secret is not configured; cannot run production Prisma migrations."
+                      exit 1
+                  fi
             - name: Apply Prisma migrations to production
-              if: env.DIRECT_DATABASE_URL != ''
               run: deno run -A npm:prisma migrate deploy
