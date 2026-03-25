@@ -53,7 +53,7 @@ export default {
  * NOTE: ASTViewerService is bundled into this module at build time via
  * @cloudflare/worker-bundler. It does NOT import from the parent Worker.
  */
-async function handleParse(rules?: string[], text?: string): Promise<Response> {
+function handleParse(rules?: string[], text?: string): Promise<Response> {
     if (!rules && !text) {
         return Response.json(
             { error: 'Request must include either "rules" array or "text" string' },
@@ -76,7 +76,7 @@ async function handleParse(rules?: string[], text?: string): Promise<Response> {
 /**
  * Handles rule validation inside the dynamic Worker isolate.
  */
-async function handleValidate(rules: string[], _strict: boolean): Promise<Response> {
+function handleValidate(rules: string[], _strict: boolean): Promise<Response> {
     const startTime = Date.now();
 
     // TODO(#1386): Replace with bundled ASTViewerService once @cloudflare/worker-bundler
