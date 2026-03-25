@@ -1,23 +1,39 @@
 # Local Development Database Setup
 
-This guide covers setting up a local PostgreSQL database for development using Docker.
+This guide covers setting up your local development database using **Neon branching**.
+Each developer gets a personal, isolated Neon branch that is safe to reset or delete
+without affecting the production database.
+
+> **Reference:** [Local Development with Neon](https://neon.com/guides/local-development-with-neon)
 
 ## Prerequisites
 
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (or Docker Engine + Compose)
 - [Deno](https://deno.land/) ≥ 2.x (for running Prisma tasks)
+- A Neon account with access to the `adblock-compiler` project
 - [direnv](https://direnv.net/) (optional, for automatic env loading)
 
 ## Quick Start
 
 ```bash
-# 1. Start the local PostgreSQL container
-deno task db:local:up
+# 1. Create a personal dev branch in the Neon Console (one-time)
+#    https://console.neon.tech → adblock-compiler project → Branches → New Branch
+#    Base the branch on: main
 
-# 2. Push the Prisma schema to create all tables
-deno task db:local:push
+# 2. Copy the example env files
+cp .dev.vars.example .dev.vars
+cp .env.example .env.local
 
-# 3. Start the Worker dev server (connects via Hyperdrive local override)
+# 3. Fill in your Neon branch connection strings (see "Getting Your Connection Strings" below)
+#    Edit .dev.vars:
+#      CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require
+#    Edit .env.local:
+#      DATABASE_URL="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require"
+#      DIRECT_DATABASE_URL="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require"
+
+# 4. Apply pending migrations to your branch
+deno task db:migrate
+
+# 5. Start the Worker dev server
 deno task wrangler:dev
 ```
 
@@ -31,80 +47,78 @@ flowchart LR
         S["Prisma Studio<br/>(GUI)"]
     end
 
-    subgraph Docker["Docker"]
-        PG["PostgreSQL 16<br/>port 5432"]
+    subgraph Neon["Neon (Cloud)"]
+        MB["main branch<br/>(production)"]
+        DB["dev/yourname branch<br/>(personal, isolated)"]
     end
 
-    W -->|"Hyperdrive local<br/>override"| PG
-    P -->|"DIRECT_DATABASE_URL"| PG
-    S -->|"DIRECT_DATABASE_URL"| PG
+    W -->|"CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE<br/>(.dev.vars)"| DB
+    P -->|"DIRECT_DATABASE_URL<br/>(.env.local)"| DB
+    S -->|"DIRECT_DATABASE_URL<br/>(.env.local)"| DB
+    DB -.->|"branched from"| MB
 ```
 
-### Custom Port
+`wrangler dev` never uses the real Cloudflare Hyperdrive binding — it reads the
+`CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE` env var from `.dev.vars` as a
+passthrough to whatever Postgres URL you provide. For local dev that URL is your Neon branch.
 
-If port 5432 is in use, override with the `POSTGRES_PORT` environment variable:
+## Neon Branching Workflow
 
-```bash
-POSTGRES_PORT=5555 docker compose up -d postgres
-# Then update connection strings in .env.local and .dev.vars to match
+### Creating Your Dev Branch (One-Time Setup)
+
+1. Go to [console.neon.tech](https://console.neon.tech) and open the `adblock-compiler` project.
+2. Click **Branches** → **New Branch**.
+3. Set the **Branch name** to something like `dev/<your-name>` (e.g. `dev/alice`).
+4. Leave **Branch from** set to `main` (or the latest production branch).
+5. Click **Create Branch**.
+
+The branch is an instant copy of the production schema and data (or empty if main is empty).
+You can reset it or delete it at any time without affecting `main`.
+
+### Getting Your Connection Strings
+
+After the branch is created:
+
+1. Click on your branch name in the Neon Console.
+2. Click **Connect** (or the connection string icon).
+3. Select **Direct connection** (not "Pooled connection") — Prisma migrations require a direct URL.
+4. Copy the connection string; it looks like:
+   ```
+   postgresql://<user>:<password>@ep-<name>.<region>.neon.tech/<dbname>?sslmode=require
+   ```
+
+> ⚠️ **Direct vs. Pooled:** Always use the direct (non-pooler) URL for local dev and Prisma CLI.
+> The pooler URL (`-pooler` in the hostname) is only for the production Hyperdrive binding.
+
+### Configuring Your Local Environment
+
+**.dev.vars** (Worker runtime — used by `wrangler dev`):
+
+```ini
+# Point wrangler dev at your personal Neon development branch.
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@ep-<name>.<region>.neon.tech/<dbname>?sslmode=require
 ```
 
-## Deno Task Reference
+**.env.local** (Prisma CLI — used by `prisma migrate dev/deploy/status`):
 
-| Task | Description |
-|------|-------------|
-| `deno task db:local:up` | Start Docker PostgreSQL container |
-| `deno task db:local:down` | Stop Docker PostgreSQL container |
-| `deno task db:local:push` | Sync Prisma schema → local DB (creates all tables) |
-| `deno task db:local:migrate` | Run pending Prisma migrations against local DB |
-| `deno task db:local:reset` | Destroy volume + recreate DB + push schema (fresh start) |
-| `deno task db:local:studio` | Open Prisma Studio GUI for local DB |
-
-## Docker Services
-
-### `postgres` — PostgreSQL 16 Alpine
-
-| Property | Value |
-|----------|-------|
-| Image | `postgres:16-alpine` |
-| Host port | `5432` (configurable via `$POSTGRES_PORT`) |
-| Database | `adblock_dev` |
-| User | `adblock` |
-| Password | `localdev` |
-| Extensions | `pgcrypto`, `citext` (auto-enabled on first start) |
-
-### `db-migrate` — One-Shot Migration Runner
-
-Runs `prisma migrate deploy` inside Docker (useful for CI or when you don't have Deno locally):
-
-```bash
-docker compose up postgres db-migrate
+```ini
+# Use the same direct connection string for Prisma CLI.
+DATABASE_URL="postgresql://<user>:<password>@ep-<name>.<region>.neon.tech/<dbname>?sslmode=require"
+DIRECT_DATABASE_URL="postgresql://<user>:<password>@ep-<name>.<region>.neon.tech/<dbname>?sslmode=require"
 ```
 
-## Environment Files
-
-### `.env.local` (gitignored)
-
-Used by Prisma CLI for migrations and schema operations:
-
-```env
-DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
-DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
-```
-
-### `.dev.vars` (gitignored)
-
-Used by `wrangler dev` to override the Hyperdrive binding locally:
-
-```env
-CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@localhost:5432/adblock_dev
-```
-
-Copy `.dev.vars.example` as a starting point:
+Copy the example files as a starting point:
 
 ```bash
 cp .dev.vars.example .dev.vars
+cp .env.example .env.local
 ```
+
+### Resetting Your Branch
+
+If your dev branch gets into an inconsistent state, reset it in the Neon Console:
+**Branches → your branch → Reset to main** (or delete and recreate it).
+This is safe — `main` is never affected.
 
 ### `.envrc` (direnv)
 
@@ -114,36 +128,28 @@ Loads `.env`, `.env.local`, and `.dev.vars` automatically when you `cd` into the
 direnv allow .
 ```
 
-## Switching Between Local and Neon
+## Deno Task Reference
 
-### Local Docker (default for development)
-
-```env
-# .env.local
-DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
-DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
-```
-
-### Neon Direct (for testing against production-like DB)
-
-```env
-# .env.local
-DATABASE_URL="postgresql://user:password@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/adblock-compiler?sslmode=require"
-DIRECT_DATABASE_URL="postgresql://user:password@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require"
-```
-
-> **Tip:** Keep both sets of connection strings in `.env.local` and comment/uncomment as needed.
+| Task | Description |
+|------|-------------|
+| `deno task db:migrate` | Run pending Prisma migrations against your Neon branch |
+| `deno task db:generate` | Regenerate Prisma client after schema changes |
+| `deno task db:studio` | Open Prisma Studio GUI connected to your Neon branch |
+| `deno task wrangler:dev` | Start the Worker dev server (uses `.dev.vars` for DB connection) |
 
 ## Common Workflows
 
 ### First-Time Setup
 
 ```bash
-# Start postgres
-deno task db:local:up
+# Copy env templates
+cp .dev.vars.example .dev.vars
+cp .env.example .env.local
 
-# Create all tables from Prisma schema
-deno task db:local:push
+# Fill in your Neon branch URLs (see "Getting Your Connection Strings" above)
+
+# Apply migrations to your branch
+deno task db:migrate
 
 # Generate Prisma client (for IDE autocomplete)
 deno task db:generate
@@ -155,24 +161,17 @@ deno task wrangler:dev
 ### After Pulling New Schema Changes
 
 ```bash
-# Apply any new migrations
-deno task db:local:migrate
+# Apply any new migrations to your Neon branch
+deno task db:migrate
 
 # Regenerate Prisma client
 deno task db:generate
 ```
 
-### Fresh Reset (Nuclear Option)
-
-```bash
-# Destroys the Docker volume, recreates everything
-deno task db:local:reset
-```
-
 ### Inspect Data with Prisma Studio
 
 ```bash
-deno task db:local:studio
+deno task db:studio
 # Opens browser at http://localhost:5555
 ```
 
@@ -183,39 +182,22 @@ deno task db:local:studio
 deno task db:migrate --name describe_your_change
 ```
 
-This creates a migration file in `prisma/migrations/` and applies it to your local DB.
+This creates a migration file in `prisma/migrations/` and applies it to your Neon branch.
 
 ## Troubleshooting
 
-### "Port 5432 already in use"
+### "SSL required" or `sslmode` errors
 
-Another process is using the port. Check with:
+Neon always requires SSL. Make sure `?sslmode=require` is appended to every connection string
+in `.dev.vars` and `.env.local`.
 
-```bash
-lsof -i :5432
-```
+### "Cannot connect to server" / ETIMEDOUT
 
-Override the port:
+Check that:
 
-```bash
-POSTGRES_PORT=5434 docker compose up -d postgres
-# Update connection strings in .env.local and .dev.vars to match
-```
-
-### "role 'adblock' does not exist"
-
-You're connecting to a **locally-installed** PostgreSQL instead of Docker. This happens when
-a Homebrew or PGlite postgres is running on the same port. Verify Docker is running:
-
-```bash
-docker compose ps postgres
-```
-
-And ensure your connection string uses port **5432** (not 5432). Check for port conflicts:
-
-```bash
-lsof -i :5432
-```
+1. You copied the connection string from the **Direct connection** tab (not pooled).
+2. The branch hasn't been suspended. Open the Neon Console and verify the branch is active.
+3. Your connection string isn't the placeholder (`<user>`, `<branch-host>`, etc.).
 
 ### "Cannot find module 'prisma/config'"
 
@@ -225,35 +207,31 @@ The Prisma CLI npm package isn't installed. Run:
 pnpm install
 ```
 
-Or use Deno directly (the `db:local:*` tasks do this automatically):
+Or use Deno directly (the `db:migrate` task does this automatically):
 
 ```bash
-deno run -A npm:prisma db push
+deno run -A npm:prisma migrate deploy
 ```
 
-### Migration Fails on Fresh DB
+### Migration Fails on Fresh Branch
 
-The incremental migrations assume existing tables. For a fresh local database, use `db push` first:
+The incremental migrations assume existing tables. For a brand-new branch, run `db push` first:
 
 ```bash
-deno task db:local:push
+DIRECT_DATABASE_URL="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require" \
+  deno run -A npm:prisma db push
 ```
 
 Then mark existing migrations as applied:
 
 ```bash
-DIRECT_DATABASE_URL=postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev \
+DIRECT_DATABASE_URL="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require" \
   deno run -A npm:prisma migrate resolve --applied <migration_name>
 ```
 
-### Extensions Not Available
+### Branch Data Drift / Inconsistent State
 
-If `gen_random_uuid()` or `citext` functions fail, the init script may not have run.
-Reset the volume:
+Reset your branch from the Neon Console:
+**Branches → your branch → Reset to main**.
 
-```bash
-deno task db:local:reset
-```
-
-The `scripts/docker-init-db.sql` init script enables `pgcrypto` and `citext` extensions
-on first volume creation.
+This replaces your branch data with a fresh copy from `main`. All local changes are lost.
