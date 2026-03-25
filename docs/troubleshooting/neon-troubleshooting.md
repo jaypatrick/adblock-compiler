@@ -249,87 +249,58 @@ postgresql://user:pass@...-pooler.eastus2.azure.neon.tech/db?sslmode=require&cha
 
 ## Local Development Issues
 
-### Port 5432 Already in Use
-
-**Symptom:** `docker compose up postgres` fails with port binding error.
-
-**Diagnosis:**
-
-```bash
-lsof -i :5432
-```
-
-**Fix — use a different port:**
-
-```bash
-POSTGRES_PORT=5434 docker compose up -d postgres
-```
-
-Then update `.env.local` and `.dev.vars` to use port `5434`.
-
 ### "HYPERDRIVE is undefined" in Local Dev
 
 **Symptom:** `TypeError: Cannot read properties of undefined (reading 'connectionString')`
 
-**Cause:** `.dev.vars` is missing the Hyperdrive local override.
+**Cause:** `.dev.vars` is missing or has an empty Hyperdrive local override.
 
 **Fix:**
 
 ```bash
-# .dev.vars (gitignored)
-CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev
+# .dev.vars (gitignored) — point at your personal Neon dev branch
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require
 ```
+
+Create a personal dev branch at [console.neon.tech](https://console.neon.tech) → your project → Branches → New Branch.
+Use the **Direct connection** string (not pooled). See [Local Dev Setup](../database-setup/local-dev.md).
 
 > ⚠️ Restart `wrangler dev` after changing `.dev.vars` — it only reads the file at startup.
 
-### "role 'adblock' does not exist"
+### "SSL required" / `sslmode` errors
 
-**Symptom:** Connection works but authentication fails.
+**Symptom:** `Error: SSL required` or `Error: PGGSSENCMODE` / TLS handshake failure.
 
-**Cause:** You're connecting to a locally-installed PostgreSQL (e.g. Homebrew) instead of
-the Docker container.
+**Cause:** The connection string is missing `?sslmode=require` (required by Neon).
+
+**Fix:** Append `?sslmode=require` to every Neon connection string in `.dev.vars` and `.env.local`:
+
+```ini
+# Replace <user>, <password>, <branch-host>, and <dbname> with your Neon branch values
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require
+DATABASE_URL="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require"
+DIRECT_DATABASE_URL="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require"
+```
+
+### "Cannot connect to server" / ETIMEDOUT
+
+**Symptom:** Connections time out during `wrangler dev` or `prisma migrate`.
+
+**Cause:** The Neon branch may be suspended or the connection string is incorrect.
 
 **Fix:**
 
 ```bash
-# Check Docker is running
-docker compose ps postgres
+# 1. Verify your Neon branch is active
+#    https://console.neon.tech → your project → Branches → check branch status
 
-# Ensure no other PostgreSQL is using port 5432
-lsof -i :5432
-```
+# 2. Test the connection directly
+#    Replace <user>, <password>, <branch-host>, and <dbname> with your Neon branch values
+psql "postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require" -c "SELECT 1 AS ok;"
 
-### Extensions Not Available (`gen_random_uuid`, `citext`)
-
-**Symptom:** `ERROR: function gen_random_uuid() does not exist`
-
-**Fix:** Reset the Docker volume to re-run the init script:
-
-```bash
-deno task db:local:reset
-```
-
-The init script `scripts/docker-init-db.sql` enables `pgcrypto` and `citext` extensions.
-
-### Docker PostgreSQL Won't Start
-
-**Diagnosis:**
-
-```bash
-# Check logs
-docker compose logs postgres
-
-# Common issues:
-# - "data directory has wrong ownership" → reset volume
-# - "could not create lock file" → stop conflicting PostgreSQL
-```
-
-**Nuclear option:**
-
-```bash
-docker compose down -v     # remove volumes
-docker compose up -d postgres
-deno task db:local:push    # recreate tables
+# 3. Ensure your connection string uses the direct (non-pooler) hostname
+#    ✅ ep-<name>.<region>.neon.tech          (direct — use for local dev)
+#    ❌ ep-<name>-pooler.<region>.neon.tech   (pooler — only for production Hyperdrive)
 ```
 
 ---
@@ -486,10 +457,10 @@ curl -s -H "Authorization: Bearer $NEON_API_KEY" \
 ### Database Connectivity
 
 ```bash
-# Test direct PostgreSQL connection (requires psql)
-psql "postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev" -c "SELECT 1 AS ok;"
+# Test direct PostgreSQL connection to your Neon dev branch (requires psql)
+psql "$DIRECT_DATABASE_URL" -c "SELECT 1 AS ok;"
 
-# Check Prisma migration status
+# Check Prisma migration status against your Neon dev branch
 deno run -A npm:prisma migrate status
 ```
 
@@ -508,7 +479,7 @@ npx wrangler dev --log-level=debug
 ## Further Reading
 
 - [Neon Setup](../database-setup/neon-setup.md) — Production Neon configuration
-- [Local Dev Guide](../database-setup/local-dev.md) — Docker PostgreSQL setup
+- [Local Dev Guide](../database-setup/local-dev.md) — Neon branching setup for local development
 - [Auth Chain Reference](../auth/auth-chain-reference.md) — Authentication flow details
 - [Better Auth + Prisma](../auth/better-auth-prisma.md) — Prisma adapter configuration
 - [Neon Documentation](https://neon.tech/docs) — Official Neon docs

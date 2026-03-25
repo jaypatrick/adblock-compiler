@@ -58,11 +58,14 @@ adblock-compiler authentication system with Better Auth.
 ### Quick Start
 
 ```bash
-# 1. Copy the example file
+# 1. Create a personal dev branch in the Neon Console (one-time)
+#    https://console.neon.tech → adblock-compiler project → Branches → New Branch
+
+# 2. Copy the example file
 cp .dev.vars.example .dev.vars
 
-# 2. Edit with your values (see template below)
-# 3. Start the Worker
+# 3. Fill in your Neon branch connection string (see template below)
+# 4. Start the Worker
 wrangler dev
 ```
 
@@ -80,8 +83,10 @@ BETTER_AUTH_SECRET=replace-with-openssl-rand-base64-32-output
 BETTER_AUTH_URL=http://localhost:8787
 
 # ─── Database ─────────────────────────────────────────────────────────────────
-# Point the Hyperdrive binding at your local PostgreSQL instance:
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:pw@127.0.0.1:5432/adblock_dev
+# Point wrangler dev at your personal Neon development branch.
+# Create a branch at https://console.neon.tech → your project → Branches → New Branch.
+# Use the "Direct connection" string (not pooled). See: https://neon.com/guides/local-development-with-neon
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require
 
 # ─── Social OAuth (optional) ──────────────────────────────────────────────────
 # GITHUB_CLIENT_ID=your-github-client-id
@@ -99,21 +104,21 @@ CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8787
 
 ### Local Database
 
-The project ships with a Docker-based PostgreSQL for local dev:
+The project uses **Neon branching** for local development — no Docker PostgreSQL needed.
+Each developer has a personal, isolated Neon branch that can be reset or deleted freely.
 
 ```bash
-# Start the local database
-deno task db:local:up
-
-# Apply pending migrations
+# Apply pending migrations to your Neon branch
 deno task db:migrate
 
 # Generate Prisma client
 deno task db:generate
 
-# Start the Worker (now using local DB via Hyperdrive local override)
+# Start the Worker (uses .dev.vars for DB connection)
 wrangler dev
 ```
+
+See [Local Development Setup](../database-setup/local-dev.md) for full Neon branching instructions.
 
 ---
 
@@ -128,10 +133,11 @@ binding = "HYPERDRIVE"
 id      = "800f7e2edc86488ab24e8621982e9ad7"
 ```
 
-During `wrangler dev`, add this to `.dev.vars` to override with a local connection:
+During `wrangler dev`, add this to `.dev.vars` to override with your Neon dev branch:
 
 ```ini
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:pw@127.0.0.1:5432/adblock_dev
+# Use your personal Neon dev branch (direct connection, not pooled)
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require
 ```
 
 For full Hyperdrive setup, see [Better Auth Prisma Setup](better-auth-prisma.md).

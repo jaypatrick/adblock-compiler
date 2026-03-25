@@ -1,3 +1,14 @@
+# ⚠️  DEPRECATION NOTICE (2026-03-25)
+# The PostgreSQL service in this file is NO LONGER USED for local development.
+# Neon branching now serves as both the production and developer database.
+# Create a personal dev branch at https://console.neon.tech → your project → Branches → New Branch,
+# then set the branch connection string in .dev.vars and .env.local.
+# See docs/database-setup/local-dev.md for the current Neon branching workflow.
+#
+# This file is retained in case it is needed for other tooling (CI image builds,
+# the adblock-compiler container service, etc.). The `postgres` service within it
+# should be considered deprecated and will be removed in a future cleanup PR.
+# ─────────────────────────────────────────────────────────────────────────────
 services:
     # Main adblock-compiler backend Worker service (wrangler dev).
     # NOTE: The frontend is NOT a separate container here. In production the
