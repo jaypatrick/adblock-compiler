@@ -1,0 +1,30 @@
+# Prepares the Coding Agent environment before it starts working on issues.
+# Installs Node.js and pnpm so that `npx mcp-remote` (used by the Neon MCP
+# server config) is available when the agent starts MCP servers.
+
+name: Copilot Setup Steps
+
+on:
+    copilot_setup_steps:
+
+jobs:
+    copilot-setup-steps:
+        name: Copilot Setup Steps
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 10.31.0
+
+            - name: Setup Node.js 22
+              uses: actions/setup-node@v4
+              with:
+                  node-version: '22'
+                  cache: 'pnpm'
+
+            - name: Install dependencies
+              run: pnpm install --frozen-lockfile
