@@ -14,7 +14,14 @@ import { compress, decompress, emitDiagnosticsToTailWorker, getCacheKey, QUEUE_B
 import type { BatchRequest, CompilationResult, CompileQueueMessage, CompileRequest, Env, PreviousVersion, Priority } from '../types.ts';
 import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../../src/configuration/schemas.ts';
 import { AstParseRequestSchema } from '../schemas.ts';
-import { AST_PARSE_WORKER_SOURCE, dispatchToDynamicWorker, type DynamicWorkerTask, isDynamicWorkerAvailable } from '../dynamic-workers/index.ts';
+import {
+    AST_PARSE_WORKER_SOURCE,
+    dispatchToDynamicWorker,
+    type DynamicWorkerTask,
+    isDynamicWorkerAvailable,
+    runAstParseInDynamicWorker,
+    runValidateInDynamicWorker,
+} from '../dynamic-workers/index.ts';
 
 // ============================================================================
 // Configuration
@@ -775,7 +782,38 @@ export async function handleASTParseRequest(
         }
         const body = parsed.data;
 
-        // Feature-flag: dispatch to a Dynamic Worker isolate when the binding is available.
+        // Feature-flag — LOADER path (DynamicDispatchNamespace, env.LOADER):
+        // Try the newer DynamicDispatchNamespace binding first; if unavailable or
+        // the isolate fails, fall through to the DYNAMIC_WORKER_LOADER path below.
+        {
+            const loaderResult = await runAstParseInDynamicWorker(body, env);
+            if (loaderResult !== null) {
+                if (loaderResult.success) {
+                    // Only trust the LOADER result if it contains real AST data.
+                    // The current stub always returns parsedRules: [] — fall through
+                    // until a real implementation is wired up (#1386).
+                    const data: unknown = loaderResult.data;
+                    // deno-lint-ignore no-explicit-any
+                    const parsedRules = (data as any)?.parsedRules;
+                    // deno-lint-ignore no-explicit-any
+                    const summary = (data as any)?.summary;
+                    const hasNonEmptyParsedRules = Array.isArray(parsedRules) && parsedRules.length > 0;
+                    const hasSummary = summary !== undefined && summary !== null;
+                    if (hasNonEmptyParsedRules && hasSummary) {
+                        return JsonResponse.success(loaderResult.data);
+                    }
+                    // LOADER returned no usable results — fall through to legacy parser.
+                    // deno-lint-ignore no-console
+                    console.warn('[compile] LOADER AST-parse path returned no usable results; falling back to legacy parser.');
+                } else {
+                    // Non-null but failed → log and fall through to next path.
+                    // deno-lint-ignore no-console
+                    console.warn('[compile] LOADER AST-parse path failed:', loaderResult.error);
+                }
+            }
+        }
+
+        // Feature-flag — DYNAMIC_WORKER_LOADER path (string-source loader, env.DYNAMIC_WORKER_LOADER):
         // If the Dynamic Worker path fails (loader/spawn/isolate error), fall back to the
         // inline ASTViewerService implementation — avoids turning a transient beta-API
         // issue into an endpoint outage.
@@ -842,6 +880,21 @@ export async function handleValidate(request: Request, env?: Env): Promise<Respo
         }
 
         const rules = Array.isArray(body.rules) ? body.rules : [];
+
+        // Feature-flag — LOADER path (DynamicDispatchNamespace, env.LOADER):
+        // Try the newer DynamicDispatchNamespace binding first when env is provided.
+        if (env) {
+            const loaderResult = await runValidateInDynamicWorker({ rules, strict: body.strict }, env);
+            if (loaderResult !== null) {
+                if (loaderResult.success) {
+                    return Response.json(loaderResult.data);
+                }
+                // Non-null but failed → log and fall through to inline path.
+                // deno-lint-ignore no-console
+                console.warn('[compile] LOADER validate path failed:', loaderResult.error);
+            }
+        }
+
         const startTime = Date.now();
         const errors: Array<{
             line: number;

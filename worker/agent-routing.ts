@@ -25,6 +25,8 @@
  */
 
 import type { Env } from './types.ts';
+import { getOrCreateUserAgent } from './dynamic-workers/index.ts';
+import { getAgentBySlug } from './agents/registry.ts';
 
 // ---------------------------------------------------------------------------
 // SDK lazy import — cached after first /agents/* request
@@ -102,7 +104,27 @@ export function agentNameToBindingKey(name: string): string {
  */
 export async function routeAgentRequest(request: Request, env: Env): Promise<Response | null> {
     const url = new URL(request.url);
-    if (!url.pathname.match(AGENT_PATH_RE)) return null;
+    const pathMatch = url.pathname.match(AGENT_PATH_RE);
+    if (!pathMatch) return null;
+
+    // Dynamic Worker fast-path: only dispatch to a per-user dynamic Worker isolate when the
+    // agent registry entry explicitly opts in via `transport: 'dynamic-worker'`. This prevents
+    // the stub isolate from shadowing working SDK-based agents (e.g. mcp-agent uses SSE).
+    const agentName = pathMatch[1];
+    const agentId = pathMatch[2];
+    const registryEntry = getAgentBySlug(agentName);
+    if (registryEntry?.transport === 'dynamic-worker' && agentId) {
+        try {
+            const dynamicResponse = await getOrCreateUserAgent(agentId, request, env);
+            if (dynamicResponse !== null) {
+                return dynamicResponse;
+            }
+        } catch (err) {
+            // deno-lint-ignore no-console
+            console.warn('[agent-routing] Dynamic Worker fast-path failed, falling back to SDK:', err instanceof Error ? err.message : String(err));
+        }
+    }
+
     try {
         const sdkFn = await getSdkRouteAgentRequest();
         return await sdkFn(request, env as unknown as Record<string, unknown>);
