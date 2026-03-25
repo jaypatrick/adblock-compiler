@@ -214,6 +214,8 @@ deno task fmt:check && deno task lint && deno task check && deno task openapi:va
 
 If any step in this chain would fail, the code is not ready to commit.
 
+> **Note:** `deno task check:slow-types` runs `deno publish --dry-run` without `--allow-dirty`. Ensure your working tree is clean before running the preflight command; do not rely on `--allow-dirty` here.
+
 ### Common Failure Patterns to Prevent
 
 These are the recurring CI failures that MUST be caught before committing:
