@@ -15,6 +15,7 @@ import type { BatchRequest, CompilationResult, CompileQueueMessage, CompileReque
 import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../../src/configuration/schemas.ts';
 import { AstParseRequestSchema } from '../schemas.ts';
 import { AST_PARSE_WORKER_SOURCE, dispatchToDynamicWorker, isDynamicWorkerAvailable } from '../dynamic-workers/index.ts';
+import type { DynamicWorkerTask } from '../dynamic-workers/index.ts';
 
 // ============================================================================
 // Configuration
@@ -819,10 +820,29 @@ export async function handleASTParseRequest(
  * Validate an array of adblock rules and return per-rule parse results.
  * POST /api/validate
  */
-export async function handleValidate(request: Request): Promise<Response> {
+export async function handleValidate(request: Request, env?: Env): Promise<Response> {
     try {
         const body = await request.json() as { rules?: string[]; strict?: boolean };
         const rules = Array.isArray(body.rules) ? body.rules : [];
+
+        // Dynamic Worker fast-path — attempt isolation when LOADER is available
+        if (env && isDynamicWorkerAvailable(env)) {
+            try {
+                const task: DynamicWorkerTask = {
+                    type: 'validate',
+                    payload: body,
+                    requestId: generateRequestId('validate'),
+                };
+                const result = await dispatchToDynamicWorker<{ valid: boolean; errors: string[] }>(
+                    env,
+                    AST_PARSE_WORKER_SOURCE,
+                    task,
+                );
+                return JsonResponse.success(result);
+            } catch {
+                // Fall through to in-process validation
+            }
+        }
         const startTime = Date.now();
         const errors: Array<{
             line: number;
