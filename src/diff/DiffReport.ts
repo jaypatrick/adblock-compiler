@@ -241,7 +241,9 @@ export class DiffGenerator {
         for (const rule of added) {
             const domain = this.extractDomain(rule.rule);
             if (domain) {
-                domainMap.getOrInsertComputed(domain, () => ({ added: 0, removed: 0 })).added++;
+                const existing = domainMap.get(domain) ?? { added: 0, removed: 0 };
+                existing.added++;
+                domainMap.set(domain, existing);
             }
         }
 
@@ -249,7 +251,9 @@ export class DiffGenerator {
         for (const rule of removed) {
             const domain = this.extractDomain(rule.rule);
             if (domain) {
-                domainMap.getOrInsertComputed(domain, () => ({ added: 0, removed: 0 })).removed++;
+                const existing = domainMap.get(domain) ?? { added: 0, removed: 0 };
+                existing.removed++;
+                domainMap.set(domain, existing);
             }
         }
 

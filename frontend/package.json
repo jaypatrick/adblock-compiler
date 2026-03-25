@@ -63,7 +63,7 @@
         "postcss": "^8.5.8",
         "tailwindcss": "^4.2.1",
         "typescript": "~6.0.2",
-        "typescript-eslint": "^8.57.1",
+        "typescript-eslint": "^8.57.2",
         "vitest": "^4.1.0"
     }
 }
