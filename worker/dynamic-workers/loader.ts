@@ -52,14 +52,16 @@ export default {
     if (operation === 'parse') {
       return Response.json({
         success: true, parsedRules: [], summary: { total: rules.length ?? 0 },
-        executedIn: 'dynamic-worker-isolate', duration: \`\${Date.now() - startTime}ms\`,
+        executedIn: 'dynamic-worker-isolate', duration: \\`
+\${Date.now() - startTime}ms\`,
       });
     }
     if (operation === 'validate') {
       return Response.json({
         success: true, valid: true, totalRules: rules.length, validRules: rules.length,
         invalidRules: 0, errors: [], warnings: [], executedIn: 'dynamic-worker-isolate',
-        duration: \`\${Date.now() - startTime}ms\`,
+        duration: \\`
+\${Date.now() - startTime}ms\`,
       });
     }
     return Response.json({ error: 'Unknown operation' }, { status: 400 });
@@ -98,7 +100,7 @@ async function parseIsolateErrorMessage(response: Response): Promise<string> {
  * it receives only the request body and returns parsed AST data.
  *
  * Falls back to `null` if `env.LOADER` is not configured, allowing the caller
- * to fall back to the existing in-process `handleASTParseRequest()`.
+ * to fall back to the existing in-process `handleASTParseRequest() `.
  */
 export async function runAstParseInDynamicWorker(
     options: DynamicAstParseOptions,
@@ -158,7 +160,7 @@ export async function runAstParseInDynamicWorker(
 /**
  * Runs rule validation inside an ephemeral dynamic Worker isolate.
  *
- * Same isolation model as `runAstParseInDynamicWorker()`:
+ * Same isolation model as `runAstParseInDynamicWorker()`: 
  * `globalOutbound: null`, no bindings, pure transform.
  */
 export async function runValidateInDynamicWorker(
@@ -262,7 +264,7 @@ export async function getOrCreateUserAgent(
                 compatibilityDate: '2026-01-01',
                 mainModule: 'agent-main.js',
                 modules: {
-                // TODO(#1386): Replace with bundled ASTViewerService once @cloudflare/worker-bundler
+                    // TODO(#1386): Replace with bundled ASTViewerService once @cloudflare/worker-bundler
                     'agent-main.js': getAgentWorkerSource(),
                 },
                 // Outbound is explicitly disabled for dynamic agents by default to enforce ZTA.
