@@ -43,7 +43,9 @@ function makeHealthyPrisma() {
 /** Build a mock Prisma client whose $queryRaw always throws. */
 function makeFailingPrisma(err: Error) {
     return {
-        $queryRaw: async () => { throw err; },
+        $queryRaw: async () => {
+            throw err;
+        },
         $disconnect: async () => {},
     };
 }
@@ -343,8 +345,13 @@ Deno.test('handleDbSmoke - happy path: returns ok:true with diagnostic fields', 
         const res = await handleDbSmoke(env);
         assertEquals(res.status, 200);
         const body = await res.json() as {
-            ok: boolean; db_name: string; pg_version: string; server_time: string;
-            table_count: number; latency_ms: number; hyperdrive_host: string;
+            ok: boolean;
+            db_name: string;
+            pg_version: string;
+            server_time: string;
+            table_count: number;
+            latency_ms: number;
+            hyperdrive_host: string;
         };
         assertEquals(body.ok, true);
         assertEquals(body.db_name, 'adblock-compiler');
