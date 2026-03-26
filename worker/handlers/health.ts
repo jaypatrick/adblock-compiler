@@ -76,13 +76,13 @@ export async function handleHealth(env: Env): Promise<Response> {
         }
         const t0 = Date.now();
         let prisma: ReturnType<typeof _internals.createPrismaClient> | undefined;
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
         try {
             prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
             const timeoutMs = 5000;
             const queryPromise = prisma.$queryRaw<Array<{ db_name: string }>>`
                 SELECT current_database() AS db_name
             `;
-            let timeoutId: ReturnType<typeof setTimeout> | undefined;
             const timeoutPromise = new Promise<never>((_, reject) => {
                 timeoutId = setTimeout(() => {
                     const e = new Error(`Database probe timed out after ${timeoutMs}ms`);
@@ -110,6 +110,7 @@ export async function handleHealth(env: Env): Promise<Response> {
                 hyperdrive_host: env.HYPERDRIVE.host,
             };
         } catch (err) {
+            clearTimeout(timeoutId);
             return {
                 status: 'down',
                 latency_ms: Date.now() - t0,

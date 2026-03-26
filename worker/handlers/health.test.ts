@@ -22,6 +22,7 @@
 
 import { assertEquals, assertExists, assertStringIncludes } from '@std/assert';
 import { stub } from '@std/testing/mock';
+import { FakeTime } from '@std/testing/time';
 import { handleHealth, handleHealthLatest, handleDbSmoke } from './health.ts';
 import { type HyperdriveBinding } from '../types.ts';
 import { _internals } from '../lib/prisma.ts';
@@ -249,21 +250,27 @@ Deno.test('handleHealth - error_message does not contain postgres:// credentials
 });
 
 Deno.test('handleHealth - timeout scenario results in status down with PROBE_TIMEOUT error_code', async () => {
-    // Mock Prisma that never resolves — the 5s timeout in databaseProbe should fire first.
-    // We use a short real wait (1ms) to simulate quick timeout in tests by using a Prisma
-    // that rejects with a PROBE_TIMEOUT code (simulating what the probe itself injects).
-    const timeoutErr = new Error('Database probe timed out after 5000ms');
-    (timeoutErr as unknown as Record<string, unknown>)['code'] = 'PROBE_TIMEOUT';
-    const s = stub(_internals, 'createPrismaClient', () => makeFailingPrisma(timeoutErr) as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    // Use FakeTime to control the timer and actually exercise the Promise.race timeout branch.
+    // The mock Prisma never resolves so only the 5 s timer can settle the race.
+    const neverMock = {
+        $queryRaw: () => new Promise<never>(() => {}), // intentionally never resolves
+        $disconnect: async () => {},
+    };
+    const s = stub(_internals, 'createPrismaClient', () => neverMock as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    const fakeTime = new FakeTime();
     try {
         const env = makeEnv({
             HYPERDRIVE: { connectionString: 'postgresql://test', host: 'ep-test-pooler.eastus2.azure.neon.tech' } as unknown as HyperdriveBinding,
         });
-        const res = await handleHealth(env);
+        const healthPromise = handleHealth(env);
+        // Advance fake clock past the 5 000 ms probe timeout so the timer fires.
+        await fakeTime.tickAsync(5001);
+        const res = await healthPromise;
         const body = await res.json() as { services: { database: { status: string; error_code: string } } };
         assertEquals(body.services.database.status, 'down');
         assertEquals(body.services.database.error_code, 'PROBE_TIMEOUT');
     } finally {
+        fakeTime.restore();
         s.restore();
     }
 });

@@ -97,26 +97,27 @@ This appeared on every `/api/auth/*` request. The root cause: `createAuth(env)` 
 
 ## Decision Tree
 
-Use this tree to categorize a `database: down` scenario:
+Use this diagram to categorize a `database: down` scenario:
 
-```
-database.status == "down"
-│
-├── latency_ms == 0?
-│   ├── YES → Failure at instantiation/validation (before network I/O)
-│   │         ├── Check: does PrismaClientConfigSchema accept the Hyperdrive scheme?
-│   │         │   Run: wrangler hyperdrive get <id> — look at "scheme" field
-│   │         │   Fix:  update regex to accept both postgres:// and postgresql://
-│   │         └── Check: is env.HYPERDRIVE binding present?
-│   │             Run: grep HYPERDRIVE wrangler.toml
-│   │             Fix:  add [[hyperdrive]] binding with correct id
-│   │
-│   └── NO (latency_ms > 0) → Connection was attempted but failed
-│       ├── latency_ms ~ 1–100ms → ECONNREFUSED — wrong host/port
-│       ├── latency_ms ~ 1000–5000ms → TCP timeout — host unreachable
-│       └── latency_ms == 5000 exactly → Probe timeout (5s guard fired)
-│           Run: GET /api/health/db-smoke for detailed diagnostics
-│           Check: Neon project status, Hyperdrive binding ID, network egress
+```mermaid
+flowchart TD
+    A["database.status == 'down'"]
+    A --> B{"latency_ms == 0?"}
+
+    B -->|YES| C["Failure at instantiation/validation\n(before network I/O)"]
+    C --> D["Check: does PrismaClientConfigSchema\naccept the Hyperdrive scheme?"]
+    D --> E["Run: wrangler hyperdrive get &lt;id&gt;\n— look at 'scheme' field"]
+    D --> F["Fix: update regex to accept\nboth postgres:// and postgresql://"]
+    C --> G["Check: is env.HYPERDRIVE binding present?"]
+    G --> H["Run: grep HYPERDRIVE wrangler.toml"]
+    G --> I["Fix: add [[hyperdrive]] binding\nwith correct id"]
+
+    B -->|"NO (latency_ms > 0)"| J["Connection was attempted but failed"]
+    J --> K["latency_ms ~ 1–100 ms\n→ ECONNREFUSED — wrong host/port"]
+    J --> L["latency_ms ~ 1000–5000 ms\n→ TCP timeout — host unreachable"]
+    J --> M["latency_ms == 5000 exactly\n→ Probe timeout (5s guard fired)"]
+    M --> N["Run: GET /api/health/db-smoke\nfor detailed diagnostics"]
+    M --> O["Check: Neon project status,\nHyperdrive binding ID, network egress"]
 ```
 
 ---
