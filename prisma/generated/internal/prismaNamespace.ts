@@ -16,8 +16,8 @@
  */
 
 import * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
-import type * as Prisma from "../models"
-import { type PrismaClient } from "./class"
+import type * as Prisma from "../models.ts"
+import { type PrismaClient } from "./class.ts"
 
 export type * from '../models'
 
