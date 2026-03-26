@@ -360,18 +360,18 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
 
     try {
         const response = await Promise.race([
-            auth.handler(betterAuthRequest).finally(() => {
-                if (timeoutId !== undefined) {
-                    clearTimeout(timeoutId);
-                }
-            }),
+            auth.handler(betterAuthRequest),
             new Promise<never>((_, reject) => {
                 timeoutId = setTimeout(() => {
                     abortController.abort();
                     reject(new DOMException('DB call exceeded 10s', 'TimeoutError'));
                 }, 10_000);
             }),
-        ]);
+        ]).finally(() => {
+            if (timeoutId !== undefined) {
+                clearTimeout(timeoutId);
+            }
+        });
         return response;
     } catch (error) {
         if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
