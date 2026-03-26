@@ -90,9 +90,27 @@ export class BetterAuthProvider implements IAuthProvider {
         try {
             const url = new URL(request.url);
             const auth = createAuth(this.env, url.origin);
-            const session = await auth.api.getSession({
+            const abortController = new AbortController();
+            let timeoutId: ReturnType<typeof setTimeout> | undefined;
+            const betterAuthRequest = new Request(url.toString(), {
+                method: 'GET',
                 headers: request.headers,
+                signal: abortController.signal,
             });
+            const sessionPromise = auth.api.getSession(betterAuthRequest as Request);
+            const session = await Promise.race([
+                sessionPromise.finally(() => {
+                    if (timeoutId !== undefined) {
+                        clearTimeout(timeoutId);
+                    }
+                }),
+                new Promise<never>((_, reject) => {
+                    timeoutId = setTimeout(() => {
+                        abortController.abort();
+                        reject(new DOMException('DB call exceeded 10s', 'TimeoutError'));
+                    }, 10_000);
+                }),
+            ]);
 
             if (!session) {
                 // No session found — signal anonymous flow (no error = not a failure,
@@ -111,10 +129,16 @@ export class BetterAuthProvider implements IAuthProvider {
             };
         } catch (error) {
             // Better Auth throws on invalid/expired tokens — treat as anonymous.
-            // Log only the error type/name (not the full message which may contain token
-            // fragments) and return a generic message to avoid leaking internal details.
+            // Distinguish timeout errors (DB call exceeded budget) from other failures
+            // so telemetry can surface them separately.
+            const isTimeout = error instanceof Error &&
+                (error.name === 'AbortError' || error.name === 'TimeoutError');
+
             // deno-lint-ignore no-console
-            console.error('[better-auth] Token verification error:', error instanceof Error ? error.name : 'UnknownError');
+            console.error(
+                '[better-auth] Token verification error:',
+                isTimeout ? 'TimeoutError (DB call exceeded 10s)' : (error instanceof Error ? error.name : 'UnknownError'),
+            );
 
             // ZTA telemetry: emit auth failure event with enriched fields
             if (this.env.ANALYTICS_ENGINE) {
@@ -122,14 +146,14 @@ export class BetterAuthProvider implements IAuthProvider {
                 new AnalyticsService(this.env.ANALYTICS_ENGINE).trackSecurityEvent({
                     eventType: 'auth_failure',
                     authMethod: 'better-auth',
-                    reason: 'better_auth_verification_error',
+                    reason: isTimeout ? 'better_auth_timeout' : 'better_auth_verification_error',
                     path: url.pathname,
                     method: request.method,
                     clientIpHash: AnalyticsService.hashIp(request.headers.get('cf-connecting-ip') ?? request.headers.get('x-forwarded-for') ?? 'unknown'),
                 });
             }
 
-            return { valid: false, error: 'Authentication failed' };
+            return { valid: false, error: isTimeout ? 'Authentication timed out' : 'Authentication failed' };
         }
     }
 }

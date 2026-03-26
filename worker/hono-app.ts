@@ -337,6 +337,11 @@ app.use('*', async (c, next) => {
 // Better Auth handles its own routes (sign-up, sign-in, sign-out, get-session,
 // etc.) — these must bypass unified auth because they CREATE sessions rather
 // than verifying existing ones.
+//
+// A 10s timeout guard is applied here (mirroring BetterAuthProvider.verifyToken)
+// so that a hung Hyperdrive/Prisma call cannot stall the Worker CPU indefinitely.
+// AbortController.abort() is called on timeout to signal cancellation to the
+// underlying fetch plumbing used by Better Auth / Prisma.
 app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
     if (!c.env.BETTER_AUTH_SECRET) return c.notFound();
     if (!c.env.HYPERDRIVE) {
@@ -346,7 +351,44 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
     }
     const url = new URL(c.req.url);
     const auth = createAuth(c.env, url.origin);
-    return auth.handler(c.req.raw);
+
+    const abortController = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    // Preserve all request properties (method, headers, body) but attach the
+    // abort signal so Better Auth's underlying fetch can be cancelled on timeout.
+    const betterAuthRequest = new Request(c.req.raw, { signal: abortController.signal });
+
+    try {
+        const response = await Promise.race([
+            auth.handler(betterAuthRequest),
+            new Promise<never>((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    abortController.abort();
+                    reject(new DOMException('DB call exceeded 10s', 'TimeoutError'));
+                }, 10_000);
+            }),
+        ]).finally(() => {
+            if (timeoutId !== undefined) {
+                clearTimeout(timeoutId);
+            }
+        });
+        return response;
+    } catch (error) {
+        if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+            // deno-lint-ignore no-console
+            console.error('[better-auth] Handler timeout: DB call exceeded 10s on', url.pathname);
+            c.get('analytics')?.trackSecurityEvent({
+                eventType: 'auth_failure',
+                authMethod: 'better-auth',
+                reason: 'better_auth_timeout',
+                path: url.pathname,
+                method: c.req.method,
+                clientIpHash: AnalyticsService.hashIp(c.get('ip') ?? 'unknown'),
+            });
+            return c.json({ error: 'Authentication timed out' }, 504);
+        }
+        throw error;
+    }
 });
 
 // ── 2. Agent router (authenticated) ──────────────────────────────────────────
