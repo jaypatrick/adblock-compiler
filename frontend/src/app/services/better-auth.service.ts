@@ -156,6 +156,7 @@ export class BetterAuthService {
         try {
             await fetch(`${this.apiBaseUrl}/auth/sign-out`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
         } catch {
@@ -393,6 +394,7 @@ export class BetterAuthService {
         try {
             const res = await fetch(`${this.apiBaseUrl}/auth/revoke-other-sessions`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
             if (!res.ok) {

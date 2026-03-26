@@ -330,6 +330,23 @@ describe('BetterAuthService', () => {
             expect(service.user()).toBeNull();
         });
 
+        it('should send Content-Type: application/json', async () => {
+            const spy = mockFetch(
+                makeResponse({ user: MOCK_USER, session: { token: MOCK_TOKEN } }), // checkSession
+                new Response(null, { status: 200 }),                                // signOut
+            );
+            const service = createService();
+            await flushPromises();
+
+            await service.signOut();
+
+            // fetchProviders (index 0), get-session (index 1), sign-out (index 2)
+            const signOutCall = spy.mock.calls.find(([url]) => String(url).includes('/auth/sign-out'));
+            expect(signOutCall).toBeDefined();
+            const init = signOutCall![1] as RequestInit;
+            expect((init.headers as Record<string, string>)['Content-Type']).toBe('application/json');
+        });
+
         it('should clear user and token even when sign-out request fails', async () => {
             vi.spyOn(globalThis, 'fetch')
                 .mockResolvedValueOnce(MOCK_PROVIDERS_RESPONSE.clone())                  // fetchProviders
@@ -345,6 +362,40 @@ describe('BetterAuthService', () => {
             await service.signOut();
             expect(service.isSignedIn()).toBe(false);
             expect(service.user()).toBeNull();
+        });
+    });
+
+    // =========================================================================
+    // revokeOtherSessions()
+    // =========================================================================
+
+    describe('revokeOtherSessions()', () => {
+        it('should send Content-Type: application/json', async () => {
+            const spy = mockFetch(
+                makeResponse({ user: MOCK_USER, session: { token: MOCK_TOKEN } }), // checkSession
+                new Response(null, { status: 200 }),                                // revokeOtherSessions
+            );
+            const service = createService();
+            await flushPromises();
+
+            await service.revokeOtherSessions();
+
+            const revokeCall = spy.mock.calls.find(([url]) => String(url).includes('/auth/revoke-other-sessions'));
+            expect(revokeCall).toBeDefined();
+            const init = revokeCall![1] as RequestInit;
+            expect((init.headers as Record<string, string>)['Content-Type']).toBe('application/json');
+        });
+
+        it('should return an error object on non-ok response', async () => {
+            mockFetch(
+                makeResponse({ user: MOCK_USER, session: { token: MOCK_TOKEN } }), // checkSession
+                new Response(JSON.stringify({ message: 'Unauthorized' }), { status: 401 }), // revokeOtherSessions
+            );
+            const service = createService();
+            await flushPromises();
+
+            const result = await service.revokeOtherSessions();
+            expect(result.error).toBe('Unauthorized');
         });
     });
 
