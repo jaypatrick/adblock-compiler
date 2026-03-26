@@ -62,6 +62,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.77.1] - 2026-03-26
+
+### Added### Fixed
+
+- move clearTimeout to outer Promise.race().finally() for cleaner timer cleanup
+- add 10s timeout guard to /api/auth/* route handler in hono-app.ts
+- add Better Auth IP config and getSession timeout guard
+
+
 ## [0.77.0] - 2026-03-26
 
 ### Added### Fixed
