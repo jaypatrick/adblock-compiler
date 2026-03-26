@@ -60,6 +60,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.76.1] - 2026-03-26
+
+### Added### Fixed
+
+- expand single-line function body and inline type to satisfy deno fmt
+- sort imports alphabetically and use @let to fix Angular TS2532 errors
+- clear timeout in catch path, use FakeTime for timeout test, Mermaid decision tree in KB-003
+- add /api/health/db-smoke + harden databaseProbe + error surfacing in UI + KB-003 docs
+
+
 ## [0.76.0] - 2026-03-25
 
 ### Added- Option B1 staging→production promotion pipeline (Neon branching)
