@@ -9,10 +9,9 @@
  * 🟢 You can import this file directly.
  */
 
-import type * as runtime from "@prisma/client/runtime/client"
-import * as $Enums from "./enums.ts"
+import type * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import type * as Prisma from "./internal/prismaNamespace.ts"
-
+import * as $Enums from "./enums.ts"
 
 export type UuidFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
