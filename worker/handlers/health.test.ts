@@ -23,7 +23,7 @@
 import { assertEquals, assertExists, assertStringIncludes } from '@std/assert';
 import { stub } from '@std/testing/mock';
 import { FakeTime } from '@std/testing/time';
-import { handleHealth, handleHealthLatest, handleDbSmoke } from './health.ts';
+import { handleDbSmoke, handleHealth, handleHealthLatest } from './health.ts';
 import { type HyperdriveBinding } from '../types.ts';
 import { _internals } from '../lib/prisma.ts';
 import { makeEnv, makeFailingKv, makeKv } from '../test-helpers.ts';

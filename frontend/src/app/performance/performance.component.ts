@@ -98,16 +98,17 @@ interface HealthResponse {
                         }
                         <mat-chip>v{{ h.version }}</mat-chip>
                     </mat-chip-set>
-                    @if (h.services?.database && (h.services.database.status === 'down' || h.services.database.status === 'degraded')) {
+                    @let db = h.services?.database;
+                    @if (db && (db.status === 'down' || db.status === 'degraded')) {
                         <div class="db-error-row">
                             <mat-icon class="db-error-icon">storage</mat-icon>
                             <span class="db-error-text">
-                                Database {{ h.services.database.status }}
-                                @if (h.services.database.db_name) {
-                                    — <strong>{{ h.services.database.db_name }}</strong>
+                                Database {{ db.status }}
+                                @if (db.db_name) {
+                                    — <strong>{{ db.db_name }}</strong>
                                 }
-                                @if (h.services.database.error_message) {
-                                    : {{ h.services.database.error_message }}
+                                @if (db.error_message) {
+                                    : {{ db.error_message }}
                                 }
                             </span>
                         </div>
