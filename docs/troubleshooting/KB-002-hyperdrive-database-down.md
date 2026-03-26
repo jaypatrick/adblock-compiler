@@ -286,8 +286,9 @@ Confirm that `db_name` matches the expected Neon database name. If it returns a 
 
 - [KB-001](./KB-001-api-not-available.md) — "Getting API is not available" on the main page
 - [KB-003](./KB-003-neon-hyperdrive-live-session-2026-03-25.md) — Database Down After Deploy — Live Debugging Session (2026-03-25)
-- *(planned)* KB-004 — Cloudflare Queue consumer not processing messages
-- *(planned)* KB-005 — Angular SPA serves stale build after worker deploy
+- [KB-004](./KB-004-prisma-wasm-cloudflare.md) — `WebAssembly.Module(): Wasm code generation disallowed by embedder` — Prisma `runtime = "deno"` generates code blocked by Cloudflare Workers; fix is `runtime = "cloudflare"` + regenerate
+- *(planned)* KB-005 — Cloudflare Queue consumer not processing messages
+- *(planned)* KB-006 — Angular SPA serves stale build after worker deploy
 
 ---
 

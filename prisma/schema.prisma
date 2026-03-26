@@ -14,9 +14,12 @@
 generator client {
   provider = "prisma-client"
   output   = "./generated"
-  runtime = "deno"
-  // Use edge-compatible runtime for Cloudflare Workers
-  // For local dev with Deno, set runtime = "deno"
+  runtime  = "cloudflare"
+  // "cloudflare" runtime uses @prisma/adapter-pg code path — no runtime WASM.
+  // This is required for Cloudflare Workers which block WebAssembly.Module()
+  // instantiation at runtime. The deno runtime would generate WASM-dependent
+  // code that Cloudflare rejects.
+  // See: https://www.prisma.io/docs/orm/prisma-client/deployment/edge/deploy-to-cloudflare
 }
 
 datasource db {
