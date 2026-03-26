@@ -10,7 +10,6 @@
  */
 
 import type * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
-import * as $Enums from "./enums"
 import type * as Prisma from "./internal/prismaNamespace"
 
 
