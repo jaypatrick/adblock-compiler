@@ -11,7 +11,7 @@
 
 import type * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import type * as Prisma from "./internal/prismaNamespace"
-
+import * as $Enums from "./enums"
 
 export type UuidFilter<$PrismaModel = never> = {
   equals?: string | Prisma.StringFieldRefInput<$PrismaModel>
