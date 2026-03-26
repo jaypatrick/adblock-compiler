@@ -19,7 +19,7 @@ import * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
 import type * as Prisma from "../models.ts"
 import { type PrismaClient } from "./class.ts"
 
-export type * from '../models'
+export type * from '../models.ts'
 
 export type DMMF = typeof runtime.DMMF
 
