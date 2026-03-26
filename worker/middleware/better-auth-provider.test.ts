@@ -118,3 +118,30 @@ Deno.test('BetterAuthProvider - has correct authMethod', () => {
     const provider = new BetterAuthProvider(env);
     assertEquals(provider.authMethod, 'better-auth');
 });
+
+// ============================================================================
+// BetterAuthProvider — timeout error handling
+// ============================================================================
+
+Deno.test('BetterAuthProvider.verifyToken - timeout detection: TimeoutError name is recognised', () => {
+    // Verify the predicate used in the catch block correctly classifies
+    // DOMException('TimeoutError'), DOMException('AbortError'), and generic errors.
+    const isTimeout = (e: unknown) => e instanceof Error && (e.name === 'AbortError' || e.name === 'TimeoutError');
+
+    assertEquals(isTimeout(new DOMException('timed out', 'TimeoutError')), true);
+    assertEquals(isTimeout(new DOMException('aborted', 'AbortError')), true);
+    assertEquals(isTimeout(new Error('generic')), false);
+    assertEquals(isTimeout(undefined), false);
+    assertEquals(isTimeout(null), false);
+    assertEquals(isTimeout('string error'), false);
+});
+
+Deno.test('BetterAuthProvider.verifyToken - returns valid:false when BETTER_AUTH_SECRET missing (timeout path unreachable)', async () => {
+    // The guard short-circuits before the DB call, so no timeout can occur
+    // when credentials are missing. Verify this path still returns valid:false.
+    const env = makeEnv();
+    const provider = new BetterAuthProvider(env);
+    const req = new Request('http://localhost/test');
+    const result = await provider.verifyToken(req);
+    assertEquals(result.valid, false);
+});

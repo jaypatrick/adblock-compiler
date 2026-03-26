@@ -158,6 +158,15 @@ export function createAuth(env: Env, baseURL?: string) {
                 sameSite: 'lax', // 'lax' allows OAuth redirects; 'strict' blocks them
                 path: '/',
             },
+            // ── Cloudflare reverse proxy IP extraction ────────────────────────────
+            // Without this, Better Auth cannot determine the real client IP and its
+            // built-in rate limiter (brute-force protection on /sign-in, /sign-up,
+            // /two-factor/*) silently skips ALL rate limiting. CF-Connecting-IP is
+            // injected by Cloudflare's edge and is the authoritative client IP.
+            // X-Forwarded-For is included as fallback for local dev / wrangler dev.
+            ipAddress: {
+                ipAddressHeaders: ['CF-Connecting-IP', 'X-Forwarded-For'],
+            },
         },
 
         plugins: [
