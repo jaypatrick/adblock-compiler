@@ -90,11 +90,25 @@ export class BetterAuthProvider implements IAuthProvider {
         try {
             const url = new URL(request.url);
             const auth = createAuth(this.env, url.origin);
+            const abortController = new AbortController();
             let timeoutId: ReturnType<typeof setTimeout> | undefined;
+            const betterAuthRequest = new Request(url.toString(), {
+                method: 'GET',
+                headers: request.headers,
+                signal: abortController.signal,
+            });
+            const sessionPromise = auth.api.getSession(betterAuthRequest as Request);
             const session = await Promise.race([
-                auth.api.getSession({ headers: request.headers }).finally(() => clearTimeout(timeoutId)),
+                sessionPromise.finally(() => {
+                    if (timeoutId !== undefined) {
+                        clearTimeout(timeoutId);
+                    }
+                }),
                 new Promise<never>((_, reject) => {
-                    timeoutId = setTimeout(() => reject(new DOMException('DB call exceeded 10s', 'TimeoutError')), 10_000);
+                    timeoutId = setTimeout(() => {
+                        abortController.abort();
+                        reject(new DOMException('DB call exceeded 10s', 'TimeoutError'));
+                    }, 10_000);
                 }),
             ]);
 
