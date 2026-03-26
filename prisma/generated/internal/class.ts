@@ -12,7 +12,7 @@
  */
 
 import * as runtime from "@prisma/client/runtime/wasm-compiler-edge"
-import type * as Prisma from "./prismaNamespace"
+import type * as Prisma from "./prismaNamespace.ts"
 
 
 const config: runtime.GetPrismaClientConfig = {
