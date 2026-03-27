@@ -287,9 +287,20 @@ Field names reflect the underlying **database column names** (snake_case); Prism
 erDiagram
     User {
         uuid id PK
-        string email
+        string email UK
         string display_name
         string role
+        string clerk_user_id UK
+        string tier
+        string first_name
+        string last_name
+        string image_url
+        boolean email_verified
+        timestamp last_sign_in_at
+        boolean two_factor_enabled
+        boolean banned
+        string ban_reason
+        timestamp ban_expires
         timestamp created_at
         timestamp updated_at
     }
@@ -297,7 +308,7 @@ erDiagram
     ApiKey {
         uuid id PK
         uuid user_id FK
-        string key_hash
+        string key_hash UK
         string key_prefix
         string name
         string[] scopes
@@ -312,16 +323,50 @@ erDiagram
     Session {
         uuid id PK
         uuid user_id FK
-        string token_hash
+        string token UK
+        string token_hash UK
         string ip_address
         string user_agent
         timestamp expires_at
         timestamp created_at
+        timestamp updated_at
+    }
+
+    TwoFactor {
+        uuid id PK
+        uuid user_id FK
+        string secret
+        string backup_codes
+    }
+
+    Account {
+        uuid id PK
+        uuid user_id FK
+        string account_id
+        string provider_id
+        string access_token
+        string refresh_token
+        timestamp access_token_expires_at
+        timestamp refresh_token_expires_at
+        string scope
+        string id_token
+        string password
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    Verification {
+        uuid id PK
+        string identifier
+        string value
+        timestamp expires_at
+        timestamp created_at
+        timestamp updated_at
     }
 
     FilterSource {
         uuid id PK
-        string url
+        string url UK
         string name
         string description
         boolean is_public
@@ -348,7 +393,7 @@ erDiagram
 
     CompiledOutput {
         uuid id PK
-        string config_hash
+        string config_hash UK
         string config_name
         json config_snapshot
         int rule_count
@@ -396,12 +441,81 @@ erDiagram
         timestamp detected_at
     }
 
+    AgentSession {
+        uuid id PK
+        string agent_slug
+        string instance_id
+        uuid user_id FK
+        string clerk_user_id
+        timestamp started_at
+        timestamp ended_at
+        string end_reason
+        int message_count
+        string transport
+        string client_ip
+        string user_agent
+        json metadata
+    }
+
+    AgentInvocation {
+        uuid id PK
+        uuid session_id FK
+        string tool_name
+        string input_summary
+        string output_summary
+        int duration_ms
+        boolean success
+        string error_message
+        timestamp invoked_at
+        json metadata
+    }
+
+    AgentAuditLog {
+        uuid id PK
+        uuid actor_user_id
+        string agent_slug
+        string instance_id
+        string action
+        string status
+        string ip_address
+        string user_agent
+        string reason
+        json metadata
+        timestamp created_at
+    }
+
+    DeploymentHistory {
+        string id PK
+        string version
+        int build_number
+        string full_version UK
+        string git_commit
+        string git_branch
+        timestamp deployed_at
+        string deployed_by
+        string status
+        int deployment_duration
+        string workflow_run_id
+        string workflow_run_url
+        json metadata
+    }
+
+    DeploymentCounter {
+        string version PK
+        int last_build_number
+        timestamp updated_at
+    }
+
     User ||--o{ ApiKey : "owns"
     User ||--o{ Session : "has"
+    User ||--o{ Account : "has"
+    User ||--o| TwoFactor : "has"
+    User ||--o{ AgentSession : "has"
     FilterSource ||--o{ FilterListVersion : "has versions"
     FilterSource ||--o{ SourceHealthSnapshot : "monitored by"
     FilterSource ||--o{ SourceChangeEvent : "changes tracked by"
     CompiledOutput ||--o{ CompilationEvent : "recorded in"
+    AgentSession ||--o{ AgentInvocation : "has"
 ```
 
 ---
