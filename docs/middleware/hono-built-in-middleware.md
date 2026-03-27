@@ -267,11 +267,18 @@ The complete middleware pipeline for a typical request:
 ```mermaid
 flowchart TD
     R[Incoming Request] --> T[timing]
-    T --> L[logger]
+    T --> META[Request Metadata]
+    META --> SSR[SSR Detection]
+    SSR --> BA{Better Auth Route?}
+    BA -->|yes| BA_HANDLER[Better Auth Handler]
+    BA -->|no| L[logger]
+    BA_HANDLER --> RESP[Response]
     L --> C[compress]
-    C --> M[Request Metadata]
-    M --> A[Auth]
-    A --> CORS[CORS]
+    C --> AGENT{Agent Route?}
+    AGENT -->|yes| AGENT_HANDLER[Agent Router]
+    AGENT -->|no| AUTH[Unified Auth]
+    AGENT_HANDLER --> RESP
+    AUTH --> CORS[CORS]
     CORS --> SH[Secure Headers]
     SH --> ZTA[ZTA Checks]
     ZTA --> CACHE{Cache middleware?}
@@ -279,14 +286,25 @@ flowchart TD
     CACHE -->|no| RL
     CACHE_MW --> RL[Rate Limit]
     RL --> H[Route Handler]
-    H --> RESP[Response]
+    H --> RESP
 ```
 
-**Key observations:**
-1. `timing()` wraps all operations (must be first)
-2. `logger()` logs before compression (uncompressed sizes)
-3. `compress()` is applied early (before auth/CORS) to compress all responses
-4. `cache()` is applied at the route level, before `rateLimitMiddleware()`
+**Critical observations:**
+
+1. **`timing()` wraps all operations** (must be first)
+2. **Better Auth handler is registered BEFORE `logger()` and `compress()`** to avoid response stream conflicts. Better Auth returns responses directly without calling `next()`, so global middleware applied before this handler would wrap the response stream and cause authentication failures.
+3. **`logger()` and `compress()` are applied AFTER Better Auth** but before other routes to avoid interfering with authentication while still providing logging and compression for all other endpoints.
+4. **`cache()` is applied at the route level**, before `rateLimitMiddleware()`
+
+**Why Better Auth must come first:**
+
+Better Auth manages its own response formatting and returns responses without calling the middleware chain's `next()` function. When `compress()` or `logger()` middleware is applied before the Better Auth handler, these middleware wrap the response stream. This causes:
+
+- **Authentication failures**: The response body/headers may be modified by middleware
+- **"Unable to reach API" errors**: Frontend receives corrupted auth responses
+- **Session creation failures**: Cookie headers may not be set correctly
+
+By registering the Better Auth handler **before** the global middleware, authentication responses bypass compression and logging, ensuring reliable auth operations.
 
 ---
 
