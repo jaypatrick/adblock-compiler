@@ -76,7 +76,7 @@ erDiagram
     User ||--o{ Account : "has many"
     User ||--o{ ApiKey : "has many"
     User ||--o| TwoFactor : "has one"
-    User ||--o{ AgentSession : "has many"
+    User o|--o{ AgentSession : "has many (optional user)"
 
     FilterSource ||--o{ FilterListVersion : "has many"
     FilterSource ||--o{ SourceHealthSnapshot : "has many"
