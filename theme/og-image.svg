@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#030712"/>
+
+  <!-- Amber accent bar (left edge) -->
+  <rect x="0" y="0" width="8" height="630" fill="#fbbf24"/>
+
+  <!-- Shield icon (top-left branding mark) -->
+  <g transform="translate(80, 140)">
+    <path d="M60 0 L120 20 L120 80 Q120 130 60 155 Q0 130 0 80 L0 20 Z"
+          fill="none" stroke="#fbbf24" stroke-width="5" stroke-linejoin="round"/>
+    <!-- Inner check mark -->
+    <polyline points="28,77 50,100 92,55"
+              fill="none" stroke="#fbbf24" stroke-width="7"
+              stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+
+  <!-- Title -->
+  <text x="80" y="370"
+        font-family="'IBM Plex Sans', system-ui, -apple-system, sans-serif"
+        font-size="80" font-weight="700" fill="#ffffff"
+        letter-spacing="-1">Adblock Compiler</text>
+
+  <!-- Subtitle -->
+  <text x="80" y="440"
+        font-family="'IBM Plex Sans', system-ui, -apple-system, sans-serif"
+        font-size="34" fill="#fbbf24">Compiler-as-a-Service for adblock filter lists</text>
+
+  <!-- Divider line -->
+  <line x1="80" y1="510" x2="1120" y2="510" stroke="#1f2937" stroke-width="2"/>
+
+  <!-- Footer -->
+  <text x="80" y="570"
+        font-family="'IBM Plex Sans', system-ui, -apple-system, sans-serif"
+        font-size="26" fill="#9ca3af">adblock-compiler-docs.pages.dev</text>
+</svg>
