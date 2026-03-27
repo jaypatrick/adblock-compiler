@@ -15,6 +15,9 @@
  *  - `timing()` middleware adds `Server-Timing` headers to every response
  *  - `etag()` on GET /metrics and GET /health for conditional request support
  *  - `prettyJSON()` globally (activate with `?pretty=true`)
+ *  - `compress()` globally for automatic response compression (brotli/gzip/deflate)
+ *  - `logger()` for standardized request/response logging
+ *  - `cache()` middleware on /configuration/defaults (300s), /api/version (3600s), /api/schemas (3600s)
  *  - Cache-Control headers on /health (30 s) and /configuration/defaults (300 s)
  *  - `GET /api/openapi.json` serves the auto-generated OpenAPI 3.0 spec
  *  - `AppType` export enables `hc<AppType>()` typed RPC client in Angular
@@ -33,6 +36,9 @@ import type { Context } from 'hono';
 import { endTime, startTime, timing } from 'hono/timing';
 import { etag } from 'hono/etag';
 import { prettyJSON } from 'hono/pretty-json';
+import { compress } from 'hono/compress';
+import { logger } from 'hono/logger';
+import { cache } from 'hono/cache';
 import { OpenAPIHono } from '@hono/zod-openapi';
 
 // Types
