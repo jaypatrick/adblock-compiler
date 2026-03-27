@@ -16,6 +16,7 @@
  *   - handleDbSmoke: happy path returns ok:true with diagnostic fields
  *   - handleDbSmoke: Prisma error returns ok:false with status 503
  *   - handleDbSmoke: missing HYPERDRIVE returns status 400
+ *   - handleDbSmoke: timeout scenario results in ok:false with PROBE_TIMEOUT error_code
  *
  * @see worker/handlers/health.ts
  */
@@ -396,6 +397,33 @@ Deno.test('handleDbSmoke - error message is redacted when it contains postgres:/
         assertEquals(body.error.includes('secret'), false);
         assertStringIncludes(body.error, '[redacted]');
     } finally {
+        s.restore();
+    }
+});
+
+Deno.test('handleDbSmoke - timeout scenario results in ok:false with PROBE_TIMEOUT error_code', async () => {
+    // Use FakeTime to control the timer and actually exercise the Promise.race timeout branch.
+    // The mock Prisma never resolves so only the 8 s timer can settle the race.
+    const neverMock = {
+        $queryRaw: () => new Promise<never>(() => {}), // intentionally never resolves
+        $disconnect: async () => {},
+    };
+    const s = stub(_internals, 'createPrismaClient', () => neverMock as unknown as ReturnType<typeof _internals.createPrismaClient>);
+    const fakeTime = new FakeTime();
+    try {
+        const env = makeEnv({
+            HYPERDRIVE: { connectionString: 'postgresql://test', host: 'ep-test-pooler.eastus2.azure.neon.tech' } as unknown as HyperdriveBinding,
+        });
+        const smokePromise = handleDbSmoke(env);
+        // Advance fake clock past the 8 000 ms probe timeout so the timer fires.
+        await fakeTime.tickAsync(8001);
+        const res = await smokePromise;
+        const body = await res.json() as { ok: boolean; error: string };
+        assertEquals(res.status, 503);
+        assertEquals(body.ok, false);
+        assertStringIncludes(body.error, 'timed out');
+    } finally {
+        fakeTime.restore();
         s.restore();
     }
 });

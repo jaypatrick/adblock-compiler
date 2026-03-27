@@ -215,10 +215,11 @@ Deno.test('DELETE /admin/users/:id/sessions route is registered (not 404)', asyn
 });
 
 // ── Better Auth middleware bypass regression (#1424) ──────────────────────────
-// The Better Auth handler is registered BEFORE global logger() and compress()
-// middleware to prevent response stream conflicts.  These tests prove that
-// /api/auth/* requests bypass both middleware even when the client sends
-// Accept-Encoding: gzip (compress) and console.log would capture logger output.
+// logger() and compress() are scoped to the `routes` sub-app (not global app).
+// Because app.on('/api/auth/*') is resolved before the routes sub-app is mounted,
+// /api/auth/* requests never enter the routes middleware chain.  These tests
+// verify the observable behavior: no Content-Encoding on auth responses and no
+// logger output for auth paths.
 
 Deno.test('/api/auth/* bypasses compress middleware (no Content-Encoding header)', async () => {
     // Without BETTER_AUTH_SECRET the handler short-circuits with 404 — but the

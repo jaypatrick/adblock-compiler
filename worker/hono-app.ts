@@ -15,8 +15,8 @@
  *  - `timing()` middleware adds `Server-Timing` headers to every response
  *  - `etag()` on GET /metrics and GET /health for conditional request support
  *  - `prettyJSON()` globally (activate with `?pretty=true`)
- *  - `compress()` globally for automatic response compression (gzip/deflate; brotli unsupported in this runtime) — applied after Better Auth
- *  - `logger()` for standardized request/response logging — applied after Better Auth
+ *  - `compress()` on the `routes` sub-app for automatic response compression (gzip/deflate) — scoped to business routes, never touches /api/auth/*
+ *  - `logger()` on the `routes` sub-app for standardized request/response logging — scoped to business routes, never touches /api/auth/*
  *  - `cache()` middleware on /configuration/defaults (300s), /api/version (3600s), /api/schemas (3600s)
  *  - Cache-Control headers on /health (30 s) and /configuration/defaults (300 s)
  *  - `GET /api/openapi.json` serves the auto-generated OpenAPI 3.0 spec
@@ -402,17 +402,6 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
     }
 });
 
-// ── 1c. Logger middleware (request/response logging) ──────────────────────────
-// Applied AFTER Better Auth handler to avoid interfering with auth responses.
-// Better Auth returns responses directly without calling next(), so global middleware
-// applied before the handler would wrap the response stream and cause conflicts.
-app.use('*', logger());
-
-// ── 1d. Compress middleware (automatic response compression) ──────────────────
-// Applied AFTER Better Auth handler to avoid response stream conflicts.
-// Better Auth manages its own response formatting and shouldn't be compressed.
-app.use('*', compress());
-
 // ── 2. Agent router (authenticated) ──────────────────────────────────────────
 // Agent routes are handled by the dedicated agent sub-app, which enforces ZTA
 // authentication BEFORE forwarding requests to the Durable Object.  This
@@ -546,6 +535,7 @@ app.use(
         allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization', 'X-Turnstile-Token'],
         maxAge: 86400,
+        credentials: true,
     }),
 );
 
@@ -649,6 +639,13 @@ app.get('/api/auth/providers', (c) => handleAuthProviders(c.req.raw, c.env));
 // ============================================================================
 
 const routes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
+
+// ── logger + compress scoped to the business routes sub-app ──────────────────
+// Registered on `routes` (not on `app`) so these middleware never wrap the
+// Better Auth handler responses.  app.on('/api/auth/*') is resolved before the
+// routes sub-app mount, so auth traffic is completely unaffected.
+routes.use('*', logger());
+routes.use('*', compress());
 
 // ZTA: per-user API access gate + usage tracking
 routes.use('*', async (c, next) => {
@@ -1119,7 +1116,7 @@ routes.all('/workflow/*', async (c) => {
 
 // ── Health (lazy) ─────────────────────────────────────────────────────────────
 
-routes.get('/health', etag(), async (c) => {
+routes.get('/health', async (c) => {
     const { handleHealth } = await import('./handlers/health.ts');
     const res = await handleHealth(c.env);
     // Cache health checks for 30 seconds — stale-while-revalidate for availability
@@ -1132,7 +1129,7 @@ routes.get('/health', etag(), async (c) => {
     });
 });
 
-routes.get('/health/latest', etag(), async (c) => {
+routes.get('/health/latest', async (c) => {
     const { handleHealthLatest } = await import('./handlers/health.ts');
     return handleHealthLatest(c.env);
 });
