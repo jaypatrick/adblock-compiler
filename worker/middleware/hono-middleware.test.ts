@@ -205,7 +205,7 @@ Deno.test('compress middleware: prefers brotli over gzip when both accepted', as
     const req = new Request('http://localhost/test', {
         headers: { 'Accept-Encoding': 'br, gzip, deflate' },
     });
-    const res = await app.fetch(req);
+    const res = await app.fetch(req, {}, makeCtx());
 
     assertEquals(res.status, 200);
     assertEquals(res.headers.get('Content-Encoding'), 'br');
@@ -285,7 +285,7 @@ Deno.test('cache middleware: sets Cache-Control header with max-age', async () =
     app.get('/cached', cache({ cacheName: 'test-cache', cacheControl: 'public, max-age=300' }), (c) => c.json({ data: 'cached' }));
 
     const req = new Request('http://localhost/cached');
-    const res = await app.fetch(req);
+    const res = await app.fetch(req, {}, makeCtx());
 
     assertEquals(res.status, 200);
     assertEquals(res.headers.get('Cache-Control'), 'public, max-age=300');
@@ -297,11 +297,11 @@ Deno.test('cache middleware: different cache durations for different routes', as
     app.get('/long', cache({ cacheName: 'long-cache', cacheControl: 'public, max-age=3600' }), (c) => c.json({ data: 'long' }));
 
     const shortReq = new Request('http://localhost/short');
-    const shortRes = await app.fetch(shortReq);
+    const shortRes = await app.fetch(shortReq, {}, makeCtx());
     assertEquals(shortRes.headers.get('Cache-Control'), 'public, max-age=60');
 
     const longReq = new Request('http://localhost/long');
-    const longRes = await app.fetch(longReq);
+    const longRes = await app.fetch(longReq, {}, makeCtx());
     assertEquals(longRes.headers.get('Cache-Control'), 'public, max-age=3600');
 });
 
@@ -311,11 +311,11 @@ Deno.test('cache middleware: sets Cache-Control header on cached routes and omit
     app.get('/uncached', (c) => c.json({ data: 'uncached' }));
 
     const cachedReq = new Request('http://localhost/cached');
-    const cachedRes = await app.fetch(cachedReq);
+    const cachedRes = await app.fetch(cachedReq, {}, makeCtx());
     assertEquals(cachedRes.headers.get('Cache-Control'), 'public, max-age=300');
 
     const uncachedReq = new Request('http://localhost/uncached');
-    const uncachedRes = await app.fetch(uncachedReq);
+    const uncachedRes = await app.fetch(uncachedReq, {}, makeCtx());
     assertEquals(uncachedRes.headers.get('Cache-Control'), null);
 });
 
@@ -337,7 +337,7 @@ Deno.test('integration: compress, logger, and cache work together', async () => 
         const req = new Request('http://localhost/api/version', {
             headers: { 'Accept-Encoding': 'gzip' },
         });
-        const res = await app.fetch(req);
+        const res = await app.fetch(req, {}, makeCtx());
 
         assertEquals(res.status, 200);
         assertEquals(res.headers.get('Content-Encoding'), 'gzip');
