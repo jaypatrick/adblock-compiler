@@ -23,11 +23,11 @@ Reduces bandwidth usage by automatically compressing HTTP responses based on the
 ```typescript
 import { compress } from 'hono/compress';
 
-app.use('*', compress());
+routes.use('*', compress());
 ```
 
 ### Applied to
-- **All routes** (global middleware)
+- **Business routes sub-app only** (`routes` sub-app — never `/api/auth/*`)
 
 ### Behavior
 The compress middleware:
@@ -85,11 +85,11 @@ Provides standardized HTTP request/response logging for observability and debugg
 ```typescript
 import { logger } from 'hono/logger';
 
-app.use('*', logger());
+routes.use('*', logger());
 ```
 
 ### Applied to
-- **All routes** (global middleware)
+- **Business routes sub-app only** (`routes` sub-app — never `/api/auth/*`)
 
 ### Behavior
 The logger middleware outputs log entries to `console.log` in the following format:
@@ -271,15 +271,15 @@ flowchart TD
     META --> SSR[SSR Detection]
     SSR --> BA{Better Auth Route?}
     BA -->|yes| BA_HANDLER[Better Auth Handler]
-    BA -->|no| L[logger]
+    BA -->|no| AGENT{Agent Route?}
     BA_HANDLER --> RESP[Response]
-    L --> C[compress]
-    C --> AGENT{Agent Route?}
     AGENT -->|yes| AGENT_HANDLER[Agent Router\n(cors + secureHeaders)]
     AGENT -->|no| AUTH[Unified Auth]
     AUTH --> CORS[CORS]
     CORS --> SH[Secure Headers]
-    SH --> ZTA[ZTA Checks]
+    SH --> L[logger\n(routes sub-app)]
+    L --> C[compress\n(routes sub-app)]
+    C --> ZTA[ZTA Checks]
     AGENT_HANDLER --> ZTA
     ZTA --> CACHE{Cache middleware?}
     CACHE -->|yes| CACHE_MW[cache]
@@ -292,19 +292,19 @@ flowchart TD
 **Critical observations:**
 
 1. **`timing()` wraps all operations** (must be first)
-2. **Better Auth handler is registered BEFORE `logger()` and `compress()`** to avoid response stream conflicts. Better Auth returns responses directly without calling `next()`, so global middleware applied before this handler would wrap the response stream and cause authentication failures.
-3. **`logger()` and `compress()` are applied AFTER Better Auth** but before other routes to avoid interfering with authentication while still providing logging and compression for all other endpoints.
+2. **Better Auth handler is resolved before the `routes` sub-app is mounted**, so `logger()` and `compress()` (scoped to `routes`) never touch `/api/auth/*` traffic.
+3. **`logger()` and `compress()` are registered on the `routes` sub-app** (not globally on `app`), ensuring they only apply to business routes and cannot interfere with authentication responses.
 4. **`cache()` is applied at the route level**, before `rateLimitMiddleware()`
 
-**Why Better Auth must come first:**
+**Why compress/logger must be scoped to `routes` (not global `app`):**
 
-Better Auth manages its own response formatting and returns responses without calling the middleware chain's `next()` function. When `compress()` or `logger()` middleware is applied before the Better Auth handler, these middleware wrap the response stream. This causes:
+Better Auth manages its own response formatting and returns a native CF `Response` with a one-shot `ReadableStream` body without calling the middleware chain's `next()`. When `compress()` or `logger()` is registered globally with `app.use('*')`, Hono's app-level middleware chain still wraps every response — including those from `app.on('/api/auth/*')`. This causes:
 
-- **Authentication failures**: The response body/headers may be modified by middleware
-- **"Unable to reach API" errors**: Frontend receives corrupted auth responses
-- **Session creation failures**: Cookie headers may not be set correctly
+- **Worker CPU hangs**: The compress pipeline stalls on a CF `Response` stream, causing the Worker runtime to cancel the request
+- **`SyntaxError: Unexpected end of JSON input`**: Truncated/corrupted body from a partially-consumed compressed stream
+- **"Unable to reach API" errors**: Frontend cannot establish a session because every auth call times out or returns binary garbage
 
-By registering the Better Auth handler **before** the global middleware, authentication responses bypass compression and logging, ensuring reliable auth operations.
+Scoping to the `routes` sub-app (via `routes.use('*')`) is the structural fix: the `routes` sub-app is only entered for business routes, never for Better Auth paths.
 
 ---
 
@@ -313,7 +313,7 @@ By registering the Better Auth handler **before** the global middleware, authent
 All middleware integrations comply with ZTA principles:
 
 ### compress
-- **No auth bypass**: Compression is content-agnostic and does not bypass auth
+- **No auth bypass**: Compression is content-agnostic and is scoped to the `routes` sub-app, so it never touches `/api/auth/*` responses
 - **No data leakage**: Compression does not expose sensitive headers or timing information
 
 ### logger

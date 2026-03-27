@@ -215,9 +215,11 @@ export async function handleDbSmoke(env: Env): Promise<Response> {
 
     const t0 = Date.now();
     let prisma: ReturnType<typeof _internals.createPrismaClient> | undefined;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
     try {
         prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
-        const [infoRows, countRows] = await Promise.all([
+        const timeoutMs = 8_000;
+        const queryPromise = Promise.all([
             prisma.$queryRaw<Array<{ db_name: string; pg_version: string; server_time: Date }>>`
                 SELECT
                     current_database() AS db_name,
@@ -230,6 +232,15 @@ export async function handleDbSmoke(env: Env): Promise<Response> {
                 WHERE table_schema = 'public'
             `,
         ]);
+        const timeoutPromise = new Promise<never>((_, reject) => {
+            timeoutId = setTimeout(() => {
+                const e = new Error(`db-smoke timed out after ${timeoutMs}ms`);
+                (e as unknown as Record<string, unknown>)['code'] = 'PROBE_TIMEOUT';
+                reject(e);
+            }, timeoutMs);
+        });
+        const [infoRows, countRows] = await Promise.race([queryPromise, timeoutPromise]);
+        clearTimeout(timeoutId);
 
         const row = infoRows[0];
         return Response.json({
@@ -242,6 +253,7 @@ export async function handleDbSmoke(env: Env): Promise<Response> {
             hyperdrive_host: env.HYPERDRIVE.host,
         });
     } catch (err) {
+        clearTimeout(timeoutId);
         return Response.json(
             {
                 ok: false,
