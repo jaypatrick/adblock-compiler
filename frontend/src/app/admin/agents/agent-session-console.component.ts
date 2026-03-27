@@ -21,6 +21,7 @@ import {
     inject,
     signal,
     computed,
+    effect,
     afterNextRender,
     DestroyRef,
 } from '@angular/core';
@@ -290,8 +291,33 @@ export class AgentSessionConsoleComponent {
     /** Text currently typed in the message input field. */
     messageInput = '';
 
-    /** Timestamp when the current connection was opened (for duration display). */
+    /**
+     * Timestamp when the current WebSocket connection transitioned to 'connected'.
+     * Set by the _connectedAtEffect signal effect — NOT at connect() call time,
+     * because the socket is still 'connecting' when connect() returns.
+     * Reset to null when the connection is no longer 'connected'.
+     */
     private connectedAt: Date | null = null;
+
+    /**
+     * Signal effect that watches the connection status and updates connectedAt
+     * when the status transitions to 'connected'. This ensures the duration
+     * counter starts from the actual handshake completion, not the call time.
+     *
+     * Angular signal effects run synchronously after any signal they read changes,
+     * so the timer will start as soon as onopen fires and updates the status signal.
+     */
+    private readonly _connectedAtEffect = effect(() => {
+        const status = this.connection()?.status();
+        if (status === 'connected') {
+            // Only set on transition to connected (avoid resetting on every render).
+            if (!this.connectedAt) {
+                this.connectedAt = new Date();
+            }
+        } else {
+            this.connectedAt = null;
+        }
+    });
 
     /**
      * Live connection duration counter updated every second via interval().
@@ -353,8 +379,8 @@ export class AgentSessionConsoleComponent {
             this.destroyRef,
         );
 
+        // connectedAt is managed by _connectedAtEffect watching conn.status().
         this.connection.set(conn);
-        this.connectedAt = new Date();
     }
 
     /**
@@ -372,8 +398,8 @@ export class AgentSessionConsoleComponent {
      * Bound to the Disconnect button visible when status is connected.
      */
     disconnectManually(): void {
+        // connectedAt is reset to null by _connectedAtEffect when status changes away from 'connected'.
         this.connection()?.disconnect();
-        this.connectedAt = null;
     }
 
     // -------------------------------------------------------------------------

@@ -100,7 +100,7 @@ class MockWebSocket {
     close(code?: number, reason?: string): void {
         this.readyState = WebSocket.CLOSED;
         // Simulate the onclose callback.
-        this.onclose?.({ code: code ?? 1000, reason: reason ?? '', wasClean: code === 1000 } as CloseEvent);
+        this.onclose?.({ code: code ?? 1000, reason: reason ?? '', wasClean: (code ?? 1000) === 1000 } as CloseEvent);
     }
 
     /** Test helper — simulate receiving a message from the server. */

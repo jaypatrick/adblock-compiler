@@ -23,6 +23,8 @@ import {
     DestroyRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { forkJoin, of } from 'rxjs';
+import { catchError } from 'rxjs/operators';
 import { DatePipe, SlicePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -35,7 +37,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { AgentRpcService } from '../../services/agent-rpc.service';
-import type { AgentListItem, AgentSession } from '../../models/agent.models';
+import type { AgentListItem, AgentSession, AgentSessionsResponse } from '../../models/agent.models';
 
 @Component({
     selector: 'app-agents-dashboard',
@@ -421,50 +423,35 @@ export class AgentsDashboardComponent {
     // -------------------------------------------------------------------------
 
     /**
-     * Loads agent list and sessions in parallel. Called on init and by refresh().
-     * Resets loading/error state before each load.
+     * Loads agent list and sessions in parallel using forkJoin.
+     * Each request has its own catchError so a single failure doesn't cancel the other.
+     * Called on init and by refresh().
      */
     loadData(): void {
         this.loading.set(true);
         this.error.set(null);
 
-        let agentsDone = false;
-        let sessionsDone = false;
-
-        /** Called after each parallel request completes to track overall completion. */
-        const tryFinalize = () => {
-            if (agentsDone && sessionsDone) {
-                this.loading.set(false);
-            }
-        };
-
-        // Fetch agent registry list (seeded from KNOWN_AGENTS + session counts).
-        this.agentRpc.listAgents().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-            next: (items) => {
-                this.agents.set(items);
-                agentsDone = true;
-                tryFinalize();
-            },
-            error: (err: { error: string }) => {
+        // forkJoin waits for both observables to complete.
+        // catchError on each individual stream returns a sentinel value so the other
+        // request is not cancelled when one fails.
+        forkJoin([
+            this.agentRpc.listAgents().pipe(catchError((err: { error: string }) => {
                 this.error.set(err.error ?? 'Failed to load agents.');
-                agentsDone = true;
-                tryFinalize();
-            },
-        });
-
-        // Fetch recent sessions for the table.
-        this.agentRpc.listSessions().pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-            next: (res) => {
-                this.sessions.set([...res.sessions]);
-                sessionsDone = true;
-                tryFinalize();
-            },
-            error: (err: { error: string }) => {
+                return of([] as AgentListItem[]);
+            })),
+            this.agentRpc.listSessions().pipe(catchError((err: { error: string }) => {
                 this.error.set(err.error ?? 'Failed to load sessions.');
-                sessionsDone = true;
-                tryFinalize();
-            },
-        });
+                return of(null);
+            })),
+        ])
+            .pipe(takeUntilDestroyed(this.destroyRef))
+            .subscribe(([agents, sessionsRes]) => {
+                this.agents.set(agents);
+                if (sessionsRes) {
+                    this.sessions.set([...sessionsRes.sessions]);
+                }
+                this.loading.set(false);
+            });
     }
 
     /**
@@ -482,7 +469,8 @@ export class AgentsDashboardComponent {
     /**
      * Terminates an active agent session via DELETE /admin/agents/sessions/:id.
      * Shows a snackbar confirmation on success or an error message on failure.
-     * Refreshes the session list after successful termination.
+     * Optimistically updates the local session state instead of re-fetching the
+     * entire list — only the affected session row is updated to ended state.
      *
      * @param session - The session row from the sessions table.
      */
@@ -493,8 +481,12 @@ export class AgentsDashboardComponent {
             next: () => {
                 this.terminatingId.set(null);
                 this.snackBar.open(`Session ${session.id.slice(0, 8)}… terminated.`, 'Dismiss', { duration: 3000 });
-                // Refresh to reflect the ended session.
-                this.loadData();
+                // Optimistically update only the affected session row rather than
+                // re-fetching the entire list — avoids a redundant round-trip.
+                const now = new Date().toISOString();
+                this.sessions.update(prev =>
+                    prev.map(s => s.id === session.id ? { ...s, ended_at: now, end_reason: 'admin_terminated' } : s),
+                );
             },
             error: (err: { error: string; status: number }) => {
                 this.terminatingId.set(null);

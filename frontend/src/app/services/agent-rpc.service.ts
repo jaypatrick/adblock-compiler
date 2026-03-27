@@ -32,9 +32,8 @@
 import { Injectable, inject, signal, DestroyRef } from '@angular/core';
 import { HttpClient, HttpErrorResponse, HttpParams } from '@angular/common/http';
 import { Observable, throwError } from 'rxjs';
-import { catchError } from 'rxjs/operators';
+import { catchError, map } from 'rxjs/operators';
 import type {
-    AgentSession,
     AgentSessionsResponse,
     AgentSessionDetailResponse,
     AgentAuditResponse,
@@ -81,60 +80,55 @@ export class AgentRpcService {
      * @returns Observable of AgentListItem[] — one entry per known agent.
      */
     listAgents(page = 0): Observable<AgentListItem[]> {
-        // Fetch recent sessions and derive agent list from them + hardcoded seed.
-        return new Observable<AgentListItem[]>(observer => {
-            this.listSessions(page).subscribe({
-                next: (res) => {
-                    // Count active sessions per slug.
-                    const activeBySlug = new Map<string, number>();
-                    const lastActiveBySlug = new Map<string, string>();
+        // Use map() to transform the sessions response into the AgentListItem[] array,
+        // composing the observable chain declaratively rather than using a nested subscribe.
+        return this.listSessions(page).pipe(
+            map(res => {
+                // Count active sessions per slug.
+                const activeBySlug = new Map<string, number>();
+                const lastActiveBySlug = new Map<string, string>();
 
-                    for (const session of res.sessions) {
-                        if (!session.ended_at) {
-                            activeBySlug.set(session.agent_slug, (activeBySlug.get(session.agent_slug) ?? 0) + 1);
-                        }
-                        // Track most recent started_at per slug.
-                        const existing = lastActiveBySlug.get(session.agent_slug);
-                        if (!existing || session.started_at > existing) {
-                            lastActiveBySlug.set(session.agent_slug, session.started_at);
-                        }
+                for (const session of res.sessions) {
+                    if (!session.ended_at) {
+                        activeBySlug.set(session.agent_slug, (activeBySlug.get(session.agent_slug) ?? 0) + 1);
                     }
+                    // Track most recent started_at per slug.
+                    const existing = lastActiveBySlug.get(session.agent_slug);
+                    if (!existing || session.started_at > existing) {
+                        lastActiveBySlug.set(session.agent_slug, session.started_at);
+                    }
+                }
 
-                    // Merge KNOWN_AGENTS with session-derived slugs.
-                    const knownSlugs = new Set(KNOWN_AGENTS.map(a => a.slug));
-                    const sessionSlugs = new Set(res.sessions.map(s => s.agent_slug));
+                // Merge KNOWN_AGENTS with session-derived slugs.
+                const knownSlugs = new Set(KNOWN_AGENTS.map(a => a.slug));
+                const sessionSlugs = new Set(res.sessions.map(s => s.agent_slug));
 
-                    // Any slug in session history but not in KNOWN_AGENTS gets a stub entry.
-                    const dynamicAgents: AgentListItem[] = [...sessionSlugs]
-                        .filter(slug => !knownSlugs.has(slug))
-                        .map(slug => ({
-                            bindingKey: slug.toUpperCase().replace(/-/g, '_'),
-                            slug,
-                            displayName: slug,
-                            description: 'Dynamically discovered agent (not in registry seed).',
-                            requiredTier: 'admin',
-                            requiredScopes: [],
-                            enabled: true,
-                            transport: 'websocket' as const,
-                            activeSessions: activeBySlug.get(slug) ?? 0,
-                            lastActiveAt: lastActiveBySlug.get(slug) ?? null,
-                        }));
+                // Any slug in session history but not in KNOWN_AGENTS gets a stub entry.
+                const dynamicAgents: AgentListItem[] = [...sessionSlugs]
+                    .filter(slug => !knownSlugs.has(slug))
+                    .map(slug => ({
+                        bindingKey: slug.toUpperCase().replace(/-/g, '_'),
+                        slug,
+                        displayName: slug,
+                        description: 'Dynamically discovered agent (not in registry seed).',
+                        requiredTier: 'admin',
+                        requiredScopes: [],
+                        enabled: true,
+                        transport: 'websocket' as const,
+                        activeSessions: activeBySlug.get(slug) ?? 0,
+                        lastActiveAt: lastActiveBySlug.get(slug) ?? null,
+                    }));
 
-                    const items: AgentListItem[] = [
-                        ...KNOWN_AGENTS.map(entry => ({
-                            ...entry,
-                            activeSessions: activeBySlug.get(entry.slug) ?? 0,
-                            lastActiveAt: lastActiveBySlug.get(entry.slug) ?? null,
-                        })),
-                        ...dynamicAgents,
-                    ];
-
-                    observer.next(items);
-                    observer.complete();
-                },
-                error: (err) => observer.error(err),
-            });
-        });
+                return [
+                    ...KNOWN_AGENTS.map(entry => ({
+                        ...entry,
+                        activeSessions: activeBySlug.get(entry.slug) ?? 0,
+                        lastActiveAt: lastActiveBySlug.get(entry.slug) ?? null,
+                    })),
+                    ...dynamicAgents,
+                ];
+            }),
+        );
     }
 
     /**
@@ -265,7 +259,13 @@ export class AgentRpcService {
             // Build protocol list — auth token is embedded as a sub-protocol.
             // The Cloudflare Agents SDK reads the "bearer.<token>" sub-protocol for auth.
             // See: https://developers.cloudflare.com/agents/configuration/authentication/
-            const protocols: string[] = token ? [`bearer.${token}`] : [];
+            //
+            // Security note: The Sec-WebSocket-Protocol header uses comma as a separator.
+            // JWT/Bearer tokens from Clerk/Better Auth are Base64url-encoded strings that
+            // contain only [A-Za-z0-9._-] — safe to embed directly. Strip any whitespace or
+            // commas defensively to prevent header injection if an unexpected token format arrives.
+            const safeToken = token?.replace(/[\s,]/g, '') ?? '';
+            const protocols: string[] = safeToken ? [`bearer.${safeToken}`] : [];
 
             ws = new WebSocket(buildUrl(), protocols);
             statusSignal.set('connecting');
@@ -309,8 +309,10 @@ export class AgentRpcService {
                 }
 
                 // Unexpected close — attempt reconnect with exponential backoff.
+                // Pre-calculated delays: [1s, 2s, 4s, 8s, 16s] — avoids Math.pow on hot path.
+                const RECONNECT_DELAYS_MS = [1000, 2000, 4000, 8000, 16000] as const;
                 if (reconnectAttempts < MAX_RECONNECT_ATTEMPTS) {
-                    const delayMs = RECONNECT_BASE_DELAY_MS * Math.pow(2, reconnectAttempts);
+                    const delayMs = RECONNECT_DELAYS_MS[reconnectAttempts] ?? RECONNECT_BASE_DELAY_MS;
                     reconnectAttempts++;
                     statusSignal.set('connecting');
                     appendMessage(
