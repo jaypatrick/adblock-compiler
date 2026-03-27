@@ -64,11 +64,13 @@ Additional flags in `frontend/tsconfig.json`:
 - Files (`src/`, `worker/`): `kebab-case.ts`; Angular: `kebab-case.component.ts`
 - Tests: same name + `.test.ts`
 
-## File Organization
+## Conventions (not CI-enforced)
 
 - One module per directory with `index.ts` barrel
 - Tests co-located as `*.test.ts`
 - No deep nesting
+- Imports: external deps first, then internal `@/` aliases; use `@/` path alias for `src/` imports (e.g. `import { Foo } from '@/foo/foo.ts'`); use mapped specifiers from `deno.json` `"imports"` (e.g. `'zod'`, `'hono'`, `'@std/assert'`) — never raw npm/jsr URLs
+- Comments: single-line `// comment` with one space after `//`; inline comments on their own line above the code; `FIXME`/`HACK`/`NOTE` acceptable without tags
 
 ## Top-10 Recurring CI Failures
 
@@ -80,7 +82,7 @@ Additional flags in `frontend/tsconfig.json`:
 6. Barrel `index.ts` exports exceeding line width — split across lines so each ≤180 chars
 7. Malformed TOML — `wrangler.toml` headers must be `[[lowercase]]`; never `[[UPPERCASE}}` or mixed
 8. Unused vars/params — remove or prefix with `_`
-9. Untagged TODO — use `// TODO(#N): …`
+9. Untagged TODO — use `// TODO(tag): …` (tag may be `#1234`, a component name, etc.)
 10. Generated artifact drift — if `src/` schemas change, run `deno task schema:generate` and commit
 
 ## Preflight

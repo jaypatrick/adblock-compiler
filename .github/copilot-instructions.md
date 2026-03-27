@@ -27,7 +27,7 @@ ZTA PR checklist (worker/ or frontend/):
 - No `new Function()` or `eval()` — use safe parsers
 - Zod at all trust boundaries
 - Trivy in CI for dependency scanning
-- CORS: explicit allowlist on all write/authenticated endpoints, never `*`
+- CORS: explicit allowlist on all write/authenticated endpoints, never `*`; pre-fetch content server-side in Worker to avoid client-side CORS issues
 - ZTA by default — every new handler/middleware/component/service
 
 ## Cloudflare SDK — Mandatory
