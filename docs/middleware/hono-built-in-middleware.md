@@ -275,12 +275,12 @@ flowchart TD
     BA_HANDLER --> RESP[Response]
     L --> C[compress]
     C --> AGENT{Agent Route?}
-    AGENT -->|yes| AGENT_HANDLER[Agent Router]
+    AGENT -->|yes| AGENT_HANDLER[Agent Router\n(cors + secureHeaders)]
     AGENT -->|no| AUTH[Unified Auth]
-    AGENT_HANDLER --> RESP
     AUTH --> CORS[CORS]
     CORS --> SH[Secure Headers]
     SH --> ZTA[ZTA Checks]
+    AGENT_HANDLER --> ZTA
     ZTA --> CACHE{Cache middleware?}
     CACHE -->|yes| CACHE_MW[cache]
     CACHE -->|no| RL

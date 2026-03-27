@@ -15,7 +15,7 @@
  *  - `timing()` middleware adds `Server-Timing` headers to every response
  *  - `etag()` on GET /metrics and GET /health for conditional request support
  *  - `prettyJSON()` globally (activate with `?pretty=true`)
- *  - `compress()` globally for automatic response compression (brotli/gzip/deflate) — applied after Better Auth
+ *  - `compress()` globally for automatic response compression (gzip/deflate; brotli unsupported in this runtime) — applied after Better Auth
  *  - `logger()` for standardized request/response logging — applied after Better Auth
  *  - `cache()` middleware on /configuration/defaults (300s), /api/version (3600s), /api/schemas (3600s)
  *  - Cache-Control headers on /health (30 s) and /configuration/defaults (300 s)
