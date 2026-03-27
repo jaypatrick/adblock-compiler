@@ -3,16 +3,17 @@
  *
  * Renders the Turnstile challenge widget and emits the verification token.
  * Uses afterRenderEffect() to safely interact with the DOM after Angular
- * has committed the render.
+ * has committed the render, and effect() to watch for token changes from
+ * the TurnstileService and emit them through the tokenChange output.
  *
  * Usage:
  *   <app-turnstile [siteKey]="siteKey" (tokenChange)="onToken($event)" />
  *
  * Angular 21 patterns: input(), output(), viewChild(), afterRenderEffect(),
- *   inject(), standalone component
+ *   effect(), inject(), standalone component
  */
 
-import { Component, DestroyRef, afterRenderEffect, inject, input, output, viewChild, ElementRef } from '@angular/core';
+import { Component, DestroyRef, afterRenderEffect, effect, inject, input, output, viewChild, ElementRef } from '@angular/core';
 import { MatCardModule } from '@angular/material/card';
 import { TurnstileService } from '../services/turnstile.service';
 
@@ -60,6 +61,12 @@ export class TurnstileComponent {
                     this.theme(),
                 );
             }
+        });
+
+        // Watch for token changes (including clears on expiry/error) and emit them
+        effect(() => {
+            const token = this.turnstileService.token();
+            this.tokenChange.emit(token);
         });
 
         // Clean up widget on destroy
