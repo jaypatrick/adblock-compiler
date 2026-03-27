@@ -1,6 +1,6 @@
 # Prisma Schema Reference
 
-> **Auto-documented from `prisma/schema.prisma`** — All 17 models with their
+> **Auto-documented from `prisma/schema.prisma`** — All 20 models with their
 > fields, types, relations, constraints, and indexes. Grouped by domain.
 
 ---
