@@ -188,7 +188,6 @@ describe('AgentsDashboardComponent', () => {
     it('should call listSessions exactly once (no separate listAgents call)', async () => {
         const mock = buildMockService();
         const fixture = await createComponent(mock);
-        const comp = fixture.componentInstance;
 
         // Trigger the first render — fires afterNextRender() → loadData() once.
         fixture.detectChanges();
