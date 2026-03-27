@@ -22,7 +22,7 @@ name: coding-style
 
 ## Deno Lint Rules
 
-- `ban-untagged-todo` active: write `// TODO(#N): …` — bare `// TODO:` fails lint
+- `ban-untagged-todo` active: write `// TODO(tag): …` (tag may be `#1234`, a component name, etc.) — bare `// TODO:` fails lint
 - `no-explicit-any` excluded (won't lint-fail, but avoid in public API surface)
 - `require-await` excluded
 - `no-console` excluded
