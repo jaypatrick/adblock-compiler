@@ -39,6 +39,7 @@ describe('AdminComponent', () => {
             'Configuration',
             'Monitoring',
             'System',
+            'Agents',
         ]);
     });
 

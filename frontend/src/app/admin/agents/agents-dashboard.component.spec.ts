@@ -5,7 +5,10 @@
  * - Uses Vitest + @angular/core/testing with provideZonelessChangeDetection().
  * - AgentRpcService is mocked with signal-based stubs matching the real service
  *   interface (no real HTTP calls are made).
- * - loadData() is called directly (afterNextRender() does not fire in unit tests).
+ * - afterNextRender() DOES fire when fixture.detectChanges() is called in unit
+ *   tests. Calling `comp.loadData()` explicitly and then `fixture.detectChanges()`
+ *   would invoke loadData() twice (once explicit + once via afterNextRender).
+ *   Tests rely on a single detectChanges() call to trigger the initial load.
  * - The component derives the agents list internally from the sessions response,
  *   so only listSessions() needs to be mocked (listAgents() is unused by the
  *   component since the loadData() refactor that eliminated the double fetch).
@@ -19,6 +22,7 @@
 import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
+import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, throwError } from 'rxjs';
 import { AgentsDashboardComponent } from './agents-dashboard.component';
@@ -84,7 +88,7 @@ describe('AgentsDashboardComponent', () => {
      */
     async function createComponent(mockService: ReturnType<typeof buildMockService>) {
         await TestBed.configureTestingModule({
-            imports: [AgentsDashboardComponent],
+            imports: [AgentsDashboardComponent, NoopAnimationsModule],
             providers: [
                 provideZonelessChangeDetection(),
                 provideRouter([]),
@@ -134,9 +138,9 @@ describe('AgentsDashboardComponent', () => {
         const fixture = await createComponent(mock);
         const comp = fixture.componentInstance;
 
-        // Directly call loadData() — afterNextRender() does not fire in unit tests.
-        comp.loadData();
+        // Trigger the first render — fires afterNextRender() → loadData().
         fixture.detectChanges();
+        await fixture.whenStable();
 
         // mcp-agent is in KNOWN_AGENTS seed, so it should always appear.
         const mcpAgent = comp.agents().find(a => a.slug === 'mcp-agent');
@@ -154,8 +158,9 @@ describe('AgentsDashboardComponent', () => {
         const fixture = await createComponent(mock);
         const comp = fixture.componentInstance;
 
-        comp.loadData();
+        // Trigger the first render — fires afterNextRender() → loadData().
         fixture.detectChanges();
+        await fixture.whenStable();
 
         expect(comp.sessions()).toHaveLength(1);
         expect(comp.sessions()[0].agent_slug).toBe('mcp-agent');
@@ -169,8 +174,9 @@ describe('AgentsDashboardComponent', () => {
         const fixture = await createComponent(mock);
         const comp = fixture.componentInstance;
 
-        comp.loadData();
+        // Trigger the first render — fires afterNextRender() → loadData().
         fixture.detectChanges();
+        await fixture.whenStable();
 
         expect(comp.loading()).toBe(false);
     });
@@ -184,9 +190,11 @@ describe('AgentsDashboardComponent', () => {
         const fixture = await createComponent(mock);
         const comp = fixture.componentInstance;
 
-        comp.loadData();
+        // Trigger the first render — fires afterNextRender() → loadData() once.
         fixture.detectChanges();
+        await fixture.whenStable();
 
+        // loadData() is triggered exactly once via afterNextRender, not twice.
         expect(mock.listSessions).toHaveBeenCalledTimes(1);
     });
 
@@ -203,8 +211,9 @@ describe('AgentsDashboardComponent', () => {
         const fixture = await createComponent(mock);
         const comp = fixture.componentInstance;
 
-        comp.loadData();
+        // Trigger the first render — fires afterNextRender() → loadData().
         fixture.detectChanges();
+        await fixture.whenStable();
 
         expect(comp.error()).not.toBeNull();
         expect(comp.error()).toContain('Failed to load sessions');
@@ -225,8 +234,9 @@ describe('AgentsDashboardComponent', () => {
         const fixture = await createComponent(mock);
         const comp = fixture.componentInstance;
 
-        comp.loadData();
+        // Trigger the first render — fires afterNextRender() → loadData().
         fixture.detectChanges();
+        await fixture.whenStable();
 
         expect(comp.sessions()).toHaveLength(0);
         expect(comp.activeSessions()).toHaveLength(0);
@@ -246,7 +256,7 @@ describe('AgentsDashboardComponent', () => {
         const mock = buildMockService();
         const snackBar = { open: vi.fn() };
         await TestBed.configureTestingModule({
-            imports: [AgentsDashboardComponent],
+            imports: [AgentsDashboardComponent, NoopAnimationsModule],
             providers: [
                 provideZonelessChangeDetection(),
                 provideRouter([]),
@@ -258,8 +268,9 @@ describe('AgentsDashboardComponent', () => {
         const fixture = TestBed.createComponent(AgentsDashboardComponent);
         const comp = fixture.componentInstance;
 
-        comp.loadData();
+        // Trigger the first render — fires afterNextRender() → loadData().
         fixture.detectChanges();
+        await fixture.whenStable();
 
         const session = comp.sessions()[0];
         expect(session.ended_at).toBeNull();

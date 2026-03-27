@@ -110,7 +110,9 @@ describe('AgentSessionConsoleComponent', () => {
 
         fixture = TestBed.createComponent(AgentSessionConsoleComponent);
         component = fixture.componentInstance;
-        fixture.detectChanges();
+        // Do NOT call fixture.detectChanges() here — it fires afterNextRender(),
+        // setting _isClient=true and opening a WebSocket before the test body runs,
+        // which breaks assertions that check the null initial-connection state.
     });
 
     afterEach(() => {
@@ -281,9 +283,11 @@ describe('AgentSessionConsoleComponent', () => {
         // At this point afterNextRender has NOT fired so _isClient is false.
         // Simulate the browser render by setting _isClient directly.
         (component as unknown as ConsoleWithPrivate)._isClient.set(true);
-        // Allow the effect to run.
-        await fixture.whenStable();
+        // detectChanges() flushes the effect queue so _routeConnectionEffect
+        // runs and calls openConnection(); await whenStable() then flushes the
+        // async token fetch so connect() is called before the assertion.
         fixture.detectChanges();
+        await fixture.whenStable();
 
         expect(mockAgentRpc.connect).toHaveBeenCalled();
     });

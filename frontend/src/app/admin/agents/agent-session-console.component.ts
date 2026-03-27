@@ -23,6 +23,7 @@ import {
     computed,
     effect,
     afterNextRender,
+    untracked,
     DestroyRef,
 } from '@angular/core';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -389,14 +390,14 @@ export class AgentSessionConsoleComponent {
 
             // If either param is missing/unknown, close any existing connection.
             if (!slug || slug === 'unknown' || !instanceId) {
-                this.connection()?.disconnect();
+                untracked(() => this.connection())?.disconnect();
                 this.connection.set(null);
                 return;
             }
 
             // Close any previously open connection before opening a fresh one
             // for the new slug/instanceId combination.
-            this.connection()?.disconnect();
+            untracked(() => this.connection())?.disconnect();
             this.connection.set(null);
             void this.openConnection();
         },

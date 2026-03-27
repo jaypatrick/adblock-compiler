@@ -173,33 +173,33 @@ describe('AgentRpcService', () => {
          * Verifies that listSessions() makes a GET request to the correct
          * endpoint and emits the parsed AgentSessionsResponse.
          */
-        it('should return paginated sessions from GET /admin/agents/sessions', (done) => {
-            service.listSessions().subscribe({
-                next: (res) => {
-                    expect(res.success).toBe(true);
-                    expect(res.sessions).toHaveLength(1);
-                    expect(res.sessions[0].id).toBe('session-uuid-001');
-                    done();
-                },
-            });
+        it('should return paginated sessions from GET /admin/agents/sessions', () => {
+            let result: AgentSessionsResponse | undefined;
+            service.listSessions().subscribe({ next: (res) => { result = res; } });
 
             // Flush the pending HTTP request with our fixture.
             const req = httpMock.expectOne(r => r.url.includes('/admin/agents/sessions'));
             expect(req.request.method).toBe('GET');
             req.flush(SESSIONS_RESPONSE);
+
+            expect(result!.success).toBe(true);
+            expect(result!.sessions).toHaveLength(1);
+            expect(result!.sessions[0].id).toBe('session-uuid-001');
         });
 
         /**
          * Verifies that listSessions() correctly sets limit/offset params
          * for page 2 with the default page size of 25.
          */
-        it('should pass correct pagination params for page 1 (0-based)', (done) => {
-            service.listSessions(1, 25).subscribe({ next: () => done() });
+        it('should pass correct pagination params for page 1 (0-based)', () => {
+            let called = false;
+            service.listSessions(1, 25).subscribe({ next: () => { called = true; } });
 
             const req = httpMock.expectOne(r => r.url.includes('/admin/agents/sessions'));
             expect(req.request.params.get('offset')).toBe('25');
             expect(req.request.params.get('limit')).toBe('25');
             req.flush(SESSIONS_RESPONSE);
+            expect(called).toBe(true);
         });
     });
 
@@ -212,34 +212,32 @@ describe('AgentRpcService', () => {
          * Verifies that terminateSession() sends a DELETE request to the
          * correct session-specific endpoint.
          */
-        it('should call DELETE /admin/agents/sessions/:id', (done) => {
+        it('should call DELETE /admin/agents/sessions/:id', () => {
+            let result: { success: boolean } | undefined;
             service.terminateSession('session-uuid-001').subscribe({
-                next: (res) => {
-                    expect(res.success).toBe(true);
-                    done();
-                },
+                next: (res) => { result = res; },
             });
 
             const req = httpMock.expectOne('/admin/agents/sessions/session-uuid-001');
             expect(req.request.method).toBe('DELETE');
             req.flush({ success: true });
+            expect(result!.success).toBe(true);
         });
 
         /**
          * Verifies that a 409 Conflict response is mapped to a user-friendly
          * error message matching the backend "already terminated" scenario.
          */
-        it('should map 409 to a meaningful error message', (done) => {
+        it('should map 409 to a meaningful error message', () => {
+            let errorResult: { error: string; status: number } | undefined;
             service.terminateSession('already-ended').subscribe({
-                error: (err: { error: string; status: number }) => {
-                    expect(err.status).toBe(409);
-                    expect(err.error).toContain('already terminated');
-                    done();
-                },
+                error: (err: { error: string; status: number }) => { errorResult = err; },
             });
 
             const req = httpMock.expectOne('/admin/agents/sessions/already-ended');
             req.flush({ success: false, error: 'Session already terminated' }, { status: 409, statusText: 'Conflict' });
+            expect(errorResult!.status).toBe(409);
+            expect(errorResult!.error).toContain('already terminated');
         });
     });
 
@@ -252,19 +250,16 @@ describe('AgentRpcService', () => {
          * Verifies that listAuditLog() fetches from the correct endpoint
          * and returns the audit response envelope.
          */
-        it('should return audit log entries from GET /admin/agents/audit', (done) => {
-            service.listAuditLog().subscribe({
-                next: (res) => {
-                    expect(res.success).toBe(true);
-                    expect(res.items).toHaveLength(1);
-                    expect(res.items[0].event_type).toBe('session_start');
-                    done();
-                },
-            });
+        it('should return audit log entries from GET /admin/agents/audit', () => {
+            let result: typeof AUDIT_RESPONSE | undefined;
+            service.listAuditLog().subscribe({ next: (res) => { result = res; } });
 
             const req = httpMock.expectOne(r => r.url.includes('/admin/agents/audit'));
             expect(req.request.method).toBe('GET');
             req.flush(AUDIT_RESPONSE);
+            expect(result!.success).toBe(true);
+            expect(result!.items).toHaveLength(1);
+            expect(result!.items[0].event_type).toBe('session_start');
         });
     });
 
