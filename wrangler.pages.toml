@@ -1,0 +1,6 @@
+# ─── Pages config for mdBook docs deployment ─────────────────────────────────
+# Used exclusively by .github/workflows/mdbook.yml to deploy the "book" output
+# directory to Cloudflare Pages. Kept separate from wrangler.toml (Workers) to
+# avoid conflating two distinct deployment targets in one config file.
+# See: https://developers.cloudflare.com/pages/framework-guides/deploy-a-site/
+pages_build_output_dir = "book"
