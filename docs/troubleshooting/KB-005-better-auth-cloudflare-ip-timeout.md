@@ -2,9 +2,11 @@
 
 > **Status:** ✅ Resolved
 > **Severity:** High (CPU timeout → hung requests; brute-force protection silently disabled)
-> **Affected versions:** Any deployment where `better-auth-provider.ts` lacks a DB call timeout
+> **Affected versions:** Any deployment where the 10 s `Promise.race` timeout guards are absent
 > and/or `auth.ts` lacks `ipAddress.ipAddressHeaders`
-> **Resolved in:** `worker/middleware/better-auth-provider.ts` (AbortController timeout) +
+> **Resolved in:**
+> `worker/hono-app.ts` (`/api/auth/*` route handler timeout) +
+> `worker/middleware/better-auth-provider.ts` (session verification timeout) +
 > `worker/lib/auth.ts` (`ipAddress.ipAddressHeaders`)
 > **Date:** 2026-03-27
 
@@ -17,7 +19,7 @@ Cloudflare Workers when backed by Neon PostgreSQL via Hyperdrive:
 
 | # | Problem | Impact | Fix |
 |---|---------|--------|-----|
-| 1 | Missing `AbortSignal` timeout on `auth.api.getSession()` | Worker CPU budget exhausted → hung requests, double error log lines | Add `Promise.race` + `AbortController` with 10 s deadline |
+| 1 | Missing `Promise.race` / `AbortController` timeout on Better Auth DB calls | Worker CPU budget exhausted → hung requests, double error log lines | Timeout guards in `worker/hono-app.ts` (route handler) and `worker/middleware/better-auth-provider.ts` (session verification) |
 | 2 | Missing `ipAddress.ipAddressHeaders` in Better Auth config | BA cannot read client IP → all per-endpoint rate limiting silently skipped | Add `advanced.ipAddress.ipAddressHeaders: ['CF-Connecting-IP', 'X-Forwarded-For']` |
 
 Both issues are dormant during local `wrangler dev` but surface in deployed Workers because:
@@ -29,30 +31,56 @@ Both issues are dormant during local `wrangler dev` but surface in deployed Work
 
 ---
 
-## Problem 1 — Worker CPU Timeout: Hanging on `/api/auth/get-session`
+## Problem 1 — Worker CPU Timeout: Hanging on Better Auth Endpoints
+
+### Two Code Paths, Two Timeout Guards
+
+The CPU timeout issue manifests on **two distinct code paths**, each with its own timeout guard:
+
+| Code path | When it fires | File | Log signature |
+|-----------|--------------|------|---------------|
+| **A — Route handler** | Direct calls to `/api/auth/*` (sign-in, sign-up, get-session, two-factor, etc.) | `worker/hono-app.ts` (`app.on(...)`) | `[better-auth] Handler timeout: DB call exceeded 10s on /api/auth/...` |
+| **B — Session verifier** | Any authenticated endpoint (compile, admin, etc.) verifying an existing session cookie or bearer token | `worker/middleware/better-auth-provider.ts` (`BetterAuthProvider.verifyToken()`) | `[better-auth] Token verification error: TimeoutError (DB call exceeded 10s)` |
+
+Both share the same underlying cause (a cold Neon branch stalling the Prisma → Hyperdrive TCP
+handshake) but sit at different layers of the request pipeline.
 
 ### Symptoms
 
-In `wrangler tail` or the Cloudflare dashboard **Workers Logs** view, a hung request produces
-**two consecutive error lines** for the same request ID:
+In `wrangler tail` or the Cloudflare dashboard **Workers Logs** view, look for these
+distinguishing log patterns:
+
+**Path A — Route handler timeout (e.g. `GET /api/auth/get-session`, `POST /api/auth/sign-in/email`):**
+
+```
+[ERROR] [better-auth] Handler timeout: DB call exceeded 10s on /api/auth/get-session
+```
+
+The caller receives `504 { "error": "Authentication timed out" }`.
+
+**Path B — Session verification timeout (e.g. `GET /api/compile` with a session cookie):**
 
 ```
 [ERROR] [better-auth] Token verification error: TimeoutError (DB call exceeded 10s)
 [ERROR] Worker exceeded CPU time limit
 ```
 
+The double error pattern (verification error immediately followed by the CPU limit error) is the
+tell for the **missing timeout** scenario — the timeout fires too late to prevent the CPU budget
+being exhausted. Once the timeout guard is in place, only the first line appears.
+
 The caller experiences:
 
 - HTTP `500` or `504` after a long pause (exact response depends on the Cloudflare edge tier)
-- Any endpoint that hits the auth middleware — `/api/auth/get-session`,
-  `/api/auth/list-sessions`, authenticated compile endpoints — becomes unresponsive
+- Authenticated endpoints that reach the session verification middleware become unresponsive
 
 ### Root Cause
 
-`auth.api.getSession()` triggers a Prisma → Hyperdrive → Neon PostgreSQL round-trip. If the
-Neon branch is cold (first request after scale-to-zero), or Hyperdrive's connection pool is
-saturated, the TCP handshake can take several seconds. Without an explicit deadline, the Worker's
-`fetch` event handler holds its CPU allocation open, eventually exhausting the runtime budget.
+`auth.handler()` (Path A) and `auth.api.getSession()` (Path B) both trigger a Prisma →
+Hyperdrive → Neon PostgreSQL round-trip. If the Neon branch is cold (first request after
+scale-to-zero), or Hyperdrive's connection pool is saturated, the TCP handshake can take
+several seconds. Without an explicit deadline, the Worker's `fetch` event handler holds its
+CPU allocation open, eventually exhausting the runtime budget.
 
 ```mermaid
 sequenceDiagram
@@ -61,12 +89,19 @@ sequenceDiagram
     participant H as Hyperdrive
     participant N as Neon PostgreSQL
 
-    C->>W: GET /api/auth/get-session (cookie)
-    W->>H: createPrismaClient(connectionString)
+    C->>W: GET /api/auth/get-session (cookie) [Path A]
+    W->>H: auth.handler → createPrismaClient
     H->>N: TCP connect (cold branch — slow)
     Note over H,N: Scale-to-zero wake-up: 2–8 s
     W-->>W: No timeout → CPU budget exhausted
     W-->>C: 500 / 504 (after CPU limit hit)
+
+    C->>W: GET /api/compile (session cookie) [Path B]
+    W->>H: BetterAuthProvider.verifyToken → auth.api.getSession
+    H->>N: TCP connect (cold branch — slow)
+    Note over H,N: Scale-to-zero wake-up: 2–8 s
+    W-->>W: No timeout → CPU budget exhausted
+    W-->>C: 500 (after CPU limit hit)
 ```
 
 Without a timeout, the Worker hangs silently until the runtime kills it. With a timeout, the
@@ -74,50 +109,131 @@ hang is surfaced as a named `TimeoutError` before the CPU budget is exhausted.
 
 ### How to Diagnose
 
-**Step 1 — Search for double error lines in `wrangler tail`:**
+**Step 1 — Search for the double error pattern in `wrangler tail`:**
 
 ```bash
-wrangler tail --format pretty 2>&1 | grep -A1 "Token verification error"
+wrangler tail --format pretty 2>&1 | grep -E "Handler timeout|Token verification error|CPU time limit"
 ```
 
-Expected output when the bug is present:
+- If you see `Handler timeout` → Path A (route handler) timeout guard is missing or not firing
+- If you see `Token verification error` followed immediately by `Worker exceeded CPU time limit`
+  → Path B (session verifier) timeout guard is missing or not firing
+- If you see `Token verification error: TimeoutError` **without** a subsequent CPU limit error
+  → the timeout guard is in place and working correctly
 
+**Step 2 — Reproduce locally with an artificial slow DB call:**
+
+To exercise the `Promise.race` timeout, the delay must be introduced *inside* the timed section
+— specifically by wrapping the call itself in a delayed promise. Adding a delay *before* the
+call only delays when the race starts; it does not simulate a slow DB call within the race.
+
+For **Path A** (`worker/hono-app.ts` — route handler), replace:
+
+```typescript
+const response = await Promise.race([
+    auth.handler(betterAuthRequest),
+    new Promise<never>(/* ... timeout ... */),
+]);
 ```
-[ERROR] [better-auth] Token verification error: ... (no TimeoutError label)
-[ERROR] Worker exceeded CPU time limit
+
+temporarily with:
+
+```typescript
+// Temporary diagnostic only — simulates a 12 s DB round-trip; remove before commit
+const response = await Promise.race([
+    new Promise<Response>(resolve =>
+        setTimeout(() => resolve(auth.handler(betterAuthRequest)), 12_000),
+    ),
+    new Promise<never>(/* ... timeout ... */),
+]);
 ```
 
-Expected output after the fix is applied:
+For **Path B** (`worker/middleware/better-auth-provider.ts` — session verifier), replace:
 
+```typescript
+const sessionPromise = auth.api.getSession(betterAuthRequest as Request);
 ```
-[ERROR] [better-auth] Token verification error: TimeoutError (DB call exceeded 10s)
-# Worker CPU limit error is absent — the timeout fires before the budget is exhausted
+
+temporarily with:
+
+```typescript
+// Temporary diagnostic only — simulates a 12 s DB round-trip; remove before commit
+const sessionPromise = new Promise<Awaited<ReturnType<typeof auth.api.getSession>>>(resolve =>
+    setTimeout(() => resolve(auth.api.getSession(betterAuthRequest as Request)), 12_000),
+);
 ```
 
-**Step 2 — Reproduce locally with an artificial delay:**
+In both cases, invoke the affected endpoint and confirm the timeout log line appears (at ~10 s)
+before the Worker CPU limit error.
 
-Add a `setTimeout` of 12000 ms before the `auth.api.getSession()` call in a local branch,
-invoke `GET /api/auth/get-session`, and observe whether the Worker terminates gracefully
-(`TimeoutError` log) or hangs indefinitely.
+**Step 3 — Check Analytics Engine telemetry for `better_auth_timeout` events:**
 
-**Step 3 — Check Analytics Engine telemetry:**
+Both timeout code paths call `AnalyticsService.trackSecurityEvent()` with
+`reason: 'better_auth_timeout'`. Query the Analytics Engine SQL API to see how often and on
+which paths this is occurring:
 
 ```bash
-# Via wrangler analytics (or the Cloudflare dashboard → Analytics Engine):
-# Look for events with reason = "better_auth_timeout"
+# Requires:
+#   CLOUDFLARE_ACCOUNT_ID = your Cloudflare account ID
+#   CLOUDFLARE_API_TOKEN  = Cloudflare API token with Analytics Engine read permissions
+#
+# Note: '\'' is the standard shell escape for a literal single quote inside a
+# single-quoted string — copy the command as-is.
+
+curl "https://api.cloudflare.com/client/v4/accounts/${CLOUDFLARE_ACCOUNT_ID}/analytics_engine/sql" \
+  -H "Authorization: Bearer ${CLOUDFLARE_API_TOKEN}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "query": "SELECT index1 AS path, count() AS timeout_count FROM `adguard-compiler-analytics-engine` WHERE blob1 = '\''auth_failure'\'' AND blob3 = '\''better_auth_timeout'\'' AND timestamp > NOW() - INTERVAL '\''24'\'' HOUR GROUP BY index1 ORDER BY timeout_count DESC LIMIT 50"
+  }'
 ```
 
-The `AnalyticsService.trackSecurityEvent()` call in `BetterAuthProvider.verifyToken()` emits a
-`reason: 'better_auth_timeout'` event on every timeout. Aggregating these by time shows when
-Neon cold-start latency is creating a user-visible problem.
+Aggregating by `index1` (path) shows which Better Auth endpoints are hitting cold-start latency
+most frequently.
 
 ### Resolution
 
-The fix uses `Promise.race` to pair the `getSession` promise with a `setTimeout`-backed
-`AbortController`. If the DB call takes longer than 10 s, the controller aborts the underlying
-`fetch` and a `DOMException('TimeoutError')` rejects the race.
+**Path A — Route handler timeout (`worker/hono-app.ts`):**
 
-**`worker/middleware/better-auth-provider.ts` — current (fixed) implementation:**
+The `/api/auth/*` route wraps `auth.handler()` in a `Promise.race` with an `AbortController`
+and a `setTimeout(10_000)` deadline. The `finally` block cancels the timer if the handler
+resolves before the deadline:
+
+```typescript
+app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
+    // ... guards for BETTER_AUTH_SECRET and HYPERDRIVE ...
+    const auth = createAuth(c.env, url.origin);
+    const abortController = new AbortController();
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const betterAuthRequest = new Request(c.req.raw, { signal: abortController.signal });
+
+    try {
+        const response = await Promise.race([
+            auth.handler(betterAuthRequest),
+            new Promise<never>((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    abortController.abort();
+                    reject(new DOMException('DB call exceeded 10s', 'TimeoutError'));
+                }, 10_000);
+            }),
+        ]).finally(() => {
+            if (timeoutId !== undefined) clearTimeout(timeoutId);
+        });
+        return response;
+    } catch (error) {
+        if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+            console.error('[better-auth] Handler timeout: DB call exceeded 10s on', url.pathname);
+            // ... trackSecurityEvent ...
+            return c.json({ error: 'Authentication timed out' }, 504);
+        }
+        throw error;
+    }
+});
+```
+
+**Path B — Session verification timeout (`worker/middleware/better-auth-provider.ts`):**
+
+`BetterAuthProvider.verifyToken()` uses the same `Promise.race` pattern for `auth.api.getSession()`:
 
 ```typescript
 const abortController = new AbortController();
@@ -130,9 +246,7 @@ const betterAuthRequest = new Request(url.toString(), {
 const sessionPromise = auth.api.getSession(betterAuthRequest as Request);
 const session = await Promise.race([
     sessionPromise.finally(() => {
-        if (timeoutId !== undefined) {
-            clearTimeout(timeoutId);
-        }
+        if (timeoutId !== undefined) clearTimeout(timeoutId);
     }),
     new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => {
@@ -143,14 +257,14 @@ const session = await Promise.race([
 ]);
 ```
 
-Key design choices:
+Key design choices shared by both guards:
 
 - `AbortController` is shared between the synthetic `Request` and the timeout branch — aborting
   the controller signals the in-flight Prisma/HTTP connection to close, releasing the TCP socket.
-- `sessionPromise.finally(() => clearTimeout(timeoutId))` cancels the timer if the DB call
-  resolves before the deadline, preventing dangling timer handles.
-- The catch block in `verifyToken` distinguishes `TimeoutError` from other errors and emits
-  separate telemetry (`reason: 'better_auth_timeout'` vs `'better_auth_verification_error'`).
+- `finally(() => clearTimeout(timeoutId))` cancels the timer if the DB call resolves before the
+  deadline, preventing dangling timer handles.
+- The catch block distinguishes `TimeoutError` from other errors and emits separate telemetry
+  (`reason: 'better_auth_timeout'` vs `'better_auth_verification_error'`).
 
 > **Why not `AbortSignal.timeout(10_000)`?**
 >
@@ -286,11 +400,11 @@ existing Worker to Better Auth:
 
 - [ ] **`ipAddress.ipAddressHeaders` is configured** in `createAuth()` with
   `['CF-Connecting-IP', 'X-Forwarded-For']`
-- [ ] **Every `auth.api.*` call has a deadline** — use `Promise.race` with an `AbortController`
-  and `setTimeout`; never await a BA DB-backed call without a timeout in a Worker
+- [ ] **Both timeout guards are in place** — `worker/hono-app.ts` wraps `auth.handler()` and
+  `worker/middleware/better-auth-provider.ts` wraps `auth.api.getSession()`, both using
+  `Promise.race` + `AbortController` + `setTimeout(10_000)`
 - [ ] **Analytics telemetry is wired up** — `AnalyticsService.trackSecurityEvent()` is called on
-  both `better_auth_timeout` and `better_auth_verification_error` so timeouts are visible in the
-  Cloudflare dashboard
+  `better_auth_timeout` from both code paths so timeouts are visible in the Cloudflare dashboard
 - [ ] **Stress test `sign-in` in production** — confirm `429` responses appear after the BA
   threshold is reached (not possible to test locally, only in deployed Workers)
 - [ ] **Monitor `wrangler tail` after first deploy** — look for the double error pattern
@@ -303,9 +417,10 @@ existing Worker to Better Auth:
 
 | File | Relevance |
 |------|-----------|
-| `worker/middleware/better-auth-provider.ts` | `BetterAuthProvider.verifyToken()` — `Promise.race` + `AbortController` timeout |
+| `worker/hono-app.ts` | `app.on(['POST','GET'], '/api/auth/*', ...)` — Path A timeout guard for all direct BA routes |
+| `worker/middleware/better-auth-provider.ts` | `BetterAuthProvider.verifyToken()` — Path B timeout guard for session verification on non-auth endpoints |
 | `worker/lib/auth.ts` | `createAuth()` — `advanced.ipAddress.ipAddressHeaders` configuration |
-| `src/services/AnalyticsService.ts` | `trackSecurityEvent()` — telemetry for `better_auth_timeout` events |
+| `src/services/AnalyticsService.ts` | `trackSecurityEvent()` — telemetry for `better_auth_timeout` events (both paths) |
 
 ---
 
