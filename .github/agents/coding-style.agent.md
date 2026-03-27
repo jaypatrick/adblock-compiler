@@ -29,9 +29,9 @@ name: coding-style
 
 ## TypeScript Strict Flags
 
-All enabled — violations fail `deno task check`:
+The following flags are enabled in `deno.json` and will fail `deno task check`:
 - `strict`, `noImplicitAny`, `strictNullChecks`, `noUnusedLocals`, `noUnusedParameters`
-- `noImplicitReturns`, `noFallthroughCasesInSwitch`, `strictPropertyInitialization`
+Recommended additional flags (may be enabled in CI later): `noImplicitReturns`, `noFallthroughCasesInSwitch`, `strictPropertyInitialization`
 - Unused vars/params: remove or prefix with `_` (e.g. `_req`); local variables must be removed, not prefixed
 - Annotate return types on all exported functions and class methods
 - Use `unknown` + Zod/type guards instead of `any` at trust boundaries
