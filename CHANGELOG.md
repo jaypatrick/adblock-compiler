@@ -63,6 +63,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.77.2] - 2026-03-27
+
+### Added### Fixed
+
+- **auth**: add Content-Type: application/json to signOut and revokeOtherSessions
+
+
 ## [0.77.1] - 2026-03-26
 
 ### Added### Fixed
