@@ -25,12 +25,13 @@ sequenceDiagram
     Guard-->>Browser: allow / redirect /sign-in
 
     Browser->>Component: afterNextRender()
-    Component->>Service: listAgents() + listSessions()
+    Component->>Service: listSessions()
     Service->>HTTP: GET /admin/agents/sessions
     HTTP->>Worker: Authorization: Bearer <token>
     Worker-->>HTTP: AgentSessionsResponse
     HTTP-->>Service: Observable<AgentSessionsResponse>
-    Service-->>Component: agents[] + sessions[]
+    Service-->>Component: sessions[]
+    Note over Component: derives agents[] from sessions[]
 
     Note over Browser,DO: WebSocket Connection (AgentSessionConsoleComponent)
     Browser->>Service: connect('mcp-agent', 'default', token)
