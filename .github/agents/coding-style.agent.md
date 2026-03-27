@@ -56,7 +56,7 @@ Additional flags in `frontend/tsconfig.json`:
 
 - Variables/params/functions/methods: camelCase
 - Classes/type aliases/enums: PascalCase
-- Interfaces: I-prefixed PascalCase (e.g. `ICompileOptions`)
+- Interfaces: PascalCase; reserve `I`-prefixed PascalCase (e.g. `ICompiler`) for DI/abstraction interfaces only
 - Enum members: UPPER_SNAKE_CASE
 - Constants: UPPER_SNAKE_CASE
 - Zod schemas: PascalCase + `Schema` suffix (e.g. `CompileRequestSchema`)
