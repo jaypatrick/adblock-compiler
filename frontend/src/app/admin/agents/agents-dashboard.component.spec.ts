@@ -23,7 +23,6 @@ import { TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter } from '@angular/router';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
-import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, throwError } from 'rxjs';
 import { AgentsDashboardComponent } from './agents-dashboard.component';
 import { AgentRpcService } from '../../services/agent-rpc.service';
@@ -93,10 +92,6 @@ describe('AgentsDashboardComponent', () => {
                 provideZonelessChangeDetection(),
                 provideRouter([]),
                 { provide: AgentRpcService, useValue: mockService },
-                {
-                    provide: MatSnackBar,
-                    useValue: { open: vi.fn() },
-                },
             ],
         }).compileComponents();
 
@@ -264,6 +259,13 @@ describe('AgentsDashboardComponent', () => {
         const session = comp.sessions()[0];
         expect(session.ended_at).toBeNull();
 
+        // Spy on the component's actual snackBar instance. MatSnackBarModule in the
+        // component's own `imports` registers MatSnackBar in the component's environment
+        // injector (a child scope), so TestBed-level providers are shadowed. Spy on the
+        // field directly to reliably intercept the call regardless of injector hierarchy.
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const openSpy = vi.spyOn((comp as any).snackBar, 'open').mockImplementation(() => undefined as any);
+
         // Trigger termination on the first session.
         comp.terminateSession(session);
         fixture.detectChanges();
@@ -272,9 +274,7 @@ describe('AgentsDashboardComponent', () => {
         // Optimistic update — the session row should now have ended_at set.
         expect(comp.sessions()[0].ended_at).not.toBeNull();
         expect(comp.sessions()[0].end_reason).toBe('admin_terminated');
-        // Snackbar should be opened (get from the TestBed injector).
-        const snackBar = TestBed.inject(MatSnackBar) as { open: ReturnType<typeof vi.fn> };
-        expect(snackBar.open).toHaveBeenCalled();
+        expect(openSpy).toHaveBeenCalled();
     });
 });
 
