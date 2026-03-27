@@ -142,6 +142,7 @@
   - [KB-002: Hyperdrive Database Down](troubleshooting/KB-002-hyperdrive-database-down.md)
   - [KB-003: Database Down After Deploy — Live Session](troubleshooting/KB-003-neon-hyperdrive-live-session-2026-03-25.md)
   - [KB-004: Prisma WASM Error on Cloudflare Workers](troubleshooting/KB-004-prisma-wasm-cloudflare.md)
+  - [KB-005: Better Auth + Cloudflare: Hanging Worker and Rate Limiting Skipped](troubleshooting/KB-005-better-auth-cloudflare-ip-timeout.md)
   - [Neon Troubleshooting](troubleshooting/neon-troubleshooting.md)
 - [Workflows](workflows/README.md)
   - [Workflows Reference](workflows/WORKFLOWS.md)
