@@ -52,6 +52,36 @@ const MAX_RECONNECT_ATTEMPTS = 5;
 const RECONNECT_BASE_DELAY_MS = 1000;
 
 /**
+ * Generates a UUID-like identifier with a safe fallback chain for environments
+ * where `crypto.randomUUID()` is unavailable (older browsers, some jsdom test rigs).
+ * Mirrors the pattern used in LogService.generateId().
+ *
+ * @returns A v4 UUID string or a time-plus-counter fallback string.
+ */
+let uuidFallbackCounter = 0;
+function safeRandomUUID(): string {
+    try {
+        return crypto.randomUUID();
+    } catch {
+        // Fallback 1: getRandomValues — available in all modern environments.
+        try {
+            const buf = new Uint8Array(16);
+            crypto.getRandomValues(buf);
+            // Set version 4 and variant bits per RFC 4122.
+            buf[6] = (buf[6] & 0x0f) | 0x40;
+            buf[8] = (buf[8] & 0x3f) | 0x80;
+            const toHex = (n: number) => n.toString(16).padStart(2, '0');
+            const hex = Array.from(buf, toHex).join('');
+            return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+        } catch {
+            // Fallback 2: time + monotonic counter (no Math.random()).
+            uuidFallbackCounter = (uuidFallbackCounter + 1) >>> 0;
+            return `${Date.now().toString(36)}-${uuidFallbackCounter.toString(36)}`;
+        }
+    }
+}
+
+/**
  * AgentRpcService — manages agent HTTP API calls and WebSocket connections.
  *
  * Provided at the root level so that multiple components sharing the same
@@ -247,7 +277,7 @@ export class AgentRpcService {
 
         /** Creates a new AgentMessage with a unique ID and current timestamp. */
         const makeMessage = (content: string, direction: 'in' | 'out', type: AgentMessageType): AgentMessage => ({
-            id: crypto.randomUUID(),
+            id: safeRandomUUID(),
             timestamp: new Date().toISOString(),
             direction,
             content,

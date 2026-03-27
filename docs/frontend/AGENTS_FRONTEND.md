@@ -66,7 +66,7 @@ sequenceDiagram
 |--------|-------------|
 | `loadData()` | Fetches agents and sessions in parallel; updates all state signals |
 | `refresh()` | Calls `loadData()` — bound to Refresh button |
-| `terminateSession(session)` | Calls DELETE endpoint, shows snackbar, refreshes list |
+| `terminateSession(session)` | Calls DELETE endpoint, optimistically updates the local `sessions` signal (marks `ended_at`), then shows a snackbar — no re-fetch required |
 
 ---
 

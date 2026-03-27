@@ -353,13 +353,55 @@ export class AgentSessionConsoleComponent {
     });
 
     /**
-     * afterNextRender guard — opens the WebSocket after the first browser render.
-     * WebSocket() cannot be called during SSR (no browser APIs).
-     * The auth token is fetched asynchronously and passed to connect().
+     * Tracks whether the component is running in a real browser environment.
+     * Set to true by afterNextRender() which only fires on the client.
+     * Guards the _routeConnectionEffect so WebSocket is never opened during SSR.
+     */
+    private readonly _isClient = signal(false);
+
+    /**
+     * afterNextRender guard — marks the component as running in the browser.
+     * The actual WebSocket opening is driven by _routeConnectionEffect which reads
+     * this signal, ensuring connection happens after the first render.
      */
     private readonly _init = afterNextRender(() => {
-        void this.openConnection();
+        this._isClient.set(true);
     });
+
+    /**
+     * Signal effect that opens (or re-opens) the WebSocket whenever the route params
+     * change. Angular may reuse this component instance when navigating between
+     * /admin/agents/:slug/:instanceId URLs — without this effect the console would
+     * remain connected to the previous slug/instance after a route change.
+     *
+     * Reads: _isClient(), slug(), instanceId()
+     * Writes: connection signal (requires allowSignalWrites: true)
+     */
+    private readonly _routeConnectionEffect = effect(
+        () => {
+            // Do nothing during SSR — WebSocket is a browser-only API.
+            if (!this._isClient()) {
+                return;
+            }
+
+            const slug = this.slug();
+            const instanceId = this.instanceId();
+
+            // If either param is missing/unknown, close any existing connection.
+            if (!slug || slug === 'unknown' || !instanceId) {
+                this.connection()?.disconnect();
+                this.connection.set(null);
+                return;
+            }
+
+            // Close any previously open connection before opening a fresh one
+            // for the new slug/instanceId combination.
+            this.connection()?.disconnect();
+            this.connection.set(null);
+            void this.openConnection();
+        },
+        { allowSignalWrites: true },
+    );
 
     // -------------------------------------------------------------------------
     // Connection management

@@ -5,8 +5,13 @@
  * - Uses Vitest + @angular/core/testing with provideZonelessChangeDetection().
  * - AgentRpcService is mocked with signal-based stubs matching the real service
  *   interface (no real HTTP calls are made).
+ * - loadData() is called directly (afterNextRender() does not fire in unit tests).
+ * - The component derives the agents list internally from the sessions response,
+ *   so only listSessions() needs to be mocked (listAgents() is unused by the
+ *   component since the loadData() refactor that eliminated the double fetch).
  * - Tests verify signal-driven rendering: loading spinner, error banner, agent
- *   cards, sessions table, empty states, and terminate action.
+ *   cards derived from KNOWN_AGENTS+sessions, sessions table, empty states,
+ *   and terminate action with optimistic local update.
  *
  * See docs/frontend/AGENTS_FRONTEND.md#testing for the full testing guide.
  */
@@ -18,27 +23,13 @@ import { MatSnackBar } from '@angular/material/snack-bar';
 import { of, throwError } from 'rxjs';
 import { AgentsDashboardComponent } from './agents-dashboard.component';
 import { AgentRpcService } from '../../services/agent-rpc.service';
-import type { AgentListItem, AgentSessionsResponse } from '../../models/agent.models';
+import type { AgentSessionsResponse } from '../../models/agent.models';
 
 // ---------------------------------------------------------------------------
 // Fixtures
 // ---------------------------------------------------------------------------
 
-/** Minimal AgentListItem fixture — represents the mcp-agent entry. */
-const AGENT_FIXTURE: AgentListItem = {
-    bindingKey: 'MCP_AGENT',
-    slug: 'mcp-agent',
-    displayName: 'Playwright MCP Agent',
-    description: 'Headless browser automation.',
-    requiredTier: 'admin',
-    requiredScopes: ['agents'],
-    enabled: true,
-    transport: 'websocket',
-    activeSessions: 0,
-    lastActiveAt: null,
-};
-
-/** Minimal session response with one active session. */
+/** Minimal session response with one active mcp-agent session. */
 const SESSIONS_RESPONSE: AgentSessionsResponse = {
     success: true,
     sessions: [
@@ -64,20 +55,15 @@ const SESSIONS_RESPONSE: AgentSessionsResponse = {
 // ---------------------------------------------------------------------------
 
 /**
- * Builds a mock AgentRpcService that returns predefined Observables.
- * Accepts override options to simulate errors or empty states per test.
+ * Builds a mock AgentRpcService that returns predefined Observables for
+ * listSessions() and terminateSession(). listAgents() is intentionally absent
+ * because loadData() no longer calls it (agents are derived from sessions locally).
  */
 function buildMockService(opts: {
-    agentsError?: boolean;
     sessionsError?: boolean;
     emptySessions?: boolean;
 } = {}) {
     return {
-        listAgents: vi.fn(() =>
-            opts.agentsError
-                ? throwError(() => ({ error: 'Failed to load agents.', status: 500 }))
-                : of([AGENT_FIXTURE]),
-        ),
         listSessions: vi.fn(() =>
             opts.sessionsError
                 ? throwError(() => ({ error: 'Failed to load sessions.', status: 500 }))
@@ -135,24 +121,28 @@ describe('AgentsDashboardComponent', () => {
     });
 
     // -----------------------------------------------------------------------
-    // Successful data load
+    // Successful data load — agents derived from sessions
     // -----------------------------------------------------------------------
 
     /**
-     * Verifies that after loadData() completes successfully, the agents signal
-     * is populated with the mock agent fixture.
+     * Verifies that after loadData() completes, the agents signal is populated
+     * with an entry for 'mcp-agent' (derived from KNOWN_AGENTS + session history).
+     * The component derives agents from the single listSessions() response.
      */
-    it('should populate agents signal after successful load', async () => {
+    it('should populate agents signal (derived from sessions) after successful load', async () => {
         const mock = buildMockService();
         const fixture = await createComponent(mock);
         const comp = fixture.componentInstance;
 
-        // Directly call loadData() (afterNextRender won't fire in unit tests).
+        // Directly call loadData() — afterNextRender() does not fire in unit tests.
         comp.loadData();
         fixture.detectChanges();
 
-        expect(comp.agents()).toHaveLength(1);
-        expect(comp.agents()[0].slug).toBe('mcp-agent');
+        // mcp-agent is in KNOWN_AGENTS seed, so it should always appear.
+        const mcpAgent = comp.agents().find(a => a.slug === 'mcp-agent');
+        expect(mcpAgent).toBeDefined();
+        // With one active session in the fixture, activeSessions should be 1.
+        expect(mcpAgent?.activeSessions).toBe(1);
     });
 
     /**
@@ -172,9 +162,9 @@ describe('AgentsDashboardComponent', () => {
     });
 
     /**
-     * Verifies that loading is set to false after both parallel requests complete.
+     * Verifies that loading is set to false after the request completes.
      */
-    it('should set loading to false after both requests complete', async () => {
+    it('should set loading to false after request completes', async () => {
         const mock = buildMockService();
         const fixture = await createComponent(mock);
         const comp = fixture.componentInstance;
@@ -185,16 +175,31 @@ describe('AgentsDashboardComponent', () => {
         expect(comp.loading()).toBe(false);
     });
 
+    /**
+     * Only listSessions() should be called — not listAgents() — since the
+     * component derives the agent list from the sessions response locally.
+     */
+    it('should call listSessions exactly once (no separate listAgents call)', async () => {
+        const mock = buildMockService();
+        const fixture = await createComponent(mock);
+        const comp = fixture.componentInstance;
+
+        comp.loadData();
+        fixture.detectChanges();
+
+        expect(mock.listSessions).toHaveBeenCalledTimes(1);
+    });
+
     // -----------------------------------------------------------------------
     // Error states
     // -----------------------------------------------------------------------
 
     /**
-     * Verifies that when the agents API call fails, the error signal is
-     * populated with a meaningful message.
+     * Verifies that when the sessions API call fails, the error signal is
+     * populated with a meaningful message and loading returns to false.
      */
-    it('should set error signal when agents API call fails', async () => {
-        const mock = buildMockService({ agentsError: true });
+    it('should set error signal when sessions API call fails', async () => {
+        const mock = buildMockService({ sessionsError: true });
         const fixture = await createComponent(mock);
         const comp = fixture.componentInstance;
 
@@ -202,7 +207,8 @@ describe('AgentsDashboardComponent', () => {
         fixture.detectChanges();
 
         expect(comp.error()).not.toBeNull();
-        expect(comp.error()).toContain('Failed to load agents');
+        expect(comp.error()).toContain('Failed to load sessions');
+        expect(comp.loading()).toBe(false);
     });
 
     // -----------------------------------------------------------------------
@@ -212,6 +218,7 @@ describe('AgentsDashboardComponent', () => {
     /**
      * Verifies that when the sessions response is empty, the sessions signal
      * remains an empty array and activeSessions computed is also empty.
+     * The agents signal still contains the KNOWN_AGENTS seed entries.
      */
     it('should show empty sessions when API returns no sessions', async () => {
         const mock = buildMockService({ emptySessions: true });
@@ -223,17 +230,19 @@ describe('AgentsDashboardComponent', () => {
 
         expect(comp.sessions()).toHaveLength(0);
         expect(comp.activeSessions()).toHaveLength(0);
+        // KNOWN_AGENTS seed always provides at least the mcp-agent entry.
+        expect(comp.agents().length).toBeGreaterThanOrEqual(1);
     });
 
     // -----------------------------------------------------------------------
-    // Terminate session
+    // Terminate session — optimistic local update
     // -----------------------------------------------------------------------
 
     /**
      * Verifies that terminateSession() calls the service terminateSession method
-     * with the correct session ID.
+     * with the correct session ID and optimistically marks it ended in local state.
      */
-    it('should call terminateSession service method with session ID', async () => {
+    it('should call terminateSession service method and optimistically update session', async () => {
         const mock = buildMockService();
         const snackBar = { open: vi.fn() };
         await TestBed.configureTestingModule({
@@ -252,10 +261,18 @@ describe('AgentsDashboardComponent', () => {
         comp.loadData();
         fixture.detectChanges();
 
+        const session = comp.sessions()[0];
+        expect(session.ended_at).toBeNull();
+
         // Trigger termination on the first session.
-        comp.terminateSession(comp.sessions()[0]);
+        comp.terminateSession(session);
         fixture.detectChanges();
 
         expect(mock.terminateSession).toHaveBeenCalledWith('abc12345-0000-0000-0000-000000000000');
+        // Optimistic update — the session row should now have ended_at set.
+        expect(comp.sessions()[0].ended_at).not.toBeNull();
+        expect(comp.sessions()[0].end_reason).toBe('admin_terminated');
+        expect(snackBar.open).toHaveBeenCalled();
     });
 });
+

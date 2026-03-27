@@ -72,8 +72,20 @@ const AUDIT_RESPONSE: AgentAuditResponse = {
 /**
  * Lightweight WebSocket mock that captures lifecycle callbacks for testing.
  * Registered on the global object before tests that exercise connect().
+ *
+ * Note: We define readyState values as inline numeric literals rather than
+ * referencing WebSocket.CONNECTING/OPEN/CLOSED because in Vitest's jsdom
+ * environment globalThis.WebSocket may be undefined at class initialisation
+ * time (before our beforeEach stub is in place), causing a ReferenceError.
  */
 class MockWebSocket {
+    /** WebSocket.CONNECTING = 0 */
+    static readonly CONNECTING = 0;
+    /** WebSocket.OPEN = 1 */
+    static readonly OPEN = 1;
+    /** WebSocket.CLOSED = 3 */
+    static readonly CLOSED = 3;
+
     static lastInstance: MockWebSocket | null = null;
 
     readonly url: string;
@@ -85,7 +97,7 @@ class MockWebSocket {
     onclose: ((event: CloseEvent) => void) | null = null;
 
     readonly sentMessages: string[] = [];
-    readyState: number = WebSocket.CONNECTING;
+    readyState: number = MockWebSocket.CONNECTING;
 
     constructor(url: string, protocols?: string | string[]) {
         this.url = url;
@@ -98,7 +110,7 @@ class MockWebSocket {
     }
 
     close(code?: number, reason?: string): void {
-        this.readyState = WebSocket.CLOSED;
+        this.readyState = MockWebSocket.CLOSED;
         // Simulate the onclose callback.
         this.onclose?.({ code: code ?? 1000, reason: reason ?? '', wasClean: (code ?? 1000) === 1000 } as CloseEvent);
     }
@@ -110,7 +122,7 @@ class MockWebSocket {
 
     /** Test helper — simulate a successful connection open. */
     simulateOpen(): void {
-        this.readyState = WebSocket.OPEN;
+        this.readyState = MockWebSocket.OPEN;
         this.onopen?.({} as Event);
     }
 }

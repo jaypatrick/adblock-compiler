@@ -7,7 +7,7 @@
  *
  * Architecture notes:
  * - Data is fetched via AgentRpcService using afterNextRender() + manual signal-based state.
- * - Termination calls DELETE /admin/agents/sessions/:id and refreshes the list on success.
+ * - Termination calls DELETE /admin/agents/sessions/:id and optimistically updates the local sessions list on success (no re-fetch).
  * - The agent card list is seeded from KNOWN_AGENTS and enriched with session counts.
  *
  * See docs/frontend/AGENTS_FRONTEND.md for the full component catalog.
@@ -23,8 +23,8 @@ import {
     DestroyRef,
 } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { forkJoin, of } from 'rxjs';
 import { catchError } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { DatePipe, SlicePipe } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { MatCardModule } from '@angular/material/card';
@@ -37,6 +37,7 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatSnackBar } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { AgentRpcService } from '../../services/agent-rpc.service';
+import { KNOWN_AGENTS } from '../../models/agent.models';
 import type { AgentListItem, AgentSession, AgentSessionsResponse } from '../../models/agent.models';
 
 @Component({
@@ -423,35 +424,89 @@ export class AgentsDashboardComponent {
     // -------------------------------------------------------------------------
 
     /**
-     * Loads agent list and sessions in parallel using forkJoin.
-     * Each request has its own catchError so a single failure doesn't cancel the other.
+     * Loads sessions from the API (single request) and derives the agent list
+     * from the sessions response + KNOWN_AGENTS seed.
+     *
+     * Previously used forkJoin([listAgents(), listSessions()]), but listAgents()
+     * itself calls listSessions() internally, which caused two identical GETs on
+     * every refresh. Now we call listSessions() once and derive agents locally.
+     *
      * Called on init and by refresh().
      */
     loadData(): void {
         this.loading.set(true);
         this.error.set(null);
 
-        // forkJoin waits for both observables to complete.
-        // catchError on each individual stream returns a sentinel value so the other
-        // request is not cancelled when one fails.
-        forkJoin([
-            this.agentRpc.listAgents().pipe(catchError((err: { error: string }) => {
-                this.error.set(err.error ?? 'Failed to load agents.');
-                return of([] as AgentListItem[]);
-            })),
-            this.agentRpc.listSessions().pipe(catchError((err: { error: string }) => {
-                this.error.set(err.error ?? 'Failed to load sessions.');
-                return of(null);
-            })),
-        ])
-            .pipe(takeUntilDestroyed(this.destroyRef))
-            .subscribe(([agents, sessionsRes]) => {
-                this.agents.set(agents);
-                if (sessionsRes) {
-                    this.sessions.set([...sessionsRes.sessions]);
+        this.agentRpc
+            .listSessions()
+            .pipe(
+                catchError((err: { error: string }) => {
+                    this.error.set(err.error ?? 'Failed to load sessions.');
+                    this.loading.set(false);
+                    return of(null as AgentSessionsResponse | null);
+                }),
+                takeUntilDestroyed(this.destroyRef),
+            )
+            .subscribe((sessionsRes: AgentSessionsResponse | null) => {
+                if (!sessionsRes) {
+                    return;
                 }
+
+                const sessions = [...sessionsRes.sessions];
+                this.sessions.set(sessions);
+                this.agents.set(this.deriveAgentsFromSessions(sessions));
                 this.loading.set(false);
             });
+    }
+
+    /**
+     * Derives the AgentListItem list from a sessions array + KNOWN_AGENTS seed.
+     * Groups sessions by slug, computes active-session counts and last-active timestamps.
+     * Any slug found in session history but absent from KNOWN_AGENTS is added as a stub.
+     *
+     * @param sessions - The full session list from the API.
+     * @returns AgentListItem[] — one entry per unique agent slug.
+     */
+    private deriveAgentsFromSessions(sessions: AgentSession[]): AgentListItem[] {
+        const activeBySlug = new Map<string, number>();
+        const lastActiveBySlug = new Map<string, string>();
+
+        for (const session of sessions) {
+            if (!session.ended_at) {
+                activeBySlug.set(session.agent_slug, (activeBySlug.get(session.agent_slug) ?? 0) + 1);
+            }
+            const existing = lastActiveBySlug.get(session.agent_slug);
+            if (!existing || session.started_at > existing) {
+                lastActiveBySlug.set(session.agent_slug, session.started_at);
+            }
+        }
+
+        const knownSlugs = new Set(KNOWN_AGENTS.map(a => a.slug));
+        const sessionSlugs = new Set(sessions.map(s => s.agent_slug));
+
+        const dynamicAgents: AgentListItem[] = [...sessionSlugs]
+            .filter(slug => !knownSlugs.has(slug))
+            .map(slug => ({
+                bindingKey: slug.toUpperCase().replace(/-/g, '_'),
+                slug,
+                displayName: slug,
+                description: 'Dynamically discovered agent (not in registry seed).',
+                requiredTier: 'admin',
+                requiredScopes: [],
+                enabled: true,
+                transport: 'websocket' as const,
+                activeSessions: activeBySlug.get(slug) ?? 0,
+                lastActiveAt: lastActiveBySlug.get(slug) ?? null,
+            }));
+
+        return [
+            ...KNOWN_AGENTS.map(entry => ({
+                ...entry,
+                activeSessions: activeBySlug.get(entry.slug) ?? 0,
+                lastActiveAt: lastActiveBySlug.get(entry.slug) ?? null,
+            })),
+            ...dynamicAgents,
+        ];
     }
 
     /**
