@@ -510,7 +510,7 @@ erDiagram
     User ||--o{ Session : "has"
     User ||--o{ Account : "has"
     User ||--o| TwoFactor : "has"
-    User ||--o{ AgentSession : "has"
+    User |o--o{ AgentSession : "has"
     FilterSource ||--o{ FilterListVersion : "has versions"
     FilterSource ||--o{ SourceHealthSnapshot : "monitored by"
     FilterSource ||--o{ SourceChangeEvent : "changes tracked by"
