@@ -76,6 +76,14 @@ const NAV_GROUPS: NavGroup[] = [
             { label: 'Webhooks', icon: 'webhook', route: 'webhooks', permission: 'admin:webhooks:read' },
         ],
     },
+    // ---- Agents section (issue #1383) ----
+    {
+        section: 'Agents',
+        items: [
+            { label: 'Agent Management', icon: 'smart_toy', route: 'agents', permission: 'admin:agents:read' },
+            { label: 'Audit Log', icon: 'history', route: 'agents/audit', permission: 'admin:agents:read' },
+        ],
+    },
 ];
 
 @Component({
