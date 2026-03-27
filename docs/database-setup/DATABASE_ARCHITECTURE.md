@@ -506,6 +506,37 @@ erDiagram
         timestamp updated_at
     }
 
+    StorageEntry {
+        cuid id PK
+        string key UK
+        string data
+        datetime created_at
+        datetime updated_at
+        datetime expires_at
+        string tags
+    }
+
+    FilterCache {
+        cuid id PK
+        string source UK
+        string content
+        string hash
+        string etag
+        datetime created_at
+        datetime updated_at
+        datetime expires_at
+    }
+
+    CompilationMetadata {
+        cuid id PK
+        string config_name
+        datetime timestamp
+        int source_count
+        int rule_count
+        int duration
+        string output_path
+    }
+
     User ||--o{ ApiKey : "owns"
     User ||--o{ Session : "has"
     User ||--o{ Account : "has"
@@ -517,6 +548,8 @@ erDiagram
     CompiledOutput ||--o{ CompilationEvent : "recorded in"
     AgentSession ||--o{ AgentInvocation : "has"
 ```
+
+> **Note:** `StorageEntry`, `FilterCache`, and `CompilationMetadata` are legacy models retained for backward compatibility with `HyperdriveStorageAdapter` and `D1StorageAdapter`. They have no foreign-key relations to other models and are migration targets — new code should use `CompiledOutput` + `CompilationEvent` instead.
 
 ---
 
