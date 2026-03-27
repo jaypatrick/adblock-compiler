@@ -213,3 +213,36 @@ Deno.test('DELETE /admin/users/:id/sessions route is registered (not 404)', asyn
     // Should be 401 (unauthorized) not 404 (not found)
     assertEquals(res.status !== 404, true);
 });
+
+// ── Better Auth middleware bypass regression (#1424) ──────────────────────────
+// The Better Auth handler is registered BEFORE global logger() and compress()
+// middleware to prevent response stream conflicts.  These tests prove that
+// /api/auth/* requests bypass both middleware even when the client sends
+// Accept-Encoding: gzip (compress) and console.log would capture logger output.
+
+Deno.test('/api/auth/* bypasses compress middleware (no Content-Encoding header)', async () => {
+    // Without BETTER_AUTH_SECRET the handler short-circuits with 404 — but the
+    // critical property is that compress() must NOT have wrapped the response,
+    // so Content-Encoding must be absent regardless of Accept-Encoding.
+    const res = await fetch('/api/auth/get-session', {
+        headers: { 'Accept-Encoding': 'gzip' },
+    });
+    assertEquals(res.headers.get('Content-Encoding'), null);
+});
+
+Deno.test('/api/auth/* bypasses logger middleware (no request log emitted)', async () => {
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+        logs.push(args.join(' '));
+    };
+    try {
+        await fetch('/api/auth/get-session');
+        // logger() emits lines containing the HTTP method and path; if ordering is
+        // correct this list will be empty for /api/auth/* requests.
+        const authLogEntry = logs.find((log) => log.includes('/api/auth/'));
+        assertEquals(authLogEntry, undefined, 'Expected logger() NOT to log /api/auth/* requests');
+    } finally {
+        console.log = originalLog;
+    }
+});

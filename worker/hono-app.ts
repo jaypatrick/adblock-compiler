@@ -15,8 +15,8 @@
  *  - `timing()` middleware adds `Server-Timing` headers to every response
  *  - `etag()` on GET /metrics and GET /health for conditional request support
  *  - `prettyJSON()` globally (activate with `?pretty=true`)
- *  - `compress()` globally for automatic response compression (brotli/gzip/deflate)
- *  - `logger()` for standardized request/response logging
+ *  - `compress()` globally for automatic response compression (gzip/deflate; brotli unsupported in this runtime) — applied after Better Auth
+ *  - `logger()` for standardized request/response logging — applied after Better Auth
  *  - `cache()` middleware on /configuration/defaults (300s), /api/version (3600s), /api/schemas (3600s)
  *  - Cache-Control headers on /health (30 s) and /configuration/defaults (300 s)
  *  - `GET /api/openapi.json` serves the auto-generated OpenAPI 3.0 spec
@@ -322,12 +322,6 @@ app.onError((err, c) => {
 // ── 0. Server-Timing middleware (must be first to wrap all operations) ────────
 app.use('*', timing());
 
-// ── 0a. Logger middleware (request/response logging) ──────────────────────────
-app.use('*', logger());
-
-// ── 0b. Compress middleware (automatic response compression) ──────────────────
-app.use('*', compress());
-
 // ── 1. Request metadata middleware ────────────────────────────────────────────
 app.use('*', async (c, next) => {
     c.set('requestId', generateRequestId('api'));
@@ -354,6 +348,11 @@ app.use('*', async (c, next) => {
 // so that a hung Hyperdrive/Prisma call cannot stall the Worker CPU indefinitely.
 // AbortController.abort() is called on timeout to signal cancellation to the
 // underlying fetch plumbing used by Better Auth / Prisma.
+//
+// IMPORTANT: This handler is registered BEFORE the global logger() and compress()
+// middleware to avoid interfering with Better Auth's response handling. Better Auth
+// returns responses directly without calling next(), and applying compression/logging
+// middleware before this handler can cause response stream conflicts.
 app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
     if (!c.env.BETTER_AUTH_SECRET) return c.notFound();
     if (!c.env.HYPERDRIVE) {
@@ -402,6 +401,17 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
         throw error;
     }
 });
+
+// ── 1c. Logger middleware (request/response logging) ──────────────────────────
+// Applied AFTER Better Auth handler to avoid interfering with auth responses.
+// Better Auth returns responses directly without calling next(), so global middleware
+// applied before the handler would wrap the response stream and cause conflicts.
+app.use('*', logger());
+
+// ── 1d. Compress middleware (automatic response compression) ──────────────────
+// Applied AFTER Better Auth handler to avoid response stream conflicts.
+// Better Auth manages its own response formatting and shouldn't be compressed.
+app.use('*', compress());
 
 // ── 2. Agent router (authenticated) ──────────────────────────────────────────
 // Agent routes are handled by the dedicated agent sub-app, which enforces ZTA
