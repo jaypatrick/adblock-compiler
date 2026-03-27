@@ -297,6 +297,14 @@ crons = [
     "0 * * * *",    # Health monitoring: every hour
 ]
 
+# ─── Pages (mdBook docs) ─────────────────────────────────────────────────────
+# Tells `wrangler pages deploy` where to find the built mdBook output.
+# Wrangler 4 auto-detects wrangler.toml for Pages deployments and requires
+# this field to be present. The Workers-specific fields above are ignored by
+# `wrangler pages` commands and vice versa.
+# See: .github/workflows/mdbook.yml
+pages_build_output_dir = "book"
+
 # ─── Local dev server ────────────────────────────────────────────────────────
 # These settings apply ONLY to `wrangler dev`. Ignored on `wrangler deploy`.
 [dev]
