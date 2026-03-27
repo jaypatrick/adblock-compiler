@@ -322,6 +322,12 @@ app.onError((err, c) => {
 // ── 0. Server-Timing middleware (must be first to wrap all operations) ────────
 app.use('*', timing());
 
+// ── 0a. Logger middleware (request/response logging) ──────────────────────────
+app.use('*', logger());
+
+// ── 0b. Compress middleware (automatic response compression) ──────────────────
+app.use('*', compress());
+
 // ── 1. Request metadata middleware ────────────────────────────────────────────
 app.use('*', async (c, next) => {
     c.set('requestId', generateRequestId('api'));
@@ -619,8 +625,8 @@ export async function handleAdminRevokeUserSessions(c: AppContext): Promise<Resp
 }
 
 app.get('/api', handleApiMeta);
-app.get('/api/version', handleApiMeta);
-app.get('/api/schemas', handleApiMeta);
+app.get('/api/version', cache({ cacheName: 'api-version', cacheControl: 'public, max-age=3600' }), handleApiMeta);
+app.get('/api/schemas', cache({ cacheName: 'api-schemas', cacheControl: 'public, max-age=3600' }), handleApiMeta);
 app.get('/api/deployments', handleApiMeta);
 app.get('/api/deployments/*', handleApiMeta);
 app.get('/api/turnstile-config', handleApiMeta);
@@ -890,6 +896,7 @@ routes.post(
 
 routes.get(
     '/configuration/defaults',
+    cache({ cacheName: 'config-defaults', cacheControl: 'public, max-age=300' }),
     rateLimitMiddleware(),
     async (c) => {
         const res = await handleConfigurationDefaults(c.req.raw, c.env);
