@@ -5,7 +5,7 @@
  * and `next()` propagation behaviour.
  */
 
-import { assertEquals } from '@std/assert';
+import { assertEquals, assertExists } from '@std/assert';
 import { Hono } from 'hono';
 import { makeEnv, makeInMemoryKv } from '../test-helpers.ts';
 import { bodySizeMiddleware, rateLimitMiddleware, requireAuthMiddleware, turnstileMiddleware } from './hono-middleware.ts';
@@ -180,7 +180,6 @@ Deno.test('requireAuthMiddleware: returns 401 for anonymous user', async () => {
 import { compress } from 'hono/compress';
 import { logger } from 'hono/logger';
 import { cache } from 'hono/cache';
-import { assertExists } from '@std/assert';
 
 // ── compress middleware ───────────────────────────────────────────────────
 
@@ -306,7 +305,7 @@ Deno.test('cache middleware: different cache durations for different routes', as
     assertEquals(longRes.headers.get('Cache-Control'), 'public, max-age=3600');
 });
 
-Deno.test('cache middleware: does not cache routes without middleware', async () => {
+Deno.test('cache middleware: sets Cache-Control header on cached routes and omits it on uncached routes', async () => {
     const app = new Hono();
     app.get('/cached', cache({ cacheName: 'test-cache', cacheControl: 'public, max-age=300' }), (c) => c.json({ data: 'cached' }));
     app.get('/uncached', (c) => c.json({ data: 'uncached' }));

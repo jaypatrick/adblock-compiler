@@ -182,8 +182,9 @@ The cache middleware:
 
 Used for: `/api/version`, `/api/schemas`
 
-#### `public, max-age=300` (5 minutes)
+#### `public, max-age=300, stale-while-revalidate=60` (5 minutes + SWR)
 - **`max-age=300`** - Cache is valid for 300 seconds (5 minutes)
+- **`stale-while-revalidate=60`** - Serve stale response for up to 60 s while revalidating in the background
 
 Used for: `/configuration/defaults`
 
@@ -193,7 +194,7 @@ Cache middleware is applied at the **route level**, before route-specific middle
 ```typescript
 routes.get(
     '/configuration/defaults',
-    cache({ cacheName: 'config-defaults', cacheControl: 'public, max-age=300' }),
+    cache({ cacheName: 'config-defaults', cacheControl: 'public, max-age=300, stale-while-revalidate=60' }),
     rateLimitMiddleware(),  // Applied after cache
     handler
 );
