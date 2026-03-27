@@ -28,9 +28,9 @@ function makeEntry(overrides: Partial<AgentAuditLogEntry> = {}): AgentAuditLogEn
     return {
         id: 'audit-001',
         agent_slug: 'mcp-agent',
-        event_type: 'session_started',
+        event_type: 'session_start',
         user_id: 'user-001',
-        instance_id: 'default',
+        session_id: null,
         ip_address: '127.0.0.1',
         details: null,
         created_at: '2026-03-24T00:00:00.000Z',
@@ -60,9 +60,9 @@ const ONE_ENTRY_RESPONSE: AgentAuditResponse = {
 const MULTI_ENTRY_RESPONSE: AgentAuditResponse = {
     success: true,
     items: [
-        makeEntry({ id: 'a1', event_type: 'session_started' }),
-        makeEntry({ id: 'a2', event_type: 'session_ended' }),
-        makeEntry({ id: 'a3', event_type: 'message_sent' }),
+        makeEntry({ id: 'a1', event_type: 'session_start' }),
+        makeEntry({ id: 'a2', event_type: 'session_end' }),
+        makeEntry({ id: 'a3', event_type: 'invocation' }),
     ],
     total: 3,
     limit: 25,
@@ -138,7 +138,7 @@ describe('AgentAuditLogComponent', () => {
         fixture.detectChanges();
 
         expect(component.entries()).toHaveLength(1);
-        expect(component.entries()[0].event_type).toBe('session_started');
+        expect(component.entries()[0].event_type).toBe('session_start');
         expect(component.totalCount()).toBe(1);
         expect(component.loading()).toBe(false);
     });
@@ -210,13 +210,13 @@ describe('AgentAuditLogComponent', () => {
         // All 3 entries visible with no filter.
         expect(component.filteredEntries()).toHaveLength(3);
 
-        // Apply filter for 'session_started'.
-        component.setFilter('session_started');
+        // Apply filter for 'session_start'.
+        component.setFilter('session_start');
         fixture.detectChanges();
 
         expect(component.filteredEntries()).toHaveLength(1);
-        expect(component.filteredEntries()[0].event_type).toBe('session_started');
-        expect(component.activeFilter()).toBe('session_started');
+        expect(component.filteredEntries()[0].event_type).toBe('session_start');
+        expect(component.activeFilter()).toBe('session_start');
     });
 
     /** setFilter(null) clears the filter and restores all entries. */
@@ -226,7 +226,7 @@ describe('AgentAuditLogComponent', () => {
         fixture.detectChanges();
 
         // Apply and then clear the filter.
-        component.setFilter('message_sent');
+        component.setFilter('invocation');
         component.setFilter(null);
         fixture.detectChanges();
 

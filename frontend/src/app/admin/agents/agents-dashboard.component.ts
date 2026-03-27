@@ -34,7 +34,7 @@ import { MatTableModule } from '@angular/material/table';
 import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatTooltipModule } from '@angular/material/tooltip';
-import { MatSnackBar } from '@angular/material/snack-bar';
+import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 import { MatDividerModule } from '@angular/material/divider';
 import { AgentRpcService } from '../../services/agent-rpc.service';
 import { KNOWN_AGENTS } from '../../models/agent.models';
@@ -57,6 +57,7 @@ import type { AgentListItem, AgentSession, AgentSessionsResponse } from '../../m
         MatProgressSpinnerModule,
         MatTooltipModule,
         MatDividerModule,
+        MatSnackBarModule,
     ],
     template: `
     <!-- Header card -->

@@ -408,12 +408,32 @@ export class AgentSessionConsoleComponent {
     // -------------------------------------------------------------------------
 
     /**
+     * Monotonically-increasing sequence number used to cancel stale
+     * `openConnection()` calls. Incremented each time a new connection attempt
+     * starts; any earlier in-flight call that sees a mismatched generation
+     * after awaiting `getToken()` discards its result and returns without
+     * calling `connection.set()`, preventing an orphaned WebSocket.
+     */
+    private _openConnectionGeneration = 0;
+
+    /**
      * Fetches the auth token and opens a WebSocket connection to the agent DO.
      * Called on init and by reconnect().
      */
     private async openConnection(): Promise<void> {
+        // Capture the generation before the async token fetch so we can detect
+        // whether route params changed while we were awaiting the result.
+        const generation = ++this._openConnectionGeneration;
+
         // Retrieve the current auth token for the Sec-WebSocket-Protocol auth header.
         const token = await this.authFacade.getToken();
+
+        // If route params changed again while we were awaiting the token,
+        // discard this result — a newer openConnection() call is already in flight.
+        if (generation !== this._openConnectionGeneration) {
+            return;
+        }
+
         const conn = this.agentRpc.connect(
             this.slug(),
             this.instanceId(),
