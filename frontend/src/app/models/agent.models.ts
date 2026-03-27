@@ -11,7 +11,7 @@
 /** Connection status of an active WebSocket session. */
 export type AgentConnectionStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
-/** Direction of a message in the session console. */
+/** Content kind of a message shown in the session console (text, structured JSON, error, or system event). */
 export type AgentMessageType = 'text' | 'json' | 'error' | 'system';
 
 /** Primary transport mechanism for an agent. */
