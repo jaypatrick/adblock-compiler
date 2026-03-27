@@ -15,6 +15,9 @@
  *  - `timing()` middleware adds `Server-Timing` headers to every response
  *  - `etag()` on GET /metrics and GET /health for conditional request support
  *  - `prettyJSON()` globally (activate with `?pretty=true`)
+ *  - `compress()` globally for automatic response compression (brotli/gzip/deflate)
+ *  - `logger()` for standardized request/response logging
+ *  - `cache()` middleware on /configuration/defaults (300s), /api/version (3600s), /api/schemas (3600s)
  *  - Cache-Control headers on /health (30 s) and /configuration/defaults (300 s)
  *  - `GET /api/openapi.json` serves the auto-generated OpenAPI 3.0 spec
  *  - `AppType` export enables `hc<AppType>()` typed RPC client in Angular
@@ -33,6 +36,9 @@ import type { Context } from 'hono';
 import { endTime, startTime, timing } from 'hono/timing';
 import { etag } from 'hono/etag';
 import { prettyJSON } from 'hono/pretty-json';
+import { compress } from 'hono/compress';
+import { logger } from 'hono/logger';
+import { cache } from 'hono/cache';
 import { OpenAPIHono } from '@hono/zod-openapi';
 
 // Types
@@ -315,6 +321,12 @@ app.onError((err, c) => {
 
 // ── 0. Server-Timing middleware (must be first to wrap all operations) ────────
 app.use('*', timing());
+
+// ── 0a. Logger middleware (request/response logging) ──────────────────────────
+app.use('*', logger());
+
+// ── 0b. Compress middleware (automatic response compression) ──────────────────
+app.use('*', compress());
 
 // ── 1. Request metadata middleware ────────────────────────────────────────────
 app.use('*', async (c, next) => {
@@ -613,8 +625,8 @@ export async function handleAdminRevokeUserSessions(c: AppContext): Promise<Resp
 }
 
 app.get('/api', handleApiMeta);
-app.get('/api/version', handleApiMeta);
-app.get('/api/schemas', handleApiMeta);
+app.get('/api/version', cache({ cacheName: 'api-version', cacheControl: 'public, max-age=3600' }), handleApiMeta);
+app.get('/api/schemas', cache({ cacheName: 'api-schemas', cacheControl: 'public, max-age=3600' }), handleApiMeta);
 app.get('/api/deployments', handleApiMeta);
 app.get('/api/deployments/*', handleApiMeta);
 app.get('/api/turnstile-config', handleApiMeta);
@@ -884,6 +896,7 @@ routes.post(
 
 routes.get(
     '/configuration/defaults',
+    cache({ cacheName: 'config-defaults', cacheControl: 'public, max-age=300' }),
     rateLimitMiddleware(),
     async (c) => {
         const res = await handleConfigurationDefaults(c.req.raw, c.env);

@@ -7,6 +7,9 @@ The Cloudflare Worker request router was migrated from a 589-line imperative if/
 (`worker/hono-app.ts`) in Phase 1.  Phase 2 extracted the repeated inline middleware
 into reusable factories defined in `worker/middleware/hono-middleware.ts`.
 
+Phase 3 introduced built-in Hono middleware for compression, logging, and caching (see
+[Hono Built-in Middleware](../middleware/hono-built-in-middleware.md)).
+
 All **handler function signatures remain unchanged**. Only the dispatch layer (the routing
 glue) was migrated to Hono.
 
