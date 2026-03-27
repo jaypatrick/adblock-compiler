@@ -75,4 +75,53 @@ describe('TurnstileComponent', () => {
         fixture.destroy();
         expect(spy).toHaveBeenCalled();
     });
+
+    describe('tokenChange output', () => {
+        it('should emit a non-empty token when TurnstileService token is set', () => {
+            fixture.componentRef.setInput('siteKey', 'test-key');
+            fixture.detectChanges();
+
+            const emitted: string[] = [];
+            component.tokenChange.subscribe(t => emitted.push(t));
+
+            turnstileService.token.set('abc-token-123');
+            TestBed.flushEffects();
+
+            expect(emitted).toContain('abc-token-123');
+        });
+
+        it('should emit an empty string when TurnstileService token is cleared', () => {
+            fixture.componentRef.setInput('siteKey', 'test-key');
+            fixture.detectChanges();
+
+            turnstileService.token.set('abc-token-123');
+            TestBed.flushEffects();
+
+            const emitted: string[] = [];
+            component.tokenChange.subscribe(t => emitted.push(t));
+
+            turnstileService.token.set('');
+            TestBed.flushEffects();
+
+            expect(emitted).toContain('');
+        });
+
+        it('should not emit a non-empty token after token is cleared on expiry', () => {
+            fixture.componentRef.setInput('siteKey', 'test-key');
+            fixture.detectChanges();
+
+            turnstileService.token.set('initial-token');
+            TestBed.flushEffects();
+
+            const emitted: string[] = [];
+            component.tokenChange.subscribe(t => emitted.push(t));
+
+            // Simulate expiry clearing the token
+            turnstileService.token.set('');
+            TestBed.flushEffects();
+
+            expect(emitted).not.toContain('initial-token');
+            expect(emitted).toContain('');
+        });
+    });
 });

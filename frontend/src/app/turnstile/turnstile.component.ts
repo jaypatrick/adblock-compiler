@@ -63,12 +63,10 @@ export class TurnstileComponent {
             }
         });
 
-        // Watch for token changes and emit them through the tokenChange output
+        // Watch for token changes (including clears on expiry/error) and emit them
         effect(() => {
             const token = this.turnstileService.token();
-            if (token) {
-                this.tokenChange.emit(token);
-            }
+            this.tokenChange.emit(token);
         });
 
         // Clean up widget on destroy
