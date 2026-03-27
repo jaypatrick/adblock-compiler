@@ -244,6 +244,7 @@ See:
 
 - [KB-002](./KB-002-hyperdrive-database-down.md) — Hyperdrive binding connected but `database` service reports `down` (covers the `postgres://` vs `postgresql://` ZodError that was the first layer of this outage)
 - [KB-003](./KB-003-neon-hyperdrive-live-session-2026-03-25.md) — Live debugging session 2026-03-25 (full context of the 3-day investigation)
+- [KB-005](./KB-005-better-auth-cloudflare-ip-timeout.md) — Better Auth Cloudflare integration issues: Worker CPU timeout and silent rate limiting bypass
 
 ---
 

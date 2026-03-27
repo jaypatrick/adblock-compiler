@@ -200,8 +200,9 @@ All four config endpoints are **intentionally pre-auth** — they expose no secr
 ## Related KB Articles
 
 - [KB-002](./KB-002-hyperdrive-database-down.md) — Hyperdrive binding connected but `database` service reports `down`
-- *(planned)* KB-003 — Cloudflare Queue consumer not processing messages
-- *(planned)* KB-004 — Angular SPA serves stale build after worker deploy
+- [KB-003](./KB-003-neon-hyperdrive-live-session-2026-03-25.md) — Database Down After Deploy — Live Debugging Session (2026-03-25)
+- [KB-004](./KB-004-prisma-wasm-cloudflare.md) — Prisma WASM instantiation error on Cloudflare Workers
+- [KB-005](./KB-005-better-auth-cloudflare-ip-timeout.md) — Better Auth Cloudflare integration issues: Worker CPU timeout and silent rate limiting bypass
 
 ---
 
