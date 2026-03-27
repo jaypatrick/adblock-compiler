@@ -88,7 +88,8 @@ jobs:
           echo "Checking if Pages project exists..."
           PROJECT_LIST=$(
             {
-              retry_command 3 15 deno task wrangler pages project list
+              retry_command 3 15 deno task wrangler pages project list \
+                --config wrangler.pages.toml
             } 2>&1
           ) || {
             echo "Warning: Could not list Pages projects after retries (API may be temporarily unavailable)."
@@ -99,7 +100,10 @@ jobs:
             echo "Pages project already exists"
           else
             echo "Creating Pages project: ${{ env.CLOUDFLARE_PAGES_PROJECT }}"
-            retry_command 3 15 deno task wrangler pages project create "${{ env.CLOUDFLARE_PAGES_PROJECT }}" --production-branch main || {
+            retry_command 3 15 deno task wrangler pages project create \
+              "${{ env.CLOUDFLARE_PAGES_PROJECT }}" \
+              --production-branch main \
+              --config wrangler.pages.toml || {
               echo "Warning: Could not create Pages project after retries. Attempting deployment anyway."
               exit 0
             }
@@ -117,5 +121,6 @@ jobs:
           retry_command 3 15 deno task wrangler pages deploy book \
             --project-name="${{ env.CLOUDFLARE_PAGES_PROJECT }}" \
             --branch=main \
-            --commit-dirty=true
+            --commit-dirty=true \
+            --config wrangler.pages.toml
           echo "✅ Documentation deployed successfully"
