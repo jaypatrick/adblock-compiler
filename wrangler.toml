@@ -43,14 +43,6 @@ workers_dev = true
 # Forward all worker logs to Cloudflare Logpush (production only; no-op locally).
 logpush = true
 
-# ─── Pages (mdBook docs) ─────────────────────────────────────────────────────
-# Tells `wrangler pages deploy` where to find the built mdBook output.
-# Wrangler 4 auto-detects wrangler.toml for Pages deployments and requires
-# this field to be present. The Workers-specific fields above are ignored by
-# `wrangler pages` commands and vice versa.
-# See: .github/workflows/mdbook.yml
-pages_build_output_dir = "book"
-
 # ─── import.meta.url shim ────────────────────────────────────────────────────
 # Provides a stable fallback so that Node.js-compat polyfills
 # (fileURLToPath, createRequire) work in the bundled Worker where
