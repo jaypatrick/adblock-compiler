@@ -65,6 +65,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.78.0] - 2026-03-27
+
+### Added- add cache middleware to version, schemas, and config routes
+- apply logger and compress middleware globally
+
+### Fixed
+
+- resolve 5 failing hono-middleware tests in CI
+- add ExecutionContext to cache middleware tests
+- address PR review comments on hono-middleware tests and docs
+
+
 ## [0.77.3] - 2026-03-27
 
 ### Added### Fixed
