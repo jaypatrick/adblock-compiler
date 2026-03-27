@@ -309,7 +309,7 @@ export class AgentRpcService {
             ws.onmessage = (event: MessageEvent) => {
                 // Detect whether the payload is JSON for richer display.
                 let type: AgentMessageType = 'text';
-                let content = typeof event.data === 'string' ? event.data : String(event.data);
+                const content = typeof event.data === 'string' ? event.data : String(event.data);
 
                 try {
                     JSON.parse(content);

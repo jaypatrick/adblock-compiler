@@ -91,7 +91,7 @@ import type { AgentConnection } from '../../models/agent.models';
                 <span class="spacer"></span>
                 <!-- Message count badge -->
                 <span class="msg-count">
-                    {{ connection()?.messages().length ?? 0 }} message(s)
+                    {{ (connection()?.messages() ?? []).length }} message(s)
                 </span>
             </div>
         </mat-card-content>
@@ -118,7 +118,7 @@ import type { AgentConnection } from '../../models/agent.models';
             <mat-card-title>Message Log</mat-card-title>
         </mat-card-header>
         <mat-card-content>
-            @if ((connection()?.messages().length ?? 0) === 0) {
+            @if ((connection()?.messages() ?? []).length === 0) {
                 <!-- Empty state — shown before any messages arrive -->
                 <div class="empty-feed">
                     <mat-icon class="empty-icon" aria-hidden="true">chat_bubble_outline</mat-icon>
