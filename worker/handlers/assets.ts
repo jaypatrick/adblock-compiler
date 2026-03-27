@@ -4,17 +4,17 @@
  *
  * Serving logic:
  *   1. Root path (`/`) — serve the Angular SPA shell directly.
- *   2. Paths with a file extension — serve from ASSETS binding, 404 on miss.
+ *   2. Paths with a file extension — serve from STATIC_ASSETS binding, 404 on miss.
  *   3. Extensionless paths that are NOT server-handled — SPA fallback (Angular handles routing).
  *   4. Server-handled prefixes (`/api`, `/compile`, etc.) — real 404 so errors surface correctly.
- *   5. No ASSETS binding (local dev) — serve minimal HTML fallback.
+ *   5. No STATIC_ASSETS binding (local dev) — serve minimal HTML fallback.
  */
 
 import { ASSETS_BASE_URL, FILE_EXTENSION_RE, SPA_SERVER_PREFIXES } from '../utils/constants.ts';
 import type { Env } from '../types.ts';
 
 /**
- * Fetch a single asset from the ASSETS binding, following any redirects the
+ * Fetch a single asset from the STATIC_ASSETS binding, following any redirects the
  * binding may issue (301 / 302 / 307 / 308).
  */
 export async function fetchAssetWithRedirects(assets: Fetcher, url: URL): Promise<Response> {
@@ -32,7 +32,7 @@ export async function fetchAssetWithRedirects(assets: Fetcher, url: URL): Promis
 }
 
 /**
- * Return the Angular SPA shell from the ASSETS binding.
+ * Return the Angular SPA shell from the STATIC_ASSETS binding.
  * Tries index.html first (the canonical name produced by the postbuild script),
  * then index.csr.html (the raw Angular artifact) as a defensive fallback.
  */
@@ -67,17 +67,17 @@ export async function serveStaticAsset(
     env: Env,
     pathname: string,
 ): Promise<Response> {
-    if (env.ASSETS) {
+    if (env.STATIC_ASSETS) {
         try {
             if (pathname === '/') {
-                const shell = await fetchSpaShell(env.ASSETS);
+                const shell = await fetchSpaShell(env.STATIC_ASSETS);
                 if (shell) {
                     return shell;
                 }
             }
 
             const response = await fetchAssetWithRedirects(
-                env.ASSETS,
+                env.STATIC_ASSETS,
                 new URL(pathname, ASSETS_BASE_URL),
             );
 
@@ -97,7 +97,7 @@ export async function serveStaticAsset(
 
             const acceptsHtml = (request.headers.get('Accept') ?? '').includes('text/html');
             if (!FILE_EXTENSION_RE.test(pathname) && acceptsHtml) {
-                const shell = await fetchSpaShell(env.ASSETS);
+                const shell = await fetchSpaShell(env.STATIC_ASSETS);
                 if (shell) {
                     return shell;
                 }
@@ -119,7 +119,7 @@ export async function serveStaticAsset(
 }
 
 /**
- * Serve a minimal fallback HTML page when the ASSETS binding is not available.
+ * Serve a minimal fallback HTML page when the STATIC_ASSETS binding is not available.
  * Used in local `deno task dev` mode only.
  */
 export function serveWebUI(request: Request): Response {

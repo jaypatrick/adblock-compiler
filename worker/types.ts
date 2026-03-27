@@ -270,7 +270,8 @@ export interface Env {
     RATE_LIMIT: KVNamespace;
     METRICS: KVNamespace;
     // Static assets (always present; wrangler types generates this as required via wrangler 4.72 fix)
-    ASSETS: Fetcher;
+    // Named STATIC_ASSETS to avoid conflict with the Pages-reserved binding name "ASSETS".
+    STATIC_ASSETS: Fetcher;
     // Queue bindings (optional - queues must be created in Cloudflare dashboard first)
     ADBLOCK_COMPILER_QUEUE?: Queue<QueueMessage>;
     ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY?: Queue<QueueMessage>;

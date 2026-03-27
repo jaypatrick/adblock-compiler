@@ -61,7 +61,7 @@ flowchart TD
 
     %% ── Cloudflare Platform Bindings (key bindings — see wrangler.toml for full list) ──
     subgraph CFBindings["Cloudflare Platform Bindings (key — see wrangler.toml for full list)"]
-        CFAssets["ASSETS binding\n(Angular SPA static files)"]
+        CFAssets["STATIC_ASSETS binding\n(Angular SPA static files)"]
         KV_Cache["KV: COMPILATION_CACHE"]
         KV_RateLimit["KV: RATE_LIMIT"]
         KV_Metrics["KV: METRICS"]
@@ -173,8 +173,8 @@ flowchart TD
     CFAccess["☁️ Cloudflare Access\n(Zero Trust / WAF)"]
     CFTurnstile["🛡️ Cloudflare Turnstile\n(Human Verification)"]
 
-    %% ── Angular Frontend (served via API Worker ASSETS binding) ─────────────
-    subgraph FrontendApp["adblock-frontend  (Worker ASSETS binding)"]
+    %% ── Angular Frontend (served via API Worker STATIC_ASSETS binding) ─────────────
+    subgraph FrontendApp["adblock-frontend  (Worker STATIC_ASSETS binding)"]
         AngularSSR["Angular 21 SSR SPA"]
         HonoRPC["Hono RPC Client\nhc&lt;AppType&gt;()"]
         AngularSSR --> HonoRPC
@@ -215,7 +215,7 @@ flowchart TD
         R2Buckets["R2: FILTER_STORAGE\nCOMPILER_LOGS"]
         CFQueues["Queues\nADBLOCK_COMPILER_QUEUE\nADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY"]
         AnalyticsEngine["Analytics Engine\n(ANALYTICS_ENGINE · METRICS_PIPELINE)"]
-        CFAssets["ASSETS binding\n(Angular SPA static files)"]
+        CFAssets["STATIC_ASSETS binding\n(Angular SPA static files)"]
         BrowserRendering["BROWSER\n(CF Browser Rendering)"]
         HyperdriveBinding["HYPERDRIVE\n(PostgreSQL connection pool)"]
     end
