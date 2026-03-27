@@ -43,6 +43,15 @@ workers_dev = true
 # Forward all worker logs to Cloudflare Logpush (production only; no-op locally).
 logpush = true
 
+# ─── Pages (mdBook docs) ─────────────────────────────────────────────────────
+# Tells `wrangler pages deploy` where to find the built mdBook output.
+# Wrangler 4 auto-detects wrangler.toml for Pages deployments and requires
+# this field at the root level (not nested under any [section]).
+# The Workers-specific bindings and sections below are ignored by `wrangler pages` commands.
+# ASSETS was renamed to STATIC_ASSETS to avoid conflict with the Pages-reserved name.
+# See: .github/workflows/mdbook.yml
+pages_build_output_dir = "book"
+
 # ─── import.meta.url shim ────────────────────────────────────────────────────
 # Provides a stable fallback so that Node.js-compat polyfills
 # (fileURLToPath, createRequire) work in the bundled Worker where
@@ -210,7 +219,7 @@ new_sqlite_classes = ["PlaywrightMcpAgent"]
 # or `wrangler dev` to serve the pre-built dist output.
 [assets]
 directory = "./frontend/dist/adblock-compiler/browser"
-binding = "ASSETS"
+binding = "STATIC_ASSETS"
 html_handling = "auto-trailing-slash"
 # SPA fallback: any path not matching a static file gets index.html so
 # Angular's client-side router can handle /compiler, /performance, etc.
