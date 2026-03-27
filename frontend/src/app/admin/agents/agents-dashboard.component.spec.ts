@@ -250,21 +250,11 @@ describe('AgentsDashboardComponent', () => {
     /**
      * Verifies that terminateSession() calls the service terminateSession method
      * with the correct session ID and optimistically marks it ended in local state.
+     * Uses createComponent() helper to ensure the same DI setup as other tests.
      */
     it('should call terminateSession service method and optimistically update session', async () => {
         const mock = buildMockService();
-        const snackBar = { open: vi.fn() };
-        await TestBed.configureTestingModule({
-            imports: [AgentsDashboardComponent, NoopAnimationsModule],
-            providers: [
-                provideZonelessChangeDetection(),
-                provideRouter([]),
-                { provide: AgentRpcService, useValue: mock },
-                { provide: MatSnackBar, useValue: snackBar },
-            ],
-        }).compileComponents();
-
-        const fixture = TestBed.createComponent(AgentsDashboardComponent);
+        const fixture = await createComponent(mock);
         const comp = fixture.componentInstance;
 
         // Trigger the first render — fires afterNextRender() → loadData().
@@ -282,6 +272,8 @@ describe('AgentsDashboardComponent', () => {
         // Optimistic update — the session row should now have ended_at set.
         expect(comp.sessions()[0].ended_at).not.toBeNull();
         expect(comp.sessions()[0].end_reason).toBe('admin_terminated');
+        // Snackbar should be opened (get from the TestBed injector).
+        const snackBar = TestBed.inject(MatSnackBar) as { open: ReturnType<typeof vi.fn> };
         expect(snackBar.open).toHaveBeenCalled();
     });
 });

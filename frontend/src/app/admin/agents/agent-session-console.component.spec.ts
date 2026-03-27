@@ -9,9 +9,12 @@
  * - Tests verify: signal state (connection status, message list), sendMessage(),
  *   reconnect(), disconnectManually(), and route-param-driven reconnection.
  *
- * Note: afterNextRender() does not fire in unit tests — _isClient is set
- * manually (or _routeConnectionEffect is triggered directly) to test connection
- * behaviour without needing a real browser render cycle.
+ * Note: Tests that need an active connection use fixture.detectChanges() +
+ * await fixture.whenStable() instead of calling openConnection() directly.
+ * detectChanges() fires afterNextRender() → _isClient.set(true) → effect →
+ * openConnection(). Subsequent detectChanges() calls do NOT re-fire afterNextRender
+ * (it fires only once), so the connection established by the effect is stable.
+ * Tests that check the null initial state simply omit detectChanges().
  *
  * See docs/frontend/AGENTS_FRONTEND.md#testing for the full testing guide.
  */
@@ -36,12 +39,6 @@ type MockConnection = AgentConnection & {
     _messagesSignal: ReturnType<typeof signal<AgentMessage[]>>;
     sendSpy: ReturnType<typeof vi.fn>;
     disconnectSpy: ReturnType<typeof vi.fn>;
-};
-
-/** Type-cast helper to call the private openConnection() method in tests. */
-type ConsoleWithPrivate = AgentSessionConsoleComponent & {
-    openConnection(): Promise<void>;
-    _isClient: ReturnType<typeof signal<boolean>>;
 };
 
 /**
@@ -143,18 +140,21 @@ describe('AgentSessionConsoleComponent', () => {
      * and statusLabel should show 'Disconnected'.
      */
     it('should show Disconnected when connection signal is null', () => {
-        // connection is null until afterNextRender (which doesn't fire in tests).
+        // detectChanges() is NOT called in this test, so afterNextRender has
+        // not fired. _isClient is still false, so the effect does not open a
+        // connection. connection() remains null.
         expect(component.connection()).toBeNull();
         expect(component.statusLabel()).toBe('Disconnected');
     });
 
     /**
-     * After openConnection() is called, the connection signal should be
-     * populated with the mock AgentConnection returned by AgentRpcService.connect().
+     * After the first render cycle (detectChanges fires afterNextRender →
+     * _isClient=true → _routeConnectionEffect → openConnection()), the
+     * connection signal should be populated with the mock AgentConnection.
      */
-    it('should populate connection signal after openConnection()', async () => {
-        await (component as unknown as ConsoleWithPrivate).openConnection();
+    it('should populate connection signal after first render', async () => {
         fixture.detectChanges();
+        await fixture.whenStable();
 
         expect(component.connection()).not.toBeNull();
         expect(mockAgentRpc.connect).toHaveBeenCalledWith('mcp-agent', 'default', 'fake-token', expect.anything());
@@ -164,20 +164,20 @@ describe('AgentSessionConsoleComponent', () => {
      * statusLabel should reflect the connection status signal value.
      */
     it('should compute statusLabel from connection status', async () => {
-        await (component as unknown as ConsoleWithPrivate).openConnection();
-        const conn = component.connection()!;
         fixture.detectChanges();
+        await fixture.whenStable();
+        const conn = component.connection()! as MockConnection;
 
         // The mock starts in 'connecting'.
         expect(component.statusLabel()).toBe('Connecting…');
 
         // Simulate transition to connected.
-        (conn as MockConnection)._statusSignal.set('connected');
+        conn._statusSignal.set('connected');
         fixture.detectChanges();
         expect(component.statusLabel()).toBe('Connected');
 
         // Simulate error state.
-        (conn as MockConnection)._statusSignal.set('error');
+        conn._statusSignal.set('error');
         fixture.detectChanges();
         expect(component.statusLabel()).toBe('Error');
     });
@@ -190,15 +190,15 @@ describe('AgentSessionConsoleComponent', () => {
      * sendMessage() should be a no-op when the connection is not connected.
      */
     it('should not send a message when connection is not connected', async () => {
-        await (component as unknown as ConsoleWithPrivate).openConnection();
-        const conn = component.connection()!;
         fixture.detectChanges();
+        await fixture.whenStable();
+        const conn = component.connection()! as MockConnection;
 
         // Status is 'connecting' — send should be ignored.
         component.messageInput = 'hello';
         component.sendMessage();
 
-        expect((conn as MockConnection).sendSpy).not.toHaveBeenCalled();
+        expect(conn.sendSpy).not.toHaveBeenCalled();
     });
 
     /**
@@ -206,7 +206,8 @@ describe('AgentSessionConsoleComponent', () => {
      * and clear the input when status is 'connected'.
      */
     it('should send message and clear input when connected', async () => {
-        await (component as unknown as ConsoleWithPrivate).openConnection();
+        fixture.detectChanges();
+        await fixture.whenStable();
         const conn = component.connection()! as MockConnection;
         conn._statusSignal.set('connected');
         fixture.detectChanges();
@@ -220,7 +221,8 @@ describe('AgentSessionConsoleComponent', () => {
 
     /** sendMessage() should be a no-op when the input is blank (even when connected). */
     it('should not send an empty message', async () => {
-        await (component as unknown as ConsoleWithPrivate).openConnection();
+        fixture.detectChanges();
+        await fixture.whenStable();
         const conn = component.connection()! as MockConnection;
         conn._statusSignal.set('connected');
         fixture.detectChanges();
@@ -240,9 +242,9 @@ describe('AgentSessionConsoleComponent', () => {
      * signal, and open a new connection.
      */
     it('should disconnect existing connection and reconnect', async () => {
-        await (component as unknown as ConsoleWithPrivate).openConnection();
-        const firstConn = component.connection()! as MockConnection;
         fixture.detectChanges();
+        await fixture.whenStable();
+        const firstConn = component.connection()! as MockConnection;
 
         // Set up a fresh mock for the reconnect call.
         const secondConn = buildMockConnection('connecting');
@@ -261,9 +263,9 @@ describe('AgentSessionConsoleComponent', () => {
      * disconnectManually() should call disconnect() on the active connection.
      */
     it('should call disconnect when disconnectManually() is invoked', async () => {
-        await (component as unknown as ConsoleWithPrivate).openConnection();
-        const conn = component.connection()! as MockConnection;
         fixture.detectChanges();
+        await fixture.whenStable();
+        const conn = component.connection()! as MockConnection;
 
         component.disconnectManually();
 
@@ -275,17 +277,14 @@ describe('AgentSessionConsoleComponent', () => {
     // -----------------------------------------------------------------------
 
     /**
-     * When _isClient is set to true, the _routeConnectionEffect fires and opens
-     * a connection for the current slug/instanceId. This simulates what happens
-     * after afterNextRender() marks the component as in a browser context.
+     * When afterNextRender fires (simulated by detectChanges()), _isClient
+     * becomes true, the _routeConnectionEffect fires, and a connection is
+     * opened for the current slug/instanceId route params.
      */
     it('should open connection when _isClient becomes true', async () => {
-        // At this point afterNextRender has NOT fired so _isClient is false.
-        // Simulate the browser render by setting _isClient directly.
-        (component as unknown as ConsoleWithPrivate)._isClient.set(true);
-        // detectChanges() flushes the effect queue so _routeConnectionEffect
-        // runs and calls openConnection(); await whenStable() then flushes the
-        // async token fetch so connect() is called before the assertion.
+        // detectChanges() fires afterNextRender() → _isClient.set(true) →
+        // _routeConnectionEffect runs → openConnection(); whenStable() awaits
+        // the async token fetch so connect() is called before the assertion.
         fixture.detectChanges();
         await fixture.whenStable();
 
