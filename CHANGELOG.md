@@ -66,6 +66,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.79.0] - 2026-03-27
+
+### Added- **agents**: Angular frontend for Agent Worker integration (issue #1383)
+
+### Fixed
+
+- **ci**: spy on component snackBar field directly to fix MatSnackBar injector hierarchy issue
+- **ci**: resolve 4 agent frontend test failures
+- **ci**: resolve all 5 test failures in agent frontend specs
+- run deno fmt on og-image.svg to fix CI lint-format check
+- **agents**: address round 2 review comments — fixture alignment, cancellation guard, MatSnackBarModule
+- add PNG og-image as primary; keep SVG as fallback for modern crawlers
+- replace broken og.tailgraph.com URLs with self-hosted og-image.svg
+- **agents**: fix CI failures — TS2532 optional chain + prefer-const
+- **agents**: address all PR review comments — no double-fetch, route-param reconnect, safeRandomUUID, missing specs
+- revert STATIC_ASSETS rename back to ASSETS, remove pages_build_output_dir
+- rename ASSETS binding to STATIC_ASSETS and restore pages_build_output_dir
+- remove pages_build_output_dir from wrangler.toml to fix reserved ASSETS binding error
+- move pages_build_output_dir to TOML root section (before first table header)
+- revert wrangler.pages.toml approach; add pages_build_output_dir to wrangler.toml
+- eliminate wrangler.toml Pages warning in mdbook deploy workflow
+- apply PR review comments - brotli comment, agent diagram, auth bypass regression tests
+- reorder middleware to prevent 'Unable to reach API' error
+
+
 ## [0.78.0] - 2026-03-27
 
 ### Added- add cache middleware to version, schemas, and config routes
