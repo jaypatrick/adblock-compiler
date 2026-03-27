@@ -61,7 +61,7 @@ export function getProjectUrls(env: { URL_FRONTEND?: string; URL_API?: string; U
     } as const;
 }
 
-/** Base URL used when constructing asset fetch requests to the ASSETS binding. */
+/** Base URL used when constructing asset fetch requests to the STATIC_ASSETS binding. */
 export const ASSETS_BASE_URL = 'http://assets';
 
 /** Matches paths that have a file extension (e.g. `.js`, `.css`, `.png`). */

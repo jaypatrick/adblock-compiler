@@ -57,13 +57,13 @@ cd frontend
 #   2. postbuild → copies index.csr.html to index.html
 npm run build
 
-# Deploy the Worker (which serves the Angular SPA via ASSETS binding)
+# Deploy the Worker (which serves the Angular SPA via STATIC_ASSETS binding)
 deno task wrangler:deploy
 ```
 
-The postbuild step is handled by `frontend/scripts/postbuild.js`. If you skip the postbuild, the Cloudflare Worker `ASSETS` binding falls back to `index.csr.html`, but the recommended path is always to run `npm run build` (not `ng build` directly).
+The postbuild step is handled by `frontend/scripts/postbuild.js`. If you skip the postbuild, the Cloudflare Worker `STATIC_ASSETS` binding falls back to `index.csr.html`, but the recommended path is always to run `npm run build` (not `ng build` directly).
 
-**SPA Routing (Worker):** The Cloudflare Worker already handles SPA fallback — extensionless paths not matched by API routes are served the Angular shell (`index.html`) via the `ASSETS` binding. **SPA Routing (Pages-only):** If you deploy the Angular `dist/` output directly to **Cloudflare Pages** instead of serving it via the Worker `ASSETS` binding, you can use a `_redirects` file for SPA routing. In that setup, `frontend/src/_redirects` should contain `/* /index.html 200`, and this file is copied into the browser output root during the Angular build via `angular.json`'s `assets` configuration.
+**SPA Routing (Worker):** The Cloudflare Worker already handles SPA fallback — extensionless paths not matched by API routes are served the Angular shell (`index.html`) via the `STATIC_ASSETS` binding. **SPA Routing (Pages-only):** If you deploy the Angular `dist/` output directly to **Cloudflare Pages** instead of serving it via the Worker `STATIC_ASSETS` binding, you can use a `_redirects` file for SPA routing. In that setup, `frontend/src/_redirects` should contain `/* /index.html 200`, and this file is copied into the browser output root during the Angular build via `angular.json`'s `assets` configuration.
 
 #### Pages Deployment (Legacy static UI — Retired)
 
