@@ -58,17 +58,18 @@ These variables are set by middleware and available to all route handlers via `c
 The frontend uses `API_BASE_URL = '/api'`, so all API requests from the frontend arrive
 as `/api/compile`, `/api/rules`, etc.
 
-Hono's `app.route()` is used to mount the same `routes` sub-app under both `/` and `/api`:
+Prior to Phase 4, Hono's `app.route()` was used to mount the `routes` sub-app under
+**both** `/` and `/api`. The bare-path mount was removed in Phase 4 (domain route split)
+to eliminate the double-execution side-effect and simplify the routing surface:
 
 ```typescript
-// /api is mounted first — ensures correct prefix-stripping for /api/* requests
-// before the root-mount sub-app intercepts them as unrecognised paths.
+// Phase 4: /api is the canonical base path — bare-path mount removed.
 app.route('/api', routes);
-app.route('/', routes);
+// app.route('/', routes);  ← removed in Phase 4
 ```
 
-This means `/compile` and `/api/compile` both reach the same handler. No path-stripping
-logic is needed in route handlers.
+`/api` is the only canonical base path. Bare-path requests (`/compile`, `/health`, etc.)
+are no longer served.
 
 ---
 
@@ -231,8 +232,66 @@ client usage, and ZTA notes.
 
 ---
 
-## Phase 3 Roadmap
+## Phase 4 — Domain Route Modules (complete)
 
-- Generate OpenAPI spec from route + schema definitions using `hono/openapi`
-- Generate a type-safe RPC client with `hono/client` for the frontend
-- Extend `zValidator` to additional endpoints (e.g. `/configuration/validate`, `/validate-rule`)
+Phase 4 split the `worker/hono-app.ts` monolith into domain-scoped route files under
+`worker/routes/`. Each file exports a single `OpenAPIHono` sub-app instance that is
+mounted on the `routes` sub-app in `hono-app.ts`.
+
+### New file layout
+
+```
+worker/
+  hono-app.ts                      ← app setup + middleware only; imports route modules
+  routes/
+    compile.routes.ts              ← /compile/*, /validate, /ast/parse, /ws/compile, /validate-rule
+    rules.routes.ts                ← /rules/*
+    queue.routes.ts                ← /queue/*
+    configuration.routes.ts        ← /configuration/*
+    admin.routes.ts                ← /admin/* (users, neon, agents, auth-config, usage, storage)
+    monitoring.routes.ts           ← /health/*, /metrics/*, /container/status
+    api-keys.routes.ts             ← /keys/*
+    webhook.routes.ts              ← /notify
+    workflow.routes.ts             ← /workflow/*
+    browser.routes.ts              ← /browser/* (stub — routes added in a future PR)
+    index.ts                       ← barrel: exports all sub-apps
+    shared.ts                      ← shared types (AppContext) and helpers used by route files
+```
+
+### Mount strategy
+
+Each domain sub-app is mounted on the `routes` sub-app at the root path:
+
+```typescript
+routes.route('/', compileRoutes);
+routes.route('/', rulesRoutes);
+routes.route('/', queueRoutes);
+// ... etc
+```
+
+The `routes` sub-app itself is mounted only at `/api`:
+
+```typescript
+app.route('/api', routes);
+// app.route('/', routes);  ← bare-path double-mount removed in Phase 4
+```
+
+### Middleware inheritance
+
+All middleware registered on `routes` (logger, compress with `NO_COMPRESS_PATHS`
+exclusion, ZTA permission check) still wraps every sub-app route, because the
+sub-apps are mounted on `routes` — not directly on `app`. No middleware changes
+were needed.
+
+### CI route-order guard
+
+`scripts/lint-route-order.ts` validates four invariants on every CI run:
+
+1. `timing()` is the first `app.use()` call
+2. The Better Auth `/api/auth/*` handler is registered before `agentRouter`
+3. `app.route('/', routes)` is absent (no bare-path double-mount)
+4. The compress middleware uses the `NO_COMPRESS_PATHS` exclusion pattern
+
+Run manually with: `deno task lint:routes`
+
+

@@ -32,6 +32,7 @@
         "bench:transformations": "deno bench src/transformations/*.bench.ts",
         "bench:json": "deno bench --allow-read --allow-write --allow-net --allow-env --json",
         "lint": "deno lint",
+        "lint:routes": "deno run --allow-read scripts/lint-route-order.ts",
         "fmt": "deno fmt",
         "fmt:check": "deno fmt --check",
         "check": "deno task check:src && deno task check:worker",
