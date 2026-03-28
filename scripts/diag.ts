@@ -11,7 +11,7 @@
  *   1 — one or more checks failed
  */
 
-import { bold, cyan, green, red, yellow } from 'jsr:@std/fmt/colors';
+import { bold, cyan, green, red, yellow } from 'jsr:@std/fmt@^1.0.0/colors';
 
 // ── Environment base-URL map ──────────────────────────────────────────────────
 
