@@ -67,6 +67,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.79.1] - 2026-03-28
+
+### Added### Fixed
+
+- resolve production outage v0.79.0 — compress/logger scoped to routes, CORS credentials, handleDbSmoke timeout
+
+
 ## [0.79.0] - 2026-03-27
 
 ### Added- **agents**: Angular frontend for Agent Worker integration (issue #1383)
