@@ -353,7 +353,15 @@ app.use('*', async (c, next) => {
 // middleware to avoid interfering with Better Auth's response handling. Better Auth
 // returns responses directly without calling next(), and applying compression/logging
 // middleware before this handler can cause response stream conflicts.
-app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
+//
+// NOTE: /api/auth/providers is NOT a Better Auth route — it is a custom public
+// endpoint registered in the pre-auth meta section (after CORS + rate-limiting).
+// This handler explicitly passes through for that path so the specific handler
+// receives full middleware coverage (CORS headers, anonymous-tier rate limiting).
+app.on(['POST', 'GET'], '/api/auth/*', async (c, next) => {
+    // Pass through for custom endpoint — let it reach its registered handler with
+    // full CORS and rate-limiting middleware applied.
+    if (c.req.path === '/api/auth/providers') return next();
     if (!c.env.BETTER_AUTH_SECRET) return c.notFound();
     if (!c.env.HYPERDRIVE) {
         // Misconfigured deployment: Hyperdrive (Neon PostgreSQL) binding is missing.
@@ -632,6 +640,8 @@ app.get('/api/deployments/*', handleApiMeta);
 app.get('/api/turnstile-config', handleApiMeta);
 app.get('/api/sentry-config', handleApiMeta);
 // Public: returns which auth providers are active — used by frontend to conditionally render social login buttons.
+// Registered here (after CORS + rate-limiting middleware) so it receives full middleware coverage.
+// The Better Auth /api/auth/* wildcard explicitly passes through for this path.
 app.get('/api/auth/providers', (c) => handleAuthProviders(c.req.raw, c.env));
 
 // ============================================================================
