@@ -693,48 +693,214 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 5
         needs: [deploy]
-        permissions:
-            contents: read
+        permissions: {}
         if: >-
             always() &&
             needs.deploy.result == 'success' &&
             github.event_name == 'push' &&
             github.ref == 'refs/heads/main'
         steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-
             - name: Wait for Cloudflare propagation
               run: sleep 15
 
-            - name: Run diagnostic tool against backend
-              run: deno run -A scripts/diag.ts --base-url https://adblock-compiler.jayson-knight.workers.dev
+            - name: Check /api/health
+              id: health
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /tmp/health.json -w "%{http_code}" \
+                    https://adblock-compiler.jayson-knight.workers.dev/api/health)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/health (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ /api/health returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  # "degraded" is acceptable — it means non-critical services (e.g. Hyperdrive) are
+                  # slow but the API is functional. Only "down" indicates a complete outage.
+                  jq -e '.status == "healthy" or .status == "degraded"' /tmp/health.json || {
+                    echo "❌ /api/health status is not healthy or degraded:"
+                    cat /tmp/health.json
+                    exit 1
+                  }
+                  echo "✅ /api/health OK ($(jq -r .status /tmp/health.json))"
+
+            - name: Check /api/version
+              id: version
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /tmp/version.json -w "%{http_code}" \
+                    https://adblock-compiler.jayson-knight.workers.dev/api/version)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/version (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ /api/version returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  echo "✅ /api/version OK"
+
+            - name: Check /api/auth/providers
+              id: auth
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+                    https://adblock-compiler.jayson-knight.workers.dev/api/auth/providers)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/auth/providers (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ /api/auth/providers returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  echo "✅ /api/auth/providers OK"
+
+            - name: Write smoke test summary
+              if: always()
+              run: |
+                  HEALTH_CODE="${{ steps.health.outputs.http_code || '—' }}"
+                  VERSION_CODE="${{ steps.version.outputs.http_code || '—' }}"
+                  AUTH_CODE="${{ steps.auth.outputs.http_code || '—' }}"
+                  cat >> "$GITHUB_STEP_SUMMARY" << EOF
+                  ## 🔍 Backend Smoke Tests
+
+                  | Endpoint | HTTP Status | Result |
+                  |---|---|---|
+                  | \`/api/health\` | $HEALTH_CODE | $( [ "$HEALTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  | \`/api/version\` | $VERSION_CODE | $( [ "$VERSION_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  | \`/api/auth/providers\` | $AUTH_CODE | $( [ "$AUTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  EOF
 
     smoke-test-frontend:
         name: Smoke Test — Frontend
         runs-on: ubuntu-latest
         timeout-minutes: 5
         needs: [deploy-frontend]
-        permissions:
-            contents: read
+        permissions: {}
         if: >-
             always() &&
             needs.deploy-frontend.result == 'success' &&
             github.event_name == 'push' &&
             github.ref == 'refs/heads/main'
         steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-
             - name: Wait for Cloudflare propagation
               run: sleep 15
 
-            - name: Run diagnostic tool against frontend
-              run: deno run -A scripts/diag.ts --base-url https://adblock-frontend.jayson-knight.workers.dev
+            - name: Check homepage returns 200
+              id: homepage
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+                    https://adblock-frontend.jayson-knight.workers.dev/)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling homepage (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ Homepage returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  echo "✅ Homepage OK"
+
+            - name: Check SSR API proxy (/api/auth/providers)
+              id: proxy
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+                    https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling SSR API proxy (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ SSR API proxy /api/auth/providers returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  echo "✅ SSR API proxy OK"
+
+            - name: Check health via SSR proxy
+              id: health
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /tmp/fe-health.json -w "%{http_code}" \
+                    https://adblock-frontend.jayson-knight.workers.dev/api/health)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/health via frontend (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ /api/health via frontend returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  # "degraded" is acceptable — it means non-critical services are slow but the API
+                  # is functional. Only "down" indicates a complete outage.
+                  jq -e '.status == "healthy" or .status == "degraded"' /tmp/fe-health.json || {
+                    echo "❌ /api/health status is not healthy or degraded:"
+                    cat /tmp/fe-health.json
+                    exit 1
+                  }
+                  echo "✅ /api/health via frontend OK"
+
+            - name: Write smoke test summary
+              if: always()
+              run: |
+                  HOMEPAGE_CODE="${{ steps.homepage.outputs.http_code || '—' }}"
+                  PROXY_CODE="${{ steps.proxy.outputs.http_code || '—' }}"
+                  HEALTH_CODE="${{ steps.health.outputs.http_code || '—' }}"
+                  cat >> "$GITHUB_STEP_SUMMARY" << EOF
+                  ## 🔍 Frontend Smoke Tests
+
+                  | Check | HTTP Status | Result |
+                  |---|---|---|
+                  | Homepage | $HOMEPAGE_CODE | $( [ "$HOMEPAGE_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  | SSR API proxy (\`/api/auth/providers\`) | $PROXY_CODE | $( [ "$PROXY_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  | Health via proxy (\`/api/health\`) | $HEALTH_CODE | $( [ "$HEALTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  EOF
 
     deploy-status:
         name: Deployment Status

@@ -15,7 +15,7 @@
  *  - `timing()` middleware adds `Server-Timing` headers to every response
  *  - `etag()` on GET /metrics and GET /health for conditional request support
  *  - `prettyJSON()` globally (activate with `?pretty=true`)
- *  - `compress()` on the `routes` sub-app for automatic response compression (gzip/deflate) — scoped to business routes, never touches /api/auth/* or monitoring endpoints (/health, /metrics)
+ *  - `compress()` on the `routes` sub-app for automatic response compression (gzip/deflate) — scoped to business routes, never touches /api/auth/*
  *  - `logger()` on the `routes` sub-app for standardized request/response logging — scoped to business routes, never touches /api/auth/*
  *  - `cache()` middleware on /configuration/defaults (300s), /api/version (3600s), /api/schemas (3600s)
  *  - Cache-Control headers on /health (30 s) and /configuration/defaults (300 s)
@@ -645,22 +645,19 @@ const routes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 // Better Auth handler responses.  app.on('/api/auth/*') is resolved before the
 // routes sub-app mount, so auth traffic is completely unaffected.
 routes.use('*', logger());
-// Monitoring/diagnostic endpoints must remain human-readable (JSON or plaintext)
-// and must never be compressed. Some Cloudflare edge configs strip
-// Accept-Encoding before it reaches the Worker, so these endpoints would
-// otherwise return gzip bytes that tools like jq/curl cannot handle predictably.
-const COMPRESS_EXCLUDE = new Set<string>([
-    ...MONITORING_BARE_PATHS,
-    '/metrics/prometheus',
-]);
 
-// Create the compress middleware once to avoid per-request instantiation overhead.
+// Compress all routes EXCEPT health/smoke diagnostics — those must return
+// raw JSON so curl | jq works without Accept-Encoding negotiation.
+// Cloudflare's edge can strip or re-encode Accept-Encoding before it reaches
+// the Worker, which means compress() would encode /health even for plain curl.
+const NO_COMPRESS_PATHS = new Set(['/health', '/health/db-smoke', '/health/latest', '/metrics']);
+// Instantiate once — avoids creating a new closure on every request.
 const compressMiddleware = compress();
-
 routes.use('*', async (c, next) => {
-    // Use canonical route path so compression exclusion matches other middleware.
-    const bare = routesPath(c);
-    if (COMPRESS_EXCLUDE.has(bare)) {
+    // routesPath() strips the /api prefix so the path matches the canonical
+    // route registered in ROUTE_PERMISSION_REGISTRY (e.g. /health not /api/health).
+    const path = routesPath(c);
+    if (NO_COMPRESS_PATHS.has(path)) {
         await next();
         return;
     }
@@ -1139,43 +1136,24 @@ routes.all('/workflow/*', async (c) => {
 routes.get('/health', async (c) => {
     const { handleHealth } = await import('./handlers/health.ts');
     const res = await handleHealth(c.env);
-    // Read body as text to avoid stream-level compression issues when compress()
-    // middleware is active on other routes in the same sub-app.
-    const body = await res.text();
-    return new Response(body, {
+    // Cache health checks for 30 seconds — stale-while-revalidate for availability
+    return new Response(res.body, {
         status: res.status,
         headers: {
             ...Object.fromEntries(res.headers),
             'Cache-Control': 'public, max-age=30, stale-while-revalidate=10',
-            'Content-Type': 'application/json',
         },
     });
 });
 
 routes.get('/health/latest', async (c) => {
     const { handleHealthLatest } = await import('./handlers/health.ts');
-    const res = await handleHealthLatest(c.env);
-    const body = await res.text();
-    return new Response(body, {
-        status: res.status,
-        headers: {
-            ...Object.fromEntries(res.headers),
-            'Content-Type': 'application/json',
-        },
-    });
+    return handleHealthLatest(c.env);
 });
 
 routes.get('/health/db-smoke', async (c) => {
     const { handleDbSmoke } = await import('./handlers/health.ts');
-    const res = await handleDbSmoke(c.env);
-    const body = await res.text();
-    return new Response(body, {
-        status: res.status,
-        headers: {
-            ...Object.fromEntries(res.headers),
-            'Content-Type': 'application/json',
-        },
-    });
+    return handleDbSmoke(c.env);
 });
 
 routes.get('/container/status', etag(), async (c) => {
