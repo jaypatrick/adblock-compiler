@@ -6,8 +6,8 @@
  * (which accept the legacy `(Request, Env, ...)` signature) can parse.
  *
  * For Hono route handlers that already have `c.req.url` and
- * `c.req.raw.headers` available, use the internal `buildHonoRequest` helper
- * defined in `worker/hono-app.ts` instead.
+ * `c.req.raw.headers` available, prefer `buildSyntheticRequest(c, validatedBody)`
+ * defined in `worker/routes/shared.ts` instead.
  */
 export function buildSyntheticRequest(body: string): Request {
     return new Request('https://worker.local', {

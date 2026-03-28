@@ -79,6 +79,10 @@ flowchart TD
 - `adminProcedure` additionally enforces `role === 'admin'` (returns `FORBIDDEN`).
 - Auth failures emit `AnalyticsService.trackSecurityEvent()` via the `onError` hook
   in `worker/trpc/handler.ts`.
-- The global rate-limit middleware runs before all tRPC requests (shared with REST
-  endpoints).
+- `/api/trpc/*` has its own `app.use('/api/trpc/*', rateLimitMiddleware())` middleware
+  applied directly on `app` before `handleTrpcRequest`, enforcing tiered rate limits
+  (including `rate_limit` security telemetry) for all tRPC calls.
+- `/api/trpc/*` has its own ZTA access-gate middleware that calls `checkUserApiAccess()`
+  (blocks banned/suspended users) and `trackApiUsage()` (billing/analytics) —
+  matching the same checks applied to REST routes by `routes.use('*', ...)`.
 - CORS is inherited from the global `cors()` middleware already in place on `app`.
