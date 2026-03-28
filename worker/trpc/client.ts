@@ -5,7 +5,11 @@
  *   const client = createTrpcClient('https://adblock-compiler.jayson-knight.workers.dev',
  *                                   () => authService.getToken());
  *   const health = await client.v1.health.get.query();
- *   const result = await client.v1.compile.json.mutate({ urls: ['...'] });
+ *   const result = await client.v1.compile.json.mutate({
+ *     configuration: {
+ *       sources: [{ url: 'https://example.com/filters.txt' }],
+ *     },
+ *   });
  */
 
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
