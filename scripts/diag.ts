@@ -167,8 +167,8 @@ async function checkEndpoint(baseUrl: string, check: CheckDef): Promise<CheckRes
                 const ds = new DecompressionStream('gzip');
                 const writer = ds.writable.getWriter();
                 const reader = ds.readable.getReader();
-                writer.write(bytes);
-                writer.close();
+                await writer.write(bytes);
+                await writer.close();
                 const chunks: Uint8Array[] = [];
                 while (true) {
                     const { done, value } = await reader.read();
