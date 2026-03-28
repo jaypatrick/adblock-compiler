@@ -66,10 +66,20 @@ const TIMEOUT_MS: number = isNaN(rawTimeout) || rawTimeout <= 0 ? 15_000 : rawTi
 
 function resolveProbes(spec: string): ProbeName[] {
     if (spec === 'all') return [...PROBE_NAMES];
-    return spec
-        .split(',')
-        .map((s) => s.trim())
-        .filter((s): s is ProbeName => s in PROBES);
+    const requested = spec.split(',').map((s) => s.trim()).filter((s) => s.length > 0);
+    const unknown = requested.filter((s) => !(s in PROBES));
+    if (unknown.length > 0) {
+        console.error(`❌ Unknown probe(s): ${unknown.join(', ')}`);
+        console.error(`   Available probes: ${PROBE_NAMES.join(', ')}`);
+        Deno.exit(1);
+    }
+    const valid = requested.filter((s): s is ProbeName => s in PROBES);
+    if (valid.length === 0) {
+        console.error('❌ No valid probes specified. Use --probe=all or provide probe name(s).');
+        console.error(`   Available probes: ${PROBE_NAMES.join(', ')}`);
+        Deno.exit(1);
+    }
+    return valid;
 }
 
 // ─── Table rendering ──────────────────────────────────────────────────────────

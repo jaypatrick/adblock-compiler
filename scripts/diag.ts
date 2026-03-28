@@ -25,19 +25,32 @@ export interface DiagResult {
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 /**
+ * Non-decompressing HTTP client for raw gzip byte detection.
+ *
+ * Deno's default `fetch()` auto-decompresses responses when `Content-Encoding:
+ * gzip` is present — which hides the exact failure mode we need to detect.
+ * This client bypasses auto-decompression so probes can inspect on-the-wire bytes.
+ */
+const RAW_HTTP_CLIENT: Deno.HttpClient = Deno.createHttpClient({ decompress: false });
+
+/**
  * Safely fetch a URL with an AbortController timeout.
  * Returns `null` on any network or timeout error, populating `error`.
+ *
+ * @param client - Optional Deno.HttpClient. Pass RAW_HTTP_CLIENT to disable
+ *                 auto-decompression and inspect raw response bytes.
  */
 async function safeFetch(
     url: string,
     init: RequestInit,
     timeoutMs: number,
+    client?: Deno.HttpClient,
 ): Promise<{ res: Response; latency_ms: number } | { error: string }> {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), timeoutMs);
     const t0 = Date.now();
     try {
-        const res = await fetch(url, { ...init, signal: controller.signal });
+        const res = await fetch(url, { ...init, signal: controller.signal, client });
         return { res, latency_ms: Date.now() - t0 };
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
@@ -68,9 +81,17 @@ export async function probeHealth(
 ): Promise<DiagResult> {
     const label = 'probeHealth';
     const url = `${baseUrl}/api/health`;
-    const result = await safeFetch(url, {
-        headers: { 'Accept': 'application/json' },
-    }, timeoutMs);
+    // Use RAW_HTTP_CLIENT so fetch() does not auto-decompress the response.
+    // Without this, Deno silently decompresses gzip bodies — hiding the exact
+    // corruption that makes `curl | jq` fail in production.
+    const result = await safeFetch(
+        url,
+        {
+            headers: { 'Accept': 'application/json' },
+        },
+        timeoutMs,
+        RAW_HTTP_CLIENT,
+    );
 
     if ('error' in result) {
         return { ok: false, label, detail: `Request failed: ${result.error}` };
@@ -335,8 +356,10 @@ export async function probeCompileSmoke(
 
     const { res, latency_ms } = result;
 
-    // 200 (success) or 422 (validation) are both acceptable — neither is a Worker hang
-    if (res.status === 200 || res.status === 422) {
+    // 200 (success), 422 (validation), 401/403 (expected for anonymous requests —
+    // auth is required but the Worker is up and routing correctly) are all acceptable.
+    // None of these indicate a Worker hang or 5xx server error.
+    if (res.status === 200 || res.status === 422 || res.status === 401 || res.status === 403) {
         return {
             ok: true,
             label,
@@ -374,12 +397,21 @@ export async function probeResponseEncoding(
 ): Promise<DiagResult> {
     const label = 'probeResponseEncoding';
     const url = `${baseUrl}/api/health`;
-    const result = await safeFetch(url, {
-        headers: {
-            'Accept': 'application/json',
-            'Accept-Encoding': 'identity',
+    // Use RAW_HTTP_CLIENT to bypass Deno's automatic decompression.
+    // Without this, Deno would silently decompress gzip bodies and the magic-
+    // byte check would never trigger — even though `curl | jq` fails on the
+    // same response in production.
+    const result = await safeFetch(
+        url,
+        {
+            headers: {
+                'Accept': 'application/json',
+                'Accept-Encoding': 'identity',
+            },
         },
-    }, timeoutMs);
+        timeoutMs,
+        RAW_HTTP_CLIENT,
+    );
 
     if ('error' in result) {
         return { ok: false, label, detail: `Request failed: ${result.error}` };
@@ -389,6 +421,19 @@ export async function probeResponseEncoding(
 
     if (!res.ok) {
         return { ok: false, label, latency_ms, detail: `HTTP ${res.status} ${res.statusText}` };
+    }
+
+    // Belt-and-suspenders: check Content-Encoding header.
+    // If the server ignores Accept-Encoding: identity and sends Content-Encoding: gzip,
+    // that's the compression bug even before we inspect the bytes.
+    const contentEncoding = res.headers.get('content-encoding') ?? 'none';
+    if (['gzip', 'br', 'deflate'].some((enc) => contentEncoding.includes(enc))) {
+        return {
+            ok: false,
+            label,
+            latency_ms,
+            detail: `Content-Encoding: ${contentEncoding} present with Accept-Encoding: identity — server ignored encoding preference`,
+        };
     }
 
     let buf: ArrayBuffer;
@@ -422,7 +467,6 @@ export async function probeResponseEncoding(
         };
     }
 
-    const contentEncoding = res.headers.get('content-encoding') ?? 'none';
     return {
         ok: true,
         label,

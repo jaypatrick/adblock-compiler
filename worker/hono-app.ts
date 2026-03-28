@@ -651,6 +651,8 @@ routes.use('*', logger());
 // Cloudflare's edge can strip or re-encode Accept-Encoding before it reaches
 // the Worker, which means compress() would encode /health even for plain curl.
 const NO_COMPRESS_PATHS = new Set(['/health', '/health/db-smoke', '/health/latest', '/metrics']);
+// Instantiate once — avoids creating a new closure on every request.
+const compressMiddleware = compress();
 routes.use('*', async (c, next) => {
     // routesPath() strips the /api prefix so the path matches the canonical
     // route registered in ROUTE_PERMISSION_REGISTRY (e.g. /health not /api/health).
@@ -659,7 +661,7 @@ routes.use('*', async (c, next) => {
         await next();
         return;
     }
-    return compress()(c, next);
+    return compressMiddleware(c, next);
 });
 
 // ZTA: per-user API access gate + usage tracking
