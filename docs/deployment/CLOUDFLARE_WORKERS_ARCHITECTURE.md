@@ -15,7 +15,7 @@ The Adblock Compiler is deployed as **two separate Cloudflare Workers** from a s
 | **Role** | REST API + compilation engine; also serves the Angular SPA as bundled static assets (CSR only) | Angular 21 SSR UI — **canonical home URL for the app** |
 | **Source path** | `worker/` + `src/` | `frontend/` |
 | **Deploy command** | `deno task wrangler:deploy` | `sh scripts/deploy-frontend.sh` (repo root) |
-| **CI deploy trigger** | `deploy` job in `ci.yml` (main push) | `deploy-frontend` job in `ci.yml` (main push, or `workflow_dispatch` with `force_deploy_frontend: true`) |
+| **CI deploy trigger** | `deploy` job in `ci.yml` (main push, when `worker/**` or `src/**` changed) | `deploy-frontend` job in `ci.yml` (main push when `frontend/**`, `worker/**`, `src/**`, `wrangler.toml`, `src/version.ts`, or compiler config changes such as `deno.json` / `deno.lock` changed; or `workflow_dispatch` with `force_deploy_frontend: true`) |
 | **Release deploy trigger** | `build-binaries` job in `release.yml` | `deploy-frontend` job in `release.yml` (tag push) |
 | **Local dev port** | `8787` | `8787` (via `pnpm --filter adblock-frontend run preview`) |
 
@@ -195,9 +195,13 @@ flowchart LR
     push["Push to main"] --> ci_gate["ci-gate\n(all checks pass)"]
     ci_gate --> deploy_backend["deploy job\n(adblock-compiler)"]
     ci_gate --> frontend_build["frontend-build\n(artifact upload)"]
-    frontend_build --> deploy_frontend["deploy-frontend job\n(adblock-frontend)"]
+    frontend_build --> deploy_frontend["deploy-frontend job\n(adblock-frontend)\nfrontend/** OR worker/** OR src/**\nOR wrangler.toml OR src/version.ts"]
     deploy_frontend --> inject["Inject CF Web\nAnalytics token\n(build-worker.sh)"]
     inject --> wrangler_deploy["pnpm run deploy\n(wrangler deploy)"]
+    deploy_backend --> smoke_backend["smoke-test-backend\n/api/health\n/api/version\n/api/auth/providers"]
+    wrangler_deploy --> smoke_frontend["smoke-test-frontend\nhomepage\n/api/auth/providers\n/api/health"]
+    smoke_backend --> deploy_status["deploy-status\n(final summary)"]
+    smoke_frontend --> deploy_status
 
     tag["Tag push (v*)"] --> validate["validate"]
     validate --> deploy_frontend_rel["deploy-frontend job\n(release.yml)"]
@@ -208,16 +212,21 @@ flowchart LR
 
 | Trigger | Backend deploy | Frontend deploy |
 |---|---|---|
-| Push to `main` | `ci.yml` → `deploy` job | `ci.yml` → `deploy-frontend` job (when `frontend/**` changed) |
+| Push to `main` (worker/compiler change) | `ci.yml` → `deploy` job | `ci.yml` → `deploy-frontend` job |
+| Push to `main` (frontend change) | — | `ci.yml` → `deploy-frontend` job |
+| Push to `main` (`wrangler.toml` / `src/version.ts` change) | `ci.yml` → `deploy` job | `ci.yml` → `deploy-frontend` job |
 | Tag push (`v*`) | `release.yml` → binary/docker builds | `release.yml` → `deploy-frontend` job |
 | Manual dispatch | — | `ci.yml` → `deploy-frontend` job (set `force_deploy_frontend: true`) |
 
+> **Note:** The `deploy-frontend` job triggers whenever `frontend/**`, `worker/**`, `src/**`, `wrangler.toml`, or `src/version.ts` change — so the frontend SSR Worker is always re-deployed alongside the backend when they share a release train.
+
 ### Manual Force-Redeploy
 
-If the frontend worker shows **"Assets have not yet been deployed"**, it means the `adblock-frontend` worker was registered on Cloudflare without its build artifacts (`dist/adblock-compiler/browser`). This typically happens when:
+If the frontend worker shows **"Assets have not yet been deployed"** or **"Unable to reach API"**, the `adblock-frontend` Worker may be running a stale version. This typically happens when:
 
-- The `deploy-frontend` CI job was skipped because no `frontend/**` files changed.
+- The `deploy-frontend` CI job was skipped because no monitored files changed.
 - The worker was first registered before the build artifact was available.
+- A version-bump commit landed but the Worker didn't pick up the latest env bindings.
 
 To fix it immediately without a code change:
 
@@ -228,6 +237,40 @@ To fix it immediately without a code change:
 
 This forces `frontend-build` and `deploy-frontend` to run regardless of which files changed.
 
+### Post-Deploy Smoke Tests
+
+After every successful backend or frontend deploy to `main`, CI automatically runs smoke test jobs to verify the deployment:
+
+#### `smoke-test-backend` (needs `deploy`)
+
+| Check | URL | Pass condition |
+|---|---|---|
+| `/api/health` | `https://adblock-compiler.jayson-knight.workers.dev/api/health` | HTTP 200 + `status` is `"healthy"` or `"degraded"` |
+| `/api/version` | `https://adblock-compiler.jayson-knight.workers.dev/api/version` | HTTP 200 |
+| `/api/auth/providers` | `https://adblock-compiler.jayson-knight.workers.dev/api/auth/providers` | HTTP 200 |
+
+#### `smoke-test-frontend` (needs `deploy-frontend`)
+
+| Check | URL | Pass condition |
+|---|---|---|
+| Homepage | `https://adblock-frontend.jayson-knight.workers.dev/` | HTTP 200 |
+| SSR API proxy | `https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers` | HTTP 200 (confirms the SSR Worker proxies to the backend correctly) |
+| Health via proxy | `https://adblock-frontend.jayson-knight.workers.dev/api/health` | HTTP 200 + `status` is `"healthy"` or `"degraded"` |
+
+Both smoke tests:
+
+- Run with `timeout-minutes: 5` and `continue-on-error: false` — a failing smoke test **fails the CI run** and blocks the next commit from deploying on top of a broken state.
+- Wait 15 seconds before probing (allows Cloudflare to propagate the new Worker).
+- Emit a `$GITHUB_STEP_SUMMARY` table so you can see pass/fail at a glance in the Actions UI.
+
+#### Interpreting smoke test failures
+
+| Symptom | Likely cause |
+|---|---|
+| `smoke-test-frontend` SSR proxy step fails (HTTP 000 or 502) | `frontend/server.ts` `/api/*` proxy block is broken or the backend is unreachable via service binding |
+| `smoke-test-backend` `/api/auth/providers` fails | Better Auth middleware conflict (e.g. `compress()` wrapping auth responses) |
+| Both `/api/health` checks fail | Worker deploy failed silently; check Cloudflare dashboard for deployment errors |
+| HTTP 200 but `jq` parse error on `/api/health` | `compress()` is still registered globally and returning gzip to curl; confirm `logger()`/`compress()` are scoped to `routes.use('*')` only |
 ### Local Development
 
 ```bash
