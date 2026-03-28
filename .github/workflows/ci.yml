@@ -737,8 +737,18 @@ jobs:
               id: version
               run: |
                   set -euo pipefail
-                  HTTP=$(curl -sf -o /tmp/version.json -w "%{http_code}" \
-                    https://adblock-compiler.jayson-knight.workers.dev/api/version || echo "000")
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /tmp/version.json -w "%{http_code}" \
+                    https://adblock-compiler.jayson-knight.workers.dev/api/version)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/version (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
                   echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
                   if [ "$HTTP" != "200" ]; then
                     echo "❌ /api/version returned HTTP $HTTP"
@@ -750,8 +760,18 @@ jobs:
               id: auth
               run: |
                   set -euo pipefail
-                  HTTP=$(curl -sf -o /dev/null -w "%{http_code}" \
-                    https://adblock-compiler.jayson-knight.workers.dev/api/auth/providers || echo "000")
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+                    https://adblock-compiler.jayson-knight.workers.dev/api/auth/providers)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/auth/providers (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
                   echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
                   if [ "$HTTP" != "200" ]; then
                     echo "❌ /api/auth/providers returned HTTP $HTTP"
@@ -794,8 +814,18 @@ jobs:
               id: homepage
               run: |
                   set -euo pipefail
-                  HTTP=$(curl -sf -o /dev/null -w "%{http_code}" \
-                    https://adblock-frontend.jayson-knight.workers.dev/ || echo "000")
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+                    https://adblock-frontend.jayson-knight.workers.dev/)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling homepage (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
                   echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
                   if [ "$HTTP" != "200" ]; then
                     echo "❌ Homepage returned HTTP $HTTP"
@@ -807,8 +837,18 @@ jobs:
               id: proxy
               run: |
                   set -euo pipefail
-                  HTTP=$(curl -sf -o /dev/null -w "%{http_code}" \
-                    https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers || echo "000")
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+                    https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling SSR API proxy (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
                   echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
                   if [ "$HTTP" != "200" ]; then
                     echo "❌ SSR API proxy /api/auth/providers returned HTTP $HTTP"
@@ -820,8 +860,18 @@ jobs:
               id: health
               run: |
                   set -euo pipefail
-                  HTTP=$(curl -sf -o /tmp/fe-health.json -w "%{http_code}" \
-                    https://adblock-frontend.jayson-knight.workers.dev/api/health || echo "000")
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /tmp/fe-health.json -w "%{http_code}" \
+                    https://adblock-frontend.jayson-knight.workers.dev/api/health)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/health via frontend (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
                   echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
                   if [ "$HTTP" != "200" ]; then
                     echo "❌ /api/health via frontend returned HTTP $HTTP"
