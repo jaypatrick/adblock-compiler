@@ -11,8 +11,10 @@
  * Phase 3 progressive enhancements:
  *  - Migrates `app` and `routes` to `OpenAPIHono` (from `@hono/zod-openapi`)
  *  - Extends `zValidator` to POST /compile/stream, /compile/batch, /configuration/validate
- *  - Shared helpers: `zodValidationError`, `verifyTurnstileInline`, `buildSyntheticRequest`
+ *  - Shared helpers: `zodValidationError`, `verifyTurnstileInline`, `buildSyntheticRequest`, `buildHonoRequest`
  *  - `timing()` middleware adds `Server-Timing` headers to every response
+ *  - `X-API-Version: v1` response header on every response
+ *  - tRPC v11 handler mounted at `/api/trpc/*` (see `worker/trpc/`)
  *  - `etag()` on GET /metrics and GET /health for conditional request support
  *  - `prettyJSON()` globally (activate with `?pretty=true`)
  *  - `compress()` on the `routes` sub-app for automatic response compression (gzip/deflate) — scoped to business routes, never touches /api/auth/*
@@ -24,8 +26,10 @@
  *
  * @see docs/architecture/hono-routing.md — architecture overview
  * @see docs/architecture/hono-rpc-client.md — typed RPC client pattern
+ * @see docs/architecture/trpc.md — tRPC API layer
  * @see worker/handlers/router.ts — thin re-export shim (backward compat)
  * @see worker/middleware/hono-middleware.ts — Phase 2 middleware factories
+ * @see worker/trpc/ — tRPC routers, context, and handler
  */
 
 /// <reference types="@cloudflare/workers-types" />
@@ -121,6 +125,9 @@ import {
     ValidateRuleRequestSchema,
     WebhookNotifyRequestSchema,
 } from './schemas.ts';
+
+// tRPC
+import { handleTrpcRequest } from './trpc/handler.ts';
 
 // Agent routing (authenticated)
 import { agentRouter } from './agents/index.ts';
@@ -258,11 +265,25 @@ async function verifyTurnstileInline(c: AppContext, token: string): Promise<Resp
  * helper creates a new `Request` that re-serialises the validated body so the
  * handlers can continue using their existing `request.json()` API.
  */
-function buildSyntheticRequest(c: AppContext, validatedBody: unknown): Request {
+function buildHonoRequest(c: AppContext, validatedBody: unknown): Request {
     return new Request(c.req.url, {
         method: 'POST',
         headers: c.req.raw.headers,
         body: JSON.stringify(validatedBody),
+    });
+}
+
+/**
+ * Create a minimal synthetic POST Request from a JSON body string.
+ *
+ * Used by tRPC procedures to pass a Request object to existing handler
+ * functions that expect the legacy `(Request, Env, ...)` signature.
+ */
+export function buildSyntheticRequest(body: string): Request {
+    return new Request('https://worker.local', {
+        method: 'POST',
+        headers: new Headers({ 'Content-Type': 'application/json' }),
+        body,
     });
 }
 
@@ -321,6 +342,12 @@ app.onError((err, c) => {
 
 // ── 0. Server-Timing middleware (must be first to wrap all operations) ────────
 app.use('*', timing());
+
+// ── 0a. API versioning header — set on every response ────────────────────────
+app.use('*', async (c, next) => {
+    await next();
+    c.header('X-API-Version', 'v1');
+});
 
 // ── 1. Request metadata middleware ────────────────────────────────────────────
 app.use('*', async (c, next) => {
@@ -814,7 +841,7 @@ routes.all('/queue/*', async (c) => {
 //   2. rateLimitMiddleware()   — per-user/IP tiered quota (429)
 //   3. zValidator()            — structural body validation (422) — consumes body
 //   4. Inline Turnstile check  — reads token from c.req.valid('json')
-//   5. buildSyntheticRequest() — re-creates the Request for the handler
+//   5. buildHonoRequest() — re-creates the Request for the handler
 //
 // These routes use `zValidator` BEFORE Turnstile verification so the body
 // stream is consumed exactly once.  `turnstileMiddleware()` would clone+parse,
@@ -839,7 +866,7 @@ routes.post(
         if (turnstileError) return turnstileError;
         // Reconstruct a Request from the validated (and sanitised) data so the
         // existing handler signature (Request, Env, ...) is preserved.
-        return handleCompileJson(buildSyntheticRequest(c, c.req.valid('json')), c.env, c.get('analytics'), c.get('requestId'));
+        return handleCompileJson(buildHonoRequest(c, c.req.valid('json')), c.env, c.get('analytics'), c.get('requestId'));
     },
 );
 
@@ -853,7 +880,7 @@ routes.post(
         // deno-lint-ignore no-explicit-any
         const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
         if (turnstileError) return turnstileError;
-        return handleCompileStream(buildSyntheticRequest(c, c.req.valid('json')), c.env);
+        return handleCompileStream(buildHonoRequest(c, c.req.valid('json')), c.env);
     },
 );
 
@@ -867,7 +894,7 @@ routes.post(
         // deno-lint-ignore no-explicit-any
         const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
         if (turnstileError) return turnstileError;
-        return handleCompileBatch(buildSyntheticRequest(c, c.req.valid('json')), c.env);
+        return handleCompileBatch(buildHonoRequest(c, c.req.valid('json')), c.env);
     },
 );
 
@@ -888,7 +915,7 @@ routes.post(
     // deno-lint-ignore no-explicit-any
     zValidator('json', ValidateRequestSchema as any, zodValidationError),
     turnstileMiddleware(),
-    (c) => handleValidate(buildSyntheticRequest(c, c.req.valid('json')), c.env),
+    (c) => handleValidate(buildHonoRequest(c, c.req.valid('json')), c.env),
 );
 
 // ── WebSocket ─────────────────────────────────────────────────────────────────
@@ -944,7 +971,7 @@ routes.post(
         // deno-lint-ignore no-explicit-any
         const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
         if (turnstileError) return turnstileError;
-        return handleConfigurationValidate(buildSyntheticRequest(c, c.req.valid('json')), c.env);
+        return handleConfigurationValidate(buildHonoRequest(c, c.req.valid('json')), c.env);
     },
 );
 
@@ -1245,6 +1272,12 @@ app.get('/api/openapi.json', (c) => {
     }
     return c.json(spec);
 });
+
+// tRPC — all versions, public + authenticated
+// Auth context is already set by the global middleware chain above.
+// Mounted directly on `app` (not the `routes` sub-app) to avoid the
+// compress/logger middleware that is scoped to business routes.
+app.all('/api/trpc/*', (c) => handleTrpcRequest(c));
 
 app.route('/api', routes);
 app.route('/', routes);

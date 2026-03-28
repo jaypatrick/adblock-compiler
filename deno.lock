@@ -30,21 +30,23 @@
     "npm:@opentelemetry/api@^1.9.0": "1.9.0",
     "npm:@prisma/adapter-d1@^7.5.0": "7.5.0",
     "npm:@prisma/adapter-pg@^7.5.0": "7.5.0",
-    "npm:@prisma/client@^7.5.0": "7.5.0_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
-    "npm:@prisma/internals@7.5.0": "7.5.0",
+    "npm:@prisma/client@^7.5.0": "7.5.0_prisma@7.5.0__typescript@6.0.2_typescript@6.0.2",
+    "npm:@prisma/internals@7.5.0": "7.5.0_typescript@6.0.2",
     "npm:@sentry/cloudflare@10.43.0": "10.43.0_@cloudflare+workers-types@4.20260317.1",
     "npm:@sentry/cloudflare@^10.43.0": "10.43.0_@cloudflare+workers-types@4.20260317.1",
+    "npm:@trpc/client@11": "11.15.1_@trpc+server@11.15.1__typescript@6.0.2_typescript@6.0.2",
+    "npm:@trpc/server@11": "11.15.1_typescript@6.0.2",
     "npm:agents@0.8": "0.8.1_ai@6.0.138__zod@4.3.6_react@19.2.4_zod@4.3.6_@cloudflare+workers-types@4.20260317.1",
-    "npm:better-auth@^1.5.5": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___@types+react@19.2.14___react@19.2.4___react-dom@19.2.4____react@19.2.4__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_pg@8.13.3_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4",
-    "npm:better-auth@^1.5.6": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___@types+react@19.2.14___react@19.2.4___react-dom@19.2.4____react@19.2.4__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_pg@8.13.3_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4",
+    "npm:better-auth@^1.5.5": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_typescript@6.0.2",
+    "npm:better-auth@^1.5.6": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_typescript@6.0.2",
     "npm:cloudflare@5.2.0": "5.2.0",
     "npm:cloudflare@^5.2.0": "5.2.0",
     "npm:hono@^4.12.8": "4.12.8",
     "npm:jose@^6.2.1": "6.2.1",
     "npm:pg@8.13.3": "8.13.3",
-    "npm:prisma@*": "7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
-    "npm:prisma@7.5.0": "7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
-    "npm:prisma@^7.5.0": "7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4",
+    "npm:prisma@*": "7.5.0_typescript@6.0.2",
+    "npm:prisma@7.5.0": "7.5.0_typescript@6.0.2",
+    "npm:prisma@^7.5.0": "7.5.0_typescript@6.0.2",
     "npm:svix@^1.62.0": "1.89.0",
     "npm:svix@^1.89.0": "1.89.0",
     "npm:wrangler@^4.77.0": "4.77.0_@cloudflare+workers-types@4.20260317.1",
@@ -273,7 +275,7 @@
         "@better-auth/utils"
       ]
     },
-    "@better-auth/prisma-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.0__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_@prisma+client@7.5.0__prisma@7.5.0___@types+react@19.2.14___react@19.2.4___react-dom@19.2.4____react@19.2.4__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_@better-fetch+fetch@1.1.21_@cloudflare+workers-types@4.20260317.1_@opentelemetry+api@1.9.0_better-call@1.3.2__zod@4.3.6_jose@6.2.1_kysely@0.28.14_nanostores@1.2.0": {
+    "@better-auth/prisma-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.0__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_prisma@7.5.0__typescript@6.0.2_typescript@6.0.2": {
       "integrity": "sha512-UxY9vQJs1Tt+O+T2YQnseDMlWmUSQvFZSBb5YiFRg7zcm+TEzujh4iX2/csA0YiZptLheovIuVWTP9nriewEBA==",
       "dependencies": [
         "@better-auth/core",
@@ -852,14 +854,16 @@
     "@prisma/client-runtime-utils@7.5.0": {
       "integrity": "sha512-KnJ2b4Si/pcWEtK68uM+h0h1oh80CZt2suhLTVuLaSKg4n58Q9jBF/A42Kw6Ma+aThy1yAhfDeTC0JvEmeZnFQ=="
     },
-    "@prisma/client@7.5.0_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4": {
+    "@prisma/client@7.5.0_prisma@7.5.0__typescript@6.0.2_typescript@6.0.2": {
       "integrity": "sha512-h4hF9ctp+kSRs7ENHGsFQmHAgHcfkOCxbYt6Ti9Xi8x7D+kP4tTi9x51UKmiTH/OqdyJAO+8V+r+JA5AWdav7w==",
       "dependencies": [
         "@prisma/client-runtime-utils",
-        "prisma"
+        "prisma",
+        "typescript"
       ],
       "optionalPeers": [
-        "prisma"
+        "prisma",
+        "typescript"
       ]
     },
     "@prisma/config@7.5.0": {
@@ -877,7 +881,7 @@
     "@prisma/debug@7.5.0": {
       "integrity": "sha512-163+nffny0JoPEkDhfNco0vcuT3ymIJc9+WX7MHSQhfkeKUmKe9/wqvGk5SjppT93DtBjVwr5HPJYlXbzm6qtg=="
     },
-    "@prisma/dev@0.20.0": {
+    "@prisma/dev@0.20.0_typescript@6.0.2": {
       "integrity": "sha512-ovlBYwWor0OzG+yH4J3Ot+AneD818BttLA+Ii7wjbcLHUrnC4tbUPVGyNd3c/+71KETPKZfjhkTSpdS15dmXNQ==",
       "dependencies": [
         "@electric-sql/pglite",
@@ -952,7 +956,7 @@
         "@prisma/debug@7.5.0"
       ]
     },
-    "@prisma/internals@7.5.0": {
+    "@prisma/internals@7.5.0_typescript@6.0.2": {
       "integrity": "sha512-c+W0pr0qBa1Zdw5iVnSKSGC6NtTD4HPBB8L5YNxg1OBvj3ZoCnZZZRseDSDTt3Dy7MneTlYon4M/NndBSZaXtA==",
       "dependencies": [
         "@prisma/config",
@@ -968,7 +972,11 @@
         "@prisma/schema-engine-wasm",
         "@prisma/schema-files-loader",
         "arg",
-        "prompts"
+        "prompts",
+        "typescript"
+      ],
+      "optionalPeers": [
+        "typescript"
       ]
     },
     "@prisma/prisma-schema-wasm@7.5.0-15.280c870be64f457428992c43c1f6d557fab6e29e": {
@@ -1020,6 +1028,21 @@
     },
     "@standard-schema/spec@1.1.0": {
       "integrity": "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="
+    },
+    "@trpc/client@11.15.1_@trpc+server@11.15.1__typescript@6.0.2_typescript@6.0.2": {
+      "integrity": "sha512-Zav9uPSEM7zBlEbttKep1kCfxHumB7P/e/zVFspzfyeB6XYGVeILFeZVL6cnODkgUIFSzgO9X4fXRnn0BP/BhQ==",
+      "dependencies": [
+        "@trpc/server",
+        "typescript"
+      ],
+      "bin": true
+    },
+    "@trpc/server@11.15.1_typescript@6.0.2": {
+      "integrity": "sha512-0A1fIBU0zDLXaSOhuHOChqM4mCCCi233FcPdPNXJ+FIVMd5VEGe33u6cehUavZMquIi6uIec9xymac2P4LgqMA==",
+      "dependencies": [
+        "typescript"
+      ],
+      "bin": true
     },
     "@types/diff-match-patch@1.0.36": {
       "integrity": "sha512-xFdR6tkm0MWvBfO8xXCSsinYxHcqkQUlcHeSpMC2ukzOb6lwQAfDmW+Qt0AvlGd8HpsS28qKsB+oPeJn9I39jg=="
@@ -1183,7 +1206,7 @@
     "aws-ssl-profiles@1.1.2": {
       "integrity": "sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g=="
     },
-    "better-auth@1.5.6_@prisma+client@7.5.0__prisma@7.5.0___@types+react@19.2.14___react@19.2.4___react-dom@19.2.4____react@19.2.4__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4_pg@8.13.3_prisma@7.5.0__@types+react@19.2.14__react@19.2.4__react-dom@19.2.4___react@19.2.4": {
+    "better-auth@1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_typescript@6.0.2": {
       "integrity": "sha512-QSpJTqaT1XVfWRQe/fm3PgeuwOIlz1nWX/Dx7nsHStJ382bLzmDbQk2u7IT0IJ6wS5SRxfqEE1Ev9TXontgyAQ==",
       "dependencies": [
         "@better-auth/core",
@@ -2239,7 +2262,7 @@
       "integrity": "sha512-UOnG6LftzbdaHZcKoPFtOcCKztrQ57WkHDeRD9t/PTQtmT0NHSeWWepj6pS0z/N7+08BHFDQVUrfmfMRcZwbMg==",
       "bin": true
     },
-    "prisma@7.5.0_@types+react@19.2.14_react@19.2.4_react-dom@19.2.4__react@19.2.4": {
+    "prisma@7.5.0_typescript@6.0.2": {
       "integrity": "sha512-n30qZpWehaYQzigLjmuPisyEsvOzHt7bZeRyg8gZ5DvJo9FGjD+gNaY59Ns3hlLD5/jZH5GBeftIss0jDbUoLg==",
       "dependencies": [
         "@prisma/config",
@@ -2247,7 +2270,11 @@
         "@prisma/engines",
         "@prisma/studio-core",
         "mysql2",
-        "postgres"
+        "postgres",
+        "typescript"
+      ],
+      "optionalPeers": [
+        "typescript"
       ],
       "scripts": true,
       "bin": true
@@ -2582,6 +2609,10 @@
         "mime-types@3.0.2"
       ]
     },
+    "typescript@6.0.2": {
+      "integrity": "sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ==",
+      "bin": true
+    },
     "undici-types@5.26.5": {
       "integrity": "sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA=="
     },
@@ -2610,8 +2641,14 @@
       "integrity": "sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==",
       "bin": true
     },
-    "valibot@1.2.0": {
-      "integrity": "sha512-mm1rxUsmOxzrwnX5arGS+U4T25RdvpPjPN4yR0u9pUBov9+zGVtO84tif1eY4r6zWxVxu3KzIyknJy3rxfRZZg=="
+    "valibot@1.2.0_typescript@6.0.2": {
+      "integrity": "sha512-mm1rxUsmOxzrwnX5arGS+U4T25RdvpPjPN4yR0u9pUBov9+zGVtO84tif1eY4r6zWxVxu3KzIyknJy3rxfRZZg==",
+      "dependencies": [
+        "typescript"
+      ],
+      "optionalPeers": [
+        "typescript"
+      ]
     },
     "vary@1.1.2": {
       "integrity": "sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg=="
@@ -2908,6 +2945,8 @@
       "npm:@prisma/adapter-pg@^7.5.0",
       "npm:@prisma/client@^7.5.0",
       "npm:@sentry/cloudflare@^10.43.0",
+      "npm:@trpc/client@11",
+      "npm:@trpc/server@11",
       "npm:agents@0.8",
       "npm:better-auth@^1.5.5",
       "npm:cloudflare@^5.2.0",
