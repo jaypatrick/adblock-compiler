@@ -15,7 +15,7 @@ The Adblock Compiler is deployed as **two separate Cloudflare Workers** from a s
 | **Role** | REST API + compilation engine; also serves the Angular SPA as bundled static assets (CSR only) | Angular 21 SSR UI — **canonical home URL for the app** |
 | **Source path** | `worker/` + `src/` | `frontend/` |
 | **Deploy command** | `deno task wrangler:deploy` | `sh scripts/deploy-frontend.sh` (repo root) |
-| **CI deploy trigger** | `deploy` job in `ci.yml` (main push, when `worker/**` or `src/**` changed) | `deploy-frontend` job in `ci.yml` (main push when `frontend/**`, `worker/**`, `src/**`, `wrangler.toml`, or `src/version.ts` changed; or `workflow_dispatch` with `force_deploy_frontend: true`) |
+| **CI deploy trigger** | `deploy` job in `ci.yml` (main push, when `worker/**` or `src/**` changed) | `deploy-frontend` job in `ci.yml` (main push when `frontend/**`, `worker/**`, `src/**`, `wrangler.toml`, `src/version.ts`, or compiler config changes such as `deno.json` / `deno.lock` changed; or `workflow_dispatch` with `force_deploy_frontend: true`) |
 | **Release deploy trigger** | `build-binaries` job in `release.yml` | `deploy-frontend` job in `release.yml` (tag push) |
 | **Local dev port** | `8787` | `8787` (via `pnpm --filter adblock-frontend run preview`) |
 
