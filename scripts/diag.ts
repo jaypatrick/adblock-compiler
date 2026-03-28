@@ -383,4 +383,4 @@ async function main(): Promise<void> {
     Deno.exit(anyFailed ? 1 : 0);
 }
 
-main();
+await main();
