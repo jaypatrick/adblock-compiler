@@ -339,7 +339,13 @@ app.use('*', async (c, next) => {
     await next();
 });
 
-// ── 1b. Better Auth route handler ──────────────────────────────────────────────
+// ── 1b. Public auth providers endpoint ───────────────────────────────────────
+// MUST be registered BEFORE the /api/auth/* wildcard handler (1c) below.
+// Better Auth's wildcard catches /api/auth/providers and returns 404 because it
+// does not know about this custom endpoint. Registering it first gives it priority.
+app.get('/api/auth/providers', (c) => handleAuthProviders(c.req.raw, c.env));
+
+// ── 1c. Better Auth wildcard handler ─────────────────────────────────────────
 // Better Auth handles its own routes (sign-up, sign-in, sign-out, get-session,
 // etc.) — these must bypass unified auth because they CREATE sessions rather
 // than verifying existing ones.
@@ -631,8 +637,6 @@ app.get('/api/deployments', handleApiMeta);
 app.get('/api/deployments/*', handleApiMeta);
 app.get('/api/turnstile-config', handleApiMeta);
 app.get('/api/sentry-config', handleApiMeta);
-// Public: returns which auth providers are active — used by frontend to conditionally render social login buttons.
-app.get('/api/auth/providers', (c) => handleAuthProviders(c.req.raw, c.env));
 
 // ============================================================================
 // Business routes sub-app (with ZTA + permission check middleware)
