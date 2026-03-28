@@ -263,9 +263,14 @@ async function checkEndpoint(baseUrl: string, check: CheckDef): Promise<CheckRes
 const INFO_WARNING_PATTERNS: RegExp[] = [/^version:/, /^last check:/, /^latency_ms:/, /^db_name:/];
 
 function statusIcon(result: CheckResult): string {
-    if (!result.ok) return red('❌');
-    if (result.warnings.some((w) => INFO_WARNING_PATTERNS.some((p) => p.test(w)))) return green('✅');
-    if (result.warnings.length > 0) return yellow('⚠️');
+    if (!result.ok) {
+        return red('❌');
+    }
+
+    const realWarnings = result.warnings.filter(isRealWarning);
+    if (realWarnings.length > 0) {
+        return yellow('⚠️');
+    }
     return green('✅');
 }
 
