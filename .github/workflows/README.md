@@ -269,6 +269,8 @@ The `deploy-frontend` job runs when **any** of the following files change on `ma
 - `src/**` — shared compiler logic
 - `wrangler.toml` — version bumps and binding changes
 - `src/version.ts` — version sync
+- `deno.json` — compiler/tooling configuration (via the `changes.compiler` paths-filter)
+- `deno.lock` — dependency lockfile (via the `changes.compiler` paths-filter)
 
 If none of these changed (e.g. a docs-only commit), `deploy-frontend` is skipped.
 
