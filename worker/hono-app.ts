@@ -10,9 +10,8 @@
  *
  * Phase 3 progressive enhancements:
  *  - Migrates `app` and `routes` to `OpenAPIHono` (from `@hono/zod-openapi`)
+ *  - Shared helpers: `zodValidationError`, `verifyTurnstileInline`, `buildSyntheticRequest`
  *  - `timing()` middleware adds `Server-Timing` headers to every response
- *  - `X-API-Version: v1` response header on every response
- *  - tRPC v11 handler mounted at `/api/trpc/*` (see `worker/trpc/`)
  *  - `prettyJSON()` globally (activate with `?pretty=true`)
  *  - `compress()` on the `routes` sub-app for automatic response compression (gzip/deflate)
  *  - `logger()` on the `routes` sub-app for standardized request/response logging
@@ -21,11 +20,9 @@
  *
  * @see docs/architecture/hono-routing.md — architecture overview
  * @see docs/architecture/hono-rpc-client.md — typed RPC client pattern
- * @see docs/architecture/trpc.md — tRPC API layer
  * @see worker/handlers/router.ts — thin re-export shim (backward compat)
  * @see worker/middleware/hono-middleware.ts — Phase 2 middleware factories
  * @see worker/routes/ — domain-scoped route modules
- * @see worker/trpc/ — tRPC routers, context, and handler
  */
 
 /// <reference types="@cloudflare/workers-types" />
@@ -50,7 +47,6 @@ import { WORKER_DEFAULTS } from '../src/config/defaults.ts';
 
 // Middleware
 import { checkRateLimitTiered } from './middleware/index.ts';
-import { rateLimitMiddleware } from './middleware/hono-middleware.ts';
 import { authenticateRequestUnified } from './middleware/auth.ts';
 import { BetterAuthProvider } from './middleware/better-auth-provider.ts';
 
@@ -69,9 +65,6 @@ import { isPublicEndpoint, matchOrigin } from './utils/cors.ts';
 
 // Handlers (pre-auth meta routes — eagerly imported)
 import { handleAuthProviders } from './handlers/auth-providers.ts';
-
-// tRPC
-import { handleTrpcRequest } from './trpc/handler.ts';
 
 // Agent routing (authenticated)
 import { agentRouter } from './agents/index.ts';
@@ -186,12 +179,6 @@ app.onError((err, c) => {
 
 // ── 0. Server-Timing middleware ───────────────────────────────────────────────
 app.use('*', timing());
-
-// ── 0a. API versioning header — set on every response (including errors) ──────
-app.use('*', async (c, next) => {
-    c.header('X-API-Version', 'v1');
-    await next();
-});
 
 // ── 1. Request metadata middleware ────────────────────────────────────────────
 app.use('*', async (c, next) => {
@@ -564,40 +551,6 @@ app.get('/api/openapi.json', (c) => {
     }
     return c.json(spec);
 });
-
-// tRPC — all versions, public + authenticated
-// Auth context is already set by the global middleware chain above.
-// Mounted directly on `app` (not the `routes` sub-app) to avoid the
-// compress/logger middleware that is scoped to business routes.
-
-// ── Tiered rate-limiting for all tRPC calls ───────────────────────────────────
-// Mirrors the per-endpoint rateLimitMiddleware() applied to REST write routes.
-app.use('/api/trpc/*', rateLimitMiddleware());
-
-// ── ZTA access gate + usage tracking for tRPC ────────────────────────────────
-// Mirrors the routes.use('*', ...) middleware that applies checkUserApiAccess()
-// and trackApiUsage() to every REST endpoint in the `routes` sub-app.
-app.use('/api/trpc/*', async (c, next) => {
-    const authContext = c.get('authContext');
-    const analytics = c.get('analytics');
-    const ip = c.get('ip');
-
-    const accessDenied = await checkUserApiAccess(authContext, c.env);
-    if (accessDenied) {
-        analytics.trackSecurityEvent({
-            eventType: 'auth_failure',
-            path: c.req.path,
-            method: c.req.method,
-            clientIpHash: AnalyticsService.hashIp(ip),
-            reason: 'api_disabled',
-        });
-        return accessDenied;
-    }
-    c.executionCtx.waitUntil(trackApiUsage(authContext, c.req.path, c.req.method, c.env));
-    await next();
-});
-
-app.all('/api/trpc/*', (c) => handleTrpcRequest(c));
 
 app.route('/api', routes);
 

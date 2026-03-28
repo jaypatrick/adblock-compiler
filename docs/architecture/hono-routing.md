@@ -210,26 +210,6 @@ async (c) => {
 
 ---
 
-## tRPC endpoint
-
-The tRPC v11 handler is mounted directly on the top-level `app` at `/api/trpc/*`:
-
-```typescript
-// Mounted BEFORE app.route('/api', routes) so the routes sub-app
-// (with compress + logger middleware) never wraps tRPC responses.
-app.all('/api/trpc/*', (c) => handleTrpcRequest(c));
-```
-
-This placement ensures:
-
-- The global middleware chain (timing, request metadata, auth, CORS, secure headers)
-  **does** run before tRPC requests — `authContext` is already populated.
-- The `compress()` and `logger()` middleware scoped to the `routes` sub-app **do not**
-  wrap tRPC responses.
-
-See [`docs/architecture/trpc.md`](./trpc.md) for the full tRPC procedure catalogue,
-client usage, and ZTA notes.
-
 ---
 
 ## Phase 4 — Domain Route Modules (complete)
@@ -293,5 +273,4 @@ were needed.
 4. The compress middleware uses the `NO_COMPRESS_PATHS` exclusion pattern
 
 Run manually with: `deno task lint:routes`
-
 
