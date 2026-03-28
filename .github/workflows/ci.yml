@@ -707,8 +707,18 @@ jobs:
               id: health
               run: |
                   set -euo pipefail
-                  HTTP=$(curl -sf -o /tmp/health.json -w "%{http_code}" \
-                    https://adblock-compiler.jayson-knight.workers.dev/api/health || echo "000")
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /tmp/health.json -w "%{http_code}" \
+                    https://adblock-compiler.jayson-knight.workers.dev/api/health)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/health (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
                   echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
                   if [ "$HTTP" != "200" ]; then
                     echo "❌ /api/health returned HTTP $HTTP"
