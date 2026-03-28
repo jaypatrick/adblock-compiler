@@ -70,6 +70,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.79.4] - 2026-03-28
+
+### Added
 ## [0.79.3] - 2026-03-28
 
 ### Added- add tRPC v1 + API versioning (X-API-Version header)
