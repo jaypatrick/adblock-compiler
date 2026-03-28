@@ -35,6 +35,12 @@ importers:
       '@sentry/cloudflare':
         specifier: 10.43.0
         version: 10.43.0(@cloudflare/workers-types@4.20260317.1)
+      '@trpc/client':
+        specifier: ^11.15.1
+        version: 11.15.1(@trpc/server@11.15.1(typescript@6.0.2))(typescript@6.0.2)
+      '@trpc/server':
+        specifier: ^11.15.1
+        version: 11.15.1(typescript@6.0.2)
       better-auth:
         specifier: ^1.5.6
         version: 1.5.6(@cloudflare/workers-types@4.20260317.1)(@opentelemetry/api@1.9.0)(@prisma/client@7.5.0(prisma@7.5.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.2))(typescript@6.0.2))(mongodb@7.1.0(socks@2.8.7))(mysql2@3.15.3)(pg@8.20.0)(prisma@7.5.0(@types/react@19.2.14)(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(typescript@6.0.2))(react-dom@19.2.4(react@19.2.4))(react@19.2.4)(vitest@4.1.0(@opentelemetry/api@1.9.0)(@types/node@25.5.0)(jsdom@28.1.0(@noble/hashes@2.0.1))(vite@7.3.1(@types/node@25.5.0)(jiti@2.6.1)(less@4.4.2)(lightningcss@1.31.1)(sass@1.97.3)(terser@5.46.1)(yaml@2.8.3)))
@@ -3425,6 +3431,19 @@ packages:
 
   '@tanstack/query-core@5.90.16':
     resolution: {integrity: sha512-MvtWckSVufs/ja463/K4PyJeqT+HMlJWtw6PrCpywznd2NSgO3m4KwO9RqbFqGg6iDE8vVMFWMeQI4Io3eEYww==}
+
+  '@trpc/client@11.15.1':
+    resolution: {integrity: sha512-Zav9uPSEM7zBlEbttKep1kCfxHumB7P/e/zVFspzfyeB6XYGVeILFeZVL6cnODkgUIFSzgO9X4fXRnn0BP/BhQ==}
+    hasBin: true
+    peerDependencies:
+      '@trpc/server': 11.15.1
+      typescript: '>=5.7.2'
+
+  '@trpc/server@11.15.1':
+    resolution: {integrity: sha512-0A1fIBU0zDLXaSOhuHOChqM4mCCCi233FcPdPNXJ+FIVMd5VEGe33u6cehUavZMquIi6uIec9xymac2P4LgqMA==}
+    hasBin: true
+    peerDependencies:
+      typescript: '>=5.7.2'
 
   '@ts-morph/common@0.22.0':
     resolution: {integrity: sha512-HqNBuV/oIlMKdkLshXd1zKBqNQCsuPEsgQOkfFQ/eUKjRlwndXW1AjN9LVkBEIukm00gGXSRmfkl0Wv5VXLnlw==}
@@ -11573,6 +11592,15 @@ snapshots:
       tailwindcss: 4.2.1
 
   '@tanstack/query-core@5.90.16': {}
+
+  '@trpc/client@11.15.1(@trpc/server@11.15.1(typescript@6.0.2))(typescript@6.0.2)':
+    dependencies:
+      '@trpc/server': 11.15.1(typescript@6.0.2)
+      typescript: 6.0.2
+
+  '@trpc/server@11.15.1(typescript@6.0.2)':
+    dependencies:
+      typescript: 6.0.2
 
   '@ts-morph/common@0.22.0':
     dependencies:
