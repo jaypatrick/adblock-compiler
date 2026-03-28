@@ -111,19 +111,19 @@ compileRoutes.post(
     '/ast/parse',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    turnstileMiddleware(),
     // deno-lint-ignore no-explicit-any
     zValidator('json', AstParseRequestSchema as any, zodValidationError),
-    turnstileMiddleware(),
-    (c) => handleASTParseRequest(c.req.raw, c.env),
+    (c) => handleASTParseRequest(buildSyntheticRequest(c, c.req.valid('json')), c.env),
 );
 
 compileRoutes.post(
     '/validate',
     bodySizeMiddleware(),
     rateLimitMiddleware(),
+    turnstileMiddleware(),
     // deno-lint-ignore no-explicit-any
     zValidator('json', ValidateRequestSchema as any, zodValidationError),
-    turnstileMiddleware(),
     (c) => handleValidate(buildSyntheticRequest(c, c.req.valid('json')), c.env),
 );
 
@@ -160,8 +160,12 @@ compileRoutes.post(
     rateLimitMiddleware(),
     // deno-lint-ignore no-explicit-any
     zValidator('json', CompileRequestSchema as any, zodValidationError),
-    turnstileMiddleware(),
-    (c) => handleCompileAsync(c.req.raw, c.env),
+    async (c) => {
+        // deno-lint-ignore no-explicit-any
+        const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
+        if (turnstileError) return turnstileError;
+        return handleCompileAsync(buildSyntheticRequest(c, c.req.valid('json')), c.env);
+    },
 );
 
 compileRoutes.post(
@@ -170,8 +174,12 @@ compileRoutes.post(
     rateLimitMiddleware(),
     // deno-lint-ignore no-explicit-any
     zValidator('json', BatchRequestAsyncSchema as any, zodValidationError),
-    turnstileMiddleware(),
-    (c) => handleCompileBatchAsync(c.req.raw, c.env),
+    async (c) => {
+        // deno-lint-ignore no-explicit-any
+        const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
+        if (turnstileError) return turnstileError;
+        return handleCompileBatchAsync(buildSyntheticRequest(c, c.req.valid('json')), c.env);
+    },
 );
 
 compileRoutes.post(
@@ -180,8 +188,10 @@ compileRoutes.post(
     rateLimitMiddleware(),
     // deno-lint-ignore no-explicit-any
     zValidator('json', CompileRequestSchema as any, zodValidationError),
-    turnstileMiddleware(),
     async (c) => {
+        // deno-lint-ignore no-explicit-any
+        const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
+        if (turnstileError) return turnstileError;
         if (!c.env.ADBLOCK_COMPILER) {
             return c.json({ success: false, error: 'Container binding (ADBLOCK_COMPILER) is not available in this deployment' }, 503);
         }
@@ -194,12 +204,14 @@ compileRoutes.post(
             // Note: the URL hostname/scheme is irrelevant for DO stub.fetch() — the stub
             // intercepts the call and routes it to the container's internal server.
             // The path '/compile' maps to the POST /compile handler in container-server.ts.
+            // Body is re-serialised from the validated data because zValidator consumed
+            // c.req.raw.body above (cannot re-read a consumed ReadableStream).
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
                 'X-Container-Secret': c.env.CONTAINER_SECRET,
             },
-            body: c.req.raw.body,
+            body: JSON.stringify(c.req.valid('json')),
         });
         const containerRes = await stub.fetch(containerReq);
         return new Response(containerRes.body, {

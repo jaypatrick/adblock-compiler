@@ -34,6 +34,7 @@ import { endTime, startTime, timing } from 'hono/timing';
 import { prettyJSON } from 'hono/pretty-json';
 import { compress } from 'hono/compress';
 import { logger } from 'hono/logger';
+import { cache } from 'hono/cache';
 import { OpenAPIHono } from '@hono/zod-openapi';
 
 // Types
@@ -389,8 +390,8 @@ async function handleApiMeta(c: AppContext): Promise<Response> {
 }
 
 app.get('/api', handleApiMeta);
-app.get('/api/version', handleApiMeta);
-app.get('/api/schemas', handleApiMeta);
+app.get('/api/version', cache({ cacheName: 'api-version', cacheControl: 'public, max-age=3600' }), handleApiMeta);
+app.get('/api/schemas', cache({ cacheName: 'api-schemas', cacheControl: 'public, max-age=3600' }), handleApiMeta);
 app.get('/api/deployments', handleApiMeta);
 app.get('/api/deployments/*', handleApiMeta);
 app.get('/api/turnstile-config', handleApiMeta);

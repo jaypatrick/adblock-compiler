@@ -17,7 +17,7 @@ import type { Env } from '../types.ts';
 import type { Variables } from './shared.ts';
 import { buildSyntheticRequest, verifyTurnstileInline, zodValidationError } from './shared.ts';
 
-import { bodySizeMiddleware, rateLimitMiddleware, turnstileMiddleware } from '../middleware/hono-middleware.ts';
+import { bodySizeMiddleware, rateLimitMiddleware } from '../middleware/hono-middleware.ts';
 
 import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from '../handlers/configuration.ts';
 import { ConfigurationValidateRequestSchema, ResolveRequestSchema } from '../handlers/configuration.ts';
@@ -62,6 +62,10 @@ configurationRoutes.post(
     rateLimitMiddleware(),
     // deno-lint-ignore no-explicit-any
     zValidator('json', ResolveRequestSchema as any, zodValidationError),
-    turnstileMiddleware(),
-    (c) => handleConfigurationResolve(c.req.raw, c.env),
+    async (c) => {
+        // deno-lint-ignore no-explicit-any
+        const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
+        if (turnstileError) return turnstileError;
+        return handleConfigurationResolve(buildSyntheticRequest(c, c.req.valid('json')), c.env);
+    },
 );
