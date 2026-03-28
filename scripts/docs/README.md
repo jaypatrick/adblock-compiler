@@ -7,7 +7,7 @@ This directory contains operational and maintenance scripts for the adblock-comp
 | Document                                                               | Description                                                                                    |
 | ---------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | [troubleshooting-manual.md](./troubleshooting-manual.md)               | Support engineer quick-reference for common errors, health checks, and deployment verification |
-| [../docs/operations/diagnostics.md](../docs/operations/diagnostics.md) | Full technical reference for the diagnostic system and `compress()` fix                        |
+| [../../docs/operations/diagnostics.md](../../docs/operations/diagnostics.md) | Full technical reference for the diagnostic system and `compress()` fix                        |
 
 ## Scripts
 
