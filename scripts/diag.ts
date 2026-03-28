@@ -213,10 +213,37 @@ async function checkEndpoint(baseUrl: string, check: CheckDef): Promise<CheckRes
         }
 
         result.data = data;
-        const checkWarnings = check.validate(data);
-        // Separate fatal warnings (ok=false) from informational ones
-        result.warnings.push(...checkWarnings);
-        result.ok = true;
+        const validationResult = check.validate(data) as
+            | string[]
+            | {
+                  warnings?: string[];
+                  fatal?: boolean;
+                  fatalMessage?: string;
+              };
+        let fatal = false;
+        let fatalMessage: string | undefined;
+        let warnings: string[] = [];
+
+        if (Array.isArray(validationResult)) {
+            warnings = validationResult;
+        } else if (validationResult && typeof validationResult === 'object') {
+            if (Array.isArray(validationResult.warnings)) {
+                warnings = validationResult.warnings;
+            }
+            if (validationResult.fatal === true) {
+                fatal = true;
+                fatalMessage = validationResult.fatalMessage;
+            }
+        }
+
+        result.warnings.push(...warnings);
+        if (fatal) {
+            result.ok = false;
+            result.error = fatalMessage ?? 'Domain-level health check failed';
+        } else {
+            result.ok = true;
+        }
+        result.latencyMs = Date.now() - start;
     } catch (e) {
         result.latencyMs = Date.now() - start;
         if ((e as Error).name === 'AbortError') {
