@@ -649,11 +649,8 @@ routes.use('*', logger());
 // and must never be compressed. Some Cloudflare edge configs strip
 // Accept-Encoding before it reaches the Worker, so these endpoints would
 // otherwise return gzip bytes that tools like jq/curl cannot handle predictably.
-const COMPRESS_EXCLUDE = new Set([
-    '/health',
-    '/health/latest',
-    '/health/db-smoke',
-    '/metrics',
+const COMPRESS_EXCLUDE = new Set<string>([
+    ...MONITORING_BARE_PATHS,
     '/metrics/prometheus',
 ]);
 
