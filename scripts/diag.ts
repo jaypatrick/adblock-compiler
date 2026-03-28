@@ -30,8 +30,14 @@ const DEFAULT_TIMEOUT_MS = 15_000;
  * Deno's default `fetch()` auto-decompresses responses when `Content-Encoding:
  * gzip` is present — which hides the exact failure mode we need to detect.
  * This client bypasses auto-decompression so probes can inspect on-the-wire bytes.
+ *
+ * `decompress` is a valid runtime option but is not yet reflected in Deno's
+ * bundled TypeScript definitions; the cast suppresses the spurious TS2353 error.
  */
-const RAW_HTTP_CLIENT: Deno.HttpClient = Deno.createHttpClient({ decompress: false });
+const RAW_HTTP_CLIENT: Deno.HttpClient = Deno.createHttpClient(
+    // deno-lint-ignore no-explicit-any
+    { decompress: false } as any,
+);
 
 /**
  * Safely fetch a URL with an AbortController timeout.
