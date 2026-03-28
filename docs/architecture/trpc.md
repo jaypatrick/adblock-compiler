@@ -28,7 +28,7 @@ Returns `{ version, apiVersion }`.
 ## Angular client
 
 ```typescript
-import { createTrpcClient } from './trpc-client';
+import { createTrpcClient } from 'worker/trpc/client';
 
 const client = createTrpcClient(environment.apiBaseUrl, () => authService.getToken());
 const result = await client.v1.compile.json.mutate({
