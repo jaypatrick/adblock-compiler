@@ -194,8 +194,29 @@ app.use('*', async (c, next) => {
     await next();
 });
 
-// ── 1b. Better Auth route handler ─────────────────────────────────────────────
-app.on(['POST', 'GET'], '/api/auth/*', async (c) => {
+// ── 1b. Better Auth route handler ──────────────────────────────────────────────
+// Better Auth handles its own routes (sign-up, sign-in, sign-out, get-session,
+// etc.) — these must bypass unified auth because they CREATE sessions rather
+// than verifying existing ones.
+//
+// A 10s timeout guard is applied here (mirroring BetterAuthProvider.verifyToken)
+// so that a hung Hyperdrive/Prisma call cannot stall the Worker CPU indefinitely.
+// AbortController.abort() is called on timeout to signal cancellation to the
+// underlying fetch plumbing used by Better Auth / Prisma.
+//
+// IMPORTANT: This handler is registered BEFORE the global logger() and compress()
+// middleware to avoid interfering with Better Auth's response handling. Better Auth
+// returns responses directly without calling next(), and applying compression/logging
+// middleware before this handler can cause response stream conflicts.
+//
+// NOTE: /api/auth/providers is NOT a Better Auth route — it is a custom public
+// endpoint registered in the pre-auth meta section (after CORS + rate-limiting).
+// This handler explicitly passes through for that path so the specific handler
+// receives full middleware coverage (CORS headers, anonymous-tier rate limiting).
+app.on(['POST', 'GET'], '/api/auth/*', async (c, next) => {
+    // Pass through for custom endpoint — let it reach its registered handler with
+    // full CORS and rate-limiting middleware applied.
+    if (c.req.path === '/api/auth/providers') return next();
     if (!c.env.BETTER_AUTH_SECRET) return c.notFound();
     if (!c.env.HYPERDRIVE) {
         return c.json({ error: 'Authentication service is temporarily unavailable' }, 503);
@@ -396,6 +417,9 @@ app.get('/api/deployments', handleApiMeta);
 app.get('/api/deployments/*', handleApiMeta);
 app.get('/api/turnstile-config', handleApiMeta);
 app.get('/api/sentry-config', handleApiMeta);
+// Public: returns which auth providers are active — used by frontend to conditionally render social login buttons.
+// Registered here (after CORS + rate-limiting middleware) so it receives full middleware coverage.
+// The Better Auth /api/auth/* wildcard explicitly passes through for this path.
 app.get('/api/auth/providers', (c) => handleAuthProviders(c.req.raw, c.env));
 
 // ============================================================================
