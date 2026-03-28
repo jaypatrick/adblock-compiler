@@ -33,10 +33,15 @@ interface CheckResult {
     data?: unknown;
 }
 
+/** Return type for validate() — either a plain warning list or an object with an optional fatal flag. */
+type ValidateResult =
+    | string[]
+    | { warnings?: string[]; fatal?: boolean; fatalMessage?: string };
+
 interface CheckDef {
     path: string;
     label: string;
-    validate: (data: unknown) => string[];
+    validate: (data: unknown) => ValidateResult;
 }
 
 // ── Check definitions ─────────────────────────────────────────────────────────
@@ -45,15 +50,14 @@ const CHECKS: CheckDef[] = [
     {
         path: '/api/health',
         label: '/api/health',
-        validate: (data) => {
+        validate: (data): ValidateResult => {
             const warnings: string[] = [];
-            if (!data || typeof data !== 'object') return ['Response is not a JSON object'];
+            if (!data || typeof data !== 'object') {
+                return { fatal: true, fatalMessage: 'Response is not a JSON object' };
+            }
             const d = data as Record<string, unknown>;
             if (!['healthy', 'degraded', 'unhealthy'].includes(d['status'] as string)) {
                 warnings.push(`status field is "${d['status']}" — expected healthy/degraded/unhealthy`);
-            }
-            if (d['status'] === 'unhealthy') {
-                warnings.push('Overall status is unhealthy');
             }
             // Check each service's status if present
             const services = d['services'] as Record<string, unknown> | undefined;
@@ -65,22 +69,33 @@ const CHECKS: CheckDef[] = [
                     }
                 }
             }
+            // Overall unhealthy is a fatal failure — CI must not pass on a down Worker.
+            if (d['status'] === 'unhealthy') {
+                return { fatal: true, fatalMessage: `Overall health is unhealthy`, warnings };
+            }
             return warnings;
         },
     },
     {
         path: '/api/health/db-smoke',
         label: '/api/health/db-smoke',
-        validate: (data) => {
+        validate: (data): ValidateResult => {
             const warnings: string[] = [];
-            if (!data || typeof data !== 'object') return ['Response is not a JSON object'];
-            const d = data as Record<string, unknown>;
-            if (d['ok'] !== true) {
-                warnings.push(`ok = ${JSON.stringify(d['ok'])} — expected true`);
+            if (!data || typeof data !== 'object') {
+                return { fatal: true, fatalMessage: 'Response is not a JSON object' };
             }
+            const d = data as Record<string, unknown>;
             if (d['db_name']) warnings.push(`db_name: ${d['db_name']}`);
             if (typeof d['latency_ms'] === 'number') {
                 warnings.push(`latency_ms: ${d['latency_ms']}ms`);
+            }
+            // ok !== true is a fatal failure — the database smoke check must pass in CI.
+            if (d['ok'] !== true) {
+                return {
+                    fatal: true,
+                    fatalMessage: `DB smoke check failed: ok = ${JSON.stringify(d['ok'])}`,
+                    warnings,
+                };
             }
             return warnings;
         },
@@ -213,13 +228,7 @@ async function checkEndpoint(baseUrl: string, check: CheckDef): Promise<CheckRes
         }
 
         result.data = data;
-        const validationResult = check.validate(data) as
-            | string[]
-            | {
-                  warnings?: string[];
-                  fatal?: boolean;
-                  fatalMessage?: string;
-              };
+        const validationResult = check.validate(data);
         let fatal = false;
         let fatalMessage: string | undefined;
         let warnings: string[] = [];
@@ -243,7 +252,6 @@ async function checkEndpoint(baseUrl: string, check: CheckDef): Promise<CheckRes
         } else {
             result.ok = true;
         }
-        result.latencyMs = Date.now() - start;
     } catch (e) {
         result.latencyMs = Date.now() - start;
         if ((e as Error).name === 'AbortError') {

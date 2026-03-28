@@ -693,20 +693,18 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 5
         needs: [deploy]
-        permissions: {}
+        permissions:
+            contents: read
         if: >-
             always() &&
             needs.deploy.result == 'success' &&
             github.event_name == 'push' &&
             github.ref == 'refs/heads/main'
         steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Set up Deno
-              uses: denoland/setup-deno@v2
-              with:
-                  deno-version: v2.x
+            - name: Setup Deno environment
+              uses: ./.github/actions/setup-deno-env
 
             - name: Wait for Cloudflare propagation
               run: sleep 15
@@ -719,20 +717,18 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 5
         needs: [deploy-frontend]
-        permissions: {}
+        permissions:
+            contents: read
         if: >-
             always() &&
             needs.deploy-frontend.result == 'success' &&
             github.event_name == 'push' &&
             github.ref == 'refs/heads/main'
         steps:
-            - name: Checkout repository
-              uses: actions/checkout@v4
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Set up Deno
-              uses: denoland/setup-deno@v2
-              with:
-                  deno-version: v2.x
+            - name: Setup Deno environment
+              uses: ./.github/actions/setup-deno-env
 
             - name: Wait for Cloudflare propagation
               run: sleep 15
