@@ -179,13 +179,23 @@ export async function probeDbSmoke(
         return { ok: false, label, latency_ms, detail: `ok is not true: ${JSON.stringify(record['ok'])}`, raw: body };
     }
 
-    const dbName = record['db_name'] as string | undefined;
-    if (dbName && dbName !== 'adblock-compiler') {
+    const dbNameValue = record['db_name'];
+    if (typeof dbNameValue !== 'string') {
         return {
             ok: false,
             label,
             latency_ms,
-            detail: `db_name mismatch: expected 'adblock-compiler', got '${dbName}'`,
+            detail: `db_name missing or not a string: ${JSON.stringify(dbNameValue)}`,
+            raw: body,
+        };
+    }
+
+    if (dbNameValue !== 'adblock-compiler') {
+        return {
+            ok: false,
+            label,
+            latency_ms,
+            detail: `db_name mismatch: expected 'adblock-compiler', got '${dbNameValue}'`,
             raw: body,
         };
     }
@@ -194,7 +204,7 @@ export async function probeDbSmoke(
         ok: true,
         label,
         latency_ms,
-        detail: `ok=true db=${dbName ?? 'N/A'}`,
+        detail: `ok=true db=${dbNameValue}`,
         raw: body,
     };
 }
