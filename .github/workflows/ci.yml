@@ -700,70 +700,19 @@ jobs:
             github.event_name == 'push' &&
             github.ref == 'refs/heads/main'
         steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Set up Deno
+              uses: denoland/setup-deno@v2
+              with:
+                  deno-version: v2.x
+
             - name: Wait for Cloudflare propagation
               run: sleep 15
 
-            - name: Check /api/health
-              id: health
-              run: |
-                  set -euo pipefail
-                  HTTP=$(curl -sf -o /tmp/health.json -w "%{http_code}" \
-                    https://adblock-compiler.jayson-knight.workers.dev/api/health || echo "000")
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ /api/health returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  # "degraded" is acceptable — it means non-critical services (e.g. Hyperdrive) are
-                  # slow but the API is functional. Only "down" indicates a complete outage.
-                  jq -e '.status == "healthy" or .status == "degraded"' /tmp/health.json || {
-                    echo "❌ /api/health status is not healthy or degraded:"
-                    cat /tmp/health.json
-                    exit 1
-                  }
-                  echo "✅ /api/health OK ($(jq -r .status /tmp/health.json))"
-
-            - name: Check /api/version
-              id: version
-              run: |
-                  set -euo pipefail
-                  HTTP=$(curl -sf -o /tmp/version.json -w "%{http_code}" \
-                    https://adblock-compiler.jayson-knight.workers.dev/api/version || echo "000")
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ /api/version returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  echo "✅ /api/version OK"
-
-            - name: Check /api/auth/providers
-              id: auth
-              run: |
-                  set -euo pipefail
-                  HTTP=$(curl -sf -o /dev/null -w "%{http_code}" \
-                    https://adblock-compiler.jayson-knight.workers.dev/api/auth/providers || echo "000")
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ /api/auth/providers returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  echo "✅ /api/auth/providers OK"
-
-            - name: Write smoke test summary
-              if: always()
-              run: |
-                  HEALTH_CODE="${{ steps.health.outputs.http_code || '—' }}"
-                  VERSION_CODE="${{ steps.version.outputs.http_code || '—' }}"
-                  AUTH_CODE="${{ steps.auth.outputs.http_code || '—' }}"
-                  cat >> "$GITHUB_STEP_SUMMARY" << EOF
-                  ## 🔍 Backend Smoke Tests
-
-                  | Endpoint | HTTP Status | Result |
-                  |---|---|---|
-                  | \`/api/health\` | $HEALTH_CODE | $( [ "$HEALTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  | \`/api/version\` | $VERSION_CODE | $( [ "$VERSION_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  | \`/api/auth/providers\` | $AUTH_CODE | $( [ "$AUTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  EOF
+            - name: Run diagnostic tool against backend
+              run: deno run -A scripts/diag.ts --base-url https://adblock-compiler.jayson-knight.workers.dev
 
     smoke-test-frontend:
         name: Smoke Test — Frontend
@@ -777,70 +726,19 @@ jobs:
             github.event_name == 'push' &&
             github.ref == 'refs/heads/main'
         steps:
+            - name: Checkout repository
+              uses: actions/checkout@v4
+
+            - name: Set up Deno
+              uses: denoland/setup-deno@v2
+              with:
+                  deno-version: v2.x
+
             - name: Wait for Cloudflare propagation
               run: sleep 15
 
-            - name: Check homepage returns 200
-              id: homepage
-              run: |
-                  set -euo pipefail
-                  HTTP=$(curl -sf -o /dev/null -w "%{http_code}" \
-                    https://adblock-frontend.jayson-knight.workers.dev/ || echo "000")
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ Homepage returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  echo "✅ Homepage OK"
-
-            - name: Check SSR API proxy (/api/auth/providers)
-              id: proxy
-              run: |
-                  set -euo pipefail
-                  HTTP=$(curl -sf -o /dev/null -w "%{http_code}" \
-                    https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers || echo "000")
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ SSR API proxy /api/auth/providers returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  echo "✅ SSR API proxy OK"
-
-            - name: Check health via SSR proxy
-              id: health
-              run: |
-                  set -euo pipefail
-                  HTTP=$(curl -sf -o /tmp/fe-health.json -w "%{http_code}" \
-                    https://adblock-frontend.jayson-knight.workers.dev/api/health || echo "000")
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ /api/health via frontend returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  # "degraded" is acceptable — it means non-critical services are slow but the API
-                  # is functional. Only "down" indicates a complete outage.
-                  jq -e '.status == "healthy" or .status == "degraded"' /tmp/fe-health.json || {
-                    echo "❌ /api/health status is not healthy or degraded:"
-                    cat /tmp/fe-health.json
-                    exit 1
-                  }
-                  echo "✅ /api/health via frontend OK"
-
-            - name: Write smoke test summary
-              if: always()
-              run: |
-                  HOMEPAGE_CODE="${{ steps.homepage.outputs.http_code || '—' }}"
-                  PROXY_CODE="${{ steps.proxy.outputs.http_code || '—' }}"
-                  HEALTH_CODE="${{ steps.health.outputs.http_code || '—' }}"
-                  cat >> "$GITHUB_STEP_SUMMARY" << EOF
-                  ## 🔍 Frontend Smoke Tests
-
-                  | Check | HTTP Status | Result |
-                  |---|---|---|
-                  | Homepage | $HOMEPAGE_CODE | $( [ "$HOMEPAGE_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  | SSR API proxy (\`/api/auth/providers\`) | $PROXY_CODE | $( [ "$PROXY_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  | Health via proxy (\`/api/health\`) | $HEALTH_CODE | $( [ "$HEALTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  EOF
+            - name: Run diagnostic tool against frontend
+              run: deno run -A scripts/diag.ts --base-url https://adblock-frontend.jayson-knight.workers.dev
 
     deploy-status:
         name: Deployment Status

@@ -15,7 +15,7 @@
  *  - `timing()` middleware adds `Server-Timing` headers to every response
  *  - `etag()` on GET /metrics and GET /health for conditional request support
  *  - `prettyJSON()` globally (activate with `?pretty=true`)
- *  - `compress()` on the `routes` sub-app for automatic response compression (gzip/deflate) — scoped to business routes, never touches /api/auth/*
+ *  - `compress()` on the `routes` sub-app for automatic response compression (gzip/deflate) — scoped to business routes, never touches /api/auth/* or monitoring endpoints (/health, /metrics)
  *  - `logger()` on the `routes` sub-app for standardized request/response logging — scoped to business routes, never touches /api/auth/*
  *  - `cache()` middleware on /configuration/defaults (300s), /api/version (3600s), /api/schemas (3600s)
  *  - Cache-Control headers on /health (30 s) and /configuration/defaults (300 s)
@@ -645,7 +645,29 @@ const routes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 // Better Auth handler responses.  app.on('/api/auth/*') is resolved before the
 // routes sub-app mount, so auth traffic is completely unaffected.
 routes.use('*', logger());
-routes.use('*', compress());
+// Monitoring/diagnostic endpoints must always return plain JSON — never compressed.
+// Some Cloudflare edge configs strip Accept-Encoding before it reaches the Worker,
+// so these endpoints would return gzip bytes that jq/curl cannot parse as JSON.
+const COMPRESS_EXCLUDE = new Set([
+    '/health',
+    '/health/latest',
+    '/health/db-smoke',
+    '/metrics',
+    '/metrics/prometheus',
+]);
+
+// Create the compress middleware once to avoid per-request instantiation overhead.
+const compressMiddleware = compress();
+
+routes.use('*', async (c, next) => {
+    // Strip /api prefix if present (routes sub-app sees both mounted paths)
+    const bare = c.req.path.startsWith('/api/') ? c.req.path.slice(4) : c.req.path;
+    if (COMPRESS_EXCLUDE.has(bare)) {
+        await next();
+        return;
+    }
+    return compressMiddleware(c, next);
+});
 
 // ZTA: per-user API access gate + usage tracking
 routes.use('*', async (c, next) => {
@@ -1119,24 +1141,43 @@ routes.all('/workflow/*', async (c) => {
 routes.get('/health', async (c) => {
     const { handleHealth } = await import('./handlers/health.ts');
     const res = await handleHealth(c.env);
-    // Cache health checks for 30 seconds — stale-while-revalidate for availability
-    return new Response(res.body, {
+    // Read body as text to avoid stream-level compression issues when compress()
+    // middleware is active on other routes in the same sub-app.
+    const body = await res.text();
+    return new Response(body, {
         status: res.status,
         headers: {
             ...Object.fromEntries(res.headers),
             'Cache-Control': 'public, max-age=30, stale-while-revalidate=10',
+            'Content-Type': 'application/json',
         },
     });
 });
 
 routes.get('/health/latest', async (c) => {
     const { handleHealthLatest } = await import('./handlers/health.ts');
-    return handleHealthLatest(c.env);
+    const res = await handleHealthLatest(c.env);
+    const body = await res.text();
+    return new Response(body, {
+        status: res.status,
+        headers: {
+            ...Object.fromEntries(res.headers),
+            'Content-Type': 'application/json',
+        },
+    });
 });
 
 routes.get('/health/db-smoke', async (c) => {
     const { handleDbSmoke } = await import('./handlers/health.ts');
-    return handleDbSmoke(c.env);
+    const res = await handleDbSmoke(c.env);
+    const body = await res.text();
+    return new Response(body, {
+        status: res.status,
+        headers: {
+            ...Object.fromEntries(res.headers),
+            'Content-Type': 'application/json',
+        },
+    });
 });
 
 routes.get('/container/status', etag(), async (c) => {
