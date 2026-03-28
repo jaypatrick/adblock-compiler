@@ -645,9 +645,10 @@ const routes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 // Better Auth handler responses.  app.on('/api/auth/*') is resolved before the
 // routes sub-app mount, so auth traffic is completely unaffected.
 routes.use('*', logger());
-// Monitoring/diagnostic endpoints must always return plain JSON — never compressed.
-// Some Cloudflare edge configs strip Accept-Encoding before it reaches the Worker,
-// so these endpoints would return gzip bytes that jq/curl cannot parse as JSON.
+// Monitoring/diagnostic endpoints must remain human-readable (JSON or plaintext)
+// and must never be compressed. Some Cloudflare edge configs strip
+// Accept-Encoding before it reaches the Worker, so these endpoints would
+// otherwise return gzip bytes that tools like jq/curl cannot handle predictably.
 const COMPRESS_EXCLUDE = new Set([
     '/health',
     '/health/latest',
