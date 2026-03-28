@@ -68,6 +68,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.79.2] - 2026-03-28
+
+### Added### Fixed
+
+- merge main (PR #1440) into branch, resolve all conflicts
+- suppress TS2353 on Deno.createHttpClient decompress option (as any cast)
+- merge main into branch, resolve ci.yml smoke-test conflict
+- address review feedback on compress middleware and diagnostic CLI
+- address PR review — fatal validate errors, pinned CI actions, permissions
+- exempt health/metrics from compress() middleware; add diagnostic CLI tooling
+- scope compress() away from monitoring endpoints, add diag tool, update CI smoke tests
+- replace curl -sf || echo 000 with set+e/CURL_EXIT pattern in all smoke tests
+- broaden deploy-frontend trigger, add smoke tests, fix server.ts Worker-hang bug
+
+
 ## [0.79.1] - 2026-03-28
 
 ### Added### Fixed
