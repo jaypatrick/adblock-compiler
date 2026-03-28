@@ -645,7 +645,24 @@ const routes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 // Better Auth handler responses.  app.on('/api/auth/*') is resolved before the
 // routes sub-app mount, so auth traffic is completely unaffected.
 routes.use('*', logger());
-routes.use('*', compress());
+
+// Compress all routes EXCEPT health/smoke diagnostics — those must return
+// raw JSON so curl | jq works without Accept-Encoding negotiation.
+// Cloudflare's edge can strip or re-encode Accept-Encoding before it reaches
+// the Worker, which means compress() would encode /health even for plain curl.
+const NO_COMPRESS_PATHS = new Set(['/health', '/health/db-smoke', '/health/latest', '/metrics']);
+// Instantiate once — avoids creating a new closure on every request.
+const compressMiddleware = compress();
+routes.use('*', async (c, next) => {
+    // routesPath() strips the /api prefix so the path matches the canonical
+    // route registered in ROUTE_PERMISSION_REGISTRY (e.g. /health not /api/health).
+    const path = routesPath(c);
+    if (NO_COMPRESS_PATHS.has(path)) {
+        await next();
+        return;
+    }
+    return compressMiddleware(c, next);
+});
 
 // ZTA: per-user API access gate + usage tracking
 routes.use('*', async (c, next) => {
