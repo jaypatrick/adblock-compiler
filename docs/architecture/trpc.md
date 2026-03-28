@@ -28,10 +28,19 @@ Returns `{ version, apiVersion }`.
 ## Angular client
 
 ```typescript
-import { createTrpcClient } from '@worker/trpc/client.ts';
+import { createTrpcClient } from './trpc-client';
 
 const client = createTrpcClient(environment.apiBaseUrl, () => authService.getToken());
-const result = await client.v1.compile.json.mutate({ urls: ['...'] });
+const result = await client.v1.compile.json.mutate({
+  configuration: {
+    sources: [
+      {
+        url: 'https://example.com/easylist.txt',
+      },
+    ],
+  },
+  preFetchedContent: {},
+});
 ```
 
 ## Adding a new procedure
