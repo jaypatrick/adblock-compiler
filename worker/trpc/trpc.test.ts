@@ -91,7 +91,7 @@ Deno.test('v1.version.get — returns "unknown" when COMPILER_VERSION is absent'
     const ctxNoVersion: TrpcContext = { ...anonCtx, env: makeEnv({ COMPILER_VERSION: '' }) };
     const caller = createCaller(ctxNoVersion);
     const result = await caller.v1.version.get();
-    // Empty string is falsy — the router uses ?? so it returns 'unknown'
+    // Empty string is falsy — the router uses `||` so it falls back to 'unknown'
     assertEquals(result.version, 'unknown');
     assertEquals(result.apiVersion, 'v1');
 });
