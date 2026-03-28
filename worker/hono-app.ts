@@ -582,7 +582,7 @@ app.use('/api/trpc/*', async (c, next) => {
     const analytics = c.get('analytics');
     const ip = c.get('ip');
 
-  const accessDenied = await checkUserApiAccess(authContext, c.env);
+    const accessDenied = await checkUserApiAccess(authContext, c.env);
     if (accessDenied) {
         analytics.trackSecurityEvent({
             eventType: 'auth_failure',
