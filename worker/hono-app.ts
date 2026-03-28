@@ -658,8 +658,8 @@ const COMPRESS_EXCLUDE = new Set<string>([
 const compressMiddleware = compress();
 
 routes.use('*', async (c, next) => {
-    // Strip /api prefix if present (routes sub-app sees both mounted paths)
-    const bare = c.req.path.startsWith('/api/') ? c.req.path.slice(4) : c.req.path;
+    // Use canonical route path so compression exclusion matches other middleware.
+    const bare = routesPath(c);
     if (COMPRESS_EXCLUDE.has(bare)) {
         await next();
         return;
