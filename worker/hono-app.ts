@@ -278,14 +278,10 @@ function buildHonoRequest(c: AppContext, validatedBody: unknown): Request {
  *
  * Used by tRPC procedures to pass a Request object to existing handler
  * functions that expect the legacy `(Request, Env, ...)` signature.
+ * Re-exported from `./utils/synthetic-request.ts` so the public API surface
+ * remains on `hono-app.ts`.
  */
-export function buildSyntheticRequest(body: string): Request {
-    return new Request('https://worker.local', {
-        method: 'POST',
-        headers: new Headers({ 'Content-Type': 'application/json' }),
-        body,
-    });
-}
+export { buildSyntheticRequest } from './utils/synthetic-request.ts';
 
 // ============================================================================
 // App setup

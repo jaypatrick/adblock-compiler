@@ -143,7 +143,7 @@ Deno.test('protectedProcedure — allows request when userId is set', async () =
 
 // ── adminProcedure auth enforcement ────────────────────────────────────────────
 
-Deno.test('adminProcedure — setup: define a test admin router', async () => {
+Deno.test('adminProcedure — enforces admin role requirement', async () => {
     // Import the init primitives directly to test adminProcedure in isolation.
     const { router: r, adminProcedure } = await import('./init.ts');
     const testRouter = r({
