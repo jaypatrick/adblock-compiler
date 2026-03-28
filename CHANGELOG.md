@@ -69,6 +69,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.79.3] - 2026-03-28
+
+### Added- add tRPC v1 + API versioning (X-API-Version header)
+
+### Fixed
+
+- **trpc**: apply review comment fixes — ZTA gate, rate-limit, header order, type inference, docs
+- update pnpm-lock.yaml for @trpc/client and @trpc/server deps
+- **worker**: correct Turnstile/zValidator ordering in route modules; restore cache middleware
+- restore /api/auth/providers to pre-auth section, add pass-through in Better Auth wildcard
+- move /api/auth/providers route before Better Auth wildcard to fix HTTP 404
+
+
 ## [0.79.2] - 2026-03-28
 
 ### Added### Fixed
