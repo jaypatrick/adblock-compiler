@@ -41,7 +41,7 @@ export async function handleTrpcRequest(c: Context<{ Bindings: Env; Variables: A
                     analytics?.trackSecurityEvent({
                         eventType: 'auth_failure',
                         path: `/api/trpc/${path ?? ''}`,
-                        method: 'POST',
+                        method: c.req.method,
                         clientIpHash: AnalyticsService.hashIp(ip),
                         reason: error.code === 'UNAUTHORIZED' ? 'trpc_unauthorized' : 'trpc_forbidden',
                     });
