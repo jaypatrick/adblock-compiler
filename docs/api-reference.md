@@ -58,22 +58,22 @@ All endpoints return JSON. Streaming endpoints (`/compile/stream`) return `text/
 | `POST` | `/api/compile` | Free+ | Synchronous JSON compilation |
 | `POST` | `/api/compile/stream` | Free+ | SSE streaming compilation |
 | `POST` | `/api/compile/batch` | Free+ | Synchronous batch compilation (max 10) |
-| `POST` | `/api/compile/async` | Free+ | Async compilation (queue) |
-| `POST` | `/api/compile/batch/async` | Free+ | Async batch compilation (queue) |
+| `POST` | `/api/compile/async` | Pro+ | Async compilation (queue) |
+| `POST` | `/api/compile/batch/async` | Pro+ | Async batch compilation (queue) |
 | `POST` | `/api/compile/container` | Free+ | Container-based compilation |
 | `POST` | `/api/ast/parse` | Free+ | Parse rules into AST |
 | `POST` | `/api/validate` | Free+ | Validate filter list |
 | `POST` | `/api/validate-rule` | Free+ | Validate a single rule |
 | `GET` | `/api/ws/compile` | Free+ | WebSocket real-time compilation |
 | **Queue** | | | |
-| `GET` | `/api/queue/stats` | No | Queue health metrics |
+| `GET` | `/api/queue/stats` | Free+ | Queue health metrics |
 | `GET` | `/api/queue/history` | Free+ | Job history |
 | `GET` | `/api/queue/results/:id` | Free+ | Async job results |
 | `DELETE` | `/api/queue/cancel/:id` | Free+ | Cancel pending job |
 | **Configuration** | | | |
 | `GET` | `/api/configuration/defaults` | No | System compilation defaults |
-| `POST` | `/api/configuration/validate` | No | Validate a configuration object |
-| `POST` | `/api/configuration/resolve` | No | Merge and resolve configuration layers |
+| `POST` | `/api/configuration/validate` | Free+ | Validate a configuration object |
+| `POST` | `/api/configuration/resolve` | Free+ | Merge and resolve configuration layers |
 | **Rules** | | | |
 | `GET` | `/api/rules` | Free+ | List cached rule sets |
 | `GET` | `/api/rules/:id` | Free+ | Get a specific rule set |
@@ -82,15 +82,15 @@ All endpoints return JSON. Streaming endpoints (`/compile/stream`) return `text/
 | `GET` | `/api/health/latest` | No | Latest health snapshot |
 | `GET` | `/api/health/db-smoke` | No | Database smoke test |
 | `GET` | `/api/metrics` | No | Aggregated performance metrics |
-| `GET` | `/api/metrics/prometheus` | No | Prometheus-format metrics |
+| `GET` | `/api/metrics/prometheus` | Admin | Prometheus-format metrics |
 | `GET` | `/api/container/status` | No | Container (DO) status |
 | **API Keys** | | | |
 | `GET` | `/api/keys` | Free+ | List API keys |
 | `POST` | `/api/keys` | Free+ | Create API key |
 | `DELETE` | `/api/keys/:id` | Free+ | Revoke API key |
 | **Workflows** | | | |
-| `POST` | `/api/workflow/compile` | Free+ | Start compilation workflow |
-| `GET` | `/api/workflow/:id` | Free+ | Get workflow status |
+| `POST` | `/api/workflow/compile` | Pro+ | Start compilation workflow |
+| `GET` | `/api/workflow/:id` | Pro+ | Get workflow status |
 | **Admin** | | | |
 | `GET` | `/api/admin/users` | Admin | List all users |
 | `GET` | `/api/admin/users/:id` | Admin | Get user by ID |
@@ -149,6 +149,8 @@ curl https://adblock-compiler.jayson-knight.workers.dev/api/health
 ```
 
 ### Queue an Async Compilation
+
+> **Requires Pro tier.** Anonymous and Free-tier callers receive a `403 Forbidden` response.
 
 ```bash
 # 1. Submit job

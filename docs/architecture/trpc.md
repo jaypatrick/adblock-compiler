@@ -44,7 +44,7 @@ Returns the same payload as `GET /api/health`. No authentication required.
 ### v1.compile.json (mutation, authenticated)
 
 Accepts a `CompileRequestSchema` body (same schema as `POST /api/compile`). Returns the
-compiled ruleset JSON. Requires a non-anonymous session (`protectedProcedure`).
+compiled ruleset JSON. Requires an authenticated context (`protectedProcedure`; user session or API key).
 
 ### v1.version.get (query, public)
 
@@ -92,7 +92,9 @@ Defined in `worker/trpc/init.ts`:
 batched into a single HTTP request.
 
 ```typescript
-import { createTrpcClient } from '../../../worker/trpc/client';
+// Adjust the relative import depth to match your Angular service file location.
+// Example for a service at frontend/src/app/services/compile.service.ts:
+import { createTrpcClient } from '../../../../worker/trpc/client';
 
 // Angular service (inject auth token from BetterAuthService):
 const client = createTrpcClient(
@@ -123,7 +125,9 @@ const result = await client.v1.compile.json.mutate({
 Import `AppRouter` to get full end-to-end type safety without running the server:
 
 ```typescript
-import type { AppRouter } from '../../../worker/trpc/router';
+// Adjust the relative import depth to match your consuming file location.
+// Example for a service at frontend/src/app/services/trpc.service.ts:
+import type { AppRouter } from '../../../../worker/trpc/router';
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 
 const client = createTRPCClient<AppRouter>({
@@ -203,9 +207,10 @@ export const v1Router = router({
 Procedures can be unit-tested without an HTTP server using `createCallerFactory`:
 
 ```typescript
-import { createCallerFactory } from 'worker/trpc/init.ts';
-import { appRouter } from 'worker/trpc/router.ts';
-import type { TrpcContext } from 'worker/trpc/context.ts';
+// Relative imports from a test file co-located in worker/trpc/:
+import { createCallerFactory } from './init.ts';
+import { appRouter } from './router.ts';
+import type { TrpcContext } from './context.ts';
 
 const createCaller = createCallerFactory(appRouter);
 
