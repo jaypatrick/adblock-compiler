@@ -19,24 +19,38 @@ glue) was migrated to Hono.
 
 ```mermaid
 flowchart TD
-    R[Incoming Request] --> M1[1. Request Metadata\nrequestId · ip · analytics]
-    M1 --> M2[2. MCP Agent routing\nrouteAgentRequest — short-circuit]
-    M2 -->|agent route| AR[MCP Agent Response]
-    M2 -->|other| POC{/poc path?}
+    R[Incoming Request] --> T[0. Server-Timing\nhono/timing]
+    T --> AV[0a. X-API-Version header\n— set on every response]
+    AV --> M1[1. Request Metadata\nrequestId · ip · analytics]
+    M1 --> SSR[1a. SSR Origin Detection\nCF-Worker-Source: ssr → isSSR]
+    SSR --> BA{/api/auth/* path?}
+    BA -->|yes — but not /api/auth/providers| BAH[Better Auth handler\nauth.handler — session auth]
+    BAH --> BARES[Better Auth Response]
+    BA -->|no — or /api/auth/providers| AGENTS{/agents/* path?}
+    AGENTS -->|yes| AGR[Agent Router\nCORS + SecureHeaders + agentRouter]
+    AGR --> AGRES[Agent Response]
+    AGENTS -->|no| POC{/poc/* path?}
     POC -->|yes| POCRL[Anonymous rate limit]
     POCRL --> POCASSETS[Serve ASSETS or 503]
-    POC -->|no| PREAUTH{Pre-auth path?\n/api/version etc.}
+    POC -->|no| PREAUTH{Pre-auth GET path?\n/api/version · /api/health etc.}
     PREAUTH -->|yes| PREAUTHRL[Anonymous rate limit]
     PREAUTHRL --> PREAUTHROUTE[Route to info handler]
-    PREAUTH -->|no| AUTH[2b. Unified Auth\nauthenticateRequestUnified]
-    AUTH --> CORS[3. CORS middleware\nhono/cors]
-    CORS --> SECURE[4. Secure Headers\nhono/secure-headers]
-    SECURE --> ZTA[ZTA: checkUserApiAccess\n+ trackApiUsage]
-    ZTA --> PERM[Permission check\ncheckRoutePermission]
+    PREAUTH -->|no| AUTH[Unified Auth\nauthenticateRequestUnified\n— BetterAuthProvider]
+    AUTH --> CORS[CORS middleware\nhono/cors]
+    CORS --> SECURE[Secure Headers\nhono/secure-headers]
+    SECURE --> PJ[prettyJSON\n— activate with ?pretty=true]
+    PJ --> ZTA[routes sub-app\nlogger · compress · ZTA gate · permission check]
+    ZTA --> PERM{permission\ncheck}
     PERM -->|denied| SEC[Security event + 403]
-    PERM -->|allowed| ROUTE[Route Handler]
+    PERM -->|allowed| ROUTE[Domain Route Handler]
     ROUTE --> RESP[Response]
 ```
+
+> **Better Auth placement:** The Better Auth handler (`app.on(['POST','GET'], '/api/auth/*', ...)`) is
+> mounted **before** the unified auth middleware so that session creation and sign-in flows
+> (`/api/auth/sign-in/email`, `/api/auth/sign-up/email`, etc.) are not intercepted by the auth
+> verifier. The one exception is `/api/auth/providers`, which falls through to the normal pre-auth
+> GET path and is served without a Better Auth session check.
 
 ---
 
@@ -49,6 +63,7 @@ These variables are set by middleware and available to all route handlers via `c
 | `requestId`   | `string`           | Request metadata middleware  | Unique trace ID for the request          |
 | `ip`          | `string`           | Request metadata middleware  | `CF-Connecting-IP` header or `'unknown'` |
 | `analytics`   | `AnalyticsService` | Request metadata middleware  | Analytics/telemetry service instance     |
+| `isSSR`       | `boolean`          | SSR origin middleware        | `true` when request originates from the SSR Worker (`CF-Worker-Source: ssr` header) |
 | `authContext` | `IAuthContext`     | Auth middleware              | Authenticated user context (or anonymous)|
 
 ---
@@ -222,7 +237,7 @@ app.all('/api/trpc/*', (c) => handleTrpcRequest(c));
 
 This placement ensures:
 
-- The global middleware chain (timing, request metadata, auth, CORS, secure headers)
+- The global middleware chain (timing, metadata, Better Auth handler, unified auth, CORS, secure headers)
   **does** run before tRPC requests — `authContext` is already populated.
 - The `compress()` and `logger()` middleware scoped to the `routes` sub-app **do not**
   wrap tRPC responses.
