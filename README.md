@@ -1,4 +1,4 @@
-# Adblock Compiler (currently in code freeze at v0.74.9 for e2e testing and refactoring)
+# Adblock Compiler (currently in code freeze at v0.79.4 for e2e testing and refactoring)
 
 <!-- CI/CD & Build Status -->
 
