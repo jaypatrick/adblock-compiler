@@ -68,7 +68,7 @@
 
 ## 📚 Documentation
 
-Full documentation is available at **[adblock-compiler.jayson-knight.workers.dev/docs](https://adblock-compiler.jayson-knight.workers.dev/docs)** and in the [`/docs`](docs/README.md) directory.
+Full documentation is available in mdBook format at [this link](https://adblock-compiler-docs.pages.dev/) and in the [`/docs`](docs/README.md) directory.
 
 ## 🚀 Quick Start
 
@@ -181,33 +181,40 @@ Examples:
 
 ## 📖 Further Reading
 
-| Topic | Doc |
-|---|---|
-| CLI reference | [docs/usage/CLI.md](docs/usage/CLI.md) |
-| Configuration reference | [docs/usage/CONFIGURATION.md](docs/usage/CONFIGURATION.md) |
-| Transformations reference | [docs/usage/TRANSFORMATIONS.md](docs/usage/TRANSFORMATIONS.md) |
-| TypeScript API & Zod validation | [docs/api/README.md](docs/api/README.md) |
-| OpenAPI specification | [docs/api/OPENAPI_TOOLING.md](docs/api/OPENAPI_TOOLING.md) |
+| Topic                              | Doc                                                          |
+| ---------------------------------- | ------------------------------------------------------------ |
+| CLI reference                      | [docs/usage/CLI.md](docs/usage/CLI.md)                       |
+| Configuration reference            | [docs/usage/CONFIGURATION.md](docs/usage/CONFIGURATION.md)   |
+| Transformations reference          | [docs/usage/TRANSFORMATIONS.md](docs/usage/TRANSFORMATIONS.md) |
+| TypeScript API & Zod validation    | [docs/api/README.md](docs/api/README.md)                     |
+| OpenAPI specification              | [docs/api/OPENAPI_TOOLING.md](docs/api/OPENAPI_TOOLING.md)   |
 | Platform support & custom fetchers | [docs/api/PLATFORM_SUPPORT.md](docs/api/PLATFORM_SUPPORT.md) |
-| Extensibility | [docs/development/EXTENSIBILITY.md](docs/development/EXTENSIBILITY.md) |
-| Structured logging & OpenTelemetry | [docs/development/LOGGING.md](docs/development/LOGGING.md) |
-| Error reporting | [docs/development/ERROR_REPORTING.md](docs/development/ERROR_REPORTING.md) |
-| Docker deployment | [docs/deployment/docker.md](docs/deployment/docker.md) |
-| Cloudflare Workers deployment | [docs/deployment/cloudflare-pages.md](docs/deployment/cloudflare-pages.md) |
-| Angular frontend | [frontend/README.md](frontend/README.md) |
+| Extensibility                      | [docs/development/EXTENSIBILITY.md](docs/development/EXTENSIBILITY.md) |
+| Structured logging & OpenTelemetry | [docs/development/LOGGING.md](docs/development/LOGGING.md)   |
+| Error reporting                    | [docs/development/ERROR_REPORTING.md](docs/development/ERROR_REPORTING.md) |
+| Docker deployment                  | [docs/deployment/docker.md](docs/deployment/docker.md)       |
+| Cloudflare Workers deployment      | [docs/deployment/cloudflare-pages.md](docs/deployment/cloudflare-pages.md) |
+| Angular frontend                   | [frontend/README.md](frontend/README.md)                     |
 
 ## 🏗️ Tech Stack
 
-| Layer | Technology | Notes |
-|---|---|---|
-| **Runtime** | [Deno](https://deno.land/) 2.x, [Cloudflare Workers](https://workers.cloudflare.com/) | Edge-first execution |
-| **Framework** | [Hono](https://hono.dev/) | Lightweight web framework for Workers |
-| **Database** | [Neon PostgreSQL](https://neon.tech/) (primary), [Cloudflare D1](https://developers.cloudflare.com/d1/) (edge cache) | Neon via [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) connection pooling |
-| **ORM** | [Prisma](https://www.prisma.io/) 7.x | `@prisma/adapter-pg` for PostgreSQL, `@prisma/adapter-d1` for D1 |
-| **Authentication** | [Better Auth](https://www.better-auth.com/) (primary), [Clerk](https://clerk.com/) (deprecated fallback) | Better Auth for new sessions; Clerk for legacy tokens during migration |
-| **Storage** | [Cloudflare R2](https://developers.cloudflare.com/r2/), [KV](https://developers.cloudflare.com/kv/) | R2 for compiled outputs, KV for caching & rate limits |
-| **Frontend** | [Angular 21](https://angular.dev/) | Zoneless change detection, Material Design 3, SSR on Workers |
-| **Validation** | [Zod](https://zod.dev/) | Runtime schema validation at all trust boundaries |
+| Layer              | Technology                                                   | Notes                                                        |
+| ------------------ | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| **Runtime**        | [Deno](https://deno.land/) 2.x, [Cloudflare Workers](https://workers.cloudflare.com/), [Typescript 6.0](http://typescriptlang.org) | Edge-first execution, Deno runtime, Typescript 6.x           |
+| **Framework**      | [Hono](https://hono.dev/), [tRPC](https://trpc.io/)          | Lightweight web framework for Workers                        |
+| **Database**       | [Neon PostgreSQL](https://neon.tech/) (primary), [Cloudflare D1](https://developers.cloudflare.com/d1/) (edge cache) | Neon via [Hyperdrive](https://developers.cloudflare.com/hyperdrive/) connection pooling |
+| **ORM**            | [Prisma](https://www.prisma.io/) 7.x                         | `@prisma/adapter-pg` for PostgreSQL, `@prisma/adapter-d1` for D1 |
+| **Authentication** | [Better Auth](https://www.better-auth.com/) (primary)        | Better Auth for new sessions; Clerk for legacy tokens during migration |
+| **Storage**        | [Cloudflare R2](https://developers.cloudflare.com/r2/), [KV](https://developers.cloudflare.com/kv/) | R2 for compiled outputs, KV for caching & rate limits        |
+| **Frontend**       | [Angular 21](https://angular.dev/), [Vite](https://vite.dev), [TailwindCSS](https://tailwindcss.com) | Zoneless change detection, Material Design 3, SSR on Workers |
+| **Validation**     | [Zod](https://zod.dev/)                                      | Runtime schema validation at all trust boundaries            |
+| **API**            | [OpenAPI 3.0](https://www.openapis.org), [Postman]()         | OpenAPI 3.0 specification                                    |
+| **Routing**        | [Hono Router](https://hono.dev/)                             | Hono router for Typescript                                   |
+| **Testing**        | [Deno](https://deno.land/) 2.x, [Vitest](https://vitest.dev), [Postman](https://postman.com), [Playwright](https://playwright.dev) | Deno test for backend, Vitest for frontend, Postman for API, Playwright for e2e |
+| **Security**       | Full [ZTA](https://www.cloudflare.com/learning/security/glossary/what-is-zero-trust/), [JWT](https://www.jwt.io/) | Zero-trust architecture at every layer/API call via JWT + Better Auth |
+| **Observability**  | [Sentry](https://sentry.io), [Prometheus](https://prometheus.io), [Cloudflare Observatory](https://developers.cloudflare.com/speed/observatory/) | Prometheus, Sentry, and Cloudflare Observatory log pushing   |
+| **DevOps**         | [Github](https://github.com), [CodeQL](https://codeql.github.com), [Lighthouse](https://developers.google.com/web/tools/lighthouse/) | DevOps hosted on Github with CodeQL and Lighthouse integration |
+| **Architecture**   | [Edge First](https://www.cloudflare.com/learning/serverless/glossary/what-is-edge-computing/), [Workers Modules](https://workers.cloudflare.com/), [Cloud Native](https://www.cncf.io/), ZTA, Microservices | Cloudlfare-native microservices hosted in Workers, ZTA at every boundary |
 
 ## 🔧 Development
 
