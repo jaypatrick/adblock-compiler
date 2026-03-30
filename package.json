@@ -18,7 +18,7 @@
         "@hono/zod-openapi": "^1.2.2",
         "@hono/zod-validator": "^0.4.3",
         "@neondatabase/serverless": "^0.10.0",
-        "@opentelemetry/api": "^1.9.0",
+        "@opentelemetry/api": "^1.9.1",
         "@prisma/adapter-d1": "^7.5.0",
         "@prisma/adapter-pg": "^7.5.0",
         "@prisma/client": "^7.5.0",
