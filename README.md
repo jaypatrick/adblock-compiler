@@ -46,14 +46,6 @@
 
 🌐 **[Try the Admin Dashboard](https://adblock-compiler.jayson-knight.workers.dev/)** | 🔧 **[Compiler UI](https://adblock-compiler.jayson-knight.workers.dev/compiler.html)** | 🚀 **[API Endpoint](https://adblock-compiler.jayson-knight.workers.dev/api)** | 📚 **[Documentation](docs/api/README.md)**
 
-## 🎉 New in v0.30.x
-
-- **🎯 Angular 21 SPA** — Production Angular frontend with zoneless change detection, Angular Material 3, SSR, and Cloudflare Workers deployment ([docs](frontend/README.md))
-- **🎨 Tailwind CSS v4** — Migrated from Tailwind v3 to v4 across all legacy UI pages ([docs](docs/frontend/TAILWIND_CSS.md))
-- **📱 Mobile Responsive** — Comprehensive responsive layout improvements across all UI pages
-- **📖 Styled API Docs** — HTML documentation page served at the `/api` endpoint
-- **🔧 IBasicLogger Injection** — Structured error logging injected into `CompilerEventEmitter`, `AnalyticsService`, and `CloudflareQueueProvider`
-
 ## ✨ Features
 
 - **🎯 Multi-Source Compilation** - Combine filter lists from URLs, files, or inline rules
