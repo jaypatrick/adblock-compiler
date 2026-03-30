@@ -108,16 +108,18 @@ interface NavItem {
           <!-- Header — gradient background matching original design -->
           <header class="app-header-shell">
             <div class="app-title-row">
-              <button
-                mat-icon-button
-                (click)="toggleSidenav()"
-                aria-label="Toggle navigation"
-                [attr.aria-expanded]="sidenavOpen()"
-                aria-controls="app-mobile-sidenav"
-                class="menu-btn"
-              >
-                <mat-icon aria-hidden="true">menu</mat-icon>
-              </button>
+              @if (isMobile()) {
+                <button
+                  mat-icon-button
+                  (click)="toggleSidenav()"
+                  aria-label="Toggle navigation"
+                  [attr.aria-expanded]="sidenavOpen()"
+                  aria-controls="app-mobile-sidenav"
+                  class="menu-btn"
+                >
+                  <mat-icon aria-hidden="true">menu</mat-icon>
+                </button>
+              }
               <p class="app-brand-title">
                 <img class="app-brand-logo" src="favicon.svg" alt="" aria-hidden="true" width="28" height="28">
                 Adblock Compiler
