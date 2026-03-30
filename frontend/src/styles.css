@@ -733,8 +733,19 @@ html[data-theme='dark'] .page-wrapper {
         padding: 16px 16px 0;
     }
 
+    /* Pad the title row so the centered brand title stays clear of the
+       absolute-positioned hamburger (left) and action buttons (right). */
+    .app-header-shell .app-title-row {
+        padding: 0 104px;
+    }
+
     .app-header-shell .app-brand-title {
-        font-size: 1.5rem;
+        font-size: 1.25rem;
+    }
+
+    /* Hide horizontal tabs on mobile — the sidenav (hamburger) handles navigation. */
+    .app-nav-tabs {
+        display: none;
     }
 
     .app-main-content {
