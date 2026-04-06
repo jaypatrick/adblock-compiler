@@ -145,8 +145,8 @@ importers:
         specifier: ^6.3.0
         version: 6.3.0(@solana/web3.js@1.98.4(bufferutil@4.1.0)(typescript@6.0.2)(utf-8-validate@6.0.6))(@types/react@19.2.14)(bs58@5.0.0)(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.4(react@19.2.4))(react-native@0.84.1(@babel/core@7.29.0)(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.4)(utf-8-validate@6.0.6))(react@19.2.4)(typescript@6.0.2)(use-sync-external-store@1.6.0(react@19.2.4))(utf-8-validate@6.0.6)(zod@4.3.6)
       '@clerk/shared':
-        specifier: ^4.3.0
-        version: 4.3.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+        specifier: ^4.3.2
+        version: 4.3.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@fontsource/ibm-plex-sans':
         specifier: ^5.2.8
         version: 5.2.8
@@ -1375,8 +1375,8 @@ packages:
     resolution: {integrity: sha512-TKEUCWHVSeTTXnjONr4Vw81nn5hljgXivNb3hgvFOyuMfVdnpPIjghLzcKYCjEmBBi5i4jDq/U5cadx9WSwrvg==}
     engines: {node: '>=20.9.0'}
 
-  '@clerk/shared@4.3.0':
-    resolution: {integrity: sha512-Ydt8YGohNXEs6aBBLnti80OJT551yYWVTugFTO8Ee+uIZpStyqXF+ufBtJleuhfxs1D5KjtpIxc+hTqkZtqMyQ==}
+  '@clerk/shared@4.3.2':
+    resolution: {integrity: sha512-tYYzdY4Fxb02TO4RHoLRFzEjXJn0iFDfoKhWtGyqf2AaIgkprTksunQtX0hnVssHMr3XD/E2S00Vrb+PzX3jCQ==}
     engines: {node: '>=20.9.0'}
     peerDependencies:
       react: ^18.0.0 || ~19.0.3 || ~19.1.4 || ~19.2.3 || ~19.3.0-0
@@ -9609,7 +9609,7 @@ snapshots:
   '@clerk/clerk-js@6.3.0(@solana/web3.js@1.98.4(bufferutil@4.1.0)(typescript@6.0.2)(utf-8-validate@6.0.6))(@types/react@19.2.14)(bs58@5.0.0)(bufferutil@4.1.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-dom@19.2.4(react@19.2.4))(react-native@0.84.1(@babel/core@7.29.0)(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.4)(utf-8-validate@6.0.6))(react@19.2.4)(typescript@6.0.2)(use-sync-external-store@1.6.0(react@19.2.4))(utf-8-validate@6.0.6)(zod@4.3.6)':
     dependencies:
       '@base-org/account': 2.0.1(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.4)(typescript@6.0.2)(use-sync-external-store@1.6.0(react@19.2.4))(utf-8-validate@6.0.6)(zod@4.3.6)
-      '@clerk/shared': 4.3.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
+      '@clerk/shared': 4.3.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
       '@coinbase/wallet-sdk': 4.3.0
       '@solana/wallet-adapter-base': 0.9.27(@solana/web3.js@1.98.4(bufferutil@4.1.0)(typescript@6.0.2)(utf-8-validate@6.0.6))
       '@solana/wallet-adapter-react': 0.15.39(@solana/web3.js@1.98.4(bufferutil@4.1.0)(typescript@6.0.2)(utf-8-validate@6.0.6))(bs58@5.0.0)(fastestsmallesttextencoderdecoder@1.0.22)(react-native@0.84.1(@babel/core@7.29.0)(@types/react@19.2.14)(bufferutil@4.1.0)(react@19.2.4)(utf-8-validate@6.0.6))(react@19.2.4)(typescript@6.0.2)
@@ -9640,7 +9640,7 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@clerk/shared@4.3.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
+  '@clerk/shared@4.3.2(react-dom@19.2.4(react@19.2.4))(react@19.2.4)':
     dependencies:
       '@tanstack/query-core': 5.90.16
       dequal: 2.0.3
