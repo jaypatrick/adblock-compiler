@@ -14,7 +14,7 @@
     "packageManager": "pnpm@10.31.0",
     "_syncNote": "Dependency versions here must match those pinned in deno.json's import map; keep them in sync (for example via the existing version:sync-style task).",
     "dependencies": {
-        "@adguard/agtree": "^4.0.1",
+        "@adguard/agtree": "^4.0.4",
         "@hono/zod-openapi": "^1.2.2",
         "@hono/zod-validator": "^0.4.3",
         "@neondatabase/serverless": "^0.10.0",
