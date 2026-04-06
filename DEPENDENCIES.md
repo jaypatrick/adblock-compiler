@@ -28,7 +28,7 @@ Runtime dependencies used by the Cloudflare Worker.
 
 | Package | Version | Registry | Purpose |
 |---|---|---|---|
-| `@adguard/agtree` | `^4.0.1` | npm | AdGuard filter list AST parsing and multi-syntax detection |
+| `@adguard/agtree` | `^4.0.4` | npm | AdGuard filter list AST parsing and multi-syntax detection |
 | `@opentelemetry/api` | `^1.9.0` | npm | OpenTelemetry tracing and metrics API |
 | `@prisma/adapter-d1` | `^7.5.0` | npm | Prisma ORM adapter for Cloudflare D1 (SQLite) |
 | `@prisma/client` | `^7.5.0` | npm | Prisma ORM client for database access |
@@ -60,7 +60,7 @@ Dependencies for the core compiler library (`src/`) and Deno runtime.
 
 | Package | Version | Registry | Purpose |
 |---|---|---|---|
-| `@adguard/agtree` | `^4.0.1` | npm | AdGuard filter list AST parsing (shared with worker) |
+| `@adguard/agtree` | `^4.0.4` | npm | AdGuard filter list AST parsing (shared with worker) |
 | `@luca/cases` | `^1.0.0` | JSR | String case conversion utilities |
 | `@opentelemetry/api` | `^1.9.0` | npm | OpenTelemetry tracing API (shared with worker) |
 | `@prisma/adapter-d1` | `^7.5.0` | npm | Prisma D1 adapter (shared with worker) |
