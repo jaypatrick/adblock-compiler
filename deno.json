@@ -97,7 +97,7 @@
     },
     "imports": {
         "@/": "./src/",
-        "@adguard/agtree": "npm:@adguard/agtree@^4.0.1",
+        "@adguard/agtree": "npm:@adguard/agtree@^4.0.4",
         "wrangler": "npm:wrangler@^4.77.0",
         "@std/path": "jsr:@std/path@^1.1.4",
         "@std/fs": "jsr:@std/fs@^1.0.23",
