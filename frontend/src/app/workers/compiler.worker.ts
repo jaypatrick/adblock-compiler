@@ -66,10 +66,15 @@ export type LocalWorkerOutMessage = LocalProgressMessage | LocalResultMessage | 
 
 // ── Message handler ───────────────────────────────────────────────────────────
 
-self.onmessage = async (event: MessageEvent<LocalCompileMessage>) => {
-    if (event.data.type !== 'compile') return;
+self.onmessage = async (event: MessageEvent<any>) => {
+    const data = event.data;
 
-    const { config, prefetchedContent } = event.data;
+    // Validate that the incoming message matches the expected compile message shape.
+    if (!data || typeof data !== 'object' || (data as any).type !== 'compile') {
+        return;
+    }
+
+    const { config, prefetchedContent } = data as LocalCompileMessage;
 
     try {
         postMessage({ type: 'progress', phase: 'Initialising compiler', percent: 5 } as LocalProgressMessage);
