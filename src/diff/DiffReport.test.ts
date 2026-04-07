@@ -1,5 +1,5 @@
 import { assertEquals, assertExists } from '@std/assert';
-import { DiffGenerator, generateDiff, generateDiffMarkdown } from './DiffReport.ts';
+import { DiffGenerator, type DiffReport, generateDiff, generateDiffMarkdown } from './DiffReport.ts';
 
 Deno.test('DiffGenerator - detects added rules', () => {
     const original = ['||example.com^'];
@@ -257,6 +257,7 @@ Deno.test('DiffGenerator - categoryBreakdown counts comments when ignoreComments
     const generator = new DiffGenerator({ ignoreComments: false });
     const report = generator.generate(original, updated);
 
+    assertExists(report.summary.categoryBreakdown);
     assertEquals(report.summary.categoryBreakdown.comment.added, 1);
     assertEquals(report.summary.categoryBreakdown.network.added, 1);
 });
@@ -332,4 +333,33 @@ Deno.test('DiffGenerator - markdown includes Rule Type Breakdown section', () =>
     assertEquals(markdown.includes('## Rule Type Breakdown'), true);
     assertEquals(markdown.includes('Network'), true);
     assertEquals(markdown.includes('Cosmetic'), true);
+});
+
+Deno.test('DiffGenerator - useAstNormalization preserves original rule text in RuleDiff', () => {
+    // The added rule has double internal space; AGTree normalises it to single space
+    // for comparison purposes but the diff report should show the original text.
+    const original: string[] = [];
+    const updated = ['127.0.0.1  example.com']; // double space
+
+    const generator = new DiffGenerator({ useAstNormalization: true });
+    const report = generator.generate(original, updated);
+
+    assertEquals(report.added.length, 1);
+    assertEquals(report.added[0].rule, '127.0.0.1  example.com');
+});
+
+Deno.test('DiffGenerator - exportAsMarkdown handles missing categoryBreakdown for backward compat', () => {
+    const generator = new DiffGenerator();
+    const report = generator.generate(['||old.com^'], ['||new.com^']);
+
+    // Simulate a pre-existing serialised report that lacks categoryBreakdown
+    const oldReport: DiffReport = {
+        ...report,
+        summary: { ...report.summary, categoryBreakdown: undefined },
+    };
+
+    // Must not throw, and omits the breakdown table since all counts are 0
+    const markdown = generator.exportAsMarkdown(oldReport);
+    assertEquals(markdown.includes('# Filter List Diff Report'), true);
+    assertEquals(markdown.includes('## Rule Type Breakdown'), false);
 });

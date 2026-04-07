@@ -6,7 +6,7 @@
  */
 
 import { PACKAGE_INFO } from '../version.ts';
-import { AGTreeParser } from '../utils/AGTreeParser.ts';
+import { AGTreeParser, type ParseResult } from '../utils/AGTreeParser.ts';
 
 /**
  * Rule category as determined by AGTree parsing.
@@ -79,7 +79,7 @@ export interface DiffSummary {
     /** Percentage change */
     percentageChange: number;
     /** Per-category breakdown of added/removed counts, populated by AGTree parsing */
-    categoryBreakdown: CategoryChangeCounts;
+    categoryBreakdown?: CategoryChangeCounts;
 }
 
 /**
@@ -187,13 +187,16 @@ export class DiffGenerator {
             newTimestamp?: string;
         },
     ): DiffReport {
-        // Normalize rules
-        const normalizedOriginal = this.normalizeRules(originalRules);
-        const normalizedNew = this.normalizeRules(newRules);
+        // Parse cache: memoizes AGTreeParser.parse() calls within this generate() call
+        const parseCache = new Map<string, ParseResult>();
 
-        // Create sets for fast lookup
-        const originalSet = new Set(normalizedOriginal);
-        const newSet = new Set(normalizedNew);
+        // Filter rules (trim + remove comments/empty lines); does NOT apply AST normalization
+        const filteredOriginal = this.filterRules(originalRules);
+        const filteredNew = this.filterRules(newRules);
+
+        // Build comparison sets from normalised keys so AST-equivalent rules are de-duplicated
+        const originalKeySet = new Set(filteredOriginal.map((r) => this.getComparisonKey(r, parseCache)));
+        const newKeySet = new Set(filteredNew.map((r) => this.getComparisonKey(r, parseCache)));
 
         // Find added and removed rules
         const added: RuleDiff[] = [];
@@ -209,10 +212,10 @@ export class DiffGenerator {
         };
 
         // Find removed rules (in original but not in new)
-        for (let i = 0; i < normalizedOriginal.length; i++) {
-            const rule = normalizedOriginal[i];
-            if (!newSet.has(rule)) {
-                const info = this.categorizeRule(rule);
+        for (let i = 0; i < filteredOriginal.length; i++) {
+            const rule = filteredOriginal[i];
+            if (!newKeySet.has(this.getComparisonKey(rule, parseCache))) {
+                const info = this.categorizeRule(rule, parseCache);
                 removed.push({
                     rule,
                     type: 'removed',
@@ -226,10 +229,10 @@ export class DiffGenerator {
         }
 
         // Find added rules (in new but not in original)
-        for (let i = 0; i < normalizedNew.length; i++) {
-            const rule = normalizedNew[i];
-            if (!originalSet.has(rule)) {
-                const info = this.categorizeRule(rule);
+        for (let i = 0; i < filteredNew.length; i++) {
+            const rule = filteredNew[i];
+            if (!originalKeySet.has(this.getComparisonKey(rule, parseCache))) {
+                const info = this.categorizeRule(rule, parseCache);
                 added.push({
                     rule,
                     type: 'added',
@@ -243,20 +246,20 @@ export class DiffGenerator {
         }
 
         // Calculate summary
-        const unchangedCount = normalizedOriginal.length - removed.length;
+        const unchangedCount = filteredOriginal.length - removed.length;
         const summary: DiffSummary = {
-            originalCount: normalizedOriginal.length,
-            newCount: normalizedNew.length,
+            originalCount: filteredOriginal.length,
+            newCount: filteredNew.length,
             addedCount: added.length,
             removedCount: removed.length,
             unchangedCount,
             netChange: added.length - removed.length,
-            percentageChange: normalizedOriginal.length > 0 ? ((added.length - removed.length) / normalizedOriginal.length) * 100 : 0,
+            percentageChange: filteredOriginal.length > 0 ? ((added.length - removed.length) / filteredOriginal.length) * 100 : 0,
             categoryBreakdown,
         };
 
         // Analyze domain changes if requested
-        const domainChanges = this.options.analyzeDomains ? this.analyzeDomainChanges(added, removed) : [];
+        const domainChanges = this.options.analyzeDomains ? this.analyzeDomainChanges(added, removed, parseCache) : [];
 
         // Limit rules if needed
         const limitedAdded = this.options.includeFullRules ? added.slice(0, this.options.maxRulesToInclude) : [];
@@ -269,13 +272,13 @@ export class DiffGenerator {
                 name: metadata?.originalName,
                 version: metadata?.originalVersion,
                 timestamp: metadata?.originalTimestamp,
-                ruleCount: normalizedOriginal.length,
+                ruleCount: filteredOriginal.length,
             },
             current: {
                 name: metadata?.newName,
                 version: metadata?.newVersion,
                 timestamp: metadata?.newTimestamp,
-                ruleCount: normalizedNew.length,
+                ruleCount: filteredNew.length,
             },
             summary,
             added: limitedAdded,
@@ -285,13 +288,12 @@ export class DiffGenerator {
     }
 
     /**
-     * Normalizes rules for comparison.
-     *
-     * When `useAstNormalization` is enabled, each successfully parsed rule is
-     * regenerated from its AGTree AST so that semantically equivalent rules
-     * with different whitespace collapse to the same string before comparison.
+     * Filters rules for comparison: trims whitespace and removes empty lines /
+     * comments according to configured options.  This method does **not** apply
+     * AST normalisation — that is handled separately by `getComparisonKey()` so
+     * the original text is always preserved in `RuleDiff.rule`.
      */
-    private normalizeRules(rules: string[]): string[] {
+    private filterRules(rules: string[]): string[] {
         return rules
             .map((rule) => rule.trim())
             .filter((rule) => {
@@ -302,26 +304,51 @@ export class DiffGenerator {
                     return false;
                 }
                 return true;
-            })
-            .map((rule) => {
-                if (!this.options.useAstNormalization) {
-                    return rule;
-                }
-                const parseResult = AGTreeParser.parse(rule);
-                if (parseResult.success && parseResult.ast) {
-                    return AGTreeParser.generate(parseResult.ast);
-                }
-                return rule;
             });
+    }
+
+    /**
+     * Returns a stable comparison key for a rule.  When `useAstNormalization`
+     * is enabled the rule is regenerated from its parsed AST so that two
+     * semantically identical rules that differ only in whitespace produce the
+     * same key.  Falls back to the original text when parsing fails.
+     *
+     * Parse results are memoized in `parseCache` so the same rule string is
+     * never parsed more than once during a single `generate()` call.
+     */
+    private getComparisonKey(rule: string, parseCache: Map<string, ParseResult>): string {
+        if (!this.options.useAstNormalization) {
+            return rule;
+        }
+        const parseResult = this.cachedParse(rule, parseCache);
+        if (parseResult.success && parseResult.ast) {
+            return AGTreeParser.generate(parseResult.ast);
+        }
+        return rule;
+    }
+
+    /**
+     * Memoizes `AGTreeParser.parse()` results within the context of a single
+     * `generate()` call so each unique rule string is parsed at most once.
+     */
+    private cachedParse(rule: string, cache: Map<string, ParseResult>): ParseResult {
+        let result = cache.get(rule);
+        if (!result) {
+            result = AGTreeParser.parse(rule);
+            cache.set(rule, result);
+        }
+        return result;
     }
 
     /**
      * Uses AGTree to determine the category, detected syntax, and exception
      * status of a rule.  Falls back to `'unknown'` for rules that cannot be
      * parsed.
+     *
+     * Parse results are memoized in `parseCache`.
      */
-    private categorizeRule(rule: string): { category: RuleDiffCategory; syntax?: string; isException?: boolean } {
-        const parseResult = AGTreeParser.parse(rule);
+    private categorizeRule(rule: string, parseCache: Map<string, ParseResult>): { category: RuleDiffCategory; syntax?: string; isException?: boolean } {
+        const parseResult = this.cachedParse(rule, parseCache);
 
         if (!parseResult.success || !parseResult.ast) {
             return { category: 'unknown' };
@@ -368,12 +395,12 @@ export class DiffGenerator {
      * Uses AGTree for accurate domain extraction from all rule types
      * (network, host, and cosmetic rules).
      */
-    private analyzeDomainChanges(added: RuleDiff[], removed: RuleDiff[]): DomainDiff[] {
+    private analyzeDomainChanges(added: RuleDiff[], removed: RuleDiff[], parseCache: Map<string, ParseResult>): DomainDiff[] {
         const domainMap = new Map<string, { added: number; removed: number }>();
 
         // Count added rules by domain
         for (const rule of added) {
-            const domain = this.extractDomain(rule.rule);
+            const domain = this.extractDomain(rule.rule, parseCache);
             if (domain) {
                 const existing = domainMap.get(domain) ?? { added: 0, removed: 0 };
                 existing.added++;
@@ -383,7 +410,7 @@ export class DiffGenerator {
 
         // Count removed rules by domain
         for (const rule of removed) {
-            const domain = this.extractDomain(rule.rule);
+            const domain = this.extractDomain(rule.rule, parseCache);
             if (domain) {
                 const existing = domainMap.get(domain) ?? { added: 0, removed: 0 };
                 existing.removed++;
@@ -409,9 +436,11 @@ export class DiffGenerator {
      * - **Host rules** – first hostname from AST
      * - **Cosmetic rules** – first non-negated domain from AST
      * - Falls back to legacy regex for rules that AGTree cannot parse.
+     *
+     * Parse results are memoized in `parseCache`.
      */
-    private extractDomain(rule: string): string | null {
-        const parseResult = AGTreeParser.parse(rule);
+    private extractDomain(rule: string, parseCache: Map<string, ParseResult>): string | null {
+        const parseResult = this.cachedParse(rule, parseCache);
 
         if (parseResult.success && parseResult.ast) {
             const ast = parseResult.ast;
@@ -476,7 +505,13 @@ export class DiffGenerator {
         lines.push(`| Net Change | ${report.summary.netChange >= 0 ? '+' : ''}${report.summary.netChange} (${report.summary.percentageChange.toFixed(2)}%) |`);
         lines.push('');
 
-        const cb = report.summary.categoryBreakdown;
+        const cb: CategoryChangeCounts = report.summary.categoryBreakdown ?? {
+            network: { added: 0, removed: 0 },
+            cosmetic: { added: 0, removed: 0 },
+            host: { added: 0, removed: 0 },
+            comment: { added: 0, removed: 0 },
+            unknown: { added: 0, removed: 0 },
+        };
         const totalCategoryChanges = (Object.values(cb) as { added: number; removed: number }[]).reduce(
             (sum, counts) => sum + counts.added + counts.removed,
             0,
