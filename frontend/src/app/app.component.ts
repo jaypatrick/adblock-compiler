@@ -71,7 +71,7 @@ interface NavItem {
         class="app-mobile-sidenav"
         (closedStart)="sidenavOpen.set(false)"
       >
-        <div class="sidenav-brand">⚡ Adblock Compiler</div>
+        <div class="sidenav-brand">⚡ BLOQR</div>
         <mat-nav-list>
           @for (item of navItems; track item.path) {
             @if (item.external) {
@@ -122,7 +122,7 @@ interface NavItem {
               }
               <p class="app-brand-title">
                 <img class="app-brand-logo" src="favicon.svg" alt="" aria-hidden="true" width="28" height="28">
-                Adblock Compiler
+                BLOQR
               </p>
               <div class="header-actions">
                 <app-user-button />
@@ -136,7 +136,7 @@ interface NavItem {
                 </button>
               </div>
             </div>
-            <p class="app-subtitle">Compiler-as-a-Service | Real-time filter list compilation with event-driven pipeline</p>
+            <p class="app-subtitle">Internet Hygiene. Automated.</p>
 
             <!-- Horizontal navigation tabs -->
             <nav class="app-nav-tabs" aria-label="Main navigation">
