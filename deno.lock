@@ -38,10 +38,12 @@
     "npm:@trpc/client@^11.15.1": "11.15.1_@trpc+server@11.15.1__typescript@6.0.2_typescript@6.0.2",
     "npm:@trpc/server@^11.15.1": "11.15.1_typescript@6.0.2",
     "npm:agents@0.8": "0.8.1_ai@6.0.138__zod@4.3.6_react@19.2.4_zod@4.3.6_@cloudflare+workers-types@4.20260317.1",
-    "npm:better-auth@^1.5.5": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_@opentelemetry+api@1.9.1",
-    "npm:better-auth@^1.5.6": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_@opentelemetry+api@1.9.1",
+    "npm:better-auth@^1.5.5": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2",
+    "npm:better-auth@^1.5.6": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2",
     "npm:cloudflare@5.2.0": "5.2.0",
     "npm:cloudflare@^5.2.0": "5.2.0",
+    "npm:hono@*": "4.12.8",
+    "npm:hono@4.12.8": "4.12.8",
     "npm:hono@^4.12.8": "4.12.8",
     "npm:jose@^6.2.1": "6.2.1",
     "npm:pg@8.13.3": "8.13.3",
@@ -1210,7 +1212,7 @@
     "aws-ssl-profiles@1.1.2": {
       "integrity": "sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g=="
     },
-    "better-auth@1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_@opentelemetry+api@1.9.1": {
+    "better-auth@1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2": {
       "integrity": "sha512-QSpJTqaT1XVfWRQe/fm3PgeuwOIlz1nWX/Dx7nsHStJ382bLzmDbQk2u7IT0IJ6wS5SRxfqEE1Ev9TXontgyAQ==",
       "dependencies": [
         "@better-auth/core",
