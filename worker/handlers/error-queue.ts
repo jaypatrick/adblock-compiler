@@ -50,7 +50,7 @@ async function persistErrorBatch(
     }
 
     // Write each day's errors to a separate file in R2
-    const writePromises: Promise<void>[] = [];
+    const writePromises: Promise<unknown>[] = [];
 
     for (const [dateKey, dateErrors] of errorsByDate.entries()) {
         const batchId = generateRequestId('error-batch');
