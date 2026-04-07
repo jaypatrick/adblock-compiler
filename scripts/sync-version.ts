@@ -13,16 +13,16 @@
  */
 
 /**
- * Extract VERSION from src/version.ts using a regex.
+ * Read the VERSION constant from src/version.ts and validate it.
  */
+import { VERSION } from '../src/version.ts';
+import { isValidSemver } from '../src/utils/semver.ts';
+
 async function readVersionFromSource(): Promise<string> {
-    const content = await Deno.readTextFile('src/version.ts');
-    const match = content.match(/export const VERSION = '([^']+)'/);
-    if (!match) {
-        console.error('Could not find VERSION constant in src/version.ts');
-        Deno.exit(1);
+    if (!isValidSemver(VERSION)) {
+        throw new Error('VERSION has an invalid format in src/version.ts');
     }
-    return match[1];
+    return VERSION;
 }
 
 /**

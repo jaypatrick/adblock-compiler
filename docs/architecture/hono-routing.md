@@ -7,6 +7,9 @@ The Cloudflare Worker request router was migrated from a 589-line imperative if/
 (`worker/hono-app.ts`) in Phase 1.  Phase 2 extracted the repeated inline middleware
 into reusable factories defined in `worker/middleware/hono-middleware.ts`.
 
+Phase 3 introduced built-in Hono middleware for compression, logging, and caching (see
+[Hono Built-in Middleware](../middleware/hono-built-in-middleware.md)).
+
 All **handler function signatures remain unchanged**. Only the dispatch layer (the routing
 glue) was migrated to Hono.
 
@@ -16,24 +19,38 @@ glue) was migrated to Hono.
 
 ```mermaid
 flowchart TD
-    R[Incoming Request] --> M1[1. Request Metadata\nrequestId · ip · analytics]
-    M1 --> M2[2. MCP Agent routing\nrouteAgentRequest — short-circuit]
-    M2 -->|agent route| AR[MCP Agent Response]
-    M2 -->|other| POC{/poc path?}
+    R[Incoming Request] --> T[0. Server-Timing\nhono/timing]
+    T --> AV[0a. X-API-Version header\n— set on every response]
+    AV --> M1[1. Request Metadata\nrequestId · ip · analytics]
+    M1 --> SSR[1a. SSR Origin Detection\nCF-Worker-Source: ssr → isSSR]
+    SSR --> BA{/api/auth/* path?}
+    BA -->|yes — but not /api/auth/providers| BAH[Better Auth handler\nauth.handler — session auth]
+    BAH --> BARES[Better Auth Response]
+    BA -->|no — or /api/auth/providers| AGENTS{/agents/* path?}
+    AGENTS -->|yes| AGR[Agent Router\nCORS + SecureHeaders + agentRouter]
+    AGR --> AGRES[Agent Response]
+    AGENTS -->|no| POC{/poc/* path?}
     POC -->|yes| POCRL[Anonymous rate limit]
     POCRL --> POCASSETS[Serve ASSETS or 503]
-    POC -->|no| PREAUTH{Pre-auth path?\n/api/version etc.}
+    POC -->|no| PREAUTH{Pre-auth GET path?\n/api/version · /api/health etc.}
     PREAUTH -->|yes| PREAUTHRL[Anonymous rate limit]
     PREAUTHRL --> PREAUTHROUTE[Route to info handler]
-    PREAUTH -->|no| AUTH[2b. Unified Auth\nauthenticateRequestUnified]
-    AUTH --> CORS[3. CORS middleware\nhono/cors]
-    CORS --> SECURE[4. Secure Headers\nhono/secure-headers]
-    SECURE --> ZTA[ZTA: checkUserApiAccess\n+ trackApiUsage]
-    ZTA --> PERM[Permission check\ncheckRoutePermission]
+    PREAUTH -->|no| AUTH[Unified Auth\nauthenticateRequestUnified\n— BetterAuthProvider]
+    AUTH --> CORS[CORS middleware\nhono/cors]
+    CORS --> SECURE[Secure Headers\nhono/secure-headers]
+    SECURE --> PJ[prettyJSON\n— activate with ?pretty=true]
+    PJ --> ZTA[routes sub-app\nlogger · compress · ZTA gate · permission check]
+    ZTA --> PERM{permission\ncheck}
     PERM -->|denied| SEC[Security event + 403]
-    PERM -->|allowed| ROUTE[Route Handler]
+    PERM -->|allowed| ROUTE[Domain Route Handler]
     ROUTE --> RESP[Response]
 ```
+
+> **Better Auth placement:** The Better Auth handler (`app.on(['POST','GET'], '/api/auth/*', ...)`) is
+> mounted **before** the unified auth middleware so that session creation and sign-in flows
+> (`/api/auth/sign-in/email`, `/api/auth/sign-up/email`, etc.) are not intercepted by the auth
+> verifier. The one exception is `/api/auth/providers`, which falls through to the normal pre-auth
+> GET path and is served without a Better Auth session check.
 
 ---
 
@@ -46,6 +63,7 @@ These variables are set by middleware and available to all route handlers via `c
 | `requestId`   | `string`           | Request metadata middleware  | Unique trace ID for the request          |
 | `ip`          | `string`           | Request metadata middleware  | `CF-Connecting-IP` header or `'unknown'` |
 | `analytics`   | `AnalyticsService` | Request metadata middleware  | Analytics/telemetry service instance     |
+| `isSSR`       | `boolean`          | SSR origin middleware        | `true` when request originates from the SSR Worker (`CF-Worker-Source: ssr` header) |
 | `authContext` | `IAuthContext`     | Auth middleware              | Authenticated user context (or anonymous)|
 
 ---
@@ -55,17 +73,18 @@ These variables are set by middleware and available to all route handlers via `c
 The frontend uses `API_BASE_URL = '/api'`, so all API requests from the frontend arrive
 as `/api/compile`, `/api/rules`, etc.
 
-Hono's `app.route()` is used to mount the same `routes` sub-app under both `/` and `/api`:
+Prior to Phase 4, Hono's `app.route()` was used to mount the `routes` sub-app under
+**both** `/` and `/api`. The bare-path mount was removed in Phase 4 (domain route split)
+to eliminate the double-execution side-effect and simplify the routing surface:
 
 ```typescript
-// /api is mounted first — ensures correct prefix-stripping for /api/* requests
-// before the root-mount sub-app intercepts them as unrecognised paths.
+// Phase 4: /api is the canonical base path — bare-path mount removed.
 app.route('/api', routes);
-app.route('/', routes);
+// app.route('/', routes);  ← removed in Phase 4
 ```
 
-This means `/compile` and `/api/compile` both reach the same handler. No path-stripping
-logic is needed in route handlers.
+`/api` is the only canonical base path. Bare-path requests (`/compile`, `/health`, etc.)
+are no longer served.
 
 ---
 
@@ -206,8 +225,171 @@ async (c) => {
 
 ---
 
-## Phase 3 Roadmap
+## tRPC endpoint
 
-- Generate OpenAPI spec from route + schema definitions using `hono/openapi`
-- Generate a type-safe RPC client with `hono/client` for the frontend
-- Extend `zValidator` to additional endpoints (e.g. `/configuration/validate`, `/validate-rule`)
+The tRPC v11 handler is mounted directly on the top-level `app` at `/api/trpc/*`:
+
+```typescript
+// Mounted BEFORE app.route('/api', routes) so the routes sub-app
+// (with compress + logger middleware) never wraps tRPC responses.
+app.all('/api/trpc/*', (c) => handleTrpcRequest(c));
+```
+
+This placement ensures:
+
+- The global middleware chain (timing, metadata, Better Auth handler, unified auth, CORS, secure headers)
+  **does** run before tRPC requests — `authContext` is already populated.
+- The `compress()` and `logger()` middleware scoped to the `routes` sub-app **do not**
+  wrap tRPC responses.
+
+See [`docs/architecture/trpc.md`](./trpc.md) for the full tRPC procedure catalogue,
+client usage, and ZTA notes.
+
+---
+
+## Phase 4 — Domain Route Modules (complete)
+
+Phase 4 split the `worker/hono-app.ts` monolith into domain-scoped route files under
+`worker/routes/`. Each file exports a single `OpenAPIHono` sub-app instance that is
+mounted on the `routes` sub-app in `hono-app.ts`.
+
+### New file layout
+
+```
+worker/
+  hono-app.ts                      ← app setup + middleware only; imports route modules
+  routes/
+    compile.routes.ts              ← /compile/*, /validate, /ast/parse, /ws/compile, /validate-rule
+    rules.routes.ts                ← /rules/*
+    queue.routes.ts                ← /queue/*
+    configuration.routes.ts        ← /configuration/*
+    admin.routes.ts                ← /admin/* (users, neon, agents, auth-config, usage, storage)
+    monitoring.routes.ts           ← /health/*, /metrics/*, /container/status
+    api-keys.routes.ts             ← /keys/*
+    webhook.routes.ts              ← /notify
+    workflow.routes.ts             ← /workflow/*
+    browser.routes.ts              ← /browser/* (stub — routes added in a future PR)
+    index.ts                       ← barrel: exports all sub-apps
+    shared.ts                      ← shared types (AppContext) and helpers used by route files
+```
+
+### Mount strategy
+
+Each domain sub-app is mounted on the `routes` sub-app at the root path:
+
+```typescript
+routes.route('/', compileRoutes);
+routes.route('/', rulesRoutes);
+routes.route('/', queueRoutes);
+// ... etc
+```
+
+The `routes` sub-app itself is mounted only at `/api`:
+
+```typescript
+app.route('/api', routes);
+// app.route('/', routes);  ← bare-path double-mount removed in Phase 4
+```
+
+### Middleware inheritance
+
+All middleware registered on `routes` (logger, compress with `NO_COMPRESS_PATHS`
+exclusion, ZTA permission check) still wraps every sub-app route, because the
+sub-apps are mounted on `routes` — not directly on `app`. No middleware changes
+were needed.
+
+### CI route-order guard
+
+`scripts/lint-route-order.ts` validates four invariants on every CI run:
+
+1. `timing()` is the first `app.use()` call
+2. The Better Auth `/api/auth/*` handler is registered before `agentRouter`
+3. `app.route('/', routes)` is absent (no bare-path double-mount)
+4. The compress middleware uses the `NO_COMPRESS_PATHS` exclusion pattern
+
+Run manually with: `deno task lint:routes`
+
+---
+
+## Phase 5 — Prisma Hono Context (`c.get('prisma')`)
+
+### Background
+
+Prior to Phase 5 every route handler that needed a database connection called
+`_internals.createPrismaClient(env.HYPERDRIVE.connectionString)` directly.  This
+created a new `PrismaClient` instance per call-site, making it impossible to share a
+single request-scoped client across multiple helpers within the same request.
+
+Phase 5 introduces a global `prismaMiddleware` in the `routes` sub-app that creates
+one `PrismaClient` per request and stores it in the Hono context:
+
+```typescript
+// worker/hono-app.ts — routes sub-app, before domain route modules
+routes.use('*', async (c, next) => {
+    if (c.env.HYPERDRIVE) {
+        const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
+        c.set('prisma', prisma);
+    }
+    await next();
+});
+```
+
+### Context type
+
+`prisma` is included in `Variables` (in `worker/routes/shared.ts`) and the local
+`AppVars` mirror (in `worker/middleware/hono-middleware.ts`):
+
+```typescript
+export interface Variables {
+    authContext: IAuthContext;
+    analytics: AnalyticsService;
+    requestId: string;
+    ip: string;
+    isSSR: boolean;
+    /** Request-scoped PrismaClient — set by prismaMiddleware() when HYPERDRIVE is bound. */
+    prisma: InstanceType<typeof PrismaClient>;
+}
+```
+
+### Handler usage pattern
+
+Route handlers that need Prisma should prefer `c.get('prisma')` over creating a new client:
+
+```typescript
+// ✅ Preferred — uses the shared request-scoped client set by global middleware
+adminRoutes.get('/admin/users', async (c) => {
+    const prisma = c.get('prisma');
+    if (!prisma) return c.json({ error: 'Database not configured' }, 503);
+    const users = await prisma.user.findMany();
+    return c.json({ success: true, users });
+});
+
+// ⚠️ Legacy — still works but creates a second PrismaClient for this request
+const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+```
+
+### Guards
+
+When `HYPERDRIVE` is not configured (local dev without the binding, unit tests,
+or static-asset requests), `prismaMiddleware` is skipped and `c.get('prisma')`
+returns `undefined`.  Always guard:
+
+```typescript
+const prisma = c.get('prisma');
+if (!prisma) return c.json({ error: 'Database service unavailable' }, 503);
+```
+
+### Test isolation
+
+In Deno unit tests the global middleware does not run.  Handlers that use the
+`_internals` pattern can still be stubbed as before:
+
+```typescript
+using _ = stub(_internals, 'createPrismaClient', () => mockPrisma as never);
+```
+
+For integration tests that go through the full Hono app, ensure `makeEnv()` includes
+a fake `HYPERDRIVE` binding so `prismaMiddleware` runs.
+
+
+

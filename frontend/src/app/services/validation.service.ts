@@ -19,6 +19,8 @@ export interface ValidationError {
     readonly errorType: string;
     readonly message: string;
     readonly severity: 'error' | 'warning' | 'info';
+    readonly category?: string;
+    readonly syntax?: string;
 }
 
 export interface ValidationResult {

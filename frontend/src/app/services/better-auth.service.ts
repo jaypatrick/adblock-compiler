@@ -47,6 +47,30 @@ export interface BetterAuthSession {
     isCurrent?: boolean;
 }
 
+export interface Organization {
+    id: string;
+    name: string;
+    slug: string;
+    logo?: string | null;
+    metadata?: Record<string, unknown> | null;
+    createdAt: string;
+    updatedAt: string;
+}
+
+export interface OrganizationMember {
+    id: string;
+    organizationId: string;
+    userId: string;
+    role: 'owner' | 'admin' | 'member';
+    createdAt: string;
+    updatedAt: string;
+    user?: BetterAuthUser;
+}
+
+export interface FullOrganization extends Organization {
+    members: OrganizationMember[];
+}
+
 @Injectable({ providedIn: 'root' })
 export class BetterAuthService {
     private readonly platformId = inject(PLATFORM_ID);
@@ -156,6 +180,7 @@ export class BetterAuthService {
         try {
             await fetch(`${this.apiBaseUrl}/auth/sign-out`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
         } catch {
@@ -393,6 +418,7 @@ export class BetterAuthService {
         try {
             const res = await fetch(`${this.apiBaseUrl}/auth/revoke-other-sessions`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 credentials: 'include',
             });
             if (!res.ok) {
@@ -424,6 +450,304 @@ export class BetterAuthService {
             }
         } catch {
             console.warn('[BetterAuthService] Failed to fetch auth providers; using defaults.');
+        }
+    }
+
+    // ============================================================================
+    // Organization Methods (Better Auth organization plugin)
+    // ============================================================================
+
+    /**
+     * Create a new organization.
+     * Requires authenticated session.
+     *
+     * @param name - Organization display name
+     * @param slug - Unique organization slug (URL-friendly)
+     * @param logo - Optional logo URL
+     * @returns Created organization or error
+     */
+    async createOrganization(
+        name: string,
+        slug: string,
+        logo?: string,
+    ): Promise<{ organization?: Organization; error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/organization/create`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, slug, logo }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to create organization.' };
+            }
+            const organization = await res.json() as Organization;
+            return { organization };
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to create organization.' };
+        }
+    }
+
+    /**
+     * List all organizations the current user is a member of.
+     * Requires authenticated session.
+     *
+     * @returns Array of organizations or error
+     */
+    async listOrganizations(): Promise<{ organizations?: Organization[]; error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/organization/list-organizations`, {
+                credentials: 'include',
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to list organizations.' };
+            }
+            const organizations = await res.json() as Organization[];
+            return { organizations };
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to list organizations.' };
+        }
+    }
+
+    /**
+     * Get full organization details including members.
+     * Requires authenticated session and membership in the organization.
+     *
+     * @param organizationId - Organization ID
+     * @returns Full organization data or error
+     */
+    async getOrganization(organizationId: string): Promise<{ organization?: FullOrganization; error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/organization/get-full-organization`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to get organization.' };
+            }
+            const organization = await res.json() as FullOrganization;
+            return { organization };
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to get organization.' };
+        }
+    }
+
+    /**
+     * Invite a user to an organization by email.
+     * Requires admin or owner role in the organization.
+     *
+     * @param organizationId - Organization ID
+     * @param email - Email of user to invite
+     * @param role - Role to assign (owner, admin, member)
+     * @returns Success status or error
+     */
+    async inviteOrganizationMember(
+        organizationId: string,
+        email: string,
+        role: 'owner' | 'admin' | 'member',
+    ): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/organization/invite-member`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId, email, role }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to invite member.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to invite member.' };
+        }
+    }
+
+    /**
+     * Remove a member from an organization.
+     * Requires admin or owner role in the organization.
+     *
+     * @param organizationId - Organization ID
+     * @param userId - User ID to remove
+     * @returns Success status or error
+     */
+    async removeOrganizationMember(organizationId: string, userId: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/organization/remove-member`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId, userId }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to remove member.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to remove member.' };
+        }
+    }
+
+    /**
+     * Update a member's role in an organization.
+     * Requires admin or owner role in the organization.
+     *
+     * @param organizationId - Organization ID
+     * @param userId - User ID to update
+     * @param role - New role to assign
+     * @returns Success status or error
+     */
+    async updateOrganizationMemberRole(
+        organizationId: string,
+        userId: string,
+        role: 'owner' | 'admin' | 'member',
+    ): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/organization/update-member-role`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId, userId, role }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to update member role.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to update member role.' };
+        }
+    }
+
+    /**
+     * Leave an organization.
+     * Cannot leave if you are the only owner.
+     *
+     * @param organizationId - Organization ID to leave
+     * @returns Success status or error
+     */
+    async leaveOrganization(organizationId: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/organization/leave-organization`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to leave organization.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to leave organization.' };
+        }
+    }
+
+    /**
+     * Delete an organization.
+     * Only owners can delete organizations.
+     *
+     * @param organizationId - Organization ID to delete
+     * @returns Success status or error
+     */
+    async deleteOrganization(organizationId: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/organization/delete-organization`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to delete organization.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to delete organization.' };
+        }
+    }
+
+    /**
+     * Update organization details (name, logo, metadata).
+     * Requires admin or owner role in the organization.
+     *
+     * @param organizationId - Organization ID
+     * @param updates - Fields to update
+     * @returns Success status or error
+     */
+    async updateOrganization(
+        organizationId: string,
+        updates: { name?: string; logo?: string; metadata?: Record<string, unknown> },
+    ): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/organization/update-organization`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId, ...updates }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to update organization.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to update organization.' };
+        }
+    }
+
+    /**
+     * Get the active organization for the current user.
+     * Returns null if no active organization is set.
+     *
+     * @returns Active organization or error
+     */
+    async getActiveOrganization(): Promise<{ organization?: Organization | null; error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/organization/get-active-organization`, {
+                credentials: 'include',
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to get active organization.' };
+            }
+            const organization = await res.json() as Organization | null;
+            return { organization };
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to get active organization.' };
+        }
+    }
+
+    /**
+     * Set the active organization for the current user.
+     * This affects which organization context is used for operations.
+     *
+     * @param organizationId - Organization ID to set as active
+     * @returns Success status or error
+     */
+    async setActiveOrganization(organizationId: string): Promise<{ error?: string }> {
+        try {
+            const res = await fetch(`${this.apiBaseUrl}/auth/organization/set-active-organization`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ organizationId }),
+            });
+            if (!res.ok) {
+                const body = await res.json().catch(() => ({})) as { message?: string };
+                return { error: body.message ?? 'Failed to set active organization.' };
+            }
+            return {};
+        } catch (err) {
+            return { error: err instanceof Error ? err.message : 'Failed to set active organization.' };
         }
     }
 }

@@ -79,4 +79,23 @@ export const ADMIN_ROUTES: Routes = [
         loadComponent: () => import('./auth-settings/auth-settings.component').then((m) => m.AuthSettingsComponent),
         title: 'Auth Settings',
     },
+    // ---- Agent Management (issue #1383) ----
+    // NOTE: The 'agents/audit' path MUST appear before 'agents/:slug/:instanceId'
+    // because Angular route matching is first-match; a wildcard param would
+    // otherwise swallow the literal 'audit' segment.
+    {
+        path: 'agents/audit',
+        loadComponent: () => import('./agents/agent-audit-log.component').then((m) => m.AgentAuditLogComponent),
+        title: 'Agent Audit Log',
+    },
+    {
+        path: 'agents',
+        loadComponent: () => import('./agents/agents-dashboard.component').then((m) => m.AgentsDashboardComponent),
+        title: 'Agent Management',
+    },
+    {
+        path: 'agents/:slug/:instanceId',
+        loadComponent: () => import('./agents/agent-session-console.component').then((m) => m.AgentSessionConsoleComponent),
+        title: 'Agent Console',
+    },
 ];

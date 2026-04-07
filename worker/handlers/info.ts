@@ -9,9 +9,9 @@
  */
 
 import { VERSION } from '../../src/version.ts';
-import { getDeploymentHistory, getDeploymentStats, getLatestDeployment } from '../../src/deployment/version.ts';
 import { API_DOCS_REDIRECT } from '../utils/constants.ts';
 import { handleSentryConfig } from './sentry-config.ts';
+import { _internals } from '../lib/prisma.ts';
 import type { Env } from '../types.ts';
 
 /**
@@ -107,24 +107,40 @@ export async function routeApiMeta(
 
     if (pathname === '/api/version') {
         try {
-            if (!env.DB) {
+            if (!env.HYPERDRIVE) {
                 return Response.json(
                     {
                         success: false,
-                        error: 'D1 database not available',
+                        error: 'Hyperdrive binding not available',
                         version: env.COMPILER_VERSION || VERSION,
                     },
                     { status: 503 },
                 );
             }
-            const deployment = await getLatestDeployment(env.DB);
+            const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+            const deployment = await prisma.deploymentHistory.findFirst({
+                orderBy: { deployedAt: 'desc' },
+                where: { status: 'success' },
+            });
             return Response.json(
                 {
                     success: true,
-                    ...(deployment || {
-                        version: env.COMPILER_VERSION || VERSION,
-                        message: 'No deployment history available',
-                    }),
+                    ...(deployment
+                        ? {
+                            version: deployment.version,
+                            buildNumber: deployment.buildNumber,
+                            fullVersion: deployment.fullVersion,
+                            gitCommit: deployment.gitCommit,
+                            gitBranch: deployment.gitBranch,
+                            deployedAt: deployment.deployedAt,
+                            deployedBy: deployment.deployedBy,
+                            status: deployment.status,
+                            metadata: deployment.metadata,
+                        }
+                        : {
+                            version: env.COMPILER_VERSION || VERSION,
+                            message: 'No deployment history available',
+                        }),
                 },
                 { headers: { 'Cache-Control': 'public, max-age=60' } },
             );
@@ -139,15 +155,24 @@ export async function routeApiMeta(
 
     if (pathname === '/api/deployments') {
         try {
-            if (!env.DB) {
-                return Response.json({ success: false, error: 'D1 database not available' }, { status: 503 });
+            if (!env.HYPERDRIVE) {
+                return Response.json({ success: false, error: 'Hyperdrive binding not available' }, { status: 503 });
             }
             const rawLimit = parseInt(url.searchParams.get('limit') || '50', 10);
             const limit = isNaN(rawLimit) || rawLimit < 1 ? 50 : rawLimit;
             const version = url.searchParams.get('version') || undefined;
             const status = url.searchParams.get('status') || undefined;
             const branch = url.searchParams.get('branch') || undefined;
-            const deployments = await getDeploymentHistory(env.DB, { limit, version, status, branch });
+            const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+            const deployments = await prisma.deploymentHistory.findMany({
+                where: {
+                    ...(version && { version }),
+                    ...(status && { status }),
+                    ...(branch && { gitBranch: branch }),
+                },
+                orderBy: { deployedAt: 'desc' },
+                take: limit,
+            });
             return Response.json(
                 { success: true, deployments, count: deployments.length },
                 { headers: { 'Cache-Control': 'public, max-age=60' } },
@@ -160,12 +185,27 @@ export async function routeApiMeta(
 
     if (pathname === '/api/deployments/stats') {
         try {
-            if (!env.DB) {
-                return Response.json({ success: false, error: 'D1 database not available' }, { status: 503 });
+            if (!env.HYPERDRIVE) {
+                return Response.json({ success: false, error: 'Hyperdrive binding not available' }, { status: 503 });
             }
-            const stats = await getDeploymentStats(env.DB);
+            const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+            const [total, successful, failed, latest] = await Promise.all([
+                prisma.deploymentHistory.count(),
+                prisma.deploymentHistory.count({ where: { status: 'success' } }),
+                prisma.deploymentHistory.count({ where: { status: 'failed' } }),
+                prisma.deploymentHistory.findFirst({
+                    orderBy: { deployedAt: 'desc' },
+                    select: { fullVersion: true },
+                }),
+            ]);
             return Response.json(
-                { success: true, ...stats },
+                {
+                    success: true,
+                    totalDeployments: total,
+                    successfulDeployments: successful,
+                    failedDeployments: failed,
+                    latestVersion: latest?.fullVersion ?? null,
+                },
                 { headers: { 'Cache-Control': 'public, max-age=60' } },
             );
         } catch (error) {

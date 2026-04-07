@@ -261,11 +261,38 @@ Check the Trivy output for vulnerabilities. Non-critical issues won't block the 
 
 Ensure the Dockerfile is valid and all required files are present.
 
-### Deployment Fails
+### Frontend Worker Not Deployed
 
-1. Verify `ENABLE_CLOUDFLARE_DEPLOY` is set to `true`
-2. Check Cloudflare secrets are configured correctly
-3. Review Wrangler logs in the action output
+The `deploy-frontend` job runs when **any** of the following files change on `main`:
+- `frontend/**` — Angular source or worker config
+- `worker/**` — backend API changes (SSR proxy depends on the backend contract)
+- `src/**` — shared compiler logic
+- `wrangler.toml` — version bumps and binding changes
+- `src/version.ts` — version sync
+- `deno.json` — compiler/tooling configuration (via the `changes.compiler` paths-filter)
+- `deno.lock` — dependency lockfile (via the `changes.compiler` paths-filter)
+
+If none of these changed (e.g. a docs-only commit), `deploy-frontend` is skipped.
+
+To **force a frontend redeploy** without a code change:
+
+1. Go to **GitHub Actions → CI → Run workflow**
+2. Select the `main` branch
+3. Set `force_deploy_frontend` to `true`
+4. Click **Run workflow**
+
+### Smoke Tests Failing After Deploy
+
+After `deploy` or `deploy-frontend` succeeds, `smoke-test-backend` and `smoke-test-frontend` automatically probe the live Workers. If they fail:
+
+| Symptom | Likely cause |
+|---|---|
+| Frontend SSR proxy step fails (HTTP 000 or 502) | `frontend/server.ts` `/api/*` proxy block is broken or backend is unreachable |
+| Backend `/api/auth/providers` fails | Better Auth middleware conflict (e.g. `compress()` wrapping auth responses globally) |
+| Both `/api/health` checks fail | Worker deploy failed silently; check Cloudflare dashboard |
+| HTTP 200 but `jq` parse error on `/api/health` | `compress()` still registered globally; verify `logger()`/`compress()` are scoped to `routes.use('*')` only |
+
+See [`docs/deployment/CLOUDFLARE_WORKERS_ARCHITECTURE.md`](../../docs/deployment/CLOUDFLARE_WORKERS_ARCHITECTURE.md) for the full deployment architecture and smoke test documentation.
 
 ### JSR Publish Fails
 

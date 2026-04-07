@@ -108,16 +108,18 @@ interface NavItem {
           <!-- Header — gradient background matching original design -->
           <header class="app-header-shell">
             <div class="app-title-row">
-              <button
-                mat-icon-button
-                (click)="toggleSidenav()"
-                aria-label="Toggle navigation"
-                [attr.aria-expanded]="sidenavOpen()"
-                aria-controls="app-mobile-sidenav"
-                class="menu-btn"
-              >
-                <mat-icon aria-hidden="true">menu</mat-icon>
-              </button>
+              @if (isMobile()) {
+                <button
+                  mat-icon-button
+                  (click)="toggleSidenav()"
+                  aria-label="Toggle navigation"
+                  [attr.aria-expanded]="sidenavOpen()"
+                  aria-controls="app-mobile-sidenav"
+                  class="menu-btn"
+                >
+                  <mat-icon aria-hidden="true">menu</mat-icon>
+                </button>
+              }
               <p class="app-brand-title">
                 <img class="app-brand-logo" src="favicon.svg" alt="" aria-hidden="true" width="28" height="28">
                 Adblock Compiler
@@ -198,6 +200,7 @@ export class AppComponent {
         { path: '/compiler',    label: 'Compiler',    icon: 'build'             },
         { path: '/performance', label: 'Performance', icon: 'monitoring'        },
         { path: '/validation',  label: 'Validation',  icon: 'check_circle'      },
+        { path: '/ast-viewer',  label: 'AST Viewer',  icon: 'account_tree'      },
         { path: '/api-docs',    label: 'API Docs',    icon: 'description'       },
         { path: '/api-keys',    label: 'API Keys',    icon: 'vpn_key'           },
         { path: '/admin',       label: 'Admin',       icon: 'admin_panel_settings' },

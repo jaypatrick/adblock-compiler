@@ -141,6 +141,22 @@ jobs:
 
                   echo "new=$NEW" >> "$GITHUB_OUTPUT"
                   echo "tag=frontend-v${NEW}" >> "$GITHUB_OUTPUT"
+
+                  # Short-circuit if the target version is already tagged.
+                  # This prevents re-bumping when a previous run created the tag but the
+                  # PR wasn't merged yet (so the anchor falls back past the tag).
+                  # All local tags are available because the Checkout step uses fetch-depth: 0.
+                  LATEST_FRONTEND_TAG="$(git tag --list 'frontend-v*' --sort=-v:refname | head -n 1)"
+                  if [ -n "$LATEST_FRONTEND_TAG" ]; then
+                    LATEST_FRONTEND_VERSION="${LATEST_FRONTEND_TAG#frontend-v}"
+                    echo "Latest frontend tag version: $LATEST_FRONTEND_VERSION"
+                    # Equality check only: if the computed version is already tagged we skip —
+                    # we are not blocking bumps to versions less than the latest existing tag.
+                    if [ "$LATEST_FRONTEND_VERSION" = "$NEW" ]; then
+                      echo "Target version $NEW is already tagged ($LATEST_FRONTEND_TAG) — nothing to do"
+                      exit 0
+                    fi
+                  fi
                   echo "Bumping frontend version: $OLD → $NEW ($BUMP_TYPE)"
 
                   # Update version in frontend/package.json
@@ -154,6 +170,7 @@ jobs:
                   echo "Updated ${PKG_PATH} to version ${NEW}"
 
             - name: Commit, tag, and push
+              id: commit
               if: steps.determine_bump.outputs.bump_type != 'none'
               env:
                   GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -176,10 +193,33 @@ jobs:
                   git add frontend/package.json
                   git commit -m "chore(frontend): bump version to $NEW_VERSION [skip version]"
 
-                  git tag -a "$TAG_NAME" -m "Frontend release $NEW_VERSION"
+                  # Check whether the tag already exists on the remote.
+                  # Use --exit-code so network/auth errors (exit != 2) are distinguishable
+                  # from "tag not found" (exit 2) and are treated as real failures.
+                  # Set the default output before any early exit paths so downstream
+                  # steps always see a value.
+                  TAG_CREATED=false
+                  echo "tag_created=false" >> "$GITHUB_OUTPUT"
+                  LS_REMOTE_EXIT=0
+                  git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null || LS_REMOTE_EXIT=$?
+                  if [ "$LS_REMOTE_EXIT" -eq 0 ]; then
+                    echo "Tag $TAG_NAME already exists on remote, skipping tag creation"
+                  elif [ "$LS_REMOTE_EXIT" -eq 2 ]; then
+                    git tag -a "$TAG_NAME" -m "Frontend release $NEW_VERSION"
+                    TAG_CREATED=true
+                    echo "tag_created=true" >> "$GITHUB_OUTPUT"
+                  else
+                    echo "git ls-remote failed with status $LS_REMOTE_EXIT, aborting" >&2
+                    exit "$LS_REMOTE_EXIT"
+                  fi
 
+                  # Always push the bump branch and create/merge the PR — even if the tag
+                  # already existed — so the version bump commit reaches main in cases where
+                  # a previous run pushed the tag but the PR was lost before merging.
                   git push origin "$BRANCH_NAME"
-                  git push origin "$TAG_NAME"
+                  if [ "$TAG_CREATED" = "true" ]; then
+                    git push origin "$TAG_NAME"
+                  fi
 
                   PR_NUMBER=$(gh pr create \
                     --base main \
@@ -195,7 +235,11 @@ jobs:
                   # --delete-branch cleans up the short-lived bump branch automatically.
                   gh pr merge "$PR_NUMBER" --auto --merge --delete-branch
 
-                  echo "Committed, tagged $TAG_NAME, and opened PR from $BRANCH_NAME into main"
+                  if [ "$TAG_CREATED" = "true" ]; then
+                    echo "Committed, tagged $TAG_NAME, and opened PR from $BRANCH_NAME into main"
+                  else
+                    echo "Committed (tag $TAG_NAME already existed on remote), opened PR from $BRANCH_NAME into main"
+                  fi
 
             - name: Summary
               if: steps.determine_bump.outputs.bump_type != 'none'
@@ -204,7 +248,13 @@ jobs:
                   NEW_VERSION: ${{ steps.bump.outputs.new }}
                   TAG: ${{ steps.bump.outputs.tag }}
                   BUMP_TYPE: ${{ steps.determine_bump.outputs.bump_type }}
+                  TAG_CREATED: ${{ steps.commit.outputs.tag_created }}
               run: |
+                  if [ "$TAG_CREATED" = "true" ]; then
+                    TAG_LINE="The \`$TAG\` tag has been created."
+                  else
+                    TAG_LINE="The \`$TAG\` tag already exists on the remote (skipped creation)."
+                  fi
                   cat <<EOF >> $GITHUB_STEP_SUMMARY
                   ## 🏷️ Frontend Version Bump
 
@@ -213,7 +263,7 @@ jobs:
                   - **Tag**: $TAG
                   - **Bump Type**: $BUMP_TYPE
 
-                  The \`$TAG\` tag has been created.
+                  $TAG_LINE
                   EOF
 
             - name: Skip summary

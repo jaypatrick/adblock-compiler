@@ -39,7 +39,7 @@ flowchart TD
     subgraph Local["Local Development"]
         DV[".dev.vars\n(Worker runtime — gitignored)"]
         EL[".env.local\n(Prisma CLI / shell — gitignored)"]
-        DC["Docker Compose\n(local PostgreSQL)"]
+        NB["Neon dev branch\n(personal, isolated)"]
     end
 
     subgraph External["External Services"]
@@ -55,8 +55,8 @@ flowchart TD
     GH -->|"CI env"| Actions["GitHub Actions"]
     Actions -->|"migrations"| NE
     DV -->|"wrangler dev"| LocalWorker["Local Worker"]
-    EL -->|"prisma cli"| LocalDB["Local PostgreSQL"]
-    DC -->|"docker compose"| LocalDB
+    EL -->|"prisma cli"| NB
+    DV -->|"CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE"| NB
 
     style WS fill:#dc2626,color:#fff,stroke:#991b1b
     style GH fill:#dc2626,color:#fff,stroke:#991b1b
@@ -212,11 +212,16 @@ sequenceDiagram
 
 ### Local Development Hyperdrive
 
-In local development, `wrangler dev` cannot use the real Hyperdrive binding. Instead, set a local connection string in `.dev.vars`:
+In local development, `wrangler dev` cannot use the real Hyperdrive binding. Instead, point it
+at your personal Neon development branch via `.dev.vars`:
 
 ```ini
-CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE = "postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev"
+# .dev.vars — use your personal Neon dev branch (direct connection, not pooled)
+# Create a branch at https://console.neon.tech → your project → Branches → New Branch
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require
 ```
+
+See [Local Development Setup](../database-setup/local-dev.md) for full instructions.
 
 ---
 
@@ -300,6 +305,7 @@ These may be set in `[vars]` or as Worker secrets depending on your security pos
 ## 6. Local Development Environment Files
 
 Local development uses two separate env files to mirror the production split between Worker runtime and shell tooling.
+Both files use your personal Neon dev branch as the database (no local Docker PostgreSQL needed).
 
 ```mermaid
 flowchart LR
@@ -316,14 +322,18 @@ flowchart LR
     subgraph Consumers["Consumers"]
         E["Prisma CLI\nDeno Tasks\nShell Scripts"]
         F["wrangler dev\n(Worker runtime)"]
-        G["Docker Compose\n(PostgreSQL)"]
+    end
+
+    subgraph Neon["Neon (Cloud)"]
+        NB["dev/yourname branch\n(personal, isolated)"]
     end
 
     A -->|"cp"| C
     B -->|"cp"| D
     C --> E
     D --> F
-    G -->|"hardcoded in\ndocker-compose.yml"| E
+    E -->|"DIRECT_DATABASE_URL"| NB
+    F -->|"CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE"| NB
 
     style C fill:#f59e0b,color:#000
     style D fill:#f59e0b,color:#000
@@ -332,37 +342,37 @@ flowchart LR
 ### Quick Start
 
 ```bash
-# 1. Copy templates
+# 1. Create a personal dev branch in the Neon Console (one-time)
+#    https://console.neon.tech → adblock-compiler project → Branches → New Branch
+
+# 2. Copy templates
 cp .env.example .env.local
 cp .dev.vars.example .dev.vars
 
-# 2. Edit both files with your local values
-#    .env.local   → DATABASE_URL, DIRECT_DATABASE_URL, NEON_* (if using Neon)
-#    .dev.vars    → BETTER_AUTH_SECRET, TURNSTILE keys (use test keys), CORS_ALLOWED_ORIGINS
+# 3. Fill in your Neon branch connection strings
+#    .env.local   → DATABASE_URL, DIRECT_DATABASE_URL
+#    .dev.vars    → CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE, BETTER_AUTH_SECRET, etc.
 
-# 3. Start local PostgreSQL
-deno task db:local:up
-
-# 4. Run Prisma migrations against local DB
-deno task db:local:push
+# 4. Run Prisma migrations against your Neon branch
+deno task db:migrate
 
 # 5. Start the Worker in dev mode
-deno task dev
+deno task wrangler:dev
 ```
 
 ### .env.local — Shell Tooling
 
 Used by Prisma CLI, Deno tasks, and any script that runs **outside** the Worker runtime.
+Point these at your personal Neon dev branch (direct connection, not pooled).
 
 ```ini
-# Database (local Docker PostgreSQL)
-DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
-DIRECT_DATABASE_URL="postgresql://adblock:localdev@localhost:5432/adblock_dev"
+# Neon dev branch — direct connection (required by Prisma CLI and migrations)
+DATABASE_URL="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require"
+DIRECT_DATABASE_URL="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require"
 
-# Neon (optional — for testing against remote DB)
+# Neon project API access (optional — for scripts that call the Neon REST API)
 # NEON_API_KEY="your-neon-api-key"
 # NEON_PROJECT_ID="twilight-river-73901472"
-# NEON_DATABASE_URL="postgresql://user:pass@ep-xxx-pooler.region.aws.neon.tech/neondb?sslmode=require"
 
 # Cloudflare API (optional — for scripts that call CF API)
 # CLOUDFLARE_API_TOKEN="your-api-token"
@@ -385,8 +395,9 @@ TURNSTILE_SECRET_KEY="1x0000000000000000000000000000000AA"
 # CORS
 CORS_ALLOWED_ORIGINS="http://localhost:4200,http://localhost:8787"
 
-# Hyperdrive local replacement
-CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev"
+# Hyperdrive local override — point at your personal Neon dev branch
+# Create a branch at https://console.neon.tech → your project → Branches → New Branch
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require"
 
 # Clerk (deprecated — use test keys or disable)
 CLERK_PUBLISHABLE_KEY="pk_test_..."
@@ -394,18 +405,7 @@ CLERK_SECRET_KEY="sk_test_..."
 DISABLE_CLERK_FALLBACK="true"
 ```
 
-### Docker Compose
-
-The `docker-compose.yml` provides a local PostgreSQL instance with hardcoded development credentials:
-
-| Variable | Value | Service |
-|----------|-------|---------|
-| `POSTGRES_DB` | `adblock_dev` | `postgres` |
-| `POSTGRES_USER` | `adblock` | `postgres` |
-| `POSTGRES_PASSWORD` | `localdev` | `postgres` |
-| `DATABASE_URL` | `postgresql://adblock:localdev@postgres:5432/adblock_dev` | `db-migrate` |
-
-> These are **local development only** credentials. They never leave your machine.
+> See [Local Development Setup](../database-setup/local-dev.md) for full Neon branching instructions.
 
 ---
 
@@ -704,22 +704,21 @@ gh secret set DIRECT_DATABASE_URL \
 
 ### Local Development: `wrangler dev` can't connect to PostgreSQL
 
-**Cause:** Docker PostgreSQL isn't running, or `.dev.vars` has the wrong connection string.
+**Cause:** `.dev.vars` is missing or has the wrong connection string for your Neon dev branch.
 
 ```bash
-# 1. Start local PostgreSQL
-deno task db:local:up
-
-# 2. Verify it's running
-docker compose ps | grep postgres
-
-# 3. Verify .dev.vars connection string
+# 1. Verify .dev.vars connection string
 grep HYPERDRIVE .dev.vars
-# Should be: CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev"
+# Should be: CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require"
 
-# 4. Test the connection
-psql "postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev" -c "SELECT 1"
+# 2. Test the connection directly (replace placeholders with your Neon branch values)
+psql "postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require" -c "SELECT 1"
+
+# 3. Check that the Neon branch is active (not suspended) in the Neon Console
+#    https://console.neon.tech → your project → Branches
 ```
+
+See [Local Development Setup](../database-setup/local-dev.md) for full Neon branching instructions.
 
 ---
 

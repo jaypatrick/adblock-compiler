@@ -7,15 +7,13 @@
  * 1. Reads deployment version info
  * 2. Collects git metadata
  * 3. Collects CI/CD metadata
- * 4. Records the deployment in D1
+ * 4. Records the deployment in Neon PostgreSQL via Prisma
  *
  * Usage:
  *   deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts [--status=success|failed]
  *
  * Environment variables:
- *   CLOUDFLARE_ACCOUNT_ID - Cloudflare account ID
- *   CLOUDFLARE_API_TOKEN - Cloudflare API token
- *   D1_DATABASE_ID - D1 database ID (optional, defaults to value in wrangler.toml)
+ *   DIRECT_DATABASE_URL - Neon PostgreSQL direct connection string (bypasses pooling)
  *   GITHUB_SHA - Git commit SHA (from GitHub Actions)
  *   GITHUB_REF - Git ref (from GitHub Actions)
  *   GITHUB_ACTOR - GitHub actor (from GitHub Actions)
@@ -26,18 +24,14 @@
 
 import { parseArgs } from '@std/cli/parse-args';
 import { generateDeploymentId } from '../src/deployment/version.ts';
-import { createCloudflareApiService } from '../src/services/cloudflareApiService.ts';
-import type { D1Param } from '../src/services/cloudflareApiService.ts';
+import { PrismaClient } from '../prisma/generated/client.ts';
+import { PrismaPg } from '@prisma/adapter-pg';
 
 /**
- * Extract the HTTP status code from an SDK `APIError` (or any other thrown value).
- * Returns 0 when the error does not carry a numeric `status` property.
+ * Extract a human-readable error message from any thrown value.
  */
-function getApiErrorStatus(error: unknown): number {
-    if (error !== null && typeof error === 'object' && 'status' in error && typeof (error as Record<string, unknown>).status === 'number') {
-        return (error as Record<string, unknown>).status as number;
-    }
-    return 0;
+function getErrorMessage(error: unknown): string {
+    return error instanceof Error ? error.message : String(error);
 }
 
 interface VersionInfo {
@@ -65,23 +59,6 @@ async function readVersionInfo(): Promise<VersionInfo | null> {
         return JSON.parse(content);
     } catch (error) {
         console.error('Error reading .deployment-version.json:', error);
-        return null;
-    }
-}
-
-/**
- * Read D1 database ID from wrangler.toml
- */
-async function readD1DatabaseId(): Promise<string | null> {
-    try {
-        const content = await Deno.readTextFile('wrangler.toml');
-        const dbIdMatch = content.match(/database_id\s*=\s*"([^"]+)"/);
-        if (dbIdMatch) {
-            return dbIdMatch[1];
-        }
-        return null;
-    } catch (error) {
-        console.error('Error reading wrangler.toml:', error);
         return null;
     }
 }
@@ -151,12 +128,11 @@ function getDeploymentMetadata(): DeploymentMetadata {
 }
 
 /**
- * Record deployment in D1
+ * Record deployment in Neon PostgreSQL via Prisma.
+ * Uses DIRECT_DATABASE_URL (bypasses connection pooling for direct writes).
  */
 async function recordDeployment(
-    accountId: string,
-    databaseId: string,
-    apiToken: string,
+    directDatabaseUrl: string,
     versionInfo: VersionInfo,
     status: 'success' | 'failed',
 ): Promise<void> {
@@ -165,7 +141,6 @@ async function recordDeployment(
     const gitBranch = getGitBranch();
     const deployedBy = getDeployedBy();
     const metadata = getDeploymentMetadata();
-    const metadataJson = JSON.stringify(metadata);
 
     console.log(`Recording deployment: ${versionInfo.fullVersion}`);
     console.log(`  ID: ${id}`);
@@ -174,30 +149,46 @@ async function recordDeployment(
     console.log(`  Deployed by: ${deployedBy}`);
     console.log(`  Status: ${status}`);
 
-    const sql = `
-        INSERT INTO deployment_history (
-            id, version, build_number, full_version, git_commit, git_branch,
-            deployed_by, status, workflow_run_id, workflow_run_url,
-            metadata, deployed_at
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, datetime('now'))
-    `;
+    const adapter = new PrismaPg({ connectionString: directDatabaseUrl });
+    const prisma = new PrismaClient({ adapter });
 
-    const params: D1Param[] = [
-        id,
-        versionInfo.version,
-        versionInfo.buildNumber,
-        versionInfo.fullVersion,
-        gitCommit,
-        gitBranch,
-        deployedBy,
-        status,
-        metadata.workflow_run_id ?? null,
-        metadata.workflow_run_url ?? null,
-        metadataJson,
-    ];
+    try {
+        // Upsert the deployment counter to get/increment the build number
+        await prisma.deploymentCounter.upsert({
+            where: { version: versionInfo.version },
+            update: { lastBuildNumber: versionInfo.buildNumber, updatedAt: new Date() },
+            create: { version: versionInfo.version, lastBuildNumber: versionInfo.buildNumber, updatedAt: new Date() },
+        });
 
-    const cfApi = createCloudflareApiService({ apiToken });
-    await cfApi.queryD1(accountId, databaseId, sql, params);
+        // Upsert the deployment history record
+        await prisma.deploymentHistory.upsert({
+            where: { fullVersion: versionInfo.fullVersion },
+            update: {
+                status,
+                gitCommit,
+                gitBranch,
+                deployedBy,
+                workflowRunId: metadata.workflow_run_id ?? null,
+                workflowRunUrl: metadata.workflow_run_url ?? null,
+                metadata,
+            },
+            create: {
+                id,
+                version: versionInfo.version,
+                buildNumber: versionInfo.buildNumber,
+                fullVersion: versionInfo.fullVersion,
+                gitCommit,
+                gitBranch,
+                deployedBy,
+                status,
+                workflowRunId: metadata.workflow_run_id ?? null,
+                workflowRunUrl: metadata.workflow_run_url ?? null,
+                metadata,
+            },
+        });
+    } finally {
+        await prisma.$disconnect();
+    }
 
     console.log('✓ Deployment recorded successfully');
 }
@@ -222,21 +213,11 @@ async function main() {
         Deno.exit(1);
     }
 
-    // Get environment variables
-    const accountId = Deno.env.get('CLOUDFLARE_ACCOUNT_ID');
-    const apiToken = Deno.env.get('CLOUDFLARE_API_TOKEN');
-    let databaseId = Deno.env.get('D1_DATABASE_ID') || undefined;
+    // Get the direct database URL (bypasses Hyperdrive connection pooling)
+    const directDatabaseUrl = Deno.env.get('DIRECT_DATABASE_URL');
 
-    if (!databaseId) {
-        const dbId = await readD1DatabaseId();
-        databaseId = dbId || undefined;
-    }
-
-    if (!accountId || !apiToken || !databaseId) {
-        console.error('Missing required environment variables:');
-        console.error('  CLOUDFLARE_ACCOUNT_ID:', accountId ? '✓' : '✗');
-        console.error('  CLOUDFLARE_API_TOKEN:', apiToken ? '✓' : '✗');
-        console.error('  D1_DATABASE_ID:', databaseId ? '✓' : '✗');
+    if (!directDatabaseUrl) {
+        console.error('Missing required environment variable: DIRECT_DATABASE_URL');
         console.error('\nDeployment will not be recorded in database.');
         Deno.exit(0); // Don't fail the deployment
     }
@@ -251,17 +232,10 @@ async function main() {
 
     // Record deployment
     try {
-        await recordDeployment(accountId, databaseId, apiToken, versionInfo, status);
+        await recordDeployment(directDatabaseUrl, versionInfo, status);
     } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        const statusCode = getApiErrorStatus(error);
-        const isPermissionError = statusCode === 401 || statusCode === 403;
-        if (isPermissionError) {
-            console.warn('⚠️  Could not record deployment to D1 (permission error).');
-            console.warn('   Ensure the CLOUDFLARE_API_TOKEN has D1:Edit permissions for this account.');
-        } else {
-            console.warn(`⚠️  Could not record deployment to D1: ${msg}`);
-        }
+        const msg = getErrorMessage(error);
+        console.warn(`⚠️  Could not record deployment to Neon: ${msg}`);
         console.warn('   This is non-blocking — it does not affect the deployment result.');
         Deno.exit(0); // Don't fail the deployment
     }

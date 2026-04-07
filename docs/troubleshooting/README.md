@@ -11,9 +11,10 @@ Each article follows a consistent structure: symptom, diagnostic commands, root 
 | Article | Title | Status |
 |---|---|---|
 | [KB-001](./KB-001-api-not-available.md) | "Getting API is not available" on the main page | ✅ Active |
-| KB-002 | Clerk JWT auth degraded / local JWT fallback | 🗓 Planned |
-| KB-003 | Cloudflare Queue consumer not processing messages | 🗓 Planned |
-| KB-004 | Angular SPA serves stale build after worker deploy | 🗓 Planned |
+| [KB-002](./KB-002-hyperdrive-database-down.md) | Hyperdrive binding connected but `database` service reports `down` | ✅ Active |
+| [KB-003](./KB-003-neon-hyperdrive-live-session-2026-03-25.md) | Database Down After Deploy — Live Debugging Session (2026-03-25) | ✅ Active |
+| KB-004 | Cloudflare Queue consumer not processing messages | 🗓 Planned |
+| KB-005 | Angular SPA serves stale build after worker deploy | 🗓 Planned |
 
 ---
 

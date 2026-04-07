@@ -57,6 +57,226 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **frontend**: `REQUEST` injection token imported from `@angular/core` (not `@angular/ssr`) — fixes `TS2305` build error that broke the Docker CI pipeline
 - **worker**: Remove dead `hasFileExtension` function and stale `async serveWebUI(env)` overload that referenced a non-existent `serveStaticFile` helper — fixes `TS2393`/`TS6133` type-check failures in CI
 
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## [0.80.0] - 2026-04-07
+
+### Added- add AST Viewer page with color-coded rule tree display and on/off toggle
+- **diff**: integrate AGTree into DiffGenerator for semantic rule analysis
+- Prisma Hono context integration + AuthedApiClientService + AppType expansion
+- **worker**: implement Cloudflare Queues error dead-lettering and durable R2 logs
+- **e2e**: add comprehensive Playwright click-through test suite
+- implement Cloudflare Queues for error dead-lettering and durable logs
+
+### Fixed
+
+- **worker**: remove orphaned persistErrorBatch, add buildErrorLogKey, fix empty-batch test
+- merge latest main and resolve conflicts in error-queue handlers + fix meta routes mount
+- **worker**: resolve type errors in error-queue handler and test
+- resolve TS type errors in error-queue.ts and error-queue.test.ts from main merge
+- resolve CI TypeScript errors in error-queue handler and tests
+- resolve build errors and apply review feedback for monitoring routes
+- **diff**: use exhaustive category sum for Rule Type Breakdown visibility check
+- **worker**: chain .catch() on ERROR_QUEUE.send() to handle async rejections
+- **lint**: remove unused Env import in error-queue.test.ts
+- **worker**: address code review feedback on error queue implementation
+- **container-status**: use onCleanup instead of destroyRef.onDestroy in effect
+- **test**: fix failing app.component test by mocking mobile breakpoint
+- **deps**: constrain pnpm-lock.yaml to only @clerk/shared 4.3.0→4.3.2 bump
+- resolve mobile header overlap and hide nav tabs on small screens
+- correct indentation in worker/hono-app.ts (line 585)
+
+
+## [0.79.4] - 2026-03-28
+
+### Added
+## [0.79.3] - 2026-03-28
+
+### Added- add tRPC v1 + API versioning (X-API-Version header)
+
+### Fixed
+
+- **trpc**: apply review comment fixes — ZTA gate, rate-limit, header order, type inference, docs
+- update pnpm-lock.yaml for @trpc/client and @trpc/server deps
+- **worker**: correct Turnstile/zValidator ordering in route modules; restore cache middleware
+- restore /api/auth/providers to pre-auth section, add pass-through in Better Auth wildcard
+- move /api/auth/providers route before Better Auth wildcard to fix HTTP 404
+
+
+## [0.79.2] - 2026-03-28
+
+### Added### Fixed
+
+- merge main (PR #1440) into branch, resolve all conflicts
+- suppress TS2353 on Deno.createHttpClient decompress option (as any cast)
+- merge main into branch, resolve ci.yml smoke-test conflict
+- address review feedback on compress middleware and diagnostic CLI
+- address PR review — fatal validate errors, pinned CI actions, permissions
+- exempt health/metrics from compress() middleware; add diagnostic CLI tooling
+- scope compress() away from monitoring endpoints, add diag tool, update CI smoke tests
+- replace curl -sf || echo 000 with set+e/CURL_EXIT pattern in all smoke tests
+- broaden deploy-frontend trigger, add smoke tests, fix server.ts Worker-hang bug
+
+
+## [0.79.1] - 2026-03-28
+
+### Added### Fixed
+
+- resolve production outage v0.79.0 — compress/logger scoped to routes, CORS credentials, handleDbSmoke timeout
+
+
+## [0.79.0] - 2026-03-27
+
+### Added- **agents**: Angular frontend for Agent Worker integration (issue #1383)
+
+### Fixed
+
+- **ci**: spy on component snackBar field directly to fix MatSnackBar injector hierarchy issue
+- **ci**: resolve 4 agent frontend test failures
+- **ci**: resolve all 5 test failures in agent frontend specs
+- run deno fmt on og-image.svg to fix CI lint-format check
+- **agents**: address round 2 review comments — fixture alignment, cancellation guard, MatSnackBarModule
+- add PNG og-image as primary; keep SVG as fallback for modern crawlers
+- replace broken og.tailgraph.com URLs with self-hosted og-image.svg
+- **agents**: fix CI failures — TS2532 optional chain + prefer-const
+- **agents**: address all PR review comments — no double-fetch, route-param reconnect, safeRandomUUID, missing specs
+- revert STATIC_ASSETS rename back to ASSETS, remove pages_build_output_dir
+- rename ASSETS binding to STATIC_ASSETS and restore pages_build_output_dir
+- remove pages_build_output_dir from wrangler.toml to fix reserved ASSETS binding error
+- move pages_build_output_dir to TOML root section (before first table header)
+- revert wrangler.pages.toml approach; add pages_build_output_dir to wrangler.toml
+- eliminate wrangler.toml Pages warning in mdbook deploy workflow
+- apply PR review comments - brotli comment, agent diagram, auth bypass regression tests
+- reorder middleware to prevent 'Unable to reach API' error
+
+
+## [0.78.0] - 2026-03-27
+
+### Added- add cache middleware to version, schemas, and config routes
+- apply logger and compress middleware globally
+
+### Fixed
+
+- resolve 5 failing hono-middleware tests in CI
+- add ExecutionContext to cache middleware tests
+- address PR review comments on hono-middleware tests and docs
+
+
+## [0.77.3] - 2026-03-27
+
+### Added### Fixed
+
+- emit empty token on expiry/error and add tokenChange unit tests
+- add token emission effect to TurnstileComponent
+
+
+## [0.77.2] - 2026-03-27
+
+### Added### Fixed
+
+- **auth**: add Content-Type: application/json to signOut and revokeOtherSessions
+
+
+## [0.77.1] - 2026-03-26
+
+### Added### Fixed
+
+- move clearTimeout to outer Promise.race().finally() for cleaner timer cleanup
+- add 10s timeout guard to /api/auth/* route handler in hono-app.ts
+- add Better Auth IP config and getSession timeout guard
+
+
+## [0.77.0] - 2026-03-26
+
+### Added### Fixed
+
+- restore .ts extensions to all generated Prisma model imports/exports
+- change Prisma generator runtime from deno to cloudflare, regenerate client, add KB-004 docs
+
+
+## [0.76.1] - 2026-03-26
+
+### Added### Fixed
+
+- expand single-line function body and inline type to satisfy deno fmt
+- sort imports alphabetically and use @let to fix Angular TS2532 errors
+- clear timeout in catch path, use FakeTime for timeout test, Mermaid decision tree in KB-003
+- add /api/health/db-smoke + harden databaseProbe + error surfacing in UI + KB-003 docs
+
+
+## [0.76.0] - 2026-03-25
+
+### Added- Option B1 staging→production promotion pipeline (Neon branching)
+- complete D1→Neon migration - port all handlers to Prisma via Hyperdrive
+
+### Fixed
+
+- accept postgres:// scheme in PrismaClientConfigSchema + extended health database probe
+- simplify $queryRaw type cast in health.ts probe (code review)
+- add prisma/migrations/** to db-migrate.yml path triggers and detect changed Prisma migrations
+
+
+## [0.75.0] - 2026-03-25
+
+### Added- add Dynamic Workers LOADER model, per-user agent dispatch, and validate fast-path (#1387)
+- scaffold Cloudflare Dynamic Workers support (#1386)
+- **agents**: add Prisma schema, migration, Zod schemas, agent-auth middleware, and admin endpoints for agent session tracking
+- **agents**: implement Cloudflare Agents SDK integration for issue #1377
+
+### Fixed
+
+- revert RegExp.escape to manual replace - native impl over-escapes in Deno
+- add missing runAstParseInDynamicWorker and runValidateInDynamicWorker imports to compile.ts
+- address PR review — restrict agent fast-path, fix body consumption, add DynamicWorkerSafeBindings, gate LOADER stub, add Model B tests
+- **ci**: use literal block scalar for yamllint run step to pass yamllint self-check
+- restore handleValidate dynamic worker fast-path, fix import order, and fix yamllint trailing spaces
+- add diagnostic logging for LOADER path failures in agent-routing and compile handlers
+- **ci**: collapse export type to single line (deno fmt) and fix wrangler.toml TOML syntax
+- **fmt**: add blank lines between export statements to satisfy deno fmt
+- address review comments — response shape, validation, fallback, tests, and security fixes
+- address review comments — response shape, validation, fallback, and tests
+- sort named imports alphabetically in compile.ts to satisfy deno fmt
+- **ci**: fix test stubbing (non-configurable stub) and workflow template literal injection
+- **test**: fix TS2698/TS2352 type errors and deno fmt formatting
+- **agents**: CORS/secureHeaders for /agents/*, mcp-agent scope, stale test comment
+- **agents**: address all 7 PR review comments
+- remove UUID_2 inconsistency in terminate session test
+- address review comments -- FK relation on AgentSession, UUID validation, idempotent terminate (409), consolidated Prisma client, null userId guard, unit tests
+- address code review feedback -- SQL comment characters, userId null guard removal
+- **agents**: address code review feedback
+- address PR #1378 review — use agents pkg, lazy-load SDK, fix comments/tests
+- **ci**: make frontend version bump idempotent against duplicate tags and re-bumps (#1376)
+
+
+## [0.74.0] - 2026-03-24
+
+### Added- centralize project URLs as single source of truth via wrangler env vars (#1366)
+
+### Fixed
+
+- add monitoring endpoints to PRE_AUTH_PATHS to resolve permanent "Data may be stale" banner (#1370)
+- resolve CI pipeline regressions blocking deploy, JSR publish, release chain, Neon cleanup, and PerformanceComponent health display (#1369)
+- broaden idempotency guards to match Cloudflare's "already taken" error (code 11009) (#1367)
+- **neon**: add delete trigger, workflow_dispatch, prereq check, and SHA pin to branch cleanup (#1357)
+- **ci**: bypass branch protection via PR flow; drop broken PDF steps (#1362)
+- **frontend**: Angular 21 engine manifest not set — Cloudflare error 10021 on deploy (#1360)
+- **ci**: run frontend-build whenever worker or compiler files change (#1356)
+- **ci**: skip Neon branch workflows for Dependabot PRs (#1339)
+
+
 ## [0.73.0] - 2026-03-23
 
 ### Added

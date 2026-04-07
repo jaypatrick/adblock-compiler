@@ -470,8 +470,10 @@ Copy and fill in `.dev.vars` (never committed to git):
 BETTER_AUTH_SECRET=your-secret-at-least-32-characters-long
 
 # ── Hyperdrive (required) ───────────────────────────────────────────────────
-# Override wrangler.toml [[hyperdrive]] with a local PostgreSQL URL
-WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://user:password@127.0.0.1:5432/adblock_dev
+# Point wrangler dev at your personal Neon development branch.
+# Create a branch at https://console.neon.tech → your project → Branches → New Branch.
+# Use the "Direct connection" string (not pooled).
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require
 
 # ── GitHub OAuth (optional) ─────────────────────────────────────────────────
 GITHUB_CLIENT_ID=your-github-oauth-app-client-id
@@ -485,13 +487,14 @@ TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 CORS_ALLOWED_ORIGINS=http://localhost:4200,http://localhost:8787
 ```
 
-Start a local PostgreSQL instance for development:
+Start the dev environment:
 
 ```bash
-deno task db:local:up   # Docker: starts postgres container
-deno task db:migrate    # Apply Prisma migrations
+deno task db:migrate    # Apply pending Prisma migrations to your Neon branch
 wrangler dev            # Start the Worker
 ```
+
+See [Local Development Setup](../database-setup/local-dev.md) for full Neon branching instructions.
 
 ---
 

@@ -14,6 +14,14 @@ import { compress, decompress, emitDiagnosticsToTailWorker, getCacheKey, QUEUE_B
 import type { BatchRequest, CompilationResult, CompileQueueMessage, CompileRequest, Env, PreviousVersion, Priority } from '../types.ts';
 import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../../src/configuration/schemas.ts';
 import { AstParseRequestSchema } from '../schemas.ts';
+import {
+    AST_PARSE_WORKER_SOURCE,
+    dispatchToDynamicWorker,
+    type DynamicWorkerTask,
+    isDynamicWorkerAvailable,
+    runAstParseInDynamicWorker,
+    runValidateInDynamicWorker,
+} from '../dynamic-workers/index.ts';
 
 // ============================================================================
 // Configuration
@@ -764,7 +772,7 @@ async function queueBatchCompileJob(
  */
 export async function handleASTParseRequest(
     request: Request,
-    _env: Env,
+    env: Env,
 ): Promise<Response> {
     try {
         const rawBody = await request.json();
@@ -773,6 +781,54 @@ export async function handleASTParseRequest(
             return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
         }
         const body = parsed.data;
+
+        // Feature-flag — LOADER path (DynamicDispatchNamespace, env.LOADER):
+        // Try the newer DynamicDispatchNamespace binding first; if unavailable or
+        // the isolate fails, fall through to the DYNAMIC_WORKER_LOADER path below.
+        {
+            const loaderResult = await runAstParseInDynamicWorker(body, env);
+            if (loaderResult !== null) {
+                if (loaderResult.success) {
+                    // Only trust the LOADER result if it contains real AST data.
+                    // The current stub always returns parsedRules: [] — fall through
+                    // until a real implementation is wired up (#1386).
+                    const data: unknown = loaderResult.data;
+                    // deno-lint-ignore no-explicit-any
+                    const parsedRules = (data as any)?.parsedRules;
+                    // deno-lint-ignore no-explicit-any
+                    const summary = (data as any)?.summary;
+                    const hasNonEmptyParsedRules = Array.isArray(parsedRules) && parsedRules.length > 0;
+                    const hasSummary = summary !== undefined && summary !== null;
+                    if (hasNonEmptyParsedRules && hasSummary) {
+                        return JsonResponse.success(loaderResult.data);
+                    }
+                    // LOADER returned no usable results — fall through to legacy parser.
+                    // deno-lint-ignore no-console
+                    console.warn('[compile] LOADER AST-parse path returned no usable results; falling back to legacy parser.');
+                } else {
+                    // Non-null but failed → log and fall through to next path.
+                    // deno-lint-ignore no-console
+                    console.warn('[compile] LOADER AST-parse path failed:', loaderResult.error);
+                }
+            }
+        }
+
+        // Feature-flag — DYNAMIC_WORKER_LOADER path (string-source loader, env.DYNAMIC_WORKER_LOADER):
+        // If the Dynamic Worker path fails (loader/spawn/isolate error), fall back to the
+        // inline ASTViewerService implementation — avoids turning a transient beta-API
+        // issue into an endpoint outage.
+        if (isDynamicWorkerAvailable(env)) {
+            try {
+                const result = await dispatchToDynamicWorker(env, AST_PARSE_WORKER_SOURCE, {
+                    type: 'ast-parse',
+                    payload: body,
+                    requestId: generateRequestId('ast-parse'),
+                });
+                return JsonResponse.success(result);
+            } catch {
+                // Fall through to the inline ASTViewerService path below.
+            }
+        }
 
         const { ASTViewerService } = await import('../../src/services/ASTViewerService.ts');
 
@@ -801,10 +857,44 @@ export async function handleASTParseRequest(
  * Validate an array of adblock rules and return per-rule parse results.
  * POST /api/validate
  */
-export async function handleValidate(request: Request): Promise<Response> {
+export async function handleValidate(request: Request, env?: Env): Promise<Response> {
     try {
         const body = await request.json() as { rules?: string[]; strict?: boolean };
+
+        if (env && isDynamicWorkerAvailable(env)) {
+            try {
+                const task: DynamicWorkerTask = {
+                    type: 'validate',
+                    payload: body,
+                    requestId: generateRequestId('validate'),
+                };
+                const result = await dispatchToDynamicWorker<{ valid: boolean; errors: string[] }>(
+                    env,
+                    AST_PARSE_WORKER_SOURCE,
+                    task,
+                );
+                return JsonResponse.success(result);
+            } catch {
+                // Fall through to in-process validation
+            }
+        }
+
         const rules = Array.isArray(body.rules) ? body.rules : [];
+
+        // Feature-flag — LOADER path (DynamicDispatchNamespace, env.LOADER):
+        // Try the newer DynamicDispatchNamespace binding first when env is provided.
+        if (env) {
+            const loaderResult = await runValidateInDynamicWorker({ rules, strict: body.strict }, env);
+            if (loaderResult !== null) {
+                if (loaderResult.success) {
+                    return Response.json(loaderResult.data);
+                }
+                // Non-null but failed → log and fall through to inline path.
+                // deno-lint-ignore no-console
+                console.warn('[compile] LOADER validate path failed:', loaderResult.error);
+            }
+        }
+
         const startTime = Date.now();
         const errors: Array<{
             line: number;
@@ -812,27 +902,48 @@ export async function handleValidate(request: Request): Promise<Response> {
             errorType: string;
             message: string;
             severity: 'error' | 'warning' | 'info';
+            category?: string;
+            syntax?: string;
         }> = [];
 
         let validRules = 0;
-        const { ASTViewerService } = await import('../../src/services/ASTViewerService.ts');
-        for (let i = 0; i < rules.length; i++) {
-            const rule = rules[i].trim();
-            if (!rule || rule.startsWith('!')) {
+        const { AGTreeParser, RuleCategory } = await import('../../src/utils/AGTreeParser.ts');
+
+        // Use FilterListParser for batch parsing — parses the whole list at once,
+        // preserving line order and leveraging AGTree's InvalidRule diagnostic nodes.
+        const filterListText = rules.join('\n');
+        const filterList = AGTreeParser.parseFilterList(filterListText, { tolerant: true });
+
+        for (let i = 0; i < filterList.children.length; i++) {
+            const ruleNode = filterList.children[i];
+            const originalRule = rules[i] ?? '';
+            const trimmed = originalRule.trim();
+
+            if (!trimmed || ruleNode.category === RuleCategory.Empty) {
                 validRules++;
                 continue;
             }
-            const result = ASTViewerService.parseRule(rule);
-            if (result.success) {
+
+            // Comments are always valid
+            if (ruleNode.category === RuleCategory.Comment) {
                 validRules++;
-            } else {
+                continue;
+            }
+
+            // InvalidRule nodes carry diagnostic info from the tolerant parser
+            if (ruleNode.category === RuleCategory.Invalid) {
+                const errorText = 'error' in ruleNode ? String(ruleNode.error) : 'Invalid rule syntax';
                 errors.push({
                     line: i + 1,
-                    rule,
+                    rule: trimmed,
                     errorType: 'ParseError',
-                    message: String(result.error),
+                    message: errorText,
                     severity: 'error',
+                    category: 'Invalid',
+                    syntax: String(ruleNode.syntax ?? 'Unknown'),
                 });
+            } else {
+                validRules++;
             }
         }
 

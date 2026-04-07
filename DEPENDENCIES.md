@@ -28,7 +28,7 @@ Runtime dependencies used by the Cloudflare Worker.
 
 | Package | Version | Registry | Purpose |
 |---|---|---|---|
-| `@adguard/agtree` | `^4.0.1` | npm | AdGuard filter list AST parsing and multi-syntax detection |
+| `@adguard/agtree` | `^4.0.4` | npm | AdGuard filter list AST parsing and multi-syntax detection |
 | `@opentelemetry/api` | `^1.9.0` | npm | OpenTelemetry tracing and metrics API |
 | `@prisma/adapter-d1` | `^7.5.0` | npm | Prisma ORM adapter for Cloudflare D1 (SQLite) |
 | `@prisma/client` | `^7.5.0` | npm | Prisma ORM client for database access |
@@ -60,7 +60,7 @@ Dependencies for the core compiler library (`src/`) and Deno runtime.
 
 | Package | Version | Registry | Purpose |
 |---|---|---|---|
-| `@adguard/agtree` | `^4.0.1` | npm | AdGuard filter list AST parsing (shared with worker) |
+| `@adguard/agtree` | `^4.0.4` | npm | AdGuard filter list AST parsing (shared with worker) |
 | `@luca/cases` | `^1.0.0` | JSR | String case conversion utilities |
 | `@opentelemetry/api` | `^1.9.0` | npm | OpenTelemetry tracing API (shared with worker) |
 | `@prisma/adapter-d1` | `^7.5.0` | npm | Prisma D1 adapter (shared with worker) |
@@ -220,7 +220,7 @@ Cloudflare services consumed as Worker bindings (configured in `wrangler.toml`).
 | **Hyperdrive** | `HYPERDRIVE` | ✅ Active | Accelerated connection pooling to external PostgreSQL |
 | **Browser Rendering** | `BROWSER` | ✅ Active | Headless Playwright-based browser for JS-rendered filter sources |
 | **Pipelines** | `METRICS_PIPELINE` | ✅ Active | Batched metrics and audit event ingestion → R2 |
-| **Tail Worker** | `adblock-compiler-tail` | ✅ Active | Log collection and forwarding to external log sink |
+| **Tail Worker** | `adblock-tail` | ✅ Active | Log collection and forwarding to external log sink |
 | **Containers** | `ADBLOCK_COMPILER` | 🔧 Configured | Durable Object container (production only) |
 | **Turnstile** | `TURNSTILE_SECRET_KEY` *(secret)* | ✅ Active | Bot protection / human verification on compilation endpoints |
 | **API Shield** | *(Dashboard)* | 📋 Dashboard | OpenAPI schema validation at edge |

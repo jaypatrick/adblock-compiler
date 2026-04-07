@@ -76,12 +76,34 @@ Deno.test('PrismaClientConfigSchema returns parsed data on success', () => {
 // PrismaClientConfigSchema — rejection paths: protocol
 // ---------------------------------------------------------------------------
 
-Deno.test('PrismaClientConfigSchema rejects postgres:// shorthand protocol', () => {
-    // Schema uses startsWith("postgresql://"), so the shorter alias is rejected.
+Deno.test('PrismaClientConfigSchema validates postgres:// shorthand (Hyperdrive scheme)', () => {
+    // Cloudflare Hyperdrive returns postgres:// from its .connectionString property.
+    // Both postgres:// and postgresql:// are valid PostgreSQL DSNs and must be accepted.
     const result = PrismaClientConfigSchema.safeParse({
         connectionString: 'postgres://user:pass@host:5432/db',
     });
-    assertEquals(result.success, false);
+    assertEquals(result.success, true);
+});
+
+Deno.test('PrismaClientConfigSchema validates postgres:// with SSL query param (Hyperdrive + Neon)', () => {
+    const result = PrismaClientConfigSchema.safeParse({
+        connectionString: 'postgres://user:pass@ep-xxx-pooler.eastus2.azure.neon.tech:5432/adblock-compiler?sslmode=require',
+    });
+    assertEquals(result.success, true);
+});
+
+Deno.test('PrismaClientConfigSchema validates postgres:// without port', () => {
+    const result = PrismaClientConfigSchema.safeParse({
+        connectionString: 'postgres://user:pass@host/db',
+    });
+    assertEquals(result.success, true);
+});
+
+Deno.test('PrismaClientConfigSchema validates postgres:// localhost URL', () => {
+    const result = PrismaClientConfigSchema.safeParse({
+        connectionString: 'postgres://localhost:5432/mydb',
+    });
+    assertEquals(result.success, true);
 });
 
 Deno.test('PrismaClientConfigSchema rejects mysql:// protocol', () => {

@@ -1,6 +1,6 @@
 {
     "name": "adblock-compiler",
-    "version": "0.73.0",
+    "version": "0.80.0",
     "description": "Compiler-as-a-Service for adblock filter lists",
     "homepage": "https://adblock-compiler.jayson-knight.workers.dev/",
     "type": "module",
@@ -9,20 +9,25 @@
         "ui:dev": "pnpm --filter adblock-frontend run start",
         "ui:test": "pnpm --filter adblock-frontend run test",
         "ui:lint": "pnpm --filter adblock-frontend run lint",
-        "build:worker": "pnpm install && pnpm --filter adblock-frontend run build"
+        "build:worker": "pnpm install && pnpm --filter adblock-frontend run build",
+        "tail": "wrangler tail adblock-compiler --format=pretty",
+        "tail:worker": "wrangler tail adblock-compiler --format=pretty",
+        "tail:tail": "wrangler tail adblock-tail --format=pretty"
     },
     "packageManager": "pnpm@10.31.0",
     "_syncNote": "Dependency versions here must match those pinned in deno.json's import map; keep them in sync (for example via the existing version:sync-style task).",
     "dependencies": {
-        "@adguard/agtree": "^4.0.1",
+        "@adguard/agtree": "^4.0.4",
         "@hono/zod-openapi": "^1.2.2",
         "@hono/zod-validator": "^0.4.3",
         "@neondatabase/serverless": "^0.10.0",
-        "@opentelemetry/api": "^1.9.0",
+        "@opentelemetry/api": "^1.9.1",
         "@prisma/adapter-d1": "^7.5.0",
         "@prisma/adapter-pg": "^7.5.0",
         "@prisma/client": "^7.5.0",
         "@sentry/cloudflare": "10.43.0",
+        "@trpc/client": "^11.15.1",
+        "@trpc/server": "^11.15.1",
         "better-auth": "^1.5.6",
         "cloudflare": "^5.2.0",
         "hono": "^4.12.8",
@@ -31,11 +36,17 @@
         "zod": "^4.3.6"
     },
     "devDependencies": {
+        "agents": "^0.8.0",
         "@cloudflare/containers": "^0.1.1",
-        "@cloudflare/playwright": "^1.1.2",
+        "@cloudflare/playwright": "^1.2.0",
         "@cloudflare/playwright-mcp": "^0.0.5",
         "@cloudflare/workers-types": "^4.20260317.1",
         "prisma": "7.5.0",
-        "wrangler": "^4.75.0"
+        "wrangler": "^4.77.0"
+    },
+    "pnpm": {
+        "overrides": {
+            "@opentelemetry/api": "^1.9.1"
+        }
     }
 }

@@ -40,7 +40,7 @@ jobs:
 
             - name: Detect changed paths
               id: filter
-              uses: dorny/paths-filter@de90cc6fb38fc0963ad72b210f1f284cd68cea36 # v3
+              uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
               with:
                   filters: |
                       compiler:
@@ -51,6 +51,8 @@ jobs:
                       frontend:
                           - 'frontend/**'
                           - 'pnpm-lock.yaml'
+                          - 'wrangler.toml'
+                          - 'src/version.ts'
                       migrations:
                           - 'migrations/**'
                           - 'admin-migrations/**'
@@ -81,6 +83,9 @@ jobs:
 
             - name: Format check
               run: deno fmt --check
+
+            - name: Route-order lint
+              run: deno task lint:routes
 
     typecheck:
         name: Type Check
@@ -132,7 +137,7 @@ jobs:
 
             - name: Upload coverage to Codecov
               if: always() && hashFiles('coverage/lcov.info') != ''
-              uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
+              uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
               continue-on-error: true
               with:
                   files: coverage/lcov.info
@@ -370,7 +375,11 @@ jobs:
             - frontend-build
             - check-slow-types
             - audit-public-surface
-            - verify-deploy
+            # verify-deploy is a PR-only safety check (it is skipped on push to main).
+            # Keeping it in needs caused GitHub Actions to propagate the 'skipped' result
+            # upward, which could cause ci-gate itself to be treated as skipped, silently
+            # preventing deploy and publish from running on push.  verify-deploy remains
+            # a standalone job and still runs on every pull_request.
             # zta-lint uses path filters and will be skipped when no relevant files change;
             # the gate's Python logic treats 'skipped' as passing, so this is safe to include.
             - zta-lint
@@ -423,8 +432,9 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 10
         needs: [ci-gate, changes]
-        # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
-        # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
+        # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
+        # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
+        # is the real gate.
         if: >-
             always() &&
             needs.ci-gate.result == 'success' &&
@@ -442,7 +452,40 @@ jobs:
               with:
                   deno-version: ${{ env.DENO_VERSION }}
 
+            - name: Check if version already published on JSR
+              id: jsr_check
+              run: |
+                  set -euo pipefail
+                  VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
+                  # Read the JSR package name from deno.json so the check stays in sync
+                  # even if the package scope/name is changed in the future.
+                  PACKAGE=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).name)")
+                  if [ -z "${VERSION}" ] || [ "${VERSION}" = "undefined" ]; then
+                    echo "Error: deno.json.version is missing, empty, or undefined. Cannot check/publish to JSR." >&2
+                    exit 1
+                  fi
+                  if [ -z "${PACKAGE}" ] || [ "${PACKAGE}" = "undefined" ]; then
+                    echo "Error: deno.json.name (JSR package name) is missing, empty, or undefined. Cannot check/publish to JSR." >&2
+                    exit 1
+                  fi
+                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+                  echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+                  HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+                    "https://jsr.io/${PACKAGE}/${VERSION}_meta.json")
+                  if [ "$HTTP_STATUS" = "200" ]; then
+                    echo "already_published=true" >> "$GITHUB_OUTPUT"
+                    echo "[SKIP] Version ${VERSION} already on JSR (HTTP 200) — skipping publish"
+                  elif [ "$HTTP_STATUS" = "404" ]; then
+                    echo "already_published=false" >> "$GITHUB_OUTPUT"
+                    echo "Version ${VERSION} not yet on JSR (HTTP 404) — will publish"
+                  else
+                    echo "Failed to probe JSR for ${PACKAGE}@${VERSION}. HTTP status: ${HTTP_STATUS}" >&2
+                    echo "Treating this as a connectivity/auth error so CI can surface the real issue." >&2
+                    exit 1
+                  fi
+
             - name: Publish to JSR
+              if: steps.jsr_check.outputs.already_published == 'false'
               run: |
                   set -euo pipefail
                   if ! OUTPUT="$(deno publish --allow-dirty 2>&1)"; then
@@ -455,6 +498,32 @@ jobs:
                     exit 1
                   fi
                   echo "Successfully published to JSR"
+
+            - name: Publish summary
+              if: always()
+              env:
+                  VERSION: ${{ steps.jsr_check.outputs.version }}
+                  PACKAGE: ${{ steps.jsr_check.outputs.package }}
+                  ALREADY_PUBLISHED: ${{ steps.jsr_check.outputs.already_published }}
+              run: |
+                  set -euo pipefail
+                  if [ "${ALREADY_PUBLISHED}" = "true" ]; then
+                    cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+                  ## ⏭️ JSR Publish Skipped
+
+                  Version **${VERSION}** was already published on JSR.
+
+                  📦 https://jsr.io/${PACKAGE}@${VERSION}
+                  EOF
+                  else
+                    cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+                  ## 📦 Published to JSR
+
+                  Version **${VERSION}** has been published.
+
+                  📦 https://jsr.io/${PACKAGE}@${VERSION}
+                  EOF
+                  fi
 
     # Verify the worker bundles correctly on every PR — catches build failures
     # before they reach main. No secrets required; --dry-run bundles without
@@ -512,8 +581,9 @@ jobs:
         runs-on: ubuntu-latest
         timeout-minutes: 30
         needs: [ci-gate, changes, frontend-build]
-        # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
-        # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
+        # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
+        # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
+        # is the real gate.
         # frontend-build always runs when worker or compiler files change (same triggers as this
         # job), so the frontend artifact is always available when the deploy runs.
         if: >-
@@ -555,20 +625,33 @@ jobs:
               with:
                   github-sha: ${{ github.sha }}
 
+            - name: Show deploy version
+              if: always()
+              run: |
+                  set -euo pipefail
+                  VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
+                  echo "## 🚀 Deploying version $VERSION to Cloudflare" >> "$GITHUB_STEP_SUMMARY"
+
     deploy-frontend:
         name: Deploy Frontend Worker
         runs-on: ubuntu-latest
         timeout-minutes: 15
         needs: [ci-gate, changes, frontend-build]
-        # Must use always() because ci-gate depends on verify-deploy which is skipped on push.
-        # Without always(), GitHub Actions skips downstream jobs due to transitive skip behavior.
+        # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
+        # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
+        # is the real gate.
         if: >-
             always() &&
             needs.ci-gate.result == 'success' &&
             needs.frontend-build.result == 'success' &&
             github.ref == 'refs/heads/main' &&
             (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-            (needs.changes.outputs.frontend == 'true' || (github.event.inputs.force_deploy_frontend || 'false') == 'true')
+            (
+              needs.changes.outputs.frontend == 'true' ||
+              needs.changes.outputs.worker == 'true' ||
+              needs.changes.outputs.compiler == 'true' ||
+              (github.event.inputs.force_deploy_frontend || 'false') == 'true'
+            )
         permissions:
             contents: read
         env:
@@ -607,3 +690,245 @@ jobs:
               run: |
                   echo "Deploying adblock-frontend..."
                   pnpm run deploy
+
+    smoke-test-backend:
+        name: Smoke Test — Backend
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        needs: [deploy]
+        permissions: {}
+        if: >-
+            always() &&
+            needs.deploy.result == 'success' &&
+            github.event_name == 'push' &&
+            github.ref == 'refs/heads/main'
+        steps:
+            - name: Wait for Cloudflare propagation
+              run: sleep 15
+
+            - name: Check /api/health
+              id: health
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /tmp/health.json -w "%{http_code}" \
+                    https://adblock-compiler.jayson-knight.workers.dev/api/health)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/health (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ /api/health returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  # "degraded" is acceptable — it means non-critical services (e.g. Hyperdrive) are
+                  # slow but the API is functional. Only "down" indicates a complete outage.
+                  jq -e '.status == "healthy" or .status == "degraded"' /tmp/health.json || {
+                    echo "❌ /api/health status is not healthy or degraded:"
+                    cat /tmp/health.json
+                    exit 1
+                  }
+                  echo "✅ /api/health OK ($(jq -r .status /tmp/health.json))"
+
+            - name: Check /api/version
+              id: version
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /tmp/version.json -w "%{http_code}" \
+                    https://adblock-compiler.jayson-knight.workers.dev/api/version)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/version (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ /api/version returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  echo "✅ /api/version OK"
+
+            - name: Check /api/auth/providers
+              id: auth
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+                    https://adblock-compiler.jayson-knight.workers.dev/api/auth/providers)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/auth/providers (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ /api/auth/providers returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  echo "✅ /api/auth/providers OK"
+
+            - name: Write smoke test summary
+              if: always()
+              run: |
+                  HEALTH_CODE="${{ steps.health.outputs.http_code || '—' }}"
+                  VERSION_CODE="${{ steps.version.outputs.http_code || '—' }}"
+                  AUTH_CODE="${{ steps.auth.outputs.http_code || '—' }}"
+                  cat >> "$GITHUB_STEP_SUMMARY" << EOF
+                  ## 🔍 Backend Smoke Tests
+
+                  | Endpoint | HTTP Status | Result |
+                  |---|---|---|
+                  | \`/api/health\` | $HEALTH_CODE | $( [ "$HEALTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  | \`/api/version\` | $VERSION_CODE | $( [ "$VERSION_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  | \`/api/auth/providers\` | $AUTH_CODE | $( [ "$AUTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  EOF
+
+    smoke-test-frontend:
+        name: Smoke Test — Frontend
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        needs: [deploy-frontend]
+        permissions: {}
+        if: >-
+            always() &&
+            needs.deploy-frontend.result == 'success' &&
+            github.event_name == 'push' &&
+            github.ref == 'refs/heads/main'
+        steps:
+            - name: Wait for Cloudflare propagation
+              run: sleep 15
+
+            - name: Check homepage returns 200
+              id: homepage
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+                    https://adblock-frontend.jayson-knight.workers.dev/)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling homepage (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ Homepage returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  echo "✅ Homepage OK"
+
+            - name: Check SSR API proxy (/api/auth/providers)
+              id: proxy
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+                    https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling SSR API proxy (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ SSR API proxy /api/auth/providers returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  echo "✅ SSR API proxy OK"
+
+            - name: Check health via SSR proxy
+              id: health
+              run: |
+                  set -euo pipefail
+                  HTTP=""
+                  CURL_EXIT=0
+                  set +e
+                  HTTP=$(curl -sS -o /tmp/fe-health.json -w "%{http_code}" \
+                    https://adblock-frontend.jayson-knight.workers.dev/api/health)
+                  CURL_EXIT=$?
+                  set -e
+                  if [ "$CURL_EXIT" -ne 0 ]; then
+                    echo "❌ Network error while calling /api/health via frontend (curl exit $CURL_EXIT)"
+                    echo "http_code=000" >> "$GITHUB_OUTPUT"
+                    exit 1
+                  fi
+                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+                  if [ "$HTTP" != "200" ]; then
+                    echo "❌ /api/health via frontend returned HTTP $HTTP"
+                    exit 1
+                  fi
+                  # "degraded" is acceptable — it means non-critical services are slow but the API
+                  # is functional. Only "down" indicates a complete outage.
+                  jq -e '.status == "healthy" or .status == "degraded"' /tmp/fe-health.json || {
+                    echo "❌ /api/health status is not healthy or degraded:"
+                    cat /tmp/fe-health.json
+                    exit 1
+                  }
+                  echo "✅ /api/health via frontend OK"
+
+            - name: Write smoke test summary
+              if: always()
+              run: |
+                  HOMEPAGE_CODE="${{ steps.homepage.outputs.http_code || '—' }}"
+                  PROXY_CODE="${{ steps.proxy.outputs.http_code || '—' }}"
+                  HEALTH_CODE="${{ steps.health.outputs.http_code || '—' }}"
+                  cat >> "$GITHUB_STEP_SUMMARY" << EOF
+                  ## 🔍 Frontend Smoke Tests
+
+                  | Check | HTTP Status | Result |
+                  |---|---|---|
+                  | Homepage | $HOMEPAGE_CODE | $( [ "$HOMEPAGE_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  | SSR API proxy (\`/api/auth/providers\`) | $PROXY_CODE | $( [ "$PROXY_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  | Health via proxy (\`/api/health\`) | $HEALTH_CODE | $( [ "$HEALTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+                  EOF
+
+    deploy-status:
+        name: Deployment Status
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        needs: [smoke-test-backend, smoke-test-frontend]
+        permissions: {}
+        if: >-
+            always() &&
+            (needs.smoke-test-backend.result == 'success' || needs.smoke-test-backend.result == 'skipped') &&
+            (needs.smoke-test-frontend.result == 'success' || needs.smoke-test-frontend.result == 'skipped') &&
+            github.event_name == 'push' &&
+            github.ref == 'refs/heads/main'
+        steps:
+            - name: Write deployment summary
+              run: |
+                  BACKEND="${{ needs.smoke-test-backend.result }}"
+                  FRONTEND="${{ needs.smoke-test-frontend.result }}"
+                  backend_icon() { [ "$1" = "success" ] && echo "✅ healthy" || echo "⏭️ skipped"; }
+                  frontend_icon() { [ "$1" = "success" ] && echo "✅ 200 OK" || echo "⏭️ skipped"; }
+                  cat >> "$GITHUB_STEP_SUMMARY" << EOF
+                  ## ✅ Deployment Complete
+
+                  | Component | Status | URL |
+                  |---|---|---|
+                  | Backend Worker | $(backend_icon "$BACKEND") | https://adblock-compiler.jayson-knight.workers.dev |
+                  | Frontend Worker | $(frontend_icon "$FRONTEND") | https://adblock-frontend.jayson-knight.workers.dev |
+                  EOF

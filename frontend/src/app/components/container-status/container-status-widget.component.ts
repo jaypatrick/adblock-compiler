@@ -8,11 +8,11 @@
  * Usage:
  *   <app-container-status-widget [compact]="true" />
  *
- * Angular 21 patterns: signal(), computed(), inject(), standalone,
- *   @if/@switch, zoneless-compatible
+ * Angular 21 patterns: signal(), computed(), inject(), effect(), onCleanup,
+ *   standalone, @if/@switch, zoneless-compatible
  */
 import {
-    Component, input, OnInit, OnDestroy, inject, computed, ChangeDetectionStrategy,
+    Component, input, inject, computed, ChangeDetectionStrategy, effect,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -127,7 +127,7 @@ import { ContainerStatusService } from '../../services/container-status.service'
     }
     `],
 })
-export class ContainerStatusWidgetComponent implements OnInit, OnDestroy {
+export class ContainerStatusWidgetComponent {
     /** Show in compact single-line mode */
     readonly compact = input<boolean>(false);
     /** If true, component manages its own polling lifecycle */
@@ -150,17 +150,21 @@ export class ContainerStatusWidgetComponent implements OnInit, OnDestroy {
         return `${Math.floor(diffMs / 60000)}m ago`;
     });
 
-    ngOnInit(): void {
+    // Modern Angular 21 pattern: effect() with onCleanup for reactive lifecycle management.
+    // onCleanup runs on every re-run (when autoPoll/pollIntervalMs signals change) and
+    // on component destruction — preventing stale polling and multiple-registration bugs.
+    private readonly _pollingEffect = effect((onCleanup) => {
         if (this.autoPoll()) {
             this.containerStatusService.startPolling(this.pollIntervalMs());
+
+            // Stop polling on re-run (signal change) or component destruction
+            onCleanup(() => {
+                this.containerStatusService.stopPolling();
+            });
         } else {
+            // Explicitly stop any in-flight polling before falling back to one-shot fetch
+            this.containerStatusService.stopPolling();
             this.containerStatusService.fetchOnce();
         }
-    }
-
-    ngOnDestroy(): void {
-        if (this.autoPoll()) {
-            this.containerStatusService.stopPolling();
-        }
-    }
+    });
 }

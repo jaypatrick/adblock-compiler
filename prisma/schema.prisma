@@ -1,21 +1,25 @@
 // Prisma Schema for AdBlock Compiler
 //
-// PostgreSQL via PlanetScale or Neon, accessed through Cloudflare Hyperdrive.
-// Local development uses a local PostgreSQL instance (Docker or native).
+// PostgreSQL via Neon, accessed through Cloudflare Hyperdrive.
+// Local development uses a Neon branch (see https://neon.com/guides/local-development-with-neon).
 //
 // Usage:
-//   Local:      DATABASE_URL="postgresql://<user>:<password>@127.0.0.1:5432/<db_name>"  # See .env.example or docs/database-setup/local-dev.md
-//   Production: Set via `wrangler secret put DATABASE_URL` (PlanetScale/Neon connection string)
+//   Local:      DIRECT_DATABASE_URL="<neon-branch-connection-string>"  # See .env.example or docs/database-setup/neon-cheatsheet.md
+//   Production: Set via `wrangler secret put DATABASE_URL` (Neon main branch connection string)
 //
 // Migrations:
-//   npx prisma migrate dev --name <description>   # Create + apply migration locally
-//   npx prisma migrate deploy                      # Apply pending migrations (CI/prod)
+//   deno task db:migrate            # Create + apply migration locally
+//   deno task db:migrate:deploy     # Apply pending migrations (CI/prod)
 
 generator client {
   provider = "prisma-client"
   output   = "./generated"
-  // Use edge-compatible runtime for Cloudflare Workers
-  // For local dev with Deno, set runtime = "deno"
+  runtime  = "cloudflare"
+  // "cloudflare" runtime uses @prisma/adapter-pg code path — no runtime WASM.
+  // This is required for Cloudflare Workers which block WebAssembly.Module()
+  // instantiation at runtime. The deno runtime would generate WASM-dependent
+  // code that Cloudflare rejects.
+  // See: https://www.prisma.io/docs/orm/prisma-client/deployment/edge/deploy-to-cloudflare
 }
 
 datasource db {
@@ -47,10 +51,17 @@ model User {
   // Better Auth: two-factor authentication status
   twoFactorEnabled Boolean @default(false) @map("two_factor_enabled")
 
-  apiKeys    ApiKey[]
-  sessions   Session[]
-  accounts   Account[]
-  twoFactor  TwoFactor?
+  // Better Auth: ban management
+  banned     Boolean   @default(false)
+  banReason  String?   @map("ban_reason")
+  banExpires DateTime? @map("ban_expires") @db.Timestamptz
+
+  apiKeys       ApiKey[]
+  sessions      Session[]
+  accounts      Account[]
+  twoFactor     TwoFactor?
+  agentSessions AgentSession[]
+  members       Member[]
 
   @@map("users")
 }
@@ -136,6 +147,39 @@ model Verification {
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("verification")
+}
+
+/// Better Auth organization plugin — stores organizations for multi-tenancy.
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  logo      String?
+  metadata  Json?    @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  members Member[]
+
+  @@map("organization")
+}
+
+/// Better Auth organization plugin — stores organization membership and roles.
+model Member {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  role           String       // owner | admin | member
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("member")
 }
 
 // ============================================================================
@@ -279,6 +323,77 @@ model SourceChangeEvent {
 }
 
 // ============================================================================
+// Agent Sessions — tracks active and historical Cloudflare Agents connections
+// ============================================================================
+
+model AgentSession {
+  id           String    @id @default(uuid()) @db.Uuid
+  agentSlug    String    @map("agent_slug") // from AGENT_REGISTRY slug
+  instanceId   String    @map("instance_id") // Durable Object instance name
+  userId       String?   @map("user_id") @db.Uuid
+  clerkUserId  String?   @map("clerk_user_id")
+  startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz
+  endedAt      DateTime? @map("ended_at") @db.Timestamptz // NULL = still active
+  endReason    String?   @map("end_reason") // 'client_disconnect' | 'server_error' | 'admin_terminate' | 'timeout'
+  messageCount Int       @default(0) @map("message_count") // incremented on each WS message
+  transport    String    @default("websocket") // 'websocket' | 'sse'
+  clientIp     String?   @map("client_ip")
+  userAgent    String?   @map("user_agent")
+  metadata     Json?     // JSON blob for future extensibility
+
+  user        User?              @relation(fields: [userId], references: [id], onDelete: SetNull)
+  invocations AgentInvocation[]
+
+  @@index([userId])
+  @@index([clerkUserId])
+  @@index([agentSlug])
+  @@index([startedAt])
+  @@index([userId, endedAt], name: "agent_sessions_user_active_idx") // "active sessions per user"
+  @@map("agent_sessions")
+}
+
+/// Tracks individual tool calls / actions within a session.
+model AgentInvocation {
+  id            String       @id @default(uuid()) @db.Uuid
+  sessionId     String       @map("session_id") @db.Uuid
+  session       AgentSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  toolName      String       @map("tool_name")
+  inputSummary  String?      @map("input_summary")
+  outputSummary String?      @map("output_summary")
+  durationMs    Int?         @map("duration_ms")
+  success       Boolean      @default(true)
+  errorMessage  String?      @map("error_message")
+  invokedAt     DateTime     @default(now()) @map("invoked_at") @db.Timestamptz
+  metadata      Json?        @db.JsonB
+
+  @@index([sessionId])
+  @@index([toolName])
+  @@index([invokedAt])
+  @@map("agent_invocations")
+}
+
+/// Append-only audit log for all agent-related security events.
+model AgentAuditLog {
+  id          String   @id @default(uuid()) @db.Uuid
+  actorUserId String?  @map("actor_user_id") @db.Uuid
+  agentSlug   String?  @map("agent_slug")
+  instanceId  String?  @map("instance_id")
+  action      String
+  status      String   @default("success")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  reason      String?
+  metadata    Json?    @db.JsonB
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  @@index([actorUserId])
+  @@index([agentSlug])
+  @@index([action])
+  @@index([createdAt])
+  @@map("agent_audit_logs")
+}
+
+// ============================================================================
 // Legacy: Generic Key-Value Storage (retained for backward compatibility)
 // ============================================================================
 
@@ -328,4 +443,40 @@ model CompilationMetadata {
   @@index([configName])
   @@index([timestamp])
   @@map("compilation_metadata")
+}
+
+// ============================================================================
+// Deployment History — tracks worker deployments (migrated from D1)
+// ============================================================================
+
+model DeploymentHistory {
+  id                 String    @id
+  version            String
+  buildNumber        Int       @map("build_number")
+  fullVersion        String    @unique @map("full_version")
+  gitCommit          String    @map("git_commit")
+  gitBranch          String    @map("git_branch")
+  deployedAt         DateTime  @default(now()) @map("deployed_at") @db.Timestamptz
+  deployedBy         String    @map("deployed_by")
+  status             String    @default("success")
+  deploymentDuration Int?      @map("deployment_duration")
+  workflowRunId      String?   @map("workflow_run_id")
+  workflowRunUrl     String?   @map("workflow_run_url")
+  metadata           Json?     @db.JsonB
+
+  @@unique([version, buildNumber], name: "deployment_history_unique_deployment")
+  @@index([version])
+  @@index([buildNumber])
+  @@index([deployedAt(sort: Desc)])
+  @@index([status])
+  @@index([gitCommit])
+  @@map("deployment_history")
+}
+
+model DeploymentCounter {
+  version         String   @id
+  lastBuildNumber Int      @default(0) @map("last_build_number")
+  updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("deployment_counter")
 }

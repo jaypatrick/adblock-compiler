@@ -31,7 +31,7 @@
 
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
-import { admin, bearer, multiSession, twoFactor } from 'better-auth/plugins';
+import { admin, bearer, multiSession, organization, twoFactor } from 'better-auth/plugins';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 
@@ -158,6 +158,15 @@ export function createAuth(env: Env, baseURL?: string) {
                 sameSite: 'lax', // 'lax' allows OAuth redirects; 'strict' blocks them
                 path: '/',
             },
+            // ── Cloudflare reverse proxy IP extraction ────────────────────────────
+            // Without this, Better Auth cannot determine the real client IP and its
+            // built-in rate limiter (brute-force protection on /sign-in, /sign-up,
+            // /two-factor/*) silently skips ALL rate limiting. CF-Connecting-IP is
+            // injected by Cloudflare's edge and is the authoritative client IP.
+            // X-Forwarded-For is included as fallback for local dev / wrangler dev.
+            ipAddress: {
+                ipAddressHeaders: ['CF-Connecting-IP', 'X-Forwarded-For'],
+            },
         },
 
         plugins: [
@@ -184,9 +193,28 @@ export function createAuth(env: Env, baseURL?: string) {
             //   POST   /api/auth/admin/impersonate-user  — impersonate a user
             //   POST   /api/auth/admin/revoke-user-sessions — revoke sessions
             admin(),
+            // Organization plugin — multi-tenancy support, auto-exposes:
+            //   POST   /api/auth/organization/create                    — create organization
+            //   POST   /api/auth/organization/invite-member             — invite user to org
+            //   POST   /api/auth/organization/remove-member             — remove member
+            //   POST   /api/auth/organization/update-member-role        — change member role
+            //   GET    /api/auth/organization/list-organizations        — list user's orgs
+            //   GET    /api/auth/organization/get-full-organization     — get org details
+            //   POST   /api/auth/organization/leave-organization        — leave org
+            //   POST   /api/auth/organization/delete-organization       — delete org (owner only)
+            //   POST   /api/auth/organization/update-organization       — update org metadata
+            //   GET    /api/auth/organization/get-active-organization   — get current active org
+            //   POST   /api/auth/organization/set-active-organization   — set active org
+            organization({
+                // Allow any authenticated user to create an organization
+                allowUserToCreateOrganization: true,
+                // Limit each user to 3 organizations (owner role)
+                organizationLimit: 3,
+                // Default member roles: owner, admin, member
+                // Owners can manage all aspects; admins can manage members; members are read-only
+            }),
             // Future plugins (uncomment when needed):
             // apiKey(),       — Built-in API key management (we use custom impl)
-            // organization(), — Multi-tenancy
         ],
     });
 }

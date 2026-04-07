@@ -1,6 +1,6 @@
 # Prisma Schema Reference
 
-> **Auto-documented from `prisma/schema.prisma`** — All 14 models with their
+> **Auto-documented from `prisma/schema.prisma`** — All 20 models with their
 > fields, types, relations, constraints, and indexes. Grouped by domain.
 
 ---
@@ -15,6 +15,7 @@
   - [Account](#account)
   - [Verification](#verification)
   - [ApiKey](#apikey)
+  - [TwoFactor](#twofactor)
 - [Content Domain](#content-domain)
   - [FilterSource](#filtersource)
   - [FilterListVersion](#filterlistversion)
@@ -23,6 +24,13 @@
 - [Health Monitoring Domain](#health-monitoring-domain)
   - [SourceHealthSnapshot](#sourcehealthsnapshot)
   - [SourceChangeEvent](#sourcechangeevent)
+- [Agent Sessions Domain](#agent-sessions-domain)
+  - [AgentSession](#agentsession)
+  - [AgentInvocation](#agentinvocation)
+  - [AgentAuditLog](#agentauditlog)
+- [Deployment Domain](#deployment-domain)
+  - [DeploymentHistory](#deploymenthistory)
+  - [DeploymentCounter](#deploymentcounter)
 - [Legacy / Compatibility Domain](#legacy--compatibility-domain)
   - [StorageEntry](#storageentry)
   - [FilterCache](#filtercache)
@@ -36,9 +44,11 @@
 
 | Domain | Models | Purpose |
 |---|---|---|
-| **Auth** | User, Session, Account, Verification, ApiKey | Identity, sessions, OAuth accounts, email verification, API keys |
+| **Auth** | User, Session, Account, Verification, ApiKey, TwoFactor | Identity, sessions, OAuth accounts, email verification, API keys, 2FA |
 | **Content** | FilterSource, FilterListVersion, CompiledOutput, CompilationEvent | Filter lists, versions, compiled outputs, telemetry |
 | **Health Monitoring** | SourceHealthSnapshot, SourceChangeEvent | Source reliability tracking, change detection |
+| **Agent Sessions** | AgentSession, AgentInvocation, AgentAuditLog | Cloudflare Agents session tracking, tool invocations, security audit |
+| **Deployment** | DeploymentHistory, DeploymentCounter | Worker deployment tracking (migrated from D1) |
 | **Legacy** | StorageEntry, FilterCache, CompilationMetadata | Backward-compatible storage (migration target) |
 
 ### Model Ownership
@@ -46,10 +56,14 @@
 | Model | Used By |
 |---|---|
 | User, Session, Account, Verification | **Better Auth** (via `prismaAdapter`) |
+| TwoFactor | **Better Auth** (`twoFactor` plugin) |
 | User (Clerk fields: `clerkUserId`, `firstName`, `lastName`) | **Clerk webhooks** (deprecated) |
 | ApiKey | **Auth middleware** (`authenticateApiKey()`) |
 | FilterSource, FilterListVersion | **Compilation pipeline** + **source health monitor** |
 | CompiledOutput, CompilationEvent | **Compilation pipeline** + **telemetry** |
+| AgentSession, AgentInvocation | **Cloudflare Agents** (WebSocket/SSE session tracking) |
+| AgentAuditLog | **Agent security audit** (append-only) |
+| DeploymentHistory, DeploymentCounter | **CI/CD deployment pipeline** |
 | StorageEntry, FilterCache, CompilationMetadata | **HyperdriveStorageAdapter** + **D1StorageAdapter** (legacy) |
 
 ---
@@ -61,12 +75,16 @@ erDiagram
     User ||--o{ Session : "has many"
     User ||--o{ Account : "has many"
     User ||--o{ ApiKey : "has many"
+    User ||--o| TwoFactor : "has one"
+    User o|--o{ AgentSession : "has many (optional user)"
 
     FilterSource ||--o{ FilterListVersion : "has many"
     FilterSource ||--o{ SourceHealthSnapshot : "has many"
     FilterSource ||--o{ SourceChangeEvent : "has many"
 
     CompiledOutput ||--o{ CompilationEvent : "has many"
+
+    AgentSession ||--o{ AgentInvocation : "has many"
 
     User {
         uuid id PK
@@ -75,7 +93,15 @@ erDiagram
         string role
         string clerkUserId UK
         string tier
+        string firstName
+        string lastName
+        string imageUrl
         boolean emailVerified
+        boolean twoFactorEnabled
+        boolean banned
+        string banReason
+        timestamptz banExpires
+        timestamptz lastSignInAt
         timestamptz createdAt
         timestamptz updatedAt
     }
@@ -89,6 +115,7 @@ erDiagram
         string userAgent
         timestamptz expiresAt
         timestamptz createdAt
+        timestamptz updatedAt
     }
 
     Account {
@@ -98,8 +125,13 @@ erDiagram
         string providerId
         string accessToken
         string refreshToken
+        timestamptz accessTokenExpiresAt
+        timestamptz refreshTokenExpiresAt
+        string scope
+        string idToken
         string password
         timestamptz createdAt
+        timestamptz updatedAt
     }
 
     Verification {
@@ -108,6 +140,7 @@ erDiagram
         string value
         timestamptz expiresAt
         timestamptz createdAt
+        timestamptz updatedAt
     }
 
     ApiKey {
@@ -120,6 +153,16 @@ erDiagram
         int rateLimitPerMinute
         timestamptz expiresAt
         timestamptz revokedAt
+        timestamptz lastUsedAt
+        timestamptz createdAt
+        timestamptz updatedAt
+    }
+
+    TwoFactor {
+        uuid id PK
+        uuid userId FK
+        string secret
+        string backupCodes
     }
 
     FilterSource {
@@ -130,6 +173,8 @@ erDiagram
         int refreshIntervalSeconds
         int consecutiveFailures
         timestamptz lastCheckedAt
+        timestamptz createdAt
+        timestamptz updatedAt
     }
 
     FilterListVersion {
@@ -140,6 +185,7 @@ erDiagram
         string r2Key
         boolean isCurrent
         timestamptz fetchedAt
+        timestamptz expiresAt
     }
 
     CompiledOutput {
@@ -150,6 +196,7 @@ erDiagram
         int ruleCount
         string r2Key
         timestamptz createdAt
+        timestamptz expiresAt
     }
 
     CompilationEvent {
@@ -180,6 +227,71 @@ erDiagram
         int ruleCountDelta
         boolean contentHashChanged
         timestamptz detectedAt
+    }
+
+    AgentSession {
+        uuid id PK
+        string agentSlug
+        string instanceId
+        uuid userId FK
+        string clerkUserId
+        timestamptz startedAt
+        timestamptz endedAt
+        string endReason
+        int messageCount
+        string transport
+        string clientIp
+        string userAgent
+        json metadata
+    }
+
+    AgentInvocation {
+        uuid id PK
+        uuid sessionId FK
+        string toolName
+        string inputSummary
+        string outputSummary
+        int durationMs
+        boolean success
+        string errorMessage
+        timestamptz invokedAt
+        jsonb metadata
+    }
+
+    AgentAuditLog {
+        uuid id PK
+        uuid actorUserId
+        string agentSlug
+        string instanceId
+        string action
+        string status
+        string ipAddress
+        string userAgent
+        string reason
+        jsonb metadata
+        timestamptz createdAt
+    }
+
+    DeploymentHistory {
+        string id PK
+        string version
+        int buildNumber
+        string fullVersion UK
+        string gitCommit
+        string gitBranch
+        timestamptz deployedAt
+        string deployedBy
+        string status
+        int deploymentDuration
+        string workflowRunId
+        string workflowRunUrl
+        jsonb metadata
+    }
+
+    DeploymentCounter {
+        string version PK
+        int lastBuildNumber
+        timestamptz updatedAt
     }
 
     StorageEntry {
@@ -231,9 +343,13 @@ and by **Clerk webhooks** for user sync (deprecated).
 | `imageUrl` | `String?` | `@map("image_url")` | Avatar URL |
 | `emailVerified` | `Boolean` | `@default(false)` | Email verification status |
 | `lastSignInAt` | `DateTime?` | `@db.Timestamptz` | Last sign-in timestamp |
+| `twoFactorEnabled` | `Boolean` | `@default(false) @map("two_factor_enabled")` | Whether 2FA is enabled (Better Auth) |
+| `banned` | `Boolean` | `@default(false)` | Whether the user is banned (Better Auth) |
+| `banReason` | `String?` | `@map("ban_reason")` | Reason for ban |
+| `banExpires` | `DateTime?` | `@db.Timestamptz @map("ban_expires")` | Ban expiry (null = permanent) |
 
 **Table name:** `users`
-**Relations:** `apiKeys` → ApiKey[], `sessions` → Session[], `accounts` → Account[]
+**Relations:** `apiKeys` → ApiKey[], `sessions` → Session[], `accounts` → Account[], `twoFactor` → TwoFactor?, `agentSessions` → AgentSession[]
 **Unique constraints:** `email`, `clerkUserId`
 
 > **Note:** The Clerk-specific fields (`clerkUserId`, `firstName`, `lastName`, `imageUrl`,
@@ -335,6 +451,23 @@ by Better Auth.
 **Relations:** `user` → User (via `userId`, cascade delete)
 **Indexes:** `userId`
 **Unique constraints:** `keyHash`
+
+---
+
+### TwoFactor
+
+Stores TOTP secrets and backup codes per user. Managed by the **Better Auth `twoFactor` plugin**.
+
+| Field | Type | Attributes | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Primary key |
+| `userId` | `String` (UUID) | `@map("user_id")` | FK → User (unique — one record per user) |
+| `secret` | `String` | | Encrypted TOTP secret |
+| `backupCodes` | `String` | `@map("backup_codes")` | JSON-encoded backup code array |
+
+**Table name:** `two_factor`
+**Relations:** `user` → User (via `userId`, cascade delete)
+**Unique constraints:** `userId`
 
 ---
 
@@ -496,6 +629,124 @@ Records when a filter source's content changes between versions.
 
 ---
 
+## Agent Sessions Domain
+
+### AgentSession
+
+Tracks active and historical Cloudflare Agents connections over WebSocket or SSE.
+
+| Field | Type | Attributes | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Primary key |
+| `agentSlug` | `String` | `@map("agent_slug")` | Agent identifier from `AGENT_REGISTRY` |
+| `instanceId` | `String` | `@map("instance_id")` | Durable Object instance name |
+| `userId` | `String?` (UUID) | `@map("user_id")` | FK → User (nullable for anonymous) |
+| `clerkUserId` | `String?` | `@map("clerk_user_id")` | Clerk user ID (legacy / cross-reference) |
+| `startedAt` | `DateTime` | `@default(now()) @db.Timestamptz` | Session start time |
+| `endedAt` | `DateTime?` | `@db.Timestamptz` | Session end time (NULL = still active) |
+| `endReason` | `String?` | `@map("end_reason")` | `client_disconnect` \| `server_error` \| `admin_terminate` \| `timeout` |
+| `messageCount` | `Int` | `@default(0)` | WebSocket messages received |
+| `transport` | `String` | `@default("websocket")` | `websocket` \| `sse` |
+| `clientIp` | `String?` | `@map("client_ip")` | Client IP address |
+| `userAgent` | `String?` | `@map("user_agent")` | Client user agent |
+| `metadata` | `Json?` | | Extensibility JSON blob |
+
+**Table name:** `agent_sessions`
+**Relations:** `user` → User? (via `userId`, set null on delete), `invocations` → AgentInvocation[]
+**Indexes:** `userId`, `clerkUserId`, `agentSlug`, `startedAt`, `(userId, endedAt)` (active sessions per user)
+
+---
+
+### AgentInvocation
+
+Tracks individual tool calls / actions within an agent session.
+
+| Field | Type | Attributes | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Primary key |
+| `sessionId` | `String` (UUID) | `@map("session_id")` | FK → AgentSession |
+| `toolName` | `String` | `@map("tool_name")` | Name of the tool called |
+| `inputSummary` | `String?` | `@map("input_summary")` | Brief summary of tool input |
+| `outputSummary` | `String?` | `@map("output_summary")` | Brief summary of tool output |
+| `durationMs` | `Int?` | `@map("duration_ms")` | Invocation duration |
+| `success` | `Boolean` | `@default(true)` | Whether the invocation succeeded |
+| `errorMessage` | `String?` | `@map("error_message")` | Error message if failed |
+| `invokedAt` | `DateTime` | `@default(now()) @db.Timestamptz` | Invocation timestamp |
+| `metadata` | `Json?` | `@db.JsonB` | Extensibility JSON blob |
+
+**Table name:** `agent_invocations`
+**Relations:** `session` → AgentSession (via `sessionId`, cascade delete)
+**Indexes:** `sessionId`, `toolName`, `invokedAt`
+
+---
+
+### AgentAuditLog
+
+Append-only audit log for agent-related security events (ZTA telemetry).
+
+| Field | Type | Attributes | Description |
+|---|---|---|---|
+| `id` | `String` (UUID) | `@id @default(uuid())` | Primary key |
+| `actorUserId` | `String?` (UUID) | `@map("actor_user_id")` | User who triggered the action |
+| `agentSlug` | `String?` | `@map("agent_slug")` | Agent identifier |
+| `instanceId` | `String?` | `@map("instance_id")` | Durable Object instance |
+| `action` | `String` | | Action type (e.g., `session_start`, `tool_invoke`) |
+| `status` | `String` | `@default("success")` | `success` \| `failure` |
+| `ipAddress` | `String?` | `@map("ip_address")` | Client IP |
+| `userAgent` | `String?` | `@map("user_agent")` | Client user agent |
+| `reason` | `String?` | | Reason for the action / failure |
+| `metadata` | `Json?` | `@db.JsonB` | Extensibility JSON blob |
+| `createdAt` | `DateTime` | `@default(now()) @db.Timestamptz` | Event timestamp |
+
+**Table name:** `agent_audit_logs`
+**Indexes:** `actorUserId`, `agentSlug`, `action`, `createdAt`
+
+> **Append-only:** Never update or delete rows from this table. It feeds ZTA security dashboards and SIEM pipelines via `AnalyticsService.trackSecurityEvent()`.
+
+---
+
+## Deployment Domain
+
+### DeploymentHistory
+
+Tracks worker deployments. Migrated from the legacy D1 `deployment_history` table.
+
+| Field | Type | Attributes | Description |
+|---|---|---|---|
+| `id` | `String` | `@id` | Primary key (string, not UUID) |
+| `version` | `String` | | Semantic version string |
+| `buildNumber` | `Int` | `@map("build_number")` | Monotonically increasing build number |
+| `fullVersion` | `String` | `@unique @map("full_version")` | e.g., `1.2.3-45` |
+| `gitCommit` | `String` | `@map("git_commit")` | Git commit SHA |
+| `gitBranch` | `String` | `@map("git_branch")` | Git branch name |
+| `deployedAt` | `DateTime` | `@default(now()) @db.Timestamptz` | Deployment timestamp |
+| `deployedBy` | `String` | `@map("deployed_by")` | Actor (e.g., GitHub Actions bot) |
+| `status` | `String` | `@default("success")` | `success` \| `failure` \| `rollback` |
+| `deploymentDuration` | `Int?` | `@map("deployment_duration")` | Duration in seconds |
+| `workflowRunId` | `String?` | `@map("workflow_run_id")` | GitHub Actions run ID |
+| `workflowRunUrl` | `String?` | `@map("workflow_run_url")` | GitHub Actions run URL |
+| `metadata` | `Json?` | `@db.JsonB` | Additional deployment metadata |
+
+**Table name:** `deployment_history`
+**Unique constraints:** `fullVersion`, `(version, buildNumber)`
+**Indexes:** `version`, `buildNumber`, `deployedAt DESC`, `status`, `gitCommit`
+
+---
+
+### DeploymentCounter
+
+Tracks the last build number per version to support monotonically incrementing builds.
+
+| Field | Type | Attributes | Description |
+|---|---|---|---|
+| `version` | `String` | `@id` | Version string (primary key) |
+| `lastBuildNumber` | `Int` | `@default(0) @map("last_build_number")` | Last issued build number for this version |
+| `updatedAt` | `DateTime` | `@updatedAt @db.Timestamptz` | Last update |
+
+**Table name:** `deployment_counter`
+
+---
+
 ## Legacy / Compatibility Domain
 
 > ⚠️ **These models are retained for backward compatibility** with the
@@ -572,11 +823,14 @@ Legacy compilation metadata. Used by `IStorageAdapter.storeCompilationMetadata()
 generator client {
   provider = "prisma-client"
   output   = "./generated"
+  runtime  = "cloudflare"
+  // "cloudflare" runtime uses @prisma/adapter-pg code path — no runtime WASM.
+  // Required for Cloudflare Workers which block WebAssembly.Module() at runtime.
 }
 
 datasource db {
   provider = "postgresql"
-  // URL configured in prisma.config.ts (Prisma 7+)
+  // Connection URL is configured in prisma.config.ts (Prisma 7+)
 }
 ```
 

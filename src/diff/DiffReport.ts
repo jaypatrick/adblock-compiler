@@ -1,9 +1,17 @@
 /**
  * Diff Report Generation
  * Generates detailed diff reports between filter list compilations.
+ * Uses AGTree for semantic rule analysis, domain extraction, and optional
+ * canonical-form normalization.
  */
 
 import { PACKAGE_INFO } from '../version.ts';
+import { AGTreeParser, type ParseResult } from '../utils/AGTreeParser.ts';
+
+/**
+ * Rule category as determined by AGTree parsing.
+ */
+export type RuleDiffCategory = 'network' | 'cosmetic' | 'host' | 'comment' | 'unknown';
 
 /**
  * Represents a single rule difference
@@ -19,6 +27,37 @@ export interface RuleDiff {
     originalLine?: number;
     /** Line number in new list */
     newLine?: number;
+    /**
+     * Rule category detected by AGTree (network blocking rule, cosmetic/element-hiding rule,
+     * hosts-file rule, comment, or unknown for invalid/unparseable rules).
+     */
+    category?: RuleDiffCategory;
+    /**
+     * Adblock syntax dialect detected by AGTree (e.g. `'AdGuard'`, `'uBlockOrigin'`,
+     * `'AdblockPlus'`, `'Common'`).
+     */
+    syntax?: string;
+    /**
+     * Whether this is an exception (allowlist) rule.
+     * `true` for `@@`-prefixed network rules and `#@#` cosmetic rules.
+     */
+    isException?: boolean;
+}
+
+/**
+ * Per-category change counts for a diff summary.
+ */
+export interface CategoryChangeCounts {
+    /** Network (blocking/exception) rule changes */
+    network: { added: number; removed: number };
+    /** Cosmetic / element-hiding rule changes */
+    cosmetic: { added: number; removed: number };
+    /** Hosts-file rule changes */
+    host: { added: number; removed: number };
+    /** Comment rule changes (only non-zero when `ignoreComments` is `false`) */
+    comment: { added: number; removed: number };
+    /** Rules that could not be categorised (invalid/unparseable) */
+    unknown: { added: number; removed: number };
 }
 
 /**
@@ -39,6 +78,8 @@ export interface DiffSummary {
     netChange: number;
     /** Percentage change */
     percentageChange: number;
+    /** Per-category breakdown of added/removed counts, populated by AGTree parsing */
+    categoryBreakdown?: CategoryChangeCounts;
 }
 
 /**
@@ -99,6 +140,14 @@ export interface DiffOptions {
     ignoreComments?: boolean;
     /** Ignore empty lines in comparison */
     ignoreEmptyLines?: boolean;
+    /**
+     * Normalize rules to their canonical form via AGTree AST regeneration before
+     * comparing.  When `true`, two rules that are semantically identical but
+     * differ in whitespace (e.g. `||example.com^ ` vs `||example.com^`) are
+     * treated as the same rule.  Defaults to `false` to preserve backward-
+     * compatible behaviour.
+     */
+    useAstNormalization?: boolean;
 }
 
 /**
@@ -118,6 +167,7 @@ export class DiffGenerator {
             analyzeDomains: true,
             ignoreComments: true,
             ignoreEmptyLines: true,
+            useAstNormalization: false,
             ...options,
         };
     }
@@ -137,56 +187,79 @@ export class DiffGenerator {
             newTimestamp?: string;
         },
     ): DiffReport {
-        // Normalize rules
-        const normalizedOriginal = this.normalizeRules(originalRules);
-        const normalizedNew = this.normalizeRules(newRules);
+        // Parse cache: memoizes AGTreeParser.parse() calls within this generate() call
+        const parseCache = new Map<string, ParseResult>();
 
-        // Create sets for fast lookup
-        const originalSet = new Set(normalizedOriginal);
-        const newSet = new Set(normalizedNew);
+        // Filter rules (trim + remove comments/empty lines); does NOT apply AST normalization
+        const filteredOriginal = this.filterRules(originalRules);
+        const filteredNew = this.filterRules(newRules);
+
+        // Build comparison sets from normalised keys so AST-equivalent rules are de-duplicated
+        const originalKeySet = new Set(filteredOriginal.map((r) => this.getComparisonKey(r, parseCache)));
+        const newKeySet = new Set(filteredNew.map((r) => this.getComparisonKey(r, parseCache)));
 
         // Find added and removed rules
         const added: RuleDiff[] = [];
         const removed: RuleDiff[] = [];
 
+        // Per-category counters
+        const categoryBreakdown: CategoryChangeCounts = {
+            network: { added: 0, removed: 0 },
+            cosmetic: { added: 0, removed: 0 },
+            host: { added: 0, removed: 0 },
+            comment: { added: 0, removed: 0 },
+            unknown: { added: 0, removed: 0 },
+        };
+
         // Find removed rules (in original but not in new)
-        for (let i = 0; i < normalizedOriginal.length; i++) {
-            const rule = normalizedOriginal[i];
-            if (!newSet.has(rule)) {
+        for (let i = 0; i < filteredOriginal.length; i++) {
+            const rule = filteredOriginal[i];
+            if (!newKeySet.has(this.getComparisonKey(rule, parseCache))) {
+                const info = this.categorizeRule(rule, parseCache);
                 removed.push({
                     rule,
                     type: 'removed',
                     originalLine: i + 1,
+                    category: info.category,
+                    syntax: info.syntax,
+                    isException: info.isException,
                 });
+                categoryBreakdown[info.category].removed++;
             }
         }
 
         // Find added rules (in new but not in original)
-        for (let i = 0; i < normalizedNew.length; i++) {
-            const rule = normalizedNew[i];
-            if (!originalSet.has(rule)) {
+        for (let i = 0; i < filteredNew.length; i++) {
+            const rule = filteredNew[i];
+            if (!originalKeySet.has(this.getComparisonKey(rule, parseCache))) {
+                const info = this.categorizeRule(rule, parseCache);
                 added.push({
                     rule,
                     type: 'added',
                     newLine: i + 1,
+                    category: info.category,
+                    syntax: info.syntax,
+                    isException: info.isException,
                 });
+                categoryBreakdown[info.category].added++;
             }
         }
 
         // Calculate summary
-        const unchangedCount = normalizedOriginal.length - removed.length;
+        const unchangedCount = filteredOriginal.length - removed.length;
         const summary: DiffSummary = {
-            originalCount: normalizedOriginal.length,
-            newCount: normalizedNew.length,
+            originalCount: filteredOriginal.length,
+            newCount: filteredNew.length,
             addedCount: added.length,
             removedCount: removed.length,
             unchangedCount,
             netChange: added.length - removed.length,
-            percentageChange: normalizedOriginal.length > 0 ? ((added.length - removed.length) / normalizedOriginal.length) * 100 : 0,
+            percentageChange: filteredOriginal.length > 0 ? ((added.length - removed.length) / filteredOriginal.length) * 100 : 0,
+            categoryBreakdown,
         };
 
         // Analyze domain changes if requested
-        const domainChanges = this.options.analyzeDomains ? this.analyzeDomainChanges(added, removed) : [];
+        const domainChanges = this.options.analyzeDomains ? this.analyzeDomainChanges(added, removed, parseCache) : [];
 
         // Limit rules if needed
         const limitedAdded = this.options.includeFullRules ? added.slice(0, this.options.maxRulesToInclude) : [];
@@ -199,13 +272,13 @@ export class DiffGenerator {
                 name: metadata?.originalName,
                 version: metadata?.originalVersion,
                 timestamp: metadata?.originalTimestamp,
-                ruleCount: normalizedOriginal.length,
+                ruleCount: filteredOriginal.length,
             },
             current: {
                 name: metadata?.newName,
                 version: metadata?.newVersion,
                 timestamp: metadata?.newTimestamp,
-                ruleCount: normalizedNew.length,
+                ruleCount: filteredNew.length,
             },
             summary,
             added: limitedAdded,
@@ -215,9 +288,12 @@ export class DiffGenerator {
     }
 
     /**
-     * Normalizes rules for comparison
+     * Filters rules for comparison: trims whitespace and removes empty lines /
+     * comments according to configured options.  This method does **not** apply
+     * AST normalisation — that is handled separately by `getComparisonKey()` so
+     * the original text is always preserved in `RuleDiff.rule`.
      */
-    private normalizeRules(rules: string[]): string[] {
+    private filterRules(rules: string[]): string[] {
         return rules
             .map((rule) => rule.trim())
             .filter((rule) => {
@@ -232,16 +308,101 @@ export class DiffGenerator {
     }
 
     /**
-     * Analyzes domain-level changes
+     * Returns a stable comparison key for a rule.  When `useAstNormalization`
+     * is enabled the rule is regenerated from its parsed AST so that two
+     * semantically identical rules that differ only in whitespace produce the
+     * same key.  Falls back to the original text when parsing fails.
+     *
+     * Parse results are memoized in `parseCache` so the same rule string is
+     * never parsed more than once during a single `generate()` call.
      */
-    private analyzeDomainChanges(added: RuleDiff[], removed: RuleDiff[]): DomainDiff[] {
+    private getComparisonKey(rule: string, parseCache: Map<string, ParseResult>): string {
+        if (!this.options.useAstNormalization) {
+            return rule;
+        }
+        const parseResult = this.cachedParse(rule, parseCache);
+        if (parseResult.success && parseResult.ast) {
+            return AGTreeParser.generate(parseResult.ast);
+        }
+        return rule;
+    }
+
+    /**
+     * Memoizes `AGTreeParser.parse()` results within the context of a single
+     * `generate()` call so each unique rule string is parsed at most once.
+     */
+    private cachedParse(rule: string, cache: Map<string, ParseResult>): ParseResult {
+        let result = cache.get(rule);
+        if (!result) {
+            result = AGTreeParser.parse(rule);
+            cache.set(rule, result);
+        }
+        return result;
+    }
+
+    /**
+     * Uses AGTree to determine the category, detected syntax, and exception
+     * status of a rule.  Falls back to `'unknown'` for rules that cannot be
+     * parsed.
+     *
+     * Parse results are memoized in `parseCache`.
+     */
+    private categorizeRule(rule: string, parseCache: Map<string, ParseResult>): { category: RuleDiffCategory; syntax?: string; isException?: boolean } {
+        const parseResult = this.cachedParse(rule, parseCache);
+
+        if (!parseResult.success || !parseResult.ast) {
+            return { category: 'unknown' };
+        }
+
+        const ast = parseResult.ast;
+
+        if (AGTreeParser.isComment(ast)) {
+            return { category: 'comment', syntax: String(ast.syntax) };
+        }
+
+        if (AGTreeParser.isEmpty(ast)) {
+            return { category: 'unknown' };
+        }
+
+        if (AGTreeParser.isHostRule(ast)) {
+            return { category: 'host', syntax: String(ast.syntax) };
+        }
+
+        if (AGTreeParser.isNetworkRule(ast)) {
+            const props = AGTreeParser.extractNetworkRuleProperties(ast);
+            return {
+                category: 'network',
+                syntax: String(ast.syntax),
+                isException: props.isException,
+            };
+        }
+
+        if (AGTreeParser.isCosmeticRule(ast)) {
+            const props = AGTreeParser.extractCosmeticRuleProperties(ast);
+            return {
+                category: 'cosmetic',
+                syntax: String(ast.syntax),
+                isException: props.isException,
+            };
+        }
+
+        return { category: 'unknown', syntax: ast.syntax ? String(ast.syntax) : undefined };
+    }
+
+    /**
+     * Analyzes domain-level changes.
+     *
+     * Uses AGTree for accurate domain extraction from all rule types
+     * (network, host, and cosmetic rules).
+     */
+    private analyzeDomainChanges(added: RuleDiff[], removed: RuleDiff[], parseCache: Map<string, ParseResult>): DomainDiff[] {
         const domainMap = new Map<string, { added: number; removed: number }>();
 
         // Count added rules by domain
         for (const rule of added) {
-            const domain = this.extractDomain(rule.rule);
+            const domain = this.extractDomain(rule.rule, parseCache);
             if (domain) {
-                const existing = domainMap.get(domain) || { added: 0, removed: 0 };
+                const existing = domainMap.get(domain) ?? { added: 0, removed: 0 };
                 existing.added++;
                 domainMap.set(domain, existing);
             }
@@ -249,9 +410,9 @@ export class DiffGenerator {
 
         // Count removed rules by domain
         for (const rule of removed) {
-            const domain = this.extractDomain(rule.rule);
+            const domain = this.extractDomain(rule.rule, parseCache);
             if (domain) {
-                const existing = domainMap.get(domain) || { added: 0, removed: 0 };
+                const existing = domainMap.get(domain) ?? { added: 0, removed: 0 };
                 existing.removed++;
                 domainMap.set(domain, existing);
             }
@@ -269,16 +430,49 @@ export class DiffGenerator {
     }
 
     /**
-     * Extracts domain from a rule
+     * Extracts a representative domain from a rule using AGTree AST parsing.
+     *
+     * - **Network rules** – extracted via pattern regex
+     * - **Host rules** – first hostname from AST
+     * - **Cosmetic rules** – first non-negated domain from AST
+     * - Falls back to legacy regex for rules that AGTree cannot parse.
+     *
+     * Parse results are memoized in `parseCache`.
      */
-    private extractDomain(rule: string): string | null {
-        // Try to extract from adblock format
+    private extractDomain(rule: string, parseCache: Map<string, ParseResult>): string | null {
+        const parseResult = this.cachedParse(rule, parseCache);
+
+        if (parseResult.success && parseResult.ast) {
+            const ast = parseResult.ast;
+
+            // Host rules: use the first hostname directly from the AST
+            if (AGTreeParser.isHostRule(ast)) {
+                const props = AGTreeParser.extractHostRuleProperties(ast);
+                return props.hostnames[0]?.toLowerCase() ?? null;
+            }
+
+            // Cosmetic rules: use the first non-negated domain from the AST
+            if (AGTreeParser.isCosmeticRule(ast)) {
+                const props = AGTreeParser.extractCosmeticRuleProperties(ast);
+                const firstDomain = props.domains.find((d) => !d.startsWith('~'));
+                return firstDomain?.toLowerCase() ?? null;
+            }
+
+            // Network rules: extract the domain from the pattern string
+            if (AGTreeParser.isNetworkRule(ast)) {
+                const props = AGTreeParser.extractNetworkRuleProperties(ast);
+                const match = props.pattern.match(/^\|\|([a-z0-9.-]+)[\^/?]/i);
+                if (match) {
+                    return match[1].toLowerCase();
+                }
+            }
+        }
+
+        // Fallback: legacy regex for rules AGTree cannot parse
         const match = rule.match(/^\|\|([a-z0-9.-]+)\^?/i);
         if (match) {
             return match[1].toLowerCase();
         }
-
-        // Try to extract from hosts format
         const hostsMatch = rule.match(/^[\d.]+\s+([a-z0-9.-]+)/i);
         if (hostsMatch) {
             return hostsMatch[1].toLowerCase();
@@ -310,6 +504,41 @@ export class DiffGenerator {
         lines.push(`| Unchanged | ${report.summary.unchangedCount} |`);
         lines.push(`| Net Change | ${report.summary.netChange >= 0 ? '+' : ''}${report.summary.netChange} (${report.summary.percentageChange.toFixed(2)}%) |`);
         lines.push('');
+
+        const cb: CategoryChangeCounts = report.summary.categoryBreakdown ?? {
+            network: { added: 0, removed: 0 },
+            cosmetic: { added: 0, removed: 0 },
+            host: { added: 0, removed: 0 },
+            comment: { added: 0, removed: 0 },
+            unknown: { added: 0, removed: 0 },
+        };
+        const totalCategoryChanges = (Object.values(cb) as { added: number; removed: number }[]).reduce(
+            (sum, counts) => sum + counts.added + counts.removed,
+            0,
+        );
+
+        if (totalCategoryChanges > 0) {
+            lines.push('## Rule Type Breakdown');
+            lines.push('');
+            lines.push('| Rule Type | Added | Removed |');
+            lines.push('|-----------|-------|---------|');
+            if (cb.network.added + cb.network.removed > 0) {
+                lines.push(`| Network | +${cb.network.added} | -${cb.network.removed} |`);
+            }
+            if (cb.cosmetic.added + cb.cosmetic.removed > 0) {
+                lines.push(`| Cosmetic | +${cb.cosmetic.added} | -${cb.cosmetic.removed} |`);
+            }
+            if (cb.host.added + cb.host.removed > 0) {
+                lines.push(`| Host | +${cb.host.added} | -${cb.host.removed} |`);
+            }
+            if (cb.comment.added + cb.comment.removed > 0) {
+                lines.push(`| Comment | +${cb.comment.added} | -${cb.comment.removed} |`);
+            }
+            if (cb.unknown.added + cb.unknown.removed > 0) {
+                lines.push(`| Unknown | +${cb.unknown.added} | -${cb.unknown.removed} |`);
+            }
+            lines.push('');
+        }
 
         if (report.domainChanges.length > 0) {
             lines.push('## Top Domain Changes');

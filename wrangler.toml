@@ -88,7 +88,7 @@ destinations = [ "sentry-traces" ]
 #       All secrets use `wrangler secret put`.
 [vars]
 # Keep in sync with VERSION in src/version.ts. Run `deno task version:sync` to propagate.
-COMPILER_VERSION = "0.73.0"
+COMPILER_VERSION = "0.80.0"
 ENVIRONMENT = "production"
 # Clerk publishable key — uncomment and set to pk_live_... when Clerk is production-ready.
 # To activate Clerk: uncomment both lines below and also set CLERK_JWKS_URL.
@@ -106,6 +106,7 @@ CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787,https://adbl
 URL_FRONTEND = "https://adblock-frontend.jayson-knight.workers.dev"
 URL_API      = "https://adblock-compiler.jayson-knight.workers.dev"
 URL_DOCS     = "https://adblock-compiler-docs.pages.dev"
+URL_LANDING  = "https://adblock-compiler-landing.pages.dev"
 
 # ─── KV Namespaces ───────────────────────────────────────────────────────────
 # `wrangler dev` binds to these live namespaces by default.
@@ -122,6 +123,15 @@ id = "5dc36da36d9142cc9ced6c56328898ee"
 binding = "METRICS"
 id = "025c3f10527c46c0be559f299bdba994"
 
+# FEATURE_FLAGS: KV-backed feature flag store.
+# Toggle flags at runtime without redeployment:
+#   wrangler kv:key put --binding FEATURE_FLAGS flag:ENABLE_BATCH_STREAMING '{"enabled":true,"updatedAt":"2025-01-01T00:00:00.000Z"}'
+# Create with: wrangler kv:namespace create FEATURE_FLAGS
+# See: docs/feature-flags/KV_FEATURE_FLAGS.md
+[[kv_namespaces]]
+binding = "FEATURE_FLAGS"
+id = "your-feature-flags-kv-id"
+
 # RULES_KV: optional dedicated rule-set storage. Worker falls back to
 # COMPILATION_CACHE when absent. Create with:
 #   wrangler kv:namespace create RULES_KV
@@ -135,6 +145,13 @@ bucket_name = "adblock-compiler-r2-storage"
 [[r2_buckets]]
 binding = "COMPILER_LOGS"
 bucket_name = "adblock-compiler-logs"
+
+# ERROR_BUCKET — dedicated R2 bucket for error dead-letter logs.
+# Written by handleErrorQueue() as NDJSON batches under errors/YYYY/MM/DD/HH/.
+# Create with: wrangler r2 bucket create adblock-compiler-error-logs
+[[r2_buckets]]
+binding = "ERROR_BUCKET"
+bucket_name = "adblock-compiler-error-logs"
 
 # ─── Placement ───────────────────────────────────────────────────────────────
 # Smart placement: prefer colos near Neon (Azure East US 2)
@@ -155,10 +172,31 @@ database_id = "7d5a2704-5033-4433-911f-d8368f36dcdf"
 migrations_dir = "admin-migrations"
 
 # ─── Durable Objects ─────────────────────────────────────────────────────────
+#
+# How to add a new agent Durable Object:
+#
+#   1. Create the DO class in worker/<agent-name>.ts and export it from worker/worker.ts.
+#   2. Add a [[durable_objects.bindings]] entry below with:
+#        name       = "MY_AGENT"          (UPPER_SNAKE_CASE — must match Env binding key)
+#        class_name = "MyAgentClass"      (exported DO class name)
+#   3. Add a [[migrations]] entry below with `new_sqlite_classes = ["MyAgentClass"]`
+#      (SQLite-backed DOs support DO storage API without KV; use `new_classes` for non-SQLite).
+#   4. Add the corresponding binding to the Env interface in worker/types.ts.
+#   5. Add a registry entry to worker/agents/registry.ts — this wires routing, auth, and
+#      route-permission entries automatically.
+#   6. Run `wrangler deploy` to provision the new DO class in Cloudflare.
+#
+# Agent endpoints are secured by ZTA authentication middleware (worker/agents/agent-auth.ts)
+# before the DO stub is invoked.  Only UserTier.Admin can connect by default.
+# See: https://developers.cloudflare.com/agents/getting-started/add-to-existing-project/
+
 [[durable_objects.bindings]]
 class_name = "AdblockCompiler"
 name = "ADBLOCK_COMPILER"
 
+# MCP_AGENT — Playwright MCP Agent (Cloudflare Browser Rendering + Model Context Protocol)
+# Slug: mcp-agent  →  /agents/mcp-agent/{instanceId}
+# Auth: UserTier.Admin only (see worker/agents/registry.ts)
 [[durable_objects.bindings]]
 class_name = "PlaywrightMcpAgent"
 name = "MCP_AGENT"
@@ -199,13 +237,14 @@ not_found_handling = "single-page-application"
 # Deploy wrangler.tail.toml first; the tail worker must exist in your account
 # before this binding can be registered.
 [[tail_consumers]]
-service = "adblock-compiler-tail"
+service = "adblock-tail"
 
 # ─── Queues ──────────────────────────────────────────────────────────────────
 # Create queues before deploying:
 #   wrangler queues create adblock-compiler-worker-queue
 #   wrangler queues create adblock-compiler-worker-queue-high-priority
 #   wrangler queues create adblock-compiler-dlq
+#   wrangler queues create adblock-compiler-error-queue
 [[queues.producers]]
 queue = "adblock-compiler-worker-queue"
 binding = "ADBLOCK_COMPILER_QUEUE"
@@ -213,6 +252,12 @@ binding = "ADBLOCK_COMPILER_QUEUE"
 [[queues.producers]]
 queue = "adblock-compiler-worker-queue-high-priority"
 binding = "ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY"
+
+# ERROR_QUEUE — dedicated dead-letter queue, isolated from compile queues.
+# Receives error events from app.onError(); consumer persists batches to ERROR_BUCKET.
+[[queues.producers]]
+queue = "adblock-compiler-error-queue"
+binding = "ERROR_QUEUE"
 
 [[queues.consumers]]
 queue = "adblock-compiler-worker-queue"
@@ -225,6 +270,12 @@ queue = "adblock-compiler-worker-queue-high-priority"
 max_batch_size = 5
 max_batch_timeout = 2
 dead_letter_queue = "adblock-compiler-dlq"
+
+# Error queue consumer — small batches, short timeout for fast R2 persistence.
+[[queues.consumers]]
+queue = "adblock-compiler-error-queue"
+max_batch_size = 25
+max_batch_timeout = 10
 
 # ─── Analytics Engine ────────────────────────────────────────────────────────
 [[analytics_engine_datasets]]
@@ -262,7 +313,8 @@ class_name = "HealthMonitoringWorkflow"
 # ─── Hyperdrive ──────────────────────────────────────────────────────────────
 # Production connection string is set via `wrangler hyperdrive update`.
 # For local dev, set the connection string in .dev.vars (gitignored):
-#   WRANGLER_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@127.0.0.1:5432/adblock_dev
+#   CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@<branch>.neon.tech/<dbname>?sslmode=require
+# Create a personal dev branch at https://console.neon.tech → your project → Branches → New Branch.
 # Do NOT put credentials in localConnectionString here.
 [[hyperdrive]]
 binding = "HYPERDRIVE"
@@ -284,3 +336,11 @@ local_protocol = "http"
 # because Cloudflare Containers requires a Linux Docker daemon.
 # See: https://developers.cloudflare.com/containers/
 enable_containers = true
+
+# ── Dynamic Workers loader (optional — requires Cloudflare Dynamic Workers beta access)
+# Uncomment when your account has Dynamic Workers enabled.
+# See: https://developers.cloudflare.com/dynamic-workers/
+# See: https://github.com/jaypatrick/adblock-compiler/issues/1386
+# [[bindings]]
+# type = "dynamic_worker_loader"
+# name = "DYNAMIC_WORKER_LOADER"

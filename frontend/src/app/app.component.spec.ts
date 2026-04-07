@@ -4,6 +4,8 @@ import { provideRouter } from '@angular/router';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
+import { BreakpointObserver, BreakpointState } from '@angular/cdk/layout';
+import { of } from 'rxjs';
 import { AppComponent } from './app.component';
 import { GlobalErrorHandler } from './error/global-error-handler';
 import { API_BASE_URL } from './tokens';
@@ -52,8 +54,8 @@ describe('AppComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should have 8 navigation items', () => {
-        expect(component.navItems.length).toBe(8);
+    it('should have 9 navigation items', () => {
+        expect(component.navItems.length).toBe(9);
     });
 
     it('should include Home nav item', () => {
@@ -108,6 +110,54 @@ describe('AppComponent', () => {
         const main = fixture.nativeElement.querySelector('[role="main"]');
         expect(main).toBeTruthy();
         expect(main.getAttribute('aria-label')).toBe('Main content');
+    });
+
+    it('should NOT render menu button in desktop viewport (isMobile is false)', async () => {
+        await fixture.whenStable();
+        const menuBtn = fixture.nativeElement.querySelector('button[aria-label="Toggle navigation"]');
+        expect(menuBtn).toBeNull();
+    });
+});
+
+describe('AppComponent (mobile viewport)', () => {
+    let fixture: ComponentFixture<AppComponent>;
+    let httpTesting: HttpTestingController;
+
+    beforeEach(async () => {
+        localStorage.clear();
+        await TestBed.configureTestingModule({
+            imports: [AppComponent, NoopAnimationsModule],
+            providers: [
+                provideZonelessChangeDetection(),
+                provideRouter([]),
+                provideHttpClient(),
+                provideHttpClientTesting(),
+                { provide: ErrorHandler, useClass: GlobalErrorHandler },
+                { provide: API_BASE_URL, useValue: '/api' },
+                {
+                    provide: BreakpointObserver,
+                    useValue: { observe: () => of({ matches: true } as BreakpointState) },
+                },
+            ],
+        }).compileComponents();
+
+        fixture = TestBed.createComponent(AppComponent);
+        httpTesting = TestBed.inject(HttpTestingController);
+
+        httpTesting.match('/api/metrics').forEach(req => req.flush({
+            totalRequests: 0, averageDuration: 0, cacheHitRate: 0, successRate: 0,
+        }));
+        httpTesting.match('/api/health').forEach(req => req.flush({
+            status: 'healthy', version: '0.0.0',
+        }));
+
+        await fixture.whenStable();
+    });
+
+    afterEach(() => {
+        httpTesting.match(() => true).forEach(req => req.flush({}));
+        httpTesting.verify();
+        localStorage.clear();
     });
 
     it('should render menu button with aria-label', async () => {

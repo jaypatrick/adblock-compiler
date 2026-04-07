@@ -84,6 +84,45 @@ describe('PerformanceComponent', () => {
         expect(component.healthStatusColor()).toBe('var(--mat-sys-on-surface-variant)');
     });
 
+    // getHealthColor and getHealthIcon are pure functions — tested directly without
+    // going through httpResource, which uses Angular 21's experimental reactive
+    // scheduler and cannot be reliably driven via detectChanges()+flush in tests.
+    describe('getHealthColor', () => {
+        it('should return primary color for healthy status', () => {
+            expect(component.getHealthColor('healthy')).toBe('var(--mat-sys-primary)');
+        });
+
+        it('should return tertiary color for degraded status', () => {
+            expect(component.getHealthColor('degraded')).toBe('var(--mat-sys-tertiary)');
+        });
+
+        it('should return error color for down status', () => {
+            expect(component.getHealthColor('down')).toBe('var(--mat-sys-error)');
+        });
+
+        it('should return on-surface-variant color for undefined status', () => {
+            expect(component.getHealthColor(undefined)).toBe('var(--mat-sys-on-surface-variant)');
+        });
+    });
+
+    describe('getHealthIcon', () => {
+        it('should return check_circle icon for healthy status', () => {
+            expect(component.getHealthIcon('healthy')).toBe('check_circle');
+        });
+
+        it('should return warning icon for degraded status', () => {
+            expect(component.getHealthIcon('degraded')).toBe('warning');
+        });
+
+        it('should return error icon for down status', () => {
+            expect(component.getHealthIcon('down')).toBe('error');
+        });
+
+        it('should return help_outline icon for undefined status', () => {
+            expect(component.getHealthIcon(undefined)).toBe('help_outline');
+        });
+    });
+
     it('should render the page heading', () => {
         fixture.detectChanges();
         const el: HTMLElement = fixture.nativeElement;

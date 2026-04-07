@@ -249,87 +249,58 @@ postgresql://user:pass@...-pooler.eastus2.azure.neon.tech/db?sslmode=require&cha
 
 ## Local Development Issues
 
-### Port 5432 Already in Use
-
-**Symptom:** `docker compose up postgres` fails with port binding error.
-
-**Diagnosis:**
-
-```bash
-lsof -i :5432
-```
-
-**Fix — use a different port:**
-
-```bash
-POSTGRES_PORT=5434 docker compose up -d postgres
-```
-
-Then update `.env.local` and `.dev.vars` to use port `5434`.
-
 ### "HYPERDRIVE is undefined" in Local Dev
 
 **Symptom:** `TypeError: Cannot read properties of undefined (reading 'connectionString')`
 
-**Cause:** `.dev.vars` is missing the Hyperdrive local override.
+**Cause:** `.dev.vars` is missing or has an empty Hyperdrive local override.
 
 **Fix:**
 
 ```bash
-# .dev.vars (gitignored)
-CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev
+# .dev.vars (gitignored) — point at your personal Neon dev branch
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require
 ```
+
+Create a personal dev branch at [console.neon.tech](https://console.neon.tech) → your project → Branches → New Branch.
+Use the **Direct connection** string (not pooled). See [Local Dev Setup](../database-setup/local-dev.md).
 
 > ⚠️ Restart `wrangler dev` after changing `.dev.vars` — it only reads the file at startup.
 
-### "role 'adblock' does not exist"
+### "SSL required" / `sslmode` errors
 
-**Symptom:** Connection works but authentication fails.
+**Symptom:** `Error: SSL required` or `Error: PGGSSENCMODE` / TLS handshake failure.
 
-**Cause:** You're connecting to a locally-installed PostgreSQL (e.g. Homebrew) instead of
-the Docker container.
+**Cause:** The connection string is missing `?sslmode=require` (required by Neon).
+
+**Fix:** Append `?sslmode=require` to every Neon connection string in `.dev.vars` and `.env.local`:
+
+```ini
+# Replace <user>, <password>, <branch-host>, and <dbname> with your Neon branch values
+CLOUDFLARE_HYPERDRIVE_LOCAL_CONNECTION_STRING_HYPERDRIVE=postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require
+DATABASE_URL="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require"
+DIRECT_DATABASE_URL="postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require"
+```
+
+### "Cannot connect to server" / ETIMEDOUT
+
+**Symptom:** Connections time out during `wrangler dev` or `prisma migrate`.
+
+**Cause:** The Neon branch may be suspended or the connection string is incorrect.
 
 **Fix:**
 
 ```bash
-# Check Docker is running
-docker compose ps postgres
+# 1. Verify your Neon branch is active
+#    https://console.neon.tech → your project → Branches → check branch status
 
-# Ensure no other PostgreSQL is using port 5432
-lsof -i :5432
-```
+# 2. Test the connection directly
+#    Replace <user>, <password>, <branch-host>, and <dbname> with your Neon branch values
+psql "postgresql://<user>:<password>@<branch-host>.neon.tech/<dbname>?sslmode=require" -c "SELECT 1 AS ok;"
 
-### Extensions Not Available (`gen_random_uuid`, `citext`)
-
-**Symptom:** `ERROR: function gen_random_uuid() does not exist`
-
-**Fix:** Reset the Docker volume to re-run the init script:
-
-```bash
-deno task db:local:reset
-```
-
-The init script `scripts/docker-init-db.sql` enables `pgcrypto` and `citext` extensions.
-
-### Docker PostgreSQL Won't Start
-
-**Diagnosis:**
-
-```bash
-# Check logs
-docker compose logs postgres
-
-# Common issues:
-# - "data directory has wrong ownership" → reset volume
-# - "could not create lock file" → stop conflicting PostgreSQL
-```
-
-**Nuclear option:**
-
-```bash
-docker compose down -v     # remove volumes
-docker compose up -d postgres
-deno task db:local:push    # recreate tables
+# 3. Ensure your connection string uses the direct (non-pooler) hostname
+#    ✅ ep-<name>.<region>.neon.tech          (direct — use for local dev)
+#    ❌ ep-<name>-pooler.<region>.neon.tech   (pooler — only for production Hyperdrive)
 ```
 
 ---
@@ -486,10 +457,10 @@ curl -s -H "Authorization: Bearer $NEON_API_KEY" \
 ### Database Connectivity
 
 ```bash
-# Test direct PostgreSQL connection (requires psql)
-psql "postgresql://adblock:localdev@127.0.0.1:5432/adblock_dev" -c "SELECT 1 AS ok;"
+# Test direct PostgreSQL connection to your Neon dev branch (requires psql)
+psql "$DIRECT_DATABASE_URL" -c "SELECT 1 AS ok;"
 
-# Check Prisma migration status
+# Check Prisma migration status against your Neon dev branch
 deno run -A npm:prisma migrate status
 ```
 
@@ -508,8 +479,85 @@ npx wrangler dev --log-level=debug
 ## Further Reading
 
 - [Neon Setup](../database-setup/neon-setup.md) — Production Neon configuration
-- [Local Dev Guide](../database-setup/local-dev.md) — Docker PostgreSQL setup
+- [Local Dev Guide](../database-setup/local-dev.md) — Neon branching setup for local development
 - [Auth Chain Reference](../auth/auth-chain-reference.md) — Authentication flow details
 - [Better Auth + Prisma](../auth/better-auth-prisma.md) — Prisma adapter configuration
 - [Neon Documentation](https://neon.tech/docs) — Official Neon docs
 - [Cloudflare Hyperdrive](https://developers.cloudflare.com/hyperdrive/) — Hyperdrive troubleshooting
+
+---
+
+## Live Troubleshooting Session — 2026-03-25
+
+This section documents the full sequence of events from the live debugging session that occurred on 2026-03-25. It is captured here as a reference for future on-call engineers.
+
+### Sequence of Events
+
+1. **User noticed** UI banners — "Degraded performance — v0.75.0" and "Data may be stale" — on every page visit, regardless of login state
+2. **Initial diagnosis** — `curl /api/health` showed `database.status: "down"` with `latency_ms: 0`
+3. **Checked Hyperdrive dashboard** — zero traffic. Neon dashboard showed migration activity (migrations had run direct via `DIRECT_DATABASE_URL`, not through Hyperdrive)
+4. **Ran `wrangler hyperdrive get`** — confirmed `"scheme": "postgres"` in the Hyperdrive binding config
+5. **Found root cause** — `PrismaClientConfigSchema` only accepted `postgresql://`; Hyperdrive returns `postgres://`
+6. **Applied schema fix** — updated the regex to accept both schemes; deployed at v0.76.0
+7. **Database still down at v0.76.0** — `latency_ms: 0` persisted; catch block was silently swallowing errors
+8. **Added error surfacing** — new `error_code` and `error_message` fields in the health response catch block
+9. **Added smoke test endpoint** — `GET /api/health/db-smoke` for detailed post-deploy diagnostics
+
+### What `.hyperdrive.local` Means (Important)
+
+When you see `hyperdrive_host: "11f7f957eaae03a9fe9365c78e6eb4ed.hyperdrive.local"` in the health response, this is **correct and expected** for a deployed Cloudflare Worker. It is the Cloudflare-managed internal proxy socket address that Hyperdrive injects at runtime. It is NOT a sign of a misconfiguration.
+
+The `.hyperdrive.local` host is Hyperdrive's local connection proxy. When your Worker runs `env.HYPERDRIVE.connectionString`, Cloudflare resolves this to a `postgres://...hyperdrive.local/...` URL that routes through the Hyperdrive proxy to your origin database. This is the architecture working as intended.
+
+**Bottom line:** seeing `.hyperdrive.local` in `hyperdrive_host` means the binding IS connected to the proxy. The issue is always further down the stack.
+
+### Zero Hyperdrive Dashboard Traffic vs Non-Zero Neon Traffic
+
+If the Hyperdrive dashboard shows zero queries but Neon shows activity, it means:
+
+- **Migrations ran directly** via `DIRECT_DATABASE_URL` / `DATABASE_URL` (which use the real Neon pooler URL, bypassing Hyperdrive)
+- **Worker queries are failing at instantiation** — the Prisma client is never created, so no queries ever reach Hyperdrive
+
+This pattern is consistent with a Zod validation failure (`latency_ms: 0`) — the probe throws before opening any connection.
+
+### The `latency_ms: 0` Instant Failure Pattern
+
+| `latency_ms` value | What it means |
+|---|---|
+| `0` | Failure happened synchronously — at schema validation or client construction. No network I/O occurred. |
+| `1–50` | Very fast failure — connection was attempted but immediately refused (port unreachable, wrong host). |
+| `1000–5000` | TCP timeout — host is reachable but not responding. |
+| `5000` (exactly) | Probe timeout — Worker hit the 5s timeout guard added in the hardening PR. |
+
+### `wrangler tail` as the First Step for Production Debugging
+
+**Always run `wrangler tail` first when diagnosing a production issue.** It shows the actual exception thrown by your Worker in real time, including `ZodError` messages with field paths that pinpoint exactly which validation failed.
+
+```bash
+wrangler tail --format=pretty
+# Look for: ZodError, connection refused, P2024, PROBE_TIMEOUT, etc.
+```
+
+Without `wrangler tail`, the health response's `status: "down"` is the only signal — with it, you get the full stack trace.
+
+### The Smoke Test Endpoint as the Canonical Post-Deploy Check
+
+After every production deploy, run:
+
+```bash
+curl -s https://<your-worker>.workers.dev/api/health/db-smoke | jq .
+```
+
+This endpoint (`GET /api/health/db-smoke`) runs `current_database()`, `version()`, `now()`, and `COUNT(*)` on `information_schema.tables` to verify:
+
+1. The Hyperdrive connection reaches Neon
+2. The correct database is selected
+3. The public schema has tables (migrations have run)
+4. The query latency is reasonable
+
+If it returns `ok: false`, the `error` field (redacted of any credentials) will identify the failure layer immediately — no `wrangler tail` required.
+
+### Note on Future Sentry Integration
+
+The current hardening captures `error_code` and `error_message` in the health response. A future improvement is to emit these as Sentry events via `withSentryWorker()` so production failures are automatically alerted rather than requiring manual health checks. See the Sentry integration docs for details.
+

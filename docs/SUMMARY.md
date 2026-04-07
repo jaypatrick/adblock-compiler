@@ -1,7 +1,6 @@
 # Summary
 
 - [Introduction](README.md)
-- [📄 Download PDF](download.md)
 - [API Reference](api-reference.md)
 - [REST / HTTP API](api/README.md)
   - [AGTree Integration](api/AGTREE_INTEGRATION.md)
@@ -28,6 +27,7 @@
 - [Cloudflare Integration](cloudflare/README.md)
   - [Services Overview](cloudflare/CLOUDFLARE_SERVICES.md)
   - [Admin Dashboard](cloudflare/ADMIN_DASHBOARD.md)
+  - [Agents SDK](cloudflare/AGENTS.md)
   - [Analytics](cloudflare/CLOUDFLARE_ANALYTICS.md)
   - [Browser Rendering](cloudflare/BROWSER_RENDERING.md)
   - [D1 Database](cloudflare/CLOUDFLARE_D1.md)
@@ -72,6 +72,7 @@
 - [Architecture](architecture/SYSTEM_ARCHITECTURE.md)
   - [Hono Routing](architecture/hono-routing.md)
   - [Hono RPC Client](architecture/hono-rpc-client.md)
+  - [tRPC API Layer](architecture/trpc.md)
 - [Frontend](frontend/README.md)
   - [Angular Frontend](frontend/ANGULAR_FRONTEND.md)
   - [Angular Parity Checklist](frontend/ANGULAR_PARITY_CHECKLIST.md)
@@ -139,6 +140,9 @@
   - [Postman Testing](testing/POSTMAN_TESTING.md)
 - [Troubleshooting](troubleshooting/README.md)
   - [KB-001: API Not Available](troubleshooting/KB-001-api-not-available.md)
+  - [KB-002: Hyperdrive Database Down](troubleshooting/KB-002-hyperdrive-database-down.md)
+  - [KB-003: Database Down After Deploy — Live Session](troubleshooting/KB-003-neon-hyperdrive-live-session-2026-03-25.md)
+  - [KB-004: Prisma WASM Error on Cloudflare Workers](troubleshooting/KB-004-prisma-wasm-cloudflare.md)
   - [Neon Troubleshooting](troubleshooting/neon-troubleshooting.md)
 - [Workflows](workflows/README.md)
   - [Workflows Reference](workflows/WORKFLOWS.md)

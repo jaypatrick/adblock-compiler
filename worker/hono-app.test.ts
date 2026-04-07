@@ -32,11 +32,6 @@ async function fetch(
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
-Deno.test('GET /health returns 200', async () => {
-    const res = await fetch('/health');
-    assertEquals(res.status, 200);
-});
-
 Deno.test('GET /api/health returns 200 (via /api prefix)', async () => {
     const res = await fetch('/api/health');
     assertEquals(res.status, 200);
@@ -51,20 +46,15 @@ Deno.test('GET /api/version returns version info (pre-auth meta route)', async (
     assertEquals(typeof body.version, 'string');
 });
 
-Deno.test('GET /rules returns 401 for anonymous users', async () => {
-    const res = await fetch('/rules');
-    assertEquals(res.status, 401);
-});
-
 Deno.test('GET /api/rules returns 401 for anonymous users (via /api prefix)', async () => {
     const res = await fetch('/api/rules');
     assertEquals(res.status, 401);
 });
 
-Deno.test('POST /compile returns 401 for anonymous users (Free tier required)', async () => {
+Deno.test('POST /api/compile returns 401 for anonymous users (Free tier required)', async () => {
     // /compile requires UserTier.Free per the route-permission registry.
     // Anonymous requests are blocked before the rate-limit check is reached.
-    const res = await fetch('/compile', {
+    const res = await fetch('/api/compile', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ rules: ['||example.com^'] }),
@@ -74,7 +64,7 @@ Deno.test('POST /compile returns 401 for anonymous users (Free tier required)', 
     assertEquals(body.success, false);
 });
 
-Deno.test('GET /configuration/defaults rate-limits anonymous users when quota is exhausted', async () => {
+Deno.test('GET /api/configuration/defaults rate-limits anonymous users when quota is exhausted', async () => {
     // /configuration/defaults is accessible to UserTier.Anonymous, so rate limiting
     // is enforced before the handler runs — ideal for verifying the 429 path.
     const store = new Map<string, string>();
@@ -82,7 +72,7 @@ Deno.test('GET /configuration/defaults rate-limits anonymous users when quota is
     store.set('ratelimit:ip:unknown', JSON.stringify({ count: 9999, resetAt: now + 60_000 }));
     const env = makeEnv({ RATE_LIMIT: makeInMemoryKv(store) });
 
-    const res = await fetch('/configuration/defaults', { env });
+    const res = await fetch('/api/configuration/defaults', { env });
     assertEquals(res.status, 429);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.success, false);
@@ -117,8 +107,8 @@ Deno.test('OPTIONS preflight returns 200 or 204', async () => {
     assertEquals(res.status === 200 || res.status === 204, true);
 });
 
-Deno.test('GET /docs redirects to DOCS_SITE_URL', async () => {
-    const res = await fetch('/docs', { redirect: 'manual' });
+Deno.test('GET /api/docs redirects to DOCS_SITE_URL', async () => {
+    const res = await fetch('/api/docs', { redirect: 'manual' });
     assertEquals(res.status, 302);
     const location = res.headers.get('Location');
     assertEquals(typeof location, 'string');
@@ -130,10 +120,27 @@ Deno.test('404 for unknown routes', async () => {
     assertEquals(res.status !== 200 && res.status !== 500, true);
 });
 
-Deno.test('GET /metrics returns 200', async () => {
+// ── Monitoring endpoint pre-auth bypass (#1370) ───────────────────────────────
+// /health and /metrics are Anonymous-tier per ROUTE_PERMISSION_REGISTRY.
+// /queue/stats and /queue/history remain Free-tier (authenticated only).
+
+Deno.test('GET /api/metrics is publicly accessible (pre-auth bypass)', async () => {
     const env = makeEnv({ METRICS: makeInMemoryKv(new Map()) });
-    const res = await fetch('/metrics', { env });
+    const res = await fetch('/api/metrics', { env });
     assertEquals(res.status, 200);
+});
+
+Deno.test('GET /api/health/latest is publicly accessible (pre-auth bypass)', async () => {
+    const res = await fetch('/api/health/latest');
+    // Returns 200 (healthy) or 503 (degraded) — never 401/403 for anonymous callers.
+    assertEquals(res.status === 200 || res.status === 503, true);
+});
+
+Deno.test('GET /api/queue/stats returns 401 for anonymous users (Free tier required)', async () => {
+    // /queue/stats requires UserTier.Free per ROUTE_PERMISSION_REGISTRY and must NOT
+    // be in the pre-auth list — anonymous SWR callers should be rejected.
+    const res = await fetch('/api/queue/stats');
+    assertEquals(res.status, 401);
 });
 
 Deno.test('GET /api/openapi.json is publicly accessible and returns valid spec or 501 when not yet configured', async () => {
@@ -158,20 +165,15 @@ Deno.test('GET /api/openapi.json is publicly accessible and returns valid spec o
 
 // ── Admin session revocation — DELETE /admin/users/:id/sessions (#1275) ──────
 
-Deno.test('DELETE /admin/users/:id/sessions returns 401 for anonymous user', async () => {
-    const res = await fetch('/admin/users/user_123/sessions', { method: 'DELETE' });
-    assertEquals(res.status, 401);
-});
-
 Deno.test('DELETE /api/admin/users/:id/sessions returns 401 for anonymous (/api prefix)', async () => {
     const res = await fetch('/api/admin/users/user_123/sessions', { method: 'DELETE' });
     assertEquals(res.status, 401);
 });
 
-Deno.test('DELETE /admin/users/:id/sessions returns 401 when Bearer token is invalid', async () => {
+Deno.test('DELETE /api/admin/users/:id/sessions returns 401 when Bearer token is invalid', async () => {
     // An invalid Bearer token is rejected by the auth chain → 401.
     // This also verifies the route is registered (not 404) and the auth chain runs.
-    const res = await fetch('/admin/users/user_123/sessions', {
+    const res = await fetch('/api/admin/users/user_123/sessions', {
         method: 'DELETE',
         headers: { 'Authorization': 'Bearer invalid_token' },
     });
@@ -179,8 +181,42 @@ Deno.test('DELETE /admin/users/:id/sessions returns 401 when Bearer token is inv
     assertEquals(res.status, 401);
 });
 
-Deno.test('DELETE /admin/users/:id/sessions route is registered (not 404)', async () => {
-    const res = await fetch('/admin/users/user_123/sessions', { method: 'DELETE' });
+Deno.test('DELETE /api/admin/users/:id/sessions route is registered (not 404)', async () => {
+    const res = await fetch('/api/admin/users/user_123/sessions', { method: 'DELETE' });
     // Should be 401 (unauthorized) not 404 (not found)
     assertEquals(res.status !== 404, true);
+});
+
+// ── Better Auth middleware bypass regression (#1424) ──────────────────────────
+// logger() and compress() are scoped to the `routes` sub-app (not global app).
+// Because app.on('/api/auth/*') is resolved before the routes sub-app is mounted,
+// /api/auth/* requests never enter the routes middleware chain.  These tests
+// verify the observable behavior: no Content-Encoding on auth responses and no
+// logger output for auth paths.
+
+Deno.test('/api/auth/* bypasses compress middleware (no Content-Encoding header)', async () => {
+    // Without BETTER_AUTH_SECRET the handler short-circuits with 404 — but the
+    // critical property is that compress() must NOT have wrapped the response,
+    // so Content-Encoding must be absent regardless of Accept-Encoding.
+    const res = await fetch('/api/auth/get-session', {
+        headers: { 'Accept-Encoding': 'gzip' },
+    });
+    assertEquals(res.headers.get('Content-Encoding'), null);
+});
+
+Deno.test('/api/auth/* bypasses logger middleware (no request log emitted)', async () => {
+    const logs: string[] = [];
+    const originalLog = console.log;
+    console.log = (...args: unknown[]) => {
+        logs.push(args.join(' '));
+    };
+    try {
+        await fetch('/api/auth/get-session');
+        // logger() emits lines containing the HTTP method and path; if ordering is
+        // correct this list will be empty for /api/auth/* requests.
+        const authLogEntry = logs.find((log) => log.includes('/api/auth/'));
+        assertEquals(authLogEntry, undefined, 'Expected logger() NOT to log /api/auth/* requests');
+    } finally {
+        console.log = originalLog;
+    }
 });

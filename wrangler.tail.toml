@@ -23,7 +23,7 @@
 #     wrangler secret put SENTRY_DSN --config wrangler.tail.toml
 # ============================================================================
 
-name = "adblock-compiler-tail"
+name = "adblock-tail"
 main = "worker/tail.ts"
 
 # Keep in sync with the main worker's compatibility_date in wrangler.toml.

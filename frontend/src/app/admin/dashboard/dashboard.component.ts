@@ -62,7 +62,7 @@ interface HealthResponse {
     readonly timestamp?: string;
     readonly services?: {
         readonly gateway?:  { readonly status: ServiceStatus };
-        readonly database?: { readonly status: ServiceStatus; readonly latency_ms?: number };
+        readonly database?: { readonly status: ServiceStatus; readonly latency_ms?: number; readonly db_name?: string; readonly error_message?: string };
         readonly compiler?: { readonly status: ServiceStatus };
         readonly auth?:     { readonly status: ServiceStatus; readonly provider?: 'better-auth' | 'local' | 'none' };
         readonly cache?:    { readonly status: ServiceStatus };
@@ -398,9 +398,14 @@ export class DashboardComponent {
             }
         };
 
-        const dbDetail = (svc: { status: ServiceStatus; latency_ms?: number } | undefined): string | undefined => {
+        const dbDetail = (svc: { status: ServiceStatus; latency_ms?: number; db_name?: string; error_message?: string } | undefined): string | undefined => {
             if (!svc) return undefined;
-            if (svc.status === 'down') return undefined;
+            if (svc.status === 'down' || svc.status === 'degraded') {
+                const parts: string[] = [];
+                if (svc.db_name) parts.push(svc.db_name);
+                if (svc.error_message) parts.push(svc.error_message);
+                return parts.length > 0 ? parts.join(' — ') : svc.status;
+            }
             return svc.latency_ms != null ? `${svc.latency_ms} ms` : undefined;
         };
 

@@ -1772,6 +1772,40 @@ paths:
                     description: No monitor results available yet
                 '503':
                     description: COMPILATION_CACHE binding not configured
+    /convert-rule:
+        post:
+            summary: Convert a filter rule to a different syntax
+            description: >-
+                Converts a single adblock filter rule between AdGuard and uBlock Origin syntaxes using AGTree's
+                RuleConverter.
+            operationId: convertRule
+            tags:
+                - Rules
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/ConvertRuleRequest'
+            responses:
+                '200':
+                    description: Conversion result
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ConvertRuleResponse'
+                '400':
+                    description: Invalid request body
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
+                '422':
+                    description: Validation error
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ErrorResponse'
     /validate-rule:
         post:
             summary: Validate a single adblock rule
@@ -4203,6 +4237,67 @@ components:
                                 example: false
                             error:
                                 type: string
+        ConvertRuleRequest:
+            type: object
+            required:
+                - rule
+                - targetSyntax
+            properties:
+                rule:
+                    type: string
+                    description: The adblock filter rule text to convert
+                    example: 'example.com##+js(abort-on-property-read, ads)'
+                targetSyntax:
+                    type: string
+                    enum:
+                        - adg
+                        - ubo
+                    description: 'Target adblock syntax: adg (AdGuard) or ubo (uBlock Origin)'
+                    example: adg
+                turnstileToken:
+                    type: string
+                    description: >-
+                        Cloudflare Turnstile token. Required when Turnstile protection is enabled for the
+                        `/convert-rule` endpoint.
+                    example: 0.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+        ConvertRuleResponse:
+            type: object
+            required:
+                - success
+                - rule
+                - targetSyntax
+                - convertedRules
+                - isConverted
+                - duration
+            properties:
+                success:
+                    type: boolean
+                    description: Whether the conversion request was processed successfully
+                rule:
+                    type: string
+                    description: The original rule text that was submitted
+                targetSyntax:
+                    type: string
+                    enum:
+                        - adg
+                        - ubo
+                    description: The target syntax that was requested
+                convertedRules:
+                    type: array
+                    items:
+                        type: string
+                    description: The converted rule text(s); may be multiple when a single rule expands
+                isConverted:
+                    type: boolean
+                    description: Whether the rule was actually converted (false if already in target syntax)
+                error:
+                    type: string
+                    description: Error message if conversion failed
+                    nullable: true
+                duration:
+                    type: string
+                    description: Time taken to perform the conversion (e.g. "2ms")
+                    example: 2ms
         ValidateRuleRequest:
             type: object
             required:

@@ -37,6 +37,67 @@ export type WorkflowInstance = globalThis.WorkflowInstance;
 export type HyperdriveBinding = globalThis.Hyperdrive;
 
 // ============================================================================
+// Dynamic Workers (Cloudflare Dynamic Workers — open beta, March 2026)
+// ============================================================================
+
+/**
+ * Type alias for the Cloudflare Dynamic Dispatch Namespace binding.
+ * Provides `load()` for one-shot ephemeral Workers and `get()` for
+ * named, persistent, hibernating Dynamic Workers (DO-backed).
+ *
+ * Requires wrangler.toml:
+ *   [[dynamic_dispatch_namespaces]]
+ *   binding = "LOADER"
+ *   namespace = "adblock-compiler-dynamic"
+ *
+ * @see https://developers.cloudflare.com/dynamic-workers/
+ */
+export type DynamicDispatchNamespace = {
+    /**
+     * Load a one-shot ephemeral Worker from a module map.
+     * Ideal for stateless transforms: AST parsing, rule validation, single-file compilation.
+     * The Worker is destroyed after the response completes.
+     */
+    load(options: DynamicWorkerLoadOptions): Promise<DynamicWorkerEntrypoint>;
+    /**
+     * Get-or-create a named, persistent Dynamic Worker.
+     * The Worker stays warm between requests and hibernates when idle (DO semantics).
+     * Ideal for per-user AiAgent instances or long-lived orchestration workers.
+     */
+    get(id: string, factory: DynamicWorkerFactory): Promise<DynamicWorkerEntrypoint>;
+};
+
+export interface DynamicWorkerLoadOptions {
+    /** Compatibility date for the dynamic Worker's V8 runtime. */
+    compatibilityDate: string;
+    /** The entry point module name (must be a key in `modules`). */
+    mainModule: string;
+    /** Map of module name → source code string. Pre-bundle with @cloudflare/worker-bundler. */
+    modules: Record<string, string>;
+    /**
+     * Set to `null` to fully lock down outbound network access (Zero Trust).
+     * Set to a `Fetcher` to allow outbound via a specific service binding.
+     * Omit to inherit the parent Worker's outbound behaviour.
+     */
+    globalOutbound?: null | Fetcher;
+    /**
+     * Bindings granted to the dynamic Worker.
+     * Restricted to `DynamicWorkerSafeBindings` — a least-privilege allowlist of KV
+     * namespaces and read-only config values. Auth secrets, D1 databases, Durable
+     * Object namespaces, and R2 buckets are structurally excluded to prevent
+     * accidental privilege escalation inside isolates.
+     */
+    bindings?: DynamicWorkerSafeBindings;
+}
+
+export type DynamicWorkerFactory = (id: string) => DynamicWorkerLoadOptions;
+
+export interface DynamicWorkerEntrypoint {
+    /** Dispatch an HTTP request into the dynamic Worker's `fetch` handler. */
+    fetch(request: Request): Promise<Response>;
+}
+
+// ============================================================================
 // Authentication & Authorization Types
 // ============================================================================
 
@@ -85,6 +146,8 @@ export enum AuthScope {
     Compile = 'compile',
     Rules = 'rules',
     Admin = 'admin',
+    /** Access to AI agent endpoints (admin-only) */
+    Agents = 'agents',
 }
 
 export interface IScopeConfig {
@@ -107,6 +170,11 @@ export const SCOPE_REGISTRY: Readonly<Record<AuthScope, IScopeConfig>> = {
     [AuthScope.Admin]: {
         displayName: 'Admin',
         description: 'Full administrative access — manage users, keys, and system config',
+        requiredTier: UserTier.Admin,
+    },
+    [AuthScope.Agents]: {
+        displayName: 'Agents',
+        description: 'Access to AI agent endpoints (admin-only)',
         requiredTier: UserTier.Admin,
     },
 } as const;
@@ -206,6 +274,9 @@ export interface Env {
     // Queue bindings (optional - queues must be created in Cloudflare dashboard first)
     ADBLOCK_COMPILER_QUEUE?: Queue<QueueMessage>;
     ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY?: Queue<QueueMessage>;
+    // Dedicated error dead-letter queue — isolated from compile queues.
+    // Receives error events from app.onError and persists them to ERROR_BUCKET.
+    ERROR_QUEUE?: Queue<ErrorQueueMessage>;
     // Turnstile configuration
     TURNSTILE_SITE_KEY?: string;
     TURNSTILE_SECRET_KEY?: string;
@@ -255,12 +326,31 @@ export interface Env {
     BROWSER?: BrowserWorker;
     // R2 bucket for browser-rendered screenshots (source monitor)
     FILTER_STORAGE?: R2Bucket;
+    // R2 bucket for error dead-letter logs (NDJSON batches written by handleErrorQueue).
+    // Maps to wrangler.toml [[r2_buckets]] binding = "ERROR_BUCKET".
+    ERROR_BUCKET?: R2Bucket;
+    // R2 bucket for compiler logs
+    COMPILER_LOGS?: R2Bucket;
     // Playwright MCP Agent Durable Object namespace
     MCP_AGENT?: DurableObjectNamespace;
     // Adblock Compiler container Durable Object namespace
     ADBLOCK_COMPILER?: DurableObjectNamespace;
+    // Dynamic Dispatch Namespace binding (optional — add to wrangler.toml to enable)
+    // [[dynamic_dispatch_namespaces]], binding = "LOADER", namespace = "adblock-compiler-dynamic"
+    // @see https://developers.cloudflare.com/dynamic-workers/
+    // @see https://github.com/jaypatrick/adblock-compiler/issues/1386
+    LOADER?: DynamicDispatchNamespace;
+    // Dynamic Workers loader binding (optional — add to wrangler.toml to enable)
+    // type = "dynamic_worker_loader", name = "DYNAMIC_WORKER_LOADER"
+    // @see https://developers.cloudflare.com/dynamic-workers/
+    // @see https://github.com/jaypatrick/adblock-compiler/issues/1386
+    DYNAMIC_WORKER_LOADER?: import('./dynamic-workers/types.ts').DynamicWorkerLoader;
     // KV namespace for persisted user rule sets (POST/GET/PUT/DELETE /api/rules)
     RULES_KV?: KVNamespace;
+    // Feature flag KV namespace — stores simple on/off flags for the Worker.
+    // Create with: wrangler kv:namespace create FEATURE_FLAGS
+    // Toggle flags at runtime: wrangler kv:key put --binding FEATURE_FLAGS flag:ENABLE_BATCH_STREAMING '{"enabled":true,"updatedAt":"2025-01-01T00:00:00.000Z"}'
+    FEATURE_FLAGS?: KVNamespace;
     // Webhook target URL for POST /api/notify (generic HTTP endpoint)
     WEBHOOK_URL?: string;
     // Datadog API key for POST /api/notify (optional third-party integration)
@@ -308,6 +398,20 @@ export interface Env {
     NEON_PROJECT_ID?: string;
 }
 
+/**
+ * Least-privilege binding subset permitted for dynamic Workers loaded via `LOADER`.
+ *
+ * Only KV namespaces and read-only config values are allowed — never auth secrets,
+ * D1 databases, Durable Object namespaces, or R2 buckets. This makes it
+ * structurally impossible to accidentally grant privileged bindings to an isolate.
+ *
+ * Used as the `bindings` field type in `DynamicWorkerLoadOptions`.
+ *
+ * @see DynamicWorkerLoadOptions
+ * @see DynamicWorkerBindings — equivalent type for the DYNAMIC_WORKER_LOADER model
+ */
+export type DynamicWorkerSafeBindings = Partial<Pick<Env, 'COMPILATION_CACHE' | 'RATE_LIMIT' | 'METRICS' | 'COMPILER_VERSION'>>;
+
 // ============================================================================
 // Request Types
 // ============================================================================
@@ -351,6 +455,36 @@ export interface QueueMessage {
     timestamp: number;
     priority?: Priority;
     group?: string;
+}
+
+// ============================================================================
+// Error Queue Message Types
+// ============================================================================
+
+/**
+ * Message published to ERROR_QUEUE when an unhandled error occurs in the worker.
+ * Batches are consumed by handleErrorQueue() and persisted to ERROR_BUCKET (R2)
+ * as NDJSON for long-term durable log storage.
+ */
+export interface ErrorQueueMessage {
+    readonly type: 'error';
+    readonly requestId: string;
+    readonly timestamp: string;
+    readonly path: string;
+    readonly method: string;
+    /**
+     * Short human-readable summary of the error (i.e. `Error.message`).
+     * Suitable for dashboards and alert summaries.
+     */
+    readonly message: string;
+    readonly stack?: string;
+    /**
+     * Full serialised error representation.
+     * For `Error` instances this is `Error.stack` (which includes `message`).
+     * For non-Error throws this may be a JSON serialisation or `String(err)`.
+     * Intended for post-incident analysis where the full context is needed.
+     */
+    readonly errorDetails: string;
 }
 
 export interface CompileQueueMessage extends QueueMessage {

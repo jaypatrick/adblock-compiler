@@ -99,7 +99,9 @@ jobs:
             echo "Pages project already exists"
           else
             echo "Creating Pages project: ${{ env.CLOUDFLARE_PAGES_PROJECT }}"
-            retry_command 3 15 deno task wrangler pages project create "${{ env.CLOUDFLARE_PAGES_PROJECT }}" --production-branch main || {
+            retry_command 3 15 deno task wrangler pages project create \
+              "${{ env.CLOUDFLARE_PAGES_PROJECT }}" \
+              --production-branch main || {
               echo "Warning: Could not create Pages project after retries. Attempting deployment anyway."
               exit 0
             }
