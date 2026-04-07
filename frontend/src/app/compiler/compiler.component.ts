@@ -46,9 +46,17 @@ import { MatTooltipModule } from '@angular/material/tooltip';
 import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { ContainerStatusWidgetComponent } from '../components/container-status/container-status-widget.component';
 import { ContainerStatusService } from '../services/container-status.service';
+import { LocalCompilerService } from './local-compiler.service';
 
 /** Compilation mode */
 type CompileMode = 'json' | 'stream' | 'async' | 'batch' | 'batch-async' | 'container';
+
+/**
+ * Execution environment — where compilation runs.
+ * - `cloud`: Server-side via the Cloudflare Worker API (default).
+ * - `local`: In-browser via a Web Worker + `/proxy/fetch` for source fetching.
+ */
+type ExecutionEnv = 'cloud' | 'local';
 
 /** Named preset configurations */
 interface Preset {
@@ -85,7 +93,28 @@ interface Preset {
         <h1 class="mat-headline-4">Compiler</h1>
         <p class="subtitle mat-body-1">Configure and compile your adblock filter lists</p>
 
-        <!-- Compilation Mode Selector -->
+        <!-- Execution Environment Selector -->
+        <mat-card appearance="outlined" class="mb-2">
+            <mat-card-header>
+                <mat-icon mat-card-avatar>computer</mat-icon>
+                <mat-card-title>Execution Environment</mat-card-title>
+                <mat-card-subtitle>Choose where compilation runs</mat-card-subtitle>
+            </mat-card-header>
+            <mat-card-content>
+                <mat-button-toggle-group [value]="executionEnv()" (change)="executionEnv.set($event.value)" class="mode-toggle">
+                    <mat-button-toggle value="cloud" matTooltip="Server-side compilation via Cloudflare Worker API">
+                        <mat-icon>cloud</mat-icon> Cloud
+                    </mat-button-toggle>
+                    <mat-button-toggle value="local" matTooltip="In-browser compilation — sources fetched via CORS proxy, pipeline runs locally">
+                        <mat-icon>laptop</mat-icon> Local
+                    </mat-button-toggle>
+                </mat-button-toggle-group>
+                <p class="mode-hint mat-caption mt-1">{{ executionEnvDescription() }}</p>
+            </mat-card-content>
+        </mat-card>
+
+        <!-- Compilation Mode Selector (cloud only) -->
+        @if (executionEnv() === 'cloud') {
         <mat-card appearance="outlined" class="mb-2">
             <mat-card-header>
                 <mat-icon mat-card-avatar>tune</mat-icon>
@@ -156,6 +185,21 @@ interface Preset {
                         <mat-icon>refresh</mat-icon> Refresh
                     </button>
                 </mat-card-actions>
+            </mat-card>
+        }
+        } <!-- end @if cloud -->
+
+        <!-- Local compilation progress (local mode only) -->
+        @if (executionEnv() === 'local' && localCompilerService.isCompiling()) {
+            <mat-card appearance="outlined" class="mb-2">
+                <mat-card-header>
+                    <mat-icon mat-card-avatar>laptop</mat-icon>
+                    <mat-card-title>Local Compilation</mat-card-title>
+                    <mat-card-subtitle>Running in-browser — {{ localCompilerService.progressPhase() }}</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+                    <mat-progress-bar mode="determinate" [value]="localCompilerService.progressPercent()"></mat-progress-bar>
+                </mat-card-content>
             </mat-card>
         }
 
@@ -423,6 +467,21 @@ interface Preset {
                 </mat-card-content>
             </mat-card>
         }
+
+        <!-- Local compilation result card -->
+        @if (localResult()) {
+            <mat-card appearance="outlined" class="results-card mt-2">
+                <mat-card-header>
+                    <mat-icon mat-card-avatar>laptop</mat-icon>
+                    <mat-card-title>Local Compilation Result</mat-card-title>
+                    <mat-card-subtitle>{{ localResult()!.ruleCount }} rules — compiled in browser</mat-card-subtitle>
+                </mat-card-header>
+                <mat-card-content>
+                    <p class="mat-caption" style="margin-bottom: 8px;">Compiled at {{ localResult()!.compiledAt }}</p>
+                    <pre class="results-json">{{ localResult()!.rules.join('\n') }}</pre>
+                </mat-card-content>
+            </mat-card>
+        }
     </div>
     `,
     styles: [`
@@ -577,6 +636,7 @@ export class CompilerComponent {
     private readonly notifications   = inject(NotificationService);
     private readonly log             = inject(LogService);
     readonly containerStatusService  = inject(ContainerStatusService);
+    readonly localCompilerService    = inject(LocalCompilerService);
 
     readonly turnstileSiteKey = this.turnstileService.siteKey;
 
@@ -589,19 +649,26 @@ export class CompilerComponent {
     /** Tooltip text for the per-source browser rendering toggle. */
     readonly browserToggleTooltip = 'Fetch this source using Cloudflare Browser Rendering (headless Chromium).\nUse for JavaScript-heavy pages or sites with complex redirect chains that plain HTTP cannot handle.';
 
-    /** Active compilation mode */
+    /** Active compilation mode (cloud only) */
     compileMode: CompileMode = 'json';
+    /** Active execution environment (local vs cloud) */
+    readonly executionEnv = signal<ExecutionEnv>('cloud');
     /** Active SSE connection (null when not streaming) */
     readonly sseConnection = signal<SseConnection | null>(null);
     /** Async compilation result (requestId) */
     readonly asyncResult = signal<AsyncCompileResponse | null>(null);
+    /** Local mode compilation result */
+    readonly localResult = signal<import('./local-compiler.service').LocalCompileResult | null>(null);
     /** Drag-over state for the drop zone */
     readonly dragOver = signal(false);
     /** File upload validation error */
     readonly fileError = signal<string | null>(null);
     /** Combined loading state across all modes */
     readonly isCompiling = computed(() =>
-        this.compileResource.isLoading() || (this.sseConnection()?.isActive() ?? false) || this.asyncLoading(),
+        this.compileResource.isLoading()
+        || (this.sseConnection()?.isActive() ?? false)
+        || this.asyncLoading()
+        || this.localCompilerService.isCompiling(),
     );
     private readonly asyncLoading = signal(false);
     /** Grace period (ms) before treating a missing Turnstile verification as a load failure */
@@ -660,6 +727,7 @@ export class CompilerComponent {
 
     /** Dynamic submit button label */
     readonly submitLabel = computed(() => {
+        if (this.executionEnv() === 'local') return 'Compile Locally';
         switch (this.compileMode) {
             case 'json': return 'Compile';
             case 'stream': return 'Stream';
@@ -679,6 +747,14 @@ export class CompilerComponent {
             case 'batch': return 'Compile multiple filter list configurations in a single request.';
             case 'batch-async': return 'Queue multiple configurations for background batch processing.';
             case 'container': return 'Compile via the Cloudflare Container — handles large lists that exceed Worker CPU limits.';
+        }
+    });
+
+    /** Execution environment description for help text */
+    readonly executionEnvDescription = computed(() => {
+        switch (this.executionEnv()) {
+            case 'cloud': return 'Server-side compilation via the Cloudflare Worker API. Supports all compilation modes.';
+            case 'local': return 'In-browser compilation — sources are fetched via CORS proxy, then the full transformation pipeline runs locally. No server CPU is used.';
         }
     });
 
@@ -841,6 +917,28 @@ export class CompilerComponent {
 
         if (!urlEntries.length) return;
 
+        this.log.info(`Compilation started: env=${this.executionEnv()}, mode=${this.compileMode}, urls=${urlEntries.length}`, 'compiler');
+        this.liveAnnouncer.announce('Compilation started', 'polite');
+        this.asyncResult.set(null);
+        this.localResult.set(null);
+
+        // ── Local execution path ───────────────────────────────────────────────
+        if (this.executionEnv() === 'local') {
+            this.submitLocal(
+                urlEntries.map(e => e.source),
+                selectedTransformations,
+            );
+            if (urlEntries[0]?.source) {
+                this.router.navigate([], {
+                    relativeTo: this.route,
+                    queryParams: { url: urlEntries[0].source },
+                    queryParamsHandling: 'merge',
+                });
+            }
+            return;
+        }
+
+        // ── Cloud execution path ───────────────────────────────────────────────
         const request: CompileRequest = {
             configuration: {
                 name: 'Adblock Compilation',
@@ -853,10 +951,6 @@ export class CompilerComponent {
             benchmark: true,
             turnstileToken: this.turnstileService.token() || undefined,
         };
-
-        this.log.info(`Compilation started: mode=${this.compileMode}, urls=${urlEntries.length}`, 'compiler');
-        this.liveAnnouncer.announce('Compilation started', 'polite');
-        this.asyncResult.set(null);
 
         switch (this.compileMode) {
             case 'json':
@@ -892,6 +986,32 @@ export class CompilerComponent {
                 queryParams: { url: urlEntries[0].source },
                 queryParamsHandling: 'merge',
             });
+        }
+    }
+
+    /** Submit local (in-browser) compilation via LocalCompilerService + Web Worker. */
+    private async submitLocal(urls: string[], transformations: string[]): Promise<void> {
+        if (!this.localCompilerService.isSupported) {
+            this.notifications.showToast('error', 'Local Mode Unavailable', 'Web Workers are not available in this environment. Please switch to Cloud mode.');
+            return;
+        }
+
+        try {
+            const result = await this.localCompilerService.compile({
+                configuration: {
+                    name: 'Local Compilation',
+                    sources: urls.map(source => ({ source })),
+                    transformations,
+                },
+                turnstileToken: this.turnstileService.token() || undefined,
+            });
+            this.localResult.set(result);
+            this.liveAnnouncer.announce(`Local compilation complete. ${result.ruleCount} rules.`, 'polite');
+            this.log.info(`Local compilation complete: ${result.ruleCount} rules`, 'compiler');
+        } catch (error) {
+            const message = error instanceof Error ? error.message : String(error);
+            this.notifications.showToast('error', 'Local Compilation Error', message);
+            this.log.error(`Local compilation failed: ${message}`, 'compiler');
         }
     }
 

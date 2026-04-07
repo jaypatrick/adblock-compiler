@@ -14,5 +14,6 @@ export { apiKeysRoutes } from './api-keys.routes.ts';
 export { webhookRoutes } from './webhook.routes.ts';
 export { workflowRoutes } from './workflow.routes.ts';
 export { browserRoutes } from './browser.routes.ts';
+export { proxyRoutes } from './proxy.routes.ts';
 export type { AppContext, Variables } from './shared.ts';
 export { buildSyntheticRequest, verifyTurnstileInline, zodValidationError } from './shared.ts';
