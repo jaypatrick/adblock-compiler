@@ -4,7 +4,7 @@
  * Tests the error queue consumer handler and error log persistence to R2.
  */
 
-import { assertEquals } from '@std/assert';
+import { assertEquals, assertExists } from '@std/assert';
 import { makeEnv } from '../test-helpers.ts';
 import { handleErrorQueue } from './error-queue.ts';
 import type { ErrorQueueMessage } from '../types.ts';
@@ -346,6 +346,7 @@ Deno.test('handleErrorQueue - R2 custom metadata includes batch info', async () 
     const list = await r2.list();
     const obj = await r2.get(list.objects[0].key);
     const metadata = obj!.customMetadata;
+    assertExists(metadata);
 
     assertEquals(metadata.errorCount, '1');
     assertEquals(!!metadata.batchId, true);
