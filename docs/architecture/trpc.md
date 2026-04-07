@@ -587,10 +587,12 @@ export default {
 **React Native:**
 
 > **Security Warning**
-> Do **not** store bearer tokens in `AsyncStorage` or other plaintext persistent storage.
-> On mobile, use platform secure storage (Keychain on iOS, Keystore on Android) via
+> Do **not** store bearer tokens in `AsyncStorage`, `localStorage`, `sessionStorage`,
+> or any other plaintext persistent storage. On mobile, use platform secure storage
+> (Keychain on iOS, Keystore on Android) via
 > [`react-native-keychain`](https://github.com/oblador/react-native-keychain) and prefer
 > short-lived access tokens with refresh/re-auth flows instead of long-lived credentials.
+> On web, use HttpOnly cookies managed server-side rather than client-accessible storage.
 
 ```typescript
 import { createTrpcClient } from './worker/trpc/client';

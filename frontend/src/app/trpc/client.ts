@@ -20,6 +20,11 @@
  * that accepts any procedure path at runtime. The tRPC wire protocol is still
  * enforced; the Worker validates all inputs with Zod and rejects unknown paths.
  *
+ * > **Caution for callers**: Because `AppRouter` is not imported here, TypeScript
+ * > will **not** catch typos in procedure names or incorrect payload shapes at
+ * > compile time. Use the procedure names documented in `trpc.md` and verify
+ * > against `worker/trpc/routers/v1/` when the Worker's API evolves.
+ *
  * @see worker/trpc/client.ts — canonical server-side factory (Deno/Node only)
  * @see TrpcClientService — Angular DI wrapper (use this in Angular components)
  */
