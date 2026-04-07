@@ -8,11 +8,11 @@
  * Usage:
  *   <app-container-status-widget [compact]="true" />
  *
- * Angular 21 patterns: signal(), computed(), inject(), effect(), DestroyRef,
+ * Angular 21 patterns: signal(), computed(), inject(), effect(), onCleanup,
  *   standalone, @if/@switch, zoneless-compatible
  */
 import {
-    Component, input, inject, computed, ChangeDetectionStrategy, effect, DestroyRef,
+    Component, input, inject, computed, ChangeDetectionStrategy, effect,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -136,7 +136,6 @@ export class ContainerStatusWidgetComponent {
     readonly pollIntervalMs = input<number>(10000);
 
     private readonly containerStatusService = inject(ContainerStatusService);
-    private readonly destroyRef = inject(DestroyRef);
 
     readonly status = this.containerStatusService.status;
     readonly statusLabel = this.containerStatusService.statusLabel;
@@ -151,16 +150,20 @@ export class ContainerStatusWidgetComponent {
         return `${Math.floor(diffMs / 60000)}m ago`;
     });
 
-    // Modern Angular 21 pattern: effect() for reactive lifecycle management
-    private readonly _pollingEffect = effect(() => {
+    // Modern Angular 21 pattern: effect() with onCleanup for reactive lifecycle management.
+    // onCleanup runs on every re-run (when autoPoll/pollIntervalMs signals change) and
+    // on component destruction — preventing stale polling and multiple-registration bugs.
+    private readonly _pollingEffect = effect((onCleanup) => {
         if (this.autoPoll()) {
             this.containerStatusService.startPolling(this.pollIntervalMs());
 
-            // Register cleanup on component destruction using DestroyRef
-            this.destroyRef.onDestroy(() => {
+            // Stop polling on re-run (signal change) or component destruction
+            onCleanup(() => {
                 this.containerStatusService.stopPolling();
             });
         } else {
+            // Explicitly stop any in-flight polling before falling back to one-shot fetch
+            this.containerStatusService.stopPolling();
             this.containerStatusService.fetchOnce();
         }
     });
