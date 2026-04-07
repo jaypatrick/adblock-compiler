@@ -15,3 +15,6 @@ export type { WorkerCompilationResult, WorkerCompilerOptions } from './WorkerCom
 // Browser Rendering (Cloudflare Workers only — requires BROWSER binding)
 export { BrowserFetcher } from './BrowserFetcher.ts';
 export type { BrowserConnector, BrowserFetcherOptions, IBrowserWorker, IPlaywrightBrowser, IPlaywrightPage } from './BrowserFetcher.ts';
+
+// Feature flag service interface (Cloudflare-agnostic)
+export type { FeatureFlagKey, IFeatureFlagService } from './FeatureFlagService.ts';

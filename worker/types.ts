@@ -347,6 +347,10 @@ export interface Env {
     DYNAMIC_WORKER_LOADER?: import('./dynamic-workers/types.ts').DynamicWorkerLoader;
     // KV namespace for persisted user rule sets (POST/GET/PUT/DELETE /api/rules)
     RULES_KV?: KVNamespace;
+    // Feature flag KV namespace — stores simple on/off flags for the Worker.
+    // Create with: wrangler kv:namespace create FEATURE_FLAGS
+    // Toggle flags at runtime: wrangler kv:key put --binding FEATURE_FLAGS flag:ENABLE_BATCH_STREAMING '{"enabled":true,"updatedAt":"2025-01-01T00:00:00.000Z"}'
+    FEATURE_FLAGS?: KVNamespace;
     // Webhook target URL for POST /api/notify (generic HTTP endpoint)
     WEBHOOK_URL?: string;
     // Datadog API key for POST /api/notify (optional third-party integration)
