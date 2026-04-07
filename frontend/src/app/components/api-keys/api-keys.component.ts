@@ -10,9 +10,10 @@
  *   - `@if` / `@for` modern control flow
  *   - Plaintext key shown **once** on creation with copy button
  *   - Material card-based layout consistent with the rest of the app
+ *   - Modern Angular 21 lifecycle: afterNextRender() for post-render initialization
  */
 
-import { Component, inject, signal, OnInit, PLATFORM_ID } from '@angular/core';
+import { Component, inject, signal, PLATFORM_ID, afterNextRender } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { MatCardModule } from '@angular/material/card';
@@ -256,7 +257,7 @@ import { AuthFacadeService } from '../../services/auth-facade.service';
         }
     `,
 })
-export class ApiKeysComponent implements OnInit {
+export class ApiKeysComponent {
     protected readonly apiKeys = inject(ApiKeyService);
     protected readonly auth = inject(AuthFacadeService);
     private readonly snackBar = inject(MatSnackBar);
@@ -274,11 +275,12 @@ export class ApiKeysComponent implements OnInit {
     // One-time plaintext display
     protected readonly newKeyPlaintext = signal<string | null>(null);
 
-    ngOnInit(): void {
+    // Modern Angular 21 pattern: afterNextRender replaces ngOnInit for post-render initialization
+    private readonly _init = afterNextRender(() => {
         if (isPlatformBrowser(this.platformId) && this.auth.isSignedIn()) {
             this.apiKeys.loadKeys();
         }
-    }
+    });
 
     async createKey(): Promise<void> {
         const name = this.newKeyName().trim();
