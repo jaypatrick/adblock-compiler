@@ -477,12 +477,12 @@ export class DiffGenerator {
         lines.push('');
 
         const cb = report.summary.categoryBreakdown;
-        const hasCategoryData = cb.network.added + cb.network.removed +
-                cb.cosmetic.added + cb.cosmetic.removed +
-                cb.host.added + cb.host.removed +
-                cb.comment.added + cb.comment.removed > 0;
+        const totalCategoryChanges = (Object.values(cb) as { added: number; removed: number }[]).reduce(
+            (sum, counts) => sum + counts.added + counts.removed,
+            0,
+        );
 
-        if (hasCategoryData) {
+        if (totalCategoryChanges > 0) {
             lines.push('## Rule Type Breakdown');
             lines.push('');
             lines.push('| Rule Type | Added | Removed |');
