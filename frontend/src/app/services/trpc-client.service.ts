@@ -1,8 +1,14 @@
 /**
  * TrpcClientService — Typed tRPC v11 client for consuming the Worker's tRPC API.
  *
- * Wraps the `createTrpcClient` factory from `worker/trpc/client.ts` as a proper
- * Angular service with full `AppRouter` inference and ZTA compliance.
+ * Wraps the `createTrpcClient` factory from `frontend/src/app/trpc/client.ts` as a proper
+ * Angular service with ZTA compliance.
+ *
+ * ## Why a separate factory?
+ * The Worker's `worker/trpc/client.ts` uses Deno-style explicit `.ts` file extension
+ * imports (`import type { AppRouter } from './router.ts'`) that are not supported by
+ * Angular's `moduleResolution: "bundler"` tsconfig. A frontend-local factory in
+ * `frontend/src/app/trpc/client.ts` mirrors the same logic without that import chain.
  *
  * ## Why tRPC?
  * - **End-to-end type safety**: Procedure input/output types are inferred from
@@ -58,13 +64,12 @@
  *   The service strips the `/api` suffix the same way, yielding the Worker origin.
  *
  * @see docs/architecture/trpc.md — full tRPC architecture guide
- * @see worker/trpc/client.ts — createTrpcClient factory
- * @see worker/trpc/router.ts — AppRouter type definition
+ * @see frontend/src/app/trpc/client.ts — frontend-safe createTrpcClient factory
+ * @see worker/trpc/router.ts — AppRouter type definition (Deno/Worker only)
  */
 
 import { Injectable, inject } from '@angular/core';
-import { createTrpcClient } from '../../../../../worker/trpc/client';
-import type { AppRouter } from '../../../../../worker/trpc/router';
+import { createTrpcClient } from '../trpc/client';
 import { API_BASE_URL } from '../tokens';
 import { AuthFacadeService } from './auth-facade.service';
 
@@ -88,7 +93,7 @@ export class TrpcClientService {
     }
 
     /**
-     * Fully-typed tRPC client with `AppRouter` inference.
+     * tRPC client for calling Worker procedures.
      *
      * All procedures are namespaced under `v1`:
      * - `client.v1.health.get.query()` — health check (public)
@@ -103,6 +108,13 @@ export class TrpcClientService {
      * ## Batching
      * Multiple `query()`/`mutate()` calls in the same JavaScript microtask tick
      * are automatically batched into a single HTTP request via `httpBatchLink`.
+     *
+     * ## Type note
+     * The client is typed via `ReturnType<typeof createTrpcClient>`. The frontend
+     * factory (`frontend/src/app/trpc/client.ts`) does not import `AppRouter` from
+     * the worker tree to avoid Deno-style `.ts` extension import conflicts with
+     * Angular's bundler. Runtime procedure validation is enforced by the server's
+     * Zod validators.
      */
     readonly client: ReturnType<typeof createTrpcClient> = createTrpcClient(
         this.workerOrigin,

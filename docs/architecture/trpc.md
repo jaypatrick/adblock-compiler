@@ -452,26 +452,18 @@ flowchart TD
 
 For CLI tools or Node.js scripts, use `createTrpcClient` directly without Angular DI:
 
+**Option 1 — API key from environment variable:**
+
 ```typescript
 #!/usr/bin/env node
 
 import { createTrpcClient } from './worker/trpc/client.ts';
 
-// Option 1: API key from environment variable
 const client = createTrpcClient(
   'https://adblock-compiler.<account>.workers.dev',
   async () => process.env.ADBLOCK_API_KEY || null,
 );
 
-// Option 2: Interactive session token (via Better Auth)
-import { readFile } from 'fs/promises';
-const sessionToken = await readFile('.adblock-session', 'utf-8');
-const client = createTrpcClient(
-  'https://adblock-compiler.<account>.workers.dev',
-  async () => sessionToken,
-);
-
-// Use the client
 const health = await client.v1.health.get.query();
 console.log('Worker healthy:', health.healthy);
 
@@ -484,6 +476,25 @@ const result = await client.v1.compile.json.mutate({
   },
 });
 console.log(`Compiled ${result.ruleCount} rules`);
+```
+
+**Option 2 — Interactive session token (via Better Auth):**
+
+```typescript
+#!/usr/bin/env node
+
+import { readFile } from 'fs/promises';
+import { createTrpcClient } from './worker/trpc/client.ts';
+
+const sessionToken = await readFile('.adblock-session', 'utf-8');
+
+const client = createTrpcClient(
+  'https://adblock-compiler.<account>.workers.dev',
+  async () => sessionToken,
+);
+
+const health = await client.v1.health.get.query();
+console.log('Worker healthy:', health.healthy);
 ```
 
 ### React / Vue / Svelte Example
@@ -575,15 +586,23 @@ export default {
 
 **React Native:**
 
+> **Security Warning**
+> Do **not** store bearer tokens in `AsyncStorage` or other plaintext persistent storage.
+> On mobile, use platform secure storage (Keychain on iOS, Keystore on Android) via
+> [`react-native-keychain`](https://github.com/oblador/react-native-keychain) and prefer
+> short-lived access tokens with refresh/re-auth flows instead of long-lived credentials.
+
 ```typescript
 import { createTrpcClient } from './worker/trpc/client';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Keychain from 'react-native-keychain';
 
+// Retrieve the token from platform secure storage (Keychain/Keystore),
+// NOT AsyncStorage, which is unencrypted plaintext.
 const client = createTrpcClient(
   'https://adblock-compiler.<account>.workers.dev',
   async () => {
-    const token = await AsyncStorage.getItem('auth_token');
-    return token;
+    const credentials = await Keychain.getGenericPassword({ service: 'adblock-session' });
+    return credentials ? credentials.password : null;
   },
 );
 
