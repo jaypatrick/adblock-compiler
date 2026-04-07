@@ -329,6 +329,8 @@ export interface Env {
     // R2 bucket for error dead-letter logs (NDJSON batches written by handleErrorQueue).
     // Maps to wrangler.toml [[r2_buckets]] binding = "ERROR_BUCKET".
     ERROR_BUCKET?: R2Bucket;
+    // R2 bucket for compiler logs
+    COMPILER_LOGS?: R2Bucket;
     // Playwright MCP Agent Durable Object namespace
     MCP_AGENT?: DurableObjectNamespace;
     // Adblock Compiler container Durable Object namespace

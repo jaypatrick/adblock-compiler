@@ -164,6 +164,7 @@ export const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 app.onError(async (err, c) => {
     const requestId = c.get('requestId') ?? 'unknown';
     let errorDetails: string;
+
     if (err instanceof Error) {
         errorDetails = err.stack || err.message || String(err);
     } else if (typeof err === 'string') {
@@ -175,6 +176,7 @@ app.onError(async (err, c) => {
             errorDetails = String(err);
         }
     }
+
     // deno-lint-ignore no-console
     console.error(`[${requestId}] Unhandled error on ${c.req.method} ${c.req.path}:`, errorDetails);
 
