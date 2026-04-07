@@ -8,11 +8,11 @@
  * Usage:
  *   <app-container-status-widget [compact]="true" />
  *
- * Angular 21 patterns: signal(), computed(), inject(), standalone,
- *   @if/@switch, zoneless-compatible
+ * Angular 21 patterns: signal(), computed(), inject(), effect(), DestroyRef,
+ *   standalone, @if/@switch, zoneless-compatible
  */
 import {
-    Component, input, OnInit, OnDestroy, inject, computed, ChangeDetectionStrategy,
+    Component, input, inject, computed, ChangeDetectionStrategy, effect, DestroyRef,
 } from '@angular/core';
 import { MatIconModule } from '@angular/material/icon';
 import { MatTooltipModule } from '@angular/material/tooltip';
@@ -127,7 +127,7 @@ import { ContainerStatusService } from '../../services/container-status.service'
     }
     `],
 })
-export class ContainerStatusWidgetComponent implements OnInit, OnDestroy {
+export class ContainerStatusWidgetComponent {
     /** Show in compact single-line mode */
     readonly compact = input<boolean>(false);
     /** If true, component manages its own polling lifecycle */
@@ -136,6 +136,7 @@ export class ContainerStatusWidgetComponent implements OnInit, OnDestroy {
     readonly pollIntervalMs = input<number>(10000);
 
     private readonly containerStatusService = inject(ContainerStatusService);
+    private readonly destroyRef = inject(DestroyRef);
 
     readonly status = this.containerStatusService.status;
     readonly statusLabel = this.containerStatusService.statusLabel;
@@ -150,17 +151,17 @@ export class ContainerStatusWidgetComponent implements OnInit, OnDestroy {
         return `${Math.floor(diffMs / 60000)}m ago`;
     });
 
-    ngOnInit(): void {
+    // Modern Angular 21 pattern: effect() for reactive lifecycle management
+    private readonly _pollingEffect = effect(() => {
         if (this.autoPoll()) {
             this.containerStatusService.startPolling(this.pollIntervalMs());
+
+            // Register cleanup on component destruction using DestroyRef
+            this.destroyRef.onDestroy(() => {
+                this.containerStatusService.stopPolling();
+            });
         } else {
             this.containerStatusService.fetchOnce();
         }
-    }
-
-    ngOnDestroy(): void {
-        if (this.autoPoll()) {
-            this.containerStatusService.stopPolling();
-        }
-    }
+    });
 }
