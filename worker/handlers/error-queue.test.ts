@@ -1,353 +1,269 @@
 /**
  * Unit tests for worker/handlers/error-queue.ts
  *
- * Tests the error queue consumer handler and error log persistence to R2.
+ * Covers:
+ *   buildErrorLogKey        — correct R2 key partitioning
+ *   serializeToNdjson       — NDJSON format
+ *   handleErrorQueue        — R2 write, graceful fallback when ERROR_BUCKET absent
  */
 
-import { assertEquals } from '@std/assert';
+import { assertEquals, assertStringIncludes } from '@std/assert';
 import { makeEnv } from '../test-helpers.ts';
-import { handleErrorQueue } from './error-queue.ts';
 import type { ErrorQueueMessage } from '../types.ts';
-import { UserTier } from '../types.ts';
+import { buildErrorLogKey, handleErrorQueue, serializeToNdjson } from './error-queue.ts';
 
 // ============================================================================
-// R2 Bucket Stub
+// Fixtures
 // ============================================================================
 
-/**
- * In-memory R2Bucket stub for testing error log persistence.
- */
-function makeInMemoryR2(): R2Bucket {
-    const store = new Map<string, { value: string; metadata: Record<string, string> }>();
-
+function makeErrorMessage(overrides: Partial<ErrorQueueMessage> = {}): ErrorQueueMessage {
     return {
-        async put(key: string, value: string | ArrayBuffer | ReadableStream, options?: { customMetadata?: Record<string, string> }) {
-            const stringValue = typeof value === 'string' ? value : '';
-            store.set(key, {
-                value: stringValue,
-                metadata: options?.customMetadata || {},
+        type: 'error',
+        requestId: 'test-req-1',
+        timestamp: '2026-04-07T12:00:00.000Z',
+        path: '/api/compile',
+        method: 'POST',
+        message: 'Something went wrong',
+        stack: 'Error: Something went wrong\n    at handler (worker.ts:42)',
+        errorDetails: 'Error: Something went wrong\n    at handler (worker.ts:42)',
+        ...overrides,
+    };
+}
+
+/** Minimal R2Bucket stub that captures put() calls. */
+interface PutCall {
+    key: string;
+    body: string;
+    contentType?: string;
+    customMetadata?: Record<string, string>;
+}
+
+function makeR2Bucket(): { bucket: R2Bucket; calls: PutCall[] } {
+    const calls: PutCall[] = [];
+    const bucket = {
+        async put(
+            key: string,
+            value: string,
+            options?: { httpMetadata?: { contentType?: string }; customMetadata?: Record<string, string> },
+        ) {
+            calls.push({
+                key,
+                body: value,
+                contentType: options?.httpMetadata?.contentType,
+                customMetadata: options?.customMetadata,
             });
         },
-        async get(key: string) {
-            const item = store.get(key);
-            if (!item) return null;
-            return {
-                text: async () => item.value,
-                json: async () => JSON.parse(item.value),
-                arrayBuffer: async () => new TextEncoder().encode(item.value).buffer,
-                blob: async () => new Blob([item.value]),
-                body: null as unknown as ReadableStream,
-                bodyUsed: false,
-                customMetadata: item.metadata,
-            } as unknown as R2ObjectBody;
-        },
-        async delete(_key: string) {
-            // Not needed for error queue tests
-        },
-        async list(_options?: { prefix?: string }) {
-            // Return all keys for simplicity
-            const keys = [...store.keys()].map((name) => ({ key: name }));
-            return {
-                objects: keys as unknown as R2Object[],
-                truncated: false,
-                cursor: '',
-                delimitedPrefixes: [],
-            };
-        },
-        // Add other required R2Bucket methods as stubs
-        head: async () => null as unknown as R2Object,
-        createMultipartUpload: async () => ({} as unknown as R2MultipartUpload),
+        // Stub unused methods
+        get: async () => null,
+        head: async () => null,
+        delete: async () => {},
+        list: async () => ({ objects: [], truncated: false, delimitedPrefixes: [] }),
+        createMultipartUpload: async () => ({
+            uploadId: '',
+            key: '',
+            uploadPart: async () => ({ partNumber: 1, etag: '' }),
+            complete: async () => ({ key: '', size: 0, etag: '', httpEtag: '', checksums: {}, uploaded: new Date(), version: '', storageClass: '' }),
+            abort: async () => {},
+        }),
+        resumeMultipartUpload: () => ({
+            uploadId: '',
+            key: '',
+            uploadPart: async () => ({ partNumber: 1, etag: '' }),
+            complete: async () => ({ key: '', size: 0, etag: '', httpEtag: '', checksums: {}, uploaded: new Date(), version: '', storageClass: '' }),
+            abort: async () => {},
+        }),
     } as unknown as R2Bucket;
+    return { bucket, calls };
 }
 
-// ============================================================================
-// Message Stub
-// ============================================================================
-
-/**
- * Create a mock MessageBatch for testing.
- */
-function makeMockMessageBatch(messages: ErrorQueueMessage[]): MessageBatch<ErrorQueueMessage> {
-    const messageObjects = messages.map((body) => ({
-        id: crypto.randomUUID(),
-        timestamp: new Date(),
-        body,
-        attempts: 1,
-        ack: () => {},
-        retry: () => {},
-    }));
-
+/** Minimal MessageBatch stub. */
+function makeBatch(messages: ErrorQueueMessage[], queueName = 'adblock-compiler-error-queue'): MessageBatch<ErrorQueueMessage> {
     return {
-        queue: 'adblock-compiler-error-queue',
-        messages: messageObjects,
-        ackAll: () => {},
-        retryAll: () => {},
-    };
-}
-
-// ============================================================================
-// Tests
-// ============================================================================
-
-Deno.test('handleErrorQueue - empty batch processes without errors', async () => {
-    const r2 = makeInMemoryR2();
-    const env = makeEnv({ ERROR_BUCKET: r2 });
-
-    const batch = makeMockMessageBatch([]);
-
-    await handleErrorQueue(batch, env);
-
-    // No errors should be thrown, and no R2 writes should occur
-    const list = await r2.list();
-    assertEquals(list.objects.length, 0);
-});
-
-Deno.test('handleErrorQueue - single error message persisted to R2', async () => {
-    const r2 = makeInMemoryR2();
-    const env = makeEnv({ ERROR_BUCKET: r2 });
-
-    const errorMessage: ErrorQueueMessage = {
-        errorId: 'error-123',
-        timestamp: Date.now(),
-        method: 'GET',
-        path: '/api/compile',
-        requestId: 'req-456',
-        errorMessage: 'Test error',
-        errorStack: 'Error: Test error\n  at ...',
-        clientIp: '1.2.3.4',
-        userAgent: 'TestAgent/1.0',
-        userId: 'user-789',
-        tier: UserTier.Pro,
-    };
-
-    const batch = makeMockMessageBatch([errorMessage]);
-
-    await handleErrorQueue(batch, env);
-
-    // Verify error was written to R2
-    const list = await r2.list();
-    assertEquals(list.objects.length, 1);
-
-    const key = list.objects[0].key;
-    const date = new Date(errorMessage.timestamp).toISOString().split('T')[0];
-    assertEquals(key.startsWith(`errors/${date}/`), true);
-    assertEquals(key.endsWith('.jsonl'), true);
-
-    // Verify JSONL content
-    const obj = await r2.get(key);
-    const content = await obj!.text();
-    const lines = content.trim().split('\n');
-    assertEquals(lines.length, 1);
-
-    const parsed = JSON.parse(lines[0]);
-    assertEquals(parsed.errorId, errorMessage.errorId);
-    assertEquals(parsed.errorMessage, errorMessage.errorMessage);
-    assertEquals(parsed.method, errorMessage.method);
-});
-
-Deno.test('handleErrorQueue - multiple errors batched by date', async () => {
-    const r2 = makeInMemoryR2();
-    const env = makeEnv({ ERROR_BUCKET: r2 });
-
-    const now = Date.now();
-    const yesterday = now - 86400000; // 24 hours ago
-
-    const errors: ErrorQueueMessage[] = [
-        {
-            errorId: 'error-1',
-            timestamp: now,
-            method: 'POST',
-            path: '/api/compile',
-            requestId: 'req-1',
-            errorMessage: 'Today error 1',
-        },
-        {
-            errorId: 'error-2',
-            timestamp: now,
-            method: 'POST',
-            path: '/api/compile',
-            requestId: 'req-2',
-            errorMessage: 'Today error 2',
-        },
-        {
-            errorId: 'error-3',
-            timestamp: yesterday,
-            method: 'GET',
-            path: '/api/info',
-            requestId: 'req-3',
-            errorMessage: 'Yesterday error',
-        },
-    ];
-
-    const batch = makeMockMessageBatch(errors);
-
-    await handleErrorQueue(batch, env);
-
-    // Verify 2 files written (one for today, one for yesterday)
-    const list = await r2.list();
-    assertEquals(list.objects.length, 2);
-
-    // Verify each file has correct date prefix
-    const todayDate = new Date(now).toISOString().split('T')[0];
-    const yesterdayDate = new Date(yesterday).toISOString().split('T')[0];
-
-    const todayFile = list.objects.find((obj) => obj.key.startsWith(`errors/${todayDate}/`));
-    const yesterdayFile = list.objects.find((obj) => obj.key.startsWith(`errors/${yesterdayDate}/`));
-
-    assertEquals(!!todayFile, true);
-    assertEquals(!!yesterdayFile, true);
-
-    // Verify today's file has 2 errors
-    const todayObj = await r2.get(todayFile!.key);
-    const todayContent = await todayObj!.text();
-    const todayLines = todayContent.trim().split('\n');
-    assertEquals(todayLines.length, 2);
-
-    // Verify yesterday's file has 1 error
-    const yesterdayObj = await r2.get(yesterdayFile!.key);
-    const yesterdayContent = await yesterdayObj!.text();
-    const yesterdayLines = yesterdayContent.trim().split('\n');
-    assertEquals(yesterdayLines.length, 1);
-});
-
-Deno.test('handleErrorQueue - skips invalid messages and acks them', async () => {
-    const r2 = makeInMemoryR2();
-    const env = makeEnv({ ERROR_BUCKET: r2 });
-
-    let acked = 0;
-    const messages: ErrorQueueMessage[] = [
-        {
-            errorId: 'error-1',
-            timestamp: Date.now(),
-            method: 'GET',
-            path: '/api/compile',
-            requestId: 'req-1',
-            errorMessage: 'Valid error',
-        },
-        {
-            // Missing errorId - invalid
-            errorId: '',
-            timestamp: Date.now(),
-            method: 'GET',
-            path: '/api/compile',
-            requestId: 'req-2',
-            errorMessage: 'Invalid error',
-        },
-    ];
-
-    const batch = {
-        queue: 'adblock-compiler-error-queue',
-        messages: messages.map((body) => ({
-            id: crypto.randomUUID(),
-            timestamp: new Date(),
+        queue: queueName,
+        messages: messages.map((body, i) => ({
+            id: `msg-${i}`,
             body,
+            timestamp: new Date(),
             attempts: 1,
-            ack: () => {
-                acked++;
-            },
+            ack: () => {},
             retry: () => {},
+            ackAll: () => {},
+            retryAll: () => {},
         })),
         ackAll: () => {},
         retryAll: () => {},
-    };
+    } as unknown as MessageBatch<ErrorQueueMessage>;
+}
 
-    await handleErrorQueue(batch, env);
+// ============================================================================
+// buildErrorLogKey
+// ============================================================================
 
-    // Both messages should be acked (valid + invalid)
-    assertEquals(acked, 2);
-
-    // Only 1 error written to R2 (the valid one)
-    const list = await r2.list();
-    assertEquals(list.objects.length, 1);
+Deno.test('buildErrorLogKey - produces correctly partitioned R2 key', () => {
+    const date = new Date('2026-04-07T15:30:00.000Z');
+    const key = buildErrorLogKey(date, 'batch-abc123');
+    assertEquals(key, 'errors/2026/04/07/15/batch-abc123.ndjson');
 });
 
-Deno.test('handleErrorQueue - handles missing ERROR_BUCKET gracefully', async () => {
-    const env = makeEnv({ ERROR_BUCKET: undefined });
-
-    const errorMessage: ErrorQueueMessage = {
-        errorId: 'error-123',
-        timestamp: Date.now(),
-        method: 'GET',
-        path: '/api/compile',
-        requestId: 'req-456',
-        errorMessage: 'Test error',
-    };
-
-    const batch = makeMockMessageBatch([errorMessage]);
-
-    // Should not throw, just log warning
-    await handleErrorQueue(batch, env);
+Deno.test('buildErrorLogKey - zero-pads month, day, and hour', () => {
+    const date = new Date('2026-01-03T05:00:00.000Z');
+    const key = buildErrorLogKey(date, 'b1');
+    assertEquals(key, 'errors/2026/01/03/05/b1.ndjson');
 });
 
-Deno.test('handleErrorQueue - JSONL format with newline termination', async () => {
-    const r2 = makeInMemoryR2();
-    const env = makeEnv({ ERROR_BUCKET: r2 });
+Deno.test('buildErrorLogKey - uses UTC values', () => {
+    // UTC midnight is still 2026-04-07, regardless of local timezone
+    const date = new Date('2026-04-07T00:00:00.000Z');
+    const key = buildErrorLogKey(date, 'b2');
+    assertStringIncludes(key, 'errors/2026/04/07/00/');
+});
 
-    const errors: ErrorQueueMessage[] = [
-        {
-            errorId: 'error-1',
-            timestamp: Date.now(),
-            method: 'GET',
-            path: '/api/compile',
-            requestId: 'req-1',
-            errorMessage: 'Error 1',
-        },
-        {
-            errorId: 'error-2',
-            timestamp: Date.now(),
-            method: 'POST',
-            path: '/api/compile',
-            requestId: 'req-2',
-            errorMessage: 'Error 2',
-        },
+// ============================================================================
+// serializeToNdjson
+// ============================================================================
+
+Deno.test('serializeToNdjson - single message produces single JSON line', () => {
+    const msg = makeErrorMessage();
+    const result = serializeToNdjson([msg]);
+    const lines = result.split('\n').filter((l) => l.length > 0);
+    assertEquals(lines.length, 1);
+    const parsed = JSON.parse(lines[0]) as ErrorQueueMessage;
+    assertEquals(parsed.requestId, 'test-req-1');
+    assertEquals(parsed.type, 'error');
+});
+
+Deno.test('serializeToNdjson - multiple messages produce one line each', () => {
+    const messages = [
+        makeErrorMessage({ requestId: 'req-1' }),
+        makeErrorMessage({ requestId: 'req-2' }),
+        makeErrorMessage({ requestId: 'req-3' }),
     ];
+    const result = serializeToNdjson(messages);
+    const lines = result.split('\n');
+    assertEquals(lines.length, 3);
+    assertEquals((JSON.parse(lines[0]) as ErrorQueueMessage).requestId, 'req-1');
+    assertEquals((JSON.parse(lines[1]) as ErrorQueueMessage).requestId, 'req-2');
+    assertEquals((JSON.parse(lines[2]) as ErrorQueueMessage).requestId, 'req-3');
+});
 
-    const batch = makeMockMessageBatch(errors);
+Deno.test('serializeToNdjson - empty array produces empty string', () => {
+    const result = serializeToNdjson([]);
+    assertEquals(result, '');
+});
+
+// ============================================================================
+// handleErrorQueue
+// ============================================================================
+
+Deno.test('handleErrorQueue - writes NDJSON batch to ERROR_BUCKET', async () => {
+    const { bucket, calls } = makeR2Bucket();
+    const env = makeEnv({ ERROR_BUCKET: bucket });
+    const messages = [makeErrorMessage({ requestId: 'r1' }), makeErrorMessage({ requestId: 'r2' })];
+    const batch = makeBatch(messages);
 
     await handleErrorQueue(batch, env);
 
-    const list = await r2.list();
-    assertEquals(list.objects.length, 1);
+    assertEquals(calls.length, 1, 'should make exactly one R2 put call');
+    const [call] = calls;
+    assertStringIncludes(call.key, 'errors/');
+    assertStringIncludes(call.key, '.ndjson');
+    assertEquals(call.contentType, 'application/x-ndjson');
 
-    const obj = await r2.get(list.objects[0].key);
-    const content = await obj!.text();
-
-    // JSONL should have newline after each line AND at the end
-    assertEquals(content.endsWith('\n'), true);
-    const lines = content.split('\n').filter((line) => line.length > 0);
+    // Verify NDJSON content round-trips correctly
+    const lines = call.body.split('\n');
     assertEquals(lines.length, 2);
-
-    // Each line should be valid JSON
-    const parsed1 = JSON.parse(lines[0]);
-    const parsed2 = JSON.parse(lines[1]);
-    assertEquals(parsed1.errorId, 'error-1');
-    assertEquals(parsed2.errorId, 'error-2');
+    assertEquals((JSON.parse(lines[0]) as ErrorQueueMessage).requestId, 'r1');
+    assertEquals((JSON.parse(lines[1]) as ErrorQueueMessage).requestId, 'r2');
 });
 
-Deno.test('handleErrorQueue - R2 custom metadata includes batch info', async () => {
-    const r2 = makeInMemoryR2();
-    const env = makeEnv({ ERROR_BUCKET: r2 });
+Deno.test('handleErrorQueue - R2 key uses current UTC time partitioning', async () => {
+    const { bucket, calls } = makeR2Bucket();
+    const env = makeEnv({ ERROR_BUCKET: bucket });
+    const batch = makeBatch([makeErrorMessage()]);
 
-    const errors: ErrorQueueMessage[] = [
-        {
-            errorId: 'error-1',
-            timestamp: Date.now(),
-            method: 'GET',
-            path: '/api/compile',
-            requestId: 'req-1',
-            errorMessage: 'Error 1',
-        },
-    ];
+    const before = new Date();
+    await handleErrorQueue(batch, env);
+    const after = new Date();
 
-    const batch = makeMockMessageBatch(errors);
+    assertEquals(calls.length, 1);
+    const key = calls[0].key;
+    // Key should contain the year of the test run
+    assertStringIncludes(key, before.getUTCFullYear().toString());
+    // Prefix must be errors/
+    assertStringIncludes(key, 'errors/');
+    // Suffix must be .ndjson
+    assertStringIncludes(key, '.ndjson');
+
+    void after; // suppress unused variable lint
+});
+
+Deno.test('handleErrorQueue - sets customMetadata with batchSize and queueName', async () => {
+    const { bucket, calls } = makeR2Bucket();
+    const env = makeEnv({ ERROR_BUCKET: bucket });
+    const batch = makeBatch([makeErrorMessage(), makeErrorMessage()], 'adblock-compiler-error-queue');
 
     await handleErrorQueue(batch, env);
 
-    const list = await r2.list();
-    const obj = await r2.get(list.objects[0].key);
-    const metadata = obj!.customMetadata;
+    assertEquals(calls.length, 1);
+    const meta = calls[0].customMetadata;
+    assertEquals(meta?.batchSize, '2');
+    assertEquals(meta?.queueName, 'adblock-compiler-error-queue');
+});
 
-    assertEquals(metadata?.errorCount, '1');
-    assertEquals(!!metadata?.batchId, true);
-    assertEquals(!!metadata?.dateKey, true);
+Deno.test('handleErrorQueue - acks all messages even when ERROR_BUCKET is absent', async () => {
+    const env = makeEnv(); // no ERROR_BUCKET
+    const ackedIds: string[] = [];
+    const messages = [makeErrorMessage({ requestId: 'r1' }), makeErrorMessage({ requestId: 'r2' })];
+
+    const batch = {
+        queue: 'adblock-compiler-error-queue',
+        messages: messages.map((body, i) => ({
+            id: `msg-${i}`,
+            body,
+            timestamp: new Date(),
+            attempts: 1,
+            ack: () => {
+                ackedIds.push(`msg-${i}`);
+            },
+            retry: () => {},
+            ackAll: () => {},
+            retryAll: () => {},
+        })),
+        ackAll: () => {},
+        retryAll: () => {},
+    } as unknown as MessageBatch<ErrorQueueMessage>;
+
+    // Should not throw even without ERROR_BUCKET
+    await handleErrorQueue(batch, env);
+
+    assertEquals(ackedIds.length, 2, 'all messages must be acked even when R2 is absent');
+});
+
+Deno.test('handleErrorQueue - gracefully handles R2 write failure', async () => {
+    const failingBucket = {
+        put: async () => {
+            throw new Error('R2 write error');
+        },
+        get: async () => null,
+        head: async () => null,
+        delete: async () => {},
+        list: async () => ({ objects: [], truncated: false, delimitedPrefixes: [] }),
+    } as unknown as R2Bucket;
+
+    const env = makeEnv({ ERROR_BUCKET: failingBucket });
+    const batch = makeBatch([makeErrorMessage()]);
+
+    // Should not throw even when R2 fails
+    await handleErrorQueue(batch, env);
+});
+
+Deno.test('handleErrorQueue - handles empty batch gracefully', async () => {
+    const { bucket, calls } = makeR2Bucket();
+    const env = makeEnv({ ERROR_BUCKET: bucket });
+    const batch = makeBatch([]);
+
+    await handleErrorQueue(batch, env);
+
+    // No R2 write for empty batch
+    assertEquals(calls.length, 0);
 });

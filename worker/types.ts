@@ -274,7 +274,8 @@ export interface Env {
     // Queue bindings (optional - queues must be created in Cloudflare dashboard first)
     ADBLOCK_COMPILER_QUEUE?: Queue<QueueMessage>;
     ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY?: Queue<QueueMessage>;
-    // Error queue binding for dead-lettering and durable error logs
+    // Dedicated error dead-letter queue — isolated from compile queues.
+    // Receives error events from app.onError and persists them to ERROR_BUCKET.
     ERROR_QUEUE?: Queue<ErrorQueueMessage>;
     // Turnstile configuration
     TURNSTILE_SITE_KEY?: string;
@@ -325,7 +326,8 @@ export interface Env {
     BROWSER?: BrowserWorker;
     // R2 bucket for browser-rendered screenshots (source monitor)
     FILTER_STORAGE?: R2Bucket;
-    // R2 bucket for durable error logs
+    // R2 bucket for error dead-letter logs (NDJSON batches written by handleErrorQueue).
+    // Maps to wrangler.toml [[r2_buckets]] binding = "ERROR_BUCKET".
     ERROR_BUCKET?: R2Bucket;
     // R2 bucket for compiler logs
     COMPILER_LOGS?: R2Bucket;
@@ -451,6 +453,36 @@ export interface QueueMessage {
     group?: string;
 }
 
+// ============================================================================
+// Error Queue Message Types
+// ============================================================================
+
+/**
+ * Message published to ERROR_QUEUE when an unhandled error occurs in the worker.
+ * Batches are consumed by handleErrorQueue() and persisted to ERROR_BUCKET (R2)
+ * as NDJSON for long-term durable log storage.
+ */
+export interface ErrorQueueMessage {
+    readonly type: 'error';
+    readonly requestId: string;
+    readonly timestamp: string;
+    readonly path: string;
+    readonly method: string;
+    /**
+     * Short human-readable summary of the error (i.e. `Error.message`).
+     * Suitable for dashboards and alert summaries.
+     */
+    readonly message: string;
+    readonly stack?: string;
+    /**
+     * Full serialised error representation.
+     * For `Error` instances this is `Error.stack` (which includes `message`).
+     * For non-Error throws this may be a JSON serialisation or `String(err)`.
+     * Intended for post-incident analysis where the full context is needed.
+     */
+    readonly errorDetails: string;
+}
+
 export interface CompileQueueMessage extends QueueMessage {
     type: 'compile';
     configuration: IConfiguration;
@@ -471,24 +503,6 @@ export interface BatchCompileQueueMessage extends QueueMessage {
 export interface CacheWarmQueueMessage extends QueueMessage {
     type: 'cache-warm';
     configurations: IConfiguration[];
-}
-
-// ============================================================================
-// Error Queue Message Types
-// ============================================================================
-
-export interface ErrorQueueMessage {
-    errorId: string;
-    timestamp: number;
-    method: string;
-    path: string;
-    requestId: string;
-    errorMessage: string;
-    errorStack?: string;
-    clientIp?: string;
-    userAgent?: string;
-    userId?: string;
-    tier?: UserTier;
 }
 
 // ============================================================================
