@@ -106,6 +106,7 @@ CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787,https://adbl
 URL_FRONTEND = "https://adblock-frontend.jayson-knight.workers.dev"
 URL_API      = "https://adblock-compiler.jayson-knight.workers.dev"
 URL_DOCS     = "https://adblock-compiler-docs.pages.dev"
+URL_LANDING  = "https://adblock-compiler-landing.pages.dev"
 
 # ─── KV Namespaces ───────────────────────────────────────────────────────────
 # `wrangler dev` binds to these live namespaces by default.
@@ -220,7 +221,7 @@ not_found_handling = "single-page-application"
 # Deploy wrangler.tail.toml first; the tail worker must exist in your account
 # before this binding can be registered.
 [[tail_consumers]]
-service = "adblock-compiler-tail"
+service = "adblock-tail"
 
 # ─── Queues ──────────────────────────────────────────────────────────────────
 # Create queues before deploying:

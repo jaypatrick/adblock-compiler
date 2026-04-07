@@ -16,7 +16,7 @@ This document describes all Cloudflare services integrated into the adblock-comp
 | **Analytics Engine** | ✅ Active | `ANALYTICS_ENGINE` | Request metrics, cache analytics, workflow tracking |
 | **Workflows** | ✅ Active | `COMPILATION_WORKFLOW`, `BATCH_COMPILATION_WORKFLOW`, `CACHE_WARMING_WORKFLOW`, `HEALTH_MONITORING_WORKFLOW` | Durable async execution |
 | **Hyperdrive** | ✅ Active | `HYPERDRIVE` | Accelerated PostgreSQL (PlanetScale) connectivity |
-| **Tail Worker** | ✅ Active | `adblock-compiler-tail` | Log collection, error forwarding |
+| **Tail Worker** | ✅ Active | `adblock-tail` | Log collection, error forwarding |
 | **SSE Streaming** | ✅ Active | — | Real-time compilation progress via `/compile/stream` |
 | **WebSocket** | ✅ Active | — | Real-time bidirectional compile via `/ws/compile` |
 | **Observability** | ✅ Active | — | Built-in logs and traces via `[observability]` |

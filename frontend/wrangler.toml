@@ -72,10 +72,10 @@ compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 # ─── Tail Worker ─────────────────────────────────────────────────────────────
-# Same adblock-compiler-tail worker used by the backend. Cloudflare supports
+# Same adblock-tail worker used by the backend. Cloudflare supports
 # multiple producers for a single tail consumer — no extra infrastructure needed.
-# IMPORTANT: adblock-compiler-tail must be deployed before this Worker.
-tail_consumers = [{ service = "adblock-compiler-tail" }]
+# IMPORTANT: adblock-tail must be deployed before this Worker.
+tail_consumers = [{ service = "adblock-tail" }]
 
 # ─── Module rules ─────────────────────────────────────────────────────────────
 # Required with no_bundle = true: explicitly marks all .mjs files in the build

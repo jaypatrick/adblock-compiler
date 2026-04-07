@@ -31,7 +31,7 @@ First, deploy the tail worker to Cloudflare:
 deno task wrangler:tail:deploy
 ```
 
-This deploys the tail worker as a separate worker named `adblock-compiler-tail`.
+This deploys the tail worker as a separate worker named `adblock-tail`.
 
 ### 2. (Optional) Create KV Namespace for Log Storage
 
@@ -52,7 +52,7 @@ After the tail worker is deployed, enable it as a consumer of the main worker by
 ```toml
 # Uncomment these lines:
 tail_consumers = [
-    { service = "adblock-compiler-tail" }
+    { service = "adblock-tail" }
 ]
 ```
 
@@ -62,7 +62,7 @@ Then redeploy the main worker:
 deno task wrangler:deploy
 ```
 
-> **Multiple producers, one consumer:** Cloudflare supports multiple producer Workers feeding a single tail consumer. The `adblock-frontend` Worker is also wired to this same tail worker — add `tail_consumers = [{ service = "adblock-compiler-tail" }]` to `frontend/wrangler.toml` and redeploy the frontend Worker. No extra infrastructure needed; `adblock-compiler-tail` must be deployed before any producer Worker that references it.
+> **Multiple producers, one consumer:** Cloudflare supports multiple producer Workers feeding a single tail consumer. The `adblock-frontend` Worker is also wired to this same tail worker — add `tail_consumers = [{ service = "adblock-tail" }]` to `frontend/wrangler.toml` and redeploy the frontend Worker. No extra infrastructure needed; `adblock-tail` must be deployed before any producer Worker that references it.
 
 ### 4. (Optional) Configure Error Webhook
 
@@ -206,7 +206,7 @@ flowchart TD
 
 ### Tail worker not receiving events
 
-1. Ensure the tail worker is deployed: `wrangler deployments list --name adblock-compiler-tail`
+1. Ensure the tail worker is deployed: `wrangler deployments list --name adblock-tail`
 2. Check that `tail_consumers` is configured in the main worker's `wrangler.toml`
 3. Redeploy the main worker after adding tail consumers
 4. Check both workers are in the same Cloudflare account

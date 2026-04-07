@@ -28,6 +28,7 @@ deno task preflight:full       # preflight + test + check:slow-types (run before
 ```
 
 **Run a single test file** (must pass explicit permissions):
+
 ```sh
 deno test --allow-read --allow-write --allow-net --allow-env src/cli/ArgumentParser.test.ts
 ```
@@ -69,9 +70,11 @@ deno task wrangler:deploy   # Deploy to Cloudflare
 ### Schema & Artifact Generation
 
 If `src/` schemas or OpenAPI definitions change:
+
 ```sh
 deno task schema:generate   # Regenerates cloudflare-schema.yaml + postman collection
 ```
+
 Commit the resulting diff in `docs/api/` and `docs/postman/`. CI checks for drift via `deno task check:drift`.
 
 ## Package Manager Rules
@@ -152,6 +155,7 @@ Format: `<type>[scope]: <description>`. Types: `feat:` (minor bump), `fix:`/`per
 ## Environment Variables
 
 Two tracks:
+
 - **Shell track** (`.env*` files): Used by Prisma CLI, Deno tasks, scripts
 - **Wrangler track** (`.dev.vars`): Used by the Worker at runtime
 

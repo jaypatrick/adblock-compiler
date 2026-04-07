@@ -25,8 +25,8 @@ flowchart TD
         FrontendAPI["[[services]] API binding\n(wired in server.ts — routes /api/* internally)"]
     end
 
-    %% ── Tail Worker (separate deployed service — adblock-compiler-tail) ──────
-    TailWorker["adblock-compiler-tail\n(Tail Worker / Log Sink)"]
+    %% ── Tail Worker (separate deployed service — adblock-tail) ──────
+    TailWorker["adblock-tail\n(Tail Worker / Log Sink)"]
 
     %% ── Monolithic Worker ────────────────────────────────────────────────────
     subgraph MonolithWorker["adblock-compiler Worker  (worker/worker.ts)"]
@@ -154,7 +154,7 @@ flowchart TD
 
 ### Summary
 
-The current system is a **monolith**: every concern — compilation, transformation, storage, queuing, diagnostics, plugins, and formatters — lives inside a single Cloudflare Worker alongside its Hono router and request handlers. The Angular SSR frontend is deployed as its **own separate Worker** (`adblock-frontend`) using `AngularAppEngine`; the `[[services]]` binding to the backend is wired in `server.ts`, routing SSR-time `/api/*` calls to the backend over the internal Cloudflare network with a `CF-Worker-Source: ssr` header. Cloudflare Access and Turnstile form the Zero Trust perimeter before any request reaches either Worker. External services (Sentry, OpenTelemetry, PostgreSQL, and filter-list sources) are consumed directly from within the single backend process. Authentication is handled by Better Auth, which runs entirely within the Worker backed by Neon PostgreSQL via Cloudflare Hyperdrive. A dedicated `adblock-compiler-tail` Worker (configured via `[[tail_consumers]]`) acts as the log sink, forwarding structured logs to Sentry and OTel. This coupling makes it difficult to evolve, version, or deploy individual capabilities independently.
+The current system is a **monolith**: every concern — compilation, transformation, storage, queuing, diagnostics, plugins, and formatters — lives inside a single Cloudflare Worker alongside its Hono router and request handlers. The Angular SSR frontend is deployed as its **own separate Worker** (`adblock-frontend`) using `AngularAppEngine`; the `[[services]]` binding to the backend is wired in `server.ts`, routing SSR-time `/api/*` calls to the backend over the internal Cloudflare network with a `CF-Worker-Source: ssr` header. Cloudflare Access and Turnstile form the Zero Trust perimeter before any request reaches either Worker. External services (Sentry, OpenTelemetry, PostgreSQL, and filter-list sources) are consumed directly from within the single backend process. Authentication is handled by Better Auth, which runs entirely within the Worker backed by Neon PostgreSQL via Cloudflare Hyperdrive. A dedicated `adblock-tail` Worker (configured via `[[tail_consumers]]`) acts as the log sink, forwarding structured logs to Sentry and OTel. This coupling makes it difficult to evolve, version, or deploy individual capabilities independently.
 
 ---
 

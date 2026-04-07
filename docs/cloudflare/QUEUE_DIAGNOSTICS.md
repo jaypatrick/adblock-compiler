@@ -199,7 +199,7 @@ Configure a tail worker in `wrangler.toml` to export diagnostics:
 
 ```toml
 [[tail_consumers]]
-service = "adblock-compiler-tail-worker"
+service = "adblock-tail"
 ```
 
 The tail worker can:
