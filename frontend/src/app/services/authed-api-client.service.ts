@@ -93,6 +93,13 @@ export interface AuthedValidateRuleRequest {
     turnstileToken?: string;
 }
 
+/** Convert-rule request body — mirrors the worker's `ConvertRuleRequestSchema`. */
+export interface AuthedConvertRuleRequest {
+    rule: string;
+    targetSyntax: 'adg' | 'ubo';
+    turnstileToken?: string;
+}
+
 /** Rule set creation body — mirrors the worker's `RuleSetCreateSchema`. */
 export interface AuthedRuleSetCreateRequest {
     name: string;
@@ -227,7 +234,7 @@ export class AuthedApiClientService {
      *
      * @throws If the request fails
      */
-    async convertRule(request: { rule: string; targetSyntax: 'adg' | 'ubo' }): Promise<{
+    async convertRule(request: AuthedConvertRuleRequest): Promise<{
         success: boolean;
         rule: string;
         targetSyntax: 'adg' | 'ubo';

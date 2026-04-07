@@ -581,6 +581,7 @@ const convertRuleRoute = createRoute({
                     schema: z.object({
                         rule: z.string().min(1),
                         targetSyntax: z.enum(['adg', 'ubo']),
+                        turnstileToken: z.string().optional(),
                     }),
                 },
             },

@@ -4146,6 +4146,10 @@ components:
                         - ubo
                     description: 'Target adblock syntax: adg (AdGuard) or ubo (uBlock Origin)'
                     example: 'adg'
+                turnstileToken:
+                    type: string
+                    description: Cloudflare Turnstile token. Required when Turnstile protection is enabled for the `/convert-rule` endpoint.
+                    example: "0.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
         ConvertRuleResponse:
             type: object

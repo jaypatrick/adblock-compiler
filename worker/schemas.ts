@@ -61,6 +61,8 @@ export const ConvertRuleRequestSchema = z.object({
     rule: z.string().min(1, 'Rule text is required'),
     /** Target syntax to convert the rule to */
     targetSyntax: ConversionTargetSchema,
+    /** Optional Cloudflare Turnstile token consumed by turnstileMiddleware() */
+    turnstileToken: z.string().optional(),
 });
 
 // ============================================================================
