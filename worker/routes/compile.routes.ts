@@ -34,6 +34,7 @@ import {
     handleCompileStream,
     handleValidate,
 } from '../handlers/compile.ts';
+import { handleConvertRule } from '../handlers/convert-rule.ts';
 import { handleValidateRule } from '../handlers/validate-rule.ts';
 import { handleWebSocketUpgrade } from '../websocket.ts';
 
@@ -561,4 +562,71 @@ compileRoutes.openapi(compileContainerRoute, async (c) => {
         status: containerRes.status,
         headers: containerRes.headers,
     }) as any;
+});
+
+// ── Convert-rule ─────────────────────────────────────────────────────────────
+
+const convertRuleRoute = createRoute({
+    method: 'post',
+    path: '/convert-rule',
+    tags: ['Compile'],
+    summary: 'Convert a filter rule to a different syntax',
+    description: 'Converts a single adblock filter rule between AdGuard and uBlock Origin syntaxes using AGTree',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    // Route body schema uses @hono/zod-openapi's extended `z` for spec generation.
+                    // Runtime validation is done separately in handleConvertRule via ConvertRuleRequestSchema.
+                    schema: z.object({
+                        rule: z.string().min(1),
+                        targetSyntax: z.enum(['adg', 'ubo']),
+                        turnstileToken: z.string().optional(),
+                    }),
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Conversion result',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        rule: z.string(),
+                        targetSyntax: z.enum(['adg', 'ubo']),
+                        convertedRules: z.array(z.string()),
+                        isConverted: z.boolean(),
+                        error: z.string().optional(),
+                        duration: z.string(),
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Invalid request',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.boolean(), error: z.string() }),
+                },
+            },
+        },
+        422: {
+            description: 'Validation error',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.boolean(), error: z.string() }),
+                },
+            },
+        },
+    },
+});
+
+compileRoutes.use('/convert-rule', bodySizeMiddleware());
+compileRoutes.use('/convert-rule', rateLimitMiddleware());
+compileRoutes.use('/convert-rule', turnstileMiddleware());
+compileRoutes.openapi(convertRuleRoute, (c) => {
+    // deno-lint-ignore no-explicit-any
+    return handleConvertRule(buildSyntheticRequest(c, c.req.valid('json')), c.env) as any;
 });

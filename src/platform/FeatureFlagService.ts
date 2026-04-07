@@ -32,16 +32,16 @@
  */
 export type FeatureFlagKey =
     // Compilation features
-    | 'ENABLE_BATCH_STREAMING'      // Stream batch results as SSE as they complete
-    | 'ENABLE_BROWSER_FETCHER'      // Use headless Chromium for source fetching
-    | 'ENABLE_ASYNC_COMPILE'        // Enable /compile/async endpoint
-    | 'ENABLE_WORKFLOW_COMPILE'     // Route async compiles through the Workflows API
+    | 'ENABLE_BATCH_STREAMING' // Stream batch results as SSE as they complete
+    | 'ENABLE_BROWSER_FETCHER' // Use headless Chromium for source fetching
+    | 'ENABLE_ASYNC_COMPILE' // Enable /compile/async endpoint
+    | 'ENABLE_WORKFLOW_COMPILE' // Route async compiles through the Workflows API
     // Cache features
-    | 'ENABLE_R2_CACHE'             // Persist compilation results to R2
-    | 'ENABLE_WARMUP_CRON'          // Run the cache-warming cron job
+    | 'ENABLE_R2_CACHE' // Persist compilation results to R2
+    | 'ENABLE_WARMUP_CRON' // Run the cache-warming cron job
     // Debug / observability
-    | 'ENABLE_BENCHMARK_HEADERS'    // Return X-Benchmark-* headers on responses
-    | 'ENABLE_VERBOSE_ERRORS';      // Include full stack traces in error responses
+    | 'ENABLE_BENCHMARK_HEADERS' // Return X-Benchmark-* headers on responses
+    | 'ENABLE_VERBOSE_ERRORS'; // Include full stack traces in error responses
 
 // ============================================================================
 // Interface

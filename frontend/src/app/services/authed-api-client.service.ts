@@ -93,6 +93,13 @@ export interface AuthedValidateRuleRequest {
     turnstileToken?: string;
 }
 
+/** Convert-rule request body — mirrors the worker's `ConvertRuleRequestSchema`. */
+export interface AuthedConvertRuleRequest {
+    rule: string;
+    targetSyntax: 'adg' | 'ubo';
+    turnstileToken?: string;
+}
+
 /** Rule set creation body — mirrors the worker's `RuleSetCreateSchema`. */
 export interface AuthedRuleSetCreateRequest {
     name: string;
@@ -218,6 +225,43 @@ export class AuthedApiClientService {
             throw new Error(`POST /validate-rule failed (${res.status}): ${msg}`);
         }
         return res.json() as Promise<ValidateRuleResponseData>;
+    }
+
+    /**
+     * POST /api/convert-rule — convert a filter rule to a different syntax.
+     *
+     * Converts between AdGuard and uBlock Origin syntaxes using AGTree.
+     *
+     * @throws If the request fails
+     */
+    async convertRule(request: AuthedConvertRuleRequest): Promise<{
+        success: boolean;
+        rule: string;
+        targetSyntax: 'adg' | 'ubo';
+        convertedRules: string[];
+        isConverted: boolean;
+        error?: string;
+        duration: string;
+    }> {
+        const headers = await this.getHeaders();
+        const res = await fetch(`${this.workerOrigin}/api/convert-rule`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
+        });
+        if (!res.ok) {
+            const msg = await this.parseErrorMessage(res);
+            throw new Error(`POST /convert-rule failed (${res.status}): ${msg}`);
+        }
+        return res.json() as Promise<{
+            success: boolean;
+            rule: string;
+            targetSyntax: 'adg' | 'ubo';
+            convertedRules: string[];
+            isConverted: boolean;
+            error?: string;
+            duration: string;
+        }>;
     }
 
     /**
