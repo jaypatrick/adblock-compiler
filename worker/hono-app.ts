@@ -180,28 +180,28 @@ app.onError(async (err, c) => {
 
     // Route error to ERROR_QUEUE for dead-lettering and durable R2 persistence.
     // Non-blocking: use waitUntil so the HTTP response is not delayed.
+    // .catch() is chained on the promise itself so async send() rejections are
+    // reliably handled — a try/catch would only catch synchronous throws.
     if (c.env.ERROR_QUEUE) {
-        try {
-            c.executionCtx.waitUntil(
-                c.env.ERROR_QUEUE.send({
-                    type: 'error',
-                    requestId,
-                    timestamp: new Date().toISOString(),
-                    path: c.req.path,
-                    method: c.req.method,
-                    message: err instanceof Error ? err.message : String(err),
-                    stack: err instanceof Error ? err.stack : undefined,
-                    errorDetails,
-                }),
-            );
-        } catch (queueErr) {
-            // Non-fatal: queue send failure must not disrupt the error response.
-            // deno-lint-ignore no-console
-            console.warn(
-                `[${requestId}] Failed to enqueue error to ERROR_QUEUE:`,
-                queueErr instanceof Error ? queueErr.message : String(queueErr),
-            );
-        }
+        c.executionCtx.waitUntil(
+            c.env.ERROR_QUEUE.send({
+                type: 'error',
+                requestId,
+                timestamp: new Date().toISOString(),
+                path: c.req.path,
+                method: c.req.method,
+                message: err instanceof Error ? err.message : String(err),
+                stack: err instanceof Error ? err.stack : undefined,
+                errorDetails,
+            }).catch((queueErr: unknown) => {
+                // Non-fatal: queue send failure must not disrupt the error response.
+                // deno-lint-ignore no-console
+                console.warn(
+                    `[${requestId}] Failed to enqueue error to ERROR_QUEUE:`,
+                    queueErr instanceof Error ? queueErr.message : String(queueErr),
+                );
+            }),
+        );
     }
 
     applyErrorCorsHeaders(c);
