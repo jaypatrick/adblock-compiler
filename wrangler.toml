@@ -137,6 +137,10 @@ bucket_name = "adblock-compiler-r2-storage"
 binding = "COMPILER_LOGS"
 bucket_name = "adblock-compiler-logs"
 
+[[r2_buckets]]
+binding = "ERROR_BUCKET"
+bucket_name = "adblock-compiler-error-logs"
+
 # ─── Placement ───────────────────────────────────────────────────────────────
 # Smart placement: prefer colos near Neon (Azure East US 2)
 [placement]
@@ -228,6 +232,7 @@ service = "adblock-tail"
 #   wrangler queues create adblock-compiler-worker-queue
 #   wrangler queues create adblock-compiler-worker-queue-high-priority
 #   wrangler queues create adblock-compiler-dlq
+#   wrangler queues create adblock-compiler-error-queue
 [[queues.producers]]
 queue = "adblock-compiler-worker-queue"
 binding = "ADBLOCK_COMPILER_QUEUE"
@@ -235,6 +240,10 @@ binding = "ADBLOCK_COMPILER_QUEUE"
 [[queues.producers]]
 queue = "adblock-compiler-worker-queue-high-priority"
 binding = "ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY"
+
+[[queues.producers]]
+queue = "adblock-compiler-error-queue"
+binding = "ERROR_QUEUE"
 
 [[queues.consumers]]
 queue = "adblock-compiler-worker-queue"
@@ -247,6 +256,12 @@ queue = "adblock-compiler-worker-queue-high-priority"
 max_batch_size = 5
 max_batch_timeout = 2
 dead_letter_queue = "adblock-compiler-dlq"
+
+[[queues.consumers]]
+queue = "adblock-compiler-error-queue"
+max_batch_size = 10
+max_batch_timeout = 30
+max_retries = 3
 
 # ─── Analytics Engine ────────────────────────────────────────────────────────
 [[analytics_engine_datasets]]
