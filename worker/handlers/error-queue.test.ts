@@ -7,7 +7,7 @@
 import { assertEquals } from '@std/assert';
 import { makeEnv } from '../test-helpers.ts';
 import { handleErrorQueue } from './error-queue.ts';
-import type { Env, ErrorQueueMessage } from '../types.ts';
+import type { ErrorQueueMessage } from '../types.ts';
 import { UserTier } from '../types.ts';
 
 // ============================================================================
