@@ -72,6 +72,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.81.0] - 2026-04-07
+
+### Added- add CORS proxy endpoint and local compilation mode
+- scaffold KV-backed feature flag system with DI and OpenFeature extensibility
+
+### Fixed
+
+- address code review feedback on proxy routes and components
+
+
 ## [0.80.0] - 2026-04-07
 
 ### Added- add AST Viewer page with color-coded rule tree display and on/off toggle
