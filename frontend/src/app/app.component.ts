@@ -200,6 +200,7 @@ export class AppComponent {
         { path: '/compiler',    label: 'Compiler',    icon: 'build'             },
         { path: '/performance', label: 'Performance', icon: 'monitoring'        },
         { path: '/validation',  label: 'Validation',  icon: 'check_circle'      },
+        { path: '/ast-viewer',  label: 'AST Viewer',  icon: 'account_tree'      },
         { path: '/api-docs',    label: 'API Docs',    icon: 'description'       },
         { path: '/api-keys',    label: 'API Keys',    icon: 'vpn_key'           },
         { path: '/admin',       label: 'Admin',       icon: 'admin_panel_settings' },
