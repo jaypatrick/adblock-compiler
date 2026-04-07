@@ -13,7 +13,13 @@
  *   POST   /admin/users/:id/unban
  *   DELETE /admin/users/:id/sessions
  *   GET    /admin/usage/:userId
- *   ALL    /admin/storage/*
+ *   GET    /admin/storage/stats
+ *   POST   /admin/storage/clear-expired
+ *   POST   /admin/storage/clear-cache
+ *   GET    /admin/storage/export
+ *   POST   /admin/storage/vacuum
+ *   GET    /admin/storage/tables
+ *   POST   /admin/storage/query
  *   GET    /admin/neon/project
  *   GET    /admin/neon/branches
  *   GET    /admin/neon/branches/:branchId
@@ -28,36 +34,2634 @@
  *   DELETE /admin/agents/sessions/:sessionId
  */
 
-import { OpenAPIHono } from '@hono/zod-openapi';
-import { zValidator } from '@hono/zod-validator';
+import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 
 import type { Env } from '../types.ts';
 import type { Variables } from './shared.ts';
-import { type AppContext, zodValidationError } from './shared.ts';
 
 import { rateLimitMiddleware } from '../middleware/hono-middleware.ts';
-import { verifyCfAccessJwt } from '../middleware/cf-access.ts';
-import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
-import { createPgPool } from '../utils/pg-pool.ts';
-
-import { handleAdminBanUser, handleAdminDeleteUser, handleAdminGetUser, handleAdminListUsers, handleAdminUnbanUser, handleAdminUpdateUser } from '../handlers/admin-users.ts';
-import { handleAdminAuthConfig } from '../handlers/auth-config.ts';
-import { handleAdminGetUserUsage } from '../handlers/admin-usage.ts';
-import {
-    handleAdminNeonCreateBranch,
-    handleAdminNeonDeleteBranch,
-    handleAdminNeonGetBranch,
-    handleAdminNeonGetProject,
-    handleAdminNeonListBranches,
-    handleAdminNeonListDatabases,
-    handleAdminNeonListEndpoints,
-    handleAdminNeonQuery,
-} from '../handlers/admin-neon.ts';
-import { handleAdminGetAgentSession, handleAdminListAgentAuditLog, handleAdminListAgentSessions, handleAdminTerminateAgentSession } from '../handlers/admin-agents.ts';
-
-import { AdminBanUserSchema, AdminNeonCreateBranchSchema, AdminNeonQuerySchema, AdminUnbanUserSchema, AdminUpdateUserSchema } from '../schemas.ts';
+import { UserTier } from '../types.ts';
 
 export const adminRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
+
+// ── Inline schema definitions (from schemas.ts) ──────────────────────────────
+
+const adminPaginationQuerySchema = z.object({
+    limit: z.coerce.number().int().min(1).max(100).default(50).describe('Maximum number of results per page'),
+    offset: z.coerce.number().int().min(0).default(0).describe('Number of results to skip'),
+});
+
+const adminUsageDaysQuerySchema = z.object({
+    days: z.coerce.number().int().default(30).describe('Number of days to look back for usage stats'),
+});
+
+const adminUpdateUserSchema = z.object({
+    tier: z.nativeEnum(UserTier).optional().describe('Updated user tier'),
+    role: z.string().min(1).max(64).optional().describe('Updated user role'),
+}).refine(
+    (d) => d.tier !== undefined || d.role !== undefined,
+    { message: 'At least one of tier or role is required' },
+);
+
+const adminBanUserSchema = z.object({
+    reason: z.string().max(500).optional().describe('Reason for banning'),
+    expires: z.string().datetime().optional().describe('ISO 8601 expiration timestamp'),
+});
+
+const adminUnbanUserSchema = z.object({});
+
+const adminNeonCreateBranchSchema = z.object({
+    name: z.string().max(128).optional().describe('Optional branch name (auto-generated if omitted)'),
+    parent_id: z.string().max(128).optional().describe('Parent branch ID to fork from (defaults to primary branch)'),
+});
+
+const adminNeonQuerySchema = z.object({
+    connectionString: z.string().min(1).describe('Full postgres:// connection string'),
+    sql: z.string().min(1).describe('SQL statement to execute'),
+    params: z.array(z.unknown()).optional().describe('Optional positional parameters ($1, $2, ...)'),
+});
+
+const adminQueryRequestSchema = z.object({
+    sql: z.string().min(1).describe('SQL query to execute (SELECT only)'),
+});
+
+const betterAuthUserPublicSchema = z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    email: z.string().email(),
+    emailVerified: z.boolean(),
+    image: z.string().nullable(),
+    createdAt: z.date(),
+    updatedAt: z.date(),
+    tier: z.nativeEnum(UserTier).optional(),
+    role: z.string().optional(),
+    banned: z.boolean().optional(),
+    banReason: z.string().nullable().optional(),
+    banExpires: z.date().nullable().optional(),
+});
+
+// ── Inline OpenAPI-compatible schemas for admin operations ──────────────────
+
+// Auth config response
+const authConfigResponseSchema = z.object({
+    success: z.boolean(),
+    provider: z.literal('better-auth'),
+    socialProviders: z.object({
+        github: z.object({ configured: z.boolean() }),
+        google: z.object({ configured: z.boolean() }),
+    }),
+    mfa: z.object({
+        enabled: z.boolean(),
+    }),
+    session: z.object({
+        expiresIn: z.number(),
+        updateAge: z.number(),
+        cookieCacheMaxAge: z.number(),
+    }),
+    betterAuth: z.object({
+        secretConfigured: z.boolean(),
+        baseUrl: z.string().nullable(),
+    }),
+    tiers: z.array(z.object({
+        tier: z.string(),
+        displayName: z.string(),
+        order: z.number(),
+        rateLimit: z.number().nullable(),
+        description: z.string(),
+    })),
+    routes: z.array(z.object({
+        pattern: z.string(),
+        minTier: z.string(),
+        requiredRole: z.string().nullable(),
+        description: z.string(),
+    })),
+});
+
+// Storage stats response
+const storageStatsResponseSchema = z.object({
+    success: z.boolean(),
+    stats: z.object({
+        storage_entries: z.number().int().nonnegative(),
+        filter_cache: z.number().int().nonnegative(),
+        compilation_metadata: z.number().int().nonnegative(),
+        expired_storage: z.number().int().nonnegative(),
+        expired_cache: z.number().int().nonnegative(),
+    }),
+    timestamp: z.string().datetime().describe('ISO 8601 timestamp of stats snapshot'),
+});
+
+// Storage tables response
+const tableInfoSchema = z.object({
+    name: z.string(),
+    type: z.string(),
+});
+
+// Storage query response
+const storageQueryResponseSchema = z.object({
+    success: z.boolean(),
+    rows: z.array(z.record(z.string(), z.unknown())),
+    rowCount: z.number().int().nonnegative(),
+    meta: z.unknown().optional(),
+});
+
+// Export response
+const exportDataResponseSchema = z.object({
+    success: z.boolean(),
+    exportedAt: z.string().datetime(),
+    storage_entries: z.array(z.unknown()),
+    filter_cache: z.array(z.unknown()),
+    compilation_metadata: z.array(z.unknown()),
+});
+
+// Usage response (admin)
+const userUsageResponseSchema = z.object({
+    success: z.boolean(),
+    userId: z.string(),
+    total: z.object({
+        count: z.number().int().nonnegative(),
+        firstSeen: z.string().datetime(),
+        lastSeen: z.string().datetime(),
+    }).nullable(),
+    days: z.array(z.object({
+        date: z.string(),
+        count: z.number().int().nonnegative(),
+        routes: z.record(z.string(), z.number()),
+    })),
+    lookbackDays: z.number().int().positive(),
+});
+
+// Neon project response
+const neonProjectResponseSchema = z.object({
+    success: z.boolean(),
+    project: z.unknown().describe('Neon project object from Neon API'),
+});
+
+// Neon branches response
+const neonBranchesResponseSchema = z.object({
+    success: z.boolean(),
+    branches: z.array(z.unknown()).describe('Array of Neon branch objects'),
+});
+
+// Neon single branch response
+const neonBranchResponseSchema = z.object({
+    success: z.boolean(),
+    branch: z.unknown().describe('Neon branch object from Neon API'),
+});
+
+// Neon endpoints response
+const neonEndpointsResponseSchema = z.object({
+    success: z.boolean(),
+    endpoints: z.array(z.unknown()).describe('Array of Neon compute endpoint objects'),
+});
+
+// Neon databases response
+const neonDatabasesResponseSchema = z.object({
+    success: z.boolean(),
+    databases: z.array(z.unknown()).describe('Array of database objects for the branch'),
+});
+
+// Neon query response
+const neonQueryResponseSchema = z.object({
+    success: z.boolean(),
+    rows: z.array(z.record(z.string(), z.unknown())),
+    rowCount: z.number().int().nonnegative(),
+    duration: z.string(),
+});
+
+// Agent session (extended from Prisma model)
+const agentSessionSchema = z.object({
+    id: z.string().uuid(),
+    userId: z.string(),
+    providerType: z.string(),
+    providerId: z.string().nullable(),
+    sessionName: z.string(),
+    startedAt: z.date(),
+    endedAt: z.date().nullable(),
+    endReason: z.string().nullable(),
+    totalInvocations: z.number().int().nonnegative(),
+    totalInputTokens: z.number().int().nonnegative(),
+    totalOutputTokens: z.number().int().nonnegative(),
+    estimatedCostUsd: z.number().nonnegative(),
+}).passthrough();
+
+// Agent invocation (from Prisma model)
+const agentInvocationSchema = z.object({
+    id: z.string().uuid(),
+    sessionId: z.string().uuid(),
+    invokedAt: z.date(),
+    modelUsed: z.string(),
+    inputTokens: z.number().int().nonnegative(),
+    outputTokens: z.number().int().nonnegative(),
+    costUsd: z.number().nonnegative(),
+    durationMs: z.number().int().nonnegative().nullable(),
+}).passthrough();
+
+// Agent audit log (from Prisma model)
+const agentAuditLogSchema = z.object({
+    id: z.string().uuid(),
+    userId: z.string(),
+    sessionId: z.string().uuid().nullable(),
+    action: z.string(),
+    details: z.unknown().nullable(),
+    createdAt: z.date(),
+}).passthrough();
+
+// ── Admin Auth Config ────────────────────────────────────────────────────────
+
+const adminAuthConfigRoute = createRoute({
+    method: 'get',
+    path: '/admin/auth/config',
+    tags: ['Admin'],
+    summary: 'Get auth configuration',
+    description:
+        'Returns a read-only view of the authentication configuration at runtime, including active provider, social providers, MFA status, session settings, tiers, and route permissions. Admin tier and admin role required.',
+    responses: {
+        200: {
+            description: 'Auth configuration',
+            content: {
+                'application/json': {
+                    schema: authConfigResponseSchema,
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminAuthConfigRoute, async (c) => {
+    const { handleAdminAuthConfig } = await import('../handlers/auth-config.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminAuthConfig(c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+// ── Admin User Management ─────────────────────────────────────────────────────
+
+const adminListUsersRoute = createRoute({
+    method: 'get',
+    path: '/admin/users',
+    tags: ['Admin'],
+    summary: 'List all users',
+    description: 'Returns all Better Auth users, paginated and optionally filtered by tier, role, or search query. Admin tier and admin role required.',
+    request: {
+        query: adminPaginationQuerySchema.extend({
+            tier: z.string().optional().describe('Filter by user tier'),
+            role: z.string().optional().describe('Filter by user role'),
+            search: z.string().optional().describe('Search by email or name (substring match)'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'List of users',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        users: z.array(betterAuthUserPublicSchema),
+                        total: z.number().int().nonnegative(),
+                        limit: z.number().int().positive(),
+                        offset: z.number().int().nonnegative(),
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Invalid pagination or filter params',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminListUsersRoute, async (c) => {
+    const { handleAdminListUsers } = await import('../handlers/admin-users.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminListUsers(c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminGetUserRoute = createRoute({
+    method: 'get',
+    path: '/admin/users/{id}',
+    tags: ['Admin'],
+    summary: 'Get a single user by ID',
+    description: 'Returns a single Better Auth user by their ID. Admin tier and admin role required.',
+    request: {
+        params: z.object({
+            id: z.string().describe('User ID'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'User found',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        user: betterAuthUserPublicSchema,
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        404: {
+            description: 'User not found',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminGetUserRoute, async (c) => {
+    const { handleAdminGetUser } = await import('../handlers/admin-users.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminGetUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!) as any;
+});
+
+const adminUpdateUserRoute = createRoute({
+    method: 'patch',
+    path: '/admin/users/{id}',
+    tags: ['Admin'],
+    summary: 'Update a user',
+    description: "Updates a user's tier and/or role. Admin tier and admin role required.",
+    request: {
+        params: z.object({
+            id: z.string().describe('User ID'),
+        }),
+        body: {
+            content: {
+                'application/json': {
+                    schema: adminUpdateUserSchema,
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'User updated successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        user: betterAuthUserPublicSchema,
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Validation error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        404: {
+            description: 'User not found',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.use('/admin/users/:id', rateLimitMiddleware());
+adminRoutes.openapi(adminUpdateUserRoute, async (c) => {
+    const { handleAdminUpdateUser } = await import('../handlers/admin-users.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminUpdateUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!) as any;
+});
+
+const adminDeleteUserRoute = createRoute({
+    method: 'delete',
+    path: '/admin/users/{id}',
+    tags: ['Admin'],
+    summary: 'Delete a user',
+    description: 'Deletes a user and all their sessions. Admin tier and admin role required.',
+    request: {
+        params: z.object({
+            id: z.string().describe('User ID'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'User deleted successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        message: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        404: {
+            description: 'User not found',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminDeleteUserRoute, async (c) => {
+    const { handleAdminDeleteUser } = await import('../handlers/admin-users.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminDeleteUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!) as any;
+});
+
+const adminBanUserRoute = createRoute({
+    method: 'post',
+    path: '/admin/users/{id}/ban',
+    tags: ['Admin'],
+    summary: 'Ban a user',
+    description: 'Bans a user with an optional reason and expiration date. Admin tier and admin role required.',
+    request: {
+        params: z.object({
+            id: z.string().describe('User ID'),
+        }),
+        body: {
+            content: {
+                'application/json': {
+                    schema: adminBanUserSchema,
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'User banned successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        message: z.string(),
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Validation error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        404: {
+            description: 'User not found',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminBanUserRoute, async (c) => {
+    const { handleAdminBanUser } = await import('../handlers/admin-users.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminBanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!) as any;
+});
+
+const adminUnbanUserRoute = createRoute({
+    method: 'post',
+    path: '/admin/users/{id}/unban',
+    tags: ['Admin'],
+    summary: 'Unban a user',
+    description: 'Unbans a previously banned user. Admin tier and admin role required.',
+    request: {
+        params: z.object({
+            id: z.string().describe('User ID'),
+        }),
+        body: {
+            content: {
+                'application/json': {
+                    schema: adminUnbanUserSchema,
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'User unbanned successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        message: z.string(),
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Validation error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        404: {
+            description: 'User not found',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.use('/admin/users/:id/unban', rateLimitMiddleware());
+adminRoutes.openapi(adminUnbanUserRoute, async (c) => {
+    const { handleAdminUnbanUser } = await import('../handlers/admin-users.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminUnbanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!) as any;
+});
+
+const adminRevokeUserSessionsRoute = createRoute({
+    method: 'delete',
+    path: '/admin/users/{id}/sessions',
+    tags: ['Admin'],
+    summary: 'Revoke all user sessions',
+    description: 'Revokes all active sessions for a specific user. Admin tier and admin role required. Also requires Cloudflare Access JWT verification for defense-in-depth.',
+    request: {
+        params: z.object({
+            id: z.string().describe('User ID'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'Sessions revoked successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        message: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role and Cloudflare Access JWT',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.use('/admin/users/:id/sessions', rateLimitMiddleware());
+adminRoutes.openapi(adminRevokeUserSessionsRoute, async (c) => {
+    const { handleAdminRevokeUserSessions } = await import('./admin.routes.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminRevokeUserSessions(c) as any;
+});
+
+// ── Admin Usage ───────────────────────────────────────────────────────────────
+
+const adminGetUserUsageRoute = createRoute({
+    method: 'get',
+    path: '/admin/usage/{userId}',
+    tags: ['Admin'],
+    summary: 'Get user API usage statistics',
+    description: 'Returns per-user API usage statistics from KV storage for a specified lookback period. Admin tier and admin role required.',
+    request: {
+        params: z.object({
+            userId: z.string().describe('User ID to get usage for'),
+        }),
+        query: adminUsageDaysQuerySchema,
+    },
+    responses: {
+        200: {
+            description: 'User usage statistics',
+            content: {
+                'application/json': {
+                    schema: userUsageResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Invalid days parameter',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminGetUserUsageRoute, async (c) => {
+    const { handleAdminGetUserUsage } = await import('../handlers/admin-usage.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')!) as any;
+});
+
+// ── Admin Storage ─────────────────────────────────────────────────────────────
+
+const adminStorageStatsRoute = createRoute({
+    method: 'get',
+    path: '/admin/storage/stats',
+    tags: ['Admin'],
+    summary: 'Get storage statistics',
+    description: 'Returns statistics about storage entries, filter cache, compilation metadata, and expired entries. Admin tier and admin role required.',
+    responses: {
+        200: {
+            description: 'Storage statistics',
+            content: {
+                'application/json': {
+                    schema: storageStatsResponseSchema,
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role and Cloudflare Access JWT',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminStorageStatsRoute, async (c) => {
+    const { routeAdminStorage } = await import('../handlers/admin.ts');
+    // deno-lint-ignore no-explicit-any
+    return routeAdminStorage(c.req.path, c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminClearExpiredRoute = createRoute({
+    method: 'post',
+    path: '/admin/storage/clear-expired',
+    tags: ['Admin'],
+    summary: 'Clear expired storage entries',
+    description: 'Deletes all expired storage entries and filter cache entries. Admin tier and admin role required.',
+    responses: {
+        200: {
+            description: 'Expired entries cleared successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        deleted: z.number().int().nonnegative(),
+                        message: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role and Cloudflare Access JWT',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminClearExpiredRoute, async (c) => {
+    const { routeAdminStorage } = await import('../handlers/admin.ts');
+    // deno-lint-ignore no-explicit-any
+    return routeAdminStorage(c.req.path, c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminClearCacheRoute = createRoute({
+    method: 'post',
+    path: '/admin/storage/clear-cache',
+    tags: ['Admin'],
+    summary: 'Clear all cache entries',
+    description: 'Deletes all filter cache entries and cache-related storage entries. Admin tier and admin role required.',
+    responses: {
+        200: {
+            description: 'Cache entries cleared successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        deleted: z.number().int().nonnegative(),
+                        message: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role and Cloudflare Access JWT',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminClearCacheRoute, async (c) => {
+    const { routeAdminStorage } = await import('../handlers/admin.ts');
+    // deno-lint-ignore no-explicit-any
+    return routeAdminStorage(c.req.path, c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminExportRoute = createRoute({
+    method: 'get',
+    path: '/admin/storage/export',
+    tags: ['Admin'],
+    summary: 'Export storage data',
+    description:
+        'Exports storage entries, filter cache, and compilation metadata as JSON. Limited to 1000 storage entries, 100 filter cache entries, and 100 compilation metadata entries. Admin tier and admin role required.',
+    responses: {
+        200: {
+            description: 'Storage data exported successfully',
+            content: {
+                'application/json': {
+                    schema: exportDataResponseSchema,
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role and Cloudflare Access JWT',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminExportRoute, async (c) => {
+    const { routeAdminStorage } = await import('../handlers/admin.ts');
+    // deno-lint-ignore no-explicit-any
+    return routeAdminStorage(c.req.path, c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminVacuumRoute = createRoute({
+    method: 'post',
+    path: '/admin/storage/vacuum',
+    tags: ['Admin'],
+    summary: 'Vacuum D1 database',
+    description: 'Runs VACUUM on the D1 database to reclaim storage space. Admin tier and admin role required.',
+    responses: {
+        200: {
+            description: 'Database vacuum completed successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        message: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role and Cloudflare Access JWT',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'D1 database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminVacuumRoute, async (c) => {
+    const { routeAdminStorage } = await import('../handlers/admin.ts');
+    // deno-lint-ignore no-explicit-any
+    return routeAdminStorage(c.req.path, c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminListTablesRoute = createRoute({
+    method: 'get',
+    path: '/admin/storage/tables',
+    tags: ['Admin'],
+    summary: 'List database tables',
+    description: 'Returns a list of all tables and indexes in the D1 database. Admin tier and admin role required.',
+    responses: {
+        200: {
+            description: 'List of tables and indexes',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        tables: z.array(tableInfoSchema),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role and Cloudflare Access JWT',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'D1 database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminListTablesRoute, async (c) => {
+    const { routeAdminStorage } = await import('../handlers/admin.ts');
+    // deno-lint-ignore no-explicit-any
+    return routeAdminStorage(c.req.path, c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminQueryRoute = createRoute({
+    method: 'post',
+    path: '/admin/storage/query',
+    tags: ['Admin'],
+    summary: 'Execute read-only SQL query',
+    description: 'Executes a read-only SELECT query against the D1 database. Only SELECT queries are allowed, with a maximum of 1000 rows. Admin tier and admin role required.',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    schema: adminQueryRequestSchema,
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Query executed successfully',
+            content: {
+                'application/json': {
+                    schema: storageQueryResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Invalid query or validation error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role and Cloudflare Access JWT',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'D1 database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminQueryRoute, async (c) => {
+    const { routeAdminStorage } = await import('../handlers/admin.ts');
+    // deno-lint-ignore no-explicit-any
+    return routeAdminStorage(c.req.path, c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+// ── Admin Neon ────────────────────────────────────────────────────────────────
+
+const adminNeonGetProjectRoute = createRoute({
+    method: 'get',
+    path: '/admin/neon/project',
+    tags: ['Admin'],
+    summary: 'Get Neon project overview',
+    description: 'Returns Neon project information. Requires projectId as query parameter or NEON_PROJECT_ID env variable. Admin tier and admin role required.',
+    request: {
+        query: z.object({
+            projectId: z.string().optional().describe('Neon project ID (overrides NEON_PROJECT_ID env)'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'Neon project information',
+            content: {
+                'application/json': {
+                    schema: neonProjectResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Missing project ID',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'NEON_API_KEY not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminNeonGetProjectRoute, async (c) => {
+    const { handleAdminNeonGetProject } = await import('../handlers/admin-neon.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminNeonGetProject(c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminNeonListBranchesRoute = createRoute({
+    method: 'get',
+    path: '/admin/neon/branches',
+    tags: ['Admin'],
+    summary: 'List Neon branches',
+    description: 'Returns all branches for a Neon project. Requires projectId as query parameter or NEON_PROJECT_ID env variable. Admin tier and admin role required.',
+    request: {
+        query: z.object({
+            projectId: z.string().optional().describe('Neon project ID (overrides NEON_PROJECT_ID env)'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'List of Neon branches',
+            content: {
+                'application/json': {
+                    schema: neonBranchesResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Missing project ID',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'NEON_API_KEY not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminNeonListBranchesRoute, async (c) => {
+    const { handleAdminNeonListBranches } = await import('../handlers/admin-neon.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminNeonListBranches(c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminNeonGetBranchRoute = createRoute({
+    method: 'get',
+    path: '/admin/neon/branches/{branchId}',
+    tags: ['Admin'],
+    summary: 'Get Neon branch details',
+    description:
+        'Returns detailed information about a specific Neon branch. Requires projectId as query parameter or NEON_PROJECT_ID env variable. Admin tier and admin role required.',
+    request: {
+        params: z.object({
+            branchId: z.string().describe('Neon branch ID'),
+        }),
+        query: z.object({
+            projectId: z.string().optional().describe('Neon project ID (overrides NEON_PROJECT_ID env)'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'Neon branch details',
+            content: {
+                'application/json': {
+                    schema: neonBranchResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Missing project ID',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        404: {
+            description: 'Branch not found',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'NEON_API_KEY not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminNeonGetBranchRoute, async (c) => {
+    const { handleAdminNeonGetBranch } = await import('../handlers/admin-neon.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminNeonGetBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!) as any;
+});
+
+const adminNeonCreateBranchRoute = createRoute({
+    method: 'post',
+    path: '/admin/neon/branches',
+    tags: ['Admin'],
+    summary: 'Create a Neon branch',
+    description: 'Creates a new Neon branch. Requires projectId as query parameter or NEON_PROJECT_ID env variable. Admin tier and admin role required.',
+    request: {
+        query: z.object({
+            projectId: z.string().optional().describe('Neon project ID (overrides NEON_PROJECT_ID env)'),
+        }),
+        body: {
+            content: {
+                'application/json': {
+                    schema: adminNeonCreateBranchSchema,
+                },
+            },
+        },
+    },
+    responses: {
+        201: {
+            description: 'Branch created successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                    }).passthrough(),
+                },
+            },
+        },
+        400: {
+            description: 'Validation error or missing project ID',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'NEON_API_KEY not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminNeonCreateBranchRoute, async (c) => {
+    const { handleAdminNeonCreateBranch } = await import('../handlers/admin-neon.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminNeonCreateBranch(c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminNeonDeleteBranchRoute = createRoute({
+    method: 'delete',
+    path: '/admin/neon/branches/{branchId}',
+    tags: ['Admin'],
+    summary: 'Delete a Neon branch',
+    description: 'Deletes a Neon branch. Requires projectId as query parameter or NEON_PROJECT_ID env variable. Admin tier and admin role required.',
+    request: {
+        params: z.object({
+            branchId: z.string().describe('Neon branch ID'),
+        }),
+        query: z.object({
+            projectId: z.string().optional().describe('Neon project ID (overrides NEON_PROJECT_ID env)'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'Branch deleted successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                    }).passthrough(),
+                },
+            },
+        },
+        400: {
+            description: 'Missing project ID',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        404: {
+            description: 'Branch not found',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'NEON_API_KEY not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminNeonDeleteBranchRoute, async (c) => {
+    const { handleAdminNeonDeleteBranch } = await import('../handlers/admin-neon.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminNeonDeleteBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!) as any;
+});
+
+const adminNeonListEndpointsRoute = createRoute({
+    method: 'get',
+    path: '/admin/neon/endpoints',
+    tags: ['Admin'],
+    summary: 'List Neon compute endpoints',
+    description: 'Returns all compute endpoints for a Neon project. Requires projectId as query parameter or NEON_PROJECT_ID env variable. Admin tier and admin role required.',
+    request: {
+        query: z.object({
+            projectId: z.string().optional().describe('Neon project ID (overrides NEON_PROJECT_ID env)'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'List of Neon endpoints',
+            content: {
+                'application/json': {
+                    schema: neonEndpointsResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Missing project ID',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'NEON_API_KEY not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminNeonListEndpointsRoute, async (c) => {
+    const { handleAdminNeonListEndpoints } = await import('../handlers/admin-neon.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminNeonListEndpoints(c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminNeonListDatabasesRoute = createRoute({
+    method: 'get',
+    path: '/admin/neon/databases/{branchId}',
+    tags: ['Admin'],
+    summary: 'List databases for a branch',
+    description: 'Returns all databases for a specific Neon branch. Requires projectId as query parameter or NEON_PROJECT_ID env variable. Admin tier and admin role required.',
+    request: {
+        params: z.object({
+            branchId: z.string().describe('Neon branch ID'),
+        }),
+        query: z.object({
+            projectId: z.string().optional().describe('Neon project ID (overrides NEON_PROJECT_ID env)'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'List of databases for the branch',
+            content: {
+                'application/json': {
+                    schema: neonDatabasesResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Missing project ID',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'NEON_API_KEY not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminNeonListDatabasesRoute, async (c) => {
+    const { handleAdminNeonListDatabases } = await import('../handlers/admin-neon.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminNeonListDatabases(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!) as any;
+});
+
+const adminNeonQueryRoute = createRoute({
+    method: 'post',
+    path: '/admin/neon/query',
+    tags: ['Admin'],
+    summary: 'Execute SQL query via Neon serverless driver',
+    description: 'Executes a SQL query against a Neon database using the serverless driver. Admin tier and admin role required.',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    schema: adminNeonQuerySchema,
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Query executed successfully',
+            content: {
+                'application/json': {
+                    schema: neonQueryResponseSchema,
+                },
+            },
+        },
+        400: {
+            description: 'Validation error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'NEON_API_KEY not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminNeonQueryRoute, async (c) => {
+    const { handleAdminNeonQuery } = await import('../handlers/admin-neon.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminNeonQuery(c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+// ── Admin Agent Data ──────────────────────────────────────────────────────────
+
+const adminListAgentSessionsRoute = createRoute({
+    method: 'get',
+    path: '/admin/agents/sessions',
+    tags: ['Admin'],
+    summary: 'List agent sessions',
+    description: 'Returns all agent sessions, paginated and sorted by most recent first. Admin tier and admin role required.',
+    request: {
+        query: adminPaginationQuerySchema,
+    },
+    responses: {
+        200: {
+            description: 'List of agent sessions',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        items: z.array(agentSessionSchema),
+                        total: z.number().int().nonnegative(),
+                        limit: z.number().int().positive(),
+                        offset: z.number().int().nonnegative(),
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Invalid pagination params',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminListAgentSessionsRoute, async (c) => {
+    const { handleAdminListAgentSessions } = await import('../handlers/admin-agents.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminListAgentSessions(c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminGetAgentSessionRoute = createRoute({
+    method: 'get',
+    path: '/admin/agents/sessions/{sessionId}',
+    tags: ['Admin'],
+    summary: 'Get agent session details',
+    description: 'Returns a single agent session by ID, including all its invocations. Admin tier and admin role required.',
+    request: {
+        params: z.object({
+            sessionId: z.string().uuid().describe('Agent session ID'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'Agent session with invocations',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                    }).merge(agentSessionSchema.extend({
+                        invocations: z.array(agentInvocationSchema),
+                    })),
+                },
+            },
+        },
+        400: {
+            description: 'Invalid session ID format',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        404: {
+            description: 'Agent session not found',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminGetAgentSessionRoute, async (c) => {
+    const { handleAdminGetAgentSession } = await import('../handlers/admin-agents.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminGetAgentSession(c.req.raw, c.env, c.get('authContext'), c.req.param('sessionId')!) as any;
+});
+
+const adminListAgentAuditLogRoute = createRoute({
+    method: 'get',
+    path: '/admin/agents/audit',
+    tags: ['Admin'],
+    summary: 'List agent audit log',
+    description: 'Returns all agent audit log entries, paginated and sorted by most recent first. Admin tier and admin role required.',
+    request: {
+        query: adminPaginationQuerySchema,
+    },
+    responses: {
+        200: {
+            description: 'List of audit log entries',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        items: z.array(agentAuditLogSchema),
+                        total: z.number().int().nonnegative(),
+                        limit: z.number().int().positive(),
+                        offset: z.number().int().nonnegative(),
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Invalid pagination params',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminListAgentAuditLogRoute, async (c) => {
+    const { handleAdminListAgentAuditLog } = await import('../handlers/admin-agents.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminListAgentAuditLog(c.req.raw, c.env, c.get('authContext')) as any;
+});
+
+const adminTerminateAgentSessionRoute = createRoute({
+    method: 'delete',
+    path: '/admin/agents/sessions/{sessionId}',
+    tags: ['Admin'],
+    summary: 'Terminate an agent session',
+    description: 'Terminates an active agent session. Returns 409 if the session is already ended. Admin tier and admin role required.',
+    request: {
+        params: z.object({
+            sessionId: z.string().uuid().describe('Agent session ID'),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'Agent session terminated successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        message: z.string(),
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Invalid session ID format',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - requires admin role',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        404: {
+            description: 'Agent session not found',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        409: {
+            description: 'Session already ended',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+        503: {
+            description: 'Database not configured',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.use('/admin/agents/sessions/:sessionId', rateLimitMiddleware());
+adminRoutes.openapi(adminTerminateAgentSessionRoute, async (c) => {
+    const { handleAdminTerminateAgentSession } = await import('../handlers/admin-agents.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminTerminateAgentSession(c.req.raw, c.env, c.get('authContext'), c.req.param('sessionId')!) as any;
+});
 
 // ── Admin session revocation handler ─────────────────────────────────────────
 
@@ -69,8 +2673,19 @@ export const adminRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables
  *  - Verifies Cloudflare Access JWT (defense-in-depth)
  *  - Emits `cf_access_denial` security event on CF Access failure
  */
-export async function handleAdminRevokeUserSessions(c: AppContext): Promise<Response> {
-    const authContext = c.get('authContext');
+export async function handleAdminRevokeUserSessions(
+    c: {
+        req: { raw: Request; path: string; method: string; param: (key: string) => string | undefined };
+        env: Env;
+        get: (key: string) => unknown;
+        json: (data: unknown, status?: number) => Response;
+    },
+): Promise<Response> {
+    const { verifyCfAccessJwt } = await import('../middleware/cf-access.ts');
+    const { AnalyticsService } = await import('../../src/services/AnalyticsService.ts');
+    const { createPgPool } = await import('../utils/pg-pool.ts');
+
+    const authContext = c.get('authContext') as { role?: string };
     if (authContext.role !== 'admin') {
         return c.json({ success: false, error: 'Admin access required' }, 403);
     }
@@ -109,84 +2724,3 @@ export async function handleAdminRevokeUserSessions(c: AppContext): Promise<Resp
         return c.json({ success: false, error: 'Failed to revoke sessions' }, 500);
     }
 }
-
-// ── Admin routes ──────────────────────────────────────────────────────────────
-
-adminRoutes.get('/admin/auth/config', (c) => handleAdminAuthConfig(c.req.raw, c.env, c.get('authContext')));
-
-adminRoutes.get('/admin/users', (c) => handleAdminListUsers(c.req.raw, c.env, c.get('authContext')));
-adminRoutes.get('/admin/users/:id', (c) => handleAdminGetUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!));
-adminRoutes.patch(
-    '/admin/users/:id',
-    rateLimitMiddleware(),
-    // deno-lint-ignore no-explicit-any
-    zValidator('json', AdminUpdateUserSchema as any, zodValidationError),
-    (c) => handleAdminUpdateUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!),
-);
-adminRoutes.delete(
-    '/admin/users/:id',
-    rateLimitMiddleware(),
-    (c) => handleAdminDeleteUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!),
-);
-adminRoutes.post(
-    '/admin/users/:id/ban',
-    // deno-lint-ignore no-explicit-any
-    zValidator('json', AdminBanUserSchema as any, zodValidationError),
-    (c) => handleAdminBanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!),
-);
-adminRoutes.post(
-    '/admin/users/:id/unban',
-    rateLimitMiddleware(),
-    // deno-lint-ignore no-explicit-any
-    zValidator('json', AdminUnbanUserSchema as any, zodValidationError),
-    (c) => handleAdminUnbanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!),
-);
-
-// Admin session revocation — revoke all sessions for a specific user
-// Extracted to a named handler for testability and ZTA compliance.
-adminRoutes.delete(
-    '/admin/users/:id/sessions',
-    rateLimitMiddleware(),
-    async (c) => handleAdminRevokeUserSessions(c),
-);
-
-adminRoutes.get('/admin/usage/:userId', (c) => handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')!));
-
-adminRoutes.all('/admin/storage/*', async (c) => {
-    // Permission check already ran in the routes middleware above; this handler
-    // only runs when access is granted (admin tier + admin role).
-    const { routeAdminStorage } = await import('../handlers/admin.ts');
-    return routeAdminStorage(c.req.path, c.req.raw, c.env, c.get('authContext'));
-});
-
-// ── Admin Neon reporting ─────────────────────────────────────────────────────
-
-adminRoutes.get('/admin/neon/project', (c) => handleAdminNeonGetProject(c.req.raw, c.env, c.get('authContext')));
-adminRoutes.get('/admin/neon/branches', (c) => handleAdminNeonListBranches(c.req.raw, c.env, c.get('authContext')));
-adminRoutes.get('/admin/neon/branches/:branchId', (c) => handleAdminNeonGetBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!));
-adminRoutes.post(
-    '/admin/neon/branches',
-    // deno-lint-ignore no-explicit-any
-    zValidator('json', AdminNeonCreateBranchSchema as any, zodValidationError),
-    (c) => handleAdminNeonCreateBranch(c.req.raw, c.env, c.get('authContext')),
-);
-adminRoutes.delete('/admin/neon/branches/:branchId', (c) => handleAdminNeonDeleteBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!));
-adminRoutes.get('/admin/neon/endpoints', (c) => handleAdminNeonListEndpoints(c.req.raw, c.env, c.get('authContext')));
-adminRoutes.get('/admin/neon/databases/:branchId', (c) => handleAdminNeonListDatabases(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!));
-adminRoutes.post(
-    '/admin/neon/query',
-    // deno-lint-ignore no-explicit-any
-    zValidator('json', AdminNeonQuerySchema as any, zodValidationError),
-    (c) => handleAdminNeonQuery(c.req.raw, c.env, c.get('authContext')),
-);
-
-// ── Admin agent data ──────────────────────────────────────────────────────────
-
-adminRoutes.get('/admin/agents/sessions', (c) => handleAdminListAgentSessions(c.req.raw, c.env, c.get('authContext')));
-adminRoutes.get('/admin/agents/sessions/:sessionId', (c) => handleAdminGetAgentSession(c.req.raw, c.env, c.get('authContext'), c.req.param('sessionId')!));
-adminRoutes.get('/admin/agents/audit', (c) => handleAdminListAgentAuditLog(c.req.raw, c.env, c.get('authContext')));
-adminRoutes.delete(
-    '/admin/agents/sessions/:sessionId',
-    rateLimitMiddleware(),
-    (c) => handleAdminTerminateAgentSession(c.req.raw, c.env, c.get('authContext'), c.req.param('sessionId')!),
-);

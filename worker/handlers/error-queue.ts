@@ -1,31 +1,37 @@
 /**
- * Error queue consumer handler for persisting error logs to R2.
- * Implements the dead-letter pattern for durable error logging.
+ * Error dead-letter queue consumer for the Cloudflare Worker.
  *
- * This queue is isolated from production compile queues and handles:
- * - Batching error messages for efficient R2 writes
- * - Long-term storage of error logs in R2 ERROR_BUCKET
- * - Error aggregation and metadata extraction
+ * Persists batches of unhandled-error events to R2 (ERROR_BUCKET) as NDJSON
+ * for long-term durable log storage and post-incident analysis.
  *
- * Reference: https://hono.dev/examples/cloudflare-queue/
+ * Isolation: this handler operates entirely on the ERROR_QUEUE / ERROR_BUCKET
+ * bindings and shares no state with the production compile queues.
+ *
+ * R2 key layout:
+ *   errors/YYYY/MM/DD/HH/<batchId>.ndjson
+ *
+ * Each line in the NDJSON file is one serialised ErrorQueueMessage.
  */
 
 import type { Env, ErrorQueueMessage } from '../types.ts';
-import { generateRequestId } from '../utils/index.ts';
 
 // ============================================================================
 // Constants
 // ============================================================================
 
-const LOG_PREFIX = '[ERROR-QUEUE]';
+/** R2 key prefix for error log objects. */
+const ERROR_LOG_PREFIX = 'errors';
 
 // ============================================================================
-// Error Log Persistence
+// Helpers
 // ============================================================================
 
 /**
- * Persist a batch of error logs to R2 bucket.
- * Groups errors by day and writes them as JSONL for efficient querying.
+ * Builds the R2 object key for a batch of error messages.
+ *
+ * Format: errors/YYYY/MM/DD/HH/<batchId>.ndjson
+ * This partitioning makes querying by time range efficient and avoids
+ * hot-spotting a single prefix in the R2 namespace.
  */
 async function persistErrorBatch(
     errors: ErrorQueueMessage[],
@@ -79,79 +85,76 @@ async function persistErrorBatch(
 
     await Promise.all(writePromises);
 
-    // deno-lint-ignore no-console
-    console.log(`${LOG_PREFIX} Successfully persisted ${errors.length} errors across ${errorsByDate.size} date(s)`);
+/**
+ * Serialises a batch of ErrorQueueMessage objects to NDJSON (one JSON object per line).
+ */
+export function serializeToNdjson(messages: readonly ErrorQueueMessage[]): string {
+    return messages.map((m) => JSON.stringify(m)).join('\n');
 }
 
 // ============================================================================
-// Queue Consumer Handler
+// Consumer handler
 // ============================================================================
 
 /**
- * Error queue consumer handler for processing error log batches.
- * Cloudflare Queues will call this function with batches of error messages.
+ * Queue consumer for `adblock-compiler-error-queue`.
  *
- * @param batch - Batch of error messages from the error queue
- * @param env - Worker environment bindings
+ * Called by the Worker `queue()` hook when the queue name is `adblock-compiler-error-queue`.
+ * Acks every message (errors are logged, not retried) and persists the full
+ * batch as a single NDJSON object in ERROR_BUCKET under the timestamped key.
+ * If ERROR_BUCKET is unavailable the batch is still acked (console-only fallback).
  */
 export async function handleErrorQueue(
     batch: MessageBatch<ErrorQueueMessage>,
     env: Env,
 ): Promise<void> {
-    const batchStartTime = Date.now();
     const batchSize = batch.messages.length;
 
     // deno-lint-ignore no-console
-    console.log(`${LOG_PREFIX} Processing batch of ${batchSize} error messages`);
+    console.log(`[ERROR-QUEUE] Processing batch of ${batchSize} error message(s)`);
 
-    const errors: ErrorQueueMessage[] = [];
-    let acked = 0;
-    let retried = 0;
-
+    // Collect message bodies and ack every message immediately.
+    // Error events are not retried — logging is best-effort.
+    const messages: ErrorQueueMessage[] = [];
     for (const message of batch.messages) {
-        try {
-            const errorMsg = message.body;
-
-            // Basic validation
-            if (!errorMsg.errorId || !errorMsg.timestamp || !errorMsg.errorMessage) {
-                // deno-lint-ignore no-console
-                console.warn(`${LOG_PREFIX} Invalid error message structure, skipping:`, errorMsg);
-                message.ack();
-                acked++;
-                continue;
-            }
-
-            errors.push(errorMsg);
-            message.ack();
-            acked++;
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            // deno-lint-ignore no-console
-            console.error(`${LOG_PREFIX} Failed to process message, will retry: ${errorMessage}`);
-            message.retry();
-            retried++;
-        }
+        messages.push(message.body);
+        message.ack();
     }
 
-    // Persist all valid errors to R2
-    if (errors.length > 0) {
-        try {
-            await persistErrorBatch(errors, env);
-        } catch (error) {
-            const errorMessage = error instanceof Error ? error.message : String(error);
-            // deno-lint-ignore no-console
-            console.error(`${LOG_PREFIX} Failed to persist error batch: ${errorMessage}`);
-            // Note: Messages were already acked, so this failure is logged but not retried
-            // to avoid infinite retry loops. Consider implementing a secondary DLQ if needed.
-        }
+    if (messages.length === 0) {
+        return;
     }
 
-    const batchDuration = Date.now() - batchStartTime;
-    const avgDuration = Math.round(batchDuration / batchSize);
+    // Persist the batch to R2 if ERROR_BUCKET is configured.
+    if (!env.ERROR_BUCKET) {
+        // deno-lint-ignore no-console
+        console.warn('[ERROR-QUEUE] ERROR_BUCKET binding is not configured — batch will not be persisted to R2');
+        return;
+    }
 
-    // deno-lint-ignore no-console
-    console.log(
-        `${LOG_PREFIX} Batch complete: ${batchSize} messages processed in ${batchDuration}ms ` +
-            `(avg ${avgDuration}ms per message). Acked: ${acked}, Retried: ${retried}`,
-    );
+    try {
+        const now = new Date();
+        // Use crypto.randomUUID() for collision-resistant uniqueness in high-volume scenarios.
+        const batchId = `${Date.now()}-${crypto.randomUUID()}`;
+        const key = buildErrorLogKey(now, batchId);
+        const body = serializeToNdjson(messages);
+
+        await env.ERROR_BUCKET.put(key, body, {
+            httpMetadata: { contentType: 'application/x-ndjson' },
+            customMetadata: {
+                batchSize: String(batchSize),
+                queueName: batch.queue,
+                writtenAt: now.toISOString(),
+            },
+        });
+
+        // deno-lint-ignore no-console
+        console.log(`[ERROR-QUEUE] Persisted ${batchSize} error message(s) to R2 key: ${key}`);
+    } catch (error) {
+        // deno-lint-ignore no-console
+        console.error(
+            '[ERROR-QUEUE] Failed to persist error batch to R2:',
+            error instanceof Error ? error.message : String(error),
+        );
+    }
 }
