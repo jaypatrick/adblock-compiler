@@ -85,6 +85,9 @@ import { rulesRoutes } from './routes/rules.routes.ts';
 import { webhookRoutes } from './routes/webhook.routes.ts';
 import { workflowRoutes } from './routes/workflow.routes.ts';
 
+// Prisma middleware
+import { createPrismaClient } from './lib/prisma.ts';
+
 // Shared types — re-exported for backward compatibility
 export type { Variables } from './routes/shared.ts';
 import type { Variables } from './routes/shared.ts';
@@ -503,6 +506,20 @@ routes.use('*', async (c, next) => {
 });
 
 // ── Mount domain route modules ────────────────────────────────────────────────
+
+// ── Prisma context — request-scoped PrismaClient via Hyperdrive ───────────────
+// Registered before domain route modules so every handler can access
+// `c.get('prisma')` without creating duplicate clients.
+// Silently skips client creation when HYPERDRIVE is not configured (e.g. local
+// dev without a Hyperdrive binding, unit tests, static-asset requests).
+routes.use('*', async (c, next) => {
+    if (c.env.HYPERDRIVE) {
+        const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
+        c.set('prisma', prisma);
+    }
+    await next();
+});
+
 routes.route('/', compileRoutes);
 routes.route('/', rulesRoutes);
 routes.route('/', queueRoutes);

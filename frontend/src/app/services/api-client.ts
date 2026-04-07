@@ -6,13 +6,12 @@
  * API calls between the Angular frontend and the Cloudflare Worker.
  *
  * ## Scope
- * This client covers **public, unauthenticated** endpoints only.
- * Authenticated endpoints (e.g. `POST /compile`, which requires Free tier)
- * must continue to use the existing `HttpClient`-based services so that the
- * Angular HTTP interceptors attach the Clerk `Authorization: Bearer ...` and
- * `X-Trace-ID` headers automatically.
+ * - `ApiClientService` — covers **public, unauthenticated** endpoints.
+ * - `AuthedApiClientService` — covers **authenticated** endpoints using the
+ *   same `AppType` but with a manually-injected Bearer token + X-Trace-ID.
+ *   Import from `./authed-api-client.service`.
  *
- * ## Usage
+ * ## Usage (public endpoints)
  * ```ts
  * import { ApiClientService } from './services/api-client';
  *
@@ -47,15 +46,98 @@ import { API_BASE_URL } from '../tokens';
 // public routes covered by this client (health, version, openapi.json).  Replace
 // the `type AppType` import once the worker types are published as a package.
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
 type TypedResponse<T> = Promise<ClientResponse<T>>;
 
+// ── Shared response shapes ────────────────────────────────────────────────────
+
+/** Compilation result returned by POST /api/compile and POST /api/compile/batch. */
+export interface CompileResponseData {
+    success: boolean;
+    rules?: string[];
+    ruleCount?: number;
+    sources?: number;
+    compiledAt?: string;
+    cached?: boolean;
+    deduplicated?: boolean;
+    error?: string;
+    benchmark?: { duration?: string; startTime?: number; endTime?: number };
+    metrics?: {
+        totalDuration?: number;
+        sourceCount?: number;
+        transformationCount?: number;
+        inputRuleCount?: number;
+        outputRuleCount?: number;
+        phases?: Record<string, number>;
+    };
+}
+
+/** Async compile result (202 queued) returned by POST /api/compile/async and /batch/async. */
+export interface AsyncCompileResponseData {
+    success: boolean;
+    requestId: string;
+    note: string;
+    message?: string;
+    batchSize?: number;
+    priority?: string;
+    error?: string;
+}
+
+/** Validation result returned by POST /api/validate. */
+export interface ValidateResponseData {
+    success: boolean;
+    valid: boolean;
+    totalRules: number;
+    validRules: number;
+    invalidRules: number;
+    errors: Array<{
+        line: number;
+        column?: number;
+        rule: string;
+        errorType: string;
+        message: string;
+        severity: 'error' | 'warning' | 'info';
+    }>;
+    warnings: Array<{
+        line: number;
+        column?: number;
+        rule: string;
+        errorType: string;
+        message: string;
+        severity: 'error' | 'warning' | 'info';
+    }>;
+    duration?: string;
+}
+
+/** Validate-rule result returned by POST /api/validate-rule. */
+export interface ValidateRuleResponseData {
+    success: boolean;
+    valid: boolean;
+    rule?: string;
+    errors?: string[];
+}
+
+/** A single saved rule set returned by GET/POST /api/rules. */
+export interface RuleSetData {
+    id: string;
+    name: string;
+    description?: string;
+    rules: string[];
+    createdAt: string;
+    updatedAt: string;
+}
+
+/** List of saved rule sets returned by GET /api/rules. */
+export interface RulesListData {
+    success: boolean;
+    ruleSets: RuleSetData[];
+}
+
 /**
- * Minimal AppType mirror for the **public** routes covered by this client.
- * Authenticated endpoints (e.g. POST /compile) use the existing HttpClient
- * services so Angular interceptors can attach auth headers.
+ * AppType mirror covering both **public** and **authenticated** routes.
  *
- * Extend this as additional public routes are onboarded to the typed RPC pattern.
+ * Public routes (`/api/health`, `/api/version`, `/api/openapi.json`) are used
+ * by `ApiClientService`.  Authenticated routes (`/api/compile`, `/api/validate`,
+ * `/api/validate-rule`, `/api/rules`) are used by `AuthedApiClientService`.
  *
  * To use the real AppType from the worker:
  * ```ts
@@ -64,6 +146,7 @@ type TypedResponse<T> = Promise<ClientResponse<T>>;
  */
 export type AppType = {
     api: {
+        // ── Public endpoints ────────────────────────────────────────────────────
         health: {
             $get: () => TypedResponse<{
                 status: 'healthy' | 'degraded' | 'down';
@@ -82,9 +165,38 @@ export type AppType = {
         'openapi.json': {
             $get: () => TypedResponse<Record<string, unknown>>;
         };
+        // ── Authenticated endpoints (Free tier minimum) ─────────────────────────
+        compile: {
+            $post: (opts: {
+                json: {
+                    configuration: {
+                        name: string;
+                        sources: Array<{ source: string; useBrowser?: boolean }>;
+                        transformations: string[];
+                    };
+                    benchmark?: boolean;
+                    turnstileToken?: string;
+                };
+            }) => TypedResponse<CompileResponseData>;
+        };
+        validate: {
+            $post: (opts: {
+                json: { rules: string[]; strict?: boolean; turnstileToken?: string };
+            }) => TypedResponse<ValidateResponseData>;
+        };
+        'validate-rule': {
+            $post: (opts: {
+                json: { rule: string; turnstileToken?: string };
+            }) => TypedResponse<ValidateRuleResponseData>;
+        };
+        rules: {
+            $get: () => TypedResponse<RulesListData>;
+            $post: (opts: {
+                json: { name: string; description?: string; rules: string[] };
+            }) => TypedResponse<{ success: boolean; ruleSet: RuleSetData }>;
+        };
     };
 };
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 // ── Service ───────────────────────────────────────────────────────────────────
 
@@ -96,9 +208,8 @@ export type AppType = {
  * browser and SSR environments).
  *
  * Use this service for unauthenticated endpoints (`/api/health`, `/api/version`,
- * `/api/openapi.json`).  Endpoints that require authentication (e.g. `POST /compile`)
- * must use the existing `HttpClient`-based services so that Angular's HTTP
- * interceptors automatically attach `Authorization: Bearer ...` and `X-Trace-ID`.
+ * `/api/openapi.json`).  For endpoints that require authentication (e.g. `POST /compile`)
+ * use `AuthedApiClientService` which injects the Bearer token and trace ID header.
  */
 @Injectable({ providedIn: 'root' })
 export class ApiClientService {

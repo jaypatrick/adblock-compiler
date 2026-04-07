@@ -309,4 +309,87 @@ were needed.
 
 Run manually with: `deno task lint:routes`
 
+---
+
+## Phase 5 — Prisma Hono Context (`c.get('prisma')`)
+
+### Background
+
+Prior to Phase 5 every route handler that needed a database connection called
+`_internals.createPrismaClient(env.HYPERDRIVE.connectionString)` directly.  This
+created a new `PrismaClient` instance per call-site, making it impossible to share a
+single request-scoped client across multiple helpers within the same request.
+
+Phase 5 introduces a global `prismaMiddleware` in the `routes` sub-app that creates
+one `PrismaClient` per request and stores it in the Hono context:
+
+```typescript
+// worker/hono-app.ts — routes sub-app, before domain route modules
+routes.use('*', async (c, next) => {
+    if (c.env.HYPERDRIVE) {
+        const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
+        c.set('prisma', prisma);
+    }
+    await next();
+});
+```
+
+### Context type
+
+`prisma` is included in `Variables` (in `worker/routes/shared.ts`) and the local
+`AppVars` mirror (in `worker/middleware/hono-middleware.ts`):
+
+```typescript
+export interface Variables {
+    authContext: IAuthContext;
+    analytics: AnalyticsService;
+    requestId: string;
+    ip: string;
+    isSSR: boolean;
+    /** Request-scoped PrismaClient — set by prismaMiddleware() when HYPERDRIVE is bound. */
+    prisma: InstanceType<typeof PrismaClient>;
+}
+```
+
+### Handler usage pattern
+
+Route handlers that need Prisma should prefer `c.get('prisma')` over creating a new client:
+
+```typescript
+// ✅ Preferred — uses the shared request-scoped client set by global middleware
+adminRoutes.get('/admin/users', async (c) => {
+    const prisma = c.get('prisma');
+    if (!prisma) return c.json({ error: 'Database not configured' }, 503);
+    const users = await prisma.user.findMany();
+    return c.json({ success: true, users });
+});
+
+// ⚠️ Legacy — still works but creates a second PrismaClient for this request
+const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+```
+
+### Guards
+
+When `HYPERDRIVE` is not configured (local dev without the binding, unit tests,
+or static-asset requests), `prismaMiddleware` is skipped and `c.get('prisma')`
+returns `undefined`.  Always guard:
+
+```typescript
+const prisma = c.get('prisma');
+if (!prisma) return c.json({ error: 'Database service unavailable' }, 503);
+```
+
+### Test isolation
+
+In Deno unit tests the global middleware does not run.  Handlers that use the
+`_internals` pattern can still be stubbed as before:
+
+```typescript
+using _ = stub(_internals, 'createPrismaClient', () => mockPrisma as never);
+```
+
+For integration tests that go through the full Hono app, ensure `makeEnv()` includes
+a fake `HYPERDRIVE` binding so `prismaMiddleware` runs.
+
+
 
