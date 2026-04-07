@@ -33,57 +33,13 @@ const ERROR_LOG_PREFIX = 'errors';
  * This partitioning makes querying by time range efficient and avoids
  * hot-spotting a single prefix in the R2 namespace.
  */
-async function persistErrorBatch(
-    errors: ErrorQueueMessage[],
-    env: Env,
-): Promise<void> {
-    if (!env.ERROR_BUCKET) {
-        // deno-lint-ignore no-console
-        console.warn(`${LOG_PREFIX} ERROR_BUCKET binding not available, skipping persistence`);
-        return;
-    }
-
-    // Group errors by date for better organization in R2
-    const errorsByDate = new Map<string, ErrorQueueMessage[]>();
-
-    for (const error of errors) {
-        const date = new Date(error.timestamp);
-        const dateKey = date.toISOString().split('T')[0]; // YYYY-MM-DD
-        if (!errorsByDate.has(dateKey)) {
-            errorsByDate.set(dateKey, []);
-        }
-        errorsByDate.get(dateKey)!.push(error);
-    }
-
-    // Write each day's errors to a separate file in R2
-    const writePromises: Promise<R2Object>[] = [];
-
-    for (const [dateKey, dateErrors] of errorsByDate.entries()) {
-        const batchId = generateRequestId('error-batch');
-        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-        const key = `errors/${dateKey}/${timestamp}-${batchId}.jsonl`;
-
-        // Convert errors to JSONL format (one JSON object per line)
-        const jsonl = dateErrors.map((e) => JSON.stringify(e)).join('\n') + '\n';
-
-        // deno-lint-ignore no-console
-        console.log(`${LOG_PREFIX} Writing ${dateErrors.length} errors to ${key}`);
-
-        writePromises.push(
-            env.ERROR_BUCKET.put(key, jsonl, {
-                httpMetadata: {
-                    contentType: 'application/jsonl',
-                },
-                customMetadata: {
-                    errorCount: String(dateErrors.length),
-                    batchId,
-                    dateKey,
-                },
-            }),
-        );
-    }
-
-    await Promise.all(writePromises);
+export function buildErrorLogKey(date: Date, batchId: string): string {
+    const year = date.getUTCFullYear();
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const hour = String(date.getUTCHours()).padStart(2, '0');
+    return `${ERROR_LOG_PREFIX}/${year}/${month}/${day}/${hour}/${batchId}.ndjson`;
+}
 
 /**
  * Serialises a batch of ErrorQueueMessage objects to NDJSON (one JSON object per line).
