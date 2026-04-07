@@ -216,3 +216,32 @@ export interface WebhookNotifyResponse {
     deliveries: WebhookDelivery[];
     duration: string;
 }
+
+// ─── Diff (POST /diff) ───────────────────────────────────────────────────────
+
+export interface DiffOptions {
+    ignoreComments?:    boolean;
+    ignoreEmptyLines?:  boolean;
+    analyzeDomains?:    boolean;
+    includeFullRules?:  boolean;
+    maxRulesToInclude?: number;
+}
+
+export interface DiffRequest {
+    original: string[];
+    current:  string[];
+    options?: DiffOptions;
+}
+
+export interface ParseError {
+    line:    number;
+    rule:    string;
+    message: string;
+}
+
+export interface DiffResponse {
+    success:     boolean;
+    parseErrors: { original: ParseError[]; current: ParseError[] };
+    report:      import('../src/diff/DiffReport.ts').DiffReport;
+    duration:    string;
+}
