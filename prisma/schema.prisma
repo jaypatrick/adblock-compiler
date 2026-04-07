@@ -61,6 +61,7 @@ model User {
   accounts      Account[]
   twoFactor     TwoFactor?
   agentSessions AgentSession[]
+  members       Member[]
 
   @@map("users")
 }
@@ -146,6 +147,39 @@ model Verification {
   updatedAt  DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("verification")
+}
+
+/// Better Auth organization plugin — stores organizations for multi-tenancy.
+model Organization {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String
+  slug      String   @unique
+  logo      String?
+  metadata  Json?    @db.JsonB
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  members Member[]
+
+  @@map("organization")
+}
+
+/// Better Auth organization plugin — stores organization membership and roles.
+model Member {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String       @map("user_id") @db.Uuid
+  role           String       // owner | admin | member
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+  @@index([organizationId])
+  @@map("member")
 }
 
 // ============================================================================
