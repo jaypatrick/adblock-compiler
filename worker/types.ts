@@ -466,8 +466,18 @@ export interface ErrorQueueMessage {
     readonly timestamp: string;
     readonly path: string;
     readonly method: string;
+    /**
+     * Short human-readable summary of the error (i.e. `Error.message`).
+     * Suitable for dashboards and alert summaries.
+     */
     readonly message: string;
     readonly stack?: string;
+    /**
+     * Full serialised error representation.
+     * For `Error` instances this is `Error.stack` (which includes `message`).
+     * For non-Error throws this may be a JSON serialisation or `String(err)`.
+     * Intended for post-incident analysis where the full context is needed.
+     */
     readonly errorDetails: string;
 }
 

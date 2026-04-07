@@ -194,8 +194,13 @@ app.onError(async (err, c) => {
                     errorDetails,
                 }),
             );
-        } catch {
+        } catch (queueErr) {
             // Non-fatal: queue send failure must not disrupt the error response.
+            // deno-lint-ignore no-console
+            console.warn(
+                `[${requestId}] Failed to enqueue error to ERROR_QUEUE:`,
+                queueErr instanceof Error ? queueErr.message : String(queueErr),
+            );
         }
     }
 

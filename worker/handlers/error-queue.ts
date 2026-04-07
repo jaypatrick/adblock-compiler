@@ -90,9 +90,8 @@ export async function handleErrorQueue(
 
     try {
         const now = new Date();
-        // Use the timestamp of the first message as part of the batch ID to aid
-        // correlation, with a high-resolution suffix to guarantee uniqueness.
-        const batchId = `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+        // Use crypto.randomUUID() for collision-resistant uniqueness in high-volume scenarios.
+        const batchId = `${Date.now()}-${crypto.randomUUID()}`;
         const key = buildErrorLogKey(now, batchId);
         const body = serializeToNdjson(messages);
 
