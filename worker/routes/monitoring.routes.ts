@@ -35,8 +35,19 @@ const prometheusMetricsRoute = createRoute({
         200: {
             description: 'Prometheus metrics in text format',
             content: {
-                'text/plain; version=0.0.4': {
+                'text/plain; version=0.0.4; charset=utf-8': {
                     schema: z.string(),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden - Cloudflare Access denied',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
                 },
             },
         },
@@ -63,11 +74,18 @@ const metricsRoute = createRoute({
                 'application/json': {
                     schema: z.object({
                         success: z.boolean(),
-                        metrics: z.object({
-                            timestamp: z.string(),
-                            uptime: z.number().optional(),
-                            version: z.string().optional(),
-                        }),
+                        window: z.string(),
+                        timestamp: z.string(),
+                        endpoints: z.record(
+                            z.string(),
+                            z.object({
+                                count: z.number(),
+                                success: z.number(),
+                                failed: z.number(),
+                                avgDuration: z.number(),
+                                errors: z.record(z.string(), z.number()),
+                            }),
+                        ),
                     }),
                 },
             },
