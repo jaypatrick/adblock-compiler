@@ -71,6 +71,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.80.0] - 2026-04-07
+
+### Added- add AST Viewer page with color-coded rule tree display and on/off toggle
+- **diff**: integrate AGTree into DiffGenerator for semantic rule analysis
+- **worker**: implement Cloudflare Queues error dead-lettering and durable R2 logs
+- **e2e**: add comprehensive Playwright click-through test suite
+- implement Cloudflare Queues for error dead-lettering and durable logs
+
+### Fixed
+
+- merge latest main and resolve conflicts in error-queue handlers + fix meta routes mount
+- **worker**: resolve type errors in error-queue handler and test
+- resolve TS type errors in error-queue.ts and error-queue.test.ts from main merge
+- resolve build errors and apply review feedback for monitoring routes
+- **diff**: use exhaustive category sum for Rule Type Breakdown visibility check
+- **worker**: chain .catch() on ERROR_QUEUE.send() to handle async rejections
+- **lint**: remove unused Env import in error-queue.test.ts
+- **worker**: address code review feedback on error queue implementation
+- **container-status**: use onCleanup instead of destroyRef.onDestroy in effect
+- **test**: fix failing app.component test by mocking mobile breakpoint
+- **deps**: constrain pnpm-lock.yaml to only @clerk/shared 4.3.0→4.3.2 bump
+- resolve mobile header overlap and hide nav tabs on small screens
+- correct indentation in worker/hono-app.ts (line 585)
+
+
 ## [0.79.4] - 2026-03-28
 
 ### Added
