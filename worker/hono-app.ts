@@ -80,6 +80,7 @@ import { compileRoutes } from './routes/compile.routes.ts';
 import { configurationRoutes } from './routes/configuration.routes.ts';
 import { metaRoutes } from './routes/meta.routes.ts';
 import { monitoringRoutes } from './routes/monitoring.routes.ts';
+import { proxyRoutes } from './routes/proxy.routes.ts';
 import { queueRoutes } from './routes/queue.routes.ts';
 import { rulesRoutes } from './routes/rules.routes.ts';
 import { webhookRoutes } from './routes/webhook.routes.ts';
@@ -530,6 +531,7 @@ routes.route('/', apiKeysRoutes);
 routes.route('/', webhookRoutes);
 routes.route('/', workflowRoutes);
 routes.route('/', browserRoutes);
+routes.route('/', proxyRoutes);
 
 // ── Mount meta routes (API discovery, version info, config) ──────────────────
 // Routes in metaRoutes use full paths (e.g. /api/version) so mount at '/', not '/api'.
