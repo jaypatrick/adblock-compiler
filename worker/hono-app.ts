@@ -37,7 +37,6 @@ import { endTime, startTime, timing } from 'hono/timing';
 import { prettyJSON } from 'hono/pretty-json';
 import { compress } from 'hono/compress';
 import { logger } from 'hono/logger';
-import { cache } from 'hono/cache';
 import { OpenAPIHono } from '@hono/zod-openapi';
 
 // Types
@@ -67,9 +66,6 @@ import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
 import { isPublicEndpoint, matchOrigin } from './utils/cors.ts';
 
-// Handlers (pre-auth meta routes — eagerly imported)
-import { handleAuthProviders } from './handlers/auth-providers.ts';
-
 // tRPC
 import { handleTrpcRequest } from './trpc/handler.ts';
 
@@ -82,6 +78,7 @@ import { apiKeysRoutes } from './routes/api-keys.routes.ts';
 import { browserRoutes } from './routes/browser.routes.ts';
 import { compileRoutes } from './routes/compile.routes.ts';
 import { configurationRoutes } from './routes/configuration.routes.ts';
+import { metaRoutes } from './routes/meta.routes.ts';
 import { monitoringRoutes } from './routes/monitoring.routes.ts';
 import { queueRoutes } from './routes/queue.routes.ts';
 import { rulesRoutes } from './routes/rules.routes.ts';
@@ -442,29 +439,6 @@ app.all('/poc/*', async (c) => {
 });
 
 // ============================================================================
-// Pre-auth API meta routes
-// ============================================================================
-
-async function handleApiMeta(c: AppContext): Promise<Response> {
-    const { routeApiMeta } = await import('./handlers/info.ts');
-    const url = new URL(c.req.url);
-    const res = await routeApiMeta(c.req.path, c.req.raw, url, c.env);
-    return res ?? c.json({ success: false, error: 'Not found' }, 404);
-}
-
-app.get('/api', handleApiMeta);
-app.get('/api/version', cache({ cacheName: 'api-version', cacheControl: 'public, max-age=3600' }), handleApiMeta);
-app.get('/api/schemas', cache({ cacheName: 'api-schemas', cacheControl: 'public, max-age=3600' }), handleApiMeta);
-app.get('/api/deployments', handleApiMeta);
-app.get('/api/deployments/*', handleApiMeta);
-app.get('/api/turnstile-config', handleApiMeta);
-app.get('/api/sentry-config', handleApiMeta);
-// Public: returns which auth providers are active — used by frontend to conditionally render social login buttons.
-// Registered here (after CORS + rate-limiting middleware) so it receives full middleware coverage.
-// The Better Auth /api/auth/* wildcard explicitly passes through for this path.
-app.get('/api/auth/providers', (c) => handleAuthProviders(c.req.raw, c.env));
-
-// ============================================================================
 // Business routes sub-app (with ZTA + permission check middleware)
 // ============================================================================
 
@@ -540,6 +514,9 @@ routes.route('/', webhookRoutes);
 routes.route('/', workflowRoutes);
 routes.route('/', browserRoutes);
 
+// ── Mount meta routes (API discovery, version info, config) ──────────────────
+app.route('/api', metaRoutes);
+
 // ── Docs redirect ─────────────────────────────────────────────────────────────
 
 function buildDocsRedirectUrl(c: AppContext): string {
@@ -581,16 +558,6 @@ export const OPENAPI_DOCUMENT_ARGS = {
 
 app.get('/api/openapi.json', (c) => {
     const spec = app.getOpenAPIDocument(OPENAPI_DOCUMENT_ARGS);
-    if (!spec.paths || Object.keys(spec.paths).length === 0) {
-        return c.json(
-            {
-                error: 'OpenAPI specification is not yet configured for this deployment.',
-                status: 501,
-                detail: 'No OpenAPI routes are currently registered. Migrate key endpoints to use .openapi(createRoute(...)) before relying on this schema.',
-            },
-            501,
-        );
-    }
     return c.json(spec);
 });
 
