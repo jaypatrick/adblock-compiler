@@ -515,7 +515,8 @@ routes.route('/', workflowRoutes);
 routes.route('/', browserRoutes);
 
 // ── Mount meta routes (API discovery, version info, config) ──────────────────
-app.route('/api', metaRoutes);
+// Routes in metaRoutes use full paths (e.g. /api/version) so mount at '/', not '/api'.
+app.route('/', metaRoutes);
 
 // ── Docs redirect ─────────────────────────────────────────────────────────────
 
