@@ -123,6 +123,15 @@ id = "5dc36da36d9142cc9ced6c56328898ee"
 binding = "METRICS"
 id = "025c3f10527c46c0be559f299bdba994"
 
+# FEATURE_FLAGS: KV-backed feature flag store.
+# Toggle flags at runtime without redeployment:
+#   wrangler kv:key put --binding FEATURE_FLAGS flag:ENABLE_BATCH_STREAMING '{"enabled":true,"updatedAt":"2025-01-01T00:00:00.000Z"}'
+# Create with: wrangler kv:namespace create FEATURE_FLAGS
+# See: docs/feature-flags/KV_FEATURE_FLAGS.md
+[[kv_namespaces]]
+binding = "FEATURE_FLAGS"
+id = "your-feature-flags-kv-id"
+
 # RULES_KV: optional dedicated rule-set storage. Worker falls back to
 # COMPILATION_CACHE when absent. Create with:
 #   wrangler kv:namespace create RULES_KV

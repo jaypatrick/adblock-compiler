@@ -64,6 +64,31 @@ import { PlaywrightMcpAgent } from './mcp-agent.ts';
 export type { Env };
 
 // ============================================================================
+// Feature flag usage example
+// ============================================================================
+//
+// Create the service once per request (or cache it on the env object):
+//
+//   import { createFeatureFlagService } from './services/feature-flag-service.ts';
+//
+//   const featureFlags = createFeatureFlagService(env.FEATURE_FLAGS, logger);
+//
+//   // Check a flag before executing feature-specific code:
+//   if (await featureFlags.isEnabled('ENABLE_BATCH_STREAMING')) {
+//       return handleCompileStreamBatch(request, env, ctx);
+//   }
+//
+//   // Toggle a flag programmatically (e.g. from an admin handler):
+//   await featureFlags.setFlag('ENABLE_VERBOSE_ERRORS', true);
+//
+//   // Inject into WorkerCompiler for compiler-level feature gating:
+//   const compiler = new WorkerCompiler({
+//       dependencies: { featureFlagService: featureFlags },
+//   });
+//
+// See: docs/feature-flags/KV_FEATURE_FLAGS.md
+
+// ============================================================================
 // Worker handler
 // ============================================================================
 
