@@ -115,6 +115,77 @@ export const BatchCompileResponseSchema = z.object({
     error: z.string().optional(),
 });
 
+// ---------------------------------------------------------------------------
+// AST Viewer — strongly-typed parse response schemas
+// ---------------------------------------------------------------------------
+
+export const AstRuleNetworkPropertiesSchema = z.object({
+    pattern: z.string(),
+    isException: z.boolean(),
+    modifiers: z.array(z.object({
+        name: z.string(),
+        value: z.string().nullable(),
+        exception: z.boolean(),
+    })),
+});
+
+export const AstRuleCosmeticPropertiesSchema = z.object({
+    domains: z.array(z.string()),
+    separator: z.string(),
+    isException: z.boolean(),
+    body: z.string(),
+    ruleType: z.string(),
+});
+
+export const AstRuleHostPropertiesSchema = z.object({
+    ip: z.string(),
+    hostnames: z.array(z.string()),
+    comment: z.string().nullable(),
+});
+
+export const AstRuleCommentPropertiesSchema = z.object({
+    text: z.string(),
+    header: z.string().optional(),
+    value: z.string().optional(),
+});
+
+export const AstRulePropertiesSchema = z.object({
+    network: AstRuleNetworkPropertiesSchema.optional(),
+    cosmetic: AstRuleCosmeticPropertiesSchema.optional(),
+    host: AstRuleHostPropertiesSchema.optional(),
+    comment: AstRuleCommentPropertiesSchema.optional(),
+});
+
+export const ParsedRuleInfoSchema = z.object({
+    ruleText: z.string(),
+    success: z.boolean(),
+    error: z.string().optional(),
+    category: z.string().optional(),
+    type: z.string().optional(),
+    syntax: z.string().optional(),
+    valid: z.boolean().optional(),
+    properties: AstRulePropertiesSchema.optional(),
+    ast: z.unknown().optional(),
+});
+export type ParsedRuleInfo = z.infer<typeof ParsedRuleInfoSchema>;
+
+export const AstSummarySchema = z.object({
+    total: z.number(),
+    successful: z.number(),
+    failed: z.number(),
+    byCategory: z.record(z.string(), z.number()),
+    byType: z.record(z.string(), z.number()),
+});
+export type AstSummary = z.infer<typeof AstSummarySchema>;
+
+export const AstParseResponseSchema = z.object({
+    success: z.boolean(),
+    parsedRules: z.array(ParsedRuleInfoSchema),
+    summary: AstSummarySchema.optional(),
+    error: z.string().optional(),
+});
+export type AstParseResponse = z.infer<typeof AstParseResponseSchema>;
+
 export const ASTResultSchema = z.object({
     success: z.boolean(),
     parsedRules: z.unknown(),
