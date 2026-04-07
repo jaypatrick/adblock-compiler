@@ -12,7 +12,7 @@
 /// <reference path="../node_modules/@cloudflare/workers-types/index.d.ts" />
 
 // Types
-import type { Env, QueueMessage } from './types.ts';
+import type { Env, ErrorQueueMessage, QueueMessage } from './types.ts';
 
 // Container class for Cloudflare Containers deployment.
 // @deno-types="./cloudflare-containers-types.d.ts"
@@ -50,6 +50,9 @@ import { handleScheduled } from './handlers/scheduled.ts';
 
 // Queue handler
 import { handleQueue } from './handlers/queue.ts';
+
+// Error dead-letter queue handler
+import { handleErrorQueue } from './handlers/error-queue.ts';
 
 // Services
 import { createDiagnosticsProvider } from './services/diagnostics-factory.ts';
@@ -103,7 +106,11 @@ const workerHandler: WorkerHandler = {
     },
 
     async queue(batch: MessageBatch<unknown>, env: Env): Promise<void> {
-        await handleQueue(batch as MessageBatch<QueueMessage>, env);
+        if (batch.queue === 'adblock-compiler-error-queue') {
+            await handleErrorQueue(batch as MessageBatch<ErrorQueueMessage>, env);
+        } else {
+            await handleQueue(batch as MessageBatch<QueueMessage>, env);
+        }
     },
 
     async scheduled(

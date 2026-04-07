@@ -161,7 +161,7 @@ function applyErrorCorsHeaders(c: AppContext): void {
 export const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
 // ── Global error handler ─────────────────────────────────────────────────────
-app.onError((err, c) => {
+app.onError(async (err, c) => {
     const requestId = c.get('requestId') ?? 'unknown';
     let errorDetails: string;
     if (err instanceof Error) {
@@ -177,6 +177,28 @@ app.onError((err, c) => {
     }
     // deno-lint-ignore no-console
     console.error(`[${requestId}] Unhandled error on ${c.req.method} ${c.req.path}:`, errorDetails);
+
+    // Route error to ERROR_QUEUE for dead-lettering and durable R2 persistence.
+    // Non-blocking: use waitUntil so the HTTP response is not delayed.
+    if (c.env.ERROR_QUEUE) {
+        try {
+            c.executionCtx.waitUntil(
+                c.env.ERROR_QUEUE.send({
+                    type: 'error',
+                    requestId,
+                    timestamp: new Date().toISOString(),
+                    path: c.req.path,
+                    method: c.req.method,
+                    message: err instanceof Error ? err.message : String(err),
+                    stack: err instanceof Error ? err.stack : undefined,
+                    errorDetails,
+                }),
+            );
+        } catch {
+            // Non-fatal: queue send failure must not disrupt the error response.
+        }
+    }
+
     applyErrorCorsHeaders(c);
     return c.json(
         { success: false, error: 'Internal server error', requestId },

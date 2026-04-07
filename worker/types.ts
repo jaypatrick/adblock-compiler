@@ -274,6 +274,9 @@ export interface Env {
     // Queue bindings (optional - queues must be created in Cloudflare dashboard first)
     ADBLOCK_COMPILER_QUEUE?: Queue<QueueMessage>;
     ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY?: Queue<QueueMessage>;
+    // Dedicated error dead-letter queue — isolated from compile queues.
+    // Receives error events from app.onError and persists them to ERROR_BUCKET.
+    ERROR_QUEUE?: Queue<ErrorQueueMessage>;
     // Turnstile configuration
     TURNSTILE_SITE_KEY?: string;
     TURNSTILE_SECRET_KEY?: string;
@@ -323,6 +326,9 @@ export interface Env {
     BROWSER?: BrowserWorker;
     // R2 bucket for browser-rendered screenshots (source monitor)
     FILTER_STORAGE?: R2Bucket;
+    // R2 bucket for error dead-letter logs (NDJSON batches written by handleErrorQueue).
+    // Maps to wrangler.toml [[r2_buckets]] binding = "ERROR_BUCKET".
+    ERROR_BUCKET?: R2Bucket;
     // Playwright MCP Agent Durable Object namespace
     MCP_AGENT?: DurableObjectNamespace;
     // Adblock Compiler container Durable Object namespace
@@ -443,6 +449,26 @@ export interface QueueMessage {
     timestamp: number;
     priority?: Priority;
     group?: string;
+}
+
+// ============================================================================
+// Error Queue Message Types
+// ============================================================================
+
+/**
+ * Message published to ERROR_QUEUE when an unhandled error occurs in the worker.
+ * Batches are consumed by handleErrorQueue() and persisted to ERROR_BUCKET (R2)
+ * as NDJSON for long-term durable log storage.
+ */
+export interface ErrorQueueMessage {
+    readonly type: 'error';
+    readonly requestId: string;
+    readonly timestamp: string;
+    readonly path: string;
+    readonly method: string;
+    readonly message: string;
+    readonly stack?: string;
+    readonly errorDetails: string;
 }
 
 export interface CompileQueueMessage extends QueueMessage {
