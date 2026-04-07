@@ -576,7 +576,8 @@ const convertRuleRoute = createRoute({
         body: {
             content: {
                 'application/json': {
-                    // Mirrors ConvertRuleRequestSchema from worker/schemas.ts
+                    // Route body schema uses @hono/zod-openapi's extended `z` for spec generation.
+                    // Runtime validation is done separately in handleConvertRule via ConvertRuleRequestSchema.
                     schema: z.object({
                         rule: z.string().min(1),
                         targetSyntax: z.enum(['adg', 'ubo']),

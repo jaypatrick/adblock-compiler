@@ -33,12 +33,14 @@ import {
     NetworkRuleType,
     type ParserOptions,
     type PreProcessorCommentRule,
+    RawFilterListConverter,
+    RawRuleConverter,
     RuleCategory,
+    RuleConversionError,
+    RuleConverter,
     RuleGenerator,
     RuleParser,
 } from '@adguard/agtree';
-
-import { RawFilterListConverter, RawRuleConverter, RuleConversionError, RuleConverter } from '@adguard/agtree';
 
 /**
  * Result of parsing a rule with error information.
