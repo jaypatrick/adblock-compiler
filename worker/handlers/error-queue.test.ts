@@ -264,6 +264,12 @@ Deno.test('handleErrorQueue - handles empty batch gracefully', async () => {
 
     await handleErrorQueue(batch, env);
 
-    // No R2 write for empty batch
-    assertEquals(calls.length, 0);
+    const list = await r2.list();
+    const obj = await r2.get(list.objects[0].key);
+    const metadata = obj!.customMetadata;
+    assertExists(metadata);
+
+    assertEquals(metadata.errorCount, '1');
+    assertEquals(!!metadata.batchId, true);
+    assertEquals(!!metadata.dateKey, true);
 });
