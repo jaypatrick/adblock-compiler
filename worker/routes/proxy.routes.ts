@@ -131,9 +131,10 @@ async function fetchAndCache(url: string, env: Env): Promise<string> {
         clearTimeout(timeoutId);
     }
 
-    // Populate KV cache (non-blocking)
+    // Populate KV cache (non-blocking — failures are silently dropped to avoid
+    // disrupting the proxy response; KV errors are expected to be transient)
     if (env.COMPILATION_CACHE) {
-        env.COMPILATION_CACHE.put(cacheKey, content, { expirationTtl: PROXY_CACHE_TTL_SECONDS }).catch(() => undefined);
+        env.COMPILATION_CACHE.put(cacheKey, content, { expirationTtl: PROXY_CACHE_TTL_SECONDS }).catch((_err) => undefined);
     }
 
     return content;
@@ -225,6 +226,8 @@ proxyRoutes.openapi(proxyFetchRoute, async (c) => {
     if (isAnonymous) {
         const token = turnstileToken ?? c.req.header('X-Turnstile-Token') ?? '';
         const tsErr = await verifyTurnstileInline(c, token);
+        // Hono OpenAPI type system cannot express a narrowed Response return here —
+        // the as any cast is intentional and consistent with other route handlers.
         // deno-lint-ignore no-explicit-any
         if (tsErr) return tsErr as any;
     }
@@ -247,6 +250,8 @@ proxyRoutes.openapi(proxyFetchRoute, async (c) => {
     // ── Fetch (with KV cache) ──────────────────────────────────────────────
     try {
         const content = await fetchAndCache(url, c.env);
+        // Plain text response — Hono OpenAPI typing requires `as any` for non-JSON returns.
+        // deno-lint-ignore no-explicit-any
         return new Response(content, {
             status: 200,
             headers: {
@@ -254,7 +259,6 @@ proxyRoutes.openapi(proxyFetchRoute, async (c) => {
                 'Cache-Control': `public, max-age=${PROXY_CACHE_TTL_SECONDS}`,
                 'X-Proxy-Source': 'adblock-compiler-proxy',
             },
-            // deno-lint-ignore no-explicit-any
         }) as any;
     } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

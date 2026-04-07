@@ -214,7 +214,7 @@ export class LocalCompilerService {
             const handleError = (error: ErrorEvent) => {
                 this.worker?.removeEventListener('message', handleMessage);
                 this.worker?.removeEventListener('error', handleError);
-                reject(new Error(error.message ?? 'Web Worker error'));
+                reject(new Error(error.message || 'Web Worker error'));
             };
 
             this.worker.addEventListener('message', handleMessage);

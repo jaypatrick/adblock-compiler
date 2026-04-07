@@ -75,11 +75,12 @@ self.onmessage = async (event: MessageEvent<LocalCompileMessage>) => {
         postMessage({ type: 'progress', phase: 'Initialising compiler', percent: 5 } as LocalProgressMessage);
 
         // Dynamic import — lazy-loads the compiler bundle only when needed.
-        // NOTE: @jk-com/adblock-compiler must be available in the browser bundle.
-        // It is distributed via JSR and must be added to the frontend dependencies
-        // (e.g. via `pnpm add @jsr/jk-com__adblock-compiler`) before this worker
-        // can be used in production.
-        // @ts-expect-error — package installed at runtime; not in devDependencies
+        // NOTE: @jk-com/adblock-compiler is a production dependency that must be
+        // installed before building for production (e.g. via
+        // `pnpm add @jsr/jk-com__adblock-compiler`). The @ts-expect-error below
+        // suppresses a type-check error in CI environments where the package has
+        // not yet been added to the frontend devDependencies.
+        // @ts-expect-error — not yet in devDependencies; must be added before production use
         const mod = await import('@jk-com/adblock-compiler') as {
             WorkerCompiler: new (options: { fetcher: unknown }) => {
                 compile(config: unknown): Promise<{ rules: string[] }>;

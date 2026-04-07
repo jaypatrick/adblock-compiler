@@ -187,7 +187,7 @@ interface Preset {
                 </mat-card-actions>
             </mat-card>
         }
-        } <!-- end @if cloud -->
+        }
 
         <!-- Local compilation progress (local mode only) -->
         @if (executionEnv() === 'local' && localCompilerService.isCompiling()) {
