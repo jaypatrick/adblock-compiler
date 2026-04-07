@@ -137,6 +137,9 @@ bucket_name = "adblock-compiler-r2-storage"
 binding = "COMPILER_LOGS"
 bucket_name = "adblock-compiler-logs"
 
+# ERROR_BUCKET — dedicated R2 bucket for error dead-letter logs.
+# Written by handleErrorQueue() as NDJSON batches under errors/YYYY/MM/DD/HH/.
+# Create with: wrangler r2 bucket create adblock-compiler-error-logs
 [[r2_buckets]]
 binding = "ERROR_BUCKET"
 bucket_name = "adblock-compiler-error-logs"
@@ -241,6 +244,8 @@ binding = "ADBLOCK_COMPILER_QUEUE"
 queue = "adblock-compiler-worker-queue-high-priority"
 binding = "ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY"
 
+# ERROR_QUEUE — dedicated dead-letter queue, isolated from compile queues.
+# Receives error events from app.onError(); consumer persists batches to ERROR_BUCKET.
 [[queues.producers]]
 queue = "adblock-compiler-error-queue"
 binding = "ERROR_QUEUE"
@@ -257,11 +262,11 @@ max_batch_size = 5
 max_batch_timeout = 2
 dead_letter_queue = "adblock-compiler-dlq"
 
+# Error queue consumer — small batches, short timeout for fast R2 persistence.
 [[queues.consumers]]
 queue = "adblock-compiler-error-queue"
-max_batch_size = 10
-max_batch_timeout = 30
-max_retries = 3
+max_batch_size = 25
+max_batch_timeout = 10
 
 # ─── Analytics Engine ────────────────────────────────────────────────────────
 [[analytics_engine_datasets]]
