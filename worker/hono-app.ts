@@ -161,11 +161,15 @@ function applyErrorCorsHeaders(c: AppContext): void {
 export const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
 // ── Global error handler ─────────────────────────────────────────────────────
-app.onError((err, c) => {
+app.onError(async (err, c) => {
     const requestId = c.get('requestId') ?? 'unknown';
+    const env = c.env;
     let errorDetails: string;
+    let errorStack: string | undefined;
+
     if (err instanceof Error) {
-        errorDetails = err.stack || err.message || String(err);
+        errorDetails = err.message || String(err);
+        errorStack = err.stack;
     } else if (typeof err === 'string') {
         errorDetails = err;
     } else {
@@ -175,8 +179,35 @@ app.onError((err, c) => {
             errorDetails = String(err);
         }
     }
+
     // deno-lint-ignore no-console
     console.error(`[${requestId}] Unhandled error on ${c.req.method} ${c.req.path}:`, errorDetails);
+
+    // Enqueue error to ERROR_QUEUE for durable logging
+    if (env.ERROR_QUEUE) {
+        try {
+            const errorMessage: import('./types.ts').ErrorQueueMessage = {
+                errorId: generateRequestId('error'),
+                timestamp: Date.now(),
+                method: c.req.method,
+                path: c.req.path,
+                requestId,
+                errorMessage: errorDetails,
+                errorStack,
+                clientIp: c.req.raw.headers.get('CF-Connecting-IP') || undefined,
+                userAgent: c.req.raw.headers.get('User-Agent') || undefined,
+                userId: c.get('authContext')?.userId || undefined,
+                tier: c.get('authContext')?.tier || undefined,
+            };
+
+            await env.ERROR_QUEUE.send(errorMessage);
+        } catch (queueError) {
+            // Log but don't fail the error response if queue send fails
+            // deno-lint-ignore no-console
+            console.error(`[${requestId}] Failed to enqueue error:`, queueError);
+        }
+    }
+
     applyErrorCorsHeaders(c);
     return c.json(
         { success: false, error: 'Internal server error', requestId },

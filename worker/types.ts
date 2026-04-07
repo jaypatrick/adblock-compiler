@@ -274,6 +274,8 @@ export interface Env {
     // Queue bindings (optional - queues must be created in Cloudflare dashboard first)
     ADBLOCK_COMPILER_QUEUE?: Queue<QueueMessage>;
     ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY?: Queue<QueueMessage>;
+    // Error queue binding for dead-lettering and durable error logs
+    ERROR_QUEUE?: Queue<ErrorQueueMessage>;
     // Turnstile configuration
     TURNSTILE_SITE_KEY?: string;
     TURNSTILE_SECRET_KEY?: string;
@@ -323,6 +325,10 @@ export interface Env {
     BROWSER?: BrowserWorker;
     // R2 bucket for browser-rendered screenshots (source monitor)
     FILTER_STORAGE?: R2Bucket;
+    // R2 bucket for durable error logs
+    ERROR_BUCKET?: R2Bucket;
+    // R2 bucket for compiler logs
+    COMPILER_LOGS?: R2Bucket;
     // Playwright MCP Agent Durable Object namespace
     MCP_AGENT?: DurableObjectNamespace;
     // Adblock Compiler container Durable Object namespace
@@ -465,6 +471,24 @@ export interface BatchCompileQueueMessage extends QueueMessage {
 export interface CacheWarmQueueMessage extends QueueMessage {
     type: 'cache-warm';
     configurations: IConfiguration[];
+}
+
+// ============================================================================
+// Error Queue Message Types
+// ============================================================================
+
+export interface ErrorQueueMessage {
+    errorId: string;
+    timestamp: number;
+    method: string;
+    path: string;
+    requestId: string;
+    errorMessage: string;
+    errorStack?: string;
+    clientIp?: string;
+    userAgent?: string;
+    userId?: string;
+    tier?: UserTier;
 }
 
 // ============================================================================
