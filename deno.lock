@@ -20,7 +20,7 @@
     "jsr:@std/yaml@*": "1.0.10",
     "jsr:@std/yaml@^1.0.12": "1.0.12",
     "jsr:@zod/zod@^4.3.6": "4.3.6",
-    "npm:@adguard/agtree@^4.0.1": "4.0.1",
+    "npm:@adguard/agtree@^4.0.4": "4.0.4",
     "npm:@cloudflare/containers@~0.1.1": "0.1.1",
     "npm:@cloudflare/playwright-mcp@^0.0.5": "0.0.5_@cloudflare+workers-types@4.20260317.1",
     "npm:@cloudflare/playwright@^1.2.0": "1.2.0",
@@ -28,7 +28,7 @@
     "npm:@hono/zod-openapi@^1.2.2": "1.2.2_hono@4.12.8_zod@4.3.6",
     "npm:@hono/zod-validator@~0.4.3": "0.4.3_hono@4.12.8_zod@4.3.6",
     "npm:@neondatabase/serverless@0.10": "0.10.4",
-    "npm:@opentelemetry/api@^1.9.0": "1.9.0",
+    "npm:@opentelemetry/api@^1.9.1": "1.9.1",
     "npm:@prisma/adapter-d1@^7.5.0": "7.5.0",
     "npm:@prisma/adapter-pg@^7.5.0": "7.5.0",
     "npm:@prisma/client@^7.5.0": "7.5.0_prisma@7.5.0__typescript@6.0.2_typescript@6.0.2",
@@ -38,8 +38,8 @@
     "npm:@trpc/client@^11.15.1": "11.15.1_@trpc+server@11.15.1__typescript@6.0.2_typescript@6.0.2",
     "npm:@trpc/server@^11.15.1": "11.15.1_typescript@6.0.2",
     "npm:agents@0.8": "0.8.1_ai@6.0.138__zod@4.3.6_react@19.2.4_zod@4.3.6_@cloudflare+workers-types@4.20260317.1",
-    "npm:better-auth@^1.5.5": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2",
-    "npm:better-auth@^1.5.6": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2",
+    "npm:better-auth@^1.5.5": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_@opentelemetry+api@1.9.1",
+    "npm:better-auth@^1.5.6": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_@opentelemetry+api@1.9.1",
     "npm:cloudflare@5.2.0": "5.2.0",
     "npm:cloudflare@^5.2.0": "5.2.0",
     "npm:hono@^4.12.8": "4.12.8",
@@ -122,8 +122,8 @@
     }
   },
   "npm": {
-    "@adguard/agtree@4.0.1": {
-      "integrity": "sha512-rqIWmwzd51GisUxWzXsvmGBZpY5gyQA/CwzicBWyZKDG/BOXA+N74RUSTjotuewFkwmiu/pZT+9vlbBAjFSawA==",
+    "@adguard/agtree@4.0.4": {
+      "integrity": "sha512-KKT6Trau8dYJCmfLSihcKCk/kTVQ5qWHVO/chhNR+eSx3pJjZGJ+qLVkp1LCPdnccWIzWCO0b8a0nz0RhdhbMg==",
       "dependencies": [
         "@adguard/css-tokenizer",
         "camelcase-keys",
@@ -225,13 +225,13 @@
     "@babel/runtime@7.28.6": {
       "integrity": "sha512-05WQkdpL9COIMz4LjTxGpPNCdlpyimKppYNoJ5Di5EUObifl8t4tuLuUBBZEpoLYOmfvIWrsp9fCl0HoPRVTdA=="
     },
-    "@better-auth/core@1.5.6_@better-auth+utils@0.3.1_@better-fetch+fetch@1.1.21_@cloudflare+workers-types@4.20260317.1_@opentelemetry+api@1.9.0_better-call@1.3.2__zod@4.3.6_jose@6.2.1_kysely@0.28.14_nanostores@1.2.0": {
+    "@better-auth/core@1.5.6_@better-auth+utils@0.3.1_@better-fetch+fetch@1.1.21_@cloudflare+workers-types@4.20260317.1_@opentelemetry+api@1.9.1_better-call@1.3.2__zod@4.3.6_jose@6.2.1_kysely@0.28.14_nanostores@1.2.0": {
       "integrity": "sha512-Ez9DZdIMFyxHremmoLz1emFPGNQomDC1jqqBPnZ6Ci+6TiGN3R9w/Y03cJn6I8r1ycKgOzeVMZtJ/erOZ27Gsw==",
       "dependencies": [
         "@better-auth/utils",
         "@better-fetch/fetch",
         "@cloudflare/workers-types",
-        "@opentelemetry/api",
+        "@opentelemetry/api@1.9.1",
         "@opentelemetry/semantic-conventions",
         "@standard-schema/spec",
         "better-call",
@@ -244,14 +244,14 @@
         "@cloudflare/workers-types"
       ]
     },
-    "@better-auth/drizzle-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.0__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_@better-fetch+fetch@1.1.21_@cloudflare+workers-types@4.20260317.1_@opentelemetry+api@1.9.0_better-call@1.3.2__zod@4.3.6_jose@6.2.1_kysely@0.28.14_nanostores@1.2.0": {
+    "@better-auth/drizzle-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.1__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_@opentelemetry+api@1.9.1": {
       "integrity": "sha512-VfFFmaoFw3ug12SiSuIwzrMoHyIVmkMGWm9gZ4sXdYYVX4HboCL4m3fjzOhppcmK5OGatRuU+N1UX6wxCITcXw==",
       "dependencies": [
         "@better-auth/core",
         "@better-auth/utils"
       ]
     },
-    "@better-auth/kysely-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.0__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_kysely@0.28.14_@better-fetch+fetch@1.1.21_@cloudflare+workers-types@4.20260317.1_@opentelemetry+api@1.9.0_better-call@1.3.2__zod@4.3.6_jose@6.2.1_nanostores@1.2.0": {
+    "@better-auth/kysely-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.1__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_kysely@0.28.14_@opentelemetry+api@1.9.1": {
       "integrity": "sha512-Fnf+h8WVKtw6lEOmVmiVVzDf3shJtM60AYf9XTnbdCeUd6MxN/KnaJZpkgtYnRs7a+nwtkVB+fg4lGETebGFXQ==",
       "dependencies": [
         "@better-auth/core",
@@ -262,21 +262,21 @@
         "kysely"
       ]
     },
-    "@better-auth/memory-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.0__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_@better-fetch+fetch@1.1.21_@cloudflare+workers-types@4.20260317.1_@opentelemetry+api@1.9.0_better-call@1.3.2__zod@4.3.6_jose@6.2.1_kysely@0.28.14_nanostores@1.2.0": {
+    "@better-auth/memory-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.1__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_@opentelemetry+api@1.9.1": {
       "integrity": "sha512-rS7ZsrIl5uvloUgNN0u9LOZJMMXnsZXVdUZ3MrTBKWM2KpoJjzPr9yN3Szyma5+0V7SltnzSGHPkYj2bEzzmlA==",
       "dependencies": [
         "@better-auth/core",
         "@better-auth/utils"
       ]
     },
-    "@better-auth/mongo-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.0__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_@better-fetch+fetch@1.1.21_@cloudflare+workers-types@4.20260317.1_@opentelemetry+api@1.9.0_better-call@1.3.2__zod@4.3.6_jose@6.2.1_kysely@0.28.14_nanostores@1.2.0": {
+    "@better-auth/mongo-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.1__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_@opentelemetry+api@1.9.1": {
       "integrity": "sha512-6+M3MS2mor8fTUV3EI1FBLP0cs6QfbN+Ovx9+XxR/GdfKIBoNFzmPEPRbdGt+ft6PvrITsUm+T70+kkHgVSP6w==",
       "dependencies": [
         "@better-auth/core",
         "@better-auth/utils"
       ]
     },
-    "@better-auth/prisma-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.0__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_prisma@7.5.0__typescript@6.0.2_typescript@6.0.2": {
+    "@better-auth/prisma-adapter@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.1__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@better-auth+utils@0.3.1_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_prisma@7.5.0__typescript@6.0.2_@opentelemetry+api@1.9.1": {
       "integrity": "sha512-UxY9vQJs1Tt+O+T2YQnseDMlWmUSQvFZSBb5YiFRg7zcm+TEzujh4iX2/csA0YiZptLheovIuVWTP9nriewEBA==",
       "dependencies": [
         "@better-auth/core",
@@ -289,7 +289,7 @@
         "prisma"
       ]
     },
-    "@better-auth/telemetry@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.0__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@cloudflare+workers-types@4.20260317.1_@opentelemetry+api@1.9.0_better-call@1.3.2__zod@4.3.6_jose@6.2.1_kysely@0.28.14_nanostores@1.2.0": {
+    "@better-auth/telemetry@1.5.6_@better-auth+core@1.5.6__@better-auth+utils@0.3.1__@better-fetch+fetch@1.1.21__@cloudflare+workers-types@4.20260317.1__@opentelemetry+api@1.9.1__better-call@1.3.2___zod@4.3.6__jose@6.2.1__kysely@0.28.14__nanostores@1.2.0_@opentelemetry+api@1.9.1": {
       "integrity": "sha512-yXC7NSxnIFlxDkGdpD7KA+J9nqIQAPCJKe77GoaC5bWoe/DALo1MYorZfTgOafS7wrslNtsPT4feV/LJi1ubqQ==",
       "dependencies": [
         "@better-auth/core",
@@ -815,6 +815,9 @@
     "@opentelemetry/api@1.9.0": {
       "integrity": "sha512-3giAOQvZiH5F9bMlMiv8+GSPMeqg0dbaeo58/0SlA9sxSqZhnUtxzX9/2FzyhS9sWQf5S0GJE0AKBrFqjpeYcg=="
     },
+    "@opentelemetry/api@1.9.1": {
+      "integrity": "sha512-gLyJlPHPZYdAk1JENA9LeHejZe1Ti77/pTeFm/nMXmQH/HFZlcS/O2XJB+L8fkbrNSqhdtlvjBVjxwUYanNH5Q=="
+    },
     "@opentelemetry/semantic-conventions@1.40.0": {
       "integrity": "sha512-cifvXDhcqMwwTlTK04GBNeIe7yyo28Mfby85QXFe1Yk8nmi36Ab/5UQwptOx84SsoGNRg+EVSjwzfSZMy6pmlw=="
     },
@@ -1008,7 +1011,7 @@
       "integrity": "sha512-l0IuXDSLzck++Qyl4IlxrpKO7NVEe0zHXazrnHUAvwM+WPbo1XQ7RwArD67LVTkLmjZjrAc4GZ9gieUkaZWYfg==",
       "dependencies": [
         "@cloudflare/workers-types",
-        "@opentelemetry/api",
+        "@opentelemetry/api@1.9.1",
         "@sentry/core"
       ],
       "optionalPeers": [
@@ -1152,7 +1155,7 @@
         "@ai-sdk/provider-utils@2.2.8_zod@3.25.76",
         "@ai-sdk/react",
         "@ai-sdk/ui-utils",
-        "@opentelemetry/api",
+        "@opentelemetry/api@1.9.0",
         "jsondiffpatch",
         "react",
         "zod@3.25.76"
@@ -1167,7 +1170,7 @@
         "@ai-sdk/gateway",
         "@ai-sdk/provider@3.0.8",
         "@ai-sdk/provider-utils@4.0.21_zod@4.3.6",
-        "@opentelemetry/api",
+        "@opentelemetry/api@1.9.0",
         "zod@4.3.6"
       ]
     },
@@ -1207,7 +1210,7 @@
     "aws-ssl-profiles@1.1.2": {
       "integrity": "sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g=="
     },
-    "better-auth@1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2": {
+    "better-auth@1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_@opentelemetry+api@1.9.1": {
       "integrity": "sha512-QSpJTqaT1XVfWRQe/fm3PgeuwOIlz1nWX/Dx7nsHStJ382bLzmDbQk2u7IT0IJ6wS5SRxfqEE1Ev9TXontgyAQ==",
       "dependencies": [
         "@better-auth/core",
@@ -2934,7 +2937,7 @@
       "jsr:@std/testing@^1.0.17",
       "jsr:@std/yaml@^1.0.12",
       "jsr:@zod/zod@^4.3.6",
-      "npm:@adguard/agtree@^4.0.1",
+      "npm:@adguard/agtree@^4.0.4",
       "npm:@cloudflare/containers@~0.1.1",
       "npm:@cloudflare/playwright-mcp@^0.0.5",
       "npm:@cloudflare/playwright@^1.2.0",
@@ -2956,7 +2959,7 @@
     ],
     "packageJson": {
       "dependencies": [
-        "npm:@adguard/agtree@^4.0.1",
+        "npm:@adguard/agtree@^4.0.4",
         "npm:@cloudflare/containers@~0.1.1",
         "npm:@cloudflare/playwright-mcp@^0.0.5",
         "npm:@cloudflare/playwright@^1.2.0",
@@ -2964,7 +2967,7 @@
         "npm:@hono/zod-openapi@^1.2.2",
         "npm:@hono/zod-validator@~0.4.3",
         "npm:@neondatabase/serverless@0.10",
-        "npm:@opentelemetry/api@^1.9.0",
+        "npm:@opentelemetry/api@^1.9.1",
         "npm:@prisma/adapter-d1@^7.5.0",
         "npm:@prisma/adapter-pg@^7.5.0",
         "npm:@prisma/client@^7.5.0",
