@@ -22,9 +22,10 @@ import type { PrismaClient } from '../../prisma/generated/client.ts';
 /**
  * Hono context variables set by middleware and available in route handlers.
  *
- * `prisma` is set by the global `prismaMiddleware` in `hono-app.ts` when
- * `HYPERDRIVE` is configured.  Always guard: `c.get('prisma')` may be `undefined`
- * in local dev without a Hyperdrive binding, unit tests, or static-asset requests.
+ * `prisma` is set by the global inline middleware in `hono-app.ts` (routes
+ * sub-app) when `HYPERDRIVE` is configured.  Always guard: `c.get('prisma')`
+ * may be `undefined` in local dev without a Hyperdrive binding, unit tests,
+ * or static-asset requests.
  */
 export interface Variables {
     authContext: IAuthContext;
@@ -32,7 +33,7 @@ export interface Variables {
     requestId: string;
     ip: string;
     isSSR: boolean; // true when the request originated from the SSR Worker via env.API.fetch()
-    /** Request-scoped PrismaClient — set by prismaMiddleware() when HYPERDRIVE is bound. */
+    /** Request-scoped PrismaClient — set by the global inline middleware in hono-app.ts when HYPERDRIVE is bound. */
     prisma?: InstanceType<typeof PrismaClient>;
 }
 

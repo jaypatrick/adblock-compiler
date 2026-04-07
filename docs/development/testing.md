@@ -96,6 +96,10 @@ import { stub } from '@std/testing/mock';
 
 Deno.test('returns user from prisma', async (t) => {
     const mockPrisma = { user: { findUnique: () => Promise.resolve({ id: 'u1' }) } };
+    // `using` requires TypeScript 5.2+ with `"lib"` including `"esnext.disposable"`.
+    // For older setups use the explicit pattern:
+    //   const s = stub(_internals, 'createPrismaClient', () => mockPrisma as never);
+    //   try { /* test body */ } finally { s.restore(); }
     using _ = stub(_internals, 'createPrismaClient', () => mockPrisma as never);
     // ... rest of test
 });

@@ -122,6 +122,10 @@ export class AuthedApiClientService {
      * Always includes `X-Trace-ID` for end-to-end log correlation.
      *
      * Throws if the user is signed in but no token is available (session expired).
+     *
+     * Note: when the user is NOT signed in, no Authorization header is attached.
+     * The Worker enforces authentication — unauthenticated calls to protected
+     * endpoints will receive a 401 response.
      */
     private async getHeaders(): Promise<Record<string, string>> {
         const headers: Record<string, string> = {
@@ -142,6 +146,15 @@ export class AuthedApiClientService {
         return headers;
     }
 
+    /**
+     * Reads the error message from a non-ok Response body.
+     * Falls back to `res.statusText` if the body cannot be parsed as JSON.
+     */
+    private async parseErrorMessage(res: Response): Promise<string> {
+        const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+        return err.error ?? res.statusText;
+    }
+
     // ── Authenticated endpoint wrappers ────────────────────────────────────────
 
     /**
@@ -159,8 +172,8 @@ export class AuthedApiClientService {
             body: JSON.stringify(request),
         });
         if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-            throw new Error(`POST /compile failed (${res.status}): ${err.error ?? res.statusText}`);
+            const msg = await this.parseErrorMessage(res);
+            throw new Error(`POST /compile failed (${res.status}): ${msg}`);
         }
         return res.json() as Promise<CompileResponseData>;
     }
@@ -180,8 +193,8 @@ export class AuthedApiClientService {
             body: JSON.stringify(request),
         });
         if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-            throw new Error(`POST /validate failed (${res.status}): ${err.error ?? res.statusText}`);
+            const msg = await this.parseErrorMessage(res);
+            throw new Error(`POST /validate failed (${res.status}): ${msg}`);
         }
         return res.json() as Promise<ValidateResponseData>;
     }
@@ -201,8 +214,8 @@ export class AuthedApiClientService {
             body: JSON.stringify(request),
         });
         if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-            throw new Error(`POST /validate-rule failed (${res.status}): ${err.error ?? res.statusText}`);
+            const msg = await this.parseErrorMessage(res);
+            throw new Error(`POST /validate-rule failed (${res.status}): ${msg}`);
         }
         return res.json() as Promise<ValidateRuleResponseData>;
     }
@@ -221,8 +234,8 @@ export class AuthedApiClientService {
             headers,
         });
         if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-            throw new Error(`GET /rules failed (${res.status}): ${err.error ?? res.statusText}`);
+            const msg = await this.parseErrorMessage(res);
+            throw new Error(`GET /rules failed (${res.status}): ${msg}`);
         }
         return res.json() as Promise<RulesListData>;
     }
@@ -242,8 +255,8 @@ export class AuthedApiClientService {
             body: JSON.stringify(request),
         });
         if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-            throw new Error(`POST /rules failed (${res.status}): ${err.error ?? res.statusText}`);
+            const msg = await this.parseErrorMessage(res);
+            throw new Error(`POST /rules failed (${res.status}): ${msg}`);
         }
         return res.json() as Promise<{ success: boolean; ruleSet: RuleSetData }>;
     }
@@ -264,8 +277,8 @@ export class AuthedApiClientService {
             body: JSON.stringify(request),
         });
         if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-            throw new Error(`POST /compile/async failed (${res.status}): ${err.error ?? res.statusText}`);
+            const msg = await this.parseErrorMessage(res);
+            throw new Error(`POST /compile/async failed (${res.status}): ${msg}`);
         }
         return res.json() as Promise<AsyncCompileResponseData>;
     }

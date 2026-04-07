@@ -19,8 +19,9 @@
  * `_internals.createPrismaClient(env.HYPERDRIVE.connectionString)` directly.
  *
  * ```typescript
- * // ✅ Preferred — uses the shared request-scoped client
+ * // ✅ Preferred — uses the shared request-scoped client (with required guard)
  * const prisma = c.get('prisma');
+ * if (!prisma) return c.json({ error: 'Database service unavailable' }, 503);
  * // ⚠️  Legacy pattern — still works but creates a second client per request
  * const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
  * ```
