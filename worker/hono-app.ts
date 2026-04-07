@@ -160,13 +160,10 @@ export const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 // ── Global error handler ─────────────────────────────────────────────────────
 app.onError(async (err, c) => {
     const requestId = c.get('requestId') ?? 'unknown';
-    const env = c.env;
     let errorDetails: string;
-    let errorStack: string | undefined;
 
     if (err instanceof Error) {
-        errorDetails = err.message || String(err);
-        errorStack = err.stack;
+        errorDetails = err.stack || err.message || String(err);
     } else if (typeof err === 'string') {
         errorDetails = err;
     } else {
@@ -180,29 +177,30 @@ app.onError(async (err, c) => {
     // deno-lint-ignore no-console
     console.error(`[${requestId}] Unhandled error on ${c.req.method} ${c.req.path}:`, errorDetails);
 
-    // Enqueue error to ERROR_QUEUE for durable logging
-    if (env.ERROR_QUEUE) {
-        try {
-            const errorMessage: import('./types.ts').ErrorQueueMessage = {
-                errorId: generateRequestId('error'),
-                timestamp: Date.now(),
-                method: c.req.method,
-                path: c.req.path,
+    // Route error to ERROR_QUEUE for dead-lettering and durable R2 persistence.
+    // Non-blocking: use waitUntil so the HTTP response is not delayed.
+    // .catch() is chained on the promise itself so async send() rejections are
+    // reliably handled — a try/catch would only catch synchronous throws.
+    if (c.env.ERROR_QUEUE) {
+        c.executionCtx.waitUntil(
+            c.env.ERROR_QUEUE.send({
+                type: 'error',
                 requestId,
-                errorMessage: errorDetails,
-                errorStack,
-                clientIp: c.req.raw.headers.get('CF-Connecting-IP') || undefined,
-                userAgent: c.req.raw.headers.get('User-Agent') || undefined,
-                userId: c.get('authContext')?.userId || undefined,
-                tier: c.get('authContext')?.tier || undefined,
-            };
-
-            await env.ERROR_QUEUE.send(errorMessage);
-        } catch (queueError) {
-            // Log but don't fail the error response if queue send fails
-            // deno-lint-ignore no-console
-            console.error(`[${requestId}] Failed to enqueue error:`, queueError);
-        }
+                timestamp: new Date().toISOString(),
+                path: c.req.path,
+                method: c.req.method,
+                message: err instanceof Error ? err.message : String(err),
+                stack: err instanceof Error ? err.stack : undefined,
+                errorDetails,
+            }).catch((queueErr: unknown) => {
+                // Non-fatal: queue send failure must not disrupt the error response.
+                // deno-lint-ignore no-console
+                console.warn(
+                    `[${requestId}] Failed to enqueue error to ERROR_QUEUE:`,
+                    queueErr instanceof Error ? queueErr.message : String(queueErr),
+                );
+            }),
+        );
     }
 
     applyErrorCorsHeaders(c);
@@ -517,7 +515,8 @@ routes.route('/', workflowRoutes);
 routes.route('/', browserRoutes);
 
 // ── Mount meta routes (API discovery, version info, config) ──────────────────
-app.route('/api', metaRoutes);
+// Routes in metaRoutes use full paths (e.g. /api/version) so mount at '/', not '/api'.
+app.route('/', metaRoutes);
 
 // ── Docs redirect ─────────────────────────────────────────────────────────────
 
