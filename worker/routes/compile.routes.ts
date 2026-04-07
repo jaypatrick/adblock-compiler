@@ -36,10 +36,11 @@ import {
     handleValidate,
 } from '../handlers/compile.ts';
 import { handleValidateRule } from '../handlers/validate-rule.ts';
+import { handleDiff } from '../handlers/diff.ts';
 import { handleWebSocketUpgrade } from '../websocket.ts';
 
 import { BatchRequestAsyncSchema, BatchRequestSyncSchema, CompileRequestSchema } from '../../src/configuration/schemas.ts';
-import { AstParseRequestSchema, ValidateRequestSchema, ValidateRuleRequestSchema } from '../schemas.ts';
+import { AstParseRequestSchema, DiffRequestSchema, ValidateRequestSchema, ValidateRuleRequestSchema } from '../schemas.ts';
 
 export const compileRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
@@ -150,6 +151,17 @@ compileRoutes.post(
     // deno-lint-ignore no-explicit-any
     zValidator('json', ValidateRuleRequestSchema as any, zodValidationError),
     (c) => handleValidateRule(c.req.raw, c.env),
+);
+
+// ── Diff ──────────────────────────────────────────────────────────────────────
+
+compileRoutes.post(
+    '/diff',
+    bodySizeMiddleware(),
+    rateLimitMiddleware(),
+    // deno-lint-ignore no-explicit-any
+    zValidator('json', DiffRequestSchema as any, zodValidationError),
+    (c) => handleDiff(c.req.raw, c.env),
 );
 
 // ── Async compile ─────────────────────────────────────────────────────────────
