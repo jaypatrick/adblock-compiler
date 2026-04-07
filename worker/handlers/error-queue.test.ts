@@ -347,7 +347,7 @@ Deno.test('handleErrorQueue - R2 custom metadata includes batch info', async () 
     const obj = await r2.get(list.objects[0].key);
     const metadata = obj!.customMetadata;
 
-    assertEquals(metadata.errorCount, '1');
-    assertEquals(!!metadata.batchId, true);
-    assertEquals(!!metadata.dateKey, true);
+    assertEquals(metadata?.errorCount, '1');
+    assertEquals(!!metadata?.batchId, true);
+    assertEquals(!!metadata?.dateKey, true);
 });
