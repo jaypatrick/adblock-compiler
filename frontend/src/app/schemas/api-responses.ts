@@ -217,6 +217,8 @@ export const ValidationErrorSchema = z.object({
     errorType: z.string(),
     message: z.string(),
     severity: z.enum(['error', 'warning', 'info']),
+    category: z.string().optional(),
+    syntax: z.string().optional(),
 });
 
 export const ValidationResultSchema = z.object({
@@ -229,6 +231,21 @@ export const ValidationResultSchema = z.object({
     warnings: z.array(ValidationErrorSchema),
     duration: z.string().optional(),
 });
+
+// ---------------------------------------------------------------------------
+// Rule Conversion
+// ---------------------------------------------------------------------------
+
+export const ConvertRuleResponseSchema = z.object({
+    success: z.boolean(),
+    rule: z.string(),
+    targetSyntax: z.enum(['adg', 'ubo']),
+    convertedRules: z.array(z.string()),
+    isConverted: z.boolean(),
+    error: z.string().optional(),
+    duration: z.string(),
+});
+export type ConvertRuleResponse = z.infer<typeof ConvertRuleResponseSchema>;
 
 // ---------------------------------------------------------------------------
 // Utility: safe parse helper

@@ -221,6 +221,43 @@ export class AuthedApiClientService {
     }
 
     /**
+     * POST /api/convert-rule — convert a filter rule to a different syntax.
+     *
+     * Converts between AdGuard and uBlock Origin syntaxes using AGTree.
+     *
+     * @throws If the request fails
+     */
+    async convertRule(request: { rule: string; targetSyntax: 'adg' | 'ubo' }): Promise<{
+        success: boolean;
+        rule: string;
+        targetSyntax: 'adg' | 'ubo';
+        convertedRules: string[];
+        isConverted: boolean;
+        error?: string;
+        duration: string;
+    }> {
+        const headers = await this.getHeaders();
+        const res = await fetch(`${this.workerOrigin}/api/convert-rule`, {
+            method: 'POST',
+            headers: { ...headers, 'Content-Type': 'application/json' },
+            body: JSON.stringify(request),
+        });
+        if (!res.ok) {
+            const msg = await this.parseErrorMessage(res);
+            throw new Error(`POST /convert-rule failed (${res.status}): ${msg}`);
+        }
+        return res.json() as Promise<{
+            success: boolean;
+            rule: string;
+            targetSyntax: 'adg' | 'ubo';
+            convertedRules: string[];
+            isConverted: boolean;
+            error?: string;
+            duration: string;
+        }>;
+    }
+
+    /**
      * GET /api/rules — list saved rule sets for the authenticated user.
      *
      * Requires Free tier or above.

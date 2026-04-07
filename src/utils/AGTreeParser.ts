@@ -38,6 +38,8 @@ import {
     RuleParser,
 } from '@adguard/agtree';
 
+import { RawFilterListConverter, RawRuleConverter, RuleConversionError, RuleConverter } from '@adguard/agtree';
+
 /**
  * Result of parsing a rule with error information.
  */
@@ -112,6 +114,27 @@ export interface CosmeticRuleProperties {
     syntax: AdblockSyntax;
     /** Original rule text */
     ruleText: string;
+}
+
+/**
+ * Target syntax for rule conversion.
+ */
+export type ConversionTarget = 'adg' | 'ubo';
+
+/**
+ * Result of a rule conversion operation.
+ */
+export interface ConversionResult {
+    /** Converted rule text(s) */
+    convertedRules: string[];
+    /** Whether the rule was actually converted (false if already in target syntax) */
+    isConverted: boolean;
+    /** Error message if conversion failed */
+    error?: string;
+    /** Original rule text */
+    originalRule: string;
+    /** Target syntax */
+    targetSyntax: ConversionTarget;
 }
 
 /**
@@ -592,6 +615,68 @@ export class AGTreeParser {
     static isAbpSyntax(rule: AnyRule): boolean {
         return rule.syntax === AdblockSyntax.Abp;
     }
+
+    // =========================================================================
+    // Conversion Methods
+    // =========================================================================
+
+    /**
+     * Convert a rule text to a target adblock syntax using AGTree's converter.
+     *
+     * @param ruleText - The raw rule text to convert
+     * @param target - Target syntax: 'adg' for AdGuard, 'ubo' for uBlock Origin
+     * @returns ConversionResult with converted rules and status
+     */
+    static convertRuleText(ruleText: string, target: ConversionTarget): ConversionResult {
+        try {
+            if (target === 'adg') {
+                const result = RawRuleConverter.convertToAdg(ruleText.trim());
+                return {
+                    convertedRules: result.result,
+                    isConverted: result.isConverted,
+                    originalRule: ruleText,
+                    targetSyntax: target,
+                };
+            }
+            // For uBO target, parse first then convert
+            const parseResult = this.parse(ruleText);
+            if (!parseResult.success || !parseResult.ast) {
+                return {
+                    convertedRules: [],
+                    isConverted: false,
+                    error: parseResult.error ?? 'Failed to parse rule',
+                    originalRule: ruleText,
+                    targetSyntax: target,
+                };
+            }
+            const result = RuleConverter.convertToUbo(parseResult.ast);
+            return {
+                convertedRules: result.result.map((r) => RuleGenerator.generate(r)),
+                isConverted: result.isConverted,
+                originalRule: ruleText,
+                targetSyntax: target,
+            };
+        } catch (err) {
+            const message = err instanceof RuleConversionError ? err.message : err instanceof Error ? err.message : String(err);
+            return {
+                convertedRules: [],
+                isConverted: false,
+                error: message,
+                originalRule: ruleText,
+                targetSyntax: target,
+            };
+        }
+    }
+
+    /**
+     * Convert an entire filter list text to AdGuard syntax.
+     *
+     * @param filterListText - Multi-line filter list content
+     * @returns Object with the converted text and whether any rules were converted
+     */
+    static convertFilterListToAdg(filterListText: string): { result: string; isConverted: boolean } {
+        return RawFilterListConverter.convertToAdg(filterListText);
+    }
 }
 
 // Re-export commonly used types from AGTree for convenience
@@ -616,4 +701,5 @@ export {
     NetworkRuleType,
     type ParserOptions,
     RuleCategory,
+    RuleConversionError,
 };
