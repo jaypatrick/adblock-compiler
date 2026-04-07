@@ -32,6 +32,11 @@
 
 export interface LocalCompileMessage {
     type: 'compile';
+    /**
+     * Shared secret token used to authenticate messages sent to this worker.
+     * The main thread must include this exact token in all messages.
+     */
+    token: string;
     config: {
         name: string;
         sources: Array<{ source: string }>;
@@ -66,11 +71,21 @@ export type LocalWorkerOutMessage = LocalProgressMessage | LocalResultMessage | 
 
 // ── Message handler ───────────────────────────────────────────────────────────
 
+// Shared secret token expected from any message sent to this worker.
+const EXPECTED_TOKEN = 'LOCAL_COMPILER_WORKER_TOKEN';
+
 self.onmessage = async (event: MessageEvent<any>) => {
     const data = event.data;
 
-    // Validate that the incoming message matches the expected compile message shape.
-    if (!data || typeof data !== 'object' || (data as any).type !== 'compile') {
+    // Validate that the incoming message matches the expected compile message shape
+    // and is authenticated with the expected token.
+    if (
+        !data ||
+        typeof data !== 'object' ||
+        (data as any).type !== 'compile' ||
+        typeof (data as any).token !== 'string' ||
+        (data as any).token !== EXPECTED_TOKEN
+    ) {
         return;
     }
 
