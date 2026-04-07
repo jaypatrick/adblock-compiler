@@ -5,26 +5,32 @@
 The Adblock Compiler uses [`hono/client`](https://hono.dev/docs/guides/rpc) to provide
 end-to-end type-safe HTTP calls from the Angular frontend to the Cloudflare Worker.
 
-> **Scope: public endpoints only.**
-> `ApiClientService` covers unauthenticated endpoints (`/api/health`, `/api/version`,
-> `/api/openapi.json`).  Endpoints that require authentication (e.g. `POST /compile`,
-> which requires at least Free tier) must continue to use the existing `HttpClient`-based
-> services so that Angular's HTTP interceptors attach `Authorization: Bearer …` and
-> `X-Trace-ID` headers automatically.
+Two services cover the full API surface:
+
+| Service | File | Scope |
+|---|---|---|
+| `ApiClientService` | `frontend/src/app/services/api-client.ts` | Public (unauthenticated) endpoints |
+| `AuthedApiClientService` | `frontend/src/app/services/authed-api-client.service.ts` | Authenticated endpoints (Bearer + Trace-ID) |
 
 ```mermaid
 sequenceDiagram
     participant A as Angular Component
-    participant S as ApiClientService
+    participant P as ApiClientService (public)
+    participant Q as AuthedApiClientService (authed)
     participant H as hc<AppType>()
     participant W as Cloudflare Worker (Hono)
 
-    A->>S: inject(ApiClientService)
-    S->>H: hc<AppType>(baseUrl)
+    A->>P: inject(ApiClientService)
+    P->>H: hc<AppType>(baseUrl)
     A->>H: client.api.health.$get()
-    H->>W: GET /api/health (public, no auth)
-    W-->>H: JSON response (typed)
-    H-->>A: ClientResponse<HealthResponse>
+    H->>W: GET /api/health (no auth)
+    W-->>A: typed JSON
+
+    A->>Q: inject(AuthedApiClientService)
+    Q->>Q: getHeaders() → Bearer + X-Trace-ID
+    A->>Q: compile(request)
+    Q->>W: POST /api/compile  Authorization: Bearer …  X-Trace-ID: …
+    W-->>A: typed JSON
 ```
 
 ## Architecture
@@ -32,9 +38,10 @@ sequenceDiagram
 | Layer | File | Role |
 |---|---|---|
 | **Worker** | `worker/hono-app.ts` | Exports `AppType = typeof app` |
-| **Shared Types** | `AppType` | Request/response types inferred from routes |
-| **Angular Service** | `frontend/src/app/services/api-client.ts` | Wraps `hc<AppType>()` with Angular DI |
-| **Components** | Any component that needs typed API calls | Injects `ApiClientService` |
+| **Shared Types** | `AppType` in `api-client.ts` | Request/response types for all routes |
+| **Public client** | `frontend/src/app/services/api-client.ts` | `ApiClientService` — unauthenticated endpoints |
+| **Authed client** | `frontend/src/app/services/authed-api-client.service.ts` | `AuthedApiClientService` — authenticated endpoints |
+| **Components** | Any component that needs typed API calls | Injects one or both services |
 
 ## Worker: Exporting `AppType`
 
@@ -49,7 +56,7 @@ export const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 export type AppType = typeof app;
 ```
 
-## Angular: Using the RPC Client
+## Angular: Public RPC Client (`ApiClientService`)
 
 The `ApiClientService` in `frontend/src/app/services/api-client.ts` wraps the `hc<AppType>()` call
 with Angular's dependency injection:
@@ -82,24 +89,107 @@ const res = await this.apiClient.client.api['openapi.json'].$get();
 const spec = await res.json();
 ```
 
-### Authenticated endpoints — use `HttpClient` instead
+## Angular: Authenticated RPC Client (`AuthedApiClientService`)
 
-`POST /compile` and other write endpoints require a Clerk JWT (`Authorization: Bearer …`).
-They must be called via the existing `HttpClient`-based services so that Angular's
-auth interceptor attaches the token automatically:
+The `AuthedApiClientService` uses the same `hc<AppType>()` pattern but injects a
+Bearer token and trace ID header before every call.  Tokens are resolved via
+`AuthFacadeService.getToken()` (reads the Better Auth session cookie) — they are never
+stored in component state or `localStorage`.
+
+### Usage
 
 ```typescript
-// ✅ Correct — auth header attached by interceptor
-this.http.post('/api/compile', body).subscribe(/* ... */);
+import { AuthedApiClientService } from './services/authed-api-client.service';
 
-// ❌ Incorrect — hc() client has no auth wiring
-// this.apiClient.client.compile.$post({ json: body }); // will 401
+@Component({ standalone: true, ... })
+export class CompileComponent {
+  private readonly rpc = inject(AuthedApiClientService);
+
+  async runCompile(): Promise<void> {
+    // Bearer token + X-Trace-ID are injected automatically
+    const result = await this.rpc.compile({
+      configuration: {
+        name: 'My List',
+        sources: [{ source: 'https://easylist.to/easylist/easylist.txt' }],
+        transformations: ['RemoveComments', 'Deduplicate'],
+      },
+    });
+    console.log(result.ruleCount); // number
+  }
+}
 ```
 
-## AppType Evolution
+### Available methods
 
-Currently `AppType` in `api-client.ts` is a minimal inline mirror of the public
-routes the client covers.  As the project matures, replace it with the real type:
+| Method | HTTP | Path | Tier required |
+|---|---|---|---|
+| `compile(request)` | POST | `/api/compile` | Free |
+| `validateRules(request)` | POST | `/api/validate` | Free |
+| `validateRule(request)` | POST | `/api/validate-rule` | Free |
+| `listRules()` | GET | `/api/rules` | Free |
+| `createRuleSet(request)` | POST | `/api/rules` | Free |
+| `compileAsync(request)` | POST | `/api/compile/async` | Pro |
+
+### getHeaders() internals
+
+```typescript
+private async getHeaders(): Promise<Record<string, string>> {
+    const headers: Record<string, string> = {
+        'X-Trace-ID': this.log.sessionId,
+    };
+    if (!this.auth.isSignedIn()) return headers;
+
+    const token = await this.auth.getToken();
+    if (!token) throw new Error('Session token unavailable — please sign in again');
+
+    headers['Authorization'] = `Bearer ${token}`;
+    return headers;
+}
+```
+
+### ZTA compliance
+
+- Token resolved per-call (not cached in the service).
+- Throws with a descriptive message on auth failure.
+- `X-Trace-ID` always set for Worker-side log correlation.
+- Never touches `localStorage` or component state.
+
+### When to use `AuthedApiClientService` vs `HttpClient` services
+
+| Scenario | Recommended service |
+|---|---|
+| Components in the browser + Angular HTTP lifecycle | Either — `AuthedApiClientService` is simpler |
+| SSR / service workers / outside Angular DI | `AuthedApiClientService` (no `HttpClient` dep) |
+| Streaming / WebSocket upgrades | `HttpClient` with `reportProgress: true` |
+| Batch observables / reactive pipelines | `HttpClient` + RxJS (`CompilerService`) |
+
+## AppType
+
+`AppType` in `api-client.ts` covers **all** routes — both public and authenticated.
+This single type is shared by both `ApiClientService` and `AuthedApiClientService`.
+
+```typescript
+export type AppType = {
+    api: {
+        // Public routes
+        health: { $get: () => TypedResponse<HealthResponse> };
+        version: { $get: () => TypedResponse<VersionResponse> };
+        'openapi.json': { $get: () => TypedResponse<Record<string, unknown>> };
+        // Authenticated routes
+        compile: { $post: (opts: { json: CompileRequest }) => TypedResponse<CompileResponse> };
+        validate: { $post: (opts: { json: ValidateRequest }) => TypedResponse<ValidateResponse> };
+        'validate-rule': { $post: (opts: { json: ValidateRuleRequest }) => TypedResponse<ValidateRuleResponse> };
+        rules: {
+            $get: () => TypedResponse<RulesListData>;
+            $post: (opts: { json: RuleSetCreate }) => TypedResponse<{ success: boolean; ruleSet: RuleSetData }>;
+        };
+    };
+};
+```
+
+### AppType evolution
+
+To replace the inline `AppType` with the real worker type:
 
 ```typescript
 // Option A: Direct cross-workspace path import (works during local dev)
@@ -125,7 +215,8 @@ mapping to the Angular `tsconfig.json`:
 ## Server-Timing headers
 
 The Hono worker adds `Server-Timing` headers to every response (via `hono/timing`).
-The Angular `HttpClient`-based services expose these through the response headers:
+
+For `HttpClient`-based services:
 
 ```typescript
 const res = await this.http.post('/api/compile', body, { observe: 'response' }).toPromise();
@@ -133,22 +224,38 @@ const timing = res?.headers.get('Server-Timing');
 // "auth;dur=12.3, handler;dur=245.7"
 ```
 
+For `AuthedApiClientService`, use the raw `ClientResponse`:
+
+```typescript
+const rawRes = await this.rpcClient.api.compile.$post({ json: body }, { headers });
+const timing = rawRes.headers.get('Server-Timing');
+```
+
 ## Route Coverage
 
-The following **public** routes are covered by the typed RPC client:
+### Public routes (`ApiClientService`)
 
-| Method | Path | `ApiClientService` method |
+| Method | Path | Client method |
 |---|---|---|
 | `GET` | `/api/health` | `client.api.health.$get()` |
 | `GET` | `/api/version` | `client.api.version.$get()` |
 | `GET` | `/api/openapi.json` | `client.api['openapi.json'].$get()` |
 
-Additional public routes can be added to `AppType` in `api-client.ts` as needed.
-Authenticated routes must use `HttpClient`-based services with the auth interceptor.
+### Authenticated routes (`AuthedApiClientService`)
+
+| Method | Path | Service method | Tier |
+|---|---|---|---|
+| `POST` | `/api/compile` | `rpc.compile(request)` | Free |
+| `POST` | `/api/validate` | `rpc.validateRules(request)` | Free |
+| `POST` | `/api/validate-rule` | `rpc.validateRule(request)` | Free |
+| `GET` | `/api/rules` | `rpc.listRules()` | Free |
+| `POST` | `/api/rules` | `rpc.createRuleSet(request)` | Free |
+| `POST` | `/api/compile/async` | `rpc.compileAsync(request)` | Pro |
 
 ## References
 
 - [Hono RPC Guide](https://hono.dev/docs/guides/rpc)
 - [`hono/client` API](https://hono.dev/docs/guides/rpc#client)
 - [Worker source — `worker/hono-app.ts`](../../worker/hono-app.ts)
-- [Angular service — `frontend/src/app/services/api-client.ts`](../../frontend/src/app/services/api-client.ts)
+- [Public client — `frontend/src/app/services/api-client.ts`](../../frontend/src/app/services/api-client.ts)
+- [Authed client — `frontend/src/app/services/authed-api-client.service.ts`](../../frontend/src/app/services/authed-api-client.service.ts)
