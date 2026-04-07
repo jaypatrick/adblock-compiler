@@ -37,7 +37,6 @@ import { endTime, startTime, timing } from 'hono/timing';
 import { prettyJSON } from 'hono/pretty-json';
 import { compress } from 'hono/compress';
 import { logger } from 'hono/logger';
-import { cache } from 'hono/cache';
 import { OpenAPIHono } from '@hono/zod-openapi';
 
 // Types
@@ -67,9 +66,6 @@ import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
 import { isPublicEndpoint, matchOrigin } from './utils/cors.ts';
 
-// Handlers (pre-auth meta routes — eagerly imported)
-import { handleAuthProviders } from './handlers/auth-providers.ts';
-
 // tRPC
 import { handleTrpcRequest } from './trpc/handler.ts';
 
@@ -82,11 +78,16 @@ import { apiKeysRoutes } from './routes/api-keys.routes.ts';
 import { browserRoutes } from './routes/browser.routes.ts';
 import { compileRoutes } from './routes/compile.routes.ts';
 import { configurationRoutes } from './routes/configuration.routes.ts';
+import { metaRoutes } from './routes/meta.routes.ts';
 import { monitoringRoutes } from './routes/monitoring.routes.ts';
+import { proxyRoutes } from './routes/proxy.routes.ts';
 import { queueRoutes } from './routes/queue.routes.ts';
 import { rulesRoutes } from './routes/rules.routes.ts';
 import { webhookRoutes } from './routes/webhook.routes.ts';
 import { workflowRoutes } from './routes/workflow.routes.ts';
+
+// Prisma middleware
+import { createPrismaClient } from './lib/prisma.ts';
 
 // Shared types — re-exported for backward compatibility
 export type { Variables } from './routes/shared.ts';
@@ -161,9 +162,10 @@ function applyErrorCorsHeaders(c: AppContext): void {
 export const app = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
 // ── Global error handler ─────────────────────────────────────────────────────
-app.onError((err, c) => {
+app.onError(async (err, c) => {
     const requestId = c.get('requestId') ?? 'unknown';
     let errorDetails: string;
+
     if (err instanceof Error) {
         errorDetails = err.stack || err.message || String(err);
     } else if (typeof err === 'string') {
@@ -175,8 +177,36 @@ app.onError((err, c) => {
             errorDetails = String(err);
         }
     }
+
     // deno-lint-ignore no-console
     console.error(`[${requestId}] Unhandled error on ${c.req.method} ${c.req.path}:`, errorDetails);
+
+    // Route error to ERROR_QUEUE for dead-lettering and durable R2 persistence.
+    // Non-blocking: use waitUntil so the HTTP response is not delayed.
+    // .catch() is chained on the promise itself so async send() rejections are
+    // reliably handled — a try/catch would only catch synchronous throws.
+    if (c.env.ERROR_QUEUE) {
+        c.executionCtx.waitUntil(
+            c.env.ERROR_QUEUE.send({
+                type: 'error',
+                requestId,
+                timestamp: new Date().toISOString(),
+                path: c.req.path,
+                method: c.req.method,
+                message: err instanceof Error ? err.message : String(err),
+                stack: err instanceof Error ? err.stack : undefined,
+                errorDetails,
+            }).catch((queueErr: unknown) => {
+                // Non-fatal: queue send failure must not disrupt the error response.
+                // deno-lint-ignore no-console
+                console.warn(
+                    `[${requestId}] Failed to enqueue error to ERROR_QUEUE:`,
+                    queueErr instanceof Error ? queueErr.message : String(queueErr),
+                );
+            }),
+        );
+    }
+
     applyErrorCorsHeaders(c);
     return c.json(
         { success: false, error: 'Internal server error', requestId },
@@ -413,29 +443,6 @@ app.all('/poc/*', async (c) => {
 });
 
 // ============================================================================
-// Pre-auth API meta routes
-// ============================================================================
-
-async function handleApiMeta(c: AppContext): Promise<Response> {
-    const { routeApiMeta } = await import('./handlers/info.ts');
-    const url = new URL(c.req.url);
-    const res = await routeApiMeta(c.req.path, c.req.raw, url, c.env);
-    return res ?? c.json({ success: false, error: 'Not found' }, 404);
-}
-
-app.get('/api', handleApiMeta);
-app.get('/api/version', cache({ cacheName: 'api-version', cacheControl: 'public, max-age=3600' }), handleApiMeta);
-app.get('/api/schemas', cache({ cacheName: 'api-schemas', cacheControl: 'public, max-age=3600' }), handleApiMeta);
-app.get('/api/deployments', handleApiMeta);
-app.get('/api/deployments/*', handleApiMeta);
-app.get('/api/turnstile-config', handleApiMeta);
-app.get('/api/sentry-config', handleApiMeta);
-// Public: returns which auth providers are active — used by frontend to conditionally render social login buttons.
-// Registered here (after CORS + rate-limiting middleware) so it receives full middleware coverage.
-// The Better Auth /api/auth/* wildcard explicitly passes through for this path.
-app.get('/api/auth/providers', (c) => handleAuthProviders(c.req.raw, c.env));
-
-// ============================================================================
 // Business routes sub-app (with ZTA + permission check middleware)
 // ============================================================================
 
@@ -500,6 +507,20 @@ routes.use('*', async (c, next) => {
 });
 
 // ── Mount domain route modules ────────────────────────────────────────────────
+
+// ── Prisma context — request-scoped PrismaClient via Hyperdrive ───────────────
+// Registered before domain route modules so every handler can access
+// `c.get('prisma')` without creating duplicate clients.
+// Silently skips client creation when HYPERDRIVE is not configured (e.g. local
+// dev without a Hyperdrive binding, unit tests, static-asset requests).
+routes.use('*', async (c, next) => {
+    if (c.env.HYPERDRIVE) {
+        const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
+        c.set('prisma', prisma);
+    }
+    await next();
+});
+
 routes.route('/', compileRoutes);
 routes.route('/', rulesRoutes);
 routes.route('/', queueRoutes);
@@ -510,6 +531,11 @@ routes.route('/', apiKeysRoutes);
 routes.route('/', webhookRoutes);
 routes.route('/', workflowRoutes);
 routes.route('/', browserRoutes);
+routes.route('/', proxyRoutes);
+
+// ── Mount meta routes (API discovery, version info, config) ──────────────────
+// Routes in metaRoutes use full paths (e.g. /api/version) so mount at '/', not '/api'.
+app.route('/', metaRoutes);
 
 // ── Docs redirect ─────────────────────────────────────────────────────────────
 
@@ -552,16 +578,6 @@ export const OPENAPI_DOCUMENT_ARGS = {
 
 app.get('/api/openapi.json', (c) => {
     const spec = app.getOpenAPIDocument(OPENAPI_DOCUMENT_ARGS);
-    if (!spec.paths || Object.keys(spec.paths).length === 0) {
-        return c.json(
-            {
-                error: 'OpenAPI specification is not yet configured for this deployment.',
-                status: 501,
-                detail: 'No OpenAPI routes are currently registered. Migrate key endpoints to use .openapi(createRoute(...)) before relying on this schema.',
-            },
-            501,
-        );
-    }
     return c.json(spec);
 });
 

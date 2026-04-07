@@ -217,3 +217,55 @@ Deno.test('roundtrip fidelity: ≥95% success rate across rule corpus', () => {
     const rate = successes / corpus.length;
     assert(rate >= 0.95, `Roundtrip fidelity ${(rate * 100).toFixed(1)}% is below 95% threshold`);
 });
+
+// ============================================================================
+// Conversion tests — AGTreeParser.convertRuleText()
+// ============================================================================
+
+Deno.test('convertRuleText: uBO scriptlet to AdGuard syntax', () => {
+    const result = AGTreeParser.convertRuleText('example.com##+js(abort-on-property-read, ads)', 'adg');
+    assertEquals(result.isConverted, true);
+    assert(result.convertedRules.length > 0, 'Expected at least one converted rule');
+    assert(result.convertedRules[0].includes('#%#//scriptlet'), 'Expected AdGuard scriptlet syntax');
+    assertEquals(result.error, undefined);
+});
+
+Deno.test('convertRuleText: AdGuard scriptlet to uBO syntax', () => {
+    const result = AGTreeParser.convertRuleText("example.com#%#//scriptlet('abort-on-property-read', 'ads')", 'ubo');
+    assertEquals(result.isConverted, true);
+    assert(result.convertedRules.length > 0, 'Expected at least one converted rule');
+    assert(result.convertedRules[0].includes('##+js('), 'Expected uBO scriptlet syntax');
+    assertEquals(result.error, undefined);
+});
+
+Deno.test('convertRuleText: common network rule to adg — isConverted false', () => {
+    const result = AGTreeParser.convertRuleText('||example.com^$third-party', 'adg');
+    assertEquals(result.isConverted, false);
+    assert(result.convertedRules.length > 0, 'Expected original rule to be returned');
+    assertEquals(result.error, undefined);
+});
+
+Deno.test('convertRuleText: preserves originalRule and targetSyntax fields', () => {
+    const ruleText = '||example.com^';
+    const result = AGTreeParser.convertRuleText(ruleText, 'ubo');
+    assertEquals(result.originalRule, ruleText);
+    assertEquals(result.targetSyntax, 'ubo');
+});
+
+Deno.test('convertRuleText: comment rules pass through without conversion', () => {
+    const result = AGTreeParser.convertRuleText('! This is a comment', 'adg');
+    assert(result.convertedRules.length > 0 || result.error !== undefined, 'Expected result or error');
+});
+
+Deno.test('convertFilterListToAdg: converts mixed-syntax filter list to AdGuard', () => {
+    const filterList = [
+        '||example.com^',
+        '! Comment',
+        'example.com##+js(abort-on-property-read, ads)',
+    ].join('\n');
+    const result = AGTreeParser.convertFilterListToAdg(filterList);
+    assertEquals(typeof result.result, 'string');
+    assertEquals(typeof result.isConverted, 'boolean');
+    assert(result.isConverted, 'Expected isConverted: true when uBO rules are present');
+    assert(result.result.includes('#%#//scriptlet'), 'Expected converted AdGuard scriptlet syntax in output');
+});

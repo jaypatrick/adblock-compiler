@@ -220,7 +220,7 @@ Cloudflare services consumed as Worker bindings (configured in `wrangler.toml`).
 | **Hyperdrive** | `HYPERDRIVE` | ✅ Active | Accelerated connection pooling to external PostgreSQL |
 | **Browser Rendering** | `BROWSER` | ✅ Active | Headless Playwright-based browser for JS-rendered filter sources |
 | **Pipelines** | `METRICS_PIPELINE` | ✅ Active | Batched metrics and audit event ingestion → R2 |
-| **Tail Worker** | `adblock-compiler-tail` | ✅ Active | Log collection and forwarding to external log sink |
+| **Tail Worker** | `adblock-tail` | ✅ Active | Log collection and forwarding to external log sink |
 | **Containers** | `ADBLOCK_COMPILER` | 🔧 Configured | Durable Object container (production only) |
 | **Turnstile** | `TURNSTILE_SECRET_KEY` *(secret)* | ✅ Active | Bot protection / human verification on compilation endpoints |
 | **API Shield** | *(Dashboard)* | 📋 Dashboard | OpenAPI schema validation at edge |

@@ -1,6 +1,6 @@
 {
     "name": "adblock-compiler",
-    "version": "0.79.4",
+    "version": "0.80.0",
     "description": "Compiler-as-a-Service for adblock filter lists",
     "homepage": "https://adblock-compiler.jayson-knight.workers.dev/",
     "type": "module",
@@ -9,7 +9,10 @@
         "ui:dev": "pnpm --filter adblock-frontend run start",
         "ui:test": "pnpm --filter adblock-frontend run test",
         "ui:lint": "pnpm --filter adblock-frontend run lint",
-        "build:worker": "pnpm install && pnpm --filter adblock-frontend run build"
+        "build:worker": "pnpm install && pnpm --filter adblock-frontend run build",
+        "tail": "wrangler tail adblock-compiler --format=pretty",
+        "tail:worker": "wrangler tail adblock-compiler --format=pretty",
+        "tail:tail": "wrangler tail adblock-tail --format=pretty"
     },
     "packageManager": "pnpm@10.31.0",
     "_syncNote": "Dependency versions here must match those pinned in deno.json's import map; keep them in sync (for example via the existing version:sync-style task).",

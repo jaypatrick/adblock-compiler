@@ -119,16 +119,16 @@ To verify, open Chrome DevTools → Network tab, look for the OPTIONS preflight 
 
 ---
 
-### ❹ Is the `adblock-compiler-tail` worker missing?
+### ❹ Is the `adblock-tail` worker missing?
 
 `wrangler.toml` declares:
 
 ```toml
 [[tail_consumers]]
-service = "adblock-compiler-tail"
+service = "adblock-tail"
 ```
 
-If `adblock-compiler-tail` doesn't exist in your Cloudflare account, `wrangler deploy` **will fail silently** or deploy a broken worker. This is the most common cause of a "everything looks fine in code" deployment that still doesn't work.
+If `adblock-tail` doesn't exist in your Cloudflare account, `wrangler deploy` **will fail silently** or deploy a broken worker. This is the most common cause of a "everything looks fine in code" deployment that still doesn't work.
 
 ```bash
 # Deploy the tail worker first (from wrangler.tail.toml)
@@ -190,7 +190,7 @@ All four config endpoints are **intentionally pre-auth** — they expose no secr
 |---|---|---|
 | `"API not available"` on home page | D1 DB binding missing | `wrangler deploy` after confirming D1 namespace exists |
 | `"API not available"` on home page | `CORS_ALLOWED_ORIGINS` secret overrides `[vars]` with stale value | `wrangler secret put CORS_ALLOWED_ORIGINS` |
-| `"API not available"` on home page | `adblock-compiler-tail` service not deployed | Deploy tail worker, then re-deploy main worker |
+| `"API not available"` on home page | `adblock-tail` service not deployed | Deploy tail worker, then re-deploy main worker |
 | `"API not available"` on home page | Angular build missing from ASSETS | Run `sh scripts/build-worker.sh` and re-deploy |
 | `GET /api/version` returns 503 | `DB` D1 binding null | Verify D1 database ID in `wrangler.toml` matches dashboard |
 | `GET /health` shows `auth: degraded` | `CLERK_JWKS_URL` and `JWT_SECRET` both unset | Set `JWT_SECRET` secret or configure Clerk |

@@ -274,6 +274,9 @@ export interface Env {
     // Queue bindings (optional - queues must be created in Cloudflare dashboard first)
     ADBLOCK_COMPILER_QUEUE?: Queue<QueueMessage>;
     ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY?: Queue<QueueMessage>;
+    // Dedicated error dead-letter queue — isolated from compile queues.
+    // Receives error events from app.onError and persists them to ERROR_BUCKET.
+    ERROR_QUEUE?: Queue<ErrorQueueMessage>;
     // Turnstile configuration
     TURNSTILE_SITE_KEY?: string;
     TURNSTILE_SECRET_KEY?: string;
@@ -323,6 +326,11 @@ export interface Env {
     BROWSER?: BrowserWorker;
     // R2 bucket for browser-rendered screenshots (source monitor)
     FILTER_STORAGE?: R2Bucket;
+    // R2 bucket for error dead-letter logs (NDJSON batches written by handleErrorQueue).
+    // Maps to wrangler.toml [[r2_buckets]] binding = "ERROR_BUCKET".
+    ERROR_BUCKET?: R2Bucket;
+    // R2 bucket for compiler logs
+    COMPILER_LOGS?: R2Bucket;
     // Playwright MCP Agent Durable Object namespace
     MCP_AGENT?: DurableObjectNamespace;
     // Adblock Compiler container Durable Object namespace
@@ -339,6 +347,10 @@ export interface Env {
     DYNAMIC_WORKER_LOADER?: import('./dynamic-workers/types.ts').DynamicWorkerLoader;
     // KV namespace for persisted user rule sets (POST/GET/PUT/DELETE /api/rules)
     RULES_KV?: KVNamespace;
+    // Feature flag KV namespace — stores simple on/off flags for the Worker.
+    // Create with: wrangler kv:namespace create FEATURE_FLAGS
+    // Toggle flags at runtime: wrangler kv:key put --binding FEATURE_FLAGS flag:ENABLE_BATCH_STREAMING '{"enabled":true,"updatedAt":"2025-01-01T00:00:00.000Z"}'
+    FEATURE_FLAGS?: KVNamespace;
     // Webhook target URL for POST /api/notify (generic HTTP endpoint)
     WEBHOOK_URL?: string;
     // Datadog API key for POST /api/notify (optional third-party integration)
@@ -443,6 +455,36 @@ export interface QueueMessage {
     timestamp: number;
     priority?: Priority;
     group?: string;
+}
+
+// ============================================================================
+// Error Queue Message Types
+// ============================================================================
+
+/**
+ * Message published to ERROR_QUEUE when an unhandled error occurs in the worker.
+ * Batches are consumed by handleErrorQueue() and persisted to ERROR_BUCKET (R2)
+ * as NDJSON for long-term durable log storage.
+ */
+export interface ErrorQueueMessage {
+    readonly type: 'error';
+    readonly requestId: string;
+    readonly timestamp: string;
+    readonly path: string;
+    readonly method: string;
+    /**
+     * Short human-readable summary of the error (i.e. `Error.message`).
+     * Suitable for dashboards and alert summaries.
+     */
+    readonly message: string;
+    readonly stack?: string;
+    /**
+     * Full serialised error representation.
+     * For `Error` instances this is `Error.stack` (which includes `message`).
+     * For non-Error throws this may be a JSON serialisation or `String(err)`.
+     * Intended for post-incident analysis where the full context is needed.
+     */
+    readonly errorDetails: string;
 }
 
 export interface CompileQueueMessage extends QueueMessage {

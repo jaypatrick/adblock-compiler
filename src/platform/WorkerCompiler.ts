@@ -62,6 +62,17 @@ export interface WorkerCompilerDependencies {
      * `browserConnector` is provided.
      */
     browserBinding?: import('./BrowserFetcher.ts').IBrowserWorker;
+    /**
+     * Feature flag service for toggling features at the edge.
+     *
+     * In production, wire `createFeatureFlagService(env.FEATURE_FLAGS, logger)`
+     * from `worker/services/feature-flag-service.ts`. When absent, all flag
+     * reads default to `false`.
+     *
+     * @see worker/services/feature-flag-service.ts
+     * @see https://openfeature.dev/ — for SaaS provider migration
+     */
+    featureFlagService?: import('./FeatureFlagService.ts').IFeatureFlagService;
 }
 
 /**

@@ -88,7 +88,7 @@ destinations = [ "sentry-traces" ]
 #       All secrets use `wrangler secret put`.
 [vars]
 # Keep in sync with VERSION in src/version.ts. Run `deno task version:sync` to propagate.
-COMPILER_VERSION = "0.79.4"
+COMPILER_VERSION = "0.80.0"
 ENVIRONMENT = "production"
 # Clerk publishable key — uncomment and set to pk_live_... when Clerk is production-ready.
 # To activate Clerk: uncomment both lines below and also set CLERK_JWKS_URL.
@@ -106,6 +106,7 @@ CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787,https://adbl
 URL_FRONTEND = "https://adblock-frontend.jayson-knight.workers.dev"
 URL_API      = "https://adblock-compiler.jayson-knight.workers.dev"
 URL_DOCS     = "https://adblock-compiler-docs.pages.dev"
+URL_LANDING  = "https://adblock-compiler-landing.pages.dev"
 
 # ─── KV Namespaces ───────────────────────────────────────────────────────────
 # `wrangler dev` binds to these live namespaces by default.
@@ -122,6 +123,15 @@ id = "5dc36da36d9142cc9ced6c56328898ee"
 binding = "METRICS"
 id = "025c3f10527c46c0be559f299bdba994"
 
+# FEATURE_FLAGS: KV-backed feature flag store.
+# Toggle flags at runtime without redeployment:
+#   wrangler kv:key put --binding FEATURE_FLAGS flag:ENABLE_BATCH_STREAMING '{"enabled":true,"updatedAt":"2025-01-01T00:00:00.000Z"}'
+# Create with: wrangler kv:namespace create FEATURE_FLAGS
+# See: docs/feature-flags/KV_FEATURE_FLAGS.md
+[[kv_namespaces]]
+binding = "FEATURE_FLAGS"
+id = "your-feature-flags-kv-id"
+
 # RULES_KV: optional dedicated rule-set storage. Worker falls back to
 # COMPILATION_CACHE when absent. Create with:
 #   wrangler kv:namespace create RULES_KV
@@ -135,6 +145,13 @@ bucket_name = "adblock-compiler-r2-storage"
 [[r2_buckets]]
 binding = "COMPILER_LOGS"
 bucket_name = "adblock-compiler-logs"
+
+# ERROR_BUCKET — dedicated R2 bucket for error dead-letter logs.
+# Written by handleErrorQueue() as NDJSON batches under errors/YYYY/MM/DD/HH/.
+# Create with: wrangler r2 bucket create adblock-compiler-error-logs
+[[r2_buckets]]
+binding = "ERROR_BUCKET"
+bucket_name = "adblock-compiler-error-logs"
 
 # ─── Placement ───────────────────────────────────────────────────────────────
 # Smart placement: prefer colos near Neon (Azure East US 2)
@@ -220,13 +237,14 @@ not_found_handling = "single-page-application"
 # Deploy wrangler.tail.toml first; the tail worker must exist in your account
 # before this binding can be registered.
 [[tail_consumers]]
-service = "adblock-compiler-tail"
+service = "adblock-tail"
 
 # ─── Queues ──────────────────────────────────────────────────────────────────
 # Create queues before deploying:
 #   wrangler queues create adblock-compiler-worker-queue
 #   wrangler queues create adblock-compiler-worker-queue-high-priority
 #   wrangler queues create adblock-compiler-dlq
+#   wrangler queues create adblock-compiler-error-queue
 [[queues.producers]]
 queue = "adblock-compiler-worker-queue"
 binding = "ADBLOCK_COMPILER_QUEUE"
@@ -234,6 +252,12 @@ binding = "ADBLOCK_COMPILER_QUEUE"
 [[queues.producers]]
 queue = "adblock-compiler-worker-queue-high-priority"
 binding = "ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY"
+
+# ERROR_QUEUE — dedicated dead-letter queue, isolated from compile queues.
+# Receives error events from app.onError(); consumer persists batches to ERROR_BUCKET.
+[[queues.producers]]
+queue = "adblock-compiler-error-queue"
+binding = "ERROR_QUEUE"
 
 [[queues.consumers]]
 queue = "adblock-compiler-worker-queue"
@@ -246,6 +270,12 @@ queue = "adblock-compiler-worker-queue-high-priority"
 max_batch_size = 5
 max_batch_timeout = 2
 dead_letter_queue = "adblock-compiler-dlq"
+
+# Error queue consumer — small batches, short timeout for fast R2 persistence.
+[[queues.consumers]]
+queue = "adblock-compiler-error-queue"
+max_batch_size = 25
+max_batch_timeout = 10
 
 # ─── Analytics Engine ────────────────────────────────────────────────────────
 [[analytics_engine_datasets]]

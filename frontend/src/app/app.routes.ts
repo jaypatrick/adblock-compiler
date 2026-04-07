@@ -75,6 +75,13 @@ export const routes: Routes = [
         canActivate: [authGuard],
     },
     {
+        path: 'ast-viewer',
+        loadComponent: () => import('./ast-viewer/ast-viewer.component').then((m) => m.AstViewerComponent),
+        title: 'AST Viewer',
+        data: { description: 'View Abstract Syntax Tree of filter rules', metaDescription: 'Examine the Abstract Syntax Tree of adblock filter rules using the AGTree parser with color-coded output.' },
+        canActivate: [authGuard],
+    },
+    {
         path: 'api-docs',
         loadComponent: () => import('./api-docs/api-docs.component').then((m) => m.ApiDocsComponent),
         title: 'API Reference',

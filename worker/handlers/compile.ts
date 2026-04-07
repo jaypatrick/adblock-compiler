@@ -902,27 +902,48 @@ export async function handleValidate(request: Request, env?: Env): Promise<Respo
             errorType: string;
             message: string;
             severity: 'error' | 'warning' | 'info';
+            category?: string;
+            syntax?: string;
         }> = [];
 
         let validRules = 0;
-        const { ASTViewerService } = await import('../../src/services/ASTViewerService.ts');
-        for (let i = 0; i < rules.length; i++) {
-            const rule = rules[i].trim();
-            if (!rule || rule.startsWith('!')) {
+        const { AGTreeParser, RuleCategory } = await import('../../src/utils/AGTreeParser.ts');
+
+        // Use FilterListParser for batch parsing — parses the whole list at once,
+        // preserving line order and leveraging AGTree's InvalidRule diagnostic nodes.
+        const filterListText = rules.join('\n');
+        const filterList = AGTreeParser.parseFilterList(filterListText, { tolerant: true });
+
+        for (let i = 0; i < filterList.children.length; i++) {
+            const ruleNode = filterList.children[i];
+            const originalRule = rules[i] ?? '';
+            const trimmed = originalRule.trim();
+
+            if (!trimmed || ruleNode.category === RuleCategory.Empty) {
                 validRules++;
                 continue;
             }
-            const result = ASTViewerService.parseRule(rule);
-            if (result.success) {
+
+            // Comments are always valid
+            if (ruleNode.category === RuleCategory.Comment) {
                 validRules++;
-            } else {
+                continue;
+            }
+
+            // InvalidRule nodes carry diagnostic info from the tolerant parser
+            if (ruleNode.category === RuleCategory.Invalid) {
+                const errorText = 'error' in ruleNode ? String(ruleNode.error) : 'Invalid rule syntax';
                 errors.push({
                     line: i + 1,
-                    rule,
+                    rule: trimmed,
                     errorType: 'ParseError',
-                    message: String(result.error),
+                    message: errorText,
                     severity: 'error',
+                    category: 'Invalid',
+                    syntax: String(ruleNode.syntax ?? 'Unknown'),
                 });
+            } else {
+                validRules++;
             }
         }
 

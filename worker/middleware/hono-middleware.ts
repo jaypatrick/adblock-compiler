@@ -49,6 +49,7 @@ import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
 import { requireAuth } from './auth.ts';
 import { checkRateLimitTiered, validateRequestSize, verifyTurnstileToken } from './index.ts';
+import type { PrismaClient } from '../../prisma/generated/client.ts';
 
 // ============================================================================
 // Local type — mirrors worker/hono-app.ts `Variables` without importing from there.
@@ -62,6 +63,8 @@ interface AppVars {
     analytics: AnalyticsService;
     requestId: string;
     ip: string;
+    /** Request-scoped PrismaClient — set by prismaMiddleware() when HYPERDRIVE is bound. */
+    prisma?: InstanceType<typeof PrismaClient>;
 }
 
 type AppEnv = { Bindings: Env; Variables: AppVars };
