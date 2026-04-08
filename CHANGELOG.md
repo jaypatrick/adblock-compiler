@@ -74,6 +74,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.83.0] - 2026-04-08
+
+### Added- **config-builder**: add docs, Neon saved configs, and syntax highlighting
+- add standalone diagnostics tool (diag-full.ts, diag-report.ts, diag-full.test.ts)
+- **config-builder**: complete configuration creation and validation feature
+- complete Hono/Cloudflare integration - DO deduplication + enhanced error logging
+- add Scalar and Swagger UI documentation endpoints
+
+### Fixed
+
+- **ci**: correct CF Pages project name adblock-compiler-docs→adblock-docs, remove broken create/verify step
+- apply reviewer suggestions to mdbook.yml create step
+- **ci**: improve Pages project creation verification in mdbook workflow
+- restore FEATURE_FLAGS KV namespace with real ID
+- comment out FEATURE_FLAGS KV namespace placeholder to unblock deployment
+- move Authentication error to 10000 branch; update KB-006 doc accuracy
+- split 7403 and 10000 error handling with accurate per-error guidance
+- detect D1 authorization errors (7403) and provide actionable guidance
+- detect D1 authorization errors (7403) and provide clearer guidance
+- add project verification and better error handling for Pages deployment
+- remove pages_build_output_dir from wrangler.toml to fix Worker deploy
+- **prisma**: use @std/path and validate relative paths in fix-imports script
+- **prisma**: fix prisma-fix-imports converting binary WASM artifacts to .ts
+- **worker**: replace @std/yaml with npm:yaml to fix Wrangler bundling failure
+- add --allow-read to diag:full tasks and document stdin/version reading patterns
+- second review pass (sep export, CORS allowlist, OpenAPI Zod, stdin error handling)
+- address code review feedback (dynamic version, shared pad, constants, emoji fix)
+- **config-builder**: fix all CI build errors in ConfigBuilderComponent and CacheWarmingWorkflow
+- **config-builder**: address PR review feedback
+- upgrade @cloudflare/vitest-pool-workers to 0.14.2 (vitest@4.x) to fix frontend CI
+- update pnpm-lock.yaml to include missing vitest/cloudflare-pool-workers entries
+- remove duplicate section header comment in admin-agents.test.ts
+- update admin handler tests to use AppContext pattern
+- address review feedback for docs routes wildcard and auth handling
+- add missing adblock-compiler-error-queue to deploy-worker action
+
+
 ## [0.82.0] - 2026-04-08
 
 ### Added- **diff**: add frontend diff page
