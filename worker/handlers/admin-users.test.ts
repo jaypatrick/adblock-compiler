@@ -15,10 +15,9 @@
  */
 
 import { assertEquals } from '@std/assert';
-import { stub } from '@std/testing/mock';
 import { handleAdminBanUser, handleAdminDeleteUser, handleAdminGetUser, handleAdminListUsers, handleAdminUnbanUser, handleAdminUpdateUser } from './admin-users.ts';
 import { type Env, type HyperdriveBinding, type IAuthContext, UserTier } from '../types.ts';
-import { _internals } from '../lib/prisma.ts';
+import { makeAppContext } from '../test-helpers.ts';
 
 // ============================================================================
 // Fixtures
@@ -208,7 +207,7 @@ Deno.test('handleAdminListUsers - 200 with empty list', async () => {
     const env = makeEnv({ DB: db as unknown as D1Database });
     const req = new Request('http://localhost/admin/users');
 
-    const res = await handleAdminListUsers(req, env, makeAdminContext());
+    const res = await handleAdminListUsers(makeAppContext(req, env, makeAdminContext()));
     assertEquals(res.status, 200);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.success, true);
@@ -222,7 +221,7 @@ Deno.test('handleAdminListUsers - 200 lists existing users', async () => {
     const env = makeEnv({ DB: db as unknown as D1Database });
     const req = new Request('http://localhost/admin/users');
 
-    const res = await handleAdminListUsers(req, env, makeAdminContext());
+    const res = await handleAdminListUsers(makeAppContext(req, env, makeAdminContext()));
     assertEquals(res.status, 200);
     const body = await res.json() as Record<string, unknown>;
     const users = body.users as Record<string, unknown>[];
@@ -235,7 +234,7 @@ Deno.test('handleAdminListUsers - 403 for non-admin role', async () => {
     const env = makeEnv({ DB: db as unknown as D1Database });
     const req = new Request('http://localhost/admin/users');
 
-    const res = await handleAdminListUsers(req, env, makeUserContext());
+    const res = await handleAdminListUsers(makeAppContext(req, env, makeUserContext()));
     assertEquals(res.status, 403);
 });
 
@@ -249,7 +248,7 @@ Deno.test('handleAdminGetUser - 200 returns user', async () => {
     const env = makeEnv({ DB: db as unknown as D1Database });
     const req = new Request(`http://localhost/admin/users/${user.id}`);
 
-    const res = await handleAdminGetUser(req, env, makeAdminContext(), user.id);
+    const res = await handleAdminGetUser(makeAppContext(req, env, makeAdminContext()), user.id);
     assertEquals(res.status, 200);
     const body = await res.json() as Record<string, unknown>;
     assertEquals((body.user as Record<string, unknown>).id, user.id);
@@ -260,7 +259,7 @@ Deno.test('handleAdminGetUser - 404 for nonexistent id', async () => {
     const env = makeEnv({ DB: db as unknown as D1Database });
     const req = new Request('http://localhost/admin/users/nonexistent-id');
 
-    const res = await handleAdminGetUser(req, env, makeAdminContext(), 'nonexistent-id');
+    const res = await handleAdminGetUser(makeAppContext(req, env, makeAdminContext()), 'nonexistent-id');
     assertEquals(res.status, 404);
 });
 
@@ -269,7 +268,7 @@ Deno.test('handleAdminGetUser - 403 for non-admin', async () => {
     const env = makeEnv({ DB: db as unknown as D1Database });
     const req = new Request('http://localhost/admin/users/some-id');
 
-    const res = await handleAdminGetUser(req, env, makeUserContext(), 'some-id');
+    const res = await handleAdminGetUser(makeAppContext(req, env, makeUserContext()), 'some-id');
     assertEquals(res.status, 403);
 });
 
@@ -287,7 +286,7 @@ Deno.test('handleAdminUpdateUser - 200 updates tier', async () => {
         headers: { 'Content-Type': 'application/json' },
     });
 
-    const res = await handleAdminUpdateUser(req, env, makeAdminContext(), user.id);
+    const res = await handleAdminUpdateUser(makeAppContext(req, env, makeAdminContext()), user.id);
     assertEquals(res.status, 200);
 });
 
@@ -301,7 +300,7 @@ Deno.test('handleAdminUpdateUser - 400 when no fields provided', async () => {
         headers: { 'Content-Type': 'application/json' },
     });
 
-    const res = await handleAdminUpdateUser(req, env, makeAdminContext(), user.id);
+    const res = await handleAdminUpdateUser(makeAppContext(req, env, makeAdminContext()), user.id);
     assertEquals(res.status, 400);
 });
 
@@ -314,7 +313,7 @@ Deno.test('handleAdminUpdateUser - 404 for nonexistent user', async () => {
         headers: { 'Content-Type': 'application/json' },
     });
 
-    const res = await handleAdminUpdateUser(req, env, makeAdminContext(), 'nonexistent');
+    const res = await handleAdminUpdateUser(makeAppContext(req, env, makeAdminContext()), 'nonexistent');
     assertEquals(res.status, 404);
 });
 
@@ -327,7 +326,7 @@ Deno.test('handleAdminUpdateUser - 403 for non-admin', async () => {
         headers: { 'Content-Type': 'application/json' },
     });
 
-    const res = await handleAdminUpdateUser(req, env, makeUserContext(), 'some-id');
+    const res = await handleAdminUpdateUser(makeAppContext(req, env, makeUserContext()), 'some-id');
     assertEquals(res.status, 403);
 });
 
@@ -340,33 +339,25 @@ Deno.test('handleAdminDeleteUser - 200 deletes existing user', async () => {
     const env = makeEnv();
     const req = new Request(`http://localhost/admin/users/${user.id}`, { method: 'DELETE' });
 
-    const s = stub(_internals, 'createPrismaClient', () => makeMockPrismaUsers({ userExists: true }) as unknown as ReturnType<typeof _internals.createPrismaClient>);
-    try {
-        const res = await handleAdminDeleteUser(req, env, makeAdminContext(), user.id);
-        assertEquals(res.status, 200);
-    } finally {
-        s.restore();
-    }
+    const prisma = makeMockPrismaUsers({ userExists: true });
+    const res = await handleAdminDeleteUser(makeAppContext(req, env, makeAdminContext(), prisma), user.id);
+    assertEquals(res.status, 200);
 });
 
 Deno.test('handleAdminDeleteUser - 404 for nonexistent user', async () => {
     const env = makeEnv();
     const req = new Request('http://localhost/admin/users/nonexistent', { method: 'DELETE' });
 
-    const s = stub(_internals, 'createPrismaClient', () => makeMockPrismaUsers({ userExists: false }) as unknown as ReturnType<typeof _internals.createPrismaClient>);
-    try {
-        const res = await handleAdminDeleteUser(req, env, makeAdminContext(), 'nonexistent');
-        assertEquals(res.status, 404);
-    } finally {
-        s.restore();
-    }
+    const prisma = makeMockPrismaUsers({ userExists: false });
+    const res = await handleAdminDeleteUser(makeAppContext(req, env, makeAdminContext(), prisma), 'nonexistent');
+    assertEquals(res.status, 404);
 });
 
 Deno.test('handleAdminDeleteUser - 403 for non-admin', async () => {
     const env = makeEnv();
     const req = new Request('http://localhost/admin/users/some-id', { method: 'DELETE' });
 
-    const res = await handleAdminDeleteUser(req, env, makeUserContext(), 'some-id');
+    const res = await handleAdminDeleteUser(makeAppContext(req, env, makeUserContext()), 'some-id');
     assertEquals(res.status, 403);
 });
 
@@ -383,13 +374,9 @@ Deno.test('handleAdminBanUser - 200 bans existing user', async () => {
         headers: { 'Content-Type': 'application/json' },
     });
 
-    const s = stub(_internals, 'createPrismaClient', () => makeMockPrismaUsers({ userExists: true }) as unknown as ReturnType<typeof _internals.createPrismaClient>);
-    try {
-        const res = await handleAdminBanUser(req, env, makeAdminContext(), user.id);
-        assertEquals(res.status, 200);
-    } finally {
-        s.restore();
-    }
+    const prisma = makeMockPrismaUsers({ userExists: true });
+    const res = await handleAdminBanUser(makeAppContext(req, env, makeAdminContext(), prisma), user.id);
+    assertEquals(res.status, 200);
 });
 
 Deno.test('handleAdminBanUser - 404 for nonexistent user', async () => {
@@ -399,13 +386,9 @@ Deno.test('handleAdminBanUser - 404 for nonexistent user', async () => {
         headers: { 'Content-Type': 'application/json' },
     });
 
-    const s = stub(_internals, 'createPrismaClient', () => makeMockPrismaUsers({ userExists: false }) as unknown as ReturnType<typeof _internals.createPrismaClient>);
-    try {
-        const res = await handleAdminBanUser(req, env, makeAdminContext(), 'nonexistent');
-        assertEquals(res.status, 404);
-    } finally {
-        s.restore();
-    }
+    const prisma = makeMockPrismaUsers({ userExists: false });
+    const res = await handleAdminBanUser(makeAppContext(req, env, makeAdminContext(), prisma), 'nonexistent');
+    assertEquals(res.status, 404);
 });
 
 // ============================================================================
@@ -419,26 +402,18 @@ Deno.test('handleAdminUnbanUser - 200 unbans existing user', async () => {
     const env = makeEnv();
     const req = new Request(`http://localhost/admin/users/${user.id}/unban`, { method: 'POST' });
 
-    const s = stub(_internals, 'createPrismaClient', () => makeMockPrismaUsers({ userExists: true }) as unknown as ReturnType<typeof _internals.createPrismaClient>);
-    try {
-        const res = await handleAdminUnbanUser(req, env, makeAdminContext(), user.id);
-        assertEquals(res.status, 200);
-    } finally {
-        s.restore();
-    }
+    const prisma = makeMockPrismaUsers({ userExists: true });
+    const res = await handleAdminUnbanUser(makeAppContext(req, env, makeAdminContext(), prisma), user.id);
+    assertEquals(res.status, 200);
 });
 
 Deno.test('handleAdminUnbanUser - 404 for nonexistent user', async () => {
     const env = makeEnv();
     const req = new Request('http://localhost/admin/users/nonexistent/unban', { method: 'POST' });
 
-    const s = stub(_internals, 'createPrismaClient', () => makeMockPrismaUsers({ userExists: false }) as unknown as ReturnType<typeof _internals.createPrismaClient>);
-    try {
-        const res = await handleAdminUnbanUser(req, env, makeAdminContext(), 'nonexistent');
-        assertEquals(res.status, 404);
-    } finally {
-        s.restore();
-    }
+    const prisma = makeMockPrismaUsers({ userExists: false });
+    const res = await handleAdminUnbanUser(makeAppContext(req, env, makeAdminContext(), prisma), 'nonexistent');
+    assertEquals(res.status, 404);
 });
 
 // ============================================================================
@@ -478,7 +453,7 @@ Deno.test('handleAdminListUsers - 500 when a row fails schema validation', async
     const env = makeEnv({ DB: db as unknown as D1Database });
     const req = new Request('http://localhost/admin/users');
 
-    const res = await handleAdminListUsers(req, env, makeAdminContext());
+    const res = await handleAdminListUsers(makeAppContext(req, env, makeAdminContext()));
     assertEquals(res.status, 500);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.success, false);

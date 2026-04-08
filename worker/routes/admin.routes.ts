@@ -312,7 +312,7 @@ const adminAuthConfigRoute = createRoute({
 adminRoutes.openapi(adminAuthConfigRoute, async (c) => {
     const { handleAdminAuthConfig } = await import('../handlers/auth-config.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminAuthConfig(c.req.raw, c.env, c.get('authContext')) as any;
+    return handleAdminAuthConfig(c) as any;
 });
 
 // ── Admin User Management ─────────────────────────────────────────────────────
@@ -406,7 +406,7 @@ const adminListUsersRoute = createRoute({
 adminRoutes.openapi(adminListUsersRoute, async (c) => {
     const { handleAdminListUsers } = await import('../handlers/admin-users.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminListUsers(c.req.raw, c.env, c.get('authContext')) as any;
+    return handleAdminListUsers(c) as any;
 });
 
 const adminGetUserRoute = createRoute({
@@ -493,7 +493,7 @@ const adminGetUserRoute = createRoute({
 adminRoutes.openapi(adminGetUserRoute, async (c) => {
     const { handleAdminGetUser } = await import('../handlers/admin-users.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminGetUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!) as any;
+    return handleAdminGetUser(c, c.req.param('id')!) as any;
 });
 
 const adminUpdateUserRoute = createRoute({
@@ -599,7 +599,7 @@ adminRoutes.use('/admin/users/:id', rateLimitMiddleware());
 adminRoutes.openapi(adminUpdateUserRoute, async (c) => {
     const { handleAdminUpdateUser } = await import('../handlers/admin-users.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminUpdateUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!) as any;
+    return handleAdminUpdateUser(c, c.req.param('id')!) as any;
 });
 
 const adminDeleteUserRoute = createRoute({
@@ -686,7 +686,7 @@ const adminDeleteUserRoute = createRoute({
 adminRoutes.openapi(adminDeleteUserRoute, async (c) => {
     const { handleAdminDeleteUser } = await import('../handlers/admin-users.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminDeleteUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!) as any;
+    return handleAdminDeleteUser(c, c.req.param('id')!) as any;
 });
 
 const adminBanUserRoute = createRoute({
@@ -791,7 +791,7 @@ const adminBanUserRoute = createRoute({
 adminRoutes.openapi(adminBanUserRoute, async (c) => {
     const { handleAdminBanUser } = await import('../handlers/admin-users.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminBanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!) as any;
+    return handleAdminBanUser(c, c.req.param('id')!) as any;
 });
 
 const adminUnbanUserRoute = createRoute({
@@ -897,7 +897,7 @@ adminRoutes.use('/admin/users/:id/unban', rateLimitMiddleware());
 adminRoutes.openapi(adminUnbanUserRoute, async (c) => {
     const { handleAdminUnbanUser } = await import('../handlers/admin-users.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminUnbanUser(c.req.raw, c.env, c.get('authContext'), c.req.param('id')!) as any;
+    return handleAdminUnbanUser(c, c.req.param('id')!) as any;
 });
 
 const adminRevokeUserSessionsRoute = createRoute({
@@ -1039,7 +1039,7 @@ const adminGetUserUsageRoute = createRoute({
 adminRoutes.openapi(adminGetUserUsageRoute, async (c) => {
     const { handleAdminGetUserUsage } = await import('../handlers/admin-usage.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminGetUserUsage(c.req.raw, c.env, c.get('authContext'), c.req.param('userId')!) as any;
+    return handleAdminGetUserUsage(c, c.req.param('userId')!) as any;
 });
 
 // ── Admin Storage ─────────────────────────────────────────────────────────────
@@ -1638,7 +1638,7 @@ const adminNeonGetProjectRoute = createRoute({
 adminRoutes.openapi(adminNeonGetProjectRoute, async (c) => {
     const { handleAdminNeonGetProject } = await import('../handlers/admin-neon.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminNeonGetProject(c.req.raw, c.env, c.get('authContext')) as any;
+    return handleAdminNeonGetProject(c) as any;
 });
 
 const adminNeonListBranchesRoute = createRoute({
@@ -1722,7 +1722,7 @@ const adminNeonListBranchesRoute = createRoute({
 adminRoutes.openapi(adminNeonListBranchesRoute, async (c) => {
     const { handleAdminNeonListBranches } = await import('../handlers/admin-neon.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminNeonListBranches(c.req.raw, c.env, c.get('authContext')) as any;
+    return handleAdminNeonListBranches(c) as any;
 });
 
 const adminNeonGetBranchRoute = createRoute({
@@ -1821,7 +1821,7 @@ const adminNeonGetBranchRoute = createRoute({
 adminRoutes.openapi(adminNeonGetBranchRoute, async (c) => {
     const { handleAdminNeonGetBranch } = await import('../handlers/admin-neon.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminNeonGetBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!) as any;
+    return handleAdminNeonGetBranch(c, c.req.param('branchId')!) as any;
 });
 
 const adminNeonCreateBranchRoute = createRoute({
@@ -1914,7 +1914,7 @@ const adminNeonCreateBranchRoute = createRoute({
 adminRoutes.openapi(adminNeonCreateBranchRoute, async (c) => {
     const { handleAdminNeonCreateBranch } = await import('../handlers/admin-neon.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminNeonCreateBranch(c.req.raw, c.env, c.get('authContext')) as any;
+    return handleAdminNeonCreateBranch(c) as any;
 });
 
 const adminNeonDeleteBranchRoute = createRoute({
@@ -2014,7 +2014,7 @@ const adminNeonDeleteBranchRoute = createRoute({
 adminRoutes.openapi(adminNeonDeleteBranchRoute, async (c) => {
     const { handleAdminNeonDeleteBranch } = await import('../handlers/admin-neon.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminNeonDeleteBranch(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!) as any;
+    return handleAdminNeonDeleteBranch(c, c.req.param('branchId')!) as any;
 });
 
 const adminNeonListEndpointsRoute = createRoute({
@@ -2098,7 +2098,7 @@ const adminNeonListEndpointsRoute = createRoute({
 adminRoutes.openapi(adminNeonListEndpointsRoute, async (c) => {
     const { handleAdminNeonListEndpoints } = await import('../handlers/admin-neon.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminNeonListEndpoints(c.req.raw, c.env, c.get('authContext')) as any;
+    return handleAdminNeonListEndpoints(c) as any;
 });
 
 const adminNeonListDatabasesRoute = createRoute({
@@ -2185,7 +2185,7 @@ const adminNeonListDatabasesRoute = createRoute({
 adminRoutes.openapi(adminNeonListDatabasesRoute, async (c) => {
     const { handleAdminNeonListDatabases } = await import('../handlers/admin-neon.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminNeonListDatabases(c.req.raw, c.env, c.get('authContext'), c.req.param('branchId')!) as any;
+    return handleAdminNeonListDatabases(c, c.req.param('branchId')!) as any;
 });
 
 const adminNeonQueryRoute = createRoute({
@@ -2273,7 +2273,7 @@ const adminNeonQueryRoute = createRoute({
 adminRoutes.openapi(adminNeonQueryRoute, async (c) => {
     const { handleAdminNeonQuery } = await import('../handlers/admin-neon.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminNeonQuery(c.req.raw, c.env, c.get('authContext')) as any;
+    return handleAdminNeonQuery(c) as any;
 });
 
 // ── Admin Agent Data ──────────────────────────────────────────────────────────
@@ -2363,7 +2363,7 @@ const adminListAgentSessionsRoute = createRoute({
 adminRoutes.openapi(adminListAgentSessionsRoute, async (c) => {
     const { handleAdminListAgentSessions } = await import('../handlers/admin-agents.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminListAgentSessions(c.req.raw, c.env, c.get('authContext')) as any;
+    return handleAdminListAgentSessions(c) as any;
 });
 
 const adminGetAgentSessionRoute = createRoute({
@@ -2462,7 +2462,7 @@ const adminGetAgentSessionRoute = createRoute({
 adminRoutes.openapi(adminGetAgentSessionRoute, async (c) => {
     const { handleAdminGetAgentSession } = await import('../handlers/admin-agents.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminGetAgentSession(c.req.raw, c.env, c.get('authContext'), c.req.param('sessionId')!) as any;
+    return handleAdminGetAgentSession(c, c.req.param('sessionId')!) as any;
 });
 
 const adminListAgentAuditLogRoute = createRoute({
@@ -2550,7 +2550,7 @@ const adminListAgentAuditLogRoute = createRoute({
 adminRoutes.openapi(adminListAgentAuditLogRoute, async (c) => {
     const { handleAdminListAgentAuditLog } = await import('../handlers/admin-agents.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminListAgentAuditLog(c.req.raw, c.env, c.get('authContext')) as any;
+    return handleAdminListAgentAuditLog(c) as any;
 });
 
 const adminTerminateAgentSessionRoute = createRoute({
@@ -2660,7 +2660,7 @@ adminRoutes.use('/admin/agents/sessions/:sessionId', rateLimitMiddleware());
 adminRoutes.openapi(adminTerminateAgentSessionRoute, async (c) => {
     const { handleAdminTerminateAgentSession } = await import('../handlers/admin-agents.ts');
     // deno-lint-ignore no-explicit-any
-    return handleAdminTerminateAgentSession(c.req.raw, c.env, c.get('authContext'), c.req.param('sessionId')!) as any;
+    return handleAdminTerminateAgentSession(c, c.req.param('sessionId')!) as any;
 });
 
 // ── Admin session revocation handler ─────────────────────────────────────────

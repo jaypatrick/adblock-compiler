@@ -12,22 +12,20 @@
  *   lookbackDays: number
  * }
  */
-import type { Env, IAuthContext } from '../types.ts';
+import type { AppContext } from '../routes/shared.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
 import { getUserApiUsage } from '../utils/api-usage.ts';
 import { AdminUsageDaysQuerySchema } from '../schemas.ts';
 
 export async function handleAdminGetUserUsage(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
+    c: AppContext,
     userId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission(`/admin/usage/${userId}`, authContext);
+    const denied = checkRoutePermission(`/admin/usage/${userId}`, c.get('authContext'));
     if (denied) return denied;
 
-    const url = new URL(request.url);
+    const url = new URL(c.req.url);
     const daysParsed = AdminUsageDaysQuerySchema.safeParse({
         days: url.searchParams.get('days') ?? undefined,
     });
@@ -36,7 +34,7 @@ export async function handleAdminGetUserUsage(
     }
     const lookbackDays = Math.min(Math.max(daysParsed.data.days, 1), 90);
 
-    const usage = await getUserApiUsage(userId, env, lookbackDays);
+    const usage = await getUserApiUsage(userId, c.env, lookbackDays);
 
     return JsonResponse.success({
         userId,

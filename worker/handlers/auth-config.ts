@@ -16,17 +16,14 @@
  * Admin tier + admin role required (via checkRoutePermission).
  */
 
-import { type Env, type IAuthContext, TIER_REGISTRY } from '../types.ts';
+import type { AppContext } from '../routes/shared.ts';
+import { TIER_REGISTRY } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { checkRoutePermission, ROUTE_PERMISSION_REGISTRY } from '../utils/route-permissions.ts';
 import { AUTH_SESSION_CONFIG } from '../lib/auth.ts';
 
-export async function handleAdminAuthConfig(
-    _request: Request,
-    env: Env,
-    authContext: IAuthContext,
-): Promise<Response> {
-    const denied = checkRoutePermission('/admin/auth/config', authContext);
+export async function handleAdminAuthConfig(c: AppContext): Promise<Response> {
+    const denied = checkRoutePermission('/admin/auth/config', c.get('authContext'));
     if (denied) return denied;
 
     // Always Better Auth — Clerk has been removed
@@ -52,8 +49,8 @@ export async function handleAdminAuthConfig(
     return JsonResponse.success({
         provider,
         socialProviders: {
-            github: { configured: Boolean(env.GITHUB_CLIENT_ID && env.GITHUB_CLIENT_SECRET) },
-            google: { configured: Boolean(env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) },
+            github: { configured: Boolean(c.env.GITHUB_CLIENT_ID && c.env.GITHUB_CLIENT_SECRET) },
+            google: { configured: Boolean(c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET) },
         },
         mfa: {
             enabled: true,
@@ -64,8 +61,8 @@ export async function handleAdminAuthConfig(
             cookieCacheMaxAge: AUTH_SESSION_CONFIG.cookieCacheMaxAge,
         },
         betterAuth: {
-            secretConfigured: Boolean(env.BETTER_AUTH_SECRET),
-            baseUrl: env.BETTER_AUTH_URL ?? null,
+            secretConfigured: Boolean(c.env.BETTER_AUTH_SECRET),
+            baseUrl: c.env.BETTER_AUTH_URL ?? null,
         },
         tiers,
         routes,

@@ -12,7 +12,8 @@
         "build:worker": "pnpm install && pnpm --filter adblock-frontend run build",
         "tail": "wrangler tail adblock-compiler --format=pretty",
         "tail:worker": "wrangler tail adblock-compiler --format=pretty",
-        "tail:tail": "wrangler tail adblock-tail --format=pretty"
+        "tail:tail": "wrangler tail adblock-tail --format=pretty",
+        "test:worker:vitest": "vitest --config vitest.worker.config.ts"
     },
     "packageManager": "pnpm@10.31.0",
     "_syncNote": "Dependency versions here must match those pinned in deno.json's import map; keep them in sync (for example via the existing version:sync-style task).",
@@ -41,7 +42,9 @@
         "@cloudflare/playwright": "^1.2.0",
         "@cloudflare/playwright-mcp": "^0.0.5",
         "@cloudflare/workers-types": "^4.20260317.1",
+        "@cloudflare/vitest-pool-workers": "^0.14.2",
         "prisma": "7.5.0",
+        "vitest": "^4.1.0",
         "wrangler": "^4.77.0"
     },
     "pnpm": {
