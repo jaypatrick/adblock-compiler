@@ -94,10 +94,11 @@ function deriveUrls(rootDomain: string): ProjectUrls {
  * @returns Updated file text.
  */
 function replaceTomlValue(content: string, key: string, newValue: string): string {
-    // Matches:   KEY     =   "old-value"   or   KEY = old-value
-    // Anchored to start of line or after whitespace to avoid partial matches.
+    // Matches:   KEY = "old-value"   or   KEY = old-value
+    // Anchored to start of line; stops before any inline # comment so we don't
+    // accidentally replace trailing comment text alongside the value.
     const escapedKey = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const re = new RegExp(`^([ \\t]*${escapedKey}[ \\t]*=[ \\t]*).*$`, 'm');
+    const re = new RegExp(`^([ \\t]*${escapedKey}[ \\t]*=[ \\t]*)(?:"[^"]*"|[^#\\r\\n]*)`, 'm');
     const replacement = `$1"${newValue}"`;
     if (!re.test(content)) {
         // Key not present — append to end of [vars] block would be complex; warn instead.
@@ -112,13 +113,19 @@ function replaceTomlValue(content: string, key: string, newValue: string): strin
  * Handles the `pattern = "..."` field inside the FIRST `[[routes]]` block.
  *
  * Each wrangler.toml in this repo contains exactly one `[[routes]]` block
- * (one for the API worker, one for the frontend worker). If you add multiple
- * `[[routes]]` blocks in the future, update this function to target them by
- * index or by the adjacent comment/key that identifies each block.
+ * (one for the API worker, one for the frontend worker). The regex matches
+ * only content between `[[routes]]` and the next `[[` section header, so
+ * it is not confused by brackets that appear inside TOML string values or
+ * comments within the same block.
+ *
+ * If you add multiple `[[routes]]` blocks in the future, update this function
+ * to target them by index or by an adjacent identifying comment/key.
  */
 function replaceRoutePattern(content: string, newPattern: string): string {
+    // Match [[routes]] … up to (but not including) the next [[ section header.
+    // Using a character class [^\[] avoids matching the start of any nested [[ header.
     return content.replace(
-        /(^\[\[routes\]\][^\[]*?pattern\s*=\s*)"[^"]*"/ms,
+        /(^\[\[routes\]\](?:[^\[]|\[[^\[])*?pattern\s*=\s*)"[^"]*"/ms,
         `$1"${newPattern}"`,
     );
 }
