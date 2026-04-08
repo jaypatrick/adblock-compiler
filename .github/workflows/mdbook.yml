@@ -109,8 +109,12 @@ jobs:
             echo "⚠️  If creation fails repeatedly, create the project manually at: https://dash.cloudflare.com/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages"
 
             # Try to create the project - capture both stdout and stderr
-            CREATE_OUTPUT=$(deno task wrangler pages project create "${{ env.CLOUDFLARE_PAGES_PROJECT }}" --production-branch main 2>&1 || true)
+            # Temporarily disable errexit so we can record the real exit status
+            # and continue to the verification step even if creation fails.
+            set +e
+            CREATE_OUTPUT=$(deno task wrangler pages project create "${{ env.CLOUDFLARE_PAGES_PROJECT }}" --production-branch main 2>&1)
             CREATE_EXIT_CODE=$?
+            set -e
 
             echo "Create command output:"
             echo "$CREATE_OUTPUT"
