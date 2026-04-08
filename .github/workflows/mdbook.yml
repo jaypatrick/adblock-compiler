@@ -108,17 +108,42 @@ jobs:
             echo "⚠️  NOTE: This may fail if the project already exists in the account but is not visible to this API token"
             echo "⚠️  If creation fails repeatedly, create the project manually at: https://dash.cloudflare.com/pages"
 
-            # Try to create the project - capture both stdout and stderr
+            # Try to create the project with retries - capture both stdout and stderr.
             # Temporarily disable errexit so we can record the real exit status
             # and continue to the verification step even if creation fails.
-            set +e
-            CREATE_OUTPUT=$(deno task wrangler pages project create "${{ env.CLOUDFLARE_PAGES_PROJECT }}" --production-branch main 2>&1)
-            CREATE_EXIT_CODE=$?
-            set -e
+            CREATE_ATTEMPTS=0
+            MAX_CREATE_ATTEMPTS=3
+            CREATE_SUCCESS=false
+            CREATE_OUTPUT=""
+            CREATE_EXIT_CODE=0
 
-            echo "Create command output:"
-            echo "$CREATE_OUTPUT"
-            echo "Exit code: $CREATE_EXIT_CODE"
+            while [ $CREATE_ATTEMPTS -lt $MAX_CREATE_ATTEMPTS ]; do
+              CREATE_ATTEMPTS=$((CREATE_ATTEMPTS + 1))
+              echo "Create attempt $CREATE_ATTEMPTS/$MAX_CREATE_ATTEMPTS..."
+
+              set +e
+              CREATE_OUTPUT=$(deno task wrangler pages project create "${{ env.CLOUDFLARE_PAGES_PROJECT }}" --production-branch main 2>&1)
+              CREATE_EXIT_CODE=$?
+              set -e
+
+              echo "Create command output:"
+              echo "$CREATE_OUTPUT"
+              echo "Exit code: $CREATE_EXIT_CODE"
+
+              if [ $CREATE_EXIT_CODE -eq 0 ]; then
+                CREATE_SUCCESS=true
+                break
+              fi
+
+              if [ $CREATE_ATTEMPTS -lt $MAX_CREATE_ATTEMPTS ]; then
+                echo "Create attempt $CREATE_ATTEMPTS failed. Waiting 15 seconds before retry..."
+                sleep 15
+              fi
+            done
+
+            if [ "$CREATE_SUCCESS" = false ]; then
+              echo "⚠️  All $MAX_CREATE_ATTEMPTS create attempts failed (exit code: $CREATE_EXIT_CODE) — continuing to verify..."
+            fi
 
             # Wait for API propagation
             echo "Waiting 10 seconds for API propagation..."
@@ -161,10 +186,10 @@ jobs:
               echo ""
               echo "TROUBLESHOOTING:"
               echo "1. Verify CLOUDFLARE_API_TOKEN has 'Cloudflare Pages:Edit' permission"
-              echo "2. Check if the project exists in the dashboard: https://dash.cloudflare.com/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages"
+              echo "2. Check if the project exists in the dashboard: https://dash.cloudflare.com/pages"
               echo "3. If it exists in the dashboard but not visible to this token, update token permissions"
               echo "4. If it doesn't exist, try creating it manually with the same name: ${{ env.CLOUDFLARE_PAGES_PROJECT }}"
-              echo "5. Check CLOUDFLARE_ACCOUNT_ID is correct: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}"
+              echo "5. Check that CLOUDFLARE_ACCOUNT_ID matches the account where the Pages project should live"
               exit 1
             fi
           fi
