@@ -17,16 +17,14 @@
  */
 
 import { parseArgs } from '@std/cli/parse-args';
-import { type DiagBundle, DiagBundleSchema, type DiagProbeResult } from './diag-full.ts';
+import { type DiagBundle, DiagBundleSchema, type DiagProbeResult, pad } from './diag-full.ts';
+
+// ─── Constants ────────────────────────────────────────────────────────────────
+
+/** Maximum characters of `raw` to display per failed probe in the failures section. */
+const RAW_TRUNCATE_CHARS = 400;
 
 // ─── Table rendering helpers ──────────────────────────────────────────────────
-
-function pad(s: string, n: number): string {
-    if (s.length >= n) {
-        return s.slice(0, n - 1) + '…';
-    }
-    return s + ' '.repeat(n - s.length);
-}
 
 function sep(w: number): string {
     return '─'.repeat(w);
@@ -90,7 +88,7 @@ function renderFailures(probes: DiagProbeResult[]): void {
         }
         if (probe.raw !== undefined) {
             const rawStr = JSON.stringify(probe.raw, null, 2);
-            const truncated = rawStr.length > 400 ? rawStr.slice(0, 400) + '\n    …(truncated)' : rawStr;
+            const truncated = rawStr.length > RAW_TRUNCATE_CHARS ? rawStr.slice(0, RAW_TRUNCATE_CHARS) + '\n    …(truncated)' : rawStr;
             console.log(`    Raw    :\n${truncated.split('\n').map((l) => `      ${l}`).join('\n')}`);
         }
         console.log('');

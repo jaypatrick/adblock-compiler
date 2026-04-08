@@ -14,11 +14,11 @@ import { buildMeta, DiagBundleSchema } from './diag-full.ts';
 
 // ─── Test 1: buildMeta() shape ────────────────────────────────────────────────
 
-Deno.test('buildMeta() returns correct shape without network', () => {
+Deno.test('buildMeta() returns correct shape without network', async () => {
     const baseUrl = 'https://example.com';
     const timeoutMs = 10_000;
 
-    const meta = buildMeta(baseUrl, timeoutMs);
+    const meta = await buildMeta(baseUrl, timeoutMs);
 
     assertEquals(meta.tool, 'adblock-compiler-diag-full');
     assertExists(meta.version);
@@ -44,9 +44,9 @@ Deno.test('buildMeta() returns correct shape without network', () => {
     assertEquals(isNaN(parsed.getTime()), false);
 });
 
-Deno.test('buildMeta() uses provided baseUrl and timeoutMs', () => {
-    const meta1 = buildMeta('https://staging.example.com', 5_000);
-    const meta2 = buildMeta('http://localhost:8787', 30_000);
+Deno.test('buildMeta() uses provided baseUrl and timeoutMs', async () => {
+    const meta1 = await buildMeta('https://staging.example.com', 5_000);
+    const meta2 = await buildMeta('http://localhost:8787', 30_000);
 
     assertEquals(meta1.baseUrl, 'https://staging.example.com');
     assertEquals(meta1.timeoutMs, 5_000);
@@ -56,8 +56,8 @@ Deno.test('buildMeta() uses provided baseUrl and timeoutMs', () => {
 
 // ─── Test 2: DiagBundleSchema validates a well-formed bundle ─────────────────
 
-Deno.test('DiagBundleSchema accepts a valid minimal bundle', () => {
-    const meta = buildMeta('https://example.com', 15_000);
+Deno.test('DiagBundleSchema accepts a valid minimal bundle', async () => {
+    const meta = await buildMeta('https://example.com', 15_000);
 
     const bundle = {
         meta,
@@ -88,8 +88,8 @@ Deno.test('DiagBundleSchema accepts a valid minimal bundle', () => {
     assertEquals(result.success, true);
 });
 
-Deno.test('DiagBundleSchema accepts probes with raw field', () => {
-    const meta = buildMeta('https://example.com', 15_000);
+Deno.test('DiagBundleSchema accepts probes with raw field', async () => {
+    const meta = await buildMeta('https://example.com', 15_000);
 
     const bundle = {
         meta,
@@ -110,8 +110,8 @@ Deno.test('DiagBundleSchema accepts probes with raw field', () => {
     assertEquals(result.success, true);
 });
 
-Deno.test('DiagBundleSchema rejects a bundle with missing summary fields', () => {
-    const meta = buildMeta('https://example.com', 15_000);
+Deno.test('DiagBundleSchema rejects a bundle with missing summary fields', async () => {
+    const meta = await buildMeta('https://example.com', 15_000);
 
     const bundle = {
         meta,
@@ -124,9 +124,9 @@ Deno.test('DiagBundleSchema rejects a bundle with missing summary fields', () =>
     assertEquals(result.success, false);
 });
 
-Deno.test('DiagBundleSchema rejects wrong tool literal', () => {
+Deno.test('DiagBundleSchema rejects wrong tool literal', async () => {
     const meta = {
-        ...buildMeta('https://example.com', 15_000),
+        ...await buildMeta('https://example.com', 15_000),
         tool: 'some-other-tool', // wrong literal
     };
 
@@ -140,7 +140,7 @@ Deno.test('DiagBundleSchema rejects wrong tool literal', () => {
     assertEquals(result.success, false);
 });
 
-Deno.test('DiagBundleSchema meta tool field matches buildMeta output', () => {
-    const meta = buildMeta('https://example.com', 15_000);
+Deno.test('DiagBundleSchema meta tool field matches buildMeta output', async () => {
+    const meta = await buildMeta('https://example.com', 15_000);
     assertObjectMatch(meta, { tool: 'adblock-compiler-diag-full' });
 });

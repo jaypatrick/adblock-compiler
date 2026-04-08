@@ -71,15 +71,27 @@ export type DiagProbeResult = z.infer<typeof DiagProbeResultSchema>;
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
-/** Project version — kept in sync with deno.json via scripts/sync-version.ts */
-// TODO(diag): Read version dynamically once --allow-read is added to diag tasks
-const VERSION = '0.82.0';
+/**
+ * Project version read dynamically from deno.json.
+ * Falls back to 'unknown' if --allow-read is not granted or the file is missing.
+ */
+async function readProjectVersion(): Promise<string> {
+    try {
+        const denoJsonUrl = new URL('../deno.json', import.meta.url);
+        const text = await Deno.readTextFile(denoJsonUrl);
+        const data = JSON.parse(text) as { version?: string };
+        return typeof data.version === 'string' ? data.version : 'unknown';
+    } catch {
+        // Silently degrade — read permission not granted or file not found
+        return 'unknown';
+    }
+}
 const DEFAULT_BASE_URL = 'https://adblock-frontend.jayson-knight.workers.dev';
 const DEFAULT_TIMEOUT_MS = 15_000;
 
-// ─── Table rendering helpers ──────────────────────────────────────────────────
+// ─── Table rendering helpers (exported for use by diag-report.ts) ────────────
 
-function pad(s: string, n: number): string {
+export function pad(s: string, n: number): string {
     if (s.length >= n) {
         return s.slice(0, n - 1) + '…';
     }
@@ -142,7 +154,7 @@ async function probeDns(baseUrl: string, timeoutMs: number): Promise<DiagProbeRe
         };
     }
     const { res, latency_ms } = result;
-    await res.body?.cancel().catch(() => {});
+    await res.body?.cancel().catch(() => {/* body may already be consumed — non-fatal */});
     return {
         category: 'dns',
         label: 'dns-resolution',
@@ -166,7 +178,7 @@ async function probeTls(baseUrl: string, timeoutMs: number): Promise<DiagProbeRe
         };
     }
     const { res, latency_ms } = result;
-    await res.body?.cancel().catch(() => {});
+    await res.body?.cancel().catch(() => {/* body may already be consumed — non-fatal */});
     const cfRay = res.headers.get('cf-ray');
     const hsts = res.headers.get('strict-transport-security');
     return {
@@ -222,7 +234,7 @@ async function probeCors(baseUrl: string, timeoutMs: number): Promise<DiagProbeR
         };
     }
     const { res, latency_ms } = result;
-    await res.body?.cancel().catch(() => {});
+    await res.body?.cancel().catch(() => {/* body may already be consumed — non-fatal */});
     const allowOrigin = res.headers.get('access-control-allow-origin');
     const allowMethods = res.headers.get('access-control-allow-methods');
     const allowHeaders = res.headers.get('access-control-allow-headers');
@@ -265,7 +277,7 @@ async function probeRateLimit(baseUrl: string, timeoutMs: number): Promise<DiagP
                 firstTooManyAt = i;
             }
         }
-        await res.arrayBuffer().catch(() => {});
+        await res.arrayBuffer().catch(() => {/* drain body — failure is non-fatal */});
     }
 
     const minLatency = latencies.length > 0 ? Math.min(...latencies) : 0;
@@ -316,7 +328,7 @@ async function probeAuthGate(baseUrl: string, timeoutMs: number): Promise<DiagPr
         }
 
         const { res, latency_ms } = result;
-        await res.body?.cancel().catch(() => {});
+        await res.body?.cancel().catch(() => {/* body may already be consumed — non-fatal */});
         const isAuthGated = res.status === 401 || res.status === 403;
         const isServerError = res.status >= 500;
         const isUnprotected = res.status === 200;
@@ -359,7 +371,7 @@ async function probeStaticAssets(baseUrl: string, timeoutMs: number): Promise<Di
         const { res, latency_ms } = rootResult;
         const contentType = res.headers.get('content-type') ?? '';
         const isHtml = contentType.includes('text/html');
-        await res.body?.cancel().catch(() => {});
+        await res.body?.cancel().catch(() => {/* body may already be consumed — non-fatal */});
         results.push({
             category: 'static-assets',
             label: 'static-root',
@@ -380,7 +392,7 @@ async function probeStaticAssets(baseUrl: string, timeoutMs: number): Promise<Di
         });
     } else {
         const { res, latency_ms } = mainJsResult;
-        await res.body?.cancel().catch(() => {});
+        await res.body?.cancel().catch(() => {/* body may already be consumed — non-fatal */});
         results.push({
             category: 'static-assets',
             label: 'static-main-js',
@@ -482,7 +494,7 @@ async function probeQueue(baseUrl: string, timeoutMs: number): Promise<DiagProbe
         };
     }
     const { res, latency_ms } = result;
-    await res.body?.cancel().catch(() => {});
+    await res.body?.cancel().catch(() => {/* body may already be consumed — non-fatal */});
     // 401/403 confirms the route is registered; 200 means it responded
     const routeRegistered = res.status === 401 || res.status === 403 || res.status === 200;
     return {
@@ -509,7 +521,7 @@ async function probeOpenApi(baseUrl: string, timeoutMs: number): Promise<DiagPro
     }
     const { res, latency_ms } = result;
     if (res.status !== 200) {
-        await res.body?.cancel().catch(() => {});
+        await res.body?.cancel().catch(() => {/* body may already be consumed — non-fatal */});
         return {
             category: 'openapi',
             label: 'openapi-spec',
@@ -581,7 +593,7 @@ async function probeConfigEndpoints(baseUrl: string, timeoutMs: number): Promise
                 body = undefined;
             }
         } else {
-            await res.body?.cancel().catch(() => {});
+            await res.body?.cancel().catch(() => {/* body may already be consumed — non-fatal */});
         }
 
         results.push({
@@ -598,10 +610,11 @@ async function probeConfigEndpoints(baseUrl: string, timeoutMs: number): Promise
 
 // ─── Exported: buildMeta ──────────────────────────────────────────────────────
 
-export function buildMeta(baseUrl: string, timeoutMs: number): DiagBundleMeta {
+export async function buildMeta(baseUrl: string, timeoutMs: number): Promise<DiagBundleMeta> {
+    const version = await readProjectVersion();
     return {
         tool: 'adblock-compiler-diag-full',
-        version: VERSION,
+        version,
         timestamp: new Date().toISOString(),
         baseUrl,
         timeoutMs,
@@ -615,7 +628,7 @@ export function buildMeta(baseUrl: string, timeoutMs: number): DiagBundleMeta {
 
 export async function buildBundle(baseUrl: string, timeoutMs: number): Promise<DiagBundle> {
     const t0 = Date.now();
-    const meta = buildMeta(baseUrl, timeoutMs);
+    const meta = await buildMeta(baseUrl, timeoutMs);
     const probes: DiagProbeResult[] = [];
 
     // 1. environment
