@@ -10,23 +10,27 @@ const makeRequest = (body: unknown) =>
 
 Deno.test('handleDiff - returns added and removed counts', async () => {
     const original = ['||example.com^', '||ads.com^'];
-    const current  = ['||example.com^', '||newads.com^'];
+    const current = ['||example.com^', '||newads.com^'];
 
-    const res  = await handleDiff(makeRequest({ original, current }), {} as any);
-    const body = await res.json() as { success: boolean; report: { summary: { addedCount: number; removedCount: number; unchangedCount: number } }; parseErrors: { original: unknown[]; current: unknown[] } };
+    const res = await handleDiff(makeRequest({ original, current }), {} as any);
+    const body = await res.json() as {
+        success: boolean;
+        report: { summary: { addedCount: number; removedCount: number; unchangedCount: number } };
+        parseErrors: { original: unknown[]; current: unknown[] };
+    };
 
     assertEquals(res.status, 200);
     assertEquals(body.success, true);
-    assertEquals(body.report.summary.addedCount,     1);
-    assertEquals(body.report.summary.removedCount,   1);
+    assertEquals(body.report.summary.addedCount, 1);
+    assertEquals(body.report.summary.removedCount, 1);
     assertEquals(body.report.summary.unchangedCount, 1);
 });
 
 Deno.test('handleDiff - surfaces parse errors without blocking diff', async () => {
     const original = ['||example.com^', '###invalid-cosmetic-BROKEN'];
-    const current  = ['||example.com^'];
+    const current = ['||example.com^'];
 
-    const res  = await handleDiff(makeRequest({ original, current }), {} as any);
+    const res = await handleDiff(makeRequest({ original, current }), {} as any);
     const body = await res.json() as { parseErrors: { original: unknown[] }; report: { summary: { originalCount: number } } };
 
     assertEquals(res.status, 200);

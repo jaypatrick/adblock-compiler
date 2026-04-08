@@ -50,10 +50,10 @@ export async function handleDiff(request: Request, _env: Env): Promise<Response>
 
     const parseErrors = { original: [] as ParseError[], current: [] as ParseError[] };
     const validOriginal = parseAndFilter(original, parseErrors.original);
-    const validCurrent  = parseAndFilter(current,  parseErrors.current);
+    const validCurrent = parseAndFilter(current, parseErrors.current);
 
     const generator = new DiffGenerator(options);
-    const report    = generator.generate(validOriginal, validCurrent);
+    const report = generator.generate(validOriginal, validCurrent);
 
     return JsonResponse.success({
         success: true,
