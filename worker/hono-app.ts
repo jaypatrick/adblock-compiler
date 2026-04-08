@@ -78,6 +78,7 @@ import { apiKeysRoutes } from './routes/api-keys.routes.ts';
 import { browserRoutes } from './routes/browser.routes.ts';
 import { compileRoutes } from './routes/compile.routes.ts';
 import { configurationRoutes } from './routes/configuration.routes.ts';
+import { docsRoutes } from './routes/docs.routes.ts';
 import { metaRoutes } from './routes/meta.routes.ts';
 import { monitoringRoutes } from './routes/monitoring.routes.ts';
 import { proxyRoutes } from './routes/proxy.routes.ts';
@@ -115,6 +116,8 @@ const PRE_AUTH_PATHS = [
     '/api/turnstile-config',
     '/api/sentry-config',
     '/api/openapi.json',
+    '/api/docs',
+    '/api/swagger',
     '/api/auth/providers',
     ...MONITORING_API_PATHS,
 ] as const;
@@ -532,6 +535,7 @@ routes.route('/', webhookRoutes);
 routes.route('/', workflowRoutes);
 routes.route('/', browserRoutes);
 routes.route('/', proxyRoutes);
+routes.route('/', docsRoutes);
 
 // ── Mount meta routes (API discovery, version info, config) ──────────────────
 // Routes in metaRoutes use full paths (e.g. /api/version) so mount at '/', not '/api'.

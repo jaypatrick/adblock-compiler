@@ -10,9 +10,10 @@ This document describes how the project's three test layers work, how to run the
 |---|---|---|---|
 | **Core library** (`src/`) | `src/**/*.test.ts` | Deno + `@std/assert` | `deno task test:src` |
 | **Worker API** (`worker/`) | `worker/**/*.test.ts` | Deno + `@std/assert` | `deno task test:worker` |
+| **Worker bindings** (`worker/`) | `worker/**/*.vitest.ts` | Vitest + `@cloudflare/vitest-pool-workers` | `deno task test:vitest` |
 | **Angular frontend** (`frontend/`) | `frontend/src/**/*.spec.ts` | Vitest + Angular TestBed | `pnpm --filter adblock-frontend run test` |
 
-Run all layers at once: `deno task test` (runs `test:src` + `test:worker`) and then `pnpm --filter adblock-frontend run test`.
+Run all backend layers: `deno task test:all` (runs `test:src` + `test:worker` + `test:vitest`).
 
 ---
 
@@ -237,68 +238,111 @@ TestBed.configureTestingModule({
 
 ---
 
-## Cloudflare Vitest Worker Pool (future / beta)
+## Cloudflare Vitest Worker Pool
 
 The `@cloudflare/vitest-pool-workers` package provides a Workers-native Vitest
-environment that runs tests directly inside a Miniflare sandbox, giving access to
-real Cloudflare binding emulators (KV, D1, Queue, Durable Objects, Service Bindings).
+environment that runs tests directly inside the real Cloudflare Workers runtime
+(workerd / Miniflare 3), giving access to real Cloudflare binding implementations
+(KV, D1, Queue, Durable Objects, Workflows, Analytics Engine).
 
 ### When to use it
 
-Use `@cloudflare/vitest-pool-workers` for **integration tests** that need real binding
-fidelity — for example, verifying that a KV write-then-read round-trip works correctly,
-or that a D1 migration applies cleanly.
+Use `@cloudflare/vitest-pool-workers` for **binding-behaviour integration tests** that
+require real Cloudflare runtime fidelity. These are behaviours that **cannot** be
+accurately replicated with in-process mocks:
 
-Continue using Deno's built-in test runner (`deno task test:worker`) for **unit tests**
-that mock bindings, as Deno tests start significantly faster and are simpler to stub.
+- **Queue batch semantics** — `ackAll`, `retryAll`, partial ack, retry backoff
+- **Durable Object lifecycle** — `alarm()`, `webSocketMessage()`, hibernation, storage consistency
+- **Workflow step sequencing** — `step.do` replay, `step.sleep`, durable execution guarantees
+- **Runtime-specific behaviour** — `waitUntil`, `passThroughOnException`, Analytics Engine, Hyperdrive in an isolate
 
-### Setup (not yet wired in CI)
+**Continue using Deno's built-in test runner (`deno task test:worker`) for all other tests:**
 
-1. Add to `devDependencies` in `package.json`:
+- Handler logic, auth flows, Zod validation, rate limiting
+- Business logic that doesn't depend on binding-specific behaviour
+- Unit tests that mock bindings
 
-   ```json
-   "@cloudflare/vitest-pool-workers": "^0.8"
-   ```
+Deno tests start significantly faster, are simpler to stub, and do not require Cloudflare
+bindings to be provisioned. Use `.vitest.ts` files **only** when you need real binding behaviour.
 
-2. Create `vitest.worker.config.ts` at the repo root:
+### Running tests
 
-   ```typescript
-   import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config';
+```sh
+# Run all binding-behaviour tests
+deno task test:vitest
 
-   export default defineWorkersConfig({
-       test: {
-           poolOptions: {
-               workers: {
-                   wrangler: { configPath: './wrangler.toml' },
-                   miniflare: {
-                       kvNamespaces: ['RATE_LIMIT_STORE'],
-                       d1Databases: ['DB'],
-                       compatibilityDate: '2025-09-01',
-                   },
-               },
-           },
-       },
-   });
-   ```
+# Run in watch mode
+deno task test:vitest:watch
 
-3. Name integration test files `*.workers.test.ts` to distinguish them from the
-   Deno unit tests in `worker/`.
+# Run with Vitest UI
+deno task test:vitest:ui
 
-4. Run with:
+# Run all backend test tiers (Deno + Vitest)
+deno task test:all
+```
 
-   ```sh
-   npx vitest --config vitest.worker.config.ts
-   ```
+### Test file naming
+
+- **Deno unit tests** — `*.test.ts` (handler logic, mocks, fast unit tests)
+- **Vitest binding tests** — `*.vitest.ts` (real Cloudflare runtime, binding-behaviour integration tests)
+- **E2E tests** — `*.e2e.test.ts` (hits a live server)
+
+### Configuration
+
+The vitest-pool-workers configuration lives in `vitest.worker.config.ts` at the repo root.
+It points to `wrangler.toml` for binding configuration:
+
+```typescript
+import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config';
+
+export default defineWorkersConfig({
+    test: {
+        include: ['worker/**/*.vitest.ts'],
+        poolOptions: {
+            workers: {
+                wrangler: { configPath: './wrangler.toml' },
+                miniflare: {
+                    compatibilityDate: '2026-01-01',
+                    compatibilityFlags: ['nodejs_compat'],
+                },
+                main: './worker/worker.ts',
+            },
+        },
+    },
+});
+```
+
+### Example test
+
+```typescript
+import { describe, it, expect } from 'vitest';
+import { env } from 'cloudflare:test';
+
+describe('KV binding behaviour', () => {
+    it('should write and read from real KV binding', async () => {
+        const kv = env.COMPILATION_CACHE as KVNamespace;
+
+        await kv.put('test-key', 'test-value');
+        const value = await kv.get('test-key');
+        expect(value).toBe('test-value');
+
+        await kv.delete('test-key');
+    });
+});
+```
+
+See `worker/example.vitest.ts` for a complete example.
 
 ### Key differences from Deno tests
 
-| Concern | Deno (`deno task test:worker`) | CF Vitest Pool (`@cloudflare/vitest-pool-workers`) |
+| Concern | Deno (`deno task test:worker`) | CF Vitest Pool (`deno task test:vitest`) |
 |---|---|---|
-| **Bindings** | Stubbed/mocked | Real Miniflare emulators |
-| **Speed** | Fast (in-process) | Slower (Miniflare sandbox) |
-| **Scope** | Unit tests | Integration tests |
-| **Auth** | Manual stubs | Requires wrangler.toml secrets |
+| **Bindings** | Stubbed/mocked via `makeEnv()` | Real Cloudflare runtime (workerd / Miniflare 3) |
+| **Speed** | Fast (in-process) | Slower (isolated Workers runtime) |
+| **Scope** | Unit tests | Binding-behaviour integration tests |
+| **File extension** | `*.test.ts` | `*.vitest.ts` |
 | **TypeScript** | Deno type-check (`deno check`) | Vitest + tsc |
+| **When to use** | Handler logic, auth, validation (default) | Queue semantics, DO lifecycle, Workflows (specialized) |
 
 ---
 
