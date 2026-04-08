@@ -93,7 +93,12 @@
         "check:src": "deno check src/index.ts src/cli.ts",
         "check:worker": "deno check worker/worker.ts worker/tail.ts",
         "trpc:types": "deno check worker/trpc/router.ts",
-        "check:trpc": "deno check worker/trpc/router.ts worker/trpc/client.ts"
+        "check:trpc": "deno check worker/trpc/router.ts worker/trpc/client.ts",
+        "diag:full": "deno run --allow-net --allow-env --allow-read --allow-write scripts/diag-full.ts",
+        "diag:full:ci": "deno run --allow-net --allow-env --allow-read --allow-write scripts/diag-full.ts --ci",
+        "diag:full:prod": "deno run --allow-net --allow-env --allow-read --allow-write scripts/diag-full.ts --url https://adblock-frontend.jayson-knight.workers.dev",
+        "diag:full:output": "deno run --allow-net --allow-env --allow-read --allow-write scripts/diag-full.ts --output",
+        "diag:report": "deno run --allow-read --allow-write scripts/diag-report.ts"
     },
     "imports": {
         "@/": "./src/",
