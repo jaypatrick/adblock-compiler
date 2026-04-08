@@ -1,4 +1,4 @@
-import { assertEquals } from 'jsr:@std/assert';
+import { assertEquals } from '@std/assert';
 import { handleDiff } from './diff.ts';
 
 const makeRequest = (body: unknown) =>

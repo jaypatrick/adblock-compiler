@@ -63,7 +63,7 @@ interface DiffParams {
                         <mat-label>Original rules</mat-label>
                         <textarea matInput
                             [value]="originalText()"
-                            (input)="originalText.set($any($event.target).value)"
+                            (input)="onOriginalInput($event)"
                             rows="12"
                             placeholder="||example.com^&#10;||oldads.com^"
                         ></textarea>
@@ -74,7 +74,7 @@ interface DiffParams {
                         <mat-label>Current rules</mat-label>
                         <textarea matInput
                             [value]="currentText()"
-                            (input)="currentText.set($any($event.target).value)"
+                            (input)="onCurrentInput($event)"
                             rows="12"
                             placeholder="||example.com^&#10;||newads.com^"
                         ></textarea>
@@ -359,5 +359,13 @@ export class DiffComponent {
         if (original.length && current.length) {
             this.pendingParams.set({ original, current, options: { ...this.opts } });
         }
+    }
+
+    onOriginalInput(event: Event): void {
+        this.originalText.set((event.target as HTMLTextAreaElement).value);
+    }
+
+    onCurrentInput(event: Event): void {
+        this.currentText.set((event.target as HTMLTextAreaElement).value);
     }
 }

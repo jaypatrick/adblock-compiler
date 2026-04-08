@@ -14,20 +14,48 @@ import { JsonResponse } from '../utils/response.ts';
 import type { Env } from '../types.ts';
 import type { ParseError } from '../openapi-types.ts';
 
-/** Parse a list of rule strings through AGTree, collecting errors for invalid rules. */
-function parseAndFilter(rules: string[], errors: ParseError[]): string[] {
-    const valid: string[] = [];
+/** Rule text alongside its 1-based line number in the user's original input. */
+interface TrackedRule {
+    rule: string;
+    originalLine: number;
+}
+
+/**
+ * Parse a list of rule strings through AGTree, collecting errors for invalid rules.
+ *
+ * Filtering behaviour is aligned with DiffGenerator.normalizeRules() so that
+ * the TrackedRule indices produced here correspond 1-to-1 with the positions
+ * DiffGenerator will assign when it receives the extracted rule strings.  This
+ * lets us remap filtered-array line numbers back to original input line numbers
+ * after the diff is generated.
+ */
+function parseAndFilter(
+    rules: string[],
+    options: { ignoreEmptyLines: boolean; ignoreComments: boolean },
+    errors: ParseError[],
+): TrackedRule[] {
+    const result: TrackedRule[] = [];
     for (let i = 0; i < rules.length; i++) {
         const rule = rules[i].trim();
-        if (!rule) continue;
-        const result = ASTViewerService.parseRule(rule);
-        if (result.success) {
-            valid.push(rule);
+        // Mirror DiffGenerator.normalizeRules() empty-line filter
+        if (!rule) {
+            if (!options.ignoreEmptyLines) {
+                result.push({ rule, originalLine: i + 1 });
+            }
+            continue;
+        }
+        // Mirror DiffGenerator.normalizeRules() comment filter
+        if (options.ignoreComments && (rule.startsWith('!') || rule.startsWith('#'))) {
+            continue;
+        }
+        const parsed = ASTViewerService.parseRule(rule);
+        if (parsed.success) {
+            result.push({ rule, originalLine: i + 1 });
         } else {
-            errors.push({ line: i + 1, rule, message: result.error ?? 'Parse error' });
+            errors.push({ line: i + 1, rule, message: parsed.error ?? 'Parse error' });
         }
     }
-    return valid;
+    return result;
 }
 
 /** POST /api/diff — compare two filter lists and return a DiffReport. */
@@ -49,11 +77,27 @@ export async function handleDiff(request: Request, _env: Env): Promise<Response>
     const { original, current, options } = parsed.data;
 
     const parseErrors = { original: [] as ParseError[], current: [] as ParseError[] };
-    const validOriginal = parseAndFilter(original, parseErrors.original);
-    const validCurrent = parseAndFilter(current, parseErrors.current);
+    const originalItems = parseAndFilter(original, options, parseErrors.original);
+    const currentItems = parseAndFilter(current, options, parseErrors.current);
 
     const generator = new DiffGenerator(options);
-    const report = generator.generate(validOriginal, validCurrent);
+    const report = generator.generate(
+        originalItems.map((item) => item.rule),
+        currentItems.map((item) => item.rule),
+    );
+
+    // DiffGenerator assigns line numbers relative to the filtered arrays it receives.
+    // Remap them back to the user's original 1-based input line numbers.
+    for (const r of report.removed) {
+        if (r.originalLine !== undefined) {
+            r.originalLine = originalItems[r.originalLine - 1]?.originalLine;
+        }
+    }
+    for (const r of report.added) {
+        if (r.newLine !== undefined) {
+            r.newLine = currentItems[r.newLine - 1]?.originalLine;
+        }
+    }
 
     return JsonResponse.success({
         success: true,

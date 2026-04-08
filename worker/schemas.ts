@@ -640,13 +640,7 @@ export const DiffOptionsSchema = z.object({
 export const DiffRequestSchema = z.object({
     original: z.array(z.string()).min(1, 'original list cannot be empty'),
     current: z.array(z.string()).min(1, 'current list cannot be empty'),
-    options: DiffOptionsSchema.optional().default(() => ({
-        ignoreComments: true,
-        ignoreEmptyLines: true,
-        analyzeDomains: true,
-        includeFullRules: true,
-        maxRulesToInclude: 1000,
-    })),
+    options: DiffOptionsSchema.optional().default(() => DiffOptionsSchema.parse({})),
 });
 export type DiffRequest = z.infer<typeof DiffRequestSchema>;
 

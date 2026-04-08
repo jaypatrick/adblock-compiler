@@ -161,7 +161,7 @@ compileRoutes.post(
     rateLimitMiddleware(),
     // deno-lint-ignore no-explicit-any
     zValidator('json', DiffRequestSchema as any, zodValidationError),
-    (c) => handleDiff(c.req.raw, c.env),
+    (c) => handleDiff(buildSyntheticRequest(c, c.req.valid('json')), c.env),
 );
 
 // ── Async compile ─────────────────────────────────────────────────────────────

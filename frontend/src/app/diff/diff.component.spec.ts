@@ -36,8 +36,8 @@ describe('DiffComponent', () => {
     });
 
     it('should default analyzeDomains and includeFullRules to true', () => {
-        expect(component.opts.analyzeDomains).toBeTrue();
-        expect(component.opts.includeFullRules).toBeTrue();
+        expect(component.opts.analyzeDomains).toBe(true);
+        expect(component.opts.includeFullRules).toBe(true);
     });
 
     it('should count rules from originalText', () => {
@@ -51,18 +51,18 @@ describe('DiffComponent', () => {
     });
 
     it('should not allow compare when both lists are empty', () => {
-        expect(component.canCompare()).toBeFalse();
+        expect(component.canCompare()).toBe(false);
     });
 
     it('should not allow compare when only one list has rules', () => {
         component.originalText.set('||example.com^');
-        expect(component.canCompare()).toBeFalse();
+        expect(component.canCompare()).toBe(false);
     });
 
     it('should allow compare when both lists have rules', () => {
         component.originalText.set('||a.com^');
         component.currentText.set('||b.com^');
-        expect(component.canCompare()).toBeTrue();
+        expect(component.canCompare()).toBe(true);
     });
 
     it('should not trigger diff on compare() with empty inputs', () => {
