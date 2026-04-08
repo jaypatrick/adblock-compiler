@@ -322,3 +322,65 @@ export const GetFeatureFlagsResponseSchema = AdminListResponseSchema(FeatureFlag
 export const GetAnnouncementsResponseSchema = AdminListResponseSchema(AdminAnnouncementSchema);
 export const GetAuditLogsResponseSchema = AdminListResponseSchema(AdminAuditLogSchema);
 export const GetEndpointOverridesResponseSchema = AdminListResponseSchema(EndpointAuthOverrideSchema);
+
+// ---------------------------------------------------------------------------
+// Diff Response — ZTA validation for POST /diff
+// ---------------------------------------------------------------------------
+
+const DiffParseErrorSchemaLocal = z.object({
+    line:    z.number(),
+    rule:    z.string(),
+    message: z.string(),
+});
+
+const RuleDiffSchemaLocal = z.object({
+    rule:         z.string(),
+    type:         z.enum(['added', 'removed', 'modified']),
+    source:       z.string().optional(),
+    originalLine: z.number().optional(),
+    newLine:      z.number().optional(),
+});
+
+const DomainDiffSchemaLocal = z.object({
+    domain:  z.string(),
+    added:   z.number(),
+    removed: z.number(),
+});
+
+const DiffSummarySchemaLocal = z.object({
+    originalCount:    z.number(),
+    newCount:         z.number(),
+    addedCount:       z.number(),
+    removedCount:     z.number(),
+    unchangedCount:   z.number(),
+    netChange:        z.number(),
+    percentageChange: z.number(),
+});
+
+const DiffReportSchemaLocal = z.object({
+    timestamp:        z.string(),
+    generatorVersion: z.string(),
+    original:         z.object({ name: z.string().optional(), version: z.string().optional(), timestamp: z.string().optional(), ruleCount: z.number() }),
+    current:          z.object({ name: z.string().optional(), version: z.string().optional(), timestamp: z.string().optional(), ruleCount: z.number() }),
+    summary:          DiffSummarySchemaLocal,
+    added:            z.array(RuleDiffSchemaLocal),
+    removed:          z.array(RuleDiffSchemaLocal),
+    domainChanges:    z.array(DomainDiffSchemaLocal),
+});
+
+export const DiffApiResponseSchema = z.object({
+    success:     z.boolean(),
+    parseErrors: z.object({
+        original: z.array(DiffParseErrorSchemaLocal),
+        current:  z.array(DiffParseErrorSchemaLocal),
+    }),
+    report:   DiffReportSchemaLocal,
+    duration: z.string(),
+});
+
+export type DiffApiResponse = z.infer<typeof DiffApiResponseSchema>;
+export type DiffReport      = z.infer<typeof DiffReportSchemaLocal>;
+export type DiffSummary     = z.infer<typeof DiffSummarySchemaLocal>;
+export type RuleDiff        = z.infer<typeof RuleDiffSchemaLocal>;
+export type DomainDiff      = z.infer<typeof DomainDiffSchemaLocal>;
+export type DiffParseError  = z.infer<typeof DiffParseErrorSchemaLocal>;

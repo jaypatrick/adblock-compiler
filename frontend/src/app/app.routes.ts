@@ -75,6 +75,13 @@ export const routes: Routes = [
         canActivate: [authGuard],
     },
     {
+        path: 'diff',
+        loadComponent: () => import('./diff/diff.component').then((m) => m.DiffComponent),
+        title: 'Diff',
+        data: { description: 'Compare two adblock filter lists', metaDescription: 'Compare two adblock filter lists side-by-side using the AGTree AST diff engine. See added, removed, and domain-level changes.' },
+        canActivate: [authGuard],
+    },
+    {
         path: 'api-docs',
         loadComponent: () => import('./api-docs/api-docs.component').then((m) => m.ApiDocsComponent),
         title: 'API Reference',
