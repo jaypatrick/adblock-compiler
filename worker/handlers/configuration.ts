@@ -343,7 +343,9 @@ function jsonToYaml(obj: unknown, indent = 0): string {
     if (typeof obj === 'string') {
         // Escape strings that need quoting
         if (obj.includes('\n') || obj.includes(':') || obj.includes('#')) {
-            return `"${obj.replace(/"/g, '\\"')}"`;
+            // First escape backslashes, then double quotes, so all occurrences are handled correctly
+            let escaped = obj.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            return `"${escaped}"`;
         }
         return obj;
     }
