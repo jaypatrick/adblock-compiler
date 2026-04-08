@@ -7,6 +7,8 @@
  *   POST /api/configuration/resolve   — invalid JSON, missing field, valid, override merge,
  *                                        non-object override, applyEnvOverrides semantics,
  *                                        invalid config → 400 with validation errors
+ *   POST /api/configuration/create    — valid config, invalid config, format selection
+ *   GET  /api/configuration/download/:id — retrieve stored config, handle expiry, format selection
  *
  * @see worker/handlers/configuration.ts
  */
@@ -14,7 +16,13 @@
 import { assertEquals, assertExists } from '@std/assert';
 import { makeEnv } from '../test-helpers.ts';
 import { SourceType } from '../../src/types/index.ts';
-import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from './configuration.ts';
+import {
+    handleConfigurationCreate,
+    handleConfigurationDefaults,
+    handleConfigurationDownload,
+    handleConfigurationResolve,
+    handleConfigurationValidate,
+} from './configuration.ts';
 
 // ============================================================================
 // Fixtures
@@ -350,3 +358,168 @@ Deno.test('handleConfigurationResolve — array config returns 400 with clean er
     assertEquals(body.success, false);
     assertExists(body.error);
 });
+
+// ============================================================================
+// POST /api/configuration/create
+// ============================================================================
+
+Deno.test('handleConfigurationCreate — valid config returns id and format', async () => {
+    const req = makeRequest('POST', { config: VALID_CONFIG, format: 'json' }, 'http://localhost/api/configuration/create');
+    const env = makeEnv();
+    const res = await handleConfigurationCreate(req, env);
+    assertEquals(res.status, 200);
+    const body = await res.json() as { success: boolean; id: string; format: string; expiresIn: number };
+    assertEquals(body.success, true);
+    assertExists(body.id);
+    assertEquals(body.format, 'json');
+    assertEquals(body.expiresIn, 86400);
+});
+
+Deno.test('handleConfigurationCreate — defaults to json format when not specified', async () => {
+    const req = makeRequest('POST', { config: VALID_CONFIG }, 'http://localhost/api/configuration/create');
+    const env = makeEnv();
+    const res = await handleConfigurationCreate(req, env);
+    assertEquals(res.status, 200);
+    const body = await res.json() as { success: boolean; id: string; format: string };
+    assertEquals(body.success, true);
+    assertEquals(body.format, 'json');
+});
+
+Deno.test('handleConfigurationCreate — accepts yaml format', async () => {
+    const req = makeRequest('POST', { config: VALID_CONFIG, format: 'yaml' }, 'http://localhost/api/configuration/create');
+    const env = makeEnv();
+    const res = await handleConfigurationCreate(req, env);
+    assertEquals(res.status, 200);
+    const body = await res.json() as { success: boolean; id: string; format: string };
+    assertEquals(body.success, true);
+    assertEquals(body.format, 'yaml');
+});
+
+Deno.test('handleConfigurationCreate — invalid config returns validation errors', async () => {
+    const req = makeRequest('POST', { config: { name: '' }, format: 'json' }, 'http://localhost/api/configuration/create');
+    const env = makeEnv();
+    const res = await handleConfigurationCreate(req, env);
+    assertEquals(res.status, 200);
+    const body = await res.json() as { success: boolean; valid: boolean; errors: unknown[] };
+    assertEquals(body.success, true);
+    assertEquals(body.valid, false);
+    assertEquals(Array.isArray(body.errors), true);
+    assertEquals((body.errors as unknown[]).length > 0, true);
+});
+
+Deno.test('handleConfigurationCreate — returns 400 on invalid JSON body', async () => {
+    const req = makeRawRequest('not-valid-json{', 'http://localhost/api/configuration/create');
+    const env = makeEnv();
+    const res = await handleConfigurationCreate(req, env);
+    assertEquals(res.status, 400);
+});
+
+Deno.test('handleConfigurationCreate — validation errors include path/message/code', async () => {
+    const req = makeRequest('POST', { config: { name: 'ok' }, format: 'json' }, 'http://localhost/api/configuration/create');
+    const env = makeEnv();
+    const res = await handleConfigurationCreate(req, env);
+    const body = await res.json() as { valid: boolean; errors: { path: string; message: string; code: string }[] };
+    assertEquals(body.valid, false);
+    const firstErr = body.errors[0];
+    assertExists(firstErr.message);
+    assertExists(firstErr.code);
+    assertEquals(typeof firstErr.path, 'string');
+});
+
+Deno.test('handleConfigurationCreate — stores config with extensions field', async () => {
+    const configWithExtensions = {
+        ...VALID_CONFIG,
+        extensions: { customField: 'customValue', anotherField: 42 },
+    };
+    const req = makeRequest('POST', { config: configWithExtensions, format: 'json' }, 'http://localhost/api/configuration/create');
+    const env = makeEnv();
+    const res = await handleConfigurationCreate(req, env);
+    assertEquals(res.status, 200);
+    const body = await res.json() as { success: boolean; id: string };
+    assertEquals(body.success, true);
+    assertExists(body.id);
+});
+
+// ============================================================================
+// GET /api/configuration/download/:id
+// ============================================================================
+
+Deno.test('handleConfigurationDownload — returns 404 for non-existent config', async () => {
+    const env = makeEnv();
+    const res = await handleConfigurationDownload('00000000-0000-0000-0000-000000000000', 'json', env);
+    assertEquals(res.status, 404);
+    const body = await res.json() as { success: boolean; error: string };
+    assertEquals(body.success, false);
+    assertExists(body.error);
+});
+
+Deno.test('handleConfigurationDownload — retrieves stored config in JSON format', async () => {
+    const env = makeEnv();
+    // First create a config
+    const createReq = makeRequest('POST', { config: VALID_CONFIG, format: 'json' }, 'http://localhost/api/configuration/create');
+    const createRes = await handleConfigurationCreate(createReq, env);
+    const createBody = await createRes.json() as { id: string };
+    const configId = createBody.id;
+
+    // Now download it
+    const res = await handleConfigurationDownload(configId, 'json', env);
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get('Content-Type'), 'application/json');
+    assertEquals(res.headers.get('Content-Disposition'), `attachment; filename="config-${configId}.json"`);
+    const configText = await res.text();
+    const config = JSON.parse(configText);
+    assertEquals(config.name, 'Test List');
+});
+
+Deno.test('handleConfigurationDownload — retrieves stored config in YAML format', async () => {
+    const env = makeEnv();
+    // First create a config with yaml format
+    const createReq = makeRequest('POST', { config: VALID_CONFIG, format: 'yaml' }, 'http://localhost/api/configuration/create');
+    const createRes = await handleConfigurationCreate(createReq, env);
+    const createBody = await createRes.json() as { id: string };
+    const configId = createBody.id;
+
+    // Now download it as yaml
+    const res = await handleConfigurationDownload(configId, 'yaml', env);
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get('Content-Type'), 'application/x-yaml');
+    assertEquals(res.headers.get('Content-Disposition'), `attachment; filename="config-${configId}.yaml"`);
+    const configText = await res.text();
+    // Basic YAML structure check
+    assertEquals(configText.includes('name:'), true);
+    assertEquals(configText.includes('Test List'), true);
+});
+
+Deno.test('handleConfigurationDownload — format parameter overrides stored format', async () => {
+    const env = makeEnv();
+    // Create with JSON format
+    const createReq = makeRequest('POST', { config: VALID_CONFIG, format: 'json' }, 'http://localhost/api/configuration/create');
+    const createRes = await handleConfigurationCreate(createReq, env);
+    const createBody = await createRes.json() as { id: string };
+    const configId = createBody.id;
+
+    // Download as YAML
+    const res = await handleConfigurationDownload(configId, 'yaml', env);
+    assertEquals(res.status, 200);
+    assertEquals(res.headers.get('Content-Type'), 'application/x-yaml');
+});
+
+Deno.test('handleConfigurationDownload — preserves extensions field in downloaded config', async () => {
+    const env = makeEnv();
+    const configWithExtensions = {
+        ...VALID_CONFIG,
+        extensions: { customKey: 'customValue' },
+    };
+    const createReq = makeRequest('POST', { config: configWithExtensions, format: 'json' }, 'http://localhost/api/configuration/create');
+    const createRes = await handleConfigurationCreate(createReq, env);
+    const createBody = await createRes.json() as { id: string };
+    const configId = createBody.id;
+
+    const res = await handleConfigurationDownload(configId, 'json', env);
+    assertEquals(res.status, 200);
+    const configText = await res.text();
+    const config = JSON.parse(configText);
+    assertExists(config.extensions);
+    assertEquals(config.extensions.customKey, 'customValue');
+});
+

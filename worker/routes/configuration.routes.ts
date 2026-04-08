@@ -7,6 +7,8 @@
  *   GET  /configuration/defaults
  *   POST /configuration/validate
  *   POST /configuration/resolve
+ *   POST /configuration/create
+ *   GET  /configuration/download/:id
  */
 
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
@@ -18,7 +20,13 @@ import { buildSyntheticRequest, verifyTurnstileInline } from './shared.ts';
 
 import { bodySizeMiddleware, rateLimitMiddleware } from '../middleware/hono-middleware.ts';
 
-import { handleConfigurationDefaults, handleConfigurationResolve, handleConfigurationValidate } from '../handlers/configuration.ts';
+import {
+    handleConfigurationCreate,
+    handleConfigurationDefaults,
+    handleConfigurationDownload,
+    handleConfigurationResolve,
+    handleConfigurationValidate,
+} from '../handlers/configuration.ts';
 
 export const configurationRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
@@ -172,4 +180,111 @@ configurationRoutes.openapi(configurationResolveRoute, async (c) => {
     if (turnstileError) return turnstileError;
     // deno-lint-ignore no-explicit-any
     return handleConfigurationResolve(buildSyntheticRequest(c, c.req.valid('json')), c.env) as any;
+});
+
+const configurationCreateRoute = createRoute({
+    method: 'post',
+    path: '/configuration/create',
+    tags: ['Configuration'],
+    summary: 'Create and store configuration',
+    description: 'Creates and stores a configuration file, returning an ID for download',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        config: z.record(z.string(), z.unknown()),
+                        format: z.enum(['json', 'yaml']).optional(),
+                        turnstileToken: z.string().optional(),
+                    }),
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Configuration created successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        id: z.string().optional(),
+                        format: z.string().optional(),
+                        expiresIn: z.number().optional(),
+                        valid: z.boolean().optional(),
+                        errors: z.array(z.unknown()).optional(),
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Bad request',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+configurationRoutes.use('/configuration/create', bodySizeMiddleware());
+configurationRoutes.use('/configuration/create', rateLimitMiddleware());
+configurationRoutes.openapi(configurationCreateRoute, async (c) => {
+    // deno-lint-ignore no-explicit-any
+    const turnstileError = await verifyTurnstileInline(c, (c.req.valid('json') as any).turnstileToken ?? '');
+    if (turnstileError) return turnstileError;
+    // deno-lint-ignore no-explicit-any
+    return handleConfigurationCreate(buildSyntheticRequest(c, c.req.valid('json')), c.env) as any;
+});
+
+const configurationDownloadRoute = createRoute({
+    method: 'get',
+    path: '/configuration/download/:id',
+    tags: ['Configuration'],
+    summary: 'Download stored configuration',
+    description: 'Downloads a previously stored configuration file',
+    request: {
+        params: z.object({
+            id: z.string().uuid(),
+        }),
+        query: z.object({
+            format: z.enum(['json', 'yaml']).optional(),
+        }),
+    },
+    responses: {
+        200: {
+            description: 'Configuration file',
+            content: {
+                'application/json': {
+                    schema: z.unknown(),
+                },
+                'application/x-yaml': {
+                    schema: z.unknown(),
+                },
+            },
+        },
+        404: {
+            description: 'Configuration not found',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
+    },
+});
+
+configurationRoutes.use('/configuration/download/:id', rateLimitMiddleware());
+configurationRoutes.openapi(configurationDownloadRoute, async (c) => {
+    const { id } = c.req.valid('param');
+    const { format } = c.req.valid('query');
+    // deno-lint-ignore no-explicit-any
+    return handleConfigurationDownload(id, format, c.env) as any;
 });

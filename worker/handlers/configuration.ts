@@ -1,11 +1,13 @@
 /**
  * Configuration API handlers.
  *
- * Exposes three endpoints under /api/configuration/:
+ * Exposes five endpoints under /api/configuration/:
  *
  *  GET  /api/configuration/defaults   — system defaults + limits (anonymous)
  *  POST /api/configuration/validate   — validate a config object (free tier, Turnstile)
  *  POST /api/configuration/resolve    — merge layers → return effective IConfiguration (free tier, Turnstile)
+ *  POST /api/configuration/create     — create and store a configuration file (free tier, Turnstile)
+ *  GET  /api/configuration/download/:id — download a stored configuration file (free tier)
  */
 
 import { COMPILATION_DEFAULTS, VALIDATION_DEFAULTS } from '../../src/config/defaults.ts';
@@ -174,4 +176,201 @@ export async function handleConfigurationResolve(
         }
         throw err;
     }
+}
+
+// ============================================================================
+// POST /api/configuration/create
+// ============================================================================
+
+/**
+ * Schema for POST /configuration/create request body.
+ */
+export const ConfigurationCreateRequestSchema = z.object({
+    config: z.record(z.string(), z.unknown()),
+    format: z.enum(['json', 'yaml']).optional().default('json'),
+    turnstileToken: z.string().optional(),
+});
+
+/**
+ * Creates and stores a configuration file, returning an ID for download.
+ *
+ * Request body:
+ * ```json
+ * {
+ *   "config": { ... },
+ *   "format": "json" | "yaml",  // optional, defaults to "json"
+ *   "turnstileToken": "<token>"
+ * }
+ * ```
+ *
+ * Returns `{ id: string, format: string }`.
+ */
+export async function handleConfigurationCreate(
+    request: Request,
+    env: Env,
+): Promise<Response> {
+    let body: unknown;
+    try {
+        body = await request.json();
+    } catch {
+        return JsonResponse.badRequest('Request body must be valid JSON');
+    }
+
+    const parsed = ConfigurationCreateRequestSchema.safeParse(body);
+    if (!parsed.success) {
+        return JsonResponse.badRequest(
+            parsed.error.issues.map((i) => `${i.path.join('.') || 'body'}: ${i.message}`).join('; '),
+        );
+    }
+
+    const { config, format } = parsed.data;
+
+    // Validate the configuration
+    const validationResult = ConfigurationSchema.safeParse(config);
+    if (!validationResult.success) {
+        return JsonResponse.success({
+            valid: false,
+            errors: validationResult.error.issues.map((issue) => ({
+                path: issue.path.join('.'),
+                message: issue.message,
+                code: issue.code,
+            })),
+        });
+    }
+
+    // Generate a unique ID for this configuration
+    const configId = crypto.randomUUID();
+    const key = `config:${configId}`;
+
+    // Store in KV with 24-hour expiration
+    const configData = {
+        config: validationResult.data,
+        format,
+        createdAt: new Date().toISOString(),
+    };
+
+    try {
+        await env.COMPILATION_CACHE.put(
+            key,
+            JSON.stringify(configData),
+            { expirationTtl: 86400 }, // 24 hours
+        );
+
+        return JsonResponse.success({
+            id: configId,
+            format,
+            expiresIn: 86400,
+        });
+    } catch (err) {
+        if (err instanceof Error) {
+            return JsonResponse.serverError(`Failed to store configuration: ${err.message}`);
+        }
+        throw err;
+    }
+}
+
+// ============================================================================
+// GET /api/configuration/download/:id
+// ============================================================================
+
+/**
+ * Downloads a stored configuration file.
+ *
+ * Returns the configuration in the requested format (JSON or YAML).
+ */
+export async function handleConfigurationDownload(
+    configId: string,
+    format: 'json' | 'yaml' | undefined,
+    env: Env,
+): Promise<Response> {
+    const key = `config:${configId}`;
+
+    try {
+        const stored = await env.COMPILATION_CACHE.get(key);
+        if (!stored) {
+            return Response.json(
+                { success: false, error: 'Configuration not found or expired' },
+                { status: 404 },
+            );
+        }
+
+        const configData = JSON.parse(stored);
+        const config = configData.config;
+        const storedFormat = format || configData.format || 'json';
+
+        let content: string;
+        let contentType: string;
+        let filename: string;
+
+        if (storedFormat === 'yaml') {
+            // Convert JSON to YAML - simple implementation
+            content = jsonToYaml(config);
+            contentType = 'application/x-yaml';
+            filename = `config-${configId}.yaml`;
+        } else {
+            content = JSON.stringify(config, null, 4);
+            contentType = 'application/json';
+            filename = `config-${configId}.json`;
+        }
+
+        return new Response(content, {
+            status: 200,
+            headers: {
+                'Content-Type': contentType,
+                'Content-Disposition': `attachment; filename="${filename}"`,
+                'Cache-Control': 'private, no-cache',
+            },
+        });
+    } catch (err) {
+        if (err instanceof Error) {
+            return JsonResponse.serverError(`Failed to retrieve configuration: ${err.message}`);
+        }
+        throw err;
+    }
+}
+
+/**
+ * Simple JSON to YAML converter for configuration files.
+ * This is a basic implementation - for production, consider using a proper YAML library.
+ */
+function jsonToYaml(obj: unknown, indent = 0): string {
+    const spaces = '  '.repeat(indent);
+
+    if (obj === null || obj === undefined) {
+        return 'null';
+    }
+
+    if (typeof obj === 'string') {
+        // Escape strings that need quoting
+        if (obj.includes('\n') || obj.includes(':') || obj.includes('#')) {
+            return `"${obj.replace(/"/g, '\\"')}"`;
+        }
+        return obj;
+    }
+
+    if (typeof obj === 'number' || typeof obj === 'boolean') {
+        return String(obj);
+    }
+
+    if (Array.isArray(obj)) {
+        if (obj.length === 0) return '[]';
+        return '\n' + obj.map((item) => `${spaces}- ${jsonToYaml(item, indent + 1).trim()}`).join('\n');
+    }
+
+    if (typeof obj === 'object') {
+        const entries = Object.entries(obj);
+        if (entries.length === 0) return '{}';
+
+        return '\n' + entries.map(([key, value]) => {
+            const yamlValue = jsonToYaml(value, indent + 1);
+            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+                return `${spaces}${key}:${yamlValue}`;
+            } else if (Array.isArray(value)) {
+                return `${spaces}${key}:${yamlValue}`;
+            }
+            return `${spaces}${key}: ${yamlValue}`;
+        }).join('\n');
+    }
+
+    return String(obj);
 }

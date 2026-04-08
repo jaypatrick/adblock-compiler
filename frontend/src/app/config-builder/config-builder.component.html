@@ -1,0 +1,276 @@
+<mat-card class="config-builder-card">
+    <mat-card-header>
+        <mat-card-title>Configuration Builder</mat-card-title>
+        <mat-card-subtitle>Create and validate adblock filter list configurations</mat-card-subtitle>
+    </mat-card-header>
+
+    <mat-card-content>
+        <mat-tab-group [(selectedIndex)]="selectedTab">
+            <!-- Form Tab -->
+            <mat-tab label="Form">
+                <div class="tab-content">
+                    <form [formGroup]="configForm" class="config-form">
+                        <!-- Basic Information Section -->
+                        <section class="form-section">
+                            <h3>Basic Information</h3>
+
+                            <mat-form-field appearance="outline" class="full-width">
+                                <mat-label>Name</mat-label>
+                                <input matInput formControlName="name" placeholder="My Filter List" required />
+                                <mat-hint>A descriptive name for your filter list</mat-hint>
+                                @if (configForm.get('name')?.invalid && configForm.get('name')?.touched) {
+                                    <mat-error>Name is required</mat-error>
+                                }
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" class="full-width">
+                                <mat-label>Description</mat-label>
+                                <textarea matInput formControlName="description" rows="3" placeholder="Optional description"></textarea>
+                                <mat-hint>A brief description of your filter list</mat-hint>
+                            </mat-form-field>
+
+                            <mat-form-field appearance="outline" class="full-width">
+                                <mat-label>Homepage</mat-label>
+                                <input matInput formControlName="homepage" placeholder="https://example.com" />
+                                <mat-hint>URL to your project or documentation</mat-hint>
+                                @if (configForm.get('homepage')?.invalid && configForm.get('homepage')?.touched) {
+                                    <mat-error>Must be a valid URL (http:// or https://)</mat-error>
+                                }
+                            </mat-form-field>
+
+                            <div class="form-row">
+                                <mat-form-field appearance="outline" class="half-width">
+                                    <mat-label>License</mat-label>
+                                    <input matInput formControlName="license" placeholder="MIT" />
+                                    <mat-hint>License identifier (e.g., MIT, GPL-3.0)</mat-hint>
+                                </mat-form-field>
+
+                                <mat-form-field appearance="outline" class="half-width">
+                                    <mat-label>Version</mat-label>
+                                    <input matInput formControlName="version" placeholder="1.0.0" />
+                                    <mat-hint>Semantic version number</mat-hint>
+                                    @if (configForm.get('version')?.invalid && configForm.get('version')?.touched) {
+                                        <mat-error>Must be a valid version (e.g., 1.0.0)</mat-error>
+                                    }
+                                </mat-form-field>
+                            </div>
+                        </section>
+
+                        <mat-divider></mat-divider>
+
+                        <!-- Sources Section -->
+                        <section class="form-section">
+                            <div class="section-header">
+                                <h3>Sources</h3>
+                                <button mat-raised-button color="primary" type="button" (click)="addSource()">
+                                    <mat-icon>add</mat-icon>
+                                    Add Source
+                                </button>
+                            </div>
+
+                            <div formArrayName="sources" class="sources-list">
+                                @for (source of sources.controls; track $index) {
+                                    <mat-card class="source-card" [formGroupName]="$index">
+                                        <div class="source-card-header">
+                                            <h4>Source {{ $index + 1 }}</h4>
+                                            <button mat-icon-button color="warn" type="button" (click)="removeSource($index)" [disabled]="sources.length === 1">
+                                                <mat-icon>delete</mat-icon>
+                                            </button>
+                                        </div>
+
+                                        <mat-form-field appearance="outline" class="full-width">
+                                            <mat-label>Source URL or Path</mat-label>
+                                            <input matInput formControlName="source" placeholder="https://example.com/filters.txt" required />
+                                            <mat-hint>URL or local path to the filter list</mat-hint>
+                                            @if (source.get('source')?.invalid && source.get('source')?.touched) {
+                                                <mat-error>Source is required</mat-error>
+                                            }
+                                        </mat-form-field>
+
+                                        <div class="form-row">
+                                            <mat-form-field appearance="outline" class="half-width">
+                                                <mat-label>Name (Optional)</mat-label>
+                                                <input matInput formControlName="name" placeholder="My Source" />
+                                            </mat-form-field>
+
+                                            <mat-form-field appearance="outline" class="half-width">
+                                                <mat-label>Type</mat-label>
+                                                <mat-select formControlName="type">
+                                                    @for (type of sourceTypes; track type) {
+                                                        <mat-option [value]="type">{{ type }}</mat-option>
+                                                    }
+                                                </mat-select>
+                                            </mat-form-field>
+                                        </div>
+                                    </mat-card>
+                                }
+                            </div>
+                        </section>
+
+                        <mat-divider></mat-divider>
+
+                        <!-- Transformations Section -->
+                        <section class="form-section">
+                            <h3>Transformations</h3>
+                            <mat-form-field appearance="outline" class="full-width">
+                                <mat-label>Select Transformations</mat-label>
+                                <mat-select formControlName="transformations" multiple>
+                                    @for (transformation of transformationTypes; track transformation) {
+                                        <mat-option [value]="transformation">{{ transformation }}</mat-option>
+                                    }
+                                </mat-select>
+                                <mat-hint>Select transformations to apply to the compiled filter list</mat-hint>
+                            </mat-form-field>
+
+                            @if (configForm.get('transformations')?.value && configForm.get('transformations')?.value.length > 0) {
+                                <mat-chip-set>
+                                    @for (transformation of configForm.get('transformations')?.value; track transformation) {
+                                        <mat-chip>{{ transformation }}</mat-chip>
+                                    }
+                                </mat-chip-set>
+                            }
+                        </section>
+
+                        <mat-divider></mat-divider>
+
+                        <!-- Extensions Section -->
+                        <section class="form-section">
+                            <div class="section-header">
+                                <h3>Extensions</h3>
+                                <span class="section-hint">Add custom metadata as key-value pairs</span>
+                            </div>
+
+                            <div class="extensions-list">
+                                @for (key of getExtensionKeys(); track key) {
+                                    <div class="extension-item">
+                                        <mat-form-field appearance="outline" class="extension-key">
+                                            <mat-label>Key</mat-label>
+                                            <input matInput [value]="key" readonly />
+                                        </mat-form-field>
+
+                                        <mat-form-field appearance="outline" class="extension-value">
+                                            <mat-label>Value</mat-label>
+                                            <input matInput [formControl]="extensions.get(key)" />
+                                        </mat-form-field>
+
+                                        <button mat-icon-button color="warn" type="button" (click)="removeExtension(key)">
+                                            <mat-icon>delete</mat-icon>
+                                        </button>
+                                    </div>
+                                }
+                            </div>
+
+                            <div class="add-extension-form">
+                                <mat-form-field appearance="outline" class="extension-key">
+                                    <mat-label>Key</mat-label>
+                                    <input matInput #extensionKey placeholder="customField" />
+                                </mat-form-field>
+
+                                <mat-form-field appearance="outline" class="extension-value">
+                                    <mat-label>Value</mat-label>
+                                    <input matInput #extensionValue placeholder="value" />
+                                </mat-form-field>
+
+                                <button mat-raised-button type="button" (click)="addExtension(extensionKey.value, extensionValue.value); extensionKey.value = ''; extensionValue.value = ''">
+                                    <mat-icon>add</mat-icon>
+                                    Add
+                                </button>
+                            </div>
+                        </section>
+                    </form>
+                </div>
+            </mat-tab>
+
+            <!-- Preview Tab -->
+            <mat-tab label="Preview">
+                <div class="tab-content">
+                    <div class="preview-controls">
+                        <mat-button-toggle-group [value]="outputFormat()" (change)="outputFormat.set($event.value)">
+                            <mat-button-toggle value="json">JSON</mat-button-toggle>
+                            <mat-button-toggle value="yaml">YAML</mat-button-toggle>
+                        </mat-button-toggle-group>
+
+                        <button mat-raised-button (click)="copyToClipboard()">
+                            <mat-icon>content_copy</mat-icon>
+                            Copy to Clipboard
+                        </button>
+                    </div>
+
+                    <pre class="config-preview"><code>{{ jsonOutput() }}</code></pre>
+                </div>
+            </mat-tab>
+        </mat-tab-group>
+
+        <!-- Validation Errors -->
+        @if (validationErrors().length > 0) {
+            <mat-card class="error-card">
+                <mat-card-header>
+                    <mat-card-title>Validation Errors</mat-card-title>
+                </mat-card-header>
+                <mat-card-content>
+                    <ul class="error-list">
+                        @for (error of validationErrors(); track error.path) {
+                            <li>
+                                <strong>{{ error.path }}</strong>: {{ error.message }}
+                                @if (error.code) {
+                                    <span class="error-code">({{ error.code }})</span>
+                                }
+                            </li>
+                        }
+                    </ul>
+                </mat-card-content>
+            </mat-card>
+        }
+
+        <!-- Configuration ID Display -->
+        @if (configId()) {
+            <mat-card class="success-card">
+                <mat-card-content>
+                    <div class="success-message">
+                        <mat-icon>check_circle</mat-icon>
+                        <div>
+                            <strong>Configuration created successfully!</strong>
+                            <p>ID: <code>{{ configId() }}</code></p>
+                            <p class="expiry-notice">This configuration will expire in 24 hours.</p>
+                        </div>
+                    </div>
+                </mat-card-content>
+            </mat-card>
+        }
+
+        <!-- Turnstile Widget -->
+        <div class="turnstile-container">
+            <app-turnstile
+                (success)="onTurnstileSuccess($event)"
+                (error)="onTurnstileError($event)"
+            ></app-turnstile>
+        </div>
+    </mat-card-content>
+
+    <mat-card-actions class="card-actions">
+        <button mat-raised-button color="accent" (click)="validateConfig()" [disabled]="!isFormValid() || isValidating() || !turnstileToken()">
+            @if (isValidating()) {
+                <mat-icon>hourglass_empty</mat-icon>
+                Validating...
+            } @else {
+                <mat-icon>check_circle</mat-icon>
+                Validate
+            }
+        </button>
+
+        <button mat-raised-button color="primary" (click)="createAndStoreConfig()" [disabled]="!isFormValid() || isCreating() || !turnstileToken()">
+            @if (isCreating()) {
+                <mat-icon>hourglass_empty</mat-icon>
+                Creating...
+            } @else {
+                <mat-icon>save</mat-icon>
+                Create & Store
+            }
+        </button>
+
+        <button mat-raised-button (click)="downloadConfig()" [disabled]="!configId()">
+            <mat-icon>download</mat-icon>
+            Download
+        </button>
+    </mat-card-actions>
+</mat-card>

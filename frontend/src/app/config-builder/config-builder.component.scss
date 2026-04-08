@@ -1,0 +1,291 @@
+.config-builder-card {
+    max-width: 1200px;
+    margin: 2rem auto;
+    padding: 1rem;
+}
+
+.tab-content {
+    padding: 1.5rem 0;
+    min-height: 400px;
+}
+
+.config-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form-section {
+    margin: 1.5rem 0;
+
+    h3 {
+        margin: 0 0 1rem 0;
+        color: rgba(0, 0, 0, 0.87);
+        font-size: 1.25rem;
+        font-weight: 500;
+    }
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+
+    h3 {
+        margin: 0;
+    }
+
+    .section-hint {
+        color: rgba(0, 0, 0, 0.6);
+        font-size: 0.875rem;
+    }
+}
+
+.full-width {
+    width: 100%;
+}
+
+.form-row {
+    display: flex;
+    gap: 1rem;
+    width: 100%;
+
+    .half-width {
+        flex: 1;
+    }
+}
+
+// Sources Section
+.sources-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.source-card {
+    padding: 1rem;
+    background-color: rgba(0, 0, 0, 0.02);
+
+    .source-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 1rem;
+
+        h4 {
+            margin: 0;
+            font-size: 1rem;
+            font-weight: 500;
+            color: rgba(0, 0, 0, 0.87);
+        }
+    }
+}
+
+// Extensions Section
+.extensions-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.extension-item {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+
+    .extension-key {
+        flex: 0 0 200px;
+    }
+
+    .extension-value {
+        flex: 1;
+    }
+}
+
+.add-extension-form {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    padding: 1rem;
+    background-color: rgba(0, 0, 0, 0.02);
+    border-radius: 4px;
+
+    .extension-key {
+        flex: 0 0 200px;
+    }
+
+    .extension-value {
+        flex: 1;
+    }
+}
+
+// Preview Section
+.preview-controls {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.config-preview {
+    background-color: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 4px;
+    padding: 1rem;
+    overflow-x: auto;
+    max-height: 600px;
+    overflow-y: auto;
+    font-family: 'Courier New', monospace;
+    font-size: 0.875rem;
+    line-height: 1.5;
+
+    code {
+        white-space: pre-wrap;
+        word-break: break-all;
+    }
+}
+
+// Error Display
+.error-card {
+    margin-top: 1rem;
+    background-color: #ffebee;
+    border: 1px solid #ef5350;
+
+    mat-card-title {
+        color: #c62828;
+    }
+}
+
+.error-list {
+    margin: 0;
+    padding-left: 1.5rem;
+    color: #c62828;
+
+    li {
+        margin-bottom: 0.5rem;
+
+        strong {
+            font-weight: 600;
+        }
+
+        .error-code {
+            color: rgba(0, 0, 0, 0.6);
+            font-size: 0.875rem;
+        }
+    }
+}
+
+// Success Display
+.success-card {
+    margin-top: 1rem;
+    background-color: #e8f5e9;
+    border: 1px solid #4caf50;
+}
+
+.success-message {
+    display: flex;
+    gap: 1rem;
+    align-items: flex-start;
+
+    mat-icon {
+        color: #4caf50;
+        font-size: 2rem;
+        width: 2rem;
+        height: 2rem;
+    }
+
+    strong {
+        display: block;
+        margin-bottom: 0.5rem;
+        color: #2e7d32;
+    }
+
+    p {
+        margin: 0.25rem 0;
+        color: rgba(0, 0, 0, 0.87);
+
+        code {
+            background-color: rgba(0, 0, 0, 0.1);
+            padding: 0.25rem 0.5rem;
+            border-radius: 3px;
+            font-family: 'Courier New', monospace;
+        }
+    }
+
+    .expiry-notice {
+        font-size: 0.875rem;
+        color: rgba(0, 0, 0, 0.6);
+        font-style: italic;
+    }
+}
+
+// Turnstile Container
+.turnstile-container {
+    margin: 1.5rem 0;
+    display: flex;
+    justify-content: center;
+}
+
+// Card Actions
+.card-actions {
+    display: flex;
+    gap: 1rem;
+    padding: 1rem;
+    justify-content: flex-end;
+    border-top: 1px solid rgba(0, 0, 0, 0.12);
+
+    button {
+        min-width: 140px;
+    }
+}
+
+// Responsive Design
+@media (max-width: 768px) {
+    .config-builder-card {
+        margin: 1rem;
+        padding: 0.5rem;
+    }
+
+    .form-row {
+        flex-direction: column;
+    }
+
+    .section-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.5rem;
+    }
+
+    .extension-item {
+        flex-direction: column;
+        align-items: stretch;
+
+        .extension-key {
+            flex: 1;
+        }
+    }
+
+    .add-extension-form {
+        flex-direction: column;
+
+        .extension-key {
+            flex: 1;
+        }
+    }
+
+    .preview-controls {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+
+    .card-actions {
+        flex-direction: column;
+
+        button {
+            width: 100%;
+        }
+    }
+}
