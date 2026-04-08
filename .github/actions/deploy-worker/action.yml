@@ -20,7 +20,7 @@ runs:
                       break
                   fi
                   echo "$output"
-                  if echo "$output" | grep -qiE 'Authentication error|not authorized|10000|7403'; then
+                  if echo "$output" | grep -qiE 'Authentication error|not authorized|7403'; then
                       echo ""
                       echo "🔐 CLOUDFLARE_API_TOKEN is missing required D1 permissions."
                       echo ""
@@ -36,6 +36,19 @@ runs:
                       echo "   4. Update the CLOUDFLARE_API_TOKEN secret in GitHub"
                       echo ""
                       echo "   Note: 'Workers:Edit' alone is NOT sufficient - D1:Edit is a separate permission!"
+                      exit 1
+                  fi
+                  if echo "$output" | grep -qiE '10000'; then
+                      echo ""
+                      echo "🔑 CLOUDFLARE_API_TOKEN is invalid or has expired."
+                      echo ""
+                      echo "   To fix this issue:"
+                      echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
+                      echo "   2. Create a new API token with:"
+                      echo "      • Account > D1:Edit (REQUIRED for migrations)"
+                      echo "      • Account > Workers:Edit (for worker deployment)"
+                      echo "      • Account > Pages:Edit (for Pages deployment)"
+                      echo "   3. Update the CLOUDFLARE_API_TOKEN secret in GitHub"
                       exit 1
                   fi
                   if [ "$i" -lt 3 ]; then
