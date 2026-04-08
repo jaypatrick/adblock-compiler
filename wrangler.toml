@@ -47,12 +47,12 @@ compatibility_flags = ["nodejs_compat"]
 # once a custom domain is configured via a route or Workers Custom Domain).
 workers_dev = true
 
-[[routes]]
-pattern = "api.bloqr.jaysonknight.com/*"
-custom_domain = true
-
 # Forward all worker logs to Cloudflare Logpush (production only; no-op locally).
 logpush = true
+
+[[routes]]
+pattern = "api.bloqr.jaysonknight.com"
+custom_domain = true
 
 # ─── import.meta.url shim ────────────────────────────────────────────────────
 # Provides a stable fallback so that Node.js-compat polyfills
