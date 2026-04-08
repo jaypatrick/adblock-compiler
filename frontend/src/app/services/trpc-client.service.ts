@@ -11,11 +11,18 @@
  * `frontend/src/app/trpc/client.ts` mirrors the same logic without that import chain.
  *
  * ## Why tRPC?
- * - **End-to-end type safety**: Procedure input/output types are inferred from
- *   the Worker's `AppRouter` definition. No manual sync between frontend and backend.
+ * - **Typed client surface with current limitations**: This service exposes the
+ *   frontend-local tRPC client API, but does **not** currently provide end-to-end
+ *   compile-time inference from the Worker's `AppRouter`. The frontend factory uses
+ *   `createTRPCClient<any>` to avoid importing the Deno-style `.ts` extension chain
+ *   from `worker/trpc/`, so backend/frontend procedure types are not guaranteed to
+ *   stay in sync at compile time. Runtime validation is enforced by the Worker's
+ *   Zod validators — see `frontend/src/app/trpc/client.ts` for the full trade-off.
  * - **Automatic batching**: Multiple queries/mutations issued in the same tick
  *   are batched into a single HTTP request via `httpBatchLink`.
- * - **Lightweight**: No code generation step required — pure TypeScript inference.
+ * - **Lightweight integration**: No code generation step required. The current setup
+ *   relies on the frontend-local untyped factory rather than pure `AppRouter`-driven
+ *   TypeScript inference.
  * - **Versioned API**: All procedures are namespaced under `v1.*` for stable versioning.
  *
  * ## Available procedures

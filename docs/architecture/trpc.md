@@ -101,8 +101,17 @@ The Angular frontend includes a pre-configured `TrpcClientService` at
 - Wraps `createTrpcClient` as a proper Angular service (`providedIn: 'root'`)
 - Automatically injects `API_BASE_URL` and derives the Worker origin
 - Automatically injects `AuthFacadeService` and attaches Bearer tokens per-call
-- Provides full `AppRouter` type inference
+- Supports runtime-validated Angular usage, but does **not** currently provide full `AppRouter` compile-time inference
 - Follows ZTA best practices (no token storage, per-call auth resolution)
+
+> **Note on type safety**: The Angular client factory (`frontend/src/app/trpc/client.ts`)
+> intentionally does **not** import `AppRouter` to avoid the `.ts`-extension import chain
+> in `worker/trpc/`. As a result, Angular consumers should treat this integration as
+> **runtime-validated rather than compile-time type-safe**. TypeScript will not catch
+> typos in procedure names or incorrect payload shapes. To restore full compile-time
+> safety, introduce a frontend-consumable `AppRouter` type surface (e.g., a generated
+> `.d.ts` or shared `types/` package) and update the factory to use
+> `createTRPCClient<AppRouter>`.
 
 **Usage in Angular components:**
 

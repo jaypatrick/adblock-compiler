@@ -3,7 +3,9 @@
  *
  * Covers:
  *   - Service instantiation
- *   - tRPC client is callable and returns typed results
+ *   - tRPC client is callable and dispatches HTTP requests to the correct endpoint
+ *   - Results are returned as-is from the mock fetch (client uses createTRPCClient<any>,
+ *     so there is no compile-time type checking on procedure names or response shapes)
  *   - Authorization header is attached when AuthFacadeService.getToken() returns a token
  *   - No Authorization header when getToken() returns null
  *   - Base URL is correctly derived from API_BASE_URL (strips /api suffix)
