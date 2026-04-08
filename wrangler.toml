@@ -32,6 +32,10 @@ name = "adblock-compiler"
 main = "worker/worker.ts"
 compatibility_date = "2026-01-01"
 
+# Cloudflare Pages output directory for documentation deployment.
+# This is required when deploying Pages projects via wrangler.
+pages_build_output_dir = "book"
+
 # Enable Node.js compatibility for dependencies that import Node built-ins
 # (e.g. agents and @cloudflare/playwright-mcp use async_hooks and path).
 compatibility_flags = ["nodejs_compat"]
