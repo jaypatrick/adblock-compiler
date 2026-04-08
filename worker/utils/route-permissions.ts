@@ -85,8 +85,10 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     // Webhook receivers use self-authentication (HMAC/signatures)
     ['/webhooks/*', { minTier: UserTier.Anonymous, description: 'Webhook receivers (self-authenticated)' }],
     // API documentation — publicly readable
-    ['/docs', { minTier: UserTier.Anonymous, description: 'API documentation' }],
-    ['/docs/*', { minTier: UserTier.Anonymous, description: 'API documentation pages' }],
+    ['/docs', { minTier: UserTier.Anonymous, description: 'API documentation (Scalar UI)' }],
+    ['/swagger', { minTier: UserTier.Anonymous, description: 'API documentation (Swagger UI)' }],
+    ['/docs/*', { minTier: UserTier.Anonymous, description: 'API documentation pages (Scalar UI)' }],
+    ['/swagger/*', { minTier: UserTier.Anonymous, description: 'API documentation pages (Swagger UI)' }],
 
     // ── Free tier (any authenticated user) ────────────────────────────────────
     // Compile / transform
