@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-net --allow-env --allow-write
+#!/usr/bin/env -S deno run --allow-net --allow-env --allow-read --allow-write
 
 /**
  * Full diagnostic suite for adblock-compiler Worker.
@@ -88,7 +88,8 @@ const OpenApiSpecSchema = z.object({
 
 /**
  * Project version read dynamically from deno.json.
- * Falls back to 'unknown' if --allow-read is not granted or the file is missing.
+ * Requires `--allow-read` (included in all `deno task diag:full*` entries).
+ * Falls back to 'unknown' if the permission is not granted or the file is missing.
  */
 async function readProjectVersion(): Promise<string> {
     try {

@@ -112,6 +112,8 @@ async function readBundle(filePath: string | undefined): Promise<DiagBundle> {
         }
     } else {
         try {
+            // `new Response(readable).text()` is the idiomatic Deno way to consume
+            // a full ReadableStream<Uint8Array> as a UTF-8 string in a single await.
             text = await new Response(Deno.stdin.readable).text();
         } catch (err) {
             console.error(`❌ Could not read from stdin: ${err instanceof Error ? err.message : String(err)}`);
