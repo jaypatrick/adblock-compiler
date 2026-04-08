@@ -15,7 +15,7 @@ import { ConfigurationManager, ConfigurationValidationError, ObjectConfiguration
 import { ConfigurationSchema } from '../../src/configuration/schemas.ts';
 import { JsonResponse } from '../utils/response.ts';
 import type { Env } from '../types.ts';
-import { stringify as yamlStringify } from '@std/yaml';
+import { stringify as yamlStringify } from 'yaml';
 import { z } from 'zod';
 
 // ── Request schemas ─────────────────────────────────────────────────────────

@@ -25,7 +25,7 @@
     "npm:@cloudflare/containers@~0.1.1": "0.1.1",
     "npm:@cloudflare/playwright-mcp@^0.0.5": "0.0.5_@cloudflare+workers-types@4.20260317.1",
     "npm:@cloudflare/playwright@^1.2.0": "1.2.0",
-    "npm:@cloudflare/vitest-pool-workers@~0.14.2": "0.14.2_@vitest+runner@4.1.3_@vitest+snapshot@4.1.3_vitest@4.1.3__@opentelemetry+api@1.9.1__vite@8.0.7___esbuild@0.27.3__esbuild@0.27.3_@cloudflare+workers-types@4.20260317.1_@opentelemetry+api@1.9.1_vite@8.0.7__esbuild@0.27.3",
+    "npm:@cloudflare/vitest-pool-workers@~0.14.2": "0.14.2_vitest@4.1.3__@opentelemetry+api@1.9.1__yaml@2.8.2_yaml@2.8.2",
     "npm:@cloudflare/workers-types@^4.20260317.1": "4.20260317.1",
     "npm:@hono/swagger-ui@~0.6.1": "0.6.1_hono@4.12.8",
     "npm:@hono/zod-openapi@^1.2.2": "1.2.2_hono@4.12.8_zod@4.3.6",
@@ -43,8 +43,8 @@
     "npm:@trpc/client@^11.15.1": "11.15.1_@trpc+server@11.15.1__typescript@6.0.2_typescript@6.0.2",
     "npm:@trpc/server@^11.15.1": "11.15.1_typescript@6.0.2",
     "npm:agents@0.8": "0.8.1_ai@6.0.138__zod@4.3.6_react@19.2.4_zod@4.3.6_@cloudflare+workers-types@4.20260317.1",
-    "npm:better-auth@^1.5.5": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__vite@8.0.7___esbuild@0.27.3__esbuild@0.27.3",
-    "npm:better-auth@^1.5.6": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__vite@8.0.7___esbuild@0.27.3__esbuild@0.27.3",
+    "npm:better-auth@^1.5.5": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__yaml@2.8.2_yaml@2.8.2",
+    "npm:better-auth@^1.5.6": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__yaml@2.8.2_yaml@2.8.2",
     "npm:cloudflare@5.2.0": "5.2.0",
     "npm:cloudflare@^5.2.0": "5.2.0",
     "npm:hono@*": "4.12.8",
@@ -57,9 +57,10 @@
     "npm:prisma@^7.5.0": "7.5.0_typescript@6.0.2",
     "npm:svix@^1.62.0": "1.89.0",
     "npm:svix@^1.89.0": "1.89.0",
-    "npm:vitest@^4.1.0": "4.1.3_@opentelemetry+api@1.9.1_vite@8.0.7__esbuild@0.27.3_esbuild@0.27.3",
+    "npm:vitest@^4.1.0": "4.1.3_@opentelemetry+api@1.9.1_yaml@2.8.2",
     "npm:wrangler@*": "4.81.0_@cloudflare+workers-types@4.20260317.1",
     "npm:wrangler@^4.77.0": "4.81.0_@cloudflare+workers-types@4.20260317.1",
+    "npm:yaml@^2.7.0": "2.8.2",
     "npm:zod@*": "4.3.6",
     "npm:zod@3": "3.25.76",
     "npm:zod@^4.3.6": "4.3.6"
@@ -368,7 +369,7 @@
         "workerd"
       ]
     },
-    "@cloudflare/vitest-pool-workers@0.14.2_@vitest+runner@4.1.3_@vitest+snapshot@4.1.3_vitest@4.1.3__@opentelemetry+api@1.9.1__vite@8.0.7___esbuild@0.27.3__esbuild@0.27.3_@cloudflare+workers-types@4.20260317.1_@opentelemetry+api@1.9.1_vite@8.0.7__esbuild@0.27.3": {
+    "@cloudflare/vitest-pool-workers@0.14.2_vitest@4.1.3__@opentelemetry+api@1.9.1__yaml@2.8.2_yaml@2.8.2": {
       "integrity": "sha512-LM91FyE/cW8ttUEYTaYZyCzcP/aD5PRAsUUIvfq07xEfpRbooAdF7v+nnDbsJq/gncuWNpPPl0rlNWX4vZleBw==",
       "dependencies": [
         "@vitest/runner",
@@ -1284,7 +1285,7 @@
         "tinyrainbow"
       ]
     },
-    "@vitest/mocker@4.1.3_vite@8.0.7__esbuild@0.27.3_esbuild@0.27.3": {
+    "@vitest/mocker@4.1.3_vite@8.0.7__esbuild@0.27.3__yaml@2.8.2_yaml@2.8.2": {
       "integrity": "sha512-XN3TrycitDQSzGRnec/YWgoofkYRhouyVQj4YNsJ5r/STCUFqMrP4+oxEv3e7ZbLi4og5kIHrZwekDJgw6hcjw==",
       "dependencies": [
         "@vitest/spy",
@@ -1447,7 +1448,7 @@
     "aws-ssl-profiles@1.1.2": {
       "integrity": "sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g=="
     },
-    "better-auth@1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__vite@8.0.7___esbuild@0.27.3__esbuild@0.27.3": {
+    "better-auth@1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__yaml@2.8.2_yaml@2.8.2": {
       "integrity": "sha512-QSpJTqaT1XVfWRQe/fm3PgeuwOIlz1nWX/Dx7nsHStJ382bLzmDbQk2u7IT0IJ6wS5SRxfqEE1Ev9TXontgyAQ==",
       "dependencies": [
         "@better-auth/core",
@@ -3063,7 +3064,7 @@
     "vary@1.1.2": {
       "integrity": "sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg=="
     },
-    "vite@8.0.7_esbuild@0.27.3": {
+    "vite@8.0.7_esbuild@0.27.3_yaml@2.8.2": {
       "integrity": "sha512-P1PbweD+2/udplnThz3btF4cf6AgPky7kk23RtHUkJIU5BIxwPprhRGmOAHs6FTI7UiGbTNrgNP6jSYD6JaRnw==",
       "dependencies": [
         "esbuild",
@@ -3071,17 +3072,19 @@
         "picomatch",
         "postcss",
         "rolldown",
-        "tinyglobby"
+        "tinyglobby",
+        "yaml"
       ],
       "optionalDependencies": [
         "fsevents"
       ],
       "optionalPeers": [
-        "esbuild"
+        "esbuild",
+        "yaml"
       ],
       "bin": true
     },
-    "vitest@4.1.3_@opentelemetry+api@1.9.1_vite@8.0.7__esbuild@0.27.3_esbuild@0.27.3": {
+    "vitest@4.1.3_@opentelemetry+api@1.9.1_yaml@2.8.2": {
       "integrity": "sha512-DBc4Tx0MPNsqb9isoyOq00lHftVx/KIU44QOm2q59npZyLUkENn8TMFsuzuO+4U2FUa9rgbbPt3udrP25GcjXw==",
       "dependencies": [
         "@opentelemetry/api@1.9.1",
@@ -3419,7 +3422,8 @@
       "npm:hono@^4.12.8",
       "npm:prisma@^7.5.0",
       "npm:svix@^1.62.0",
-      "npm:wrangler@^4.77.0"
+      "npm:wrangler@^4.77.0",
+      "npm:yaml@^2.7.0"
     ],
     "packageJson": {
       "dependencies": [
