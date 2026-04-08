@@ -107,11 +107,12 @@ Deno.test('OPTIONS preflight returns 200 or 204', async () => {
     assertEquals(res.status === 200 || res.status === 204, true);
 });
 
-Deno.test('GET /api/docs redirects to DOCS_SITE_URL', async () => {
-    const res = await fetch('/api/docs', { redirect: 'manual' });
-    assertEquals(res.status, 302);
-    const location = res.headers.get('Location');
-    assertEquals(typeof location, 'string');
+Deno.test('GET /api/docs serves Scalar UI documentation', async () => {
+    const res = await fetch('/api/docs');
+    // Should return HTML with Scalar UI (200 OK)
+    assertEquals(res.status, 200);
+    const contentType = res.headers.get('Content-Type');
+    assertEquals(contentType?.includes('text/html'), true);
 });
 
 Deno.test('404 for unknown routes', async () => {

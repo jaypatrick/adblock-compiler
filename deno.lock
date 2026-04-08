@@ -26,6 +26,7 @@
     "npm:@cloudflare/playwright-mcp@^0.0.5": "0.0.5_@cloudflare+workers-types@4.20260317.1",
     "npm:@cloudflare/playwright@^1.2.0": "1.2.0",
     "npm:@cloudflare/workers-types@^4.20260317.1": "4.20260317.1",
+    "npm:@hono/swagger-ui@~0.6.1": "0.6.1_hono@4.12.8",
     "npm:@hono/zod-openapi@^1.2.2": "1.2.2_hono@4.12.8_zod@4.3.6",
     "npm:@hono/zod-validator@~0.4.3": "0.4.3_hono@4.12.8_zod@4.3.6",
     "npm:@neondatabase/serverless@0.10": "0.10.4",
@@ -34,6 +35,8 @@
     "npm:@prisma/adapter-pg@^7.5.0": "7.5.0",
     "npm:@prisma/client@^7.5.0": "7.5.0_prisma@7.5.0__typescript@6.0.2_typescript@6.0.2",
     "npm:@prisma/internals@7.5.0": "7.5.0_typescript@6.0.2",
+    "npm:@scalar/hono-api-reference@0.10.6": "0.10.6_hono@4.12.8",
+    "npm:@scalar/hono-api-reference@~0.10.6": "0.10.6_hono@4.12.8",
     "npm:@sentry/cloudflare@10.43.0": "10.43.0_@cloudflare+workers-types@4.20260317.1",
     "npm:@sentry/cloudflare@^10.43.0": "10.43.0_@cloudflare+workers-types@4.20260317.1",
     "npm:@trpc/client@^11.15.1": "11.15.1_@trpc+server@11.15.1__typescript@6.0.2_typescript@6.0.2",
@@ -554,6 +557,12 @@
         "hono@4.11.4"
       ]
     },
+    "@hono/swagger-ui@0.6.1_hono@4.12.8": {
+      "integrity": "sha512-sJTvldu1GPeEPfyeLG7gRj+W4vEuD+JDi+JjJ3TJs/DvMUtBLs0KJO5yokGegWWdy5qrbdnQGekbhgNRmPmYKQ==",
+      "dependencies": [
+        "hono@4.12.8"
+      ]
+    },
     "@hono/zod-openapi@1.2.2_hono@4.12.8_zod@4.3.6": {
       "integrity": "sha512-va6vsL23wCJ1d0Vd+vGL1XOt+wPwItxirYafuhlW9iC2MstYr2FvsI7mctb45eBTjZfkqB/3LYDJEppPjOEiHw==",
       "dependencies": [
@@ -1010,6 +1019,31 @@
         "react-dom"
       ]
     },
+    "@scalar/core@0.4.6": {
+      "integrity": "sha512-lIlCUx0O18ei63j7Z7QTAVAuh66sdms9zoDPhpDOzHTVObnb7n0f3J306sT3H9KQsoWKQrEsnKx4LcZLw/TlPw==",
+      "dependencies": [
+        "@scalar/types"
+      ]
+    },
+    "@scalar/helpers@0.4.3": {
+      "integrity": "sha512-Gv2V7SFreLx3DltzF2lKXdaJSH5cP1LOyt9PxON1cSWGxkrs3sg93c1taEJsW24E9ckfYXkL5hjCAVLfAN3wQw=="
+    },
+    "@scalar/hono-api-reference@0.10.6_hono@4.12.8": {
+      "integrity": "sha512-9/sZvJ2P0TCMnTqQHKC7RGT6qBauJ1Z+diiFRtLuJhCk4e+6uzPOD0QmRwpUARK7NXZp4oNPm2hXHHT6GqZZAQ==",
+      "dependencies": [
+        "@scalar/core",
+        "hono@4.12.8"
+      ]
+    },
+    "@scalar/types@0.7.6": {
+      "integrity": "sha512-n5d7neeGTY/yS36AwAv3FAyCnJbbLjMPwyuEXBLgxHcb5i8DXnNfwy1nzz8jx/EJ88i1zmQ8BuMs+207saHgNA==",
+      "dependencies": [
+        "@scalar/helpers",
+        "nanoid@5.1.7",
+        "type-fest@5.5.0",
+        "zod@4.3.6"
+      ]
+    },
     "@sentry/cloudflare@10.43.0_@cloudflare+workers-types@4.20260317.1": {
       "integrity": "sha512-l0IuXDSLzck++Qyl4IlxrpKO7NVEe0zHXazrnHUAvwM+WPbo1XQ7RwArD67LVTkLmjZjrAc4GZ9gieUkaZWYfg==",
       "dependencies": [
@@ -1315,7 +1349,7 @@
         "camelcase",
         "map-obj",
         "quick-lru",
-        "type-fest"
+        "type-fest@1.4.0"
       ]
     },
     "camelcase@6.3.0": {
@@ -2573,6 +2607,9 @@
         "use-sync-external-store"
       ]
     },
+    "tagged-tag@1.0.0": {
+      "integrity": "sha512-yEFYrVhod+hdNyx7g5Bnkkb0G6si8HJurOoOEgC8B/O0uXLHlaey/65KRv6cuWBNhBgHKAROVpc7QyYqE5gFng=="
+    },
     "throttleit@2.1.0": {
       "integrity": "sha512-nt6AMGKW1p/70DF/hGBdJB57B8Tspmbp5gfJ8ilhLnt7kkr2ye7hzD6NVG8GGErk2HWF34igrL2CXmNIkzKqKw=="
     },
@@ -2607,6 +2644,12 @@
     },
     "type-fest@1.4.0": {
       "integrity": "sha512-yGSza74xk0UG8k+pLh5oeoYirvIiWo5t0/o3zHHAO2tRDiZcxWP7fywNlXhqb6/r6sWvwi+RsyQMWhVLe4BVuA=="
+    },
+    "type-fest@5.5.0": {
+      "integrity": "sha512-PlBfpQwiUvGViBNX84Yxwjsdhd1TUlXr6zjX7eoirtCPIr08NAmxwa+fcYBTeRQxHo9YC9wwF3m9i700sHma8g==",
+      "dependencies": [
+        "tagged-tag"
+      ]
     },
     "type-is@2.0.1": {
       "integrity": "sha512-OZs6gsjF4vMp32qrCbiVSkrFmXtG/AZhY3t0iAMrMBiAZyV9oALtXO8hsrHbMXF9x6L3grlFuwW2oAz7cav+Gw==",
@@ -2945,12 +2988,14 @@
       "npm:@cloudflare/playwright-mcp@^0.0.5",
       "npm:@cloudflare/playwright@^1.2.0",
       "npm:@cloudflare/workers-types@^4.20260317.1",
+      "npm:@hono/swagger-ui@~0.6.1",
       "npm:@hono/zod-openapi@^1.2.2",
       "npm:@hono/zod-validator@~0.4.3",
       "npm:@neondatabase/serverless@0.10",
       "npm:@prisma/adapter-d1@^7.5.0",
       "npm:@prisma/adapter-pg@^7.5.0",
       "npm:@prisma/client@^7.5.0",
+      "npm:@scalar/hono-api-reference@~0.10.6",
       "npm:@sentry/cloudflare@^10.43.0",
       "npm:agents@0.8",
       "npm:better-auth@^1.5.5",
