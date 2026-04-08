@@ -52,15 +52,54 @@ function lacksExtension(specPath: string): boolean {
 
 async function fixImportsInFile(filePath: string): Promise<{ changed: boolean; replacements: number }> {
     const original = await Deno.readTextFile(filePath);
+    const fileDir = filePath.split('/').slice(0, -1).join('/');
     let replacements = 0;
 
+    /**
+     * Resolves a relative import specifier (without extension) to an absolute path,
+     * handling `./` and `../` prefixes by normalising against the file's directory.
+     */
+    function resolveSpecPath(spec: string): string {
+        const parts = (fileDir + '/' + spec.replace(/^\.\//, '')).split('/');
+        const normalized: string[] = [];
+        for (const part of parts) {
+            if (part === '..') normalized.pop();
+            else if (part !== '.') normalized.push(part);
+        }
+        return normalized.join('/');
+    }
+
+    /**
+     * Returns true only if a `.ts` source file exists at the resolved specifier path.
+     * Binary artifacts (e.g. WASM-bindgen `query_compiler_fast_bg.js`) do NOT have a
+     * `.ts` counterpart and must be left as `.js`.
+     */
+    function tsCounterpartExists(spec: string): boolean {
+        try {
+            Deno.statSync(`${resolveSpecPath(spec)}.ts`);
+            return true;
+        } catch {
+            return false;
+        }
+    }
+
+    /** Extracts the relative specifier (e.g. `./internal/class`) from a capture group. */
+    function extractSpec(captureGroup: string): string | null {
+        const m = captureGroup.match(/['"](\.[^'"]+)$/);
+        return m?.[1] ?? null;
+    }
+
     const rewritten = original
-        // .js → .ts
-        .replace(FROM_JS_REGEX, (_, p1, p2) => {
+        // .js → .ts  (only when a .ts source file actually exists — skip binary artifacts)
+        .replace(FROM_JS_REGEX, (match, p1, p2) => {
+            const spec = extractSpec(p1);
+            if (!spec || !tsCounterpartExists(spec)) return match;
             replacements++;
             return `${p1}.ts${p2}`;
         })
-        .replace(DYNAMIC_IMPORT_JS_REGEX, (_, p1, p2) => {
+        .replace(DYNAMIC_IMPORT_JS_REGEX, (match, p1, p2) => {
+            const spec = extractSpec(p1);
+            if (!spec || !tsCounterpartExists(spec)) return match;
             replacements++;
             return `${p1}.ts${p2}`;
         })
