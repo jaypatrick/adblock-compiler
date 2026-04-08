@@ -20,7 +20,7 @@ runs:
                       break
                   fi
                   echo "$output"
-                  if echo "$output" | grep -qiE 'Authentication error|not authorized|7403'; then
+                  if echo "$output" | grep -qiE 'not authorized|7403'; then
                       echo ""
                       echo "🔐 CLOUDFLARE_API_TOKEN is missing required D1 permissions."
                       echo ""
@@ -38,7 +38,7 @@ runs:
                       echo "   Note: 'Workers:Edit' alone is NOT sufficient - D1:Edit is a separate permission!"
                       exit 1
                   fi
-                  if echo "$output" | grep -qiE '10000'; then
+                  if echo "$output" | grep -qiE 'Authentication error|10000'; then
                       echo ""
                       echo "🔑 CLOUDFLARE_API_TOKEN is invalid or has expired."
                       echo ""

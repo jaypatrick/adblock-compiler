@@ -22,7 +22,7 @@ Common mistake: Creating an API token with only Workers and Pages permissions, a
 - **7403**: Authorization error - the API token is valid but lacks permission for the requested resource
 - **10000**: Authentication error - the API token is invalid or expired
 
-The previous deployment workflow only detected error 10000, so it would retry forever on 7403 errors without helpful guidance.
+The previous deployment workflow only detected error 10000, so on 7403 errors it would retry 3 times and then fail without helpful guidance.
 
 ## Solution
 
@@ -60,16 +60,18 @@ Account Permissions:
 
 - This issue affects all workflows that run D1 migrations:
   - `.github/workflows/ci.yml` (Deploy to Cloudflare job)
-  - `.github/workflows/db-migrate.yml` (if it exists)
+  - `.github/workflows/db-migrate.yml`
   - Any workflow using `.github/actions/deploy-worker/action.yml`
 
 ## Fix Applied
 
-The deployment action now detects both error codes (7403 and 10000) and provides clear, actionable error messages:
+The deployment action now detects both error classes and handles them in separate branches, so it can provide the correct guidance for authorization failures (7403 / not authorized) versus authentication failures (10000):
 
 ```yaml
-if echo "$output" | grep -qiE 'Authentication error|not authorized|10000|7403'; then
-    # Provides step-by-step instructions
+if echo "$output" | grep -qiE 'not authorized|7403'; then
+    # Provides D1:Edit permission guidance
+elif echo "$output" | grep -qiE 'Authentication error|10000'; then
+    # Provides API token invalid/expired guidance
 fi
 ```
 
@@ -85,4 +87,4 @@ After updating the API token, the next deployment should succeed. If it still fa
 
 - [Cloudflare API Token Permissions](https://developers.cloudflare.com/fundamentals/api/get-started/create-token/)
 - [D1 Documentation](https://developers.cloudflare.com/d1/)
-- PR fixing this issue: [#XXXX](https://github.com/jaypatrick/adblock-compiler/pull/XXXX)
+- PR fixing this issue: [#1507](https://github.com/jaypatrick/adblock-compiler/pull/1507)
