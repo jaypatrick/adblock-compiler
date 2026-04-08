@@ -85,27 +85,37 @@ jobs:
           set -euo pipefail
           # shellcheck source=.github/scripts/retry.sh
           source .github/scripts/retry.sh
+
           echo "Checking if Pages project exists..."
-          PROJECT_LIST=$(
-            {
-              retry_command 3 15 deno task wrangler pages project list
-            } 2>&1
-          ) || {
-            echo "Warning: Could not list Pages projects after retries (API may be temporarily unavailable)."
-            echo "Skipping project creation check - will attempt deployment directly."
-            exit 0
-          }
+
+          # List existing projects
+          if ! PROJECT_LIST=$(retry_command 3 15 deno task wrangler pages project list 2>&1); then
+            echo "❌ ERROR: Failed to list Pages projects after 3 attempts"
+            echo "This is required to determine if the project needs to be created."
+            echo "Please check your CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
+            exit 1
+          fi
+
+          echo "Available Pages projects:"
+          echo "$PROJECT_LIST"
+          echo ""
+
+          # Check if project exists
           if echo "$PROJECT_LIST" | grep -q "${{ env.CLOUDFLARE_PAGES_PROJECT }}"; then
-            echo "Pages project already exists"
+            echo "✅ Pages project '${{ env.CLOUDFLARE_PAGES_PROJECT }}' already exists"
           else
-            echo "Creating Pages project: ${{ env.CLOUDFLARE_PAGES_PROJECT }}"
-            retry_command 3 15 deno task wrangler pages project create \
+            echo "📦 Creating Pages project: ${{ env.CLOUDFLARE_PAGES_PROJECT }}"
+
+            if ! retry_command 3 15 deno task wrangler pages project create \
               "${{ env.CLOUDFLARE_PAGES_PROJECT }}" \
-              --production-branch main || {
-              echo "Warning: Could not create Pages project after retries. Attempting deployment anyway."
-              exit 0
-            }
-            echo "Pages project created"
+              --production-branch main; then
+              echo "❌ ERROR: Failed to create Pages project after 3 attempts"
+              echo "Cannot proceed with deployment without a project."
+              echo "Please create the project manually at: https://dash.cloudflare.com/pages"
+              exit 1
+            fi
+
+            echo "✅ Pages project created successfully"
           fi
 
       - name: Deploy to Cloudflare Pages
