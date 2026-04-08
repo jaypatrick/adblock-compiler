@@ -130,7 +130,7 @@ id = "025c3f10527c46c0be559f299bdba994"
 # See: docs/feature-flags/KV_FEATURE_FLAGS.md
 [[kv_namespaces]]
 binding = "FEATURE_FLAGS"
-id = "your-feature-flags-kv-id"
+id = "532484fdfff448bbb6efc7847bf41700"
 
 # RULES_KV: optional dedicated rule-set storage. Worker falls back to
 # COMPILATION_CACHE when absent. Create with:
