@@ -8,16 +8,24 @@
 #   └── server/
 #       └── server.mjs    ← Workers entry point (compiled from server.ts)
 #
-# TWO ENVIRONMENTS ONLY:
+# THREE ENVIRONMENTS:
 #
-#   Local dev  →  `npm run preview`  (runs `wrangler dev` in this directory)
-#                 Angular dev server: `npm run start`  (port 4200, HMR)
+#   Local dev  →  `npm run start`  (Angular dev server with HMR, port 4200)
+#                 OR `npm run preview`  (wrangler dev, mirrors production Worker)
 #                 No .dev.vars needed — this worker owns no secrets.
+#                 Angular DevTools works here (development build by default).
+#
+#   Dev        →  `npm run build:dev && npm run deploy:dev`
+#                 Builds with `ng build --configuration development`:
+#                   • sourceMap: true  — Angular DevTools extension works
+#                   • optimization: false — readable code, no tree-shaking
+#                 Deploys to *.workers.dev subdomain via `wrangler deploy --env dev`.
+#                 ENVIRONMENT = "development".
 #
 #   Production →  `npm run build && npm run deploy`
-#                 This file IS the production configuration.
-#                 The SSR Worker serves HTML; static assets are served from
-#                 the CDN edge before the Worker fetch handler is invoked.
+#                 Builds with `ng build` (production config — optimised, minified).
+#                 Deploys to app.bloqr.jaysonknight.com via the [[routes]] block.
+#                 ENVIRONMENT = "production".
 #
 # API Worker dependency:
 #   The Angular app fetches runtime config at boot from the co-deployed API Worker:
@@ -152,3 +160,33 @@ head_sampling_rate = 1
 [[services]]
 binding = "API"
 service = "adblock-compiler"
+
+# ============================================================================
+# [env.dev] — Dev environment (workers.dev, debug Angular build)
+#
+# Deploy workflow:
+#   pnpm --filter adblock-frontend run build:dev   # ng build --configuration development
+#   pnpm --filter adblock-frontend run deploy:dev  # wrangler deploy --env dev
+#   OR combined:  deno task ui:deploy:ng:dev
+#
+# The `development` build configuration in angular.json enables:
+#   sourceMap: true     — Angular DevTools browser extension can connect
+#   optimization: false — readable, non-minified code; no tree-shaking
+#
+# All bindings (ASSETS, [[services]] API, etc.) are inherited from the
+# top-level config. The API service binding still points to `adblock-compiler`
+# (production backend). Override [[env.dev.services]] here if you deploy a
+# separate dev API worker (`adblock-compiler-dev`).
+#
+# Routes: NOT inherited. This env is only accessible via *.workers.dev.
+# ============================================================================
+[env.dev]
+logpush = false
+
+[env.dev.vars]
+ENVIRONMENT  = "development"
+CANONICAL_DOMAIN = "bloqr.ai"
+URL_FRONTEND = "https://app.bloqr.jaysonknight.com"
+URL_API      = "https://api.bloqr.jaysonknight.com"
+URL_DOCS     = "https://docs.bloqr.jaysonknight.com"
+URL_LANDING  = "https://bloqr.jaysonknight.com"
