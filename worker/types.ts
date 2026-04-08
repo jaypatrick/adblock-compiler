@@ -280,6 +280,14 @@ export interface Env {
     // Turnstile configuration
     TURNSTILE_SITE_KEY?: string;
     TURNSTILE_SECRET_KEY?: string;
+
+    /**
+     * Stripe webhook signing secret for verifying webhook signatures.
+     * Required for production Stripe integration.
+     * Local dev:  add `STRIPE_WEBHOOK_SECRET=whsec_...` to .dev.vars
+     * Production: `wrangler secret put STRIPE_WEBHOOK_SECRET`
+     */
+    STRIPE_WEBHOOK_SECRET?: string;
     // Cloudflare Web Analytics token (injected into index.html at build time)
     CF_WEB_ANALYTICS_TOKEN?: string;
     // D1 Database binding (optional - for SQLite admin features)
@@ -335,6 +343,8 @@ export interface Env {
     MCP_AGENT?: DurableObjectNamespace;
     // Adblock Compiler container Durable Object namespace
     ADBLOCK_COMPILER?: DurableObjectNamespace;
+    // Compilation Coordinator Durable Object namespace (global request deduplication)
+    COMPILATION_COORDINATOR?: DurableObjectNamespace;
     // Dynamic Dispatch Namespace binding (optional — add to wrangler.toml to enable)
     // [[dynamic_dispatch_namespaces]], binding = "LOADER", namespace = "adblock-compiler-dynamic"
     // @see https://developers.cloudflare.com/dynamic-workers/
@@ -462,6 +472,25 @@ export interface QueueMessage {
 // ============================================================================
 
 /**
+ * Error severity levels for filtering and alerting.
+ */
+export type ErrorSeverity = 'critical' | 'error' | 'warning' | 'info';
+
+/**
+ * Error category for classification and metrics.
+ */
+export type ErrorCategory =
+    | 'http_error' // HTTP client/server errors (4xx, 5xx)
+    | 'validation_error' // Schema validation failures
+    | 'auth_error' // Authentication/authorization failures
+    | 'rate_limit_error' // Rate limiting errors
+    | 'compilation_error' // Filter list compilation errors
+    | 'storage_error' // KV/R2/D1 storage errors
+    | 'queue_error' // Queue processing errors
+    | 'workflow_error' // Durable Objects Workflow errors
+    | 'unknown_error'; // Uncategorized errors
+
+/**
  * Message published to ERROR_QUEUE when an unhandled error occurs in the worker.
  * Batches are consumed by handleErrorQueue() and persisted to ERROR_BUCKET (R2)
  * as NDJSON for long-term durable log storage.
@@ -485,6 +514,25 @@ export interface ErrorQueueMessage {
      * Intended for post-incident analysis where the full context is needed.
      */
     readonly errorDetails: string;
+    /**
+     * Error severity level for filtering and alerting.
+     * Defaults to 'error' if not specified.
+     */
+    readonly severity?: ErrorSeverity;
+    /**
+     * Error category for classification and metrics.
+     * Defaults to 'unknown_error' if not specified.
+     */
+    readonly category?: ErrorCategory;
+    /**
+     * HTTP status code if the error originated from an HTTP response.
+     */
+    readonly statusCode?: number;
+    /**
+     * Additional context data for debugging (request headers, query params, etc.).
+     * Stored as JSON string to avoid deep object nesting.
+     */
+    readonly context?: string;
 }
 
 export interface CompileQueueMessage extends QueueMessage {

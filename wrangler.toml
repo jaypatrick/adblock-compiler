@@ -201,6 +201,13 @@ name = "ADBLOCK_COMPILER"
 class_name = "PlaywrightMcpAgent"
 name = "MCP_AGENT"
 
+# COMPILATION_COORDINATOR — Global request deduplication coordinator
+# Provides single coordination point across all Worker instances to deduplicate
+# concurrent compilation requests for identical configurations.
+[[durable_objects.bindings]]
+class_name = "CompilationCoordinator"
+name = "COMPILATION_COORDINATOR"
+
 # ─── Containers ──────────────────────────────────────────────────────────────
 # Each AdblockCompiler Durable Object manages one Docker container.
 # Wrangler builds the image from Dockerfile.container on `wrangler deploy`.
@@ -220,6 +227,10 @@ new_sqlite_classes = ["AdblockCompiler"]
 [[migrations]]
 tag = "v2"
 new_sqlite_classes = ["PlaywrightMcpAgent"]
+
+[[migrations]]
+tag = "v3"
+new_sqlite_classes = ["CompilationCoordinator"]
 
 # ─── Static assets ───────────────────────────────────────────────────────────
 # Served from the Angular production build output at the CDN edge.
