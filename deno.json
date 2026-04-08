@@ -37,7 +37,7 @@
         "fmt:check": "deno fmt --check",
         "check": "deno task check:src && deno task check:worker",
         "check:slow-types": "deno publish --dry-run",
-        "check:drift": "git diff --quiet docs/api/cloudflare-schema.yaml docs/postman/postman-collection.json docs/postman/postman-environment.json || (printf '\\n❌ Generated files are out of date. Run: deno task schema:generate\\n   Then: git add docs/api/cloudflare-schema.yaml docs/postman/postman-collection.json docs/postman/postman-environment.json\\n   Finally: commit the updated files (for example: git commit -m \"chore: update generated schemas\")\\n' && exit 1)",
+        "check:drift": "git diff --quiet docs/api/cloudflare-schema.yaml docs/postman/postman-collection.json docs/postman/postman-environment.json || (printf '\\n\u274c Generated files are out of date. Run: deno task schema:generate\\n   Then: git add docs/api/cloudflare-schema.yaml docs/postman/postman-collection.json docs/postman/postman-environment.json\\n   Finally: commit the updated files (for example: git commit -m \"chore: update generated schemas\")\\n' && exit 1)",
         "cache": "deno cache src/index.ts",
         "openapi:validate": "deno run --allow-read --allow-net scripts/validate-openapi.ts",
         "openapi:docs": "deno run --allow-read --allow-write --allow-net scripts/generate-docs.ts",
@@ -48,7 +48,7 @@
         "generate:schema": "deno task schema:cloudflare && deno run --allow-read --allow-write --allow-env scripts/generate-openapi-schema.ts",
         "preflight": "deno task fmt:check && deno task lint && deno task check && deno task openapi:validate && deno task schema:generate && deno task check:drift",
         "preflight:full": "deno task preflight && deno task test && deno task check:slow-types",
-        "setup": "deno run --allow-read --allow-write scripts/setup-env.ts && deno task db:generate && deno task setup:hooks && echo '✅ Setup complete! Edit .env.local and .dev.vars with your credentials, then run: deno task wrangler:dev'",
+        "setup": "deno run --allow-read --allow-write scripts/setup-env.ts && deno task db:generate && deno task setup:hooks && echo '\u2705 Setup complete! Edit .env.local and .dev.vars with your credentials, then run: deno task wrangler:dev'",
         "setup:hooks": "deno run --allow-read --allow-write --allow-run scripts/setup-hooks.ts",
         "test:contract": "SKIP_CONTRACT_TESTS=false deno test --allow-read --allow-write --allow-net --allow-env worker/openapi-contract.test.ts",
         "migrate:validate": "deno run --allow-read scripts/validate-migrations.ts",
@@ -93,7 +93,12 @@
         "check:src": "deno check src/index.ts src/cli.ts",
         "check:worker": "deno check worker/worker.ts worker/tail.ts",
         "trpc:types": "deno check worker/trpc/router.ts",
-        "check:trpc": "deno check worker/trpc/router.ts worker/trpc/client.ts"
+        "check:trpc": "deno check worker/trpc/router.ts worker/trpc/client.ts",
+        "diag:full": "deno run --allow-net --allow-env --allow-write scripts/diag-full.ts",
+        "diag:full:ci": "deno run --allow-net --allow-env --allow-write scripts/diag-full.ts --ci",
+        "diag:full:prod": "deno run --allow-net --allow-env --allow-write scripts/diag-full.ts --url https://adblock-frontend.jayson-knight.workers.dev",
+        "diag:full:output": "deno run --allow-net --allow-env --allow-write scripts/diag-full.ts --output",
+        "diag:report": "deno run --allow-read --allow-write scripts/diag-report.ts"
     },
     "imports": {
         "@/": "./src/",
