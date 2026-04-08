@@ -106,7 +106,7 @@ jobs:
           else
             echo "📦 Creating Pages project: ${{ env.CLOUDFLARE_PAGES_PROJECT }}"
             echo "⚠️  NOTE: This may fail if the project already exists in the account but is not visible to this API token"
-            echo "⚠️  If creation fails repeatedly, create the project manually at: https://dash.cloudflare.com/${{ secrets.CLOUDFLARE_ACCOUNT_ID }}/pages"
+            echo "⚠️  If creation fails repeatedly, create the project manually at: https://dash.cloudflare.com/pages"
 
             # Try to create the project - capture both stdout and stderr
             # Temporarily disable errexit so we can record the real exit status
