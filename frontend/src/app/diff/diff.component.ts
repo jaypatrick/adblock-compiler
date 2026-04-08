@@ -338,12 +338,16 @@ export class DiffComponent {
 
     private readonly pendingParams = signal<DiffParams | undefined>(undefined);
 
-    private parseRules(text: string): string[] {
-        return text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+    /** Split textarea text into individual lines, trimming leading/trailing whitespace.
+     *  Empty lines are preserved or removed based on the current `ignoreEmptyLines` option
+     *  so the UI line-counts match what the backend will actually compare. */
+    private splitLines(text: string): string[] {
+        const lines = text.split('\n').map(l => l.trim());
+        return this.opts.ignoreEmptyLines ? lines.filter(l => l.length > 0) : lines;
     }
 
-    readonly originalCount = computed(() => this.parseRules(this.originalText()).length);
-    readonly currentCount  = computed(() => this.parseRules(this.currentText()).length);
+    readonly originalCount = computed(() => this.splitLines(this.originalText()).length);
+    readonly currentCount  = computed(() => this.splitLines(this.currentText()).length);
     readonly canCompare    = computed(() => this.originalCount() > 0 && this.currentCount() > 0);
 
     readonly diffResource = rxResource<DiffApiResponse, DiffParams | undefined>({
@@ -354,8 +358,8 @@ export class DiffComponent {
     });
 
     compare(): void {
-        const original = this.parseRules(this.originalText());
-        const current  = this.parseRules(this.currentText());
+        const original = this.splitLines(this.originalText());
+        const current  = this.splitLines(this.currentText());
         if (original.length && current.length) {
             this.pendingParams.set({ original, current, options: { ...this.opts } });
         }

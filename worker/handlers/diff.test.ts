@@ -27,15 +27,16 @@ Deno.test('handleDiff - returns added and removed counts', async () => {
 });
 
 Deno.test('handleDiff - surfaces parse errors without blocking diff', async () => {
-    const original = ['||example.com^', '###invalid-cosmetic-BROKEN'];
+    const original = ['||example.com^', '@@'];
     const current = ['||example.com^'];
 
     const res = await handleDiff(makeRequest({ original, current }), {} as any);
     const body = await res.json() as { parseErrors: { original: unknown[] }; report: { summary: { originalCount: number } } };
 
     assertEquals(res.status, 200);
-    // The invalid rule is excluded from comparison, not a fatal error
-    assertEquals(body.parseErrors.original.length > 0 || body.report.summary.originalCount >= 1, true);
+    // The invalid rule is surfaced as a parse error and excluded from comparison, not a fatal error
+    assertEquals(body.parseErrors.original.length, 1);
+    assertEquals(body.report.summary.originalCount, 1);
 });
 
 Deno.test('handleDiff - 422 on missing required fields', async () => {

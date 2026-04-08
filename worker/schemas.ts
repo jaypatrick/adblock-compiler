@@ -679,6 +679,12 @@ export const RuleDiffSchema = z.object({
     source: z.string().optional(),
     originalLine: z.number().optional(),
     newLine: z.number().optional(),
+    /** Rule category detected by AGTree (network, cosmetic, host, comment, unknown) */
+    category: z.enum(['network', 'cosmetic', 'host', 'comment', 'unknown']).optional(),
+    /** Adblock syntax dialect detected by AGTree (e.g. AdGuard, uBlockOrigin, AdblockPlus, Common) */
+    syntax: z.string().optional(),
+    /** Whether this is an exception (allowlist) rule */
+    isException: z.boolean().optional(),
 });
 
 /** Per-domain rule change counts in a diff result */
@@ -686,6 +692,15 @@ export const DomainDiffSchema = z.object({
     domain: z.string(),
     added: z.number(),
     removed: z.number(),
+});
+
+/** Per-category added/removed counts (populated when AGTree parses successfully) */
+const CategoryChangeCountsSchema = z.object({
+    network: z.object({ added: z.number(), removed: z.number() }),
+    cosmetic: z.object({ added: z.number(), removed: z.number() }),
+    host: z.object({ added: z.number(), removed: z.number() }),
+    comment: z.object({ added: z.number(), removed: z.number() }),
+    unknown: z.object({ added: z.number(), removed: z.number() }),
 });
 
 /** High-level statistics for a diff result */
@@ -697,6 +712,8 @@ export const DiffSummarySchema = z.object({
     unchangedCount: z.number(),
     netChange: z.number(),
     percentageChange: z.number(),
+    /** Per-category breakdown of added/removed counts */
+    categoryBreakdown: CategoryChangeCountsSchema.optional(),
 });
 
 /** Metadata for one list version (original or current) */
