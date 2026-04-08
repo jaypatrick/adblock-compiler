@@ -14,7 +14,7 @@ on:
   workflow_dispatch:
 
 env:
-  CLOUDFLARE_PAGES_PROJECT: adblock-compiler-docs
+  CLOUDFLARE_PAGES_PROJECT: adblock-docs
 
 jobs:
   build-deploy:
@@ -80,141 +80,12 @@ jobs:
         continue-on-error: true
         run: deno task docs:api
 
-      - name: Create Pages project if needed
-        run: |
-          set -euo pipefail
-          # shellcheck source=.github/scripts/retry.sh
-          source .github/scripts/retry.sh
-
-          echo "Checking if Pages project exists..."
-
-          # List existing projects with better error handling
-          if ! PROJECT_LIST=$(retry_command 3 15 deno task wrangler pages project list 2>&1); then
-            echo "❌ ERROR: Failed to list Pages projects after 3 attempts"
-            echo "This is required to determine if the project needs to be created."
-            echo "Please check your CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID."
-            exit 1
-          fi
-
-          echo "Available Pages projects:"
-          echo "$PROJECT_LIST"
-          echo ""
-
-          # Check if project exists
-          if echo "$PROJECT_LIST" | grep -q "${{ env.CLOUDFLARE_PAGES_PROJECT }}"; then
-            echo "✅ Pages project '${{ env.CLOUDFLARE_PAGES_PROJECT }}' already exists"
-          else
-            echo "📦 Creating Pages project: ${{ env.CLOUDFLARE_PAGES_PROJECT }}"
-            echo "⚠️  NOTE: This may fail if the project already exists in the account but is not visible to this API token"
-            echo "⚠️  If creation fails repeatedly, create the project manually at: https://dash.cloudflare.com/pages"
-
-            # Try to create the project with retries - capture both stdout and stderr.
-            # Temporarily disable errexit so we can record the real exit status
-            # and continue to the verification step even if creation fails.
-            CREATE_ATTEMPTS=0
-            MAX_CREATE_ATTEMPTS=3
-            CREATE_SUCCESS=false
-            CREATE_OUTPUT=""
-            CREATE_EXIT_CODE=0
-
-            while [ $CREATE_ATTEMPTS -lt $MAX_CREATE_ATTEMPTS ]; do
-              CREATE_ATTEMPTS=$((CREATE_ATTEMPTS + 1))
-              echo "Create attempt $CREATE_ATTEMPTS/$MAX_CREATE_ATTEMPTS..."
-
-              set +e
-              CREATE_OUTPUT=$(deno task wrangler pages project create "${{ env.CLOUDFLARE_PAGES_PROJECT }}" --production-branch main 2>&1)
-              CREATE_EXIT_CODE=$?
-              set -e
-
-              echo "Create command output:"
-              echo "$CREATE_OUTPUT"
-              echo "Exit code: $CREATE_EXIT_CODE"
-
-              if [ $CREATE_EXIT_CODE -eq 0 ]; then
-                CREATE_SUCCESS=true
-                break
-              fi
-
-              if [ $CREATE_ATTEMPTS -lt $MAX_CREATE_ATTEMPTS ]; then
-                echo "Create attempt $CREATE_ATTEMPTS failed. Waiting 15 seconds before retry..."
-                sleep 15
-              fi
-            done
-
-            if [ "$CREATE_SUCCESS" = false ]; then
-              echo "⚠️  All $MAX_CREATE_ATTEMPTS create attempts failed (exit code: $CREATE_EXIT_CODE) — continuing to verify..."
-            fi
-
-            # Wait for API propagation
-            echo "Waiting 10 seconds for API propagation..."
-            sleep 10
-
-            # Verify the project exists after creation attempt
-            echo "Verifying project exists..."
-            VERIFY_ATTEMPTS=0
-            MAX_VERIFY_ATTEMPTS=5
-            PROJECT_EXISTS=false
-
-            while [ $VERIFY_ATTEMPTS -lt $MAX_VERIFY_ATTEMPTS ]; do
-              VERIFY_ATTEMPTS=$((VERIFY_ATTEMPTS + 1))
-              echo "Verification attempt $VERIFY_ATTEMPTS/$MAX_VERIFY_ATTEMPTS..."
-
-              if VERIFY_LIST=$(deno task wrangler pages project list 2>&1); then
-                echo "Current project list:"
-                echo "$VERIFY_LIST"
-
-                if echo "$VERIFY_LIST" | grep -q "${{ env.CLOUDFLARE_PAGES_PROJECT }}"; then
-                  echo "✅ Project verified: '${{ env.CLOUDFLARE_PAGES_PROJECT }}' exists"
-                  PROJECT_EXISTS=true
-                  break
-                else
-                  echo "⚠️  Project not found in list yet..."
-                fi
-              else
-                echo "⚠️  Failed to list projects during verification"
-              fi
-
-              if [ $VERIFY_ATTEMPTS -lt $MAX_VERIFY_ATTEMPTS ]; then
-                echo "Waiting 5 seconds before retry..."
-                sleep 5
-              fi
-            done
-
-            if [ "$PROJECT_EXISTS" = false ]; then
-              echo ""
-              echo "❌ ERROR: Project '${{ env.CLOUDFLARE_PAGES_PROJECT }}' does not exist after creation attempt"
-              echo ""
-              echo "TROUBLESHOOTING:"
-              echo "1. Verify CLOUDFLARE_API_TOKEN has 'Cloudflare Pages:Edit' permission"
-              echo "2. Check if the project exists in the dashboard: https://dash.cloudflare.com/pages"
-              echo "3. If it exists in the dashboard but not visible to this token, update token permissions"
-              echo "4. If it doesn't exist, try creating it manually with the same name: ${{ env.CLOUDFLARE_PAGES_PROJECT }}"
-              echo "5. Check that CLOUDFLARE_ACCOUNT_ID matches the account where the Pages project should live"
-              exit 1
-            fi
-          fi
-
       - name: Deploy to Cloudflare Pages
         run: |
           set -euo pipefail
           # shellcheck source=.github/scripts/retry.sh
           source .github/scripts/retry.sh
           echo "Deploying documentation to Cloudflare Pages..."
-
-          # Verify project exists one more time before deployment
-          echo "Final check: Verifying project exists..."
-          if ! PROJECT_CHECK=$(deno task wrangler pages project list 2>&1) || ! echo "$PROJECT_CHECK" | grep -q "${{ env.CLOUDFLARE_PAGES_PROJECT }}"; then
-            echo "❌ ERROR: Project '${{ env.CLOUDFLARE_PAGES_PROJECT }}' not found before deployment"
-            echo "Available projects:"
-            deno task wrangler pages project list || true
-            echo ""
-            echo "TROUBLESHOOTING:"
-            echo "1. Check if CLOUDFLARE_API_TOKEN has 'Cloudflare Pages:Edit' permission"
-            echo "2. Verify CLOUDFLARE_ACCOUNT_ID is correct"
-            echo "3. Try creating the project manually at: https://dash.cloudflare.com/pages"
-            exit 1
-          fi
-
           # --commit-dirty=true: required because regenerated OpenAPI/Postman docs modify
           # in-tree files (docs/api/, docs/postman/) before this step runs.
           retry_command 3 15 deno task wrangler pages deploy book \
