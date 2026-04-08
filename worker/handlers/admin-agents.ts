@@ -19,11 +19,10 @@
  * @see prisma/schema.prisma              -- AgentSession, AgentInvocation, AgentAuditLog models
  */
 
-import { type Env, type IAuthContext } from '../types.ts';
+import type { AppContext } from '../routes/shared.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { AdminPaginationQuerySchema } from '../schemas.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
-import { _internals } from '../lib/prisma.ts';
 
 // Shared UUID regex for path-param validation (avoids a Postgres syntax error on invalid UUIDs)
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -36,19 +35,16 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12
  * List all AgentSession records (most recent first), paginated.
  * Query params: `?limit=<n>&offset=<n>`
  */
-export async function handleAdminListAgentSessions(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
-): Promise<Response> {
-    const denied = checkRoutePermission('/admin/agents/sessions', authContext);
+export async function handleAdminListAgentSessions(c: AppContext): Promise<Response> {
+    const denied = checkRoutePermission('/admin/agents/sessions', c.get('authContext'));
     if (denied) return denied;
 
-    if (!env.HYPERDRIVE?.connectionString) {
+    const prisma = c.get('prisma');
+    if (!prisma) {
         return JsonResponse.serviceUnavailable('Database not configured');
     }
 
-    const url = new URL(request.url);
+    const url = new URL(c.req.url);
     const paginationParsed = AdminPaginationQuerySchema.safeParse({
         limit: url.searchParams.get('limit') ?? undefined,
         offset: url.searchParams.get('offset') ?? undefined,
@@ -59,7 +55,6 @@ export async function handleAdminListAgentSessions(
     const { limit, offset: skip } = paginationParsed.data;
 
     try {
-        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
         const [items, total] = await Promise.all([
             prisma.agentSession.findMany({
                 orderBy: { startedAt: 'desc' },
@@ -84,24 +79,22 @@ export async function handleAdminListAgentSessions(
  * Get a single AgentSession by ID, including its nested AgentInvocation records.
  */
 export async function handleAdminGetAgentSession(
-    _request: Request,
-    env: Env,
-    authContext: IAuthContext,
+    c: AppContext,
     sessionId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission('/admin/agents/sessions/*', authContext);
+    const denied = checkRoutePermission('/admin/agents/sessions/*', c.get('authContext'));
     if (denied) return denied;
 
     if (!UUID_REGEX.test(sessionId)) {
         return JsonResponse.badRequest('sessionId must be a valid UUID');
     }
 
-    if (!env.HYPERDRIVE?.connectionString) {
+    const prisma = c.get('prisma');
+    if (!prisma) {
         return JsonResponse.serviceUnavailable('Database not configured');
     }
 
     try {
-        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
         const session = await prisma.agentSession.findUnique({
             where: { id: sessionId },
             include: { invocations: { orderBy: { invokedAt: 'asc' } } },
@@ -126,19 +119,16 @@ export async function handleAdminGetAgentSession(
  * List all AgentAuditLog entries (most recent first), paginated.
  * Query params: `?limit=<n>&offset=<n>`
  */
-export async function handleAdminListAgentAuditLog(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
-): Promise<Response> {
-    const denied = checkRoutePermission('/admin/agents/audit', authContext);
+export async function handleAdminListAgentAuditLog(c: AppContext): Promise<Response> {
+    const denied = checkRoutePermission('/admin/agents/audit', c.get('authContext'));
     if (denied) return denied;
 
-    if (!env.HYPERDRIVE?.connectionString) {
+    const prisma = c.get('prisma');
+    if (!prisma) {
         return JsonResponse.serviceUnavailable('Database not configured');
     }
 
-    const url = new URL(request.url);
+    const url = new URL(c.req.url);
     const paginationParsed = AdminPaginationQuerySchema.safeParse({
         limit: url.searchParams.get('limit') ?? undefined,
         offset: url.searchParams.get('offset') ?? undefined,
@@ -149,7 +139,6 @@ export async function handleAdminListAgentAuditLog(
     const { limit, offset: skip } = paginationParsed.data;
 
     try {
-        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
         const [items, total] = await Promise.all([
             prisma.agentAuditLog.findMany({
                 orderBy: { createdAt: 'desc' },
@@ -177,25 +166,22 @@ export async function handleAdminListAgentAuditLog(
  * On success: sets `endedAt` and `endReason`, writes an `AgentAuditLog`.
  */
 export async function handleAdminTerminateAgentSession(
-    _request: Request,
-    env: Env,
-    authContext: IAuthContext,
+    c: AppContext,
     sessionId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission('/admin/agents/sessions/*', authContext);
+    const denied = checkRoutePermission('/admin/agents/sessions/*', c.get('authContext'));
     if (denied) return denied;
 
     if (!UUID_REGEX.test(sessionId)) {
         return JsonResponse.badRequest('sessionId must be a valid UUID');
     }
 
-    if (!env.HYPERDRIVE?.connectionString) {
+    const prisma = c.get('prisma');
+    if (!prisma) {
         return JsonResponse.serviceUnavailable('Database not configured');
     }
 
     try {
-        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
-
         // Fetch first to check existence, guard against double-termination, and compute duration
         const session = await prisma.agentSession.findUnique({
             where: { id: sessionId },
@@ -214,6 +200,7 @@ export async function handleAdminTerminateAgentSession(
         }
 
         const now = new Date();
+        const authContext = c.get('authContext');
 
         const updated = await prisma.agentSession.update({
             where: { id: sessionId },

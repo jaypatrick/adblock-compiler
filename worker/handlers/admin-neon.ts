@@ -23,7 +23,8 @@
  * @see docs/admin/neon-endpoints.md   — endpoint documentation
  */
 
-import { type Env, type IAuthContext } from '../types.ts';
+import type { AppContext } from '../routes/shared.ts';
+import type { Env } from '../types.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
 import { AdminNeonCreateBranchSchema, AdminNeonQuerySchema } from '../schemas.ts';
@@ -44,9 +45,9 @@ function getNeonService(env: Env) {
  * Resolve the project ID from the query-string override or the env default.
  * Returns `null` when neither is available.
  */
-function resolveProjectId(request: Request, env: Env): string | null {
-    const url = new URL(request.url);
-    return url.searchParams.get('projectId') ?? env.NEON_PROJECT_ID ?? null;
+function resolveProjectId(c: AppContext): string | null {
+    const url = new URL(c.req.url);
+    return url.searchParams.get('projectId') ?? c.env.NEON_PROJECT_ID ?? null;
 }
 
 /**
@@ -64,18 +65,14 @@ function handleNeonError(err: unknown): Response {
 // GET /admin/neon/project
 // ============================================================================
 
-export async function handleAdminNeonGetProject(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
-): Promise<Response> {
-    const denied = checkRoutePermission('/admin/neon/project', authContext);
+export async function handleAdminNeonGetProject(c: AppContext): Promise<Response> {
+    const denied = checkRoutePermission('/admin/neon/project', c.get('authContext'));
     if (denied) return denied;
 
-    const neon = getNeonService(env);
+    const neon = getNeonService(c.env);
     if (!neon) return JsonResponse.serviceUnavailable('NEON_API_KEY is not configured');
 
-    const projectId = resolveProjectId(request, env);
+    const projectId = resolveProjectId(c);
     if (!projectId) return JsonResponse.badRequest('projectId is required (query param or NEON_PROJECT_ID env)');
 
     try {
@@ -90,18 +87,14 @@ export async function handleAdminNeonGetProject(
 // GET /admin/neon/branches
 // ============================================================================
 
-export async function handleAdminNeonListBranches(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
-): Promise<Response> {
-    const denied = checkRoutePermission('/admin/neon/branches', authContext);
+export async function handleAdminNeonListBranches(c: AppContext): Promise<Response> {
+    const denied = checkRoutePermission('/admin/neon/branches', c.get('authContext'));
     if (denied) return denied;
 
-    const neon = getNeonService(env);
+    const neon = getNeonService(c.env);
     if (!neon) return JsonResponse.serviceUnavailable('NEON_API_KEY is not configured');
 
-    const projectId = resolveProjectId(request, env);
+    const projectId = resolveProjectId(c);
     if (!projectId) return JsonResponse.badRequest('projectId is required (query param or NEON_PROJECT_ID env)');
 
     try {
@@ -117,18 +110,16 @@ export async function handleAdminNeonListBranches(
 // ============================================================================
 
 export async function handleAdminNeonGetBranch(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
+    c: AppContext,
     branchId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission('/admin/neon/branches/*', authContext);
+    const denied = checkRoutePermission('/admin/neon/branches/*', c.get('authContext'));
     if (denied) return denied;
 
-    const neon = getNeonService(env);
+    const neon = getNeonService(c.env);
     if (!neon) return JsonResponse.serviceUnavailable('NEON_API_KEY is not configured');
 
-    const projectId = resolveProjectId(request, env);
+    const projectId = resolveProjectId(c);
     if (!projectId) return JsonResponse.badRequest('projectId is required (query param or NEON_PROJECT_ID env)');
 
     try {
@@ -143,23 +134,19 @@ export async function handleAdminNeonGetBranch(
 // POST /admin/neon/branches
 // ============================================================================
 
-export async function handleAdminNeonCreateBranch(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
-): Promise<Response> {
-    const denied = checkRoutePermission('/admin/neon/branches', authContext);
+export async function handleAdminNeonCreateBranch(c: AppContext): Promise<Response> {
+    const denied = checkRoutePermission('/admin/neon/branches', c.get('authContext'));
     if (denied) return denied;
 
-    const neon = getNeonService(env);
+    const neon = getNeonService(c.env);
     if (!neon) return JsonResponse.serviceUnavailable('NEON_API_KEY is not configured');
 
-    const projectId = resolveProjectId(request, env);
+    const projectId = resolveProjectId(c);
     if (!projectId) return JsonResponse.badRequest('projectId is required (query param or NEON_PROJECT_ID env)');
 
     let body: unknown;
     try {
-        body = await request.json();
+        body = await c.req.json();
     } catch {
         return JsonResponse.badRequest('Invalid JSON body');
     }
@@ -182,18 +169,16 @@ export async function handleAdminNeonCreateBranch(
 // ============================================================================
 
 export async function handleAdminNeonDeleteBranch(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
+    c: AppContext,
     branchId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission('/admin/neon/branches/*', authContext);
+    const denied = checkRoutePermission('/admin/neon/branches/*', c.get('authContext'));
     if (denied) return denied;
 
-    const neon = getNeonService(env);
+    const neon = getNeonService(c.env);
     if (!neon) return JsonResponse.serviceUnavailable('NEON_API_KEY is not configured');
 
-    const projectId = resolveProjectId(request, env);
+    const projectId = resolveProjectId(c);
     if (!projectId) return JsonResponse.badRequest('projectId is required (query param or NEON_PROJECT_ID env)');
 
     try {
@@ -208,18 +193,14 @@ export async function handleAdminNeonDeleteBranch(
 // GET /admin/neon/endpoints
 // ============================================================================
 
-export async function handleAdminNeonListEndpoints(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
-): Promise<Response> {
-    const denied = checkRoutePermission('/admin/neon/endpoints', authContext);
+export async function handleAdminNeonListEndpoints(c: AppContext): Promise<Response> {
+    const denied = checkRoutePermission('/admin/neon/endpoints', c.get('authContext'));
     if (denied) return denied;
 
-    const neon = getNeonService(env);
+    const neon = getNeonService(c.env);
     if (!neon) return JsonResponse.serviceUnavailable('NEON_API_KEY is not configured');
 
-    const projectId = resolveProjectId(request, env);
+    const projectId = resolveProjectId(c);
     if (!projectId) return JsonResponse.badRequest('projectId is required (query param or NEON_PROJECT_ID env)');
 
     try {
@@ -235,18 +216,16 @@ export async function handleAdminNeonListEndpoints(
 // ============================================================================
 
 export async function handleAdminNeonListDatabases(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
+    c: AppContext,
     branchId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission('/admin/neon/databases/*', authContext);
+    const denied = checkRoutePermission('/admin/neon/databases/*', c.get('authContext'));
     if (denied) return denied;
 
-    const neon = getNeonService(env);
+    const neon = getNeonService(c.env);
     if (!neon) return JsonResponse.serviceUnavailable('NEON_API_KEY is not configured');
 
-    const projectId = resolveProjectId(request, env);
+    const projectId = resolveProjectId(c);
     if (!projectId) return JsonResponse.badRequest('projectId is required (query param or NEON_PROJECT_ID env)');
 
     try {
@@ -261,20 +240,16 @@ export async function handleAdminNeonListDatabases(
 // POST /admin/neon/query
 // ============================================================================
 
-export async function handleAdminNeonQuery(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
-): Promise<Response> {
-    const denied = checkRoutePermission('/admin/neon/query', authContext);
+export async function handleAdminNeonQuery(c: AppContext): Promise<Response> {
+    const denied = checkRoutePermission('/admin/neon/query', c.get('authContext'));
     if (denied) return denied;
 
-    const neon = getNeonService(env);
+    const neon = getNeonService(c.env);
     if (!neon) return JsonResponse.serviceUnavailable('NEON_API_KEY is not configured');
 
     let body: unknown;
     try {
-        body = await request.json();
+        body = await c.req.json();
     } catch {
         return JsonResponse.badRequest('Invalid JSON body');
     }

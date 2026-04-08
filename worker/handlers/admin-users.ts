@@ -20,11 +20,10 @@
  * @see worker/lib/auth.ts — Better Auth factory
  */
 
-import { type Env, type IAuthContext } from '../types.ts';
+import type { AppContext } from '../routes/shared.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { AdminBanUserSchema, AdminPaginationQuerySchema, AdminUpdateUserSchema, BetterAuthUserPublicSchema, type BetterAuthUserRow } from '../schemas.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
-import { _internals } from '../lib/prisma.ts';
 
 /** Map a raw D1 user row to its public shape (strips sensitive fields). */
 function toPublicUser(u: BetterAuthUserRow) {
@@ -40,17 +39,13 @@ function toPublicUser(u: BetterAuthUserRow) {
  * Paginated via `?limit=` and `?offset=` query params.
  * Filterable via `?tier=`, `?role=`, `?search=` (email/name substring).
  */
-export async function handleAdminListUsers(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
-): Promise<Response> {
-    const denied = checkRoutePermission('/admin/users', authContext);
+export async function handleAdminListUsers(c: AppContext): Promise<Response> {
+    const denied = checkRoutePermission('/admin/users', c.get('authContext'));
     if (denied) return denied;
 
-    if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
+    if (!c.env.DB) return JsonResponse.serviceUnavailable('Database not configured');
 
-    const url = new URL(request.url);
+    const url = new URL(c.req.url);
     const paginationParsed = AdminPaginationQuerySchema.safeParse({
         limit: url.searchParams.get('limit') ?? undefined,
         offset: url.searchParams.get('offset') ?? undefined,
@@ -93,11 +88,11 @@ export async function handleAdminListUsers(
         const countSql = 'SELECT COUNT(*) AS total FROM "user" ' + whereClause;
 
         const [listResult, countResult] = await Promise.all([
-            env.DB
+            c.env.DB
                 .prepare(listSql)
                 .bind(...binds, limit, skip)
                 .all<BetterAuthUserRow>(),
-            env.DB
+            c.env.DB
                 .prepare(countSql)
                 .bind(...binds)
                 .first<{ total: number }>(),
@@ -143,18 +138,16 @@ export async function handleAdminListUsers(
 
 /** Get a single Better Auth user by ID. */
 export async function handleAdminGetUser(
-    _request: Request,
-    env: Env,
-    authContext: IAuthContext,
+    c: AppContext,
     userId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission('/admin/users/*', authContext);
+    const denied = checkRoutePermission('/admin/users/*', c.get('authContext'));
     if (denied) return denied;
 
-    if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
+    if (!c.env.DB) return JsonResponse.serviceUnavailable('Database not configured');
 
     try {
-        const user = await env.DB
+        const user = await c.env.DB
             .prepare('SELECT id, email, name, emailVerified, image, tier, role, banned, banReason, banExpires, createdAt, updatedAt FROM "user" WHERE id = ?')
             .bind(userId)
             .first<BetterAuthUserRow>();
@@ -179,19 +172,17 @@ export async function handleAdminGetUser(
  * Returns the updated user.
  */
 export async function handleAdminUpdateUser(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
+    c: AppContext,
     userId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission('/admin/users/*', authContext);
+    const denied = checkRoutePermission('/admin/users/*', c.get('authContext'));
     if (denied) return denied;
 
-    if (!env.DB) return JsonResponse.serviceUnavailable('Database not configured');
+    if (!c.env.DB) return JsonResponse.serviceUnavailable('Database not configured');
 
     let body: unknown;
     try {
-        body = await request.json();
+        body = await c.req.json();
     } catch {
         return JsonResponse.badRequest('Invalid JSON body');
     }
@@ -223,13 +214,13 @@ export async function handleAdminUpdateUser(
         binds.push(userId);
 
         const updateSql = `UPDATE "user" SET ${setClauses.join(', ')} WHERE id = ?`;
-        const result = await env.DB.prepare(updateSql).bind(...binds).run();
+        const result = await c.env.DB.prepare(updateSql).bind(...binds).run();
 
         if (result.meta.changes === 0) {
             return JsonResponse.notFound('User not found');
         }
 
-        const updated = await env.DB
+        const updated = await c.env.DB
             .prepare('SELECT id, email, name, emailVerified, image, tier, role, banned, banReason, banExpires, createdAt, updatedAt FROM "user" WHERE id = ?')
             .bind(userId)
             .first<BetterAuthUserRow>();
@@ -251,18 +242,16 @@ export async function handleAdminUpdateUser(
 
 /** Delete a Better Auth user and all their sessions. */
 export async function handleAdminDeleteUser(
-    _request: Request,
-    env: Env,
-    authContext: IAuthContext,
+    c: AppContext,
     userId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission('/admin/users/*', authContext);
+    const denied = checkRoutePermission('/admin/users/*', c.get('authContext'));
     if (denied) return denied;
 
-    if (!env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
+    const prisma = c.get('prisma');
+    if (!prisma) return JsonResponse.serviceUnavailable('Database not configured');
 
     try {
-        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
         await prisma.session.deleteMany({ where: { userId } });
         await prisma.account.deleteMany({ where: { userId } });
         const user = await prisma.user.delete({ where: { id: userId } }).catch(() => null);
@@ -283,19 +272,18 @@ export async function handleAdminDeleteUser(
 
 /** Ban a user. Sets `banned = true` and optional reason/expiry. */
 export async function handleAdminBanUser(
-    request: Request,
-    env: Env,
-    authContext: IAuthContext,
+    c: AppContext,
     userId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission('/admin/users/*', authContext);
+    const denied = checkRoutePermission('/admin/users/*', c.get('authContext'));
     if (denied) return denied;
 
-    if (!env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
+    const prisma = c.get('prisma');
+    if (!prisma) return JsonResponse.serviceUnavailable('Database not configured');
 
     let body: unknown = {};
     try {
-        const text = await request.text();
+        const text = await c.req.text();
         if (text) body = JSON.parse(text);
     } catch {
         return JsonResponse.badRequest('Invalid JSON body');
@@ -307,7 +295,6 @@ export async function handleAdminBanUser(
     }
 
     try {
-        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
         const result = await prisma.user.updateMany({
             where: { id: userId },
             data: {
@@ -340,18 +327,16 @@ export async function handleAdminBanUser(
 
 /** Unban a user. Clears banned flag, reason, and expiry. */
 export async function handleAdminUnbanUser(
-    _request: Request,
-    env: Env,
-    authContext: IAuthContext,
+    c: AppContext,
     userId: string,
 ): Promise<Response> {
-    const denied = checkRoutePermission('/admin/users/*', authContext);
+    const denied = checkRoutePermission('/admin/users/*', c.get('authContext'));
     if (denied) return denied;
 
-    if (!env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
+    const prisma = c.get('prisma');
+    if (!prisma) return JsonResponse.serviceUnavailable('Database not configured');
 
     try {
-        const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
         const result = await prisma.user.updateMany({
             where: { id: userId },
             data: {
