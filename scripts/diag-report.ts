@@ -17,18 +17,12 @@
  */
 
 import { parseArgs } from '@std/cli/parse-args';
-import { type DiagBundle, DiagBundleSchema, type DiagProbeResult, pad } from './diag-full.ts';
+import { type DiagBundle, DiagBundleSchema, type DiagProbeResult, pad, sep } from './diag-full.ts';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /** Maximum characters of `raw` to display per failed probe in the failures section. */
 const RAW_TRUNCATE_CHARS = 400;
-
-// ─── Table rendering helpers ──────────────────────────────────────────────────
-
-function sep(w: number): string {
-    return '─'.repeat(w);
-}
 
 // ─── Summary table ────────────────────────────────────────────────────────────
 
@@ -110,9 +104,20 @@ function renderCopilotBlock(bundle: DiagBundle): void {
 async function readBundle(filePath: string | undefined): Promise<DiagBundle> {
     let text: string;
     if (filePath !== undefined) {
-        text = await Deno.readTextFile(filePath);
+        try {
+            text = await Deno.readTextFile(filePath);
+        } catch (err) {
+            console.error(`❌ Could not read file "${filePath}": ${err instanceof Error ? err.message : String(err)}`);
+            Deno.exit(1);
+        }
     } else {
-        text = await new Response(Deno.stdin.readable).text();
+        try {
+            text = await new Response(Deno.stdin.readable).text();
+        } catch (err) {
+            console.error(`❌ Could not read from stdin: ${err instanceof Error ? err.message : String(err)}`);
+            console.error('   Tip: pipe a bundle file or use --file <path>');
+            Deno.exit(1);
+        }
     }
 
     let raw: unknown;

@@ -69,6 +69,21 @@ export type DiagBundle = z.infer<typeof DiagBundleSchema>;
 export type DiagBundleMeta = z.infer<typeof DiagBundleMetaSchema>;
 export type DiagProbeResult = z.infer<typeof DiagProbeResultSchema>;
 
+/**
+ * Minimal OpenAPI/Swagger spec shape — used to validate the /api/openapi.json response
+ * at the ZTA trust boundary before accessing any fields.
+ */
+const OpenApiSpecSchema = z.object({
+    openapi: z.string().optional(),
+    swagger: z.string().optional(),
+    paths: z.record(z.string(), z.unknown()).optional(),
+    components: z
+        .object({
+            schemas: z.record(z.string(), z.unknown()).optional(),
+        })
+        .optional(),
+});
+
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 /**
@@ -89,6 +104,17 @@ async function readProjectVersion(): Promise<string> {
 const DEFAULT_BASE_URL = 'https://adblock-frontend.jayson-knight.workers.dev';
 const DEFAULT_TIMEOUT_MS = 15_000;
 
+/**
+ * Known-good CORS origins for the adblock-compiler Worker.
+ * The CORS preflight probe verifies that `access-control-allow-origin` is
+ * one of these — not a wildcard (`*`) and not an unexpected third party.
+ */
+const CORS_ALLOWED_ORIGINS = new Set([
+    'https://adblock-frontend.jayson-knight.workers.dev',
+    'http://localhost:4200',
+    'http://localhost:8787',
+]);
+
 // ─── Table rendering helpers (exported for use by diag-report.ts) ────────────
 
 export function pad(s: string, n: number): string {
@@ -96,6 +122,10 @@ export function pad(s: string, n: number): string {
         return s.slice(0, n - 1) + '…';
     }
     return s + ' '.repeat(n - s.length);
+}
+
+export function sep(w: number): string {
+    return '─'.repeat(w);
 }
 
 // ─── Internal safeFetch ───────────────────────────────────────────────────────
@@ -213,12 +243,14 @@ async function runExistingProbes(baseUrl: string, timeoutMs: number): Promise<Di
 
 async function probeCors(baseUrl: string, timeoutMs: number): Promise<DiagProbeResult> {
     const url = `${baseUrl}/api/compile`;
+    // Use an expected origin from the allowlist so the preflight returns the actual allowed value
+    const probeOrigin = 'https://adblock-frontend.jayson-knight.workers.dev';
     const result = await safeFetch(
         url,
         {
             method: 'OPTIONS',
             headers: {
-                'Origin': 'https://example.com',
+                'Origin': probeOrigin,
                 'Access-Control-Request-Method': 'POST',
                 'Access-Control-Request-Headers': 'Content-Type, Authorization',
             },
@@ -239,13 +271,16 @@ async function probeCors(baseUrl: string, timeoutMs: number): Promise<DiagProbeR
     const allowMethods = res.headers.get('access-control-allow-methods');
     const allowHeaders = res.headers.get('access-control-allow-headers');
     const statusOk = res.status === 204 || res.status === 200;
-    const originOk = allowOrigin !== null && allowOrigin !== '*';
+    // Verify: not wildcard AND must be in the known allowlist
+    const originNotWildcard = allowOrigin !== null && allowOrigin !== '*';
+    const originAllowlisted = allowOrigin !== null && CORS_ALLOWED_ORIGINS.has(allowOrigin);
+    const originOk = originNotWildcard && originAllowlisted;
     return {
         category: 'cors',
         label: 'cors-preflight',
         ok: statusOk && originOk,
         latency_ms,
-        detail: `status=${res.status} acao=${allowOrigin ?? 'absent'} acam=${allowMethods ?? 'absent'}`,
+        detail: `status=${res.status} acao=${allowOrigin ?? 'absent'} allowlisted=${originAllowlisted} acam=${allowMethods ?? 'absent'}`,
         raw: {
             status: res.status,
             'access-control-allow-origin': allowOrigin,
@@ -542,12 +577,22 @@ async function probeOpenApi(baseUrl: string, timeoutMs: number): Promise<DiagPro
             detail: 'response is not valid JSON',
         };
     }
-    const spec = body as Record<string, unknown>;
-    const version = String(spec['openapi'] ?? spec['swagger'] ?? 'unknown');
-    const pathCount = Object.keys((spec['paths'] as Record<string, unknown> | undefined) ?? {}).length;
-    const schemaCount = Object.keys(
-        ((spec['components'] as Record<string, unknown> | undefined)?.['schemas'] as Record<string, unknown> | undefined) ?? {},
-    ).length;
+    // Validate through Zod at the trust boundary instead of using a type assertion
+    const parsed = OpenApiSpecSchema.safeParse(body);
+    if (!parsed.success) {
+        return {
+            category: 'openapi',
+            label: 'openapi-spec',
+            ok: false,
+            latency_ms,
+            detail: 'response does not match expected OpenAPI spec shape',
+            raw: body,
+        };
+    }
+    const spec = parsed.data;
+    const version = spec.openapi ?? spec.swagger ?? 'unknown';
+    const pathCount = Object.keys(spec.paths ?? {}).length;
+    const schemaCount = Object.keys(spec.components?.schemas ?? {}).length;
     return {
         category: 'openapi',
         label: 'openapi-spec',
@@ -708,7 +753,6 @@ function printBundleTable(bundle: DiagBundle): void {
     const COL_STATUS = 6;
     const COL_LATENCY = 10;
     const COL_DETAIL = 36;
-    const sep = (w: number): string => '─'.repeat(w);
 
     console.log(
         `┌${sep(COL_CAT + 2)}┬${sep(COL_LABEL + 2)}┬${sep(COL_STATUS + 2)}┬${sep(COL_LATENCY + 2)}┬${sep(COL_DETAIL + 2)}┐`,

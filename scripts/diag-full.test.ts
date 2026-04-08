@@ -6,7 +6,7 @@
  *   2. DiagBundleSchema validates a manually constructed valid bundle.
  *
  * Run:
- *   deno test --allow-read --allow-write --allow-net --allow-env scripts/diag-full.test.ts
+ *   deno test --allow-read --allow-env scripts/diag-full.test.ts
  */
 
 import { assertEquals, assertExists, assertObjectMatch } from '@std/assert';
