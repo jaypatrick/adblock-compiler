@@ -25,6 +25,7 @@
  */
 
 import { walk } from '@std/fs';
+import { dirname, resolve } from '@std/path';
 
 const TARGET_DIRS = [
     './prisma/generated',
@@ -52,22 +53,8 @@ function lacksExtension(specPath: string): boolean {
 
 async function fixImportsInFile(filePath: string): Promise<{ changed: boolean; replacements: number }> {
     const original = await Deno.readTextFile(filePath);
-    const fileDir = filePath.split('/').slice(0, -1).join('/');
+    const fileDir = dirname(resolve(filePath));
     let replacements = 0;
-
-    /**
-     * Resolves a relative import specifier (without extension) to an absolute path,
-     * handling `./` and `../` prefixes by normalising against the file's directory.
-     */
-    function resolveSpecPath(spec: string): string {
-        const parts = (fileDir + '/' + spec.replace(/^\.\//, '')).split('/');
-        const normalized: string[] = [];
-        for (const part of parts) {
-            if (part === '..') normalized.pop();
-            else if (part !== '.') normalized.push(part);
-        }
-        return normalized.join('/');
-    }
 
     /**
      * Returns true only if a `.ts` source file exists at the resolved specifier path.
@@ -76,17 +63,23 @@ async function fixImportsInFile(filePath: string): Promise<{ changed: boolean; r
      */
     function tsCounterpartExists(spec: string): boolean {
         try {
-            Deno.statSync(`${resolveSpecPath(spec)}.ts`);
+            Deno.statSync(resolve(fileDir, spec) + '.ts');
             return true;
         } catch {
             return false;
         }
     }
 
-    /** Extracts the relative specifier (e.g. `./internal/class`) from a capture group. */
+    /**
+     * Extracts the relative specifier (e.g. `./internal/class`) from a capture group.
+     * Returns null for non-relative paths (absolute paths, package imports).
+     */
     function extractSpec(captureGroup: string): string | null {
         const m = captureGroup.match(/['"](\.[^'"]+)$/);
-        return m?.[1] ?? null;
+        const spec = m?.[1] ?? null;
+        // Only handle relative imports (./ or ../)
+        if (!spec || !/^\.\.?\//.test(spec)) return null;
+        return spec;
     }
 
     const rewritten = original
