@@ -4,10 +4,11 @@
  * Provides reusable KV, D1, and Env stubs so each test file does not need to
  * redeclare the same boilerplate. Import what you need:
  *
- *   import { makeKv, makeInMemoryKv, makeFailingKv, makeDb, makeEnv } from '../test-helpers.ts';
+ *   import { makeKv, makeInMemoryKv, makeFailingKv, makeDb, makeEnv, makeAppContext } from '../test-helpers.ts';
  */
 
-import type { Env } from './types.ts';
+import type { AppContext } from './routes/shared.ts';
+import type { Env, IAuthContext } from './types.ts';
 
 // ============================================================================
 // KVNamespace stubs
@@ -104,4 +105,54 @@ export function makeEnv(overrides: Partial<Env> = {}): Env {
         ASSETS: undefined as unknown as Fetcher,
         ...overrides,
     } as unknown as Env;
+}
+
+// ============================================================================
+// AppContext factory
+// ============================================================================
+
+/**
+ * Builds a minimal `AppContext` mock suitable for unit-testing handler
+ * functions that have been migrated to the unified `(c: AppContext)` signature.
+ *
+ * The returned context exposes:
+ *   - `c.req.url / json() / text() / raw / method / path`
+ *   - `c.env` — the provided `Env` bindings
+ *   - `c.get('authContext')` — the provided `IAuthContext`
+ *   - `c.get('prisma')` — optional Prisma mock (pass for handlers that call `c.get('prisma')`)
+ *
+ * @example
+ * const c = makeAppContext(req, makeEnv({ DB: mockDb }), makeAdminContext());
+ * const res = await handleAdminListUsers(c);
+ *
+ * @example
+ * const c = makeAppContext(req, makeEnv(), makeAdminContext(), mockPrisma);
+ * const res = await handleAdminDeleteUser(c, userId);
+ */
+export function makeAppContext(
+    request: Request,
+    env: Env,
+    authContext: IAuthContext,
+    prisma?: unknown,
+): AppContext {
+    const vars: Record<string, unknown> = { authContext };
+    if (prisma !== undefined) {
+        vars.prisma = prisma;
+    }
+    return {
+        req: {
+            url: request.url,
+            raw: request,
+            json: () => request.json(),
+            text: () => request.text(),
+            header: (name: string) => request.headers.get(name) ?? undefined,
+            method: request.method,
+            path: new URL(request.url).pathname,
+        },
+        env,
+        get: (key: string) => vars[key],
+        set: (key: string, value: unknown) => {
+            vars[key] = value;
+        },
+    } as unknown as AppContext;
 }

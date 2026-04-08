@@ -27,6 +27,7 @@ import {
     handleAdminNeonQuery,
 } from './admin-neon.ts';
 import { type Env, type IAuthContext, UserTier } from '../types.ts';
+import { makeAppContext } from '../test-helpers.ts';
 
 // ── Fixtures ─────────────────────────────────────────────────────────────────
 
@@ -104,7 +105,7 @@ function mockFetch(handler: (url: string, init?: RequestInit) => Response | Prom
 Deno.test('handleAdminNeonGetProject — 503 when NEON_API_KEY missing', async () => {
     const req = new Request('http://localhost/admin/neon/project');
     const env = makeEnv({ NEON_API_KEY: undefined });
-    const res = await handleAdminNeonGetProject(req, env, makeAdminContext());
+    const res = await handleAdminNeonGetProject(makeAppContext(req, env, makeAdminContext()));
     assertEquals(res.status, 503);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.success, false);
@@ -115,7 +116,7 @@ Deno.test('handleAdminNeonGetProject — 503 when NEON_API_KEY missing', async (
 Deno.test('handleAdminNeonGetProject — 400 when projectId missing', async () => {
     const req = new Request('http://localhost/admin/neon/project');
     const env = makeEnv({ NEON_PROJECT_ID: undefined });
-    const res = await handleAdminNeonGetProject(req, env, makeAdminContext());
+    const res = await handleAdminNeonGetProject(makeAppContext(req, env, makeAdminContext()));
     assertEquals(res.status, 400);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.success, false);
@@ -125,13 +126,13 @@ Deno.test('handleAdminNeonGetProject — 400 when projectId missing', async () =
 
 Deno.test('handleAdminNeonGetProject — 403 for non-admin user', async () => {
     const req = new Request('http://localhost/admin/neon/project');
-    const res = await handleAdminNeonGetProject(req, makeEnv(), makeUserContext());
+    const res = await handleAdminNeonGetProject(makeAppContext(req, makeEnv(), makeUserContext()));
     assertEquals(res.status, 403);
 });
 
 Deno.test('handleAdminNeonListBranches — 403 for non-admin user', async () => {
     const req = new Request('http://localhost/admin/neon/branches');
-    const res = await handleAdminNeonListBranches(req, makeEnv(), makeUserContext());
+    const res = await handleAdminNeonListBranches(makeAppContext(req, makeEnv(), makeUserContext()));
     assertEquals(res.status, 403);
 });
 
@@ -140,7 +141,7 @@ Deno.test('handleAdminNeonQuery — 403 for non-admin user', async () => {
         connectionString: 'postgres://test',
         sql: 'SELECT 1',
     });
-    const res = await handleAdminNeonQuery(req, makeEnv(), makeUserContext());
+    const res = await handleAdminNeonQuery(makeAppContext(req, makeEnv(), makeUserContext()));
     assertEquals(res.status, 403);
 });
 
@@ -152,7 +153,7 @@ Deno.test('handleAdminNeonCreateBranch — 400 on invalid JSON', async () => {
         body: 'not json',
         headers: { 'Content-Type': 'application/json' },
     });
-    const res = await handleAdminNeonCreateBranch(req, makeEnv(), makeAdminContext());
+    const res = await handleAdminNeonCreateBranch(makeAppContext(req, makeEnv(), makeAdminContext()));
     assertEquals(res.status, 400);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.success, false);
@@ -163,7 +164,7 @@ Deno.test('handleAdminNeonQuery — 400 when sql is empty', async () => {
         connectionString: 'postgres://test',
         sql: '',
     });
-    const res = await handleAdminNeonQuery(req, makeEnv(), makeAdminContext());
+    const res = await handleAdminNeonQuery(makeAppContext(req, makeEnv(), makeAdminContext()));
     assertEquals(res.status, 400);
 });
 
@@ -171,7 +172,7 @@ Deno.test('handleAdminNeonQuery — 400 when connectionString missing', async ()
     const req = jsonRequest('http://localhost/admin/neon/query', {
         sql: 'SELECT 1',
     });
-    const res = await handleAdminNeonQuery(req, makeEnv(), makeAdminContext());
+    const res = await handleAdminNeonQuery(makeAppContext(req, makeEnv(), makeAdminContext()));
     assertEquals(res.status, 400);
 });
 
@@ -196,7 +197,7 @@ Deno.test('handleAdminNeonListBranches — uses projectId from query param', asy
     });
     try {
         const req = new Request('http://localhost/admin/neon/branches?projectId=override-id');
-        const res = await handleAdminNeonListBranches(req, makeEnv(), makeAdminContext());
+        const res = await handleAdminNeonListBranches(makeAppContext(req, makeEnv(), makeAdminContext()));
         assertEquals(res.status, 200);
         assertEquals(capturedUrl.includes('override-id'), true);
     } finally {
@@ -220,7 +221,7 @@ Deno.test('handleAdminNeonGetProject — 200 with project data', async () => {
     globalThis.fetch = mockFetch(() => Response.json({ project: fakeProject }));
     try {
         const req = new Request('http://localhost/admin/neon/project');
-        const res = await handleAdminNeonGetProject(req, makeEnv(), makeAdminContext());
+        const res = await handleAdminNeonGetProject(makeAppContext(req, makeEnv(), makeAdminContext()));
         assertEquals(res.status, 200);
         const body = await res.json() as Record<string, unknown>;
         assertEquals(body.success, true);
@@ -244,7 +245,7 @@ Deno.test('handleAdminNeonListBranches — 200 with branches', async () => {
     globalThis.fetch = mockFetch(() => Response.json({ branches: fakeBranches }));
     try {
         const req = new Request('http://localhost/admin/neon/branches');
-        const res = await handleAdminNeonListBranches(req, makeEnv(), makeAdminContext());
+        const res = await handleAdminNeonListBranches(makeAppContext(req, makeEnv(), makeAdminContext()));
         assertEquals(res.status, 200);
         const body = await res.json() as Record<string, unknown>;
         assertEquals(body.success, true);
@@ -268,7 +269,7 @@ Deno.test('handleAdminNeonGetBranch — 200 with single branch', async () => {
     globalThis.fetch = mockFetch(() => Response.json({ branch: fakeBranch }));
     try {
         const req = new Request('http://localhost/admin/neon/branches/br-1');
-        const res = await handleAdminNeonGetBranch(req, makeEnv(), makeAdminContext(), 'br-1');
+        const res = await handleAdminNeonGetBranch(makeAppContext(req, makeEnv(), makeAdminContext()), 'br-1');
         assertEquals(res.status, 200);
         const body = await res.json() as Record<string, unknown>;
         assertEquals(body.success, true);
@@ -303,7 +304,7 @@ Deno.test('handleAdminNeonCreateBranch — 201 on success', async () => {
     globalThis.fetch = mockFetch(() => Response.json(fakeResult));
     try {
         const req = jsonRequest('http://localhost/admin/neon/branches', { name: 'feature-branch' });
-        const res = await handleAdminNeonCreateBranch(req, makeEnv(), makeAdminContext());
+        const res = await handleAdminNeonCreateBranch(makeAppContext(req, makeEnv(), makeAdminContext()));
         assertEquals(res.status, 201);
         const body = await res.json() as Record<string, unknown>;
         assertEquals(body.success, true);
@@ -331,7 +332,7 @@ Deno.test('handleAdminNeonDeleteBranch — 200 on success', async () => {
     );
     try {
         const req = new Request('http://localhost/admin/neon/branches/br-1', { method: 'DELETE' });
-        const res = await handleAdminNeonDeleteBranch(req, makeEnv(), makeAdminContext(), 'br-1');
+        const res = await handleAdminNeonDeleteBranch(makeAppContext(req, makeEnv(), makeAdminContext()), 'br-1');
         assertEquals(res.status, 200);
         const body = await res.json() as Record<string, unknown>;
         assertEquals(body.success, true);
@@ -357,7 +358,7 @@ Deno.test('handleAdminNeonListEndpoints — 200 with endpoints', async () => {
     );
     try {
         const req = new Request('http://localhost/admin/neon/endpoints');
-        const res = await handleAdminNeonListEndpoints(req, makeEnv(), makeAdminContext());
+        const res = await handleAdminNeonListEndpoints(makeAppContext(req, makeEnv(), makeAdminContext()));
         assertEquals(res.status, 200);
         const body = await res.json() as Record<string, unknown>;
         assertEquals(body.success, true);
@@ -383,7 +384,7 @@ Deno.test('handleAdminNeonListDatabases — 200 with databases', async () => {
     );
     try {
         const req = new Request('http://localhost/admin/neon/databases/br-1');
-        const res = await handleAdminNeonListDatabases(req, makeEnv(), makeAdminContext(), 'br-1');
+        const res = await handleAdminNeonListDatabases(makeAppContext(req, makeEnv(), makeAdminContext()), 'br-1');
         assertEquals(res.status, 200);
         const body = await res.json() as Record<string, unknown>;
         assertEquals(body.success, true);
@@ -400,7 +401,7 @@ Deno.test('handleAdminNeonGetProject — maps Neon 404 to 404 response', async (
     globalThis.fetch = mockFetch(() => new Response(JSON.stringify({ message: 'project not found' }), { status: 404 }));
     try {
         const req = new Request('http://localhost/admin/neon/project');
-        const res = await handleAdminNeonGetProject(req, makeEnv(), makeAdminContext());
+        const res = await handleAdminNeonGetProject(makeAppContext(req, makeEnv(), makeAdminContext()));
         assertEquals(res.status, 404);
         const body = await res.json() as Record<string, unknown>;
         assertEquals(body.success, false);
@@ -427,7 +428,7 @@ Deno.test('handleAdminNeonCreateBranch — empty body treated as valid (all fiel
     );
     try {
         const req = jsonRequest('http://localhost/admin/neon/branches', {});
-        const res = await handleAdminNeonCreateBranch(req, makeEnv(), makeAdminContext());
+        const res = await handleAdminNeonCreateBranch(makeAppContext(req, makeEnv(), makeAdminContext()));
         assertEquals(res.status, 201);
     } finally {
         globalThis.fetch = originalFetch;
@@ -447,8 +448,7 @@ for (
     Deno.test(`${name} — 503 when NEON_API_KEY missing`, async () => {
         const env = makeEnv({ NEON_API_KEY: undefined });
         const req = (makeReq as () => Request)();
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const res = await (handler as any)(req, env, makeAdminContext(), 'br-1');
+        const res = await (handler as any)(makeAppContext(req, env, makeAdminContext()), 'br-1');
         assertEquals(res.status, 503);
     });
 }

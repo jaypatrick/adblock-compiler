@@ -13,6 +13,7 @@
 import { assertEquals, assertExists } from '@std/assert';
 import { handleAdminGetUserUsage } from './admin-usage.ts';
 import { type Env, type IAuthContext, UserTier } from '../types.ts';
+import { makeAppContext } from '../test-helpers.ts';
 
 // ============================================================================
 // Fixtures
@@ -70,7 +71,7 @@ Deno.test('handleAdminGetUserUsage - 403 for non-admin user', async () => {
     const req = new Request('http://localhost/admin/usage/user-001');
     const env = makeEnv();
 
-    const res = await handleAdminGetUserUsage(req, env, makeUserContext(), 'user-001');
+    const res = await handleAdminGetUserUsage(makeAppContext(req, env, makeUserContext()), 'user-001');
     assertEquals(res.status, 403);
 });
 
@@ -79,7 +80,7 @@ Deno.test('handleAdminGetUserUsage - 200 with empty usage for admin', async () =
     const env = makeEnv(kv);
     const req = new Request('http://localhost/admin/usage/user-001');
 
-    const res = await handleAdminGetUserUsage(req, env, makeAdminContext(), 'user-001');
+    const res = await handleAdminGetUserUsage(makeAppContext(req, env, makeAdminContext()), 'user-001');
     assertEquals(res.status, 200);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.success, true);
@@ -98,7 +99,7 @@ Deno.test('handleAdminGetUserUsage - 200 with usage data for admin', async () =>
     const env = makeEnv(kv);
     const req = new Request('http://localhost/admin/usage/user-002');
 
-    const res = await handleAdminGetUserUsage(req, env, makeAdminContext(), 'user-002');
+    const res = await handleAdminGetUserUsage(makeAppContext(req, env, makeAdminContext()), 'user-002');
     assertEquals(res.status, 200);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.success, true);
@@ -112,7 +113,7 @@ Deno.test('handleAdminGetUserUsage - respects lookbackDays query param', async (
     const env = makeEnv(kv);
     const req = new Request('http://localhost/admin/usage/user-001?days=7');
 
-    const res = await handleAdminGetUserUsage(req, env, makeAdminContext(), 'user-001');
+    const res = await handleAdminGetUserUsage(makeAppContext(req, env, makeAdminContext()), 'user-001');
     assertEquals(res.status, 200);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.lookbackDays, 7);
@@ -123,7 +124,7 @@ Deno.test('handleAdminGetUserUsage - clamps lookbackDays to maximum of 90', asyn
     const env = makeEnv(kv);
     const req = new Request('http://localhost/admin/usage/user-001?days=999');
 
-    const res = await handleAdminGetUserUsage(req, env, makeAdminContext(), 'user-001');
+    const res = await handleAdminGetUserUsage(makeAppContext(req, env, makeAdminContext()), 'user-001');
     assertEquals(res.status, 200);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.lookbackDays, 90);
@@ -134,7 +135,7 @@ Deno.test('handleAdminGetUserUsage - clamps lookbackDays to minimum of 1', async
     const env = makeEnv(kv);
     const req = new Request('http://localhost/admin/usage/user-001?days=0');
 
-    const res = await handleAdminGetUserUsage(req, env, makeAdminContext(), 'user-001');
+    const res = await handleAdminGetUserUsage(makeAppContext(req, env, makeAdminContext()), 'user-001');
     assertEquals(res.status, 200);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.lookbackDays, 1);
