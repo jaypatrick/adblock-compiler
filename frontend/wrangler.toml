@@ -55,11 +55,7 @@ name = "adblock-frontend"
 # Expose the worker on the *.workers.dev subdomain after deployment.
 workers_dev = true
 
-[[routes]]
-pattern = "app.bloqr.jaysonknight.com/*"
-custom_domain = true
-
-# Enable logpush for the frontend worker
+# Forward worker logs to Cloudflare Logpush (production only; no-op locally).
 logpush = true
 
 # Compiled server entry point output by `ng build` when ssr.entry = "server.ts"
@@ -89,15 +85,22 @@ compatibility_flags = ["nodejs_compat"]
 # IMPORTANT: adblock-tail must be deployed before this Worker.
 tail_consumers = [{ service = "adblock-tail" }]
 
+# ─── Custom domain route ─────────────────────────────────────────────────────
+# IMPORTANT: [[routes]] (and [[rules]]) must appear AFTER all bare top-level
+# key=value pairs. In TOML, any key between an array-of-tables header and the
+# next [table] / [[table]] header is parsed as a field of that array entry —
+# NOT as a top-level key. Wildcards and paths are also not allowed for
+# custom_domain = true entries; use a bare hostname only.
+[[routes]]
+pattern = "app.bloqr.jaysonknight.com"
+custom_domain = true
+
 # ─── Module rules ─────────────────────────────────────────────────────────────
 # Required with no_bundle = true: explicitly marks all .mjs files in the build
 # output as ES modules so wrangler can resolve and upload the full import graph
 # (server.mjs → polyfills.server.mjs, chunk-*.mjs, etc.).
 # Without this, Cloudflare error 10021 occurs at deploy: wrangler uploads
 # server.mjs but cannot find the modules it imports.
-# IMPORTANT: [[rules]] must appear after all top-level key-value pairs.
-# In TOML, bare keys after an array-of-tables header are parsed as members
-# of that table entry, not top-level keys.
 [[rules]]
 type = "ESModule"
 globs = ["**/*.mjs"]
