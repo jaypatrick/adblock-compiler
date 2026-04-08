@@ -116,6 +116,20 @@ jobs:
             fi
 
             echo "✅ Pages project created successfully"
+
+            # Verify the project was actually created
+            echo "Verifying project creation..."
+            sleep 5  # Wait for API propagation
+            if ! VERIFY_LIST=$(retry_command 3 10 deno task wrangler pages project list 2>&1); then
+              echo "⚠️  WARNING: Failed to verify project creation"
+            elif ! echo "$VERIFY_LIST" | grep -q "${{ env.CLOUDFLARE_PAGES_PROJECT }}"; then
+              echo "❌ ERROR: Project was created but not found in project list"
+              echo "This may indicate an API token permission issue."
+              echo "Please verify your CLOUDFLARE_API_TOKEN has 'Cloudflare Pages:Edit' permission."
+              exit 1
+            else
+              echo "✅ Project verified in project list"
+            fi
           fi
 
       - name: Deploy to Cloudflare Pages
@@ -124,6 +138,21 @@ jobs:
           # shellcheck source=.github/scripts/retry.sh
           source .github/scripts/retry.sh
           echo "Deploying documentation to Cloudflare Pages..."
+
+          # Verify project exists one more time before deployment
+          echo "Final check: Verifying project exists..."
+          if ! PROJECT_CHECK=$(deno task wrangler pages project list 2>&1) || ! echo "$PROJECT_CHECK" | grep -q "${{ env.CLOUDFLARE_PAGES_PROJECT }}"; then
+            echo "❌ ERROR: Project '${{ env.CLOUDFLARE_PAGES_PROJECT }}' not found before deployment"
+            echo "Available projects:"
+            deno task wrangler pages project list || true
+            echo ""
+            echo "TROUBLESHOOTING:"
+            echo "1. Check if CLOUDFLARE_API_TOKEN has 'Cloudflare Pages:Edit' permission"
+            echo "2. Verify CLOUDFLARE_ACCOUNT_ID is correct"
+            echo "3. Try creating the project manually at: https://dash.cloudflare.com/pages"
+            exit 1
+          fi
+
           # --commit-dirty=true: required because regenerated OpenAPI/Postman docs modify
           # in-tree files (docs/api/, docs/postman/) before this step runs.
           retry_command 3 15 deno task wrangler pages deploy book \
