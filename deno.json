@@ -126,7 +126,9 @@
         "zod": "jsr:@zod/zod@^4.3.6",
         "hono": "npm:hono@^4.12.8",
         "@hono/zod-validator": "npm:@hono/zod-validator@^0.4.3",
-        "@hono/zod-openapi": "npm:@hono/zod-openapi@^1.2.2"
+        "@hono/zod-openapi": "npm:@hono/zod-openapi@^1.2.2",
+        "@scalar/hono-api-reference": "npm:@scalar/hono-api-reference@^0.10.6",
+        "@hono/swagger-ui": "npm:@hono/swagger-ui@^0.6.1"
     },
     "lint": {
         "rules": {
