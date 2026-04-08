@@ -196,7 +196,7 @@
                         </button>
                     </div>
 
-                    <pre class="config-preview"><code>{{ previewOutput() }}</code></pre>
+                    <pre class="code-preview" [innerHTML]="previewOutput() | jsonHighlight: outputFormat()"></pre>
                 </div>
             </mat-tab>
         </mat-tab-group>
@@ -268,9 +268,63 @@
             }
         </button>
 
+        @if (authFacade.isSignedIn()) {
+            <button mat-raised-button color="warn" (click)="saveToAccount()" [disabled]="!isFormValid() || isSavingToAccount()">
+                @if (isSavingToAccount()) {
+                    <mat-icon>hourglass_empty</mat-icon>
+                    Saving...
+                } @else {
+                    <mat-icon>cloud_upload</mat-icon>
+                    Save to Account
+                }
+            </button>
+        }
+
         <button mat-raised-button (click)="downloadConfig()" [disabled]="!configId()">
             <mat-icon>download</mat-icon>
             Download
         </button>
     </mat-card-actions>
+
+    <!-- Saved Configs Panel — only visible when signed in -->
+    @if (authFacade.isSignedIn()) {
+        <div class="saved-configs-section">
+            <button type="button" class="saved-configs-header" (click)="loadSavedConfigs()">
+                <h4>
+                    <mat-icon>folder_open</mat-icon>
+                    Saved Configurations
+                </h4>
+                @if (isLoadingSaved()) {
+                    <mat-icon>hourglass_empty</mat-icon>
+                } @else {
+                    <mat-icon>refresh</mat-icon>
+                }
+            </button>
+
+            <div class="saved-configs-list">
+                @if (savedConfigs().length === 0) {
+                    <div class="saved-configs-empty">
+                        No saved configurations yet. Use "Save to Account" to persist one.
+                    </div>
+                } @else {
+                    @for (cfg of savedConfigs(); track cfg.id) {
+                        <div class="saved-config-item">
+                            <div class="saved-config-info">
+                                <div class="saved-config-name">{{ cfg.name }}</div>
+                                <div class="saved-config-meta">{{ cfg.updatedAt | date: 'medium' }}</div>
+                            </div>
+                            <div class="saved-config-actions">
+                                <button mat-icon-button color="primary" (click)="loadFromSaved(cfg.id)" title="Load into form">
+                                    <mat-icon>file_open</mat-icon>
+                                </button>
+                                <button mat-icon-button color="warn" (click)="deleteSavedConfig(cfg.id)" title="Delete">
+                                    <mat-icon>delete</mat-icon>
+                                </button>
+                            </div>
+                        </div>
+                    }
+                }
+            </div>
+        </div>
+    }
 </mat-card>

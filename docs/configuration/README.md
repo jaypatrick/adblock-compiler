@@ -145,6 +145,7 @@ On success: `{ "success": true, "config": { "name": "Final", "sources": [...], .
 
 ## Further Reading
 
+- [Config Builder](./config-builder.md) — browser-based GUI for creating configurations without writing JSON/YAML
 - [Schema Reference](./schema-reference.md) — all configuration fields and constraints
 - [Environment Overrides](./env-overrides.md) — `ADBLOCK_CONFIG_*` variable reference
 - [Config Flow](./flow-diagram.md) — ASCII diagram of the load pipeline

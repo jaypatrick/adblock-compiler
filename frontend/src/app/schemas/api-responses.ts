@@ -519,3 +519,37 @@ export const ConfigCreateResponseSchema = z.object({
     errors: z.array(ConfigErrorSchema).optional(),
 });
 export type ConfigCreateResponse = z.infer<typeof ConfigCreateResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// Saved Configurations — ZTA validation for /api/configuration/saved endpoints
+// ---------------------------------------------------------------------------
+
+/** A single saved-configuration list item (metadata only — no config blob). */
+export const SavedConfigItemSchema = z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    description: z.string().nullable(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+});
+export type SavedConfigItem = z.infer<typeof SavedConfigItemSchema>;
+
+/** Response schema for GET /api/configuration/saved */
+export const SavedConfigListResponseSchema = z.object({
+    success: z.boolean(),
+    configs: z.array(SavedConfigItemSchema),
+    total: z.number(),
+});
+export type SavedConfigListResponse = z.infer<typeof SavedConfigListResponseSchema>;
+
+/** Response schema for POST /api/configuration/saved */
+export const SavedConfigCreateResponseSchema = z.object({
+    success: z.boolean(),
+    id: z.string().uuid(),
+    name: z.string(),
+    description: z.string().nullable(),
+    config: z.record(z.string(), z.unknown()),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+});
+export type SavedConfigCreateResponse = z.infer<typeof SavedConfigCreateResponseSchema>;

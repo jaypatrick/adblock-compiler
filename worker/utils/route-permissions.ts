@@ -131,6 +131,8 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/configuration/resolve', { minTier: UserTier.Free, description: 'Merge config layers and return effective IConfiguration' }],
     ['/configuration/create', { minTier: UserTier.Anonymous, description: 'Create and store a configuration file (Turnstile-gated)' }],
     ['/configuration/download/*', { minTier: UserTier.Anonymous, description: 'Download a previously stored configuration file' }],
+    ['/configuration/saved', { minTier: UserTier.Free, description: 'List or save user configurations (Better Auth session required)' }],
+    ['/configuration/saved/*', { minTier: UserTier.Free, description: 'Delete a user configuration by ID (Better Auth session required)' }],
 
     // ── Admin tier (Admin role required) ──────────────────────────────────────
     // Wildcard catch-all for all /admin/* sub-paths (longest-prefix wins for specifics)

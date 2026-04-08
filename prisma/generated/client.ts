@@ -69,6 +69,16 @@ export type Account = Prisma.AccountModel
  */
 export type Verification = Prisma.VerificationModel
 /**
+ * Model Organization
+ * Better Auth organization plugin — stores organizations for multi-tenancy.
+ */
+export type Organization = Prisma.OrganizationModel
+/**
+ * Model Member
+ * Better Auth organization plugin — stores organization membership and roles.
+ */
+export type Member = Prisma.MemberModel
+/**
  * Model FilterSource
  * 
  */
@@ -128,6 +138,11 @@ export type FilterCache = Prisma.FilterCacheModel
  * 
  */
 export type CompilationMetadata = Prisma.CompilationMetadataModel
+/**
+ * Model UserConfiguration
+ * 
+ */
+export type UserConfiguration = Prisma.UserConfigurationModel
 /**
  * Model DeploymentHistory
  * 

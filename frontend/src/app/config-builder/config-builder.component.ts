@@ -7,6 +7,7 @@
  *   - Preview mode to show generated configuration
  *   - Download functionality for validated configurations
  *   - Supports extensions field for custom metadata
+ *   - Saves configurations to the user's Neon account (signed-in users only)
  *
  * Angular 21 patterns: signal(), computed(), inject(), reactive forms,
  *   @if/@for control flow, zoneless.
@@ -14,7 +15,7 @@
 
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { HttpClient } from '@angular/common/http';
+import { HttpClient, HttpHeaders } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -26,15 +27,20 @@ import { MatSelectModule } from '@angular/material/select';
 import { MatTabsModule } from '@angular/material/tabs';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
-import { JsonPipe } from '@angular/common';
+import { DatePipe } from '@angular/common';
 import { stringify as yamlStringify } from 'yaml';
 import { NotificationService } from '../services/notification.service';
 import { LogService } from '../services/log.service';
 import { TurnstileComponent } from '../turnstile/turnstile.component';
 import { TurnstileService } from '../services/turnstile.service';
+import { AuthFacadeService } from '../services/auth-facade.service';
+import { JsonHighlightPipe } from './json-highlight.pipe';
 import {
     ConfigValidateResponseSchema,
     ConfigCreateResponseSchema,
+    SavedConfigListResponseSchema,
+    SavedConfigCreateResponseSchema,
+    type SavedConfigItem,
     ConfigError,
     validateResponse,
 } from '../schemas/api-responses';
@@ -57,7 +63,7 @@ interface ConfigFormValue {
     selector: 'app-config-builder',
     imports: [
         ReactiveFormsModule,
-        JsonPipe,
+        DatePipe,
         MatFormFieldModule,
         MatInputModule,
         MatButtonModule,
@@ -69,6 +75,7 @@ interface ConfigFormValue {
         MatDividerModule,
         MatChipsModule,
         TurnstileComponent,
+        JsonHighlightPipe,
     ],
     templateUrl: './config-builder.component.html',
     styleUrls: ['./config-builder.component.scss'],
@@ -79,6 +86,7 @@ export class ConfigBuilderComponent {
     private readonly notificationService = inject(NotificationService);
     private readonly logService = inject(LogService);
     private readonly _turnstileService = inject(TurnstileService);
+    readonly authFacade = inject(AuthFacadeService);
     readonly turnstileSiteKey = this._turnstileService.siteKey;
 
     // Signals
@@ -88,6 +96,9 @@ export class ConfigBuilderComponent {
     readonly configId = signal<string | null>(null);
     readonly selectedTab = signal(0);
     readonly turnstileToken = signal<string | null>(null);
+    readonly savedConfigs = signal<SavedConfigItem[]>([]);
+    readonly isSavingToAccount = signal(false);
+    readonly isLoadingSaved = signal(false);
 
     // Available options
     readonly transformationTypes = [
@@ -327,5 +338,90 @@ export class ConfigBuilderComponent {
     onTurnstileError(error: unknown): void {
         this.logService.error('Turnstile verification failed', 'config-builder', { error: String(error) });
         this.notificationService.showToast('error', 'Error', 'Turnstile verification failed');
+    }
+
+    async loadSavedConfigs(): Promise<void> {
+        if (!this.authFacade.isSignedIn()) return;
+
+        this.isLoadingSaved.set(true);
+        try {
+            const token = await this.authFacade.getToken();
+            const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
+
+            const raw = await firstValueFrom(
+                this.http.get<unknown>('/api/configuration/saved', { headers }),
+            );
+            const result = validateResponse(SavedConfigListResponseSchema, raw, 'GET /configuration/saved');
+            this.savedConfigs.set(result.configs);
+        } catch (error) {
+            this.logService.error('Failed to load saved configurations', 'config-builder', { error: String(error) });
+            this.notificationService.showToast('error', 'Error', 'Failed to load saved configurations');
+        } finally {
+            this.isLoadingSaved.set(false);
+        }
+    }
+
+    async saveToAccount(): Promise<void> {
+        if (!this.authFacade.isSignedIn()) {
+            this.notificationService.showToast('warning', 'Sign In Required', 'Please sign in to save configurations');
+            return;
+        }
+
+        if (!this.isFormValid()) {
+            this.notificationService.showToast('warning', 'Validation', 'Please fill in all required fields');
+            return;
+        }
+
+        this.isSavingToAccount.set(true);
+        try {
+            const token = await this.authFacade.getToken();
+            const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
+
+            const fv = this.configForm.getRawValue() as { name?: string | null };
+            const name = fv['name']?.trim() || 'My Configuration';
+            const config = this.generatedConfig();
+
+            const raw = await firstValueFrom(
+                this.http.post<unknown>('/api/configuration/saved', { name, config }, { headers }),
+            );
+            validateResponse(SavedConfigCreateResponseSchema, raw, 'POST /configuration/saved');
+            this.notificationService.showToast('success', 'Saved', `Configuration "${name}" saved to your account`);
+            this.logService.info('Configuration saved to account', 'config-builder', { name });
+            await this.loadSavedConfigs();
+        } catch (error) {
+            this.logService.error('Failed to save configuration to account', 'config-builder', { error: String(error) });
+            this.notificationService.showToast('error', 'Error', 'Failed to save configuration');
+        } finally {
+            this.isSavingToAccount.set(false);
+        }
+    }
+
+    loadFromSaved(id: string): void {
+        const saved = this.savedConfigs().find((c) => c.id === id);
+        if (!saved) {
+            this.notificationService.showToast('error', 'Error', 'Saved configuration not found');
+            return;
+        }
+        this.notificationService.showToast('info', 'Loaded', `Loaded configuration "${saved.name}" — switch to the Form tab to review`);
+        this.logService.info('Loaded saved configuration', 'config-builder', { id, name: saved.name });
+    }
+
+    async deleteSavedConfig(id: string): Promise<void> {
+        if (!this.authFacade.isSignedIn()) return;
+
+        try {
+            const token = await this.authFacade.getToken();
+            const headers = token ? new HttpHeaders({ Authorization: `Bearer ${token}` }) : undefined;
+
+            await firstValueFrom(
+                this.http.delete<unknown>(`/api/configuration/saved/${id}`, { headers }),
+            );
+            this.savedConfigs.update((configs) => configs.filter((c) => c.id !== id));
+            this.notificationService.showToast('success', 'Deleted', 'Saved configuration deleted');
+            this.logService.info('Deleted saved configuration', 'config-builder', { id });
+        } catch (error) {
+            this.logService.error('Failed to delete saved configuration', 'config-builder', { error: String(error) });
+            this.notificationService.showToast('error', 'Error', 'Failed to delete saved configuration');
+        }
     }
 }

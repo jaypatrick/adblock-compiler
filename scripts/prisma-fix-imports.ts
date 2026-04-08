@@ -3,13 +3,16 @@
 /**
  * Prisma Import Specifier Fixer
  *
- * Rewrites relative `.js` import/export specifiers in Prisma-generated TypeScript
- * files to `.ts`, so Deno's strict resolver can find them without `--sloppy-imports`.
+ * Rewrites relative import/export specifiers in Prisma-generated TypeScript
+ * files to use `.ts` extensions, so Deno's strict resolver can find them
+ * without `--sloppy-imports`.
  *
- * Prisma's code generator emits Node-style `.js` extension imports (e.g.
- * `import * as $Class from "./internal/class.js"`) inside every file it writes.
- * At runtime those `.js` files don't actually exist on disk — the real files are
- * `.ts`. This script rewrites them in-place after each `prisma generate` run.
+ * Prisma's code generator may emit:
+ *   - Node-style `.js` extension imports (e.g. `from "./internal/class.js"`)
+ *   - Extensionless imports (e.g. `from "./enums"`) — introduced in Prisma 7.5+
+ *
+ * Both forms are rewritten to use `.ts` in place. At runtime those `.js` / bare
+ * files don't actually exist on disk — the real files are `.ts`.
  *
  * Target directories:
  *   - ./prisma/generated
@@ -29,23 +32,52 @@ const TARGET_DIRS = [
 ];
 
 /** Matches relative `from './path.js'` and `from "../path.js"` specifiers (import/export). */
-const FROM_REGEX = /(\bfrom\s+['"](?:\.\.?\/[^'"]*))\.js(['"])/g;
+const FROM_JS_REGEX = /(\bfrom\s+['"](?:\.\.?\/[^'"]*))\.js(['"])/g;
 
 /** Matches relative `import('./path.js')` dynamic import specifiers. */
-const DYNAMIC_IMPORT_REGEX = /(\bimport\s*\(\s*['"](?:\.\.?\/[^'"]*))\.js(['"])/g;
+const DYNAMIC_IMPORT_JS_REGEX = /(\bimport\s*\(\s*['"](?:\.\.?\/[^'"]*))\.js(['"])/g;
+
+/**
+ * Matches any relative from/export specifier (with or without extension).
+ * The callback decides whether to add `.ts`.
+ */
+const FROM_ANY_RELATIVE_REGEX = /(\bfrom\s+)(['"])(\.\.?\/[^'"]+)(\2)/g;
+const EXPORT_ANY_RELATIVE_REGEX = /(\bexport\s+(?:\*|(?:\*\s+as\s+\w+)|\{[^}]*\})\s+from\s+)(['"])(\.\.?\/[^'"]+)(\2)/g;
+
+/** Returns true if the path has no file extension in the last segment. */
+function lacksExtension(specPath: string): boolean {
+    const lastSegment = specPath.split('/').at(-1) ?? specPath;
+    return !lastSegment.includes('.');
+}
 
 async function fixImportsInFile(filePath: string): Promise<{ changed: boolean; replacements: number }> {
     const original = await Deno.readTextFile(filePath);
     let replacements = 0;
 
     const rewritten = original
-        .replace(FROM_REGEX, (_, p1, p2) => {
+        // .js → .ts
+        .replace(FROM_JS_REGEX, (_, p1, p2) => {
             replacements++;
             return `${p1}.ts${p2}`;
         })
-        .replace(DYNAMIC_IMPORT_REGEX, (_, p1, p2) => {
+        .replace(DYNAMIC_IMPORT_JS_REGEX, (_, p1, p2) => {
             replacements++;
             return `${p1}.ts${p2}`;
+        })
+        // bare → .ts  (extensionless relative imports — Prisma 7.5+)
+        .replace(FROM_ANY_RELATIVE_REGEX, (match, keyword, quote, specPath) => {
+            if (lacksExtension(specPath)) {
+                replacements++;
+                return `${keyword}${quote}${specPath}.ts${quote}`;
+            }
+            return match;
+        })
+        .replace(EXPORT_ANY_RELATIVE_REGEX, (match, keyword, quote, specPath) => {
+            if (lacksExtension(specPath)) {
+                replacements++;
+                return `${keyword}${quote}${specPath}.ts${quote}`;
+            }
+            return match;
         });
 
     if (replacements === 0) {

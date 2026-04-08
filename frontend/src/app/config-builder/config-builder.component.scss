@@ -147,6 +147,28 @@
     }
 }
 
+.code-preview {
+    background: #1e1e2e;
+    color: #cdd6f4;
+    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    padding: 16px;
+    border-radius: 4px;
+    overflow: auto;
+    max-height: 600px;
+    white-space: pre;
+
+    .json-key    { color: #89b4fa; }
+    .json-string { color: #a6e3a1; }
+    .json-number { color: #fab387; }
+    .json-bool   { color: #cba6f7; }
+    .json-null   { color: #f38ba8; }
+    .yaml-key    { color: #89b4fa; }
+    .yaml-value  { color: #a6e3a1; }
+    .yaml-comment{ color: #6c7086; font-style: italic; }
+}
+
 // Error Display
 .error-card {
     margin-top: 1rem;
@@ -288,4 +310,81 @@
             width: 100%;
         }
     }
+}
+
+// Saved Configs Section
+.saved-configs-section {
+    margin-top: 1.5rem;
+    border: 1px solid rgba(0, 0, 0, 0.12);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.saved-configs-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 1rem;
+    background-color: rgba(0, 0, 0, 0.03);
+    cursor: pointer;
+    user-select: none;
+    width: 100%;
+    border: none;
+    text-align: left;
+    font-family: inherit;
+    font-size: inherit;
+    color: inherit;
+
+    h4 {
+        margin: 0;
+        font-size: 1rem;
+        font-weight: 500;
+    }
+}
+
+.saved-configs-list {
+    padding: 0.5rem;
+}
+
+.saved-config-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0.75rem;
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
+
+    &:hover {
+        background-color: rgba(0, 0, 0, 0.04);
+    }
+
+    .saved-config-info {
+        flex: 1;
+        min-width: 0;
+
+        .saved-config-name {
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .saved-config-meta {
+            font-size: 0.75rem;
+            color: rgba(0, 0, 0, 0.6);
+        }
+    }
+
+    .saved-config-actions {
+        display: flex;
+        gap: 0.25rem;
+        flex-shrink: 0;
+    }
+}
+
+.saved-configs-empty {
+    padding: 1rem;
+    text-align: center;
+    color: rgba(0, 0, 0, 0.54);
+    font-style: italic;
 }
