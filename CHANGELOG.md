@@ -73,6 +73,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.82.0] - 2026-04-08
+
+### Added- **diff**: add frontend diff page
+- **frontend**: add TrpcClientService for type-safe Worker API consumption
+- **diff**: register POST /diff route with Free tier permission
+- **diff**: add POST /api/diff handler with AGTree parse-first logic
+- **diff**: add DiffRequestSchema, DiffResponseSchema, and openapi types
+
+### Fixed
+
+- **diff**: apply reviewer feedback round 2 — parseRules, test assertions, OpenAPI route, schema fields
+- **frontend**: remove localStorage from ZTA JSDoc comment to pass CI auth-storage lint
+- **diff**: apply reviewer feedback on route body stream, line numbers, schema defaults, and template types
+- **frontend/docs**: address review accuracy fixes from PR review 4072213521
+- **frontend**: correct type-safety accuracy in docs, comments, and test headers
+- **frontend**: address code review suggestions - type safety docs and storage security warning"
+- **frontend**: resolve PR review comments - frontend-safe tRPC factory, doc fixes, security warning
+
+
 ## [0.81.0] - 2026-04-07
 
 ### Added- **agtree**: add rule conversion, batch FilterListParser validation, richer diagnostics
