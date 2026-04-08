@@ -190,10 +190,16 @@ export class AGTreeParser {
 
             // Check if the rule was parsed as invalid (tolerant mode)
             if (ast.category === RuleCategory.Invalid) {
+                const rawError = 'error' in ast ? ast.error : undefined;
+                const errorMsg = rawError && typeof rawError === 'object' && 'message' in rawError
+                    ? String((rawError as { message: unknown }).message)
+                    : rawError !== undefined
+                    ? String(rawError)
+                    : 'Invalid rule syntax';
                 return {
                     ast,
                     success: false,
-                    error: 'error' in ast ? String(ast.error) : 'Invalid rule syntax',
+                    error: errorMsg,
                     ruleText,
                 };
             }

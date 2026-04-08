@@ -14,6 +14,7 @@
  *   POST /compile/async
  *   POST /compile/batch/async
  *   POST /compile/container
+ *   POST /diff
  */
 
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
@@ -36,8 +37,8 @@ import {
 } from '../handlers/compile.ts';
 import { handleConvertRule } from '../handlers/convert-rule.ts';
 import { handleValidateRule } from '../handlers/validate-rule.ts';
+import { handleDiff } from '../handlers/diff.ts';
 import { handleWebSocketUpgrade } from '../websocket.ts';
-
 export const compileRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
 // ── Compile routes ────────────────────────────────────────────────────────────
@@ -395,6 +396,116 @@ compileRoutes.openapi(validateRuleRoute, (c) => {
     // deno-lint-ignore no-explicit-any
     return handleValidateRule(c.req.raw, c.env) as any;
 });
+
+// ── Diff ──────────────────────────────────────────────────────────────────────
+
+const diffRoute = createRoute({
+    method: 'post',
+    path: '/diff',
+    tags: ['Compile'],
+    summary: 'Diff two filter lists',
+    description: 'Compares two filter lists and returns added, removed, and domain-level changes using the AGTree AST diff engine.',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        original: z.array(z.string()).min(1),
+                        current: z.array(z.string()).min(1),
+                        options: z.object({
+                            ignoreComments: z.boolean().optional(),
+                            ignoreEmptyLines: z.boolean().optional(),
+                            analyzeDomains: z.boolean().optional(),
+                            includeFullRules: z.boolean().optional(),
+                            maxRulesToInclude: z.number().int().min(1).max(10_000).optional(),
+                        }).optional(),
+                    }),
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Diff generated successfully',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        parseErrors: z.object({
+                            original: z.array(z.object({ line: z.number(), rule: z.string(), message: z.string() })),
+                            current: z.array(z.object({ line: z.number(), rule: z.string(), message: z.string() })),
+                        }),
+                        report: z.object({
+                            timestamp: z.string(),
+                            generatorVersion: z.string(),
+                            original: z.object({ name: z.string().optional(), version: z.string().optional(), timestamp: z.string().optional(), ruleCount: z.number() }),
+                            current: z.object({ name: z.string().optional(), version: z.string().optional(), timestamp: z.string().optional(), ruleCount: z.number() }),
+                            summary: z.object({
+                                originalCount: z.number(),
+                                newCount: z.number(),
+                                addedCount: z.number(),
+                                removedCount: z.number(),
+                                unchangedCount: z.number(),
+                                netChange: z.number(),
+                                percentageChange: z.number(),
+                                categoryBreakdown: z.object({
+                                    network: z.object({ added: z.number(), removed: z.number() }),
+                                    cosmetic: z.object({ added: z.number(), removed: z.number() }),
+                                    host: z.object({ added: z.number(), removed: z.number() }),
+                                    comment: z.object({ added: z.number(), removed: z.number() }),
+                                    unknown: z.object({ added: z.number(), removed: z.number() }),
+                                }).optional(),
+                            }),
+                            added: z.array(z.object({
+                                rule: z.string(),
+                                type: z.enum(['added', 'removed', 'modified']),
+                                source: z.string().optional(),
+                                originalLine: z.number().optional(),
+                                newLine: z.number().optional(),
+                                category: z.enum(['network', 'cosmetic', 'host', 'comment', 'unknown']).optional(),
+                                syntax: z.string().optional(),
+                                isException: z.boolean().optional(),
+                            })),
+                            removed: z.array(z.object({
+                                rule: z.string(),
+                                type: z.enum(['added', 'removed', 'modified']),
+                                source: z.string().optional(),
+                                originalLine: z.number().optional(),
+                                newLine: z.number().optional(),
+                                category: z.enum(['network', 'cosmetic', 'host', 'comment', 'unknown']).optional(),
+                                syntax: z.string().optional(),
+                                isException: z.boolean().optional(),
+                            })),
+                            domainChanges: z.array(z.object({ domain: z.string(), added: z.number(), removed: z.number() })),
+                        }),
+                        duration: z.string(),
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Invalid JSON body',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.literal(false), error: z.string() }),
+                },
+            },
+        },
+        422: {
+            description: 'Request validation failed',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.literal(false), error: z.string() }),
+                },
+            },
+        },
+    },
+});
+
+compileRoutes.use('/diff', bodySizeMiddleware());
+compileRoutes.use('/diff', rateLimitMiddleware());
+// deno-lint-ignore no-explicit-any
+compileRoutes.openapi(diffRoute, (c) => handleDiff(buildSyntheticRequest(c, c.req.valid('json')), c.env) as any);
 
 // ── Async compile ─────────────────────────────────────────────────────────────
 

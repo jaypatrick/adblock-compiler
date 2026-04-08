@@ -646,6 +646,108 @@ export const ValidateRuleResponseSchema = z.object({
     duration: z.string().describe('Processing duration e.g. "2ms"'),
 });
 
+// ─── Diff Schemas (POST /diff) ───────────────────────────────────────────────
+
+/** Configurable options for the diff algorithm */
+export const DiffOptionsSchema = z.object({
+    ignoreComments: z.boolean().optional().default(true),
+    ignoreEmptyLines: z.boolean().optional().default(true),
+    analyzeDomains: z.boolean().optional().default(true),
+    includeFullRules: z.boolean().optional().default(true),
+    maxRulesToInclude: z.number().int().min(1).max(10_000).optional().default(1000),
+});
+
+/** Request body for POST /diff */
+export const DiffRequestSchema = z.object({
+    original: z.array(z.string()).min(1, 'original list cannot be empty'),
+    current: z.array(z.string()).min(1, 'current list cannot be empty'),
+    options: DiffOptionsSchema.optional().default(() => DiffOptionsSchema.parse({})),
+});
+export type DiffRequest = z.infer<typeof DiffRequestSchema>;
+
+/** A parse error encountered while reading a filter-list rule */
+export const ParseErrorSchema = z.object({
+    line: z.number(),
+    rule: z.string(),
+    message: z.string(),
+});
+
+/** A single added or removed rule in a diff result */
+export const RuleDiffSchema = z.object({
+    rule: z.string(),
+    type: z.enum(['added', 'removed', 'modified']),
+    source: z.string().optional(),
+    originalLine: z.number().optional(),
+    newLine: z.number().optional(),
+    /** Rule category detected by AGTree (network, cosmetic, host, comment, unknown) */
+    category: z.enum(['network', 'cosmetic', 'host', 'comment', 'unknown']).optional(),
+    /** Adblock syntax dialect detected by AGTree (e.g. AdGuard, uBlockOrigin, AdblockPlus, Common) */
+    syntax: z.string().optional(),
+    /** Whether this is an exception (allowlist) rule */
+    isException: z.boolean().optional(),
+});
+
+/** Per-domain rule change counts in a diff result */
+export const DomainDiffSchema = z.object({
+    domain: z.string(),
+    added: z.number(),
+    removed: z.number(),
+});
+
+/** Per-category added/removed counts (populated when AGTree parses successfully) */
+const CategoryChangeCountsSchema = z.object({
+    network: z.object({ added: z.number(), removed: z.number() }),
+    cosmetic: z.object({ added: z.number(), removed: z.number() }),
+    host: z.object({ added: z.number(), removed: z.number() }),
+    comment: z.object({ added: z.number(), removed: z.number() }),
+    unknown: z.object({ added: z.number(), removed: z.number() }),
+});
+
+/** High-level statistics for a diff result */
+export const DiffSummarySchema = z.object({
+    originalCount: z.number(),
+    newCount: z.number(),
+    addedCount: z.number(),
+    removedCount: z.number(),
+    unchangedCount: z.number(),
+    netChange: z.number(),
+    percentageChange: z.number(),
+    /** Per-category breakdown of added/removed counts */
+    categoryBreakdown: CategoryChangeCountsSchema.optional(),
+});
+
+/** Metadata for one list version (original or current) */
+const ListMetadataSchema = z.object({
+    name: z.string().optional(),
+    version: z.string().optional(),
+    timestamp: z.string().optional(),
+    ruleCount: z.number(),
+});
+
+/** Full diff report returned by POST /diff */
+export const DiffReportSchema = z.object({
+    timestamp: z.string(),
+    generatorVersion: z.string(),
+    original: ListMetadataSchema,
+    current: ListMetadataSchema,
+    summary: DiffSummarySchema,
+    added: z.array(RuleDiffSchema),
+    removed: z.array(RuleDiffSchema),
+    domainChanges: z.array(DomainDiffSchema),
+});
+
+/** Response body for POST /diff */
+export const DiffResponseSchema = z.object({
+    success: z.boolean(),
+    parseErrors: z.object({
+        original: z.array(ParseErrorSchema),
+        current: z.array(ParseErrorSchema),
+    }),
+    report: DiffReportSchema,
+    duration: z.string(),
+});
+export type DiffResponse = z.infer<typeof DiffResponseSchema>;
+
 // ============================================================================
 // Rule Management Schemas (POST/GET/PUT/DELETE /rules)
 // ============================================================================

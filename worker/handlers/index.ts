@@ -60,6 +60,9 @@ export { handleScheduled } from './scheduled.ts';
 // Rule validation handler (POST /api/validate-rule)
 export { handleValidateRule } from './validate-rule.ts';
 
+// Diff handler (POST /api/diff)
+export { handleDiff } from './diff.ts';
+
 // Rule management handlers (POST/GET/PUT/DELETE /api/rules)
 export { handleRulesCreate, handleRulesDelete, handleRulesGet, handleRulesList, handleRulesUpdate } from './rules.ts';
 
