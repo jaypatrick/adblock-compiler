@@ -122,9 +122,9 @@
                                 <mat-hint>Select transformations to apply to the compiled filter list</mat-hint>
                             </mat-form-field>
 
-                            @if (configForm.get('transformations')?.value && configForm.get('transformations')?.value.length > 0) {
+                            @if ((configForm.get('transformations')?.value?.length ?? 0) > 0) {
                                 <mat-chip-set>
-                                    @for (transformation of configForm.get('transformations')?.value; track transformation) {
+                                    @for (transformation of (configForm.get('transformations')?.value ?? []); track transformation) {
                                         <mat-chip>{{ transformation }}</mat-chip>
                                     }
                                 </mat-chip-set>
@@ -150,7 +150,7 @@
 
                                         <mat-form-field appearance="outline" class="extension-value">
                                             <mat-label>Value</mat-label>
-                                            <input matInput [formControl]="extensions.get(key)" />
+                                            <input matInput [formControl]="getExtensionControl(key)" />
                                         </mat-form-field>
 
                                         <button mat-icon-button color="warn" type="button" (click)="removeExtension(key)">
@@ -241,8 +241,8 @@
         <!-- Turnstile Widget -->
         <div class="turnstile-container">
             <app-turnstile
-                (success)="onTurnstileSuccess($event)"
-                (error)="onTurnstileError($event)"
+                [siteKey]="turnstileSiteKey()"
+                (tokenChange)="onTurnstileToken($event)"
             ></app-turnstile>
         </div>
     </mat-card-content>

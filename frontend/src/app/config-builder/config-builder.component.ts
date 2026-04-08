@@ -13,7 +13,7 @@
  */
 
 import { Component, computed, inject, signal } from '@angular/core';
-import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormArray, FormBuilder, FormControl, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { firstValueFrom } from 'rxjs';
 import { MatFormFieldModule } from '@angular/material/form-field';
@@ -65,6 +65,7 @@ export class ConfigBuilderComponent {
     private readonly notificationService = inject(NotificationService);
     private readonly logService = inject(LogService);
     private readonly _turnstileService = inject(TurnstileService);
+    readonly turnstileSiteKey = this._turnstileService.siteKey;
 
     // Signals
     readonly isValidating = signal(false);
@@ -102,9 +103,9 @@ export class ConfigBuilderComponent {
         homepage: ['', Validators.pattern(/^https?:\/\/.+/)],
         license: [''],
         version: ['1.0.0', Validators.pattern(/^\d+\.\d+(\.\d+)?$/)],
-        transformations: [[]],
-        exclusions: [[]],
-        inclusions: [[]],
+        transformations: [[] as string[]],
+        exclusions: [[] as string[]],
+        inclusions: [[] as string[]],
         sources: this.fb.array([this.createSourceGroup()]),
         extensions: this.fb.group({}),
     });
@@ -113,34 +114,42 @@ export class ConfigBuilderComponent {
 
     // Computed values
     readonly generatedConfig = computed(() => {
-        const formValue = this.configForm.value;
-        const config: Record<string, unknown> = {
-            name: formValue.name,
-        };
+        // Use bracket notation throughout to satisfy noPropertyAccessFromIndexSignature
+        const raw = this.configForm.value;
+        const nameVal = raw['name'] as string | null;
+        const descVal = raw['description'] as string | null;
+        const homepageVal = raw['homepage'] as string | null;
+        const licenseVal = raw['license'] as string | null;
+        const versionVal = raw['version'] as string | null;
+        const sourcesVal = raw['sources'] as Array<{ name?: string; source?: string; type?: string }> | null;
+        const transformationsVal = raw['transformations'] as string[] | null;
+        const exclusionsVal = raw['exclusions'] as string[] | null;
+        const inclusionsVal = raw['inclusions'] as string[] | null;
+        const extensionsVal = raw['extensions'] as Record<string, string> | null;
 
-        if (formValue.description) config.description = formValue.description;
-        if (formValue.homepage) config.homepage = formValue.homepage;
-        if (formValue.license) config.license = formValue.license;
-        if (formValue.version) config.version = formValue.version;
+        const config: Record<string, unknown> = { name: nameVal };
 
-        config.sources = formValue.sources || [];
+        if (descVal) config['description'] = descVal;
+        if (homepageVal) config['homepage'] = homepageVal;
+        if (licenseVal) config['license'] = licenseVal;
+        if (versionVal) config['version'] = versionVal;
 
-        if (formValue.transformations && formValue.transformations.length > 0) {
-            config.transformations = formValue.transformations;
+        config['sources'] = sourcesVal ?? [];
+
+        if (transformationsVal && transformationsVal.length > 0) {
+            config['transformations'] = transformationsVal;
         }
 
-        if (formValue.exclusions && formValue.exclusions.length > 0) {
-            config.exclusions = formValue.exclusions;
+        if (exclusionsVal && exclusionsVal.length > 0) {
+            config['exclusions'] = exclusionsVal;
         }
 
-        if (formValue.inclusions && formValue.inclusions.length > 0) {
-            config.inclusions = formValue.inclusions;
+        if (inclusionsVal && inclusionsVal.length > 0) {
+            config['inclusions'] = inclusionsVal;
         }
 
-        // Add extensions if any
-        const extensions = formValue.extensions;
-        if (extensions && Object.keys(extensions).length > 0) {
-            config.extensions = extensions;
+        if (extensionsVal && Object.keys(extensionsVal).length > 0) {
+            config['extensions'] = extensionsVal;
         }
 
         return config;
@@ -185,7 +194,7 @@ export class ConfigBuilderComponent {
         if (this.sources.length > 1) {
             this.sources.removeAt(index);
         } else {
-            this.notificationService.showWarning('At least one source is required');
+            this.notificationService.showToast('warning', 'Warning', 'At least one source is required');
         }
     }
 
@@ -203,9 +212,13 @@ export class ConfigBuilderComponent {
         return Object.keys(this.extensions.controls);
     }
 
+    getExtensionControl(key: string): FormControl {
+        return this.extensions.get(key) as FormControl;
+    }
+
     async validateConfig(): Promise<void> {
         if (!this.isFormValid()) {
-            this.notificationService.showWarning('Please fill in all required fields');
+            this.notificationService.showToast('warning', 'Validation', 'Please fill in all required fields');
             return;
         }
 
@@ -222,15 +235,15 @@ export class ConfigBuilderComponent {
             const result = validateResponse(ConfigValidateResponseSchema, raw, 'POST /configuration/validate');
 
             if (result.valid) {
-                this.notificationService.showSuccess('Configuration is valid!');
-                this.logService.info('Configuration validated successfully');
+                this.notificationService.showToast('success', 'Valid', 'Configuration is valid!');
+                this.logService.info('Configuration validated successfully', 'config-builder');
             } else {
                 this.validationErrors.set(result.errors ?? []);
-                this.notificationService.showError('Configuration has validation errors');
+                this.notificationService.showToast('error', 'Invalid', 'Configuration has validation errors');
             }
         } catch (error) {
-            this.logService.error('Validation failed', error);
-            this.notificationService.showError('Failed to validate configuration');
+            this.logService.error('Validation failed', 'config-builder', { error: String(error) });
+            this.notificationService.showToast('error', 'Error', 'Failed to validate configuration');
         } finally {
             this.isValidating.set(false);
         }
@@ -238,7 +251,7 @@ export class ConfigBuilderComponent {
 
     async createAndStoreConfig(): Promise<void> {
         if (!this.isFormValid()) {
-            this.notificationService.showWarning('Please fill in all required fields');
+            this.notificationService.showToast('warning', 'Validation', 'Please fill in all required fields');
             return;
         }
 
@@ -256,22 +269,24 @@ export class ConfigBuilderComponent {
 
             if (result.valid === false) {
                 this.validationErrors.set(result.errors ?? []);
-                this.notificationService.showError('Configuration has validation errors');
+                this.notificationService.showToast('error', 'Invalid', 'Configuration has validation errors');
                 return;
             }
 
             if (result.id) {
                 this.configId.set(result.id);
-                this.notificationService.showSuccess(
+                this.notificationService.showToast(
+                    'success',
+                    'Created',
                     `Configuration created! ID: ${result.id} (expires in 24 hours)`,
                 );
-                this.logService.info('Configuration created', { id: result.id });
+                this.logService.info('Configuration created', 'config-builder', { id: result.id });
             } else {
-                this.notificationService.showError('Failed to create configuration');
+                this.notificationService.showToast('error', 'Error', 'Failed to create configuration');
             }
         } catch (error) {
-            this.logService.error('Create failed', error);
-            this.notificationService.showError('Failed to create configuration');
+            this.logService.error('Create failed', 'config-builder', { error: String(error) });
+            this.notificationService.showToast('error', 'Error', 'Failed to create configuration');
         } finally {
             this.isCreating.set(false);
         }
@@ -284,7 +299,7 @@ export class ConfigBuilderComponent {
         if (id) {
             const url = `/api/configuration/download/${id}?format=${format}`;
             window.open(url, '_blank');
-            this.logService.info('Downloading configuration', { id, format });
+            this.logService.info('Downloading configuration', 'config-builder', { id, format });
         }
     }
 
@@ -292,21 +307,21 @@ export class ConfigBuilderComponent {
         const text = this.previewOutput();
         navigator.clipboard.writeText(text).then(
             () => {
-                this.notificationService.showSuccess('Copied to clipboard');
+                this.notificationService.showToast('success', 'Copied', 'Copied to clipboard');
             },
             () => {
-                this.notificationService.showError('Failed to copy to clipboard');
+                this.notificationService.showToast('error', 'Error', 'Failed to copy to clipboard');
             },
         );
     }
 
-    onTurnstileSuccess(token: string): void {
+    onTurnstileToken(token: string): void {
         this.turnstileToken.set(token);
         this.logService.debug('Turnstile token received');
     }
 
     onTurnstileError(error: unknown): void {
-        this.logService.error('Turnstile verification failed', error);
-        this.notificationService.showError('Turnstile verification failed');
+        this.logService.error('Turnstile verification failed', 'config-builder', { error: String(error) });
+        this.notificationService.showToast('error', 'Error', 'Turnstile verification failed');
     }
 }
