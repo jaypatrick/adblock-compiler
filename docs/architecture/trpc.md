@@ -91,14 +91,77 @@ Defined in `worker/trpc/init.ts`:
 `httpBatchLink`. Requests made in the same JavaScript microtask queue tick are automatically
 batched into a single HTTP request.
 
-```typescript
-// Adjust the relative import depth to match your Angular service file location.
-// Example for a service at frontend/src/app/services/compile.service.ts:
-import { createTrpcClient } from '../../../../worker/trpc/client';
+### Angular Integration (Recommended)
 
-// Angular service (inject auth token from BetterAuthService):
+**For Angular applications, use `TrpcClientService` instead of directly calling `createTrpcClient`.**
+
+The Angular frontend includes a pre-configured `TrpcClientService` at
+`frontend/src/app/services/trpc-client.service.ts` that:
+
+- Wraps `createTrpcClient` as a proper Angular service (`providedIn: 'root'`)
+- Automatically injects `API_BASE_URL` and derives the Worker origin
+- Automatically injects `AuthFacadeService` and attaches Bearer tokens per-call
+- Supports runtime-validated Angular usage, but does **not** currently provide full `AppRouter` compile-time inference
+- Follows ZTA best practices (no token storage, per-call auth resolution)
+
+> **Note on type safety**: The Angular client factory (`frontend/src/app/trpc/client.ts`)
+> intentionally does **not** import `AppRouter` to avoid the `.ts`-extension import chain
+> in `worker/trpc/`. As a result, Angular consumers should treat this integration as
+> **runtime-validated rather than compile-time type-safe**. TypeScript will not catch
+> typos in procedure names or incorrect payload shapes. To restore full compile-time
+> safety, introduce a frontend-consumable `AppRouter` type surface (e.g., a generated
+> `.d.ts` or shared `types/` package) and update the factory to use
+> `createTRPCClient<AppRouter>`.
+
+**Usage in Angular components:**
+
+```typescript
+import { Component, inject } from '@angular/core';
+import { TrpcClientService } from './services/trpc-client.service';
+
+@Component({
+  selector: 'app-my-component',
+  template: `...`,
+})
+export class MyComponent {
+  private readonly trpc = inject(TrpcClientService);
+
+  async checkHealth(): Promise<void> {
+    // Public query — no auth needed
+    const health = await this.trpc.client.v1.health.get.query();
+    console.log('Worker healthy:', health.healthy);
+  }
+
+  async compile(): Promise<void> {
+    // Authenticated mutation — requires Free tier+
+    const result = await this.trpc.client.v1.compile.json.mutate({
+      configuration: {
+        sources: [{ url: 'https://easylist.to/easylist/easylist.txt' }],
+      },
+    });
+    console.log('Compiled rules:', result.ruleCount);
+  }
+}
+```
+
+**Why use `TrpcClientService`?**
+
+- **Automatic DI**: No need to manually wire `API_BASE_URL` or `AuthFacadeService`.
+- **ZTA compliance**: Token resolution is handled per-call via `AuthFacadeService.getToken()`;
+  never stored in component state.
+- **Base URL normalization**: Handles both browser (`/api`) and SSR (absolute URL) cases.
+- **Type safety**: Angular uses a frontend-local `createTRPCClient<any>` factory and should treat responses as runtime-validated; full compile-time `AppRouter` inference is not available in the Angular integration today.
+
+### Manual Integration (Non-Angular)
+
+For non-Angular clients (CLI tools, Node.js scripts, other frontends), use `createTrpcClient` directly:
+
+```typescript
+import { createTrpcClient } from './worker/trpc/client';
+
+// Manual instantiation (inject auth token from your auth provider):
 const client = createTrpcClient(
-  environment.apiBaseUrl,
+  'https://adblock-compiler.<account>.workers.dev',
   () => authService.getToken(),   // async token getter — attached as Authorization: Bearer ...
 );
 
@@ -125,9 +188,7 @@ const result = await client.v1.compile.json.mutate({
 Import `AppRouter` to get full end-to-end type safety without running the server:
 
 ```typescript
-// Adjust the relative import depth to match your consuming file location.
-// Example for a service at frontend/src/app/services/trpc.service.ts:
-import type { AppRouter } from '../../../../worker/trpc/router';
+import type { AppRouter } from './worker/trpc/router';
 import { createTRPCClient, httpBatchLink } from '@trpc/client';
 
 const client = createTRPCClient<AppRouter>({
@@ -169,7 +230,447 @@ flowchart TD
 
 ---
 
-## Adding a new procedure
+## Benefits of tRPC Integration
+
+### 1. End-to-End Type Safety
+
+When a client imports and uses the `AppRouter` type, tRPC eliminates the need for manual type
+definitions between frontend and backend. The `AppRouter` type is automatically inferred from the
+Worker's procedure definitions, providing compile-time safety for those typed API calls. In this
+repository, the current Angular integration is intentionally untyped (`createTRPCClient<any>`), so
+frontend consumers do not get compile-time type inference unless they switch to a typed client
+setup that imports `AppRouter`.
+
+**Before (REST with manual types):**
+
+```typescript
+// Manual type definition — can drift from backend
+interface CompileResponse {
+  success: boolean;
+  ruleCount: number;
+  compiledAt: string;
+  // ... what if the backend adds a field?
+}
+
+// No compile-time validation of request shape
+const response = await fetch('/api/compile', {
+  method: 'POST',
+  body: JSON.stringify({
+    configuration: { sources: [...] },
+  }),
+});
+const data = await response.json() as CompileResponse; // Unsafe cast
+```
+
+**After (tRPC with inferred types):**
+
+```typescript
+// Types are automatically inferred from AppRouter
+const result = await trpc.client.v1.compile.json.mutate({
+  configuration: { sources: [...] },
+  // TypeScript error if required fields are missing!
+});
+// result.ruleCount is typed as number — no unsafe casts needed
+```
+
+### 2. Automatic Request Batching
+
+Multiple tRPC calls made in the same JavaScript tick are automatically batched into a single
+HTTP request, reducing network overhead and improving performance.
+
+**Example:**
+
+```typescript
+// These three calls in the same tick become ONE HTTP request:
+const [health, version, compileResult] = await Promise.all([
+  trpc.client.v1.health.get.query(),
+  trpc.client.v1.version.get.query(),
+  trpc.client.v1.compile.json.mutate({ configuration: {...} }),
+]);
+// Network: single POST to /api/trpc with batched payload
+```
+
+### 3. Procedure-Level Auth Enforcement
+
+tRPC procedures are tagged with auth requirements (`publicProcedure`, `protectedProcedure`,
+`adminProcedure`). Auth checks happen at the procedure level, not the route level, providing
+fine-grained control without fragile middleware chains.
+
+**Example:**
+
+```typescript
+// Public procedure — anyone can call
+export const versionRouter = router({
+  get: publicProcedure.query(async () => {
+    return { version: '0.79.4', apiVersion: 'v1' };
+  }),
+});
+
+// Protected procedure — requires authenticated session
+export const compileRouter = router({
+  json: protectedProcedure
+    .input(CompileRequestSchema)
+    .mutation(async ({ ctx, input }) => {
+      // ctx.authContext.userId is guaranteed non-null here
+      return compileFilters(input, ctx);
+    }),
+});
+
+// Admin procedure — requires admin role
+export const adminRouter = router({
+  clearCache: adminProcedure.mutation(async ({ ctx }) => {
+    // ctx.authContext.role === 'admin' is guaranteed
+    await ctx.env.COMPILATION_CACHE.delete('all');
+  }),
+});
+```
+
+### 4. No Code Generation
+
+Unlike OpenAPI/Swagger clients, tRPC requires no code generation step. The `AppRouter` type is
+directly imported and used for inference — no `npm run generate-client` required.
+
+### 5. Versioned API with Zero Breaking Changes
+
+All procedures are namespaced under `v1`. Future breaking changes will be introduced under `v2`
+without removing `v1`, allowing gradual migration.
+
+```typescript
+// v1 procedures remain stable
+await trpc.client.v1.compile.json.mutate({...});
+
+// Future v2 procedures can coexist
+await trpc.client.v2.compile.json.mutate({...}); // (when v2 is released)
+```
+
+---
+
+## Architecture Diagrams
+
+### High-Level tRPC Integration Flow
+
+```mermaid
+flowchart LR
+    subgraph Angular Frontend
+        A[Component] --> B[TrpcClientService]
+        B --> C[createTrpcClient]
+        C --> D[httpBatchLink]
+    end
+
+    subgraph Worker Backend
+        E[Hono App] --> F[tRPC Handler]
+        F --> G[fetchRequestHandler]
+        G --> H[AppRouter]
+        H --> I[v1Router]
+        I --> J[Procedures]
+    end
+
+    D -->|HTTP POST /api/trpc| E
+    J -->|Response| D
+
+    style B fill:#4CAF50,stroke:#2E7D32,color:#fff
+    style F fill:#2196F3,stroke:#1565C0,color:#fff
+    style H fill:#FF9800,stroke:#E65100,color:#fff
+```
+
+### Request Flow with Auth Middleware
+
+```mermaid
+sequenceDiagram
+    participant C as Angular Component
+    participant T as TrpcClientService
+    participant A as AuthFacadeService
+    participant W as Worker (/api/trpc)
+    participant M as Auth Middleware
+    participant P as Protected Procedure
+
+    C->>T: trpc.client.v1.compile.json.mutate({...})
+    T->>A: getToken()
+    A-->>T: Bearer token (or null)
+    T->>W: POST /api/trpc<br/>Authorization: Bearer <token>
+
+    W->>M: Global middleware<br/>(Better Auth, unified auth)
+    M->>M: Resolve authContext<br/>(session or API key)
+    M->>P: Pass authContext to procedure
+
+    alt Token valid & userId non-null
+        P->>P: Execute mutation
+        P-->>W: Result
+        W-->>T: HTTP 200 + JSON
+        T-->>C: Typed result
+    else Token missing/invalid
+        P-->>W: TRPCError UNAUTHORIZED
+        W-->>T: HTTP 401
+        T-->>C: Error thrown
+    end
+```
+
+### Type Inference Flow
+
+```mermaid
+flowchart TB
+    subgraph Worker Backend
+        A[worker/trpc/router.ts] --> B[appRouter]
+        B --> C["AppRouter type<br/>(exported)"]
+    end
+
+    subgraph Frontend Build Time
+        C --> D[TrpcClientService]
+        D --> E["createTrpcClient<AppRouter>"]
+        E --> F[Typed client instance]
+    end
+
+    subgraph Angular Component
+        F --> G["trpc.client.v1.compile.json"]
+        G --> H["mutate({ configuration })"]
+        H --> I["TypeScript validates:<br/>• Input shape<br/>• Output shape<br/>• Procedure path"]
+    end
+
+    style C fill:#4CAF50,stroke:#2E7D32,color:#fff
+    style F fill:#2196F3,stroke:#1565C0,color:#fff
+    style I fill:#FF9800,stroke:#E65100,color:#fff
+```
+
+### CLI Integration Pattern
+
+```mermaid
+flowchart TD
+    subgraph CLI Tool
+        A[CLI Script] --> B[createTrpcClient]
+        B --> C[Auth Provider<br/>API key or session]
+        C --> D["client.v1.compile.json.mutate(...)"]
+    end
+
+    subgraph Worker
+        E[/api/trpc/*] --> F[tRPC Handler]
+        F --> G{Auth Check}
+        G -->|Token valid| H[Execute Procedure]
+        G -->|Token invalid| I[Return 401]
+    end
+
+    D -->|HTTP POST| E
+    H -->|Result| D
+    I -->|Error| D
+
+    style B fill:#4CAF50,stroke:#2E7D32,color:#fff
+    style F fill:#2196F3,stroke:#1565C0,color:#fff
+```
+
+---
+
+## Hooking Up Other Frontends / CLI Tools
+
+### Deno CLI Example
+
+For Deno CLI tools and scripts, use `createTrpcClient` directly without Angular DI.
+The examples below use `deno run` with explicit permission flags to match the Deno-style
+`.ts` extension imports in `worker/trpc/client.ts`:
+
+**Option 1 — API key from environment variable:**
+
+```typescript
+#!/usr/bin/env -S deno run --allow-net --allow-env
+
+import { createTrpcClient } from './worker/trpc/client.ts';
+
+const client = createTrpcClient(
+  'https://adblock-compiler.<account>.workers.dev',
+  async () => Deno.env.get('ADBLOCK_API_KEY') ?? null,
+);
+
+const health = await client.v1.health.get.query();
+console.log('Worker healthy:', health.healthy);
+
+const result = await client.v1.compile.json.mutate({
+  configuration: {
+    sources: [
+      { url: 'https://easylist.to/easylist/easylist.txt' },
+      { url: 'https://easylist.to/easylist/easyprivacy.txt' },
+    ],
+  },
+});
+console.log(`Compiled ${result.ruleCount} rules`);
+```
+
+**Option 2 — Interactive session token (via Better Auth):**
+
+```typescript
+#!/usr/bin/env -S deno run --allow-net --allow-read
+
+import { createTrpcClient } from './worker/trpc/client.ts';
+
+const sessionToken = await Deno.readTextFile('.adblock-session');
+
+const client = createTrpcClient(
+  'https://adblock-compiler.<account>.workers.dev',
+  async () => sessionToken,
+);
+
+const health = await client.v1.health.get.query();
+console.log('Worker healthy:', health.healthy);
+```
+
+### React / Vue / Svelte Example
+
+For non-Angular frontends, the pattern is similar. Install `@trpc/client` and import the
+`createTrpcClient` factory:
+
+**React example:**
+
+```typescript
+import { createTrpcClient } from './worker/trpc/client';
+import { useAuth } from './hooks/useAuth'; // Your auth hook
+
+function useTrpcClient() {
+  const { getToken } = useAuth();
+
+  return useMemo(
+    () => createTrpcClient(
+      import.meta.env.VITE_API_BASE_URL,
+      () => getToken(),
+    ),
+    [getToken],
+  );
+}
+
+function MyComponent() {
+  const trpc = useTrpcClient();
+
+  const [health, setHealth] = useState(null);
+
+  useEffect(() => {
+    trpc.v1.health.get.query().then(setHealth);
+  }, [trpc]);
+
+  return <div>Worker healthy: {health?.healthy}</div>;
+}
+```
+
+**Vue 3 (Composition API) example:**
+
+```typescript
+import { ref, onMounted } from 'vue';
+import { createTrpcClient } from './worker/trpc/client';
+import { useAuth } from './composables/useAuth';
+
+export default {
+  setup() {
+    const { getToken } = useAuth();
+    const client = createTrpcClient(
+      import.meta.env.VITE_API_BASE_URL,
+      () => getToken(),
+    );
+
+    const health = ref(null);
+
+    onMounted(async () => {
+      health.value = await client.v1.health.get.query();
+    });
+
+    return { health };
+  },
+};
+```
+
+**Svelte example:**
+
+```typescript
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import { createTrpcClient } from './worker/trpc/client';
+  import { authStore } from './stores/auth';
+
+  const client = createTrpcClient(
+    import.meta.env.VITE_API_BASE_URL,
+    () => $authStore.getToken(),
+  );
+
+  let health = null;
+
+  onMount(async () => {
+    health = await client.v1.health.get.query();
+  });
+</script>
+
+<div>Worker healthy: {health?.healthy}</div>
+```
+
+### Mobile (React Native / Flutter) Example
+
+**React Native:**
+
+> **Security Warning**
+> Do **not** store bearer tokens in `AsyncStorage`, `localStorage`, `sessionStorage`,
+> or any other plaintext persistent storage. On mobile, use platform secure storage
+> (Keychain on iOS, Keystore on Android) via
+> [`react-native-keychain`](https://github.com/oblador/react-native-keychain) and prefer
+> short-lived access tokens with refresh/re-auth flows instead of long-lived credentials.
+> On web, use HttpOnly cookies managed server-side rather than client-accessible storage.
+
+```typescript
+import { createTrpcClient } from './worker/trpc/client';
+import * as Keychain from 'react-native-keychain';
+
+// Retrieve the token from platform secure storage (Keychain/Keystore),
+// NOT AsyncStorage, which is unencrypted plaintext.
+const client = createTrpcClient(
+  'https://adblock-compiler.<account>.workers.dev',
+  async () => {
+    const credentials = await Keychain.getGenericPassword({ service: 'adblock-session' });
+    return credentials ? credentials.password : null;
+  },
+);
+
+// Use in components
+const health = await client.v1.health.get.query();
+```
+
+**Flutter (Dart) — Manual HTTP Client:**
+
+Flutter doesn't support TypeScript imports, so you'll need to use raw HTTP with the tRPC
+protocol. The tRPC wire format is straightforward:
+
+```dart
+import 'dart:convert';
+import 'package:http/http.dart' as http;
+
+class TrpcClient {
+  final String baseUrl;
+  final Future<String?> Function() getToken;
+
+  TrpcClient(this.baseUrl, this.getToken);
+
+  Future<Map<String, dynamic>> query(String path) async {
+    final token = await getToken();
+    final headers = {
+      'Content-Type': 'application/json',
+      if (token != null) 'Authorization': 'Bearer $token',
+    };
+
+    final response = await http.post(
+      Uri.parse('$baseUrl/api/trpc/$path'),
+      headers: headers,
+      body: jsonEncode({'id': 1, 'method': 'query'}),
+    );
+
+    final data = jsonDecode(response.body) as List;
+    return data[0]['result']['data'] as Map<String, dynamic>;
+  }
+}
+
+// Usage
+final client = TrpcClient(
+  'https://adblock-compiler.<account>.workers.dev',
+  () async => await storage.read(key: 'auth_token'),
+);
+
+final health = await client.query('v1.health.get');
+print('Worker healthy: ${health['healthy']}');
+```
+
+---
+
+## Adding New tRPC Procedures
 
 1. Create (or extend) a router file in `worker/trpc/routers/v1/`.
 2. Add it to `worker/trpc/routers/v1/index.ts`.
