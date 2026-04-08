@@ -58,7 +58,7 @@
  * - **No persistent token storage**: `TrpcClientService` does not store or cache
  *   tokens itself. On each request it calls `AuthFacadeService.getToken()`, which
  *   reads the current token from an in-memory signal managed by `BetterAuthService`
- *   (never written to `localStorage` or any persistent storage). The token is not
+ *   (never written to browser storage or any persistent storage). The token is not
  *   held by this service between requests.
  * - **Auth header attachment**: The `httpBatchLink` passes `() => this.auth.getToken()`
  *   as the `getToken` argument. When the token is available, tRPC automatically
