@@ -64,6 +64,7 @@
   - [Code Review](development/CODE_REVIEW.md)
   - [Developer Onboarding](development/DEVELOPER_ONBOARDING.md)
   - [Diagnostics](development/DIAGNOSTICS.md)
+  - [Full Diagnostics Tool (diag-full)](development/DIAG_FULL.md)
   - [Error Reporting](development/ERROR_REPORTING.md)
   - [Extensibility](development/EXTENSIBILITY.md)
   - [Hooks](development/HOOKS.md)
