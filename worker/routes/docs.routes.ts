@@ -22,26 +22,33 @@ import type { Variables } from './shared.ts';
 
 export const docsRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
+// Extract handler middleware instances so they can be reused by exact and
+// wildcard routes without creating multiple copies.
+const scalarDocsHandler = apiReference({
+    theme: 'purple',
+    url: '/api/openapi.json',
+    pageTitle: 'Adblock Compiler API Documentation',
+    metaData: {
+        title: 'Adblock Compiler API',
+        description: 'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources.',
+        ogDescription: 'Interactive API documentation for Adblock Compiler',
+    },
+});
+
+const swaggerDocsHandler = swaggerUI({ url: '/api/openapi.json' });
+
 // ── Scalar UI endpoint ────────────────────────────────────────────────────────
 // Modern, beautiful OpenAPI documentation UI at /api/docs
 // Reference: https://hono.dev/examples/scalar/
 
-docsRoutes.get(
-    '/docs',
-    apiReference({
-        theme: 'purple',
-        url: '/api/openapi.json',
-        pageTitle: 'Adblock Compiler API Documentation',
-        metaData: {
-            title: 'Adblock Compiler API',
-            description: 'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources.',
-            ogDescription: 'Interactive API documentation for Adblock Compiler',
-        },
-    }),
-);
+docsRoutes.get('/docs', scalarDocsHandler);
+// Wildcard variant handles trailing slashes and any deep-links/bookmarks (e.g. /api/docs/).
+docsRoutes.get('/docs/*', scalarDocsHandler);
 
 // ── Swagger UI endpoint ───────────────────────────────────────────────────────
 // Traditional Swagger UI documentation at /api/swagger
 // Reference: https://hono.dev/examples/swagger-ui/
 
-docsRoutes.get('/swagger', swaggerUI({ url: '/api/openapi.json' }));
+docsRoutes.get('/swagger', swaggerDocsHandler);
+// Wildcard variant handles trailing slashes and any deep-links/bookmarks (e.g. /api/swagger/).
+docsRoutes.get('/swagger/*', swaggerDocsHandler);

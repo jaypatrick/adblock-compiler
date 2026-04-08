@@ -71,3 +71,29 @@ Deno.test('GET /api/swagger is publicly accessible (no auth required)', async ()
     const res = await fetchApp('/api/swagger');
     assertEquals(res.status !== 401 && res.status !== 403, true);
 });
+
+// ── Trailing slash and subpath variants ───────────────────────────────────────
+
+Deno.test('GET /api/docs/ (trailing slash) returns 200 and HTML content', async () => {
+    const res = await fetchApp('/api/docs/');
+    assertEquals(res.status, 200);
+    const contentType = res.headers.get('Content-Type');
+    assertEquals(contentType?.includes('text/html'), true);
+});
+
+Deno.test('GET /api/docs/ is publicly accessible (no auth required)', async () => {
+    const res = await fetchApp('/api/docs/');
+    assertEquals(res.status !== 401 && res.status !== 403, true);
+});
+
+Deno.test('GET /api/swagger/ (trailing slash) returns 200 and HTML content', async () => {
+    const res = await fetchApp('/api/swagger/');
+    assertEquals(res.status, 200);
+    const contentType = res.headers.get('Content-Type');
+    assertEquals(contentType?.includes('text/html'), true);
+});
+
+Deno.test('GET /api/swagger/ is publicly accessible (no auth required)', async () => {
+    const res = await fetchApp('/api/swagger/');
+    assertEquals(res.status !== 401 && res.status !== 403, true);
+});

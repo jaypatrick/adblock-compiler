@@ -87,7 +87,8 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     // API documentation — publicly readable
     ['/docs', { minTier: UserTier.Anonymous, description: 'API documentation (Scalar UI)' }],
     ['/swagger', { minTier: UserTier.Anonymous, description: 'API documentation (Swagger UI)' }],
-    ['/docs/*', { minTier: UserTier.Anonymous, description: 'API documentation pages' }],
+    ['/docs/*', { minTier: UserTier.Anonymous, description: 'API documentation pages (Scalar UI)' }],
+    ['/swagger/*', { minTier: UserTier.Anonymous, description: 'API documentation pages (Swagger UI)' }],
 
     // ── Free tier (any authenticated user) ────────────────────────────────────
     // Compile / transform

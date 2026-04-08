@@ -116,7 +116,9 @@ const PRE_AUTH_PATHS = [
     '/api/sentry-config',
     '/api/openapi.json',
     '/api/docs',
+    '/api/docs/',
     '/api/swagger',
+    '/api/swagger/',
     '/api/auth/providers',
     ...MONITORING_API_PATHS,
 ] as const;
@@ -358,6 +360,8 @@ app.use('*', async (c, next) => {
     const isPreAuth = c.req.method === 'GET' && (
         PRE_AUTH_PATHS.includes(pathname as typeof PRE_AUTH_PATHS[number]) ||
         pathname.startsWith('/api/deployments') ||
+        pathname.startsWith('/api/docs/') ||
+        pathname.startsWith('/api/swagger/') ||
         MONITORING_BARE_PATHS.has(pathname)
     );
     if (isPreAuth) {
