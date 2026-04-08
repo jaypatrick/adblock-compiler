@@ -74,6 +74,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.83.0] - 2026-04-08
+
+### Added- **config-builder**: add docs, Neon saved configs, and syntax highlighting
+- add standalone diagnostics tool (diag-full.ts, diag-report.ts, diag-full.test.ts)
+- **config-builder**: complete configuration creation and validation feature
+- complete Hono/Cloudflare integration - DO deduplication + enhanced error logging
+- add Scalar and Swagger UI documentation endpoints
+
+### Fixed
+
+- remove pages_build_output_dir from wrangler.toml to fix Worker deploy
+- **prisma**: use @std/path and validate relative paths in fix-imports script
+- **prisma**: fix prisma-fix-imports converting binary WASM artifacts to .ts
+- **worker**: replace @std/yaml with npm:yaml to fix Wrangler bundling failure
+- add --allow-read to diag:full tasks and document stdin/version reading patterns
+- second review pass (sep export, CORS allowlist, OpenAPI Zod, stdin error handling)
+- address code review feedback (dynamic version, shared pad, constants, emoji fix)
+- **config-builder**: fix all CI build errors in ConfigBuilderComponent and CacheWarmingWorkflow
+- **config-builder**: address PR review feedback
+- upgrade @cloudflare/vitest-pool-workers to 0.14.2 (vitest@4.x) to fix frontend CI
+- update pnpm-lock.yaml to include missing vitest/cloudflare-pool-workers entries
+- remove duplicate section header comment in admin-agents.test.ts
+- update admin handler tests to use AppContext pattern
+- address review feedback for docs routes wildcard and auth handling
+- add missing adblock-compiler-error-queue to deploy-worker action
+
+
 ## [0.82.0] - 2026-04-08
 
 ### Added- **diff**: add frontend diff page
