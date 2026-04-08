@@ -64,6 +64,7 @@ import { checkRoutePermission } from './utils/route-permissions.ts';
 import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
 import { isPublicEndpoint, matchOrigin } from './utils/cors.ts';
+import { getProjectUrls } from './utils/constants.ts';
 
 // tRPC
 import { handleTrpcRequest } from './trpc/handler.ts';
@@ -77,7 +78,7 @@ import { apiKeysRoutes } from './routes/api-keys.routes.ts';
 import { browserRoutes } from './routes/browser.routes.ts';
 import { compileRoutes } from './routes/compile.routes.ts';
 import { configurationRoutes } from './routes/configuration.routes.ts';
-import { docsRoutes } from './routes/docs.routes.ts';
+import { docsLandingHandler, docsRoutes } from './routes/docs.routes.ts';
 import { metaRoutes } from './routes/meta.routes.ts';
 import { monitoringRoutes } from './routes/monitoring.routes.ts';
 import { proxyRoutes } from './routes/proxy.routes.ts';
@@ -110,6 +111,7 @@ const MONITORING_API_PATHS = [
 
 // Pre-auth API meta paths (bypass unified auth, use anonymous context)
 const PRE_AUTH_PATHS = [
+    '/',
     '/api',
     '/api/version',
     '/api/schemas',
@@ -120,6 +122,8 @@ const PRE_AUTH_PATHS = [
     '/api/docs/',
     '/api/swagger',
     '/api/swagger/',
+    '/api/redoc',
+    '/api/redoc/',
     '/api/auth/providers',
     ...MONITORING_API_PATHS,
 ] as const;
@@ -363,6 +367,7 @@ app.use('*', async (c, next) => {
         pathname.startsWith('/api/deployments') ||
         pathname.startsWith('/api/docs/') ||
         pathname.startsWith('/api/swagger/') ||
+        pathname.startsWith('/api/redoc/') ||
         MONITORING_BARE_PATHS.has(pathname)
     );
     if (isPreAuth) {
@@ -435,6 +440,22 @@ app.use('*', secureHeaders());
 // ── 6. Pretty JSON ────────────────────────────────────────────────────────────
 app.use('*', prettyJSON());
 
+// ── 7. Crawl protection — noindex on non-canonical domains ───────────────────
+// Adds X-Robots-Tag: noindex, nofollow to every response that is served from a
+// hostname that does not end with the configured CANONICAL_DOMAIN.
+// This protects the workers.dev temporary subdomain from being indexed while
+// the custom domain is active.
+app.use('*', async (c, next) => {
+    await next();
+    const canonical = c.env.CANONICAL_DOMAIN;
+    if (canonical) {
+        const host = c.req.header('host') ?? '';
+        if (!host.endsWith(canonical)) {
+            c.header('X-Robots-Tag', 'noindex, nofollow');
+        }
+    }
+});
+
 // ============================================================================
 // PoC routes
 // ============================================================================
@@ -448,6 +469,17 @@ app.all('/poc/*', async (c) => {
     if (c.env.ASSETS) return c.env.ASSETS.fetch(c.req.raw);
     return c.json({ success: false, error: 'PoC assets not available in this deployment' }, 503);
 });
+
+// ============================================================================
+// Developer landing page (public, no auth)
+// ============================================================================
+
+// GET / → landing page (API overview)
+app.get('/', (c) => docsLandingHandler(c.env));
+// GET /api → landing page (same content, canonical API prefix)
+// Note: app.route('/api', docsRoutes) also registers docsRoutes.get('/') at /api,
+// but this explicit route ensures it is matched before the sub-app catch-all.
+app.get('/api', (c) => docsLandingHandler(c.env));
 
 // ============================================================================
 // Business routes sub-app (with ZTA + permission check middleware)
@@ -540,11 +572,15 @@ routes.route('/', stripeRoutes);
 routes.route('/', workflowRoutes);
 routes.route('/', browserRoutes);
 routes.route('/', proxyRoutes);
-routes.route('/', docsRoutes);
 
 // ── Mount meta routes (API discovery, version info, config) ──────────────────
 // Routes in metaRoutes use full paths (e.g. /api/version) so mount at '/', not '/api'.
 app.route('/', metaRoutes);
+
+// ── Documentation routes — mounted directly on app so they bypass the
+//    authenticated `routes` sub-app and are always publicly accessible.
+//    This provides GET /api/docs, /api/swagger, /api/redoc, and /api (landing).
+app.route('/api', docsRoutes);
 
 // ── Static assets / SPA (catch-all) ──────────────────────────────────────────
 
@@ -562,17 +598,24 @@ routes.get('*', async (c) => {
 export const OPENAPI_DOCUMENT_ARGS = {
     openapi: '3.0.0' as const,
     info: {
-        title: 'Adblock Compiler API',
+        title: 'Bloqr API',
         version: '2.0.0',
         description: 'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.',
         license: { name: 'GPL-3.0', url: 'https://github.com/jaypatrick/adblock-compiler/blob/master/LICENSE' },
         contact: { name: 'Jayson Knight', url: 'https://github.com/jaypatrick/adblock-compiler' },
     },
-    servers: [{ url: 'https://adblock-compiler.jayson-knight.workers.dev', description: 'Production server' }],
+    // Static fallback only — the /api/openapi.json handler overrides this dynamically
+    // using getProjectUrls(c.env).api so the spec always reflects the actual deployment URL.
+    servers: [{ url: 'https://api.bloqr.jaysonknight.com', description: 'Production server' }],
 };
 
 app.get('/api/openapi.json', (c) => {
-    const spec = app.getOpenAPIDocument(OPENAPI_DOCUMENT_ARGS);
+    const urls = getProjectUrls(c.env);
+    const args = {
+        ...OPENAPI_DOCUMENT_ARGS,
+        servers: [{ url: urls.api, description: 'Production server' }],
+    };
+    const spec = app.getOpenAPIDocument(args);
     return c.json(spec);
 });
 

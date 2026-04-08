@@ -33,6 +33,7 @@
         "bench:json": "deno bench --allow-read --allow-write --allow-net --allow-env --json",
         "lint": "deno lint",
         "lint:routes": "deno run --allow-read scripts/lint-route-order.ts",
+        "domain:swap": "deno run --allow-read --allow-write scripts/swap-domain.ts",
         "fmt": "deno fmt",
         "fmt:check": "deno fmt --check",
         "check": "deno task check:src && deno task check:worker",

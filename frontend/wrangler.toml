@@ -47,6 +47,10 @@ name = "adblock-frontend"
 # Expose the worker on the *.workers.dev subdomain after deployment.
 workers_dev = true
 
+[[routes]]
+pattern = "app.bloqr.jaysonknight.com/*"
+custom_domain = true
+
 # Enable logpush for the frontend worker
 logpush = true
 
@@ -121,10 +125,13 @@ local_protocol = "http"
 ENVIRONMENT = "production"
 # ─── Project URLs ─────────────────────────────────────────────────────────────
 # Single source of truth for all public-facing service URLs.
-# When you switch to a custom domain, update these three values only.
-URL_FRONTEND = "https://adblock-frontend.jayson-knight.workers.dev"
-URL_API      = "https://adblock-compiler.jayson-knight.workers.dev"
-URL_DOCS     = "https://adblock-compiler-docs.pages.dev"
+# When you switch to a custom domain, update these values only, or run:
+#   deno task domain:swap
+URL_FRONTEND     = "https://app.bloqr.jaysonknight.com"
+URL_API          = "https://api.bloqr.jaysonknight.com"
+URL_DOCS         = "https://docs.bloqr.jaysonknight.com"
+URL_LANDING      = "https://bloqr.jaysonknight.com"
+CANONICAL_DOMAIN = "bloqr.ai"
 
 [observability.logs]
 enabled = true

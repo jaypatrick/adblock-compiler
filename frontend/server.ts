@@ -131,13 +131,14 @@ const handler = {
         // Item 2: Add Content-Security-Policy headers to HTML responses
         const contentType = response.headers.get('Content-Type') ?? '';
         if (contentType.includes('text/html')) {
+            const apiUrl = env.URL_API ?? 'https://api.bloqr.jaysonknight.com';
             const csp = [
                 "default-src 'self'",
                 "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://*.clerk.accounts.dev",
                 "style-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev",
                 "img-src 'self' data: https://img.clerk.com https://*.clerk.com",
                 "font-src 'self'",
-                "connect-src 'self' https://adblock-compiler.jayson-knight.workers.dev https://*.clerk.accounts.dev https://o*.ingest.sentry.io https://o*.ingest.us.sentry.io",
+                `connect-src 'self' ${apiUrl} https://*.clerk.accounts.dev https://o*.ingest.sentry.io https://o*.ingest.us.sentry.io`,
                 "frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev",
                 "object-src 'none'",
                 "base-uri 'self'",
@@ -148,6 +149,17 @@ const handler = {
             headers.set('X-Content-Type-Options', 'nosniff');
             headers.set('X-Frame-Options', 'DENY');
             headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+
+            // Crawl protection — noindex on non-canonical domains.
+            // Prevents the workers.dev temporary subdomain from being indexed while
+            // the custom domain is active.
+            const canonical = env.CANONICAL_DOMAIN;
+            if (canonical) {
+                const host = new URL(request.url).hostname;
+                if (!host.endsWith(canonical)) {
+                    headers.set('X-Robots-Tag', 'noindex, nofollow');
+                }
+            }
 
             return new Response(response.body, {
                 status: response.status,
@@ -214,4 +226,8 @@ export interface Env {
     URL_API?: string;
     /** Public URL of the mdBook documentation site. Set in frontend/wrangler.toml [vars]. */
     URL_DOCS?: string;
+    /** Public URL of the landing / marketing page. Set in frontend/wrangler.toml [vars]. */
+    URL_LANDING?: string;
+    /** Canonical root domain (e.g. "bloqr.ai"). Used for crawl-protection noindex logic. */
+    CANONICAL_DOMAIN?: string;
 }
