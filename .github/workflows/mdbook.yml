@@ -83,6 +83,7 @@ jobs:
       - name: Deploy to Cloudflare Pages
         run: |
           set -euo pipefail
+          # shellcheck source=.github/scripts/retry.sh
           source .github/scripts/retry.sh
           echo "Deploying documentation to Cloudflare Pages..."
           # --commit-dirty=true: required because regenerated OpenAPI/Postman docs modify
