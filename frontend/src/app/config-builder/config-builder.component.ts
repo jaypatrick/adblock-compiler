@@ -39,6 +39,20 @@ import {
     validateResponse,
 } from '../schemas/api-responses';
 
+/** Typed shape of configForm's raw value for use in generatedConfig. */
+interface ConfigFormValue {
+    name?: string | null;
+    description?: string | null;
+    homepage?: string | null;
+    license?: string | null;
+    version?: string | null;
+    transformations?: string[] | null;
+    exclusions?: string[] | null;
+    inclusions?: string[] | null;
+    sources?: Array<{ name?: string; source?: string; type?: string }> | null;
+    extensions?: Record<string, string> | null;
+}
+
 @Component({
     selector: 'app-config-builder',
     imports: [
@@ -114,42 +128,32 @@ export class ConfigBuilderComponent {
 
     // Computed values
     readonly generatedConfig = computed(() => {
-        // Use bracket notation throughout to satisfy noPropertyAccessFromIndexSignature
-        const raw = this.configForm.value;
-        const nameVal = raw['name'] as string | null;
-        const descVal = raw['description'] as string | null;
-        const homepageVal = raw['homepage'] as string | null;
-        const licenseVal = raw['license'] as string | null;
-        const versionVal = raw['version'] as string | null;
-        const sourcesVal = raw['sources'] as Array<{ name?: string; source?: string; type?: string }> | null;
-        const transformationsVal = raw['transformations'] as string[] | null;
-        const exclusionsVal = raw['exclusions'] as string[] | null;
-        const inclusionsVal = raw['inclusions'] as string[] | null;
-        const extensionsVal = raw['extensions'] as Record<string, string> | null;
+        // getRawValue() includes disabled controls; cast to typed interface to satisfy noPropertyAccessFromIndexSignature
+        const fv = this.configForm.getRawValue() as unknown as ConfigFormValue;
 
-        const config: Record<string, unknown> = { name: nameVal };
+        const config: Record<string, unknown> = { name: fv['name'] };
 
-        if (descVal) config['description'] = descVal;
-        if (homepageVal) config['homepage'] = homepageVal;
-        if (licenseVal) config['license'] = licenseVal;
-        if (versionVal) config['version'] = versionVal;
+        if (fv['description']) config['description'] = fv['description'];
+        if (fv['homepage']) config['homepage'] = fv['homepage'];
+        if (fv['license']) config['license'] = fv['license'];
+        if (fv['version']) config['version'] = fv['version'];
 
-        config['sources'] = sourcesVal ?? [];
+        config['sources'] = fv['sources'] ?? [];
 
-        if (transformationsVal && transformationsVal.length > 0) {
-            config['transformations'] = transformationsVal;
+        if (fv['transformations'] && fv['transformations'].length > 0) {
+            config['transformations'] = fv['transformations'];
         }
 
-        if (exclusionsVal && exclusionsVal.length > 0) {
-            config['exclusions'] = exclusionsVal;
+        if (fv['exclusions'] && fv['exclusions'].length > 0) {
+            config['exclusions'] = fv['exclusions'];
         }
 
-        if (inclusionsVal && inclusionsVal.length > 0) {
-            config['inclusions'] = inclusionsVal;
+        if (fv['inclusions'] && fv['inclusions'].length > 0) {
+            config['inclusions'] = fv['inclusions'];
         }
 
-        if (extensionsVal && Object.keys(extensionsVal).length > 0) {
-            config['extensions'] = extensionsVal;
+        if (fv['extensions'] && Object.keys(fv['extensions']).length > 0) {
+            config['extensions'] = fv['extensions'];
         }
 
         return config;
