@@ -150,7 +150,7 @@ export class MyComponent {
 - **ZTA compliance**: Token resolution is handled per-call via `AuthFacadeService.getToken()`;
   never stored in component state.
 - **Base URL normalization**: Handles both browser (`/api`) and SSR (absolute URL) cases.
-- **Type safety**: Full `AppRouter` inference out of the box.
+- **Type safety**: Angular uses a frontend-local `createTRPCClient<any>` factory and should treat responses as runtime-validated; full compile-time `AppRouter` inference is not available in the Angular integration today.
 
 ### Manual Integration (Non-Angular)
 
@@ -234,9 +234,12 @@ flowchart TD
 
 ### 1. End-to-End Type Safety
 
-tRPC eliminates the need for manual type definitions between frontend and backend. The `AppRouter`
-type is automatically inferred from the Worker's procedure definitions, ensuring compile-time
-safety for all API calls.
+When a client imports and uses the `AppRouter` type, tRPC eliminates the need for manual type
+definitions between frontend and backend. The `AppRouter` type is automatically inferred from the
+Worker's procedure definitions, providing compile-time safety for those typed API calls. In this
+repository, the current Angular integration is intentionally untyped (`createTRPCClient<any>`), so
+frontend consumers do not get compile-time type inference unless they switch to a typed client
+setup that imports `AppRouter`.
 
 **Before (REST with manual types):**
 
@@ -457,20 +460,22 @@ flowchart TD
 
 ## Hooking Up Other Frontends / CLI Tools
 
-### Node.js / Deno CLI Example
+### Deno CLI Example
 
-For CLI tools or Node.js scripts, use `createTrpcClient` directly without Angular DI:
+For Deno CLI tools and scripts, use `createTrpcClient` directly without Angular DI.
+The examples below use `deno run` with explicit permission flags to match the Deno-style
+`.ts` extension imports in `worker/trpc/client.ts`:
 
 **Option 1 — API key from environment variable:**
 
 ```typescript
-#!/usr/bin/env node
+#!/usr/bin/env -S deno run --allow-net --allow-env
 
 import { createTrpcClient } from './worker/trpc/client.ts';
 
 const client = createTrpcClient(
   'https://adblock-compiler.<account>.workers.dev',
-  async () => process.env.ADBLOCK_API_KEY || null,
+  async () => Deno.env.get('ADBLOCK_API_KEY') ?? null,
 );
 
 const health = await client.v1.health.get.query();
@@ -490,12 +495,11 @@ console.log(`Compiled ${result.ruleCount} rules`);
 **Option 2 — Interactive session token (via Better Auth):**
 
 ```typescript
-#!/usr/bin/env node
+#!/usr/bin/env -S deno run --allow-net --allow-read
 
-import { readFile } from 'fs/promises';
 import { createTrpcClient } from './worker/trpc/client.ts';
 
-const sessionToken = await readFile('.adblock-session', 'utf-8');
+const sessionToken = await Deno.readTextFile('.adblock-session');
 
 const client = createTrpcClient(
   'https://adblock-compiler.<account>.workers.dev',

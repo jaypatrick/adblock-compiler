@@ -1,8 +1,8 @@
 /**
- * TrpcClientService — Typed tRPC v11 client for consuming the Worker's tRPC API.
+ * TrpcClientService — Runtime-validated tRPC v11 client for consuming the Worker's tRPC API.
  *
- * Wraps the `createTrpcClient` factory from `frontend/src/app/trpc/client.ts` as a proper
- * Angular service with ZTA compliance.
+ * Wraps the frontend-local `createTrpcClient` factory from `frontend/src/app/trpc/client.ts`
+ * as a proper Angular service with ZTA compliance.
  *
  * ## Why a separate factory?
  * The Worker's `worker/trpc/client.ts` uses Deno-style explicit `.ts` file extension
@@ -55,9 +55,11 @@
  * ```
  *
  * ## ZTA compliance
- * - **No token storage**: The Bearer token is resolved per-call via
- *   `AuthFacadeService.getToken()` (which reads a short-lived Better Auth session
- *   cookie). Never stored in component state or localStorage.
+ * - **No persistent token storage**: `TrpcClientService` does not store or cache
+ *   tokens itself. On each request it calls `AuthFacadeService.getToken()`, which
+ *   reads the current token from an in-memory signal managed by `BetterAuthService`
+ *   (never written to `localStorage` or any persistent storage). The token is not
+ *   held by this service between requests.
  * - **Auth header attachment**: The `httpBatchLink` passes `() => this.auth.getToken()`
  *   as the `getToken` argument. When the token is available, tRPC automatically
  *   attaches `Authorization: Bearer <token>` to all requests. When the token is null,
