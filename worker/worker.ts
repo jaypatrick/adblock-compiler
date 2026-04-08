@@ -59,6 +59,7 @@ import { withSentryWorker } from './services/sentry-init.ts';
 // Workflows and MCP agent
 import { BatchCompilationWorkflow, CacheWarmingWorkflow, CompilationWorkflow, HealthMonitoringWorkflow } from './workflows/index.ts';
 import { PlaywrightMcpAgent } from './mcp-agent.ts';
+import { CompilationCoordinator } from './compilation-coordinator.ts';
 
 // Re-export Env for compatibility with existing imports
 export type { Env };
@@ -167,4 +168,4 @@ export default withSentryWorker(workerHandler, (env) => ({
 // ============================================================================
 // Export Workflow classes for Cloudflare Workers runtime
 // ============================================================================
-export { BatchCompilationWorkflow, CacheWarmingWorkflow, CompilationWorkflow, HealthMonitoringWorkflow, PlaywrightMcpAgent };
+export { BatchCompilationWorkflow, CacheWarmingWorkflow, CompilationCoordinator, CompilationWorkflow, HealthMonitoringWorkflow, PlaywrightMcpAgent };

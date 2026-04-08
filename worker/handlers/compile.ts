@@ -30,10 +30,77 @@ import {
 const CACHE_TTL = WORKER_DEFAULTS.CACHE_TTL_SECONDS;
 
 /**
- * In-memory map for request deduplication.
+ * In-memory map for request deduplication (Worker-local fallback).
  * Maps cache keys to pending compilation promises.
+ * Used only when COMPILATION_COORDINATOR DO is unavailable.
  */
 const pendingCompilations = new Map<string, Promise<CompilationResult>>();
+
+// ============================================================================
+// Global Request Deduplication (Durable Object)
+// ============================================================================
+
+/**
+ * Coordinates compilation via the global CompilationCoordinator Durable Object.
+ * Handles lock acquisition, compilation execution, and result distribution.
+ *
+ * @returns CompilationResult with deduplicated: true if waiting on another Worker's compilation
+ */
+async function coordinateCompilationWithDO(
+    env: Env,
+    cacheKey: string,
+    compileFn: () => Promise<CompilationResult>,
+): Promise<CompilationResult> {
+    if (!env.COMPILATION_COORDINATOR) {
+        throw new Error('COMPILATION_COORDINATOR binding not available');
+    }
+
+    const id = env.COMPILATION_COORDINATOR.idFromName(cacheKey);
+    const stub = env.COMPILATION_COORDINATOR.get(id);
+
+    // Try to acquire the compilation lock
+    const acquireResponse = await stub.fetch(new Request('https://do/acquire'));
+    const acquireData = await acquireResponse.json() as { success: boolean; acquired?: boolean; inFlight?: boolean };
+
+    if (!acquireData.acquired) {
+        // Another Worker is performing the compilation - wait for result
+        const waitResponse = await stub.fetch(new Request('https://do/wait'));
+
+        if (!waitResponse.ok) {
+            const errorData = await waitResponse.json() as { error?: string };
+            throw new Error(errorData.error || 'Failed to wait for compilation result');
+        }
+
+        const result = await waitResponse.json() as CompilationResult;
+        return { ...result, deduplicated: true };
+    }
+
+    // We acquired the lock - perform the compilation
+    try {
+        const result = await compileFn();
+
+        // Notify DO of successful completion
+        await stub.fetch(
+            new Request('https://do/complete', {
+                method: 'POST',
+                body: JSON.stringify(result),
+            }),
+        );
+
+        return result;
+    } catch (error) {
+        // Notify DO of failure
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        await stub.fetch(
+            new Request('https://do/fail', {
+                method: 'POST',
+                body: JSON.stringify({ error: errorMessage }),
+            }),
+        );
+
+        throw error;
+    }
+}
 
 // ============================================================================
 // Streaming Logger
@@ -134,7 +201,110 @@ export async function handleCompileJson(
     let previousCachedVersion: PreviousVersion | undefined;
 
     if (cacheKey) {
-        // Check for in-flight request deduplication
+        // Global request deduplication via Durable Object (if available)
+        if (env.COMPILATION_COORDINATOR) {
+            try {
+                const compileFn = async (): Promise<CompilationResult> => {
+                    const tracingContext = createTracingContext({
+                        metadata: {
+                            endpoint: '/compile',
+                            configName: configuration.name,
+                        },
+                    });
+
+                    const compiler = new WorkerCompiler({
+                        preFetchedContent,
+                        tracingContext,
+                    });
+
+                    const result = await compiler.compileWithMetrics(configuration, benchmark ?? false);
+
+                    if (result.diagnostics) {
+                        emitDiagnosticsToTailWorker(result.diagnostics);
+                    }
+
+                    const response: CompilationResult = {
+                        success: true,
+                        rules: result.rules,
+                        ruleCount: result.rules.length,
+                        metrics: result.metrics,
+                        compiledAt: new Date().toISOString(),
+                        previousVersion: previousCachedVersion,
+                    };
+
+                    // Cache the result
+                    try {
+                        const compressed = await compress(JSON.stringify(response));
+                        await env.COMPILATION_CACHE.put(
+                            cacheKey,
+                            compressed,
+                            { expirationTtl: CACHE_TTL },
+                        );
+                    } catch (error) {
+                        // deno-lint-ignore no-console
+                        console.error('Cache compression failed:', error);
+                    }
+
+                    return response;
+                };
+
+                const result = await coordinateCompilationWithDO(env, cacheKey, compileFn);
+
+                if (result.deduplicated) {
+                    analytics?.trackCacheHit({
+                        requestId,
+                        configName,
+                        cacheKey,
+                        ruleCount: result.ruleCount,
+                        durationMs: Date.now() - startTime,
+                    });
+
+                    return JsonResponse.success(result, {
+                        headers: { 'X-Request-Deduplication': 'HIT' },
+                    });
+                }
+
+                // We performed the compilation - continue to return the result below
+                const duration = Date.now() - startTime;
+
+                if (!result.success) {
+                    await recordMetric(env, '/compile', duration, false, result.error);
+                    analytics?.trackCompilationError({
+                        requestId,
+                        configName,
+                        sourceCount,
+                        durationMs: duration,
+                        error: result.error,
+                        cacheKey: cacheKey || undefined,
+                    });
+
+                    return JsonResponse.serverError(result.error || 'Compilation failed');
+                }
+
+                await recordMetric(env, '/compile', duration, true);
+
+                const outputSize = result.rules ? JSON.stringify(result.rules).length : 0;
+                analytics?.trackCompilationSuccess({
+                    requestId,
+                    configName,
+                    sourceCount,
+                    ruleCount: result.ruleCount,
+                    durationMs: duration,
+                    outputSizeBytes: outputSize,
+                    cacheKey: cacheKey || undefined,
+                });
+
+                return JsonResponse.success(result, {
+                    headers: { 'X-Cache': 'MISS' },
+                });
+            } catch (doError) {
+                // DO coordination failed - fall back to Worker-local deduplication
+                // deno-lint-ignore no-console
+                console.warn('DO coordination failed, falling back to Worker-local:', doError);
+            }
+        }
+
+        // Worker-local deduplication fallback (original implementation)
         const pending = pendingCompilations.get(cacheKey);
         if (pending) {
             const result = await pending;
@@ -482,6 +652,66 @@ export async function handleCompileBatch(
                     const cacheKey = (!preFetchedContent || Object.keys(preFetchedContent).length === 0) ? await getCacheKey(configuration) : null;
 
                     if (cacheKey) {
+                        // Global request deduplication via Durable Object (if available)
+                        if (env.COMPILATION_COORDINATOR) {
+                            try {
+                                const compileFn = async (): Promise<CompilationResult> => {
+                                    const tracingContext = createTracingContext({
+                                        metadata: {
+                                            endpoint: '/compile/batch',
+                                            configName: configuration.name,
+                                            batchId: req.id,
+                                        },
+                                    });
+
+                                    const compiler = new WorkerCompiler({
+                                        preFetchedContent,
+                                        tracingContext,
+                                    });
+
+                                    const result = await compiler.compileWithMetrics(
+                                        configuration,
+                                        benchmark ?? false,
+                                    );
+
+                                    if (result.diagnostics) {
+                                        emitDiagnosticsToTailWorker(result.diagnostics);
+                                    }
+
+                                    const response: CompilationResult = {
+                                        success: true,
+                                        rules: result.rules,
+                                        ruleCount: result.rules.length,
+                                        metrics: result.metrics,
+                                        compiledAt: new Date().toISOString(),
+                                    };
+
+                                    // Cache the result
+                                    try {
+                                        const compressed = await compress(JSON.stringify(response));
+                                        await env.COMPILATION_CACHE.put(
+                                            cacheKey,
+                                            compressed,
+                                            { expirationTtl: CACHE_TTL },
+                                        );
+                                    } catch (error) {
+                                        // deno-lint-ignore no-console
+                                        console.error('Cache compression failed:', error);
+                                    }
+
+                                    return response;
+                                };
+
+                                const result = await coordinateCompilationWithDO(env, cacheKey, compileFn);
+                                return { id: req.id, ...result };
+                            } catch (doError) {
+                                // DO coordination failed - fall back to Worker-local deduplication
+                                // deno-lint-ignore no-console
+                                console.warn('DO coordination failed, falling back to Worker-local:', doError);
+                            }
+                        }
+
+                        // Worker-local deduplication fallback
                         const pending = pendingCompilations.get(cacheKey);
                         if (pending) {
                             const result = await pending;

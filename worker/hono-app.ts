@@ -83,6 +83,7 @@ import { monitoringRoutes } from './routes/monitoring.routes.ts';
 import { proxyRoutes } from './routes/proxy.routes.ts';
 import { queueRoutes } from './routes/queue.routes.ts';
 import { rulesRoutes } from './routes/rules.routes.ts';
+import { stripeRoutes } from './routes/stripe.routes.ts';
 import { webhookRoutes } from './routes/webhook.routes.ts';
 import { workflowRoutes } from './routes/workflow.routes.ts';
 
@@ -535,6 +536,7 @@ routes.route('/', adminRoutes);
 routes.route('/', monitoringRoutes);
 routes.route('/', apiKeysRoutes);
 routes.route('/', webhookRoutes);
+routes.route('/', stripeRoutes);
 routes.route('/', workflowRoutes);
 routes.route('/', browserRoutes);
 routes.route('/', proxyRoutes);

@@ -43,8 +43,8 @@
     "npm:@trpc/client@^11.15.1": "11.15.1_@trpc+server@11.15.1__typescript@6.0.2_typescript@6.0.2",
     "npm:@trpc/server@^11.15.1": "11.15.1_typescript@6.0.2",
     "npm:agents@0.8": "0.8.1_ai@6.0.138__zod@4.3.6_react@19.2.4_zod@4.3.6_@cloudflare+workers-types@4.20260317.1",
-    "npm:better-auth@^1.5.5": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__vite@8.0.7___esbuild@0.27.3__esbuild@0.27.3_@opentelemetry+api@1.9.1_vite@8.0.7__esbuild@0.27.3",
-    "npm:better-auth@^1.5.6": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__vite@8.0.7___esbuild@0.27.3__esbuild@0.27.3_@opentelemetry+api@1.9.1_vite@8.0.7__esbuild@0.27.3",
+    "npm:better-auth@^1.5.5": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__vite@8.0.7___esbuild@0.27.3__esbuild@0.27.3",
+    "npm:better-auth@^1.5.6": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__vite@8.0.7___esbuild@0.27.3__esbuild@0.27.3",
     "npm:cloudflare@5.2.0": "5.2.0",
     "npm:cloudflare@^5.2.0": "5.2.0",
     "npm:hono@*": "4.12.8",
@@ -58,6 +58,7 @@
     "npm:svix@^1.62.0": "1.89.0",
     "npm:svix@^1.89.0": "1.89.0",
     "npm:vitest@^4.1.0": "4.1.3_@opentelemetry+api@1.9.1_vite@8.0.7__esbuild@0.27.3_esbuild@0.27.3",
+    "npm:wrangler@*": "4.81.0_@cloudflare+workers-types@4.20260317.1",
     "npm:wrangler@^4.77.0": "4.81.0_@cloudflare+workers-types@4.20260317.1",
     "npm:zod@*": "4.3.6",
     "npm:zod@3": "3.25.76",
@@ -443,12 +444,6 @@
         "tslib"
       ]
     },
-    "@emnapi/runtime@1.9.2": {
-      "integrity": "sha512-3U4+MIWHImeyu1wnmVygh5WlgfYDtyf0k8AbLhMFxOipihf6nrWC4syIm/SwEeec0mNSafiiNnMJwbza/Is6Lw==",
-      "dependencies": [
-        "tslib"
-      ]
-    },
     "@emnapi/wasi-threads@1.2.0": {
       "integrity": "sha512-N10dEJNSsUx41Z6pZsXU8FjPjpBEplgH24sfkmITrBED1/U2Esum9F3lfLrMjKHHjmi557zQn7kR9R+XWXu5Rg==",
       "dependencies": [
@@ -757,7 +752,7 @@
     "@img/sharp-wasm32@0.34.5": {
       "integrity": "sha512-OdWTEiVkY2PHwqkbBI8frFxQQFekHaSSkUIJkwzclWZe64O1X4UlUjqqqLaPbUpMOQk6FBu/HtlGXNblIs0huw==",
       "dependencies": [
-        "@emnapi/runtime@1.9.2"
+        "@emnapi/runtime"
       ],
       "cpu": ["wasm32"]
     },
@@ -850,7 +845,7 @@
       "integrity": "sha512-sNXv5oLJ7ob93xkZ1XnxisYhGYXfaG9f65/ZgYuAu3qt7b3NadcOEhLvx28hv31PgX8SZJRYrAIPQilQmFpLVw==",
       "dependencies": [
         "@emnapi/core",
-        "@emnapi/runtime@1.9.1",
+        "@emnapi/runtime",
         "@tybys/wasm-util"
       ]
     },
@@ -1128,7 +1123,7 @@
       "integrity": "sha512-viLS5C5et8NFtLWw9Sw3M/w4vvnVkbWkO7wSNh3C+7G1+uCkGpr6PcjNDSFcNtmXY/4trjPBqUfcOL+P3sWy/g==",
       "dependencies": [
         "@emnapi/core",
-        "@emnapi/runtime@1.9.1",
+        "@emnapi/runtime",
         "@napi-rs/wasm-runtime"
       ],
       "cpu": ["wasm32"]
@@ -1452,7 +1447,7 @@
     "aws-ssl-profiles@1.1.2": {
       "integrity": "sha512-NZKeq9AfyQvEeNlN0zSYAaWrmBffJh3IELMZfRpJVWgrpEbtEpnjvzqBPf+mxoI287JohRDoa+/nsfqqiZmF6g=="
     },
-    "better-auth@1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__vite@8.0.7___esbuild@0.27.3__esbuild@0.27.3_@opentelemetry+api@1.9.1_vite@8.0.7__esbuild@0.27.3": {
+    "better-auth@1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_vitest@4.1.3__@opentelemetry+api@1.9.1__vite@8.0.7___esbuild@0.27.3__esbuild@0.27.3": {
       "integrity": "sha512-QSpJTqaT1XVfWRQe/fm3PgeuwOIlz1nWX/Dx7nsHStJ382bLzmDbQk2u7IT0IJ6wS5SRxfqEE1Ev9TXontgyAQ==",
       "dependencies": [
         "@better-auth/core",
