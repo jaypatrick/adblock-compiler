@@ -100,6 +100,8 @@ export interface IConfiguration extends IFilterable, ITransformable {
     version?: string;
     /** Array of filter list sources (required) */
     sources: ISource[];
+    /** Extensible key-value pairs for custom configuration metadata */
+    extensions?: Record<string, unknown>;
 }
 
 /**

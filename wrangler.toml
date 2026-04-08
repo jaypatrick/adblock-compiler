@@ -137,6 +137,12 @@ id = "your-feature-flags-kv-id"
 #   wrangler kv:namespace create RULES_KV
 # then add a [[kv_namespaces]] entry here.
 
+# CONFIG_STORE: optional dedicated KV namespace for user-created configuration
+# files (POST /api/configuration/create). Isolates 24h config entries from the
+# short-lived compilation cache. Falls back to COMPILATION_CACHE when absent.
+# Create with: wrangler kv:namespace create CONFIG_STORE
+# then add a [[kv_namespaces]] entry here.
+
 # ─── R2 Bucket ───────────────────────────────────────────────────────────────
 [[r2_buckets]]
 binding = "FILTER_STORAGE"

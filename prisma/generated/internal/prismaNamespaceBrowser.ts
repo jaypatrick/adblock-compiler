@@ -17,8 +17,8 @@
 
 import * as runtime from "@prisma/client/runtime/index-browser"
 
-export type * from '../models'
-export type * from './prismaNamespace'
+export type * from '../models.ts'
+export type * from './prismaNamespace.ts'
 
 export const Decimal = runtime.Decimal
 
@@ -57,6 +57,8 @@ export const ModelName = {
   TwoFactor: 'TwoFactor',
   Account: 'Account',
   Verification: 'Verification',
+  Organization: 'Organization',
+  Member: 'Member',
   FilterSource: 'FilterSource',
   FilterListVersion: 'FilterListVersion',
   CompiledOutput: 'CompiledOutput',
@@ -69,6 +71,7 @@ export const ModelName = {
   StorageEntry: 'StorageEntry',
   FilterCache: 'FilterCache',
   CompilationMetadata: 'CompilationMetadata',
+  UserConfiguration: 'UserConfiguration',
   DeploymentHistory: 'DeploymentHistory',
   DeploymentCounter: 'DeploymentCounter'
 } as const
@@ -184,6 +187,31 @@ export const VerificationScalarFieldEnum = {
 } as const
 
 export type VerificationScalarFieldEnum = (typeof VerificationScalarFieldEnum)[keyof typeof VerificationScalarFieldEnum]
+
+
+export const OrganizationScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  slug: 'slug',
+  logo: 'logo',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type OrganizationScalarFieldEnum = (typeof OrganizationScalarFieldEnum)[keyof typeof OrganizationScalarFieldEnum]
+
+
+export const MemberScalarFieldEnum = {
+  id: 'id',
+  organizationId: 'organizationId',
+  userId: 'userId',
+  role: 'role',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type MemberScalarFieldEnum = (typeof MemberScalarFieldEnum)[keyof typeof MemberScalarFieldEnum]
 
 
 export const FilterSourceScalarFieldEnum = {
@@ -377,6 +405,19 @@ export const CompilationMetadataScalarFieldEnum = {
 export type CompilationMetadataScalarFieldEnum = (typeof CompilationMetadataScalarFieldEnum)[keyof typeof CompilationMetadataScalarFieldEnum]
 
 
+export const UserConfigurationScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  name: 'name',
+  description: 'description',
+  config: 'config',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type UserConfigurationScalarFieldEnum = (typeof UserConfigurationScalarFieldEnum)[keyof typeof UserConfigurationScalarFieldEnum]
+
+
 export const DeploymentHistoryScalarFieldEnum = {
   id: 'id',
   version: 'version',
@@ -413,19 +454,19 @@ export const SortOrder = {
 export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
 
 
-export const JsonNullValueInput = {
-  JsonNull: JsonNull
-} as const
-
-export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
-
-
 export const NullableJsonNullValueInput = {
   DbNull: DbNull,
   JsonNull: JsonNull
 } as const
 
 export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
+
+
+export const JsonNullValueInput = {
+  JsonNull: JsonNull
+} as const
+
+export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
 export const QueryMode = {

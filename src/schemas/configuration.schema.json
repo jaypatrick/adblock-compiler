@@ -81,6 +81,11 @@
             "items": {
                 "type": "string"
             }
+        },
+        "extensions": {
+            "description": "Extensible key-value pairs for custom configuration. Allows users to add custom metadata without breaking schema validation.",
+            "type": "object",
+            "additionalProperties": true
         }
     },
     "required": [

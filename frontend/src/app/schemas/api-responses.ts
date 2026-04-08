@@ -489,3 +489,67 @@ export type RuleDiff            = z.infer<typeof RuleDiffSchemaLocal>;
 export type DomainDiff          = z.infer<typeof DomainDiffSchemaLocal>;
 export type DiffParseError      = z.infer<typeof DiffParseErrorSchemaLocal>;
 export type CategoryChangeCounts = z.infer<typeof CategoryChangeCountsSchemaLocal>;
+
+// ---------------------------------------------------------------------------
+// Configuration Builder — ZTA validation for /api/configuration/* endpoints
+// ---------------------------------------------------------------------------
+
+const ConfigErrorSchema = z.object({
+    path: z.string(),
+    message: z.string(),
+    code: z.string().optional(),
+});
+export type ConfigError = z.infer<typeof ConfigErrorSchema>;
+
+/** Response schema for POST /api/configuration/validate */
+export const ConfigValidateResponseSchema = z.object({
+    success: z.boolean(),
+    valid: z.boolean(),
+    errors: z.array(ConfigErrorSchema).optional(),
+});
+export type ConfigValidateResponse = z.infer<typeof ConfigValidateResponseSchema>;
+
+/** Response schema for POST /api/configuration/create */
+export const ConfigCreateResponseSchema = z.object({
+    success: z.boolean(),
+    id: z.string().optional(),
+    format: z.string().optional(),
+    expiresIn: z.number().optional(),
+    valid: z.boolean().optional(),
+    errors: z.array(ConfigErrorSchema).optional(),
+});
+export type ConfigCreateResponse = z.infer<typeof ConfigCreateResponseSchema>;
+
+// ---------------------------------------------------------------------------
+// Saved Configurations — ZTA validation for /api/configuration/saved endpoints
+// ---------------------------------------------------------------------------
+
+/** A single saved-configuration list item (metadata only — no config blob). */
+export const SavedConfigItemSchema = z.object({
+    id: z.string().uuid(),
+    name: z.string(),
+    description: z.string().nullable(),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+});
+export type SavedConfigItem = z.infer<typeof SavedConfigItemSchema>;
+
+/** Response schema for GET /api/configuration/saved */
+export const SavedConfigListResponseSchema = z.object({
+    success: z.boolean(),
+    configs: z.array(SavedConfigItemSchema),
+    total: z.number(),
+});
+export type SavedConfigListResponse = z.infer<typeof SavedConfigListResponseSchema>;
+
+/** Response schema for POST /api/configuration/saved */
+export const SavedConfigCreateResponseSchema = z.object({
+    success: z.boolean(),
+    id: z.string().uuid(),
+    name: z.string(),
+    description: z.string().nullable(),
+    config: z.record(z.string(), z.unknown()),
+    createdAt: z.string(),
+    updatedAt: z.string(),
+});
+export type SavedConfigCreateResponse = z.infer<typeof SavedConfigCreateResponseSchema>;

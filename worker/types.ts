@@ -357,6 +357,11 @@ export interface Env {
     DYNAMIC_WORKER_LOADER?: import('./dynamic-workers/types.ts').DynamicWorkerLoader;
     // KV namespace for persisted user rule sets (POST/GET/PUT/DELETE /api/rules)
     RULES_KV?: KVNamespace;
+    // Dedicated KV namespace for user-created configuration files (POST /api/configuration/create).
+    // Isolates config lifecycle (24h TTL) from short-lived compilation cache entries.
+    // Create with: wrangler kv:namespace create CONFIG_STORE
+    // Falls back to COMPILATION_CACHE when absent.
+    CONFIG_STORE?: KVNamespace;
     // Feature flag KV namespace — stores simple on/off flags for the Worker.
     // Create with: wrangler kv:namespace create FEATURE_FLAGS
     // Toggle flags at runtime: wrangler kv:key put --binding FEATURE_FLAGS flag:ENABLE_BATCH_STREAMING '{"enabled":true,"updatedAt":"2025-01-01T00:00:00.000Z"}'

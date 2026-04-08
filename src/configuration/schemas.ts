@@ -197,6 +197,7 @@ export const ConfigurationSchema: z.ZodType<IConfiguration> = z.object({
     license: z.string().optional().describe('License identifier (e.g. GPL-3.0, MIT)'),
     version: z.string().regex(/^\d+\.\d+(\.\d+)?/, 'version must follow semver format (e.g. 1.0.0)').optional().describe('Version string following semver format (e.g. 1.0.0)'),
     sources: z.array(SourceSchema).nonempty('sources is required and must be a non-empty array').describe('Array of source configurations (must not be empty)'),
+    extensions: z.record(z.string(), z.unknown()).optional().describe('Extensible key-value pairs for custom configuration metadata'),
 }).merge(FilterableSchema).merge(TransformableSchema).strict()
     .refine(hasValidTransformationOrdering, transformationOrderingMessage);
 

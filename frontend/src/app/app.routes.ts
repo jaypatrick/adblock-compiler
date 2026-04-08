@@ -75,6 +75,12 @@ export const routes: Routes = [
         canActivate: [authGuard],
     },
     {
+        path: 'config-builder',
+        loadComponent: () => import('./config-builder/config-builder.component').then((m) => m.ConfigBuilderComponent),
+        title: 'Configuration Builder',
+        data: { description: 'Create and validate configuration files', metaDescription: 'Interactive configuration file builder with real-time validation, syntax highlighting, and export to JSON/YAML formats.' },
+    },
+    {
         path: 'diff',
         loadComponent: () => import('./diff/diff.component').then((m) => m.DiffComponent),
         title: 'Diff',
