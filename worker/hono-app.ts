@@ -60,7 +60,6 @@ import { createAuth } from './lib/auth.ts';
 import { generateRequestId } from './utils/index.ts';
 import { createAnalyticsService } from './utils/analytics.ts';
 import { createPgPool } from './utils/pg-pool.ts';
-import { getProjectUrls } from './utils/constants.ts';
 import { checkRoutePermission } from './utils/route-permissions.ts';
 import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
@@ -78,6 +77,7 @@ import { apiKeysRoutes } from './routes/api-keys.routes.ts';
 import { browserRoutes } from './routes/browser.routes.ts';
 import { compileRoutes } from './routes/compile.routes.ts';
 import { configurationRoutes } from './routes/configuration.routes.ts';
+import { docsRoutes } from './routes/docs.routes.ts';
 import { metaRoutes } from './routes/meta.routes.ts';
 import { monitoringRoutes } from './routes/monitoring.routes.ts';
 import { proxyRoutes } from './routes/proxy.routes.ts';
@@ -115,6 +115,10 @@ const PRE_AUTH_PATHS = [
     '/api/turnstile-config',
     '/api/sentry-config',
     '/api/openapi.json',
+    '/api/docs',
+    '/api/docs/',
+    '/api/swagger',
+    '/api/swagger/',
     '/api/auth/providers',
     ...MONITORING_API_PATHS,
 ] as const;
@@ -356,6 +360,8 @@ app.use('*', async (c, next) => {
     const isPreAuth = c.req.method === 'GET' && (
         PRE_AUTH_PATHS.includes(pathname as typeof PRE_AUTH_PATHS[number]) ||
         pathname.startsWith('/api/deployments') ||
+        pathname.startsWith('/api/docs/') ||
+        pathname.startsWith('/api/swagger/') ||
         MONITORING_BARE_PATHS.has(pathname)
     );
     if (isPreAuth) {
@@ -532,24 +538,11 @@ routes.route('/', webhookRoutes);
 routes.route('/', workflowRoutes);
 routes.route('/', browserRoutes);
 routes.route('/', proxyRoutes);
+routes.route('/', docsRoutes);
 
 // ── Mount meta routes (API discovery, version info, config) ──────────────────
 // Routes in metaRoutes use full paths (e.g. /api/version) so mount at '/', not '/api'.
 app.route('/', metaRoutes);
-
-// ── Docs redirect ─────────────────────────────────────────────────────────────
-
-function buildDocsRedirectUrl(c: AppContext): string {
-    const pathname = c.req.path;
-    const docsSubpath = pathname.startsWith('/docs/') ? pathname.slice('/docs'.length) : '/';
-    const url = new URL(c.req.url);
-    const target = new URL(docsSubpath, getProjectUrls(c.env).docs);
-    if (url.search) target.search = url.search;
-    return target.toString();
-}
-
-routes.on(['GET', 'HEAD'], '/docs', (c) => c.redirect(buildDocsRedirectUrl(c), 302));
-routes.on(['GET', 'HEAD'], '/docs/*', (c) => c.redirect(buildDocsRedirectUrl(c), 302));
 
 // ── Static assets / SPA (catch-all) ──────────────────────────────────────────
 
