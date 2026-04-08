@@ -208,10 +208,6 @@ Deno.test('handleAdminListAgentAuditLog — 200 returns audit entries', async ()
 // DELETE /admin/agents/sessions/:sessionId
 // ============================================================================
 
-// ============================================================================
-// DELETE /admin/agents/sessions/:sessionId
-// ============================================================================
-
 Deno.test('handleAdminTerminateAgentSession — 403 for non-admin user', async () => {
     const req = new Request(`http://localhost/admin/agents/sessions/${VALID_UUID}`, { method: 'DELETE' });
     const res = await handleAdminTerminateAgentSession(makeAppContext(req, makeEnv(), makeUserContext()), VALID_UUID);
