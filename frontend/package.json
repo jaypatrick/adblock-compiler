@@ -38,6 +38,7 @@
         "@angular/service-worker": "^21.2.7",
         "@angular/ssr": "^21.2.5",
         "@clerk/clerk-js": "^6.3.0",
+        "@trpc/client": "^11.15.1",
         "hono": "^4.12.8",
         "@clerk/shared": "^4.3.2",
         "@fontsource/ibm-plex-sans": "^5.2.8",
