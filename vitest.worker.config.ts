@@ -19,24 +19,25 @@
  * @see docs/development/testing.md
  */
 
-import { defineWorkersConfig } from '@cloudflare/vitest-pool-workers/config';
+import { cloudflareTest } from '@cloudflare/vitest-pool-workers';
+import { defineConfig } from 'vitest/config';
 
-export default defineWorkersConfig({
-    test: {
-        poolOptions: {
-            workers: {
-                wrangler: {
-                    configPath: './wrangler.toml',
-                },
-                miniflare: {
-                    // Use in-memory storage for tests (not persistent)
-                    kvPersist: false,
-                    d1Persist: false,
-                    r2Persist: false,
-                    durableObjectsPersist: false,
-                },
+export default defineConfig({
+    plugins: [
+        cloudflareTest({
+            wrangler: {
+                configPath: './wrangler.toml',
             },
-        },
+            miniflare: {
+                // Use in-memory storage for tests (not persistent)
+                kvPersist: false,
+                d1Persist: false,
+                r2Persist: false,
+                durableObjectsPersist: false,
+            },
+        }),
+    ],
+    test: {
         include: ['worker/**/*.vitest.test.ts'],
         exclude: [
             'node_modules/**',
