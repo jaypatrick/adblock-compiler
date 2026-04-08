@@ -12,7 +12,21 @@
  * to PostgreSQL). This middleware centralises that creation so multiple
  * route handlers share the same instance within a single request.
  *
- * ## Usage
+ * ## Global integration
+ * `prismaMiddleware()` is mounted globally on the `routes` sub-app in
+ * `worker/hono-app.ts` (guarded by `c.env.HYPERDRIVE` availability).
+ * Route handlers should use `c.get('prisma')` instead of calling
+ * `_internals.createPrismaClient(env.HYPERDRIVE.connectionString)` directly.
+ *
+ * ```typescript
+ * // ✅ Preferred — uses the shared request-scoped client (with required guard)
+ * const prisma = c.get('prisma');
+ * if (!prisma) return c.json({ error: 'Database service unavailable' }, 503);
+ * // ⚠️  Legacy pattern — still works but creates a second client per request
+ * const prisma = _internals.createPrismaClient(env.HYPERDRIVE.connectionString);
+ * ```
+ *
+ * ## Usage (custom mounting)
  * ```typescript
  * import { prismaMiddleware } from './middleware/prisma-middleware.ts';
  *
@@ -26,6 +40,7 @@
  * ```
  *
  * @see worker/lib/prisma.ts — PrismaClient factory
+ * @see worker/hono-app.ts — global mounting in the routes sub-app
  * @see https://developers.cloudflare.com/hyperdrive/
  */
 

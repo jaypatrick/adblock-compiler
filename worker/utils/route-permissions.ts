@@ -113,8 +113,10 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     // Notifications & logging
     ['/notify', { minTier: UserTier.Free, description: 'Send notification' }],
     ['/log', { minTier: UserTier.Free, description: 'Client-side log ingestion' }],
-    // URL proxy (SSRF-protected inside handler)
-    ['/proxy/*', { minTier: UserTier.Free, description: 'SSRF-protected URL proxy' }],
+    // URL proxy (SSRF-protected inside handler; Turnstile for anonymous callers)
+    ['/proxy/fetch', { minTier: UserTier.Anonymous, description: 'CORS proxy for single URL (local mode — anonymous + Turnstile)' }],
+    // Batch proxy requires Pro tier — used for hybrid mode
+    ['/proxy/fetch/batch', { minTier: UserTier.Pro, description: 'CORS proxy batch fetch (hybrid mode, Pro+)' }],
 
     // ── Pro tier (paid / upgraded) ─────────────────────────────────────────────
     ['/compile/async', { minTier: UserTier.Pro, description: 'Async compilation (Pro+)' }],

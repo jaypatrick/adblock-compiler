@@ -1619,6 +1619,79 @@ Requires a valid `Authorization: Bearer <jwt>` header and the correct current pa
 
 ---
 
+### Proxy
+
+#### `GET /api/proxy/fetch`
+
+**Summary:** Proxy fetch a single URL
+
+Fetches the content of a remote HTTPS URL on behalf of the client.
+
+This endpoint exists to allow browser-based (local mode) and hybrid mode compilation to download source filter lists that would otherwise be blocked by browser CORS policies.
+
+**SSRF protection** — private/loopback/link-local IP ranges and cloud metadata endpoints (`169.254.169.254`, `metadata.google.internal`) are blocked.
+
+**Caching** — responses are cached in KV for 5 minutes to reduce upstream load.
+
+**Auth** — anonymous callers must pass a valid Cloudflare Turnstile token via the `X-Turnstile-Token` request header or `turnstileToken` query parameter. Authenticated (Free+) callers are exempt.
+
+**Query Parameters:**
+
+| Parameter | Type | Required | Description |
+|---|---|---|---|
+| `url` | `string` | ✅ | Fully-qualified HTTPS URL to fetch (URL-encoded) |
+| `turnstileToken` | `string` | — | Turnstile token for anonymous callers |
+
+**Responses:**
+
+- `200`: Raw text content of the proxied URL (`text/plain`)
+- `400`: Invalid or unsafe URL
+- `403`: Turnstile verification failed
+- `429`: Rate limit exceeded
+- `502`: Upstream fetch failed
+
+---
+
+#### `POST /api/proxy/fetch/batch`
+
+**Summary:** Batch proxy fetch multiple URLs
+
+Fetches the content of multiple remote HTTPS URLs in parallel.
+
+Used by **hybrid mode**: the Worker fetches source filter lists and returns the raw content to the browser, which then runs the transformation pipeline locally via `WorkerCompiler`.
+
+Requires **Pro tier**.
+
+Maximum **20 URLs** per request.
+
+**Request Body** (`application/json`):
+
+- `urls` (required): `string[]` — HTTPS URLs to fetch (min 1, max 20)
+
+**Response Body** (`application/json`):
+
+```json
+{
+  "success": true,
+  "results": {
+    "https://example.com/list.txt": {
+      "content": "! EasyList\n||example.com^"
+    },
+    "https://bad-url.example.com/": {
+      "error": "Fetch failed: upstream HTTP 404"
+    }
+  }
+}
+```
+
+**Responses:**
+
+- `200`: Map of URL → `{ content?: string; error?: string }`
+- `400`: Invalid request body or unsafe URL detected
+- `401`: Authentication required (Pro tier)
+
+---
+
 ## Schemas
 
 ### ErrorResponse

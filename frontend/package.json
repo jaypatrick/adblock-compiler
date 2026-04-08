@@ -1,6 +1,6 @@
 {
     "name": "adblock-frontend",
-    "version": "1.0.0",
+    "version": "1.1.0",
     "description": "Angular 21 frontend for Adblock Compiler with Material Design, Zoneless Change Detection, and Cloudflare Workers SSR",
     "private": true,
     "scripts": {
@@ -14,6 +14,11 @@
         "test:coverage": "vitest run --coverage",
         "lint": "ng lint",
         "test:e2e": "npx playwright test --config=e2e/playwright.config.ts",
+        "test:e2e:headed": "npx playwright test --config=e2e/playwright.config.ts --headed",
+        "test:e2e:ui": "npx playwright test --config=e2e/playwright.config.ts --ui",
+        "test:e2e:debug": "npx playwright test --config=e2e/playwright.config.ts --debug",
+        "test:e2e:report": "npx playwright show-report",
+        "test:e2e:codegen": "npx playwright codegen http://localhost:4200",
         "preview": "wrangler dev",
         "deploy": "wrangler deploy"
     },

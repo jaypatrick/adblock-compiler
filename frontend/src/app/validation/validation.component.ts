@@ -16,7 +16,7 @@ import { MatChipsModule } from '@angular/material/chips';
 import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
 import { MatCheckboxModule } from '@angular/material/checkbox';
 import { MatDividerModule } from '@angular/material/divider';
-import { ValidationService, ValidationResult } from '../services/validation.service';
+import { ValidationService, ValidationResult, ValidationError } from '../services/validation.service';
 
 @Component({
     selector: 'app-validation',
@@ -112,7 +112,13 @@ import { ValidationService, ValidationResult } from '../services/validation.serv
                                         <span class="text-sm text-on-surface-variant">{{ err.message }}</span>
                                         <mat-chip-set>
                                             <mat-chip>Line {{ err.line }}</mat-chip>
+                                            @if (err.column) {
+                                                <mat-chip>Col {{ err.column }}</mat-chip>
+                                            }
                                             <mat-chip>{{ err.errorType }}</mat-chip>
+                                            @if (errSyntax(err); as syntax) {
+                                                <mat-chip>{{ syntax }}</mat-chip>
+                                            }
                                         </mat-chip-set>
                                     </div>
                                 </div>
@@ -167,6 +173,13 @@ export class ValidationComponent {
         params: () => this.pendingRules(),
         stream: ({ params }) => params ? this.validationService.validate(params, this.strictMode) : EMPTY,
     });
+
+    /** Returns a displayable syntax label for an error, or null if not meaningful. */
+    errSyntax(err: ValidationError): string | null {
+        const s = err.syntax;
+        if (!s || s === 'Common' || s === 'Unknown') return null;
+        return s;
+    }
 
     validate(): void {
         const rules = this.rulesText()

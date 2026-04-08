@@ -45,6 +45,27 @@ export const ASTParseRequestSchema = z.object({
 );
 
 // ============================================================================
+// Convert Rule Request Schema
+// ============================================================================
+
+/**
+ * Target adblock syntax for rule conversion.
+ */
+export const ConversionTargetSchema = z.enum(['adg', 'ubo']).describe('Target adblock syntax: adg (AdGuard) or ubo (uBlock Origin)');
+
+/**
+ * Schema for convert-rule request.
+ */
+export const ConvertRuleRequestSchema = z.object({
+    /** The raw filter rule text to convert */
+    rule: z.string().min(1, 'Rule text is required'),
+    /** Target syntax to convert the rule to */
+    targetSyntax: ConversionTargetSchema,
+    /** Optional Cloudflare Turnstile token consumed by turnstileMiddleware() */
+    turnstileToken: z.string().optional(),
+});
+
+// ============================================================================
 // Admin Request Schemas
 // ============================================================================
 

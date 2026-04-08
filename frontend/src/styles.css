@@ -601,7 +601,7 @@ html[data-theme='dark'] .page-wrapper {
 
 .app-header-shell .app-brand-title {
     font-family: 'Syne', sans-serif;
-    font-size: 2rem;
+    font-size: 2.5rem;
     font-weight: 800;
     margin: 0;
     color: var(--app-header-accent);
@@ -619,10 +619,10 @@ html[data-theme='dark'] .page-wrapper {
 
 .app-header-shell .app-subtitle {
     font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 0.9rem;
-    font-weight: 300;
+    font-size: 1rem;
+    font-weight: 400;
     margin: 0 0 16px 0;
-    color: rgba(240, 236, 228, 0.85);
+    color: rgba(240, 236, 228, 0.95);
     letter-spacing: 0.02em;
     text-align: center;
 }
@@ -722,7 +722,7 @@ html[data-theme='dark'] .page-wrapper {
     border-bottom: 2px solid var(--app-header-accent);
     color: var(--app-header-accent);
     font-family: 'Syne', sans-serif;
-    font-size: 1.1rem;
+    font-size: 1.3rem;
     font-weight: 700;
     letter-spacing: -0.02em;
 }
@@ -740,7 +740,11 @@ html[data-theme='dark'] .page-wrapper {
     }
 
     .app-header-shell .app-brand-title {
-        font-size: 1.25rem;
+        font-size: 1.5rem;
+    }
+
+    .app-header-shell .app-subtitle {
+        font-size: 0.9rem;
     }
 
     /* Hide horizontal tabs on mobile — the sidenav (hamburger) handles navigation. */

@@ -200,6 +200,7 @@ export type {
     WorkerCompilationResult,
     WorkerCompilerOptions,
 } from './platform/index.ts';
+export type { FeatureFlagKey, IFeatureFlagService } from './platform/index.ts';
 
 // Incremental compilation
 export { IncrementalCompiler, MemoryCacheStorage } from './compiler/IncrementalCompiler.ts';

@@ -42,6 +42,8 @@
     "npm:better-auth@^1.5.6": "1.5.6_@prisma+client@7.5.0__prisma@7.5.0___typescript@6.0.2__typescript@6.0.2_pg@8.13.3_prisma@7.5.0__typescript@6.0.2_@opentelemetry+api@1.9.1",
     "npm:cloudflare@5.2.0": "5.2.0",
     "npm:cloudflare@^5.2.0": "5.2.0",
+    "npm:hono@*": "4.12.8",
+    "npm:hono@4.12.8": "4.12.8",
     "npm:hono@^4.12.8": "4.12.8",
     "npm:jose@^6.2.1": "6.2.1",
     "npm:pg@8.13.3": "8.13.3",

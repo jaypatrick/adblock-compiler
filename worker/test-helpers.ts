@@ -100,6 +100,7 @@ export function makeEnv(overrides: Partial<Env> = {}): Env {
         COMPILATION_CACHE: makeKv(),
         RATE_LIMIT: makeKv(),
         METRICS: makeKv(),
+        FEATURE_FLAGS: makeKv(),
         ASSETS: undefined as unknown as Fetcher,
         ...overrides,
     } as unknown as Env;
