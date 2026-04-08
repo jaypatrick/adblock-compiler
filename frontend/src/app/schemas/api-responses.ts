@@ -489,3 +489,33 @@ export type RuleDiff            = z.infer<typeof RuleDiffSchemaLocal>;
 export type DomainDiff          = z.infer<typeof DomainDiffSchemaLocal>;
 export type DiffParseError      = z.infer<typeof DiffParseErrorSchemaLocal>;
 export type CategoryChangeCounts = z.infer<typeof CategoryChangeCountsSchemaLocal>;
+
+// ---------------------------------------------------------------------------
+// Configuration Builder — ZTA validation for /api/configuration/* endpoints
+// ---------------------------------------------------------------------------
+
+const ConfigErrorSchema = z.object({
+    path: z.string(),
+    message: z.string(),
+    code: z.string().optional(),
+});
+export type ConfigError = z.infer<typeof ConfigErrorSchema>;
+
+/** Response schema for POST /api/configuration/validate */
+export const ConfigValidateResponseSchema = z.object({
+    success: z.boolean(),
+    valid: z.boolean(),
+    errors: z.array(ConfigErrorSchema).optional(),
+});
+export type ConfigValidateResponse = z.infer<typeof ConfigValidateResponseSchema>;
+
+/** Response schema for POST /api/configuration/create */
+export const ConfigCreateResponseSchema = z.object({
+    success: z.boolean(),
+    id: z.string().optional(),
+    format: z.string().optional(),
+    expiresIn: z.number().optional(),
+    valid: z.boolean().optional(),
+    errors: z.array(ConfigErrorSchema).optional(),
+});
+export type ConfigCreateResponse = z.infer<typeof ConfigCreateResponseSchema>;

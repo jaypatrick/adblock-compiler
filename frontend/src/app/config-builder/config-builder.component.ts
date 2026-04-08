@@ -14,9 +14,12 @@
 
 import { Component, computed, inject, signal } from '@angular/core';
 import { FormArray, FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
+import { firstValueFrom } from 'rxjs';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
 import { MatButtonModule } from '@angular/material/button';
+import { MatButtonToggleModule } from '@angular/material/button-toggle';
 import { MatIconModule } from '@angular/material/icon';
 import { MatCardModule } from '@angular/material/card';
 import { MatSelectModule } from '@angular/material/select';
@@ -24,16 +27,17 @@ import { MatTabsModule } from '@angular/material/tabs';
 import { MatDividerModule } from '@angular/material/divider';
 import { MatChipsModule } from '@angular/material/chips';
 import { JsonPipe } from '@angular/common';
+import { stringify as yamlStringify } from 'yaml';
 import { NotificationService } from '../services/notification.service';
 import { LogService } from '../services/log.service';
 import { TurnstileComponent } from '../turnstile/turnstile.component';
 import { TurnstileService } from '../services/turnstile.service';
-
-interface ConfigError {
-    path: string;
-    message: string;
-    code?: string;
-}
+import {
+    ConfigValidateResponseSchema,
+    ConfigCreateResponseSchema,
+    ConfigError,
+    validateResponse,
+} from '../schemas/api-responses';
 
 @Component({
     selector: 'app-config-builder',
@@ -43,6 +47,7 @@ interface ConfigError {
         MatFormFieldModule,
         MatInputModule,
         MatButtonModule,
+        MatButtonToggleModule,
         MatIconModule,
         MatCardModule,
         MatSelectModule,
@@ -56,9 +61,10 @@ interface ConfigError {
 })
 export class ConfigBuilderComponent {
     private readonly fb = inject(FormBuilder);
+    private readonly http = inject(HttpClient);
     private readonly notificationService = inject(NotificationService);
     private readonly logService = inject(LogService);
-    private readonly turnstileService = inject(TurnstileService);
+    private readonly _turnstileService = inject(TurnstileService);
 
     // Signals
     readonly isValidating = signal(false);
@@ -144,6 +150,13 @@ export class ConfigBuilderComponent {
         return JSON.stringify(this.generatedConfig(), null, 4);
     });
 
+    readonly previewOutput = computed(() => {
+        if (this.outputFormat() === 'yaml') {
+            return yamlStringify(this.generatedConfig() as Record<string, unknown>);
+        }
+        return this.jsonOutput();
+    });
+
     readonly isFormValid = computed(() => {
         return this.configForm.valid && this.sources.length > 0;
     });
@@ -203,19 +216,16 @@ export class ConfigBuilderComponent {
             const config = this.generatedConfig();
             const token = this.turnstileToken();
 
-            const response = await fetch('/api/configuration/validate', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ config, turnstileToken: token }),
-            });
-
-            const result = await response.json();
+            const raw = await firstValueFrom(
+                this.http.post<unknown>('/api/configuration/validate', { config, turnstileToken: token }),
+            );
+            const result = validateResponse(ConfigValidateResponseSchema, raw, 'POST /configuration/validate');
 
             if (result.valid) {
                 this.notificationService.showSuccess('Configuration is valid!');
                 this.logService.info('Configuration validated successfully');
             } else {
-                this.validationErrors.set(result.errors || []);
+                this.validationErrors.set(result.errors ?? []);
                 this.notificationService.showError('Configuration has validation errors');
             }
         } catch (error) {
@@ -239,16 +249,13 @@ export class ConfigBuilderComponent {
             const format = this.outputFormat();
             const token = this.turnstileToken();
 
-            const response = await fetch('/api/configuration/create', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ config, format, turnstileToken: token }),
-            });
-
-            const result = await response.json();
+            const raw = await firstValueFrom(
+                this.http.post<unknown>('/api/configuration/create', { config, format, turnstileToken: token }),
+            );
+            const result = validateResponse(ConfigCreateResponseSchema, raw, 'POST /configuration/create');
 
             if (result.valid === false) {
-                this.validationErrors.set(result.errors || []);
+                this.validationErrors.set(result.errors ?? []);
                 this.notificationService.showError('Configuration has validation errors');
                 return;
             }
@@ -282,7 +289,7 @@ export class ConfigBuilderComponent {
     }
 
     copyToClipboard(): void {
-        const text = this.jsonOutput();
+        const text = this.previewOutput();
         navigator.clipboard.writeText(text).then(
             () => {
                 this.notificationService.showSuccess('Copied to clipboard');

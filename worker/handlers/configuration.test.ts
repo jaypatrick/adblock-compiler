@@ -14,15 +14,9 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import { makeEnv } from '../test-helpers.ts';
+import { makeEnv, makeInMemoryKv } from '../test-helpers.ts';
 import { SourceType } from '../../src/types/index.ts';
-import {
-    handleConfigurationCreate,
-    handleConfigurationDefaults,
-    handleConfigurationDownload,
-    handleConfigurationResolve,
-    handleConfigurationValidate,
-} from './configuration.ts';
+import { handleConfigurationCreate, handleConfigurationDefaults, handleConfigurationDownload, handleConfigurationResolve, handleConfigurationValidate } from './configuration.ts';
 
 // ============================================================================
 // Fixtures
@@ -445,7 +439,7 @@ Deno.test('handleConfigurationCreate — stores config with extensions field', a
 // ============================================================================
 
 Deno.test('handleConfigurationDownload — returns 404 for non-existent config', async () => {
-    const env = makeEnv();
+    const env = makeEnv({ COMPILATION_CACHE: makeInMemoryKv() });
     const res = await handleConfigurationDownload('00000000-0000-0000-0000-000000000000', 'json', env);
     assertEquals(res.status, 404);
     const body = await res.json() as { success: boolean; error: string };
@@ -454,7 +448,8 @@ Deno.test('handleConfigurationDownload — returns 404 for non-existent config',
 });
 
 Deno.test('handleConfigurationDownload — retrieves stored config in JSON format', async () => {
-    const env = makeEnv();
+    const kv = makeInMemoryKv();
+    const env = makeEnv({ COMPILATION_CACHE: kv });
     // First create a config
     const createReq = makeRequest('POST', { config: VALID_CONFIG, format: 'json' }, 'http://localhost/api/configuration/create');
     const createRes = await handleConfigurationCreate(createReq, env);
@@ -472,7 +467,8 @@ Deno.test('handleConfigurationDownload — retrieves stored config in JSON forma
 });
 
 Deno.test('handleConfigurationDownload — retrieves stored config in YAML format', async () => {
-    const env = makeEnv();
+    const kv = makeInMemoryKv();
+    const env = makeEnv({ COMPILATION_CACHE: kv });
     // First create a config with yaml format
     const createReq = makeRequest('POST', { config: VALID_CONFIG, format: 'yaml' }, 'http://localhost/api/configuration/create');
     const createRes = await handleConfigurationCreate(createReq, env);
@@ -491,7 +487,8 @@ Deno.test('handleConfigurationDownload — retrieves stored config in YAML forma
 });
 
 Deno.test('handleConfigurationDownload — format parameter overrides stored format', async () => {
-    const env = makeEnv();
+    const kv = makeInMemoryKv();
+    const env = makeEnv({ COMPILATION_CACHE: kv });
     // Create with JSON format
     const createReq = makeRequest('POST', { config: VALID_CONFIG, format: 'json' }, 'http://localhost/api/configuration/create');
     const createRes = await handleConfigurationCreate(createReq, env);
@@ -505,7 +502,8 @@ Deno.test('handleConfigurationDownload — format parameter overrides stored for
 });
 
 Deno.test('handleConfigurationDownload — preserves extensions field in downloaded config', async () => {
-    const env = makeEnv();
+    const kv = makeInMemoryKv();
+    const env = makeEnv({ COMPILATION_CACHE: kv });
     const configWithExtensions = {
         ...VALID_CONFIG,
         extensions: { customKey: 'customValue' },
@@ -522,4 +520,3 @@ Deno.test('handleConfigurationDownload — preserves extensions field in downloa
     assertExists(config.extensions);
     assertEquals(config.extensions.customKey, 'customValue');
 });
-

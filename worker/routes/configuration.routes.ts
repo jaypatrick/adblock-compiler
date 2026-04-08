@@ -228,6 +228,17 @@ const configurationCreateRoute = createRoute({
                 },
             },
         },
+        403: {
+            description: 'Turnstile verification failed',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        error: z.string(),
+                    }),
+                },
+            },
+        },
     },
 });
 

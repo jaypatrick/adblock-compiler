@@ -15,6 +15,7 @@ import { ConfigurationManager, ConfigurationValidationError, ObjectConfiguration
 import { ConfigurationSchema } from '../../src/configuration/schemas.ts';
 import { JsonResponse } from '../utils/response.ts';
 import type { Env } from '../types.ts';
+import { stringify as yamlStringify } from '@std/yaml';
 import { z } from 'zod';
 
 // ── Request schemas ─────────────────────────────────────────────────────────
@@ -242,7 +243,9 @@ export async function handleConfigurationCreate(
     const configId = crypto.randomUUID();
     const key = `config:${configId}`;
 
-    // Store in KV with 24-hour expiration
+    // Store in KV with 24-hour expiration.
+    // Use dedicated CONFIG_STORE binding when available; fallback to COMPILATION_CACHE.
+    const kvStore: KVNamespace = env.CONFIG_STORE ?? env.COMPILATION_CACHE;
     const configData = {
         config: validationResult.data,
         format,
@@ -250,7 +253,7 @@ export async function handleConfigurationCreate(
     };
 
     try {
-        await env.COMPILATION_CACHE.put(
+        await kvStore.put(
             key,
             JSON.stringify(configData),
             { expirationTtl: 86400 }, // 24 hours
@@ -284,9 +287,11 @@ export async function handleConfigurationDownload(
     env: Env,
 ): Promise<Response> {
     const key = `config:${configId}`;
+    // Mirror the same KV selection used during create
+    const kvStore: KVNamespace = env.CONFIG_STORE ?? env.COMPILATION_CACHE;
 
     try {
-        const stored = await env.COMPILATION_CACHE.get(key);
+        const stored = await kvStore.get(key);
         if (!stored) {
             return Response.json(
                 { success: false, error: 'Configuration not found or expired' },
@@ -303,8 +308,7 @@ export async function handleConfigurationDownload(
         let filename: string;
 
         if (storedFormat === 'yaml') {
-            // Convert JSON to YAML - simple implementation
-            content = jsonToYaml(config);
+            content = yamlStringify(config as Record<string, unknown>);
             contentType = 'application/x-yaml';
             filename = `config-${configId}.yaml`;
         } else {
@@ -327,52 +331,4 @@ export async function handleConfigurationDownload(
         }
         throw err;
     }
-}
-
-/**
- * Simple JSON to YAML converter for configuration files.
- * This is a basic implementation - for production, consider using a proper YAML library.
- */
-function jsonToYaml(obj: unknown, indent = 0): string {
-    const spaces = '  '.repeat(indent);
-
-    if (obj === null || obj === undefined) {
-        return 'null';
-    }
-
-    if (typeof obj === 'string') {
-        // Escape strings that need quoting
-        if (obj.includes('\n') || obj.includes(':') || obj.includes('#')) {
-            // First escape backslashes, then double quotes, so all occurrences are handled correctly
-            let escaped = obj.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
-            return `"${escaped}"`;
-        }
-        return obj;
-    }
-
-    if (typeof obj === 'number' || typeof obj === 'boolean') {
-        return String(obj);
-    }
-
-    if (Array.isArray(obj)) {
-        if (obj.length === 0) return '[]';
-        return '\n' + obj.map((item) => `${spaces}- ${jsonToYaml(item, indent + 1).trim()}`).join('\n');
-    }
-
-    if (typeof obj === 'object') {
-        const entries = Object.entries(obj);
-        if (entries.length === 0) return '{}';
-
-        return '\n' + entries.map(([key, value]) => {
-            const yamlValue = jsonToYaml(value, indent + 1);
-            if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-                return `${spaces}${key}:${yamlValue}`;
-            } else if (Array.isArray(value)) {
-                return `${spaces}${key}:${yamlValue}`;
-            }
-            return `${spaces}${key}: ${yamlValue}`;
-        }).join('\n');
-    }
-
-    return String(obj);
 }

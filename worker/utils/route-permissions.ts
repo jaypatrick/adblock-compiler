@@ -125,10 +125,12 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/compile/batch/async', { minTier: UserTier.Pro, description: 'Async batch compilation (Pro+)' }],
     ['/workflow/*', { minTier: UserTier.Pro, description: 'Workflow execution (Pro+)' }],
 
-    // ── Configuration management (read/validate/resolve) ─────────────────────
+    // ── Configuration management (read/validate/resolve/create/download) ──────
     ['/configuration/defaults', { minTier: UserTier.Anonymous, description: 'System defaults and hard limits' }],
     ['/configuration/validate', { minTier: UserTier.Free, description: 'Validate a configuration object' }],
     ['/configuration/resolve', { minTier: UserTier.Free, description: 'Merge config layers and return effective IConfiguration' }],
+    ['/configuration/create', { minTier: UserTier.Anonymous, description: 'Create and store a configuration file (Turnstile-gated)' }],
+    ['/configuration/download/*', { minTier: UserTier.Anonymous, description: 'Download a previously stored configuration file' }],
 
     // ── Admin tier (Admin role required) ──────────────────────────────────────
     // Wildcard catch-all for all /admin/* sub-paths (longest-prefix wins for specifics)
