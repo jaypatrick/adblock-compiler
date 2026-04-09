@@ -50,6 +50,7 @@ import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
 import { requireAuth } from './auth.ts';
 import { checkRateLimitTiered, validateRequestSize, verifyTurnstileToken } from './index.ts';
 import type { PrismaClient } from '../../prisma/generated/client.ts';
+import { ProblemResponse } from '../utils/problem-details.ts';
 
 // ============================================================================
 // Local type — mirrors worker/hono-app.ts `Variables` without importing from there.
@@ -94,7 +95,7 @@ export function bodySizeMiddleware(): AppMiddleware {
     return async (c, next) => {
         const sz = await validateRequestSize(c.req.raw, c.env);
         if (!sz.valid) {
-            return c.json({ success: false, error: sz.error ?? 'Request body too large' }, 413);
+            return ProblemResponse.payloadTooLarge(c.req.path, sz.error ?? 'Request body too large');
         }
         await next();
     };
@@ -143,17 +144,17 @@ export function rateLimitMiddleware(): AppMiddleware {
                 tier: c.get('authContext').tier,
                 reason: 'rate_limit_exceeded',
             });
-            return c.json(
+            const retryAfterSecs = Math.ceil((rl.resetAt - Date.now()) / 1000);
+            return ProblemResponse.rateLimited(
+                c.req.path,
+                retryAfterSecs,
+                `Rate limit exceeded. Maximum ${rl.limit} requests per ${RATE_LIMIT_WINDOW} seconds.`,
                 {
-                    success: false,
-                    error: `Rate limit exceeded. Maximum ${rl.limit} requests per ${RATE_LIMIT_WINDOW} seconds.`,
-                },
-                429,
-                {
-                    'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
-                    'X-RateLimit-Limit': String(rl.limit),
-                    'X-RateLimit-Remaining': '0',
-                    'X-RateLimit-Reset': String(rl.resetAt),
+                    headers: {
+                        'X-RateLimit-Limit': String(rl.limit),
+                        'X-RateLimit-Remaining': '0',
+                        'X-RateLimit-Reset': String(rl.resetAt),
+                    },
                 },
             );
         }
@@ -208,9 +209,9 @@ export function turnstileMiddleware(): AppMiddleware {
                 tier,
                 reason: 'invalid_request_body_json',
             });
-            return c.json(
-                { success: false, error: 'Invalid request body — could not extract Turnstile token' },
-                400,
+            return ProblemResponse.badRequest(
+                c.req.path,
+                'Invalid request body — could not extract Turnstile token',
             );
         }
         const result = await verifyTurnstileToken(c.env, token, c.get('ip'));
@@ -224,9 +225,9 @@ export function turnstileMiddleware(): AppMiddleware {
                 tier,
                 reason: result.error ?? 'turnstile_verification_failed',
             });
-            return c.json(
-                { success: false, error: result.error ?? 'Turnstile verification failed' },
-                403,
+            return ProblemResponse.turnstileRejection(
+                c.req.path,
+                result.error ?? 'Turnstile verification failed',
             );
         }
         await next();

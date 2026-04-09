@@ -65,6 +65,7 @@ import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
 import { isPublicEndpoint, matchOrigin } from './utils/cors.ts';
 import { getProjectUrls } from './utils/constants.ts';
+import { ProblemResponse } from './utils/problem-details.ts';
 
 // tRPC
 import { handleTrpcRequest } from './trpc/handler.ts';
@@ -218,10 +219,7 @@ app.onError(async (err, c) => {
     }
 
     applyErrorCorsHeaders(c);
-    return c.json(
-        { success: false, error: 'Internal server error', requestId },
-        500,
-    );
+    return ProblemResponse.internalServerError(c.req.path, requestId);
 });
 
 // ── 0. Server-Timing middleware ───────────────────────────────────────────────
@@ -272,7 +270,10 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c, next) => {
     if (c.req.path === '/api/auth/providers') return next();
     if (!c.env.BETTER_AUTH_SECRET) return c.notFound();
     if (!c.env.HYPERDRIVE) {
-        return c.json({ error: 'Authentication service is temporarily unavailable' }, 503);
+        return ProblemResponse.serviceUnavailable(
+            new URL(c.req.url).pathname,
+            'The authentication service is temporarily unavailable.',
+        );
     }
     const url = new URL(c.req.url);
     const auth = createAuth(c.env, url.origin);
@@ -308,7 +309,10 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c, next) => {
                 method: c.req.method,
                 clientIpHash: AnalyticsService.hashIp(c.get('ip') ?? 'unknown'),
             });
-            return c.json({ error: 'Authentication timed out' }, 504);
+            return ProblemResponse.gatewayTimeout(
+                url.pathname,
+                'The authentication service did not respond in time. Please try again.',
+            );
         }
         throw error;
     }
@@ -347,16 +351,14 @@ app.use('*', async (c, next) => {
                 rateLimit: rl.limit,
                 windowSeconds: RATE_LIMIT_WINDOW,
             });
-            return c.json(
-                { success: false, error: `Rate limit exceeded.` },
-                429,
-                {
-                    'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
+            const retryAfterSecs = Math.ceil((rl.resetAt - Date.now()) / 1000);
+            return ProblemResponse.rateLimited(pathname, retryAfterSecs, undefined, {
+                headers: {
                     'X-RateLimit-Limit': String(rl.limit),
                     'X-RateLimit-Remaining': '0',
                     'X-RateLimit-Reset': String(rl.resetAt),
                 },
-            );
+            });
         }
         c.set('authContext', { ...ANONYMOUS_AUTH_CONTEXT });
         await next();
@@ -389,14 +391,17 @@ app.use('*', async (c, next) => {
                 tier: ANONYMOUS_AUTH_CONTEXT.tier,
                 reason: 'rate_limit_exceeded',
             });
-            return c.json(
-                { success: false, error: `Rate limit exceeded. Maximum ${rl.limit} requests per ${RATE_LIMIT_WINDOW} seconds.` },
-                429,
+            const retryAfterSecs = Math.ceil((rl.resetAt - Date.now()) / 1000);
+            return ProblemResponse.rateLimited(
+                pathname,
+                retryAfterSecs,
+                `Rate limit exceeded. Maximum ${rl.limit} requests per ${RATE_LIMIT_WINDOW} seconds.`,
                 {
-                    'Retry-After': String(Math.ceil((rl.resetAt - Date.now()) / 1000)),
-                    'X-RateLimit-Limit': String(rl.limit),
-                    'X-RateLimit-Remaining': '0',
-                    'X-RateLimit-Reset': String(rl.resetAt),
+                    headers: {
+                        'X-RateLimit-Limit': String(rl.limit),
+                        'X-RateLimit-Remaining': '0',
+                        'X-RateLimit-Reset': String(rl.resetAt),
+                    },
                 },
             );
         }
@@ -465,12 +470,12 @@ app.use('*', async (c, next) => {
 
 app.all('/poc', async (c) => {
     if (c.env.ASSETS) return c.env.ASSETS.fetch(c.req.raw);
-    return c.json({ success: false, error: 'PoC assets not available in this deployment' }, 503);
+    return ProblemResponse.serviceUnavailable(c.req.path, 'PoC assets are not available in this deployment.');
 });
 
 app.all('/poc/*', async (c) => {
     if (c.env.ASSETS) return c.env.ASSETS.fetch(c.req.raw);
-    return c.json({ success: false, error: 'PoC assets not available in this deployment' }, 503);
+    return ProblemResponse.serviceUnavailable(c.req.path, 'PoC assets are not available in this deployment.');
 });
 
 // ============================================================================

@@ -347,4 +347,44 @@ describe('AgentRpcService', () => {
             expect(protocols).toContain('bearer.my-secret-token');
         });
     });
+
+    // -----------------------------------------------------------------------
+    // handleHttpError — RFC 9457 problem+json
+    // -----------------------------------------------------------------------
+
+    describe('handleHttpError() — RFC 9457 application/problem+json', () => {
+        it('should extract detail from a problem+json 403 response', () => {
+            let errorResult: { error: string; status: number } | undefined;
+            service.terminateSession('session-xyz').subscribe({
+                error: (err: { error: string; status: number }) => { errorResult = err; },
+            });
+
+            const req = httpMock.expectOne('/admin/agents/sessions/session-xyz');
+            const problemBody = {
+                type: 'https://adblock-compiler.jayson-knight.workers.dev/probs/forbidden',
+                title: 'Forbidden',
+                status: 403,
+                detail: 'API key is suspended.',
+            };
+            req.flush(problemBody, {
+                status: 403,
+                statusText: 'Forbidden',
+                headers: { 'Content-Type': 'application/problem+json' },
+            });
+            expect(errorResult!.status).toBe(403);
+            expect(errorResult!.error).toContain('API key is suspended.');
+        });
+
+        it('should fall back to generic message for 403 without problem+json', () => {
+            let errorResult: { error: string; status: number } | undefined;
+            service.terminateSession('session-xyz2').subscribe({
+                error: (err: { error: string; status: number }) => { errorResult = err; },
+            });
+
+            const req = httpMock.expectOne('/admin/agents/sessions/session-xyz2');
+            req.flush({ success: false, error: 'Not allowed' }, { status: 403, statusText: 'Forbidden' });
+            expect(errorResult!.status).toBe(403);
+            expect(errorResult!.error).toContain('Insufficient permissions');
+        });
+    });
 });

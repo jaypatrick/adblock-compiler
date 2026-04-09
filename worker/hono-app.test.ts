@@ -75,8 +75,10 @@ Deno.test('GET /api/configuration/defaults rate-limits anonymous users when quot
     const res = await fetch('/api/configuration/defaults', { env });
     assertEquals(res.status, 429);
     const body = await res.json() as Record<string, unknown>;
-    assertEquals(body.success, false);
-    assertStringIncludes(String(body.error), 'Rate limit exceeded');
+    // RFC 9457: application/problem+json body shape
+    assertEquals(typeof body.type, 'string');
+    assertEquals(body.status, 429);
+    assertStringIncludes(String(body.detail), 'Rate limit exceeded');
 });
 
 Deno.test('GET /poc returns 503 when ASSETS not configured', async () => {

@@ -58,6 +58,7 @@ import { Injectable, inject } from '@angular/core';
 import { API_BASE_URL } from '../tokens';
 import { AuthFacadeService } from './auth-facade.service';
 import { LogService } from './log.service';
+import { ProblemDetailsService } from './problem-details.service';
 import type {
     CompileResponseData,
     AsyncCompileResponseData,
@@ -114,6 +115,7 @@ export class AuthedApiClientService {
     private readonly baseUrl = inject(API_BASE_URL);
     private readonly auth = inject(AuthFacadeService);
     private readonly log = inject(LogService);
+    private readonly problemDetails = inject(ProblemDetailsService);
 
     /** Normalised worker origin (no `/api` suffix). */
     private get workerOrigin(): string {
@@ -155,11 +157,11 @@ export class AuthedApiClientService {
 
     /**
      * Reads the error message from a non-ok Response body.
-     * Falls back to `res.statusText` if the body cannot be parsed as JSON.
+     * Handles RFC 9457 `application/problem+json` bodies (reads `detail` field)
+     * and falls back to the legacy `{ error: string }` envelope or `statusText`.
      */
     private async parseErrorMessage(res: Response): Promise<string> {
-        const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-        return err.error ?? res.statusText;
+        return this.problemDetails.extractMessage(res);
     }
 
     // ── Authenticated endpoint wrappers ────────────────────────────────────────

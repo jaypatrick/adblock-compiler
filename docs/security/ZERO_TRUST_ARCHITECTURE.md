@@ -21,6 +21,7 @@ The adblock-compiler implements Zero Trust Architecture (ZTA) across every layer
 | Credential theft | Clerk SDK for auth state — no tokens in `localStorage` |
 | Rate abuse | 5-tier rate limiting keyed by authenticated user or IP |
 | Secret leakage | Worker Secrets only; CI lint checks for secrets in `[vars]` |
+| **BOLA / IDOR** | **Resource queries scoped to `authContext.userId`; validated by API Shield Vulnerability Scanner** |
 
 ## Architecture Layers
 
@@ -32,6 +33,7 @@ Before the Worker executes, Cloudflare provides:
 - **Cloudflare Access**: JWT verification on `/admin/*` and management routes
 - **WAF**: API Shield schema validation and bot score thresholds
 - **Rate Limiting**: Edge-level rate limiting before Worker invocation
+- **API Shield Vulnerability Scanner**: Stateful BOLA/logic-flaw detection using AI call graphs (beta) — see [API Shield Vulnerability Scanner](API_SHIELD_VULNERABILITY_SCANNER.md)
 
 ### Layer 2: Worker Request Handling
 
@@ -112,8 +114,16 @@ The `zta-lint.yml` workflow runs on every PR and checks for:
 3. Secrets in `wrangler.toml [vars]`
 4. Auth tokens in `localStorage`
 
+The `api-shield-scan.yml` workflow runs on every PR touching the OpenAPI spec and checks for:
+
+1. `operationId` coverage on all operations (required for scanner call graphs)
+2. `security:` annotations on resource endpoints
+3. `cloudflare-schema.yaml` drift from `openapi.yaml`
+4. Clean spec validation
+
 ## Related Documentation
 
 - [ZTA Developer Guide](ZTA_DEVELOPER_GUIDE.md) — practical guide for contributors
+- [API Shield Vulnerability Scanner](API_SHIELD_VULNERABILITY_SCANNER.md) — BOLA detection and scanner setup
 - [Security Policy](../../SECURITY.md) — vulnerability reporting
 - [Auth Configuration](../auth/configuration.md) — Clerk integration setup
