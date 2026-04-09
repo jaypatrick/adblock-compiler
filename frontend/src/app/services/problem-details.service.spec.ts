@@ -80,6 +80,10 @@ describe('ProblemDetailsService', () => {
         it('returns false for empty string', () => {
             expect(ProblemDetailsService.isProblemContentType('')).toBe(false);
         });
+
+        it('returns true for mixed-case content type (RFC 9110 case-insensitive)', () => {
+            expect(ProblemDetailsService.isProblemContentType('Application/Problem+JSON')).toBe(true);
+        });
     });
 
     // ── isFromFetchHeaders ────────────────────────────────────────────────────

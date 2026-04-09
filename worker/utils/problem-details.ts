@@ -73,6 +73,7 @@ export const PROBLEM_TYPES = {
     badRequest: `${PROBLEM_TYPE_BASE}/bad-request`,
     internalServerError: `${PROBLEM_TYPE_BASE}/internal-server-error`,
     serviceUnavailable: `${PROBLEM_TYPE_BASE}/service-unavailable`,
+    gatewayTimeout: `${PROBLEM_TYPE_BASE}/gateway-timeout`,
     payloadTooLarge: `${PROBLEM_TYPE_BASE}/payload-too-large`,
     turnstileRejection: `${PROBLEM_TYPE_BASE}/turnstile-rejection`,
     adblockDetected: `${PROBLEM_TYPE_BASE}/adblock-detected`,
@@ -127,15 +128,14 @@ export interface ProblemDetails {
 
 /**
  * Build a `Headers` object for a `application/problem+json` response.
- * Merges optional caller-supplied headers into the baseline set.
+ * Caller-supplied headers are merged first; `Content-Type` is always set last
+ * so it cannot be accidentally overridden away from `application/problem+json`.
  */
 function buildProblemHeaders(options: Omit<ResponseOptions, 'status'> = {}): Record<string, string> {
     const headers: Record<string, string> = {
+        ...(options.headers ?? {}),
         'Content-Type': PROBLEM_CONTENT_TYPE,
     };
-    if (options.headers) {
-        Object.assign(headers, options.headers);
-    }
     return headers;
 }
 
@@ -176,7 +176,7 @@ export const ProblemResponse = {
      * @param detail   - Optional human-readable explanation
      */
     badRequest(instance: string, detail?: string, options: Omit<ResponseOptions, 'status'> = {}): Response {
-        return this.create({
+        return ProblemResponse.create({
             type: PROBLEM_TYPES.badRequest,
             title: 'Bad Request',
             status: 400,
@@ -192,7 +192,7 @@ export const ProblemResponse = {
      * @param detail   - Optional human-readable explanation
      */
     unauthorized(instance: string, detail?: string, options: Omit<ResponseOptions, 'status'> = {}): Response {
-        return this.create({
+        return ProblemResponse.create({
             type: PROBLEM_TYPES.unauthorized,
             title: 'Unauthorized',
             status: 401,
@@ -208,7 +208,7 @@ export const ProblemResponse = {
      * @param detail   - Optional human-readable explanation
      */
     forbidden(instance: string, detail?: string, options: Omit<ResponseOptions, 'status'> = {}): Response {
-        return this.create({
+        return ProblemResponse.create({
             type: PROBLEM_TYPES.forbidden,
             title: 'Forbidden',
             status: 403,
@@ -229,7 +229,7 @@ export const ProblemResponse = {
      * @param detail   - Optional reason from the Turnstile verification result
      */
     turnstileRejection(instance: string, detail?: string, options: Omit<ResponseOptions, 'status'> = {}): Response {
-        return this.create({
+        return ProblemResponse.create({
             type: PROBLEM_TYPES.turnstileRejection,
             title: 'Turnstile Verification Failed',
             status: 403,
@@ -246,7 +246,7 @@ export const ProblemResponse = {
      * @param detail   - Optional description of the blocked resource
      */
     adblockDetected(instance: string, detail?: string, options: Omit<ResponseOptions, 'status'> = {}): Response {
-        return this.create({
+        return ProblemResponse.create({
             type: PROBLEM_TYPES.adblockDetected,
             title: 'Adblock Detected',
             status: 403,
@@ -262,7 +262,7 @@ export const ProblemResponse = {
      * @param detail   - Optional human-readable explanation
      */
     notFound(instance: string, detail?: string, options: Omit<ResponseOptions, 'status'> = {}): Response {
-        return this.create({
+        return ProblemResponse.create({
             type: PROBLEM_TYPES.notFound,
             title: 'Not Found',
             status: 404,
@@ -278,7 +278,7 @@ export const ProblemResponse = {
      * @param detail   - Optional human-readable explanation
      */
     payloadTooLarge(instance: string, detail?: string, options: Omit<ResponseOptions, 'status'> = {}): Response {
-        return this.create({
+        return ProblemResponse.create({
             type: PROBLEM_TYPES.payloadTooLarge,
             title: 'Payload Too Large',
             status: 413,
@@ -303,7 +303,7 @@ export const ProblemResponse = {
         detail?: string,
         options: Omit<ResponseOptions, 'status'> = {},
     ): Response {
-        return this.create({
+        return ProblemResponse.create({
             type: PROBLEM_TYPES.rateLimited,
             title: 'Too Many Requests',
             status: 429,
@@ -332,7 +332,7 @@ export const ProblemResponse = {
         detail?: string,
         options: Omit<ResponseOptions, 'status'> = {},
     ): Response {
-        return this.create({
+        return ProblemResponse.create({
             type: PROBLEM_TYPES.internalServerError,
             title: 'Internal Server Error',
             status: 500,
@@ -349,11 +349,28 @@ export const ProblemResponse = {
      * @param detail   - Optional human-readable explanation
      */
     serviceUnavailable(instance: string, detail?: string, options: Omit<ResponseOptions, 'status'> = {}): Response {
-        return this.create({
+        return ProblemResponse.create({
             type: PROBLEM_TYPES.serviceUnavailable,
             title: 'Service Unavailable',
             status: 503,
             detail: detail ?? 'The service is temporarily unavailable. Please try again later.',
+            instance,
+        }, options);
+    },
+
+    /**
+     * 504 Gateway Timeout — an upstream dependency (database, auth provider, etc.)
+     * did not respond within the allowed time.
+     *
+     * @param instance - The request path
+     * @param detail   - Optional human-readable explanation
+     */
+    gatewayTimeout(instance: string, detail?: string, options: Omit<ResponseOptions, 'status'> = {}): Response {
+        return ProblemResponse.create({
+            type: PROBLEM_TYPES.gatewayTimeout,
+            title: 'Gateway Timeout',
+            status: 504,
+            detail: detail ?? 'An upstream dependency did not respond in time. Please try again.',
             instance,
         }, options);
     },

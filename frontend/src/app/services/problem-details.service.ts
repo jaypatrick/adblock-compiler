@@ -106,7 +106,7 @@ export class ProblemDetailsService {
      */
     static isProblemContentType(contentType: string | null): boolean {
         if (!contentType) return false;
-        return contentType.split(';')[0].trim() === PROBLEM_CONTENT_TYPE;
+        return contentType.split(';')[0].trim().toLowerCase() === PROBLEM_CONTENT_TYPE;
     }
 
     /**

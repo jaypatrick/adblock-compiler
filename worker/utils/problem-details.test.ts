@@ -213,6 +213,18 @@ Deno.test('ProblemResponse.serviceUnavailable — returns 503', async () => {
     assertEquals(body.title, 'Service Unavailable');
 });
 
+// ── gatewayTimeout ────────────────────────────────────────────────────────────
+
+Deno.test('ProblemResponse.gatewayTimeout — returns 504', async () => {
+    const res = ProblemResponse.gatewayTimeout('/api/auth');
+    assertEquals(res.status, 504);
+    const body = await parseBody(res);
+    assertEquals(body.status, 504);
+    assertEquals(body.type, PROBLEM_TYPES.gatewayTimeout);
+    assertEquals(body.title, 'Gateway Timeout');
+    assertEquals(body.instance, '/api/auth');
+});
+
 // ── create (low-level) ───────────────────────────────────────────────────────
 
 Deno.test('ProblemResponse.create — passes through extension fields', async () => {
@@ -240,5 +252,15 @@ Deno.test('ProblemResponse — forwards custom headers from options', async () =
     assertEquals(res.headers.get('X-Request-Id'), 'req-xyz');
     // Content-Type must still be problem+json even when extra headers are set
     assertStringIncludes(res.headers.get('Content-Type') ?? '', PROBLEM_CONTENT_TYPE);
+    await res.text();
+});
+
+Deno.test('ProblemResponse — caller cannot override Content-Type away from problem+json', async () => {
+    // If a caller accidentally passes Content-Type: application/json, it must be
+    // silently overridden to application/problem+json to preserve the RFC contract.
+    const res = ProblemResponse.badRequest('/api/validate', undefined, {
+        headers: { 'Content-Type': 'application/json' },
+    });
+    assertEquals(res.headers.get('Content-Type'), PROBLEM_CONTENT_TYPE);
     await res.text();
 });
