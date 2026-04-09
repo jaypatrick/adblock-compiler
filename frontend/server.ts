@@ -155,8 +155,10 @@ const handler = {
             // the custom domain is active.
             const canonical = env.CANONICAL_DOMAIN;
             if (canonical) {
-                const host = new URL(request.url).hostname;
-                if (!host.endsWith(canonical)) {
+                const normalizedCanonical = canonical.toLowerCase();
+                const host = new URL(request.url).hostname.toLowerCase();
+                const isCanonicalHost = host === normalizedCanonical || host.endsWith(`.${normalizedCanonical}`);
+                if (!isCanonicalHost) {
                     headers.set('X-Robots-Tag', 'noindex, nofollow');
                 }
             }

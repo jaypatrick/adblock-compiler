@@ -113,6 +113,7 @@ const MONITORING_API_PATHS = [
 const PRE_AUTH_PATHS = [
     '/',
     '/api',
+    '/api/',
     '/api/version',
     '/api/schemas',
     '/api/turnstile-config',
@@ -442,15 +443,17 @@ app.use('*', prettyJSON());
 
 // ── 7. Crawl protection — noindex on non-canonical domains ───────────────────
 // Adds X-Robots-Tag: noindex, nofollow to every response that is served from a
-// hostname that does not end with the configured CANONICAL_DOMAIN.
+// hostname that is not the configured CANONICAL_DOMAIN or one of its subdomains.
 // This protects the workers.dev temporary subdomain from being indexed while
 // the custom domain is active.
 app.use('*', async (c, next) => {
     await next();
-    const canonical = c.env.CANONICAL_DOMAIN;
+    const canonical = c.env.CANONICAL_DOMAIN?.toLowerCase();
     if (canonical) {
-        const host = c.req.header('host') ?? '';
-        if (!host.endsWith(canonical)) {
+        const hostHeader = c.req.header('host') ?? '';
+        const host = hostHeader.toLowerCase().split(':', 1)[0] ?? '';
+        const isCanonicalHost = host === canonical || host.endsWith(`.${canonical}`);
+        if (!isCanonicalHost) {
             c.header('X-Robots-Tag', 'noindex, nofollow');
         }
     }

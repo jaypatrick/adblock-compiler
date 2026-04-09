@@ -134,13 +134,34 @@ All public-facing URLs are managed as `[vars]` entries and kept in sync across b
 | `URL_API` | API / backend worker | `https://api.<your-domain>` |
 | `URL_DOCS` | Documentation site | `https://docs.<your-domain>` |
 | `URL_LANDING` | Marketing landing page | `https://<your-domain>` |
-| `CANONICAL_DOMAIN` | Base domain (used in canonical URLs) | `<your-domain>` |
+| `CANONICAL_DOMAIN` | Domain used for crawl-protection noindex logic | `<your-domain>` |
+
+`CANONICAL_DOMAIN` controls the `X-Robots-Tag: noindex, nofollow` header. Any request
+arriving at a hostname that is neither `<CANONICAL_DOMAIN>` nor a subdomain of it will
+receive the noindex header. This prevents `*.workers.dev` and other temporary hostnames
+from being indexed by search engines while a custom domain is active.
+
+> **Important:** `CANONICAL_DOMAIN` must be the *full* domain you use — not just the
+> registrable root. For `api.bloqr.ai`, set `CANONICAL_DOMAIN = "bloqr.ai"` so that
+> all `*.bloqr.ai` subdomains are treated as canonical. Setting it to `ai` would match
+> every `.ai` TLD hostname, which is wrong.
 
 To swap all URLs at once, run:
 
 ```bash
+# Interactive — prompts for root domain and (optionally) canonical domain
 deno task domain:swap
+
+# Non-interactive examples
+deno task domain:swap -- --domain bloqr.jaysonknight.com
+deno task domain:swap -- --domain bloqr.ai --canonical bloqr.ai
+
+# Preview changes without writing any files
+deno task domain:swap -- --domain bloqr.ai --dry-run
 ```
+
+The script updates **both** `[vars]` and `[env.dev.vars]` in each `wrangler.toml`, so
+both environments stay in sync after a single run.
 
 For detailed URL change steps, see [URL Management](../reference/URL_MANAGEMENT.md).
 
