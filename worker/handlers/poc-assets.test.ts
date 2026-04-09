@@ -55,8 +55,10 @@ Deno.test('poc-assets - returns 503 when ASSETS binding is absent', async () => 
     const url = new URL(req.url);
     const res = await handleRequest(req, env, url, url.pathname, makeCtx());
     assertEquals(res.status, 503);
-    const body = await res.json() as { success: boolean; error: string };
-    assertEquals(body.success, false);
+    const body = await res.json() as Record<string, unknown>;
+    // RFC 9457: application/problem+json body shape
+    assertEquals(typeof body.type, 'string');
+    assertEquals(body.status, 503);
 });
 
 Deno.test('poc-assets - returns 429 and rate-limit headers when limit is exhausted', async () => {
@@ -76,8 +78,10 @@ Deno.test('poc-assets - returns 429 and rate-limit headers when limit is exhaust
     const url = new URL(req.url);
     const res = await handleRequest(req, env, url, url.pathname, makeCtx());
     assertEquals(res.status, 429);
-    const body = await res.json() as { success: boolean };
-    assertEquals(body.success, false);
+    const body = await res.json() as Record<string, unknown>;
+    // RFC 9457: application/problem+json body shape
+    assertEquals(typeof body.type, 'string');
+    assertEquals(body.status, 429);
     assertEquals(res.headers.has('Retry-After'), true);
     assertEquals(res.headers.has('X-RateLimit-Limit'), true);
     assertEquals(res.headers.has('X-RateLimit-Remaining'), true);

@@ -44,6 +44,7 @@ import type {
     AgentListItem,
 } from '../models/agent.models';
 import { KNOWN_AGENTS } from '../models/agent.models';
+import { ProblemDetailsService } from './problem-details.service';
 
 /** Maximum number of automatic WebSocket reconnect attempts before giving up. */
 const MAX_RECONNECT_ATTEMPTS = 5;
@@ -428,6 +429,12 @@ export class AgentRpcService {
                 : 'Rate limited — please wait before retrying.';
         } else if (error.status === 409) {
             message = 'Session is already terminated.';
+        } else if (ProblemDetailsService.isFromHeader(error.headers) && error.error && typeof error.error === 'object') {
+            // RFC 9457: parse the problem+json body for a structured detail message.
+            const problem = ProblemDetailsService.parse(error.error);
+            if (problem) {
+                message = ProblemDetailsService.messageFromBody(problem);
+            }
         } else if (error.status === 403) {
             message = 'Insufficient permissions to perform this action.';
         } else if (error.status === 401) {

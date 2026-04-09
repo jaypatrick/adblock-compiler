@@ -275,4 +275,50 @@ describe('AuthedApiClientService', () => {
             ).rejects.toThrow('503');
         });
     });
+
+    // ── RFC 9457 problem+json error parsing ──────────────────────────────────────
+
+    describe('parseErrorMessage() — RFC 9457 application/problem+json', () => {
+        it('extracts detail from application/problem+json error response', async () => {
+            setup();
+            const problem = {
+                type: 'https://adblock-compiler.jayson-knight.workers.dev/probs/rate-limited',
+                title: 'Too Many Requests',
+                status: 429,
+                detail: 'Rate limit exceeded. Retry after 30 seconds.',
+                instance: '/api/compile',
+            };
+            fetchSpy.mockResolvedValueOnce(
+                new Response(JSON.stringify(problem), {
+                    status: 429,
+                    headers: { 'Content-Type': 'application/problem+json' },
+                }),
+            );
+
+            await expect(
+                service.compile({
+                    configuration: { name: 'Test', sources: [], transformations: [] },
+                }),
+            ).rejects.toThrow('Rate limit exceeded. Retry after 30 seconds.');
+        });
+
+        it('falls back to title when detail absent in problem+json', async () => {
+            setup();
+            const problem = {
+                type: 'https://adblock-compiler.jayson-knight.workers.dev/probs/unauthorized',
+                title: 'Unauthorized',
+                status: 401,
+            };
+            fetchSpy.mockResolvedValueOnce(
+                new Response(JSON.stringify(problem), {
+                    status: 401,
+                    headers: { 'Content-Type': 'application/problem+json' },
+                }),
+            );
+
+            await expect(
+                service.listRules(),
+            ).rejects.toThrow('Unauthorized');
+        });
+    });
 });
