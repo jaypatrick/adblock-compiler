@@ -1,18 +1,25 @@
 # ============================================================================
-# wrangler.toml — API Worker configuration (Cloudflare production)
+# wrangler.toml — API Worker configuration (Cloudflare)
 # ============================================================================
 #
-# TWO ENVIRONMENTS ONLY:
+# THREE ENVIRONMENTS:
 #
-#   Local dev  →  `wrangler dev`
+#   Local dev  →  `wrangler dev`  (ENVIRONMENT auto-set to "local" via .dev.vars)
 #                 Secrets and local overrides loaded from .dev.vars (gitignored).
 #                 Copy .dev.vars.example → .dev.vars and fill in your values.
 #                 Uses live Cloudflare resources by default; pass --local to
 #                 run KV/D1/R2 entirely on-device instead.
 #
+#   Dev        →  `wrangler deploy --env dev`
+#                 Deploys to *.workers.dev subdomain (no custom domain routes).
+#                 ENVIRONMENT = "development" — full source maps, unoptimised
+#                 Worker code, verbose logging. Angular DevTools works here.
+#                 Run:  deno task wrangler:deploy:dev
+#
 #   Production →  `wrangler deploy`
-#                 This file IS the production configuration.
-#                 No [env.production] block is needed.
+#                 Deploys to api.bloqr.jaysonknight.com via the [[routes]] block.
+#                 ENVIRONMENT = "production". No [env.production] block needed —
+#                 this file IS the production configuration.
 #
 # SECRETS — never put in this file; use `wrangler secret put` for production
 #           and .dev.vars for local dev:
@@ -42,6 +49,10 @@ workers_dev = true
 
 # Forward all worker logs to Cloudflare Logpush (production only; no-op locally).
 logpush = true
+
+[[routes]]
+pattern = "api.bloqr.jaysonknight.com"
+custom_domain = true
 
 # ─── import.meta.url shim ────────────────────────────────────────────────────
 # Provides a stable fallback so that Node.js-compat polyfills
@@ -99,14 +110,16 @@ ENVIRONMENT = "production"
 TURNSTILE_SITE_KEY = "0x4AAAAAACMKiPZdJh8I8IEM"
 # Keep in sync with URL_FRONTEND, URL_API, and URL_DOCS below.
 # For production, prefer: wrangler secret put CORS_ALLOWED_ORIGINS
-CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787,https://adblock-compiler.jayson-knight.workers.dev,https://adblock-frontend.jayson-knight.workers.dev"
+CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787,https://app.bloqr.jaysonknight.com,https://api.bloqr.jaysonknight.com"
 # ─── Project URLs ─────────────────────────────────────────────────────────────
 # Single source of truth for all public-facing service URLs.
-# When you switch to a custom domain, update these three values only.
-URL_FRONTEND = "https://adblock-frontend.jayson-knight.workers.dev"
-URL_API      = "https://adblock-compiler.jayson-knight.workers.dev"
-URL_DOCS     = "https://adblock-compiler-docs.pages.dev"
-URL_LANDING  = "https://adblock-compiler-landing.pages.dev"
+# When you switch to a custom domain, update these values only, or run:
+#   deno task domain:swap
+URL_FRONTEND     = "https://app.bloqr.jaysonknight.com"
+URL_API          = "https://api.bloqr.jaysonknight.com"
+URL_DOCS         = "https://docs.bloqr.jaysonknight.com"
+URL_LANDING      = "https://bloqr.jaysonknight.com"
+CANONICAL_DOMAIN = "bloqr.ai"
 
 # ─── KV Namespaces ───────────────────────────────────────────────────────────
 # `wrangler dev` binds to these live namespaces by default.
@@ -238,18 +251,6 @@ new_sqlite_classes = ["PlaywrightMcpAgent"]
 tag = "v3"
 new_sqlite_classes = ["CompilationCoordinator"]
 
-# ─── Static assets ───────────────────────────────────────────────────────────
-# Served from the Angular production build output at the CDN edge.
-# For local dev, run `npm --prefix frontend start` for the Angular dev server,
-# or `wrangler dev` to serve the pre-built dist output.
-[assets]
-directory = "./frontend/dist/adblock-compiler/browser"
-binding = "ASSETS"
-html_handling = "auto-trailing-slash"
-# SPA fallback: any path not matching a static file gets index.html so
-# Angular's client-side router can handle /compiler, /performance, etc.
-not_found_handling = "single-page-application"
-
 # ─── Tail Workers ────────────────────────────────────────────────────────────
 # Deploy wrangler.tail.toml first; the tail worker must exist in your account
 # before this binding can be registered.
@@ -361,3 +362,37 @@ enable_containers = true
 # [[bindings]]
 # type = "dynamic_worker_loader"
 # name = "DYNAMIC_WORKER_LOADER"
+
+# ============================================================================
+# [env.dev] — Dev environment (workers.dev only, no custom domain routes)
+#
+# Deploy:   deno task wrangler:deploy:dev
+#
+# ENVIRONMENT = "development" so Sentry tags requests correctly and debug
+# middleware / verbose logging is enabled on the Worker side.
+#
+# Routes: NOT inherited from top-level. This environment is accessible only
+# via the auto-generated *.workers.dev subdomain (workers_dev = true is
+# inherited from the top-level config).
+#
+# Bindings (KV, D1, R2, Queues, etc.) are inherited from the top-level
+# config. Dev and production share the same Cloudflare resources by default.
+# Create separate namespaces/databases and override them here when isolation
+# is needed.
+#
+# Secrets: the same Worker Secrets apply to all environments. Use
+#   wrangler secret put <KEY> --env dev
+# to set env-specific secrets if needed.
+# ============================================================================
+[env.dev]
+logpush = false
+
+[env.dev.vars]
+ENVIRONMENT = "development"
+COMPILER_VERSION = "0.83.0-dev"
+CANONICAL_DOMAIN = "bloqr.ai"
+CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787"
+URL_FRONTEND = "https://app.bloqr.jaysonknight.com"
+URL_API      = "https://api.bloqr.jaysonknight.com"
+URL_DOCS     = "https://docs.bloqr.jaysonknight.com"
+URL_LANDING  = "https://bloqr.jaysonknight.com"

@@ -165,20 +165,30 @@ This means a single `wrangler deploy` from the repo root deploys **both** the AP
 
 ## Deployment
 
+Both Workers support **three environments** — local, dev, and production. See
+[Environments](ENVIRONMENTS.md) for the full reference including deploy commands,
+URL configuration, and TOML scoping rules.
+
 ### Backend
 
 ```bash
-# From repo root
+# Production
 deno task wrangler:deploy
+
+# Dev (deploys to *.workers.dev, ENVIRONMENT=development)
+deno task wrangler:deploy:dev
 ```
 
 ### Frontend (Independent SSR mode)
 
 ```bash
-# Preferred — builds, injects CF analytics token, and deploys in one step:
+# Production — preferred (builds, injects CF analytics token, deploys)
 sh scripts/deploy-frontend.sh
 
-# Or step by step (from repo root):
+# Dev (Angular development build + *.workers.dev deploy)
+deno task ui:deploy:ng:dev
+
+# Production step by step (from repo root):
 pnpm --filter adblock-frontend run build
 sh scripts/build-worker.sh      # injects/removes {{CF_WEB_ANALYTICS_TOKEN}} in index.html
 pnpm --filter adblock-frontend run deploy

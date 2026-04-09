@@ -115,6 +115,24 @@ Deno.test('GET /api/docs serves Scalar UI documentation', async () => {
     assertEquals(contentType?.includes('text/html'), true);
 });
 
+Deno.test('GET / serves the developer landing page', async () => {
+    const res = await fetch('/');
+    assertEquals(res.status, 200);
+    const contentType = res.headers.get('Content-Type');
+    assertEquals(contentType?.includes('text/html'), true);
+    const html = await res.text();
+    // Landing page must contain Bloqr API branding and links to all doc UIs
+    assertEquals(html.includes('Bloqr API'), true);
+    assertEquals(html.includes('/api/docs'), true);
+});
+
+Deno.test('GET /api serves the developer landing page', async () => {
+    const res = await fetch('/api');
+    assertEquals(res.status, 200);
+    const contentType = res.headers.get('Content-Type');
+    assertEquals(contentType?.includes('text/html'), true);
+});
+
 Deno.test('404 for unknown routes', async () => {
     const res = await fetch('/no-such-route-xyz');
     // Static assets handler may return 404 or 503; at minimum should not be 200 or 500

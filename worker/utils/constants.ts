@@ -49,15 +49,21 @@ export const FRONTEND_URL_FALLBACK = 'https://adblock-frontend.jayson-knight.wor
 export const API_URL_FALLBACK = 'https://adblock-compiler.jayson-knight.workers.dev';
 
 /**
+ * Fallback URL for the landing / marketing page, used when env.URL_LANDING is absent.
+ */
+export const LANDING_URL_FALLBACK = 'https://bloqr.jaysonknight.com';
+
+/**
  * Returns the project URLs from the worker env, falling back to the hardcoded
  * defaults when running outside the Workers runtime (tests, CLI).
  */
-export function getProjectUrls(env: { URL_FRONTEND?: string; URL_API?: string; URL_DOCS?: string }) {
+export function getProjectUrls(env: { URL_FRONTEND?: string; URL_API?: string; URL_DOCS?: string; URL_LANDING?: string }) {
     const rawDocs = env.URL_DOCS ?? DOCS_SITE_URL_FALLBACK;
     return {
         frontend: env.URL_FRONTEND ?? FRONTEND_URL_FALLBACK,
         api: env.URL_API ?? API_URL_FALLBACK,
         docs: rawDocs.endsWith('/') ? rawDocs : rawDocs + '/', // ensure trailing slash
+        landing: env.URL_LANDING ?? LANDING_URL_FALLBACK,
     } as const;
 }
 

@@ -4,6 +4,7 @@ Guides for deploying the Adblock Compiler to various platforms.
 
 ## Contents
 
+- [Environments](ENVIRONMENTS.md) - Three-environment model (local / dev / production), deploy commands, TOML scoping rules
 - [Docker](DOCKER.md) - Docker Compose deployment guide with Kubernetes examples
 - [Cloudflare Containers](cloudflare-containers.md) - Deploy to Cloudflare edge network
 - [Cloudflare Pages](cloudflare-pages.md) - Deploy to Cloudflare Pages
@@ -22,6 +23,7 @@ Access the web UI at http://localhost:8787
 
 ## Related
 
+- [Environments](ENVIRONMENTS.md) - Deploy to local / dev / production
 - [Quick Start Guide](../guides/quick-start.md) - Get up and running quickly
 - [Environment Configuration](../reference/ENV_CONFIGURATION.md) - Environment variables
 - [GitHub Actions Environment Setup](../workflows/ENV_SETUP.md) - CI/CD environment configuration

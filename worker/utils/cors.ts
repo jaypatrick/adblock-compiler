@@ -19,6 +19,7 @@ const PUBLIC_ENDPOINT_PREFIXES = [
     '/api/openapi.json',
     '/api/docs',
     '/api/swagger',
+    '/api/redoc',
     '/api/turnstile-config',
     '/api/sentry-config',
     '/api/deployments',

@@ -269,8 +269,8 @@ export interface Env {
     COMPILATION_CACHE: KVNamespace;
     RATE_LIMIT: KVNamespace;
     METRICS: KVNamespace;
-    // Static assets (always present; wrangler types generates this as required via wrangler 4.72 fix)
-    ASSETS: Fetcher;
+    // Static assets (optional — absent when the API worker is deployed without an [assets] binding)
+    ASSETS?: Fetcher;
     // Queue bindings (optional - queues must be created in Cloudflare dashboard first)
     ADBLOCK_COMPILER_QUEUE?: Queue<QueueMessage>;
     ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY?: Queue<QueueMessage>;
@@ -403,6 +403,10 @@ export interface Env {
     URL_API?: string;
     /** Public URL of the mdBook documentation site. Set in wrangler.toml [vars]. */
     URL_DOCS?: string;
+    /** Public URL of the landing / marketing page. Set in wrangler.toml [vars]. */
+    URL_LANDING?: string;
+    /** Canonical root domain (e.g. "bloqr.ai"). Used for crawl-protection noindex logic. */
+    CANONICAL_DOMAIN?: string;
     // --- Cloudflare Containers ---
     // Shared secret for Worker→Container auth (X-Container-Secret). Must match container env. Set via `wrangler secret put CONTAINER_SECRET`.
     CONTAINER_SECRET?: string;
