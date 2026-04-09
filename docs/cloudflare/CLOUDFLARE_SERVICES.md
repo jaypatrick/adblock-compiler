@@ -239,15 +239,16 @@ invocation_logs = true   # include per-invocation metadata (status, duration, ou
 ### What "persistent" means
 
 Without `persist = true`, Workers Logs are available only during the **live tail** window
-(roughly 5 minutes). With `persist = true`, logs are retained for **up to 30 days** (subject
-to your Cloudflare plan) and are queryable via the Cloudflare dashboard or the Workers Logs
-REST API.
+(roughly 5 minutes). With `persist = true`, logs remain queryable beyond live tail, but only
+for the normal Workers Logs retention window: **up to 24 hours** without Logpush. For retention
+beyond that window, export logs via Logpush or another external sink (see
+[Logpush → R2](../observability/LOGPUSH.md)).
 
 ### Querying persistent logs
 
 **Via Cloudflare Dashboard:**
 1. *Workers & Pages → adblock-compiler → Logs*
-2. Use the time range picker to look back up to 30 days.
+2. Use the time range picker to look back up to 24 hours.
 3. Filter by outcome (`exception`, `exceededCpu`), log level, or log text.
 
 **Via CLI (live tail):**
@@ -291,41 +292,33 @@ See [Cloudflare Native Observability](../observability/CLOUDFLARE_OBSERVABILITY.
 
 ## Static Asset Hosting
 
-The `ASSETS` binding in both Workers serves the Angular frontend and compiled artifacts
-directly from Cloudflare's CDN edge — bypassing the Worker's `fetch` handler entirely.
+Only the **frontend Worker** (`frontend/wrangler.toml`) defines an `ASSETS` binding. That
+binding serves the Angular application's static files (JS bundles, CSS, fonts, pre-rendered
+HTML) directly from Cloudflare's assets/CDN path — without invoking the frontend Worker's
+`fetch` handler for those requests.
+
+The **API Worker** (`wrangler.toml`) does **not** define an `ASSETS` binding. All requests to
+API routes are handled by the API Worker's `fetch` handler.
 
 ### How it works
 
 ```mermaid
 sequenceDiagram
     participant Browser
-    participant CF_CDN as Cloudflare CDN
-    participant Worker as Worker (fetch handler)
+    participant FrontendAssets as Frontend assets/CDN
+    participant ApiWorker as API Worker (fetch handler)
 
-    Browser->>CF_CDN: GET /main.abc123.js
-    CF_CDN-->>Browser: 200 (cached, Worker never invoked)
+    Browser->>FrontendAssets: GET /main.abc123.js
+    FrontendAssets-->>Browser: 200 (static asset, served from CDN/assets path)
 
-    Browser->>Worker: GET /api/compile
-    Worker->>Worker: Business logic
-    Worker-->>Browser: 200 JSON
+    Browser->>ApiWorker: GET /api/compile
+    ApiWorker->>ApiWorker: Business logic
+    ApiWorker-->>Browser: 200 JSON
 ```
 
-### API Worker — bundled mode
+### Frontend Worker — static asset configuration
 
-The root `wrangler.toml` serves the Angular SPA:
-
-```toml
-[assets]
-directory = "./frontend/dist/adblock-compiler/browser"
-binding   = "ASSETS"
-```
-
-Assets with a file extension (`.js`, `.css`, `.png`) are served from CDN. Extensionless
-paths are handled by the SPA fallback (`serveStaticAsset()` in `worker/handlers/assets.ts`).
-
-### Frontend Worker — independent SSR mode
-
-`frontend/wrangler.toml` configures static asset handling for the Angular SSR Worker:
+`frontend/wrangler.toml` configures the `ASSETS` binding for the Angular SSR Worker:
 
 ```toml
 [assets]

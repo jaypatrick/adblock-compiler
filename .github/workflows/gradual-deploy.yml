@@ -37,7 +37,8 @@ on:
                 type: string
             percentage:
                 description: |
-                    Traffic percentage (1–100) to route to this version.
+                    Traffic percentage to route to this version.
+                    Allowed values: 1, 5, 10, 20, 25, 50, 75, 100.
                     Current traffic NOT routed here stays on the previously active version.
                 required: true
                 default: '10'
@@ -67,11 +68,11 @@ on:
             health_check_url:
                 description: |
                     Optional: URL for the post-deployment health check.
-                    Defaults to the production Workers dev URL.
-                    Override when deploying to a custom domain or staging environment.
+                    Defaults to the production custom-domain health endpoint.
+                    Override when validating a different environment or endpoint.
                 required: false
                 type: string
-                default: 'https://adblock-compiler.jayson-knight.workers.dev/api/health'
+                default: 'https://api.bloqr.jaysonknight.com/api/health'
 
 env:
     DENO_VERSION: '2.x'
