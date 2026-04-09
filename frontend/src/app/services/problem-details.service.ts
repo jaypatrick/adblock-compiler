@@ -102,7 +102,7 @@ export class ProblemDetailsService {
 
     /**
      * Returns `true` when a `Content-Type` string indicates RFC 9457.
-     * Accepts both bare `application/problem+json` and values with a `;charset=…` suffix.
+     * Accepts both bare `application/problem+json` and values with a `;charset=...` suffix.
      */
     static isProblemContentType(contentType: string | null): boolean {
         if (!contentType) return false;

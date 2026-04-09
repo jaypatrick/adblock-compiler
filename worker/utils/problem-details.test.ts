@@ -172,6 +172,13 @@ Deno.test('ProblemResponse.rateLimited — Retry-After header reflects retryAfte
     assertEquals(res.headers.get('Retry-After'), '120');
 });
 
+Deno.test('ProblemResponse.rateLimited — default detail uses singular "second" when retryAfterSecs is 1', async () => {
+    const res = ProblemResponse.rateLimited('/api/compile', 1);
+    const body = await parseBody(res);
+    assertStringIncludes(body.detail as string, '1 second');
+    assertEquals((body.detail as string).includes('1 seconds'), false);
+});
+
 // ── internalServerError ──────────────────────────────────────────────────────
 
 Deno.test('ProblemResponse.internalServerError — returns 500', async () => {

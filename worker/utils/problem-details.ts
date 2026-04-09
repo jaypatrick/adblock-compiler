@@ -307,7 +307,7 @@ export const ProblemResponse = {
             type: PROBLEM_TYPES.rateLimited,
             title: 'Too Many Requests',
             status: 429,
-            detail: detail ?? `Rate limit exceeded. Please retry after ${retryAfterSecs} seconds.`,
+            detail: detail ?? `Rate limit exceeded. Please retry after ${retryAfterSecs} ${retryAfterSecs === 1 ? 'second' : 'seconds'}.`,
             instance,
             retryAfter: retryAfterSecs,
         }, {
