@@ -51,3 +51,5 @@ You can expect:
 | Admin Access       | Dual-layer: X-Admin-Key + Cloudflare Access JWT                   |
 | Security Telemetry | Analytics Engine events on auth failures                          |
 | CI Enforcement     | ZTA lint workflow checks for regressions                          |
+| API Schema Guard   | API Shield schema validation blocks malformed requests at edge    |
+| BOLA Detection     | API Shield Vulnerability Scanner — stateful, AI-driven (beta)     |
