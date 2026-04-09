@@ -10,7 +10,7 @@
  *  - Recent security event feed
  *  - Analytics Engine event-type manifest (what is being actively tracked)
  *
- * Data is loaded from GET /admin/security/overview?window=<24h|7d|30d>.
+ * Data is loaded from GET /api/admin/security/overview?window=<24h|7d|30d>.
  * When ADMIN_DB is not configured the endpoint returns zeroes and the panel
  * gracefully shows placeholder states.
  */
@@ -20,7 +20,6 @@ import {
     afterNextRender,
     inject,
     signal,
-    computed,
     ChangeDetectionStrategy,
     DestroyRef,
 } from '@angular/core';
@@ -425,18 +424,12 @@ export class SecurityOverviewComponent {
 
     readonly eventColumns = ['status', 'action', 'resource_type', 'actor_id', 'created_at'];
 
-    /** Max count across a breakdown array — used to scale bar widths. */
-    readonly maxActionCount = computed(() => {
-        const actions = this.overview()?.by_action ?? [];
-        return actions.reduce((m, a) => Math.max(m, a.count), 1);
-    });
-
     private readonly _init = afterNextRender(() => this.loadData());
 
     loadData(): void {
         this.loading.set(true);
         this.http
-            .get<SecurityOverviewResponse>(`/admin/security/overview?window=${this.selectedWindow}`)
+            .get<SecurityOverviewResponse>(`/api/admin/security/overview?window=${this.selectedWindow}`)
             .pipe(takeUntilDestroyed(this.destroyRef))
             .subscribe({
                 next: (res) => {

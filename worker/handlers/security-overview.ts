@@ -86,7 +86,10 @@ function windowToIso(window: TimeWindow): string {
         '7d': 7 * 24 * 60 * 60 * 1000,
         '30d': 30 * 24 * 60 * 60 * 1000,
     };
-    return new Date(now - msMap[window]).toISOString();
+    return new Date(now - msMap[window])
+        .toISOString()
+        .replace('T', ' ')
+        .replace(/\.\d{3}Z$/, '');
 }
 
 // ---------------------------------------------------------------------------

@@ -67,13 +67,13 @@ describe('SecurityOverviewComponent', () => {
         it('sets loading to true while in flight', () => {
             component.loadData();
             expect(component.loading()).toBe(true);
-            httpTesting.expectOne(r => r.url.includes('/admin/security/overview')).flush(makeOverviewResponse());
+            httpTesting.expectOne(r => r.url.includes('/api/admin/security/overview')).flush(makeOverviewResponse());
         });
 
         it('populates overview signal and stops loading on success', () => {
             const payload = makeOverviewResponse({ total_security_events: 42, denied: 10, failure: 32, analytics_engine_configured: true });
             component.loadData();
-            httpTesting.expectOne(r => r.url.includes('/admin/security/overview')).flush(payload);
+            httpTesting.expectOne(r => r.url.includes('/api/admin/security/overview')).flush(payload);
 
             expect(component.loading()).toBe(false);
             expect(component.overview()!.total_security_events).toBe(42);
@@ -84,7 +84,7 @@ describe('SecurityOverviewComponent', () => {
 
         it('clears overview and stops loading on HTTP error', () => {
             component.loadData();
-            httpTesting.expectOne(r => r.url.includes('/admin/security/overview'))
+            httpTesting.expectOne(r => r.url.includes('/api/admin/security/overview'))
                 .flush('Server Error', { status: 500, statusText: 'Server Error' });
 
             expect(component.loading()).toBe(false);
@@ -94,7 +94,7 @@ describe('SecurityOverviewComponent', () => {
         it('sends the selected time window as a query param', () => {
             component.selectedWindow = '7d';
             component.loadData();
-            const req = httpTesting.expectOne(r => r.url.includes('/admin/security/overview'));
+            const req = httpTesting.expectOne(r => r.url.includes('/api/admin/security/overview'));
             expect(req.request.url).toContain('window=7d');
             req.flush(makeOverviewResponse());
         });
@@ -102,7 +102,7 @@ describe('SecurityOverviewComponent', () => {
         it('sends 30d window when selectedWindow is "30d"', () => {
             component.selectedWindow = '30d';
             component.loadData();
-            const req = httpTesting.expectOne(r => r.url.includes('/admin/security/overview'));
+            const req = httpTesting.expectOne(r => r.url.includes('/api/admin/security/overview'));
             expect(req.request.url).toContain('window=30d');
             req.flush(makeOverviewResponse());
         });
@@ -159,7 +159,7 @@ describe('SecurityOverviewComponent', () => {
     describe('Analytics Engine chips', () => {
         it('renders a chip for each tracked event type', () => {
             component.loadData();
-            httpTesting.expectOne(r => r.url.includes('/admin/security/overview')).flush(
+            httpTesting.expectOne(r => r.url.includes('/api/admin/security/overview')).flush(
                 makeOverviewResponse({ analytics_engine_configured: true }),
             );
             fixture.detectChanges();
