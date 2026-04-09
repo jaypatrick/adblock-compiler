@@ -32,6 +32,7 @@
  *   GET    /admin/agents/sessions/:sessionId
  *   GET    /admin/agents/audit
  *   DELETE /admin/agents/sessions/:sessionId
+ *   GET    /admin/security/overview
  */
 
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
@@ -2661,6 +2662,100 @@ adminRoutes.openapi(adminTerminateAgentSessionRoute, async (c) => {
     const { handleAdminTerminateAgentSession } = await import('../handlers/admin-agents.ts');
     // deno-lint-ignore no-explicit-any
     return handleAdminTerminateAgentSession(c, c.req.param('sessionId')!) as any;
+});
+
+// ── Security Overview ─────────────────────────────────────────────────────────
+
+const securityOverviewQuerySchema = z.object({
+    window: z.enum(['24h', '7d', '30d']).default('24h').describe('Time window for aggregation'),
+});
+
+const securityEventTypeCountSchema = z.object({
+    event_type: z.string(),
+    count: z.number().int().nonnegative(),
+});
+
+const topTargetedResourceSchema = z.object({
+    resource_type: z.string(),
+    count: z.number().int().nonnegative(),
+});
+
+const securityOverviewEventSchema = z.object({
+    id: z.number().int(),
+    actor_id: z.string(),
+    action: z.string(),
+    resource_type: z.string(),
+    resource_id: z.string().nullable(),
+    status: z.enum(['failure', 'denied']),
+    ip_address: z.string().nullable(),
+    created_at: z.string(),
+});
+
+const securityOverviewResponseSchema = z.object({
+    success: z.literal(true),
+    timestamp: z.string().datetime(),
+    window: z.enum(['24h', '7d', '30d']),
+    total_security_events: z.number().int().nonnegative(),
+    by_status: z.object({ denied: z.number().int().nonnegative(), failure: z.number().int().nonnegative() }),
+    by_action: z.array(securityEventTypeCountSchema),
+    by_resource_type: z.array(topTargetedResourceSchema),
+    recent_events: z.array(securityOverviewEventSchema),
+    analytics_engine_tracked_events: z.array(z.string()),
+    analytics_engine_configured: z.boolean(),
+});
+
+const adminSecurityOverviewRoute = createRoute({
+    method: 'get',
+    path: '/admin/security/overview',
+    tags: ['Admin'],
+    summary: 'Security Overview',
+    description: 'Returns aggregated security event metrics from the admin audit log. ' +
+        'Surfaces denied/failed entries by action and resource type. ' +
+        'Also reports which event types are actively tracked in Analytics Engine. ' +
+        'Admin tier and admin role required.',
+    request: {
+        query: securityOverviewQuerySchema,
+    },
+    responses: {
+        200: {
+            description: 'Security overview metrics',
+            content: {
+                'application/json': {
+                    schema: securityOverviewResponseSchema,
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.boolean(), error: z.string() }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden — admin role required',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.boolean(), error: z.string() }),
+                },
+            },
+        },
+        500: {
+            description: 'Server error',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.boolean(), error: z.string() }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminSecurityOverviewRoute, async (c) => {
+    const { handleSecurityOverview } = await import('../handlers/security-overview.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleSecurityOverview(c.req.raw, c.env) as any;
 });
 
 // ── Admin session revocation handler ─────────────────────────────────────────

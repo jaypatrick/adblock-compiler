@@ -117,6 +117,35 @@ The HTTP interceptor (`auth.interceptor.ts`) automatically attaches Bearer token
 
 Every PR touching `worker/` or `frontend/` must complete the ZTA checklist in the PR template. The CI `zta-lint` workflow runs automated checks, but the checklist covers items that require human review.
 
+PRs touching `docs/api/openapi.yaml` or resource endpoint handlers (endpoints with path parameters like `/{id}`) must also complete the **API Shield / Vulnerability Scanner** section of the PR template.
+
+## BOLA Prevention (Broken Object Level Authorization)
+
+The API Shield Vulnerability Scanner detects BOLA — accessing another user's resources via ID manipulation. Every resource endpoint must scope queries to the authenticated user:
+
+```typescript
+// ✅ Correct — query scoped to authenticated user
+const row = await env.DB
+    .prepare('SELECT * FROM api_keys WHERE user_id = ? AND id = ?')
+    .bind(authContext.userId, keyId)
+    .first();
+
+// Return 404 (not 403) if not found — avoid leaking resource existence
+if (!row) {
+    return JsonResponse.notFound('Not found');
+}
+
+// ❌ Wrong — unscoped lookup; any user can access any key by ID
+const row = await env.DB
+    .prepare('SELECT * FROM api_keys WHERE id = ?')
+    .bind(keyId)
+    .first();
+```
+
+> **Why 404 and not 403?** Returning 403 when a resource exists (but belongs to another user) leaks the existence of that resource. Always return 404 for missing-or-unauthorized resources on user-scoped endpoints.
+
+See [API Shield Vulnerability Scanner](API_SHIELD_VULNERABILITY_SCANNER.md) for the full guide and CI setup.
+
 ## Common Mistakes
 
 1. **Forgetting `requireAuth()`** — Every write endpoint needs an auth gate
@@ -124,3 +153,4 @@ Every PR touching `worker/` or `frontend/` must complete the ZTA checklist in th
 3. **Flushing empty objects in tests** — Zod validation means mock data must match schemas
 4. **String interpolation in SQL** — Always `.prepare().bind()`
 5. **Storing auth state in components** — Use `ClerkService` signals
+6. **Unscoped resource queries** — Always bind `authContext.userId` in WHERE clauses on user-owned tables

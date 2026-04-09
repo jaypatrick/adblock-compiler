@@ -13,6 +13,10 @@ Documentation for Cloudflare-specific features, services, and integrations.
 - [Queue Diagnostics](QUEUE_DIAGNOSTICS.md) - Diagnostic events for queue-based compilation
 - [Worker E2E Tests](WORKER_E2E_TESTS.md) - Automated end-to-end test suite
 
+## Security
+
+- [API Shield Vulnerability Scanner](../security/API_SHIELD_VULNERABILITY_SCANNER.md) - Stateful BOLA/logic-flaw detection via Cloudflare's AI-driven scanner
+
 ## Related
 
 - [Worker Overview](../../worker/README.md) - Worker implementation and API endpoints
