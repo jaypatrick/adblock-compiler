@@ -55,6 +55,11 @@ export const ADMIN_ROUTES: Routes = [
         title: 'Observability',
     },
     {
+        path: 'security',
+        loadComponent: () => import('./security/security-overview.component').then((m) => m.SecurityOverviewComponent),
+        title: 'Security Overview',
+    },
+    {
         path: 'audit-log',
         loadComponent: () => import('./audit-log/audit-log.component').then((m) => m.AuditLogComponent),
         title: 'Audit Log',

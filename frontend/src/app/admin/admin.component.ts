@@ -65,6 +65,7 @@ const NAV_GROUPS: NavGroup[] = [
         section: 'Monitoring',
         items: [
             { label: 'Observability', icon: 'monitoring', route: 'observability', permission: 'admin:observability:read' },
+            { label: 'Security Overview', icon: 'security', route: 'security', permission: 'admin:security:read' },
             { label: 'Audit Log', icon: 'receipt_long', route: 'audit-log', permission: 'admin:audit:read' },
         ],
     },
