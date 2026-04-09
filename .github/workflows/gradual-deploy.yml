@@ -64,6 +64,14 @@ on:
                 required: false
                 type: string
                 default: ''
+            health_check_url:
+                description: |
+                    Optional: URL for the post-deployment health check.
+                    Defaults to the production Workers dev URL.
+                    Override when deploying to a custom domain or staging environment.
+                required: false
+                type: string
+                default: 'https://adblock-compiler.jayson-knight.workers.dev/api/health'
 
 env:
     DENO_VERSION: '2.x'
@@ -163,7 +171,7 @@ jobs:
 
                   echo "Running health checks after traffic shift..."
                   HTTP=$(curl -sSL -o /tmp/health.json -w "%{http_code}" \
-                      https://adblock-compiler.jayson-knight.workers.dev/api/health 2>&1) || true
+                      "${{ inputs.health_check_url }}" 2>&1) || true
 
                   if [ "$HTTP" = "200" ]; then
                       echo "✅ Health check passed (HTTP $HTTP)"
@@ -205,4 +213,4 @@ jobs:
                       echo "- Full rollout complete. Monitor the [Cloudflare dashboard](https://dash.cloudflare.com) for any post-deploy anomalies." >> "$GITHUB_STEP_SUMMARY"
                   fi
                   echo "" >> "$GITHUB_STEP_SUMMARY"
-                  echo "See [Gradual Deployments guide](../docs/deployment/GRADUAL_DEPLOYMENTS.md) for full rollout procedures." >> "$GITHUB_STEP_SUMMARY"
+                  echo "See the [Gradual Deployments guide](https://github.com/${{ github.repository }}/blob/main/docs/deployment/GRADUAL_DEPLOYMENTS.md) for full rollout procedures." >> "$GITHUB_STEP_SUMMARY"
