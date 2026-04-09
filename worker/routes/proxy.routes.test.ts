@@ -127,6 +127,8 @@ Deno.test('GET /api/proxy/fetch — rate-limited when quota exhausted', async ()
     const res = await fetchApp('/api/proxy/fetch?url=https%3A%2F%2Feasylist.to%2Flist.txt', { env });
     assertEquals(res.status, 429);
     const body = await res.json() as Record<string, unknown>;
-    assertEquals(body.success, false);
-    assertStringIncludes(String(body.error), 'Rate limit exceeded');
+    // RFC 9457: application/problem+json body shape
+    assertEquals(typeof body.type, 'string');
+    assertEquals(body.status, 429);
+    assertStringIncludes(String(body.detail), 'Rate limit exceeded');
 });

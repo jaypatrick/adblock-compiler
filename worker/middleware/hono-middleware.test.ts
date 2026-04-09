@@ -80,7 +80,9 @@ Deno.test('bodySizeMiddleware: returns 413 when body exceeds limit', async () =>
     const res = await app.fetch(req, env, makeCtx());
     assertEquals(res.status, 413);
     const body = await res.json() as Record<string, unknown>;
-    assertEquals(body.success, false);
+    // RFC 9457: application/problem+json body shape
+    assertEquals(typeof body.type, 'string');
+    assertEquals(body.status, 413);
 });
 
 // ── rateLimitMiddleware ───────────────────────────────────────────────────────
@@ -108,7 +110,9 @@ Deno.test('rateLimitMiddleware: returns 429 when quota is exhausted', async () =
     const res = await app.fetch(new Request('http://test/'), env, makeCtx());
     assertEquals(res.status, 429);
     const body = await res.json() as Record<string, unknown>;
-    assertEquals(body.success, false);
+    // RFC 9457: application/problem+json body shape
+    assertEquals(typeof body.type, 'string');
+    assertEquals(body.status, 429);
 });
 
 // ── turnstileMiddleware ───────────────────────────────────────────────────────
@@ -140,7 +144,9 @@ Deno.test('turnstileMiddleware: returns 400 when body is not valid JSON', async 
     const res = await app.fetch(req, env, makeCtx());
     assertEquals(res.status, 400);
     const body = await res.json() as Record<string, unknown>;
-    assertEquals(body.success, false);
+    // RFC 9457: application/problem+json body shape
+    assertEquals(typeof body.type, 'string');
+    assertEquals(body.status, 400);
 });
 
 // ── requireAuthMiddleware ─────────────────────────────────────────────────────

@@ -65,6 +65,7 @@ import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
 import { isPublicEndpoint, matchOrigin } from './utils/cors.ts';
 import { getProjectUrls } from './utils/constants.ts';
+import { ProblemResponse } from './utils/problem-details.ts';
 
 // tRPC
 import { handleTrpcRequest } from './trpc/handler.ts';
@@ -218,10 +219,7 @@ app.onError(async (err, c) => {
     }
 
     applyErrorCorsHeaders(c);
-    return c.json(
-        { success: false, error: 'Internal server error', requestId },
-        500,
-    );
+    return ProblemResponse.internalServerError(c.req.path, requestId);
 });
 
 // ── 0. Server-Timing middleware ───────────────────────────────────────────────
