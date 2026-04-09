@@ -132,7 +132,7 @@ const row = await env.DB
 
 // Return 404 (not 403) if not found — avoid leaking resource existence
 if (!row) {
-    return Response.json({ error: 'Not found' }, { status: 404 });
+    return JsonResponse.notFound('Not found');
 }
 
 // ❌ Wrong — unscoped lookup; any user can access any key by ID

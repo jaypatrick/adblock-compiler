@@ -94,49 +94,54 @@ jobs:
                   CURRENT_METHOD=""
                   HAS_PARAM=false
                   HAS_SECURITY=false
-                  LINE_NUM=0
+
+                  check_and_report() {
+                    if [ -n "$CURRENT_METHOD" ] && [ "$HAS_PARAM" = "true" ] && [ "$HAS_SECURITY" = "false" ]; then
+                      if ! echo "$CURRENT_PATH" | grep -q '/admin/'; then
+                        echo "⚠️  Resource endpoint missing security annotation: $CURRENT_PATH ($CURRENT_METHOD)"
+                        VIOLATIONS=$((VIOLATIONS + 1))
+                      fi
+                    fi
+                  }
 
                   while IFS= read -r line; do
-                    LINE_NUM=$((LINE_NUM + 1))
 
-                    # Detect path entries (lines like "    /path/{id}:")
-                    if echo "$line" | grep -qE '^\s{4}/.*\{[^}]+\}.*:$'; then
-                      CURRENT_PATH=$(echo "$line" | tr -d ' :')
-                      HAS_PARAM=true
-                      CURRENT_METHOD=""
-                      HAS_SECURITY=false
-                    fi
-
-                    # Detect HTTP methods under a path
+                    # Detect HTTP methods under a path (8-space indent in this spec)
                     if echo "$line" | grep -qE '^\s{8}(get|post|put|patch|delete):\s*$'; then
-                      # If we had a previous method+path combo with no security, flag it
-                      if [ -n "$CURRENT_METHOD" ] && [ "$HAS_PARAM" = "true" ] && [ "$HAS_SECURITY" = "false" ]; then
-                        # Only flag if it's not an admin endpoint (those use AdminKey implicitly)
-                        if ! echo "$CURRENT_PATH" | grep -q '/admin/'; then
-                          echo "⚠️  Resource endpoint missing security annotation: $CURRENT_PATH ($CURRENT_METHOD)"
-                          VIOLATIONS=$((VIOLATIONS + 1))
-                        fi
-                      fi
+                      # Before starting a new method, check the previous one
+                      check_and_report
                       CURRENT_METHOD=$(echo "$line" | tr -d ' :')
                       HAS_SECURITY=false
+                      continue
                     fi
 
                     # Detect security annotations
                     if echo "$line" | grep -qE '^\s+security:\s*$'; then
                       HAS_SECURITY=true
+                      continue
                     fi
 
-                    # When we leave a path block, check the last method
+                    # Detect path entries (4-space indent in this spec)
+                    # Must be checked AFTER method/security so we correctly finalize
+                    # the last method of the previous path before moving on.
                     if echo "$line" | grep -qE '^\s{4}/'; then
-                      if [ -n "$CURRENT_METHOD" ] && [ "$HAS_PARAM" = "true" ] && [ "$HAS_SECURITY" = "false" ]; then
-                        if ! echo "$CURRENT_PATH" | grep -q '/admin/'; then
-                          echo "⚠️  Resource endpoint missing security annotation: $CURRENT_PATH ($CURRENT_METHOD)"
-                          VIOLATIONS=$((VIOLATIONS + 1))
-                        fi
+                      # Finalize the last method of the previous path
+                      check_and_report
+                      CURRENT_PATH=$(echo "$line" | tr -d ' :')
+                      CURRENT_METHOD=""
+                      HAS_SECURITY=false
+                      # Set HAS_PARAM based on whether the new path contains a parameter
+                      if echo "$CURRENT_PATH" | grep -qE '\{[^}]+\}'; then
+                        HAS_PARAM=true
+                      else
+                        HAS_PARAM=false
                       fi
-                      HAS_PARAM=false
                     fi
+
                   done < docs/api/openapi.yaml
+
+                  # Finalize the very last method in the file
+                  check_and_report
 
                   if [ "$VIOLATIONS" -gt 0 ]; then
                     echo ""
