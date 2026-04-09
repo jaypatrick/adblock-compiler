@@ -10,6 +10,7 @@ Guides for deploying the Adblock Compiler to various platforms.
 - [Cloudflare Pages](cloudflare-pages.md) - Deploy to Cloudflare Pages
 - [Cloudflare Workers Architecture](CLOUDFLARE_WORKERS_ARCHITECTURE.md) - Backend vs frontend workers, deployment modes, and their relationship
 - [Deployment Versioning](DEPLOYMENT_VERSIONING.md) - Automated deployment tracking and versioning
+- [Gradual Deployments](GRADUAL_DEPLOYMENTS.md) - Progressive traffic rollouts using `wrangler versions`
 - [Production Readiness](PRODUCTION_READINESS.md) - Production readiness assessment and recommendations
 
 ## Quick Start
