@@ -84,9 +84,12 @@
   - [ ] Confirm no secrets, tokens, or credentials are logged or exposed
   - [ ] Review CORS configuration
   - [ ] Confirm Turnstile (CAPTCHA) integration is correctly validated server-side
+  - [ ] Verify all resource endpoints scope queries to authenticated user (BOLA prevention)
+  - [ ] Run API Shield Vulnerability Scanner against staging before RTM tag
 - **Acceptance Criteria:**
   - Security checklist reviewed and signed off
   - All findings resolved or documented as accepted risk
+  - API Shield Vulnerability Scanner shows zero BOLA findings on staging
 
 ---
 

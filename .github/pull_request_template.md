@@ -37,6 +37,17 @@
 - [ ] HTTP interceptor attaches Bearer token (no manual token passing)
 - [ ] API responses validated with Zod schemas before consumption
 
+### API Shield / Vulnerability Scanner
+
+> **Required for every PR touching `docs/api/openapi.yaml`, `worker/routes/`, or resource endpoint handlers.**
+
+- [ ] New/changed endpoints have a unique `operationId` in `openapi.yaml`
+- [ ] Resource endpoints (those with `/{id}` path parameters) include a `security:` annotation
+- [ ] Resource queries are scoped to the authenticated user (`WHERE user_id = ?`) — not just by ID
+- [ ] Missing/unauthorized resources return `404` (not `403`) to avoid leaking resource existence
+- [ ] `cloudflare-schema.yaml` regenerated if `openapi.yaml` changed (`deno task schema:cloudflare`)
+
 ---
 
 _If this PR does not touch `worker/` or `frontend/`, the ZTA checklist is not required._
+_If this PR does not touch `openapi.yaml` or resource handlers, the API Shield checklist is not required._
