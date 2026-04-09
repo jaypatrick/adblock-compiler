@@ -27,7 +27,7 @@ This document describes all Cloudflare services integrated into the adblock-comp
 | **API Shield Vulnerability Scanner** | 🔬 Beta | — | Stateful BOLA/logic-flaw detection via AI call graphs (see below) |
 | **Containers** | 🔧 Configured | `ADBLOCK_COMPILER` | Durable Object container (production only) |
 | **Node.js Compatibility** | ✅ Active | `nodejs_compat` flag | Enables Node.js built-in shims (`node:async_hooks`, `node:crypto`, `node:buffer`, etc.) for npm packages like Sentry |
-| **Static Asset Hosting** | ✅ Active | `ASSETS` binding | Angular SPA and compiled artifacts served from Cloudflare CDN edge |
+| **Static Asset Hosting** | ✅ Active | `ASSETS` binding | Angular frontend static files served from Cloudflare CDN edge; compiled filter list artifacts are served from R2 (optionally via an R2 custom domain/CDN) |
 | **Gradual Deployments** | ✅ Available | `wrangler versions` CLI | Progressive traffic rollout — route N % of requests to a new version before full rollout (see [Gradual Deployments](../deployment/GRADUAL_DEPLOYMENTS.md)) |
 
 ---

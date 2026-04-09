@@ -77,6 +77,12 @@ on:
 env:
     DENO_VERSION: '2.x'
 
+# Prevent two concurrent runs from overwriting each other's traffic weights.
+# cancel-in-progress: false ensures an in-flight rollout is not interrupted.
+concurrency:
+    group: gradual-deploy-production
+    cancel-in-progress: false
+
 jobs:
     gradual-deploy:
         name: Gradual Deploy (${{ inputs.percentage }}% → ${{ inputs.version_id }})
@@ -95,27 +101,30 @@ jobs:
 
             - name: Validate inputs
               shell: bash
+              env:
+                  PCT: ${{ inputs.percentage }}
+                  VERSION: ${{ inputs.version_id }}
+                  REASON: ${{ inputs.reason }}
+                  CONFIRM_FULL_ROLLOUT: ${{ inputs.confirm_full_rollout }}
+                  TRIGGERED_BY: ${{ github.actor }}
               run: |
                   set -euo pipefail
 
-                  PCT="${{ inputs.percentage }}"
-                  VERSION="${{ inputs.version_id }}"
-
-                  echo "## 🚦 Gradual Deploy Request" >> "$GITHUB_STEP_SUMMARY"
-                  echo "" >> "$GITHUB_STEP_SUMMARY"
-                  echo "| Field | Value |" >> "$GITHUB_STEP_SUMMARY"
-                  echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
-                  echo "| **Version ID** | \`$VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
-                  echo "| **Traffic %** | $PCT % |" >> "$GITHUB_STEP_SUMMARY"
-                  echo "| **Triggered by** | @${{ github.actor }} |" >> "$GITHUB_STEP_SUMMARY"
-                  if [ -n "${{ inputs.reason }}" ]; then
-                      echo "| **Reason** | ${{ inputs.reason }} |" >> "$GITHUB_STEP_SUMMARY"
+                  printf '## 🚦 Gradual Deploy Request\n' >> "$GITHUB_STEP_SUMMARY"
+                  printf '\n' >> "$GITHUB_STEP_SUMMARY"
+                  printf '| Field | Value |\n' >> "$GITHUB_STEP_SUMMARY"
+                  printf '|---|---|\n' >> "$GITHUB_STEP_SUMMARY"
+                  printf '| **Version ID** | `%s` |\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
+                  printf '| **Traffic %%%%** | %s %% |\n' "$PCT" >> "$GITHUB_STEP_SUMMARY"
+                  printf '| **Triggered by** | @%s |\n' "$TRIGGERED_BY" >> "$GITHUB_STEP_SUMMARY"
+                  if [ -n "$REASON" ]; then
+                      printf '| **Reason** | %s |\n' "$REASON" >> "$GITHUB_STEP_SUMMARY"
                   fi
-                  echo "" >> "$GITHUB_STEP_SUMMARY"
+                  printf '\n' >> "$GITHUB_STEP_SUMMARY"
 
                   # Guard: 100 % rollout requires explicit confirmation checkbox
-                  if [ "$PCT" = "100" ] && [ "${{ inputs.confirm_full_rollout }}" != "true" ]; then
-                      echo "❌ **Full rollout (100 %) requires the 'confirm_full_rollout' checkbox to be checked.**" >> "$GITHUB_STEP_SUMMARY"
+                  if [ "$PCT" = "100" ] && [ "$CONFIRM_FULL_ROLLOUT" != "true" ]; then
+                      printf "❌ **Full rollout (100 %%%%) requires the 'confirm_full_rollout' checkbox to be checked.**\n" >> "$GITHUB_STEP_SUMMARY"
                       echo ""
                       echo "❌ Deployment aborted: 100 % rollout requires explicit confirmation."
                       echo "   Re-run the workflow and check the 'confirm_full_rollout' box."
@@ -144,11 +153,11 @@ jobs:
             - name: Deploy version at ${{ inputs.percentage }}%
               id: deploy
               shell: bash
+              env:
+                  VERSION: ${{ inputs.version_id }}
+                  PCT: ${{ inputs.percentage }}
               run: |
                   set -euo pipefail
-
-                  VERSION="${{ inputs.version_id }}"
-                  PCT="${{ inputs.percentage }}"
 
                   echo "🚀 Routing $PCT % of traffic to version $VERSION ..."
 
@@ -164,35 +173,52 @@ jobs:
             - name: Verify health after deployment
               id: health
               shell: bash
+              env:
+                  HEALTH_CHECK_URL: ${{ inputs.health_check_url }}
               run: |
                   set -euo pipefail
 
                   # Give Cloudflare a moment to propagate the new traffic weights
                   sleep 10
 
+                  if [[ -z "${HEALTH_CHECK_URL}" || ! "${HEALTH_CHECK_URL}" =~ ^https?://[^[:space:]]+$ ]]; then
+                      echo "❌ Invalid health check URL provided."
+                      exit 1
+                  fi
+
                   echo "Running health checks after traffic shift..."
-                  HTTP=$(curl -sSL -o /tmp/health.json -w "%{http_code}" \
-                      "${{ inputs.health_check_url }}" 2>&1) || true
+                  HTTP="$(curl --silent --show-error --location \
+                      --output /tmp/health.json \
+                      --write-out "%{http_code}" \
+                      --connect-timeout 10 \
+                      --max-time 30 \
+                      --retry 2 \
+                      --retry-delay 2 \
+                      --retry-connrefused \
+                      -- "${HEALTH_CHECK_URL}" \
+                      2>/tmp/health.err || true)"
 
                   if [ "$HTTP" = "200" ]; then
                       echo "✅ Health check passed (HTTP $HTTP)"
                       echo "health=ok" >> "$GITHUB_OUTPUT"
                   else
                       echo "⚠️ Health check returned HTTP $HTTP — verify manually."
-                      cat /tmp/health.json || true
+                      cat /tmp/health.err || true
                       echo "health=warn" >> "$GITHUB_OUTPUT"
                   fi
 
             - name: Deployment summary
               if: always()
               shell: bash
+              env:
+                  VERSION: ${{ inputs.version_id }}
+                  PCT: ${{ inputs.percentage }}
+                  HEALTH: ${{ steps.health.outputs.health }}
+                  DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+                  REPO: ${{ github.repository }}
               run: |
-                  VERSION="${{ inputs.version_id }}"
-                  PCT="${{ inputs.percentage }}"
-                  HEALTH="${{ steps.health.outputs.health }}"
-
                   echo "" >> "$GITHUB_STEP_SUMMARY"
-                  if [ "${{ steps.deploy.outcome }}" = "success" ]; then
+                  if [ "$DEPLOY_OUTCOME" = "success" ]; then
                       echo "### ✅ Deployment successful" >> "$GITHUB_STEP_SUMMARY"
                   else
                       echo "### ❌ Deployment failed" >> "$GITHUB_STEP_SUMMARY"
@@ -214,4 +240,4 @@ jobs:
                       echo "- Full rollout complete. Monitor the [Cloudflare dashboard](https://dash.cloudflare.com) for any post-deploy anomalies." >> "$GITHUB_STEP_SUMMARY"
                   fi
                   echo "" >> "$GITHUB_STEP_SUMMARY"
-                  echo "See the [Gradual Deployments guide](https://github.com/${{ github.repository }}/blob/main/docs/deployment/GRADUAL_DEPLOYMENTS.md) for full rollout procedures." >> "$GITHUB_STEP_SUMMARY"
+                  echo "See the [Gradual Deployments guide](https://github.com/$REPO/blob/main/docs/deployment/GRADUAL_DEPLOYMENTS.md) for full rollout procedures." >> "$GITHUB_STEP_SUMMARY"
