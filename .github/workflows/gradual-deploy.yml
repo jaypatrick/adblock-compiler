@@ -1,0 +1,243 @@
+# ============================================================================
+# gradual-deploy.yml — Manual gradual (percentage-based) Worker deployment
+#
+# PURPOSE
+#   Provides a GitHub Actions UI for routing a configurable percentage of
+#   production traffic to a specific uploaded Worker version.  This workflow
+#   is used *after* a version has already been uploaded (via the normal
+#   `deploy` job in ci.yml or via `deno task wrangler:versions:upload`).
+#
+# WHEN TO USE
+#   • You want to validate a high-risk change on 5–20 % of traffic before a
+#     full rollout.
+#   • You need to increase or decrease the traffic split for an in-progress
+#     gradual rollout.
+#   • You are performing an emergency rollback to a known-good version.
+#
+# PREREQUISITES
+#   • CLOUDFLARE_API_TOKEN secret — Workers:Edit permission
+#   • CLOUDFLARE_ACCOUNT_ID secret
+#   • The target version must already be uploaded (use wrangler:versions:upload
+#     or the ci.yml deploy job with an earlier commit).
+#
+# SEE ALSO
+#   docs/deployment/GRADUAL_DEPLOYMENTS.md
+# ============================================================================
+name: Gradual Deploy (Manual)
+
+on:
+    workflow_dispatch:
+        inputs:
+            version_id:
+                description: |
+                    Cloudflare Worker version ID to deploy.
+                    Get available versions: deno task wrangler:versions:list
+                    or from the Cloudflare dashboard → Workers & Pages → adblock-compiler → Deployments.
+                required: true
+                type: string
+            percentage:
+                description: |
+                    Traffic percentage to route to this version.
+                    Allowed values: 1, 5, 10, 20, 25, 50, 75, 100.
+                    Current traffic NOT routed here stays on the previously active version.
+                required: true
+                default: '10'
+                type: choice
+                options:
+                    - '1'
+                    - '5'
+                    - '10'
+                    - '20'
+                    - '25'
+                    - '50'
+                    - '75'
+                    - '100'
+            confirm_full_rollout:
+                description: |
+                    Required confirmation when percentage = 100 to prevent accidental full rollouts.
+                    Must be checked to allow a 100 % deployment.
+                required: false
+                default: false
+                type: boolean
+            reason:
+                description: |
+                    Optional: reason for this gradual deployment (shown in the run summary).
+                required: false
+                type: string
+                default: ''
+            health_check_url:
+                description: |
+                    Optional: URL for the post-deployment health check.
+                    Defaults to the production custom-domain health endpoint.
+                    Override when validating a different environment or endpoint.
+                required: false
+                type: string
+                default: 'https://api.bloqr.jaysonknight.com/api/health'
+
+env:
+    DENO_VERSION: '2.x'
+
+# Prevent two concurrent runs from overwriting each other's traffic weights.
+# cancel-in-progress: false ensures an in-flight rollout is not interrupted.
+concurrency:
+    group: gradual-deploy-production
+    cancel-in-progress: false
+
+jobs:
+    gradual-deploy:
+        name: Gradual Deploy (${{ inputs.percentage }}% → ${{ inputs.version_id }})
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+        environment: production
+        permissions:
+            contents: read
+
+        env:
+            CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+            CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: Validate inputs
+              shell: bash
+              env:
+                  PCT: ${{ inputs.percentage }}
+                  VERSION: ${{ inputs.version_id }}
+                  REASON: ${{ inputs.reason }}
+                  CONFIRM_FULL_ROLLOUT: ${{ inputs.confirm_full_rollout }}
+                  TRIGGERED_BY: ${{ github.actor }}
+              run: |
+                  set -euo pipefail
+
+                  printf '## 🚦 Gradual Deploy Request\n' >> "$GITHUB_STEP_SUMMARY"
+                  printf '\n' >> "$GITHUB_STEP_SUMMARY"
+                  printf '| Field | Value |\n' >> "$GITHUB_STEP_SUMMARY"
+                  printf '|---|---|\n' >> "$GITHUB_STEP_SUMMARY"
+                  printf '| **Version ID** | `%s` |\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
+                  printf '| **Traffic %%%%** | %s %% |\n' "$PCT" >> "$GITHUB_STEP_SUMMARY"
+                  printf '| **Triggered by** | @%s |\n' "$TRIGGERED_BY" >> "$GITHUB_STEP_SUMMARY"
+                  if [ -n "$REASON" ]; then
+                      printf '| **Reason** | %s |\n' "$REASON" >> "$GITHUB_STEP_SUMMARY"
+                  fi
+                  printf '\n' >> "$GITHUB_STEP_SUMMARY"
+
+                  # Guard: 100 % rollout requires explicit confirmation checkbox
+                  if [ "$PCT" = "100" ] && [ "$CONFIRM_FULL_ROLLOUT" != "true" ]; then
+                      printf "❌ **Full rollout (100 %%%%) requires the 'confirm_full_rollout' checkbox to be checked.**\n" >> "$GITHUB_STEP_SUMMARY"
+                      echo ""
+                      echo "❌ Deployment aborted: 100 % rollout requires explicit confirmation."
+                      echo "   Re-run the workflow and check the 'confirm_full_rollout' box."
+                      exit 1
+                  fi
+
+                  # Validate version ID is non-empty and looks plausible
+                  if [ -z "$VERSION" ]; then
+                      echo "❌ version_id is required." >&2
+                      exit 1
+                  fi
+
+                  echo "✅ Input validation passed"
+
+            - name: Setup Deno environment
+              uses: ./.github/actions/setup-deno-env
+              with:
+                  deno-version: ${{ env.DENO_VERSION }}
+
+            - name: List available versions
+              shell: bash
+              run: |
+                  echo "Available versions for adblock-compiler:"
+                  deno run -A npm:wrangler versions list || true
+
+            - name: Deploy version at ${{ inputs.percentage }}%
+              id: deploy
+              shell: bash
+              env:
+                  VERSION: ${{ inputs.version_id }}
+                  PCT: ${{ inputs.percentage }}
+              run: |
+                  set -euo pipefail
+
+                  echo "🚀 Routing $PCT % of traffic to version $VERSION ..."
+
+                  deno run -A npm:wrangler versions deploy \
+                      --version-id "$VERSION" \
+                      --percentage "$PCT" \
+                      --yes
+
+                  echo "✅ Deployment command completed."
+                  echo "version_id=$VERSION" >> "$GITHUB_OUTPUT"
+                  echo "percentage=$PCT" >> "$GITHUB_OUTPUT"
+
+            - name: Verify health after deployment
+              id: health
+              shell: bash
+              env:
+                  HEALTH_CHECK_URL: ${{ inputs.health_check_url }}
+              run: |
+                  set -euo pipefail
+
+                  # Give Cloudflare a moment to propagate the new traffic weights
+                  sleep 10
+
+                  if [[ -z "${HEALTH_CHECK_URL}" || ! "${HEALTH_CHECK_URL}" =~ ^https?://[^[:space:]]+$ ]]; then
+                      echo "❌ Invalid health check URL provided."
+                      exit 1
+                  fi
+
+                  echo "Running health checks after traffic shift..."
+                  HTTP="$(curl --silent --show-error --location \
+                      --output /tmp/health.json \
+                      --write-out "%{http_code}" \
+                      --connect-timeout 10 \
+                      --max-time 30 \
+                      --retry 2 \
+                      --retry-delay 2 \
+                      --retry-connrefused \
+                      -- "${HEALTH_CHECK_URL}" \
+                      2>/tmp/health.err || true)"
+
+                  if [ "$HTTP" = "200" ]; then
+                      echo "✅ Health check passed (HTTP $HTTP)"
+                      echo "health=ok" >> "$GITHUB_OUTPUT"
+                  else
+                      echo "⚠️ Health check returned HTTP $HTTP — verify manually."
+                      cat /tmp/health.err || true
+                      echo "health=warn" >> "$GITHUB_OUTPUT"
+                  fi
+
+            - name: Deployment summary
+              if: always()
+              shell: bash
+              env:
+                  VERSION: ${{ inputs.version_id }}
+                  PCT: ${{ inputs.percentage }}
+                  HEALTH: ${{ steps.health.outputs.health }}
+                  DEPLOY_OUTCOME: ${{ steps.deploy.outcome }}
+                  REPO: ${{ github.repository }}
+              run: |
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+                  if [ "$DEPLOY_OUTCOME" = "success" ]; then
+                      echo "### ✅ Deployment successful" >> "$GITHUB_STEP_SUMMARY"
+                  else
+                      echo "### ❌ Deployment failed" >> "$GITHUB_STEP_SUMMARY"
+                  fi
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+                  echo "| | |" >> "$GITHUB_STEP_SUMMARY"
+                  echo "|---|---|" >> "$GITHUB_STEP_SUMMARY"
+                  echo "| **Version ID** | \`$VERSION\` |" >> "$GITHUB_STEP_SUMMARY"
+                  echo "| **Traffic routed** | $PCT % |" >> "$GITHUB_STEP_SUMMARY"
+                  echo "| **Health check** | ${HEALTH:-n/a} |" >> "$GITHUB_STEP_SUMMARY"
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+                  echo "**Next steps:**" >> "$GITHUB_STEP_SUMMARY"
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+                  if [ "$PCT" != "100" ]; then
+                      echo "- Monitor error rates in the [Cloudflare dashboard](https://dash.cloudflare.com) for 10–30 minutes." >> "$GITHUB_STEP_SUMMARY"
+                      echo "- If healthy, increase the percentage by re-running this workflow with a higher \`percentage\` value." >> "$GITHUB_STEP_SUMMARY"
+                      echo "- If unhealthy, roll back by re-running this workflow with the previous stable version ID at 100 %." >> "$GITHUB_STEP_SUMMARY"
+                  else
+                      echo "- Full rollout complete. Monitor the [Cloudflare dashboard](https://dash.cloudflare.com) for any post-deploy anomalies." >> "$GITHUB_STEP_SUMMARY"
+                  fi
+                  echo "" >> "$GITHUB_STEP_SUMMARY"
+                  echo "See the [Gradual Deployments guide](https://github.com/$REPO/blob/main/docs/deployment/GRADUAL_DEPLOYMENTS.md) for full rollout procedures." >> "$GITHUB_STEP_SUMMARY"

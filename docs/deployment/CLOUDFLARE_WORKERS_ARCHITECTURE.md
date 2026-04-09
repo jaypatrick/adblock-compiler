@@ -315,6 +315,9 @@ pnpm --filter adblock-frontend run preview           # → http://localhost:8787
 - [`worker/README.md`](../../worker/README.md) — Worker API endpoints and implementation details
 - [`frontend/README.md`](../../frontend/README.md) — Angular frontend architecture and Angular 21 features
 - [`docs/deployment/cloudflare-pages.md`](cloudflare-pages.md) — Cloudflare Pages deployment
+- [`docs/deployment/GRADUAL_DEPLOYMENTS.md`](GRADUAL_DEPLOYMENTS.md) — Gradual (percentage-based) Worker deployments
+- [`docs/deployment/ENVIRONMENTS.md`](ENVIRONMENTS.md) — Local, dev, and production environment reference
 - [`docs/cloudflare/README.md`](../cloudflare/README.md) — Cloudflare-specific features index
 - [Cloudflare Workers Docs](https://developers.cloudflare.com/workers/)
 - [Wrangler CLI](https://developers.cloudflare.com/workers/wrangler/)
+- [Workers Versioning & Deployments](https://developers.cloudflare.com/workers/configuration/versions-and-deployments/)
