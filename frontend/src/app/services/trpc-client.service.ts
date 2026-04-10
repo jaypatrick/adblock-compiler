@@ -97,7 +97,8 @@
  *   as the `getToken` argument. When the token is available, tRPC automatically
  *   attaches `Authorization: Bearer <token>` to all requests.
  * - **Response validation**: All responses passed through `query()`, `createResource()`,
- *   or `createMutation()` are validated against Zod schemas before being consumed.
+ *   or `createMutation()` are validated via the shared `validateResponse()` helper
+ *   from `frontend/src/app/schemas/api-responses.ts` before being consumed.
  *
  * ## Base URL resolution
  * - Browser: `API_BASE_URL` is `/api` (relative, same origin). The service strips
@@ -110,6 +111,7 @@
  * @see frontend/src/app/trpc/client.ts — frontend-safe createTrpcClient factory
  * @see frontend/src/app/trpc/types.ts — TrpcTypedClient interface
  * @see frontend/src/app/trpc/schemas.ts — Zod validation schemas
+ * @see frontend/src/app/schemas/api-responses.ts — shared validateResponse() helper
  * @see worker/trpc/router.ts — AppRouter type definition (Deno/Worker only)
  */
 
@@ -118,6 +120,7 @@ import { rxResource, ResourceRef } from '@angular/core/rxjs-interop';
 import { from, EMPTY, map } from 'rxjs';
 import { z } from 'zod';
 import { createTrpcClient } from '../trpc/client';
+import { validateResponse } from '../schemas/api-responses';
 import type { TrpcTypedClient } from '../trpc/types';
 import { API_BASE_URL } from '../tokens';
 import { AuthFacadeService } from './auth-facade.service';
@@ -142,9 +145,9 @@ export interface TrpcMutationRef<TIn, TOut> {
     /**
      * Invoke the mutation with the provided input.
      *
-     * Validates the response against the Zod schema. Updates `loading`, `error`,
-     * and `result` signals. Throws (re-throws) on error so callers can `await` and
-     * handle failures in a try/catch if needed.
+     * Validates the response against the Zod schema via `validateResponse()`.
+     * Updates `loading`, `error`, and `result` signals. Throws (re-throws) on
+     * error so callers can `await` and handle failures in a try/catch if needed.
      */
     mutate: (input: TIn) => Promise<TOut>;
 }
@@ -204,12 +207,13 @@ export class TrpcClientService {
     /**
      * Executes a tRPC call and validates the response with a Zod schema.
      *
+     * Delegates validation to the shared `validateResponse()` helper from
+     * `frontend/src/app/schemas/api-responses.ts` for consistent error formatting
+     * across REST and tRPC clients.
+     *
      * Use this for one-shot imperative calls (e.g. inside event handlers).
      * For reactive data that should update when component state changes,
      * use `createResource()` instead.
-     *
-     * ZTA: the `schema.safeParse()` call ensures the response conforms to the
-     * expected shape before it is consumed by Angular code.
      *
      * @param fn     A zero-argument function that returns a tRPC procedure call promise.
      * @param schema Zod schema to validate the raw response against.
@@ -225,12 +229,7 @@ export class TrpcClientService {
      */
     async query<T>(fn: () => Promise<unknown>, schema: z.ZodType<T>): Promise<T> {
         const raw = await fn();
-        const result = schema.safeParse(raw);
-        if (!result.success) {
-            console.error('[ZTA][TrpcClientService] Invalid tRPC response:', result.error.format());
-            throw new Error('Invalid tRPC response: ' + result.error.message);
-        }
-        return result.data;
+        return validateResponse(schema, raw, 'tRPC query');
     }
 
     /**
@@ -241,8 +240,8 @@ export class TrpcClientService {
      * When `params()` returns `undefined`, the loader is not called and the
      * resource stays Idle.
      *
-     * ZTA: responses are validated against `schema` before being surfaced to the
-     * template or component code.
+     * Responses are validated via the shared `validateResponse()` helper before
+     * being surfaced to the template or component code (ZTA).
      *
      * @param params  A reactive signal of loader parameters. Return `undefined` to
      *                keep the resource Idle (no HTTP call).
@@ -279,14 +278,7 @@ export class TrpcClientService {
             stream: ({ params: p }) => {
                 if (p === undefined) return EMPTY;
                 return from(loader(p)).pipe(
-                    map((raw) => {
-                        const result = schema.safeParse(raw);
-                        if (!result.success) {
-                            console.error('[ZTA][TrpcClientService] Invalid tRPC response in resource:', result.error.format());
-                            throw new Error('Invalid tRPC response: ' + result.error.message);
-                        }
-                        return result.data;
-                    }),
+                    map((raw) => validateResponse(schema, raw, 'tRPC resource')),
                 );
             },
             injector: options?.injector,
@@ -300,16 +292,13 @@ export class TrpcClientService {
      * signals and a `mutate()` method. Use this in components that need to track
      * the in-flight state of a mutation without managing signals manually.
      *
-     * ZTA: responses are validated against `schema` before being surfaced to the
-     * component.
+     * Responses are validated via the shared `validateResponse()` helper (ZTA).
      *
      * @param fn     A function that takes the mutation input and returns a tRPC procedure
-     *               call promise (the raw, unvalidated response). The `mutate()` method
-     *               on the returned ref validates this response with `schema` and returns
-     *               the typed, validated result.
+     *               call promise (the raw, unvalidated response).
      * @param schema Zod schema to validate the raw response against.
      * @returns      `TrpcMutationRef<TIn, TOut>` with `loading`, `error`, `result` signals
-     *               and a `mutate()` method that validates and returns the typed response.
+     *               and a `mutate()` method.
      *
      * @example
      * ```ts
@@ -346,13 +335,9 @@ export class TrpcClientService {
             error.set(null);
             try {
                 const raw = await fn(input);
-                const parsed = schema.safeParse(raw);
-                if (!parsed.success) {
-                    console.error('[ZTA][TrpcClientService] Invalid tRPC mutation response:', parsed.error.format());
-                    throw new Error('Invalid tRPC response: ' + parsed.error.message);
-                }
-                result.set(parsed.data);
-                return parsed.data;
+                const data = validateResponse(schema, raw, 'tRPC mutation');
+                result.set(data);
+                return data;
             } catch (e) {
                 const err = e instanceof Error ? e : new Error(String(e));
                 error.set(err);

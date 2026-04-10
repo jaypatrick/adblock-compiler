@@ -4,13 +4,14 @@
  * Covers:
  *   - Service instantiation
  *   - tRPC client is callable and dispatches HTTP requests to the correct endpoint
- *   - Results are returned as-is from the mock fetch (client uses createTRPCClient<any>,
- *     so there is no compile-time type checking on procedure names or response shapes)
+ *   - Results are returned typed (client is TrpcTypedClient, not <any>)
  *   - Authorization header is attached when AuthFacadeService.getToken() returns a token
  *   - No Authorization header when getToken() returns null
  *   - Base URL is correctly derived from API_BASE_URL (strips /api suffix)
  *   - Public procedures (v1.version.get) work without auth
  *   - Authenticated procedures (v1.compile.json) attach auth headers
+ *   - query() validates responses with Zod and throws on invalid shape
+ *   - createMutation() manages loading/error/result signals and validates responses
  */
 
 import { TestBed } from '@angular/core/testing';
@@ -19,8 +20,9 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TrpcClientService } from './trpc-client.service';
 import { AuthFacadeService } from './auth-facade.service';
 import { API_BASE_URL } from '../tokens';
+import { TrpcVersionGetResponseSchema, TrpcCompileJsonResponseSchema } from '../trpc/schemas';
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+// ── Helpers ────────────────────────────────────────────────────────────────────────────────
 
 const BEARER = 'sess_mock_bearer_token';
 
@@ -32,7 +34,7 @@ function makeRes(body: unknown, status = 200): Response {
     });
 }
 
-// ── Mocks ─────────────────────────────────────────────────────────────────────
+// ── Mocks ─────────────────────────────────────────────────────────────────────────────────
 
 function buildAuthMock(signedIn = true, token: string | null = BEARER): Partial<AuthFacadeService> {
     return {
@@ -41,7 +43,7 @@ function buildAuthMock(signedIn = true, token: string | null = BEARER): Partial<
     };
 }
 
-// ── Tests ─────────────────────────────────────────────────────────────────────
+// ── Tests ─────────────────────────────────────────────────────────────────────────────────
 
 describe('TrpcClientService', () => {
     let service: TrpcClientService;
@@ -83,7 +85,7 @@ describe('TrpcClientService', () => {
         expect(service.client.v1.compile).toBeDefined();
     });
 
-    // ── Base URL derivation ────────────────────────────────────────────────────
+    // ── Base URL derivation ────────────────────────────────────────────────────────────────
 
     describe('base URL derivation', () => {
         it('strips /api suffix from browser base URL', async () => {
@@ -110,7 +112,7 @@ describe('TrpcClientService', () => {
         });
     });
 
-    // ── Public procedure (v1.version.get) ─────────────────────────────────────
+    // ── Public procedure (v1.version.get) ──────────────────────────────────────────────────
 
     describe('v1.version.get (public query)', () => {
         it('calls the tRPC endpoint and returns typed result', async () => {
@@ -152,7 +154,7 @@ describe('TrpcClientService', () => {
         });
     });
 
-    // ── Authenticated procedure (v1.compile.json) ─────────────────────────────
+    // ── Authenticated procedure (v1.compile.json) ──────────────────────────────────────────
 
     describe('v1.compile.json (authenticated mutation)', () => {
         it('attaches Authorization header when token is available', async () => {
@@ -166,7 +168,8 @@ describe('TrpcClientService', () => {
 
             await service.client.v1.compile.json.mutate({
                 configuration: {
-                    sources: [{ url: 'https://example.com/easylist.txt' }],
+                    name: 'Test List',
+                    sources: [{ source: 'https://example.com/easylist.txt' }],
                 },
             });
 
@@ -195,7 +198,8 @@ describe('TrpcClientService', () => {
             try {
                 await service.client.v1.compile.json.mutate({
                     configuration: {
-                        sources: [{ url: 'https://example.com/easylist.txt' }],
+                        name: 'Test List',
+                        sources: [{ source: 'https://example.com/easylist.txt' }],
                     },
                 });
             } catch {
@@ -219,7 +223,8 @@ describe('TrpcClientService', () => {
 
             const result = await service.client.v1.compile.json.mutate({
                 configuration: {
-                    sources: [{ url: 'https://example.com/easylist.txt' }],
+                    name: 'Test List',
+                    sources: [{ source: 'https://example.com/easylist.txt' }],
                 },
             });
 
@@ -228,23 +233,130 @@ describe('TrpcClientService', () => {
         });
     });
 
-    // ── Health check (v1.health.get) ──────────────────────────────────────────
+    // ── Health check (v1.health.get) ─────────────────────────────────────────────────────────
 
     describe('v1.health.get (public query)', () => {
         it('calls the health endpoint and returns health status', async () => {
             setup(buildAuthMock(false, null));
             const mockResult = {
-                healthy: true,
+                status: 'healthy',
                 timestamp: '2025-01-01T00:00:00Z',
                 version: '0.79.4',
-                uptime: 42000,
+                services: {
+                    gateway: { status: 'healthy' },
+                    database: { status: 'healthy', latency_ms: 5 },
+                    compiler: { status: 'healthy' },
+                    auth: { status: 'healthy', provider: 'better-auth' },
+                    cache: { status: 'healthy' },
+                },
             };
             fetchSpy.mockResolvedValueOnce(makeRes([{ result: { data: mockResult } }]));
 
             const result = await service.client.v1.health.get.query();
 
-            expect(result.healthy).toBe(true);
+            expect(result.status).toBe('healthy');
             expect(result.version).toBe('0.79.4');
+        });
+    });
+
+    // ── query() helper ──────────────────────────────────────────────────────────────────────
+
+    describe('query(fn, schema) — validated one-shot call', () => {
+        it('returns validated response when schema matches', async () => {
+            setup(buildAuthMock(false, null));
+            const mockResult = { version: '0.79.4', apiVersion: 'v1' };
+            fetchSpy.mockResolvedValueOnce(makeRes([{ result: { data: mockResult } }]));
+
+            const result = await service.query(
+                () => service.client.v1.version.get.query(),
+                TrpcVersionGetResponseSchema,
+            );
+
+            expect(result.version).toBe('0.79.4');
+            expect(result.apiVersion).toBe('v1');
+        });
+
+        it('throws when response does not match schema', async () => {
+            setup(buildAuthMock(false, null));
+            // Return a response missing required 'apiVersion' field
+            const invalidResult = { version: '0.79.4' };
+            fetchSpy.mockResolvedValueOnce(makeRes([{ result: { data: invalidResult } }]));
+
+            await expect(
+                service.query(
+                    () => service.client.v1.version.get.query(),
+                    TrpcVersionGetResponseSchema,
+                ),
+            ).rejects.toThrow('Invalid API response from tRPC query');
+        });
+    });
+
+    // ── createMutation() helper ────────────────────────────────────────────────────────────
+
+    describe('createMutation(fn, schema) — signal-based mutation', () => {
+        it('starts with loading=false, error=null, result=null', () => {
+            setup();
+            const mutation = service.createMutation(
+                (_input: { value: number }) => Promise.resolve({ success: true }),
+                TrpcVersionGetResponseSchema,
+            );
+            expect(mutation.loading()).toBe(false);
+            expect(mutation.error()).toBeNull();
+            expect(mutation.result()).toBeNull();
+        });
+
+        it('sets result on successful validated mutation', async () => {
+            setup(buildAuthMock(true, BEARER));
+            const expected = {
+                success: true,
+                ruleCount: 99,
+                rules: ['||example.com^'],
+                compiledAt: '2026-01-01T00:00:00Z',
+            };
+            fetchSpy.mockResolvedValueOnce(makeRes([{ result: { data: expected } }]));
+
+            const mutation = service.createMutation(
+                (input: Parameters<typeof service.client.v1.compile.json.mutate>[0]) =>
+                    service.client.v1.compile.json.mutate(input),
+                TrpcCompileJsonResponseSchema,
+            );
+
+            const result = await mutation.mutate({
+                configuration: { name: 'Test', sources: [{ source: 'https://example.com/easylist.txt' }] },
+            });
+
+            expect(result.success).toBe(true);
+            expect(result.ruleCount).toBe(99);
+            expect(mutation.result()?.ruleCount).toBe(99);
+            expect(mutation.loading()).toBe(false);
+            expect(mutation.error()).toBeNull();
+        });
+
+        it('sets error signal and resets loading on network failure', async () => {
+            setup(buildAuthMock(true, BEARER));
+
+            const mutation = service.createMutation(
+                (_input: { value: number }) => Promise.reject(new Error('Network error')),
+                TrpcVersionGetResponseSchema,
+            );
+
+            await expect(mutation.mutate({ value: 1 })).rejects.toThrow('Network error');
+            expect(mutation.loading()).toBe(false);
+            expect(mutation.error()?.message).toBe('Network error');
+            expect(mutation.result()).toBeNull();
+        });
+
+        it('throws and sets error when response fails Zod validation', async () => {
+            setup(buildAuthMock(false, null));
+
+            const mutation = service.createMutation(
+                () => Promise.resolve({ notVersion: 'bad' }),
+                TrpcVersionGetResponseSchema,
+            );
+
+            await expect(mutation.mutate(undefined as unknown as never)).rejects.toThrow('Invalid API response from tRPC mutation');
+            expect(mutation.error()).not.toBeNull();
+            expect(mutation.loading()).toBe(false);
         });
     });
 });
