@@ -11,11 +11,12 @@
  *   - Public procedures (v1.version.get) work without auth
  *   - Authenticated procedures (v1.compile.json) attach auth headers
  *   - query() validates responses with Zod and throws on invalid shape
+ *   - createResource() stays idle when params is undefined; calls loader when params are set; propagates validation errors
  *   - createMutation() manages loading/error/result signals and validates responses
  */
 
 import { TestBed } from '@angular/core/testing';
-import { provideZonelessChangeDetection, signal } from '@angular/core';
+import { Injector, provideZonelessChangeDetection, signal } from '@angular/core';
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { TrpcClientService } from './trpc-client.service';
 import { AuthFacadeService } from './auth-facade.service';
@@ -357,6 +358,57 @@ describe('TrpcClientService', () => {
             await expect(mutation.mutate(undefined as unknown as never)).rejects.toThrow('Invalid API response from tRPC mutation');
             expect(mutation.error()).not.toBeNull();
             expect(mutation.loading()).toBe(false);
+        });
+    });
+
+    // ── createResource() helper ────────────────────────────────────────────────────────────
+
+    describe('createResource(params, loader, schema) — reactive resource', () => {
+        it('stays idle and never calls the loader when params is undefined', async () => {
+            setup(buildAuthMock(false, null));
+            const injector = TestBed.inject(Injector);
+            const params = signal<string | undefined>(undefined);
+            const loader = vi.fn().mockResolvedValue({ version: '1.0', apiVersion: 'v1' });
+
+            const resource = service.createResource(params, loader, TrpcVersionGetResponseSchema, { injector });
+
+            await TestBed.whenStable();
+
+            expect(loader).not.toHaveBeenCalled();
+            expect(resource.isLoading()).toBe(false);
+            expect(resource.value()).toBeUndefined();
+        });
+
+        it('calls the loader and resolves value when params is defined', async () => {
+            setup(buildAuthMock(false, null));
+            const injector = TestBed.inject(Injector);
+            const mockData = { version: '1.0', apiVersion: 'v1' };
+            const loader = vi.fn().mockResolvedValue(mockData);
+            const params = signal<string | undefined>('trigger');
+
+            const resource = service.createResource(params, loader, TrpcVersionGetResponseSchema, { injector });
+
+            await TestBed.whenStable();
+
+            expect(loader).toHaveBeenCalledWith('trigger');
+            expect(resource.value()).toEqual(mockData);
+            expect(resource.error()).toBeUndefined();
+        });
+
+        it('enters error state when loader returns data failing schema validation', async () => {
+            setup(buildAuthMock(false, null));
+            const injector = TestBed.inject(Injector);
+            const loader = vi.fn().mockResolvedValue({ notVersion: 'bad' });
+            const params = signal<string | undefined>('trigger');
+
+            const resource = service.createResource(params, loader, TrpcVersionGetResponseSchema, { injector });
+
+            await TestBed.whenStable();
+
+            expect(resource.error()).toBeDefined();
+            expect((resource.error() as Error).message).toContain('Invalid API response from tRPC resource');
+            expect(resource.value()).toBeUndefined();
+            expect(resource.isLoading()).toBe(false);
         });
     });
 });

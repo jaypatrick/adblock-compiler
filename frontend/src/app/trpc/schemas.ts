@@ -106,8 +106,12 @@ export const TrpcCompileJsonInputSchema = z.object({
          */
         sources: z.array(
             z.object({
-                /** URL or file path to the filter list source. */
-                source: z.string().min(1),
+                /**
+                 * URL or file path to the filter list source. Trimmed before validation
+                 * so that whitespace-only values are rejected — mirrors the
+                 * server-side `SourceSchema.source` which applies `.trim().min(1)`.
+                 */
+                source: z.string().trim().min(1),
                 /** When true, fetch via Cloudflare Browser Rendering (WorkerCompiler only). */
                 useBrowser: z.boolean().optional(),
             }),
