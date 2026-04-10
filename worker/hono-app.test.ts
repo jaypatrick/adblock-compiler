@@ -237,6 +237,11 @@ Deno.test('/api/auth/* bypasses logger middleware (no request log emitted)', asy
         // correct this list will be empty for /api/auth/* requests.
         const authLogEntry = logs.find((log) => log.includes('/api/auth/'));
         assertEquals(authLogEntry, undefined, 'Expected logger() NOT to log /api/auth/* requests');
+    } finally {
+        console.log = originalLog;
+    }
+});
+
 // ── Browser health endpoint (#1521) ──────────────────────────────────────────
 // GET /api/browser/health is Anonymous-tier and pre-auth bypassed.
 
