@@ -118,4 +118,4 @@ CONTAINER_SECRET=dev-local-secret
 # Override these for local dev; they default to the *.workers.dev production URLs.
 URL_FRONTEND=http://localhost:4200
 URL_API=http://localhost:8787
-URL_DOCS=https://adblock-compiler-docs.pages.dev
+URL_DOCS=https://docs.bloqr.jaysonknight.com
