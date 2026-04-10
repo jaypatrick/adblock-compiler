@@ -30,7 +30,7 @@ export const SPA_SERVER_PREFIXES: readonly string[] = [
 ];
 
 /** URL of the mdBook documentation site hosted on Cloudflare Pages. */
-export const DOCS_SITE_URL_FALLBACK = 'https://adblock-compiler-docs.pages.dev/';
+export const DOCS_SITE_URL_FALLBACK = 'https://docs.bloqr.jaysonknight.com/';
 
 /**
  * @deprecated Use {@link getProjectUrls}`(env).docs` at runtime; this re-export exists only for
