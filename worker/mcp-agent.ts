@@ -55,12 +55,12 @@ try {
         resolveBrowserBinding(env as unknown as { readonly BROWSER?: BrowserWorker }),
     );
 } catch (err) {
-    const message = err instanceof Error ? err.message : String(err);
+    console.error('Failed to initialize Playwright MCP agent', err);
     _PlaywrightMcpAgent = class BrowserBindingMissingAgent {
         // deno-lint-ignore no-explicit-any
         constructor(_ctx: any, _env: any) {}
         fetch(_request: Request): Response {
-            return new Response(message, {
+            return new Response('Service temporarily unavailable.', {
                 status: 503,
                 headers: { 'Content-Type': 'text/plain; charset=utf-8' },
             });
