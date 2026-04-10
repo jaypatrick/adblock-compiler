@@ -6,6 +6,14 @@
  * are properly wired and that the value has the shape expected by the Cloudflare
  * Workers runtime (a constructor function / Durable Object class).
  *
+ * The binding check is performed by `getBrowserBinding()`, which is called as
+ * the argument to `createMcpAgent()` at module evaluation time.  If `env.BROWSER`
+ * is absent (e.g. `wrangler dev` without `--remote`), `getBrowserBinding()` throws
+ * before `createMcpAgent` is invoked, so `PlaywrightMcpAgent` is never exported
+ * and the module import rejects.  When `env.BROWSER` is present, `createMcpAgent`
+ * receives it and returns the Durable Object class.  The function is encapsulated
+ * to provide a clear error origin and actionable fix instructions.
+ *
  * Note: `@cloudflare/playwright-mcp` transitively imports `cloudflare:*` modules
  * at the top level.  Outside the Cloudflare Workers runtime (e.g. `deno test`)
  * those imports fail with ERR_UNSUPPORTED_ESM_URL_SCHEME.  Tests here use a
@@ -22,11 +30,14 @@ interface McpAgentModule {
 }
 
 // Attempt to load the module; it requires the Cloudflare Workers runtime.
+// The import also rejects when env.BROWSER is absent — getBrowserBinding()
+// throws before createMcpAgent is called, so PlaywrightMcpAgent is never set.
 let mcpModule: McpAgentModule | null = null;
 try {
     mcpModule = await import('./mcp-agent.ts') as McpAgentModule;
 } catch {
-    // Not in Cloudflare Workers runtime — tests below will be skipped.
+    // Not in Cloudflare Workers runtime, or BROWSER binding is absent —
+    // tests below will be skipped.
 }
 
 const skip = mcpModule === null;

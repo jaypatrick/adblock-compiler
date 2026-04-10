@@ -74,7 +74,18 @@ custom_domain = true
 [build]
 command = "sh scripts/build-worker.sh"
 
-# ─── Browser binding (Cloudflare Browser Rendering) ─────────────────────────
+# ─── Browser Rendering ────────────────────────────────────────────────────────
+# Provides a headless Chromium instance at the edge via Cloudflare Browser Rendering.
+# Used by PlaywrightMcpAgent (worker/mcp-agent.ts) for AI-driven browser automation.
+# Requires Cloudflare Workers Paid plan.
+#
+# IMPORTANT: Use [browser] (scalar table).
+# Do NOT use [[browser_rendering]] — that is array-of-tables syntax and is silently
+# ignored by wrangler, causing env.BROWSER to be undefined at runtime.
+#
+# Verify the binding is active:
+#   wrangler dev --remote  (local dev with real CF bindings)
+#   GET https://api.bloqr.jaysonknight.com/api/browser-health  (production check)
 [browser]
 binding = "BROWSER"
 
