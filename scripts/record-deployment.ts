@@ -7,7 +7,7 @@
  * 1. Reads deployment version info
  * 2. Collects git metadata
  * 3. Collects CI/CD metadata
- * 4. Records the deployment in Neon PostgreSQL via Prisma
+ * 4. Records the deployment in Neon PostgreSQL via @neondatabase/serverless
  *
  * Usage:
  *   deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts [--status=success|failed]
@@ -24,8 +24,7 @@
 
 import { parseArgs } from '@std/cli/parse-args';
 import { generateDeploymentId } from '../src/deployment/version.ts';
-import { PrismaClient } from '../prisma/generated/client.ts';
-import { PrismaPg } from '@prisma/adapter-pg';
+import { neon } from '@neondatabase/serverless';
 
 /**
  * Extract a human-readable error message from any thrown value.
@@ -128,7 +127,7 @@ function getDeploymentMetadata(): DeploymentMetadata {
 }
 
 /**
- * Record deployment in Neon PostgreSQL via Prisma.
+ * Record deployment in Neon PostgreSQL via @neondatabase/serverless.
  * Uses DIRECT_DATABASE_URL (bypasses connection pooling for direct writes).
  */
 async function recordDeployment(
@@ -149,46 +148,43 @@ async function recordDeployment(
     console.log(`  Deployed by: ${deployedBy}`);
     console.log(`  Status: ${status}`);
 
-    const adapter = new PrismaPg({ connectionString: directDatabaseUrl });
-    const prisma = new PrismaClient({ adapter });
+    const sql = neon(directDatabaseUrl);
 
-    try {
-        // Upsert the deployment counter to get/increment the build number
-        await prisma.deploymentCounter.upsert({
-            where: { version: versionInfo.version },
-            update: { lastBuildNumber: versionInfo.buildNumber, updatedAt: new Date() },
-            create: { version: versionInfo.version, lastBuildNumber: versionInfo.buildNumber, updatedAt: new Date() },
-        });
+    // Persist the already-computed build number into the deployment counter (computed earlier by generate-deployment-version.ts)
+    await sql(
+        `INSERT INTO deployment_counter (version, last_build_number, updated_at)
+         VALUES ($1, $2, NOW())
+         ON CONFLICT (version) DO UPDATE SET last_build_number = EXCLUDED.last_build_number, updated_at = NOW()`,
+        [versionInfo.version, versionInfo.buildNumber],
+    );
 
-        // Upsert the deployment history record
-        await prisma.deploymentHistory.upsert({
-            where: { fullVersion: versionInfo.fullVersion },
-            update: {
-                status,
-                gitCommit,
-                gitBranch,
-                deployedBy,
-                workflowRunId: metadata.workflow_run_id ?? null,
-                workflowRunUrl: metadata.workflow_run_url ?? null,
-                metadata,
-            },
-            create: {
-                id,
-                version: versionInfo.version,
-                buildNumber: versionInfo.buildNumber,
-                fullVersion: versionInfo.fullVersion,
-                gitCommit,
-                gitBranch,
-                deployedBy,
-                status,
-                workflowRunId: metadata.workflow_run_id ?? null,
-                workflowRunUrl: metadata.workflow_run_url ?? null,
-                metadata,
-            },
-        });
-    } finally {
-        await prisma.$disconnect();
-    }
+    // Upsert the deployment history record
+    await sql(
+        `INSERT INTO deployment_history
+             (id, version, build_number, full_version, git_commit, git_branch, deployed_by, status, workflow_run_id, workflow_run_url, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb)
+         ON CONFLICT (full_version) DO UPDATE SET
+             status = EXCLUDED.status,
+             git_commit = EXCLUDED.git_commit,
+             git_branch = EXCLUDED.git_branch,
+             deployed_by = EXCLUDED.deployed_by,
+             workflow_run_id = EXCLUDED.workflow_run_id,
+             workflow_run_url = EXCLUDED.workflow_run_url,
+             metadata = EXCLUDED.metadata`,
+        [
+            id,
+            versionInfo.version,
+            versionInfo.buildNumber,
+            versionInfo.fullVersion,
+            gitCommit,
+            gitBranch,
+            deployedBy,
+            status,
+            metadata.workflow_run_id ?? null,
+            metadata.workflow_run_url ?? null,
+            JSON.stringify(metadata),
+        ],
+    );
 
     console.log('✓ Deployment recorded successfully');
 }

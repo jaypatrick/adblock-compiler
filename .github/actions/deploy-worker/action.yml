@@ -125,16 +125,21 @@ runs:
           shell: bash
           run: |
               echo "Deploying tail worker (adblock-tail)..."
+              TAIL_DEPLOYED=false
               for i in 1 2 3; do
-                  deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }} && break
+                  if deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
+                      TAIL_DEPLOYED=true
+                      break
+                  fi
                   if [ "$i" -lt 3 ]; then
                       echo "Attempt $i failed, retrying in 15s..."
                       sleep 15
-                  else
-                      echo "❌ All 3 tail-worker deploy attempts failed."
-                      exit 1
                   fi
               done
+              if [ "$TAIL_DEPLOYED" = "false" ]; then
+                  echo "::warning::Tail worker (adblock-tail) failed to deploy after 3 attempts. Main worker deployment will continue."
+                  echo "Tail worker deploy failed — continuing with main worker deployment."
+              fi
 
         - name: Verify Docker for container build
           if: env.CLOUDFLARE_API_TOKEN != ''
