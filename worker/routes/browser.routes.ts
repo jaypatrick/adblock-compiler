@@ -22,8 +22,7 @@ const browserHealthRoute = createRoute({
     tags: ['Browser'],
     operationId: 'browserHealth',
     summary: 'Browser Rendering binding health check',
-    description:
-        'Returns `{ ok: true }` when the `BROWSER` binding (Cloudflare Browser Rendering) is ' +
+    description: 'Returns `{ ok: true }` when the `BROWSER` binding (Cloudflare Browser Rendering) is ' +
         'configured, or `{ ok: false, error: "..." }` when it is absent. ' +
         'This is a configuration check only — it does not make a live request to the Browser Rendering service. ' +
         'This endpoint is publicly accessible and requires no authentication.',
@@ -59,8 +58,7 @@ browserRoutes.openapi(browserHealthRoute, (c) => {
     return c.json(
         {
             ok: false as const,
-            error:
-                'BROWSER binding is not configured. ' +
+            error: 'BROWSER binding is not configured. ' +
                 'Add `[browser]\\nbinding = "BROWSER"` to wrangler.toml and redeploy.',
         },
         503,
