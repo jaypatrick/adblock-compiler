@@ -16,6 +16,7 @@ const PUBLIC_ENDPOINT_PREFIXES = [
     '/api/version',
     '/api/health',
     '/api/metrics',
+    '/api/browser',
     '/api/openapi.json',
     '/api/docs',
     '/api/swagger',

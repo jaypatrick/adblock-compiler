@@ -5,7 +5,7 @@
  * the previous if/else chain in `worker/handlers/router.ts`.
  */
 
-import { assertEquals, assertStringIncludes } from '@std/assert';
+import { assertEquals, assertNotEquals, assertStringIncludes } from '@std/assert';
 import { makeEnv, makeInMemoryKv } from './test-helpers.ts';
 import { app } from './hono-app.ts';
 
@@ -237,7 +237,30 @@ Deno.test('/api/auth/* bypasses logger middleware (no request log emitted)', asy
         // correct this list will be empty for /api/auth/* requests.
         const authLogEntry = logs.find((log) => log.includes('/api/auth/'));
         assertEquals(authLogEntry, undefined, 'Expected logger() NOT to log /api/auth/* requests');
-    } finally {
-        console.log = originalLog;
-    }
+// ── Browser health endpoint (#1521) ──────────────────────────────────────────
+// GET /api/browser/health is Anonymous-tier and pre-auth bypassed.
+
+Deno.test('GET /api/browser/health returns 503 with ok=false when BROWSER binding is absent', async () => {
+    // Default makeEnv() has no BROWSER binding, so the endpoint should report it absent.
+    const res = await fetch('/api/browser/health');
+    assertEquals(res.status, 503);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body['ok'], false);
+    assertEquals(typeof body['error'], 'string');
+});
+
+Deno.test('GET /api/browser/health returns 200 with ok=true when BROWSER binding is present', async () => {
+    // Provide a minimal stub that satisfies the BrowserWorker interface (just needs a `fetch` property).
+    // deno-lint-ignore no-explicit-any
+    const env = makeEnv({ BROWSER: { fetch } as any });
+    const res = await fetch('/api/browser/health', { env });
+    assertEquals(res.status, 200);
+    const body = await res.json() as Record<string, unknown>;
+    assertEquals(body['ok'], true);
+});
+
+Deno.test('GET /api/browser/health is publicly accessible (no auth required)', async () => {
+    // Must not return 401 for anonymous callers — it is a pre-auth endpoint.
+    const res = await fetch('/api/browser/health');
+    assertNotEquals(res.status, 401);
 });

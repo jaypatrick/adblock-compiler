@@ -108,6 +108,7 @@ const MONITORING_API_PATHS = [
     '/api/health/latest',
     '/api/health/db-smoke',
     '/api/metrics',
+    '/api/browser/health',
 ] as const;
 
 // Pre-auth API meta paths (bypass unified auth, use anonymous context)

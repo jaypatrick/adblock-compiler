@@ -24,7 +24,8 @@ const browserHealthRoute = createRoute({
     summary: 'Browser Rendering binding health check',
     description:
         'Returns `{ ok: true }` when the `BROWSER` binding (Cloudflare Browser Rendering) is ' +
-        'configured and reachable, or `{ ok: false, error: "..." }` when it is absent. ' +
+        'configured, or `{ ok: false, error: "..." }` when it is absent. ' +
+        'This is a configuration check only — it does not make a live request to the Browser Rendering service. ' +
         'This endpoint is publicly accessible and requires no authentication.',
     responses: {
         200: {
