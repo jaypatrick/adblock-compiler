@@ -41,11 +41,14 @@ import type {
  * Shape of a tRPC **query** procedure as returned by `createTRPCClient` with
  * `httpBatchLink`.
  *
+ * When `TInput` is `void` (the default), `query()` is callable with no arguments.
+ * When `TInput` is a concrete type, `query(input)` requires the argument.
+ *
  * @template TOutput - Resolved return type of the procedure.
  * @template TInput  - Input type (defaults to `void` for parameterless queries).
  */
 export interface TrpcQueryProcedure<TOutput, TInput = void> {
-    query(input: TInput): Promise<TOutput>;
+    query(...args: TInput extends void ? [] : [input: TInput]): Promise<TOutput>;
 }
 
 /**

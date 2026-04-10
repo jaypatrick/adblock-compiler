@@ -95,10 +95,11 @@ export type TrpcHealthGetResponse = z.infer<typeof TrpcHealthGetResponseSchema>;
 export const TrpcCompileJsonInputSchema = z.object({
     configuration: z.object({
         /**
-         * Human-readable filter list name. Optional in the Angular layer; the server's
-         * `ConfigurationSchema` accepts it but does not require it for all compile paths.
+         * Human-readable filter list name. Required by the server-side
+         * `ConfigurationSchema` (`src/configuration/schemas.ts`) and must be non-empty.
+         * The Worker will reject requests with a 400 error if this field is absent.
          */
-        name: z.string().min(1).optional(),
+        name: z.string().min(1),
         /**
          * Source definitions. Each item's `source` field must be a valid URL or
          * file path — mirroring the `SourceSchema.source` validation on the server.
