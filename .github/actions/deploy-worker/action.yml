@@ -89,11 +89,11 @@ runs:
                       echo "$output"
                       return 0
                   fi
-                  echo "$output"
-                  if echo "$output" | grep -qiE 'already (exists|taken)|11009'; then
+                  if echo "$output" | grep -qiE 'already (exists|taken)|10004|11009'; then
                       echo "Queue '$name' already exists"
                       return 0
                   fi
+                  echo "$output"
                   echo "❌ Failed to create queue '$name'. See error above."
                   exit 1
               }
@@ -105,11 +105,11 @@ runs:
                       echo "$output"
                       return 0
                   fi
-                  echo "$output"
-                  if echo "$output" | grep -qiE 'already (exists|taken)|11009'; then
+                  if echo "$output" | grep -qiE 'already (exists|taken)|10004|11009'; then
                       echo "R2 bucket '$name' already exists"
                       return 0
                   fi
+                  echo "$output"
                   echo "❌ Failed to create R2 bucket '$name'. See error above."
                   exit 1
               }
@@ -125,7 +125,16 @@ runs:
           shell: bash
           run: |
               echo "Deploying tail worker (adblock-tail)..."
-              deno run -A npm:wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }}
+              for i in 1 2 3; do
+                  deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }} && break
+                  if [ "$i" -lt 3 ]; then
+                      echo "Attempt $i failed, retrying in 15s..."
+                      sleep 15
+                  else
+                      echo "❌ All 3 tail-worker deploy attempts failed."
+                      exit 1
+                  fi
+              done
 
         - name: Verify Docker for container build
           if: env.CLOUDFLARE_API_TOKEN != ''
