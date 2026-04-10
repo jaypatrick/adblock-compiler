@@ -44,7 +44,7 @@
 
 **Compiler-as-a-Service** for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.
 
-🌐 **[Try the Admin Dashboard](https://adblock-compiler.jayson-knight.workers.dev/)** | 🔧 **[Compiler UI](https://adblock-frontend.jayson-knight.workers.dev/)** | 🚀 **[API Endpoint](https://adblock-compiler.jayson-knight.workers.dev/api)** | 📚 **[Documentation | WIP](https://adblock-compiler-docs.pages.dev/)**
+🌐 **[Try the Admin Dashboard](https://adblock-compiler.jayson-knight.workers.dev/)** | 🔧 **[Compiler UI](https://adblock-frontend.jayson-knight.workers.dev/)** | 🚀 **[API Endpoint](https://adblock-compiler.jayson-knight.workers.dev/api)** | 📚 **[Documentation | WIP](https://docs.bloqr.jaysonknight.com/)**
 
 ## ✨ Features
 
@@ -68,7 +68,7 @@
 
 ## 📚 Documentation
 
-Full documentation is available in mdBook format at [this link](https://adblock-compiler-docs.pages.dev/) and in the [`/docs`](docs/README.md) directory.
+Full documentation is available in mdBook format at [this link](https://docs.bloqr.jaysonknight.com/) and in the [`/docs`](docs/README.md) directory.
 
 ## 🚀 Quick Start
 

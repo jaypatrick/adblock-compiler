@@ -30,5 +30,5 @@
     <line x1="80" y1="510" x2="1120" y2="510" stroke="#1f2937" stroke-width="2" />
 
     <!-- Footer -->
-    <text x="80" y="570" font-family="'IBM Plex Sans', system-ui, -apple-system, sans-serif" font-size="26" fill="#9ca3af">adblock-compiler-docs.pages.dev</text>
+    <text x="80" y="570" font-family="'IBM Plex Sans', system-ui, -apple-system, sans-serif" font-size="26" fill="#9ca3af">docs.bloqr.jaysonknight.com</text>
 </svg>

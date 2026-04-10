@@ -206,7 +206,7 @@ export class AppComponent {
         { path: '/api-docs',     label: 'API Docs',     icon: 'description'       },
         { path: '/api-keys',     label: 'API Keys',     icon: 'vpn_key'           },
         { path: '/admin',        label: 'Admin',        icon: 'admin_panel_settings' },
-        { path: 'https://adblock-compiler-docs.pages.dev/', label: 'Docs', icon: 'menu_book', external: true },
+        { path: 'https://docs.bloqr.jaysonknight.com/', label: 'Docs', icon: 'menu_book', external: true },
     ];
 
     /**
