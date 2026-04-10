@@ -85,7 +85,7 @@ command = "sh scripts/build-worker.sh"
 #
 # Verify the binding is active:
 #   wrangler dev --remote  (local dev with real CF bindings)
-#   GET https://api.bloqr.jaysonknight.com/api/browser-health  (production check)
+#   GET https://api.bloqr.jaysonknight.com/api/browser/health  (production check)
 [browser]
 binding = "BROWSER"
 

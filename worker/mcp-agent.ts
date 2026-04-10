@@ -38,37 +38,35 @@ import { env } from 'cloudflare:workers';
 import type { BrowserWorker } from './cloudflare-workers-shim.ts';
 // @deno-types="./cloudflare-playwright-mcp-types.d.ts"
 import { createMcpAgent } from '@cloudflare/playwright-mcp';
+import { resolveBrowserBinding } from './lib/browser-env.ts';
 
-interface IBrowserEnv {
-    readonly BROWSER?: BrowserWorker;
+// ── Agent initialisation ──────────────────────────────────────────────────────
+//
+// `createMcpAgent(binding)` runs at module evaluation time.  If the BROWSER
+// binding is absent (e.g. `wrangler dev` without `--remote`), we catch the
+// error and export a stub Durable Object class instead so the Worker can still
+// start and serve non-browser routes.  The stub returns a 503 with the
+// actionable fix message when the agent endpoint is actually requested.
+
+// deno-lint-ignore no-explicit-any
+let _PlaywrightMcpAgent: new (ctx: any, env: any) => any;
+try {
+    _PlaywrightMcpAgent = createMcpAgent(
+        resolveBrowserBinding(env as unknown as { readonly BROWSER?: BrowserWorker }),
+    );
+} catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    _PlaywrightMcpAgent = class BrowserBindingMissingAgent {
+        // deno-lint-ignore no-explicit-any
+        constructor(_ctx: any, _env: any) {}
+        fetch(_request: Request): Response {
+            return new Response(message, {
+                status: 503,
+                headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+            });
+        }
+    };
 }
 
-/**
- * Returns the BROWSER binding from the module-level env, or throws a descriptive
- * error that tells the operator exactly what to fix.
- *
- * Encapsulated in a function so that the error is thrown with a clear origin
- * (`getBrowserBinding`) and the logic can be tested or extended independently.
- * Note: this is still called at module evaluation time as the argument to
- * `createMcpAgent()`, so a missing binding will prevent module load.
- */
-function getBrowserBinding(): BrowserWorker {
-    const browserEnv = env as unknown as IBrowserEnv;
-    const binding = browserEnv.BROWSER;
-    if (!binding) {
-        throw new Error(
-            'Cloudflare Browser Rendering binding "BROWSER" is not configured.\n' +
-                'To fix:\n' +
-                '  1. Ensure your Cloudflare account is on the Workers Paid plan\n' +
-                '  2. Add `[browser]\\n  binding = "BROWSER"` to wrangler.toml\n' +
-                '     (use [browser], NOT [[browser_rendering]] — the double-bracket form is\n' +
-                '      array-of-tables syntax and is silently ignored by wrangler)\n' +
-                '  3. Run `wrangler deploy` or `wrangler dev --remote` to activate the binding\n' +
-                '  4. Verify: GET /api/browser-health should return { ok: true }',
-        );
-    }
-    return binding;
-}
-
-export const PlaywrightMcpAgent = createMcpAgent(getBrowserBinding());
+export const PlaywrightMcpAgent = _PlaywrightMcpAgent;
 export default PlaywrightMcpAgent;
