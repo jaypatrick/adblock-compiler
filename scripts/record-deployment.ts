@@ -150,7 +150,7 @@ async function recordDeployment(
 
     const sql = neon(directDatabaseUrl);
 
-    // Upsert the deployment counter to get/increment the build number
+    // Persist the already-computed build number into the deployment counter (computed earlier by generate-deployment-version.ts)
     await sql(
         `INSERT INTO deployment_counter (version, last_build_number, updated_at)
          VALUES ($1, $2, NOW())
