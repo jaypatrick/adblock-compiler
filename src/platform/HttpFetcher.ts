@@ -42,7 +42,9 @@ export class HttpFetcher implements IContentFetcher {
     public static isSafeUrl(url: string): boolean {
         try {
             const parsed = new URL(url);
-            const host = parsed.hostname.toLowerCase();
+            // Normalize: lower-case and strip a legal trailing dot so that
+            // "foo.workers.dev." is treated identically to "foo.workers.dev".
+            const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
 
             // Reject loopback addresses
             if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {
@@ -64,6 +66,12 @@ export class HttpFetcher implements IContentFetcher {
             // (e.g. http://[fe80::1] → hostname '[fe80::1]'), so strip them first.
             const bare = host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1) : host;
             if (bare === '::1' || (bare.includes(':') && (bare.startsWith('fe80') || bare.startsWith('fc') || bare.startsWith('fd')))) {
+                return false;
+            }
+
+            // Reject Cloudflare Workers subdomains — proxying *.workers.dev creates
+            // self-referential request loops and is never a valid filter-list source.
+            if (host.endsWith('.workers.dev')) {
                 return false;
             }
 
