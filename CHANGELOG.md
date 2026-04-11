@@ -75,6 +75,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.84.0] - 2026-04-11
+
+### Added- **trpc**: TrpcClientService — typed client + query/createResource/createMutation helpers
+- **trpc**: client.ts returns TrpcTypedClient instead of ReturnType<any>
+- **trpc**: typed client interface, Zod schemas, Angular signal helpers
+- **admin**: Security Overview dashboard — Cloudflare Security Dashboard integration
+- **security**: prepare for Cloudflare API Shield Vulnerability Scanner integration
+- implement RFC 9457 Problem Details for structured HTTP error responses
+- integrate Cloudflare gradual deployments and document Node.js compat, persistent logs, static assets
+- add three-environment model with dev build support for Angular DevTools
+- subdomain architecture, URL config system, crawl protection, API docs landing page
+
+### Fixed
+
+- normalize trailing-dot hostnames in isSafeUrl and validateProxyUrl
+- add *.workers.dev SSRF guard to HttpFetcher and proxy route
+- add METRICS null guard in HealthMonitoringWorkflow and explicit robots.txt/sitemap.xml routes
+- **record-deployment**: correct misleading comment on deployment_counter upsert
+- **deploy**: make tail worker non-fatal and replace Prisma WASM with neon SQL
+- resolve three deploy-worker action failures from run #24258399882
+- **test**: restore missing finally block in hono-app.test.ts (parse error)
+- **worker**: narrow catch to missing-binding only, return actionable message, pre-auth+CORS for browser health, add integration tests
+- **worker**: true graceful degradation, /api/browser/health, pure unit tests for resolveBrowserBinding
+- **worker**: wrap BROWSER binding check in getBrowserBinding(), improve error message
+- **trpc**: address PR review comments
+- **trpc**: address PR review comments
+- eliminate command injection, add concurrency group, URL validation with timeouts, and fix ASSETS table row
+- **security-overview**: address PR review — datetime format, /api prefix, remove unused computed
+- **security**: address PR review feedback on API Shield scanner integration
+- apply PR review feedback on problem-details factory and hono-app legacy errors
+- correct log retention (24h not 30d), ASSETS binding (frontend-only), health-check URL (custom domain), and percentage description
+- address code review — singular 'second' for retryAfterSecs=1, ASCII ellipsis in comment
+- use configurable health-check URL input and absolute docs link in gradual-deploy workflow
+- apply all 6 code review suggestions (crawl protection, pre-auth paths, swap-domain script)
+- move logpush before [[routes]] and remove wildcard from custom domain pattern
+- improve regex robustness in swap-domain.ts (code review feedback)
+
+
 ## [0.83.0] - 2026-04-08
 
 ### Added- **config-builder**: add docs, Neon saved configs, and syntax highlighting
