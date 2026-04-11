@@ -47,7 +47,7 @@ function createMockState(): DurableObjectState {
         setHibernatableWebSocketEventTimeout: () => {},
         getHibernatableWebSocketEventTimeout: () => null,
         abort: () => {},
-    } as DurableObjectState;
+    } as unknown as DurableObjectState;
 }
 
 /**
