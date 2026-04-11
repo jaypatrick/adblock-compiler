@@ -47,7 +47,15 @@ function createMockState(): DurableObjectState {
         setHibernatableWebSocketEventTimeout: () => {},
         getHibernatableWebSocketEventTimeout: () => null,
         abort: () => {},
-    } as unknown as DurableObjectState;
+        // Stub facets (unused by CompilationCoordinator but required since workers-types 4.20260408.1)
+        facets: {
+            get: (): never => {
+                throw new Error('facets.get not implemented in mock');
+            },
+            abort: () => {},
+            delete: () => {},
+        } as unknown as DurableObjectFacets,
+    } as DurableObjectState;
 }
 
 /**
