@@ -62,6 +62,24 @@ Deno.test('GET /api/proxy/fetch — metadata endpoint rejected as 400 (SSRF prot
     assertEquals(res.status === 400 || res.status === 422, true);
 });
 
+Deno.test('GET /api/proxy/fetch — workers.dev URL rejected as 400 (self-SSRF protection)', async () => {
+    // *.workers.dev hostnames are Cloudflare Worker subdomains and must never be
+    // proxy-fetchable — they create self-referential request loops.
+    const res = await fetchApp('/api/proxy/fetch?url=https%3A%2F%2Fadblock-frontend.jayson-knight.workers.dev%2Ffavicon.png');
+    assertEquals(res.status === 400 || res.status === 422, true);
+});
+
+Deno.test('GET /api/proxy/fetch — own frontend URL rejected as 400 (self-SSRF protection)', async () => {
+    // URL_FRONTEND custom-domain guard: the Worker must not proxy-fetch its own
+    // deployed frontend hostname, even when it uses a non-workers.dev custom domain.
+    const env = makeEnv({ URL_FRONTEND: 'https://app.example.com' });
+    const res = await fetchApp(
+        '/api/proxy/fetch?url=https%3A%2F%2Fapp.example.com%2Ffavicon.png',
+        { env },
+    );
+    assertEquals(res.status === 400 || res.status === 422, true);
+});
+
 // ── GET /api/proxy/fetch — KV cache hit ───────────────────────────────────────
 
 Deno.test('GET /api/proxy/fetch — serves from KV cache when available', async () => {

@@ -65,8 +65,14 @@ function proxyCacheKey(url: string): string {
  * Validate that the target URL is safe to proxy.
  *
  * Returns an error string on failure, or `null` when the URL is allowed.
+ *
+ * @param url - The URL to validate.
+ * @param env - Optional runtime environment bindings. When provided, the
+ *   hostname is also checked against `env.URL_FRONTEND` and `env.URL_API` to
+ *   prevent the Worker from proxying its own custom domains (defence-in-depth
+ *   on top of the static `HttpFetcher.isSafeUrl()` check).
  */
-function validateProxyUrl(url: string): string | null {
+function validateProxyUrl(url: string, env?: Env): string | null {
     if (!url) return 'Missing url parameter';
 
     let parsed: URL;
@@ -82,6 +88,23 @@ function validateProxyUrl(url: string): string | null {
 
     if (!HttpFetcher.isSafeUrl(url)) {
         return 'URL targets a private or restricted address';
+    }
+
+    // Reject own-worker hostnames — prevents self-referential proxy loops.
+    // Covers both the workers.dev subdomains (caught by HttpFetcher.isSafeUrl)
+    // and any custom domains configured via URL_FRONTEND / URL_API env vars.
+    if (env) {
+        const ownHostnames = new Set<string>();
+        for (const rawUrl of [env.URL_FRONTEND, env.URL_API]) {
+            if (rawUrl) {
+                try {
+                    ownHostnames.add(new URL(rawUrl).hostname.toLowerCase());
+                } catch { /* ignore malformed env var */ }
+            }
+        }
+        if (ownHostnames.size > 0 && ownHostnames.has(parsed.hostname.toLowerCase())) {
+            return 'URL targets own Worker hostname';
+        }
     }
 
     return null;
@@ -233,7 +256,7 @@ proxyRoutes.openapi(proxyFetchRoute, async (c) => {
     }
 
     // ── SSRF + scheme validation ───────────────────────────────────────────
-    const urlError = validateProxyUrl(url);
+    const urlError = validateProxyUrl(url, c.env);
     if (urlError) {
         analytics.trackSecurityEvent({
             eventType: 'auth_failure',
@@ -334,7 +357,7 @@ proxyRoutes.openapi(proxyFetchBatchRoute, async (c) => {
 
     // Validate all URLs before initiating any fetches
     for (const url of urls) {
-        const urlError = validateProxyUrl(url);
+        const urlError = validateProxyUrl(url, c.env);
         if (urlError) {
             analytics.trackSecurityEvent({
                 eventType: 'auth_failure',

@@ -67,6 +67,12 @@ export class HttpFetcher implements IContentFetcher {
                 return false;
             }
 
+            // Reject Cloudflare Workers subdomains — proxying *.workers.dev creates
+            // self-referential request loops and is never a valid filter-list source.
+            if (host.endsWith('.workers.dev')) {
+                return false;
+            }
+
             return true;
         } catch {
             return false;
