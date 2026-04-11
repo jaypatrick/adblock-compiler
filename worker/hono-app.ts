@@ -114,6 +114,8 @@ const MONITORING_API_PATHS = [
 // Pre-auth API meta paths (bypass unified auth, use anonymous context)
 const PRE_AUTH_PATHS = [
     '/',
+    '/robots.txt',
+    '/sitemap.xml',
     '/api',
     '/api/',
     '/api/version',
@@ -489,6 +491,22 @@ app.get('/', (c) => docsLandingHandler(c.env));
 // Note: app.route('/api', docsRoutes) also registers docsRoutes.get('/') at /api,
 // but this explicit route ensures it is matched before the sub-app catch-all.
 app.get('/api', (c) => docsLandingHandler(c.env));
+
+// GET /robots.txt — explicit handler to avoid ASSETS.fetch() hang for missing files
+app.get('/robots.txt', (c) => {
+    return c.text('User-agent: *\nDisallow: /api/\nDisallow: /admin/\n', 200, {
+        'Cache-Control': 'public, max-age=86400',
+    });
+});
+
+// GET /sitemap.xml — minimal empty sitemap; avoids ASSETS.fetch() hang
+app.get('/sitemap.xml', (c) => {
+    return c.body(
+        '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>',
+        200,
+        { 'Content-Type': 'application/xml', 'Cache-Control': 'public, max-age=86400' },
+    );
+});
 
 // ============================================================================
 // Business routes sub-app (with ZTA + permission check middleware)
