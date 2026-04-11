@@ -45,14 +45,18 @@ function createMockState(): DurableObjectState {
         setHibernatableWebSocketEventTimeout: () => {},
         getHibernatableWebSocketEventTimeout: () => null,
         abort: () => {},
-        // Stub facets (unused by CompilationCoordinator but required since workers-types 4.20260408.1)
+        // Stub facets (unused by CompilationCoordinator but required since workers-types 4.20260408.1).
+        // `as DurableObjectFacets` (not `satisfies`) is intentional: `satisfies` triggers TS2589
+        // (excessively deep type instantiation) because DurableObjectFacets.get has deeply recursive
+        // generic constraints (Rpc.DurableObjectBranded, Fetcher<T>) that exceed the TS solver limit.
+        // The outer `satisfies DurableObjectState` still verifies every other property structurally.
         facets: {
             get: (): never => {
                 throw new Error('facets.get not implemented in mock');
             },
-            abort: () => {},
-            delete: () => {},
-        } satisfies DurableObjectFacets,
+            abort: (_name: string) => {},
+            delete: (_name: string) => {},
+        } as DurableObjectFacets,
     } satisfies DurableObjectState;
 }
 
