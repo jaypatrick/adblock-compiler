@@ -46,18 +46,20 @@ function createMockState(): DurableObjectState {
         getHibernatableWebSocketEventTimeout: () => null,
         abort: () => {},
         // Stub facets (unused by CompilationCoordinator but required since workers-types 4.20260408.1).
-        // Both the inner `as DurableObjectFacets` and the outer `as DurableObjectState` are
-        // intentional: `satisfies` on either triggers TS2589 (type instantiation excessively deep)
+        // `as unknown as DurableObjectFacets` is intentional: both `satisfies DurableObjectFacets`
+        // and a plain `as DurableObjectFacets` trigger TS2589 (type instantiation excessively deep)
         // because DurableObjectFacets.get has deeply recursive generic constraints
         // (Rpc.DurableObjectBranded, Fetcher<T>) that exceed TypeScript's instantiation depth
-        // limit. The explicit stub object still catches completely-wrong shapes via TS2352.
+        // limit. The double-cast bypasses the structural check entirely; the explicit stub object
+        // still guards against completely-wrong shapes (missing methods surface as TS errors on
+        // the inner literal before the cast is applied).
         facets: {
             get: (): never => {
                 throw new Error('facets.get not implemented in mock');
             },
             abort: (_name: string) => {},
             delete: (_name: string) => {},
-        } as DurableObjectFacets,
+        } as unknown as DurableObjectFacets,
     } as DurableObjectState;
 }
 
