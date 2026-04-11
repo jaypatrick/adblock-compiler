@@ -110,7 +110,8 @@
         "diag:full:ci": "deno run --allow-net --allow-env --allow-read --allow-write scripts/diag-full.ts --ci",
         "diag:full:prod": "deno run --allow-net --allow-env --allow-read --allow-write scripts/diag-full.ts --url https://adblock-frontend.jayson-knight.workers.dev",
         "diag:full:output": "deno run --allow-net --allow-env --allow-read --allow-write scripts/diag-full.ts --output",
-        "diag:report": "deno run --allow-read --allow-write scripts/diag-report.ts"
+        "diag:report": "deno run --allow-read --allow-write scripts/diag-report.ts",
+        "ci:cloudflare-check": "deno run --allow-net --allow-read scripts/ci/cloudflare-upgrade-check.ts"
     },
     "imports": {
         "@/": "./src/",
@@ -263,6 +264,7 @@
         "npm:sharp@0.34.5",
         "npm:workerd@1.20260312.1",
         "npm:workerd@1.20260405.1",
-        "npm:workerd@1.20260409.1"
+        "npm:workerd@1.20260409.1",
+        "npm:workerd@1.20260411.1"
     ]
 }

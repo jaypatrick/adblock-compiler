@@ -161,7 +161,27 @@ runs:
           shell: bash
           run: |
               echo "Deploying version: ${{ steps.version.outputs.full_version }}"
-              deno task wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }}
+              DEPLOY_SUCCESS=false
+              for i in 1 2 3; do
+                  if deno task wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
+                      DEPLOY_SUCCESS=true
+                      echo "✅ Worker deployed successfully"
+                      break
+                  fi
+                  WRANGLER_LOG=$(ls ~/.config/.wrangler/logs/wrangler-*.log 2>/dev/null | tail -1)
+                  if [ -n "$WRANGLER_LOG" ]; then
+                      echo "--- Wrangler log (attempt $i) ---"
+                      tail -50 "$WRANGLER_LOG"
+                  fi
+                  if [ "$i" -lt 3 ]; then
+                      echo "⚠️ Deploy attempt $i failed, retrying in 30s..."
+                      sleep 30
+                  fi
+              done
+              if [ "$DEPLOY_SUCCESS" = "false" ]; then
+                  echo "❌ All 3 deploy attempts failed."
+                  exit 1
+              fi
 
         - name: Record deployment
           if: success() && env.CLOUDFLARE_API_TOKEN != ''
