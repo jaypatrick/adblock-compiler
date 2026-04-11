@@ -94,15 +94,18 @@ function validateProxyUrl(url: string, env?: Env): string | null {
     // Covers both the workers.dev subdomains (caught by HttpFetcher.isSafeUrl)
     // and any custom domains configured via URL_FRONTEND / URL_API env vars.
     if (env) {
+        // Normalize helper: lower-case + strip legal trailing dot so that
+        // "app.example.com." matches "app.example.com" in the owned-hostname set.
+        const normalizeHost = (h: string): string => h.toLowerCase().replace(/\.$/, '');
         const ownHostnames = new Set<string>();
         for (const rawUrl of [env.URL_FRONTEND, env.URL_API]) {
             if (rawUrl) {
                 try {
-                    ownHostnames.add(new URL(rawUrl).hostname.toLowerCase());
+                    ownHostnames.add(normalizeHost(new URL(rawUrl).hostname));
                 } catch { /* ignore malformed env var */ }
             }
         }
-        if (ownHostnames.size > 0 && ownHostnames.has(parsed.hostname.toLowerCase())) {
+        if (ownHostnames.size > 0 && ownHostnames.has(normalizeHost(parsed.hostname))) {
             return 'URL targets own Worker hostname';
         }
     }

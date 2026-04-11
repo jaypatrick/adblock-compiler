@@ -42,7 +42,9 @@ export class HttpFetcher implements IContentFetcher {
     public static isSafeUrl(url: string): boolean {
         try {
             const parsed = new URL(url);
-            const host = parsed.hostname.toLowerCase();
+            // Normalize: lower-case and strip a legal trailing dot so that
+            // "foo.workers.dev." is treated identically to "foo.workers.dev".
+            const host = parsed.hostname.toLowerCase().replace(/\.$/, '');
 
             // Reject loopback addresses
             if (host === 'localhost' || host === '127.0.0.1' || host === '0.0.0.0') {

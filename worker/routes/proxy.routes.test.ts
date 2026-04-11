@@ -80,6 +80,22 @@ Deno.test('GET /api/proxy/fetch — own frontend URL rejected as 400 (self-SSRF 
     assertEquals(res.status === 400 || res.status === 422, true);
 });
 
+Deno.test('GET /api/proxy/fetch — trailing-dot workers.dev URL rejected as 400 (bypass prevention)', async () => {
+    // Trailing-dot FQDN notation (foo.workers.dev.) must not bypass the SSRF guard.
+    const res = await fetchApp('/api/proxy/fetch?url=https%3A%2F%2Fadblock-frontend.workers.dev.%2Ffavicon.png');
+    assertEquals(res.status === 400 || res.status === 422, true);
+});
+
+Deno.test('GET /api/proxy/fetch — trailing-dot own hostname rejected as 400 (bypass prevention)', async () => {
+    // A trailing-dot form of the own frontend hostname must also be rejected.
+    const env = makeEnv({ URL_FRONTEND: 'https://app.example.com' });
+    const res = await fetchApp(
+        '/api/proxy/fetch?url=https%3A%2F%2Fapp.example.com.%2Ffavicon.png',
+        { env },
+    );
+    assertEquals(res.status === 400 || res.status === 422, true);
+});
+
 // ── GET /api/proxy/fetch — KV cache hit ───────────────────────────────────────
 
 Deno.test('GET /api/proxy/fetch — serves from KV cache when available', async () => {
