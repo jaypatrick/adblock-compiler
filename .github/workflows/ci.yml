@@ -100,6 +100,8 @@ jobs:
               uses: ./.github/actions/setup-deno-env
               with:
                   deno-version: ${{ env.DENO_VERSION }}
+                  # The upgrade-check script only reads local files and fetches npm metadata;
+                  # it has no npm/jsr imports of its own, so no dep install is required.
                   install-deps: 'false'
 
             - name: Check Cloudflare dependency versions

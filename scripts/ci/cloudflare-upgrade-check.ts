@@ -22,7 +22,12 @@ interface NpmPackageLatest {
 async function fetchLatestVersion(pkg: string): Promise<string> {
     const res = await fetch(`https://registry.npmjs.org/${pkg}/latest`);
     if (!res.ok) {
-        throw new Error(`Failed to fetch ${pkg} from npm: ${res.status} ${res.statusText}`);
+        // Common causes: no network access (check runner firewall/proxy), npm registry outage,
+        // rate limiting (HTTP 429), or a misspelled package name (HTTP 404).
+        throw new Error(
+            `Failed to fetch "${pkg}" from npm registry (HTTP ${res.status} ${res.statusText}). ` +
+                `Check network connectivity, npm registry availability, and that the package name is correct.`,
+        );
     }
     const data = (await res.json()) as NpmPackageLatest;
     return data.version;
@@ -150,7 +155,9 @@ async function checkWorkersTypesVersion(denoJson: Record<string, unknown>): Prom
     console.log(`ℹ️  Latest @cloudflare/workers-types on npm: ${latestWorkersTypes}`);
 
     if (pinnedVersion && semverGt(latestWorkersTypes, pinnedVersion)) {
-        // Warning only — not a hard failure, just log for visibility.
+        // Warning only — workers-types updates are non-breaking (type-only package) and can be
+        // updated independently of wrangler/workerd. This is logged for visibility but does not
+        // fail CI, to avoid blocking deploys over minor type updates.
         console.log(
             `⚠️  @cloudflare/workers-types is outdated: pinned to ^${pinnedVersion}, latest is ${latestWorkersTypes}. ` +
                 `Update the pin in deno.json imports.`,

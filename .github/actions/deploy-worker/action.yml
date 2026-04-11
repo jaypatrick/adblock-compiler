@@ -168,6 +168,7 @@ runs:
                       echo "✅ Worker deployed successfully"
                       break
                   fi
+                  # Default wrangler log dir per https://developers.cloudflare.com/workers/wrangler/commands/#logs
                   WRANGLER_LOG=$(ls ~/.config/.wrangler/logs/wrangler-*.log 2>/dev/null | tail -1)
                   if [ -n "$WRANGLER_LOG" ]; then
                       echo "--- Wrangler log (attempt $i) ---"
