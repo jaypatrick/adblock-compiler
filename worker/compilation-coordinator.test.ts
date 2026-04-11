@@ -34,9 +34,7 @@ function createMockState(): DurableObjectState {
         } as unknown as DurableObjectStorage,
         // Empty props object (unused by CompilationCoordinator)
         props: {},
-        blockConcurrencyWhile: async (callback: () => Promise<void>) => {
-            await callback();
-        },
+        blockConcurrencyWhile: async <T>(callback: () => Promise<T>): Promise<T> => await callback(),
         waitUntil: () => {},
         acceptWebSocket: () => {},
         getWebSockets: () => [],
@@ -54,8 +52,8 @@ function createMockState(): DurableObjectState {
             },
             abort: () => {},
             delete: () => {},
-        } as unknown as DurableObjectFacets,
-    } as DurableObjectState;
+        } satisfies DurableObjectFacets,
+    } satisfies DurableObjectState;
 }
 
 /**
