@@ -5,6 +5,13 @@ inputs:
     github-sha:
         description: 'GitHub commit SHA for Sentry release tracking'
         required: true
+    cloudflare-account-id:
+        description: 'Cloudflare Account ID for explicit registry authentication and wrangler --account-id flag'
+        required: true
+    cloudflare-containers-token:
+        description: 'Optional dedicated Cloudflare API token with Account > Containers:Edit permission for Docker registry auth. Falls back to CLOUDFLARE_API_TOKEN if not provided.'
+        required: false
+        default: ''
 
 runs:
     using: composite
@@ -120,14 +127,72 @@ runs:
               create_or_confirm_queue "adblock-compiler-error-queue"
               create_or_confirm_r2_bucket "adblock-compiler-r2-storage"
 
+        - name: Validate token for container registry
+          if: env.CLOUDFLARE_API_TOKEN != ''
+          shell: bash
+          env:
+              CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
+              CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
+          run: |
+              echo "Validating Cloudflare token for container registry auth..."
+              RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+                -H "Authorization: Bearer $CONTAINERS_TOKEN" \
+                "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/containers/images")
+              if [ "$RESPONSE" = "401" ] || [ "$RESPONSE" = "403" ]; then
+                  echo ""
+                  echo "❌ Cloudflare token lacks Account > Cloudflare Containers:Edit permission (HTTP $RESPONSE)."
+                  echo ""
+                  echo "   The token used for Docker registry auth cannot access registry.cloudflare.com."
+                  echo ""
+                  echo "   To fix this issue (Option B — recommended, ZTA-aligned):"
+                  echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
+                  echo "   2. Create a new token with ONLY: Account > Cloudflare Containers:Edit"
+                  echo "   3. Add it as GitHub secret: CLOUDFLARE_CONTAINERS_TOKEN"
+                  echo "   4. It is already passed to this action via cloudflare-containers-token input in ci.yml"
+                  echo ""
+                  exit 1
+              fi
+              echo "✅ Token validated for container registry (HTTP $RESPONSE)"
+
+        - name: Authenticate Docker with Cloudflare Container Registry
+          if: env.CLOUDFLARE_API_TOKEN != ''
+          shell: bash
+          env:
+              CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
+          run: |
+              echo "Authenticating Docker with registry.cloudflare.com..."
+              if ! echo "$CONTAINERS_TOKEN" | docker login registry.cloudflare.com \
+                --username "cloudflare" \
+                --password-stdin; then
+                  echo ""
+                  echo "❌ Docker authentication with registry.cloudflare.com failed."
+                  echo ""
+                  echo "   The token used does not have Account > Cloudflare Containers:Edit permission."
+                  echo ""
+                  echo "   To fix this issue, choose one of:"
+                  echo "   Option A — Add permission to existing token:"
+                  echo "     1. Go to: https://dash.cloudflare.com/profile/api-tokens"
+                  echo "     2. Edit CLOUDFLARE_API_TOKEN and add Account > Cloudflare Containers:Edit"
+                  echo ""
+                  echo "   Option B — Use a dedicated containers token (recommended):"
+                  echo "     1. Create a new token at: https://dash.cloudflare.com/profile/api-tokens"
+                  echo "        with only Account > Cloudflare Containers:Edit"
+                  echo "     2. Add it as GitHub secret: CLOUDFLARE_CONTAINERS_TOKEN"
+                  echo "     3. Pass it to this action via cloudflare-containers-token input"
+                  exit 1
+              fi
+              echo "✅ Docker authenticated with registry.cloudflare.com"
+
         - name: Deploy Tail Worker
           if: env.CLOUDFLARE_API_TOKEN != ''
           shell: bash
+          env:
+              WRANGLER_LOG: debug
           run: |
               echo "Deploying tail worker (adblock-tail)..."
               TAIL_DEPLOYED=false
               for i in 1 2 3; do
-                  if deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
+                  if deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }} --account-id "${{ inputs.cloudflare-account-id }}"; then
                       TAIL_DEPLOYED=true
                       break
                   fi
@@ -161,7 +226,37 @@ runs:
           shell: bash
           run: |
               echo "Deploying version: ${{ steps.version.outputs.full_version }}"
-              deno run -A npm:wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }}
+              DEPLOY_SUCCESS=false
+              for i in 1 2 3; do
+                  if deno task wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }} --account-id "${{ inputs.cloudflare-account-id }}"; then
+                      DEPLOY_SUCCESS=true
+                      echo "✅ Worker deployed successfully"
+                      break
+                  fi
+                  # Default wrangler log dir per https://developers.cloudflare.com/workers/wrangler/commands/#logs
+                  WRANGLER_LOG=""
+                  WRANGLER_LOG_DIR="$HOME/.config/.wrangler/logs"
+                  if [ -d "$WRANGLER_LOG_DIR" ]; then
+                      shopt -s nullglob
+                      WRANGLER_LOG_FILES=("$WRANGLER_LOG_DIR"/wrangler-*.log)
+                      shopt -u nullglob
+                      if [ "${#WRANGLER_LOG_FILES[@]}" -gt 0 ]; then
+                          WRANGLER_LOG="${WRANGLER_LOG_FILES[${#WRANGLER_LOG_FILES[@]}-1]}"
+                      fi
+                  fi
+                  if [ -n "$WRANGLER_LOG" ]; then
+                      echo "--- Wrangler log (attempt $i) ---"
+                      tail -50 "$WRANGLER_LOG"
+                  fi
+                  if [ "$i" -lt 3 ]; then
+                      echo "⚠️ Deploy attempt $i failed, retrying in 30s..."
+                      sleep 30
+                  fi
+              done
+              if [ "$DEPLOY_SUCCESS" = "false" ]; then
+                  echo "❌ All 3 deploy attempts failed."
+                  exit 1
+              fi
 
         - name: Record deployment
           if: success() && env.CLOUDFLARE_API_TOKEN != ''

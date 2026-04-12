@@ -269,3 +269,55 @@ Deno.test('GET /api/browser/health is publicly accessible (no auth required)', a
     const res = await fetch('/api/browser/health');
     assertNotEquals(res.status, 401);
 });
+
+// ── Crawler static routes (#1525) ─────────────────────────────────────────────
+// GET /robots.txt and GET /sitemap.xml are served directly (no ASSETS.fetch()),
+// are public (no auth), and include Cache-Control: public, max-age=86400.
+
+Deno.test('GET /robots.txt returns 200 with text/plain content type', async () => {
+    const res = await fetch('/robots.txt');
+    assertEquals(res.status, 200);
+    const contentType = res.headers.get('Content-Type');
+    assertEquals(contentType?.includes('text/plain'), true);
+});
+
+Deno.test('GET /robots.txt includes Disallow directives for /api/ and /admin/', async () => {
+    const res = await fetch('/robots.txt');
+    const body = await res.text();
+    assertStringIncludes(body, 'Disallow: /api/');
+    assertStringIncludes(body, 'Disallow: /admin/');
+});
+
+Deno.test('GET /robots.txt includes Cache-Control: public, max-age=86400', async () => {
+    const res = await fetch('/robots.txt');
+    assertEquals(res.headers.get('Cache-Control'), 'public, max-age=86400');
+});
+
+Deno.test('GET /robots.txt is publicly accessible (pre-auth bypass — no 401 for anonymous callers)', async () => {
+    const res = await fetch('/robots.txt');
+    assertNotEquals(res.status, 401);
+});
+
+Deno.test('GET /sitemap.xml returns 200 with application/xml content type', async () => {
+    const res = await fetch('/sitemap.xml');
+    assertEquals(res.status, 200);
+    const contentType = res.headers.get('Content-Type');
+    assertEquals(contentType?.includes('application/xml'), true);
+});
+
+Deno.test('GET /sitemap.xml body is a valid XML urlset document', async () => {
+    const res = await fetch('/sitemap.xml');
+    const body = await res.text();
+    assertStringIncludes(body, '<?xml');
+    assertStringIncludes(body, 'urlset');
+});
+
+Deno.test('GET /sitemap.xml includes Cache-Control: public, max-age=86400', async () => {
+    const res = await fetch('/sitemap.xml');
+    assertEquals(res.headers.get('Cache-Control'), 'public, max-age=86400');
+});
+
+Deno.test('GET /sitemap.xml is publicly accessible (pre-auth bypass — no 401 for anonymous callers)', async () => {
+    const res = await fetch('/sitemap.xml');
+    assertNotEquals(res.status, 401);
+});

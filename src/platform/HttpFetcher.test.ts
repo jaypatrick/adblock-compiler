@@ -98,6 +98,16 @@ Deno.test('HttpFetcher.isSafeUrl - should return false for invalid URLs', () => 
     assertEquals(HttpFetcher.isSafeUrl(''), false);
 });
 
+Deno.test('HttpFetcher.isSafeUrl - should block Cloudflare Workers subdomains (*.workers.dev)', () => {
+    // *.workers.dev URLs are Cloudflare Worker self-references and must never be
+    // valid filter-list sources — proxying them creates request loops.
+    assertEquals(HttpFetcher.isSafeUrl('https://foo.workers.dev/path'), false);
+    assertEquals(HttpFetcher.isSafeUrl('https://adblock-frontend.jayson-knight.workers.dev/favicon.png'), false);
+    assertEquals(HttpFetcher.isSafeUrl('https://my-worker.workers.dev/list.txt'), false);
+    // Trailing-dot form must also be rejected (RFC 1034 FQDN notation)
+    assertEquals(HttpFetcher.isSafeUrl('https://foo.workers.dev./path'), false);
+});
+
 // Integration tests (require network access - marked as ignore for CI)
 // Run these with: deno test --allow-net src/platform/HttpFetcher.test.ts
 

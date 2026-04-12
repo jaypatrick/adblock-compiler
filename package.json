@@ -1,6 +1,6 @@
 {
     "name": "adblock-compiler",
-    "version": "0.83.0",
+    "version": "0.84.0",
     "description": "Compiler-as-a-Service for adblock filter lists",
     "homepage": "https://adblock-compiler.jayson-knight.workers.dev/",
     "type": "module",
@@ -45,7 +45,7 @@
         "@cloudflare/vitest-pool-workers": "^0.14.2",
         "prisma": "7.5.0",
         "vitest": "^4.1.0",
-        "wrangler": "^4.77.0"
+        "wrangler": "^4.81.1"
     },
     "pnpm": {
         "overrides": {

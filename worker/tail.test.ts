@@ -6,7 +6,16 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import tailDefault, { createStructuredEvent, formatLogMessage, shouldForwardEvent, type TailEnv, type TailEvent, tailHandler, type TailLog } from './tail.ts';
+import tailDefault, {
+    captureSentryExceptions,
+    createStructuredEvent,
+    formatLogMessage,
+    shouldForwardEvent,
+    type TailEnv,
+    type TailEvent,
+    tailHandler,
+    type TailLog,
+} from './tail.ts';
 
 // Tests
 Deno.test('formatLogMessage - formats simple string message', () => {
@@ -367,9 +376,9 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     async fn() {
-        // The Sentry SDK is dynamically imported inside tail() only when DSN is set.
-        // The try/catch around the import ensures graceful handling if the SDK is
-        // unavailable in this environment.
+        // captureSentryExceptions() is called inside tail() when DSN is set.
+        // It uses fetch() to post to the Sentry envelope API; errors are swallowed
+        // so the tail worker always completes regardless of Sentry availability.
         const env = createMockTailEnv({ SENTRY_DSN: 'https://test@o0.ingest.sentry.io/0' });
         const ctx = createMockTailCtx();
         const event = makeEvent({
@@ -408,8 +417,8 @@ Deno.test({
 });
 
 Deno.test('tail() handler - garbage SENTRY_DSN does not throw (Sentry init is non-fatal)', async () => {
-    // If the DSN is malformed, the SDK may throw during captureException.
-    // The try/catch around Sentry calls ensures errors are swallowed silently.
+    // Malformed DSNs (non-URL, missing key, non-numeric project ID) are caught
+    // by captureSentryExceptions() validation and silently swallowed.
     const env = createMockTailEnv({ SENTRY_DSN: 'not-a-valid-dsn' });
     const ctx = createMockTailCtx();
     const event = makeEvent({ exceptions: [{ name: 'Error', message: 'x', timestamp: Date.now() }] });
@@ -441,10 +450,223 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     async fn() {
-        // The withSentry wrapper path: SDK is lazily imported. If it fails
-        // (unsupported in test env), the catch block falls through to the plain handler.
+        // The default export is now `handler` directly. captureSentryExceptions() is
+        // called with all batched exceptions when DSN is set; fetch errors are swallowed.
         const env = createMockTailEnv({ SENTRY_DSN: 'https://test@o0.ingest.sentry.io/0' });
         const ctx = createMockTailCtx();
         await tailDefault.tail([makeEvent({ outcome: 'ok' })], env, ctx);
     },
+});
+
+// ============================================================================
+// captureSentryExceptions() — envelope construction unit tests
+// ============================================================================
+
+/** Minimal fetch spy that records calls and returns a 200 response. */
+interface FetchCall {
+    url: string;
+    method: string;
+    headers: Record<string, string>;
+    body: string;
+}
+
+function makeFetchSpy(status = 200): { calls: FetchCall[]; restore: () => void } {
+    const calls: FetchCall[] = [];
+    const original = globalThis.fetch;
+    // deno-lint-ignore require-await
+    globalThis.fetch = (async (input: string | URL | Request, init?: RequestInit) => {
+        const headers: Record<string, string> = {};
+        if (init?.headers) {
+            new Headers(init.headers as HeadersInit).forEach((v, k) => {
+                headers[k] = v;
+            });
+        }
+        calls.push({
+            url: String(input),
+            method: String(init?.method ?? 'GET'),
+            headers,
+            body: String(init?.body ?? ''),
+        });
+        return new Response('{}', { status });
+    }) as typeof globalThis.fetch;
+    return {
+        calls,
+        restore: () => {
+            globalThis.fetch = original;
+        },
+    };
+}
+
+Deno.test('captureSentryExceptions - sends to correct ingest URL (no trailing slash in DSN)', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions(
+            'https://abc123@o12345.ingest.sentry.io/67890',
+            [{ error: { name: 'Error', message: 'test' } }],
+        );
+        assertEquals(calls.length, 1);
+        assertEquals(calls[0].url, 'https://o12345.ingest.sentry.io/api/67890/envelope/');
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('captureSentryExceptions - sends to correct ingest URL (trailing slash in DSN)', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions(
+            'https://abc123@o12345.ingest.sentry.io/67890/',
+            [{ error: { name: 'Error', message: 'test' } }],
+        );
+        assertEquals(calls.length, 1);
+        assertEquals(calls[0].url, 'https://o12345.ingest.sentry.io/api/67890/envelope/');
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('captureSentryExceptions - sets correct Content-Type and X-Sentry-Auth headers', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions(
+            'https://mykey@o12345.ingest.sentry.io/67890',
+            [{ error: { name: 'Error', message: 'test' } }],
+        );
+        assertEquals(calls[0].headers['content-type'], 'application/x-sentry-envelope');
+        assertEquals(calls[0].headers['x-sentry-auth'], 'Sentry sentry_version=7, sentry_key=mykey');
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('captureSentryExceptions - envelope body has correct header/item/payload structure', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions(
+            'https://k@o1.ingest.sentry.io/12345',
+            [{ error: { name: 'TypeError', message: 'Cannot read property' }, tags: { outcome: 'exception' } }],
+        );
+        const lines = calls[0].body.split('\n');
+        // Envelope: 1 header + 1 item-header + 1 item-payload = 3 lines
+        assertEquals(lines.length, 3);
+        // Envelope header
+        const envHeader = JSON.parse(lines[0]);
+        assertExists(envHeader.sent_at);
+        // Item header
+        const itemHeader = JSON.parse(lines[1]);
+        assertEquals(itemHeader.type, 'event');
+        assertEquals(itemHeader.content_type, 'application/json');
+        // Item payload
+        const payload = JSON.parse(lines[2]);
+        assertEquals(payload.platform, 'javascript');
+        assertEquals(payload.level, 'error');
+        assertEquals(payload.exception.values[0].type, 'TypeError');
+        assertEquals(payload.exception.values[0].value, 'Cannot read property');
+        assertEquals(payload.tags?.outcome, 'exception');
+        assertExists(payload.event_id);
+        assertExists(payload.timestamp);
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('captureSentryExceptions - batches multiple exceptions into one request', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions(
+            'https://k@o1.ingest.sentry.io/12345',
+            [
+                { error: { name: 'Error', message: 'first' } },
+                { error: { name: 'TypeError', message: 'second' } },
+            ],
+        );
+        // One fetch call regardless of exception count
+        assertEquals(calls.length, 1);
+        const lines = calls[0].body.split('\n');
+        // 1 envelope header + 2×(item-header + item-payload) = 5 lines
+        assertEquals(lines.length, 5);
+        assertEquals(JSON.parse(lines[1]).type, 'event');
+        assertEquals(JSON.parse(lines[2]).exception.values[0].type, 'Error');
+        assertEquals(JSON.parse(lines[3]).type, 'event');
+        assertEquals(JSON.parse(lines[4]).exception.values[0].type, 'TypeError');
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('captureSentryExceptions - skips fetch when items array is empty', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions('https://k@o1.ingest.sentry.io/12345', []);
+        assertEquals(calls.length, 0);
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('captureSentryExceptions - skips fetch when project ID is non-numeric', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions(
+            'https://k@o1.ingest.sentry.io/not-a-number',
+            [{ error: { name: 'Error', message: 'x' } }],
+        );
+        assertEquals(calls.length, 0);
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('captureSentryExceptions - skips fetch when key is absent from DSN', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions(
+            'https://o1.ingest.sentry.io/12345',
+            [{ error: { name: 'Error', message: 'x' } }],
+        );
+        assertEquals(calls.length, 0);
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('captureSentryExceptions - includes request context and extra in envelope payload', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions(
+            'https://k@o1.ingest.sentry.io/12345',
+            [{
+                error: { name: 'Error', message: 'boom' },
+                tags: { outcome: 'exception', scriptName: 'my-worker' },
+                request: { url: 'https://example.com/api/compile', method: 'POST' },
+                extra: { scriptName: 'my-worker', exceptionTimestamp: '2024-01-01T00:00:00.000Z' },
+            }],
+        );
+        assertEquals(calls.length, 1);
+        const lines = calls[0].body.split('\n');
+        const payload = JSON.parse(lines[2]);
+        assertEquals(payload.request?.url, 'https://example.com/api/compile');
+        assertEquals(payload.request?.method, 'POST');
+        assertEquals(payload.extra?.scriptName, 'my-worker');
+        assertEquals(payload.extra?.exceptionTimestamp, '2024-01-01T00:00:00.000Z');
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('captureSentryExceptions - omits request field when request context is absent', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions(
+            'https://k@o1.ingest.sentry.io/12345',
+            [{ error: { name: 'Error', message: 'boom' } }],
+        );
+        assertEquals(calls.length, 1);
+        const lines = calls[0].body.split('\n');
+        const payload = JSON.parse(lines[2]);
+        // request field must not be present when not provided
+        assertEquals('request' in payload, false);
+    } finally {
+        restore();
+    }
 });

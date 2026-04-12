@@ -148,7 +148,7 @@ jobs:
               shell: bash
               run: |
                   echo "Available versions for adblock-compiler:"
-                  deno run -A npm:wrangler versions list || true
+                  deno run -A npm:wrangler@^4.81.1 versions list || true
 
             - name: Deploy version at ${{ inputs.percentage }}%
               id: deploy
@@ -161,7 +161,7 @@ jobs:
 
                   echo "🚀 Routing $PCT % of traffic to version $VERSION ..."
 
-                  deno run -A npm:wrangler versions deploy \
+                  deno run -A npm:wrangler@^4.81.1 versions deploy \
                       --version-id "$VERSION" \
                       --percentage "$PCT" \
                       --yes

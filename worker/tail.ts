@@ -15,7 +15,8 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-// @sentry/cloudflare is imported lazily inside tail() — only when SENTRY_DSN is set.
+// @sentry/cloudflare is NOT imported in this file — Sentry exceptions are forwarded
+// via direct envelope API calls (see captureSentryExceptions) to keep the bundle small.
 
 /**
  * Environment bindings for the tail worker.
@@ -230,24 +231,94 @@ export async function forwardToLogSink(event: TailEvent, env: TailEnv): Promise<
 }
 
 /**
+ * Send exceptions to Sentry via the envelope HTTP API.
+ *
+ * All items are batched into a single envelope request to minimise outbound
+ * `fetch()` calls. This avoids importing the full @sentry/cloudflare SDK
+ * (~600 KiB, causes upload timeouts in CI) and posts directly to the ingest
+ * endpoint instead.
+ *
+ * Only called when SENTRY_DSN is set and there are exceptions to report.
+ * Swallows all errors — the tail worker must never fail due to observability
+ * infrastructure.
+ *
+ * Exported for unit testing.
+ */
+export async function captureSentryExceptions(
+    dsn: string,
+    items: Array<{
+        error: { name: string; message: string };
+        tags?: Record<string, string>;
+        request?: { url?: string; method?: string };
+        extra?: Record<string, string>;
+    }>,
+): Promise<void> {
+    if (items.length === 0) return;
+    try {
+        // Parse DSN: https://{key}@{host}/{project_id}
+        // Use path-segment splitting so trailing slashes in the DSN do not
+        // produce a double-slash ingest URL (e.g. /api//envelope/).
+        const url = new URL(dsn);
+        const pathSegments = url.pathname.trim().split('/').filter((s) => s.length > 0);
+        const projectId = pathSegments[pathSegments.length - 1];
+        const key = url.username;
+        // Validate: project ID must be present, numeric-only, and key must exist.
+        if (!projectId || !/^\d+$/.test(projectId) || !key) return;
+        const ingestUrl = `${url.protocol}//${url.host}/api/${projectId}/envelope/`;
+
+        const now = Date.now() / 1000;
+        const sentAt = new Date().toISOString();
+
+        // Build a single envelope with one Sentry "event" item per exception.
+        // Envelope format: header\n(item-header\nitem-payload\n)+
+        const envelopeLines: string[] = [JSON.stringify({ sent_at: sentAt, dsn })];
+        for (const item of items) {
+            const eventId = crypto.randomUUID().replace(/-/g, '');
+            envelopeLines.push(
+                JSON.stringify({ type: 'event', content_type: 'application/json' }),
+                JSON.stringify({
+                    event_id: eventId,
+                    timestamp: now,
+                    platform: 'javascript',
+                    level: 'error',
+                    exception: {
+                        values: [{ type: item.error.name, value: item.error.message }],
+                    },
+                    tags: item.tags,
+                    ...(item.request ? { request: item.request } : {}),
+                    ...(item.extra ? { extra: item.extra } : {}),
+                    sdk: { name: 'sentry.javascript.cloudflare', version: '0.0.0' },
+                }),
+            );
+        }
+
+        await fetch(ingestUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-sentry-envelope',
+                'X-Sentry-Auth': `Sentry sentry_version=7, sentry_key=${key}`,
+            },
+            body: envelopeLines.join('\n'),
+        });
+    } catch {
+        // Never throw from the tail worker
+    }
+}
+
+/**
  * Main tail handler
  */
 const handler = {
     async tail(events: TailEvent[], env: TailEnv, ctx: ExecutionContext) {
         // Process each event
         const promises: Promise<void>[] = [];
-
-        // Lazily import the Sentry SDK only when a DSN is configured.
-        // This keeps tail-worker startup free of the Sentry module and prevents
-        // a missing/unsupported SDK from causing a startup failure.
-        let Sentry: typeof import('@sentry/cloudflare') | null = null;
-        if (env.SENTRY_DSN) {
-            try {
-                Sentry = await import('@sentry/cloudflare');
-            } catch {
-                Sentry = null;
-            }
-        }
+        // Collect all Sentry exception items across events; sent in one envelope.
+        const sentryItems: Array<{
+            error: { name: string; message: string };
+            tags?: Record<string, string>;
+            request?: { url?: string; method?: string };
+            extra?: Record<string, string>;
+        }> = [];
 
         for (const event of events) {
             // Store logs in KV if available
@@ -322,24 +393,19 @@ const handler = {
                 console.error(
                     `[TAIL] Exception: ${exception.name}: ${exception.message} at ${new Date(exception.timestamp).toISOString()}`,
                 );
-                if (Sentry) {
-                    // Capture a non-null const so TypeScript narrows correctly inside the closure.
-                    const sentry = Sentry;
-                    try {
-                        sentry.withScope((scope) => {
-                            scope.setTag('outcome', event.outcome);
-                            scope.setTag('scriptName', event.scriptName ?? 'unknown');
-                            scope.setContext('request', {
-                                url: event.event?.request?.url ?? 'unknown',
-                                method: event.event?.request?.method ?? 'unknown',
-                            });
-                            sentry.captureException(
-                                new Error(`${exception.name}: ${exception.message}`),
-                            );
-                        });
-                    } catch {
-                        // Never let Sentry failures surface in the tail worker
-                    }
+                if (env.SENTRY_DSN) {
+                    const requestUrl = event.event?.request?.url;
+                    const requestMethod = event.event?.request?.method;
+
+                    sentryItems.push({
+                        error: { name: exception.name, message: exception.message },
+                        tags: { outcome: event.outcome, scriptName: event.scriptName ?? 'unknown' },
+                        ...(requestUrl || requestMethod ? { request: { url: requestUrl, method: requestMethod } } : {}),
+                        extra: {
+                            scriptName: event.scriptName ?? 'unknown',
+                            exceptionTimestamp: new Date(exception.timestamp).toISOString(),
+                        },
+                    });
                 }
             }
 
@@ -351,14 +417,9 @@ const handler = {
             }
         }
 
-        // Flush buffered Sentry events before the handler returns.
-        // Added to promises so ctx.waitUntil() keeps the worker alive until flushed.
-        if (Sentry) {
-            promises.push(
-                Sentry.flush(2000).then(() => {}).catch((err) => {
-                    console.warn('[TAIL] Sentry flush failed:', err);
-                }),
-            );
+        // Batch all collected exceptions into one Sentry envelope request.
+        if (env.SENTRY_DSN && sentryItems.length > 0) {
+            promises.push(captureSentryExceptions(env.SENTRY_DSN, sentryItems));
         }
 
         // Wait for all async operations to complete
@@ -369,23 +430,6 @@ const handler = {
 // Raw handler exported for unit tests.
 export const tailHandler = handler;
 
-// Default export: lazily wraps with withSentry() only when SENTRY_DSN is set to
-// avoid loading the SDK at module startup. Falls through to the plain handler
-// when DSN is absent or the SDK cannot be loaded.
-export default {
-    async tail(events: TailEvent[], env: TailEnv, ctx: ExecutionContext): Promise<void> {
-        if (env.SENTRY_DSN) {
-            try {
-                const dsn = env.SENTRY_DSN;
-                const { withSentry } = await import('@sentry/cloudflare');
-                return withSentry(
-                    () => ({ dsn, tracesSampleRate: 0, integrations: [] }),
-                    handler as unknown as ExportedHandler<unknown>,
-                ).tail!(events as unknown as TraceItem[], env, ctx);
-            } catch {
-                // SDK load or init failed — fall through to the plain handler
-            }
-        }
-        return handler.tail(events, env, ctx);
-    },
-};
+// Default export: the tail handler. Sentry exception forwarding is done
+// inline via captureSentryExceptions() — no SDK wrapper needed.
+export default handler;

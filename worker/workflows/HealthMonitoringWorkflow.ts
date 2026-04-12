@@ -78,6 +78,11 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
         const startTime = Date.now();
         const { runId, sources, alertOnFailure } = event.payload;
 
+        // Fail fast if METRICS KV binding is absent — avoids a hung KV call
+        if (!this.env.METRICS) {
+            throw new Error('[WORKFLOW:HEALTH] METRICS KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
+        }
+
         // Initialize event emitter for real-time progress tracking
         const events = new WorkflowEvents(this.env.METRICS, runId, 'health-monitoring');
 
@@ -443,15 +448,8 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 alertsSent,
             });
 
-            return {
-                runId,
-                sourcesChecked: sourcesToCheck.length,
-                healthySources,
-                unhealthySources,
-                results,
-                alertsSent,
-                totalDurationMs: Date.now() - startTime,
-            };
+            // Rethrow so the CF Workflows runtime captures the real exception message in telemetry
+            throw error;
         }
     }
 }

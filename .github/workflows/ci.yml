@@ -87,6 +87,26 @@ jobs:
             - name: Route-order lint
               run: deno task lint:routes
 
+    cloudflare-dep-check:
+        name: Cloudflare Dependency Check
+        runs-on: ubuntu-latest
+        timeout-minutes: 5
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: Setup Deno environment
+              uses: ./.github/actions/setup-deno-env
+              with:
+                  deno-version: ${{ env.DENO_VERSION }}
+                  # The upgrade-check script only reads local files and fetches npm metadata;
+                  # it has no npm/jsr imports of its own, so no dep install is required.
+                  install-deps: 'false'
+
+            - name: Check Cloudflare dependency versions
+              run: deno task ci:cloudflare-check
+
     typecheck:
         name: Type Check
         runs-on: ubuntu-latest
@@ -625,6 +645,8 @@ jobs:
               uses: ./.github/actions/deploy-worker
               with:
                   github-sha: ${{ github.sha }}
+                  cloudflare-account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                  cloudflare-containers-token: ${{ secrets.CLOUDFLARE_CONTAINERS_TOKEN }}
 
             - name: Show deploy version
               if: always()
