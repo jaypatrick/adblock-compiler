@@ -250,6 +250,7 @@ async function captureSentryException(
         const url = new URL(dsn);
         const projectId = url.pathname.replace(/^\//, '');
         const key = url.username;
+        if (!projectId || !key) return;
         const ingestUrl = `${url.protocol}//${url.host}/api/${projectId}/envelope/`;
 
         const eventId = crypto.randomUUID().replace(/-/g, '');
@@ -369,11 +370,11 @@ const handler = {
                     `[TAIL] Exception: ${exception.name}: ${exception.message} at ${new Date(exception.timestamp).toISOString()}`,
                 );
                 if (env.SENTRY_DSN) {
-                    await captureSentryException(
+                    promises.push(captureSentryException(
                         env.SENTRY_DSN,
                         { name: exception.name, message: exception.message },
                         { outcome: event.outcome, scriptName: event.scriptName ?? 'unknown' },
-                    );
+                    ));
                 }
             }
 
