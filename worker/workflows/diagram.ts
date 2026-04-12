@@ -212,10 +212,13 @@ export class WorkflowDiagramBuilder {
     /**
      * Builds and returns the diagram descriptor for the given workflow name.
      *
+     * @param workflowName - One of the registered workflow names from `list()`.
+     * @param generatedAt  - Optional ISO 8601 timestamp; defaults to `new Date().toISOString()`.
+     *                       Pass a pre-captured value when building multiple diagrams in a loop
+     *                       so all entries share the same consistent timestamp.
      * @throws {Error} if `workflowName` is not a known workflow name.
      */
-    static build(workflowName: string): WorkflowDiagram {
-        const generatedAt = new Date().toISOString();
+    static build(workflowName: string, generatedAt = new Date().toISOString()): WorkflowDiagram {
 
         switch (workflowName as WorkflowName) {
             case 'compilation': {

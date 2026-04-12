@@ -178,6 +178,12 @@ Deno.test('WorkflowDiagramBuilder.build(health-monitoring) — includes store-re
 
 // ── error handling ────────────────────────────────────────────────────────────
 
+Deno.test('WorkflowDiagramBuilder.build() — accepts explicit generatedAt timestamp', () => {
+    const ts = '2024-01-01T00:00:00.000Z';
+    const diagram = WorkflowDiagramBuilder.build('compilation', ts);
+    assertEquals(diagram.generatedAt, ts);
+});
+
 Deno.test('WorkflowDiagramBuilder.build() — throws for unknown workflow name', () => {
     assertThrows(
         () => WorkflowDiagramBuilder.build('nonexistent-workflow'),

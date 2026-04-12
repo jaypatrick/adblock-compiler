@@ -25,8 +25,10 @@ export const workflowDiagramRoutes = new OpenAPIHono<{ Bindings: Env; Variables:
 // ── GET /workflows/diagram ─────────────────────────────────────────────────────
 
 workflowDiagramRoutes.get('/workflows/diagram', (c) => {
+    // Capture a single timestamp so all diagrams in the response share the same generatedAt value.
+    const generatedAt = new Date().toISOString();
     const diagrams = WorkflowDiagramBuilder.list().map((name) =>
-        WorkflowDiagramBuilder.build(name)
+        WorkflowDiagramBuilder.build(name, generatedAt)
     );
     return c.json({ success: true, diagrams });
 });
