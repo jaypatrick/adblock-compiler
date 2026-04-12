@@ -169,7 +169,16 @@ runs:
                       break
                   fi
                   # Default wrangler log dir per https://developers.cloudflare.com/workers/wrangler/commands/#logs
-                  WRANGLER_LOG=$(ls ~/.config/.wrangler/logs/wrangler-*.log 2>/dev/null | tail -1)
+                  WRANGLER_LOG=""
+                  WRANGLER_LOG_DIR="$HOME/.config/.wrangler/logs"
+                  if [ -d "$WRANGLER_LOG_DIR" ]; then
+                      shopt -s nullglob
+                      WRANGLER_LOG_FILES=("$WRANGLER_LOG_DIR"/wrangler-*.log)
+                      shopt -u nullglob
+                      if [ "${#WRANGLER_LOG_FILES[@]}" -gt 0 ]; then
+                          WRANGLER_LOG="${WRANGLER_LOG_FILES[${#WRANGLER_LOG_FILES[@]}-1]}"
+                      fi
+                  fi
                   if [ -n "$WRANGLER_LOG" ]; then
                       echo "--- Wrangler log (attempt $i) ---"
                       tail -50 "$WRANGLER_LOG"

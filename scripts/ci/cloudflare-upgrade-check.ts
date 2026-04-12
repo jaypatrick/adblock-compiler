@@ -177,7 +177,7 @@ async function checkWorkersTypesVersion(denoJson: Record<string, unknown>): Prom
 
     const imports = (denoJson['imports'] as Record<string, string>) ?? {};
     const workersTypesImport = imports['@cloudflare/workers-types'] ?? '';
-    const match = workersTypesImport.match(/@(\d+\.\d+\.\d+)/);
+    const match = workersTypesImport.match(/@(?:\^|~)?(\d+\.\d+\.\d+)$/);
     const pinnedVersion = match ? match[1] : null;
 
     const latestWorkersTypes = await fetchLatestVersion('@cloudflare/workers-types');
