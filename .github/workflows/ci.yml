@@ -646,6 +646,7 @@ jobs:
               with:
                   github-sha: ${{ github.sha }}
                   cloudflare-account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+                  cloudflare-containers-token: ${{ secrets.CLOUDFLARE_CONTAINERS_TOKEN }}
 
             - name: Show deploy version
               if: always()
