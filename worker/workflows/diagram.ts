@@ -113,7 +113,6 @@ function buildBatchCompilationDiagram(): Pick<WorkflowDiagram, 'nodes' | 'edges'
         { from: 'validate-batch', to: 'compile-chunks' },
         { from: 'compile-chunks', to: 'update-batch-metrics' },
         { from: 'update-batch-metrics', to: 'end' },
-        { from: 'update-batch-metrics', to: 'end', label: 'error' },
     ];
 
     return { nodes, edges };
@@ -146,7 +145,6 @@ function buildCacheWarmingDiagram(): Pick<WorkflowDiagram, 'nodes' | 'edges'> {
         { from: 'check-cache-status', to: 'end', label: 'nothing-to-warm' },
         { from: 'warm-chunks', to: 'update-warming-metrics' },
         { from: 'update-warming-metrics', to: 'end' },
-        { from: 'update-warming-metrics', to: 'end', label: 'error' },
     ];
 
     return { nodes, edges };
@@ -187,7 +185,6 @@ function buildHealthMonitoringDiagram(): Pick<WorkflowDiagram, 'nodes' | 'edges'
         { from: 'analyze-results', to: 'store-results', label: 'no-alerts' },
         { from: 'send-alerts', to: 'store-results', label: 'alerts-sent' },
         { from: 'store-results', to: 'end' },
-        { from: 'store-results', to: 'end', label: 'error' },
     ];
 
     return { nodes, edges };
