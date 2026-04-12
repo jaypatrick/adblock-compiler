@@ -161,7 +161,37 @@ runs:
           shell: bash
           run: |
               echo "Deploying version: ${{ steps.version.outputs.full_version }}"
-              deno task wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }}
+              DEPLOY_SUCCESS=false
+              for i in 1 2 3; do
+                  if deno task wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
+                      DEPLOY_SUCCESS=true
+                      echo "✅ Worker deployed successfully"
+                      break
+                  fi
+                  # Default wrangler log dir per https://developers.cloudflare.com/workers/wrangler/commands/#logs
+                  WRANGLER_LOG=""
+                  WRANGLER_LOG_DIR="$HOME/.config/.wrangler/logs"
+                  if [ -d "$WRANGLER_LOG_DIR" ]; then
+                      shopt -s nullglob
+                      WRANGLER_LOG_FILES=("$WRANGLER_LOG_DIR"/wrangler-*.log)
+                      shopt -u nullglob
+                      if [ "${#WRANGLER_LOG_FILES[@]}" -gt 0 ]; then
+                          WRANGLER_LOG="${WRANGLER_LOG_FILES[${#WRANGLER_LOG_FILES[@]}-1]}"
+                      fi
+                  fi
+                  if [ -n "$WRANGLER_LOG" ]; then
+                      echo "--- Wrangler log (attempt $i) ---"
+                      tail -50 "$WRANGLER_LOG"
+                  fi
+                  if [ "$i" -lt 3 ]; then
+                      echo "⚠️ Deploy attempt $i failed, retrying in 30s..."
+                      sleep 30
+                  fi
+              done
+              if [ "$DEPLOY_SUCCESS" = "false" ]; then
+                  echo "❌ All 3 deploy attempts failed."
+                  exit 1
+              fi
 
         - name: Record deployment
           if: success() && env.CLOUDFLARE_API_TOKEN != ''
