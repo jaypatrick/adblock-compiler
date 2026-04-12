@@ -4,8 +4,8 @@
  * Workflow Diagram routes.
  *
  * Routes:
- *   GET /workflows/diagram         — diagram metadata for all registered workflows
- *   GET /workflows/diagram/:name   — diagram for a single workflow by name
+ *   GET /workflow/diagram         — diagram metadata for all registered workflows
+ *   GET /workflow/diagram/:name   — diagram for a single workflow by name
  *
  * Valid workflow names: compilation, batch-compilation, cache-warming, health-monitoring
  *
@@ -23,18 +23,18 @@ import { ProblemResponse } from '../utils/problem-details.ts';
 
 export const workflowDiagramRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
-// ── GET /workflows/diagram ─────────────────────────────────────────────────────
+// ── GET /workflow/diagram ──────────────────────────────────────────────────────
 
-workflowDiagramRoutes.get('/workflows/diagram', (c) => {
+workflowDiagramRoutes.get('/workflow/diagram', (c) => {
     // Capture a single timestamp so all diagrams in the response share the same generatedAt value.
     const generatedAt = new Date().toISOString();
     const diagrams = WorkflowDiagramBuilder.list().map((name) => WorkflowDiagramBuilder.build(name, generatedAt));
     return c.json({ success: true, diagrams });
 });
 
-// ── GET /workflows/diagram/:name ───────────────────────────────────────────────
+// ── GET /workflow/diagram/:name ────────────────────────────────────────────────
 
-workflowDiagramRoutes.get('/workflows/diagram/:name', (c) => {
+workflowDiagramRoutes.get('/workflow/diagram/:name', (c) => {
     const name = c.req.param('name');
     const known = WorkflowDiagramBuilder.list();
     if (!known.includes(name)) {

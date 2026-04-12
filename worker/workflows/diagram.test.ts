@@ -134,6 +134,15 @@ Deno.test('WorkflowDiagramBuilder.build(compilation) — error edge points to up
     assertEquals(toFailureMetrics !== undefined, true);
 });
 
+Deno.test('WorkflowDiagramBuilder.build(compilation) — all try-block steps have error edges to update-failure-metrics', () => {
+    const diagram = WorkflowDiagramBuilder.build('compilation');
+    const errorSources = diagram.edges.filter((e) => e.label === 'error' && e.to === 'update-failure-metrics').map((e) => e.from);
+    assertEquals(errorSources.includes('validate'), true);
+    assertEquals(errorSources.includes('compile-sources'), true);
+    assertEquals(errorSources.includes('cache-result'), true);
+    assertEquals(errorSources.includes('update-metrics'), true);
+});
+
 // ── batch-compilation-specific ────────────────────────────────────────────────
 
 Deno.test('WorkflowDiagramBuilder.build(batch-compilation) — has a parallel node for chunk compilation', () => {
@@ -162,6 +171,21 @@ Deno.test('WorkflowDiagramBuilder.build(cache-warming) — includes check-cache-
     const diagram = WorkflowDiagramBuilder.build('cache-warming');
     const ids = nodeIds(diagram);
     assertEquals(ids.has('check-cache-status'), true);
+});
+
+Deno.test('WorkflowDiagramBuilder.build(cache-warming) — check-cache-status is a conditional node', () => {
+    const diagram = WorkflowDiagramBuilder.build('cache-warming');
+    const conditionalNodes = nodesOfKind(diagram, 'conditional');
+    const checkNode = conditionalNodes.find((n: DiagramNode) => n.id === 'check-cache-status');
+    assertEquals(checkNode !== undefined, true);
+});
+
+Deno.test('WorkflowDiagramBuilder.build(cache-warming) — nothing-to-warm path bypasses warm-chunks to end', () => {
+    const diagram = WorkflowDiagramBuilder.build('cache-warming');
+    const nothingToWarmEdge = diagram.edges.find((e) => e.from === 'check-cache-status' && e.to === 'end');
+    assertEquals(nothingToWarmEdge !== undefined, true);
+    const warmingEdge = diagram.edges.find((e) => e.from === 'check-cache-status' && e.to === 'warm-chunks');
+    assertEquals(warmingEdge !== undefined, true);
 });
 
 // ── health-monitoring-specific ────────────────────────────────────────────────

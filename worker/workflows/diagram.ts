@@ -81,7 +81,10 @@ function buildCompilationDiagram(): Pick<WorkflowDiagram, 'nodes' | 'edges'> {
         { from: 'cache-result', to: 'update-metrics' },
         { from: 'compile-sources', to: 'update-metrics', label: 'skip-cache' },
         { from: 'update-metrics', to: 'end' },
+        { from: 'validate', to: 'update-failure-metrics', label: 'error' },
         { from: 'compile-sources', to: 'update-failure-metrics', label: 'error' },
+        { from: 'cache-result', to: 'update-failure-metrics', label: 'error' },
+        { from: 'update-metrics', to: 'update-failure-metrics', label: 'error' },
         { from: 'update-failure-metrics', to: 'end' },
     ];
 
@@ -121,7 +124,12 @@ function buildCacheWarmingDiagram(): Pick<WorkflowDiagram, 'nodes' | 'edges'> {
     // represented as a `loop` node for the warming phase.
     const nodes: DiagramNode[] = [
         { id: 'start', label: 'Start', kind: 'start' },
-        { id: 'check-cache-status', label: 'Check Cache Status', kind: 'step' },
+        {
+            id: 'check-cache-status',
+            label: 'Check Cache Status',
+            kind: 'conditional',
+            metadata: { condition: 'configsNeedingRefresh.length > 0' },
+        },
         {
             id: 'warm-chunks',
             label: 'Warm Cache Chunks (loop with inter-chunk delay)',
@@ -134,7 +142,8 @@ function buildCacheWarmingDiagram(): Pick<WorkflowDiagram, 'nodes' | 'edges'> {
 
     const edges: DiagramEdge[] = [
         { from: 'start', to: 'check-cache-status' },
-        { from: 'check-cache-status', to: 'warm-chunks' },
+        { from: 'check-cache-status', to: 'warm-chunks', label: 'needs-warming' },
+        { from: 'check-cache-status', to: 'end', label: 'nothing-to-warm' },
         { from: 'warm-chunks', to: 'update-warming-metrics' },
         { from: 'update-warming-metrics', to: 'end' },
         { from: 'update-warming-metrics', to: 'end', label: 'error' },
