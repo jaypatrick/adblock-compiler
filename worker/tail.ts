@@ -231,49 +231,59 @@ export async function forwardToLogSink(event: TailEvent, env: TailEnv): Promise<
 }
 
 /**
- * Send a single exception to Sentry via the envelope HTTP API.
+ * Send exceptions to Sentry via the envelope HTTP API.
  *
- * This avoids importing the full @sentry/cloudflare SDK (which adds ~600 KiB to
- * the bundle and causes the upload to time out on Cloudflare's API during CI
- * deploys) and instead posts directly to the Sentry ingest endpoint.
+ * All items are batched into a single envelope request to minimise outbound
+ * `fetch()` calls. This avoids importing the full @sentry/cloudflare SDK
+ * (~600 KiB, causes upload timeouts in CI) and posts directly to the ingest
+ * endpoint instead.
  *
- * Only called when SENTRY_DSN is set. Swallows all errors — the tail worker
- * must never fail because of observability infrastructure.
+ * Only called when SENTRY_DSN is set and there are exceptions to report.
+ * Swallows all errors — the tail worker must never fail due to observability
+ * infrastructure.
+ *
+ * Exported for unit testing.
  */
-async function captureSentryException(
+export async function captureSentryExceptions(
     dsn: string,
-    error: { name: string; message: string },
-    tags?: Record<string, string>,
+    items: Array<{ error: { name: string; message: string }; tags?: Record<string, string> }>,
 ): Promise<void> {
+    if (items.length === 0) return;
     try {
         // Parse DSN: https://{key}@{host}/{project_id}
+        // Use path-segment splitting so trailing slashes in the DSN do not
+        // produce a double-slash ingest URL (e.g. /api//envelope/).
         const url = new URL(dsn);
-        const projectId = url.pathname.replace(/^\//, '');
+        const pathSegments = url.pathname.trim().split('/').filter((s) => s.length > 0);
+        const projectId = pathSegments[pathSegments.length - 1];
         const key = url.username;
-        if (!projectId || !key) return;
+        // Validate: project ID must be present, numeric-only, and key must exist.
+        if (!projectId || !/^\d+$/.test(projectId) || !key) return;
         const ingestUrl = `${url.protocol}//${url.host}/api/${projectId}/envelope/`;
 
-        const eventId = crypto.randomUUID().replace(/-/g, '');
         const now = Date.now() / 1000;
+        const sentAt = new Date().toISOString();
 
-        const envelope = [
-            // Envelope header
-            JSON.stringify({ event_id: eventId, sent_at: new Date().toISOString(), dsn }),
-            // Item header
-            JSON.stringify({ type: 'event', content_type: 'application/json' }),
-            // Item payload
-            JSON.stringify({
-                event_id: eventId,
-                timestamp: now,
-                platform: 'javascript',
-                level: 'error',
-                exception: {
-                    values: [{ type: error.name, value: error.message }],
-                },
-                tags,
-                sdk: { name: 'sentry.javascript.cloudflare', version: '0.0.0' },
-            }),
-        ].join('\n');
+        // Build a single envelope with one Sentry "event" item per exception.
+        // Envelope format: header\n(item-header\nitem-payload\n)+
+        const envelopeLines: string[] = [JSON.stringify({ sent_at: sentAt, dsn })];
+        for (const item of items) {
+            const eventId = crypto.randomUUID().replace(/-/g, '');
+            envelopeLines.push(
+                JSON.stringify({ type: 'event', content_type: 'application/json' }),
+                JSON.stringify({
+                    event_id: eventId,
+                    timestamp: now,
+                    platform: 'javascript',
+                    level: 'error',
+                    exception: {
+                        values: [{ type: item.error.name, value: item.error.message }],
+                    },
+                    tags: item.tags,
+                    sdk: { name: 'sentry.javascript.cloudflare', version: '0.0.0' },
+                }),
+            );
+        }
 
         await fetch(ingestUrl, {
             method: 'POST',
@@ -281,7 +291,7 @@ async function captureSentryException(
                 'Content-Type': 'application/x-sentry-envelope',
                 'X-Sentry-Auth': `Sentry sentry_version=7, sentry_key=${key}`,
             },
-            body: envelope,
+            body: envelopeLines.join('\n'),
         });
     } catch {
         // Never throw from the tail worker
@@ -295,6 +305,8 @@ const handler = {
     async tail(events: TailEvent[], env: TailEnv, ctx: ExecutionContext) {
         // Process each event
         const promises: Promise<void>[] = [];
+        // Collect all Sentry exception items across events; sent in one envelope.
+        const sentryItems: Array<{ error: { name: string; message: string }; tags?: Record<string, string> }> = [];
 
         for (const event of events) {
             // Store logs in KV if available
@@ -370,11 +382,10 @@ const handler = {
                     `[TAIL] Exception: ${exception.name}: ${exception.message} at ${new Date(exception.timestamp).toISOString()}`,
                 );
                 if (env.SENTRY_DSN) {
-                    promises.push(captureSentryException(
-                        env.SENTRY_DSN,
-                        { name: exception.name, message: exception.message },
-                        { outcome: event.outcome, scriptName: event.scriptName ?? 'unknown' },
-                    ));
+                    sentryItems.push({
+                        error: { name: exception.name, message: exception.message },
+                        tags: { outcome: event.outcome, scriptName: event.scriptName ?? 'unknown' },
+                    });
                 }
             }
 
@@ -384,6 +395,11 @@ const handler = {
                     console.error(`[TAIL] ${formatLogMessage(log)}`);
                 }
             }
+        }
+
+        // Batch all collected exceptions into one Sentry envelope request.
+        if (env.SENTRY_DSN && sentryItems.length > 0) {
+            promises.push(captureSentryExceptions(env.SENTRY_DSN, sentryItems));
         }
 
         // Wait for all async operations to complete
