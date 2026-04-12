@@ -219,7 +219,6 @@ export class WorkflowDiagramBuilder {
      * @throws {Error} if `workflowName` is not a known workflow name.
      */
     static build(workflowName: string, generatedAt = new Date().toISOString()): WorkflowDiagram {
-
         switch (workflowName as WorkflowName) {
             case 'compilation': {
                 const { nodes, edges } = buildCompilationDiagram();
