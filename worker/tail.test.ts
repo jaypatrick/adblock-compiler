@@ -367,9 +367,9 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     async fn() {
-        // The Sentry SDK is dynamically imported inside tail() only when DSN is set.
-        // The try/catch around the import ensures graceful handling if the SDK is
-        // unavailable in this environment.
+        // captureSentryException() is called inside tail() when DSN is set.
+        // It uses fetch() to post to the Sentry envelope API; errors are swallowed
+        // so the tail worker always completes regardless of Sentry availability.
         const env = createMockTailEnv({ SENTRY_DSN: 'https://test@o0.ingest.sentry.io/0' });
         const ctx = createMockTailCtx();
         const event = makeEvent({
@@ -441,8 +441,8 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     async fn() {
-        // The withSentry wrapper path: SDK is lazily imported. If it fails
-        // (unsupported in test env), the catch block falls through to the plain handler.
+        // The default export is now `handler` directly. captureSentryException() is
+        // called for each exception when DSN is set; fetch errors are swallowed.
         const env = createMockTailEnv({ SENTRY_DSN: 'https://test@o0.ingest.sentry.io/0' });
         const ctx = createMockTailCtx();
         await tailDefault.tail([makeEvent({ outcome: 'ok' })], env, ctx);

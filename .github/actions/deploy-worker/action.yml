@@ -123,6 +123,8 @@ runs:
         - name: Deploy Tail Worker
           if: env.CLOUDFLARE_API_TOKEN != ''
           shell: bash
+          env:
+              WRANGLER_LOG: debug
           run: |
               echo "Deploying tail worker (adblock-tail)..."
               TAIL_DEPLOYED=false
