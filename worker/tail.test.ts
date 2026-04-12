@@ -629,3 +629,44 @@ Deno.test('captureSentryExceptions - skips fetch when key is absent from DSN', a
         restore();
     }
 });
+
+Deno.test('captureSentryExceptions - includes request context and extra in envelope payload', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions(
+            'https://k@o1.ingest.sentry.io/12345',
+            [{
+                error: { name: 'Error', message: 'boom' },
+                tags: { outcome: 'exception', scriptName: 'my-worker' },
+                request: { url: 'https://example.com/api/compile', method: 'POST' },
+                extra: { scriptName: 'my-worker', exceptionTimestamp: '2024-01-01T00:00:00.000Z' },
+            }],
+        );
+        assertEquals(calls.length, 1);
+        const lines = calls[0].body.split('\n');
+        const payload = JSON.parse(lines[2]);
+        assertEquals(payload.request?.url, 'https://example.com/api/compile');
+        assertEquals(payload.request?.method, 'POST');
+        assertEquals(payload.extra?.scriptName, 'my-worker');
+        assertEquals(payload.extra?.exceptionTimestamp, '2024-01-01T00:00:00.000Z');
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('captureSentryExceptions - omits request field when request context is absent', async () => {
+    const { calls, restore } = makeFetchSpy();
+    try {
+        await captureSentryExceptions(
+            'https://k@o1.ingest.sentry.io/12345',
+            [{ error: { name: 'Error', message: 'boom' } }],
+        );
+        assertEquals(calls.length, 1);
+        const lines = calls[0].body.split('\n');
+        const payload = JSON.parse(lines[2]);
+        // request field must not be present when not provided
+        assertEquals('request' in payload, false);
+    } finally {
+        restore();
+    }
+});

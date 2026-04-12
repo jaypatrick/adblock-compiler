@@ -246,7 +246,12 @@ export async function forwardToLogSink(event: TailEvent, env: TailEnv): Promise<
  */
 export async function captureSentryExceptions(
     dsn: string,
-    items: Array<{ error: { name: string; message: string }; tags?: Record<string, string> }>,
+    items: Array<{
+        error: { name: string; message: string };
+        tags?: Record<string, string>;
+        request?: { url?: string; method?: string };
+        extra?: Record<string, string>;
+    }>,
 ): Promise<void> {
     if (items.length === 0) return;
     try {
@@ -280,6 +285,8 @@ export async function captureSentryExceptions(
                         values: [{ type: item.error.name, value: item.error.message }],
                     },
                     tags: item.tags,
+                    ...(item.request ? { request: item.request } : {}),
+                    ...(item.extra ? { extra: item.extra } : {}),
                     sdk: { name: 'sentry.javascript.cloudflare', version: '0.0.0' },
                 }),
             );
@@ -382,9 +389,19 @@ const handler = {
                     `[TAIL] Exception: ${exception.name}: ${exception.message} at ${new Date(exception.timestamp).toISOString()}`,
                 );
                 if (env.SENTRY_DSN) {
+                    const requestUrl = event.event?.request?.url;
+                    const requestMethod = event.event?.request?.method;
+
                     sentryItems.push({
                         error: { name: exception.name, message: exception.message },
                         tags: { outcome: event.outcome, scriptName: event.scriptName ?? 'unknown' },
+                        ...(requestUrl || requestMethod
+                            ? { request: { url: requestUrl, method: requestMethod } }
+                            : {}),
+                        extra: {
+                            scriptName: event.scriptName ?? 'unknown',
+                            exceptionTimestamp: new Date(exception.timestamp).toISOString(),
+                        },
                     });
                 }
             }
