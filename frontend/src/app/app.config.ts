@@ -21,7 +21,7 @@
  */
 
 import { ApplicationConfig, ErrorHandler, PLATFORM_ID, provideAppInitializer, provideZonelessChangeDetection, inject } from '@angular/core';
-import { provideRouter, withComponentInputBinding, withViewTransitions, withPreloading, PreloadAllModules, TitleStrategy, withRouterConfig } from '@angular/router';
+import { provideRouter, withComponentInputBinding, withViewTransitions, withPreloading, PreloadAllModules, TitleStrategy, withInMemoryScrolling } from '@angular/router';
 import { HttpClient, provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { firstValueFrom, timeout } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
@@ -45,18 +45,16 @@ export const appConfig: ApplicationConfig = {
 
         // Router: map route params to component inputs, smooth View Transitions API,
         // preload all lazy routes after initial navigation completes.
-        // scrollPositionRestoration: 'enabled' — restores scroll position on back/forward navigation.
-        // anchorScrolling: 'enabled' — scrolls to fragment anchors (#section) after navigation.
-        // scrollOffset: [0, 72] — accounts for the fixed app header height (~72px).
+        // withInMemoryScrolling restores scroll position on back/forward navigation,
+        // enables anchor (#section) scrolling, and offsets by 72px for the fixed header.
         provideRouter(
             routes,
             withComponentInputBinding(),
             withViewTransitions(),
             withPreloading(PreloadAllModules),
-            withRouterConfig({
+            withInMemoryScrolling({
                 scrollPositionRestoration: 'enabled',
                 anchorScrolling: 'enabled',
-                scrollOffset: [0, 72],
             }),
         ),
 
