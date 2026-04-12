@@ -929,11 +929,15 @@ export class CompilerComponent {
                 selectedTransformations,
             );
             if (urlEntries[0]?.source) {
-                this.router.navigate([], {
-                    relativeTo: this.route,
-                    queryParams: { url: urlEntries[0].source },
-                    queryParamsHandling: 'merge',
-                });
+                const currentUrl = this.route.snapshot.queryParams['url'];
+                if (currentUrl !== urlEntries[0].source) {
+                    this.router.navigate([], {
+                        relativeTo: this.route,
+                        queryParams: { url: urlEntries[0].source },
+                        queryParamsHandling: 'merge',
+                        replaceUrl: true,
+                    });
+                }
             }
             return;
         }
@@ -981,11 +985,15 @@ export class CompilerComponent {
         }
 
         if (urlEntries[0]?.source) {
-            this.router.navigate([], {
-                relativeTo: this.route,
-                queryParams: { url: urlEntries[0].source },
-                queryParamsHandling: 'merge',
-            });
+            const currentUrl = this.route.snapshot.queryParams['url'];
+            if (currentUrl !== urlEntries[0].source) {
+                this.router.navigate([], {
+                    relativeTo: this.route,
+                    queryParams: { url: urlEntries[0].source },
+                    queryParamsHandling: 'merge',
+                    replaceUrl: true,
+                });
+            }
         }
     }
 

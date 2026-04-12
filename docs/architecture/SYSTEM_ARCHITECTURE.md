@@ -9,18 +9,18 @@ This document describes the current (monolithic) architecture of the adblock-com
 ```mermaid
 flowchart TD
     %% ── Clients ──────────────────────────────────────────────────────────────
-    Browser["🌐 Browser"]
-    CLIUser["💻 CLI User\n(Deno CLI)"]
-    CICD["⚙️ CI/CD Pipeline"]
-    MCPAgent["🤖 AI Agent / MCP Client"]
+    Browser["Browser"]
+    CLIUser["CLI User\n(Deno CLI)"]
+    CICD["CI/CD Pipeline"]
+    MCPAgent["AI Agent / MCP Client"]
 
     %% ── Edge / Zero Trust perimeter ─────────────────────────────────────────
-    CFAccess["☁️ Cloudflare Access\n(Zero Trust / WAF)"]
-    CFTurnstile["🛡️ Cloudflare Turnstile\n(Human Verification)"]
+    CFAccess["Cloudflare Access\n(Zero Trust / WAF)"]
+    CFTurnstile["Cloudflare Turnstile\n(Human Verification)"]
 
     %% ── Angular Frontend (separate SSR Worker — adblock-frontend) ──────
     subgraph FrontendWorker["adblock-frontend  (separate SSR Worker)"]
-        Frontend["📱 Angular 21 SSR SPA\n(AngularAppEngine)"]
+        Frontend["Angular 21 SSR SPA\n(AngularAppEngine)"]
         FrontendAssets["ASSETS binding\n(JS/CSS/fonts — CDN)"]
         FrontendAPI["[[services]] API binding\n(wired in server.ts — routes /api/* internally)"]
     end
@@ -35,7 +35,7 @@ flowchart TD
         Handlers["handlers/\ncompile · admin · auth · metrics\nqueue · websocket · proxy"]
         Workflows["workflows/\nCompilation · Batch\nCacheWarming · HealthMonitoring"]
         MCPAgentWorker["mcp-agent.ts\n(Playwright / CF Browser Rendering)"]
-        BetterAuth["🔐 Better Auth\n(in-Worker · Neon / Hyperdrive)"]
+        BetterAuth["Better Auth\n(in-Worker · Neon / Hyperdrive)"]
 
         subgraph CoreLib["src/  (Core Library — inlined in monolith)"]
             Compiler["compiler/\nFilterCompiler · SourceCompiler\nIncrementalCompiler · WorkerCompiler"]
@@ -80,15 +80,15 @@ flowchart TD
 
     %% ── External Services ────────────────────────────────────────────────────
     subgraph ExternalServices["External Services"]
-        Sentry["🔍 Sentry\n(Errors · Tracing)"]
-        OTel["📊 OpenTelemetry\n(Spans · Exporters)"]
-        PostgreSQL["🐘 PostgreSQL\n(via Hyperdrive)"]
-        FilterSources["📋 Filter List Sources\n(EasyList · uBlock etc.)"]
+        Sentry["Sentry\n(Errors · Tracing)"]
+        OTel["OpenTelemetry\n(Spans · Exporters)"]
+        PostgreSQL["PostgreSQL\n(via Hyperdrive)"]
+        FilterSources["Filter List Sources\n(EasyList · uBlock etc.)"]
     end
 
     %% ── Auth Stack ───────────────────────────────────────────────────────────
-    LocalJWT["🔐 Local HS256 JWT\n(dev mode)"]
-    APIKeys["🗝️ API Keys\n(PostgreSQL / Hyperdrive)"]
+    LocalJWT["Local HS256 JWT\n(dev mode)"]
+    APIKeys["API Keys\n(PostgreSQL / Hyperdrive)"]
 
     %% ── Connections ──────────────────────────────────────────────────────────
     Browser --> CFAccess
@@ -131,14 +131,14 @@ flowchart TD
     TailWorker --> OTel
 
     %% ── Class Definitions ────────────────────────────────────────────────────
-    classDef client        fill:#4A90D9,stroke:#2C5F8A,color:#fff
-    classDef edge          fill:#7B68EE,stroke:#4B3FA0,color:#fff
-    classDef worker        fill:#E8A838,stroke:#B07820,color:#fff
-    classDef corelib       fill:#F0C040,stroke:#C09010,color:#333
-    classDef storage       fill:#5BA85A,stroke:#3A7039,color:#fff
-    classDef observability fill:#D9534F,stroke:#A02B28,color:#fff
-    classDef auth          fill:#9B59B6,stroke:#6C3483,color:#fff
-    classDef external      fill:#7F8C8D,stroke:#555F60,color:#fff
+    classDef client        fill:#1d6fbd,stroke:#0d4a8a,color:#fff
+    classDef edge          fill:#6a1fa0,stroke:#4a1570,color:#fff
+    classDef worker        fill:#b05a10,stroke:#7a3d08,color:#fff
+    classDef corelib       fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef storage       fill:#2e7d32,stroke:#1a5421,color:#fff
+    classDef observability fill:#c62828,stroke:#8e1c1c,color:#fff
+    classDef auth          fill:#37474f,stroke:#1a2327,color:#fff
+    classDef external      fill:#37474f,stroke:#1a2327,color:#fff
 
     class Browser,CLIUser,CICD,MCPAgent client
     class CFAccess,CFTurnstile edge
@@ -163,14 +163,14 @@ The current system is a **monolith**: every concern — compilation, transformat
 ```mermaid
 flowchart TD
     %% ── Clients ──────────────────────────────────────────────────────────────
-    Browser["🌐 Browser"]
-    CLIUser["💻 CLI User\n(Deno CLI)"]
-    CICD["⚙️ CI/CD Pipeline"]
-    MCPAgent["🤖 AI Agent / MCP Client"]
+    Browser["Browser"]
+    CLIUser["CLI User\n(Deno CLI)"]
+    CICD["CI/CD Pipeline"]
+    MCPAgent["AI Agent / MCP Client"]
 
     %% ── Edge / Zero Trust perimeter ─────────────────────────────────────────
-    CFAccess["☁️ Cloudflare Access\n(Zero Trust / WAF)"]
-    CFTurnstile["🛡️ Cloudflare Turnstile\n(Human Verification)"]
+    CFAccess["Cloudflare Access\n(Zero Trust / WAF)"]
+    CFTurnstile["Cloudflare Turnstile\n(Human Verification)"]
 
     %% ── Angular Frontend (served via API Worker STATIC_ASSETS binding) ─────────────
     subgraph FrontendApp["adblock-frontend  (Worker STATIC_ASSETS binding)"]
@@ -186,7 +186,7 @@ flowchart TD
     subgraph APIWorker["adblock-compiler-api  (Cloudflare Worker — thin routing layer)"]
         HonoRouter["hono-app.ts\n(OpenAPIHono Router)"]
         APIHandlers["handlers/\ncompile · admin · auth\nmetrics · queue · websocket"]
-        BetterAuth["🔐 Better Auth\n(in-Worker · Neon / Hyperdrive)"]
+        BetterAuth["Better Auth\n(in-Worker · Neon / Hyperdrive)"]
     end
 
     %% ── Worker Service Bindings ──────────────────────────────────────────────
@@ -222,15 +222,15 @@ flowchart TD
 
     %% ── External Services ────────────────────────────────────────────────────
     subgraph ExternalServices["External Services"]
-        Sentry["🔍 Sentry\n(Errors · Tracing)"]
-        OTel["📊 OpenTelemetry\n(Spans · Exporters)"]
-        PostgreSQL["🐘 PostgreSQL\n(via Hyperdrive)"]
-        FilterSources["📋 Filter List Sources\n(EasyList · uBlock etc.)"]
+        Sentry["Sentry\n(Errors · Tracing)"]
+        OTel["OpenTelemetry\n(Spans · Exporters)"]
+        PostgreSQL["PostgreSQL\n(via Hyperdrive)"]
+        FilterSources["Filter List Sources\n(EasyList · uBlock etc.)"]
     end
 
     %% ── Auth Stack ───────────────────────────────────────────────────────────
-    LocalJWT["🔐 Local HS256 JWT\n(dev mode)"]
-    APIKeys["🗝️ API Keys\n(PostgreSQL / Hyperdrive)"]
+    LocalJWT["Local HS256 JWT\n(dev mode)"]
+    APIKeys["API Keys\n(PostgreSQL / Hyperdrive)"]
 
     %% ── Connections ──────────────────────────────────────────────────────────
     Browser --> CFAccess
@@ -282,14 +282,14 @@ flowchart TD
     APIWorker --> FilterSources
 
     %% ── Class Definitions ────────────────────────────────────────────────────
-    classDef client        fill:#4A90D9,stroke:#2C5F8A,color:#fff
-    classDef edge          fill:#7B68EE,stroke:#4B3FA0,color:#fff
-    classDef worker        fill:#E8A838,stroke:#B07820,color:#fff
-    classDef jsrpkg        fill:#F0C040,stroke:#C09010,color:#333
-    classDef storage       fill:#5BA85A,stroke:#3A7039,color:#fff
-    classDef observability fill:#D9534F,stroke:#A02B28,color:#fff
-    classDef auth          fill:#9B59B6,stroke:#6C3483,color:#fff
-    classDef external      fill:#7F8C8D,stroke:#555F60,color:#fff
+    classDef client        fill:#1d6fbd,stroke:#0d4a8a,color:#fff
+    classDef edge          fill:#6a1fa0,stroke:#4a1570,color:#fff
+    classDef worker        fill:#b05a10,stroke:#7a3d08,color:#fff
+    classDef jsrpkg        fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef storage       fill:#2e7d32,stroke:#1a5421,color:#fff
+    classDef observability fill:#c62828,stroke:#8e1c1c,color:#fff
+    classDef auth          fill:#37474f,stroke:#1a2327,color:#fff
+    classDef external      fill:#37474f,stroke:#1a2327,color:#fff
 
     class Browser,CLIUser,CICD,MCPAgent client
     class CFAccess,CFTurnstile edge

@@ -614,12 +614,12 @@ flowchart TD
 
     Error --> Complete
 
-    style Validate fill:#e1f5ff
-    style Compile fill:#fff9c4
-    style Cache fill:#c8e6c9
-    style Metrics fill:#e1f5ff
-    style Complete fill:#4caf50
-    style Error fill:#ffcdd2
+    style Validate fill:#1a237e,color:#fff
+    style Compile fill:#b8860b,color:#fff
+    style Cache fill:#1b5e20,color:#fff
+    style Metrics fill:#1a237e,color:#fff
+    style Complete fill:#1b5e20,color:#fff
+    style Error fill:#c62828,color:#fff
 ```
 
 ### Batch Workflow with Chunking
@@ -648,11 +648,11 @@ flowchart TD
     Chunk2Done[Chunk 2 Complete] --> Metrics[Step: update-batch-metrics]
     Metrics --> Complete[Return Batch Result]
 
-    style ValidateBatch fill:#e1f5ff
-    style Chunk1 fill:#fff9c4
-    style Chunk2 fill:#fff9c4
-    style Metrics fill:#e1f5ff
-    style Complete fill:#4caf50
+    style ValidateBatch fill:#1a237e,color:#fff
+    style Chunk1 fill:#b8860b,color:#fff
+    style Chunk2 fill:#b8860b,color:#fff
+    style Metrics fill:#1a237e,color:#fff
+    style Complete fill:#1b5e20,color:#fff
 ```
 
 ### Health Monitoring Workflow
@@ -673,14 +673,14 @@ flowchart TD
 
     Store --> Complete[Return Health Result]
 
-    style LoadHistory fill:#e1f5ff
-    style CheckSource1 fill:#fff9c4
-    style CheckSource2 fill:#fff9c4
-    style CheckSourceN fill:#fff9c4
-    style Analyze fill:#ffe0b2
-    style SendAlerts fill:#ffcdd2
-    style Store fill:#c8e6c9
-    style Complete fill:#4caf50
+    style LoadHistory fill:#1a237e,color:#fff
+    style CheckSource1 fill:#b8860b,color:#fff
+    style CheckSource2 fill:#b8860b,color:#fff
+    style CheckSourceN fill:#b8860b,color:#fff
+    style Analyze fill:#b84000,color:#fff
+    style SendAlerts fill:#c62828,color:#fff
+    style Store fill:#1b5e20,color:#fff
+    style Complete fill:#1b5e20,color:#fff
 ```
 
 ---
