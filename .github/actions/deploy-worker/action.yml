@@ -5,6 +5,9 @@ inputs:
     github-sha:
         description: 'GitHub commit SHA for Sentry release tracking'
         required: true
+    cloudflare-account-id:
+        description: 'Cloudflare Account ID for explicit registry authentication and wrangler --account-id flag'
+        required: true
 
 runs:
     using: composite
@@ -120,6 +123,23 @@ runs:
               create_or_confirm_queue "adblock-compiler-error-queue"
               create_or_confirm_r2_bucket "adblock-compiler-r2-storage"
 
+        - name: Authenticate Docker with Cloudflare Container Registry
+          if: env.CLOUDFLARE_API_TOKEN != ''
+          shell: bash
+          run: |
+              echo "Authenticating Docker with registry.cloudflare.com..."
+              if ! echo "$CLOUDFLARE_API_TOKEN" | docker login registry.cloudflare.com \
+                --username "cloudflare" \
+                --password-stdin; then
+                  echo ""
+                  echo "❌ Docker authentication with registry.cloudflare.com failed."
+                  echo ""
+                  echo "   Ensure CLOUDFLARE_API_TOKEN has Account > Containers:Edit permission."
+                  echo "   Verify the token at: https://dash.cloudflare.com/profile/api-tokens"
+                  exit 1
+              fi
+              echo "✅ Docker authenticated with registry.cloudflare.com"
+
         - name: Deploy Tail Worker
           if: env.CLOUDFLARE_API_TOKEN != ''
           shell: bash
@@ -129,7 +149,7 @@ runs:
               echo "Deploying tail worker (adblock-tail)..."
               TAIL_DEPLOYED=false
               for i in 1 2 3; do
-                  if deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
+                  if deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }} --account-id "${{ inputs.cloudflare-account-id }}"; then
                       TAIL_DEPLOYED=true
                       break
                   fi
@@ -165,7 +185,7 @@ runs:
               echo "Deploying version: ${{ steps.version.outputs.full_version }}"
               DEPLOY_SUCCESS=false
               for i in 1 2 3; do
-                  if deno task wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
+                  if deno task wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }} --account-id "${{ inputs.cloudflare-account-id }}"; then
                       DEPLOY_SUCCESS=true
                       echo "✅ Worker deployed successfully"
                       break
