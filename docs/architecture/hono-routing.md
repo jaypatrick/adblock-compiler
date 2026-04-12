@@ -268,6 +268,7 @@ worker/
     api-keys.routes.ts             ← /keys/*
     webhook.routes.ts              ← /notify
     workflow.routes.ts             ← /workflow/*
+    workflow-diagram.routes.ts     ← /workflow/diagram, /workflow/diagram/:name
     browser.routes.ts              ← /browser/* (stub — routes added in a future PR)
     index.ts                       ← barrel: exports all sub-apps
     shared.ts                      ← shared types (AppContext) and helpers used by route files

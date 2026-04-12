@@ -127,6 +127,8 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/compile/async', { minTier: UserTier.Pro, description: 'Async compilation (Pro+)' }],
     ['/compile/batch/async', { minTier: UserTier.Pro, description: 'Async batch compilation (Pro+)' }],
     ['/workflow/*', { minTier: UserTier.Pro, description: 'Workflow execution (Pro+)' }],
+    ['/workflow/diagram', { minTier: UserTier.Pro, description: 'Workflow diagram metadata — all workflows (Pro+)' }],
+    ['/workflow/diagram/*', { minTier: UserTier.Pro, description: 'Workflow diagram metadata — single workflow by name (Pro+)' }],
 
     // ── Configuration management (read/validate/resolve/create/download) ──────
     ['/configuration/defaults', { minTier: UserTier.Anonymous, description: 'System defaults and hard limits' }],
