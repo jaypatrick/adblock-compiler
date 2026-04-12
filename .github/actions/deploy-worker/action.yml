@@ -132,29 +132,54 @@ runs:
           shell: bash
           env:
               CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
+              CF_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
           run: |
               echo "Validating Cloudflare token for container registry auth..."
               RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
                 -H "Authorization: Bearer $CONTAINERS_TOKEN" \
-                "https://api.cloudflare.com/client/v4/user/tokens/verify")
-              if [ "$RESPONSE" != "200" ]; then
+                "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/images/v1?per_page=1")
+
+              if [ "$RESPONSE" = "200" ] || [ "$RESPONSE" = "404" ]; then
+                  # 200 = Images API accessible (Containers:Edit implies Images access)
+                  # 404 = endpoint exists but account has no images yet — token scope is fine
+                  echo "✅ Token validated for container registry (HTTP $RESPONSE)"
+              elif [ "$RESPONSE" = "403" ]; then
                   echo ""
-                  echo "❌ Cloudflare token validation failed (HTTP $RESPONSE)."
+                  echo "❌ Token lacks required permission (HTTP 403 — Forbidden)."
                   echo ""
-                  echo "   The token used for Docker registry auth is invalid or expired."
+                  echo "   The token does not have 'Account > Cloudflare Containers:Edit'."
+                  echo ""
+                  echo "   Recommended fix (Option B — dedicated token):"
+                  echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
+                  echo "   2. Create a new token with ONLY: Account > Cloudflare Containers:Edit"
+                  echo "   3. Add it as GitHub secret: CLOUDFLARE_CONTAINERS_TOKEN"
+                  echo "      (Settings → Secrets and variables → Actions → New repository secret)"
+                  echo "   4. The ci.yml workflow already passes this secret to the action — no"
+                  echo "      workflow file changes are needed once the secret exists."
+                  echo ""
+                  exit 1
+              elif [ "$RESPONSE" = "401" ]; then
+                  echo ""
+                  echo "❌ Token is invalid or has expired (HTTP 401 — Unauthorized)."
                   echo ""
                   echo "   To fix this issue:"
                   echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
-                  echo "   2. Find or create a token with:"
-                  echo "      • Account > Cloudflare Containers:Edit (REQUIRED for registry.cloudflare.com)"
-                  echo "   3. Either:"
-                  echo "      a. Add Containers:Edit to your existing CLOUDFLARE_API_TOKEN, OR"
-                  echo "      b. Create a new dedicated token and add it as secret CLOUDFLARE_CONTAINERS_TOKEN"
-                  echo "         then pass it via the cloudflare-containers-token input"
+                  echo "   2. Verify your CLOUDFLARE_CONTAINERS_TOKEN has not expired or been revoked"
+                  echo "   3. Re-create the token if needed and update the GitHub secret"
+                  echo ""
+                  exit 1
+              else
+                  echo ""
+                  echo "❌ Unexpected response from Cloudflare API (HTTP $RESPONSE)."
+                  echo ""
+                  echo "   This may be a transient network issue. If it persists:"
+                  echo "   1. Check https://www.cloudflarestatus.com for outages"
+                  echo "   2. Verify CLOUDFLARE_ACCOUNT_ID is correct"
+                  echo "      (find it at: https://dash.cloudflare.com → select your account → Overview)"
+                  echo "   3. Ensure the token has Account > Cloudflare Containers:Edit permission"
                   echo ""
                   exit 1
               fi
-              echo "✅ Token validated successfully"
 
         - name: Authenticate Docker with Cloudflare Container Registry
           if: env.CLOUDFLARE_API_TOKEN != ''
@@ -169,18 +194,12 @@ runs:
                   echo ""
                   echo "❌ Docker authentication with registry.cloudflare.com failed."
                   echo ""
-                  echo "   The token used does not have Account > Cloudflare Containers:Edit permission."
+                  echo "   Token validation passed but Docker login still failed."
+                  echo "   This is unexpected — please check:"
+                  echo "   • That CLOUDFLARE_CONTAINERS_TOKEN has Account > Cloudflare Containers:Edit"
+                  echo "   • That the token has not been revoked between validation and login"
+                  echo "   • https://www.cloudflarestatus.com for any Cloudflare Container Registry outages"
                   echo ""
-                  echo "   To fix this issue, choose one of:"
-                  echo "   Option A — Add permission to existing token:"
-                  echo "     1. Go to: https://dash.cloudflare.com/profile/api-tokens"
-                  echo "     2. Edit CLOUDFLARE_API_TOKEN and add Account > Cloudflare Containers:Edit"
-                  echo ""
-                  echo "   Option B — Use a dedicated containers token (recommended):"
-                  echo "     1. Create a new token at: https://dash.cloudflare.com/profile/api-tokens"
-                  echo "        with only Account > Cloudflare Containers:Edit"
-                  echo "     2. Add it as GitHub secret: CLOUDFLARE_CONTAINERS_TOKEN"
-                  echo "     3. Pass it to this action via cloudflare-containers-token input"
                   exit 1
               fi
               echo "✅ Docker authenticated with registry.cloudflare.com"
