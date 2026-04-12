@@ -645,6 +645,7 @@ jobs:
               uses: ./.github/actions/deploy-worker
               with:
                   github-sha: ${{ github.sha }}
+                  cloudflare-account-id: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
             - name: Show deploy version
               if: always()
