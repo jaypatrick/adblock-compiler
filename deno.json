@@ -256,7 +256,6 @@
     "allowScripts": [
         "npm:@prisma/engines@7.5.0",
         "npm:core-js-pure@3.47.0",
-        "npm:core-js-pure@3.49.0",
         "npm:esbuild@0.27.0",
         "npm:esbuild@0.27.3",
         "npm:fsevents@2.3.3",
