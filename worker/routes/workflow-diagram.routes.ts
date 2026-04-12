@@ -9,8 +9,9 @@
  *
  * Valid workflow names: compilation, batch-compilation, cache-warming, health-monitoring
  *
- * These endpoints are read-only metadata endpoints and do not require authentication.
- * They are intended for observability tooling and developer exploration.
+ * These endpoints are read-only metadata endpoints.
+ * Access is still subject to the application's route-permission middleware and configured tier requirements.
+ * They are intended for observability tooling and developer exploration for callers with the required access.
  */
 
 import { OpenAPIHono } from '@hono/zod-openapi';

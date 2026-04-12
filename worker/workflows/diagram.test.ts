@@ -110,6 +110,16 @@ Deno.test('WorkflowDiagramBuilder.build(compilation) — has a conditional node 
     assertEquals(cacheResultNode !== undefined, true);
 });
 
+Deno.test('WorkflowDiagramBuilder.build(compilation) — skip-cache path bypasses cache-result', () => {
+    const diagram = WorkflowDiagramBuilder.build('compilation');
+    const skipCacheEdge = diagram.edges.find((e) => e.from === 'compile-sources' && e.to === 'update-metrics');
+    assertEquals(skipCacheEdge !== undefined, true);
+    const cachedEdge = diagram.edges.find((e) => e.from === 'compile-sources' && e.to === 'cache-result');
+    assertEquals(cachedEdge !== undefined, true);
+    const cacheToMetricsEdge = diagram.edges.find((e) => e.from === 'cache-result' && e.to === 'update-metrics');
+    assertEquals(cacheToMetricsEdge !== undefined, true);
+});
+
 Deno.test('WorkflowDiagramBuilder.build(compilation) — includes update-failure-metrics step', () => {
     const diagram = WorkflowDiagramBuilder.build('compilation');
     const ids = nodeIds(diagram);
@@ -168,6 +178,16 @@ Deno.test('WorkflowDiagramBuilder.build(health-monitoring) — has a conditional
     assertEquals(conditionalNodes.length >= 1, true);
     const sendAlertsNode = conditionalNodes.find((n: DiagramNode) => n.id === 'send-alerts');
     assertEquals(sendAlertsNode !== undefined, true);
+});
+
+Deno.test('WorkflowDiagramBuilder.build(health-monitoring) — wires alert and no-alert paths correctly', () => {
+    const diagram = WorkflowDiagramBuilder.build('health-monitoring');
+    const hasAnalyzeResultsToStoreResults = diagram.edges.some((e) => e.from === 'analyze-results' && e.to === 'store-results');
+    const hasAnalyzeResultsToSendAlerts = diagram.edges.some((e) => e.from === 'analyze-results' && e.to === 'send-alerts');
+    const hasSendAlertsToStoreResults = diagram.edges.some((e) => e.from === 'send-alerts' && e.to === 'store-results');
+    assertEquals(hasAnalyzeResultsToStoreResults, true);
+    assertEquals(hasAnalyzeResultsToSendAlerts, true);
+    assertEquals(hasSendAlertsToStoreResults, true);
 });
 
 Deno.test('WorkflowDiagramBuilder.build(health-monitoring) — includes store-results step', () => {
