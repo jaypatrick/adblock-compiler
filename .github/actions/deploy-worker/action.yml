@@ -132,9 +132,10 @@ runs:
           shell: bash
           env:
               CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
+              TOKEN_SOURCE: ${{ inputs.cloudflare-containers-token != '' && 'CLOUDFLARE_CONTAINERS_TOKEN' || 'CLOUDFLARE_API_TOKEN' }}
               CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
           run: |
-              echo "Validating Cloudflare token for container registry auth..."
+              echo "Validating Cloudflare token for container registry auth (using $TOKEN_SOURCE)..."
               RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
                 -H "Authorization: Bearer $CONTAINERS_TOKEN" \
                 "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/containers/images")
@@ -144,11 +145,11 @@ runs:
                   echo "✅ Token validated for container registry (HTTP $RESPONSE)"
               elif [ "$RESPONSE" = "403" ]; then
                   echo ""
-                  echo "❌ Token lacks required permission (HTTP 403 — Forbidden)."
+                  echo "❌ Token ($TOKEN_SOURCE) lacks required permission (HTTP 403 — Forbidden)."
                   echo ""
                   echo "   The token does not have 'Account > Cloudflare Containers:Edit'."
                   echo ""
-                  echo "   To fix this issue (Option B — recommended, ZTA-aligned):"
+                  echo "   Recommended fix (ZTA-aligned):"
                   echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
                   echo "   2. Create a new token with ONLY: Account > Cloudflare Containers:Edit"
                   echo "   3. Add it as GitHub secret: CLOUDFLARE_CONTAINERS_TOKEN"
@@ -159,11 +160,11 @@ runs:
                   exit 1
               elif [ "$RESPONSE" = "401" ]; then
                   echo ""
-                  echo "❌ Token is invalid or has expired (HTTP 401 — Unauthorized)."
+                  echo "❌ Token ($TOKEN_SOURCE) is invalid or has expired (HTTP 401 — Unauthorized)."
                   echo ""
                   echo "   To fix this issue:"
                   echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
-                  echo "   2. Verify your CLOUDFLARE_CONTAINERS_TOKEN has not expired or been revoked"
+                  echo "   2. Verify $TOKEN_SOURCE has not expired or been revoked"
                   echo "   3. Re-create the token if needed and update the GitHub secret"
                   echo ""
                   exit 1
@@ -185,8 +186,9 @@ runs:
           shell: bash
           env:
               CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
+              TOKEN_SOURCE: ${{ inputs.cloudflare-containers-token != '' && 'CLOUDFLARE_CONTAINERS_TOKEN' || 'CLOUDFLARE_API_TOKEN' }}
           run: |
-              echo "Authenticating Docker with registry.cloudflare.com..."
+              echo "Authenticating Docker with registry.cloudflare.com (using $TOKEN_SOURCE)..."
               if ! echo "$CONTAINERS_TOKEN" | docker login registry.cloudflare.com \
                 --username "cloudflare" \
                 --password-stdin; then
@@ -195,8 +197,8 @@ runs:
                   echo ""
                   echo "   Token validation passed but Docker login still failed."
                   echo "   This is unexpected — please check:"
-                  echo "   • That CLOUDFLARE_CONTAINERS_TOKEN has Account > Cloudflare Containers:Edit"
-                  echo "   • That the token has not been revoked between validation and login"
+                  echo "   • That $TOKEN_SOURCE has Account > Cloudflare Containers:Edit"
+                  echo "   • That $TOKEN_SOURCE has not been revoked between validation and login"
                   echo "   • https://www.cloudflarestatus.com for any Cloudflare Container Registry outages"
                   echo ""
                   exit 1
