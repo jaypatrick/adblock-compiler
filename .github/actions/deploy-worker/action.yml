@@ -132,16 +132,15 @@ runs:
           shell: bash
           env:
               CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
-              CF_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
+              CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
           run: |
               echo "Validating Cloudflare token for container registry auth..."
               RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
                 -H "Authorization: Bearer $CONTAINERS_TOKEN" \
-                "https://api.cloudflare.com/client/v4/accounts/$CF_ACCOUNT_ID/images/v1?per_page=1")
+                "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/containers/images")
 
               if [ "$RESPONSE" = "200" ] || [ "$RESPONSE" = "404" ]; then
-                  # 200 = Images API accessible (Containers:Edit implies Images access)
-                  # 404 = endpoint exists but account has no images yet — token scope is fine
+                  # 200 = containers API accessible; 404 = no images yet — token scope is fine
                   echo "✅ Token validated for container registry (HTTP $RESPONSE)"
               elif [ "$RESPONSE" = "403" ]; then
                   echo ""
@@ -149,7 +148,7 @@ runs:
                   echo ""
                   echo "   The token does not have 'Account > Cloudflare Containers:Edit'."
                   echo ""
-                  echo "   Recommended fix (Option B — dedicated token):"
+                  echo "   To fix this issue (Option B — recommended, ZTA-aligned):"
                   echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
                   echo "   2. Create a new token with ONLY: Account > Cloudflare Containers:Edit"
                   echo "   3. Add it as GitHub secret: CLOUDFLARE_CONTAINERS_TOKEN"
