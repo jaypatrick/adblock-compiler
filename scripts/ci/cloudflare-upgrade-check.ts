@@ -19,18 +19,51 @@ interface NpmPackageLatest {
     version: string;
 }
 
-async function fetchLatestVersion(pkg: string): Promise<string> {
-    const res = await fetch(`https://registry.npmjs.org/${pkg}/latest`);
-    if (!res.ok) {
-        // Common causes: no network access (check runner firewall/proxy), npm registry outage,
-        // rate limiting (HTTP 429), or a misspelled package name (HTTP 404).
-        throw new Error(
-            `Failed to fetch "${pkg}" from npm registry (HTTP ${res.status} ${res.statusText}). ` +
-                `Check network connectivity, npm registry availability, and that the package name is correct.`,
-        );
+async function fetchLatestVersion(pkg: string, attempt = 1): Promise<string> {
+    const MAX_ATTEMPTS = 3;
+    const TIMEOUT_MS = 10_000;
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
+    try {
+        const res = await fetch(`https://registry.npmjs.org/${pkg}/latest`, {
+            signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        if (!res.ok) {
+            if ((res.status === 429 || res.status >= 500) && attempt < MAX_ATTEMPTS) {
+                const delay = attempt * 2_000;
+                console.log(
+                    `  ⏳ npm registry returned ${res.status} for "${pkg}"; retrying in ${delay / 1_000}s (attempt ${attempt}/${MAX_ATTEMPTS})...`,
+                );
+                await new Promise((r) => setTimeout(r, delay));
+                return fetchLatestVersion(pkg, attempt + 1);
+            }
+            // Common causes: no network access (check runner firewall/proxy), npm registry outage,
+            // rate limiting (HTTP 429), or a misspelled package name (HTTP 404).
+            throw new Error(
+                `Failed to fetch "${pkg}" from npm registry (HTTP ${res.status} ${res.statusText}). ` +
+                    `Check network connectivity, npm registry availability, and that the package name is correct.`,
+            );
+        }
+
+        const data = (await res.json()) as NpmPackageLatest;
+        return data.version;
+    } catch (error) {
+        clearTimeout(timeoutId);
+        if (error instanceof DOMException && error.name === 'AbortError') {
+            if (attempt < MAX_ATTEMPTS) {
+                console.log(
+                    `  ⏳ npm fetch for "${pkg}" timed out; retrying (attempt ${attempt}/${MAX_ATTEMPTS})...`,
+                );
+                return fetchLatestVersion(pkg, attempt + 1);
+            }
+            throw new Error(`npm registry fetch for "${pkg}" timed out after ${MAX_ATTEMPTS} attempts.`);
+        }
+        throw error;
     }
-    const data = (await res.json()) as NpmPackageLatest;
-    return data.version;
 }
 
 async function readDenoJson(): Promise<Record<string, unknown>> {
@@ -38,12 +71,17 @@ async function readDenoJson(): Promise<Record<string, unknown>> {
     return JSON.parse(text) as Record<string, unknown>;
 }
 
-async function readDenoLock(): Promise<Record<string, unknown> | null> {
+async function readDenoLock(): Promise<Record<string, unknown>> {
     try {
         const text = await Deno.readTextFile('deno.lock');
-        return JSON.parse(text) as Record<string, unknown>;
-    } catch {
-        return null;
+        const parsed = JSON.parse(text) as unknown;
+        if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+            throw new Error('Expected deno.lock to contain a JSON object.');
+        }
+        return parsed as Record<string, unknown>;
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Failed to read or parse deno.lock: ${message}`);
     }
 }
 
@@ -70,38 +108,36 @@ interface CheckResult {
     messages: string[];
 }
 
-async function checkWranglerVersion(lock: Record<string, unknown> | null): Promise<CheckResult> {
+async function checkWranglerVersion(lock: Record<string, unknown>): Promise<CheckResult> {
     const messages: string[] = [];
     let passed = true;
 
     const latestWrangler = await fetchLatestVersion('wrangler');
     console.log(`ℹ️  Latest wrangler on npm: ${latestWrangler}`);
 
-    if (lock) {
-        const specifiers = (lock['specifiers'] as Record<string, string>) ?? {};
-        for (const [spec, resolved] of Object.entries(specifiers)) {
-            if (!spec.includes('wrangler')) {
-                continue;
-            }
-            const resolvedVersion = extractVersion(resolved);
-            console.log(`ℹ️  Lock: ${spec} → ${resolvedVersion}`);
-            if (semverGt(latestWrangler, resolvedVersion)) {
-                messages.push(
-                    `⚠️  Wrangler is outdated: locked to ${resolvedVersion}, latest is ${latestWrangler}. ` +
-                        `Update the wrangler specifier in deno.json and package.json then regenerate deno.lock.`,
-                );
-                passed = false;
-            }
+    const specifiers = (lock['specifiers'] as Record<string, string>) ?? {};
+    for (const [spec, resolved] of Object.entries(specifiers)) {
+        if (!spec.includes('wrangler')) {
+            continue;
+        }
+        const resolvedVersion = extractVersion(resolved);
+        console.log(`ℹ️  Lock: ${spec} → ${resolvedVersion}`);
+        if (semverGt(latestWrangler, resolvedVersion)) {
+            messages.push(
+                `⚠️  Wrangler is outdated: locked to ${resolvedVersion}, latest is ${latestWrangler}. ` +
+                    `Update the wrangler specifier in deno.json and package.json then regenerate deno.lock.`,
+            );
+            passed = false;
         }
     }
 
     return { passed, messages };
 }
 
-async function checkWorkerdAllowScripts(
+function checkWorkerdAllowScripts(
     denoJson: Record<string, unknown>,
-    lock: Record<string, unknown> | null,
-): Promise<CheckResult> {
+    lock: Record<string, unknown>,
+): CheckResult {
     const messages: string[] = [];
     let passed = true;
 
@@ -110,32 +146,25 @@ async function checkWorkerdAllowScripts(
         allowScripts.filter((s) => s.startsWith('npm:workerd@')).map((s) => s.replace('npm:workerd@', '')),
     );
 
-    const latestWorkerd = await fetchLatestVersion('workerd');
-    console.log(`ℹ️  Latest workerd on npm: ${latestWorkerd}`);
-    console.log(`ℹ️  Allowed workerd versions in allowScripts: ${[...allowedWorkerd].join(', ')}`);
-
-    if (!allowedWorkerd.has(latestWorkerd)) {
-        messages.push(
-            `⚠️  workerd@${latestWorkerd} is not in deno.json allowScripts. ` +
-                `Add "npm:workerd@${latestWorkerd}" to the allowScripts array.`,
-        );
-        passed = false;
+    const lockedWorkerd = new Set<string>();
+    const npm = (lock['npm'] as Record<string, unknown>) ?? {};
+    for (const key of Object.keys(npm)) {
+        if (!key.startsWith('workerd@')) {
+            continue;
+        }
+        lockedWorkerd.add(key.replace('workerd@', ''));
     }
 
-    if (lock) {
-        const npm = (lock['npm'] as Record<string, unknown>) ?? {};
-        for (const key of Object.keys(npm)) {
-            if (!key.startsWith('workerd@')) {
-                continue;
-            }
-            const version = key.replace('workerd@', '');
-            if (!allowedWorkerd.has(version)) {
-                messages.push(
-                    `⚠️  workerd@${version} is in deno.lock but missing from deno.json allowScripts. ` +
-                        `Add "npm:workerd@${version}" to the allowScripts array.`,
-                );
-                passed = false;
-            }
+    console.log(`ℹ️  Allowed workerd versions in allowScripts: ${[...allowedWorkerd].join(', ')}`);
+    console.log(`ℹ️  Locked workerd versions in deno.lock: ${[...lockedWorkerd].join(', ')}`);
+
+    for (const version of lockedWorkerd) {
+        if (!allowedWorkerd.has(version)) {
+            messages.push(
+                `⚠️  workerd@${version} is in deno.lock but missing from deno.json allowScripts. ` +
+                    `Add "npm:workerd@${version}" to the allowScripts array.`,
+            );
+            passed = false;
         }
     }
 
@@ -172,9 +201,9 @@ async function main(): Promise<void> {
 
     const [denoJson, lock] = await Promise.all([readDenoJson(), readDenoLock()]);
 
-    const [wranglerResult, workerdResult, workersTypesResult] = await Promise.all([
+    const workerdResult = checkWorkerdAllowScripts(denoJson, lock);
+    const [wranglerResult, workersTypesResult] = await Promise.all([
         checkWranglerVersion(lock),
-        checkWorkerdAllowScripts(denoJson, lock),
         checkWorkersTypesVersion(denoJson),
     ]);
 
