@@ -261,7 +261,6 @@
         "npm:prisma@7.5.0",
         "npm:sharp@0.33.5",
         "npm:sharp@0.34.5",
-        "npm:workerd@1.20260409.1",
-        "npm:workerd@1.20260411.1"
+        "npm:workerd@1.20260409.1"
     ]
 }
