@@ -136,9 +136,22 @@ runs:
               CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
           run: |
               echo "Validating Cloudflare token for container registry auth (using $TOKEN_SOURCE)..."
-              RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+              RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 \
+                -o /dev/null -w "%{http_code}" \
                 -H "Authorization: Bearer $CONTAINERS_TOKEN" \
                 "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/containers/images")
+              CURL_EXIT=$?
+
+              if [ $CURL_EXIT -ne 0 ]; then
+                  echo ""
+                  echo "❌ curl failed to reach Cloudflare API (curl exit code $CURL_EXIT)."
+                  echo ""
+                  echo "   This is likely a DNS, TLS, or network connectivity issue:"
+                  echo "   1. Check https://www.cloudflarestatus.com for outages"
+                  echo "   2. Verify the runner has outbound HTTPS access to api.cloudflare.com"
+                  echo ""
+                  exit 1
+              fi
 
               if [ "$RESPONSE" = "200" ] || [ "$RESPONSE" = "404" ]; then
                   # 200 = containers API accessible; 404 = no images yet — token scope is fine
@@ -172,7 +185,7 @@ runs:
                   echo ""
                   echo "❌ Unexpected response from Cloudflare API (HTTP $RESPONSE)."
                   echo ""
-                  echo "   This may be a transient network issue. If it persists:"
+                  echo "   This may be a transient server error. If it persists:"
                   echo "   1. Check https://www.cloudflarestatus.com for outages"
                   echo "   2. Verify CLOUDFLARE_ACCOUNT_ID is correct"
                   echo "      (find it at: https://dash.cloudflare.com → select your account → Overview)"
