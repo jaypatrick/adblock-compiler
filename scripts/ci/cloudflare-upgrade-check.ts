@@ -30,7 +30,6 @@ async function fetchLatestVersion(pkg: string, attempt = 1): Promise<string> {
         const res = await fetch(`https://registry.npmjs.org/${pkg}/latest`, {
             signal: controller.signal,
         });
-        clearTimeout(timeoutId);
 
         if (!res.ok) {
             if ((res.status === 429 || res.status >= 500) && attempt < MAX_ATTEMPTS) {
@@ -52,7 +51,6 @@ async function fetchLatestVersion(pkg: string, attempt = 1): Promise<string> {
         const data = (await res.json()) as NpmPackageLatest;
         return data.version;
     } catch (error) {
-        clearTimeout(timeoutId);
         if (error instanceof DOMException && error.name === 'AbortError') {
             if (attempt < MAX_ATTEMPTS) {
                 console.log(
@@ -63,6 +61,8 @@ async function fetchLatestVersion(pkg: string, attempt = 1): Promise<string> {
             throw new Error(`npm registry fetch for "${pkg}" timed out after ${MAX_ATTEMPTS} attempts.`);
         }
         throw error;
+    } finally {
+        clearTimeout(timeoutId);
     }
 }
 
@@ -108,14 +108,14 @@ interface CheckResult {
     messages: string[];
 }
 
-async function checkWranglerVersion(lock: Record<string, unknown>): Promise<CheckResult> {
+async function checkWranglerVersion(lockFile: Record<string, unknown>): Promise<CheckResult> {
     const messages: string[] = [];
     let passed = true;
 
     const latestWrangler = await fetchLatestVersion('wrangler');
     console.log(`ℹ️  Latest wrangler on npm: ${latestWrangler}`);
 
-    const specifiers = (lock['specifiers'] as Record<string, string>) ?? {};
+    const specifiers = (lockFile['specifiers'] as Record<string, string>) ?? {};
     for (const [spec, resolved] of Object.entries(specifiers)) {
         if (!spec.includes('wrangler')) {
             continue;
@@ -136,7 +136,7 @@ async function checkWranglerVersion(lock: Record<string, unknown>): Promise<Chec
 
 function checkWorkerdAllowScripts(
     denoJson: Record<string, unknown>,
-    lock: Record<string, unknown>,
+    lockFile: Record<string, unknown>,
 ): CheckResult {
     const messages: string[] = [];
     let passed = true;
@@ -147,7 +147,7 @@ function checkWorkerdAllowScripts(
     );
 
     const lockedWorkerd = new Set<string>();
-    const npm = (lock['npm'] as Record<string, unknown>) ?? {};
+    const npm = (lockFile['npm'] as Record<string, unknown>) ?? {};
     for (const key of Object.keys(npm)) {
         if (!key.startsWith('workerd@')) {
             continue;
@@ -199,11 +199,11 @@ async function checkWorkersTypesVersion(denoJson: Record<string, unknown>): Prom
 async function main(): Promise<void> {
     console.log('🔍 Cloudflare upgrade check starting...\n');
 
-    const [denoJson, lock] = await Promise.all([readDenoJson(), readDenoLock()]);
+    const [denoJson, lockFile] = await Promise.all([readDenoJson(), readDenoLock()]);
 
-    const workerdResult = checkWorkerdAllowScripts(denoJson, lock);
+    const workerdResult = checkWorkerdAllowScripts(denoJson, lockFile);
     const [wranglerResult, workersTypesResult] = await Promise.all([
-        checkWranglerVersion(lock),
+        checkWranglerVersion(lockFile),
         checkWorkersTypesVersion(denoJson),
     ]);
 
