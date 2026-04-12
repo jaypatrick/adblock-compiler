@@ -313,7 +313,12 @@ const handler = {
         // Process each event
         const promises: Promise<void>[] = [];
         // Collect all Sentry exception items across events; sent in one envelope.
-        const sentryItems: Array<{ error: { name: string; message: string }; tags?: Record<string, string> }> = [];
+        const sentryItems: Array<{
+            error: { name: string; message: string };
+            tags?: Record<string, string>;
+            request?: { url?: string; method?: string };
+            extra?: Record<string, string>;
+        }> = [];
 
         for (const event of events) {
             // Store logs in KV if available
@@ -395,9 +400,7 @@ const handler = {
                     sentryItems.push({
                         error: { name: exception.name, message: exception.message },
                         tags: { outcome: event.outcome, scriptName: event.scriptName ?? 'unknown' },
-                        ...(requestUrl || requestMethod
-                            ? { request: { url: requestUrl, method: requestMethod } }
-                            : {}),
+                        ...(requestUrl || requestMethod ? { request: { url: requestUrl, method: requestMethod } } : {}),
                         extra: {
                             scriptName: event.scriptName ?? 'unknown',
                             exceptionTimestamp: new Date(exception.timestamp).toISOString(),
