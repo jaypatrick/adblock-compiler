@@ -8,6 +8,10 @@ inputs:
     cloudflare-account-id:
         description: 'Cloudflare Account ID for explicit registry authentication and wrangler --account-id flag'
         required: true
+    cloudflare-containers-token:
+        description: 'Optional dedicated Cloudflare API token with Account > Containers:Edit permission for Docker registry auth. Falls back to CLOUDFLARE_API_TOKEN if not provided.'
+        required: false
+        default: ''
 
 runs:
     using: composite
@@ -123,19 +127,60 @@ runs:
               create_or_confirm_queue "adblock-compiler-error-queue"
               create_or_confirm_r2_bucket "adblock-compiler-r2-storage"
 
+        - name: Validate token for container registry
+          if: env.CLOUDFLARE_API_TOKEN != ''
+          shell: bash
+          env:
+              CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
+          run: |
+              echo "Validating Cloudflare token for container registry auth..."
+              RESPONSE=$(curl -s -o /dev/null -w "%{http_code}" \
+                -H "Authorization: Bearer $CONTAINERS_TOKEN" \
+                "https://api.cloudflare.com/client/v4/user/tokens/verify")
+              if [ "$RESPONSE" != "200" ]; then
+                  echo ""
+                  echo "❌ Cloudflare token validation failed (HTTP $RESPONSE)."
+                  echo ""
+                  echo "   The token used for Docker registry auth is invalid or expired."
+                  echo ""
+                  echo "   To fix this issue:"
+                  echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
+                  echo "   2. Find or create a token with:"
+                  echo "      • Account > Cloudflare Containers:Edit (REQUIRED for registry.cloudflare.com)"
+                  echo "   3. Either:"
+                  echo "      a. Add Containers:Edit to your existing CLOUDFLARE_API_TOKEN, OR"
+                  echo "      b. Create a new dedicated token and add it as secret CLOUDFLARE_CONTAINERS_TOKEN"
+                  echo "         then pass it via the cloudflare-containers-token input"
+                  echo ""
+                  exit 1
+              fi
+              echo "✅ Token validated successfully"
+
         - name: Authenticate Docker with Cloudflare Container Registry
           if: env.CLOUDFLARE_API_TOKEN != ''
           shell: bash
+          env:
+              CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
           run: |
               echo "Authenticating Docker with registry.cloudflare.com..."
-              if ! echo "$CLOUDFLARE_API_TOKEN" | docker login registry.cloudflare.com \
+              if ! echo "$CONTAINERS_TOKEN" | docker login registry.cloudflare.com \
                 --username "cloudflare" \
                 --password-stdin; then
                   echo ""
                   echo "❌ Docker authentication with registry.cloudflare.com failed."
                   echo ""
-                  echo "   Ensure CLOUDFLARE_API_TOKEN has Account > Containers:Edit permission."
-                  echo "   Verify the token at: https://dash.cloudflare.com/profile/api-tokens"
+                  echo "   The token used does not have Account > Cloudflare Containers:Edit permission."
+                  echo ""
+                  echo "   To fix this issue, choose one of:"
+                  echo "   Option A — Add permission to existing token:"
+                  echo "     1. Go to: https://dash.cloudflare.com/profile/api-tokens"
+                  echo "     2. Edit CLOUDFLARE_API_TOKEN and add Account > Cloudflare Containers:Edit"
+                  echo ""
+                  echo "   Option B — Use a dedicated containers token (recommended):"
+                  echo "     1. Create a new token at: https://dash.cloudflare.com/profile/api-tokens"
+                  echo "        with only Account > Cloudflare Containers:Edit"
+                  echo "     2. Add it as GitHub secret: CLOUDFLARE_CONTAINERS_TOKEN"
+                  echo "     3. Pass it to this action via cloudflare-containers-token input"
                   exit 1
               fi
               echo "✅ Docker authenticated with registry.cloudflare.com"
