@@ -88,6 +88,7 @@ import { rulesRoutes } from './routes/rules.routes.ts';
 import { stripeRoutes } from './routes/stripe.routes.ts';
 import { webhookRoutes } from './routes/webhook.routes.ts';
 import { workflowRoutes } from './routes/workflow.routes.ts';
+import { workflowDiagramRoutes } from './routes/workflow-diagram.routes.ts';
 
 // Prisma middleware
 import { createPrismaClient } from './lib/prisma.ts';
@@ -597,6 +598,7 @@ routes.route('/', apiKeysRoutes);
 routes.route('/', webhookRoutes);
 routes.route('/', stripeRoutes);
 routes.route('/', workflowRoutes);
+routes.route('/', workflowDiagramRoutes);
 routes.route('/', browserRoutes);
 routes.route('/', proxyRoutes);
 

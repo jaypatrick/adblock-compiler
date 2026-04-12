@@ -1,0 +1,47 @@
+/// <reference types="@cloudflare/workers-types" />
+
+/**
+ * Workflow Diagram routes.
+ *
+ * Routes:
+ *   GET /workflows/diagram         — diagram metadata for all registered workflows
+ *   GET /workflows/diagram/:name   — diagram for a single workflow by name
+ *
+ * Valid workflow names: compilation, batch-compilation, cache-warming, health-monitoring
+ *
+ * These endpoints are read-only metadata endpoints and do not require authentication.
+ * They are intended for observability tooling and developer exploration.
+ */
+
+import { OpenAPIHono } from '@hono/zod-openapi';
+
+import { WorkflowDiagramBuilder } from '../workflows/diagram.ts';
+import type { Env } from '../types.ts';
+import type { Variables } from './shared.ts';
+import { ProblemResponse } from '../utils/problem-details.ts';
+
+export const workflowDiagramRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
+
+// ── GET /workflows/diagram ─────────────────────────────────────────────────────
+
+workflowDiagramRoutes.get('/workflows/diagram', (c) => {
+    const diagrams = WorkflowDiagramBuilder.list().map((name) =>
+        WorkflowDiagramBuilder.build(name)
+    );
+    return c.json({ success: true, diagrams });
+});
+
+// ── GET /workflows/diagram/:name ───────────────────────────────────────────────
+
+workflowDiagramRoutes.get('/workflows/diagram/:name', (c) => {
+    const name = c.req.param('name');
+    const known = WorkflowDiagramBuilder.list();
+    if (!known.includes(name)) {
+        return ProblemResponse.notFound(
+            c.req.path,
+            `Unknown workflow: ${name}. Valid values: ${known.join(', ')}`,
+        );
+    }
+    const diagram = WorkflowDiagramBuilder.build(name);
+    return c.json({ success: true, diagram });
+});
