@@ -376,7 +376,7 @@ Deno.test({
     sanitizeOps: false,
     sanitizeResources: false,
     async fn() {
-        // captureSentryException() is called inside tail() when DSN is set.
+        // captureSentryExceptions() is called inside tail() when DSN is set.
         // It uses fetch() to post to the Sentry envelope API; errors are swallowed
         // so the tail worker always completes regardless of Sentry availability.
         const env = createMockTailEnv({ SENTRY_DSN: 'https://test@o0.ingest.sentry.io/0' });

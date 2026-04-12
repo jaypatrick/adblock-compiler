@@ -16,7 +16,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 // @sentry/cloudflare is NOT imported in this file — Sentry exceptions are forwarded
-// via direct envelope API calls (see captureSentryException) to keep the bundle small.
+// via direct envelope API calls (see captureSentryExceptions) to keep the bundle small.
 
 /**
  * Environment bindings for the tail worker.
@@ -411,5 +411,5 @@ const handler = {
 export const tailHandler = handler;
 
 // Default export: the tail handler. Sentry exception forwarding is done
-// inline via captureSentryException() — no SDK wrapper needed.
+// inline via captureSentryExceptions() — no SDK wrapper needed.
 export default handler;
