@@ -16,6 +16,8 @@ jobs:
   zta-security-lint:
     name: ZTA Security Lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
