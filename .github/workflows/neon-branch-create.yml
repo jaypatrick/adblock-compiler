@@ -184,7 +184,7 @@ jobs:
       # ── 4. Set up pnpm + Node.js for Prisma CLI ─────────────────────────
       # pnpm must be installed BEFORE setup-node so the pnpm cache works
       - name: Install pnpm
-        uses: pnpm/action-setup@v5.0.0
+        uses: pnpm/action-setup@v6.0.0
         with:
           version: 10.31.0
 
@@ -277,7 +277,7 @@ jobs:
       # when branch_name was provided instead of pr_number).
       - name: Comment on PR with branch details
         if: steps.context.outputs.pr_number != ''
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const branchName = `${{ steps.context.outputs.branch_name }}`;
