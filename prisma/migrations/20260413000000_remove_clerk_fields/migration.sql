@@ -5,8 +5,8 @@
 --          now Better Auth sessions; no Clerk sessions remain.
 
 -- DropIndex: remove unique constraint on users.clerk_user_id
--- (column is kept nullable for historical rows; unique constraint would
---  cause conflicts if multiple NULL rows exist after Clerk removal)
+-- (column is now a legacy historical field, and uniqueness is no longer
+--  required for retained rows that may share the same non-NULL Clerk ID)
 DROP INDEX IF EXISTS "users_clerk_user_id_key";
 
 -- DropColumn: sessions.token_hash (legacy Clerk session token hash)
