@@ -135,11 +135,11 @@ runs:
               TOKEN_SOURCE: ${{ inputs.cloudflare-containers-token != '' && 'CLOUDFLARE_CONTAINERS_TOKEN' || 'CLOUDFLARE_API_TOKEN' }}
               CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
           run: |
-              echo "Validating Cloudflare token for container registry auth (using $TOKEN_SOURCE)..."
+              echo "Validating Cloudflare token against account endpoint (using $TOKEN_SOURCE)..."
               RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 \
                 -o /dev/null -w "%{http_code}" \
                 -H "Authorization: Bearer $CONTAINERS_TOKEN" \
-                "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/containers/images")
+                "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID")
               CURL_EXIT=$?
 
               if [ $CURL_EXIT -ne 0 ]; then
@@ -153,9 +153,8 @@ runs:
                   exit 1
               fi
 
-              if [ "$RESPONSE" = "200" ] || [ "$RESPONSE" = "404" ]; then
-                  # 200 = containers API accessible; 404 = no images yet — token scope is fine
-                  echo "✅ Token validated for container registry (HTTP $RESPONSE)"
+              if [ "$RESPONSE" = "200" ]; then
+                  echo "✅ Token validated successfully (HTTP 200)"
               elif [ "$RESPONSE" = "403" ]; then
                   echo ""
                   echo "❌ Token ($TOKEN_SOURCE) lacks required permission (HTTP 403 — Forbidden)."
@@ -183,15 +182,11 @@ runs:
                   exit 1
               else
                   echo ""
-                  echo "❌ Unexpected response from Cloudflare API (HTTP $RESPONSE)."
+                  echo "⚠️  Unexpected response from Cloudflare API (HTTP $RESPONSE)."
                   echo ""
-                  echo "   This may be a transient server error. If it persists:"
-                  echo "   1. Check https://www.cloudflarestatus.com for outages"
-                  echo "   2. Verify CLOUDFLARE_ACCOUNT_ID is correct"
-                  echo "      (find it at: https://dash.cloudflare.com → select your account → Overview)"
-                  echo "   3. Ensure the token has Account > Cloudflare Containers:Edit permission"
-                  echo ""
-                  exit 1
+                  echo "   This may be a transient server error or an account-tier limitation."
+                  echo "   Wrangler will validate the token directly during Docker login."
+                  echo "   Continuing deployment..."
               fi
 
         - name: Authenticate Docker with Cloudflare Container Registry
