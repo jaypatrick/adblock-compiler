@@ -49,18 +49,3 @@ export const TURNSTILE_SITE_KEY = new InjectionToken<string>('TURNSTILE_SITE_KEY
     providedIn: 'root',
     factory: () => '',
 });
-
-/**
- * @deprecated Clerk is a legacy auth provider. Better Auth is now primary and
- * does not require a publishable key. This token will be removed when Clerk
- * support is fully dropped.
- *
- * Clerk publishable key for frontend Clerk SDK initialization.
- * Not a secret — safe to include in client-side bundles.
- * In production, provide via `{ provide: CLERK_PUBLISHABLE_KEY, useValue: 'pk_live_...' }`
- * in app.config.ts, or fetch from `/api/clerk-config` at runtime.
- */
-export const CLERK_PUBLISHABLE_KEY = new InjectionToken<string>('CLERK_PUBLISHABLE_KEY', {
-    providedIn: 'root',
-    factory: () => '',
-});
