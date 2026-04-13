@@ -45,7 +45,7 @@
         "@sentry/angular": "^10.43.0",
         "@sentry/cloudflare": "^10.43.0",
         "@trpc/client": "^11.15.1",
-        "hono": "^4.12.8",
+        "hono": "^4.12.12",
         "material-symbols": "^0.40.2",
         "rxjs": "~7.8.2",
         "tslib": "^2.8.1",
