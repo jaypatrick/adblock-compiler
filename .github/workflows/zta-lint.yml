@@ -9,6 +9,9 @@ on:
   push:
     branches: [main]
 
+permissions:
+  contents: read
+
 jobs:
   zta-security-lint:
     name: ZTA Security Lint
