@@ -376,12 +376,12 @@
       "method": "GET",
       "operationId": "userListApiKeys",
       "summary": "List user's API keys",
-      "description": "Lists all API keys belonging to the authenticated user. Returns metadata only — never the key hash or plaintext. Requires Clerk JWT authentication.",
+      "description": "Lists all API keys belonging to the authenticated user. Returns metadata only — never the key hash or plaintext. Requires Better Auth authentication.",
       "tags": [
         "Authentication"
       ],
       "security": [
-        "ClerkJWT"
+        "BetterAuth"
       ],
       "parameterCount": 0,
       "hasRequestBody": false
@@ -391,12 +391,12 @@
       "method": "POST",
       "operationId": "userCreateApiKey",
       "summary": "Create API key",
-      "description": "Creates a new API key for the authenticated user. The raw API key (with `abc_` prefix) is returned **only once** — store it securely. Requires Clerk JWT authentication.",
+      "description": "Creates a new API key for the authenticated user. The raw API key (with `abc_` prefix) is returned **only once** — store it securely. Requires Better Auth authentication.",
       "tags": [
         "Authentication"
       ],
       "security": [
-        "ClerkJWT"
+        "BetterAuth"
       ],
       "parameterCount": 0,
       "hasRequestBody": true
@@ -411,7 +411,7 @@
         "Authentication"
       ],
       "security": [
-        "ClerkJWT"
+        "BetterAuth"
       ],
       "parameterCount": 1,
       "hasRequestBody": false
@@ -421,12 +421,12 @@
       "method": "PATCH",
       "operationId": "userUpdateApiKey",
       "summary": "Update API key",
-      "description": "Updates an API key's name or scopes. Only the key owner can update their own keys. Requires Clerk JWT authentication.",
+      "description": "Updates an API key's name or scopes. Only the key owner can update their own keys. Requires Better Auth authentication.",
       "tags": [
         "Authentication"
       ],
       "security": [
-        "ClerkJWT"
+        "BetterAuth"
       ],
       "parameterCount": 1,
       "hasRequestBody": true

@@ -965,7 +965,6 @@ export const AgentSessionRowSchema = z.object({
     agent_slug: z.string(),
     instance_id: z.string(),
     user_id: z.string().uuid().nullable().optional(),
-    clerk_user_id: z.string().nullable().optional(),
     started_at: z.string(),
     ended_at: z.string().nullable().optional(),
     end_reason: z.string().nullable().optional(),
@@ -1099,8 +1098,7 @@ export type AdminRoleRow = z.infer<typeof AdminRoleRowSchema>;
 /** Row from `admin_role_assignments` table */
 export const AdminRoleAssignmentRowSchema = z.object({
     id: z.number(),
-    /** @deprecated DB column still named `clerk_user_id` — will be renamed to `user_id` in a future migration */
-    clerk_user_id: z.string(),
+    user_id: z.string(),
     role_name: AdminRoleNameSchema,
     assigned_by: z.string(),
     assigned_at: z.string(),
@@ -1334,8 +1332,7 @@ export const AdminListResponseSchema = <T extends z.ZodTypeAny>(itemSchema: T) =
 
 /** Resolved admin user context (from KV cache or D1 lookup) */
 export const ResolvedAdminContextSchema = z.object({
-    /** @deprecated DB column still named `clerk_user_id` — will be renamed to `user_id` in a future migration */
-    clerk_user_id: z.string(),
+    user_id: z.string(),
     role_name: AdminRoleNameSchema,
     permissions: z.array(AdminPermissionSchema),
     expires_at: z.string().nullable(),
