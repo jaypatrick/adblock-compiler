@@ -27,3 +27,8 @@ CVE-2026-2581
 # Patched to: path-to-regexp@0.1.13.  The range key is necessary to avoid
 # downgrading the co-installed 6.x and 8.x versions to 0.1.13.
 CVE-2026-4867
+
+# brace-expansion — range key: "brace-expansion@>=2.0.0 <2.0.3"
+# Patched to: brace-expansion@2.0.3.  The range key is necessary to avoid
+# overriding the co-installed 5.x version used by minimatch@10 (API-incompatible).
+CVE-2026-33750
