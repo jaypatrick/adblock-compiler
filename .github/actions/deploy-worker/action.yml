@@ -6,12 +6,8 @@ inputs:
         description: 'GitHub commit SHA for Sentry release tracking'
         required: true
     cloudflare-account-id:
-        description: 'Cloudflare Account ID for explicit registry authentication and wrangler --account-id flag'
+        description: 'Cloudflare Account ID for wrangler --account-id flag'
         required: true
-    cloudflare-containers-token:
-        description: 'Optional dedicated Cloudflare API token with Account > Containers:Edit permission for Docker registry auth. Falls back to CLOUDFLARE_API_TOKEN if not provided.'
-        required: false
-        default: ''
 
 runs:
     using: composite
@@ -126,76 +122,6 @@ runs:
               create_or_confirm_queue "adblock-compiler-dlq"
               create_or_confirm_queue "adblock-compiler-error-queue"
               create_or_confirm_r2_bucket "adblock-compiler-r2-storage"
-
-        - name: Validate token for container registry
-          if: env.CLOUDFLARE_API_TOKEN != ''
-          shell: bash
-          env:
-              CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
-              TOKEN_SOURCE: ${{ inputs.cloudflare-containers-token != '' && 'CLOUDFLARE_CONTAINERS_TOKEN' || 'CLOUDFLARE_API_TOKEN' }}
-          run: |
-              echo "Validating Cloudflare token via /user/tokens/verify (using $TOKEN_SOURCE)..."
-              RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 \
-                -o /dev/null -w "%{http_code}" \
-                -H "Authorization: Bearer $CONTAINERS_TOKEN" \
-                "https://api.cloudflare.com/client/v4/user/tokens/verify")
-              CURL_EXIT=$?
-
-              if [ $CURL_EXIT -ne 0 ]; then
-                  echo ""
-                  echo "❌ curl failed to reach Cloudflare API (curl exit code $CURL_EXIT)."
-                  echo ""
-                  echo "   This is likely a DNS, TLS, or network connectivity issue:"
-                  echo "   1. Check https://www.cloudflarestatus.com for outages"
-                  echo "   2. Verify the runner has outbound HTTPS access to api.cloudflare.com"
-                  echo ""
-                  exit 1
-              fi
-
-              if [ "$RESPONSE" = "200" ]; then
-                  echo "✅ Token validated successfully (HTTP 200)"
-              elif [ "$RESPONSE" = "401" ]; then
-                  echo ""
-                  echo "❌ Token ($TOKEN_SOURCE) is invalid or has expired (HTTP 401 — Unauthorized)."
-                  echo ""
-                  echo "   To fix this issue:"
-                  echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
-                  echo "   2. Verify $TOKEN_SOURCE has not expired or been revoked"
-                  echo "   3. Re-create the token if needed and update the GitHub secret"
-                  echo ""
-                  exit 1
-              else
-                  echo ""
-                  echo "⚠️  Unexpected response from Cloudflare API (HTTP $RESPONSE)."
-                  echo ""
-                  echo "   This may be a transient server error or an account-tier limitation."
-                  echo "   Wrangler will validate the token directly during Docker login."
-                  echo "   Continuing deployment..."
-              fi
-
-        - name: Authenticate Docker with Cloudflare Container Registry
-          if: env.CLOUDFLARE_API_TOKEN != ''
-          shell: bash
-          env:
-              CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
-              TOKEN_SOURCE: ${{ inputs.cloudflare-containers-token != '' && 'CLOUDFLARE_CONTAINERS_TOKEN' || 'CLOUDFLARE_API_TOKEN' }}
-          run: |
-              echo "Authenticating Docker with registry.cloudflare.com (using $TOKEN_SOURCE)..."
-              if ! echo "$CONTAINERS_TOKEN" | docker login registry.cloudflare.com \
-                --username "cloudflare" \
-                --password-stdin; then
-                  echo ""
-                  echo "❌ Docker authentication with registry.cloudflare.com failed."
-                  echo ""
-                  echo "   Token validation passed but Docker login still failed."
-                  echo "   This is unexpected — please check:"
-                  echo "   • That $TOKEN_SOURCE has Account > Cloudflare Containers:Edit"
-                  echo "   • That $TOKEN_SOURCE has not been revoked between validation and login"
-                  echo "   • https://www.cloudflarestatus.com for any Cloudflare Container Registry outages"
-                  echo ""
-                  exit 1
-              fi
-              echo "✅ Docker authenticated with registry.cloudflare.com"
 
         - name: Deploy Tail Worker
           if: env.CLOUDFLARE_API_TOKEN != ''
