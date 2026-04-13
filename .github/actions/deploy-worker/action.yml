@@ -1,230 +1,263 @@
-name: 'Deploy Worker to Cloudflare'
-description: 'Run database migrations, generate deployment version, set up Cloudflare resources, deploy the tail worker and main worker, and record the deployment outcome.'
+name: "Deploy Worker to Cloudflare"
+description: "Run database migrations, generate deployment version, set up Cloudflare resources, deploy the tail worker and main worker, and record the deployment outcome."
 
 inputs:
-    github-sha:
-        description: 'GitHub commit SHA for Sentry release tracking'
-        required: true
-    cloudflare-containers-token:
-        description: 'Cloudflare API token with Account > Containers:Edit permission for Docker registry auth. Falls back to CLOUDFLARE_API_TOKEN if omitted.'
-        required: false
-        default: ''
+  github-sha:
+    description: "GitHub commit SHA for Sentry release tracking"
+    required: true
+  cloudflare-containers-token:
+    description: "Cloudflare API token with Account > Containers:Edit permission for Docker registry auth. Falls back to CLOUDFLARE_API_TOKEN if omitted."
+    required: false
+    default: ""
 
 runs:
-    using: composite
-    steps:
-        - name: Run database migrations
-          shell: bash
-          run: |
-              echo "Running D1 migrations..."
-              for i in 1 2 3; do
-                  if output=$(deno task wrangler d1 migrations apply adblock-compiler-d1-database --remote 2>&1); then
-                      echo "$output"
-                      echo "✅ All migrations applied"
-                      break
-                  fi
-                  echo "$output"
-                  if echo "$output" | grep -qiE 'not authorized|7403'; then
-                      echo ""
-                      echo "🔐 CLOUDFLARE_API_TOKEN is missing required D1 permissions."
-                      echo ""
-                      echo "   The API token must have D1:Edit permission to run database migrations."
-                      echo ""
-                      echo "   To fix this issue:"
-                      echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
-                      echo "   2. Find your API token (or create a new one)"
-                      echo "   3. Ensure it has these permissions:"
-                      echo "      • Account > D1:Edit (REQUIRED for migrations)"
-                      echo "      • Account > Workers:Edit (for worker deployment)"
-                      echo "      • Account > Pages:Edit (for Pages deployment)"
-                      echo "   4. Update the CLOUDFLARE_API_TOKEN secret in GitHub"
-                      echo ""
-                      echo "   Note: 'Workers:Edit' alone is NOT sufficient - D1:Edit is a separate permission!"
-                      exit 1
-                  fi
-                  if echo "$output" | grep -qiE 'Authentication error|10000'; then
-                      echo ""
-                      echo "🔑 CLOUDFLARE_API_TOKEN is invalid or has expired."
-                      echo ""
-                      echo "   To fix this issue:"
-                      echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
-                      echo "   2. Create a new API token with:"
-                      echo "      • Account > D1:Edit (REQUIRED for migrations)"
-                      echo "      • Account > Workers:Edit (for worker deployment)"
-                      echo "      • Account > Pages:Edit (for Pages deployment)"
-                      echo "   3. Update the CLOUDFLARE_API_TOKEN secret in GitHub"
-                      exit 1
-                  fi
-                  if [ "$i" -lt 3 ]; then
-                      echo "Attempt $i failed, retrying in 15s..."
-                      sleep 15
-                  else
-                      echo ""
-                      echo "❌ All 3 migration attempts failed."
-                      echo ""
-                      echo "Most common causes:"
-                      echo "  1. API token missing D1:Edit permission (error code 7403)"
-                      echo "  2. API token expired or invalid (error code 10000)"
-                      echo "  3. Network connectivity issues"
-                      echo ""
-                      echo "To troubleshoot:"
-                      echo "  • Check that CLOUDFLARE_API_TOKEN has Account > D1:Edit permission"
-                      echo "  • Verify the token at: https://dash.cloudflare.com/profile/api-tokens"
-                      echo "  • Ensure CLOUDFLARE_ACCOUNT_ID is correct"
-                      exit 1
-                  fi
-              done
+  using: composite
+  steps:
+    - name: Run database migrations
+      shell: bash
+      run: |
+        echo "Running D1 migrations..."
+        for i in 1 2 3; do
+            if output=$(deno task wrangler d1 migrations apply adblock-compiler-d1-database --remote 2>&1); then
+                echo "$output"
+                echo "✅ All migrations applied"
+                break
+            fi
+            echo "$output"
+            if echo "$output" | grep -qiE 'not authorized|7403'; then
+                echo ""
+                echo "🔐 CLOUDFLARE_API_TOKEN is missing required D1 permissions."
+                echo ""
+                echo "   The API token must have D1:Edit permission to run database migrations."
+                echo ""
+                echo "   To fix this issue:"
+                echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
+                echo "   2. Find your API token (or create a new one)"
+                echo "   3. Ensure it has these permissions:"
+                echo "      • Account > D1:Edit (REQUIRED for migrations)"
+                echo "      • Account > Workers:Edit (for worker deployment)"
+                echo "      • Account > Pages:Edit (for Pages deployment)"
+                echo "   4. Update the CLOUDFLARE_API_TOKEN secret in GitHub"
+                echo ""
+                echo "   Note: 'Workers:Edit' alone is NOT sufficient - D1:Edit is a separate permission!"
+                exit 1
+            fi
+            if echo "$output" | grep -qiE 'Authentication error|10000'; then
+                echo ""
+                echo "🔑 CLOUDFLARE_API_TOKEN is invalid or has expired."
+                echo ""
+                echo "   To fix this issue:"
+                echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
+                echo "   2. Create a new API token with:"
+                echo "      • Account > D1:Edit (REQUIRED for migrations)"
+                echo "      • Account > Workers:Edit (for worker deployment)"
+                echo "      • Account > Pages:Edit (for Pages deployment)"
+                echo "   3. Update the CLOUDFLARE_API_TOKEN secret in GitHub"
+                exit 1
+            fi
+            if [ "$i" -lt 3 ]; then
+                echo "Attempt $i failed, retrying in 15s..."
+                sleep 15
+            else
+                echo ""
+                echo "❌ All 3 migration attempts failed."
+                echo ""
+                echo "Most common causes:"
+                echo "  1. API token missing D1:Edit permission (error code 7403)"
+                echo "  2. API token expired or invalid (error code 10000)"
+                echo "  3. Network connectivity issues"
+                echo ""
+                echo "To troubleshoot:"
+                echo "  • Check that CLOUDFLARE_API_TOKEN has Account > D1:Edit permission"
+                echo "  • Verify the token at: https://dash.cloudflare.com/profile/api-tokens"
+                echo "  • Ensure CLOUDFLARE_ACCOUNT_ID is correct"
+                exit 1
+            fi
+        done
 
-        - name: Generate deployment version
-          id: version
-          shell: bash
-          run: |
-              deno run --allow-read --allow-write --allow-net --allow-env scripts/generate-deployment-version.ts
+    - name: Generate deployment version
+      id: version
+      shell: bash
+      run: |
+        deno run --allow-read --allow-write --allow-net --allow-env scripts/generate-deployment-version.ts
 
-        - name: Setup Cloudflare resources
-          shell: bash
-          run: |
-              set -euo pipefail
+    - name: Setup Cloudflare resources
+      shell: bash
+      run: |
+        set -euo pipefail
 
-              create_or_confirm_queue() {
-                  local name="$1"
-                  echo "Ensuring queue '$name' exists..."
-                  if output=$(deno task wrangler queues create "$name" 2>&1); then
-                      echo "$output"
-                      return 0
-                  fi
-                  if echo "$output" | grep -qiE 'already (exists|taken)|10004|11009'; then
-                      echo "Queue '$name' already exists"
-                      return 0
-                  fi
-                  echo "$output"
-                  echo "❌ Failed to create queue '$name'. See error above."
-                  exit 1
-              }
+        create_or_confirm_queue() {
+            local name="$1"
+            echo "Ensuring queue '$name' exists..."
+            if output=$(deno task wrangler queues create "$name" 2>&1); then
+                echo "$output"
+                return 0
+            fi
+            if echo "$output" | grep -qiE 'already (exists|taken)|10004|11009'; then
+                echo "Queue '$name' already exists"
+                return 0
+            fi
+            echo "$output"
+            echo "❌ Failed to create queue '$name'. See error above."
+            exit 1
+        }
 
-              create_or_confirm_r2_bucket() {
-                  local name="$1"
-                  echo "Ensuring R2 bucket '$name' exists..."
-                  if output=$(deno task wrangler r2 bucket create "$name" 2>&1); then
-                      echo "$output"
-                      return 0
-                  fi
-                  if echo "$output" | grep -qiE 'already (exists|taken)|10004|11009'; then
-                      echo "R2 bucket '$name' already exists"
-                      return 0
-                  fi
-                  echo "$output"
-                  echo "❌ Failed to create R2 bucket '$name'. See error above."
-                  exit 1
-              }
+        create_or_confirm_r2_bucket() {
+            local name="$1"
+            echo "Ensuring R2 bucket '$name' exists..."
+            if output=$(deno task wrangler r2 bucket create "$name" 2>&1); then
+                echo "$output"
+                return 0
+            fi
+            if echo "$output" | grep -qiE 'already (exists|taken)|10004|11009'; then
+                echo "R2 bucket '$name' already exists"
+                return 0
+            fi
+            echo "$output"
+            echo "❌ Failed to create R2 bucket '$name'. See error above."
+            exit 1
+        }
 
-              create_or_confirm_queue "adblock-compiler-worker-queue"
-              create_or_confirm_queue "adblock-compiler-worker-queue-high-priority"
-              create_or_confirm_queue "adblock-compiler-dlq"
-              create_or_confirm_queue "adblock-compiler-error-queue"
-              create_or_confirm_r2_bucket "adblock-compiler-r2-storage"
+        create_or_confirm_queue "adblock-compiler-worker-queue"
+        create_or_confirm_queue "adblock-compiler-worker-queue-high-priority"
+        create_or_confirm_queue "adblock-compiler-dlq"
+        create_or_confirm_queue "adblock-compiler-error-queue"
+        create_or_confirm_r2_bucket "adblock-compiler-r2-storage"
 
-        - name: Authenticate Docker with Cloudflare Container Registry
-          if: env.CLOUDFLARE_API_TOKEN != ''
-          shell: bash
-          env:
-              CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
-          run: |
-              echo "Authenticating Docker with registry.cloudflare.com (account: ${CLOUDFLARE_ACCOUNT_ID})..."
-              if echo "$CONTAINERS_TOKEN" | docker login registry.cloudflare.com \
-                --username "$CLOUDFLARE_ACCOUNT_ID" \
-                --password-stdin 2>&1; then
-                  echo "✅ Docker authenticated with registry.cloudflare.com"
-              else
-                  echo "::warning::Docker login to registry.cloudflare.com failed — wrangler will attempt its own container auth."
-                  echo "If the deploy fails below, add a CLOUDFLARE_CONTAINERS_TOKEN secret with Account > Containers:Edit permission."
-              fi
+    - name: Authenticate Docker with Cloudflare Container Registry
+      if: env.CLOUDFLARE_API_TOKEN != ''
+      shell: bash
+      env:
+        CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
+      run: |
+        echo "Obtaining Docker credentials for registry.cloudflare.com..."
+        # wrangler containers registries credentials generates temporary push credentials
+        # that include the correct username (not the account ID) for the CF registry
+        CREDS_RAW=$(CLOUDFLARE_API_TOKEN="$CONTAINERS_TOKEN" deno task wrangler containers registries credentials --push 2>&1) || CREDS_RAW=""
+        DOCKER_USER=$(echo "$CREDS_RAW" | grep -oP '(?i)(?<=username:\s)\S+' | head -1)
+        DOCKER_PASS=$(echo "$CREDS_RAW" | grep -oP '(?i)(?<=password:\s)\S+' | head -1)
+        if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_PASS" ]; then
+            if echo "$DOCKER_PASS" | docker login registry.cloudflare.com \
+              --username "$DOCKER_USER" \
+              --password-stdin 2>&1; then
+                echo "✅ Docker authenticated with registry.cloudflare.com"
+            else
+                echo "::warning::Docker daemon login to registry.cloudflare.com failed — wrangler containers push will handle auth."
+            fi
+        else
+            echo "::warning::Could not obtain registry credentials from wrangler (CONTAINERS_TOKEN may lack Containers:Edit)."
+            echo "::warning::wrangler containers push will attempt its own auth."
+        fi
 
-        - name: Deploy Tail Worker
-          if: env.CLOUDFLARE_API_TOKEN != ''
-          shell: bash
-          env:
-              WRANGLER_LOG: debug
-          run: |
-              echo "Deploying tail worker (adblock-tail)..."
-              TAIL_DEPLOYED=false
-              for i in 1 2 3; do
-                  if deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
-                      TAIL_DEPLOYED=true
-                      break
-                  fi
-                  if [ "$i" -lt 3 ]; then
-                      echo "Attempt $i failed, retrying in 15s..."
-                      sleep 15
-                  fi
-              done
-              if [ "$TAIL_DEPLOYED" = "false" ]; then
-                  echo "::warning::Tail worker (adblock-tail) failed to deploy after 3 attempts. Main worker deployment will continue."
-                  echo "Tail worker deploy failed — continuing with main worker deployment."
-              fi
+    - name: Deploy Tail Worker
+      if: env.CLOUDFLARE_API_TOKEN != ''
+      shell: bash
+      env:
+        WRANGLER_LOG: debug
+      run: |
+        echo "Deploying tail worker (adblock-tail)..."
+        TAIL_DEPLOYED=false
+        for i in 1 2 3; do
+            if deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
+                TAIL_DEPLOYED=true
+                break
+            fi
+            if [ "$i" -lt 3 ]; then
+                echo "Attempt $i failed, retrying in 15s..."
+                sleep 15
+            fi
+        done
+        if [ "$TAIL_DEPLOYED" = "false" ]; then
+            echo "::warning::Tail worker (adblock-tail) failed to deploy after 3 attempts. Main worker deployment will continue."
+            echo "Tail worker deploy failed — continuing with main worker deployment."
+        fi
 
-        - name: Verify Docker for container build
-          if: env.CLOUDFLARE_API_TOKEN != ''
-          shell: bash
-          env:
-              DOCKER_BUILDKIT: '1'
-          run: |
-              echo "Pre-building Dockerfile.container to surface errors before wrangler deploy..."
-              docker build \
-                --platform linux/amd64 \
-                -f Dockerfile.container \
-                . 2>&1
-              echo "✅ Dockerfile.container pre-build succeeded"
+    - name: Build and push container image
+      if: env.CLOUDFLARE_API_TOKEN != ''
+      shell: bash
+      env:
+        CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
+        DOCKER_BUILDKIT: "1"
+      run: |
+        # Build and push the container image using the containers-specific token
+        # (which has Account > Containers:Edit). Then update wrangler.toml to
+        # reference the pre-built registry URI so wrangler deploy does NOT
+        # attempt a container push (avoids needing Containers:Edit on main token).
+        IMAGE_NAME="adblock-compiler-adblockcompiler"
+        REGISTRY_URI="registry.cloudflare.com/${CLOUDFLARE_ACCOUNT_ID}/${IMAGE_NAME}:latest"
 
-        - name: Deploy Worker
-          id: deploy
-          if: env.CLOUDFLARE_API_TOKEN != ''
-          shell: bash
-          env:
-              WRANGLER_LOG: debug
-              WRANGLER_LOG_SANITIZE: 'false'
-          run: |
-              echo "Deploying version: ${{ steps.version.outputs.full_version }}"
-              DEPLOY_SUCCESS=false
-              for i in 1 2 3; do
-                  if deno task wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
-                      DEPLOY_SUCCESS=true
-                      echo "✅ Worker deployed successfully"
-                      break
-                  fi
-                  # Default wrangler log dir per https://developers.cloudflare.com/workers/wrangler/commands/#logs
-                  WRANGLER_LOG=""
-                  WRANGLER_LOG_DIR="$HOME/.config/.wrangler/logs"
-                  if [ -d "$WRANGLER_LOG_DIR" ]; then
-                      shopt -s nullglob
-                      WRANGLER_LOG_FILES=("$WRANGLER_LOG_DIR"/wrangler-*.log)
-                      shopt -u nullglob
-                      if [ "${#WRANGLER_LOG_FILES[@]}" -gt 0 ]; then
-                          WRANGLER_LOG="${WRANGLER_LOG_FILES[${#WRANGLER_LOG_FILES[@]}-1]}"
-                      fi
-                  fi
-                  if [ -n "$WRANGLER_LOG" ]; then
-                      echo "--- Wrangler log (attempt $i) ---"
-                      tail -50 "$WRANGLER_LOG"
-                  fi
-                  if [ "$i" -lt 3 ]; then
-                      echo "⚠️ Deploy attempt $i failed, retrying in 30s..."
-                      sleep 30
-                  fi
-              done
-              if [ "$DEPLOY_SUCCESS" = "false" ]; then
-                  echo "❌ All 3 deploy attempts failed."
-                  exit 1
-              fi
+        echo "Building ${IMAGE_NAME}:latest from Dockerfile.container..."
+        docker build \
+          --platform linux/amd64 \
+          -f Dockerfile.container \
+          -t "${IMAGE_NAME}:latest" \
+          .
+        echo "✅ Container image built locally"
 
-        - name: Record deployment
-          if: success() && env.CLOUDFLARE_API_TOKEN != ''
-          shell: bash
-          run: |
-              deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts --status=success
+        echo "Pushing ${IMAGE_NAME}:latest to registry.cloudflare.com..."
+        if PUSH_OUTPUT=$(CLOUDFLARE_API_TOKEN="$CONTAINERS_TOKEN" deno task wrangler containers push "${IMAGE_NAME}:latest" 2>&1); then
+            echo "$PUSH_OUTPUT"
+            echo "✅ Container image pushed: ${REGISTRY_URI}"
+            # Switch wrangler.toml to the pre-built registry URI so wrangler deploy
+            # skips the container build/push step entirely
+            sed -i "s|image = \"./Dockerfile.container\"|image = \"${REGISTRY_URI}\"|" wrangler.toml
+            echo "Updated wrangler.toml: image = \"${REGISTRY_URI}\""
+        else
+            echo "$PUSH_OUTPUT"
+            echo "::warning::Container image push failed — wrangler deploy will retry container push using CLOUDFLARE_API_TOKEN."
+            echo "::warning::To fix: ensure CLOUDFLARE_CONTAINERS_TOKEN has Account > Containers:Edit permission."
+            echo "::warning::See: https://dash.cloudflare.com/profile/api-tokens"
+        fi
 
-        - name: Record failed deployment
-          if: failure() && env.CLOUDFLARE_API_TOKEN != ''
-          shell: bash
-          run: |
-              deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts --status=failed || true
+    - name: Deploy Worker
+      id: deploy
+      if: env.CLOUDFLARE_API_TOKEN != ''
+      shell: bash
+      run: |
+        echo "Deploying version: ${{ steps.version.outputs.full_version }}"
+        DEPLOY_SUCCESS=false
+        for i in 1 2 3; do
+            if deno task wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
+                DEPLOY_SUCCESS=true
+                echo "✅ Worker deployed successfully"
+                break
+            fi
+            # Default wrangler log dir per https://developers.cloudflare.com/workers/wrangler/commands/#logs
+            WRANGLER_LOG=""
+            WRANGLER_LOG_DIR="$HOME/.config/.wrangler/logs"
+            if [ -d "$WRANGLER_LOG_DIR" ]; then
+                shopt -s nullglob
+                WRANGLER_LOG_FILES=("$WRANGLER_LOG_DIR"/wrangler-*.log)
+                shopt -u nullglob
+                if [ "${#WRANGLER_LOG_FILES[@]}" -gt 0 ]; then
+                    WRANGLER_LOG="${WRANGLER_LOG_FILES[${#WRANGLER_LOG_FILES[@]}-1]}"
+                fi
+            fi
+            if [ -n "$WRANGLER_LOG" ]; then
+                echo "--- Wrangler log errors (attempt $i) ---"
+                grep -iE "error|TypeError|fetch failed|401|403|container|registry" \
+                    "$WRANGLER_LOG" | grep -v "^--$" | head -80 || true
+                echo "--- Last 20 lines of wrangler log ---"
+                tail -20 "$WRANGLER_LOG"
+            fi
+            if [ "$i" -lt 3 ]; then
+                echo "⚠️ Deploy attempt $i failed, retrying in 30s..."
+                sleep 30
+            fi
+        done
+        if [ "$DEPLOY_SUCCESS" = "false" ]; then
+            echo "❌ All 3 deploy attempts failed."
+            exit 1
+        fi
+
+    - name: Record deployment
+      if: success() && env.CLOUDFLARE_API_TOKEN != ''
+      shell: bash
+      run: |
+        deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts --status=success
+
+    - name: Record failed deployment
+      if: failure() && env.CLOUDFLARE_API_TOKEN != ''
+      shell: bash
+      run: |
+        deno run --allow-read --allow-net --allow-env scripts/record-deployment.ts --status=failed || true
