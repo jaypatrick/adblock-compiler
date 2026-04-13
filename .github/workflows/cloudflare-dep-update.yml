@@ -79,7 +79,7 @@ jobs:
                   node-version: '22'
 
             - name: Regenerate pnpm-lock.yaml
-              run: pnpm install
+              run: pnpm install --lockfile-only --ignore-scripts
 
             # ----------------------------------------------------------------
             # Step 5 — Self-check: the ci:cloudflare-check task must pass
