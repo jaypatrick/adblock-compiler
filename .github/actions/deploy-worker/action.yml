@@ -134,8 +134,8 @@ runs:
         # wrangler containers registries credentials generates temporary push credentials
         # that include the correct username (not the account ID) for the CF registry
         CREDS_RAW=$(CLOUDFLARE_API_TOKEN="$CONTAINERS_TOKEN" deno task wrangler containers registries credentials --push 2>&1) || CREDS_RAW=""
-        DOCKER_USER=$(echo "$CREDS_RAW" | grep -oP '(?i)(?<=username:\s)\S+' | head -1)
-        DOCKER_PASS=$(echo "$CREDS_RAW" | grep -oP '(?i)(?<=password:\s)\S+' | head -1)
+        DOCKER_USER=$(echo "$CREDS_RAW" | grep -oP '(?i)(?<=username:\s)\S+' | head -1 || true)
+        DOCKER_PASS=$(echo "$CREDS_RAW" | grep -oP '(?i)(?<=password:\s)\S+' | head -1 || true)
         if [ -n "$DOCKER_USER" ] && [ -n "$DOCKER_PASS" ]; then
             if echo "$DOCKER_PASS" | docker login registry.cloudflare.com \
               --username "$DOCKER_USER" \
