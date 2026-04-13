@@ -55,6 +55,7 @@ export const appConfig: ApplicationConfig = {
             withInMemoryScrolling({
                 scrollPositionRestoration: 'enabled',
                 anchorScrolling: 'enabled',
+                scrollOffset: [0, 72],
             }),
         ),
 

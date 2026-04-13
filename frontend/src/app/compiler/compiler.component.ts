@@ -929,7 +929,7 @@ export class CompilerComponent {
                 selectedTransformations,
             );
             if (urlEntries[0]?.source) {
-                const currentUrl = this.route.snapshot.queryParams['url'];
+                const currentUrl = this.route.snapshot.queryParamMap.get('url');
                 if (currentUrl !== urlEntries[0].source) {
                     this.router.navigate([], {
                         relativeTo: this.route,
@@ -985,7 +985,7 @@ export class CompilerComponent {
         }
 
         if (urlEntries[0]?.source) {
-            const currentUrl = this.route.snapshot.queryParams['url'];
+            const currentUrl = this.route.snapshot.queryParamMap.get('url');
             if (currentUrl !== urlEntries[0].source) {
                 this.router.navigate([], {
                     relativeTo: this.route,
