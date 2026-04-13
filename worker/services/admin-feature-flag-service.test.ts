@@ -232,7 +232,7 @@ Deno.test('evaluateFlag - 100% rollout returns true', async () => {
     const db = createMockD1({
         first: () => makeFlagRow({ rollout_percentage: 100 }),
     });
-    const result = await evaluateFlag(db, 'dark-mode', { clerkUserId: 'user_1' });
+    const result = await evaluateFlag(db, 'dark-mode', { userId: 'user_1' });
     assertEquals(result, true);
 });
 
@@ -240,7 +240,7 @@ Deno.test('evaluateFlag - 0% rollout returns false', async () => {
     const db = createMockD1({
         first: () => makeFlagRow({ rollout_percentage: 0 }),
     });
-    const result = await evaluateFlag(db, 'dark-mode', { clerkUserId: 'user_1' });
+    const result = await evaluateFlag(db, 'dark-mode', { userId: 'user_1' });
     assertEquals(result, false);
 });
 
@@ -249,8 +249,8 @@ Deno.test('evaluateFlag - deterministic hash for same user produces consistent r
         first: () => makeFlagRow({ rollout_percentage: 50 }),
     });
 
-    const result1 = await evaluateFlag(db, 'dark-mode', { clerkUserId: 'user_stable' });
-    const result2 = await evaluateFlag(db, 'dark-mode', { clerkUserId: 'user_stable' });
+    const result1 = await evaluateFlag(db, 'dark-mode', { userId: 'user_stable' });
+    const result2 = await evaluateFlag(db, 'dark-mode', { userId: 'user_stable' });
     assertEquals(result1, result2);
 });
 
@@ -306,7 +306,7 @@ Deno.test('evaluateFlag - user targeting: included user always passes', async ()
                 rollout_percentage: 0, // 0% rollout but user override should win
             }),
     });
-    const result = await evaluateFlag(db, 'dark-mode', { clerkUserId: 'user_vip' });
+    const result = await evaluateFlag(db, 'dark-mode', { userId: 'user_vip' });
     assertEquals(result, true);
 });
 
@@ -318,7 +318,7 @@ Deno.test('evaluateFlag - user targeting: non-targeted user falls through to rol
                 rollout_percentage: 0,
             }),
     });
-    const result = await evaluateFlag(db, 'dark-mode', { clerkUserId: 'user_regular' });
+    const result = await evaluateFlag(db, 'dark-mode', { userId: 'user_regular' });
     assertEquals(result, false);
 });
 

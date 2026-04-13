@@ -20,11 +20,11 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Check for eval() usage
         run: |
-          if grep -rn 'eval(' worker/ src/ --include='*.ts' --include='*.js' 2>/dev/null | grep -v 'test\|spec\|\.d\.ts\|// ' | grep -q '.'; then
+          if grep -rn 'eval(' worker/ src/ --include='*.ts' --include='*.js' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// ' | grep -q '.'; then
             echo "::error::Found eval() usage in worker/src. Eval is prohibited per ZTA security policy."
             exit 1
           fi
@@ -32,7 +32,7 @@ jobs:
 
       - name: Check for dangerous innerHTML usage
         run: |
-          if grep -rn 'innerHTML' worker/ frontend/src/ --include='*.ts' --include='*.html' 2>/dev/null | grep -v 'test\|spec\|\.d\.ts\|// \|DomSanitizer\|sanitize\|bypassSecurity\|\[innerHTML\]\|matTooltip\|tooltipText' | grep -q '.'; then
+          if grep -rn 'innerHTML' worker/ frontend/src/ --include='*.ts' --include='*.html' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// |DomSanitizer|sanitize|bypassSecurity|\[innerHTML\]|matTooltip|tooltipText' | grep -q '.'; then
             echo "::error::Found unsafe innerHTML assignment. Use Angular's DomSanitizer or template binding."
             exit 1
           fi
@@ -41,7 +41,7 @@ jobs:
       - name: Check for hardcoded secrets patterns
         run: |
           PATTERN='(password|secret|api.key|token)\s*=\s*["\x27][^"\x27]{8,}["\x27]'
-          if grep -rniP "${PATTERN}" worker/ src/ --include='*.ts' --include='*.js' 2>/dev/null | grep -v 'test\|spec\|\.d\.ts\|// \|example\|placeholder\|\$\{\|process\.env\|env\.' | grep -q '.'; then
+          if grep -rniP "${PATTERN}" worker/ src/ --include='*.ts' --include='*.js' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// |example|placeholder|\$\{|process\.env|env\.' | grep -q '.'; then
             echo "::error::Potential hardcoded secret found. Use environment variables."
             exit 1
           fi
@@ -49,7 +49,7 @@ jobs:
 
       - name: Check for localStorage auth token storage
         run: |
-          if grep -rn 'localStorage.setItem.*[Tt]oken\|localStorage.setItem.*[Aa]uth\|localStorage.setItem.*[Jj]wt' worker/ frontend/src/ --include='*.ts' 2>/dev/null | grep -v 'test\|spec\|\.d\.ts\|// ' | grep -q '.'; then
+          if grep -rEn 'localStorage\.setItem.*[Tt]oken|localStorage\.setItem.*[Aa]uth|localStorage\.setItem.*[Jj]wt' worker/ frontend/src/ --include='*.ts' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// ' | grep -q '.'; then
             echo "::error::Found auth token storage in localStorage. Use Better Auth / BetterAuthService for auth state management."
             exit 1
           fi
@@ -57,7 +57,7 @@ jobs:
 
       - name: Check for SQL injection patterns
         run: |
-          if grep -rn 'query\s*\+\|query\s*=.*\+\s*[a-zA-Z]\|\`SELECT.*\$\{\|\`INSERT.*\$\{\|\`UPDATE.*\$\{\|\`DELETE.*\$\{' worker/ src/ --include='*.ts' 2>/dev/null | grep -v 'test\|spec\|\.d\.ts\|// \|\.prepare(' | grep -q '.'; then
+          if grep -rEn 'query\s*\+|query\s*=.*\+\s*[a-zA-Z]|`SELECT.*\$\{|`INSERT.*\$\{|`UPDATE.*\$\{|`DELETE.*\$\{' worker/ src/ --include='*.ts' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// |\.prepare\(' | grep -q '.'; then
             echo "::error::Potential SQL injection pattern found. Use parameterized queries."
             exit 1
           fi
@@ -65,14 +65,14 @@ jobs:
 
       - name: Check for missing input validation on API routes
         run: |
-          if grep -rn 'request\.json()\|req\.body' worker/ --include='*.ts' 2>/dev/null | grep -v 'test\|spec\|\.d\.ts\|// \|zod\|\.parse(\|\.safeParse(' | grep -q '.'; then
+          if grep -rEn 'request\.json\(\)|req\.body' worker/ --include='*.ts' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// |zod|\.parse\(|\.safeParse\(' | grep -q '.'; then
             echo "::warning::Found API routes potentially missing Zod input validation. Ensure all request bodies are validated."
           fi
           echo "✅ Input validation check complete"
 
       - name: Check for CORS wildcard origins
         run: |
-          if grep -rn "'\*'\|\"\*\"" worker/ src/ --include='*.ts' 2>/dev/null | grep -i 'cors\|origin\|allow' | grep -v 'test\|spec\|\.d\.ts\|// ' | grep -q '.'; then
+          if grep -rEn "'\*'|\"\*\"" worker/ src/ --include='*.ts' 2>/dev/null | grep -iE 'cors|origin|allow' | grep -vE 'test|spec|\.d\.ts|// ' | grep -q '.'; then
             echo "::error::Found CORS wildcard origin. Use specific allowed origins."
             exit 1
           fi
@@ -80,7 +80,7 @@ jobs:
 
       - name: Check for console.log with sensitive data patterns
         run: |
-          if grep -rn 'console\.log.*password\|console\.log.*token\|console\.log.*secret\|console\.log.*key' worker/ src/ --include='*.ts' 2>/dev/null | grep -v 'test\|spec\|\.d\.ts\|// \|api.key\|apiKey\|keyHash\|keyPrefix' | grep -q '.'; then
+          if grep -rEn 'console\.log.*(password|token|secret|key)' worker/ src/ --include='*.ts' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// |api\.key|apiKey|keyHash|keyPrefix' | grep -q '.'; then
             echo "::warning::Found potential sensitive data logging. Review console.log statements."
           fi
           echo "✅ Sensitive data logging check complete"

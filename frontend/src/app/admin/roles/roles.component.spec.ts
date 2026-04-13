@@ -30,12 +30,12 @@ function makeRole(overrides: Partial<{
 }
 
 function makeAssignment(overrides: Partial<{
-    id: number; clerk_user_id: string; role_name: string;
+    id: number; user_id: string; role_name: string;
     assigned_by: string; assigned_at: string; expires_at: string | null;
 }> = {}) {
     return {
         id: 10,
-        clerk_user_id: 'clerk-abc',
+        user_id: 'clerk-abc',
         role_name: 'editor',
         assigned_by: 'admin@example.com',
         assigned_at: '2024-01-02T00:00:00Z',
@@ -384,7 +384,7 @@ describe('RolesComponent', () => {
                 r.url.includes('/admin/roles/assignments') && r.method === 'POST',
             );
             expect(req.request.body).toEqual({
-                clerk_user_id: 'clerk-xyz',
+                user_id: 'clerk-xyz',
                 role_name: 'editor',
             });
             req.flush({ success: true });
@@ -423,7 +423,7 @@ describe('RolesComponent', () => {
         it('DELETEs the assignment and reloads assignments on success', () => {
             const role = makeRole({ role_name: 'editor' });
             component.selectedRole.set(role);
-            const assignment = makeAssignment({ clerk_user_id: 'clerk-del' });
+            const assignment = makeAssignment({ user_id: 'clerk-del' });
 
             component.revokeAssignment(assignment);
             expect(component.saving()).toBe(true);
@@ -443,7 +443,7 @@ describe('RolesComponent', () => {
         it('resets saving flag on error', () => {
             const role = makeRole({ role_name: 'editor' });
             component.selectedRole.set(role);
-            const assignment = makeAssignment({ clerk_user_id: 'clerk-del' });
+            const assignment = makeAssignment({ user_id: 'clerk-del' });
 
             component.revokeAssignment(assignment);
             httpTesting
