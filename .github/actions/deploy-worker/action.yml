@@ -130,9 +130,9 @@ runs:
           env:
               CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
           run: |
-              echo "Authenticating Docker with registry.cloudflare.com..."
+              echo "Authenticating Docker with registry.cloudflare.com (account: ${CLOUDFLARE_ACCOUNT_ID})..."
               if echo "$CONTAINERS_TOKEN" | docker login registry.cloudflare.com \
-                --username "cloudflare" \
+                --username "$CLOUDFLARE_ACCOUNT_ID" \
                 --password-stdin 2>&1; then
                   echo "✅ Docker authenticated with registry.cloudflare.com"
               else
