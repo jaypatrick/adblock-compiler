@@ -5,9 +5,6 @@ inputs:
     github-sha:
         description: 'GitHub commit SHA for Sentry release tracking'
         required: true
-    cloudflare-account-id:
-        description: 'Cloudflare Account ID for wrangler --account-id flag'
-        required: true
 
 runs:
     using: composite
@@ -132,7 +129,7 @@ runs:
               echo "Deploying tail worker (adblock-tail)..."
               TAIL_DEPLOYED=false
               for i in 1 2 3; do
-                  if deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }} --account-id "${{ inputs.cloudflare-account-id }}"; then
+                  if deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
                       TAIL_DEPLOYED=true
                       break
                   fi
@@ -168,7 +165,7 @@ runs:
               echo "Deploying version: ${{ steps.version.outputs.full_version }}"
               DEPLOY_SUCCESS=false
               for i in 1 2 3; do
-                  if deno task wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }} --account-id "${{ inputs.cloudflare-account-id }}"; then
+                  if deno task wrangler deploy --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
                       DEPLOY_SUCCESS=true
                       echo "✅ Worker deployed successfully"
                       break
