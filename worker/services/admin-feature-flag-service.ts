@@ -18,8 +18,8 @@ import { type CreateFeatureFlagRequest, type FeatureFlagRow, FeatureFlagRowSchem
 export interface FlagEvaluationContext {
     /** User tier, e.g. 'free', 'pro', 'admin'. */
     userTier?: string;
-    /** Clerk user ID for user-level targeting. */
-    clerkUserId?: string;
+    /** User ID for user-level targeting. */
+    userId?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -238,9 +238,9 @@ export async function deleteFeatureFlag(
  *
  * Evaluation order:
  * 1. If the flag does not exist or is disabled → `false`.
- * 2. If `target_users` is non-empty and includes `clerkUserId` → `true` (user override).
+ * 2. If `target_users` is non-empty and includes `userId` → `true` (user override).
  * 3. If `target_tiers` is non-empty and does NOT include `userTier` → `false`.
- * 4. Rollout percentage: deterministically hash `flagName + clerkUserId` (or a random
+ * 4. Rollout percentage: deterministically hash `flagName + userId` (or a random
  *    seed when no user ID is available) and check if the bucket < rollout_percentage.
  *
  * @param db       - D1 database binding (ADMIN_DB).
@@ -259,8 +259,8 @@ export async function evaluateFlag(
     if (!flag || !flag.enabled) return false;
 
     // Step 2: explicit user-level override
-    if (flag.target_users.length > 0 && context.clerkUserId) {
-        if (flag.target_users.includes(context.clerkUserId)) return true;
+    if (flag.target_users.length > 0 && context.userId) {
+        if (flag.target_users.includes(context.userId)) return true;
     }
 
     // Step 3: tier targeting
@@ -276,8 +276,8 @@ export async function evaluateFlag(
 
     // Anonymous users without a stable identity are not eligible for percentage rollout
     // to ensure deterministic behavior (no random flicker between requests).
-    if (!context.clerkUserId) return false;
-    const seed = `${flagName}${context.clerkUserId}`;
+    if (!context.userId) return false;
+    const seed = `${flagName}${context.userId}`;
     const bucket = simpleHash(seed);
     return bucket < flag.rollout_percentage;
 }

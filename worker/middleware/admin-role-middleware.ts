@@ -147,7 +147,7 @@ export function requireAdminPermission(permission: AdminPermission): AdminGuardF
 
         if (!adminContext.permissions.includes(permission)) {
             console.warn(
-                `[admin-role-middleware] Permission denied: userId=${adminContext.clerk_user_id}, ` +
+                `[admin-role-middleware] Permission denied: userId=${adminContext.user_id}, ` +
                     `role=${adminContext.role_name}, required=${permission}`,
             );
             return { authorized: false, error: `Missing required permission: ${permission}`, statusCode: 403 };
@@ -187,7 +187,7 @@ export function requireAnyAdminPermission(permissions: AdminPermission[]): Admin
         const hasAny = permissions.some((p) => adminContext.permissions.includes(p));
         if (!hasAny) {
             console.warn(
-                `[admin-role-middleware] Permission denied (any-of): userId=${adminContext.clerk_user_id}, ` +
+                `[admin-role-middleware] Permission denied (any-of): userId=${adminContext.user_id}, ` +
                     `role=${adminContext.role_name}, required=[${permissions.join(', ')}]`,
             );
             return {
@@ -231,7 +231,7 @@ export function requireAllAdminPermissions(permissions: AdminPermission[]): Admi
         const missing = permissions.filter((p) => !adminContext.permissions.includes(p));
         if (missing.length > 0) {
             console.warn(
-                `[admin-role-middleware] Permission denied (all-of): userId=${adminContext.clerk_user_id}, ` +
+                `[admin-role-middleware] Permission denied (all-of): userId=${adminContext.user_id}, ` +
                     `role=${adminContext.role_name}, missing=[${missing.join(', ')}]`,
             );
             return {
@@ -256,7 +256,7 @@ export function requireAllAdminPermissions(permissions: AdminPermission[]): Admi
  * ```ts
  * const result = await extractAdminContext(request, env);
  * if (result.authorized) {
- *     auditLog.userId = result.adminContext.clerk_user_id;
+ *     auditLog.userId = result.adminContext.user_id;
  * }
  * ```
  *

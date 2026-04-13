@@ -4,7 +4,7 @@
  * All queries use parameterized `.prepare().bind()` (ZTA requirement — no string interpolation).
  * All D1 row results are validated through Zod schemas before returning.
  *
- * KV cache key format: `admin:role:{clerkUserId}`
+ * KV cache key format: `admin:role:{userId}`
  * KV cache TTL: 5 minutes (300 seconds)
  */
 
@@ -43,9 +43,9 @@ export interface AdminEnv {
 // ---------------------------------------------------------------------------
 
 /**
- * Resolve a Clerk user ID to their admin role and permissions.
+ * Resolve a user ID to their admin role and permissions.
  *
- * 1. Checks KV cache (`admin:role:{clerkUserId}`) first.
+ * 1. Checks KV cache (`admin:role:{userId}`) first.
  * 2. On cache miss, queries ADMIN_DB for the role assignment + role permissions.
  * 3. Expired assignments (past `expires_at`) are treated as no-role.
  * 4. Valid contexts are cached in KV for {@link CACHE_TTL_SECONDS} seconds.
@@ -54,14 +54,14 @@ export interface AdminEnv {
  */
 export async function resolveAdminContext(
     env: AdminEnv,
-    clerkUserId: string,
+    userId: string,
 ): Promise<ResolvedAdminContext | null> {
     const kv = env.RATE_LIMIT;
     const db = env.ADMIN_DB;
 
     // ── KV cache check ────────────────────────────────────────────────────
     if (kv) {
-        const cached = await kv.get(`${KV_PREFIX}${clerkUserId}`);
+        const cached = await kv.get(`${KV_PREFIX}${userId}`);
         if (cached !== null) {
             try {
                 return ResolvedAdminContextSchema.parse(JSON.parse(cached));
@@ -82,19 +82,19 @@ export async function resolveAdminContext(
     const row = await db
         .prepare(
             `SELECT
-				a.clerk_user_id,
+				a.user_id,
 				a.role_name,
 				a.expires_at,
 				r.permissions
 			FROM admin_role_assignments a
 			JOIN admin_roles r ON r.role_name = a.role_name AND r.is_active = 1
-			WHERE a.clerk_user_id = ?
+			WHERE a.user_id = ?
 			ORDER BY a.assigned_at DESC
 			LIMIT 1`,
         )
-        .bind(clerkUserId)
+        .bind(userId)
         .first<{
-            clerk_user_id: string;
+            user_id: string;
             role_name: string;
             expires_at: string | null;
             permissions: string;
@@ -118,7 +118,7 @@ export async function resolveAdminContext(
     }
 
     const context = ResolvedAdminContextSchema.parse({
-        clerk_user_id: row.clerk_user_id,
+        user_id: row.user_id,
         role_name: row.role_name,
         permissions,
         expires_at: row.expires_at,
@@ -126,7 +126,7 @@ export async function resolveAdminContext(
 
     // ── Write-through to KV cache ─────────────────────────────────────────
     if (kv) {
-        await kv.put(`${KV_PREFIX}${clerkUserId}`, JSON.stringify(context), {
+        await kv.put(`${KV_PREFIX}${userId}`, JSON.stringify(context), {
             expirationTtl: CACHE_TTL_SECONDS,
         });
     }
@@ -286,7 +286,7 @@ export async function updateRole(
 // ---------------------------------------------------------------------------
 
 /**
- * Assign an admin role to a Clerk user (upsert on conflict).
+ * Assign an admin role to a user (upsert on conflict).
  *
  * If the user already has the same role, the assignment metadata is updated.
  *
@@ -304,9 +304,9 @@ export async function assignRole(
     const now = new Date().toISOString();
     const row = await db
         .prepare(
-            `INSERT INTO admin_role_assignments (clerk_user_id, role_name, assigned_by, assigned_at, expires_at)
+            `INSERT INTO admin_role_assignments (user_id, role_name, assigned_by, assigned_at, expires_at)
 			 VALUES (?, ?, ?, ?, ?)
-			 ON CONFLICT(clerk_user_id) DO UPDATE SET
+			 ON CONFLICT(user_id) DO UPDATE SET
 				role_name   = excluded.role_name,
 				assigned_by = excluded.assigned_by,
 				assigned_at = excluded.assigned_at,
@@ -314,7 +314,7 @@ export async function assignRole(
 			 RETURNING *`,
         )
         .bind(
-            data.user_id, // maps to `clerk_user_id` DB column — to be renamed in a future DB migration
+            data.user_id,
             data.role_name,
             assignedBy,
             now,
@@ -336,7 +336,7 @@ export async function assignRole(
  */
 export async function revokeRole(
     db: D1Database | undefined,
-    clerkUserId: string,
+    userId: string,
     roleName: string,
 ): Promise<boolean> {
     if (!db) {
@@ -344,8 +344,8 @@ export async function revokeRole(
     }
 
     const result = await db
-        .prepare('DELETE FROM admin_role_assignments WHERE clerk_user_id = ? AND role_name = ?')
-        .bind(clerkUserId, roleName)
+        .prepare('DELETE FROM admin_role_assignments WHERE user_id = ? AND role_name = ?')
+        .bind(userId, roleName)
         .run();
 
     return (result.meta?.changes ?? 0) > 0;
@@ -353,14 +353,14 @@ export async function revokeRole(
 
 /** Optional filters for listing role assignments. */
 export interface ListAssignmentsFilter {
-    readonly clerk_user_id?: string;
+    readonly user_id?: string;
     readonly role_name?: string;
 }
 
 /**
  * List role assignments with optional filters.
  *
- * @param filters — Narrow by `clerk_user_id` and/or `role_name`.
+ * @param filters — Narrow by `user_id` and/or `role_name`.
  * @returns Array of validated assignment rows.
  */
 export async function listRoleAssignments(
@@ -374,9 +374,9 @@ export async function listRoleAssignments(
     const conditions: string[] = [];
     const values: unknown[] = [];
 
-    if (filters?.clerk_user_id) {
-        conditions.push('clerk_user_id = ?');
-        values.push(filters.clerk_user_id);
+    if (filters?.user_id) {
+        conditions.push('user_id = ?');
+        values.push(filters.user_id);
     }
     if (filters?.role_name) {
         conditions.push('role_name = ?');
@@ -406,11 +406,11 @@ export async function listRoleAssignments(
  */
 export async function invalidateRoleCache(
     kv: KVNamespace | undefined,
-    clerkUserId: string,
+    userId: string,
 ): Promise<void> {
     if (!kv) {
         return;
     }
 
-    await kv.delete(`${KV_PREFIX}${clerkUserId}`);
+    await kv.delete(`${KV_PREFIX}${userId}`);
 }
