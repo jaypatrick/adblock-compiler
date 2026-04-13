@@ -1,15 +1,13 @@
 /**
  * Functional HTTP interceptor for Bearer token authentication.
  *
- * Provider-aware via AuthFacadeService — works with both Better Auth (primary)
- * and Clerk (deprecated legacy fallback).
+ * Provider-aware via AuthFacadeService.
  *
  * **Auth model:**
  * - Better Auth uses cookie-based session auth by default. The bearer() plugin
  *   on the server *also* accepts `Authorization: Bearer <token>` headers. This
  *   interceptor attaches the bearer token when available, giving the Worker two
  *   ways to authenticate the request (cookie OR header).
- * - Clerk uses JWT-based auth exclusively via `Authorization: Bearer <token>`.
  *
  * Skips public/health endpoints and `/api/auth/` paths to avoid circular
  * validation calls during the auth flow.

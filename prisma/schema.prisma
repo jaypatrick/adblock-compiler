@@ -39,8 +39,13 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  // Clerk integration fields
-  clerkUserId    String?   @unique @map("clerk_user_id")
+  // Legacy Clerk integration field — kept for historical rows; no longer populated.
+  // @unique constraint removed: Clerk is no longer the auth provider, so this column
+  // is no longer a canonical unique identifier. Existing non-NULL Clerk IDs are preserved
+  // as-is for historical reference; new Better Auth users have NULL here. Duplicates are
+  // not expected in practice but are now structurally allowed.
+  // Can be dropped in a follow-up migration once confirmed no code reads this column.
+  clerkUserId    String?   @map("clerk_user_id")
   tier           String    @default("free") // anonymous | free | pro | admin
   firstName      String?   @map("first_name")
   lastName       String?   @map("last_name")
@@ -84,6 +89,7 @@ model ApiKey {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([userId, revokedAt])
   @@map("api_keys")
 }
 
@@ -91,7 +97,6 @@ model Session {
   id        String   @id @default(uuid()) @db.Uuid
   userId    String   @map("user_id") @db.Uuid
   token     String   @unique                       // Better Auth session token
-  tokenHash String?  @unique @map("token_hash")     // Legacy (Clerk); nullable for Better Auth sessions
   ipAddress String?  @map("ip_address")
   userAgent String?  @map("user_agent")
   expiresAt DateTime @map("expires_at") @db.Timestamptz
@@ -101,6 +106,7 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
+  @@index([expiresAt])
   @@map("sessions")
 }
 
@@ -332,7 +338,6 @@ model AgentSession {
   agentSlug    String    @map("agent_slug") // from AGENT_REGISTRY slug
   instanceId   String    @map("instance_id") // Durable Object instance name
   userId       String?   @map("user_id") @db.Uuid
-  clerkUserId  String?   @map("clerk_user_id")
   startedAt    DateTime  @default(now()) @map("started_at") @db.Timestamptz
   endedAt      DateTime? @map("ended_at") @db.Timestamptz // NULL = still active
   endReason    String?   @map("end_reason") // 'client_disconnect' | 'server_error' | 'admin_terminate' | 'timeout'
@@ -346,7 +351,6 @@ model AgentSession {
   invocations AgentInvocation[]
 
   @@index([userId])
-  @@index([clerkUserId])
   @@index([agentSlug])
   @@index([startedAt])
   @@index([userId, endedAt], name: "agent_sessions_user_active_idx") // "active sessions per user"

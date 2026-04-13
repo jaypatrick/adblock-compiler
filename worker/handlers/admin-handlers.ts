@@ -146,7 +146,7 @@ export async function handleAdminListRoles(
     if (dbGuard) return dbGuard;
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('role.list').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('role.list').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'role.list', async () => {
         const roles = await listRoles(asCfDb(env.ADMIN_DB));
@@ -176,7 +176,7 @@ export async function handleAdminCreateRole(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('role.create').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('role.create').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'role.create', async () => {
         const role = await createRole(asCfDb(env.ADMIN_DB), parsed.data);
@@ -195,7 +195,7 @@ export async function handleAdminCreateRole(
             action: 'role.create',
             resourceType: 'admin_role',
             resourceId: role.role_name,
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
             ip: getIp(request),
             success: true,
         });
@@ -230,7 +230,7 @@ export async function handleAdminUpdateRole(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('role.update').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('role.update').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'role.update', async () => {
         const oldRole = await listRoles(asCfDb(env.ADMIN_DB)).then((r) => r.find((x) => x.role_name === roleName));
@@ -251,7 +251,7 @@ export async function handleAdminUpdateRole(
             action: 'role.update',
             resourceType: 'admin_role',
             resourceId: roleName,
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
             ip: getIp(request),
             success: true,
         });
@@ -276,13 +276,14 @@ export async function handleAdminListAssignments(
     if (dbGuard) return dbGuard;
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('role.listAssignments').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('role.listAssignments').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'role.listAssignments', async () => {
-        const filters: { clerk_user_id?: string; role_name?: string } = {};
-        const userId = params.searchParams.get('clerk_user_id');
+        const filters: { user_id?: string; role_name?: string } = {};
+        // Accept both `user_id` and legacy `clerk_user_id` for backward compatibility.
+        const userId = params.searchParams.get('user_id') ?? params.searchParams.get('clerk_user_id');
         const roleName = params.searchParams.get('role_name');
-        if (userId) filters.clerk_user_id = userId;
+        if (userId) filters.user_id = userId;
         if (roleName) filters.role_name = roleName;
 
         const assignments = await listRoleAssignments(asCfDb(env.ADMIN_DB), filters);
@@ -312,10 +313,10 @@ export async function handleAdminAssignRole(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('role.assign').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('role.assign').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'role.assign', async () => {
-        const assignment = await assignRole(asCfDb(env.ADMIN_DB), parsed.data, guard.adminContext.clerk_user_id);
+        const assignment = await assignRole(asCfDb(env.ADMIN_DB), parsed.data, guard.adminContext.user_id);
         if (!assignment) return JsonResponse.error('Failed to assign role', 500);
 
         // Invalidate the target user's role cache so next request fetches fresh context.
@@ -334,7 +335,7 @@ export async function handleAdminAssignRole(
             action: 'role.assign',
             resourceType: 'admin_role_assignment',
             resourceId: parsed.data.user_id,
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
             ip: getIp(request),
             success: true,
         });
@@ -367,7 +368,7 @@ export async function handleAdminRevokeRole(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('role.revoke').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('role.revoke').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'role.revoke', async () => {
         const deleted = await revokeRole(asCfDb(env.ADMIN_DB), parsed.data.user_id, parsed.data.role_name);
@@ -389,7 +390,7 @@ export async function handleAdminRevokeRole(
             action: 'role.revoke',
             resourceType: 'admin_role_assignment',
             resourceId: parsed.data.user_id,
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
             ip: getIp(request),
             success: true,
         });
@@ -410,7 +411,7 @@ export async function handleAdminGetMyPermissions(
     if (!guard.authorized) return JsonResponse.error(guard.error, guard.statusCode);
 
     return JsonResponse.success({
-        clerk_user_id: guard.adminContext.clerk_user_id,
+        user_id: guard.adminContext.user_id,
         role_name: guard.adminContext.role_name,
         permissions: guard.adminContext.permissions,
         expires_at: guard.adminContext.expires_at,
@@ -437,7 +438,7 @@ export async function handleAdminListTiers(
     if (dbGuard) return dbGuard;
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('tier.list').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('tier.list').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'tier.list', async () => {
         const tiers = await listTierConfigs(env.ADMIN_DB!);
@@ -473,7 +474,7 @@ export async function handleAdminUpdateTier(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('tier.update').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('tier.update').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'tier.update', async () => {
         const oldTier = await getTierConfig(env.ADMIN_DB!, tierName);
@@ -497,7 +498,7 @@ export async function handleAdminUpdateTier(
             configType: 'tier',
             action: 'update',
             configId: tierName,
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ tier: updated });
@@ -524,7 +525,7 @@ export async function handleAdminDeleteTier(
     if (!tierName) return JsonResponse.badRequest('Missing tier name in URL');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('tier.delete').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('tier.delete').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'tier.delete', async () => {
         const oldTier = await getTierConfig(env.ADMIN_DB!, tierName);
@@ -549,7 +550,7 @@ export async function handleAdminDeleteTier(
             configType: 'tier',
             action: 'delete',
             configId: tierName,
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ message: 'Tier deactivated' });
@@ -576,7 +577,7 @@ export async function handleAdminListScopes(
     if (dbGuard) return dbGuard;
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('scope.list').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('scope.list').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'scope.list', async () => {
         const scopes = await listScopeConfigs(env.ADMIN_DB!);
@@ -611,7 +612,7 @@ export async function handleAdminUpdateScope(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('scope.update').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('scope.update').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'scope.update', async () => {
         const oldScope = await getScopeConfig(env.ADMIN_DB!, scopeName);
@@ -634,7 +635,7 @@ export async function handleAdminUpdateScope(
             configType: 'scope',
             action: 'update',
             configId: scopeName,
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ scope: updated });
@@ -661,7 +662,7 @@ export async function handleAdminDeleteScope(
     if (!scopeName) return JsonResponse.badRequest('Missing scope name in URL');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('scope.delete').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('scope.delete').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'scope.delete', async () => {
         const oldScope = await getScopeConfig(env.ADMIN_DB!, scopeName);
@@ -685,7 +686,7 @@ export async function handleAdminDeleteScope(
             configType: 'scope',
             action: 'delete',
             configId: scopeName,
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ message: 'Scope deactivated' });
@@ -712,7 +713,7 @@ export async function handleAdminListEndpointOverrides(
     if (dbGuard) return dbGuard;
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('endpoint.list').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('endpoint.list').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'endpoint.list', async () => {
         const overrides = await listEndpointOverrides(env.ADMIN_DB!);
@@ -742,7 +743,7 @@ export async function handleAdminCreateEndpointOverride(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('endpoint.create').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('endpoint.create').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'endpoint.create', async () => {
         const override = await createEndpointOverride(env.ADMIN_DB!, parsed.data);
@@ -760,7 +761,7 @@ export async function handleAdminCreateEndpointOverride(
             configType: 'endpoint',
             action: 'create',
             configId: String(override.id),
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ override }, { status: 201 });
@@ -793,7 +794,7 @@ export async function handleAdminUpdateEndpointOverride(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('endpoint.update').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('endpoint.update').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'endpoint.update', async () => {
         const oldOverride = await getEndpointOverride(env.ADMIN_DB!, id);
@@ -814,7 +815,7 @@ export async function handleAdminUpdateEndpointOverride(
             configType: 'endpoint',
             action: 'update',
             configId: String(id),
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ override: updated });
@@ -841,7 +842,7 @@ export async function handleAdminDeleteEndpointOverride(
     if (!Number.isFinite(id)) return JsonResponse.badRequest('Invalid endpoint override ID');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('endpoint.delete').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('endpoint.delete').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'endpoint.delete', async () => {
         const oldOverride = await getEndpointOverride(env.ADMIN_DB!, id);
@@ -863,7 +864,7 @@ export async function handleAdminDeleteEndpointOverride(
             configType: 'endpoint',
             action: 'delete',
             configId: String(id),
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ message: 'Endpoint override deactivated' });
@@ -890,7 +891,7 @@ export async function handleAdminListFlags(
     if (dbGuard) return dbGuard;
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('flag.list').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('flag.list').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'flag.list', async () => {
         const flags = await listFeatureFlags(env.ADMIN_DB!);
@@ -920,10 +921,10 @@ export async function handleAdminCreateFlag(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('flag.create').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('flag.create').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'flag.create', async () => {
-        const flag = await createFeatureFlag(env.ADMIN_DB!, parsed.data, guard.adminContext.clerk_user_id);
+        const flag = await createFeatureFlag(env.ADMIN_DB!, parsed.data, guard.adminContext.user_id);
 
         await writeAuditLog(env.ADMIN_DB!, {
             ...createAuditContext(request, guard.adminContext),
@@ -938,7 +939,7 @@ export async function handleAdminCreateFlag(
             configType: 'flag',
             action: 'create',
             configId: flag.flag_name,
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ flag }, { status: 201 });
@@ -971,7 +972,7 @@ export async function handleAdminUpdateFlag(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('flag.update').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('flag.update').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'flag.update', async () => {
         const oldFlag = await getFeatureFlag(env.ADMIN_DB!, flagName);
@@ -992,7 +993,7 @@ export async function handleAdminUpdateFlag(
             configType: 'flag',
             action: 'update',
             configId: flagName,
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ flag: updated });
@@ -1019,7 +1020,7 @@ export async function handleAdminDeleteFlag(
     if (!flagName) return JsonResponse.badRequest('Missing flag name in URL');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('flag.delete').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('flag.delete').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'flag.delete', async () => {
         const oldFlag = await getFeatureFlag(env.ADMIN_DB!, flagName);
@@ -1041,7 +1042,7 @@ export async function handleAdminDeleteFlag(
             configType: 'flag',
             action: 'delete',
             configId: flagName,
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ message: 'Feature flag deleted' });
@@ -1086,7 +1087,7 @@ export async function handleAdminQueryAuditLogs(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid query parameters');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('audit.query').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('audit.query').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'audit.query', async () => {
         const result = await queryAuditLogs(env.ADMIN_DB!, parsed.data);
@@ -1119,7 +1120,7 @@ export async function handleAdminListAnnouncements(
     if (dbGuard) return dbGuard;
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('announcement.list').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('announcement.list').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'announcement.list', async () => {
         const announcements = await listAnnouncements(env.ADMIN_DB!);
@@ -1149,10 +1150,10 @@ export async function handleAdminCreateAnnouncement(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('announcement.create').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('announcement.create').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'announcement.create', async () => {
-        const announcement = await createAnnouncement(env.ADMIN_DB!, parsed.data, guard.adminContext.clerk_user_id);
+        const announcement = await createAnnouncement(env.ADMIN_DB!, parsed.data, guard.adminContext.user_id);
 
         await writeAuditLog(env.ADMIN_DB!, {
             ...createAuditContext(request, guard.adminContext),
@@ -1167,7 +1168,7 @@ export async function handleAdminCreateAnnouncement(
             configType: 'announcement',
             action: 'create',
             configId: String(announcement.id),
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ announcement }, { status: 201 });
@@ -1200,7 +1201,7 @@ export async function handleAdminUpdateAnnouncement(
     if (!parsed.success) return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('announcement.update').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('announcement.update').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'announcement.update', async () => {
         // Fetch old state for audit diff.
@@ -1224,7 +1225,7 @@ export async function handleAdminUpdateAnnouncement(
             configType: 'announcement',
             action: 'update',
             configId: String(id),
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ announcement: updated });
@@ -1251,7 +1252,7 @@ export async function handleAdminDeleteAnnouncement(
     if (!Number.isFinite(id)) return JsonResponse.badRequest('Invalid announcement ID');
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('announcement.delete').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('announcement.delete').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'announcement.delete', async () => {
         const allAnnouncements = await listAnnouncements(env.ADMIN_DB!);
@@ -1274,7 +1275,7 @@ export async function handleAdminDeleteAnnouncement(
             configType: 'announcement',
             action: 'delete',
             configId: String(id),
-            actorId: guard.adminContext.clerk_user_id,
+            actorId: guard.adminContext.user_id,
         });
 
         return JsonResponse.success({ message: 'Announcement deactivated' });
@@ -1303,7 +1304,7 @@ export async function handleAdminGetMyContext(
     if (dbGuard) return dbGuard;
 
     const reqId = createRequestId();
-    const logger = createAdminLogger(reqId).withOperation('context.my').withActor(guard.adminContext.clerk_user_id);
+    const logger = createAdminLogger(reqId).withOperation('context.my').withActor(guard.adminContext.user_id);
 
     return withAdminTracing(logger, 'context.my', async () => {
         // Fetch supplementary context in parallel.
@@ -1314,7 +1315,7 @@ export async function handleAdminGetMyContext(
 
         return JsonResponse.success({
             admin: {
-                clerk_user_id: guard.adminContext.clerk_user_id,
+                user_id: guard.adminContext.user_id,
                 role_name: guard.adminContext.role_name,
                 permissions: guard.adminContext.permissions,
                 expires_at: guard.adminContext.expires_at,

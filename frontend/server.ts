@@ -134,12 +134,12 @@ const handler = {
             const apiUrl = env.URL_API ?? 'https://api.bloqr.jaysonknight.com';
             const csp = [
                 "default-src 'self'",
-                "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://*.clerk.accounts.dev",
-                "style-src 'self' 'unsafe-inline' https://*.clerk.accounts.dev",
-                "img-src 'self' data: https://img.clerk.com https://*.clerk.com",
+                "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
+                "style-src 'self' 'unsafe-inline'",
+                "img-src 'self' data:",
                 "font-src 'self'",
-                `connect-src 'self' ${apiUrl} https://*.clerk.accounts.dev https://o*.ingest.sentry.io https://o*.ingest.us.sentry.io`,
-                "frame-src https://challenges.cloudflare.com https://*.clerk.accounts.dev",
+                `connect-src 'self' ${apiUrl} https://o*.ingest.sentry.io https://o*.ingest.us.sentry.io`,
+                "frame-src https://challenges.cloudflare.com",
                 "object-src 'none'",
                 "base-uri 'self'",
             ].join('; ');

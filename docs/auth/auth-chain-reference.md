@@ -1,8 +1,7 @@
 # Auth Chain Reference
 
-> **Runtime authentication flow** — How the four-tier auth chain works,
-> the Better Auth ↔ Clerk fallback mechanism, feature flags, and migration
-> timeline.
+> **Runtime authentication flow** — How the three-tier auth chain works,
+> feature flags, and the completed Clerk → Better Auth migration.
 
 ---
 
@@ -13,17 +12,14 @@
 - [Sequence Diagram](#sequence-diagram)
 - [Token Disambiguation](#token-disambiguation)
 - [Better Auth (Primary Provider)](#better-auth-primary-provider)
-- [Clerk JWT (Deprecated Fallback)](#clerk-jwt-deprecated-fallback)
-- [Feature Flags](#feature-flags)
 - [Auth Guards](#auth-guards)
-- [Migration Timeline](#migration-timeline)
 - [When to Use Which Provider](#when-to-use-which-provider)
 
 ---
 
 ## Overview
 
-Every request to the Cloudflare Worker is authenticated through a **four-tier chain**
+Every request to the Cloudflare Worker is authenticated through a **three-tier chain**
 implemented in `worker/middleware/auth.ts`. The chain evaluates providers in strict
 priority order and short-circuits on the first successful match:
 
@@ -31,8 +27,7 @@ priority order and short-circuits on the first successful match:
 |---|---|---|---|
 | 1 | **API Key** | `abc_...` prefix | Direct PostgreSQL lookup via Hyperdrive |
 | 2 | **Better Auth** | Cookie or bearer session ID | `BetterAuthProvider` (primary) |
-| 3 | **Clerk JWT** | `header.payload.signature` | `ClerkAuthProvider` (deprecated fallback) |
-| 4 | **Anonymous** | No credentials | Falls through to anonymous context |
+| 3 | **Anonymous** | No credentials | Falls through to anonymous context |
 
 The chain **never throws** — all failures are communicated via the `response` field
 on `IAuthMiddlewareResult`.
@@ -89,7 +84,6 @@ sequenceDiagram
     participant W as Worker (Hono)
     participant AM as authenticateRequestUnified()
     participant BA as BetterAuthProvider
-    participant CK as ClerkAuthProvider
     participant HD as Hyperdrive
     participant DB as Neon PostgreSQL
 
@@ -119,26 +113,6 @@ sequenceDiagram
     AM->>AM: runTokenValidators() → { valid: true }
     AM-->>W: { context: { authMethod: "better-auth", tier: "free" } }
     W-->>C: 200 OK (user profile)
-
-    Note over C,W: --- Legacy client, Clerk JWT ---
-
-    C->>W: GET /api/sources (Bearer eyJ...)
-    W->>AM: authenticate(request, env)
-    AM->>AM: extractBearerToken() → "eyJ..."
-    AM->>AM: isApiKeyToken() → false
-    AM->>BA: verifyToken(request)
-    BA-->>AM: { valid: false } (not BA token)
-    AM->>AM: fallbackProvider exists? → yes
-    AM->>AM: isJwtToken("eyJ...") → true
-    AM->>CK: verifyToken(request)
-    CK->>CK: Verify JWT via JWKS
-    CK-->>AM: { valid: true, providerUserId: "user_clerk_abc" }
-    AM->>AM: ⚠️ console.warn("DEPRECATED Clerk fallback")
-    AM->>HD: query users WHERE clerk_user_id = $1
-    HD->>DB: SQL query
-    DB-->>HD: row { id: "internal-uuid" }
-    AM-->>W: { context: { authMethod: "clerk-jwt" } }
-    W-->>C: 200 OK (sources)
 ```
 
 ---
@@ -154,18 +128,11 @@ The auth middleware determines the token type by pattern matching:
 function isApiKeyToken(token: string): boolean {
     return token.startsWith('abc_');
 }
-
-/** JWTs have three dot-separated base64 segments */
-function isJwtToken(token: string): boolean {
-    const parts = token.split('.');
-    return parts.length === 3 && parts.every((p) => p.length > 0);
-}
 ```
 
 | Token | Pattern | Route |
 |---|---|---|
 | `abc_sk_live_xxxx...` | Starts with `abc_` | → API Key path |
-| `eyJhbGci.eyJzdWI.xxxxx` | Three dot-separated segments | → JWT path (Clerk fallback) |
 | `sess_abc123xyz` | Better Auth session token | → Better Auth (via cookie or bearer plugin) |
 | *(none)* | No Authorization header | → Better Auth (checks cookies) → Anonymous |
 
@@ -220,90 +187,6 @@ takes effect immediately without waiting for token expiry.
 
 ---
 
-## Clerk JWT (Deprecated Fallback)
-
-**Implementation:** `worker/middleware/clerk-auth-provider.ts`
-
-The Clerk fallback is **only attempted** when all of these conditions are true:
-
-1. The primary provider (Better Auth) returned `{ valid: false }` **without** an error
-2. A `fallbackProvider` was supplied to `authenticateRequestUnified()`
-3. The Bearer token looks like a JWT (three dot-separated segments)
-4. `DISABLE_CLERK_FALLBACK` is not `"true"`
-
-When the fallback authenticates a request, a deprecation warning is logged:
-
-```
-[auth] Request authenticated via DEPRECATED Clerk fallback.
-Migrate this client to Better Auth. Set DISABLE_CLERK_FALLBACK=true to remove this path.
-```
-
----
-
-## Feature Flags
-
-### `DISABLE_CLERK_FALLBACK`
-
-| Value | Behavior |
-|---|---|
-| `undefined` or `"false"` | Clerk JWT fallback is **enabled** (default during migration) |
-| `"true"` | Clerk JWT fallback is **skipped** — only API Key → Better Auth → Anonymous |
-
-**Where it's checked:**
-
-```typescript
-// worker/hono-app.ts
-const clerkFallbackEnabled =
-    c.env.CLERK_JWKS_URL && c.env.DISABLE_CLERK_FALLBACK !== 'true';
-
-const fallbackProvider = clerkFallbackEnabled
-    ? new ClerkAuthProvider(c.env)
-    : undefined;
-```
-
-**When to enable:** Set `DISABLE_CLERK_FALLBACK=true` when all clients have been migrated
-to Better Auth. This removes an unnecessary network call and simplifies the auth chain.
-
-### `DISABLE_CLERK_WEBHOOKS`
-
-| Value | Behavior |
-|---|---|
-| `undefined` or `"false"` | `/api/webhooks/clerk` endpoint is **active** |
-| `"true"` | Endpoint returns `410 Gone` with `{ error: "Clerk webhooks are disabled" }` |
-
-**Where it's checked:**
-
-```typescript
-// worker/hono-app.ts
-routes.post('/webhooks/clerk', (c) => {
-    if (c.env.DISABLE_CLERK_WEBHOOKS === 'true') {
-        return c.json({ error: 'Clerk webhooks are disabled' }, { status: 410 });
-    }
-    return handleClerkWebhook(c.env);
-});
-```
-
-**When to enable:** Set `DISABLE_CLERK_WEBHOOKS=true` after removing the Clerk webhook
-from the Clerk dashboard. The `410 Gone` response signals to any remaining callers that
-the endpoint is permanently retired.
-
-### Setting Feature Flags
-
-```bash
-# Local development (.dev.vars)
-DISABLE_CLERK_FALLBACK=true
-DISABLE_CLERK_WEBHOOKS=true
-
-# Production (Cloudflare dashboard or wrangler)
-npx wrangler secret put DISABLE_CLERK_FALLBACK
-# Enter: true
-
-npx wrangler secret put DISABLE_CLERK_WEBHOOKS
-# Enter: true
-```
-
----
-
 ## Auth Guards
 
 The auth middleware provides helper functions for route-level access control:
@@ -329,7 +212,6 @@ if (scopeCheck) return scopeCheck; // 403
 | Auth Method | Scope Check |
 |---|---|
 | `better-auth` | **Bypassed** — session-authenticated users own the account |
-| `clerk-jwt` | **Bypassed** — same reasoning |
 | `api-key` | **Enforced** — scopes from the `api_keys.scopes` array |
 | `anonymous` | **Rejected** — anonymous users have no scopes |
 
@@ -386,9 +268,8 @@ When this message stops appearing, it's safe to proceed to Phase 3.
 | Scenario | Provider | Why |
 |---|---|---|
 | **New API integration** | API Key (`abc_` prefix) | Scoped, revocable, rate-limited per key |
-| **Browser app (new)** | Better Auth (cookie) | Server-side sessions, no JWTs in localStorage |
+| **Browser app** | Better Auth (cookie) | Server-side sessions, no JWTs in localStorage |
 | **Programmatic API calls** | Better Auth (bearer plugin) | Session-based auth without cookies |
-| **Legacy integration** | Clerk JWT (temporary) | Only for clients not yet migrated |
 | **Public/unauthenticated** | Anonymous | 10 req/min rate limit, basic features only |
 
 ### Recommendation
@@ -418,8 +299,9 @@ fetch('/api/compile', {
 
 ## Further Reading
 
-- [Auth Provider Selection](./auth-provider-selection.md) — Environment variable-based provider switching
+- [Better Auth User Guide](./better-auth-user-guide.md) — End-user sign-up, sign-in, and account management
+- [Better Auth Developer Guide](./better-auth-developer-guide.md) — Integration reference for backend and frontend
 - [Better Auth + Prisma](./better-auth-prisma.md) — Prisma adapter configuration
-- [Migration Guide](./migration-clerk-to-better-auth.md) — Step-by-step Clerk → Better Auth migration
 - [API Authentication](./api-authentication.md) — API key creation and management
+- [Clerk → Better Auth Migration Guide](./migration-clerk-to-better-auth.md) — Historical reference for the completed migration
 - [Developer Guide](./developer-guide.md) — Full auth integration tutorial

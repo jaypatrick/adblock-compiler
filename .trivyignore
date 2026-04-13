@@ -1,0 +1,34 @@
+# Trivy v0.69.3 misreads range-based pnpm override *keys* in pnpm-lock.yaml as
+# installed package versions (e.g. "undici@>=7.0.0 <7.24.0" is treated as an
+# installed "undici" at a vulnerable version, even though the resolved/installed
+# version in the packages section is already patched).  The entries below suppress
+# the resulting false-positive findings.  The five safe overrides (vite, hono,
+# @hono/node-server, lodash, serialize-javascript) were converted to plain keys
+# so their patched versions appear directly, but undici, picomatch, and
+# path-to-regexp require range-scoped keys to avoid accidentally overriding
+# incompatible major-version sibling installs.
+
+# picomatch — range keys: "picomatch@<2.3.2" and "picomatch@>=4.0.0 <4.0.4"
+# Patched to: picomatch@2.3.2 and picomatch@4.0.4 respectively.
+CVE-2026-33671
+CVE-2026-33672
+
+# undici — range key: "undici@>=7.0.0 <7.24.0"
+# Patched to: undici@7.24.4.  The range key is necessary to avoid overriding
+# @sentry/cli's undici@6.24.1 (incompatible major version).
+CVE-2026-1525
+CVE-2026-1526
+CVE-2026-1527
+CVE-2026-1528
+CVE-2026-2229
+CVE-2026-2581
+
+# path-to-regexp — range key: "path-to-regexp@<0.1.13"
+# Patched to: path-to-regexp@0.1.13.  The range key is necessary to avoid
+# downgrading the co-installed 6.x and 8.x versions to 0.1.13.
+CVE-2026-4867
+
+# brace-expansion — range key: "brace-expansion@>=2.0.0 <2.0.3"
+# Patched to: brace-expansion@2.0.3.  The range key is necessary to avoid
+# overriding the co-installed 5.x version used by minimatch@10 (API-incompatible).
+CVE-2026-33750

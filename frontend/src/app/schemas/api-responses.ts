@@ -287,7 +287,7 @@ export type AdminRoleValidated = z.infer<typeof AdminRoleSchema>;
 /** Admin role assignment */
 export const AdminRoleAssignmentSchema = z.object({
     id: z.number(),
-    clerk_user_id: z.string(),
+    user_id: z.string(),
     role_name: z.string(),
     assigned_by: z.string(),
     assigned_at: z.string(),
@@ -385,7 +385,7 @@ export type AdminAuditLogValidated = z.infer<typeof AdminAuditLogSchema>;
 
 /** Resolved admin context (current user's role + permissions) */
 export const ResolvedAdminContextSchema = z.object({
-    clerk_user_id: z.string(),
+    user_id: z.string(),
     role_name: z.string(),
     permissions: z.array(z.string()),
     expires_at: z.string().nullable(),

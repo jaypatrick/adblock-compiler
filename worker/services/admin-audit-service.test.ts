@@ -319,7 +319,7 @@ Deno.test('createAuditContext - extracts correct fields from request and admin c
     });
 
     const adminContext = {
-        clerk_user_id: 'user_admin',
+        user_id: 'user_admin',
         role_name: 'super-admin',
     };
 

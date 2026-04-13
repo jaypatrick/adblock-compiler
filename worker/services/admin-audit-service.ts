@@ -366,14 +366,14 @@ export async function countAuditLogs(
  */
 export function createAuditContext(
     request: Request,
-    adminContext: { clerk_user_id: string; role_name: string } | null,
+    adminContext: { user_id: string; role_name: string } | null,
 ): {
     actor_id: string;
     actor_email: string | null;
     ip_address: string | null;
     user_agent: string | null;
 } {
-    const actorId = adminContext?.clerk_user_id ?? 'unknown';
+    const actorId = adminContext?.user_id ?? 'unknown';
     const ipAddress = request.headers.get('cf-connecting-ip') ??
         request.headers.get('x-forwarded-for') ??
         null;

@@ -50,7 +50,7 @@ interface RoleListResponse {
 
 interface RoleAssignment {
     readonly id: number;
-    readonly clerk_user_id: string;
+    readonly user_id: string;
     readonly role_name: string;
     readonly assigned_by: string;
     readonly assigned_at: string;
@@ -182,10 +182,10 @@ interface RoleFormData {
                                 <p class="empty-state">No users assigned to this role.</p>
                             } @else {
                                 <table mat-table [dataSource]="roleAssignments()" class="assign-table">
-                                    <ng-container matColumnDef="clerk_user_id">
+                                    <ng-container matColumnDef="user_id">
                                         <th mat-header-cell *matHeaderCellDef>User ID</th>
                                         <td mat-cell *matCellDef="let row">
-                                            <code class="resource-id">{{ row.clerk_user_id }}</code>
+                                            <code class="resource-id">{{ row.user_id }}</code>
                                         </td>
                                     </ng-container>
 
@@ -367,7 +367,7 @@ export class RolesComponent {
     readonly dialogMode = signal<'create' | 'edit' | null>(null);
     readonly showAssignDialog = signal(false);
 
-    readonly assignmentColumns = ['clerk_user_id', 'assigned_by', 'assigned_at', 'actions'];
+    readonly assignmentColumns = ['user_id', 'assigned_by', 'assigned_at', 'actions'];
 
     readonly allPermissions = [
         'admin:users:read', 'admin:users:write',
@@ -498,7 +498,7 @@ export class RolesComponent {
 
         this.saving.set(true);
         this.http.post('/admin/roles/assignments', {
-            clerk_user_id: this.assignUserId.trim(),
+            user_id: this.assignUserId.trim(),
             role_name: role.role_name,
         }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: () => {
@@ -516,7 +516,7 @@ export class RolesComponent {
 
     revokeAssignment(assignment: RoleAssignment): void {
         this.saving.set(true);
-        this.http.delete(`/admin/roles/assignments/${assignment.clerk_user_id}`).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
+        this.http.delete(`/admin/roles/assignments/${assignment.user_id}`).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
             next: () => {
                 this.snackBar.open('Assignment revoked', 'OK', { duration: 3000 });
                 this.saving.set(false);
