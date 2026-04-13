@@ -21,7 +21,7 @@
  */
 
 import { ApplicationConfig, ErrorHandler, PLATFORM_ID, provideAppInitializer, provideZonelessChangeDetection, inject } from '@angular/core';
-import { provideRouter, withComponentInputBinding, withViewTransitions, withPreloading, PreloadAllModules, TitleStrategy, withInMemoryScrolling } from '@angular/router';
+import { provideRouter, withComponentInputBinding, withViewTransitions, withPreloading, PreloadAllModules, TitleStrategy, withInMemoryScrolling, withRouterConfig } from '@angular/router';
 import { HttpClient, provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { firstValueFrom, timeout } from 'rxjs';
 import { isPlatformBrowser } from '@angular/common';
@@ -55,8 +55,8 @@ export const appConfig: ApplicationConfig = {
             withInMemoryScrolling({
                 scrollPositionRestoration: 'enabled',
                 anchorScrolling: 'enabled',
-                scrollOffset: [0, 72],
             }),
+            withRouterConfig({ scrollOffset: [0, 72] }),
         ),
 
         // Custom TitleStrategy: appends "| Adblock Compiler" to each route title
