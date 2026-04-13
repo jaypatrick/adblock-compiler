@@ -1,0 +1,183 @@
+name: Cloudflare Dependency Update
+
+# Runs daily so that wrangler / @cloudflare/workers-types patch releases are
+# picked up automatically — without manual PRs every time Cloudflare ships an
+# update.  The cloudflare-dep-check job in ci.yml compares the deno.lock
+# resolved version against npm-latest; if this workflow keeps the lock fresh
+# that check always passes on feature PRs.
+#
+# What this workflow does:
+#   1. Run scripts/ci/cloudflare-dep-update.ts — updates all version pin strings
+#      (deno.json imports + tasks, package.json, frontend/package.json,
+#       examples/..., workflow YAML inline invocations).
+#   2. Run `deno cache src/index.ts` — regenerates deno.lock so the resolved
+#      wrangler / workerd versions reflect the new pins.
+#   3. Run scripts/ci/cloudflare-allowscripts-sync.ts — adds any new workerd
+#      version that wrangler pulled in, removes stale ones.
+#   4. If any file changed, commit to a branch and open an auto-merge PR.
+#      If everything is already up to date the workflow exits cleanly with no PR.
+
+on:
+    schedule:
+        # Daily at 06:00 UTC — well before the US business day so that any
+        # Cloudflare release from the previous day is already on npm.
+        - cron: '0 6 * * *'
+    workflow_dispatch: {}
+
+permissions:
+    contents: write
+    pull-requests: write
+
+jobs:
+    update:
+        name: Update Cloudflare Dependencies
+        runs-on: ubuntu-latest
+        timeout-minutes: 15
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+              with:
+                  fetch-depth: 0
+                  token: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Setup Deno
+              uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2.0.3
+              with:
+                  deno-version: '2.x'
+
+            # ----------------------------------------------------------------
+            # Step 1 — Update all version pin strings across the repo
+            # ----------------------------------------------------------------
+            - name: Update Cloudflare dependency pins
+              run: deno task ci:cloudflare-update
+
+            # ----------------------------------------------------------------
+            # Step 2 — Regenerate deno.lock so the resolved wrangler/workerd
+            #          versions match the updated pins.
+            # ----------------------------------------------------------------
+            - name: Regenerate deno.lock
+              run: deno cache src/index.ts
+
+            # ----------------------------------------------------------------
+            # Step 3 — Sync allowScripts with any new workerd versions that
+            #          wrangler pulled in (or remove stale ones).
+            # ----------------------------------------------------------------
+            - name: Sync allowScripts with deno.lock workerd versions
+              run: deno task ci:cloudflare-allowscripts-sync
+
+            # ----------------------------------------------------------------
+            # Step 4 — Self-check: the ci:cloudflare-check task must pass
+            #          before we even attempt to open a PR.
+            # ----------------------------------------------------------------
+            - name: Verify ci:cloudflare-check passes
+              run: deno task ci:cloudflare-check
+
+            # ----------------------------------------------------------------
+            # Step 5 — If there are no file changes, log and stop.
+            #          Otherwise, commit to a fresh branch and open a PR.
+            # ----------------------------------------------------------------
+            - name: Check for changes
+              id: changes
+              run: |
+                  if git diff --quiet; then
+                      echo "has_changes=false" >> "$GITHUB_OUTPUT"
+                      echo "✅  All Cloudflare dependencies are already up to date — nothing to commit."
+                  else
+                      echo "has_changes=true" >> "$GITHUB_OUTPUT"
+                      echo "📋  Files changed:"
+                      git diff --stat
+                  fi
+
+            - name: Create pull request
+              if: steps.changes.outputs.has_changes == 'true'
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  set -euo pipefail
+
+                  git config user.name "github-actions[bot]"
+                  git config user.email "github-actions[bot]@users.noreply.github.com"
+
+                  BRANCH="chore/cloudflare-dep-update-$(date +%Y%m%d)"
+
+                  # Delete any existing branch from a previous run today
+                  git push origin --delete "$BRANCH" 2>/dev/null || true
+                  git checkout -b "$BRANCH"
+
+                  git add .
+                  git commit -m "chore(deps): update Cloudflare dependencies [skip version]"
+                  git push -u origin "$BRANCH"
+
+                  # Collect the new versions for the PR body (grep is available on all runners)
+                  WRANGLER_VER=$(grep -oP 'npm:wrangler@\^\K[\d.]+' deno.json | head -1)
+                  WORKERS_TYPES_VER=$(grep -oP 'npm:@cloudflare/workers-types@\^\K[\d.]+' deno.json | head -1)
+
+                  if [[ -z "$WRANGLER_VER" || -z "$WORKERS_TYPES_VER" ]]; then
+                      echo "::error::Could not extract updated version strings from deno.json — aborting PR creation"
+                      exit 1
+                  fi
+
+                  # Write the PR body to a temp file to avoid shell-escaping headaches
+                  cat > /tmp/pr-body.md <<EOF
+                  ## Automated Cloudflare Dependency Update
+
+                  This PR was created by the **Cloudflare Dependency Update** scheduled workflow.
+
+                  | Package | New pin |
+                  |---|---|
+                  | \`wrangler\` | \`^${WRANGLER_VER}\` |
+                  | \`@cloudflare/workers-types\` | \`^${WORKERS_TYPES_VER}\` |
+
+                  ### What was updated
+                  - \`deno.json\` — imports alias + all wrangler task specifiers
+                  - \`package.json\` — devDependencies
+                  - \`frontend/package.json\` — devDependencies
+                  - \`examples/cloudflare-worker/package.json\` — devDependencies
+                  - \`examples/cloudflare-worker/deno.json\` — imports
+                  - \`.github/workflows/gradual-deploy.yml\` — inline wrangler invocations
+                  - \`.github/workflows/sentry-worker.yml\` — inline wrangler invocation
+                  - \`deno.lock\` — regenerated with new resolutions
+                  - \`deno.json allowScripts\` — synced with new workerd versions
+
+                  \`deno task ci:cloudflare-check\` was verified passing before this PR was opened.
+
+                  ---
+                  🤖 Generated by the [Cloudflare Dependency Update](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}) workflow
+                  EOF
+
+                  PR_NUMBER=$(gh pr create \
+                    --base main \
+                    --head "$BRANCH" \
+                    --title "chore(deps): update Cloudflare dependencies" \
+                    --body-file /tmp/pr-body.md \
+                    --label "dependencies" \
+                    --json number \
+                    --jq '.number')
+
+                  echo "Created PR #${PR_NUMBER} from branch ${BRANCH}"
+
+                  # Auto-merge once CI is green so the main branch stays current
+                  # without requiring manual intervention.
+                  gh pr merge "$PR_NUMBER" --auto --squash --delete-branch
+
+                  echo "Auto-merge enabled on PR #${PR_NUMBER}"
+
+            - name: Summary (no changes)
+              if: steps.changes.outputs.has_changes == 'false'
+              run: |
+                  cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+                  ## ✅ Cloudflare dependencies are up to date
+
+                  All pins match the latest versions on npm.  No PR was opened.
+                  EOF
+
+            - name: Summary (PR created)
+              if: steps.changes.outputs.has_changes == 'true'
+              run: |
+                  cat <<'EOF' >> "$GITHUB_STEP_SUMMARY"
+                  ## 📦 Cloudflare Dependency Update PR created
+
+                  A pull request has been opened and auto-merge is enabled.
+                  It will merge automatically once all CI checks pass.
+                  EOF
