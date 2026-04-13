@@ -5,6 +5,10 @@ inputs:
     github-sha:
         description: 'GitHub commit SHA for Sentry release tracking'
         required: true
+    cloudflare-containers-token:
+        description: 'Cloudflare API token with Account > Containers:Edit permission for Docker registry auth. Falls back to CLOUDFLARE_API_TOKEN if omitted.'
+        required: false
+        default: ''
 
 runs:
     using: composite
@@ -120,6 +124,22 @@ runs:
               create_or_confirm_queue "adblock-compiler-error-queue"
               create_or_confirm_r2_bucket "adblock-compiler-r2-storage"
 
+        - name: Authenticate Docker with Cloudflare Container Registry
+          if: env.CLOUDFLARE_API_TOKEN != ''
+          shell: bash
+          env:
+              CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
+          run: |
+              echo "Authenticating Docker with registry.cloudflare.com..."
+              if echo "$CONTAINERS_TOKEN" | docker login registry.cloudflare.com \
+                --username "cloudflare" \
+                --password-stdin 2>&1; then
+                  echo "✅ Docker authenticated with registry.cloudflare.com"
+              else
+                  echo "::warning::Docker login to registry.cloudflare.com failed — wrangler will attempt its own container auth."
+                  echo "If the deploy fails below, add a CLOUDFLARE_CONTAINERS_TOKEN secret with Account > Containers:Edit permission."
+              fi
+
         - name: Deploy Tail Worker
           if: env.CLOUDFLARE_API_TOKEN != ''
           shell: bash
@@ -153,7 +173,6 @@ runs:
               docker build \
                 --platform linux/amd64 \
                 -f Dockerfile.container \
-                --no-cache \
                 . 2>&1
               echo "✅ Dockerfile.container pre-build succeeded"
 
