@@ -90,7 +90,7 @@ function makeRoleRow(overrides: Partial<Record<string, unknown>> = {}) {
 function makeAssignmentRow(overrides: Partial<Record<string, unknown>> = {}) {
     return {
         id: 1,
-        clerk_user_id: 'user_abc',
+        user_id: 'user_abc',
         role_name: 'editor',
         assigned_by: 'user_admin',
         assigned_at: '2025-01-01T00:00:00.000Z',
@@ -239,7 +239,7 @@ Deno.test('updateRole - handles multiple fields', async () => {
 Deno.test('resolveAdminContext - returns cached context from KV on hit', async () => {
     const kv = createMockKV();
     const cached = {
-        clerk_user_id: 'user_abc',
+        user_id: 'user_abc',
         role_name: 'editor',
         permissions: ['config:read', 'config:write'],
         expires_at: null,
@@ -248,7 +248,7 @@ Deno.test('resolveAdminContext - returns cached context from KV on hit', async (
 
     const result = await resolveAdminContext({ RATE_LIMIT: kv as unknown as KVNamespace }, 'user_abc');
     assertExists(result);
-    assertEquals(result!.clerk_user_id, 'user_abc');
+    assertEquals(result!.user_id, 'user_abc');
     assertEquals(result!.role_name, 'editor');
     assertEquals(result!.permissions.length, 2);
 });
@@ -261,7 +261,7 @@ Deno.test('resolveAdminContext - falls through to D1 on KV miss and caches resul
     const kv = createMockKV();
     const db = createMockD1({
         first: () => ({
-            clerk_user_id: 'user_abc',
+            user_id: 'user_abc',
             role_name: 'editor',
             expires_at: null,
             permissions: JSON.stringify(['config:read', 'config:write']),
@@ -296,7 +296,7 @@ Deno.test('resolveAdminContext - returns null when db is undefined', async () =>
 Deno.test('resolveAdminContext - returns null for expired assignment', async () => {
     const db = createMockD1({
         first: () => ({
-            clerk_user_id: 'user_abc',
+            user_id: 'user_abc',
             role_name: 'editor',
             expires_at: '2020-01-01T00:00:00.000Z', // In the past
             permissions: JSON.stringify(['config:read']),
@@ -310,7 +310,7 @@ Deno.test('resolveAdminContext - returns null for expired assignment', async () 
 Deno.test('resolveAdminContext - returns null for corrupt permissions JSON', async () => {
     const db = createMockD1({
         first: () => ({
-            clerk_user_id: 'user_abc',
+            user_id: 'user_abc',
             role_name: 'editor',
             expires_at: null,
             permissions: 'NOT_JSON{{{',
@@ -327,7 +327,7 @@ Deno.test('resolveAdminContext - falls through on corrupt KV cache', async () =>
 
     const db = createMockD1({
         first: () => ({
-            clerk_user_id: 'user_abc',
+            user_id: 'user_abc',
             role_name: 'editor',
             expires_at: null,
             permissions: JSON.stringify(['config:read']),
@@ -354,7 +354,7 @@ Deno.test('assignRole - creates assignment and returns row', async () => {
         'user_admin',
     );
     assertExists(result);
-    assertEquals(result!.clerk_user_id, 'user_abc');
+    assertEquals(result!.user_id, 'user_abc');
     assertEquals(result!.role_name, 'editor');
     assertEquals(result!.assigned_by, 'user_admin');
 });
@@ -421,7 +421,7 @@ Deno.test('listRoleAssignments - returns all assignments', async () => {
         all: () => ({
             results: [
                 makeAssignmentRow({ id: 1 }),
-                makeAssignmentRow({ id: 2, clerk_user_id: 'user_def' }),
+                makeAssignmentRow({ id: 2, user_id: 'user_def' }),
             ],
         }),
     });

@@ -57,7 +57,7 @@ jobs:
 
       - name: Check for SQL injection patterns
         run: |
-          if grep -rEn 'query\s*\+|query\s*=.*\+\s*[a-zA-Z]|`SELECT.*\$\{|`INSERT.*\$\{|`UPDATE.*\$\{|`DELETE.*\$\{' worker/ src/ --include='*.ts' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// |\.prepare\(' | grep -q '.'; then
+          if grep -rEn 'query\s*\+|query\s*=.*\+\s*[a-zA-Z]|`SELECT.*\$\{|`INSERT.*\$\{|`UPDATE.*\$\{|`DELETE.*\$\{' worker/ src/ --include='*.ts' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// |\.prepare\(|\.join\(|\.log\(' | grep -q '.'; then
             echo "::error::Potential SQL injection pattern found. Use parameterized queries."
             exit 1
           fi

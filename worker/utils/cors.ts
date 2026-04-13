@@ -92,7 +92,7 @@ export function getCorsHeaders(request: Request, env?: Env): Record<string, stri
  */
 export function getPublicCorsHeaders(): Record<string, string> {
     return {
-        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Origin': '*', // zta-ok: intentional wildcard for unauthenticated public endpoints
     };
 }
 

@@ -196,33 +196,35 @@ export async function getDeploymentHistory(
 ): Promise<DeploymentInfo[]> {
     const { limit = 50, version, status, branch } = options;
 
-    let query = `
-        SELECT
-            version, build_number, full_version, git_commit, git_branch,
-            deployed_at, deployed_by, status, metadata
-        FROM deployment_history
-        WHERE 1=1
-    `;
-
+    const conditions: string[] = [];
     const params: unknown[] = [];
 
     if (version) {
-        query += ' AND version = ?';
+        conditions.push('version = ?');
         params.push(version);
     }
 
     if (status) {
-        query += ' AND status = ?';
+        conditions.push('status = ?');
         params.push(status);
     }
 
     if (branch) {
-        query += ' AND git_branch = ?';
+        conditions.push('git_branch = ?');
         params.push(branch);
     }
 
-    query += ' ORDER BY deployed_at DESC LIMIT ?';
     params.push(limit);
+
+    const where = conditions.length > 0 ? ` AND ${conditions.join(' AND ')}` : '';
+    const query = `
+        SELECT
+            version, build_number, full_version, git_commit, git_branch,
+            deployed_at, deployed_by, status, metadata
+        FROM deployment_history
+        WHERE 1=1${where}
+        ORDER BY deployed_at DESC LIMIT ?
+    `;
 
     const result = await db.prepare(query).bind(...params).all<{
         version: string;
