@@ -21,10 +21,10 @@
  */
 
 import { ApplicationConfig, ErrorHandler, PLATFORM_ID, provideAppInitializer, provideZonelessChangeDetection, inject } from '@angular/core';
-import { provideRouter, withComponentInputBinding, withViewTransitions, withPreloading, PreloadAllModules, TitleStrategy } from '@angular/router';
+import { provideRouter, withComponentInputBinding, withViewTransitions, withPreloading, PreloadAllModules, TitleStrategy, withInMemoryScrolling } from '@angular/router';
 import { HttpClient, provideHttpClient, withFetch, withInterceptors } from '@angular/common/http';
 import { firstValueFrom, timeout } from 'rxjs';
-import { isPlatformBrowser } from '@angular/common';
+import { isPlatformBrowser, ViewportScroller } from '@angular/common';
 import { authInterceptor } from './interceptors/auth.interceptor';
 import { errorInterceptor } from './interceptors/error.interceptor';
 import { provideAnimationsAsync } from '@angular/platform-browser/animations/async';
@@ -45,11 +45,18 @@ export const appConfig: ApplicationConfig = {
 
         // Router: map route params to component inputs, smooth View Transitions API,
         // preload all lazy routes after initial navigation completes.
+        // withInMemoryScrolling restores scroll position on back/forward navigation
+        // and enables anchor (#section) scrolling. The 72px scroll offset for the
+        // fixed header is applied via ViewportScroller.setOffset() in provideAppInitializer.
         provideRouter(
             routes,
             withComponentInputBinding(),
             withViewTransitions(),
             withPreloading(PreloadAllModules),
+            withInMemoryScrolling({
+                scrollPositionRestoration: 'enabled',
+                anchorScrolling: 'enabled',
+            }),
         ),
 
         // Custom TitleStrategy: appends "| Adblock Compiler" to each route title
@@ -89,6 +96,8 @@ export const appConfig: ApplicationConfig = {
         // still allows the app to boot with Turnstile simply disabled.
         provideAppInitializer(async () => {
             inject(MatIconRegistry).setDefaultFontSetClass('material-symbols-outlined');
+            // Offset anchor/in-memory scroll restoration by 72px to clear the fixed header.
+            inject(ViewportScroller).setOffset([0, 72]);
 
             // isPlatformBrowser check MUST come before any call that touches browser-only
             // APIs (localStorage, fetch, Clerk, Sentry). ThemeService.loadPreferences()

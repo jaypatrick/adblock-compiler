@@ -51,15 +51,15 @@ The **adblock-compiler** is a *compiler-as-a-service* for adblock filter lists. 
 ## System Context Diagram
 
 ```mermaid
-graph TD
-    classDef external fill:#f0f4ff,stroke:#4a6cf7,color:#1e293b
-    classDef client fill:#ecfdf5,stroke:#10b981,color:#1e293b
-    classDef system fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef infra fill:#fdf4ff,stroke:#a855f7,color:#1e293b
-    classDef observability fill:#fff7ed,stroke:#f97316,color:#1e293b
-    classDef auth fill:#fef2f2,stroke:#ef4444,color:#1e293b
+flowchart TD
+    classDef external fill:#37474f,stroke:#263238,color:#fff
+    classDef client fill:#1b5e20,stroke:#0a3010,color:#fff
+    classDef system fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef infra fill:#1a237e,stroke:#0d1257,color:#fff
+    classDef observability fill:#b84000,stroke:#7a2900,color:#fff
+    classDef auth fill:#880e4f,stroke:#560930,color:#fff
 
-    subgraph EW["🌐 External World"]
+    subgraph EW["External World"]
         FLS["Filter List Sources\n(EasyList, uBlock, AdGuard URLs)"]:::external
         WB["Browser\n(Angular 21 SPA/SSR)"]:::client
         AC["API Consumers\n(CI/CD, curl, scripts)"]:::client
@@ -67,7 +67,7 @@ graph TD
         AIAG["AI Agent / MCP Client\n(GitHub Copilot, etc.)"]:::client
     end
 
-    subgraph ACS["⚙️ adblock-compiler System"]
+    subgraph ACS["adblock-compiler System"]
         CLI["CLI App\n(src/cli/)"]:::system
         ANGULAR["Angular Frontend\n(frontend/ — SSR + PWA)"]:::system
         CFW["Cloudflare Worker\n(worker/worker.ts + router.ts)"]:::system
@@ -81,7 +81,7 @@ graph TD
         TW["Tail Worker\n(worker/tail.ts)"]:::observability
     end
 
-    subgraph CF["☁️ Cloudflare Platform"]
+    subgraph CF["Cloudflare Platform"]
         KV["KV Store\n(Cache, Rate Limit, Metrics)"]:::infra
         D1["D1 (SQLite)\n(Metadata, History, Auth)"]:::infra
         QQ["Queues\n(Std + High Priority)"]:::infra
@@ -91,7 +91,7 @@ graph TD
         CFAC["Cloudflare Access\n(Zero Trust WAF)"]:::auth
     end
 
-    subgraph EXT["🔌 External Services"]
+    subgraph EXT["External Services"]
         CLERK["Clerk\n(Auth / User Mgmt)"]:::auth
         SENTRY["Sentry\n(Error Tracking)"]:::observability
         PROM["Prometheus / OTel\n(Metrics Scraping)"]:::observability
@@ -135,7 +135,7 @@ Every compilation—CLI, library, or API—follows this pipeline:
 
 ```mermaid
 flowchart LR
-    classDef step fill:#eff6ff,stroke:#3b82f6,color:#1e293b
+    classDef step fill:#1a237e,stroke:#0d1257,color:#fff
     A["1. Config<br/>Loading"]:::step --> B["2. Validate<br/>(Zod)"]:::step
     B --> C["3. Download<br/>Sources"]:::step
     C --> D["4. Per-Source<br/>Transforms"]:::step
@@ -197,8 +197,8 @@ The orchestration layer that drives the entire compilation process.
 
 ```mermaid
 flowchart TD
-    classDef core fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef module fill:#f0fdf4,stroke:#22c55e,color:#1e293b
+    classDef core fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef module fill:#1b5e20,stroke:#0a3010,color:#fff
     FC["FilterCompiler\n← Main entry point (has FS access)"]:::core
     FC -->|uses| SC["SourceCompiler"]:::module
     FC -->|uses| HG["HeaderGenerator"]:::module
@@ -219,8 +219,8 @@ Enables the compiler to run in environments **without file system access** (brow
 
 ```mermaid
 flowchart TD
-    classDef core fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef module fill:#f0fdf4,stroke:#22c55e,color:#1e293b
+    classDef core fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef module fill:#1b5e20,stroke:#0a3010,color:#fff
     WC["WorkerCompiler\n← No FS access"]:::core
     WC -->|uses| CF["CompositeFetcher\n← Chain of Responsibility"]:::module
     CF --> PFCF["PreFetchedContentFetcher"]:::module
@@ -242,8 +242,8 @@ The transformation pipeline uses the **Strategy** and **Registry** patterns.
 
 ```mermaid
 flowchart TD
-    classDef core fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef module fill:#f0fdf4,stroke:#22c55e,color:#1e293b
+    classDef core fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef module fill:#1b5e20,stroke:#0a3010,color:#fff
     TP["TransformationPipeline\n← Applies ordered transforms"]:::core
     TP -->|delegates to| TR["TransformationRegistry\n← Maps type → instance"]:::module
     TR -->|contains| ST1["SyncTransformation\n(Deduplicate)"]:::module
@@ -285,8 +285,8 @@ Handles fetching filter list content with preprocessor directive support.
 
 ```mermaid
 flowchart TD
-    classDef core fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef module fill:#f0fdf4,stroke:#22c55e,color:#1e293b
+    classDef core fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef module fill:#1b5e20,stroke:#0a3010,color:#fff
     FD["FilterDownloader\n← Static download() method"]:::core
     FD -->|uses| CF["ContentFetcher\n(FS + HTTP)"]:::module
     FD -->|uses| PE["PreprocessorEvaluator\n(!#if, !#include)"]:::module
@@ -326,10 +326,10 @@ Pluggable persistence layer with multiple backends.
 
 ```mermaid
 flowchart TD
-    classDef interface fill:#eff6ff,stroke:#3b82f6,color:#1e293b
-    classDef adapter fill:#f0fdf4,stroke:#22c55e,color:#1e293b
-    classDef consumer fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef infra fill:#f1f5f9,stroke:#64748b,color:#1e293b
+    classDef interface fill:#1a237e,stroke:#0d1257,color:#fff
+    classDef adapter fill:#1b5e20,stroke:#0a3010,color:#fff
+    classDef consumer fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef infra fill:#1a237e,stroke:#0d1257,color:#fff
 
     ISA["IStorageAdapter\n← Abstract interface"]:::interface
     ISA --> PSA["PrismaStorageAdapter\n(SQLite · PostgreSQL · MySQL)"]:::adapter
@@ -377,9 +377,9 @@ Asynchronous job processing abstraction.
 
 ```mermaid
 flowchart TD
-    classDef interface fill:#eff6ff,stroke:#3b82f6,color:#1e293b
-    classDef provider fill:#f0fdf4,stroke:#22c55e,color:#1e293b
-    classDef message fill:#fef9c3,stroke:#ca8a04,color:#1e293b
+    classDef interface fill:#1a237e,stroke:#0d1257,color:#fff
+    classDef provider fill:#1b5e20,stroke:#0a3010,color:#fff
+    classDef message fill:#b8860b,stroke:#8a6208,color:#fff
 
     IQP["IQueueProvider\n← Abstract interface"]:::interface
     IQP --> CQP["CloudflareQueueProvider\n← Cloudflare Workers Queue binding"]:::provider
@@ -395,9 +395,9 @@ End-to-end observability through the compilation pipeline.
 
 ```mermaid
 flowchart LR
-    classDef core fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef module fill:#f0fdf4,stroke:#22c55e,color:#1e293b
-    classDef observability fill:#fff7ed,stroke:#f97316,color:#1e293b
+    classDef core fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef module fill:#1b5e20,stroke:#0a3010,color:#fff
+    classDef observability fill:#b84000,stroke:#7a2900,color:#fff
     TC["TracingContext\n(correlation ID, parent spans)"]:::core
     DC["DiagnosticsCollector\n(event aggregation)"]:::core
     OTE["OpenTelemetryExporter\n(Datadog, Honeycomb, Jaeger, etc.)"]:::observability
@@ -435,8 +435,8 @@ Extensibility system for custom transformations and downloaders.
 
 ```mermaid
 flowchart TD
-    classDef core fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef module fill:#f0fdf4,stroke:#22c55e,color:#1e293b
+    classDef core fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef module fill:#1b5e20,stroke:#0a3010,color:#fff
     PR["PluginRegistry\n← Global singleton"]:::core
     PR -->|registers| P["Plugin\n{manifest, transforms, downloaders}"]:::module
     P --> TPLG["TransformationPlugin"]:::module
@@ -498,15 +498,15 @@ The edge deployment target that exposes the compiler as an HTTP/WebSocket API.
 
 ```mermaid
 flowchart TD
-    classDef entry fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef router fill:#eff6ff,stroke:#3b82f6,color:#1e293b
-    classDef handler fill:#f0fdf4,stroke:#22c55e,color:#1e293b
-    classDef middleware fill:#fdf4ff,stroke:#a855f7,color:#1e293b
-    classDef infra fill:#f1f5f9,stroke:#64748b,color:#1e293b
-    classDef observability fill:#fff7ed,stroke:#f97316,color:#1e293b
-    classDef auth fill:#fef2f2,stroke:#ef4444,color:#1e293b
+    classDef entry fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef router fill:#1a237e,stroke:#0d1257,color:#fff
+    classDef handler fill:#1b5e20,stroke:#0a3010,color:#fff
+    classDef middleware fill:#6a1fa0,stroke:#4a1570,color:#fff
+    classDef infra fill:#37474f,stroke:#1a2327,color:#fff
+    classDef observability fill:#b84000,stroke:#7a2900,color:#fff
+    classDef auth fill:#880e4f,stroke:#560930,color:#fff
 
-    REQ["🌐 Incoming Request\n(HTTP / WebSocket / Queue / Cron)"]:::entry
+    REQ["Incoming Request\n(HTTP / WebSocket / Queue / Cron)"]:::entry
 
     subgraph MW["Middleware Stack"]
         CFAC["CF Access JWT\nverification"]:::auth
@@ -619,20 +619,20 @@ flowchart TD
 
 ```mermaid
 flowchart LR
-    classDef auth fill:#fef2f2,stroke:#ef4444,color:#1e293b
-    classDef security fill:#fdf4ff,stroke:#a855f7,color:#1e293b
-    classDef infra fill:#f1f5f9,stroke:#64748b,color:#1e293b
-    classDef handler fill:#f0fdf4,stroke:#22c55e,color:#1e293b
+    classDef auth fill:#880e4f,stroke:#560930,color:#fff
+    classDef security fill:#6a1fa0,stroke:#4a1570,color:#fff
+    classDef infra fill:#37474f,stroke:#1a2327,color:#fff
+    classDef handler fill:#1b5e20,stroke:#0a3010,color:#fff
 
-    REQ["📥 Request"]:::infra
+    REQ["Request"]:::infra
     CFAC["CF Access JWT\n(Zero Trust)"]:::auth
     CJW["Clerk JWT\n(user auth)"]:::auth
     RL["Rate Limit\n(tiered: anon/free/pro/admin)"]:::security
     TS["Turnstile\n(CAPTCHA, public endpoints)"]:::security
     BS["Body Size\n(1MB max)"]:::infra
     AA["Admin Auth\n(X-Admin-Key, admin routes)"]:::auth
-    H["🎯 Handler"]:::handler
-    RESP["📤 Response"]:::infra
+    H["Handler"]:::handler
+    RESP["Response"]:::infra
 
     REQ --> CFAC
     CFAC --> CJW
@@ -707,8 +707,8 @@ See [`frontend/ANGULAR_SIGNALS.md`](../../frontend/ANGULAR_SIGNALS.md) for Angul
 
 ```mermaid
 flowchart TD
-    classDef base fill:#eff6ff,stroke:#3b82f6,color:#1e293b
-    classDef error fill:#fef2f2,stroke:#ef4444,color:#1e293b
+    classDef base fill:#1a237e,stroke:#0d1257,color:#fff
+    classDef error fill:#c62828,stroke:#8e1c1c,color:#fff
     BE["BaseError (abstract)"]:::base
     BE --> CE["CompilationError\n— Compilation pipeline failures"]:::error
     BE --> NE["NetworkError\n— HTTP/connection failures"]:::error
@@ -726,8 +726,8 @@ The `ICompilerEvents` interface provides lifecycle hooks:
 
 ```mermaid
 flowchart TD
-    classDef event fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef hook fill:#f0fdf4,stroke:#22c55e,color:#1e293b
+    classDef event fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef hook fill:#1b5e20,stroke:#0a3010,color:#fff
     CS["Compilation Start"]:::event
     CS --> OSS["onSourceStart\n(per source)"]:::hook
     CS --> OSC["onSourceComplete\n(per source, with rule count & duration)"]:::hook
@@ -766,9 +766,9 @@ Both implement `ILogger` (extends `IDetailedLogger`): `info()`, `warn()`, `error
 
 ```mermaid
 flowchart LR
-    classDef input fill:#ecfdf5,stroke:#10b981,color:#1e293b
-    classDef core fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef output fill:#eff6ff,stroke:#3b82f6,color:#1e293b
+    classDef input fill:#1b5e20,stroke:#0a3010,color:#fff
+    classDef core fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef output fill:#1a237e,stroke:#0d1257,color:#fff
     CFG["config.json"]:::input --> CL["ConfigurationLoader"]:::core
     FS["Filter Sources\n(HTTP/FS)"]:::input --> FC
     CL --> FC["FilterCompiler"]:::core
@@ -781,13 +781,13 @@ flowchart LR
 
 ```mermaid
 sequenceDiagram
-    box rgb(236,253,245) Client
+    box Client
         participant Client
     end
-    box rgb(254,249,195) Worker
+    box Worker
         participant Worker
     end
-    box rgb(240,244,255) Sources
+    box Sources
         participant Sources
     end
 
@@ -807,16 +807,16 @@ sequenceDiagram
 
 ```mermaid
 sequenceDiagram
-    box rgb(236,253,245) Client
+    box Client
         participant Client
     end
-    box rgb(254,249,195) Worker
+    box Worker
         participant Worker
     end
-    box rgb(253,244,255) Queue
+    box Queue
         participant Queue
     end
-    box rgb(240,253,244) Consumer
+    box Consumer
         participant Consumer
     end
 
@@ -836,23 +836,23 @@ sequenceDiagram
 ## Deployment Architecture
 
 ```mermaid
-graph TD
-    classDef client fill:#ecfdf5,stroke:#10b981,color:#1e293b
-    classDef edge fill:#fef9c3,stroke:#ca8a04,color:#1e293b
-    classDef worker fill:#eff6ff,stroke:#3b82f6,color:#1e293b
-    classDef storage fill:#fdf4ff,stroke:#a855f7,color:#1e293b
-    classDef observability fill:#fff7ed,stroke:#f97316,color:#1e293b
-    classDef auth fill:#fef2f2,stroke:#ef4444,color:#1e293b
-    classDef external fill:#f1f5f9,stroke:#64748b,color:#1e293b
+flowchart TD
+    classDef client fill:#1b5e20,stroke:#0a3010,color:#fff
+    classDef edge fill:#b8860b,stroke:#8a6208,color:#fff
+    classDef worker fill:#1a237e,stroke:#0d1257,color:#fff
+    classDef storage fill:#6a1fa0,stroke:#4a1570,color:#fff
+    classDef observability fill:#b84000,stroke:#7a2900,color:#fff
+    classDef auth fill:#880e4f,stroke:#560930,color:#fff
+    classDef external fill:#37474f,stroke:#1a2327,color:#fff
 
-    subgraph CLIENTS["👥 Clients"]
+    subgraph CLIENTS["Clients"]
         BROWSER["Browser\n(Angular 21 SSR/PWA)"]:::client
         CICD["CI/CD Systems\n(GitHub Actions)"]:::client
         CLIUSER["CLI User\n(Deno)"]:::client
         AICLIENT["AI Agent\n(MCP Client)"]:::client
     end
 
-    subgraph CFN["☁️ Cloudflare Edge Network"]
+    subgraph CFN["Cloudflare Edge Network"]
         CFAC["Cloudflare Access\n(Zero Trust WAF)"]:::auth
         CFPAGES["Cloudflare Pages\n(Angular SSR)"]:::edge
 
@@ -876,7 +876,7 @@ graph TD
         BR["Browser Rendering\n(Playwright)"]:::edge
     end
 
-    subgraph EXTERNAL["🌍 External Services"]
+    subgraph EXTERNAL["External Services"]
         FLS["Filter List Sources\n(EasyList · uBlock · AdGuard)"]:::external
         CLERK["Clerk\n(Auth & User Mgmt)"]:::auth
         SENTRY["Sentry\n(Error Tracking)"]:::observability
