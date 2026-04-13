@@ -280,7 +280,8 @@ export async function handleAdminListAssignments(
 
     return withAdminTracing(logger, 'role.listAssignments', async () => {
         const filters: { user_id?: string; role_name?: string } = {};
-        const userId = params.searchParams.get('user_id');
+        // Accept both `user_id` and legacy `clerk_user_id` for backward compatibility.
+        const userId = params.searchParams.get('user_id') ?? params.searchParams.get('clerk_user_id');
         const roleName = params.searchParams.get('role_name');
         if (userId) filters.user_id = userId;
         if (roleName) filters.role_name = roleName;

@@ -24,6 +24,8 @@ CREATE INDEX idx_admin_roles_active ON admin_roles(is_active);
 
 -- ---------------------------------------------------------------------------
 -- 2. Admin Role Assignments — maps user IDs → admin roles
+-- NOTE: column `clerk_user_id` is renamed to `user_id` by migration 0003.
+--       This file is preserved as-is so the migration chain runs correctly.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS admin_role_assignments (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,

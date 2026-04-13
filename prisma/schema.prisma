@@ -39,8 +39,10 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  // Legacy Clerk integration field — kept nullable for existing rows; no longer populated.
-  // Can be dropped once all existing rows are confirmed to have Better Auth accounts.
+  // Legacy Clerk integration field — kept for historical rows; no longer populated.
+  // @unique constraint removed: Clerk is no longer the auth provider, and the column
+  // will be NULL for all Better Auth users (multiple NULLs violate a UNIQUE constraint).
+  // Can be dropped in a follow-up migration once confirmed no code reads this column.
   clerkUserId    String?   @map("clerk_user_id")
   tier           String    @default("free") // anonymous | free | pro | admin
   firstName      String?   @map("first_name")
