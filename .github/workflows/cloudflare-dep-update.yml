@@ -67,14 +67,29 @@ jobs:
               run: deno task ci:cloudflare-allowscripts-sync
 
             # ----------------------------------------------------------------
-            # Step 4 — Self-check: the ci:cloudflare-check task must pass
+            # Step 4 — Regenerate pnpm-lock.yaml so it stays in sync with the
+            #          updated package.json version pins.
+            # ----------------------------------------------------------------
+            - name: Setup pnpm
+              uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
+
+            - name: Setup Node.js
+              uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+              with:
+                  node-version: '22'
+
+            - name: Regenerate pnpm-lock.yaml
+              run: pnpm install
+
+            # ----------------------------------------------------------------
+            # Step 5 — Self-check: the ci:cloudflare-check task must pass
             #          before we even attempt to open a PR.
             # ----------------------------------------------------------------
             - name: Verify ci:cloudflare-check passes
               run: deno task ci:cloudflare-check
 
             # ----------------------------------------------------------------
-            # Step 5 — If there are no file changes, log and stop.
+            # Step 6 — If there are no file changes, log and stop.
             #          Otherwise, commit to a fresh branch and open a PR.
             # ----------------------------------------------------------------
             - name: Check for changes
@@ -139,6 +154,7 @@ jobs:
                   - \`.github/workflows/sentry-worker.yml\` — inline wrangler invocation
                   - \`deno.lock\` — regenerated with new resolutions
                   - \`deno.json allowScripts\` — synced with new workerd versions
+                  - \`pnpm-lock.yaml\` — regenerated with new resolutions
 
                   \`deno task ci:cloudflare-check\` was verified passing before this PR was opened.
 

@@ -380,6 +380,31 @@ jobs:
             - name: Run ZTA security checks
               uses: ./.github/actions/zta-checks
 
+    lockfile-check:
+        name: Lockfile Sync Check
+        runs-on: ubuntu-latest
+        timeout-minutes: 10
+        permissions:
+            contents: read
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: Setup pnpm and Node.js
+              uses: ./.github/actions/setup-pnpm-node
+              with:
+                  node-version: '22'
+
+            - name: Check pnpm lockfile is in sync
+              run: |
+                  pnpm install --frozen-lockfile --ignore-scripts || {
+                      echo "❌ pnpm-lock.yaml is out of sync with package.json!"
+                      echo ""
+                      echo "Run 'pnpm install' locally, commit the updated pnpm-lock.yaml, and push again."
+                      echo "Tip: run 'deno task setup:hooks' to catch drift automatically before every push."
+                      exit 1
+                  }
+                  echo "✅ pnpm-lock.yaml is in sync with package.json"
+
     ci-gate:
         name: CI Gate
         runs-on: ubuntu-latest
@@ -403,6 +428,7 @@ jobs:
             # zta-lint uses path filters and will be skipped when no relevant files change;
             # the gate's Python logic treats 'skipped' as passing, so this is safe to include.
             - zta-lint
+            - lockfile-check
         if: ${{ always() && !cancelled() }}
         steps:
             - name: Check all jobs passed
