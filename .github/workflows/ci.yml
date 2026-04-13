@@ -396,7 +396,7 @@ jobs:
 
             - name: Check pnpm lockfile is in sync
               run: |
-                  pnpm install --frozen-lockfile --ignore-scripts || {
+                  pnpm install --frozen-lockfile --lockfile-only --ignore-scripts || {
                       echo "❌ pnpm-lock.yaml is out of sync with package.json!"
                       echo ""
                       echo "Run 'pnpm install' locally, commit the updated pnpm-lock.yaml, and push again."
