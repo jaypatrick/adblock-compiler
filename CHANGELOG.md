@@ -76,6 +76,45 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.85.0] - 2026-04-13
+
+### Added- workflow visualization layer — diagram builder + REST endpoints (#1538)
+
+### Fixed
+
+- regenerate pnpm-lock.yaml to sync wrangler ^4.82.1 specifier (#1557)
+- mdbook Pages deploy --no-config + 30s retry; container registry token probe uses /user/tokens/verify (#1543)
+- Mermaid diagram errors, dark theme compatibility, and mdhelp scroll reset (#1540)
+- harden container registry token validation in deploy-worker action (#1536)
+- probe containers/images endpoint in token validation step
+- add cloudflare-containers-token input and pre-flight token validation to deploy-worker action
+- **worker**: fix sentryItems type annotation and deno fmt violation from d167d09
+- **worker**: add request context and extra fields to Sentry envelope items
+- **worker**: fix captureSentryException → captureSentryExceptions in comments
+- **worker**: apply reviewer feedback - DSN path-segment parsing, exception batching, envelope unit tests
+- **worker**: address code review - push Sentry calls to promises array and validate DSN fields
+- **worker**: replace @sentry/cloudflare SDK with inline envelope API in tail worker to reduce bundle size
+- authenticate Docker with Cloudflare registry and pass --account-id to wrangler deploy
+- workers-types regex caret handling; safe nullglob log lookup in deploy action
+- remove core-js-pure@3.49.0 from allowScripts — postinstall requires node, not available in Deno Docker build
+- move clearTimeout to finally block; rename lock params to lockFile
+- apply review feedback — fetchLatestVersion timeout/retry, readDenoLock hard-fail, workerd check vs lock only, core-js-pure@3.49.0, examples wrangler bump
+- regenerate pnpm-lock.yaml after wrangler bump to resolve frozen lockfile mismatch
+- address code review feedback on cloudflare-upgrade-check.ts and ci.yml
+- comprehensive Cloudflare deployment fix - bump wrangler/workerd, add retries, add CI check
+- use as unknown as DurableObjectFacets to avoid TS2589 deep instantiation
+- use as DurableObjectState to prevent TS2589 from outer satisfies check
+- use as DurableObjectFacets to avoid TS2589 deep type instantiation
+- use satisfies for DurableObjectFacets and DurableObjectState in mock
+- stub DurableObjectFacets in test mock and bump wrangler to ^4.81.1
+- cast DurableObjectState mock through unknown for workers-types 4.20260408.1 compat
+- delete deno.lock so Deno regenerates it with wrangler 4.81.1 + workerd 1.20260409.1
+- upgrade wrangler lock to 4.81.1 and allow workerd 1.20260405.1 + 1.20260409.1 scripts
+- **ci**: pin npm:wrangler@^4.81.0 in all deno task wrangler* entries
+- bump wrangler lower bound to ^4.81.0 and use deno task wrangler in deploy step
+
+
 ## [0.84.0] - 2026-04-11
 
 ### Added- **trpc**: TrpcClientService — typed client + query/createResource/createMutation helpers
