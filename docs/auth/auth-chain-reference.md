@@ -46,23 +46,32 @@ flowchart TD
     APIKEY --> HASH["SHA-256 hash token"]
     HASH --> LOOKUP["Query api_keys table<br/>via Hyperdrive"]
     LOOKUP -->|"Found + valid"| TIER["Resolve owner tier<br/>from users table"]
-    TIER --> AUTH_OK["✅ Authenticated<br/>(api-key method)"]
-    LOOKUP -->|"Not found / expired / revoked"| REJECT["❌ 401 Rejected"]
+    TIER --> AUTH_OK["Authenticated<br/>(api-key method)"]
+    LOOKUP -->|"Not found / expired / revoked"| REJECT["401 Rejected"]
 
     BA -->|"Valid session<br/>(cookie or bearer)"| ZTA["Run Token Validators<br/>(ZTA checks)"]
-    ZTA -->|"Pass"| BA_OK["✅ Authenticated<br/>(better-auth method)"]
-    ZTA -->|"Fail"| REJECT2["❌ 401 Rejected"]
+    ZTA -->|"Pass"| BA_OK["Authenticated<br/>(better-auth method)"]
+    ZTA -->|"Fail"| REJECT2["401 Rejected"]
 
-    BA -->|"No credentials<br/>(no error)"| ANON["👤 Anonymous<br/>(10 req/min)"]
-    BA -->|"Error<br/>(bad token)"| REJECT3["❌ 401 Rejected"]
+    BA -->|"No credentials<br/>(no error)"| CLERK_CHECK{"Clerk fallback<br/>enabled?"}
+    BA -->|"Error<br/>(bad token)"| REJECT3["401 Rejected"]
 
-    style REQ fill:#e8f4f8,stroke:#2196F3
-    style AUTH_OK fill:#e8f5e9,stroke:#4CAF50
-    style BA_OK fill:#e8f5e9,stroke:#4CAF50
-    style ANON fill:#f5f5f5,stroke:#9E9E9E
-    style REJECT fill:#ffebee,stroke:#F44336
-    style REJECT2 fill:#ffebee,stroke:#F44336
-    style REJECT3 fill:#ffebee,stroke:#F44336
+    CLERK_CHECK -->|"Yes + JWT token"| CLERK["Clerk JWT<br/>(Fallback Provider)"]
+    CLERK_CHECK -->|"No or not JWT"| ANON["Anonymous<br/>(10 req/min)"]
+
+    CLERK -->|"Valid JWT"| CLERK_OK["Authenticated<br/>(clerk-jwt method)<br/>Deprecation warning logged"]
+    CLERK -->|"Invalid JWT"| REJECT4["401 Rejected"]
+    CLERK -->|"No credentials"| ANON
+
+    style REQ fill:#37474f,stroke:#263238,color:#fff
+    style AUTH_OK fill:#1b5e20,stroke:#0a3010,color:#fff
+    style BA_OK fill:#1b5e20,stroke:#0a3010,color:#fff
+    style CLERK_OK fill:#b84000,stroke:#7a2900,color:#fff
+    style ANON fill:#37474f,stroke:#263238,color:#fff
+    style REJECT fill:#c62828,stroke:#8e1c1c,color:#fff
+    style REJECT2 fill:#c62828,stroke:#8e1c1c,color:#fff
+    style REJECT3 fill:#c62828,stroke:#8e1c1c,color:#fff
+    style REJECT4 fill:#c62828,stroke:#8e1c1c,color:#fff
 ```
 
 ---
@@ -205,6 +214,52 @@ if (scopeCheck) return scopeCheck; // 403
 | `better-auth` | **Bypassed** — session-authenticated users own the account |
 | `api-key` | **Enforced** — scopes from the `api_keys.scopes` array |
 | `anonymous` | **Rejected** — anonymous users have no scopes |
+
+---
+
+## Migration Timeline
+
+The Clerk → Better Auth migration follows a phased approach:
+
+```mermaid
+gantt
+    title Clerk → Better Auth Migration
+    dateFormat YYYY-MM-DD
+    axisFormat %Y-%m-%d
+
+    section Phase 1: Foundation
+    Prisma adapter + Better Auth setup     :done, p1a, 2025-03-01, 14d
+    Auth chain with dual providers         :done, p1b, after p1a, 7d
+    Feature flags added                    :done, p1c, after p1b, 3d
+
+    section Phase 2: Client Migration
+    Frontend Better Auth forms             :active, p2a, 2025-03-25, 14d
+    CLI auth migration                     :p2b, after p2a, 7d
+    Monitor Clerk fallback usage           :p2c, after p2a, 21d
+
+    section Phase 3: Clerk Removal
+    Set DISABLE_CLERK_FALLBACK=true        :p3a, after p2c, 3d
+    Set DISABLE_CLERK_WEBHOOKS=true        :p3b, after p3a, 3d
+    Remove Clerk code + dependencies       :p3c, after p3b, 7d
+    Delete Clerk project                   :p3d, after p3c, 3d
+```
+
+### Current State
+
+- **Better Auth** is the primary provider and handles all new sign-ups
+- **Clerk fallback** remains enabled for clients not yet migrated
+- **Clerk webhooks** still sync user data to the PostgreSQL `users` table
+- The deprecation warning in logs tracks how many requests still use Clerk
+
+### Monitoring Fallback Usage
+
+To check whether any clients still use Clerk, search Worker logs for:
+
+```
+[auth] Request authenticated via DEPRECATED Clerk fallback
+```
+
+When this message stops appearing, it's safe to proceed to Phase 3.
 
 ---
 

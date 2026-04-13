@@ -141,14 +141,14 @@ flowchart TB
     BCW --> KV_METRICS
     HMW --> D1
 
-    style CW fill:#e1f5ff,stroke:#0288d1
-    style BCW fill:#e1f5ff,stroke:#0288d1
-    style CWW fill:#e1f5ff,stroke:#0288d1
-    style HMW fill:#e1f5ff,stroke:#0288d1
-    style STD_Q fill:#c8e6c9,stroke:#388e3c
-    style HIGH_Q fill:#fff9c4,stroke:#fbc02d
-    style DLQ fill:#ffcdd2,stroke:#d32f2f
-    style KV_CACHE fill:#e1bee7,stroke:#7b1fa2
+    style CW fill:#1a237e,color:#fff,stroke:#0288d1
+    style BCW fill:#1a237e,color:#fff,stroke:#0288d1
+    style CWW fill:#1a237e,color:#fff,stroke:#0288d1
+    style HMW fill:#1a237e,color:#fff,stroke:#0288d1
+    style STD_Q fill:#1b5e20,color:#fff,stroke:#388e3c
+    style HIGH_Q fill:#b8860b,color:#fff,stroke:#fbc02d
+    style DLQ fill:#c62828,color:#fff,stroke:#d32f2f
+    style KV_CACHE fill:#6a1fa0,color:#fff,stroke:#7b1fa2
 ```
 
 ### Processing Path Comparison
@@ -234,10 +234,10 @@ flowchart TB
     AE --> KV_METRICS
     KV_METRICS --> METRICS_API
 
-    style COMP_WF fill:#e3f2fd,stroke:#1976d2
-    style BATCH_WF fill:#e8f5e9,stroke:#388e3c
-    style CACHE_WF fill:#fff8e1,stroke:#f57c00
-    style HEALTH_WF fill:#fce4ec,stroke:#c2185b
+    style COMP_WF fill:#1a237e,color:#fff,stroke:#1976d2
+    style BATCH_WF fill:#1b5e20,color:#fff,stroke:#388e3c
+    style CACHE_WF fill:#b8860b,color:#fff,stroke:#f57c00
+    style HEALTH_WF fill:#880e4f,color:#fff,stroke:#c2185b
 ```
 
 ### CompilationWorkflow
@@ -300,12 +300,12 @@ flowchart TD
     RETURN_ERROR --> END([Workflow End])
     RETURN_SUCCESS --> END
 
-    style V_START fill:#e3f2fd
-    style C_START fill:#fff8e1
-    style CACHE_START fill:#e8f5e9
-    style M_START fill:#f3e5f5
-    style RETURN_SUCCESS fill:#c8e6c9
-    style RETURN_ERROR fill:#ffcdd2
+    style V_START fill:#1a237e,color:#fff
+    style C_START fill:#b8860b,color:#fff
+    style CACHE_START fill:#1b5e20,color:#fff
+    style M_START fill:#6a1fa0,color:#fff
+    style RETURN_SUCCESS fill:#1b5e20,color:#fff
+    style RETURN_ERROR fill:#c62828,color:#fff
 ```
 
 **Retry Configuration:**
@@ -375,8 +375,7 @@ flowchart TD
 
         C1_SETTLE --> C1_DONE[Emit: workflow:step:completed<br/>chunkSuccess, chunkFailed]
         C1_DONE --> CHUNK2{More Chunks?}
-        CHUNK2 -->|Yes| NEXT_CHUNK[Process Next Chunk]
-        NEXT_CHUNK --> C1_START
+        CHUNK2 -->|Yes| C1_START
         CHUNK2 -->|No| METRICS_STEP
     end
 
@@ -390,16 +389,16 @@ flowchart TD
     BATCH_ERROR --> END([Workflow End])
     RETURN --> END
 
-    style CHUNK1 fill:#e3f2fd
-    style C1_P1 fill:#fff8e1
-    style C1_P2 fill:#fff8e1
-    style C1_P3 fill:#fff8e1
-    style C1_S1 fill:#c8e6c9
-    style C1_S2 fill:#c8e6c9
-    style C1_S3 fill:#c8e6c9
-    style C1_F1 fill:#ffcdd2
-    style C1_F2 fill:#ffcdd2
-    style C1_F3 fill:#ffcdd2
+    style CHUNK1 fill:#1a237e,color:#fff
+    style C1_P1 fill:#b8860b,color:#fff
+    style C1_P2 fill:#b8860b,color:#fff
+    style C1_P3 fill:#b8860b,color:#fff
+    style C1_S1 fill:#1b5e20,color:#fff
+    style C1_S2 fill:#1b5e20,color:#fff
+    style C1_S3 fill:#1b5e20,color:#fff
+    style C1_F1 fill:#c62828,color:#fff
+    style C1_F2 fill:#c62828,color:#fff
+    style C1_F3 fill:#c62828,color:#fff
 ```
 
 **Crash Recovery Scenario:**
@@ -501,11 +500,11 @@ flowchart TD
     FINAL_EMIT --> RESULT[Return Warming Result]
     RESULT --> END([End])
 
-    style CRON fill:#fff9c4,stroke:#f57c00
-    style DEFAULT fill:#e8f5e9
-    style CHUNK1 fill:#e3f2fd
-    style W1_WAIT1 fill:#f5f5f5
-    style CHUNK_WAIT fill:#f5f5f5
+    style CRON fill:#b8860b,color:#fff,stroke:#f57c00
+    style DEFAULT fill:#1b5e20,color:#fff
+    style CHUNK1 fill:#1a237e,color:#fff
+    style W1_WAIT1 fill:#37474f,color:#fff
+    style CHUNK_WAIT fill:#37474f,color:#fff
 ```
 
 **Warming Schedule:**
@@ -626,12 +625,12 @@ flowchart TD
     EMIT_COMPLETE --> RETURN[Return Health Report]
     RETURN --> END([End])
 
-    style CRON fill:#fff9c4
-    style MARK_HEALTHY fill:#c8e6c9
-    style MARK_UNHEALTHY fill:#ffcdd2
-    style MARK_SLOW fill:#ffcdd2
-    style MARK_LOW fill:#ffcdd2
-    style NEED_ALERT fill:#ffcdd2
+    style CRON fill:#b8860b,color:#fff
+    style MARK_HEALTHY fill:#1b5e20,color:#fff
+    style MARK_UNHEALTHY fill:#c62828,color:#fff
+    style MARK_SLOW fill:#c62828,color:#fff
+    style MARK_LOW fill:#c62828,color:#fff
+    style NEED_ALERT fill:#c62828,color:#fff
 ```
 
 **Health Check Response Structure:**
@@ -722,9 +721,9 @@ flowchart LR
         API --> CLIENT[Client Polling]
     end
 
-    style E6 fill:#c8e6c9
-    style E7 fill:#ffcdd2
-    style E4 fill:#ffcdd2
+    style E6 fill:#1b5e20,color:#fff
+    style E7 fill:#c62828,color:#fff
+    style E4 fill:#c62828,color:#fff
 ```
 
 **Event Polling Sequence:**
@@ -901,16 +900,16 @@ flowchart TD
     
     LogBatchStats --> End[End Queue Processing]
     
-    style ProcessCompile fill:#e1f5ff
-    style ProcessBatch fill:#e1f5ff
-    style ProcessWarm fill:#e1f5ff
-    style AckCompile fill:#c8e6c9
-    style AckBatch fill:#c8e6c9
-    style AckWarm fill:#c8e6c9
-    style AckUnknown fill:#fff9c4
-    style RetryCompile fill:#ffcdd2
-    style RetryBatch fill:#ffcdd2
-    style RetryWarm fill:#ffcdd2
+    style ProcessCompile fill:#1a237e,color:#fff
+    style ProcessBatch fill:#1a237e,color:#fff
+    style ProcessWarm fill:#1a237e,color:#fff
+    style AckCompile fill:#1b5e20,color:#fff
+    style AckBatch fill:#1b5e20,color:#fff
+    style AckWarm fill:#1b5e20,color:#fff
+    style AckUnknown fill:#b8860b,color:#fff
+    style RetryCompile fill:#c62828,color:#fff
+    style RetryBatch fill:#c62828,color:#fff
+    style RetryWarm fill:#c62828,color:#fff
 ```
 
 ### Priority Queue Routing
@@ -947,11 +946,11 @@ flowchart LR
     
     Process --> Result[Compilation Complete]
     
-    style HighQueue fill:#ff9800
-    style StandardQueue fill:#4caf50
-    style HighConsumer fill:#ffe0b2
-    style StandardConsumer fill:#c8e6c9
-    style Result fill:#e1f5ff
+    style HighQueue fill:#b84000,color:#fff
+    style StandardQueue fill:#1b5e20,color:#fff
+    style HighConsumer fill:#b84000,color:#fff
+    style StandardConsumer fill:#1b5e20,color:#fff
+    style Result fill:#1a237e,color:#fff
 ```
 
 ### Batch Processing Flow
@@ -1016,18 +1015,18 @@ flowchart TD
     RetryBatch --> End[End]
     AckBatch --> End
     
-    style ParallelExec fill:#bbdefb
-    style Compile1 fill:#e1f5ff
-    style Compile2 fill:#e1f5ff
-    style Compile3 fill:#e1f5ff
-    style Success1 fill:#c8e6c9
-    style Success2 fill:#c8e6c9
-    style Success3 fill:#c8e6c9
-    style Fail1 fill:#ffcdd2
-    style Fail2 fill:#ffcdd2
-    style Fail3 fill:#ffcdd2
-    style ThrowError fill:#f44336
-    style AckBatch fill:#4caf50
+    style ParallelExec fill:#1a237e,color:#fff
+    style Compile1 fill:#1a237e,color:#fff
+    style Compile2 fill:#1a237e,color:#fff
+    style Compile3 fill:#1a237e,color:#fff
+    style Success1 fill:#1b5e20,color:#fff
+    style Success2 fill:#1b5e20,color:#fff
+    style Success3 fill:#1b5e20,color:#fff
+    style Fail1 fill:#c62828,color:#fff
+    style Fail2 fill:#c62828,color:#fff
+    style Fail3 fill:#c62828,color:#fff
+    style ThrowError fill:#c62828,color:#fff
+    style AckBatch fill:#1b5e20,color:#fff
 ```
 
 ### Cache Warming Flow
@@ -1094,19 +1093,19 @@ flowchart TD
     Success --> End[End]
     Retry --> End
     
-    style Process1A fill:#e1f5ff
-    style Process1B fill:#e1f5ff
-    style Process1C fill:#e1f5ff
-    style Cache1A fill:#fff9c4
-    style Cache1B fill:#fff9c4
-    style Cache1C fill:#fff9c4
-    style Inc1A fill:#c8e6c9
-    style Inc1B fill:#c8e6c9
-    style Inc1C fill:#c8e6c9
-    style Fail1A fill:#ffcdd2
-    style Fail1B fill:#ffcdd2
-    style Fail1C fill:#ffcdd2
-    style Success fill:#4caf50
+    style Process1A fill:#1a237e,color:#fff
+    style Process1B fill:#1a237e,color:#fff
+    style Process1C fill:#1a237e,color:#fff
+    style Cache1A fill:#b8860b,color:#fff
+    style Cache1B fill:#b8860b,color:#fff
+    style Cache1C fill:#b8860b,color:#fff
+    style Inc1A fill:#1b5e20,color:#fff
+    style Inc1B fill:#1b5e20,color:#fff
+    style Inc1C fill:#1b5e20,color:#fff
+    style Fail1A fill:#c62828,color:#fff
+    style Fail1B fill:#c62828,color:#fff
+    style Fail1C fill:#c62828,color:#fff
+    style Success fill:#1b5e20,color:#fff
 ```
 
 ---
@@ -1179,13 +1178,13 @@ flowchart TD
     ReturnResult --> End[End]
     ThrowError --> End
     
-    style ParallelSources fill:#bbdefb
-    style Source1 fill:#e1f5ff
-    style Source2 fill:#e1f5ff
-    style Source3 fill:#e1f5ff
-    style ApplyTransforms fill:#fff9c4
-    style ReturnResult fill:#c8e6c9
-    style ThrowError fill:#ffcdd2
+    style ParallelSources fill:#1a237e,color:#fff
+    style Source1 fill:#1a237e,color:#fff
+    style Source2 fill:#1a237e,color:#fff
+    style Source3 fill:#1a237e,color:#fff
+    style ApplyTransforms fill:#b8860b,color:#fff
+    style ReturnResult fill:#1b5e20,color:#fff
+    style ThrowError fill:#c62828,color:#fff
 ```
 
 ### Source Compilation
@@ -1270,17 +1269,17 @@ flowchart TD
         T11 --> OUTPUT[Transformed Rules Array]
     end
 
-    style T1 fill:#e3f2fd
-    style T2 fill:#e3f2fd
-    style T3 fill:#e3f2fd
-    style T4 fill:#fff8e1
-    style T5 fill:#fff8e1
-    style T6 fill:#fff8e1
-    style T7 fill:#fce4ec
-    style T8 fill:#fce4ec
-    style T9 fill:#e8f5e9
-    style T10 fill:#e8f5e9
-    style T11 fill:#e8f5e9
+    style T1 fill:#1a237e,color:#fff
+    style T2 fill:#1a237e,color:#fff
+    style T3 fill:#1a237e,color:#fff
+    style T4 fill:#b8860b,color:#fff
+    style T5 fill:#b8860b,color:#fff
+    style T6 fill:#b8860b,color:#fff
+    style T7 fill:#880e4f,color:#fff
+    style T8 fill:#880e4f,color:#fff
+    style T9 fill:#1b5e20,color:#fff
+    style T10 fill:#1b5e20,color:#fff
+    style T11 fill:#1b5e20,color:#fff
 ```
 
 **Transformation Details:**
@@ -1354,9 +1353,9 @@ flowchart TD
         SLOWER --> SET
     end
 
-    style PLAIN fill:#c8e6c9
-    style REGEX fill:#fff9c4
-    style SET fill:#e1f5ff
+    style PLAIN fill:#1b5e20,color:#fff
+    style REGEX fill:#b8860b,color:#fff
+    style SET fill:#1a237e,color:#fff
 ```
 
 ### Request Deduplication
@@ -1400,11 +1399,11 @@ flowchart TD
     ReturnResult --> End[End]
     ReturnCached --> End
     
-    style CheckPending fill:#fff9c4
-    style WaitPending fill:#ffe0b2
-    style AddPending fill:#e1f5ff
-    style ReturnCached fill:#c8e6c9
-    style ReturnResult fill:#c8e6c9
+    style CheckPending fill:#b8860b,color:#fff
+    style WaitPending fill:#b84000,color:#fff
+    style AddPending fill:#1a237e,color:#fff
+    style ReturnCached fill:#1b5e20,color:#fff
+    style ReturnResult fill:#1b5e20,color:#fff
 ```
 
 ---
@@ -1445,9 +1444,9 @@ flowchart TD
     AllowRequest --> End[End]
     DenyRequest --> End
     
-    style AllowRequest fill:#c8e6c9
-    style DenyRequest fill:#ffcdd2
-    style StartWindow fill:#e1f5ff
+    style AllowRequest fill:#1b5e20,color:#fff
+    style DenyRequest fill:#c62828,color:#fff
+    style StartWindow fill:#1a237e,color:#fff
 ```
 
 ### Caching Strategy
@@ -1480,10 +1479,10 @@ flowchart LR
     
     LogCache -.->|Later Request| Request
     
-    style Compress fill:#fff9c4
-    style StoreKV fill:#e1f5ff
-    style ReturnCached fill:#c8e6c9
-    style CacheMiss fill:#ffcdd2
+    style Compress fill:#b8860b,color:#fff
+    style StoreKV fill:#1a237e,color:#fff
+    style ReturnCached fill:#1b5e20,color:#fff
+    style CacheMiss fill:#c62828,color:#fff
 ```
 
 ### Error Handling & Retry
@@ -1589,9 +1588,9 @@ flowchart TD
     MetricsKV --> Dashboard[Cloudflare Dashboard]
     TailWorker --> ExternalMonitoring[External Monitoring<br/>Datadog, Splunk, etc.]
     
-    style MetricsKV fill:#e1f5ff
-    style Logs fill:#fff9c4
-    style TailWorker fill:#ffe0b2
+    style MetricsKV fill:#1a237e,color:#fff
+    style Logs fill:#b8860b,color:#fff
+    style TailWorker fill:#b84000,color:#fff
 ```
 
 ---
