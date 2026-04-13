@@ -23,13 +23,13 @@ CREATE TABLE IF NOT EXISTS admin_roles (
 CREATE INDEX idx_admin_roles_active ON admin_roles(is_active);
 
 -- ---------------------------------------------------------------------------
--- 2. Admin Role Assignments — maps Clerk user IDs → admin roles
+-- 2. Admin Role Assignments — maps user IDs → admin roles
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS admin_role_assignments (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
     clerk_user_id   TEXT    NOT NULL UNIQUE,     -- one role per user; new assignment replaces old
     role_name       TEXT    NOT NULL,
-    assigned_by     TEXT    NOT NULL,          -- clerk_user_id of the assigner
+    assigned_by     TEXT    NOT NULL,          -- user_id of the assigner
     assigned_at     TEXT    NOT NULL DEFAULT (datetime('now')),
     expires_at      TEXT,                      -- NULL = never expires
     FOREIGN KEY (role_name) REFERENCES admin_roles(role_name) ON DELETE CASCADE
@@ -44,7 +44,7 @@ CREATE INDEX idx_role_assignments_expiry ON admin_role_assignments(expires_at);
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS admin_audit_logs (
     id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    actor_id      TEXT    NOT NULL,            -- clerk_user_id of the admin
+    actor_id      TEXT    NOT NULL,            -- user_id of the admin
     actor_email   TEXT,                        -- denormalized for readability
     action        TEXT    NOT NULL,            -- e.g. 'tier.update', 'flag.create', 'user.suspend'
     resource_type TEXT    NOT NULL,            -- e.g. 'tier_config', 'feature_flag', 'user'
@@ -130,10 +130,10 @@ CREATE TABLE IF NOT EXISTS feature_flags (
     rollout_percentage  INTEGER NOT NULL DEFAULT 100,  -- 0-100
     -- JSON array of UserTier values that this flag applies to
     target_tiers        TEXT    NOT NULL DEFAULT '[]',
-    -- JSON array of clerk_user_ids for user-level targeting
+    -- JSON array of user IDs for user-level targeting
     target_users        TEXT    NOT NULL DEFAULT '[]',
     description         TEXT    NOT NULL DEFAULT '',
-    created_by          TEXT,                  -- clerk_user_id
+    created_by          TEXT,                  -- user_id
     created_at          TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at          TEXT    NOT NULL DEFAULT (datetime('now'))
 );
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS admin_announcements (
     active_from TEXT,                             -- NULL = immediately active
     active_until TEXT,                            -- NULL = no expiry
     is_active   INTEGER NOT NULL DEFAULT 1,
-    created_by  TEXT,                             -- clerk_user_id
+    created_by  TEXT,                             -- user_id
     created_at  TEXT    NOT NULL DEFAULT (datetime('now')),
     updated_at  TEXT    NOT NULL DEFAULT (datetime('now'))
 );
