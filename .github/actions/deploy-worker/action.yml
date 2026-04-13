@@ -133,13 +133,12 @@ runs:
           env:
               CONTAINERS_TOKEN: ${{ inputs.cloudflare-containers-token != '' && inputs.cloudflare-containers-token || env.CLOUDFLARE_API_TOKEN }}
               TOKEN_SOURCE: ${{ inputs.cloudflare-containers-token != '' && 'CLOUDFLARE_CONTAINERS_TOKEN' || 'CLOUDFLARE_API_TOKEN' }}
-              CLOUDFLARE_ACCOUNT_ID: ${{ inputs.cloudflare-account-id }}
           run: |
-              echo "Validating Cloudflare token against account endpoint (using $TOKEN_SOURCE)..."
+              echo "Validating Cloudflare token via /user/tokens/verify (using $TOKEN_SOURCE)..."
               RESPONSE=$(curl -sS --connect-timeout 10 --max-time 30 \
                 -o /dev/null -w "%{http_code}" \
                 -H "Authorization: Bearer $CONTAINERS_TOKEN" \
-                "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID")
+                "https://api.cloudflare.com/client/v4/user/tokens/verify")
               CURL_EXIT=$?
 
               if [ $CURL_EXIT -ne 0 ]; then
@@ -155,21 +154,6 @@ runs:
 
               if [ "$RESPONSE" = "200" ]; then
                   echo "✅ Token validated successfully (HTTP 200)"
-              elif [ "$RESPONSE" = "403" ]; then
-                  echo ""
-                  echo "❌ Token ($TOKEN_SOURCE) lacks required permission (HTTP 403 — Forbidden)."
-                  echo ""
-                  echo "   The token does not have 'Account > Cloudflare Containers:Edit'."
-                  echo ""
-                  echo "   Recommended fix (ZTA-aligned):"
-                  echo "   1. Go to: https://dash.cloudflare.com/profile/api-tokens"
-                  echo "   2. Create a new token with ONLY: Account > Cloudflare Containers:Edit"
-                  echo "   3. Add it as GitHub secret: CLOUDFLARE_CONTAINERS_TOKEN"
-                  echo "      (Settings → Secrets and variables → Actions → New repository secret)"
-                  echo "   4. The ci.yml workflow already passes this secret to the action — no"
-                  echo "      workflow file changes are needed once the secret exists."
-                  echo ""
-                  exit 1
               elif [ "$RESPONSE" = "401" ]; then
                   echo ""
                   echo "❌ Token ($TOKEN_SOURCE) is invalid or has expired (HTTP 401 — Unauthorized)."

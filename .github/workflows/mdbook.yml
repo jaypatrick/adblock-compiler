@@ -89,7 +89,7 @@ jobs:
           # --commit-dirty=true: required because regenerated OpenAPI/Postman docs modify
           # in-tree files (docs/api/, docs/postman/) before this step runs.
           # --no-config: prevents wrangler from picking up the root wrangler.toml (Worker config).
-          # Retry with 30s initial delay (doubles each attempt: 30s → 60s → 120s).
+          # Retry with 30s initial delay (3 total attempts; sleeps: 30s → 60s).
           retry_command 3 30 deno task wrangler pages deploy book \
             --project-name="${{ env.CLOUDFLARE_PAGES_PROJECT }}" \
             --branch=main \
