@@ -28,7 +28,7 @@ export const serverRoutes: ServerRoute[] = [
         renderMode: RenderMode.Prerender,
     },
     {
-        // Auth routes: Clerk SDK is browser-only (loads JS, mounts UI into DOM).
+        // Auth routes: auth is browser-only (Better Auth loads session from cookies).
         // CSR is the only viable mode — no server rendering possible.
         path: 'sign-in',
         renderMode: RenderMode.Client,
@@ -57,7 +57,7 @@ export const serverRoutes: ServerRoute[] = [
         renderMode: RenderMode.Client,
     },
     {
-        // API keys: user-specific, requires Clerk auth — CSR only (no SSR for auth UI).
+        // API keys: user-specific, requires Better Auth — CSR only (no SSR for auth UI).
         path: 'api-keys',
         renderMode: RenderMode.Client,
     },

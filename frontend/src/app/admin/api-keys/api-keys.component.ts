@@ -29,7 +29,6 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 interface AdminApiKey {
     readonly id: string;
     readonly keyPrefix: string;
-    readonly clerkUserId: string;
     readonly name: string;
     readonly scopes: string[];
     readonly rateLimitPerMinute: number;
@@ -106,8 +105,8 @@ type KeyStatus = 'all' | 'active' | 'revoked' | 'expired';
         <mat-card-content>
             <div class="filters">
                 <mat-form-field appearance="outline" class="filter-field">
-                    <mat-label>Search by prefix or owner</mat-label>
-                    <input matInput [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()" placeholder="abc_ or user_..." />
+                    <mat-label>Search by prefix or name</mat-label>
+                    <input matInput [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()" placeholder="abc_ or key-name..." />
                     <mat-icon matSuffix aria-hidden="true">search</mat-icon>
                 </mat-form-field>
 
@@ -139,13 +138,6 @@ type KeyStatus = 'all' | 'active' | 'revoked' | 'expired';
                         <th mat-header-cell *matHeaderCellDef>Prefix</th>
                         <td mat-cell *matCellDef="let row">
                             <code class="key-prefix">{{ row.keyPrefix }}</code>
-                        </td>
-                    </ng-container>
-
-                    <ng-container matColumnDef="clerkUserId">
-                        <th mat-header-cell *matHeaderCellDef>Owner</th>
-                        <td mat-cell *matCellDef="let row">
-                            <span class="owner-id">{{ row.clerkUserId }}</span>
                         </td>
                     </ng-container>
 
@@ -216,10 +208,6 @@ type KeyStatus = 'all' | 'active' | 'revoked' | 'expired';
                         <div class="detail-row">
                             <span class="detail-label">Name</span>
                             <span class="detail-value">{{ detailKey()!.name }}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Owner</span>
-                            <code class="detail-value">{{ detailKey()!.clerkUserId }}</code>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Prefix</span>
@@ -354,7 +342,7 @@ export class ApiKeysComponent {
     readonly detailKey = signal<AdminApiKey | null>(null);
     readonly revokingKey = signal<AdminApiKey | null>(null);
 
-    readonly displayedColumns = ['keyPrefix', 'clerkUserId', 'name', 'scopes', 'status', 'createdAt', 'actions'];
+    readonly displayedColumns = ['keyPrefix', 'name', 'scopes', 'status', 'createdAt', 'actions'];
 
     searchQuery = '';
     statusFilter: KeyStatus = 'all';
@@ -394,7 +382,6 @@ export class ApiKeysComponent {
             const q = this.searchQuery.toLowerCase();
             keys = keys.filter(k =>
                 k.keyPrefix.toLowerCase().includes(q) ||
-                k.clerkUserId.toLowerCase().includes(q) ||
                 k.name.toLowerCase().includes(q),
             );
         }

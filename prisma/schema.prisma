@@ -39,13 +39,6 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  // Legacy Clerk integration field — kept for historical rows; no longer populated.
-  // @unique constraint removed: Clerk is no longer the auth provider, so this column
-  // is no longer a canonical unique identifier. Existing non-NULL Clerk IDs are preserved
-  // as-is for historical reference; new Better Auth users have NULL here. Duplicates are
-  // not expected in practice but are now structurally allowed.
-  // Can be dropped in a follow-up migration once confirmed no code reads this column.
-  clerkUserId    String?   @map("clerk_user_id")
   tier           String    @default("free") // anonymous | free | pro | admin
   firstName      String?   @map("first_name")
   lastName       String?   @map("last_name")

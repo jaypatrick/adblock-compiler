@@ -6,10 +6,7 @@ values:
   - key: apiKey
     value: ''
     enabled: true
-  - key: clerkJwt
-    value: ''
-    enabled: true
-  - key: clerkPublishableKey
+  - key: bearerToken
     value: ''
     enabled: true
   - key: adminKey

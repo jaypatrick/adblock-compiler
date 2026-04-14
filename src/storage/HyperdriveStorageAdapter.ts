@@ -730,7 +730,6 @@ export class HyperdriveStorageAdapter implements IStorageAdapter {
             data: {
                 userId: validated.userId,
                 token: validated.token ?? crypto.randomUUID(),
-                tokenHash: validated.tokenHash,
                 ipAddress: validated.ipAddress ?? null,
                 userAgent: validated.userAgent ?? null,
                 expiresAt: validated.expiresAt,

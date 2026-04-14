@@ -532,7 +532,7 @@ export const CliArgumentsSchema: z.ZodType<CliArgumentsOutput> = z.object({
     apiKey: z.string().regex(/^abc_.+$/, 'API key must start with "abc_" followed by key material').optional().describe(
         'API key for authenticated worker API requests (abc_ prefix)',
     ),
-    bearerToken: z.string().optional().describe('Clerk JWT bearer token for authenticated requests'),
+    bearerToken: z.string().optional().describe('Better Auth JWT bearer token for authenticated requests'),
     apiUrl: z.string().url().optional().describe('Base URL for the worker API'),
 }).refine(
     (args) => args.help || args.version || !!(args.input?.length || args.config),

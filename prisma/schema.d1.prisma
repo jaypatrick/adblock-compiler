@@ -23,7 +23,7 @@ datasource db {
 }
 
 // ============================================================================
-// Users — synced from Clerk webhooks
+// Users
 // ============================================================================
 
 model User {
@@ -34,8 +34,6 @@ model User {
   createdAt     DateTime  @default(now()) @map("created_at")
   updatedAt     DateTime  @updatedAt @map("updated_at")
 
-  // Clerk integration fields
-  clerkUserId   String?   @unique @map("clerk_user_id") // Legacy Clerk field — safe to drop once all rows migrated to Better Auth
   tier          String    @default("free")
   firstName     String?   @map("first_name")
   lastName      String?   @map("last_name")

@@ -14,7 +14,7 @@
             "enabled": true
         },
         {
-            "key": "clerkToken",
+            "key": "bearerToken",
             "value": "",
             "type": "secret",
             "enabled": true

@@ -2,7 +2,7 @@
  * ApiKeyService — Signal-based service for managing user API keys.
  *
  * Communicates with the `/api/keys` endpoints on the worker backend.
- * Requires Clerk JWT authentication (the auth interceptor attaches the
+ * Requires Better Auth JWT authentication (the auth interceptor attaches the
  * Bearer token automatically).
  *
  * State is stored in signals so components reactively update on changes.

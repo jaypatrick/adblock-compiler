@@ -52,8 +52,3 @@ export type SourceHealth = Prisma.SourceHealthModel
  * 
  */
 export type SourceAttempt = Prisma.SourceAttemptModel
-/**
- * Model LocalAuthUser
- * 
- */
-export type LocalAuthUser = Prisma.LocalAuthUserModel

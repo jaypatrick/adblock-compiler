@@ -13,7 +13,7 @@
  *   Flag changes propagate to all edge nodes within approximately 60 seconds.
  *   This is intentional for feature flags — lagging on rollout is acceptable
  *   in exchange for sub-millisecond read latency at the edge.
- *   DO NOT use this service for security-sensitive gates (use Clerk JWT claims
+ *   DO NOT use this service for security-sensitive gates (use Better Auth session claims
  *   or CF Access headers for access control instead).
  *
  * OpenFeature / SaaS migration path:

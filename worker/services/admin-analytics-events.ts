@@ -82,7 +82,7 @@ export interface AdminActionEvent {
     resourceType: string;
     /** Primary key / slug of the mutated resource. */
     resourceId: string;
-    /** Clerk user-ID (or API-key identity) of the actor. */
+    /** User ID (or API-key identity) of the actor. */
     actorId: string;
     /** Raw client IP — will be hashed before storage. */
     ip: string;
@@ -98,7 +98,7 @@ export interface AdminAuthFailureEvent {
     reason: string;
     /** Permission that was required but missing (e.g. `'admin.write'`). */
     requiredPermission?: string;
-    /** Clerk user-ID if the caller was partially identified. */
+    /** User ID if the caller was partially identified. */
     actorId?: string;
     /** Raw client IP — will be hashed before storage. */
     ip: string;
@@ -114,7 +114,7 @@ export interface AdminConfigChangeEvent {
     action: 'create' | 'update' | 'delete';
     /** Primary key / slug of the config entry. */
     configId: string;
-    /** Clerk user-ID of the actor. */
+    /** User ID of the actor. */
     actorId: string;
 }
 
@@ -126,7 +126,7 @@ export interface FeatureFlagEvaluationEvent {
     result: boolean;
     /** User tier used during evaluation. */
     tier?: string;
-    /** Clerk user-ID used during evaluation. */
+    /** User ID used during evaluation. */
     userId?: string;
 }
 

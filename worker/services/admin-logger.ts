@@ -29,7 +29,7 @@ export interface AdminLogFields {
     requestId: string;
     /** The admin operation being performed (e.g. 'role.assign', 'tier.update'). */
     operation: string;
-    /** Clerk user ID of the actor performing the operation. */
+    /** User ID of the actor performing the operation. */
     actorId?: string;
     /** Type of resource being acted upon (e.g. 'tier_config', 'user'). */
     resourceType?: string;
