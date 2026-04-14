@@ -77,6 +77,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.86.0] - 2026-04-14
+
+### Added- complete removal of Clerk — DB schema, dead code, configs, frontend, OpenAPI, CI (#1585)
+- Implement Bloqr landing page — 10 section components, dark design system, SSR-safe persona tabs, a11y hardening (#1582)
+- redesign frontend and API with Bloqr brand design system (#1581)
+
+### Fixed
+
+- worker hang on sign-out + frontend crash on undefined metrics fields (#1584)
+- restore full-featured dashboard, remove landing page sections introduced by #1582 (#1583)
+- use short commit SHA instead of :latest for Cloudflare container image tag (#1579)
+- use short SHA tag for container image instead of :latest (#1580)
+- **wrangler**: add scheduling_policy to containers block to resolve VALIDATE_INPUT deploy failures (#1578)
+
+
 ## [0.85.0] - 2026-04-14
 
 ### Added- workflow visualization layer — diagram builder + REST endpoints (#1538)
