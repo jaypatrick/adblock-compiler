@@ -384,6 +384,7 @@ type FieldRefInputType<Model, FieldType> = Model extends never ? never : FieldRe
 
 
 export const ModelName = {
+  SubscriptionPlan: 'SubscriptionPlan',
   User: 'User',
   ApiKey: 'ApiKey',
   Session: 'Session',
@@ -394,7 +395,9 @@ export const ModelName = {
   Member: 'Member',
   FilterSource: 'FilterSource',
   FilterListVersion: 'FilterListVersion',
+  FilterListAst: 'FilterListAst',
   CompiledOutput: 'CompiledOutput',
+  Configuration: 'Configuration',
   CompilationEvent: 'CompilationEvent',
   SourceHealthSnapshot: 'SourceHealthSnapshot',
   SourceChangeEvent: 'SourceChangeEvent',
@@ -404,6 +407,7 @@ export const ModelName = {
   StorageEntry: 'StorageEntry',
   FilterCache: 'FilterCache',
   CompilationMetadata: 'CompilationMetadata',
+  DataRetentionConsent: 'DataRetentionConsent',
   UserConfiguration: 'UserConfiguration',
   DeploymentHistory: 'DeploymentHistory',
   DeploymentCounter: 'DeploymentCounter'
@@ -422,10 +426,84 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "user" | "apiKey" | "session" | "twoFactor" | "account" | "verification" | "organization" | "member" | "filterSource" | "filterListVersion" | "compiledOutput" | "compilationEvent" | "sourceHealthSnapshot" | "sourceChangeEvent" | "agentSession" | "agentInvocation" | "agentAuditLog" | "storageEntry" | "filterCache" | "compilationMetadata" | "userConfiguration" | "deploymentHistory" | "deploymentCounter"
+    modelProps: "subscriptionPlan" | "user" | "apiKey" | "session" | "twoFactor" | "account" | "verification" | "organization" | "member" | "filterSource" | "filterListVersion" | "filterListAst" | "compiledOutput" | "configuration" | "compilationEvent" | "sourceHealthSnapshot" | "sourceChangeEvent" | "agentSession" | "agentInvocation" | "agentAuditLog" | "storageEntry" | "filterCache" | "compilationMetadata" | "dataRetentionConsent" | "userConfiguration" | "deploymentHistory" | "deploymentCounter"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
+    SubscriptionPlan: {
+      payload: Prisma.$SubscriptionPlanPayload<ExtArgs>
+      fields: Prisma.SubscriptionPlanFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.SubscriptionPlanFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionPlanPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.SubscriptionPlanFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionPlanPayload>
+        }
+        findFirst: {
+          args: Prisma.SubscriptionPlanFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionPlanPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.SubscriptionPlanFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionPlanPayload>
+        }
+        findMany: {
+          args: Prisma.SubscriptionPlanFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionPlanPayload>[]
+        }
+        create: {
+          args: Prisma.SubscriptionPlanCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionPlanPayload>
+        }
+        createMany: {
+          args: Prisma.SubscriptionPlanCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.SubscriptionPlanCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionPlanPayload>[]
+        }
+        delete: {
+          args: Prisma.SubscriptionPlanDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionPlanPayload>
+        }
+        update: {
+          args: Prisma.SubscriptionPlanUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionPlanPayload>
+        }
+        deleteMany: {
+          args: Prisma.SubscriptionPlanDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.SubscriptionPlanUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.SubscriptionPlanUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionPlanPayload>[]
+        }
+        upsert: {
+          args: Prisma.SubscriptionPlanUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$SubscriptionPlanPayload>
+        }
+        aggregate: {
+          args: Prisma.SubscriptionPlanAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateSubscriptionPlan>
+        }
+        groupBy: {
+          args: Prisma.SubscriptionPlanGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SubscriptionPlanGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.SubscriptionPlanCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.SubscriptionPlanCountAggregateOutputType> | number
+        }
+      }
+    }
     User: {
       payload: Prisma.$UserPayload<ExtArgs>
       fields: Prisma.UserFieldRefs
@@ -1166,6 +1244,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    FilterListAst: {
+      payload: Prisma.$FilterListAstPayload<ExtArgs>
+      fields: Prisma.FilterListAstFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.FilterListAstFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterListAstPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.FilterListAstFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterListAstPayload>
+        }
+        findFirst: {
+          args: Prisma.FilterListAstFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterListAstPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.FilterListAstFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterListAstPayload>
+        }
+        findMany: {
+          args: Prisma.FilterListAstFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterListAstPayload>[]
+        }
+        create: {
+          args: Prisma.FilterListAstCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterListAstPayload>
+        }
+        createMany: {
+          args: Prisma.FilterListAstCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.FilterListAstCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterListAstPayload>[]
+        }
+        delete: {
+          args: Prisma.FilterListAstDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterListAstPayload>
+        }
+        update: {
+          args: Prisma.FilterListAstUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterListAstPayload>
+        }
+        deleteMany: {
+          args: Prisma.FilterListAstDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.FilterListAstUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.FilterListAstUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterListAstPayload>[]
+        }
+        upsert: {
+          args: Prisma.FilterListAstUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$FilterListAstPayload>
+        }
+        aggregate: {
+          args: Prisma.FilterListAstAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateFilterListAst>
+        }
+        groupBy: {
+          args: Prisma.FilterListAstGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FilterListAstGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.FilterListAstCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.FilterListAstCountAggregateOutputType> | number
+        }
+      }
+    }
     CompiledOutput: {
       payload: Prisma.$CompiledOutputPayload<ExtArgs>
       fields: Prisma.CompiledOutputFieldRefs
@@ -1237,6 +1389,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         count: {
           args: Prisma.CompiledOutputCountArgs<ExtArgs>
           result: runtime.Types.Utils.Optional<Prisma.CompiledOutputCountAggregateOutputType> | number
+        }
+      }
+    }
+    Configuration: {
+      payload: Prisma.$ConfigurationPayload<ExtArgs>
+      fields: Prisma.ConfigurationFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.ConfigurationFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConfigurationPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.ConfigurationFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConfigurationPayload>
+        }
+        findFirst: {
+          args: Prisma.ConfigurationFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConfigurationPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.ConfigurationFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConfigurationPayload>
+        }
+        findMany: {
+          args: Prisma.ConfigurationFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConfigurationPayload>[]
+        }
+        create: {
+          args: Prisma.ConfigurationCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConfigurationPayload>
+        }
+        createMany: {
+          args: Prisma.ConfigurationCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.ConfigurationCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConfigurationPayload>[]
+        }
+        delete: {
+          args: Prisma.ConfigurationDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConfigurationPayload>
+        }
+        update: {
+          args: Prisma.ConfigurationUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConfigurationPayload>
+        }
+        deleteMany: {
+          args: Prisma.ConfigurationDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.ConfigurationUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.ConfigurationUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConfigurationPayload>[]
+        }
+        upsert: {
+          args: Prisma.ConfigurationUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$ConfigurationPayload>
+        }
+        aggregate: {
+          args: Prisma.ConfigurationAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateConfiguration>
+        }
+        groupBy: {
+          args: Prisma.ConfigurationGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ConfigurationGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.ConfigurationCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.ConfigurationCountAggregateOutputType> | number
         }
       }
     }
@@ -1906,6 +2132,80 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    DataRetentionConsent: {
+      payload: Prisma.$DataRetentionConsentPayload<ExtArgs>
+      fields: Prisma.DataRetentionConsentFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.DataRetentionConsentFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DataRetentionConsentPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.DataRetentionConsentFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DataRetentionConsentPayload>
+        }
+        findFirst: {
+          args: Prisma.DataRetentionConsentFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DataRetentionConsentPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.DataRetentionConsentFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DataRetentionConsentPayload>
+        }
+        findMany: {
+          args: Prisma.DataRetentionConsentFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DataRetentionConsentPayload>[]
+        }
+        create: {
+          args: Prisma.DataRetentionConsentCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DataRetentionConsentPayload>
+        }
+        createMany: {
+          args: Prisma.DataRetentionConsentCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.DataRetentionConsentCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DataRetentionConsentPayload>[]
+        }
+        delete: {
+          args: Prisma.DataRetentionConsentDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DataRetentionConsentPayload>
+        }
+        update: {
+          args: Prisma.DataRetentionConsentUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DataRetentionConsentPayload>
+        }
+        deleteMany: {
+          args: Prisma.DataRetentionConsentDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.DataRetentionConsentUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.DataRetentionConsentUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DataRetentionConsentPayload>[]
+        }
+        upsert: {
+          args: Prisma.DataRetentionConsentUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$DataRetentionConsentPayload>
+        }
+        aggregate: {
+          args: Prisma.DataRetentionConsentAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregateDataRetentionConsent>
+        }
+        groupBy: {
+          args: Prisma.DataRetentionConsentGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DataRetentionConsentGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.DataRetentionConsentCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.DataRetentionConsentCountAggregateOutputType> | number
+        }
+      }
+    }
     UserConfiguration: {
       payload: Prisma.$UserConfigurationPayload<ExtArgs>
       fields: Prisma.UserConfigurationFieldRefs
@@ -2167,6 +2467,29 @@ export const TransactionIsolationLevel = runtime.makeStrictEnum({
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
 
 
+export const SubscriptionPlanScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  displayName: 'displayName',
+  isOrgOnly: 'isOrgOnly',
+  maxApiKeysPerUser: 'maxApiKeysPerUser',
+  rateLimitPerMinute: 'rateLimitPerMinute',
+  rateLimitPerDay: 'rateLimitPerDay',
+  maxFilterSources: 'maxFilterSources',
+  maxCompiledOutputs: 'maxCompiledOutputs',
+  maxOrgMembers: 'maxOrgMembers',
+  astStorageEnabled: 'astStorageEnabled',
+  translationEnabled: 'translationEnabled',
+  globalSharingEnabled: 'globalSharingEnabled',
+  batchApiEnabled: 'batchApiEnabled',
+  retentionDays: 'retentionDays',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SubscriptionPlanScalarFieldEnum = (typeof SubscriptionPlanScalarFieldEnum)[keyof typeof SubscriptionPlanScalarFieldEnum]
+
+
 export const UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
@@ -2183,7 +2506,8 @@ export const UserScalarFieldEnum = {
   twoFactorEnabled: 'twoFactorEnabled',
   banned: 'banned',
   banReason: 'banReason',
-  banExpires: 'banExpires'
+  banExpires: 'banExpires',
+  planId: 'planId'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -2268,6 +2592,10 @@ export const OrganizationScalarFieldEnum = {
   slug: 'slug',
   logo: 'logo',
   metadata: 'metadata',
+  tier: 'tier',
+  planId: 'planId',
+  retentionDays: 'retentionDays',
+  retentionPolicyAcceptedAt: 'retentionPolicyAcceptedAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2280,6 +2608,7 @@ export const MemberScalarFieldEnum = {
   organizationId: 'organizationId',
   userId: 'userId',
   role: 'role',
+  tierOverride: 'tierOverride',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -2294,8 +2623,9 @@ export const FilterSourceScalarFieldEnum = {
   description: 'description',
   homepage: 'homepage',
   license: 'license',
-  isPublic: 'isPublic',
   ownerUserId: 'ownerUserId',
+  organizationId: 'organizationId',
+  visibility: 'visibility',
   refreshIntervalSeconds: 'refreshIntervalSeconds',
   lastCheckedAt: 'lastCheckedAt',
   lastSuccessAt: 'lastSuccessAt',
@@ -2324,6 +2654,23 @@ export const FilterListVersionScalarFieldEnum = {
 export type FilterListVersionScalarFieldEnum = (typeof FilterListVersionScalarFieldEnum)[keyof typeof FilterListVersionScalarFieldEnum]
 
 
+export const FilterListAstScalarFieldEnum = {
+  id: 'id',
+  ownerUserId: 'ownerUserId',
+  organizationId: 'organizationId',
+  sourceId: 'sourceId',
+  name: 'name',
+  ast: 'ast',
+  ruleCount: 'ruleCount',
+  parserVersion: 'parserVersion',
+  visibility: 'visibility',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FilterListAstScalarFieldEnum = (typeof FilterListAstScalarFieldEnum)[keyof typeof FilterListAstScalarFieldEnum]
+
+
 export const CompiledOutputScalarFieldEnum = {
   id: 'id',
   configHash: 'configHash',
@@ -2334,11 +2681,31 @@ export const CompiledOutputScalarFieldEnum = {
   durationMs: 'durationMs',
   r2Key: 'r2Key',
   ownerUserId: 'ownerUserId',
+  organizationId: 'organizationId',
+  visibility: 'visibility',
   createdAt: 'createdAt',
   expiresAt: 'expiresAt'
 } as const
 
 export type CompiledOutputScalarFieldEnum = (typeof CompiledOutputScalarFieldEnum)[keyof typeof CompiledOutputScalarFieldEnum]
+
+
+export const ConfigurationScalarFieldEnum = {
+  id: 'id',
+  ownerUserId: 'ownerUserId',
+  organizationId: 'organizationId',
+  name: 'name',
+  description: 'description',
+  config: 'config',
+  visibility: 'visibility',
+  starCount: 'starCount',
+  forkCount: 'forkCount',
+  forkedFromId: 'forkedFromId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ConfigurationScalarFieldEnum = (typeof ConfigurationScalarFieldEnum)[keyof typeof ConfigurationScalarFieldEnum]
 
 
 export const CompilationEventScalarFieldEnum = {
@@ -2477,6 +2844,21 @@ export const CompilationMetadataScalarFieldEnum = {
 export type CompilationMetadataScalarFieldEnum = (typeof CompilationMetadataScalarFieldEnum)[keyof typeof CompilationMetadataScalarFieldEnum]
 
 
+export const DataRetentionConsentScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  organizationId: 'organizationId',
+  policyVersion: 'policyVersion',
+  retentionDays: 'retentionDays',
+  dataCategories: 'dataCategories',
+  acceptedAt: 'acceptedAt',
+  ipAddress: 'ipAddress',
+  userAgent: 'userAgent'
+} as const
+
+export type DataRetentionConsentScalarFieldEnum = (typeof DataRetentionConsentScalarFieldEnum)[keyof typeof DataRetentionConsentScalarFieldEnum]
+
+
 export const UserConfigurationScalarFieldEnum = {
   id: 'id',
   userId: 'userId',
@@ -2587,20 +2969,6 @@ export type ListStringFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaMod
 
 
 /**
- * Reference to a field of type 'DateTime'
- */
-export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
-    
-
-
-/**
- * Reference to a field of type 'DateTime[]'
- */
-export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
-    
-
-
-/**
  * Reference to a field of type 'Boolean'
  */
 export type BooleanFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Boolean'>
@@ -2618,6 +2986,20 @@ export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'In
  * Reference to a field of type 'Int[]'
  */
 export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
+    
+
+
+/**
+ * Reference to a field of type 'DateTime'
+ */
+export type DateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime'>
+    
+
+
+/**
+ * Reference to a field of type 'DateTime[]'
+ */
+export type ListDateTimeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'DateTime[]'>
     
 
 
@@ -2743,6 +3125,7 @@ export type PrismaClientOptions = ({
   comments?: runtime.SqlCommenterPlugin[]
 }
 export type GlobalOmitConfig = {
+  subscriptionPlan?: Prisma.SubscriptionPlanOmit
   user?: Prisma.UserOmit
   apiKey?: Prisma.ApiKeyOmit
   session?: Prisma.SessionOmit
@@ -2753,7 +3136,9 @@ export type GlobalOmitConfig = {
   member?: Prisma.MemberOmit
   filterSource?: Prisma.FilterSourceOmit
   filterListVersion?: Prisma.FilterListVersionOmit
+  filterListAst?: Prisma.FilterListAstOmit
   compiledOutput?: Prisma.CompiledOutputOmit
+  configuration?: Prisma.ConfigurationOmit
   compilationEvent?: Prisma.CompilationEventOmit
   sourceHealthSnapshot?: Prisma.SourceHealthSnapshotOmit
   sourceChangeEvent?: Prisma.SourceChangeEventOmit
@@ -2763,6 +3148,7 @@ export type GlobalOmitConfig = {
   storageEntry?: Prisma.StorageEntryOmit
   filterCache?: Prisma.FilterCacheOmit
   compilationMetadata?: Prisma.CompilationMetadataOmit
+  dataRetentionConsent?: Prisma.DataRetentionConsentOmit
   userConfiguration?: Prisma.UserConfigurationOmit
   deploymentHistory?: Prisma.DeploymentHistoryOmit
   deploymentCounter?: Prisma.DeploymentCounterOmit

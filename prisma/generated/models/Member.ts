@@ -29,6 +29,7 @@ export type MemberMinAggregateOutputType = {
   organizationId: string | null
   userId: string | null
   role: string | null
+  tierOverride: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -38,6 +39,7 @@ export type MemberMaxAggregateOutputType = {
   organizationId: string | null
   userId: string | null
   role: string | null
+  tierOverride: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -47,6 +49,7 @@ export type MemberCountAggregateOutputType = {
   organizationId: number
   userId: number
   role: number
+  tierOverride: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -58,6 +61,7 @@ export type MemberMinAggregateInputType = {
   organizationId?: true
   userId?: true
   role?: true
+  tierOverride?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -67,6 +71,7 @@ export type MemberMaxAggregateInputType = {
   organizationId?: true
   userId?: true
   role?: true
+  tierOverride?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -76,6 +81,7 @@ export type MemberCountAggregateInputType = {
   organizationId?: true
   userId?: true
   role?: true
+  tierOverride?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -158,6 +164,7 @@ export type MemberGroupByOutputType = {
   organizationId: string
   userId: string
   role: string
+  tierOverride: string | null
   createdAt: Date
   updatedAt: Date
   _count: MemberCountAggregateOutputType | null
@@ -188,6 +195,7 @@ export type MemberWhereInput = {
   organizationId?: Prisma.UuidFilter<"Member"> | string
   userId?: Prisma.UuidFilter<"Member"> | string
   role?: Prisma.StringFilter<"Member"> | string
+  tierOverride?: Prisma.StringNullableFilter<"Member"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Member"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Member"> | Date | string
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
@@ -199,6 +207,7 @@ export type MemberOrderByWithRelationInput = {
   organizationId?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  tierOverride?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   organization?: Prisma.OrganizationOrderByWithRelationInput
@@ -214,6 +223,7 @@ export type MemberWhereUniqueInput = Prisma.AtLeast<{
   organizationId?: Prisma.UuidFilter<"Member"> | string
   userId?: Prisma.UuidFilter<"Member"> | string
   role?: Prisma.StringFilter<"Member"> | string
+  tierOverride?: Prisma.StringNullableFilter<"Member"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Member"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Member"> | Date | string
   organization?: Prisma.XOR<Prisma.OrganizationScalarRelationFilter, Prisma.OrganizationWhereInput>
@@ -225,6 +235,7 @@ export type MemberOrderByWithAggregationInput = {
   organizationId?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  tierOverride?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.MemberCountOrderByAggregateInput
@@ -240,6 +251,7 @@ export type MemberScalarWhereWithAggregatesInput = {
   organizationId?: Prisma.UuidWithAggregatesFilter<"Member"> | string
   userId?: Prisma.UuidWithAggregatesFilter<"Member"> | string
   role?: Prisma.StringWithAggregatesFilter<"Member"> | string
+  tierOverride?: Prisma.StringNullableWithAggregatesFilter<"Member"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Member"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Member"> | Date | string
 }
@@ -247,6 +259,7 @@ export type MemberScalarWhereWithAggregatesInput = {
 export type MemberCreateInput = {
   id?: string
   role: string
+  tierOverride?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   organization: Prisma.OrganizationCreateNestedOneWithoutMembersInput
@@ -258,6 +271,7 @@ export type MemberUncheckedCreateInput = {
   organizationId: string
   userId: string
   role: string
+  tierOverride?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -265,6 +279,7 @@ export type MemberUncheckedCreateInput = {
 export type MemberUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tierOverride?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutMembersNestedInput
@@ -276,6 +291,7 @@ export type MemberUncheckedUpdateInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tierOverride?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -285,6 +301,7 @@ export type MemberCreateManyInput = {
   organizationId: string
   userId: string
   role: string
+  tierOverride?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -292,6 +309,7 @@ export type MemberCreateManyInput = {
 export type MemberUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tierOverride?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -301,6 +319,7 @@ export type MemberUncheckedUpdateManyInput = {
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tierOverride?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -325,6 +344,7 @@ export type MemberCountOrderByAggregateInput = {
   organizationId?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  tierOverride?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -334,6 +354,7 @@ export type MemberMaxOrderByAggregateInput = {
   organizationId?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  tierOverride?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -343,6 +364,7 @@ export type MemberMinOrderByAggregateInput = {
   organizationId?: Prisma.SortOrder
   userId?: Prisma.SortOrder
   role?: Prisma.SortOrder
+  tierOverride?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -434,6 +456,7 @@ export type MemberUncheckedUpdateManyWithoutOrganizationNestedInput = {
 export type MemberCreateWithoutUserInput = {
   id?: string
   role: string
+  tierOverride?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   organization: Prisma.OrganizationCreateNestedOneWithoutMembersInput
@@ -443,6 +466,7 @@ export type MemberUncheckedCreateWithoutUserInput = {
   id?: string
   organizationId: string
   role: string
+  tierOverride?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -481,6 +505,7 @@ export type MemberScalarWhereInput = {
   organizationId?: Prisma.UuidFilter<"Member"> | string
   userId?: Prisma.UuidFilter<"Member"> | string
   role?: Prisma.StringFilter<"Member"> | string
+  tierOverride?: Prisma.StringNullableFilter<"Member"> | string | null
   createdAt?: Prisma.DateTimeFilter<"Member"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Member"> | Date | string
 }
@@ -488,6 +513,7 @@ export type MemberScalarWhereInput = {
 export type MemberCreateWithoutOrganizationInput = {
   id?: string
   role: string
+  tierOverride?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
   user: Prisma.UserCreateNestedOneWithoutMembersInput
@@ -497,6 +523,7 @@ export type MemberUncheckedCreateWithoutOrganizationInput = {
   id?: string
   userId: string
   role: string
+  tierOverride?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -531,6 +558,7 @@ export type MemberCreateManyUserInput = {
   id?: string
   organizationId: string
   role: string
+  tierOverride?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -538,6 +566,7 @@ export type MemberCreateManyUserInput = {
 export type MemberUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tierOverride?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   organization?: Prisma.OrganizationUpdateOneRequiredWithoutMembersNestedInput
@@ -547,6 +576,7 @@ export type MemberUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tierOverride?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -555,6 +585,7 @@ export type MemberUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   organizationId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tierOverride?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -563,6 +594,7 @@ export type MemberCreateManyOrganizationInput = {
   id?: string
   userId: string
   role: string
+  tierOverride?: string | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -570,6 +602,7 @@ export type MemberCreateManyOrganizationInput = {
 export type MemberUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tierOverride?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   user?: Prisma.UserUpdateOneRequiredWithoutMembersNestedInput
@@ -579,6 +612,7 @@ export type MemberUncheckedUpdateWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tierOverride?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -587,6 +621,7 @@ export type MemberUncheckedUpdateManyWithoutOrganizationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
+  tierOverride?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -598,6 +633,7 @@ export type MemberSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   organizationId?: boolean
   userId?: boolean
   role?: boolean
+  tierOverride?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
@@ -609,6 +645,7 @@ export type MemberSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   organizationId?: boolean
   userId?: boolean
   role?: boolean
+  tierOverride?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
@@ -620,6 +657,7 @@ export type MemberSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   organizationId?: boolean
   userId?: boolean
   role?: boolean
+  tierOverride?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
@@ -631,11 +669,12 @@ export type MemberSelectScalar = {
   organizationId?: boolean
   userId?: boolean
   role?: boolean
+  tierOverride?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type MemberOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "userId" | "role" | "createdAt" | "updatedAt", ExtArgs["result"]["member"]>
+export type MemberOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "organizationId" | "userId" | "role" | "tierOverride" | "createdAt" | "updatedAt", ExtArgs["result"]["member"]>
 export type MemberInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   organization?: boolean | Prisma.OrganizationDefaultArgs<ExtArgs>
   user?: boolean | Prisma.UserDefaultArgs<ExtArgs>
@@ -660,6 +699,7 @@ export type $MemberPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     organizationId: string
     userId: string
     role: string
+    tierOverride: string | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["member"]>
@@ -1091,6 +1131,7 @@ export interface MemberFieldRefs {
   readonly organizationId: Prisma.FieldRef<"Member", 'String'>
   readonly userId: Prisma.FieldRef<"Member", 'String'>
   readonly role: Prisma.FieldRef<"Member", 'String'>
+  readonly tierOverride: Prisma.FieldRef<"Member", 'String'>
   readonly createdAt: Prisma.FieldRef<"Member", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Member", 'DateTime'>
 }

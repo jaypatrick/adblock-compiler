@@ -28,8 +28,8 @@ export * from "./enums.ts"
  * const prisma = new PrismaClient({
  *   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL })
  * })
- * // Fetch zero or more Users
- * const users = await prisma.user.findMany()
+ * // Fetch zero or more SubscriptionPlans
+ * const subscriptionPlans = await prisma.subscriptionPlan.findMany()
  * ```
  * 
  * Read more in our [docs](https://pris.ly/d/client).
@@ -38,6 +38,14 @@ export const PrismaClient = $Class.getPrismaClientClass()
 export type PrismaClient<LogOpts extends Prisma.LogLevel = never, OmitOpts extends Prisma.PrismaClientOptions["omit"] = Prisma.PrismaClientOptions["omit"], ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = $Class.PrismaClient<LogOpts, OmitOpts, ExtArgs>
 export { Prisma }
 
+/**
+ * Model SubscriptionPlan
+ * Defines the capabilities and limits for each subscription tier.
+ * Both users and organizations reference a plan — orgs can access
+ * plans with higher limits (e.g. vendor, enterprise) not available to solo users.
+ * Seed data: free, pro, vendor, enterprise plans should be inserted via a migration.
+ */
+export type SubscriptionPlan = Prisma.SubscriptionPlanModel
 /**
  * Model User
  * 
@@ -80,7 +88,8 @@ export type Organization = Prisma.OrganizationModel
 export type Member = Prisma.MemberModel
 /**
  * Model FilterSource
- * 
+ * A filter list source URL, scoped to either a user or an organization.
+ * Global/public sources (e.g. EasyList, Hagezi) use visibility = "public" or "featured".
  */
 export type FilterSource = Prisma.FilterSourceModel
 /**
@@ -89,10 +98,26 @@ export type FilterSource = Prisma.FilterSourceModel
  */
 export type FilterListVersion = Prisma.FilterListVersionModel
 /**
+ * Model FilterListAst
+ * Stores parsed AST representations of filter lists.
+ * Gated by SubscriptionPlan.astStorageEnabled — only available to pro+ tiers
+ * (pro, vendor, and enterprise); free tier cannot store ASTs.
+ * The `ast` field is schema-agnostic JSON; the `parserVersion` field tracks which
+ * parser version produced this AST so it can be re-parsed if the schema changes.
+ */
+export type FilterListAst = Prisma.FilterListAstModel
+/**
  * Model CompiledOutput
  * 
  */
 export type CompiledOutput = Prisma.CompiledOutputModel
+/**
+ * Model Configuration
+ * Unified configuration model supporting personal, org-shared, and global sharing.
+ * Replaces UserConfiguration (retained for backward compat — see legacy section).
+ * Supports forking, starring, and ranking for publicly shared configurations.
+ */
+export type Configuration = Prisma.ConfigurationModel
 /**
  * Model CompilationEvent
  * 
@@ -138,6 +163,20 @@ export type FilterCache = Prisma.FilterCacheModel
  * 
  */
 export type CompilationMetadata = Prisma.CompilationMetadataModel
+/**
+ * Model DataRetentionConsent
+ * Append-only record of user/org consent to the data retention policy.
+ * A new row is inserted each time the policy version changes and the user/org accepts.
+ * NEVER delete rows from this table — it is an audit trail.
+ * Users and orgs should be informed of:
+ * - what categories of data are stored
+ * - why each category is stored
+ * - how long each category is retained (retentionDays)
+ * DB CHECK constraint enforces that exactly one of userId / organizationId is set per row.
+ * No FK constraints — user_id / organization_id are stored as plain UUIDs so that the audit log
+ * rows survive hard-deletes of the referenced user/org (immutable compliance trail).
+ */
+export type DataRetentionConsent = Prisma.DataRetentionConsentModel
 /**
  * Model UserConfiguration
  * 

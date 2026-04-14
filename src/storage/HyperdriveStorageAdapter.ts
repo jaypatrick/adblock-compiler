@@ -761,8 +761,9 @@ export class HyperdriveStorageAdapter implements IStorageAdapter {
                 description: validated.description ?? null,
                 homepage: validated.homepage ?? null,
                 license: validated.license ?? null,
-                isPublic: validated.isPublic,
+                visibility: validated.visibility,
                 ownerUserId: validated.ownerUserId ?? null,
+                organizationId: validated.organizationId ?? null,
                 refreshIntervalSeconds: validated.refreshIntervalSeconds,
             },
             select: { id: true },
@@ -773,17 +774,17 @@ export class HyperdriveStorageAdapter implements IStorageAdapter {
     /**
      * Lists filter sources.
      *
-     * @param publicOnly - When `true`, only public sources are returned.
-     * @returns Array of `{ id, url, name, isPublic }`.
+     * @param publicOnly - When `true`, only public and featured sources are returned.
+     * @returns Array of `{ id, url, name, visibility }`.
      * @throws {Error} If the adapter is not open.
      */
     async listFilterSources(
         publicOnly?: boolean,
-    ): Promise<Array<{ id: string; url: string; name: string; isPublic: boolean }>> {
+    ): Promise<Array<{ id: string; url: string; name: string; visibility: string }>> {
         const prisma = this.ensureOpen();
         const rows = await prisma.filterSource.findMany({
-            where: publicOnly ? { isPublic: true } : undefined,
-            select: { id: true, url: true, name: true, isPublic: true },
+            where: publicOnly ? { visibility: { in: ['public', 'featured'] } } : undefined,
+            select: { id: true, url: true, name: true, visibility: true },
             orderBy: { name: 'asc' },
         });
         return rows;

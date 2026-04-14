@@ -14,7 +14,8 @@ import type * as Prisma from "../internal/prismaNamespace.ts"
 
 /**
  * Model FilterSource
- * 
+ * A filter list source URL, scoped to either a user or an organization.
+ * Global/public sources (e.g. EasyList, Hagezi) use visibility = "public" or "featured".
  */
 export type FilterSourceModel = runtime.Types.Result.DefaultSelection<Prisma.$FilterSourcePayload>
 
@@ -43,8 +44,9 @@ export type FilterSourceMinAggregateOutputType = {
   description: string | null
   homepage: string | null
   license: string | null
-  isPublic: boolean | null
   ownerUserId: string | null
+  organizationId: string | null
+  visibility: string | null
   refreshIntervalSeconds: number | null
   lastCheckedAt: Date | null
   lastSuccessAt: Date | null
@@ -62,8 +64,9 @@ export type FilterSourceMaxAggregateOutputType = {
   description: string | null
   homepage: string | null
   license: string | null
-  isPublic: boolean | null
   ownerUserId: string | null
+  organizationId: string | null
+  visibility: string | null
   refreshIntervalSeconds: number | null
   lastCheckedAt: Date | null
   lastSuccessAt: Date | null
@@ -81,8 +84,9 @@ export type FilterSourceCountAggregateOutputType = {
   description: number
   homepage: number
   license: number
-  isPublic: number
   ownerUserId: number
+  organizationId: number
+  visibility: number
   refreshIntervalSeconds: number
   lastCheckedAt: number
   lastSuccessAt: number
@@ -112,8 +116,9 @@ export type FilterSourceMinAggregateInputType = {
   description?: true
   homepage?: true
   license?: true
-  isPublic?: true
   ownerUserId?: true
+  organizationId?: true
+  visibility?: true
   refreshIntervalSeconds?: true
   lastCheckedAt?: true
   lastSuccessAt?: true
@@ -131,8 +136,9 @@ export type FilterSourceMaxAggregateInputType = {
   description?: true
   homepage?: true
   license?: true
-  isPublic?: true
   ownerUserId?: true
+  organizationId?: true
+  visibility?: true
   refreshIntervalSeconds?: true
   lastCheckedAt?: true
   lastSuccessAt?: true
@@ -150,8 +156,9 @@ export type FilterSourceCountAggregateInputType = {
   description?: true
   homepage?: true
   license?: true
-  isPublic?: true
   ownerUserId?: true
+  organizationId?: true
+  visibility?: true
   refreshIntervalSeconds?: true
   lastCheckedAt?: true
   lastSuccessAt?: true
@@ -256,8 +263,9 @@ export type FilterSourceGroupByOutputType = {
   description: string | null
   homepage: string | null
   license: string | null
-  isPublic: boolean
   ownerUserId: string | null
+  organizationId: string | null
+  visibility: string
   refreshIntervalSeconds: number
   lastCheckedAt: Date | null
   lastSuccessAt: Date | null
@@ -298,8 +306,9 @@ export type FilterSourceWhereInput = {
   description?: Prisma.StringNullableFilter<"FilterSource"> | string | null
   homepage?: Prisma.StringNullableFilter<"FilterSource"> | string | null
   license?: Prisma.StringNullableFilter<"FilterSource"> | string | null
-  isPublic?: Prisma.BoolFilter<"FilterSource"> | boolean
   ownerUserId?: Prisma.UuidNullableFilter<"FilterSource"> | string | null
+  organizationId?: Prisma.UuidNullableFilter<"FilterSource"> | string | null
+  visibility?: Prisma.StringFilter<"FilterSource"> | string
   refreshIntervalSeconds?: Prisma.IntFilter<"FilterSource"> | number
   lastCheckedAt?: Prisma.DateTimeNullableFilter<"FilterSource"> | Date | string | null
   lastSuccessAt?: Prisma.DateTimeNullableFilter<"FilterSource"> | Date | string | null
@@ -308,9 +317,12 @@ export type FilterSourceWhereInput = {
   status?: Prisma.StringFilter<"FilterSource"> | string
   createdAt?: Prisma.DateTimeFilter<"FilterSource"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"FilterSource"> | Date | string
+  ownerUser?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  organization?: Prisma.XOR<Prisma.OrganizationNullableScalarRelationFilter, Prisma.OrganizationWhereInput> | null
   versions?: Prisma.FilterListVersionListRelationFilter
   healthSnapshots?: Prisma.SourceHealthSnapshotListRelationFilter
   changeEvents?: Prisma.SourceChangeEventListRelationFilter
+  filterListAsts?: Prisma.FilterListAstListRelationFilter
 }
 
 export type FilterSourceOrderByWithRelationInput = {
@@ -320,8 +332,9 @@ export type FilterSourceOrderByWithRelationInput = {
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   homepage?: Prisma.SortOrderInput | Prisma.SortOrder
   license?: Prisma.SortOrderInput | Prisma.SortOrder
-  isPublic?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrderInput | Prisma.SortOrder
+  organizationId?: Prisma.SortOrderInput | Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   refreshIntervalSeconds?: Prisma.SortOrder
   lastCheckedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   lastSuccessAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -330,23 +343,28 @@ export type FilterSourceOrderByWithRelationInput = {
   status?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
+  ownerUser?: Prisma.UserOrderByWithRelationInput
+  organization?: Prisma.OrganizationOrderByWithRelationInput
   versions?: Prisma.FilterListVersionOrderByRelationAggregateInput
   healthSnapshots?: Prisma.SourceHealthSnapshotOrderByRelationAggregateInput
   changeEvents?: Prisma.SourceChangeEventOrderByRelationAggregateInput
+  filterListAsts?: Prisma.FilterListAstOrderByRelationAggregateInput
 }
 
 export type FilterSourceWhereUniqueInput = Prisma.AtLeast<{
   id?: string
-  url?: string
+  filter_sources_url_owner_unique?: Prisma.FilterSourceFilter_sources_url_owner_uniqueCompoundUniqueInput
   AND?: Prisma.FilterSourceWhereInput | Prisma.FilterSourceWhereInput[]
   OR?: Prisma.FilterSourceWhereInput[]
   NOT?: Prisma.FilterSourceWhereInput | Prisma.FilterSourceWhereInput[]
+  url?: Prisma.StringFilter<"FilterSource"> | string
   name?: Prisma.StringFilter<"FilterSource"> | string
   description?: Prisma.StringNullableFilter<"FilterSource"> | string | null
   homepage?: Prisma.StringNullableFilter<"FilterSource"> | string | null
   license?: Prisma.StringNullableFilter<"FilterSource"> | string | null
-  isPublic?: Prisma.BoolFilter<"FilterSource"> | boolean
   ownerUserId?: Prisma.UuidNullableFilter<"FilterSource"> | string | null
+  organizationId?: Prisma.UuidNullableFilter<"FilterSource"> | string | null
+  visibility?: Prisma.StringFilter<"FilterSource"> | string
   refreshIntervalSeconds?: Prisma.IntFilter<"FilterSource"> | number
   lastCheckedAt?: Prisma.DateTimeNullableFilter<"FilterSource"> | Date | string | null
   lastSuccessAt?: Prisma.DateTimeNullableFilter<"FilterSource"> | Date | string | null
@@ -355,10 +373,13 @@ export type FilterSourceWhereUniqueInput = Prisma.AtLeast<{
   status?: Prisma.StringFilter<"FilterSource"> | string
   createdAt?: Prisma.DateTimeFilter<"FilterSource"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"FilterSource"> | Date | string
+  ownerUser?: Prisma.XOR<Prisma.UserNullableScalarRelationFilter, Prisma.UserWhereInput> | null
+  organization?: Prisma.XOR<Prisma.OrganizationNullableScalarRelationFilter, Prisma.OrganizationWhereInput> | null
   versions?: Prisma.FilterListVersionListRelationFilter
   healthSnapshots?: Prisma.SourceHealthSnapshotListRelationFilter
   changeEvents?: Prisma.SourceChangeEventListRelationFilter
-}, "id" | "url">
+  filterListAsts?: Prisma.FilterListAstListRelationFilter
+}, "id" | "filter_sources_url_owner_unique">
 
 export type FilterSourceOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -367,8 +388,9 @@ export type FilterSourceOrderByWithAggregationInput = {
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   homepage?: Prisma.SortOrderInput | Prisma.SortOrder
   license?: Prisma.SortOrderInput | Prisma.SortOrder
-  isPublic?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrderInput | Prisma.SortOrder
+  organizationId?: Prisma.SortOrderInput | Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   refreshIntervalSeconds?: Prisma.SortOrder
   lastCheckedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   lastSuccessAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -394,8 +416,9 @@ export type FilterSourceScalarWhereWithAggregatesInput = {
   description?: Prisma.StringNullableWithAggregatesFilter<"FilterSource"> | string | null
   homepage?: Prisma.StringNullableWithAggregatesFilter<"FilterSource"> | string | null
   license?: Prisma.StringNullableWithAggregatesFilter<"FilterSource"> | string | null
-  isPublic?: Prisma.BoolWithAggregatesFilter<"FilterSource"> | boolean
   ownerUserId?: Prisma.UuidNullableWithAggregatesFilter<"FilterSource"> | string | null
+  organizationId?: Prisma.UuidNullableWithAggregatesFilter<"FilterSource"> | string | null
+  visibility?: Prisma.StringWithAggregatesFilter<"FilterSource"> | string
   refreshIntervalSeconds?: Prisma.IntWithAggregatesFilter<"FilterSource"> | number
   lastCheckedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"FilterSource"> | Date | string | null
   lastSuccessAt?: Prisma.DateTimeNullableWithAggregatesFilter<"FilterSource"> | Date | string | null
@@ -413,8 +436,7 @@ export type FilterSourceCreateInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
-  ownerUserId?: string | null
+  visibility?: string
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
   lastSuccessAt?: Date | string | null
@@ -423,9 +445,12 @@ export type FilterSourceCreateInput = {
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  ownerUser?: Prisma.UserCreateNestedOneWithoutFilterSourcesInput
+  organization?: Prisma.OrganizationCreateNestedOneWithoutFilterSourcesInput
   versions?: Prisma.FilterListVersionCreateNestedManyWithoutSourceInput
   healthSnapshots?: Prisma.SourceHealthSnapshotCreateNestedManyWithoutSourceInput
   changeEvents?: Prisma.SourceChangeEventCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstCreateNestedManyWithoutSourceInput
 }
 
 export type FilterSourceUncheckedCreateInput = {
@@ -435,8 +460,9 @@ export type FilterSourceUncheckedCreateInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
   ownerUserId?: string | null
+  organizationId?: string | null
+  visibility?: string
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
   lastSuccessAt?: Date | string | null
@@ -448,6 +474,7 @@ export type FilterSourceUncheckedCreateInput = {
   versions?: Prisma.FilterListVersionUncheckedCreateNestedManyWithoutSourceInput
   healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedCreateNestedManyWithoutSourceInput
   changeEvents?: Prisma.SourceChangeEventUncheckedCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstUncheckedCreateNestedManyWithoutSourceInput
 }
 
 export type FilterSourceUpdateInput = {
@@ -457,8 +484,7 @@ export type FilterSourceUpdateInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -467,9 +493,12 @@ export type FilterSourceUpdateInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerUser?: Prisma.UserUpdateOneWithoutFilterSourcesNestedInput
+  organization?: Prisma.OrganizationUpdateOneWithoutFilterSourcesNestedInput
   versions?: Prisma.FilterListVersionUpdateManyWithoutSourceNestedInput
   healthSnapshots?: Prisma.SourceHealthSnapshotUpdateManyWithoutSourceNestedInput
   changeEvents?: Prisma.SourceChangeEventUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUpdateManyWithoutSourceNestedInput
 }
 
 export type FilterSourceUncheckedUpdateInput = {
@@ -479,8 +508,9 @@ export type FilterSourceUncheckedUpdateInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  organizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -492,6 +522,7 @@ export type FilterSourceUncheckedUpdateInput = {
   versions?: Prisma.FilterListVersionUncheckedUpdateManyWithoutSourceNestedInput
   healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedUpdateManyWithoutSourceNestedInput
   changeEvents?: Prisma.SourceChangeEventUncheckedUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUncheckedUpdateManyWithoutSourceNestedInput
 }
 
 export type FilterSourceCreateManyInput = {
@@ -501,8 +532,9 @@ export type FilterSourceCreateManyInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
   ownerUserId?: string | null
+  organizationId?: string | null
+  visibility?: string
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
   lastSuccessAt?: Date | string | null
@@ -520,8 +552,7 @@ export type FilterSourceUpdateManyMutationInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -539,8 +570,9 @@ export type FilterSourceUncheckedUpdateManyInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  organizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -551,6 +583,22 @@ export type FilterSourceUncheckedUpdateManyInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
+export type FilterSourceListRelationFilter = {
+  every?: Prisma.FilterSourceWhereInput
+  some?: Prisma.FilterSourceWhereInput
+  none?: Prisma.FilterSourceWhereInput
+}
+
+export type FilterSourceOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
+}
+
+export type FilterSourceFilter_sources_url_owner_uniqueCompoundUniqueInput = {
+  url: string
+  ownerUserId: string
+  organizationId: string
+}
+
 export type FilterSourceCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   url?: Prisma.SortOrder
@@ -558,8 +606,9 @@ export type FilterSourceCountOrderByAggregateInput = {
   description?: Prisma.SortOrder
   homepage?: Prisma.SortOrder
   license?: Prisma.SortOrder
-  isPublic?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrder
+  organizationId?: Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   refreshIntervalSeconds?: Prisma.SortOrder
   lastCheckedAt?: Prisma.SortOrder
   lastSuccessAt?: Prisma.SortOrder
@@ -582,8 +631,9 @@ export type FilterSourceMaxOrderByAggregateInput = {
   description?: Prisma.SortOrder
   homepage?: Prisma.SortOrder
   license?: Prisma.SortOrder
-  isPublic?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrder
+  organizationId?: Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   refreshIntervalSeconds?: Prisma.SortOrder
   lastCheckedAt?: Prisma.SortOrder
   lastSuccessAt?: Prisma.SortOrder
@@ -601,8 +651,9 @@ export type FilterSourceMinOrderByAggregateInput = {
   description?: Prisma.SortOrder
   homepage?: Prisma.SortOrder
   license?: Prisma.SortOrder
-  isPublic?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrder
+  organizationId?: Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   refreshIntervalSeconds?: Prisma.SortOrder
   lastCheckedAt?: Prisma.SortOrder
   lastSuccessAt?: Prisma.SortOrder
@@ -623,6 +674,95 @@ export type FilterSourceScalarRelationFilter = {
   isNot?: Prisma.FilterSourceWhereInput
 }
 
+export type FilterSourceNullableScalarRelationFilter = {
+  is?: Prisma.FilterSourceWhereInput | null
+  isNot?: Prisma.FilterSourceWhereInput | null
+}
+
+export type FilterSourceCreateNestedManyWithoutOwnerUserInput = {
+  create?: Prisma.XOR<Prisma.FilterSourceCreateWithoutOwnerUserInput, Prisma.FilterSourceUncheckedCreateWithoutOwnerUserInput> | Prisma.FilterSourceCreateWithoutOwnerUserInput[] | Prisma.FilterSourceUncheckedCreateWithoutOwnerUserInput[]
+  connectOrCreate?: Prisma.FilterSourceCreateOrConnectWithoutOwnerUserInput | Prisma.FilterSourceCreateOrConnectWithoutOwnerUserInput[]
+  createMany?: Prisma.FilterSourceCreateManyOwnerUserInputEnvelope
+  connect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+}
+
+export type FilterSourceUncheckedCreateNestedManyWithoutOwnerUserInput = {
+  create?: Prisma.XOR<Prisma.FilterSourceCreateWithoutOwnerUserInput, Prisma.FilterSourceUncheckedCreateWithoutOwnerUserInput> | Prisma.FilterSourceCreateWithoutOwnerUserInput[] | Prisma.FilterSourceUncheckedCreateWithoutOwnerUserInput[]
+  connectOrCreate?: Prisma.FilterSourceCreateOrConnectWithoutOwnerUserInput | Prisma.FilterSourceCreateOrConnectWithoutOwnerUserInput[]
+  createMany?: Prisma.FilterSourceCreateManyOwnerUserInputEnvelope
+  connect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+}
+
+export type FilterSourceUpdateManyWithoutOwnerUserNestedInput = {
+  create?: Prisma.XOR<Prisma.FilterSourceCreateWithoutOwnerUserInput, Prisma.FilterSourceUncheckedCreateWithoutOwnerUserInput> | Prisma.FilterSourceCreateWithoutOwnerUserInput[] | Prisma.FilterSourceUncheckedCreateWithoutOwnerUserInput[]
+  connectOrCreate?: Prisma.FilterSourceCreateOrConnectWithoutOwnerUserInput | Prisma.FilterSourceCreateOrConnectWithoutOwnerUserInput[]
+  upsert?: Prisma.FilterSourceUpsertWithWhereUniqueWithoutOwnerUserInput | Prisma.FilterSourceUpsertWithWhereUniqueWithoutOwnerUserInput[]
+  createMany?: Prisma.FilterSourceCreateManyOwnerUserInputEnvelope
+  set?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  disconnect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  delete?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  connect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  update?: Prisma.FilterSourceUpdateWithWhereUniqueWithoutOwnerUserInput | Prisma.FilterSourceUpdateWithWhereUniqueWithoutOwnerUserInput[]
+  updateMany?: Prisma.FilterSourceUpdateManyWithWhereWithoutOwnerUserInput | Prisma.FilterSourceUpdateManyWithWhereWithoutOwnerUserInput[]
+  deleteMany?: Prisma.FilterSourceScalarWhereInput | Prisma.FilterSourceScalarWhereInput[]
+}
+
+export type FilterSourceUncheckedUpdateManyWithoutOwnerUserNestedInput = {
+  create?: Prisma.XOR<Prisma.FilterSourceCreateWithoutOwnerUserInput, Prisma.FilterSourceUncheckedCreateWithoutOwnerUserInput> | Prisma.FilterSourceCreateWithoutOwnerUserInput[] | Prisma.FilterSourceUncheckedCreateWithoutOwnerUserInput[]
+  connectOrCreate?: Prisma.FilterSourceCreateOrConnectWithoutOwnerUserInput | Prisma.FilterSourceCreateOrConnectWithoutOwnerUserInput[]
+  upsert?: Prisma.FilterSourceUpsertWithWhereUniqueWithoutOwnerUserInput | Prisma.FilterSourceUpsertWithWhereUniqueWithoutOwnerUserInput[]
+  createMany?: Prisma.FilterSourceCreateManyOwnerUserInputEnvelope
+  set?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  disconnect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  delete?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  connect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  update?: Prisma.FilterSourceUpdateWithWhereUniqueWithoutOwnerUserInput | Prisma.FilterSourceUpdateWithWhereUniqueWithoutOwnerUserInput[]
+  updateMany?: Prisma.FilterSourceUpdateManyWithWhereWithoutOwnerUserInput | Prisma.FilterSourceUpdateManyWithWhereWithoutOwnerUserInput[]
+  deleteMany?: Prisma.FilterSourceScalarWhereInput | Prisma.FilterSourceScalarWhereInput[]
+}
+
+export type FilterSourceCreateNestedManyWithoutOrganizationInput = {
+  create?: Prisma.XOR<Prisma.FilterSourceCreateWithoutOrganizationInput, Prisma.FilterSourceUncheckedCreateWithoutOrganizationInput> | Prisma.FilterSourceCreateWithoutOrganizationInput[] | Prisma.FilterSourceUncheckedCreateWithoutOrganizationInput[]
+  connectOrCreate?: Prisma.FilterSourceCreateOrConnectWithoutOrganizationInput | Prisma.FilterSourceCreateOrConnectWithoutOrganizationInput[]
+  createMany?: Prisma.FilterSourceCreateManyOrganizationInputEnvelope
+  connect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+}
+
+export type FilterSourceUncheckedCreateNestedManyWithoutOrganizationInput = {
+  create?: Prisma.XOR<Prisma.FilterSourceCreateWithoutOrganizationInput, Prisma.FilterSourceUncheckedCreateWithoutOrganizationInput> | Prisma.FilterSourceCreateWithoutOrganizationInput[] | Prisma.FilterSourceUncheckedCreateWithoutOrganizationInput[]
+  connectOrCreate?: Prisma.FilterSourceCreateOrConnectWithoutOrganizationInput | Prisma.FilterSourceCreateOrConnectWithoutOrganizationInput[]
+  createMany?: Prisma.FilterSourceCreateManyOrganizationInputEnvelope
+  connect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+}
+
+export type FilterSourceUpdateManyWithoutOrganizationNestedInput = {
+  create?: Prisma.XOR<Prisma.FilterSourceCreateWithoutOrganizationInput, Prisma.FilterSourceUncheckedCreateWithoutOrganizationInput> | Prisma.FilterSourceCreateWithoutOrganizationInput[] | Prisma.FilterSourceUncheckedCreateWithoutOrganizationInput[]
+  connectOrCreate?: Prisma.FilterSourceCreateOrConnectWithoutOrganizationInput | Prisma.FilterSourceCreateOrConnectWithoutOrganizationInput[]
+  upsert?: Prisma.FilterSourceUpsertWithWhereUniqueWithoutOrganizationInput | Prisma.FilterSourceUpsertWithWhereUniqueWithoutOrganizationInput[]
+  createMany?: Prisma.FilterSourceCreateManyOrganizationInputEnvelope
+  set?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  disconnect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  delete?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  connect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  update?: Prisma.FilterSourceUpdateWithWhereUniqueWithoutOrganizationInput | Prisma.FilterSourceUpdateWithWhereUniqueWithoutOrganizationInput[]
+  updateMany?: Prisma.FilterSourceUpdateManyWithWhereWithoutOrganizationInput | Prisma.FilterSourceUpdateManyWithWhereWithoutOrganizationInput[]
+  deleteMany?: Prisma.FilterSourceScalarWhereInput | Prisma.FilterSourceScalarWhereInput[]
+}
+
+export type FilterSourceUncheckedUpdateManyWithoutOrganizationNestedInput = {
+  create?: Prisma.XOR<Prisma.FilterSourceCreateWithoutOrganizationInput, Prisma.FilterSourceUncheckedCreateWithoutOrganizationInput> | Prisma.FilterSourceCreateWithoutOrganizationInput[] | Prisma.FilterSourceUncheckedCreateWithoutOrganizationInput[]
+  connectOrCreate?: Prisma.FilterSourceCreateOrConnectWithoutOrganizationInput | Prisma.FilterSourceCreateOrConnectWithoutOrganizationInput[]
+  upsert?: Prisma.FilterSourceUpsertWithWhereUniqueWithoutOrganizationInput | Prisma.FilterSourceUpsertWithWhereUniqueWithoutOrganizationInput[]
+  createMany?: Prisma.FilterSourceCreateManyOrganizationInputEnvelope
+  set?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  disconnect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  delete?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  connect?: Prisma.FilterSourceWhereUniqueInput | Prisma.FilterSourceWhereUniqueInput[]
+  update?: Prisma.FilterSourceUpdateWithWhereUniqueWithoutOrganizationInput | Prisma.FilterSourceUpdateWithWhereUniqueWithoutOrganizationInput[]
+  updateMany?: Prisma.FilterSourceUpdateManyWithWhereWithoutOrganizationInput | Prisma.FilterSourceUpdateManyWithWhereWithoutOrganizationInput[]
+  deleteMany?: Prisma.FilterSourceScalarWhereInput | Prisma.FilterSourceScalarWhereInput[]
+}
+
 export type FilterSourceCreateNestedOneWithoutVersionsInput = {
   create?: Prisma.XOR<Prisma.FilterSourceCreateWithoutVersionsInput, Prisma.FilterSourceUncheckedCreateWithoutVersionsInput>
   connectOrCreate?: Prisma.FilterSourceCreateOrConnectWithoutVersionsInput
@@ -635,6 +775,22 @@ export type FilterSourceUpdateOneRequiredWithoutVersionsNestedInput = {
   upsert?: Prisma.FilterSourceUpsertWithoutVersionsInput
   connect?: Prisma.FilterSourceWhereUniqueInput
   update?: Prisma.XOR<Prisma.XOR<Prisma.FilterSourceUpdateToOneWithWhereWithoutVersionsInput, Prisma.FilterSourceUpdateWithoutVersionsInput>, Prisma.FilterSourceUncheckedUpdateWithoutVersionsInput>
+}
+
+export type FilterSourceCreateNestedOneWithoutFilterListAstsInput = {
+  create?: Prisma.XOR<Prisma.FilterSourceCreateWithoutFilterListAstsInput, Prisma.FilterSourceUncheckedCreateWithoutFilterListAstsInput>
+  connectOrCreate?: Prisma.FilterSourceCreateOrConnectWithoutFilterListAstsInput
+  connect?: Prisma.FilterSourceWhereUniqueInput
+}
+
+export type FilterSourceUpdateOneWithoutFilterListAstsNestedInput = {
+  create?: Prisma.XOR<Prisma.FilterSourceCreateWithoutFilterListAstsInput, Prisma.FilterSourceUncheckedCreateWithoutFilterListAstsInput>
+  connectOrCreate?: Prisma.FilterSourceCreateOrConnectWithoutFilterListAstsInput
+  upsert?: Prisma.FilterSourceUpsertWithoutFilterListAstsInput
+  disconnect?: Prisma.FilterSourceWhereInput | boolean
+  delete?: Prisma.FilterSourceWhereInput | boolean
+  connect?: Prisma.FilterSourceWhereUniqueInput
+  update?: Prisma.XOR<Prisma.XOR<Prisma.FilterSourceUpdateToOneWithWhereWithoutFilterListAstsInput, Prisma.FilterSourceUpdateWithoutFilterListAstsInput>, Prisma.FilterSourceUncheckedUpdateWithoutFilterListAstsInput>
 }
 
 export type FilterSourceCreateNestedOneWithoutHealthSnapshotsInput = {
@@ -665,15 +821,14 @@ export type FilterSourceUpdateOneRequiredWithoutChangeEventsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.FilterSourceUpdateToOneWithWhereWithoutChangeEventsInput, Prisma.FilterSourceUpdateWithoutChangeEventsInput>, Prisma.FilterSourceUncheckedUpdateWithoutChangeEventsInput>
 }
 
-export type FilterSourceCreateWithoutVersionsInput = {
+export type FilterSourceCreateWithoutOwnerUserInput = {
   id?: string
   url: string
   name: string
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
-  ownerUserId?: string | null
+  visibility?: string
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
   lastSuccessAt?: Date | string | null
@@ -682,8 +837,178 @@ export type FilterSourceCreateWithoutVersionsInput = {
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  organization?: Prisma.OrganizationCreateNestedOneWithoutFilterSourcesInput
+  versions?: Prisma.FilterListVersionCreateNestedManyWithoutSourceInput
   healthSnapshots?: Prisma.SourceHealthSnapshotCreateNestedManyWithoutSourceInput
   changeEvents?: Prisma.SourceChangeEventCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstCreateNestedManyWithoutSourceInput
+}
+
+export type FilterSourceUncheckedCreateWithoutOwnerUserInput = {
+  id?: string
+  url: string
+  name: string
+  description?: string | null
+  homepage?: string | null
+  license?: string | null
+  organizationId?: string | null
+  visibility?: string
+  refreshIntervalSeconds?: number
+  lastCheckedAt?: Date | string | null
+  lastSuccessAt?: Date | string | null
+  lastFailureAt?: Date | string | null
+  consecutiveFailures?: number
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  versions?: Prisma.FilterListVersionUncheckedCreateNestedManyWithoutSourceInput
+  healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedCreateNestedManyWithoutSourceInput
+  changeEvents?: Prisma.SourceChangeEventUncheckedCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstUncheckedCreateNestedManyWithoutSourceInput
+}
+
+export type FilterSourceCreateOrConnectWithoutOwnerUserInput = {
+  where: Prisma.FilterSourceWhereUniqueInput
+  create: Prisma.XOR<Prisma.FilterSourceCreateWithoutOwnerUserInput, Prisma.FilterSourceUncheckedCreateWithoutOwnerUserInput>
+}
+
+export type FilterSourceCreateManyOwnerUserInputEnvelope = {
+  data: Prisma.FilterSourceCreateManyOwnerUserInput | Prisma.FilterSourceCreateManyOwnerUserInput[]
+  skipDuplicates?: boolean
+}
+
+export type FilterSourceUpsertWithWhereUniqueWithoutOwnerUserInput = {
+  where: Prisma.FilterSourceWhereUniqueInput
+  update: Prisma.XOR<Prisma.FilterSourceUpdateWithoutOwnerUserInput, Prisma.FilterSourceUncheckedUpdateWithoutOwnerUserInput>
+  create: Prisma.XOR<Prisma.FilterSourceCreateWithoutOwnerUserInput, Prisma.FilterSourceUncheckedCreateWithoutOwnerUserInput>
+}
+
+export type FilterSourceUpdateWithWhereUniqueWithoutOwnerUserInput = {
+  where: Prisma.FilterSourceWhereUniqueInput
+  data: Prisma.XOR<Prisma.FilterSourceUpdateWithoutOwnerUserInput, Prisma.FilterSourceUncheckedUpdateWithoutOwnerUserInput>
+}
+
+export type FilterSourceUpdateManyWithWhereWithoutOwnerUserInput = {
+  where: Prisma.FilterSourceScalarWhereInput
+  data: Prisma.XOR<Prisma.FilterSourceUpdateManyMutationInput, Prisma.FilterSourceUncheckedUpdateManyWithoutOwnerUserInput>
+}
+
+export type FilterSourceScalarWhereInput = {
+  AND?: Prisma.FilterSourceScalarWhereInput | Prisma.FilterSourceScalarWhereInput[]
+  OR?: Prisma.FilterSourceScalarWhereInput[]
+  NOT?: Prisma.FilterSourceScalarWhereInput | Prisma.FilterSourceScalarWhereInput[]
+  id?: Prisma.UuidFilter<"FilterSource"> | string
+  url?: Prisma.StringFilter<"FilterSource"> | string
+  name?: Prisma.StringFilter<"FilterSource"> | string
+  description?: Prisma.StringNullableFilter<"FilterSource"> | string | null
+  homepage?: Prisma.StringNullableFilter<"FilterSource"> | string | null
+  license?: Prisma.StringNullableFilter<"FilterSource"> | string | null
+  ownerUserId?: Prisma.UuidNullableFilter<"FilterSource"> | string | null
+  organizationId?: Prisma.UuidNullableFilter<"FilterSource"> | string | null
+  visibility?: Prisma.StringFilter<"FilterSource"> | string
+  refreshIntervalSeconds?: Prisma.IntFilter<"FilterSource"> | number
+  lastCheckedAt?: Prisma.DateTimeNullableFilter<"FilterSource"> | Date | string | null
+  lastSuccessAt?: Prisma.DateTimeNullableFilter<"FilterSource"> | Date | string | null
+  lastFailureAt?: Prisma.DateTimeNullableFilter<"FilterSource"> | Date | string | null
+  consecutiveFailures?: Prisma.IntFilter<"FilterSource"> | number
+  status?: Prisma.StringFilter<"FilterSource"> | string
+  createdAt?: Prisma.DateTimeFilter<"FilterSource"> | Date | string
+  updatedAt?: Prisma.DateTimeFilter<"FilterSource"> | Date | string
+}
+
+export type FilterSourceCreateWithoutOrganizationInput = {
+  id?: string
+  url: string
+  name: string
+  description?: string | null
+  homepage?: string | null
+  license?: string | null
+  visibility?: string
+  refreshIntervalSeconds?: number
+  lastCheckedAt?: Date | string | null
+  lastSuccessAt?: Date | string | null
+  lastFailureAt?: Date | string | null
+  consecutiveFailures?: number
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  ownerUser?: Prisma.UserCreateNestedOneWithoutFilterSourcesInput
+  versions?: Prisma.FilterListVersionCreateNestedManyWithoutSourceInput
+  healthSnapshots?: Prisma.SourceHealthSnapshotCreateNestedManyWithoutSourceInput
+  changeEvents?: Prisma.SourceChangeEventCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstCreateNestedManyWithoutSourceInput
+}
+
+export type FilterSourceUncheckedCreateWithoutOrganizationInput = {
+  id?: string
+  url: string
+  name: string
+  description?: string | null
+  homepage?: string | null
+  license?: string | null
+  ownerUserId?: string | null
+  visibility?: string
+  refreshIntervalSeconds?: number
+  lastCheckedAt?: Date | string | null
+  lastSuccessAt?: Date | string | null
+  lastFailureAt?: Date | string | null
+  consecutiveFailures?: number
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  versions?: Prisma.FilterListVersionUncheckedCreateNestedManyWithoutSourceInput
+  healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedCreateNestedManyWithoutSourceInput
+  changeEvents?: Prisma.SourceChangeEventUncheckedCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstUncheckedCreateNestedManyWithoutSourceInput
+}
+
+export type FilterSourceCreateOrConnectWithoutOrganizationInput = {
+  where: Prisma.FilterSourceWhereUniqueInput
+  create: Prisma.XOR<Prisma.FilterSourceCreateWithoutOrganizationInput, Prisma.FilterSourceUncheckedCreateWithoutOrganizationInput>
+}
+
+export type FilterSourceCreateManyOrganizationInputEnvelope = {
+  data: Prisma.FilterSourceCreateManyOrganizationInput | Prisma.FilterSourceCreateManyOrganizationInput[]
+  skipDuplicates?: boolean
+}
+
+export type FilterSourceUpsertWithWhereUniqueWithoutOrganizationInput = {
+  where: Prisma.FilterSourceWhereUniqueInput
+  update: Prisma.XOR<Prisma.FilterSourceUpdateWithoutOrganizationInput, Prisma.FilterSourceUncheckedUpdateWithoutOrganizationInput>
+  create: Prisma.XOR<Prisma.FilterSourceCreateWithoutOrganizationInput, Prisma.FilterSourceUncheckedCreateWithoutOrganizationInput>
+}
+
+export type FilterSourceUpdateWithWhereUniqueWithoutOrganizationInput = {
+  where: Prisma.FilterSourceWhereUniqueInput
+  data: Prisma.XOR<Prisma.FilterSourceUpdateWithoutOrganizationInput, Prisma.FilterSourceUncheckedUpdateWithoutOrganizationInput>
+}
+
+export type FilterSourceUpdateManyWithWhereWithoutOrganizationInput = {
+  where: Prisma.FilterSourceScalarWhereInput
+  data: Prisma.XOR<Prisma.FilterSourceUpdateManyMutationInput, Prisma.FilterSourceUncheckedUpdateManyWithoutOrganizationInput>
+}
+
+export type FilterSourceCreateWithoutVersionsInput = {
+  id?: string
+  url: string
+  name: string
+  description?: string | null
+  homepage?: string | null
+  license?: string | null
+  visibility?: string
+  refreshIntervalSeconds?: number
+  lastCheckedAt?: Date | string | null
+  lastSuccessAt?: Date | string | null
+  lastFailureAt?: Date | string | null
+  consecutiveFailures?: number
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  ownerUser?: Prisma.UserCreateNestedOneWithoutFilterSourcesInput
+  organization?: Prisma.OrganizationCreateNestedOneWithoutFilterSourcesInput
+  healthSnapshots?: Prisma.SourceHealthSnapshotCreateNestedManyWithoutSourceInput
+  changeEvents?: Prisma.SourceChangeEventCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstCreateNestedManyWithoutSourceInput
 }
 
 export type FilterSourceUncheckedCreateWithoutVersionsInput = {
@@ -693,8 +1018,9 @@ export type FilterSourceUncheckedCreateWithoutVersionsInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
   ownerUserId?: string | null
+  organizationId?: string | null
+  visibility?: string
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
   lastSuccessAt?: Date | string | null
@@ -705,6 +1031,7 @@ export type FilterSourceUncheckedCreateWithoutVersionsInput = {
   updatedAt?: Date | string
   healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedCreateNestedManyWithoutSourceInput
   changeEvents?: Prisma.SourceChangeEventUncheckedCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstUncheckedCreateNestedManyWithoutSourceInput
 }
 
 export type FilterSourceCreateOrConnectWithoutVersionsInput = {
@@ -730,8 +1057,7 @@ export type FilterSourceUpdateWithoutVersionsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -740,8 +1066,11 @@ export type FilterSourceUpdateWithoutVersionsInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerUser?: Prisma.UserUpdateOneWithoutFilterSourcesNestedInput
+  organization?: Prisma.OrganizationUpdateOneWithoutFilterSourcesNestedInput
   healthSnapshots?: Prisma.SourceHealthSnapshotUpdateManyWithoutSourceNestedInput
   changeEvents?: Prisma.SourceChangeEventUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUpdateManyWithoutSourceNestedInput
 }
 
 export type FilterSourceUncheckedUpdateWithoutVersionsInput = {
@@ -751,8 +1080,9 @@ export type FilterSourceUncheckedUpdateWithoutVersionsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  organizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -761,6 +1091,115 @@ export type FilterSourceUncheckedUpdateWithoutVersionsInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedUpdateManyWithoutSourceNestedInput
+  changeEvents?: Prisma.SourceChangeEventUncheckedUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUncheckedUpdateManyWithoutSourceNestedInput
+}
+
+export type FilterSourceCreateWithoutFilterListAstsInput = {
+  id?: string
+  url: string
+  name: string
+  description?: string | null
+  homepage?: string | null
+  license?: string | null
+  visibility?: string
+  refreshIntervalSeconds?: number
+  lastCheckedAt?: Date | string | null
+  lastSuccessAt?: Date | string | null
+  lastFailureAt?: Date | string | null
+  consecutiveFailures?: number
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  ownerUser?: Prisma.UserCreateNestedOneWithoutFilterSourcesInput
+  organization?: Prisma.OrganizationCreateNestedOneWithoutFilterSourcesInput
+  versions?: Prisma.FilterListVersionCreateNestedManyWithoutSourceInput
+  healthSnapshots?: Prisma.SourceHealthSnapshotCreateNestedManyWithoutSourceInput
+  changeEvents?: Prisma.SourceChangeEventCreateNestedManyWithoutSourceInput
+}
+
+export type FilterSourceUncheckedCreateWithoutFilterListAstsInput = {
+  id?: string
+  url: string
+  name: string
+  description?: string | null
+  homepage?: string | null
+  license?: string | null
+  ownerUserId?: string | null
+  organizationId?: string | null
+  visibility?: string
+  refreshIntervalSeconds?: number
+  lastCheckedAt?: Date | string | null
+  lastSuccessAt?: Date | string | null
+  lastFailureAt?: Date | string | null
+  consecutiveFailures?: number
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+  versions?: Prisma.FilterListVersionUncheckedCreateNestedManyWithoutSourceInput
+  healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedCreateNestedManyWithoutSourceInput
+  changeEvents?: Prisma.SourceChangeEventUncheckedCreateNestedManyWithoutSourceInput
+}
+
+export type FilterSourceCreateOrConnectWithoutFilterListAstsInput = {
+  where: Prisma.FilterSourceWhereUniqueInput
+  create: Prisma.XOR<Prisma.FilterSourceCreateWithoutFilterListAstsInput, Prisma.FilterSourceUncheckedCreateWithoutFilterListAstsInput>
+}
+
+export type FilterSourceUpsertWithoutFilterListAstsInput = {
+  update: Prisma.XOR<Prisma.FilterSourceUpdateWithoutFilterListAstsInput, Prisma.FilterSourceUncheckedUpdateWithoutFilterListAstsInput>
+  create: Prisma.XOR<Prisma.FilterSourceCreateWithoutFilterListAstsInput, Prisma.FilterSourceUncheckedCreateWithoutFilterListAstsInput>
+  where?: Prisma.FilterSourceWhereInput
+}
+
+export type FilterSourceUpdateToOneWithWhereWithoutFilterListAstsInput = {
+  where?: Prisma.FilterSourceWhereInput
+  data: Prisma.XOR<Prisma.FilterSourceUpdateWithoutFilterListAstsInput, Prisma.FilterSourceUncheckedUpdateWithoutFilterListAstsInput>
+}
+
+export type FilterSourceUpdateWithoutFilterListAstsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastFailureAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  consecutiveFailures?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerUser?: Prisma.UserUpdateOneWithoutFilterSourcesNestedInput
+  organization?: Prisma.OrganizationUpdateOneWithoutFilterSourcesNestedInput
+  versions?: Prisma.FilterListVersionUpdateManyWithoutSourceNestedInput
+  healthSnapshots?: Prisma.SourceHealthSnapshotUpdateManyWithoutSourceNestedInput
+  changeEvents?: Prisma.SourceChangeEventUpdateManyWithoutSourceNestedInput
+}
+
+export type FilterSourceUncheckedUpdateWithoutFilterListAstsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  organizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastFailureAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  consecutiveFailures?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  versions?: Prisma.FilterListVersionUncheckedUpdateManyWithoutSourceNestedInput
   healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedUpdateManyWithoutSourceNestedInput
   changeEvents?: Prisma.SourceChangeEventUncheckedUpdateManyWithoutSourceNestedInput
 }
@@ -772,8 +1211,7 @@ export type FilterSourceCreateWithoutHealthSnapshotsInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
-  ownerUserId?: string | null
+  visibility?: string
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
   lastSuccessAt?: Date | string | null
@@ -782,8 +1220,11 @@ export type FilterSourceCreateWithoutHealthSnapshotsInput = {
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  ownerUser?: Prisma.UserCreateNestedOneWithoutFilterSourcesInput
+  organization?: Prisma.OrganizationCreateNestedOneWithoutFilterSourcesInput
   versions?: Prisma.FilterListVersionCreateNestedManyWithoutSourceInput
   changeEvents?: Prisma.SourceChangeEventCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstCreateNestedManyWithoutSourceInput
 }
 
 export type FilterSourceUncheckedCreateWithoutHealthSnapshotsInput = {
@@ -793,8 +1234,9 @@ export type FilterSourceUncheckedCreateWithoutHealthSnapshotsInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
   ownerUserId?: string | null
+  organizationId?: string | null
+  visibility?: string
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
   lastSuccessAt?: Date | string | null
@@ -805,6 +1247,7 @@ export type FilterSourceUncheckedCreateWithoutHealthSnapshotsInput = {
   updatedAt?: Date | string
   versions?: Prisma.FilterListVersionUncheckedCreateNestedManyWithoutSourceInput
   changeEvents?: Prisma.SourceChangeEventUncheckedCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstUncheckedCreateNestedManyWithoutSourceInput
 }
 
 export type FilterSourceCreateOrConnectWithoutHealthSnapshotsInput = {
@@ -830,8 +1273,7 @@ export type FilterSourceUpdateWithoutHealthSnapshotsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -840,8 +1282,11 @@ export type FilterSourceUpdateWithoutHealthSnapshotsInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerUser?: Prisma.UserUpdateOneWithoutFilterSourcesNestedInput
+  organization?: Prisma.OrganizationUpdateOneWithoutFilterSourcesNestedInput
   versions?: Prisma.FilterListVersionUpdateManyWithoutSourceNestedInput
   changeEvents?: Prisma.SourceChangeEventUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUpdateManyWithoutSourceNestedInput
 }
 
 export type FilterSourceUncheckedUpdateWithoutHealthSnapshotsInput = {
@@ -851,8 +1296,9 @@ export type FilterSourceUncheckedUpdateWithoutHealthSnapshotsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  organizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -863,6 +1309,7 @@ export type FilterSourceUncheckedUpdateWithoutHealthSnapshotsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   versions?: Prisma.FilterListVersionUncheckedUpdateManyWithoutSourceNestedInput
   changeEvents?: Prisma.SourceChangeEventUncheckedUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUncheckedUpdateManyWithoutSourceNestedInput
 }
 
 export type FilterSourceCreateWithoutChangeEventsInput = {
@@ -872,8 +1319,7 @@ export type FilterSourceCreateWithoutChangeEventsInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
-  ownerUserId?: string | null
+  visibility?: string
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
   lastSuccessAt?: Date | string | null
@@ -882,8 +1328,11 @@ export type FilterSourceCreateWithoutChangeEventsInput = {
   status?: string
   createdAt?: Date | string
   updatedAt?: Date | string
+  ownerUser?: Prisma.UserCreateNestedOneWithoutFilterSourcesInput
+  organization?: Prisma.OrganizationCreateNestedOneWithoutFilterSourcesInput
   versions?: Prisma.FilterListVersionCreateNestedManyWithoutSourceInput
   healthSnapshots?: Prisma.SourceHealthSnapshotCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstCreateNestedManyWithoutSourceInput
 }
 
 export type FilterSourceUncheckedCreateWithoutChangeEventsInput = {
@@ -893,8 +1342,9 @@ export type FilterSourceUncheckedCreateWithoutChangeEventsInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
   ownerUserId?: string | null
+  organizationId?: string | null
+  visibility?: string
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
   lastSuccessAt?: Date | string | null
@@ -905,6 +1355,7 @@ export type FilterSourceUncheckedCreateWithoutChangeEventsInput = {
   updatedAt?: Date | string
   versions?: Prisma.FilterListVersionUncheckedCreateNestedManyWithoutSourceInput
   healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedCreateNestedManyWithoutSourceInput
+  filterListAsts?: Prisma.FilterListAstUncheckedCreateNestedManyWithoutSourceInput
 }
 
 export type FilterSourceCreateOrConnectWithoutChangeEventsInput = {
@@ -930,8 +1381,7 @@ export type FilterSourceUpdateWithoutChangeEventsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
-  ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -940,8 +1390,11 @@ export type FilterSourceUpdateWithoutChangeEventsInput = {
   status?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerUser?: Prisma.UserUpdateOneWithoutFilterSourcesNestedInput
+  organization?: Prisma.OrganizationUpdateOneWithoutFilterSourcesNestedInput
   versions?: Prisma.FilterListVersionUpdateManyWithoutSourceNestedInput
   healthSnapshots?: Prisma.SourceHealthSnapshotUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUpdateManyWithoutSourceNestedInput
 }
 
 export type FilterSourceUncheckedUpdateWithoutChangeEventsInput = {
@@ -951,8 +1404,9 @@ export type FilterSourceUncheckedUpdateWithoutChangeEventsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  organizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -963,6 +1417,175 @@ export type FilterSourceUncheckedUpdateWithoutChangeEventsInput = {
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   versions?: Prisma.FilterListVersionUncheckedUpdateManyWithoutSourceNestedInput
   healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUncheckedUpdateManyWithoutSourceNestedInput
+}
+
+export type FilterSourceCreateManyOwnerUserInput = {
+  id?: string
+  url: string
+  name: string
+  description?: string | null
+  homepage?: string | null
+  license?: string | null
+  organizationId?: string | null
+  visibility?: string
+  refreshIntervalSeconds?: number
+  lastCheckedAt?: Date | string | null
+  lastSuccessAt?: Date | string | null
+  lastFailureAt?: Date | string | null
+  consecutiveFailures?: number
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type FilterSourceUpdateWithoutOwnerUserInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastFailureAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  consecutiveFailures?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  organization?: Prisma.OrganizationUpdateOneWithoutFilterSourcesNestedInput
+  versions?: Prisma.FilterListVersionUpdateManyWithoutSourceNestedInput
+  healthSnapshots?: Prisma.SourceHealthSnapshotUpdateManyWithoutSourceNestedInput
+  changeEvents?: Prisma.SourceChangeEventUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUpdateManyWithoutSourceNestedInput
+}
+
+export type FilterSourceUncheckedUpdateWithoutOwnerUserInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  organizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastFailureAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  consecutiveFailures?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  versions?: Prisma.FilterListVersionUncheckedUpdateManyWithoutSourceNestedInput
+  healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedUpdateManyWithoutSourceNestedInput
+  changeEvents?: Prisma.SourceChangeEventUncheckedUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUncheckedUpdateManyWithoutSourceNestedInput
+}
+
+export type FilterSourceUncheckedUpdateManyWithoutOwnerUserInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  organizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastFailureAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  consecutiveFailures?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type FilterSourceCreateManyOrganizationInput = {
+  id?: string
+  url: string
+  name: string
+  description?: string | null
+  homepage?: string | null
+  license?: string | null
+  ownerUserId?: string | null
+  visibility?: string
+  refreshIntervalSeconds?: number
+  lastCheckedAt?: Date | string | null
+  lastSuccessAt?: Date | string | null
+  lastFailureAt?: Date | string | null
+  consecutiveFailures?: number
+  status?: string
+  createdAt?: Date | string
+  updatedAt?: Date | string
+}
+
+export type FilterSourceUpdateWithoutOrganizationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastFailureAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  consecutiveFailures?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  ownerUser?: Prisma.UserUpdateOneWithoutFilterSourcesNestedInput
+  versions?: Prisma.FilterListVersionUpdateManyWithoutSourceNestedInput
+  healthSnapshots?: Prisma.SourceHealthSnapshotUpdateManyWithoutSourceNestedInput
+  changeEvents?: Prisma.SourceChangeEventUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUpdateManyWithoutSourceNestedInput
+}
+
+export type FilterSourceUncheckedUpdateWithoutOrganizationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastFailureAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  consecutiveFailures?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  versions?: Prisma.FilterListVersionUncheckedUpdateManyWithoutSourceNestedInput
+  healthSnapshots?: Prisma.SourceHealthSnapshotUncheckedUpdateManyWithoutSourceNestedInput
+  changeEvents?: Prisma.SourceChangeEventUncheckedUpdateManyWithoutSourceNestedInput
+  filterListAsts?: Prisma.FilterListAstUncheckedUpdateManyWithoutSourceNestedInput
+}
+
+export type FilterSourceUncheckedUpdateManyWithoutOrganizationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  url?: Prisma.StringFieldUpdateOperationsInput | string
+  name?: Prisma.StringFieldUpdateOperationsInput | string
+  description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
+  lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastSuccessAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  lastFailureAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  consecutiveFailures?: Prisma.IntFieldUpdateOperationsInput | number
+  status?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 
@@ -974,12 +1597,14 @@ export type FilterSourceCountOutputType = {
   versions: number
   healthSnapshots: number
   changeEvents: number
+  filterListAsts: number
 }
 
 export type FilterSourceCountOutputTypeSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   versions?: boolean | FilterSourceCountOutputTypeCountVersionsArgs
   healthSnapshots?: boolean | FilterSourceCountOutputTypeCountHealthSnapshotsArgs
   changeEvents?: boolean | FilterSourceCountOutputTypeCountChangeEventsArgs
+  filterListAsts?: boolean | FilterSourceCountOutputTypeCountFilterListAstsArgs
 }
 
 /**
@@ -1013,6 +1638,13 @@ export type FilterSourceCountOutputTypeCountChangeEventsArgs<ExtArgs extends run
   where?: Prisma.SourceChangeEventWhereInput
 }
 
+/**
+ * FilterSourceCountOutputType without action
+ */
+export type FilterSourceCountOutputTypeCountFilterListAstsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  where?: Prisma.FilterListAstWhereInput
+}
+
 
 export type FilterSourceSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
@@ -1021,8 +1653,9 @@ export type FilterSourceSelect<ExtArgs extends runtime.Types.Extensions.Internal
   description?: boolean
   homepage?: boolean
   license?: boolean
-  isPublic?: boolean
   ownerUserId?: boolean
+  organizationId?: boolean
+  visibility?: boolean
   refreshIntervalSeconds?: boolean
   lastCheckedAt?: boolean
   lastSuccessAt?: boolean
@@ -1031,9 +1664,12 @@ export type FilterSourceSelect<ExtArgs extends runtime.Types.Extensions.Internal
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  ownerUser?: boolean | Prisma.FilterSource$ownerUserArgs<ExtArgs>
+  organization?: boolean | Prisma.FilterSource$organizationArgs<ExtArgs>
   versions?: boolean | Prisma.FilterSource$versionsArgs<ExtArgs>
   healthSnapshots?: boolean | Prisma.FilterSource$healthSnapshotsArgs<ExtArgs>
   changeEvents?: boolean | Prisma.FilterSource$changeEventsArgs<ExtArgs>
+  filterListAsts?: boolean | Prisma.FilterSource$filterListAstsArgs<ExtArgs>
   _count?: boolean | Prisma.FilterSourceCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["filterSource"]>
 
@@ -1044,8 +1680,9 @@ export type FilterSourceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   description?: boolean
   homepage?: boolean
   license?: boolean
-  isPublic?: boolean
   ownerUserId?: boolean
+  organizationId?: boolean
+  visibility?: boolean
   refreshIntervalSeconds?: boolean
   lastCheckedAt?: boolean
   lastSuccessAt?: boolean
@@ -1054,6 +1691,8 @@ export type FilterSourceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  ownerUser?: boolean | Prisma.FilterSource$ownerUserArgs<ExtArgs>
+  organization?: boolean | Prisma.FilterSource$organizationArgs<ExtArgs>
 }, ExtArgs["result"]["filterSource"]>
 
 export type FilterSourceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -1063,8 +1702,9 @@ export type FilterSourceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   description?: boolean
   homepage?: boolean
   license?: boolean
-  isPublic?: boolean
   ownerUserId?: boolean
+  organizationId?: boolean
+  visibility?: boolean
   refreshIntervalSeconds?: boolean
   lastCheckedAt?: boolean
   lastSuccessAt?: boolean
@@ -1073,6 +1713,8 @@ export type FilterSourceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   status?: boolean
   createdAt?: boolean
   updatedAt?: boolean
+  ownerUser?: boolean | Prisma.FilterSource$ownerUserArgs<ExtArgs>
+  organization?: boolean | Prisma.FilterSource$organizationArgs<ExtArgs>
 }, ExtArgs["result"]["filterSource"]>
 
 export type FilterSourceSelectScalar = {
@@ -1082,8 +1724,9 @@ export type FilterSourceSelectScalar = {
   description?: boolean
   homepage?: boolean
   license?: boolean
-  isPublic?: boolean
   ownerUserId?: boolean
+  organizationId?: boolean
+  visibility?: boolean
   refreshIntervalSeconds?: boolean
   lastCheckedAt?: boolean
   lastSuccessAt?: boolean
@@ -1094,22 +1737,34 @@ export type FilterSourceSelectScalar = {
   updatedAt?: boolean
 }
 
-export type FilterSourceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "url" | "name" | "description" | "homepage" | "license" | "isPublic" | "ownerUserId" | "refreshIntervalSeconds" | "lastCheckedAt" | "lastSuccessAt" | "lastFailureAt" | "consecutiveFailures" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["filterSource"]>
+export type FilterSourceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "url" | "name" | "description" | "homepage" | "license" | "ownerUserId" | "organizationId" | "visibility" | "refreshIntervalSeconds" | "lastCheckedAt" | "lastSuccessAt" | "lastFailureAt" | "consecutiveFailures" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["filterSource"]>
 export type FilterSourceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  ownerUser?: boolean | Prisma.FilterSource$ownerUserArgs<ExtArgs>
+  organization?: boolean | Prisma.FilterSource$organizationArgs<ExtArgs>
   versions?: boolean | Prisma.FilterSource$versionsArgs<ExtArgs>
   healthSnapshots?: boolean | Prisma.FilterSource$healthSnapshotsArgs<ExtArgs>
   changeEvents?: boolean | Prisma.FilterSource$changeEventsArgs<ExtArgs>
+  filterListAsts?: boolean | Prisma.FilterSource$filterListAstsArgs<ExtArgs>
   _count?: boolean | Prisma.FilterSourceCountOutputTypeDefaultArgs<ExtArgs>
 }
-export type FilterSourceIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
-export type FilterSourceIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type FilterSourceIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  ownerUser?: boolean | Prisma.FilterSource$ownerUserArgs<ExtArgs>
+  organization?: boolean | Prisma.FilterSource$organizationArgs<ExtArgs>
+}
+export type FilterSourceIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  ownerUser?: boolean | Prisma.FilterSource$ownerUserArgs<ExtArgs>
+  organization?: boolean | Prisma.FilterSource$organizationArgs<ExtArgs>
+}
 
 export type $FilterSourcePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "FilterSource"
   objects: {
+    ownerUser: Prisma.$UserPayload<ExtArgs> | null
+    organization: Prisma.$OrganizationPayload<ExtArgs> | null
     versions: Prisma.$FilterListVersionPayload<ExtArgs>[]
     healthSnapshots: Prisma.$SourceHealthSnapshotPayload<ExtArgs>[]
     changeEvents: Prisma.$SourceChangeEventPayload<ExtArgs>[]
+    filterListAsts: Prisma.$FilterListAstPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -1118,8 +1773,9 @@ export type $FilterSourcePayload<ExtArgs extends runtime.Types.Extensions.Intern
     description: string | null
     homepage: string | null
     license: string | null
-    isPublic: boolean
     ownerUserId: string | null
+    organizationId: string | null
+    visibility: string
     refreshIntervalSeconds: number
     lastCheckedAt: Date | null
     lastSuccessAt: Date | null
@@ -1522,9 +2178,12 @@ readonly fields: FilterSourceFieldRefs;
  */
 export interface Prisma__FilterSourceClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
+  ownerUser<T extends Prisma.FilterSource$ownerUserArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FilterSource$ownerUserArgs<ExtArgs>>): Prisma.Prisma__UserClient<runtime.Types.Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+  organization<T extends Prisma.FilterSource$organizationArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FilterSource$organizationArgs<ExtArgs>>): Prisma.Prisma__OrganizationClient<runtime.Types.Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   versions<T extends Prisma.FilterSource$versionsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FilterSource$versionsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FilterListVersionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   healthSnapshots<T extends Prisma.FilterSource$healthSnapshotsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FilterSource$healthSnapshotsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SourceHealthSnapshotPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   changeEvents<T extends Prisma.FilterSource$changeEventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FilterSource$changeEventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$SourceChangeEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  filterListAsts<T extends Prisma.FilterSource$filterListAstsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.FilterSource$filterListAstsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$FilterListAstPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1560,8 +2219,9 @@ export interface FilterSourceFieldRefs {
   readonly description: Prisma.FieldRef<"FilterSource", 'String'>
   readonly homepage: Prisma.FieldRef<"FilterSource", 'String'>
   readonly license: Prisma.FieldRef<"FilterSource", 'String'>
-  readonly isPublic: Prisma.FieldRef<"FilterSource", 'Boolean'>
   readonly ownerUserId: Prisma.FieldRef<"FilterSource", 'String'>
+  readonly organizationId: Prisma.FieldRef<"FilterSource", 'String'>
+  readonly visibility: Prisma.FieldRef<"FilterSource", 'String'>
   readonly refreshIntervalSeconds: Prisma.FieldRef<"FilterSource", 'Int'>
   readonly lastCheckedAt: Prisma.FieldRef<"FilterSource", 'DateTime'>
   readonly lastSuccessAt: Prisma.FieldRef<"FilterSource", 'DateTime'>
@@ -1824,6 +2484,10 @@ export type FilterSourceCreateManyAndReturnArgs<ExtArgs extends runtime.Types.Ex
    */
   data: Prisma.FilterSourceCreateManyInput | Prisma.FilterSourceCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FilterSourceIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1894,6 +2558,10 @@ export type FilterSourceUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.Ex
    * Limit how many FilterSources to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FilterSourceIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1960,6 +2628,44 @@ export type FilterSourceDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.
    * Limit how many FilterSources to delete.
    */
   limit?: number
+}
+
+/**
+ * FilterSource.ownerUser
+ */
+export type FilterSource$ownerUserArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the User
+   */
+  select?: Prisma.UserSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the User
+   */
+  omit?: Prisma.UserOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.UserInclude<ExtArgs> | null
+  where?: Prisma.UserWhereInput
+}
+
+/**
+ * FilterSource.organization
+ */
+export type FilterSource$organizationArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Organization
+   */
+  select?: Prisma.OrganizationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Organization
+   */
+  omit?: Prisma.OrganizationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrganizationInclude<ExtArgs> | null
+  where?: Prisma.OrganizationWhereInput
 }
 
 /**
@@ -2032,6 +2738,30 @@ export type FilterSource$changeEventsArgs<ExtArgs extends runtime.Types.Extensio
   take?: number
   skip?: number
   distinct?: Prisma.SourceChangeEventScalarFieldEnum | Prisma.SourceChangeEventScalarFieldEnum[]
+}
+
+/**
+ * FilterSource.filterListAsts
+ */
+export type FilterSource$filterListAstsArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the FilterListAst
+   */
+  select?: Prisma.FilterListAstSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the FilterListAst
+   */
+  omit?: Prisma.FilterListAstOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.FilterListAstInclude<ExtArgs> | null
+  where?: Prisma.FilterListAstWhereInput
+  orderBy?: Prisma.FilterListAstOrderByWithRelationInput | Prisma.FilterListAstOrderByWithRelationInput[]
+  cursor?: Prisma.FilterListAstWhereUniqueInput
+  take?: number
+  skip?: number
+  distinct?: Prisma.FilterListAstScalarFieldEnum | Prisma.FilterListAstScalarFieldEnum[]
 }
 
 /**

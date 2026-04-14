@@ -28,6 +28,39 @@ datasource db {
 }
 
 // ============================================================================
+// Subscription Plans
+// ============================================================================
+
+/// Defines the capabilities and limits for each subscription tier.
+/// Both users and organizations reference a plan — orgs can access
+/// plans with higher limits (e.g. vendor, enterprise) not available to solo users.
+/// Seed data: free, pro, vendor, enterprise plans should be inserted via a migration.
+model SubscriptionPlan {
+  id                   String   @id @default(uuid()) @db.Uuid
+  name                 String   @unique  // "free" | "pro" | "vendor" | "enterprise"
+  displayName          String   @map("display_name")
+  isOrgOnly            Boolean  @default(false) @map("is_org_only") // vendor/enterprise plans only available to orgs
+  maxApiKeysPerUser    Int      @default(3)    @map("max_api_keys_per_user")
+  rateLimitPerMinute   Int      @default(60)   @map("rate_limit_per_minute")
+  rateLimitPerDay      Int      @default(1000) @map("rate_limit_per_day")
+  maxFilterSources     Int      @default(10)   @map("max_filter_sources")
+  maxCompiledOutputs   Int      @default(50)   @map("max_compiled_outputs")
+  maxOrgMembers        Int?     @map("max_org_members")          // NULL = unlimited
+  astStorageEnabled    Boolean  @default(false) @map("ast_storage_enabled")
+  translationEnabled   Boolean  @default(false) @map("translation_enabled")
+  globalSharingEnabled Boolean  @default(false) @map("global_sharing_enabled")
+  batchApiEnabled      Boolean  @default(false) @map("batch_api_enabled")
+  retentionDays        Int      @default(90)  @map("retention_days")
+  createdAt            DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt            DateTime @updatedAt     @map("updated_at") @db.Timestamptz
+
+  users         User[]
+  organizations Organization[]
+
+  @@map("subscription_plans")
+}
+
+// ============================================================================
 // Authentication
 // ============================================================================
 
@@ -39,7 +72,7 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  tier           String    @default("free") // anonymous | free | pro | admin
+  tier           String    @default("free") // free | pro | vendor | enterprise (anonymous for unauthenticated hot-path; admin is a role, not a tier)
   firstName      String?   @map("first_name")
   lastName       String?   @map("last_name")
   imageUrl       String?   @map("image_url")
@@ -54,6 +87,11 @@ model User {
   banReason  String?   @map("ban_reason")
   banExpires DateTime? @map("ban_expires") @db.Timestamptz
 
+  // Subscription plan — authoritative source for tier capabilities.
+  // tier (String) is kept as a fast-read denormalized cache for the Worker hot path.
+  // Keep tier in sync with plan.name whenever planId changes.
+  planId       String?  @map("plan_id") @db.Uuid
+
   apiKeys       ApiKey[]
   sessions      Session[]
   accounts      Account[]
@@ -61,7 +99,12 @@ model User {
   agentSessions AgentSession[]
   members       Member[]
   userConfigurations UserConfiguration[]
+  plan                SubscriptionPlan?      @relation(fields: [planId], references: [id])
+  filterSources       FilterSource[]
+  configurations      Configuration[]
+  filterListAsts      FilterListAst[]
 
+  @@index([planId])
   @@map("users")
 }
 
@@ -151,16 +194,33 @@ model Verification {
 
 /// Better Auth organization plugin — stores organizations for multi-tenancy.
 model Organization {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  slug      String   @unique
-  logo      String?
-  metadata  Json?    @db.JsonB
-  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
-  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz
+  id          String   @id @default(uuid()) @db.Uuid
+  name        String
+  slug        String   @unique
+  logo        String?
+  metadata    Json?    @db.JsonB
 
-  members Member[]
+  // Billing / subscription
+  // tier is a denormalized cache — planId is authoritative.
+  tier        String   @default("free")  // free | pro | vendor | enterprise
+  planId      String?  @map("plan_id") @db.Uuid
 
+  // Data retention policy — set from SubscriptionPlan.retentionDays on plan assignment.
+  // Stored here for fast enforcement without a JOIN on every request.
+  retentionDays             Int       @default(90)  @map("retention_days")
+  retentionPolicyAcceptedAt DateTime? @map("retention_policy_accepted_at") @db.Timestamptz
+
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt   DateTime @updatedAt      @map("updated_at") @db.Timestamptz
+
+  plan                  SubscriptionPlan?      @relation(fields: [planId], references: [id])
+  members               Member[]
+  filterSources         FilterSource[]
+  configurations        Configuration[]
+  compiledOutputs       CompiledOutput[]
+  filterListAsts        FilterListAst[]
+
+  @@index([planId])
   @@map("organization")
 }
 
@@ -170,6 +230,9 @@ model Member {
   organizationId String       @map("organization_id") @db.Uuid
   userId         String       @map("user_id") @db.Uuid
   role           String       // owner | admin | member
+  // NULL = inherit org plan/tier. Set to override this member's effective tier
+  // within the org (e.g. org is "vendor" but this member is limited to "pro" features).
+  tierOverride   String?      @map("tier_override")
   createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime     @updatedAt @map("updated_at") @db.Timestamptz
 
@@ -186,15 +249,28 @@ model Member {
 // Filter Sources & Versions
 // ============================================================================
 
+/// A filter list source URL, scoped to either a user or an organization.
+/// Global/public sources (e.g. EasyList, Hagezi) use visibility = "public" or "featured".
 model FilterSource {
   id                     String    @id @default(uuid()) @db.Uuid
-  url                    String    @unique
+  url                    String
   name                   String
   description            String?
   homepage               String?
   license                String?
-  isPublic               Boolean   @default(true) @map("is_public")
+
+  // Ownership — one of these is set; both null for system-managed global sources.
   ownerUserId            String?   @map("owner_user_id") @db.Uuid
+  organizationId         String?   @map("organization_id") @db.Uuid
+
+  // Sharing / discovery — single source of truth.
+  // private  → only owner/org members can see and use this source
+  // org      → all members of the owning org can see and use this source
+  // public   → globally discoverable and usable by any authenticated user
+  // featured → globally listed and pinned in UI (admin-set only); implies public
+  // Closed set enforced at the DB level by a CHECK constraint in the migration.
+  visibility             String    @default("private") @map("visibility")
+
   refreshIntervalSeconds Int       @default(3600) @map("refresh_interval_seconds")
   lastCheckedAt          DateTime? @map("last_checked_at") @db.Timestamptz
   lastSuccessAt          DateTime? @map("last_success_at") @db.Timestamptz
@@ -204,10 +280,23 @@ model FilterSource {
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  versions       FilterListVersion[]
+  ownerUser       User?         @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  versions        FilterListVersion[]
   healthSnapshots SourceHealthSnapshot[]
-  changeEvents   SourceChangeEvent[]
+  changeEvents    SourceChangeEvent[]
+  filterListAsts  FilterListAst[]
 
+  // A URL can appear multiple times in the table but must be unique per owner context.
+  // Two different orgs can independently subscribe to the same upstream EasyList URL.
+  // Note: This composite unique does not enforce uniqueness for rows where BOTH owner columns
+  // are NULL (PostgreSQL UNIQUE allows multiple NULL values). A partial unique index on
+  // (url) WHERE owner_user_id IS NULL AND organization_id IS NULL is created in the migration
+  // to enforce global-source uniqueness at the DB level.
+  @@unique([url, ownerUserId, organizationId], name: "filter_sources_url_owner_unique")
+  @@index([ownerUserId])
+  @@index([organizationId])
+  @@index([visibility])
   @@index([status])
   @@map("filter_sources")
 }
@@ -236,6 +325,43 @@ model FilterListVersion {
 }
 
 // ============================================================================
+// Filter List ASTs — parsed AST storage for power users and developers
+// ============================================================================
+
+/// Stores parsed AST representations of filter lists.
+/// Gated by SubscriptionPlan.astStorageEnabled — only available to pro+ tiers
+/// (pro, vendor, and enterprise); free tier cannot store ASTs.
+/// The `ast` field is schema-agnostic JSON; the `parserVersion` field tracks which
+/// parser version produced this AST so it can be re-parsed if the schema changes.
+model FilterListAst {
+  id             String   @id @default(uuid()) @db.Uuid
+  ownerUserId    String?  @map("owner_user_id") @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+  sourceId       String?  @map("source_id") @db.Uuid  // optional link to the FilterSource this was parsed from
+
+  name           String
+  ast            Json     @db.JsonB   // the parsed AST
+  ruleCount      Int      @map("rule_count")
+  parserVersion  String   @map("parser_version")  // semver — used to detect stale ASTs
+
+  // private | org | public
+  visibility     String   @default("private") @map("visibility")
+
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt      @map("updated_at") @db.Timestamptz
+
+  ownerUser      User?         @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  source         FilterSource? @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+
+  @@index([ownerUserId])
+  @@index([organizationId])
+  @@index([sourceId])
+  @@index([visibility])
+  @@map("filter_list_asts")
+}
+
+// ============================================================================
 // Compiled Outputs
 // ============================================================================
 
@@ -249,15 +375,65 @@ model CompiledOutput {
   durationMs     Int       @map("duration_ms")
   r2Key          String    @map("r2_key")
   ownerUserId    String?   @map("owner_user_id") @db.Uuid
+  organizationId String?   @map("organization_id") @db.Uuid
+  // private | org | public
+  visibility     String    @default("private") @map("visibility")
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   expiresAt      DateTime? @map("expires_at") @db.Timestamptz
 
-  events CompilationEvent[]
+  events       CompilationEvent[]
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@index([configName])
   @@index([createdAt(sort: Desc)])
   @@index([ownerUserId])
+  @@index([organizationId])
+  @@index([visibility])
   @@map("compiled_outputs")
+}
+
+// ============================================================================
+// Configurations — personal, org-shared, and globally discoverable configs
+// ============================================================================
+
+/// Unified configuration model supporting personal, org-shared, and global sharing.
+/// Replaces UserConfiguration (retained for backward compat — see legacy section).
+/// Supports forking, starring, and ranking for publicly shared configurations.
+model Configuration {
+  id             String   @id @default(uuid()) @db.Uuid
+
+  // Ownership — one of these is set
+  ownerUserId    String?  @map("owner_user_id") @db.Uuid
+  organizationId String?  @map("organization_id") @db.Uuid
+
+  name           String
+  description    String?
+  config         Json     @db.JsonB
+
+  // Sharing semantics
+  // private → only the owner (user or org members via organizationId)
+  // org     → all members of the owning org
+  // public  → globally discoverable, rankable, forkable
+  visibility     String   @default("private") @map("visibility")
+
+  // Discovery / social features (only meaningful when visibility = "public")
+  starCount      Int      @default(0) @map("star_count")
+  forkCount      Int      @default(0) @map("fork_count")
+  forkedFromId   String?  @map("forked_from_id") @db.Uuid
+
+  createdAt      DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt      DateTime @updatedAt      @map("updated_at") @db.Timestamptz
+
+  ownerUser      User?          @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
+  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  forkedFrom     Configuration? @relation("ConfigForks", fields: [forkedFromId], references: [id], onDelete: SetNull)
+  forks          Configuration[] @relation("ConfigForks")
+
+  @@index([ownerUserId])
+  @@index([organizationId])
+  @@index([visibility])
+  @@index([starCount(sort: Desc)])
+  @@map("configurations")
 }
 
 // ============================================================================
@@ -444,7 +620,47 @@ model CompilationMetadata {
 }
 
 // ============================================================================
-// User Configurations — saved configurations for authenticated users
+// Data Retention Consent — append-only compliance/transparency log
+// ============================================================================
+
+/// Append-only record of user/org consent to the data retention policy.
+/// A new row is inserted each time the policy version changes and the user/org accepts.
+/// NEVER delete rows from this table — it is an audit trail.
+/// Users and orgs should be informed of:
+///   - what categories of data are stored
+///   - why each category is stored
+///   - how long each category is retained (retentionDays)
+/// DB CHECK constraint enforces that exactly one of userId / organizationId is set per row.
+/// No FK constraints — user_id / organization_id are stored as plain UUIDs so that the audit log
+/// rows survive hard-deletes of the referenced user/org (immutable compliance trail).
+model DataRetentionConsent {
+  id              String   @id @default(uuid()) @db.Uuid
+
+  // Exactly one of these is set — user-level or org-level consent.
+  // Enforced by a CHECK constraint in the migration SQL:
+  //   CHECK ((user_id IS NOT NULL) <> (organization_id IS NOT NULL))
+  // No DB FK — consent rows intentionally outlive the referenced user/org (audit trail).
+  userId          String?  @map("user_id") @db.Uuid
+  organizationId  String?  @map("organization_id") @db.Uuid
+
+  policyVersion   String   @map("policy_version")   // e.g. "2026-04" — bump when policy changes
+  retentionDays   Int      @map("retention_days")   // the retention window accepted
+  // Categories of data the user/org was informed about when consenting.
+  // Examples: "compilation_events", "agent_sessions", "filter_sources", "filter_list_asts"
+  dataCategories  String[] @map("data_categories")
+
+  acceptedAt      DateTime @default(now()) @map("accepted_at") @db.Timestamptz
+  ipAddress       String?  @map("ip_address")
+  userAgent       String?  @map("user_agent")
+
+  @@index([userId])
+  @@index([organizationId])
+  @@index([acceptedAt(sort: Desc)])
+  @@map("data_retention_consents")
+}
+
+// ============================================================================
+// User Configurations — saved configurations for authenticated users (legacy)
 // ============================================================================
 
 model UserConfiguration {

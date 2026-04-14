@@ -51,6 +51,7 @@ export const AnyNull = runtime.AnyNull
 
 
 export const ModelName = {
+  SubscriptionPlan: 'SubscriptionPlan',
   User: 'User',
   ApiKey: 'ApiKey',
   Session: 'Session',
@@ -61,7 +62,9 @@ export const ModelName = {
   Member: 'Member',
   FilterSource: 'FilterSource',
   FilterListVersion: 'FilterListVersion',
+  FilterListAst: 'FilterListAst',
   CompiledOutput: 'CompiledOutput',
+  Configuration: 'Configuration',
   CompilationEvent: 'CompilationEvent',
   SourceHealthSnapshot: 'SourceHealthSnapshot',
   SourceChangeEvent: 'SourceChangeEvent',
@@ -71,6 +74,7 @@ export const ModelName = {
   StorageEntry: 'StorageEntry',
   FilterCache: 'FilterCache',
   CompilationMetadata: 'CompilationMetadata',
+  DataRetentionConsent: 'DataRetentionConsent',
   UserConfiguration: 'UserConfiguration',
   DeploymentHistory: 'DeploymentHistory',
   DeploymentCounter: 'DeploymentCounter'
@@ -92,6 +96,29 @@ export const TransactionIsolationLevel = runtime.makeStrictEnum({
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
 
 
+export const SubscriptionPlanScalarFieldEnum = {
+  id: 'id',
+  name: 'name',
+  displayName: 'displayName',
+  isOrgOnly: 'isOrgOnly',
+  maxApiKeysPerUser: 'maxApiKeysPerUser',
+  rateLimitPerMinute: 'rateLimitPerMinute',
+  rateLimitPerDay: 'rateLimitPerDay',
+  maxFilterSources: 'maxFilterSources',
+  maxCompiledOutputs: 'maxCompiledOutputs',
+  maxOrgMembers: 'maxOrgMembers',
+  astStorageEnabled: 'astStorageEnabled',
+  translationEnabled: 'translationEnabled',
+  globalSharingEnabled: 'globalSharingEnabled',
+  batchApiEnabled: 'batchApiEnabled',
+  retentionDays: 'retentionDays',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type SubscriptionPlanScalarFieldEnum = (typeof SubscriptionPlanScalarFieldEnum)[keyof typeof SubscriptionPlanScalarFieldEnum]
+
+
 export const UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
@@ -108,7 +135,8 @@ export const UserScalarFieldEnum = {
   twoFactorEnabled: 'twoFactorEnabled',
   banned: 'banned',
   banReason: 'banReason',
-  banExpires: 'banExpires'
+  banExpires: 'banExpires',
+  planId: 'planId'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -193,6 +221,10 @@ export const OrganizationScalarFieldEnum = {
   slug: 'slug',
   logo: 'logo',
   metadata: 'metadata',
+  tier: 'tier',
+  planId: 'planId',
+  retentionDays: 'retentionDays',
+  retentionPolicyAcceptedAt: 'retentionPolicyAcceptedAt',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -205,6 +237,7 @@ export const MemberScalarFieldEnum = {
   organizationId: 'organizationId',
   userId: 'userId',
   role: 'role',
+  tierOverride: 'tierOverride',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const
@@ -219,8 +252,9 @@ export const FilterSourceScalarFieldEnum = {
   description: 'description',
   homepage: 'homepage',
   license: 'license',
-  isPublic: 'isPublic',
   ownerUserId: 'ownerUserId',
+  organizationId: 'organizationId',
+  visibility: 'visibility',
   refreshIntervalSeconds: 'refreshIntervalSeconds',
   lastCheckedAt: 'lastCheckedAt',
   lastSuccessAt: 'lastSuccessAt',
@@ -249,6 +283,23 @@ export const FilterListVersionScalarFieldEnum = {
 export type FilterListVersionScalarFieldEnum = (typeof FilterListVersionScalarFieldEnum)[keyof typeof FilterListVersionScalarFieldEnum]
 
 
+export const FilterListAstScalarFieldEnum = {
+  id: 'id',
+  ownerUserId: 'ownerUserId',
+  organizationId: 'organizationId',
+  sourceId: 'sourceId',
+  name: 'name',
+  ast: 'ast',
+  ruleCount: 'ruleCount',
+  parserVersion: 'parserVersion',
+  visibility: 'visibility',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type FilterListAstScalarFieldEnum = (typeof FilterListAstScalarFieldEnum)[keyof typeof FilterListAstScalarFieldEnum]
+
+
 export const CompiledOutputScalarFieldEnum = {
   id: 'id',
   configHash: 'configHash',
@@ -259,11 +310,31 @@ export const CompiledOutputScalarFieldEnum = {
   durationMs: 'durationMs',
   r2Key: 'r2Key',
   ownerUserId: 'ownerUserId',
+  organizationId: 'organizationId',
+  visibility: 'visibility',
   createdAt: 'createdAt',
   expiresAt: 'expiresAt'
 } as const
 
 export type CompiledOutputScalarFieldEnum = (typeof CompiledOutputScalarFieldEnum)[keyof typeof CompiledOutputScalarFieldEnum]
+
+
+export const ConfigurationScalarFieldEnum = {
+  id: 'id',
+  ownerUserId: 'ownerUserId',
+  organizationId: 'organizationId',
+  name: 'name',
+  description: 'description',
+  config: 'config',
+  visibility: 'visibility',
+  starCount: 'starCount',
+  forkCount: 'forkCount',
+  forkedFromId: 'forkedFromId',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ConfigurationScalarFieldEnum = (typeof ConfigurationScalarFieldEnum)[keyof typeof ConfigurationScalarFieldEnum]
 
 
 export const CompilationEventScalarFieldEnum = {
@@ -400,6 +471,21 @@ export const CompilationMetadataScalarFieldEnum = {
 } as const
 
 export type CompilationMetadataScalarFieldEnum = (typeof CompilationMetadataScalarFieldEnum)[keyof typeof CompilationMetadataScalarFieldEnum]
+
+
+export const DataRetentionConsentScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  organizationId: 'organizationId',
+  policyVersion: 'policyVersion',
+  retentionDays: 'retentionDays',
+  dataCategories: 'dataCategories',
+  acceptedAt: 'acceptedAt',
+  ipAddress: 'ipAddress',
+  userAgent: 'userAgent'
+} as const
+
+export type DataRetentionConsentScalarFieldEnum = (typeof DataRetentionConsentScalarFieldEnum)[keyof typeof DataRetentionConsentScalarFieldEnum]
 
 
 export const UserConfigurationScalarFieldEnum = {

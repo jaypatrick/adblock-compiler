@@ -47,6 +47,8 @@ export type CompiledOutputMinAggregateOutputType = {
   durationMs: number | null
   r2Key: string | null
   ownerUserId: string | null
+  organizationId: string | null
+  visibility: string | null
   createdAt: Date | null
   expiresAt: Date | null
 }
@@ -60,6 +62,8 @@ export type CompiledOutputMaxAggregateOutputType = {
   durationMs: number | null
   r2Key: string | null
   ownerUserId: string | null
+  organizationId: string | null
+  visibility: string | null
   createdAt: Date | null
   expiresAt: Date | null
 }
@@ -74,6 +78,8 @@ export type CompiledOutputCountAggregateOutputType = {
   durationMs: number
   r2Key: number
   ownerUserId: number
+  organizationId: number
+  visibility: number
   createdAt: number
   expiresAt: number
   _all: number
@@ -101,6 +107,8 @@ export type CompiledOutputMinAggregateInputType = {
   durationMs?: true
   r2Key?: true
   ownerUserId?: true
+  organizationId?: true
+  visibility?: true
   createdAt?: true
   expiresAt?: true
 }
@@ -114,6 +122,8 @@ export type CompiledOutputMaxAggregateInputType = {
   durationMs?: true
   r2Key?: true
   ownerUserId?: true
+  organizationId?: true
+  visibility?: true
   createdAt?: true
   expiresAt?: true
 }
@@ -128,6 +138,8 @@ export type CompiledOutputCountAggregateInputType = {
   durationMs?: true
   r2Key?: true
   ownerUserId?: true
+  organizationId?: true
+  visibility?: true
   createdAt?: true
   expiresAt?: true
   _all?: true
@@ -229,6 +241,8 @@ export type CompiledOutputGroupByOutputType = {
   durationMs: number
   r2Key: string
   ownerUserId: string | null
+  organizationId: string | null
+  visibility: string
   createdAt: Date
   expiresAt: Date | null
   _count: CompiledOutputCountAggregateOutputType | null
@@ -266,9 +280,12 @@ export type CompiledOutputWhereInput = {
   durationMs?: Prisma.IntFilter<"CompiledOutput"> | number
   r2Key?: Prisma.StringFilter<"CompiledOutput"> | string
   ownerUserId?: Prisma.UuidNullableFilter<"CompiledOutput"> | string | null
+  organizationId?: Prisma.UuidNullableFilter<"CompiledOutput"> | string | null
+  visibility?: Prisma.StringFilter<"CompiledOutput"> | string
   createdAt?: Prisma.DateTimeFilter<"CompiledOutput"> | Date | string
   expiresAt?: Prisma.DateTimeNullableFilter<"CompiledOutput"> | Date | string | null
   events?: Prisma.CompilationEventListRelationFilter
+  organization?: Prisma.XOR<Prisma.OrganizationNullableScalarRelationFilter, Prisma.OrganizationWhereInput> | null
 }
 
 export type CompiledOutputOrderByWithRelationInput = {
@@ -281,9 +298,12 @@ export type CompiledOutputOrderByWithRelationInput = {
   durationMs?: Prisma.SortOrder
   r2Key?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrderInput | Prisma.SortOrder
+  organizationId?: Prisma.SortOrderInput | Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   events?: Prisma.CompilationEventOrderByRelationAggregateInput
+  organization?: Prisma.OrganizationOrderByWithRelationInput
 }
 
 export type CompiledOutputWhereUniqueInput = Prisma.AtLeast<{
@@ -299,9 +319,12 @@ export type CompiledOutputWhereUniqueInput = Prisma.AtLeast<{
   durationMs?: Prisma.IntFilter<"CompiledOutput"> | number
   r2Key?: Prisma.StringFilter<"CompiledOutput"> | string
   ownerUserId?: Prisma.UuidNullableFilter<"CompiledOutput"> | string | null
+  organizationId?: Prisma.UuidNullableFilter<"CompiledOutput"> | string | null
+  visibility?: Prisma.StringFilter<"CompiledOutput"> | string
   createdAt?: Prisma.DateTimeFilter<"CompiledOutput"> | Date | string
   expiresAt?: Prisma.DateTimeNullableFilter<"CompiledOutput"> | Date | string | null
   events?: Prisma.CompilationEventListRelationFilter
+  organization?: Prisma.XOR<Prisma.OrganizationNullableScalarRelationFilter, Prisma.OrganizationWhereInput> | null
 }, "id" | "configHash">
 
 export type CompiledOutputOrderByWithAggregationInput = {
@@ -314,6 +337,8 @@ export type CompiledOutputOrderByWithAggregationInput = {
   durationMs?: Prisma.SortOrder
   r2Key?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrderInput | Prisma.SortOrder
+  organizationId?: Prisma.SortOrderInput | Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrderInput | Prisma.SortOrder
   _count?: Prisma.CompiledOutputCountOrderByAggregateInput
@@ -336,6 +361,8 @@ export type CompiledOutputScalarWhereWithAggregatesInput = {
   durationMs?: Prisma.IntWithAggregatesFilter<"CompiledOutput"> | number
   r2Key?: Prisma.StringWithAggregatesFilter<"CompiledOutput"> | string
   ownerUserId?: Prisma.UuidNullableWithAggregatesFilter<"CompiledOutput"> | string | null
+  organizationId?: Prisma.UuidNullableWithAggregatesFilter<"CompiledOutput"> | string | null
+  visibility?: Prisma.StringWithAggregatesFilter<"CompiledOutput"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"CompiledOutput"> | Date | string
   expiresAt?: Prisma.DateTimeNullableWithAggregatesFilter<"CompiledOutput"> | Date | string | null
 }
@@ -350,9 +377,11 @@ export type CompiledOutputCreateInput = {
   durationMs: number
   r2Key: string
   ownerUserId?: string | null
+  visibility?: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   events?: Prisma.CompilationEventCreateNestedManyWithoutCompiledOutputInput
+  organization?: Prisma.OrganizationCreateNestedOneWithoutCompiledOutputsInput
 }
 
 export type CompiledOutputUncheckedCreateInput = {
@@ -365,6 +394,8 @@ export type CompiledOutputUncheckedCreateInput = {
   durationMs: number
   r2Key: string
   ownerUserId?: string | null
+  organizationId?: string | null
+  visibility?: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
   events?: Prisma.CompilationEventUncheckedCreateNestedManyWithoutCompiledOutputInput
@@ -380,9 +411,11 @@ export type CompiledOutputUpdateInput = {
   durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   r2Key?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   events?: Prisma.CompilationEventUpdateManyWithoutCompiledOutputNestedInput
+  organization?: Prisma.OrganizationUpdateOneWithoutCompiledOutputsNestedInput
 }
 
 export type CompiledOutputUncheckedUpdateInput = {
@@ -395,6 +428,8 @@ export type CompiledOutputUncheckedUpdateInput = {
   durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   r2Key?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  organizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   events?: Prisma.CompilationEventUncheckedUpdateManyWithoutCompiledOutputNestedInput
@@ -410,6 +445,8 @@ export type CompiledOutputCreateManyInput = {
   durationMs: number
   r2Key: string
   ownerUserId?: string | null
+  organizationId?: string | null
+  visibility?: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
 }
@@ -424,6 +461,7 @@ export type CompiledOutputUpdateManyMutationInput = {
   durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   r2Key?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -438,8 +476,20 @@ export type CompiledOutputUncheckedUpdateManyInput = {
   durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   r2Key?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  organizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+export type CompiledOutputListRelationFilter = {
+  every?: Prisma.CompiledOutputWhereInput
+  some?: Prisma.CompiledOutputWhereInput
+  none?: Prisma.CompiledOutputWhereInput
+}
+
+export type CompiledOutputOrderByRelationAggregateInput = {
+  _count?: Prisma.SortOrder
 }
 
 export type CompiledOutputCountOrderByAggregateInput = {
@@ -452,6 +502,8 @@ export type CompiledOutputCountOrderByAggregateInput = {
   durationMs?: Prisma.SortOrder
   r2Key?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrder
+  organizationId?: Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
 }
@@ -471,6 +523,8 @@ export type CompiledOutputMaxOrderByAggregateInput = {
   durationMs?: Prisma.SortOrder
   r2Key?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrder
+  organizationId?: Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
 }
@@ -484,6 +538,8 @@ export type CompiledOutputMinOrderByAggregateInput = {
   durationMs?: Prisma.SortOrder
   r2Key?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrder
+  organizationId?: Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   expiresAt?: Prisma.SortOrder
 }
@@ -497,6 +553,48 @@ export type CompiledOutputSumOrderByAggregateInput = {
 export type CompiledOutputNullableScalarRelationFilter = {
   is?: Prisma.CompiledOutputWhereInput | null
   isNot?: Prisma.CompiledOutputWhereInput | null
+}
+
+export type CompiledOutputCreateNestedManyWithoutOrganizationInput = {
+  create?: Prisma.XOR<Prisma.CompiledOutputCreateWithoutOrganizationInput, Prisma.CompiledOutputUncheckedCreateWithoutOrganizationInput> | Prisma.CompiledOutputCreateWithoutOrganizationInput[] | Prisma.CompiledOutputUncheckedCreateWithoutOrganizationInput[]
+  connectOrCreate?: Prisma.CompiledOutputCreateOrConnectWithoutOrganizationInput | Prisma.CompiledOutputCreateOrConnectWithoutOrganizationInput[]
+  createMany?: Prisma.CompiledOutputCreateManyOrganizationInputEnvelope
+  connect?: Prisma.CompiledOutputWhereUniqueInput | Prisma.CompiledOutputWhereUniqueInput[]
+}
+
+export type CompiledOutputUncheckedCreateNestedManyWithoutOrganizationInput = {
+  create?: Prisma.XOR<Prisma.CompiledOutputCreateWithoutOrganizationInput, Prisma.CompiledOutputUncheckedCreateWithoutOrganizationInput> | Prisma.CompiledOutputCreateWithoutOrganizationInput[] | Prisma.CompiledOutputUncheckedCreateWithoutOrganizationInput[]
+  connectOrCreate?: Prisma.CompiledOutputCreateOrConnectWithoutOrganizationInput | Prisma.CompiledOutputCreateOrConnectWithoutOrganizationInput[]
+  createMany?: Prisma.CompiledOutputCreateManyOrganizationInputEnvelope
+  connect?: Prisma.CompiledOutputWhereUniqueInput | Prisma.CompiledOutputWhereUniqueInput[]
+}
+
+export type CompiledOutputUpdateManyWithoutOrganizationNestedInput = {
+  create?: Prisma.XOR<Prisma.CompiledOutputCreateWithoutOrganizationInput, Prisma.CompiledOutputUncheckedCreateWithoutOrganizationInput> | Prisma.CompiledOutputCreateWithoutOrganizationInput[] | Prisma.CompiledOutputUncheckedCreateWithoutOrganizationInput[]
+  connectOrCreate?: Prisma.CompiledOutputCreateOrConnectWithoutOrganizationInput | Prisma.CompiledOutputCreateOrConnectWithoutOrganizationInput[]
+  upsert?: Prisma.CompiledOutputUpsertWithWhereUniqueWithoutOrganizationInput | Prisma.CompiledOutputUpsertWithWhereUniqueWithoutOrganizationInput[]
+  createMany?: Prisma.CompiledOutputCreateManyOrganizationInputEnvelope
+  set?: Prisma.CompiledOutputWhereUniqueInput | Prisma.CompiledOutputWhereUniqueInput[]
+  disconnect?: Prisma.CompiledOutputWhereUniqueInput | Prisma.CompiledOutputWhereUniqueInput[]
+  delete?: Prisma.CompiledOutputWhereUniqueInput | Prisma.CompiledOutputWhereUniqueInput[]
+  connect?: Prisma.CompiledOutputWhereUniqueInput | Prisma.CompiledOutputWhereUniqueInput[]
+  update?: Prisma.CompiledOutputUpdateWithWhereUniqueWithoutOrganizationInput | Prisma.CompiledOutputUpdateWithWhereUniqueWithoutOrganizationInput[]
+  updateMany?: Prisma.CompiledOutputUpdateManyWithWhereWithoutOrganizationInput | Prisma.CompiledOutputUpdateManyWithWhereWithoutOrganizationInput[]
+  deleteMany?: Prisma.CompiledOutputScalarWhereInput | Prisma.CompiledOutputScalarWhereInput[]
+}
+
+export type CompiledOutputUncheckedUpdateManyWithoutOrganizationNestedInput = {
+  create?: Prisma.XOR<Prisma.CompiledOutputCreateWithoutOrganizationInput, Prisma.CompiledOutputUncheckedCreateWithoutOrganizationInput> | Prisma.CompiledOutputCreateWithoutOrganizationInput[] | Prisma.CompiledOutputUncheckedCreateWithoutOrganizationInput[]
+  connectOrCreate?: Prisma.CompiledOutputCreateOrConnectWithoutOrganizationInput | Prisma.CompiledOutputCreateOrConnectWithoutOrganizationInput[]
+  upsert?: Prisma.CompiledOutputUpsertWithWhereUniqueWithoutOrganizationInput | Prisma.CompiledOutputUpsertWithWhereUniqueWithoutOrganizationInput[]
+  createMany?: Prisma.CompiledOutputCreateManyOrganizationInputEnvelope
+  set?: Prisma.CompiledOutputWhereUniqueInput | Prisma.CompiledOutputWhereUniqueInput[]
+  disconnect?: Prisma.CompiledOutputWhereUniqueInput | Prisma.CompiledOutputWhereUniqueInput[]
+  delete?: Prisma.CompiledOutputWhereUniqueInput | Prisma.CompiledOutputWhereUniqueInput[]
+  connect?: Prisma.CompiledOutputWhereUniqueInput | Prisma.CompiledOutputWhereUniqueInput[]
+  update?: Prisma.CompiledOutputUpdateWithWhereUniqueWithoutOrganizationInput | Prisma.CompiledOutputUpdateWithWhereUniqueWithoutOrganizationInput[]
+  updateMany?: Prisma.CompiledOutputUpdateManyWithWhereWithoutOrganizationInput | Prisma.CompiledOutputUpdateManyWithWhereWithoutOrganizationInput[]
+  deleteMany?: Prisma.CompiledOutputScalarWhereInput | Prisma.CompiledOutputScalarWhereInput[]
 }
 
 export type CompiledOutputCreateNestedOneWithoutEventsInput = {
@@ -515,6 +613,83 @@ export type CompiledOutputUpdateOneWithoutEventsNestedInput = {
   update?: Prisma.XOR<Prisma.XOR<Prisma.CompiledOutputUpdateToOneWithWhereWithoutEventsInput, Prisma.CompiledOutputUpdateWithoutEventsInput>, Prisma.CompiledOutputUncheckedUpdateWithoutEventsInput>
 }
 
+export type CompiledOutputCreateWithoutOrganizationInput = {
+  id?: string
+  configHash: string
+  configName: string
+  configSnapshot: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  ruleCount: number
+  sourceCount: number
+  durationMs: number
+  r2Key: string
+  ownerUserId?: string | null
+  visibility?: string
+  createdAt?: Date | string
+  expiresAt?: Date | string | null
+  events?: Prisma.CompilationEventCreateNestedManyWithoutCompiledOutputInput
+}
+
+export type CompiledOutputUncheckedCreateWithoutOrganizationInput = {
+  id?: string
+  configHash: string
+  configName: string
+  configSnapshot: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  ruleCount: number
+  sourceCount: number
+  durationMs: number
+  r2Key: string
+  ownerUserId?: string | null
+  visibility?: string
+  createdAt?: Date | string
+  expiresAt?: Date | string | null
+  events?: Prisma.CompilationEventUncheckedCreateNestedManyWithoutCompiledOutputInput
+}
+
+export type CompiledOutputCreateOrConnectWithoutOrganizationInput = {
+  where: Prisma.CompiledOutputWhereUniqueInput
+  create: Prisma.XOR<Prisma.CompiledOutputCreateWithoutOrganizationInput, Prisma.CompiledOutputUncheckedCreateWithoutOrganizationInput>
+}
+
+export type CompiledOutputCreateManyOrganizationInputEnvelope = {
+  data: Prisma.CompiledOutputCreateManyOrganizationInput | Prisma.CompiledOutputCreateManyOrganizationInput[]
+  skipDuplicates?: boolean
+}
+
+export type CompiledOutputUpsertWithWhereUniqueWithoutOrganizationInput = {
+  where: Prisma.CompiledOutputWhereUniqueInput
+  update: Prisma.XOR<Prisma.CompiledOutputUpdateWithoutOrganizationInput, Prisma.CompiledOutputUncheckedUpdateWithoutOrganizationInput>
+  create: Prisma.XOR<Prisma.CompiledOutputCreateWithoutOrganizationInput, Prisma.CompiledOutputUncheckedCreateWithoutOrganizationInput>
+}
+
+export type CompiledOutputUpdateWithWhereUniqueWithoutOrganizationInput = {
+  where: Prisma.CompiledOutputWhereUniqueInput
+  data: Prisma.XOR<Prisma.CompiledOutputUpdateWithoutOrganizationInput, Prisma.CompiledOutputUncheckedUpdateWithoutOrganizationInput>
+}
+
+export type CompiledOutputUpdateManyWithWhereWithoutOrganizationInput = {
+  where: Prisma.CompiledOutputScalarWhereInput
+  data: Prisma.XOR<Prisma.CompiledOutputUpdateManyMutationInput, Prisma.CompiledOutputUncheckedUpdateManyWithoutOrganizationInput>
+}
+
+export type CompiledOutputScalarWhereInput = {
+  AND?: Prisma.CompiledOutputScalarWhereInput | Prisma.CompiledOutputScalarWhereInput[]
+  OR?: Prisma.CompiledOutputScalarWhereInput[]
+  NOT?: Prisma.CompiledOutputScalarWhereInput | Prisma.CompiledOutputScalarWhereInput[]
+  id?: Prisma.UuidFilter<"CompiledOutput"> | string
+  configHash?: Prisma.StringFilter<"CompiledOutput"> | string
+  configName?: Prisma.StringFilter<"CompiledOutput"> | string
+  configSnapshot?: Prisma.JsonFilter<"CompiledOutput">
+  ruleCount?: Prisma.IntFilter<"CompiledOutput"> | number
+  sourceCount?: Prisma.IntFilter<"CompiledOutput"> | number
+  durationMs?: Prisma.IntFilter<"CompiledOutput"> | number
+  r2Key?: Prisma.StringFilter<"CompiledOutput"> | string
+  ownerUserId?: Prisma.UuidNullableFilter<"CompiledOutput"> | string | null
+  organizationId?: Prisma.UuidNullableFilter<"CompiledOutput"> | string | null
+  visibility?: Prisma.StringFilter<"CompiledOutput"> | string
+  createdAt?: Prisma.DateTimeFilter<"CompiledOutput"> | Date | string
+  expiresAt?: Prisma.DateTimeNullableFilter<"CompiledOutput"> | Date | string | null
+}
+
 export type CompiledOutputCreateWithoutEventsInput = {
   id?: string
   configHash: string
@@ -525,8 +700,10 @@ export type CompiledOutputCreateWithoutEventsInput = {
   durationMs: number
   r2Key: string
   ownerUserId?: string | null
+  visibility?: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
+  organization?: Prisma.OrganizationCreateNestedOneWithoutCompiledOutputsInput
 }
 
 export type CompiledOutputUncheckedCreateWithoutEventsInput = {
@@ -539,6 +716,8 @@ export type CompiledOutputUncheckedCreateWithoutEventsInput = {
   durationMs: number
   r2Key: string
   ownerUserId?: string | null
+  organizationId?: string | null
+  visibility?: string
   createdAt?: Date | string
   expiresAt?: Date | string | null
 }
@@ -569,8 +748,10 @@ export type CompiledOutputUpdateWithoutEventsInput = {
   durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   r2Key?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  organization?: Prisma.OrganizationUpdateOneWithoutCompiledOutputsNestedInput
 }
 
 export type CompiledOutputUncheckedUpdateWithoutEventsInput = {
@@ -583,6 +764,70 @@ export type CompiledOutputUncheckedUpdateWithoutEventsInput = {
   durationMs?: Prisma.IntFieldUpdateOperationsInput | number
   r2Key?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  organizationId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+}
+
+export type CompiledOutputCreateManyOrganizationInput = {
+  id?: string
+  configHash: string
+  configName: string
+  configSnapshot: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  ruleCount: number
+  sourceCount: number
+  durationMs: number
+  r2Key: string
+  ownerUserId?: string | null
+  visibility?: string
+  createdAt?: Date | string
+  expiresAt?: Date | string | null
+}
+
+export type CompiledOutputUpdateWithoutOrganizationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  configHash?: Prisma.StringFieldUpdateOperationsInput | string
+  configName?: Prisma.StringFieldUpdateOperationsInput | string
+  configSnapshot?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  ruleCount?: Prisma.IntFieldUpdateOperationsInput | number
+  sourceCount?: Prisma.IntFieldUpdateOperationsInput | number
+  durationMs?: Prisma.IntFieldUpdateOperationsInput | number
+  r2Key?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  events?: Prisma.CompilationEventUpdateManyWithoutCompiledOutputNestedInput
+}
+
+export type CompiledOutputUncheckedUpdateWithoutOrganizationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  configHash?: Prisma.StringFieldUpdateOperationsInput | string
+  configName?: Prisma.StringFieldUpdateOperationsInput | string
+  configSnapshot?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  ruleCount?: Prisma.IntFieldUpdateOperationsInput | number
+  sourceCount?: Prisma.IntFieldUpdateOperationsInput | number
+  durationMs?: Prisma.IntFieldUpdateOperationsInput | number
+  r2Key?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  events?: Prisma.CompilationEventUncheckedUpdateManyWithoutCompiledOutputNestedInput
+}
+
+export type CompiledOutputUncheckedUpdateManyWithoutOrganizationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  configHash?: Prisma.StringFieldUpdateOperationsInput | string
+  configName?: Prisma.StringFieldUpdateOperationsInput | string
+  configSnapshot?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  ruleCount?: Prisma.IntFieldUpdateOperationsInput | number
+  sourceCount?: Prisma.IntFieldUpdateOperationsInput | number
+  durationMs?: Prisma.IntFieldUpdateOperationsInput | number
+  r2Key?: Prisma.StringFieldUpdateOperationsInput | string
+  ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   expiresAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
 }
@@ -628,9 +873,12 @@ export type CompiledOutputSelect<ExtArgs extends runtime.Types.Extensions.Intern
   durationMs?: boolean
   r2Key?: boolean
   ownerUserId?: boolean
+  organizationId?: boolean
+  visibility?: boolean
   createdAt?: boolean
   expiresAt?: boolean
   events?: boolean | Prisma.CompiledOutput$eventsArgs<ExtArgs>
+  organization?: boolean | Prisma.CompiledOutput$organizationArgs<ExtArgs>
   _count?: boolean | Prisma.CompiledOutputCountOutputTypeDefaultArgs<ExtArgs>
 }, ExtArgs["result"]["compiledOutput"]>
 
@@ -644,8 +892,11 @@ export type CompiledOutputSelectCreateManyAndReturn<ExtArgs extends runtime.Type
   durationMs?: boolean
   r2Key?: boolean
   ownerUserId?: boolean
+  organizationId?: boolean
+  visibility?: boolean
   createdAt?: boolean
   expiresAt?: boolean
+  organization?: boolean | Prisma.CompiledOutput$organizationArgs<ExtArgs>
 }, ExtArgs["result"]["compiledOutput"]>
 
 export type CompiledOutputSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
@@ -658,8 +909,11 @@ export type CompiledOutputSelectUpdateManyAndReturn<ExtArgs extends runtime.Type
   durationMs?: boolean
   r2Key?: boolean
   ownerUserId?: boolean
+  organizationId?: boolean
+  visibility?: boolean
   createdAt?: boolean
   expiresAt?: boolean
+  organization?: boolean | Prisma.CompiledOutput$organizationArgs<ExtArgs>
 }, ExtArgs["result"]["compiledOutput"]>
 
 export type CompiledOutputSelectScalar = {
@@ -672,22 +926,30 @@ export type CompiledOutputSelectScalar = {
   durationMs?: boolean
   r2Key?: boolean
   ownerUserId?: boolean
+  organizationId?: boolean
+  visibility?: boolean
   createdAt?: boolean
   expiresAt?: boolean
 }
 
-export type CompiledOutputOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "configHash" | "configName" | "configSnapshot" | "ruleCount" | "sourceCount" | "durationMs" | "r2Key" | "ownerUserId" | "createdAt" | "expiresAt", ExtArgs["result"]["compiledOutput"]>
+export type CompiledOutputOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "configHash" | "configName" | "configSnapshot" | "ruleCount" | "sourceCount" | "durationMs" | "r2Key" | "ownerUserId" | "organizationId" | "visibility" | "createdAt" | "expiresAt", ExtArgs["result"]["compiledOutput"]>
 export type CompiledOutputInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   events?: boolean | Prisma.CompiledOutput$eventsArgs<ExtArgs>
+  organization?: boolean | Prisma.CompiledOutput$organizationArgs<ExtArgs>
   _count?: boolean | Prisma.CompiledOutputCountOutputTypeDefaultArgs<ExtArgs>
 }
-export type CompiledOutputIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
-export type CompiledOutputIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {}
+export type CompiledOutputIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  organization?: boolean | Prisma.CompiledOutput$organizationArgs<ExtArgs>
+}
+export type CompiledOutputIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  organization?: boolean | Prisma.CompiledOutput$organizationArgs<ExtArgs>
+}
 
 export type $CompiledOutputPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "CompiledOutput"
   objects: {
     events: Prisma.$CompilationEventPayload<ExtArgs>[]
+    organization: Prisma.$OrganizationPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
@@ -699,6 +961,8 @@ export type $CompiledOutputPayload<ExtArgs extends runtime.Types.Extensions.Inte
     durationMs: number
     r2Key: string
     ownerUserId: string | null
+    organizationId: string | null
+    visibility: string
     createdAt: Date
     expiresAt: Date | null
   }, ExtArgs["result"]["compiledOutput"]>
@@ -1096,6 +1360,7 @@ readonly fields: CompiledOutputFieldRefs;
 export interface Prisma__CompiledOutputClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   events<T extends Prisma.CompiledOutput$eventsArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CompiledOutput$eventsArgs<ExtArgs>>): Prisma.PrismaPromise<runtime.Types.Result.GetResult<Prisma.$CompilationEventPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+  organization<T extends Prisma.CompiledOutput$organizationArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.CompiledOutput$organizationArgs<ExtArgs>>): Prisma.Prisma__OrganizationClient<runtime.Types.Result.GetResult<Prisma.$OrganizationPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1134,6 +1399,8 @@ export interface CompiledOutputFieldRefs {
   readonly durationMs: Prisma.FieldRef<"CompiledOutput", 'Int'>
   readonly r2Key: Prisma.FieldRef<"CompiledOutput", 'String'>
   readonly ownerUserId: Prisma.FieldRef<"CompiledOutput", 'String'>
+  readonly organizationId: Prisma.FieldRef<"CompiledOutput", 'String'>
+  readonly visibility: Prisma.FieldRef<"CompiledOutput", 'String'>
   readonly createdAt: Prisma.FieldRef<"CompiledOutput", 'DateTime'>
   readonly expiresAt: Prisma.FieldRef<"CompiledOutput", 'DateTime'>
 }
@@ -1390,6 +1657,10 @@ export type CompiledOutputCreateManyAndReturnArgs<ExtArgs extends runtime.Types.
    */
   data: Prisma.CompiledOutputCreateManyInput | Prisma.CompiledOutputCreateManyInput[]
   skipDuplicates?: boolean
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CompiledOutputIncludeCreateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1460,6 +1731,10 @@ export type CompiledOutputUpdateManyAndReturnArgs<ExtArgs extends runtime.Types.
    * Limit how many CompiledOutputs to update.
    */
   limit?: number
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.CompiledOutputIncludeUpdateManyAndReturn<ExtArgs> | null
 }
 
 /**
@@ -1550,6 +1825,25 @@ export type CompiledOutput$eventsArgs<ExtArgs extends runtime.Types.Extensions.I
   take?: number
   skip?: number
   distinct?: Prisma.CompilationEventScalarFieldEnum | Prisma.CompilationEventScalarFieldEnum[]
+}
+
+/**
+ * CompiledOutput.organization
+ */
+export type CompiledOutput$organizationArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Organization
+   */
+  select?: Prisma.OrganizationSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Organization
+   */
+  omit?: Prisma.OrganizationOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.OrganizationInclude<ExtArgs> | null
+  where?: Prisma.OrganizationWhereInput
 }
 
 /**
