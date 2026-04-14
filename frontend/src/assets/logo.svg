@@ -1,24 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Bloqr logo">
-  <defs>
-    <linearGradient id="bloqr-orange" x1="0%" y1="0%" x2="100%" y2="100%">
-      <stop offset="0%" stop-color="#FF7033"/>
-      <stop offset="100%" stop-color="#CC4400"/>
-    </linearGradient>
-    <radialGradient id="bloqr-glow" cx="50%" cy="35%" r="55%">
-      <stop offset="0%" stop-color="#FF5500" stop-opacity="0.22"/>
-      <stop offset="100%" stop-color="#FF5500" stop-opacity="0"/>
-    </radialGradient>
-  </defs>
-  <!-- Dark navy background -->
-  <rect width="64" height="64" rx="12" fill="#070B14"/>
-  <!-- Orange shield outline -->
-  <path d="M32 10 Q32 10 51 20 V37 Q51 51 32 58 Q13 51 13 37 V20 Z"
-        fill="#0E1829" stroke="url(#bloqr-orange)" stroke-width="2.5" stroke-linejoin="round"/>
-  <!-- Ambient glow -->
-  <path d="M32 10 Q32 10 51 20 V37 Q51 51 32 58 Q13 51 13 37 V20 Z"
-        fill="url(#bloqr-glow)"/>
-  <!-- "B" lettermark in orange -->
-  <text x="32" y="41" text-anchor="middle"
-        font-family="'Space Grotesk', 'Segoe UI', Arial, sans-serif"
-        font-size="24" font-weight="800" fill="url(#bloqr-orange)">B</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none">
+  <!-- Filter-list icon: 4 bars decreasing in width, bottom bar orange = "compiled output" -->
+  <g>
+    <rect x="0" y="0"  width="32" height="5" rx="2.5" fill="#F1F5F9"/>
+    <rect x="0" y="10" width="24" height="5" rx="2.5" fill="#F1F5F9" opacity="0.7"/>
+    <rect x="0" y="20" width="16" height="5" rx="2.5" fill="#F1F5F9" opacity="0.5"/>
+    <rect x="0" y="30" width="8"  height="5" rx="2.5" fill="#FF5500"/>
+    <!-- small arrow tip right of the orange bar -->
+    <path d="M11 32.5 L15 32.5 L13 30 Z" fill="#FF5500" opacity="0.6"/>
+  </g>
+  <!-- Wordmark -->
+  <text x="44" y="14" font-family="'Space Grotesk', 'JetBrains Mono', monospace" font-size="14" font-weight="700" letter-spacing="0.08em" fill="#F1F5F9">ADBLOCK</text>
+  <text x="44" y="32" font-family="'Space Grotesk', 'JetBrains Mono', monospace" font-size="14" font-weight="400" letter-spacing="0.12em" fill="#94A3B8">COMPILER</text>
+  <!-- Orange accent line under COMPILER -->
+  <rect x="44" y="36" width="56" height="2" rx="1" fill="#FF5500" opacity="0.6"/>
 </svg>

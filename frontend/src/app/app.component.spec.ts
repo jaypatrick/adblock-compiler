@@ -1,6 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { Component, ErrorHandler, provideZonelessChangeDetection } from '@angular/core';
-import { provideRouter, Router } from '@angular/router';
+import { ErrorHandler, provideZonelessChangeDetection } from '@angular/core';
+import { provideRouter } from '@angular/router';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideHttpClient } from '@angular/common/http';
 import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
@@ -10,9 +10,6 @@ import { AppComponent } from './app.component';
 import { GlobalErrorHandler } from './error/global-error-handler';
 import { API_BASE_URL } from './tokens';
 
-/** Lightweight stub used as a route target to avoid recursively rendering AppComponent. */
-@Component({ selector: 'app-stub', template: '', standalone: true })
-class StubComponent {}
 
 describe('AppComponent', () => {
     let fixture: ComponentFixture<AppComponent>;
@@ -133,8 +130,8 @@ describe('AppComponent (mobile viewport)', () => {
             imports: [AppComponent, NoopAnimationsModule],
             providers: [
                 provideZonelessChangeDetection(),
-                // Provide a non-root route so we can navigate away from `/` to reveal the app shell.
-                provideRouter([{ path: 'compiler', component: StubComponent }]),
+                // Provide empty routes — no longer need StubComponent
+                provideRouter([]),
                 provideHttpClient(),
                 provideHttpClientTesting(),
                 { provide: ErrorHandler, useClass: GlobalErrorHandler },
@@ -165,11 +162,7 @@ describe('AppComponent (mobile viewport)', () => {
         localStorage.clear();
     });
 
-    it('should render menu button with aria-label on non-landing routes', async () => {
-        // The app shell hamburger is only shown on non-landing-page routes.
-        // Navigate away from `/` to make isLandingPage() = false and reveal the shell header.
-        const router = TestBed.inject(Router);
-        await router.navigate(['/compiler']);
+    it('should render menu button with aria-label', async () => {
         await fixture.whenStable();
         fixture.detectChanges();
         const menuBtn = fixture.nativeElement.querySelector('button[aria-label="Toggle navigation"]');
