@@ -43,7 +43,7 @@ export type FilterSourceMinAggregateOutputType = {
   description: string | null
   homepage: string | null
   license: string | null
-  isPublic: boolean | null
+  visibility: string | null
   ownerUserId: string | null
   refreshIntervalSeconds: number | null
   lastCheckedAt: Date | null
@@ -62,7 +62,7 @@ export type FilterSourceMaxAggregateOutputType = {
   description: string | null
   homepage: string | null
   license: string | null
-  isPublic: boolean | null
+  visibility: string | null
   ownerUserId: string | null
   refreshIntervalSeconds: number | null
   lastCheckedAt: Date | null
@@ -81,7 +81,7 @@ export type FilterSourceCountAggregateOutputType = {
   description: number
   homepage: number
   license: number
-  isPublic: number
+  visibility: number
   ownerUserId: number
   refreshIntervalSeconds: number
   lastCheckedAt: number
@@ -112,7 +112,7 @@ export type FilterSourceMinAggregateInputType = {
   description?: true
   homepage?: true
   license?: true
-  isPublic?: true
+  visibility?: true
   ownerUserId?: true
   refreshIntervalSeconds?: true
   lastCheckedAt?: true
@@ -131,7 +131,7 @@ export type FilterSourceMaxAggregateInputType = {
   description?: true
   homepage?: true
   license?: true
-  isPublic?: true
+  visibility?: true
   ownerUserId?: true
   refreshIntervalSeconds?: true
   lastCheckedAt?: true
@@ -150,7 +150,7 @@ export type FilterSourceCountAggregateInputType = {
   description?: true
   homepage?: true
   license?: true
-  isPublic?: true
+  visibility?: true
   ownerUserId?: true
   refreshIntervalSeconds?: true
   lastCheckedAt?: true
@@ -256,7 +256,7 @@ export type FilterSourceGroupByOutputType = {
   description: string | null
   homepage: string | null
   license: string | null
-  isPublic: boolean
+  visibility: string
   ownerUserId: string | null
   refreshIntervalSeconds: number
   lastCheckedAt: Date | null
@@ -298,7 +298,7 @@ export type FilterSourceWhereInput = {
   description?: Prisma.StringNullableFilter<"FilterSource"> | string | null
   homepage?: Prisma.StringNullableFilter<"FilterSource"> | string | null
   license?: Prisma.StringNullableFilter<"FilterSource"> | string | null
-  isPublic?: Prisma.BoolFilter<"FilterSource"> | boolean
+  visibility?: Prisma.StringFilter<"FilterSource"> | string
   ownerUserId?: Prisma.UuidNullableFilter<"FilterSource"> | string | null
   refreshIntervalSeconds?: Prisma.IntFilter<"FilterSource"> | number
   lastCheckedAt?: Prisma.DateTimeNullableFilter<"FilterSource"> | Date | string | null
@@ -320,7 +320,7 @@ export type FilterSourceOrderByWithRelationInput = {
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   homepage?: Prisma.SortOrderInput | Prisma.SortOrder
   license?: Prisma.SortOrderInput | Prisma.SortOrder
-  isPublic?: Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrderInput | Prisma.SortOrder
   refreshIntervalSeconds?: Prisma.SortOrder
   lastCheckedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -345,7 +345,7 @@ export type FilterSourceWhereUniqueInput = Prisma.AtLeast<{
   description?: Prisma.StringNullableFilter<"FilterSource"> | string | null
   homepage?: Prisma.StringNullableFilter<"FilterSource"> | string | null
   license?: Prisma.StringNullableFilter<"FilterSource"> | string | null
-  isPublic?: Prisma.BoolFilter<"FilterSource"> | boolean
+  visibility?: Prisma.StringFilter<"FilterSource"> | string
   ownerUserId?: Prisma.UuidNullableFilter<"FilterSource"> | string | null
   refreshIntervalSeconds?: Prisma.IntFilter<"FilterSource"> | number
   lastCheckedAt?: Prisma.DateTimeNullableFilter<"FilterSource"> | Date | string | null
@@ -367,7 +367,7 @@ export type FilterSourceOrderByWithAggregationInput = {
   description?: Prisma.SortOrderInput | Prisma.SortOrder
   homepage?: Prisma.SortOrderInput | Prisma.SortOrder
   license?: Prisma.SortOrderInput | Prisma.SortOrder
-  isPublic?: Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrderInput | Prisma.SortOrder
   refreshIntervalSeconds?: Prisma.SortOrder
   lastCheckedAt?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -394,7 +394,7 @@ export type FilterSourceScalarWhereWithAggregatesInput = {
   description?: Prisma.StringNullableWithAggregatesFilter<"FilterSource"> | string | null
   homepage?: Prisma.StringNullableWithAggregatesFilter<"FilterSource"> | string | null
   license?: Prisma.StringNullableWithAggregatesFilter<"FilterSource"> | string | null
-  isPublic?: Prisma.BoolWithAggregatesFilter<"FilterSource"> | boolean
+  visibility?: Prisma.StringWithAggregatesFilter<"FilterSource"> | string
   ownerUserId?: Prisma.UuidNullableWithAggregatesFilter<"FilterSource"> | string | null
   refreshIntervalSeconds?: Prisma.IntWithAggregatesFilter<"FilterSource"> | number
   lastCheckedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"FilterSource"> | Date | string | null
@@ -413,7 +413,7 @@ export type FilterSourceCreateInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
+  visibility?: string
   ownerUserId?: string | null
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
@@ -435,7 +435,7 @@ export type FilterSourceUncheckedCreateInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
+  visibility?: string
   ownerUserId?: string | null
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
@@ -457,7 +457,7 @@ export type FilterSourceUpdateInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -479,7 +479,7 @@ export type FilterSourceUncheckedUpdateInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -501,7 +501,7 @@ export type FilterSourceCreateManyInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
+  visibility?: string
   ownerUserId?: string | null
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
@@ -520,7 +520,7 @@ export type FilterSourceUpdateManyMutationInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -539,7 +539,7 @@ export type FilterSourceUncheckedUpdateManyInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -558,7 +558,7 @@ export type FilterSourceCountOrderByAggregateInput = {
   description?: Prisma.SortOrder
   homepage?: Prisma.SortOrder
   license?: Prisma.SortOrder
-  isPublic?: Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrder
   refreshIntervalSeconds?: Prisma.SortOrder
   lastCheckedAt?: Prisma.SortOrder
@@ -582,7 +582,7 @@ export type FilterSourceMaxOrderByAggregateInput = {
   description?: Prisma.SortOrder
   homepage?: Prisma.SortOrder
   license?: Prisma.SortOrder
-  isPublic?: Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrder
   refreshIntervalSeconds?: Prisma.SortOrder
   lastCheckedAt?: Prisma.SortOrder
@@ -601,7 +601,7 @@ export type FilterSourceMinOrderByAggregateInput = {
   description?: Prisma.SortOrder
   homepage?: Prisma.SortOrder
   license?: Prisma.SortOrder
-  isPublic?: Prisma.SortOrder
+  visibility?: Prisma.SortOrder
   ownerUserId?: Prisma.SortOrder
   refreshIntervalSeconds?: Prisma.SortOrder
   lastCheckedAt?: Prisma.SortOrder
@@ -672,7 +672,7 @@ export type FilterSourceCreateWithoutVersionsInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
+  visibility?: string
   ownerUserId?: string | null
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
@@ -693,7 +693,7 @@ export type FilterSourceUncheckedCreateWithoutVersionsInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
+  visibility?: string
   ownerUserId?: string | null
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
@@ -730,7 +730,7 @@ export type FilterSourceUpdateWithoutVersionsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -751,7 +751,7 @@ export type FilterSourceUncheckedUpdateWithoutVersionsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -772,7 +772,7 @@ export type FilterSourceCreateWithoutHealthSnapshotsInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
+  visibility?: string
   ownerUserId?: string | null
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
@@ -793,7 +793,7 @@ export type FilterSourceUncheckedCreateWithoutHealthSnapshotsInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
+  visibility?: string
   ownerUserId?: string | null
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
@@ -830,7 +830,7 @@ export type FilterSourceUpdateWithoutHealthSnapshotsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -851,7 +851,7 @@ export type FilterSourceUncheckedUpdateWithoutHealthSnapshotsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -872,7 +872,7 @@ export type FilterSourceCreateWithoutChangeEventsInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
+  visibility?: string
   ownerUserId?: string | null
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
@@ -893,7 +893,7 @@ export type FilterSourceUncheckedCreateWithoutChangeEventsInput = {
   description?: string | null
   homepage?: string | null
   license?: string | null
-  isPublic?: boolean
+  visibility?: string
   ownerUserId?: string | null
   refreshIntervalSeconds?: number
   lastCheckedAt?: Date | string | null
@@ -930,7 +930,7 @@ export type FilterSourceUpdateWithoutChangeEventsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -951,7 +951,7 @@ export type FilterSourceUncheckedUpdateWithoutChangeEventsInput = {
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   homepage?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   license?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  isPublic?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  visibility?: Prisma.StringFieldUpdateOperationsInput | string
   ownerUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   refreshIntervalSeconds?: Prisma.IntFieldUpdateOperationsInput | number
   lastCheckedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
@@ -1021,7 +1021,7 @@ export type FilterSourceSelect<ExtArgs extends runtime.Types.Extensions.Internal
   description?: boolean
   homepage?: boolean
   license?: boolean
-  isPublic?: boolean
+  visibility?: boolean
   ownerUserId?: boolean
   refreshIntervalSeconds?: boolean
   lastCheckedAt?: boolean
@@ -1044,7 +1044,7 @@ export type FilterSourceSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   description?: boolean
   homepage?: boolean
   license?: boolean
-  isPublic?: boolean
+  visibility?: boolean
   ownerUserId?: boolean
   refreshIntervalSeconds?: boolean
   lastCheckedAt?: boolean
@@ -1063,7 +1063,7 @@ export type FilterSourceSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   description?: boolean
   homepage?: boolean
   license?: boolean
-  isPublic?: boolean
+  visibility?: boolean
   ownerUserId?: boolean
   refreshIntervalSeconds?: boolean
   lastCheckedAt?: boolean
@@ -1082,7 +1082,7 @@ export type FilterSourceSelectScalar = {
   description?: boolean
   homepage?: boolean
   license?: boolean
-  isPublic?: boolean
+  visibility?: boolean
   ownerUserId?: boolean
   refreshIntervalSeconds?: boolean
   lastCheckedAt?: boolean
@@ -1094,7 +1094,7 @@ export type FilterSourceSelectScalar = {
   updatedAt?: boolean
 }
 
-export type FilterSourceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "url" | "name" | "description" | "homepage" | "license" | "isPublic" | "ownerUserId" | "refreshIntervalSeconds" | "lastCheckedAt" | "lastSuccessAt" | "lastFailureAt" | "consecutiveFailures" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["filterSource"]>
+export type FilterSourceOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "url" | "name" | "description" | "homepage" | "license" | "visibility" | "ownerUserId" | "refreshIntervalSeconds" | "lastCheckedAt" | "lastSuccessAt" | "lastFailureAt" | "consecutiveFailures" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["filterSource"]>
 export type FilterSourceInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   versions?: boolean | Prisma.FilterSource$versionsArgs<ExtArgs>
   healthSnapshots?: boolean | Prisma.FilterSource$healthSnapshotsArgs<ExtArgs>
@@ -1118,7 +1118,7 @@ export type $FilterSourcePayload<ExtArgs extends runtime.Types.Extensions.Intern
     description: string | null
     homepage: string | null
     license: string | null
-    isPublic: boolean
+    visibility: string
     ownerUserId: string | null
     refreshIntervalSeconds: number
     lastCheckedAt: Date | null
@@ -1560,7 +1560,7 @@ export interface FilterSourceFieldRefs {
   readonly description: Prisma.FieldRef<"FilterSource", 'String'>
   readonly homepage: Prisma.FieldRef<"FilterSource", 'String'>
   readonly license: Prisma.FieldRef<"FilterSource", 'String'>
-  readonly isPublic: Prisma.FieldRef<"FilterSource", 'Boolean'>
+  readonly visibility: Prisma.FieldRef<"FilterSource", 'String'>
   readonly ownerUserId: Prisma.FieldRef<"FilterSource", 'String'>
   readonly refreshIntervalSeconds: Prisma.FieldRef<"FilterSource", 'Int'>
   readonly lastCheckedAt: Prisma.FieldRef<"FilterSource", 'DateTime'>

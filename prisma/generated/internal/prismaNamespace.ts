@@ -2294,7 +2294,7 @@ export const FilterSourceScalarFieldEnum = {
   description: 'description',
   homepage: 'homepage',
   license: 'license',
-  isPublic: 'isPublic',
+  visibility: 'visibility',
   ownerUserId: 'ownerUserId',
   refreshIntervalSeconds: 'refreshIntervalSeconds',
   lastCheckedAt: 'lastCheckedAt',
