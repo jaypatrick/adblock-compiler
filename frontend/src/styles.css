@@ -135,6 +135,7 @@
     --color-orange-600:  #CC4400;
     --color-orange-900:  #1A0A00;
     --color-orange-glow: rgba(255, 85, 0, 0.15);
+    --color-orange-glow-intense: rgba(255, 85, 0, 0.4);
 
     /* ── Bloqr Brand Tokens — Cyan (secondary accent) ────────────── */
     --color-cyan-500:    #00D4FF;
@@ -1130,7 +1131,7 @@ code {
 }
 .bloqr-btn-primary:hover {
     background: var(--color-orange-600);
-    box-shadow: 0 0 32px rgba(255, 85, 0, 0.4);
+    box-shadow: 0 0 32px var(--color-orange-glow-intense);
 }
 .bloqr-btn-ghost {
     display: inline-flex;
