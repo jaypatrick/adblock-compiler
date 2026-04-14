@@ -232,16 +232,19 @@ name = "MCP_AGENT"
 class_name = "CompilationCoordinator"
 name = "COMPILATION_COORDINATOR"
 
-# ─── Containers ──────────────────────────────────────────────────────────────
+# ─── Containers ─────────────────────────────────────────────────────────
 # Each AdblockCompiler Durable Object manages one Docker container.
 # Wrangler builds the image from Dockerfile.container on `wrangler deploy`.
 # Requires Docker running locally or in CI.
 # See: https://developers.cloudflare.com/containers/
+#
+# instance_type valid values: "standard" | "small" | "large"
+# (NOT "basic" — that value is rejected with VALIDATE_INPUT by the CF API)
 [[containers]]
 class_name = "AdblockCompiler"
 image = "./Dockerfile.container"
 max_instances = 5
-instance_type = "basic"
+instance_type = "standard"
 
 # ─── Migrations ──────────────────────────────────────────────────────────────
 [[migrations]]
