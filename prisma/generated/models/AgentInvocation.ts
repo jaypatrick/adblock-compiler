@@ -507,14 +507,6 @@ export type AgentInvocationUncheckedUpdateManyWithoutSessionNestedInput = {
   deleteMany?: Prisma.AgentInvocationScalarWhereInput | Prisma.AgentInvocationScalarWhereInput[]
 }
 
-export type NullableIntFieldUpdateOperationsInput = {
-  set?: number | null
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type AgentInvocationCreateWithoutSessionInput = {
   id?: string
   toolName: string

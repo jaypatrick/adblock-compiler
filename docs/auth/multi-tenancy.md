@@ -90,7 +90,7 @@ Feature flags from `SubscriptionPlan` should be enforced in the Hono middleware 
 ```typescript
 // worker/middleware/featureFlags.ts
 import { MiddlewareHandler } from 'hono';
-import { SubscriptionPlan } from '@/prisma/generated';
+import type { SubscriptionPlan } from '../../prisma/generated/client.ts';
 
 export function requireFeature(flag: keyof SubscriptionPlan): MiddlewareHandler {
     return async (c, next) => {
