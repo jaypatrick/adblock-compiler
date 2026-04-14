@@ -102,7 +102,7 @@ describe('AppComponent', () => {
     it('should render the toolbar title', async () => {
         await fixture.whenStable();
         const el: HTMLElement = fixture.nativeElement;
-        expect(el.querySelector('.toolbar-title')?.textContent).toContain('Adblock Compiler');
+        expect(el.querySelector('.toolbar-title')?.textContent).toContain('Bloqr');
     });
 
     it('should render the main content area with role=main', async () => {

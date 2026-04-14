@@ -62,14 +62,12 @@
               material-symbols           — Material Symbols Outlined icon font               — imported in styles.css
             No external CDN requests required at runtime.
 
-            Preload hints for display + body fonts that most impact CLS.
-            NOTE: The Angular build pipeline hashes @fontsource asset filenames (e.g. space-grotesk-latin-400-normal.XXXXXXXX.woff2).
-            These hint hrefs are intentionally hash-free to survive incremental builds; the browser will reuse the preloaded
-            resource regardless of the hash suffix because the MIME type and crossorigin attribute match. Update these paths if
-            the @fontsource package layout changes (e.g. a major version bump renames the files).
+            NOTE: Preload hints for @fontsource assets are intentionally omitted.  The Angular build
+            pipeline runs with outputHashing="all", so emitted filenames include a content hash
+            (e.g. space-grotesk-latin-400-normal.XXXXXXXX.woff2).  A hash-less preload href would
+            never match the actual hashed filename, resulting in a wasted 404 prefetch.  The browser
+            will discover and load the fonts on its own via the @import rules in styles.css.
         -->
-        <link rel="preload" href="media/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
-        <link rel="preload" href="media/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
     </head>
     <body class="mat-typography">
         <app-root></app-root>
