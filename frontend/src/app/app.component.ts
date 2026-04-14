@@ -250,12 +250,18 @@ export class AppComponent {
      */
     private readonly router = inject(Router);
 
+    private isLandingPageUrl(url: string): boolean {
+        const normalizedUrl = url.split(/[?#]/u, 1)[0];
+
+        return normalizedUrl === '' || normalizedUrl === '/';
+    }
+
     readonly isLandingPage = toSignal(
         this.router.events.pipe(
             filter(e => e instanceof NavigationEnd),
-            map(e => (e as NavigationEnd).urlAfterRedirects === '/'),
+            map(e => this.isLandingPageUrl((e as NavigationEnd).urlAfterRedirects)),
         ),
-        { initialValue: this.router.url === '/' || this.router.url === '' },
+        { initialValue: this.isLandingPageUrl(this.router.url) },
     );
 
     constructor() {
