@@ -37,10 +37,10 @@ describe('HomeComponent', () => {
         expect(hero).toBeTruthy();
     });
 
-    it('should render main content area with role=main', async () => {
+    it('should render landing content wrapper', async () => {
         await fixture.whenStable();
-        const main = fixture.nativeElement.querySelector('[role="main"]');
-        expect(main).toBeTruthy();
+        const wrapper = fixture.nativeElement.querySelector('.landing-content');
+        expect(wrapper).toBeTruthy();
     });
 
     it('should render footer section', async () => {

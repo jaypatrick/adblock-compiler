@@ -1,5 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
-import { ErrorHandler, provideZonelessChangeDetection } from '@angular/core';
+import { Component, ErrorHandler, provideZonelessChangeDetection } from '@angular/core';
 import { provideRouter, Router } from '@angular/router';
 import { NoopAnimationsModule } from '@angular/platform-browser/animations';
 import { provideHttpClient } from '@angular/common/http';
@@ -9,6 +9,10 @@ import { of } from 'rxjs';
 import { AppComponent } from './app.component';
 import { GlobalErrorHandler } from './error/global-error-handler';
 import { API_BASE_URL } from './tokens';
+
+/** Lightweight stub used as a route target to avoid recursively rendering AppComponent. */
+@Component({ selector: 'app-stub', template: '', standalone: true })
+class StubComponent {}
 
 describe('AppComponent', () => {
     let fixture: ComponentFixture<AppComponent>;
@@ -130,7 +134,7 @@ describe('AppComponent (mobile viewport)', () => {
             providers: [
                 provideZonelessChangeDetection(),
                 // Provide a non-root route so we can navigate away from `/` to reveal the app shell.
-                provideRouter([{ path: 'compiler', component: AppComponent }]),
+                provideRouter([{ path: 'compiler', component: StubComponent }]),
                 provideHttpClient(),
                 provideHttpClientTesting(),
                 { provide: ErrorHandler, useClass: GlobalErrorHandler },

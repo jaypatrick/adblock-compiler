@@ -34,20 +34,20 @@ import { Component, signal } from '@angular/core';
                     @if (!showCode()) {
                         <div class="ui-mockup bloqr-card">
                             <div class="ui-form-row">
-                                <label class="ui-label" for="ui-vendor">DNS Vendor</label>
-                                <div class="ui-select" id="ui-vendor" role="presentation">AdGuard Home</div>
+                                <p class="ui-label">DNS Vendor</p>
+                                <div class="ui-select" role="presentation">AdGuard Home</div>
                             </div>
                             <div class="ui-form-row">
-                                <label class="ui-label" for="ui-profile">List profile</label>
-                                <div class="ui-select" id="ui-profile" role="presentation">Balanced (AI-recommended)</div>
+                                <p class="ui-label">List profile</p>
+                                <div class="ui-select" role="presentation">Balanced (AI-recommended)</div>
                             </div>
                             <div class="ui-form-row">
-                                <label class="ui-label" for="ui-frequency">Update frequency</label>
-                                <div class="ui-select" id="ui-frequency" role="presentation">Every 6 hours</div>
+                                <p class="ui-label">Update frequency</p>
+                                <div class="ui-select" role="presentation">Every 6 hours</div>
                             </div>
                             <div class="ui-form-row">
-                                <label class="ui-label" for="ui-devices">Devices</label>
-                                <div class="ui-tags" id="ui-devices" role="presentation">
+                                <p class="ui-label">Devices</p>
+                                <div class="ui-tags" role="presentation">
                                     <span class="ui-tag">Home network</span>
                                     <span class="ui-tag">Mobile</span>
                                     <span class="ui-tag">+ Add device</span>
