@@ -157,8 +157,7 @@ const swaggerDocsHandler = swaggerUI({
         // helper which returns only absolute CDN URLs, never relative or user-supplied paths.
         // This check guards against unlikely supply-chain compromise scenarios.
         const TRUSTED_ASSET_ORIGINS = ['https://unpkg.com', 'https://cdn.jsdelivr.net'];
-        const isValidUrl = (url: string): boolean =>
-            TRUSTED_ASSET_ORIGINS.some((origin) => url.startsWith(origin));
+        const isValidUrl = (url: string): boolean => TRUSTED_ASSET_ORIGINS.some((origin) => url.startsWith(origin));
 
         // Escape HTML attribute values to prevent injection if a URL ever contains
         // special characters (quote, angle bracket, ampersand).
@@ -559,4 +558,3 @@ export function docsLandingHandler(env: Env): Response {
 // and can be tested through the docs router directly.
 
 docsRoutes.get('/', (c) => docsLandingHandler(c.env));
-
