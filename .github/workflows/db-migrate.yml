@@ -218,12 +218,14 @@ jobs:
             const d1Admin = (process.env.D1_ADMIN || '').trim();
             const pgInfo  = (process.env.PG_INFO  || '').trim();
 
+            const defaultBranch = context.payload.repository?.default_branch || 'default branch';
+
             const hasCloudflare = d1Main || d1Admin;
             const hasPostgres   = pgInfo;
 
             let body = '## 🗄️ Database Migration Plan\n\n';
             body += '> **This is a dry-run.** No changes have been applied to any database.\n';
-            body += '> Migrations will be applied per-backend (sequentially) when this PR is merged to `main`.\n\n';
+            body += `> Migrations will be applied per-backend (sequentially) when this PR is merged to \`${defaultBranch}\`.\n\n`;
 
             // Changed files section
             if (changed_d1 || changed_admin || changed_prisma) {
@@ -294,7 +296,7 @@ jobs:
               });
             }
 
-  # ─── 3. Apply D1 migrations (main push only) ─────────────────────────────
+  # ─── 3. Apply D1 migrations (default-branch push only) ──────────────────
   migrate:
     name: Apply D1 Migrations
     runs-on: ubuntu-latest
