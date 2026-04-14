@@ -1,6 +1,8 @@
 /* =================================================================
-   Adblock Compiler — Bloqr Design System
-   Angular 21 + Material Design 3 + Space Grotesk
+   Bloqr — Design System: Dark-First Brand
+   Angular 21 + Material Design 3
+   Fonts: Space Grotesk (display/headings) · Inter (body) · JetBrains Mono (code)
+   Primary: Orange (#FF5500) · Secondary: Cyan (#00D4FF)
    ================================================================= */
 
 /* -----------------------------------------------------------------
@@ -8,72 +10,100 @@
    ----------------------------------------------------------------- */
 @import "tailwindcss";
 
-/* Dark mode variant: matches existing ThemeService selectors */
+/* Dark mode Tailwind variant (preserved for dark: utility compatibility) */
 @custom-variant dark (&:where(body.dark-theme *, [data-theme='dark'] *));
 
 /* -----------------------------------------------------------------
-   Tailwind ↔ Material M3 Bridge + Bloqr brand tokens
+   Tailwind ↔ Material M3 Bridge
+   @theme inline maps M3 role tokens to Tailwind color/font utilities.
+   "inline" resolves values at runtime so dark-mode token swaps work.
+
+   Generated utilities (examples):
+     bg-primary          → background-color: var(--mat-sys-primary)
+     text-on-surface     → color: var(--mat-sys-on-surface)
+     border-outline      → border-color: var(--mat-sys-outline)
+     bg-surface-variant  → background-color: var(--mat-sys-surface-variant)
+     font-sans           → font-family: Inter, Space Grotesk
+     font-mono           → font-family: JetBrains Mono
+     font-display        → font-family: Space Grotesk
+     text-stat           → font-size: 2rem (primary metric value)
+     text-stat-lg        → font-size: 1.75rem (admin stat tiles)
+     text-code           → font-size: 0.8125rem (inline code)
    ----------------------------------------------------------------- */
 @theme inline {
-    /* Bloqr brand colors */
+    /* ── M3 Primary ─────────────────────────────────────────────── */
     --color-primary: var(--mat-sys-primary);
     --color-on-primary: var(--mat-sys-on-primary);
+    --color-primary-container: var(--mat-sys-primary-container);
+    --color-on-primary-container: var(--mat-sys-on-primary-container);
+
+    /* ── M3 Secondary ────────────────────────────────────────────── */
     --color-secondary: var(--mat-sys-secondary);
     --color-on-secondary: var(--mat-sys-on-secondary);
-    --color-surface: var(--mat-sys-surface);
-    --color-on-surface: var(--mat-sys-on-surface);
-    --color-background: var(--mat-sys-background);
-    --color-on-background: var(--mat-sys-on-background);
-    --color-surface-variant: var(--mat-sys-surface-variant);
-    --color-on-surface-variant: var(--mat-sys-on-surface-variant);
-    --color-outline: var(--mat-sys-outline);
-    --color-outline-variant: var(--mat-sys-outline-variant);
-    --color-error: var(--mat-sys-error);
-    --color-on-error: var(--mat-sys-on-error);
+    --color-secondary-container: var(--mat-sys-secondary-container);
+    --color-on-secondary-container: var(--mat-sys-on-secondary-container);
+
+    /* ── M3 Tertiary ─────────────────────────────────────────────── */
     --color-tertiary: var(--mat-sys-tertiary);
     --color-on-tertiary: var(--mat-sys-on-tertiary);
+    --color-tertiary-container: var(--mat-sys-tertiary-container);
+    --color-on-tertiary-container: var(--mat-sys-on-tertiary-container);
+
+    /* ── M3 Error ────────────────────────────────────────────────── */
+    --color-error: var(--mat-sys-error);
+    --color-on-error: var(--mat-sys-on-error);
+    --color-error-container: var(--mat-sys-error-container);
+    --color-on-error-container: var(--mat-sys-on-error-container);
+
+    /* ── M3 Surface / Background ─────────────────────────────────── */
+    --color-background: var(--mat-sys-background);
+    --color-on-background: var(--mat-sys-on-background);
+    --color-surface: var(--mat-sys-surface);
+    --color-on-surface: var(--mat-sys-on-surface);
+    --color-surface-variant: var(--mat-sys-surface-variant);
+    --color-on-surface-variant: var(--mat-sys-on-surface-variant);
     --color-surface-container: var(--mat-sys-surface-container);
     --color-surface-container-low: var(--mat-sys-surface-container-low);
     --color-surface-container-high: var(--mat-sys-surface-container-high);
     --color-surface-dim: var(--mat-sys-surface-dim);
-    --color-primary-container: var(--mat-sys-primary-container);
-    --color-on-primary-container: var(--mat-sys-on-primary-container);
-    --color-secondary-container: var(--mat-sys-secondary-container);
-    --color-on-secondary-container: var(--mat-sys-on-secondary-container);
-    --color-tertiary-container: var(--mat-sys-tertiary-container);
-    --color-on-tertiary-container: var(--mat-sys-on-tertiary-container);
-    --color-error-container: var(--mat-sys-error-container);
-    --color-on-error-container: var(--mat-sys-on-error-container);
+
+    /* ── M3 Outline ──────────────────────────────────────────────── */
+    --color-outline: var(--mat-sys-outline);
+    --color-outline-variant: var(--mat-sys-outline-variant);
+
+    /* ── App semantic tokens ─────────────────────────────────────── */
     --color-success: var(--app-success);
     --color-success-light: var(--app-success-light);
     --color-warning: var(--app-warning);
     --color-warning-light: var(--app-warning-light);
     --color-info: var(--app-info);
     --color-info-light: var(--app-info-light);
-    /* Bloqr brand tokens */
-    --color-bloqr-orange: #FF5500;
-    --color-bloqr-cyan: #00D4FF;
-    --color-bloqr-navy: #070B14;
-    --color-bloqr-card: #0E1829;
-    --color-bloqr-border: #1E2D40;
-    --color-bloqr-muted: #94A3B8;
-    --color-bloqr-light: #F1F5F9;
-    /* Typography */
-    --font-sans: 'Space Grotesk', 'Inter', system-ui, sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-    --font-display: 'Space Grotesk', system-ui, sans-serif;
-    --text-stat: 2rem;
-    --text-stat-lg: 1.75rem;
-    --text-code: 0.8125rem;
+
+    /* ── Typography: map to Bloqr font stack ────────────────────── */
+    --font-sans:    'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --font-body:    'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --font-mono:    'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --font-display: 'Space Grotesk', 'DM Sans', system-ui, sans-serif;
+
+    /* ── Semantic font sizes ─────────────────────────────────────── */
+    --text-stat: 2rem;       /* primary metric value in StatCardComponent */
+    --text-stat-lg: 1.75rem; /* large stat value in admin tiles (28px) */
+    --text-code: 0.8125rem;  /* inline code snippets (13px) */
 }
 
 /* -----------------------------------------------------------------
-   1. Angular Material prebuilt theme
+   1. Angular Material M3 prebuilt — provides base component styles
+      and default --mat-sys-* tokens. MUST be first non-Tailwind import;
+      Tailwind is intentionally imported earlier so its @layer utilities
+      have lower cascade precedence than unlayered Material CSS.
    ----------------------------------------------------------------- */
 @import '@angular/material/prebuilt-themes/azure-blue.css';
 
 /* -----------------------------------------------------------------
-   2. Fonts — Space Grotesk, Inter, JetBrains Mono, Material Symbols
+   2. Fonts — loaded from npm packages (build-pipeline, no CDN)
+      Latin subsets only: reduce CSS bundle size by ~15 kB and fully
+      cover the static English UI chrome; user content with non-Latin
+      characters will fall back to system/browser fonts.
    ----------------------------------------------------------------- */
 @import '@fontsource/space-grotesk/latin-400.css';
 @import '@fontsource/space-grotesk/latin-500.css';
@@ -83,211 +113,251 @@
 @import '@fontsource/inter/latin-500.css';
 @import '@fontsource/jetbrains-mono/latin-400.css';
 @import '@fontsource/jetbrains-mono/latin-700.css';
-@import './material-symbols-outlined.css';
+@import './material-symbols-outlined.css'; /* local copy with font-display: swap (upstream uses block → causes CLS) */
 
-/* -----------------------------------------------------------------
-   3. M3 token overrides — Bloqr dark palette
-   ----------------------------------------------------------------- */
+/* =================================================================
+   CSS Custom Properties — Bloqr Dark-First Design System
+   Dark is the only mode. All tokens are set for the dark palette.
+   --mat-sys-* tokens override the azure-blue prebuilt defaults.
+   --app-*     tokens are app-layer aliases.
+   --color-*   tokens are Bloqr brand canonical names.
+   ================================================================= */
 :root {
+    /* ── Bloqr Brand Tokens — Backgrounds ────────────────────────── */
+    --color-bg-base:     #070B14;
+    --color-bg-surface:  #0E1829;
+    --color-bg-elevated: #162035;
+    --color-bg-overlay:  #1C2A45;
+
+    /* ── Bloqr Brand Tokens — Orange (primary accent) ────────────── */
+    --color-orange-500:  #FF5500;
+    --color-orange-400:  #FF7033;
+    --color-orange-600:  #CC4400;
+    --color-orange-900:  #1A0A00;
+    --color-orange-glow: rgba(255, 85, 0, 0.15);
+
+    /* ── Bloqr Brand Tokens — Cyan (secondary accent) ────────────── */
+    --color-cyan-500:    #00D4FF;
+    --color-cyan-400:    #33DDFF;
+    --color-cyan-900:    #001829;
+    --color-cyan-glow:   rgba(0, 212, 255, 0.12);
+
+    /* ── Bloqr Brand Tokens — Text ───────────────────────────────── */
+    --color-text-primary:   #F1F5F9;
+    --color-text-secondary: #94A3B8;
+    --color-text-muted:     #475569;
+    --color-text-inverse:   #070B14;
+
+    /* ── Bloqr Brand Tokens — Borders ────────────────────────────── */
+    --color-border:        #1E2D40;
+    --color-border-subtle: #162035;
+    --color-border-accent: #2A4060;
+
+    /* ── Bloqr Brand Tokens — Semantic ───────────────────────────── */
+    --color-success: #22C55E;
+    --color-warning: #F59E0B;
+    --color-error:   #EF4444;
+    --color-info:    #00D4FF;
+
+    /* ── Bloqr Brand Tokens — Shadows ────────────────────────────── */
+    --shadow-sm:     0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md:     0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg:     0 8px 32px rgba(0, 0, 0, 0.6);
+    --shadow-orange: 0 0 24px rgba(255, 85, 0, 0.15), 0 0 48px rgba(255, 85, 0, 0.15);
+    --shadow-cyan:   0 0 24px rgba(0, 212, 255, 0.12);
+
+    /* ── M3 Color Tokens — Bloqr Dark Palette ─────────────────────── */
     --mat-sys-primary: #FF5500;
-    --mat-sys-on-primary: #ffffff;
-    --mat-sys-primary-container: #2a1500;
-    --mat-sys-on-primary-container: #ffb494;
-    --mat-sys-primary-fixed: #2a1500;
+    --mat-sys-on-primary: #070B14;
+    --mat-sys-primary-container: #1A0A00;
+    --mat-sys-on-primary-container: #FF7033;
+    --mat-sys-primary-fixed: #CC4400;
     --mat-sys-primary-fixed-dim: #FF5500;
-    --mat-sys-on-primary-fixed: #ffffff;
-    --mat-sys-on-primary-fixed-variant: #cc4400;
-    --mat-sys-inverse-primary: #FF5500;
+    --mat-sys-on-primary-fixed: #070B14;
+    --mat-sys-on-primary-fixed-variant: #FF7033;
+    --mat-sys-inverse-primary: #CC4400;
     --mat-sys-surface-tint: #FF5500;
 
     --mat-sys-secondary: #00D4FF;
-    --mat-sys-on-secondary: #001a22;
-    --mat-sys-secondary-container: #002a36;
-    --mat-sys-on-secondary-container: #80eaff;
-    --mat-sys-secondary-fixed: #002a36;
+    --mat-sys-on-secondary: #070B14;
+    --mat-sys-secondary-container: #001829;
+    --mat-sys-on-secondary-container: #33DDFF;
+    --mat-sys-secondary-fixed: #001829;
     --mat-sys-secondary-fixed-dim: #00D4FF;
-    --mat-sys-on-secondary-fixed: #001a22;
-    --mat-sys-on-secondary-fixed-variant: #00a8cc;
+    --mat-sys-on-secondary-fixed: #070B14;
+    --mat-sys-on-secondary-fixed-variant: #33DDFF;
 
     --mat-sys-tertiary: #22C55E;
-    --mat-sys-on-tertiary: #ffffff;
-    --mat-sys-tertiary-container: #002210;
-    --mat-sys-on-tertiary-container: #6ee7a0;
-    --mat-sys-tertiary-fixed: #002210;
+    --mat-sys-on-tertiary: #070B14;
+    --mat-sys-tertiary-container: rgba(34, 197, 94, 0.15);
+    --mat-sys-on-tertiary-container: #22C55E;
+    --mat-sys-tertiary-fixed: rgba(34, 197, 94, 0.15);
     --mat-sys-tertiary-fixed-dim: #22C55E;
-    --mat-sys-on-tertiary-fixed: #ffffff;
-    --mat-sys-on-tertiary-fixed-variant: #1a9e4a;
+    --mat-sys-on-tertiary-fixed: #070B14;
+    --mat-sys-on-tertiary-fixed-variant: #22C55E;
 
     --mat-sys-error: #EF4444;
-    --mat-sys-on-error: #ffffff;
-    --mat-sys-error-container: #2a0000;
-    --mat-sys-on-error-container: #ffb4b4;
+    --mat-sys-on-error: #070B14;
+    --mat-sys-error-container: rgba(239, 68, 68, 0.15);
+    --mat-sys-on-error-container: #EF4444;
 
     --mat-sys-background: #070B14;
     --mat-sys-on-background: #F1F5F9;
     --mat-sys-surface: #0E1829;
     --mat-sys-on-surface: #F1F5F9;
-    --mat-sys-surface-variant: #0E1829;
+    --mat-sys-surface-variant: #162035;
     --mat-sys-on-surface-variant: #94A3B8;
-    --mat-sys-surface-container-lowest: #070B14;
-    --mat-sys-surface-container-low: #0a1120;
-    --mat-sys-surface-container: #0E1829;
-    --mat-sys-surface-container-high: #162035;
-    --mat-sys-surface-container-highest: #1a2840;
     --mat-sys-surface-dim: #070B14;
-    --mat-sys-surface-bright: #162035;
+    --mat-sys-surface-bright: #1C2A45;
+    --mat-sys-surface-container-lowest: #050A12;
+    --mat-sys-surface-container-low: #0E1829;
+    --mat-sys-surface-container: #162035;
+    --mat-sys-surface-container-high: #1C2A45;
+    --mat-sys-surface-container-highest: #243350;
+
     --mat-sys-inverse-surface: #F1F5F9;
     --mat-sys-inverse-on-surface: #070B14;
 
     --mat-sys-outline: #1E2D40;
-    --mat-sys-outline-variant: #1E2D40;
-    --mat-sys-shadow: rgba(0,0,0,0.5);
-    --mat-sys-scrim: rgba(0,0,0,0.8);
+    --mat-sys-outline-variant: #162035;
+    --mat-sys-scrim: rgba(0, 0, 0, 0.5);
+    --mat-sys-shadow: rgba(0, 0, 0, 0.4);
+    --mat-sys-neutral10: #0E1829;
+    --mat-sys-neutral-variant20: #1E2D40;
 
-    /* App semantic tokens */
-    --app-primary: #FF5500;
-    --app-primary-hover: #cc4400;
-    --app-secondary: #00D4FF;
+    /* ── M3 Typography Tokens — Space Grotesk + Inter ─────────────── */
+    --mat-sys-body-large-font:    'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-body-medium-font:   'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-body-small-font:    'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-large-font:   'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-medium-font:  'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-small-font:   'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-small-font:   'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-medium-font:  'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-large-font:   'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-small-font:  'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-medium-font: 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-large-font:  'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-small-font:   'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-medium-font:  'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-large-font:   'Space Grotesk', system-ui, sans-serif;
+
+    /* Composite shorthand typography tokens */
+    --mat-sys-body-large:    400 1rem / 1.5rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-body-medium:   400 0.875rem / 1.25rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-body-small:    400 0.75rem / 1rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-large:   500 0.875rem / 1.25rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-medium:  500 0.75rem / 1rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-small:   500 0.688rem / 1rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-small:   500 0.875rem / 1.25rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-medium:  500 1rem / 1.5rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-large:   600 1.375rem / 1.75rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-small:  600 1.5rem / 2rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-medium: 700 1.75rem / 2.25rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-large:  700 2rem / 2.5rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-small:   700 2.25rem / 2.75rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-medium:  800 2.812rem / 3.25rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-large:   800 3.562rem / 4rem 'Space Grotesk', system-ui, sans-serif;
+
+    /* ── M3 Shape Tokens — tighter, industrial ───────────────────── */
+    --mat-sys-corner-extra-small: 2px;
+    --mat-sys-corner-extra-small-top: 2px 2px 0 0;
+    --mat-sys-corner-small: 4px;
+    --mat-sys-corner-medium: 6px;
+    --mat-sys-corner-large: 8px;
+    --mat-sys-corner-large-end: 0 8px 8px 0;
+    --mat-sys-corner-large-start: 8px 0 0 8px;
+    --mat-sys-corner-large-top: 8px 8px 0 0;
+    --mat-sys-corner-extra-large: 12px;
+    --mat-sys-corner-extra-large-top: 12px 12px 0 0;
+
+    /* ── App Design Tokens — derived from Bloqr palette ─────────────── */
+    --app-primary: var(--mat-sys-primary);
+    --app-primary-dark: #CC4400;
+    --app-primary-light: #FF7033;
+    --app-secondary: var(--mat-sys-secondary);
+    --app-tertiary: var(--mat-sys-tertiary);
+
     --app-success: #22C55E;
-    --app-success-light: rgba(34,197,94,0.1);
-    --app-warning: #F59E0B;
-    --app-warning-light: rgba(245,158,11,0.1);
+    --app-success-light: rgba(34, 197, 94, 0.12);
     --app-error: #EF4444;
-    --app-error-light: rgba(239,68,68,0.1);
+    --app-error-light: rgba(239, 68, 68, 0.12);
+    --app-warning: #F59E0B;
+    --app-warning-light: rgba(245, 158, 11, 0.12);
     --app-info: #00D4FF;
-    --app-info-light: rgba(0,212,255,0.1);
-    --app-surface: #0E1829;
-    --app-border: #1E2D40;
-    --app-muted: #94A3B8;
-    --app-light: #F1F5F9;
-    --shadow-orange: 0 0 24px rgba(255,85,0,0.15), 0 0 48px rgba(255,85,0,0.08);
+    --app-info-light: rgba(0, 212, 255, 0.10);
+
+    --app-surface: var(--mat-sys-surface);
+    --app-surface-variant: var(--mat-sys-surface-variant);
+    --app-card-bg: var(--mat-sys-surface-container-low);
+    --app-input-bg: var(--mat-sys-surface-container-lowest);
+    --app-code-bg: var(--mat-sys-surface-container);
+    --app-log-bg: #050A12;
+
+    --app-text: var(--mat-sys-on-background);
+    --app-text-muted: var(--mat-sys-on-surface-variant);
+    --app-text-light: var(--mat-sys-outline);
+    --app-text-inverse: var(--mat-sys-inverse-on-surface);
+    --app-heading: var(--mat-sys-on-background);
+
+    --app-border: var(--mat-sys-outline);
+    --app-border-light: var(--mat-sys-outline-variant);
+
+    --app-shadow-sm: var(--shadow-sm);
+    --app-shadow-md: var(--shadow-md);
+    --app-shadow-lg: var(--shadow-lg);
+    --app-shadow-hover: var(--shadow-orange);
+
+    --app-radius-sm: var(--mat-sys-corner-extra-small);
+    --app-radius-md: var(--mat-sys-corner-small);
+    --app-radius-lg: var(--mat-sys-corner-medium);
+    --app-radius-xl: var(--mat-sys-corner-large);
+
+    --app-transition-fast: 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    --app-transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+
+    --app-badge-success-bg: rgba(34, 197, 94, 0.12);
+    --app-badge-success-text: #22C55E;
+    --app-badge-error-bg: rgba(239, 68, 68, 0.12);
+    --app-badge-error-text: #EF4444;
+    --app-badge-warning-bg: rgba(245, 158, 11, 0.12);
+    --app-badge-warning-text: #F59E0B;
+    --app-badge-info-bg: rgba(0, 212, 255, 0.10);
+    --app-badge-info-text: #00D4FF;
+
+    --app-table-header-bg: var(--mat-sys-surface-container);
+    --app-table-row-hover: var(--mat-sys-surface-container-low);
+    --app-table-border: var(--mat-sys-outline);
+
+    --app-header-bg: rgba(7, 11, 20, 0.85);
+    --app-header-text: #F1F5F9;
+    --app-header-accent: #FF5500;
 }
 
-/* -----------------------------------------------------------------
-   4. Global base styles
-   ----------------------------------------------------------------- */
-*, *::before, *::after { box-sizing: border-box; }
-
-html, body {
-    height: 100%;
-    margin: 0;
-    font-family: 'Space Grotesk', 'Inter', system-ui, sans-serif;
-    background-color: #070B14;
-    color: #F1F5F9;
-    -webkit-font-smoothing: antialiased;
-}
-
-/* Material dark-mode background override */
-.mat-drawer-container {
-    background: transparent !important;
-    color: inherit;
-}
-.mat-drawer {
-    background-color: #0E1829 !important;
-    border-right: 1px solid #1E2D40;
-}
-
-/* -----------------------------------------------------------------
-   5. App shell (header/nav/footer) — shown on non-landing pages
-   ----------------------------------------------------------------- */
-.app-header-shell {
-    background: rgba(7,11,20,0.95);
-    border-bottom: 1px solid #1E2D40;
-    padding: 0 24px;
-    position: sticky;
-    top: 0;
-    z-index: 40;
-}
-.app-title-row {
-    display: flex;
-    align-items: center;
-    height: 56px;
-    gap: 12px;
-}
-.app-brand-title {
-    font-family: 'Space Grotesk', sans-serif;
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: #F1F5F9;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    margin: 0;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-}
-.app-brand-logo { border-radius: 4px; }
-.header-actions {
-    margin-left: auto;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-.app-subtitle {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 0.75rem;
-    color: #94A3B8;
-    margin: 0 0 8px;
-    padding: 0;
-    letter-spacing: 0.05em;
-    text-transform: uppercase;
-}
-.app-nav-tabs {
-    display: flex;
-    gap: 4px;
-    padding-bottom: 0;
-    overflow-x: auto;
-    border-bottom: 1px solid #1E2D40;
-    scrollbar-width: none;
-}
-.app-nav-tabs::-webkit-scrollbar { display: none; }
-.app-nav-tabs a {
-    font-family: 'Space Grotesk', sans-serif;
-    font-size: 13px;
-    font-weight: 500;
-    color: #94A3B8;
-    text-decoration: none;
-    padding: 8px 12px;
-    border-radius: 4px 4px 0 0;
-    white-space: nowrap;
-    border-bottom: 2px solid transparent;
-    transition: color 0.2s, border-color 0.2s;
-}
-.app-nav-tabs a:hover { color: #F1F5F9; }
-.app-nav-tabs a.active-tab {
-    color: #FF5500;
-    border-bottom-color: #FF5500;
-}
-
-.app-main-content { flex: 1; min-height: 0; }
-.page-wrapper {
-    display: flex;
-    flex-direction: column;
-    min-height: 100vh;
-}
-.app-footer-shell {
-    background: rgba(7,11,20,0.95);
-    border-top: 1px solid #1E2D40;
-    padding: 16px 24px;
-    text-align: center;
-    font-size: 12px;
-    color: #94A3B8;
-}
-.app-footer-shell a { color: #94A3B8; }
-.app-footer-shell a:hover { color: #F1F5F9; }
-
-/* Skip link */
+/* =================================================================
+   Accessibility
+   ================================================================= */
 .skip-link {
     position: absolute;
-    top: -40px;
-    left: 0;
-    background: #FF5500;
-    color: white;
-    padding: 8px;
-    z-index: 100;
+    top: -48px;
+    left: 8px;
+    z-index: 10000;
+    background: var(--mat-sys-primary);
+    color: var(--mat-sys-on-primary);
+    padding: 10px 16px;
+    border-radius: var(--mat-sys-corner-small);
+    font-family: var(--mat-sys-label-large-font);
+    font-size: 14px;
+    font-weight: 500;
     text-decoration: none;
+    transition: top 0.2s;
+    letter-spacing: 0.02em;
 }
-.skip-link:focus { top: 0; }
+
+.skip-link:focus {
+    top: 0;
+}
+
 .visually-hidden {
     position: absolute;
     width: 1px;
@@ -295,86 +365,715 @@ html, body {
     padding: 0;
     margin: -1px;
     overflow: hidden;
-    clip: rect(0,0,0,0);
+    clip: rect(0, 0, 0, 0);
     white-space: nowrap;
     border: 0;
 }
 
-/* -----------------------------------------------------------------
-   6. Material component overrides for dark theme
-   ----------------------------------------------------------------- */
+/* =================================================================
+   Base HTML / Body
+   Dot-grid background: subtle on light, amber-tinted on dark.
+   ================================================================= */
+html,
+body {
+    height: 100%;
+    margin: 0;
+    font-family: var(--mat-sys-body-large-font);
+    font-size: 15px;
+    color: var(--mat-sys-on-background);
+    background-color: var(--mat-sys-background);
+    background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 85, 0, 0.12), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 60%, rgba(0, 212, 255, 0.06), transparent),
+        var(--mat-sys-background);
+    background-attachment: fixed;
+    line-height: 1.6;
+    /* Reserve space for the vertical scrollbar at all times so that its
+       appearance/disappearance during route transitions does not shift the
+       layout horizontally (the "page looks wider" flicker, issue #942). */
+    scrollbar-gutter: stable;
+    transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* =================================================================
+   View Transitions — native browser navigation fade (issue #942)
+   Angular's withViewTransitions() calls document.startViewTransition()
+   on every router navigation. The defaults are a cross-fade at the
+   browser's preferred duration; these rules shorten and smooth it to
+   match the app's 200 ms motion budget.
+   ================================================================= */
+@media (prefers-reduced-motion: no-preference) {
+    ::view-transition-old(root) {
+        animation: 150ms cubic-bezier(0.2, 0, 0, 1) both fade-out;
+    }
+    ::view-transition-new(root) {
+        animation: 200ms 80ms cubic-bezier(0.2, 0, 0, 1) both fade-in;
+    }
+}
+
+@keyframes fade-out {
+    from { opacity: 1; }
+    to   { opacity: 0; }
+}
+
+@keyframes fade-in {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
+
+/* =================================================================
+   Typography Hierarchy
+   ================================================================= */
+h1, h2, h3, h4, h5, h6,
+.mat-headline-1,
+.mat-headline-2,
+.mat-headline-3,
+.mat-headline-4,
+.mat-headline-5,
+.mat-headline-6,
+.mat-title-large,
+.mat-display-large,
+.mat-display-medium {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    color: var(--mat-sys-on-background);
+    letter-spacing: -0.02em;
+}
+
+/* =================================================================
+   Angular Material Component Overrides
+   ================================================================= */
+
+/* Body font — override .mat-typography root */
+.mat-typography {
+    font-family: var(--mat-sys-body-large-font) !important;
+}
+
+/* Material Symbols variable font settings */
+.material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Cards — force M3 surface token + correct text color inheritance */
 .mat-mdc-card {
-    background-color: #0E1829 !important;
-    border: 1px solid #1E2D40 !important;
-    color: #F1F5F9 !important;
+    background-color: var(--mat-sys-surface-container-low) !important;
+    border-radius: var(--mat-sys-corner-medium) !important;
+    color: var(--mat-sys-on-surface) !important;
 }
-.mdc-text-field--outlined .mdc-notched-outline__leading,
-.mdc-text-field--outlined .mdc-notched-outline__notch,
-.mdc-text-field--outlined .mdc-notched-outline__trailing {
-    border-color: #1E2D40 !important;
-}
-.mat-mdc-form-field-input-control { color: #F1F5F9 !important; }
-.mat-mdc-select-value { color: #F1F5F9 !important; }
-.mat-mdc-option { color: #F1F5F9 !important; background: #0E1829 !important; }
-.mat-mdc-select-panel { background: #0E1829 !important; border: 1px solid #1E2D40 !important; }
-.mat-mdc-menu-panel { background: #0E1829 !important; border: 1px solid #1E2D40 !important; }
-.mat-mdc-dialog-surface { background: #0E1829 !important; border: 1px solid #1E2D40 !important; }
-.mat-mdc-snack-bar-surface { background: #162035 !important; color: #F1F5F9 !important; }
-.mat-mdc-chip { background: #1E2D40 !important; color: #94A3B8 !important; }
-.mat-mdc-chip.mat-mdc-chip-highlighted { background: rgba(255,85,0,0.15) !important; color: #FF5500 !important; }
-.mdc-button--raised, .mat-mdc-raised-button {
-    background-color: #FF5500 !important;
-    color: white !important;
-}
-.mdc-button--unelevated, .mat-mdc-unelevated-button {
-    background-color: #FF5500 !important;
-    color: white !important;
-}
-.mat-icon { color: inherit; }
-.mat-mdc-list-item { color: #94A3B8 !important; }
-.mat-mdc-list-item:hover { background: rgba(255,85,0,0.08) !important; }
-.mat-mdc-list-item.active-nav-item {
-    background: rgba(255,85,0,0.1) !important;
-    color: #FF5500 !important;
-}
-.mat-drawer { color: #F1F5F9; }
-.mat-slide-toggle .mdc-form-field label { color: #94A3B8 !important; }
-.mat-mdc-tab-header { border-bottom: 1px solid #1E2D40; }
-.mat-mdc-tab { color: #94A3B8 !important; }
-.mat-mdc-tab.mdc-tab--active { color: #FF5500 !important; }
-.mat-mdc-tab-group .mat-mdc-tab-header .mdc-tab-indicator__content--underline {
-    border-color: #FF5500 !important;
-}
-.mat-mdc-progress-spinner circle { stroke: #FF5500 !important; }
-/* focus ring */
-:focus-visible { outline: 2px solid #FF5500; outline-offset: 2px; }
 
-/* -----------------------------------------------------------------
-   7. Page layout for authenticated app pages
-   ----------------------------------------------------------------- */
-.page-content {
+.mat-mdc-card-title,
+.mat-mdc-card-subtitle,
+.mat-mdc-card-content {
+    color: var(--mat-sys-on-surface);
+}
+
+/* Form fields */
+.mat-mdc-form-field input,
+.mat-mdc-form-field textarea,
+.mat-mdc-form-field .mat-mdc-input-element {
+    font-family: var(--mat-sys-body-large-font) !important;
+}
+
+/* Buttons */
+.mat-mdc-button .mdc-button__label,
+.mat-mdc-raised-button .mdc-button__label,
+.mat-mdc-outlined-button .mdc-button__label,
+.mat-mdc-unelevated-button .mdc-button__label {
+    font-family: var(--mat-sys-label-large-font) !important;
+    font-weight: 500;
+    letter-spacing: 0.04em;
+}
+
+/* Drawer — transparent so body dot-grid shows through */
+.mat-drawer-container {
+    background: transparent !important;
+}
+
+.mat-drawer-content {
+    background: transparent !important;
+}
+
+/* Tabs */
+.mat-mdc-tab .mdc-tab__text-label,
+.mat-mdc-tab-link {
+    font-family: var(--mat-sys-label-large-font) !important;
+}
+
+/* Active nav list item */
+.active-nav-item {
+    background-color: var(--mat-list-active-indicator-color, rgba(0, 0, 0, 0.12)) !important;
+}
+
+/* =================================================================
+   App Shell — Page Layout
+   The .page-wrapper frames the main content below the header.
+   ================================================================= */
+.page-wrapper {
     max-width: 1200px;
-    margin: 0 auto;
-    padding: 24px 16px;
+    margin: 24px auto;
+    background: var(--mat-sys-surface);
+    border-radius: var(--mat-sys-corner-large);
+    border: 1px solid var(--mat-sys-outline-variant);
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    min-height: calc(100vh - 48px);
 }
-.page-header { margin-bottom: 24px; }
-.section-title { margin: 24px 0 12px; color: #F1F5F9; }
 
-/* Code / pre styles */
-pre, code {
-    font-family: 'JetBrains Mono', monospace;
-    font-size: 13px;
-    background: #0E1829;
-    border: 1px solid #1E2D40;
+@media (max-width: 768px) {
+    .page-wrapper {
+        margin: 0;
+        border-radius: 0;
+        border: none;
+        min-height: 100vh;
+    }
+}
+
+/* :focus-visible — Bloqr accessibility ring */
+:focus-visible {
+    outline: 2px solid #FF5500;
+    outline-offset: 3px;
+}
+
+/* =================================================================
+   App Header Shell
+   Bloqr nav bar: sticky, glass morphism, orange accent.
+   ================================================================= */
+.app-header-shell {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--app-header-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--app-header-text);
+    padding: 0;
+}
+
+.app-header-shell .app-header-inner {
+    padding: 20px 30px 0;
+    text-align: center;
+}
+
+.app-header-shell .app-title-row {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 12px;
+    margin-bottom: 8px;
+    position: relative;
+}
+
+.app-header-shell .app-brand-title {
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
+    margin: 0;
+    color: var(--app-header-text);
+    letter-spacing: -0.03em;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.app-brand-logo {
+    flex-shrink: 0;
     border-radius: 6px;
+    vertical-align: middle;
 }
-pre { padding: 16px; overflow-x: auto; line-height: 1.6; }
-code { padding: 2px 6px; }
-pre code { background: none; border: none; padding: 0; }
 
-/* -----------------------------------------------------------------
-   8. Bloqr landing page section utilities
-   ----------------------------------------------------------------- */
+.app-header-shell .app-subtitle {
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    font-size: 0.875rem;
+    font-weight: 400;
+    margin: 0 0 16px 0;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.01em;
+    text-align: center;
+}
+
+.app-header-shell .header-actions {
+    position: absolute;
+    right: 0;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.app-header-shell .header-actions button {
+    color: var(--app-header-text);
+}
+
+/* Navigation tabs */
+.app-nav-tabs {
+    display: flex;
+    gap: 0;
+    margin: 0;
+    overflow-x: auto;
+    justify-content: center;
+    scrollbar-width: none;
+}
+
+.app-nav-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.app-nav-tabs a {
+    padding: 12px 20px;
+    background: none;
+    border: none;
+    border-bottom: 2px solid transparent;
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    color: var(--color-text-secondary);
+    transition: color var(--app-transition-fast),
+                background var(--app-transition-fast),
+                border-color var(--app-transition-fast);
+    text-decoration: none;
+    white-space: nowrap;
+    letter-spacing: 0.01em;
+}
+
+.app-nav-tabs a:hover {
+    color: var(--color-text-primary);
+    background: rgba(255, 85, 0, 0.05);
+}
+
+.app-nav-tabs a.active-tab {
+    color: var(--color-orange-500);
+    border-bottom-color: var(--color-orange-500);
+    background: rgba(255, 85, 0, 0.08);
+    font-weight: 600;
+}
+
+/* Main content area */
+.app-main-content {
+    padding: 24px 30px;
+}
+
+/* Footer */
+.app-footer-shell {
+    padding: 16px 30px;
+    text-align: center;
+    background: var(--mat-sys-surface-container);
+    color: var(--mat-sys-on-surface-variant);
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    font-size: 0.825rem;
+    border-top: 1px solid var(--mat-sys-outline-variant);
+}
+
+.app-footer-shell a {
+    color: var(--mat-sys-primary);
+    text-decoration: none;
+}
+
+.app-footer-shell a:hover {
+    text-decoration: underline;
+}
+
+/* Mobile sidenav drawer */
+.app-mobile-sidenav {
+    width: 260px;
+    background: var(--mat-sys-surface-container-low) !important;
+}
+
+.app-mobile-sidenav .sidenav-brand {
+    padding: 20px 16px;
+    background: var(--color-bg-base);
+    border-bottom: 2px solid var(--color-orange-500);
+    color: var(--color-orange-500);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .app-header-shell .app-header-inner {
+        padding: 16px 16px 0;
+    }
+
+    /* Pad the title row so the centered brand title stays clear of the
+       absolute-positioned hamburger (left) and action buttons (right). */
+    .app-header-shell .app-title-row {
+        padding: 0 104px;
+    }
+
+    .app-header-shell .app-brand-title {
+        font-size: 1.2rem;
+    }
+
+    .app-header-shell .app-subtitle {
+        font-size: 0.9rem;
+    }
+
+    /* Hide horizontal tabs on mobile — the sidenav (hamburger) handles navigation. */
+    .app-nav-tabs {
+        display: none;
+    }
+
+    .app-main-content {
+        padding: 16px;
+    }
+}
+
+/* =================================================================
+   Page Content
+   ================================================================= */
+.page-content {
+    padding: 24px 0;
+}
+
+/* =================================================================
+   Code & JSON Viewer
+   ================================================================= */
+code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.85em;
+    padding: 2px 6px;
+    border-radius: var(--mat-sys-corner-extra-small);
+    background-color: var(--mat-sys-surface-container);
+    color: var(--color-orange-400);
+    border: 1px solid var(--color-border);
+}
+
+.json-viewer {
+    background: var(--app-log-bg);
+    color: var(--color-text-primary);
+    padding: 20px;
+    border-radius: var(--mat-sys-corner-medium);
+    overflow-x: auto;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    max-height: 500px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    border: 1px solid var(--color-border);
+}
+
+.json-key     { color: #93c5fd; }
+.json-string  { color: #86efac; }
+.json-number  { color: #fcd34d; }
+.json-boolean { color: #f472b6; }
+.json-null    { color: #94a3b8; }
+.json-bracket { color: #e2e8f0; }
+
+/* =================================================================
+   Status Badges
+   ================================================================= */
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    border-radius: var(--mat-sys-corner-small);
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+}
+
+.status-badge.success {
+    background: var(--app-badge-success-bg);
+    color: var(--app-badge-success-text);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+}
+.status-badge.error {
+    background: var(--app-badge-error-bg);
+    color: var(--app-badge-error-text);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+.status-badge.warning {
+    background: var(--app-badge-warning-bg);
+    color: var(--app-badge-warning-text);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.status-badge.info {
+    background: var(--app-badge-info-bg);
+    color: var(--app-badge-info-text);
+    border: 1px solid rgba(0, 212, 255, 0.20);
+}
+
+/* =================================================================
+   Status Dot (pulsing live indicator)
+   ================================================================= */
+.status-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    display: inline-block;
+    animation: pulse 2s ease-in-out infinite;
+}
+
+.status-dot.online     { background-color: var(--app-success); }
+.status-dot.offline    { background-color: var(--app-error); }
+.status-dot.connecting { background-color: var(--app-warning); }
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+}
+
+/* =================================================================
+   Method Badges (HTTP verbs)
+   ================================================================= */
+.method-badge {
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
+    font-size: 11px;
+    font-weight: 700;
+    padding: 3px 8px;
+    border-radius: var(--mat-sys-corner-extra-small);
+    min-width: 40px;
+    text-align: center;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+.method-get    { background: var(--app-badge-info-bg);    color: var(--app-badge-info-text); }
+.method-post   { background: var(--app-badge-success-bg); color: var(--app-badge-success-text); }
+.method-delete { background: var(--app-badge-error-bg);   color: var(--app-badge-error-text); }
+
+/* =================================================================
+   Card Interactions
+   ================================================================= */
+.card-interactive {
+    cursor: pointer;
+    transition: transform var(--app-transition-fast),
+                box-shadow var(--app-transition-fast);
+}
+
+.card-interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--app-shadow-hover);
+}
+
+/* =================================================================
+   Toast Notifications (driven by NotificationService)
+   ================================================================= */
+.toast-container {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 10000;
+    max-width: 400px;
+    width: calc(100% - 40px);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    pointer-events: none;
+}
+
+.toast {
+    background: var(--mat-sys-surface-container-low);
+    border-radius: var(--mat-sys-corner-medium);
+    border: 1px solid var(--mat-sys-outline-variant);
+    padding: 16px 20px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    position: relative;
+    overflow: hidden;
+    pointer-events: auto;
+    animation: toastSlideIn 0.3s cubic-bezier(0.2, 0, 0, 1);
+}
+
+.toast::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+}
+
+.toast.success::before { background: var(--app-success); }
+.toast.error::before   { background: var(--app-error); }
+.toast.warning::before { background: var(--app-warning); }
+.toast.info::before    { background: var(--app-info); }
+
+.toast-title {
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    font-weight: 600;
+    color: var(--mat-sys-on-surface);
+    margin-bottom: 2px;
+    font-size: 14px;
+}
+
+.toast-message {
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    font-size: 13px;
+    color: var(--mat-sys-on-surface-variant);
+}
+
+@keyframes toastSlideIn {
+    from { transform: translateX(420px); opacity: 0; }
+    to   { transform: translateX(0);     opacity: 1; }
+}
+
+@keyframes toastSlideOut {
+    from { transform: translateX(0);     opacity: 1; }
+    to   { transform: translateX(420px); opacity: 0; }
+}
+
+@media (max-width: 768px) {
+    .toast-container {
+        right: 12px;
+        left: 12px;
+        width: auto;
+        max-width: none;
+    }
+}
+
+/* =================================================================
+   Utility Classes
+   ================================================================= */
+.mt-1 { margin-top: 8px; }
+.mt-2 { margin-top: 16px; }
+.mt-3 { margin-top: 24px; }
+.mb-1 { margin-bottom: 8px; }
+.mb-2 { margin-bottom: 16px; }
+.mb-3 { margin-bottom: 24px; }
+.gap-1 { gap: 8px; }
+.gap-2 { gap: 16px; }
+.gap-3 { gap: 24px; }
+.flex { display: flex; }
+.flex-wrap { flex-wrap: wrap; }
+.flex-col { flex-direction: column; }
+.items-center { align-items: center; }
+.justify-between { justify-content: space-between; }
+.w-full { width: 100%; }
+.text-center { text-align: center; }
+
+/* =================================================================
+   Responsive Content
+   ================================================================= */
+@media (max-width: 768px) {
+    .page-content { padding: 16px 0; }
+}
+
+/* =================================================================
+   Reduced Motion — WCAG 2.3.3
+   ================================================================= */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+
+    .status-dot {
+        animation: none;
+    }
+}
+
+/* =================================================================
+   Angular Material M2→M3 Compat Overrides
+   Override hardcoded M2 palette colors injected by the compat layer
+   when components use the deprecated color="primary/accent/warn" API.
+   ================================================================= */
+
+/* Chips: color="primary" → amber primary-container
+   Use exact 3-class selector from azure-blue M2 compat rule so our later declaration wins */
+.mat-mdc-standard-chip.mat-mdc-chip-selected.mat-primary,
+.mat-mdc-standard-chip.mat-mdc-chip-highlighted.mat-primary {
+    --mat-chip-elevated-container-color: var(--mat-sys-primary-container);
+    --mat-chip-elevated-disabled-container-color: var(--mat-sys-surface-container);
+    --mat-chip-elevated-selected-container-color: var(--mat-sys-primary-container);
+    --mat-chip-disabled-label-text-color: var(--mat-sys-on-surface);
+    --mat-chip-selected-label-text-color: var(--mat-sys-on-primary-container);
+    --mat-chip-with-icon-selected-icon-color: var(--mat-sys-on-primary-container);
+}
+
+/* Slide toggles: color="primary" → amber */
+.mat-mdc-slide-toggle.mat-primary {
+    --mdc-switch-selected-track-color: var(--mat-sys-primary);
+    --mdc-switch-selected-handle-color: var(--mat-sys-on-primary);
+    --mdc-switch-selected-hover-track-color: var(--mat-sys-primary);
+    --mdc-switch-selected-focus-track-color: var(--mat-sys-primary);
+    --mdc-switch-selected-pressed-track-color: var(--mat-sys-primary);
+    --mdc-switch-selected-focus-handle-color: var(--mat-sys-primary-container);
+    --mdc-switch-selected-hover-handle-color: var(--mat-sys-primary-container);
+    --mdc-switch-selected-pressed-handle-color: var(--mat-sys-primary-container);
+}
+
+/* Buttons: color="primary" → amber
+   Use exact M2 compat rule selector + correct AM21 token names to win cascade */
+.mat-mdc-button.mat-primary,
+.mat-mdc-unelevated-button.mat-primary,
+.mat-mdc-raised-button.mat-primary,
+.mat-mdc-outlined-button.mat-primary,
+.mat-tonal-button.mat-primary {
+    --mat-button-filled-container-color: var(--mat-sys-primary);
+    --mat-button-filled-label-text-color: var(--mat-sys-on-primary);
+    --mat-button-filled-ripple-color: color-mix(in srgb, var(--mat-sys-on-primary) 12%, transparent);
+    --mat-button-filled-state-layer-color: var(--mat-sys-on-primary);
+    --mat-button-protected-container-color: var(--mat-sys-primary);
+    --mat-button-protected-label-text-color: var(--mat-sys-on-primary);
+    --mat-button-protected-ripple-color: color-mix(in srgb, var(--mat-sys-on-primary) 12%, transparent);
+    --mat-button-protected-state-layer-color: var(--mat-sys-on-primary);
+    --mat-text-button-state-layer-color: var(--mat-sys-primary);
+    --mat-text-button-label-text-color: var(--mat-sys-primary);
+    --mat-outlined-button-state-layer-color: var(--mat-sys-primary);
+    --mat-outlined-button-label-text-color: var(--mat-sys-primary);
+    --mat-button-outlined-label-text-color: var(--mat-sys-primary);
+    --mat-button-outlined-outline-color: var(--mat-sys-outline);
+    /* legacy mdc tokens */
+    --mdc-filled-button-container-color: var(--mat-sys-primary);
+    --mdc-filled-button-label-text-color: var(--mat-sys-on-primary);
+    --mdc-protected-button-container-color: var(--mat-sys-primary);
+    --mdc-protected-button-label-text-color: var(--mat-sys-on-primary);
+}
+
+/* Icon buttons: color="primary" → amber */
+.mat-mdc-icon-button.mat-primary {
+    --mat-icon-button-icon-color: var(--mat-sys-primary);
+    --mat-icon-button-state-layer-color: var(--mat-sys-primary);
+    --mat-icon-button-ripple-color: color-mix(in srgb, var(--mat-sys-primary) 12%, transparent);
+}
+
+/* Progress bar / spinner: color="primary" → amber */
+.mat-mdc-progress-bar.mat-primary {
+    --mdc-linear-progress-active-indicator-color: var(--mat-sys-primary);
+    --mat-progress-bar-active-indicator-color: var(--mat-sys-primary);
+}
+.mat-mdc-progress-spinner.mat-primary {
+    --mdc-circular-progress-active-indicator-color: var(--mat-sys-primary);
+    --mat-progress-spinner-active-indicator-color: var(--mat-sys-primary);
+}
+
+/* Checkboxes: color="primary" → amber */
+.mat-mdc-checkbox.mat-primary {
+    --mdc-checkbox-selected-checkmark-color: var(--mat-sys-on-primary);
+    --mdc-checkbox-selected-focus-icon-color: var(--mat-sys-primary);
+    --mdc-checkbox-selected-hover-icon-color: var(--mat-sys-primary);
+    --mdc-checkbox-selected-icon-color: var(--mat-sys-primary);
+    --mdc-checkbox-selected-pressed-icon-color: var(--mat-sys-primary);
+}
+
+/* Button toggle — selected state uses amber primary-container */
+.mat-button-toggle-checked {
+    --mat-button-toggle-selected-state-background-color: var(--mat-sys-primary-container);
+    --mat-button-toggle-selected-state-text-color: var(--mat-sys-on-primary-container);
+    color: var(--mat-sys-on-primary-container);
+    background-color: var(--mat-sys-primary-container) !important;
+}
+
+/* =================================================================
+   Landing Page Utilities
+   Used by the 10 Bloqr landing page section components.
+   ================================================================= */
 .bloqr-section { padding: 96px 0; }
 .bloqr-container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
 .bloqr-section-label {
@@ -464,33 +1163,4 @@ pre code { background: none; border: none; padding: 0; }
     letter-spacing: 0.05em;
     border-bottom: 1px solid #1E2D40;
     margin-bottom: 8px;
-}
-
-/* -----------------------------------------------------------------
-   9. Stats grid (used by dashboard / authenticated pages)
-   ----------------------------------------------------------------- */
-.stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-    gap: 16px;
-    margin-bottom: 24px;
-}
-.stat-card {
-    background: #0E1829;
-    border: 1px solid #1E2D40;
-    border-radius: 8px;
-    padding: 16px;
-}
-.stat-value {
-    font-size: 2rem;
-    font-weight: 700;
-    color: #F1F5F9;
-    line-height: 1;
-    margin-bottom: 4px;
-}
-.stat-label {
-    font-size: 12px;
-    color: #94A3B8;
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
 }

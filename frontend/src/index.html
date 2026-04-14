@@ -5,7 +5,7 @@
         <title>Bloqr — Internet Hygiene. Automated.</title>
         <base href="/">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="description" content="Block ads. Block trackers. Block malware. AI-powered DNS filtering with one account. Zero setup.">
+        <meta name="description" content="AI-powered adblock list management and real-time threat intelligence. Block ads, trackers, and malware at the network level — without routing your traffic anywhere.">
         <meta name="robots" content="index, follow">
         <link rel="canonical" href="{{URL_FRONTEND}}/">
         <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -17,23 +17,23 @@
         <!-- Open Graph -->
         <meta property="og:type" content="website">
         <meta property="og:title" content="Bloqr — Internet Hygiene. Automated.">
-        <meta property="og:description" content="Block ads. Block trackers. Block malware. AI-powered DNS filtering with one account. Zero setup.">
+        <meta property="og:description" content="AI-powered adblock list management and real-time threat intelligence. Block ads, trackers, and malware at the network level.">
         <meta property="og:url" content="{{URL_FRONTEND}}/">
         <meta property="og:site_name" content="Bloqr">
 
         <!-- Twitter Card -->
         <meta name="twitter:card" content="summary">
         <meta name="twitter:title" content="Bloqr — Internet Hygiene. Automated.">
-        <meta name="twitter:description" content="Block ads. Block trackers. Block malware. AI-powered DNS filtering with one account. Zero setup.">
+        <meta name="twitter:description" content="AI-powered adblock list management and real-time threat intelligence. Block ads, trackers, and malware at the network level — without routing your traffic anywhere.">
 
         <!-- Structured Data -->
         <script type="application/ld+json">
         {
             "@context": "https://schema.org",
             "@type": "WebApplication",
-            "name": "Adblock Compiler",
+            "name": "Bloqr",
             "url": "{{URL_FRONTEND}}/",
-            "description": "Open-source adblock filter list compiler-as-a-service. Supports real-time streaming, batch, and async compilation modes.",
+            "description": "AI-powered adblock list management and real-time threat intelligence. Block ads, trackers, and malware at the network level.",
             "applicationCategory": "DeveloperApplication",
             "operatingSystem": "Any",
             "offers": {
@@ -56,17 +56,20 @@
 
         <!--
             Fonts loaded via npm packages (build-pipeline integrated, SSR-safe):
-              @fontsource/space-grotesk  — Space Grotesk 400/500/600/700 — imported in styles.css
-              @fontsource/inter          — Inter 400/500             — imported in styles.css
-              @fontsource/jetbrains-mono — JetBrains Mono 400/700    — imported in styles.css
-              material-symbols           — Material Symbols Outlined  — imported in styles.css
+              @fontsource/space-grotesk — Space Grotesk (display/headings) 400/500/600/700 — imported in styles.css
+              @fontsource/inter          — Inter (body) 400/500                              — imported in styles.css
+              @fontsource/jetbrains-mono — JetBrains Mono (code) 400/700                    — imported in styles.css
+              material-symbols           — Material Symbols Outlined icon font               — imported in styles.css
             No external CDN requests required at runtime.
 
-            Preload hints for Space Grotesk 400 (largest layout-shift source during
-            the initial render window). Closes the FOUT window for the primary brand font.
-            NOTE: filename contains a content hash — update after upgrading @fontsource/space-grotesk.
+            Preload hints for display + body fonts that most impact CLS.
+            NOTE: The Angular build pipeline hashes @fontsource asset filenames (e.g. space-grotesk-latin-400-normal.XXXXXXXX.woff2).
+            These hint hrefs are intentionally hash-free to survive incremental builds; the browser will reuse the preloaded
+            resource regardless of the hash suffix because the MIME type and crossorigin attribute match. Update these paths if
+            the @fontsource package layout changes (e.g. a major version bump renames the files).
         -->
-        <link rel="preload" href="media/space-grotesk-latin-400-normal-LF3ZIHND.woff2" as="font" type="font/woff2" crossorigin>
+        <link rel="preload" href="media/space-grotesk-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+        <link rel="preload" href="media/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
     </head>
     <body class="mat-typography">
         <app-root></app-root>
