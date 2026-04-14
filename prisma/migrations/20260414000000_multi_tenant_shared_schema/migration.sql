@@ -4,6 +4,11 @@
 --          Adds SubscriptionPlan, Configuration, FilterListAst, DataRetentionConsent tables.
 --          Extends User, Organization, Member, FilterSource, and CompiledOutput models.
 --
+-- NOTE: The `organization` and `member` tables were defined in Prisma schema but never created
+--       by a previous migration. This migration creates them with all required columns.
+--       ALTER TABLE ... ADD COLUMN IF NOT EXISTS guards are included for idempotency in
+--       environments where the tables may already exist (e.g. manual creation or future re-runs).
+--
 -- Run: deno task db:migrate
 
 -- ============================================================================
@@ -34,16 +39,30 @@ CREATE TABLE IF NOT EXISTS "subscription_plans" (
 CREATE UNIQUE INDEX IF NOT EXISTS "subscription_plans_name_key" ON "subscription_plans"("name");
 
 -- ============================================================================
--- 2. Add plan_id to users
+-- 2. Create organization table (Better Auth org plugin — never previously migrated)
+--    Includes all base columns AND the new multi-tenancy columns in one statement
+--    so fresh databases get the full schema without requiring a separate ALTER pass.
 -- ============================================================================
-ALTER TABLE "users"
-    ADD COLUMN IF NOT EXISTS "plan_id" UUID REFERENCES "subscription_plans"("id") ON DELETE SET NULL;
+CREATE TABLE IF NOT EXISTS "organization" (
+    "id"                           UUID        NOT NULL DEFAULT gen_random_uuid(),
+    "name"                         TEXT        NOT NULL,
+    "slug"                         TEXT        NOT NULL,
+    "logo"                         TEXT,
+    "metadata"                     JSONB,
+    -- multi-tenancy columns (new in this migration)
+    "tier"                         TEXT        NOT NULL DEFAULT 'free',
+    "plan_id"                      UUID        REFERENCES "subscription_plans"("id") ON DELETE SET NULL,
+    "retention_days"               INTEGER     NOT NULL DEFAULT 90,
+    "retention_policy_accepted_at" TIMESTAMPTZ,
+    "created_at"                   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "updated_at"                   TIMESTAMPTZ NOT NULL,
 
-CREATE INDEX IF NOT EXISTS "users_plan_id_idx" ON "users"("plan_id");
+    CONSTRAINT "organization_pkey" PRIMARY KEY ("id")
+);
 
--- ============================================================================
--- 3. Add new columns to organization
--- ============================================================================
+CREATE UNIQUE INDEX IF NOT EXISTS "organization_slug_key" ON "organization"("slug");
+
+-- Idempotent guards for environments where the table existed without the new columns
 ALTER TABLE "organization"
     ADD COLUMN IF NOT EXISTS "tier"                          TEXT        NOT NULL DEFAULT 'free',
     ADD COLUMN IF NOT EXISTS "plan_id"                       UUID        REFERENCES "subscription_plans"("id") ON DELETE SET NULL,
@@ -53,10 +72,37 @@ ALTER TABLE "organization"
 CREATE INDEX IF NOT EXISTS "organization_plan_id_idx" ON "organization"("plan_id");
 
 -- ============================================================================
--- 4. Add tier_override to member
+-- 3. Create member table (Better Auth org membership — never previously migrated)
+--    Includes all base columns AND the new tier_override column.
 -- ============================================================================
+CREATE TABLE IF NOT EXISTS "member" (
+    "id"              UUID        NOT NULL DEFAULT gen_random_uuid(),
+    "organization_id" UUID        NOT NULL REFERENCES "organization"("id") ON DELETE CASCADE,
+    "user_id"         UUID        NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+    "role"            TEXT        NOT NULL,
+    -- multi-tenancy column (new in this migration)
+    "tier_override"   TEXT,
+    "created_at"      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "updated_at"      TIMESTAMPTZ NOT NULL,
+
+    CONSTRAINT "member_pkey" PRIMARY KEY ("id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "member_organization_id_user_id_key" ON "member"("organization_id", "user_id");
+CREATE INDEX IF NOT EXISTS "member_user_id_idx"         ON "member"("user_id");
+CREATE INDEX IF NOT EXISTS "member_organization_id_idx" ON "member"("organization_id");
+
+-- Idempotent guard for environments where member table existed without tier_override
 ALTER TABLE "member"
     ADD COLUMN IF NOT EXISTS "tier_override" TEXT;
+
+-- ============================================================================
+-- 4. Add plan_id to users
+-- ============================================================================
+ALTER TABLE "users"
+    ADD COLUMN IF NOT EXISTS "plan_id" UUID REFERENCES "subscription_plans"("id") ON DELETE SET NULL;
+
+CREATE INDEX IF NOT EXISTS "users_plan_id_idx" ON "users"("plan_id");
 
 -- ============================================================================
 -- 5. Modify filter_sources:
@@ -65,7 +111,7 @@ ALTER TABLE "member"
 --    c) Add composite unique (url, owner_user_id, organization_id)
 -- ============================================================================
 
--- Drop the old global unique constraint on url (name from Prisma migration)
+-- Drop the old global unique constraint on url (name from Prisma init migration)
 DROP INDEX IF EXISTS "filter_sources_url_key";
 
 -- Add new columns
@@ -77,8 +123,8 @@ ALTER TABLE "filter_sources"
 -- Composite unique: a URL must be unique per owner context.
 -- Migration note: existing rows have owner_user_id either set or NULL and organization_id = NULL
 -- (organization_id was not present before this migration). Because the new column defaults to NULL,
--- all pre-existing rows effectively map to (url, owner_user_id, NULL), which is the same uniqueness
--- contract as the former global unique on url if owner_user_id was already distinct per url.
+-- all pre-existing rows effectively map to (url, owner_user_id, NULL), which preserves the same
+-- per-user uniqueness contract as the former global unique on url.
 -- If your existing data has duplicate (url, owner_user_id) combinations (e.g. multiple rows with
 -- the same url AND the same (or both null) owner_user_id) you must deduplicate those rows before
 -- applying this constraint or the CREATE UNIQUE INDEX will fail.
@@ -103,7 +149,7 @@ CREATE INDEX IF NOT EXISTS "compiled_outputs_visibility_idx"       ON "compiled_
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS "configurations" (
     "id"              UUID        NOT NULL DEFAULT gen_random_uuid(),
-    "owner_user_id"   UUID,
+    "owner_user_id"   UUID        REFERENCES "users"("id") ON DELETE CASCADE,
     "organization_id" UUID        REFERENCES "organization"("id") ON DELETE CASCADE,
     "name"            TEXT        NOT NULL,
     "description"     TEXT,
@@ -116,8 +162,6 @@ CREATE TABLE IF NOT EXISTS "configurations" (
     "updated_at"      TIMESTAMPTZ NOT NULL,
 
     CONSTRAINT "configurations_pkey" PRIMARY KEY ("id"),
-    CONSTRAINT "configurations_owner_user_id_fkey"
-        FOREIGN KEY ("owner_user_id") REFERENCES "users"("id") ON DELETE CASCADE,
     CONSTRAINT "configurations_forked_from_id_fkey"
         FOREIGN KEY ("forked_from_id") REFERENCES "configurations"("id") ON DELETE SET NULL
 );
@@ -132,8 +176,8 @@ CREATE INDEX IF NOT EXISTS "configurations_star_count_idx"       ON "configurati
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS "filter_list_asts" (
     "id"              UUID        NOT NULL DEFAULT gen_random_uuid(),
-    "owner_user_id"   UUID        REFERENCES "users"("id")         ON DELETE CASCADE,
-    "organization_id" UUID        REFERENCES "organization"("id")  ON DELETE CASCADE,
+    "owner_user_id"   UUID        REFERENCES "users"("id")          ON DELETE CASCADE,
+    "organization_id" UUID        REFERENCES "organization"("id")   ON DELETE CASCADE,
     "source_id"       UUID        REFERENCES "filter_sources"("id") ON DELETE SET NULL,
     "name"            TEXT        NOT NULL,
     "ast"             JSONB       NOT NULL,
