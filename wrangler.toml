@@ -240,11 +240,14 @@ name = "COMPILATION_COORDINATOR"
 #
 # instance_type valid values: "basic" | "small" | "large"
 # (NOT "standard" — that value is rejected with VALIDATE_INPUT by the CF API)
+# scheduling_policy valid values: "regional" (co-located with Worker) | "earth" (globally distributed)
+# Required by wrangler 4.14+; omitting it causes VALIDATE_INPUT on the /rollouts API endpoint.
 [[containers]]
 class_name = "AdblockCompiler"
 image = "./Dockerfile.container"
 max_instances = 5
 instance_type = "basic"
+scheduling_policy = "regional"
 
 # ─── Migrations ──────────────────────────────────────────────────────────────
 [[migrations]]
