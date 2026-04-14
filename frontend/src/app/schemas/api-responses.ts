@@ -521,6 +521,24 @@ export const ConfigCreateResponseSchema = z.object({
 export type ConfigCreateResponse = z.infer<typeof ConfigCreateResponseSchema>;
 
 // ---------------------------------------------------------------------------
+// Metrics & Health — ZTA validation for /api/metrics and /api/health
+// ---------------------------------------------------------------------------
+
+export const MetricsResponseSchema = z.object({
+    totalRequests: z.number().nonnegative().default(0),
+    averageDuration: z.number().nonnegative().default(0),
+    cacheHitRate: z.number().min(0).max(100).default(0),
+    successRate: z.number().min(0).max(100).default(0),
+});
+export type MetricsResponseValidated = z.infer<typeof MetricsResponseSchema>;
+
+export const HealthResponseSchema = z.object({
+    status: z.enum(['healthy', 'degraded', 'unhealthy']),
+    version: z.string().default('unknown'),
+});
+export type HealthResponseValidated = z.infer<typeof HealthResponseSchema>;
+
+// ---------------------------------------------------------------------------
 // Saved Configurations — ZTA validation for /api/configuration/saved endpoints
 // ---------------------------------------------------------------------------
 
