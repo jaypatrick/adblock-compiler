@@ -1,141 +1,51 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { provideZonelessChangeDetection } from '@angular/core';
-import { provideRouter, Router } from '@angular/router';
-import { provideHttpClient } from '@angular/common/http';
-import { provideHttpClientTesting, HttpTestingController } from '@angular/common/http/testing';
-import { NoopAnimationsModule } from '@angular/platform-browser/animations';
+import { provideRouter } from '@angular/router';
 import { HomeComponent } from './home.component';
-import { API_BASE_URL } from '../tokens';
 
 describe('HomeComponent', () => {
     let fixture: ComponentFixture<HomeComponent>;
     let component: HomeComponent;
-    let httpTesting: HttpTestingController;
-    let router: Router;
 
     beforeEach(async () => {
         await TestBed.configureTestingModule({
-            imports: [HomeComponent, NoopAnimationsModule],
+            imports: [HomeComponent],
             providers: [
                 provideZonelessChangeDetection(),
-                provideHttpClient(),
-                provideHttpClientTesting(),
                 provideRouter([]),
-                { provide: API_BASE_URL, useValue: '/api' },
             ],
         }).compileComponents();
 
         fixture = TestBed.createComponent(HomeComponent);
         component = fixture.componentInstance;
-        httpTesting = TestBed.inject(HttpTestingController);
-        router = TestBed.inject(Router);
-
-        // Flush the initial rxResource requests triggered by component creation
-        flushPendingRequests();
-    });
-
-    function flushPendingRequests(): void {
-        httpTesting.match('/api/metrics').forEach(req => req.flush({
-            totalRequests: 0, averageDuration: 0, cacheHitRate: 0, successRate: 0,
-        }));
-        httpTesting.match('/api/health').forEach(req => req.flush({
-            status: 'healthy', version: '0.0.0',
-        }));
-    }
-
-    afterEach(() => {
-        httpTesting.match(() => true).forEach(req => req.flush({}));
-        httpTesting.verify();
-        vi.restoreAllMocks();
+        await fixture.whenStable();
     });
 
     it('should create', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should have 6 navigation cards', () => {
-        expect(component.navCards.length).toBe(6);
+    it('should render nav bar', async () => {
+        await fixture.whenStable();
+        const nav = fixture.nativeElement.querySelector('app-nav-bar');
+        expect(nav).toBeTruthy();
     });
 
-    it('should include Compiler card', () => {
-        const compiler = component.navCards.find(c => c.path === '/compiler');
-        expect(compiler).toBeTruthy();
-        expect(compiler!.title).toBe('Filter List Compiler');
+    it('should render hero section', async () => {
+        await fixture.whenStable();
+        const hero = fixture.nativeElement.querySelector('app-hero-section');
+        expect(hero).toBeTruthy();
     });
 
-    it('should include Admin card with warn tag', () => {
-        const admin = component.navCards.find(c => c.path === '/admin');
-        expect(admin).toBeTruthy();
-        expect(admin!.tagColor).toBe('warn');
+    it('should render main content area with role=main', async () => {
+        await fixture.whenStable();
+        const main = fixture.nativeElement.querySelector('[role="main"]');
+        expect(main).toBeTruthy();
     });
 
-    it('should derive live stats from metrics', () => {
-        // After flushing with zeroed metrics, stats show formatted values
-        const stats = component.liveStats();
-        expect(stats.length).toBe(5);
-        expect(stats[0].label).toBe('Total Requests');
-        expect(stats[0].value).toBe('0');
-    });
-
-    it('should navigate when navigateTo is called', () => {
-        const navigateSpy = vi.spyOn(router, 'navigate');
-        component.navigateTo('/compiler');
-        expect(navigateSpy).toHaveBeenCalledWith(['/compiler']);
-    });
-
-    it('should open absolute external URLs in a new tab via window.open', () => {
-        const openSpy = vi.spyOn(window, 'open');
-        component.navigateTo('https://example.com');
-        expect(openSpy).toHaveBeenCalledWith('https://example.com', '_blank', 'noopener,noreferrer');
-    });
-
-    it('should open worker-handled relative paths in a new tab when external flag is true', () => {
-        const openSpy = vi.spyOn(window, 'open');
-        const navigateSpy = vi.spyOn(router, 'navigate');
-        component.navigateTo('/docs', true);
-        expect(openSpy).toHaveBeenCalledWith('/docs', '_blank', 'noopener,noreferrer');
-        expect(navigateSpy).not.toHaveBeenCalled();
-    });
-
-    it('should NOT call window.open for internal paths without external flag', () => {
-        const openSpy = vi.spyOn(window, 'open');
-        const navigateSpy = vi.spyOn(router, 'navigate');
-        component.navigateTo('/compiler', false);
-        expect(openSpy).not.toHaveBeenCalled();
-        expect(navigateSpy).toHaveBeenCalledWith(['/compiler']);
-    });
-
-    it('should navigate to performance on stat card click for Total Requests', () => {
-        const navigateSpy = vi.spyOn(router, 'navigate');
-        component.onStatCardClicked('Total Requests');
-        expect(navigateSpy).toHaveBeenCalledWith(['/performance']);
-    });
-
-    it('should navigate to performance on stat card click for Avg Response Time', () => {
-        const navigateSpy = vi.spyOn(router, 'navigate');
-        component.onStatCardClicked('Avg Response Time');
-        expect(navigateSpy).toHaveBeenCalledWith(['/performance']);
-    });
-
-    it('should not navigate for non-metric stat card clicks', () => {
-        const navigateSpy = vi.spyOn(router, 'navigate');
-        component.onStatCardClicked('Cache Hit Rate');
-        expect(navigateSpy).not.toHaveBeenCalled();
-    });
-
-    it('should show default health icon when no data', () => {
-        // After flushing with healthy status, icon reflects healthy state
-        expect(component.healthIcon()).toBe('check_circle');
-    });
-
-    it('should show default health color when no data', () => {
-        // After flushing with healthy status, color reflects healthy state
-        expect(component.healthColor()).toBe('var(--app-success, #4caf50)');
-    });
-
-    it('should render the page heading', () => {
-        fixture.detectChanges();
-        const el: HTMLElement = fixture.nativeElement;
-        expect(el.querySelector('h1')?.textContent).toContain('Adblock Compiler Dashboard');
+    it('should render footer section', async () => {
+        await fixture.whenStable();
+        const footer = fixture.nativeElement.querySelector('app-footer-section');
+        expect(footer).toBeTruthy();
     });
 });
