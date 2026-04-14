@@ -48,8 +48,8 @@ env:
   DENO_VERSION: "2.x"
 
 concurrency:
-  # On main we never want two migration runs overlapping; on PRs we cancel
-  # the previous run for the same branch.
+  # On the default branch we never want two migration runs overlapping; on
+  # PRs we cancel the previous run for the same branch.
   group: db-migrate-${{ github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 

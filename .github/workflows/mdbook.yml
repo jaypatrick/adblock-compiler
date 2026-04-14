@@ -92,7 +92,7 @@ jobs:
           # Retry with 30s initial delay (3 total attempts; sleeps: 30s → 60s).
           retry_command 3 30 deno task wrangler pages deploy book \
             --project-name="${{ env.CLOUDFLARE_PAGES_PROJECT }}" \
-            --branch=main \
+            --branch="${{ github.ref_name }}" \
             --commit-dirty=true \
             --no-config
           echo "✅ Documentation deployed successfully"

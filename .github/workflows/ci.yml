@@ -422,7 +422,8 @@ jobs:
       - frontend-build
       - check-slow-types
       - audit-public-surface
-      # verify-deploy is a PR-only safety check (it is skipped on push to main).
+      # verify-deploy is a PR-only safety check (it is skipped on pushes to the
+      # repository default branch).
       # Keeping it in needs caused GitHub Actions to propagate the 'skipped' result
       # upward, which could cause ci-gate itself to be treated as skipped, silently
       # preventing deploy and publish from running on push.  verify-deploy remains

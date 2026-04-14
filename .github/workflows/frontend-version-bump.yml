@@ -215,8 +215,8 @@ jobs:
           fi
 
           # Always push the bump branch and create/merge the PR — even if the tag
-          # already existed — so the version bump commit reaches main in cases where
-          # a previous run pushed the tag but the PR was lost before merging.
+          # already existed — so the version bump commit reaches the default branch
+          # in cases where a previous run pushed the tag but the PR was lost before merging.
           git push origin "$BRANCH_NAME"
           if [ "$TAG_CREATED" = "true" ]; then
             git push origin "$TAG_NAME"
@@ -231,8 +231,8 @@ jobs:
             --json number \
             --jq '.number')
 
-          # Use --merge (not --squash) so the tagged commit stays in main history
-          # and git describe --match "frontend-v*" can find the tag from main.
+          # Use --merge (not --squash) so the tagged commit stays in the default branch history
+          # and git describe --match "frontend-v*" can find the tag from the default branch.
           # --delete-branch cleans up the short-lived bump branch automatically.
           gh pr merge "$PR_NUMBER" --auto --merge --delete-branch
 
