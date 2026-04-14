@@ -182,17 +182,10 @@ jobs:
           database: ${{ steps.db-config.outputs.db_name }}
 
       # ── 4. Set up pnpm + Node.js for Prisma CLI ─────────────────────────
-      # pnpm must be installed BEFORE setup-node so the pnpm cache works
-      - name: Install pnpm
-        uses: pnpm/action-setup@v6.0.0
+      - name: Setup pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm-node
         with:
-          version: 10.31.0
-
-      - name: Set up Node.js
-        uses: actions/setup-node@v6.3.0
-        with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: '22'
 
       # Install only the dependencies needed for Prisma migrations
       - name: Install dependencies
