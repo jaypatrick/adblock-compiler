@@ -39,7 +39,6 @@ export type AgentSessionMinAggregateOutputType = {
   agentSlug: string | null
   instanceId: string | null
   userId: string | null
-  clerkUserId: string | null
   startedAt: Date | null
   endedAt: Date | null
   endReason: string | null
@@ -54,7 +53,6 @@ export type AgentSessionMaxAggregateOutputType = {
   agentSlug: string | null
   instanceId: string | null
   userId: string | null
-  clerkUserId: string | null
   startedAt: Date | null
   endedAt: Date | null
   endReason: string | null
@@ -69,7 +67,6 @@ export type AgentSessionCountAggregateOutputType = {
   agentSlug: number
   instanceId: number
   userId: number
-  clerkUserId: number
   startedAt: number
   endedAt: number
   endReason: number
@@ -95,7 +92,6 @@ export type AgentSessionMinAggregateInputType = {
   agentSlug?: true
   instanceId?: true
   userId?: true
-  clerkUserId?: true
   startedAt?: true
   endedAt?: true
   endReason?: true
@@ -110,7 +106,6 @@ export type AgentSessionMaxAggregateInputType = {
   agentSlug?: true
   instanceId?: true
   userId?: true
-  clerkUserId?: true
   startedAt?: true
   endedAt?: true
   endReason?: true
@@ -125,7 +120,6 @@ export type AgentSessionCountAggregateInputType = {
   agentSlug?: true
   instanceId?: true
   userId?: true
-  clerkUserId?: true
   startedAt?: true
   endedAt?: true
   endReason?: true
@@ -228,7 +222,6 @@ export type AgentSessionGroupByOutputType = {
   agentSlug: string
   instanceId: string
   userId: string | null
-  clerkUserId: string | null
   startedAt: Date
   endedAt: Date | null
   endReason: string | null
@@ -267,7 +260,6 @@ export type AgentSessionWhereInput = {
   agentSlug?: Prisma.StringFilter<"AgentSession"> | string
   instanceId?: Prisma.StringFilter<"AgentSession"> | string
   userId?: Prisma.UuidNullableFilter<"AgentSession"> | string | null
-  clerkUserId?: Prisma.StringNullableFilter<"AgentSession"> | string | null
   startedAt?: Prisma.DateTimeFilter<"AgentSession"> | Date | string
   endedAt?: Prisma.DateTimeNullableFilter<"AgentSession"> | Date | string | null
   endReason?: Prisma.StringNullableFilter<"AgentSession"> | string | null
@@ -285,7 +277,6 @@ export type AgentSessionOrderByWithRelationInput = {
   agentSlug?: Prisma.SortOrder
   instanceId?: Prisma.SortOrder
   userId?: Prisma.SortOrderInput | Prisma.SortOrder
-  clerkUserId?: Prisma.SortOrderInput | Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   endedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   endReason?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -306,7 +297,6 @@ export type AgentSessionWhereUniqueInput = Prisma.AtLeast<{
   agentSlug?: Prisma.StringFilter<"AgentSession"> | string
   instanceId?: Prisma.StringFilter<"AgentSession"> | string
   userId?: Prisma.UuidNullableFilter<"AgentSession"> | string | null
-  clerkUserId?: Prisma.StringNullableFilter<"AgentSession"> | string | null
   startedAt?: Prisma.DateTimeFilter<"AgentSession"> | Date | string
   endedAt?: Prisma.DateTimeNullableFilter<"AgentSession"> | Date | string | null
   endReason?: Prisma.StringNullableFilter<"AgentSession"> | string | null
@@ -324,7 +314,6 @@ export type AgentSessionOrderByWithAggregationInput = {
   agentSlug?: Prisma.SortOrder
   instanceId?: Prisma.SortOrder
   userId?: Prisma.SortOrderInput | Prisma.SortOrder
-  clerkUserId?: Prisma.SortOrderInput | Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   endedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   endReason?: Prisma.SortOrderInput | Prisma.SortOrder
@@ -348,7 +337,6 @@ export type AgentSessionScalarWhereWithAggregatesInput = {
   agentSlug?: Prisma.StringWithAggregatesFilter<"AgentSession"> | string
   instanceId?: Prisma.StringWithAggregatesFilter<"AgentSession"> | string
   userId?: Prisma.UuidNullableWithAggregatesFilter<"AgentSession"> | string | null
-  clerkUserId?: Prisma.StringNullableWithAggregatesFilter<"AgentSession"> | string | null
   startedAt?: Prisma.DateTimeWithAggregatesFilter<"AgentSession"> | Date | string
   endedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"AgentSession"> | Date | string | null
   endReason?: Prisma.StringNullableWithAggregatesFilter<"AgentSession"> | string | null
@@ -363,7 +351,6 @@ export type AgentSessionCreateInput = {
   id?: string
   agentSlug: string
   instanceId: string
-  clerkUserId?: string | null
   startedAt?: Date | string
   endedAt?: Date | string | null
   endReason?: string | null
@@ -381,7 +368,6 @@ export type AgentSessionUncheckedCreateInput = {
   agentSlug: string
   instanceId: string
   userId?: string | null
-  clerkUserId?: string | null
   startedAt?: Date | string
   endedAt?: Date | string | null
   endReason?: string | null
@@ -397,7 +383,6 @@ export type AgentSessionUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   agentSlug?: Prisma.StringFieldUpdateOperationsInput | string
   instanceId?: Prisma.StringFieldUpdateOperationsInput | string
-  clerkUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -415,7 +400,6 @@ export type AgentSessionUncheckedUpdateInput = {
   agentSlug?: Prisma.StringFieldUpdateOperationsInput | string
   instanceId?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  clerkUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -432,7 +416,6 @@ export type AgentSessionCreateManyInput = {
   agentSlug: string
   instanceId: string
   userId?: string | null
-  clerkUserId?: string | null
   startedAt?: Date | string
   endedAt?: Date | string | null
   endReason?: string | null
@@ -447,7 +430,6 @@ export type AgentSessionUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   agentSlug?: Prisma.StringFieldUpdateOperationsInput | string
   instanceId?: Prisma.StringFieldUpdateOperationsInput | string
-  clerkUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -463,7 +445,6 @@ export type AgentSessionUncheckedUpdateManyInput = {
   agentSlug?: Prisma.StringFieldUpdateOperationsInput | string
   instanceId?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  clerkUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -489,7 +470,6 @@ export type AgentSessionCountOrderByAggregateInput = {
   agentSlug?: Prisma.SortOrder
   instanceId?: Prisma.SortOrder
   userId?: Prisma.SortOrder
-  clerkUserId?: Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   endedAt?: Prisma.SortOrder
   endReason?: Prisma.SortOrder
@@ -509,7 +489,6 @@ export type AgentSessionMaxOrderByAggregateInput = {
   agentSlug?: Prisma.SortOrder
   instanceId?: Prisma.SortOrder
   userId?: Prisma.SortOrder
-  clerkUserId?: Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   endedAt?: Prisma.SortOrder
   endReason?: Prisma.SortOrder
@@ -524,7 +503,6 @@ export type AgentSessionMinOrderByAggregateInput = {
   agentSlug?: Prisma.SortOrder
   instanceId?: Prisma.SortOrder
   userId?: Prisma.SortOrder
-  clerkUserId?: Prisma.SortOrder
   startedAt?: Prisma.SortOrder
   endedAt?: Prisma.SortOrder
   endReason?: Prisma.SortOrder
@@ -603,7 +581,6 @@ export type AgentSessionCreateWithoutUserInput = {
   id?: string
   agentSlug: string
   instanceId: string
-  clerkUserId?: string | null
   startedAt?: Date | string
   endedAt?: Date | string | null
   endReason?: string | null
@@ -619,7 +596,6 @@ export type AgentSessionUncheckedCreateWithoutUserInput = {
   id?: string
   agentSlug: string
   instanceId: string
-  clerkUserId?: string | null
   startedAt?: Date | string
   endedAt?: Date | string | null
   endReason?: string | null
@@ -665,7 +641,6 @@ export type AgentSessionScalarWhereInput = {
   agentSlug?: Prisma.StringFilter<"AgentSession"> | string
   instanceId?: Prisma.StringFilter<"AgentSession"> | string
   userId?: Prisma.UuidNullableFilter<"AgentSession"> | string | null
-  clerkUserId?: Prisma.StringNullableFilter<"AgentSession"> | string | null
   startedAt?: Prisma.DateTimeFilter<"AgentSession"> | Date | string
   endedAt?: Prisma.DateTimeNullableFilter<"AgentSession"> | Date | string | null
   endReason?: Prisma.StringNullableFilter<"AgentSession"> | string | null
@@ -680,7 +655,6 @@ export type AgentSessionCreateWithoutInvocationsInput = {
   id?: string
   agentSlug: string
   instanceId: string
-  clerkUserId?: string | null
   startedAt?: Date | string
   endedAt?: Date | string | null
   endReason?: string | null
@@ -697,7 +671,6 @@ export type AgentSessionUncheckedCreateWithoutInvocationsInput = {
   agentSlug: string
   instanceId: string
   userId?: string | null
-  clerkUserId?: string | null
   startedAt?: Date | string
   endedAt?: Date | string | null
   endReason?: string | null
@@ -728,7 +701,6 @@ export type AgentSessionUpdateWithoutInvocationsInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   agentSlug?: Prisma.StringFieldUpdateOperationsInput | string
   instanceId?: Prisma.StringFieldUpdateOperationsInput | string
-  clerkUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -745,7 +717,6 @@ export type AgentSessionUncheckedUpdateWithoutInvocationsInput = {
   agentSlug?: Prisma.StringFieldUpdateOperationsInput | string
   instanceId?: Prisma.StringFieldUpdateOperationsInput | string
   userId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  clerkUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -760,7 +731,6 @@ export type AgentSessionCreateManyUserInput = {
   id?: string
   agentSlug: string
   instanceId: string
-  clerkUserId?: string | null
   startedAt?: Date | string
   endedAt?: Date | string | null
   endReason?: string | null
@@ -775,7 +745,6 @@ export type AgentSessionUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   agentSlug?: Prisma.StringFieldUpdateOperationsInput | string
   instanceId?: Prisma.StringFieldUpdateOperationsInput | string
-  clerkUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -791,7 +760,6 @@ export type AgentSessionUncheckedUpdateWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   agentSlug?: Prisma.StringFieldUpdateOperationsInput | string
   instanceId?: Prisma.StringFieldUpdateOperationsInput | string
-  clerkUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -807,7 +775,6 @@ export type AgentSessionUncheckedUpdateManyWithoutUserInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   agentSlug?: Prisma.StringFieldUpdateOperationsInput | string
   instanceId?: Prisma.StringFieldUpdateOperationsInput | string
-  clerkUserId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   startedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   endedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   endReason?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -854,7 +821,6 @@ export type AgentSessionSelect<ExtArgs extends runtime.Types.Extensions.Internal
   agentSlug?: boolean
   instanceId?: boolean
   userId?: boolean
-  clerkUserId?: boolean
   startedAt?: boolean
   endedAt?: boolean
   endReason?: boolean
@@ -873,7 +839,6 @@ export type AgentSessionSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   agentSlug?: boolean
   instanceId?: boolean
   userId?: boolean
-  clerkUserId?: boolean
   startedAt?: boolean
   endedAt?: boolean
   endReason?: boolean
@@ -890,7 +855,6 @@ export type AgentSessionSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   agentSlug?: boolean
   instanceId?: boolean
   userId?: boolean
-  clerkUserId?: boolean
   startedAt?: boolean
   endedAt?: boolean
   endReason?: boolean
@@ -907,7 +871,6 @@ export type AgentSessionSelectScalar = {
   agentSlug?: boolean
   instanceId?: boolean
   userId?: boolean
-  clerkUserId?: boolean
   startedAt?: boolean
   endedAt?: boolean
   endReason?: boolean
@@ -918,7 +881,7 @@ export type AgentSessionSelectScalar = {
   metadata?: boolean
 }
 
-export type AgentSessionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "agentSlug" | "instanceId" | "userId" | "clerkUserId" | "startedAt" | "endedAt" | "endReason" | "messageCount" | "transport" | "clientIp" | "userAgent" | "metadata", ExtArgs["result"]["agentSession"]>
+export type AgentSessionOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "agentSlug" | "instanceId" | "userId" | "startedAt" | "endedAt" | "endReason" | "messageCount" | "transport" | "clientIp" | "userAgent" | "metadata", ExtArgs["result"]["agentSession"]>
 export type AgentSessionInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   user?: boolean | Prisma.AgentSession$userArgs<ExtArgs>
   invocations?: boolean | Prisma.AgentSession$invocationsArgs<ExtArgs>
@@ -942,7 +905,6 @@ export type $AgentSessionPayload<ExtArgs extends runtime.Types.Extensions.Intern
     agentSlug: string
     instanceId: string
     userId: string | null
-    clerkUserId: string | null
     startedAt: Date
     endedAt: Date | null
     endReason: string | null
@@ -1380,7 +1342,6 @@ export interface AgentSessionFieldRefs {
   readonly agentSlug: Prisma.FieldRef<"AgentSession", 'String'>
   readonly instanceId: Prisma.FieldRef<"AgentSession", 'String'>
   readonly userId: Prisma.FieldRef<"AgentSession", 'String'>
-  readonly clerkUserId: Prisma.FieldRef<"AgentSession", 'String'>
   readonly startedAt: Prisma.FieldRef<"AgentSession", 'DateTime'>
   readonly endedAt: Prisma.FieldRef<"AgentSession", 'DateTime'>
   readonly endReason: Prisma.FieldRef<"AgentSession", 'String'>

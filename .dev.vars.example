@@ -28,23 +28,6 @@ BETTER_AUTH_SECRET=replace-with-openssl-rand-base64-32-output
 # Base URL for Better Auth callbacks and redirects
 BETTER_AUTH_URL=http://localhost:8787
 
-# ─── Clerk Authentication (deprecated — remove after migration) ──────────────
-# Clerk is retained as a fallback for existing sessions during migration.
-# Clerk is DISABLED by default — set DISABLE_CLERK_FALLBACK=false in .dev.vars to re-enable.
-# Get keys from https://dashboard.clerk.com → API Keys
-# Publishable key (non-secret — production value lives in wrangler.toml [vars])
-CLERK_PUBLISHABLE_KEY=pk_test_...
-# JWKS URL (non-secret — production value lives in wrangler.toml [vars])
-CLERK_JWKS_URL=https://your-instance.clerk.accounts.dev/.well-known/jwks.json
-# Secret key (secret — production: `wrangler secret put CLERK_SECRET_KEY`)
-CLERK_SECRET_KEY=sk_test_...
-# Webhook signing secret (secret — production: `wrangler secret put CLERK_WEBHOOK_SECRET`)
-CLERK_WEBHOOK_SECRET=whsec_...
-# Set to 'false' to re-enable Clerk fallback (migration period only)
-DISABLE_CLERK_FALLBACK=true
-# Set to 'false' to re-enable Clerk webhook processing (migration period only)
-DISABLE_CLERK_WEBHOOKS=true
-
 # ─── Cloudflare Turnstile ────────────────────────────────────────────────────
 # Site key (non-secret — production value lives in wrangler.toml [vars])
 # Test keys below always pass verification — safe for local dev.

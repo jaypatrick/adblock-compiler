@@ -100,7 +100,7 @@ export const appConfig: ApplicationConfig = {
             inject(ViewportScroller).setOffset([0, 72]);
 
             // isPlatformBrowser check MUST come before any call that touches browser-only
-            // APIs (localStorage, fetch, Clerk, Sentry). ThemeService.loadPreferences()
+            // APIs (localStorage, fetch, Sentry). ThemeService.loadPreferences()
             // reads localStorage and must only run in the browser.
             if (!isPlatformBrowser(inject(PLATFORM_ID))) return;
 

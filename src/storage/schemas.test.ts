@@ -99,7 +99,6 @@ Deno.test('CreateApiKeySchema - should reject invalid userId', () => {
 Deno.test('CreateSessionSchema - should validate minimal session', () => {
     const result = CreateSessionSchema.safeParse({
         userId: VALID_UUID,
-        tokenHash: VALID_HASH,
         expiresAt: new Date(Date.now() + 3600000).toISOString(),
     });
     assertEquals(result.success, true);
@@ -108,7 +107,6 @@ Deno.test('CreateSessionSchema - should validate minimal session', () => {
 Deno.test('CreateSessionSchema - should validate full session', () => {
     const result = CreateSessionSchema.safeParse({
         userId: VALID_UUID,
-        tokenHash: VALID_HASH,
         ipAddress: '192.168.1.1',
         userAgent: 'Mozilla/5.0',
         expiresAt: new Date(Date.now() + 3600000).toISOString(),
@@ -116,10 +114,8 @@ Deno.test('CreateSessionSchema - should validate full session', () => {
     assertEquals(result.success, true);
 });
 
-Deno.test('CreateSessionSchema - should reject short tokenHash', () => {
+Deno.test('CreateSessionSchema - should reject missing userId', () => {
     const result = CreateSessionSchema.safeParse({
-        userId: VALID_UUID,
-        tokenHash: 'short',
         expiresAt: new Date(Date.now() + 3600000).toISOString(),
     });
     assertEquals(result.success, false);

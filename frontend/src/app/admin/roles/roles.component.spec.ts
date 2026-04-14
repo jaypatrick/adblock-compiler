@@ -35,7 +35,7 @@ function makeAssignment(overrides: Partial<{
 }> = {}) {
     return {
         id: 10,
-        user_id: 'clerk-abc',
+        user_id: 'user-abc',
         role_name: 'editor',
         assigned_by: 'admin@example.com',
         assigned_at: '2024-01-02T00:00:00Z',
@@ -375,7 +375,7 @@ describe('RolesComponent', () => {
         it('POSTs assignment and reloads assignments on success', () => {
             const role = makeRole({ role_name: 'editor' });
             component.selectedRole.set(role);
-            component.assignUserId = 'clerk-xyz';
+            component.assignUserId = 'user-xyz';
 
             component.confirmAssign();
             expect(component.saving()).toBe(true);
@@ -384,7 +384,7 @@ describe('RolesComponent', () => {
                 r.url.includes('/admin/roles/assignments') && r.method === 'POST',
             );
             expect(req.request.body).toEqual({
-                user_id: 'clerk-xyz',
+                user_id: 'user-xyz',
                 role_name: 'editor',
             });
             req.flush({ success: true });
@@ -403,7 +403,7 @@ describe('RolesComponent', () => {
             component.selectedRole.set(role);
             component.openAssignDialog();
             // Set assignUserId AFTER openAssignDialog() so it isn't cleared
-            component.assignUserId = 'clerk-xyz';
+            component.assignUserId = 'user-xyz';
 
             component.confirmAssign();
             httpTesting
@@ -423,13 +423,13 @@ describe('RolesComponent', () => {
         it('DELETEs the assignment and reloads assignments on success', () => {
             const role = makeRole({ role_name: 'editor' });
             component.selectedRole.set(role);
-            const assignment = makeAssignment({ user_id: 'clerk-del' });
+            const assignment = makeAssignment({ user_id: 'user-del' });
 
             component.revokeAssignment(assignment);
             expect(component.saving()).toBe(true);
 
             const req = httpTesting.expectOne(r =>
-                r.url.includes('/admin/roles/assignments/clerk-del') && r.method === 'DELETE',
+                r.url.includes('/admin/roles/assignments/user-del') && r.method === 'DELETE',
             );
             req.flush({ success: true });
 
@@ -443,11 +443,11 @@ describe('RolesComponent', () => {
         it('resets saving flag on error', () => {
             const role = makeRole({ role_name: 'editor' });
             component.selectedRole.set(role);
-            const assignment = makeAssignment({ user_id: 'clerk-del' });
+            const assignment = makeAssignment({ user_id: 'user-del' });
 
             component.revokeAssignment(assignment);
             httpTesting
-                .expectOne(r => r.url.includes('/admin/roles/assignments/clerk-del') && r.method === 'DELETE')
+                .expectOne(r => r.url.includes('/admin/roles/assignments/user-del') && r.method === 'DELETE')
                 .flush('Not Found', { status: 404, statusText: 'Not Found' });
 
             expect(component.saving()).toBe(false);

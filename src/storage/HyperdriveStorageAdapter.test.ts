@@ -669,7 +669,6 @@ Deno.test('createSession - returns { id }', async () => {
 
     const result = await adapter.createSession({
         userId: TEST_UUID_1,
-        tokenHash: TEST_HASH_64,
         expiresAt: new Date(Date.now() + 86_400_000),
     });
     assertExists(result.id);

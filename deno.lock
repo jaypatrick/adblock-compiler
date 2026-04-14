@@ -43,6 +43,7 @@
     "npm:hono@^4.12.12": "4.12.12",
     "npm:hono@^4.12.8": "4.12.12",
     "npm:jose@^6.2.1": "6.2.2",
+    "npm:prisma@*": "7.5.0_typescript@6.0.2_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5",
     "npm:prisma@7.5.0": "7.5.0_typescript@6.0.2_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5",
     "npm:prisma@^7.5.0": "7.5.0_typescript@6.0.2_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5",
     "npm:svix@^1.62.0": "1.90.0",

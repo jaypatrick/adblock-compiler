@@ -458,19 +458,6 @@
       "hasRequestBody": false
     },
     {
-      "path": "/api/webhooks/clerk",
-      "method": "POST",
-      "operationId": "clerkWebhook",
-      "summary": "Clerk webhook receiver",
-      "description": "Receives Clerk webhook events (user.created, user.updated, user.deleted, session.created). Verified via Svix webhook signature. This endpoint is called by Clerk's webhook infrastructure and should ...",
-      "tags": [
-        "Authentication"
-      ],
-      "security": [],
-      "parameterCount": 3,
-      "hasRequestBody": true
-    },
-    {
       "path": "/ast/parse",
       "method": "POST",
       "operationId": "parseAST",
@@ -874,7 +861,7 @@
     },
     {
       "name": "Authentication",
-      "description": "User-level authentication endpoints — API key management and webhook receivers. Requires Clerk JWT or API key auth."
+      "description": "User-level authentication endpoints — API key management and webhook receivers. Requires Bearer token (Better Auth JWT or API key)."
     },
     {
       "name": "Notifications",

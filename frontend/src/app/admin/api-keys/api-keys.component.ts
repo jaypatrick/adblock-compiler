@@ -29,7 +29,6 @@ import { MatSnackBar, MatSnackBarModule } from '@angular/material/snack-bar';
 interface AdminApiKey {
     readonly id: string;
     readonly keyPrefix: string;
-    readonly clerkUserId: string;
     readonly name: string;
     readonly scopes: string[];
     readonly rateLimitPerMinute: number;
@@ -142,13 +141,6 @@ type KeyStatus = 'all' | 'active' | 'revoked' | 'expired';
                         </td>
                     </ng-container>
 
-                    <ng-container matColumnDef="clerkUserId">
-                        <th mat-header-cell *matHeaderCellDef>Owner</th>
-                        <td mat-cell *matCellDef="let row">
-                            <span class="owner-id">{{ row.clerkUserId }}</span>
-                        </td>
-                    </ng-container>
-
                     <ng-container matColumnDef="name">
                         <th mat-header-cell *matHeaderCellDef>Name</th>
                         <td mat-cell *matCellDef="let row">{{ row.name }}</td>
@@ -216,10 +208,6 @@ type KeyStatus = 'all' | 'active' | 'revoked' | 'expired';
                         <div class="detail-row">
                             <span class="detail-label">Name</span>
                             <span class="detail-value">{{ detailKey()!.name }}</span>
-                        </div>
-                        <div class="detail-row">
-                            <span class="detail-label">Owner</span>
-                            <code class="detail-value">{{ detailKey()!.clerkUserId }}</code>
                         </div>
                         <div class="detail-row">
                             <span class="detail-label">Prefix</span>
@@ -354,7 +342,7 @@ export class ApiKeysComponent {
     readonly detailKey = signal<AdminApiKey | null>(null);
     readonly revokingKey = signal<AdminApiKey | null>(null);
 
-    readonly displayedColumns = ['keyPrefix', 'clerkUserId', 'name', 'scopes', 'status', 'createdAt', 'actions'];
+    readonly displayedColumns = ['keyPrefix', 'name', 'scopes', 'status', 'createdAt', 'actions'];
 
     searchQuery = '';
     statusFilter: KeyStatus = 'all';
@@ -394,7 +382,6 @@ export class ApiKeysComponent {
             const q = this.searchQuery.toLowerCase();
             keys = keys.filter(k =>
                 k.keyPrefix.toLowerCase().includes(q) ||
-                k.clerkUserId.toLowerCase().includes(q) ||
                 k.name.toLowerCase().includes(q),
             );
         }
