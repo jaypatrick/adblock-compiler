@@ -196,7 +196,9 @@ jobs:
       # the _prisma_migrations table, blocking all future deploys on that branch.
       # NOTE: `prisma migrate status` exits non-zero when migrations are merely
       # *pending* (unapplied) — that is normal on a fresh branch and must NOT
-      # trigger a restore.  We only restore on an explicit P3009 signal.
+      # trigger a restore.  We restore when the status output contains either
+      # "P3009" (from deploy) or the "Following migration … failed" text that
+      # `prisma migrate status` prints for stuck failed migrations.
       - name: Reset branch if migration conflicts detected
         env:
           DATABASE_URL: ${{ steps.create-branch.outputs.db_url_with_pooler }}
@@ -212,12 +214,16 @@ jobs:
           echo "Checking migration status..."
           echo "$STATUS"
 
-          # Only restore when Prisma explicitly reports a stuck failed migration
-          # (error code P3009).  A non-zero exit code alone means "there are
-          # pending migrations to apply" — that is expected on every fresh branch
-          # and should NOT trigger a restore.
-          if echo "$STATUS" | grep -q "P3009"; then
-            echo "⚠️  P3009 detected — restoring branch to staging tip for a clean slate."
+          # Restore only when Prisma reports a *stuck* failed migration.
+          # Two signals to check:
+          #   1. `prisma migrate deploy` sets error code P3009 in its output.
+          #   2. `prisma migrate status` prints "Following migration" + "failed"
+          #      (e.g. "Following migration have failed:") but does NOT print
+          #      "P3009" — so we must match both patterns.
+          # A non-zero exit code alone means "pending migrations" — that is
+          # normal on a fresh branch and must NOT trigger a restore.
+          if echo "$STATUS" | grep -qE "P3009|Following migration.*failed|have failed|migration.*failed"; then
+            echo "⚠️  Failed migration detected — restoring branch to staging tip for a clean slate."
 
             if [ -z "$BRANCH_ID" ]; then
               echo "::error::BRANCH_ID is empty. Cannot restore branch. Check create-branch step outputs."
@@ -245,7 +251,7 @@ jobs:
             sleep 5
             echo "✅ Branch restored. Migrations will be applied fresh."
           else
-            echo "✅ No P3009 detected. Proceeding with migration deploy."
+            echo "✅ No failed migrations detected. Proceeding with migration deploy."
           fi
 
       # ── 6. Run Prisma migrations against the new branch ────────────────────
