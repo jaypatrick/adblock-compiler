@@ -651,8 +651,11 @@ model DataRetentionConsent {
   ipAddress       String?  @map("ip_address")
   userAgent       String?  @map("user_agent")
 
-  user            User?         @relation(fields: [userId], references: [id], onDelete: SetNull)
-  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  // onDelete: Restrict — SET NULL would violate the XOR CHECK constraint
+  // (both FKs becoming NULL after delete). App must delete consent records
+  // before deleting the parent user/org.
+  user            User?         @relation(fields: [userId], references: [id], onDelete: Restrict)
+  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([organizationId])

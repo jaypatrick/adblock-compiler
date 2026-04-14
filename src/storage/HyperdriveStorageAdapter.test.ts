@@ -124,10 +124,14 @@ function createMockPrismaClient(): any {
                 }
 
                 // Simple where for flat conditions (e.g. { visibility: 'public' })
+                // Also handles { in: [...] } filter shape (e.g. { visibility: { in: ['public','featured'] } })
                 if (args.where && !args.where.AND) {
                     for (const [k, v] of Object.entries(args.where)) {
                         if (typeof v === 'boolean' || typeof v === 'string' || typeof v === 'number') {
                             rows = rows.filter((r) => r[k] === v);
+                        } else if (v !== null && typeof v === 'object' && Array.isArray((v as { in?: unknown[] }).in)) {
+                            const allowed = (v as { in: unknown[] }).in;
+                            rows = rows.filter((r) => allowed.includes(r[k]));
                         }
                     }
                 }
@@ -716,6 +720,44 @@ Deno.test('listFilterSources - returns array', async () => {
 
     const all = await adapter.listFilterSources();
     assertEquals(all.length, 2);
+
+    await adapter.close();
+});
+
+Deno.test('listFilterSources - publicOnly returns only public and featured rows', async () => {
+    const mock = createMockPrismaClient();
+    const adapter = new HyperdriveStorageAdapter(createMockHyperdrive(), mockFactory(mock));
+    await adapter.open();
+
+    await adapter.createFilterSource({
+        url: 'https://public.example.com',
+        name: 'Public',
+        visibility: 'public',
+        refreshIntervalSeconds: 3600,
+    });
+    await adapter.createFilterSource({
+        url: 'https://featured.example.com',
+        name: 'Featured',
+        visibility: 'featured',
+        refreshIntervalSeconds: 3600,
+    });
+    await adapter.createFilterSource({
+        url: 'https://private.example.com',
+        name: 'Private',
+        visibility: 'private',
+        refreshIntervalSeconds: 3600,
+    });
+    await adapter.createFilterSource({
+        url: 'https://org.example.com',
+        name: 'Org',
+        visibility: 'org',
+        organizationId: '00000000-0000-0000-0000-000000000001',
+        refreshIntervalSeconds: 3600,
+    });
+
+    const publicOnly = await adapter.listFilterSources(true);
+    assertEquals(publicOnly.length, 2);
+    assertEquals(publicOnly.map((r) => r.visibility).sort(), ['featured', 'public']);
 
     await adapter.close();
 });

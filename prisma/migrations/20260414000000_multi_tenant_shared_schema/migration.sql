@@ -108,7 +108,7 @@ CREATE INDEX IF NOT EXISTS "users_plan_id_idx" ON "users"("plan_id");
 -- 5. Modify filter_sources:
 --    a) Drop old global @unique on url
 --    b) Add organization_id, visibility columns
---       (is_featured removed in favour of visibility='featured' as single source of truth)
+--       (visibility='featured' is the single source of truth for featured/pinned sources)
 --    c) Add composite unique (url, owner_user_id, organization_id)
 --    d) Add partial unique index for global/system-managed rows (both FKs NULL)
 --    e) Add FK constraint + index for owner_user_id
@@ -117,10 +117,23 @@ CREATE INDEX IF NOT EXISTS "users_plan_id_idx" ON "users"("plan_id");
 -- Drop the old global unique constraint on url (name from Prisma init migration)
 DROP INDEX IF EXISTS "filter_sources_url_key";
 
--- Add new columns
+-- Add new columns (visibility added nullable first so we can backfill before setting NOT NULL)
 ALTER TABLE "filter_sources"
-    ADD COLUMN IF NOT EXISTS "organization_id" UUID        REFERENCES "organization"("id") ON DELETE CASCADE,
-    ADD COLUMN IF NOT EXISTS "visibility"      TEXT        NOT NULL DEFAULT 'private';
+    ADD COLUMN IF NOT EXISTS "organization_id" UUID REFERENCES "organization"("id") ON DELETE CASCADE,
+    ADD COLUMN IF NOT EXISTS "visibility"      TEXT;
+
+-- Backfill visibility from the previous is_public boolean:
+--   is_public = TRUE  → 'public'
+--   is_public = FALSE → 'private'
+-- This preserves the semantics of existing rows instead of blindly defaulting to 'private'.
+UPDATE "filter_sources"
+SET "visibility" = CASE WHEN "is_public" THEN 'public' ELSE 'private' END
+WHERE "visibility" IS NULL;
+
+-- Now enforce NOT NULL with default for future inserts
+ALTER TABLE "filter_sources"
+    ALTER COLUMN "visibility" SET NOT NULL,
+    ALTER COLUMN "visibility" SET DEFAULT 'private';
 
 -- Composite unique: a URL must be unique per owner context.
 -- Migration note: existing rows have owner_user_id either set or NULL and organization_id = NULL
@@ -225,8 +238,10 @@ CREATE INDEX IF NOT EXISTS "filter_list_asts_visibility_idx"       ON "filter_li
 -- ============================================================================
 CREATE TABLE IF NOT EXISTS "data_retention_consents" (
     "id"              UUID        NOT NULL DEFAULT gen_random_uuid(),
-    "user_id"         UUID        REFERENCES "users"("id")        ON DELETE SET NULL,
-    "organization_id" UUID        REFERENCES "organization"("id") ON DELETE SET NULL,
+    -- RESTRICT (not SET NULL) because SET NULL would violate the XOR CHECK constraint below:
+    -- deleting a user/org would attempt to null the FK, making both columns NULL.
+    "user_id"         UUID        REFERENCES "users"("id")        ON DELETE RESTRICT,
+    "organization_id" UUID        REFERENCES "organization"("id") ON DELETE RESTRICT,
     "policy_version"  TEXT        NOT NULL,
     "retention_days"  INTEGER     NOT NULL,
     "data_categories" TEXT[]      NOT NULL,

@@ -151,6 +151,38 @@ Deno.test('CreateFilterSourceSchema - should validate full filter source', () =>
     assertEquals(result.success, true);
 });
 
+Deno.test('CreateFilterSourceSchema - should accept org visibility with organizationId', () => {
+    const result = CreateFilterSourceSchema.safeParse({
+        url: VALID_URL,
+        name: 'OrgList',
+        visibility: 'org',
+        organizationId: VALID_UUID,
+        refreshIntervalSeconds: 3600,
+    });
+    assertEquals(result.success, true);
+});
+
+Deno.test('CreateFilterSourceSchema - should reject org visibility without organizationId', () => {
+    const result = CreateFilterSourceSchema.safeParse({
+        url: VALID_URL,
+        name: 'OrgList',
+        visibility: 'org',
+        refreshIntervalSeconds: 3600,
+    });
+    assertEquals(result.success, false);
+});
+
+Deno.test('CreateFilterSourceSchema - should reject both ownerUserId and organizationId set', () => {
+    const result = CreateFilterSourceSchema.safeParse({
+        url: VALID_URL,
+        name: 'List',
+        ownerUserId: VALID_UUID,
+        organizationId: VALID_UUID,
+        refreshIntervalSeconds: 3600,
+    });
+    assertEquals(result.success, false);
+});
+
 Deno.test('CreateFilterSourceSchema - should reject invalid URL', () => {
     const result = CreateFilterSourceSchema.safeParse({ url: 'not-a-url', name: 'Test' });
     assertEquals(result.success, false);

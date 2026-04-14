@@ -763,6 +763,7 @@ export class HyperdriveStorageAdapter implements IStorageAdapter {
                 license: validated.license ?? null,
                 visibility: validated.visibility,
                 ownerUserId: validated.ownerUserId ?? null,
+                organizationId: validated.organizationId ?? null,
                 refreshIntervalSeconds: validated.refreshIntervalSeconds,
             },
             select: { id: true },

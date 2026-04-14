@@ -86,16 +86,26 @@ export const CreateVerificationSchema = VerificationSchema.omit({ id: true, crea
 // Filter Sources
 // ============================================================================
 
-export const CreateFilterSourceSchema = z.object({
-    url: UrlSchema,
-    name: z.string().min(1).max(200),
-    description: z.string().max(1000).optional(),
-    homepage: UrlSchema.optional(),
-    license: z.string().max(100).optional(),
-    visibility: z.enum(['private', 'org', 'public', 'featured']).default('private'),
-    ownerUserId: UuidSchema.optional(),
-    refreshIntervalSeconds: z.number().int().min(60).max(86400).default(3600),
-});
+export const CreateFilterSourceSchema = z
+    .object({
+        url: UrlSchema,
+        name: z.string().min(1).max(200),
+        description: z.string().max(1000).optional(),
+        homepage: UrlSchema.optional(),
+        license: z.string().max(100).optional(),
+        visibility: z.enum(['private', 'org', 'public', 'featured']).default('private'),
+        ownerUserId: UuidSchema.optional(),
+        organizationId: UuidSchema.optional(),
+        refreshIntervalSeconds: z.number().int().min(60).max(86400).default(3600),
+    })
+    .refine(
+        (d) => d.visibility !== 'org' || d.organizationId != null,
+        { message: "organizationId is required when visibility is 'org'", path: ['organizationId'] },
+    )
+    .refine(
+        (d) => d.ownerUserId == null || d.organizationId == null,
+        { message: 'ownerUserId and organizationId cannot both be set', path: ['organizationId'] },
+    );
 
 export const CreateFilterListVersionSchema = z.object({
     sourceId: UuidSchema,
