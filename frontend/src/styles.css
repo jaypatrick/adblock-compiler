@@ -135,6 +135,7 @@
     --color-orange-600:  #CC4400;
     --color-orange-900:  #1A0A00;
     --color-orange-glow: rgba(255, 85, 0, 0.15);
+    --color-orange-glow-intense: rgba(255, 85, 0, 0.4);
 
     /* ── Bloqr Brand Tokens — Cyan (secondary accent) ────────────── */
     --color-cyan-500:    #00D4FF;
@@ -1068,4 +1069,99 @@ code {
     --mat-button-toggle-selected-state-text-color: var(--mat-sys-on-primary-container);
     color: var(--mat-sys-on-primary-container);
     background-color: var(--mat-sys-primary-container) !important;
+}
+
+/* =================================================================
+   Landing Page Utilities
+   Used by the 10 Bloqr landing page section components.
+   ================================================================= */
+.bloqr-section { padding: 96px 0; }
+.bloqr-container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+.bloqr-section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-orange-500);
+    margin-bottom: 16px;
+    display: block;
+}
+.bloqr-section-title {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(1.75rem, 4vw, 2.75rem);
+    font-weight: 800;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+    color: var(--color-text-primary);
+    margin: 0 0 16px;
+}
+.bloqr-section-desc {
+    font-size: 1.05rem;
+    color: var(--color-text-secondary);
+    line-height: 1.65;
+    max-width: 640px;
+}
+.bloqr-card {
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
+    border-radius: 12px;
+    padding: 24px;
+    transition: border-color 0.2s, background 0.2s;
+}
+.bloqr-card:hover {
+    border-color: rgba(255, 85, 0, 0.3);
+    background: var(--color-bg-elevated);
+}
+.bloqr-btn-primary {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-orange-500);
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    text-decoration: none;
+    transition: background 0.2s, box-shadow 0.2s;
+    box-shadow: 0 0 20px var(--color-orange-glow);
+}
+.bloqr-btn-primary:hover {
+    background: var(--color-orange-600);
+    box-shadow: 0 0 32px var(--color-orange-glow-intense);
+}
+.bloqr-btn-ghost {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border-accent);
+    border-radius: 8px;
+    padding: 12px 24px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    text-decoration: none;
+    transition: border-color 0.2s, color 0.2s;
+}
+.bloqr-btn-ghost:hover {
+    border-color: var(--color-text-secondary);
+    color: var(--color-text-primary);
+}
+
+/* Sidenav brand */
+.sidenav-brand {
+    padding: 16px 16px 8px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #FF5500;
+    letter-spacing: 0.05em;
+    border-bottom: 1px solid #1E2D40;
+    margin-bottom: 8px;
 }

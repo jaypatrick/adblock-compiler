@@ -16,7 +16,7 @@
  */
 
 import { Component, inject, signal, viewChild, effect } from '@angular/core';
-import { RouterLink, RouterLinkActive, RouterOutlet } from '@angular/router';
+import { RouterLink, RouterLinkActive, RouterOutlet, Router, NavigationEnd } from '@angular/router';
 import { MatSidenav, MatSidenavModule } from '@angular/material/sidenav';
 import { MatListModule } from '@angular/material/list';
 import { MatIconModule } from '@angular/material/icon';
@@ -24,7 +24,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { map } from 'rxjs/operators';
+import { filter, map } from 'rxjs/operators';
 import { ThemeService } from './services/theme.service';
 import { ErrorBoundaryComponent } from './error/error-boundary.component';
 import { NotificationContainerComponent } from './notification/notification-container.component';
@@ -105,7 +105,8 @@ interface NavItem {
       <mat-sidenav-content>
         <div class="page-wrapper">
 
-          <!-- Header — Bloqr nav bar: sticky, glass morphism, orange accent -->
+          <!-- Header — Bloqr nav bar: sticky, glass morphism, orange accent (hidden on landing page) -->
+          @if (!isLandingPage()) {
           <header class="app-header-shell">
             <div class="app-title-row">
               @if (isMobile()) {
@@ -157,6 +158,7 @@ interface NavItem {
               }
             </nav>
           </header>
+          } <!-- end @if (!isLandingPage()) header -->
 
           <!-- Main content area -->
           <main id="main-content" class="app-main-content" role="main" aria-label="Main content" tabindex="-1">
@@ -166,10 +168,12 @@ interface NavItem {
             <router-outlet />
           </main>
 
-          <!-- Footer matching original -->
+          <!-- Footer (hidden on landing page which has its own footer) -->
+          @if (!isLandingPage()) {
           <footer class="app-footer-shell">
             <p>Powered by <a href="https://github.com/jaypatrick/adblock-compiler" target="_blank" rel="noopener noreferrer">@jk-com/adblock-compiler<span class="visually-hidden"> (opens in new tab)</span></a></p>
           </footer>
+          } <!-- end @if (!isLandingPage()) footer -->
 
         </div>
       </mat-sidenav-content>
@@ -236,6 +240,29 @@ export class AppComponent {
      * so isDark() is correct from the very first render.
      */
     readonly themeService = inject(ThemeService);
+
+    /**
+     * Router — used to detect the landing page URL.
+     * isLandingPage drives @if blocks that hide the shell header/footer on `/`.
+     * initialValue reads router.url synchronously so direct navigation to non-root
+     * routes (e.g. /compiler) starts with the correct false value, preventing a
+     * brief flash of hidden/shown shell on deep-link access.
+     */
+    private readonly router = inject(Router);
+
+    private isLandingPageUrl(url: string): boolean {
+        const normalizedUrl = url.split(/[?#]/u, 1)[0];
+
+        return normalizedUrl === '' || normalizedUrl === '/';
+    }
+
+    readonly isLandingPage = toSignal(
+        this.router.events.pipe(
+            filter(e => e instanceof NavigationEnd),
+            map(e => this.isLandingPageUrl((e as NavigationEnd).urlAfterRedirects)),
+        ),
+        { initialValue: this.isLandingPageUrl(this.router.url) },
+    );
 
     constructor() {
         // Close the mobile drawer whenever desktop layout is active (horizontal nav takes over).
