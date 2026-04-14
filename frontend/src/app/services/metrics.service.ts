@@ -10,7 +10,7 @@ import { HttpClient } from '@angular/common/http';
 import { Observable, of } from 'rxjs';
 import { catchError, map } from 'rxjs/operators';
 import { API_BASE_URL } from '../tokens';
-import { HealthResponseSchema, MetricsResponseSchema } from '../schemas/api-responses';
+import { HealthResponseSchema, MetricsResponseSchema, validateResponse } from '../schemas/api-responses';
 
 /** Metrics response from /api/metrics */
 export interface MetricsResponse {
@@ -34,7 +34,7 @@ export class MetricsService {
     /** Fetch compilation metrics */
     getMetrics(): Observable<MetricsResponse> {
         return this.http.get<unknown>(`${this.apiBaseUrl}/metrics`).pipe(
-            map(raw => MetricsResponseSchema.parse(raw)),
+            map(raw => validateResponse(MetricsResponseSchema, raw, 'GET /metrics')),
             catchError(() => of({ totalRequests: 0, averageDuration: 0, cacheHitRate: 0, successRate: 0 })),
         );
     }
@@ -42,7 +42,7 @@ export class MetricsService {
     /** Fetch system health status */
     getHealth(): Observable<HealthResponse> {
         return this.http.get<unknown>(`${this.apiBaseUrl}/health`).pipe(
-            map(raw => HealthResponseSchema.parse(raw)),
+            map(raw => validateResponse(HealthResponseSchema, raw, 'GET /health')),
             catchError(() => of({ status: 'degraded' as const, version: 'unknown' })),
         );
     }

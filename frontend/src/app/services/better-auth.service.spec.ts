@@ -346,8 +346,8 @@ describe('BetterAuthService', () => {
             const init = signOutCall![1] as RequestInit;
             // Sending Content-Type: application/json with no body caused Better Auth to call
             // request.json() on an empty body, throwing SyntaxError and hanging the Worker.
-            const headers = init.headers as Record<string, string> | undefined;
-            expect(headers?.['Content-Type']).toBeUndefined();
+            const contentType = init.headers ? new Headers(init.headers).get('Content-Type') : null;
+            expect(contentType).toBeNull();
         });
 
         it('should clear user and token even when sign-out request fails', async () => {

@@ -314,7 +314,7 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c, next) => {
                 method: c.req.method,
                 clientIpHash: AnalyticsService.hashIp(c.get('ip') ?? 'unknown'),
             });
-            return c.json({ success: false, error: 'Invalid JSON body' }, 400);
+            return ProblemResponse.badRequest(url.pathname, 'Invalid JSON body');
         }
         if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
             // deno-lint-ignore no-console
