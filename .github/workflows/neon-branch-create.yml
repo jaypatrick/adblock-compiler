@@ -191,21 +191,21 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      # ── 5. Reset branch if a previous CI run left a failed migration ───────
+      # ── 5. Resolve any stuck failed migrations left by a previous CI run ──────
       # Prisma error P3009 occurs when a migration is recorded as "failed" in
       # the _prisma_migrations table, blocking all future deploys on that branch.
-      # NOTE: `prisma migrate status` exits non-zero when migrations are merely
-      # *pending* (unapplied) — that is normal on a fresh branch and must NOT
-      # trigger a restore.  We restore when the status output contains either
-      # "P3009" (from deploy) or the "Following migration … failed" text that
-      # `prisma migrate status` prints for stuck failed migrations.
-      - name: Reset branch if migration conflicts detected
+      # `prisma migrate status` exits non-zero when migrations are merely *pending*
+      # (unapplied) — that is normal on a fresh branch and must NOT trigger a
+      # resolve.  We only resolve on an explicit failed-migration signal.
+      #
+      # Fix strategy: use `prisma migrate resolve --rolled-back <name>` to mark
+      # the stuck migration as rolled-back so that `migrate deploy` can re-run it
+      # cleanly.  This is the approach recommended by Prisma in its own error
+      # output and requires only the database connection URL (no Neon API keys).
+      - name: Resolve any stuck failed migrations
         env:
           DATABASE_URL: ${{ steps.create-branch.outputs.db_url_with_pooler }}
           DIRECT_DATABASE_URL: ${{ steps.create-branch.outputs.db_url }}
-          NEON_API_KEY: ${{ secrets.NEON_API_KEY }}
-          NEON_PROJECT_ID: ${{ secrets.NEON_PROJECT_ID }}
-          BRANCH_ID: ${{ steps.create-branch.outputs.branch_id }}
         run: |
           set +e
           STATUS=$(npx prisma migrate status 2>&1)
@@ -214,42 +214,39 @@ jobs:
           echo "Checking migration status..."
           echo "$STATUS"
 
-          # Restore only when Prisma reports a *stuck* failed migration.
-          # Two signals to check:
-          #   1. `prisma migrate deploy` sets error code P3009 in its output.
-          #   2. `prisma migrate status` prints "Following migration" + "failed"
-          #      (e.g. "Following migration have failed:") but does NOT print
-          #      "P3009" — so we must match both patterns.
-          # A non-zero exit code alone means "pending migrations" — that is
-          # normal on a fresh branch and must NOT trigger a restore.
-          if echo "$STATUS" | grep -qE "P3009|Following migration.*failed|have failed|migration.*failed"; then
-            echo "⚠️  Failed migration detected — restoring branch to staging tip for a clean slate."
+          # Detect stuck failed migrations.  Two signals to match:
+          #   - "Following migration have failed:" — printed by `prisma migrate status`
+          #   - "P3009"                            — printed by `prisma migrate deploy`
+          # A non-zero exit alone means *pending* (unapplied) migrations, which is
+          # normal on a fresh branch and must NOT trigger the resolve step.
+          if echo "$STATUS" | grep -qE "P3009|Following migration.*failed|have failed"; then
+            echo "⚠️  Stuck failed migration(s) detected — resolving via prisma migrate resolve."
 
-            if [ -z "$BRANCH_ID" ]; then
-              echo "::error::BRANCH_ID is empty. Cannot restore branch. Check create-branch step outputs."
+            # Extract failed migration name(s).  They appear on the lines
+            # immediately after "Following migration have failed:" and follow
+            # Prisma's convention of starting with a 14-digit timestamp + '_'.
+            FAILED=$(echo "$STATUS" | awk \
+              '/Following migration.*failed:/{found=1; next}
+               found && /^[[:digit:]].*_/{print $1}')
+
+            if [ -z "$FAILED" ]; then
+              echo "::error::Could not parse failed migration name(s) from prisma migrate status output."
+              echo "Full output:"
+              echo "$STATUS"
               exit 1
             fi
 
-            # Restore the branch to the tip of its parent (production).
-            # This is equivalent to re-forking — instant and zero-cost (COW).
-            RESTORE_RESPONSE=$(curl -sf -X POST \
-              "https://console.neon.tech/api/v2/projects/${NEON_PROJECT_ID}/branches/${BRANCH_ID}/restore" \
-              -H "Authorization: Bearer ${NEON_API_KEY}" \
-              -H "Content-Type: application/json" \
-              -d '{"source_type":"parent"}') || {
-              echo "::error::Neon branch restore API call failed."
-              echo "::error::Verify NEON_API_KEY and NEON_PROJECT_ID are set in repository Secrets."
-              echo "::error::Project ID used: ${NEON_PROJECT_ID}, Branch ID used: ${BRANCH_ID}"
-              exit 1
-            }
+            echo "Failed migration(s) to resolve: $FAILED"
 
-            echo "$RESTORE_RESPONSE" | python3 -c \
-              "import sys,json; d=json.load(sys.stdin); print('Restored branch:', d.get('branch',{}).get('name','unknown'))" \
-              2>/dev/null || echo "Branch restore request sent."
+            # Mark each failed migration as rolled-back so migrate deploy can
+            # re-apply it from scratch on this branch.
+            while IFS= read -r migration; do
+              [ -z "$migration" ] && continue
+              echo "Marking as rolled-back: $migration"
+              npx prisma migrate resolve --rolled-back "$migration"
+            done <<< "$FAILED"
 
-            # Allow a moment for the restore to propagate before running migrations.
-            sleep 5
-            echo "✅ Branch restored. Migrations will be applied fresh."
+            echo "✅ Stuck migration(s) resolved. migrate deploy will re-apply them."
           else
             echo "✅ No failed migrations detected. Proceeding with migration deploy."
           fi
