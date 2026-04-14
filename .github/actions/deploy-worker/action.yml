@@ -184,18 +184,20 @@ runs:
         # reference the pre-built registry URI so wrangler deploy does NOT
         # attempt a container push (avoids needing Containers:Edit on main token).
         IMAGE_NAME="adblock-compiler-adblockcompiler"
-        REGISTRY_URI="registry.cloudflare.com/${CLOUDFLARE_ACCOUNT_ID}/${IMAGE_NAME}:latest"
+        IMAGE_TAG="${{ inputs.github-sha }}"
+        IMAGE_TAG_SHORT="${IMAGE_TAG:0:8}"
+        REGISTRY_URI="registry.cloudflare.com/${CLOUDFLARE_ACCOUNT_ID}/${IMAGE_NAME}:${IMAGE_TAG_SHORT}"
 
-        echo "Building ${IMAGE_NAME}:latest from Dockerfile.container..."
+        echo "Building ${IMAGE_NAME}:${IMAGE_TAG_SHORT} from Dockerfile.container..."
         docker build \
           --platform linux/amd64 \
           -f Dockerfile.container \
-          -t "${IMAGE_NAME}:latest" \
+          -t "${IMAGE_NAME}:${IMAGE_TAG_SHORT}" \
           .
         echo "✅ Container image built locally"
 
-        echo "Pushing ${IMAGE_NAME}:latest to registry.cloudflare.com..."
-        if PUSH_OUTPUT=$(CLOUDFLARE_API_TOKEN="$CONTAINERS_TOKEN" deno task wrangler containers push "${IMAGE_NAME}:latest" 2>&1); then
+        echo "Pushing ${IMAGE_NAME}:${IMAGE_TAG_SHORT} to registry.cloudflare.com..."
+        if PUSH_OUTPUT=$(CLOUDFLARE_API_TOKEN="$CONTAINERS_TOKEN" deno task wrangler containers push "${IMAGE_NAME}:${IMAGE_TAG_SHORT}" 2>&1); then
             echo "$PUSH_OUTPUT"
             echo "✅ Container image pushed: ${REGISTRY_URI}"
             # Switch wrangler.toml to the pre-built registry URI so wrangler deploy
