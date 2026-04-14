@@ -5,9 +5,12 @@
 --          written to and are safe to remove.
 -- =============================================================================
 
+PRAGMA foreign_keys = OFF;
+
 -- Drop the clerk_user_id unique index and column from users.
 -- SQLite requires a table-recreation to drop a column (no DROP COLUMN in older SQLite).
-CREATE TABLE IF NOT EXISTS users_new (
+-- Use a uniquely prefixed temp table (no IF NOT EXISTS) so a partial run fails loudly.
+CREATE TABLE _users_new (
     id            TEXT    PRIMARY KEY,
     email         TEXT    UNIQUE,
     display_name  TEXT,
@@ -22,19 +25,21 @@ CREATE TABLE IF NOT EXISTS users_new (
     last_sign_in_at TEXT
 );
 
-INSERT INTO users_new
+INSERT INTO _users_new
     SELECT id, email, display_name, role, created_at, updated_at,
            tier, first_name, last_name, image_url, email_verified, last_sign_in_at
     FROM users;
 
 DROP TABLE users;
-ALTER TABLE users_new RENAME TO users;
+ALTER TABLE _users_new RENAME TO users;
 
 -- Recreate indexes that existed before (excluding the clerk_user_id index).
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
+CREATE INDEX IF NOT EXISTS idx_users_tier  ON users(tier);
 
 -- Drop the clerk_user_id column and its index from agent_sessions.
-CREATE TABLE IF NOT EXISTS agent_sessions_new (
+-- Use a uniquely prefixed temp table (no IF NOT EXISTS) so a partial run fails loudly.
+CREATE TABLE _agent_sessions_new (
     id              TEXT    PRIMARY KEY,
     agent_slug      TEXT    NOT NULL,
     instance_id     TEXT    NOT NULL,
@@ -49,13 +54,13 @@ CREATE TABLE IF NOT EXISTS agent_sessions_new (
     metadata        TEXT
 );
 
-INSERT INTO agent_sessions_new
+INSERT INTO _agent_sessions_new
     SELECT id, agent_slug, instance_id, user_id, started_at, ended_at,
            end_reason, message_count, transport, client_ip, user_agent, metadata
     FROM agent_sessions;
 
 DROP TABLE agent_sessions;
-ALTER TABLE agent_sessions_new RENAME TO agent_sessions;
+ALTER TABLE _agent_sessions_new RENAME TO agent_sessions;
 
 -- Recreate indexes (excluding the clerk_user_id index).
 CREATE INDEX IF NOT EXISTS idx_agent_sessions_user_id      ON agent_sessions(user_id);
@@ -63,3 +68,5 @@ CREATE INDEX IF NOT EXISTS idx_agent_sessions_agent_slug   ON agent_sessions(age
 CREATE INDEX IF NOT EXISTS idx_agent_sessions_started_at   ON agent_sessions(started_at);
 CREATE INDEX IF NOT EXISTS idx_agent_sessions_ended_at     ON agent_sessions(ended_at);
 CREATE INDEX IF NOT EXISTS idx_agent_sessions_user_active  ON agent_sessions(user_id, ended_at);
+
+PRAGMA foreign_keys = ON;

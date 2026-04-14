@@ -105,8 +105,8 @@ type KeyStatus = 'all' | 'active' | 'revoked' | 'expired';
         <mat-card-content>
             <div class="filters">
                 <mat-form-field appearance="outline" class="filter-field">
-                    <mat-label>Search by prefix or owner</mat-label>
-                    <input matInput [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()" placeholder="abc_ or user_..." />
+                    <mat-label>Search by prefix or name</mat-label>
+                    <input matInput [(ngModel)]="searchQuery" (ngModelChange)="applyFilters()" placeholder="abc_ or key-name..." />
                     <mat-icon matSuffix aria-hidden="true">search</mat-icon>
                 </mat-form-field>
 
