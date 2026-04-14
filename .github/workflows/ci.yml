@@ -409,6 +409,8 @@ jobs:
     name: CI Gate
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: read
     needs:
       - changes
       - lint-format
