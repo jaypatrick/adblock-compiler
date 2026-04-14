@@ -1601,7 +1601,7 @@ export interface FilterSourceFieldRefs {
   readonly license: Prisma.FieldRef<"FilterSource", 'String'>
   readonly visibility: Prisma.FieldRef<"FilterSource", 'String'>
   readonly ownerUserId: Prisma.FieldRef<"FilterSource", 'String'>
-  readonly organizationId: Prisma.FieldRef<"FilterSource", \'String\'>
+  readonly organizationId: Prisma.FieldRef<"FilterSource", 'String'>
   readonly refreshIntervalSeconds: Prisma.FieldRef<"FilterSource", 'Int'>
   readonly lastCheckedAt: Prisma.FieldRef<"FilterSource", 'DateTime'>
   readonly lastSuccessAt: Prisma.FieldRef<"FilterSource", 'DateTime'>
