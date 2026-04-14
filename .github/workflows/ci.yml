@@ -17,7 +17,10 @@ on:
                     - 'true'
 
 env:
-    DENO_VERSION: '2.x'
+    # Pinned to 2.7.11: 2.7.12 introduced a regression that breaks wrangler deploy
+    # (SocketError: other side closed). Unpin once Deno releases a fix.
+    # See: https://github.com/cloudflare/workers-sdk/issues/13443
+    DENO_VERSION: '2.7.11'
 
 concurrency:
     group: ${{ github.workflow }}-${{ github.ref }}
