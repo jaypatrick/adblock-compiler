@@ -751,7 +751,7 @@ Deno.test('listFilterSources - publicOnly returns only public and featured rows'
         url: 'https://org.example.com',
         name: 'Org',
         visibility: 'org',
-        organizationId: '00000000-0000-0000-0000-000000000001',
+        organizationId: TEST_UUID_1,
         refreshIntervalSeconds: 3600,
     });
 
