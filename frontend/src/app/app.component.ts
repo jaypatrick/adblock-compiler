@@ -24,7 +24,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { MatTooltipModule } from '@angular/material/tooltip';
 import { BreakpointObserver, Breakpoints } from '@angular/cdk/layout';
 import { toSignal } from '@angular/core/rxjs-interop';
-import { filter, map, startWith } from 'rxjs/operators';
+import { filter, map } from 'rxjs/operators';
 import { ThemeService } from './services/theme.service';
 import { ErrorBoundaryComponent } from './error/error-boundary.component';
 import { NotificationContainerComponent } from './notification/notification-container.component';
@@ -244,6 +244,9 @@ export class AppComponent {
     /**
      * Router — used to detect the landing page URL.
      * isLandingPage drives @if blocks that hide the shell header/footer on `/`.
+     * initialValue reads router.url synchronously so direct navigation to non-root
+     * routes (e.g. /compiler) starts with the correct false value, preventing a
+     * brief flash of hidden/shown shell on deep-link access.
      */
     private readonly router = inject(Router);
 
@@ -251,9 +254,8 @@ export class AppComponent {
         this.router.events.pipe(
             filter(e => e instanceof NavigationEnd),
             map(e => (e as NavigationEnd).urlAfterRedirects === '/'),
-            startWith(true),
         ),
-        { initialValue: true },
+        { initialValue: this.router.url === '/' || this.router.url === '' },
     );
 
     constructor() {

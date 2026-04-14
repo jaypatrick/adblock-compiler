@@ -61,7 +61,12 @@
               @fontsource/jetbrains-mono — JetBrains Mono 400/700    — imported in styles.css
               material-symbols           — Material Symbols Outlined  — imported in styles.css
             No external CDN requests required at runtime.
+
+            Preload hints for Space Grotesk 400 (largest layout-shift source during
+            the initial render window). Closes the FOUT window for the primary brand font.
+            NOTE: filename contains a content hash — update after upgrading @fontsource/space-grotesk.
         -->
+        <link rel="preload" href="media/space-grotesk-latin-400-normal-LF3ZIHND.woff2" as="font" type="font/woff2" crossorigin>
     </head>
     <body class="mat-typography">
         <app-root></app-root>

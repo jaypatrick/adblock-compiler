@@ -84,29 +84,31 @@ interface Persona {
     }
     .persona-panel {
         margin-top: 24px;
-        display: none;
         flex-direction: column;
         gap: 20px;
         max-width: 700px;
-    }
-    .persona-panel.panel-active {
-        display: flex;
-    }
-    /* SSR: all panels exist in DOM but only the active one is visible */
-    .persona-panel[aria-hidden="true"] {
-        visibility: hidden;
+        /* Hidden panels are still in the DOM (SSR-rendered for SEO/AEO),
+           but visually removed with clip and zero-height to avoid layout shifts. */
+        clip: rect(0 0 0 0);
+        clip-path: inset(50%);
+        width: 1px;
+        height: 1px;
+        overflow: hidden;
+        white-space: nowrap;
         position: absolute;
         pointer-events: none;
-        height: 0;
-        overflow: hidden;
+        display: flex;
     }
-    .persona-panel[aria-hidden="false"],
     .persona-panel.panel-active {
-        visibility: visible;
-        position: static;
+        /* Active panel is shown normally */
+        clip: auto;
+        clip-path: none;
+        width: auto;
         height: auto;
         overflow: visible;
-        display: flex;
+        white-space: normal;
+        position: static;
+        pointer-events: auto;
     }
     .persona-headline {
         font-family: 'Space Grotesk', sans-serif;
