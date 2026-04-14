@@ -6,9 +6,9 @@
  * Routes:
  *   GET /          — Landing page (API overview with links to all doc UIs)
  *   GET /api       — Landing page (same handler, mounted at /api prefix)
- *   GET /api/docs  — Scalar UI (modern OpenAPI documentation, purple theme)
- *   GET /api/swagger — Swagger UI (traditional OpenAPI documentation)
- *   GET /api/redoc — Scalar UI in classic/ReDoc layout (theme: default)
+ *   GET /api/docs  — Scalar UI (primary interactive docs, Bloqr dark theme)
+ *   GET /api/swagger — Swagger UI (dark-themed Bloqr overrides)
+ *   GET /api/redoc — Scalar UI in classic/ReDoc layout (Bloqr dark theme)
  *
  * All routes consume the live OpenAPI spec from /api/openapi.json.
  *
@@ -30,17 +30,59 @@ import { getProjectUrls } from '../utils/constants.ts';
 
 export const docsRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
-// ── Scalar UI endpoint (purple / modern) ─────────────────────────────────────
-// Modern, beautiful OpenAPI documentation UI at /api/docs
+// ── Bloqr design-language CSS variables ──────────────────────────────────────
+// Shared token set applied to every Scalar-based UI (Scalar + ReDoc).
+
+const BLOQR_SCALAR_CSS = `
+:root {
+    --scalar-color-1: #F1F5F9;
+    --scalar-color-2: #94A3B8;
+    --scalar-color-3: #475569;
+    --scalar-color-accent: #FF5500;
+    --scalar-background-1: #070B14;
+    --scalar-background-2: #0E1829;
+    --scalar-background-3: #162035;
+    --scalar-background-accent: rgba(255, 85, 0, 0.08);
+    --scalar-border-color: #1E2D40;
+    --scalar-sidebar-background-1: #050A12;
+    --scalar-sidebar-color-1: #F1F5F9;
+    --scalar-sidebar-color-2: #94A3B8;
+    --scalar-sidebar-color-active: #FF5500;
+    --scalar-sidebar-background-active-item: rgba(255, 85, 0, 0.10);
+    --scalar-font: 'Space Grotesk', 'Inter', system-ui, sans-serif;
+    --scalar-font-code: 'JetBrains Mono', 'Fira Code', monospace;
+}
+.scalar-app, .scalar-app body {
+    background: #070B14 !important;
+    color: #F1F5F9 !important;
+}
+/* Orange gradient hero accent across the top */
+.scalar-app::before {
+    content: '';
+    display: block;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #FF5500 0%, #FF7033 50%, #00D4FF 100%);
+    z-index: 9999;
+    pointer-events: none;
+}
+`;
+
+// ── Scalar UI endpoint (Bloqr / modern) ──────────────────────────────────────
+// Primary interactive OpenAPI documentation UI at /api/docs.
 // Reference: https://hono.dev/examples/scalar/
 
 const scalarDocsHandler = apiReference({
-    theme: 'purple',
+    theme: 'none',
     layout: 'modern',
     url: '/api/openapi.json',
     defaultHttpClient: { targetKey: 'js', clientKey: 'fetch' },
     pageTitle: 'Bloqr API Documentation',
-    favicon: '/favicon.ico',
+    favicon: '/favicon.svg',
+    customCss: BLOQR_SCALAR_CSS,
     metaData: {
         title: 'Bloqr API',
         description: 'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources.',
@@ -52,24 +94,137 @@ docsRoutes.get('/docs', scalarDocsHandler);
 // Wildcard variant handles trailing slashes and deep-links (e.g. /api/docs/).
 docsRoutes.get('/docs/*', scalarDocsHandler);
 
-// ── Swagger UI endpoint ───────────────────────────────────────────────────────
-// Traditional Swagger UI documentation at /api/swagger
+// ── Swagger UI endpoint (Bloqr dark theme) ────────────────────────────────────
+// Traditional Swagger UI documentation at /api/swagger.
 // Reference: https://hono.dev/examples/swagger-ui/
 
-const swaggerDocsHandler = swaggerUI({ url: '/api/openapi.json' });
+const BLOQR_SWAGGER_CSS = `
+body { background: #070B14 !important; margin: 0; }
+.swagger-ui { font-family: 'Inter', system-ui, sans-serif !important; }
+.swagger-ui .topbar { background: #0E1829 !important; border-bottom: 3px solid #FF5500 !important; padding: 8px 0 !important; }
+.swagger-ui .topbar .download-url-wrapper { display: none !important; }
+.swagger-ui .info { margin: 32px 0 !important; }
+.swagger-ui .info .title { color: #F1F5F9 !important; font-family: 'Space Grotesk', sans-serif !important; }
+.swagger-ui .info p, .swagger-ui .info li, .swagger-ui .info table { color: #94A3B8 !important; }
+.swagger-ui .scheme-container { background: #0E1829 !important; border-bottom: 1px solid #1E2D40 !important; box-shadow: none !important; }
+.swagger-ui select { background: #162035 !important; border-color: #1E2D40 !important; color: #F1F5F9 !important; }
+.swagger-ui .opblock-tag { color: #F1F5F9 !important; border-bottom: 1px solid #1E2D40 !important; font-family: 'Space Grotesk', sans-serif !important; }
+.swagger-ui .opblock { border-radius: 8px !important; margin: 8px 0 !important; border-color: #1E2D40 !important; }
+.swagger-ui .opblock.opblock-post { border-color: #FF5500 !important; background: rgba(255, 85, 0, 0.04) !important; }
+.swagger-ui .opblock.opblock-get { border-color: #00D4FF !important; background: rgba(0, 212, 255, 0.04) !important; }
+.swagger-ui .opblock.opblock-delete { border-color: #EF4444 !important; background: rgba(239, 68, 68, 0.04) !important; }
+.swagger-ui .opblock.opblock-put { border-color: #F59E0B !important; background: rgba(245, 158, 11, 0.04) !important; }
+.swagger-ui .opblock .opblock-summary-method { border-radius: 6px !important; font-weight: 700 !important; font-family: 'JetBrains Mono', monospace !important; }
+.swagger-ui .opblock.opblock-post .opblock-summary-method { background: #FF5500 !important; }
+.swagger-ui .opblock.opblock-get .opblock-summary-method { background: #00D4FF !important; color: #070B14 !important; }
+.swagger-ui .opblock .opblock-summary-path { color: #F1F5F9 !important; font-family: 'JetBrains Mono', monospace !important; }
+.swagger-ui .opblock .opblock-summary-description { color: #94A3B8 !important; }
+.swagger-ui .opblock-body { background: #0E1829 !important; }
+.swagger-ui .tab li { color: #94A3B8 !important; }
+.swagger-ui .tab li.active { color: #FF5500 !important; border-bottom: 2px solid #FF5500 !important; }
+.swagger-ui textarea,
+.swagger-ui input[type=text],
+.swagger-ui input[type=password],
+.swagger-ui input[type=search],
+.swagger-ui input[type=email] { background: #162035 !important; border-color: #1E2D40 !important; color: #F1F5F9 !important; border-radius: 6px !important; }
+.swagger-ui .btn { border-radius: 6px !important; font-family: 'Space Grotesk', sans-serif !important; font-weight: 600 !important; }
+.swagger-ui .btn.execute { background: #FF5500 !important; border-color: #FF5500 !important; color: #ffffff !important; }
+.swagger-ui .btn.authorize { border-color: #00D4FF !important; color: #00D4FF !important; }
+.swagger-ui .model { color: #94A3B8 !important; }
+.swagger-ui .model-box { background: #162035 !important; border-radius: 8px !important; }
+.swagger-ui section.models { background: #0E1829 !important; border-color: #1E2D40 !important; border-radius: 8px !important; }
+.swagger-ui section.models h4 { color: #F1F5F9 !important; }
+.swagger-ui .response-col_status { color: #22C55E !important; font-family: 'JetBrains Mono', monospace !important; }
+.swagger-ui table.headers td, .swagger-ui .parameter__name { color: #F1F5F9 !important; }
+.swagger-ui .parameter__type { color: #00D4FF !important; }
+.swagger-ui .parameter__deprecated { color: #EF4444 !important; }
+.swagger-ui .opblock-description-wrapper p { color: #94A3B8 !important; }
+.swagger-ui .highlight-code { background: #050A12 !important; border-radius: 6px !important; }
+.swagger-ui .highlight-code > .microlight { color: #F1F5F9 !important; }
+`;
+
+const swaggerDocsHandler = swaggerUI({
+    url: '/api/openapi.json',
+    title: 'Bloqr API — Swagger',
+    // `manuallySwaggerUIHtml` is the only type-safe way to inject custom CSS in
+    // @hono/swagger-ui@0.6.1 (the package does not expose a `customCss` option).
+    // The `asset` object is produced by the library's internal `remoteAssets()`
+    // helper and contains hard-coded CDN URLs — they are not derived from user
+    // input. URL validation below guards against unlikely supply-chain scenarios.
+    manuallySwaggerUIHtml: (asset) => {
+        // Validate asset URLs — allowlist the CDN origins used by swagger-ui-dist.
+        // The `asset` object is produced by the library's internal `remoteAssets()`
+        // helper which returns only absolute CDN URLs, never relative or user-supplied paths.
+        // This check guards against unlikely supply-chain compromise scenarios.
+        const TRUSTED_ASSET_ORIGINS = ['https://unpkg.com', 'https://cdn.jsdelivr.net'];
+        const isValidUrl = (url: string): boolean =>
+            TRUSTED_ASSET_ORIGINS.some((origin) => url.startsWith(origin));
+
+        // Escape HTML attribute values to prevent injection if a URL ever contains
+        // special characters (quote, angle bracket, ampersand).
+        const escapeAttr = (s: string): string =>
+            s
+                .replace(/&/g, '&amp;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;');
+
+        const safeStyles = asset.css
+            .filter(isValidUrl)
+            .map((url: string) => `<link rel="stylesheet" href="${escapeAttr(url)}" />`)
+            .join('');
+
+        const safeScripts = asset.js
+            .filter(isValidUrl)
+            .map((url: string) => `<script src="${escapeAttr(url)}" crossorigin="anonymous"></script>`)
+            .join('');
+
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bloqr API &#x2014; Swagger</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    ${safeStyles}
+    <style>${BLOQR_SWAGGER_CSS}</style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    ${safeScripts}
+    <script>
+        window.onload = function() {
+            window.ui = SwaggerUIBundle({
+                dom_id: '#swagger-ui',
+                url: '/api/openapi.json',
+                presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+                plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+                layout: 'StandaloneLayout',
+                persistAuthorization: true,
+                deepLinking: true,
+            });
+        };
+    </script>
+</body>
+</html>`;
+    },
+});
 
 docsRoutes.get('/swagger', swaggerDocsHandler);
 // Wildcard variant handles trailing slashes and deep-links (e.g. /api/swagger/).
 docsRoutes.get('/swagger/*', swaggerDocsHandler);
 
-// ── ReDoc endpoint (Scalar classic layout) ────────────────────────────────────
-// Classic three-panel OpenAPI documentation UI at /api/redoc
+// ── ReDoc endpoint (Scalar classic layout, Bloqr dark theme) ─────────────────
+// Classic three-panel OpenAPI documentation UI at /api/redoc.
 
 const redocDocsHandler = apiReference({
-    theme: 'default',
+    theme: 'none',
     layout: 'classic',
     url: '/api/openapi.json',
     pageTitle: 'Bloqr API Reference',
+    favicon: '/favicon.svg',
+    customCss: BLOQR_SCALAR_CSS,
     metaData: {
         title: 'Bloqr API Reference',
         description: 'Compiler-as-a-Service for adblock filter lists.',
@@ -82,6 +237,32 @@ docsRoutes.get('/redoc/*', redocDocsHandler);
 // ── Landing page handler ──────────────────────────────────────────────────────
 // Shared HTML handler used by both GET / and GET /api.
 
+// Inline tri-line SVG for the landing page hero (64 × 64).
+// NOTE: This SVG pattern appears in three locations by necessity — each serves a different runtime context:
+//   1. /frontend/src/favicon.svg           — browser favicon / Angular SPA img src (frontend build output)
+//   2. frontend/src/app/app.component.ts   — Angular component inline template (compiled by Angular CLI, can't use file imports in templates)
+//   3. Here (TRI_LINE_LOGO_SVG)            — Worker-rendered standalone HTML; the Cloudflare Worker bundle is
+//                                            built separately from the frontend and cannot import frontend assets
+//                                            at runtime. Inlining is the only option in this server-side context.
+// All three instances share the same design tokens (#070B14, #FF5500, #F1F5F9) to maintain visual consistency.
+const TRI_LINE_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
+  <defs>
+    <filter id="heroOrangeGlow" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="2" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="64" height="64" rx="12" fill="#070B14"/>
+  <rect x="0" y="0" width="64" height="3" rx="1.5" fill="#FF5500"/>
+  <rect x="12" y="20" width="40" height="6" rx="3" fill="#F1F5F9"/>
+  <rect x="12" y="31" width="27" height="6" rx="3" fill="#F1F5F9" opacity="0.65"/>
+  <rect x="12" y="42" width="14" height="6" rx="3" fill="#FF5500" filter="url(#heroOrangeGlow)"/>
+  <path d="M28 45 L33 45 L30.5 42 Z" fill="#FF5500" opacity="0.7"/>
+</svg>`;
+
 /**
  * Render the Bloqr API developer landing page.
  *
@@ -89,7 +270,7 @@ docsRoutes.get('/redoc/*', redocDocsHandler);
  * Space Grotesk loaded via Google Fonts CDN (exception: this is a standalone HTML
  * response not served through the Angular SPA, so self-hosting via @fontsource is
  * not possible here).
- * Bloqr dark palette, orange #FF5500 accent, responsive layout.
+ * Bloqr dark palette, orange #FF5500 accent, cyan #00D4FF accent, responsive layout.
  */
 export function docsLandingHandler(env: Env): Response {
     const urls = getProjectUrls(env);
@@ -101,6 +282,7 @@ export function docsLandingHandler(env: Env): Response {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bloqr API — Internet Hygiene. Automated.</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <!-- Space Grotesk via Google Fonts CDN.
          REQUIRED EXCEPTION: This is a standalone HTML response served directly by the Cloudflare Worker,
          not rendered through the Angular SPA. The @fontsource npm packages (used elsewhere in the app)
@@ -146,7 +328,11 @@ export function docsLandingHandler(env: Env): Response {
             border-bottom: 1px solid var(--border);
             padding: 4rem 2rem 3.5rem;
             text-align: center;
+            /* Orange accent line at very top */
+            border-top: 3px solid var(--orange);
         }
+        .hero-logo { display: flex; justify-content: center; margin-bottom: 1.25rem; }
+        .hero-logo svg { width: 64px; height: 64px; }
         .hero-badge {
             display: inline-block;
             background: rgba(255, 85, 0, 0.12);
@@ -232,6 +418,19 @@ export function docsLandingHandler(env: Env): Response {
         .card-icon { font-size: 1.5rem; margin-bottom: 0.75rem; }
         .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--text); }
         .card-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
+        .card-tag {
+            display: inline-block;
+            background: rgba(255, 85, 0, 0.10);
+            border: 1px solid rgba(255, 85, 0, 0.20);
+            border-radius: 4px;
+            padding: 0.1rem 0.45rem;
+            font-size: 0.7rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--orange);
+            margin-bottom: 0.6rem;
+        }
         .card-link {
             display: inline-flex; align-items: center; gap: 0.3rem;
             font-size: 0.82rem; font-weight: 600; color: var(--orange);
@@ -245,6 +444,15 @@ export function docsLandingHandler(env: Env): Response {
             box-shadow: 0 0 12px rgba(255, 85, 0, 0.20);
             text-decoration: none;
             color: var(--orange-hover);
+        }
+        .card-link-cyan {
+            color: var(--cyan);
+            border-color: rgba(0, 212, 255, 0.25);
+        }
+        .card-link-cyan:hover {
+            background: rgba(0, 212, 255, 0.08);
+            box-shadow: 0 0 12px rgba(0, 212, 255, 0.20);
+            color: var(--cyan);
         }
 
         /* ── Status ─── */
@@ -274,6 +482,9 @@ export function docsLandingHandler(env: Env): Response {
 </head>
 <body>
     <header class="hero">
+        <div class="hero-logo" aria-hidden="true">
+            ${TRI_LINE_LOGO_SVG}
+        </div>
         <div class="hero-badge">API v1 &nbsp;·&nbsp; OpenAPI 3.0</div>
         <h1>Bloqr API</h1>
         <p class="hero-tagline">Internet Hygiene. Automated.</p>
@@ -290,28 +501,29 @@ export function docsLandingHandler(env: Env): Response {
         <p class="section-label">API Explorer</p>
         <div class="cards">
             <div class="card">
+                <div class="card-tag">Primary</div>
                 <div class="card-icon" aria-hidden="true">&#9670;</div>
                 <div class="card-title">Scalar UI</div>
-                <div class="card-desc">Modern interactive API explorer. Try requests directly in the browser with one click.</div>
+                <div class="card-desc">Modern interactive API explorer. Try requests directly in the browser. Bloqr dark theme with orange accents.</div>
                 <a href="/api/docs" class="card-link">Open Scalar <span aria-hidden="true">&#8599;</span></a>
             </div>
             <div class="card">
                 <div class="card-icon" aria-hidden="true">&#128218;</div>
                 <div class="card-title">Swagger UI</div>
-                <div class="card-desc">Classic Swagger interface. Supports all standard OpenAPI operations — familiar to most teams.</div>
+                <div class="card-desc">Classic Swagger interface. Supports all standard OpenAPI operations — familiar to most teams. Dark themed.</div>
                 <a href="/api/swagger" class="card-link">Open Swagger <span aria-hidden="true">&#8599;</span></a>
             </div>
             <div class="card">
                 <div class="card-icon" aria-hidden="true">&#128196;</div>
                 <div class="card-title">ReDoc</div>
-                <div class="card-desc">Three-panel reference documentation rendered with the Scalar classic layout.</div>
+                <div class="card-desc">Three-panel reference documentation. Clean, readable layout ideal for browsing the full API surface.</div>
                 <a href="/api/redoc" class="card-link">Open ReDoc <span aria-hidden="true">&#8599;</span></a>
             </div>
             <div class="card">
                 <div class="card-icon" aria-hidden="true">{ }</div>
                 <div class="card-title">OpenAPI Spec</div>
                 <div class="card-desc">Machine-readable OpenAPI 3.0 JSON spec. Import into Insomnia, Postman, or generate a client SDK.</div>
-                <a href="/api/openapi.json" class="card-link">Download JSON <span aria-hidden="true">&#8599;</span></a>
+                <a href="/api/openapi.json" class="card-link card-link-cyan">Download JSON <span aria-hidden="true">&#8599;</span></a>
             </div>
         </div>
 
@@ -347,3 +559,4 @@ export function docsLandingHandler(env: Env): Response {
 // and can be tested through the docs router directly.
 
 docsRoutes.get('/', (c) => docsLandingHandler(c.env));
+

@@ -71,7 +71,15 @@ interface NavItem {
         class="app-mobile-sidenav"
         (closedStart)="sidenavOpen.set(false)"
       >
-        <div class="sidenav-brand">⚡ Bloqr</div>
+        <div class="sidenav-brand">
+          <!-- Tri-line Bloqr icon (inline SVG — Angular component template context;
+               shares design tokens with favicon.svg and worker/routes/docs.routes.ts) -->
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" class="sidenav-brand-icon">
+            <rect x="0" y="1" width="18" height="3" rx="1.5" fill="#F1F5F9"/>
+            <rect x="0" y="8" width="12" height="3" rx="1.5" fill="#F1F5F9" opacity="0.65"/>
+            <rect x="0" y="15" width="6"  height="3" rx="1.5" fill="#FF5500"/>
+          </svg>Bloqr
+        </div>
         <mat-nav-list>
           @for (item of navItems; track item.path) {
             @if (item.external) {
@@ -121,8 +129,7 @@ interface NavItem {
                 </button>
               }
               <p class="app-brand-title">
-                <img class="app-brand-logo" src="favicon.svg" alt="" aria-hidden="true" width="28" height="28">
-                Bloqr
+                <img class="app-brand-logo" src="assets/logo.svg" alt="Bloqr Adblock Compiler" width="120" height="29">
               </p>
               <div class="header-actions">
                 <app-user-button />
@@ -191,6 +198,10 @@ interface NavItem {
         color: white;
         position: absolute;
         left: 0;
+    }
+    .sidenav-brand-icon {
+        vertical-align: middle;
+        margin-right: 6px;
     }
 `],
 })
