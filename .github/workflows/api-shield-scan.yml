@@ -11,188 +11,188 @@ name: API Shield Readiness
 # Setup guide: docs/security/API_SHIELD_VULNERABILITY_SCANNER.md
 
 on:
-    push:
-        branches: [main]
-        paths:
-            - 'docs/api/openapi.yaml'
-            - 'docs/api/cloudflare-schema.yaml'
-            - 'scripts/generate-cloudflare-schema.ts'
-            - 'scripts/validate-openapi.ts'
-    pull_request:
-        branches: [main]
-        paths:
-            - 'docs/api/openapi.yaml'
-            - 'docs/api/cloudflare-schema.yaml'
-            - 'scripts/generate-cloudflare-schema.ts'
-            - 'scripts/validate-openapi.ts'
-    workflow_dispatch:
+  push:
+    branches: [master, main]
+    paths:
+      - "docs/api/openapi.yaml"
+      - "docs/api/cloudflare-schema.yaml"
+      - "scripts/generate-cloudflare-schema.ts"
+      - "scripts/validate-openapi.ts"
+  pull_request:
+    branches: [master, main]
+    paths:
+      - "docs/api/openapi.yaml"
+      - "docs/api/cloudflare-schema.yaml"
+      - "scripts/generate-cloudflare-schema.ts"
+      - "scripts/validate-openapi.ts"
+  workflow_dispatch:
 
 concurrency:
-    group: api-shield-${{ github.ref }}
-    cancel-in-progress: true
+  group: api-shield-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-    api-shield-readiness:
-        name: API Shield Readiness Check
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        permissions:
-            contents: read
+  api-shield-readiness:
+    name: API Shield Readiness Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
 
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: '2.x'
-                  install-deps: 'false'
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: "2.x"
+          install-deps: "false"
 
-            # ----------------------------------------------------------------
-            # 1. Validate the OpenAPI spec
-            # ----------------------------------------------------------------
-            - name: Validate OpenAPI specification
-              run: deno task openapi:validate
+      # ----------------------------------------------------------------
+      # 1. Validate the OpenAPI spec
+      # ----------------------------------------------------------------
+      - name: Validate OpenAPI specification
+        run: deno task openapi:validate
 
-            # ----------------------------------------------------------------
-            # 2. Check all operations have operationId
-            #    The scanner uses operationId to build API call graphs.
-            #    Operations without an ID cannot be referenced in scan sequences.
-            # ----------------------------------------------------------------
-            - name: Check operationId coverage
-              run: |
-                  echo "=== Checking operationId coverage ==="
+      # ----------------------------------------------------------------
+      # 2. Check all operations have operationId
+      #    The scanner uses operationId to build API call graphs.
+      #    Operations without an ID cannot be referenced in scan sequences.
+      # ----------------------------------------------------------------
+      - name: Check operationId coverage
+        run: |
+          echo "=== Checking operationId coverage ==="
 
-                  # Count HTTP method blocks vs operationId occurrences
-                  METHOD_COUNT=$(grep -cE '^\s+(get|post|put|patch|delete):\s*$' docs/api/openapi.yaml || true)
-                  OPID_COUNT=$(grep -c 'operationId:' docs/api/openapi.yaml || true)
+          # Count HTTP method blocks vs operationId occurrences
+          METHOD_COUNT=$(grep -cE '^\s+(get|post|put|patch|delete):\s*$' docs/api/openapi.yaml || true)
+          OPID_COUNT=$(grep -c 'operationId:' docs/api/openapi.yaml || true)
 
-                  echo "HTTP methods defined: $METHOD_COUNT"
-                  echo "operationId entries:  $OPID_COUNT"
+          echo "HTTP methods defined: $METHOD_COUNT"
+          echo "operationId entries:  $OPID_COUNT"
 
-                  if [ "$OPID_COUNT" -lt "$METHOD_COUNT" ]; then
-                    echo ""
-                    echo "::error::operationId missing on $((METHOD_COUNT - OPID_COUNT)) operation(s)."
-                    echo "Every operation needs a unique operationId for the API Shield scanner call graphs."
-                    echo "Run: grep -n 'get:\|post:\|put:\|patch:\|delete:' docs/api/openapi.yaml | head -50"
-                    exit 1
-                  fi
-                  echo "✅ All $OPID_COUNT operations have an operationId"
+          if [ "$OPID_COUNT" -lt "$METHOD_COUNT" ]; then
+            echo ""
+            echo "::error::operationId missing on $((METHOD_COUNT - OPID_COUNT)) operation(s)."
+            echo "Every operation needs a unique operationId for the API Shield scanner call graphs."
+            echo "Run: grep -n 'get:\|post:\|put:\|patch:\|delete:' docs/api/openapi.yaml | head -50"
+            exit 1
+          fi
+          echo "✅ All $OPID_COUNT operations have an operationId"
 
-            # ----------------------------------------------------------------
-            # 3. Check resource endpoints have security annotations
-            #    Resource endpoints (those with path parameters like /{id})
-            #    must declare a security requirement so the scanner knows
-            #    which auth scheme to test with.
-            # ----------------------------------------------------------------
-            - name: Check security annotations on resource endpoints
-              run: |
-                  echo "=== Checking security annotations on resource endpoints ==="
+      # ----------------------------------------------------------------
+      # 3. Check resource endpoints have security annotations
+      #    Resource endpoints (those with path parameters like /{id})
+      #    must declare a security requirement so the scanner knows
+      #    which auth scheme to test with.
+      # ----------------------------------------------------------------
+      - name: Check security annotations on resource endpoints
+        run: |
+          echo "=== Checking security annotations on resource endpoints ==="
 
-                  VIOLATIONS=0
-                  CURRENT_PATH=""
-                  CURRENT_METHOD=""
-                  HAS_PARAM=false
-                  HAS_SECURITY=false
+          VIOLATIONS=0
+          CURRENT_PATH=""
+          CURRENT_METHOD=""
+          HAS_PARAM=false
+          HAS_SECURITY=false
 
-                  check_and_report() {
-                    if [ -n "$CURRENT_METHOD" ] && [ "$HAS_PARAM" = "true" ] && [ "$HAS_SECURITY" = "false" ]; then
-                      if ! echo "$CURRENT_PATH" | grep -q '/admin/'; then
-                        echo "⚠️  Resource endpoint missing security annotation: $CURRENT_PATH ($CURRENT_METHOD)"
-                        VIOLATIONS=$((VIOLATIONS + 1))
-                      fi
-                    fi
-                  }
+          check_and_report() {
+            if [ -n "$CURRENT_METHOD" ] && [ "$HAS_PARAM" = "true" ] && [ "$HAS_SECURITY" = "false" ]; then
+              if ! echo "$CURRENT_PATH" | grep -q '/admin/'; then
+                echo "⚠️  Resource endpoint missing security annotation: $CURRENT_PATH ($CURRENT_METHOD)"
+                VIOLATIONS=$((VIOLATIONS + 1))
+              fi
+            fi
+          }
 
-                  while IFS= read -r line; do
+          while IFS= read -r line; do
 
-                    # Detect HTTP methods under a path (8-space indent in this spec)
-                    if echo "$line" | grep -qE '^\s{8}(get|post|put|patch|delete):\s*$'; then
-                      # Before starting a new method, check the previous one
-                      check_and_report
-                      CURRENT_METHOD=$(echo "$line" | tr -d ' :')
-                      HAS_SECURITY=false
-                      continue
-                    fi
+            # Detect HTTP methods under a path (8-space indent in this spec)
+            if echo "$line" | grep -qE '^\s{8}(get|post|put|patch|delete):\s*$'; then
+              # Before starting a new method, check the previous one
+              check_and_report
+              CURRENT_METHOD=$(echo "$line" | tr -d ' :')
+              HAS_SECURITY=false
+              continue
+            fi
 
-                    # Detect security annotations
-                    if echo "$line" | grep -qE '^\s+security:\s*$'; then
-                      HAS_SECURITY=true
-                      continue
-                    fi
+            # Detect security annotations
+            if echo "$line" | grep -qE '^\s+security:\s*$'; then
+              HAS_SECURITY=true
+              continue
+            fi
 
-                    # Detect path entries (4-space indent in this spec)
-                    # Must be checked AFTER method/security so we correctly finalize
-                    # the last method of the previous path before moving on.
-                    if echo "$line" | grep -qE '^\s{4}/'; then
-                      # Finalize the last method of the previous path
-                      check_and_report
-                      CURRENT_PATH=$(echo "$line" | tr -d ' :')
-                      CURRENT_METHOD=""
-                      HAS_SECURITY=false
-                      # Set HAS_PARAM based on whether the new path contains a parameter
-                      if echo "$CURRENT_PATH" | grep -qE '\{[^}]+\}'; then
-                        HAS_PARAM=true
-                      else
-                        HAS_PARAM=false
-                      fi
-                    fi
+            # Detect path entries (4-space indent in this spec)
+            # Must be checked AFTER method/security so we correctly finalize
+            # the last method of the previous path before moving on.
+            if echo "$line" | grep -qE '^\s{4}/'; then
+              # Finalize the last method of the previous path
+              check_and_report
+              CURRENT_PATH=$(echo "$line" | tr -d ' :')
+              CURRENT_METHOD=""
+              HAS_SECURITY=false
+              # Set HAS_PARAM based on whether the new path contains a parameter
+              if echo "$CURRENT_PATH" | grep -qE '\{[^}]+\}'; then
+                HAS_PARAM=true
+              else
+                HAS_PARAM=false
+              fi
+            fi
 
-                  done < docs/api/openapi.yaml
+          done < docs/api/openapi.yaml
 
-                  # Finalize the very last method in the file
-                  check_and_report
+          # Finalize the very last method in the file
+          check_and_report
 
-                  if [ "$VIOLATIONS" -gt 0 ]; then
-                    echo ""
-                    echo "::warning::$VIOLATIONS resource endpoint(s) are missing 'security:' annotations."
-                    echo "Add security requirements so the API Shield scanner knows which auth scheme to use."
-                    echo "See docs/security/API_SHIELD_VULNERABILITY_SCANNER.md for guidance."
-                    # Warn only — do not fail, as missing annotations don't break functionality
-                  else
-                    echo "✅ All resource endpoints have security annotations"
-                  fi
+          if [ "$VIOLATIONS" -gt 0 ]; then
+            echo ""
+            echo "::warning::$VIOLATIONS resource endpoint(s) are missing 'security:' annotations."
+            echo "Add security requirements so the API Shield scanner knows which auth scheme to use."
+            echo "See docs/security/API_SHIELD_VULNERABILITY_SCANNER.md for guidance."
+            # Warn only — do not fail, as missing annotations don't break functionality
+          else
+            echo "✅ All resource endpoints have security annotations"
+          fi
 
-            # ----------------------------------------------------------------
-            # 4. Check cloudflare-schema.yaml is not drifting from openapi.yaml
-            #    Regenerate the schema and fail if it differs from committed.
-            # ----------------------------------------------------------------
-            - name: Check Cloudflare schema is up to date
-              run: |
-                  echo "=== Checking cloudflare-schema.yaml is up to date ==="
+      # ----------------------------------------------------------------
+      # 4. Check cloudflare-schema.yaml is not drifting from openapi.yaml
+      #    Regenerate the schema and fail if it differs from committed.
+      # ----------------------------------------------------------------
+      - name: Check Cloudflare schema is up to date
+        run: |
+          echo "=== Checking cloudflare-schema.yaml is up to date ==="
 
-                  # Save the current committed schema checksum
-                  BEFORE=$(sha256sum docs/api/cloudflare-schema.yaml | awk '{print $1}')
+          # Save the current committed schema checksum
+          BEFORE=$(sha256sum docs/api/cloudflare-schema.yaml | awk '{print $1}')
 
-                  # Regenerate
-                  deno task schema:cloudflare
+          # Regenerate
+          deno task schema:cloudflare
 
-                  AFTER=$(sha256sum docs/api/cloudflare-schema.yaml | awk '{print $1}')
+          AFTER=$(sha256sum docs/api/cloudflare-schema.yaml | awk '{print $1}')
 
-                  if [ "$BEFORE" != "$AFTER" ]; then
-                    echo ""
-                    echo "::error::docs/api/cloudflare-schema.yaml is out of date."
-                    echo "Run 'deno task schema:cloudflare' and commit the result before merging."
-                    echo "This schema is uploaded to Cloudflare API Shield and must stay in sync with openapi.yaml."
-                    git diff docs/api/cloudflare-schema.yaml
-                    exit 1
-                  fi
-                  echo "✅ cloudflare-schema.yaml matches openapi.yaml"
+          if [ "$BEFORE" != "$AFTER" ]; then
+            echo ""
+            echo "::error::docs/api/cloudflare-schema.yaml is out of date."
+            echo "Run 'deno task schema:cloudflare' and commit the result before merging."
+            echo "This schema is uploaded to Cloudflare API Shield and must stay in sync with openapi.yaml."
+            git diff docs/api/cloudflare-schema.yaml
+            exit 1
+          fi
+          echo "✅ cloudflare-schema.yaml matches openapi.yaml"
 
-            # ----------------------------------------------------------------
-            # 5. Summary
-            # ----------------------------------------------------------------
-            - name: API Shield readiness summary
-              if: success()
-              run: |
-                  echo ""
-                  echo "=================================================="
-                  echo "  ✅  API Shield readiness checks passed"
-                  echo "=================================================="
-                  echo ""
-                  echo "Next steps to activate the vulnerability scanner:"
-                  echo "  1. Upload docs/api/cloudflare-schema.yaml to API Shield"
-                  echo "  2. Configure test credentials in HashiCorp Vault"
-                  echo "  3. Enable scanner in Cloudflare Dashboard → Security → API Shield"
-                  echo ""
-                  echo "See docs/security/API_SHIELD_VULNERABILITY_SCANNER.md for full setup guide."
+      # ----------------------------------------------------------------
+      # 5. Summary
+      # ----------------------------------------------------------------
+      - name: API Shield readiness summary
+        if: success()
+        run: |
+          echo ""
+          echo "=================================================="
+          echo "  ✅  API Shield readiness checks passed"
+          echo "=================================================="
+          echo ""
+          echo "Next steps to activate the vulnerability scanner:"
+          echo "  1. Upload docs/api/cloudflare-schema.yaml to API Shield"
+          echo "  2. Configure test credentials in HashiCorp Vault"
+          echo "  3. Enable scanner in Cloudflare Dashboard → Security → API Shield"
+          echo ""
+          echo "See docs/security/API_SHIELD_VULNERABILITY_SCANNER.md for full setup guide."

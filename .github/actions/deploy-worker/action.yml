@@ -205,7 +205,7 @@ runs:
         else
             echo "$PUSH_OUTPUT"
             echo "::warning::Container image push failed — wrangler deploy will retry container push using CLOUDFLARE_API_TOKEN."
-            echo "::warning::To fix: ensure CLOUDFLARE_CONTAINERS_TOKEN has Account > Containers:Edit permission."
+          echo "::warning::To fix: ensure CLOUDFLARE_API_TOKEN or the optional cloudflare-containers-token input has Account > Containers:Edit permission."
             echo "::warning::See: https://dash.cloudflare.com/profile/api-tokens"
         fi
 

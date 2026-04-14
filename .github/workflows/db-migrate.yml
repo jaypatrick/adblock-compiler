@@ -1,449 +1,450 @@
 name: Database Migrations
 
-# Runs on every PR that touches migration files, and on every push to main.
+# Runs on every PR that touches migration files, and on every push to the
+# repository default branch.
 #
 # PR behaviour      → validate + dry-run (no side effects); posts a comment with
 #                     the list of pending migrations.
-# main behaviour    → apply migrations to Neon staging branch (DIRECT_DATABASE_URL_STAGING).
+# default-branch behaviour → apply migrations to Neon staging branch (DIRECT_DATABASE_URL_STAGING).
 # release behaviour → apply migrations to Neon production branch (DIRECT_DATABASE_URL) — Option B1 promotion.
 #
 # Backend support:
-#   Cloudflare D1  — always attempted when CLOUDFLARE_API_TOKEN is set (push to main only).
-#   PostgreSQL     — staging: on push to main (DIRECT_DATABASE_URL_STAGING).
+#   Cloudflare D1  — always attempted when CLOUDFLARE_API_TOKEN is set (default-branch pushes only).
+#   PostgreSQL     — staging: on default-branch pushes (DIRECT_DATABASE_URL_STAGING).
 #                    production: on GitHub Release published (DIRECT_DATABASE_URL).
 
 on:
-    push:
-        branches: [main]
-        paths:
-            - 'migrations/**'
-            - 'admin-migrations/**'
-            - 'prisma/migrations/**'
-            - 'prisma/schema.prisma'
-    pull_request:
-        branches: [main]
-        paths:
-            - 'migrations/**'
-            - 'admin-migrations/**'
-            - 'prisma/migrations/**'
-            - 'prisma/schema.prisma'
-    release:
-        # Option B1: GitHub Release is the promotion gate — publishing a release
-        # triggers Prisma migrations against the Neon production branch.
-        types: [published]
-    workflow_dispatch:
-        inputs:
-            dry_run:
-                description: 'Perform a dry-run only (validate, no writes)'
-                type: boolean
-                default: false
-            target:
-                description: 'Migration target (staging | production | both)'
-                type: choice
-                options: [staging, production, both]
-                default: staging
+  push:
+    branches: [master, main]
+    paths:
+      - "migrations/**"
+      - "admin-migrations/**"
+      - "prisma/migrations/**"
+      - "prisma/schema.prisma"
+  pull_request:
+    branches: [master, main]
+    paths:
+      - "migrations/**"
+      - "admin-migrations/**"
+      - "prisma/migrations/**"
+      - "prisma/schema.prisma"
+  release:
+    # Option B1: GitHub Release is the promotion gate — publishing a release
+    # triggers Prisma migrations against the Neon production branch.
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Perform a dry-run only (validate, no writes)"
+        type: boolean
+        default: false
+      target:
+        description: "Migration target (staging | production | both)"
+        type: choice
+        options: [staging, production, both]
+        default: staging
 
 env:
-    DENO_VERSION: '2.x'
+  DENO_VERSION: "2.x"
 
 concurrency:
-    # On main we never want two migration runs overlapping; on PRs we cancel
-    # the previous run for the same branch.
-    group: db-migrate-${{ github.ref }}
-    cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # On main we never want two migration runs overlapping; on PRs we cancel
+  # the previous run for the same branch.
+  group: db-migrate-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
-    contents: read
-    pull-requests: write
+  contents: read
+  pull-requests: write
 
 jobs:
-    # ─── 1. Validate ─────────────────────────────────────────────────────────
-    validate:
-        name: Validate Migrations
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-        outputs:
-            # Space-separated list of changed migration files (relative paths)
-            changed_d1: ${{ steps.detect.outputs.changed_d1 }}
-            changed_admin: ${{ steps.detect.outputs.changed_admin }}
-            changed_prisma: ${{ steps.detect.outputs.changed_prisma }}
-            has_changes: ${{ steps.detect.outputs.has_changes }}
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-              with:
-                  # Full history so we can diff against the base branch on PRs
-                  fetch-depth: 0
+  # ─── 1. Validate ─────────────────────────────────────────────────────────
+  validate:
+    name: Validate Migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      # Space-separated list of changed migration files (relative paths)
+      changed_d1: ${{ steps.detect.outputs.changed_d1 }}
+      changed_admin: ${{ steps.detect.outputs.changed_admin }}
+      changed_prisma: ${{ steps.detect.outputs.changed_prisma }}
+      has_changes: ${{ steps.detect.outputs.has_changes }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          # Full history so we can diff against the base branch on PRs
+          fetch-depth: 0
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-                  install-deps: 'false'
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+          install-deps: "false"
 
-            - name: Detect changed migration files
-              id: detect
-              run: |
-                  if [ "${{ github.event_name }}" = "pull_request" ]; then
-                    BASE="${{ github.event.pull_request.base.sha }}"
-                  else
-                    # On push/dispatch compare against the previous commit
-                    BASE="${{ github.event.before }}"
-                    # workflow_dispatch has no before sha — fall back to HEAD~1
-                    if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
-                      BASE="HEAD~1"
-                    fi
-                  fi
+      - name: Detect changed migration files
+        id: detect
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            # On push/dispatch compare against the previous commit
+            BASE="${{ github.event.before }}"
+            # workflow_dispatch has no before sha — fall back to HEAD~1
+            if [ -z "$BASE" ] || [ "$BASE" = "0000000000000000000000000000000000000000" ]; then
+              BASE="HEAD~1"
+            fi
+          fi
 
-                  CHANGED_D1=$(git diff --name-only "$BASE" HEAD -- 'migrations/*.sql' 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
-                  CHANGED_ADMIN=$(git diff --name-only "$BASE" HEAD -- 'admin-migrations/*.sql' 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
-                  CHANGED_PRISMA=$(git diff --name-only "$BASE" HEAD -- 'prisma/migrations/**' 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
+          CHANGED_D1=$(git diff --name-only "$BASE" HEAD -- 'migrations/*.sql' 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
+          CHANGED_ADMIN=$(git diff --name-only "$BASE" HEAD -- 'admin-migrations/*.sql' 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
+          CHANGED_PRISMA=$(git diff --name-only "$BASE" HEAD -- 'prisma/migrations/**' 2>/dev/null | tr '\n' ' ' | sed 's/ *$//')
 
-                  echo "changed_d1=${CHANGED_D1}"   >> "$GITHUB_OUTPUT"
-                  echo "changed_admin=${CHANGED_ADMIN}" >> "$GITHUB_OUTPUT"
-                  echo "changed_prisma=${CHANGED_PRISMA}" >> "$GITHUB_OUTPUT"
+          echo "changed_d1=${CHANGED_D1}"   >> "$GITHUB_OUTPUT"
+          echo "changed_admin=${CHANGED_ADMIN}" >> "$GITHUB_OUTPUT"
+          echo "changed_prisma=${CHANGED_PRISMA}" >> "$GITHUB_OUTPUT"
 
-                  if [ -n "$CHANGED_D1" ] || [ -n "$CHANGED_ADMIN" ] || [ -n "$CHANGED_PRISMA" ]; then
-                    echo "has_changes=true"  >> "$GITHUB_OUTPUT"
-                    echo "📂 Changed D1 migrations: ${CHANGED_D1:-none}"
-                    echo "📂 Changed admin migrations: ${CHANGED_ADMIN:-none}"
-                    echo "📂 Changed Prisma migrations: ${CHANGED_PRISMA:-none}"
-                  else
-                    echo "has_changes=false" >> "$GITHUB_OUTPUT"
-                    echo "ℹ️  No migration files changed — validation still runs on all files"
-                  fi
+          if [ -n "$CHANGED_D1" ] || [ -n "$CHANGED_ADMIN" ] || [ -n "$CHANGED_PRISMA" ]; then
+            echo "has_changes=true"  >> "$GITHUB_OUTPUT"
+            echo "📂 Changed D1 migrations: ${CHANGED_D1:-none}"
+            echo "📂 Changed admin migrations: ${CHANGED_ADMIN:-none}"
+            echo "📂 Changed Prisma migrations: ${CHANGED_PRISMA:-none}"
+          else
+            echo "has_changes=false" >> "$GITHUB_OUTPUT"
+            echo "ℹ️  No migration files changed — validation still runs on all files"
+          fi
 
-            - name: Validate all migration files
-              run: deno task migrate:validate
+      - name: Validate all migration files
+        run: deno task migrate:validate
 
-    # ─── 2. Dry-run (PR only) ────────────────────────────────────────────────
-    dry-run:
-        name: Migration Dry-Run
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        needs: [validate]
-        if: >-
-            github.event_name == 'pull_request' ||
-            (github.event_name == 'workflow_dispatch' && inputs.dry_run == true)
+  # ─── 2. Dry-run (PR only) ────────────────────────────────────────────────
+  dry-run:
+    name: Migration Dry-Run
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [validate]
+    if: >-
+      github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' && inputs.dry_run == true)
+    env:
+      # Expose secret presence as env vars; secrets context is not
+      # available in step-level if: conditions.
+      HAS_CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+      HAS_DIRECT_DB_URL: ${{ secrets.DIRECT_DATABASE_URL_STAGING != '' || secrets.DIRECT_DATABASE_URL != '' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+
+      # ── Cloudflare D1 dry-run ────────────────────────────────────────
+      - name: D1 — list pending migrations (main DB)
+        id: d1_main_pending
+        if: env.HAS_CLOUDFLARE_TOKEN == 'true'
         env:
-            # Expose secret presence as env vars; secrets context is not
-            # available in step-level if: conditions.
-            HAS_CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
-            HAS_DIRECT_DB_URL: ${{ secrets.DIRECT_DATABASE_URL_STAGING != '' || secrets.DIRECT_DATABASE_URL != '' }}
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "=== Pending migrations for adblock-compiler-d1-database ==="
+          OUTPUT=$(deno task wrangler d1 migrations list adblock-compiler-d1-database --remote 2>&1) || true
+          echo "$OUTPUT"
+          # Store multi-line output for PR comment (escape newlines)
+          {
+            echo "d1_main_pending<<DELIM"
+            echo "$OUTPUT"
+            echo "DELIM"
+          } >> "$GITHUB_OUTPUT"
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-
-            # ── Cloudflare D1 dry-run ────────────────────────────────────────
-            - name: D1 — list pending migrations (main DB)
-              id: d1_main_pending
-              if: env.HAS_CLOUDFLARE_TOKEN == 'true'
-              env:
-                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-              run: |
-                  echo "=== Pending migrations for adblock-compiler-d1-database ==="
-                  OUTPUT=$(deno task wrangler d1 migrations list adblock-compiler-d1-database --remote 2>&1) || true
-                  echo "$OUTPUT"
-                  # Store multi-line output for PR comment (escape newlines)
-                  {
-                    echo "d1_main_pending<<DELIM"
-                    echo "$OUTPUT"
-                    echo "DELIM"
-                  } >> "$GITHUB_OUTPUT"
-
-            - name: D1 — list pending migrations (admin DB)
-              id: d1_admin_pending
-              if: env.HAS_CLOUDFLARE_TOKEN == 'true'
-              env:
-                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-              run: |
-                  echo "=== Pending migrations for adblock-compiler-admin-d1 ==="
-                  OUTPUT=$(deno task wrangler d1 migrations list adblock-compiler-admin-d1 --remote 2>&1) || true
-                  echo "$OUTPUT"
-                  {
-                    echo "d1_admin_pending<<DELIM"
-                    echo "$OUTPUT"
-                    echo "DELIM"
-                  } >> "$GITHUB_OUTPUT"
-
-            # ── PostgreSQL dry-run ───────────────────────────────────────────
-            - name: PostgreSQL — validate pending migrations
-              id: pg_pending
-              if: env.HAS_DIRECT_DB_URL == 'true'
-              env:
-                  # prisma/prisma.config.ts prefers DIRECT_DATABASE_URL over DATABASE_URL
-                  DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL_STAGING }}
-              run: |
-                  echo "=== Pending PostgreSQL migrations ==="
-                  # Use Prisma to report pending migrations without applying them
-                  OUTPUT=$(deno run -A npm:prisma migrate status 2>&1) || true
-                  echo "$OUTPUT"
-                  {
-                    echo "pg_pending<<DELIM"
-                    echo "$OUTPUT"
-                    echo "DELIM"
-                  } >> "$GITHUB_OUTPUT"
-
-            # ── Post PR comment ──────────────────────────────────────────────
-            # Skip for fork PRs: GITHUB_TOKEN is read-only there even with
-            # pull-requests: write, so comment writes would fail.
-            - name: Post migration plan as PR comment
-              if: >-
-                  github.event_name == 'pull_request' &&
-                  github.event.pull_request.head.repo.full_name == github.repository
-              uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v7
-              env:
-                  CHANGED_D1: ${{ needs.validate.outputs.changed_d1 }}
-                  CHANGED_ADMIN: ${{ needs.validate.outputs.changed_admin }}
-                  CHANGED_PRISMA: ${{ needs.validate.outputs.changed_prisma }}
-                  D1_MAIN: ${{ steps.d1_main_pending.outputs.d1_main_pending }}
-                  D1_ADMIN: ${{ steps.d1_admin_pending.outputs.d1_admin_pending }}
-                  PG_INFO: ${{ steps.pg_pending.outputs.pg_pending }}
-                  RUN_NUMBER: ${{ github.run_number }}
-                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-              with:
-                  github-token: ${{ secrets.GITHUB_TOKEN }}
-                  script: |
-                      const changed_d1    = (process.env.CHANGED_D1    || '').trim();
-                      const changed_admin = (process.env.CHANGED_ADMIN || '').trim();
-                      const changed_prisma = (process.env.CHANGED_PRISMA || '').trim();
-
-                      const d1Main  = (process.env.D1_MAIN  || '').trim();
-                      const d1Admin = (process.env.D1_ADMIN || '').trim();
-                      const pgInfo  = (process.env.PG_INFO  || '').trim();
-
-                      const hasCloudflare = d1Main || d1Admin;
-                      const hasPostgres   = pgInfo;
-
-                      let body = '## 🗄️ Database Migration Plan\n\n';
-                      body += '> **This is a dry-run.** No changes have been applied to any database.\n';
-                      body += '> Migrations will be applied per-backend (sequentially) when this PR is merged to `main`.\n\n';
-
-                      // Changed files section
-                      if (changed_d1 || changed_admin || changed_prisma) {
-                        body += '### 📂 Changed Migration Files\n\n';
-                        if (changed_d1) {
-                          body += '**Main DB (`migrations/`):**\n';
-                          changed_d1.split(' ').filter(Boolean).forEach(f => { body += `- \`${f}\`\n`; });
-                          body += '\n';
-                        }
-                        if (changed_admin) {
-                          body += '**Admin DB (`admin-migrations/`):**\n';
-                          changed_admin.split(' ').filter(Boolean).forEach(f => { body += `- \`${f}\`\n`; });
-                          body += '\n';
-                        }
-                        if (changed_prisma) {
-                          body += '**Prisma (`prisma/migrations/`):**\n';
-                          changed_prisma.split(' ').filter(Boolean).forEach(f => { body += `- \`${f}\`\n`; });
-                          body += '\n';
-                        }
-                      } else {
-                        body += '_No new migration files detected in this PR._\n\n';
-                      }
-
-                      if (hasCloudflare) {
-                        body += '### ☁️ Cloudflare D1\n\n';
-                        if (d1Main) {
-                          body += '<details><summary>Main Database (<code>adblock-compiler-d1-database</code>)</summary>\n\n```\n' + d1Main + '\n```\n\n</details>\n\n';
-                        }
-                        if (d1Admin) {
-                          body += '<details><summary>Admin Database (<code>adblock-compiler-admin-d1</code>)</summary>\n\n```\n' + d1Admin + '\n```\n\n</details>\n\n';
-                        }
-                      } else {
-                        body += '### ☁️ Cloudflare D1\n\n_Skipped — `CLOUDFLARE_API_TOKEN` secret not available in this context._\n\n';
-                      }
-
-                      if (hasPostgres) {
-                        body += '### 🐘 PostgreSQL\n\n';
-                        body += '<details><summary>Prisma migrate status</summary>\n\n```\n' + pgInfo + '\n```\n\n</details>\n\n';
-                      }
-
-                      body += '---\n';
-                      body += `_Validation run: [#${process.env.RUN_NUMBER}](${process.env.RUN_URL})_`;
-
-                      // Upsert (create or update) a single sticky comment per PR
-                      const marker = '<!-- db-migration-plan -->';
-                      const fullBody = marker + '\n' + body;
-
-                      const { data: comments } = await github.rest.issues.listComments({
-                        owner: context.repo.owner,
-                        repo:  context.repo.repo,
-                        issue_number: context.issue.number,
-                      });
-
-                      const existing = comments.find(c => c.body && c.body.startsWith(marker));
-                      if (existing) {
-                        await github.rest.issues.updateComment({
-                          owner:      context.repo.owner,
-                          repo:       context.repo.repo,
-                          comment_id: existing.id,
-                          body:       fullBody,
-                        });
-                      } else {
-                        await github.rest.issues.createComment({
-                          owner:       context.repo.owner,
-                          repo:        context.repo.repo,
-                          issue_number: context.issue.number,
-                          body:        fullBody,
-                        });
-                      }
-
-    # ─── 3. Apply D1 migrations (main push only) ─────────────────────────────
-    migrate:
-        name: Apply D1 Migrations
-        runs-on: ubuntu-latest
-        timeout-minutes: 20
-        needs: [validate]
-        if: >-
-            github.event_name == 'push' && github.ref == 'refs/heads/main'
+      - name: D1 — list pending migrations (admin DB)
+        id: d1_admin_pending
+        if: env.HAS_CLOUDFLARE_TOKEN == 'true'
         env:
-            # Expose secret presence as env vars; secrets context is not
-            # available in step-level if: conditions.
-            HAS_CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "=== Pending migrations for adblock-compiler-admin-d1 ==="
+          OUTPUT=$(deno task wrangler d1 migrations list adblock-compiler-admin-d1 --remote 2>&1) || true
+          echo "$OUTPUT"
+          {
+            echo "d1_admin_pending<<DELIM"
+            echo "$OUTPUT"
+            echo "DELIM"
+          } >> "$GITHUB_OUTPUT"
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-
-            # ── Cloudflare D1 — main DB ──────────────────────────────────────
-            - name: D1 — apply migrations (main DB)
-              id: d1_main
-              if: env.HAS_CLOUDFLARE_TOKEN == 'true'
-              env:
-                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-              run: |
-                  echo "Applying D1 migrations for adblock-compiler-d1-database..."
-                  # Retry up to 3 times to handle transient Cloudflare API errors.
-                  # `wrangler d1 migrations apply` is idempotent (skips already-applied
-                  # migrations) so retrying is safe.
-                  for i in 1 2 3; do
-                    if OUTPUT=$(deno task wrangler d1 migrations apply adblock-compiler-d1-database --remote 2>&1); then
-                      echo "$OUTPUT"
-                      echo "✅ Main DB migrations applied"
-                      echo "result=success" >> "$GITHUB_OUTPUT"
-                      break
-                    fi
-                    echo "$OUTPUT"
-                    # Surface auth errors immediately — no point retrying.
-                    # CF error code 10000 = "Authentication error" (invalid/expired token).
-                    if echo "$OUTPUT" | grep -qiE 'Authentication error|10000|Forbidden'; then
-                      echo "🔐 CLOUDFLARE_API_TOKEN is missing D1:Edit permission."
-                      echo "   Update: https://dash.cloudflare.com/profile/api-tokens"
-                      echo "result=auth_error" >> "$GITHUB_OUTPUT"
-                      exit 1
-                    fi
-                    if [ "$i" -lt 3 ]; then
-                      echo "Attempt $i failed — retrying in 15s..."
-                      sleep 15
-                    else
-                      echo "❌ All 3 attempts failed for main DB migrations"
-                      echo "result=failed" >> "$GITHUB_OUTPUT"
-                      exit 1
-                    fi
-                  done
-
-            # ── Cloudflare D1 — admin DB ─────────────────────────────────────
-            - name: D1 — apply migrations (admin DB)
-              id: d1_admin
-              if: env.HAS_CLOUDFLARE_TOKEN == 'true'
-              env:
-                  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-                  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-              run: |
-                  echo "Applying D1 migrations for adblock-compiler-admin-d1..."
-                  for i in 1 2 3; do
-                    if OUTPUT=$(deno task wrangler d1 migrations apply adblock-compiler-admin-d1 --remote 2>&1); then
-                      echo "$OUTPUT"
-                      echo "✅ Admin DB migrations applied"
-                      echo "result=success" >> "$GITHUB_OUTPUT"
-                      break
-                    fi
-                    echo "$OUTPUT"
-                    # CF error code 10000 = "Authentication error" (invalid/expired token).
-                    if echo "$OUTPUT" | grep -qiE 'Authentication error|10000|Forbidden'; then
-                      echo "🔐 CLOUDFLARE_API_TOKEN is missing D1:Edit permission."
-                      echo "result=auth_error" >> "$GITHUB_OUTPUT"
-                      exit 1
-                    fi
-                    if [ "$i" -lt 3 ]; then
-                      echo "Attempt $i failed — retrying in 15s..."
-                      sleep 15
-                    else
-                      echo "❌ All 3 attempts failed for admin DB migrations"
-                      echo "result=failed" >> "$GITHUB_OUTPUT"
-                      exit 1
-                    fi
-                  done
-
-            # ── Summary ──────────────────────────────────────────────────────
-            - name: D1 migration summary
-              if: always()
-              run: |
-                  echo "=== D1 Migration Summary ==="
-                  D1_MAIN="${{ steps.d1_main.outputs.result }}"
-                  D1_ADMIN="${{ steps.d1_admin.outputs.result }}"
-
-                  echo "D1 main DB  : ${D1_MAIN:-skipped}"
-                  echo "D1 admin DB : ${D1_ADMIN:-skipped}"
-
-                  if [ "${D1_MAIN}" = "failed" ] || [ "${D1_ADMIN}" = "failed" ]; then
-                    echo "❌ One or more D1 migrations failed"
-                    exit 1
-                  fi
-                  echo "✅ D1 migrations completed successfully"
-
-    # ─── 4. Apply PostgreSQL migrations → Staging ────────────────────────────
-    pg_migrate_staging:
-        name: Apply Prisma Migrations → Staging
-        runs-on: ubuntu-latest
-        timeout-minutes: 15
-        needs: [validate]
-        if: >-
-            (github.event_name == 'push' && github.ref == 'refs/heads/main') ||
-            (github.event_name == 'workflow_dispatch' && (inputs.target == 'staging' || inputs.target == 'both'))
+      # ── PostgreSQL dry-run ───────────────────────────────────────────
+      - name: PostgreSQL — validate pending migrations
+        id: pg_pending
+        if: env.HAS_DIRECT_DB_URL == 'true'
         env:
-            DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL_STAGING }}
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-            - name: Apply Prisma migrations to staging
-              if: env.DIRECT_DATABASE_URL != ''
-              run: deno run -A npm:prisma migrate deploy
+          # prisma/prisma.config.ts prefers DIRECT_DATABASE_URL over DATABASE_URL
+          DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL_STAGING }}
+        run: |
+          echo "=== Pending PostgreSQL migrations ==="
+          # Use Prisma to report pending migrations without applying them
+          OUTPUT=$(deno run -A npm:prisma migrate status 2>&1) || true
+          echo "$OUTPUT"
+          {
+            echo "pg_pending<<DELIM"
+            echo "$OUTPUT"
+            echo "DELIM"
+          } >> "$GITHUB_OUTPUT"
 
-    # ─── 5. Apply PostgreSQL migrations → Production ─────────────────────────
-    pg_migrate_production:
-        name: Apply Prisma Migrations → Production
-        runs-on: ubuntu-latest
-        timeout-minutes: 15
-        needs: [validate]
+      # ── Post PR comment ──────────────────────────────────────────────
+      # Skip for fork PRs: GITHUB_TOKEN is read-only there even with
+      # pull-requests: write, so comment writes would fail.
+      - name: Post migration plan as PR comment
         if: >-
-            github.event_name == 'release' ||
-            (github.event_name == 'workflow_dispatch' && (inputs.target == 'production' || inputs.target == 'both'))
+          github.event_name == 'pull_request' &&
+          github.event.pull_request.head.repo.full_name == github.repository
+        uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v7
         env:
-            DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-            - name: Ensure DIRECT_DATABASE_URL is set for production migrations
-              run: |
-                  if [ -z "${{ env.DIRECT_DATABASE_URL }}" ]; then
-                      echo "ERROR: DIRECT_DATABASE_URL secret is not configured; cannot run production Prisma migrations."
-                      exit 1
-                  fi
-            - name: Apply Prisma migrations to production
-              run: deno run -A npm:prisma migrate deploy
+          CHANGED_D1: ${{ needs.validate.outputs.changed_d1 }}
+          CHANGED_ADMIN: ${{ needs.validate.outputs.changed_admin }}
+          CHANGED_PRISMA: ${{ needs.validate.outputs.changed_prisma }}
+          D1_MAIN: ${{ steps.d1_main_pending.outputs.d1_main_pending }}
+          D1_ADMIN: ${{ steps.d1_admin_pending.outputs.d1_admin_pending }}
+          PG_INFO: ${{ steps.pg_pending.outputs.pg_pending }}
+          RUN_NUMBER: ${{ github.run_number }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const changed_d1    = (process.env.CHANGED_D1    || '').trim();
+            const changed_admin = (process.env.CHANGED_ADMIN || '').trim();
+            const changed_prisma = (process.env.CHANGED_PRISMA || '').trim();
+
+            const d1Main  = (process.env.D1_MAIN  || '').trim();
+            const d1Admin = (process.env.D1_ADMIN || '').trim();
+            const pgInfo  = (process.env.PG_INFO  || '').trim();
+
+            const hasCloudflare = d1Main || d1Admin;
+            const hasPostgres   = pgInfo;
+
+            let body = '## 🗄️ Database Migration Plan\n\n';
+            body += '> **This is a dry-run.** No changes have been applied to any database.\n';
+            body += '> Migrations will be applied per-backend (sequentially) when this PR is merged to `main`.\n\n';
+
+            // Changed files section
+            if (changed_d1 || changed_admin || changed_prisma) {
+              body += '### 📂 Changed Migration Files\n\n';
+              if (changed_d1) {
+                body += '**Main DB (`migrations/`):**\n';
+                changed_d1.split(' ').filter(Boolean).forEach(f => { body += `- \`${f}\`\n`; });
+                body += '\n';
+              }
+              if (changed_admin) {
+                body += '**Admin DB (`admin-migrations/`):**\n';
+                changed_admin.split(' ').filter(Boolean).forEach(f => { body += `- \`${f}\`\n`; });
+                body += '\n';
+              }
+              if (changed_prisma) {
+                body += '**Prisma (`prisma/migrations/`):**\n';
+                changed_prisma.split(' ').filter(Boolean).forEach(f => { body += `- \`${f}\`\n`; });
+                body += '\n';
+              }
+            } else {
+              body += '_No new migration files detected in this PR._\n\n';
+            }
+
+            if (hasCloudflare) {
+              body += '### ☁️ Cloudflare D1\n\n';
+              if (d1Main) {
+                body += '<details><summary>Main Database (<code>adblock-compiler-d1-database</code>)</summary>\n\n```\n' + d1Main + '\n```\n\n</details>\n\n';
+              }
+              if (d1Admin) {
+                body += '<details><summary>Admin Database (<code>adblock-compiler-admin-d1</code>)</summary>\n\n```\n' + d1Admin + '\n```\n\n</details>\n\n';
+              }
+            } else {
+              body += '### ☁️ Cloudflare D1\n\n_Skipped — `CLOUDFLARE_API_TOKEN` secret not available in this context._\n\n';
+            }
+
+            if (hasPostgres) {
+              body += '### 🐘 PostgreSQL\n\n';
+              body += '<details><summary>Prisma migrate status</summary>\n\n```\n' + pgInfo + '\n```\n\n</details>\n\n';
+            }
+
+            body += '---\n';
+            body += `_Validation run: [#${process.env.RUN_NUMBER}](${process.env.RUN_URL})_`;
+
+            // Upsert (create or update) a single sticky comment per PR
+            const marker = '<!-- db-migration-plan -->';
+            const fullBody = marker + '\n' + body;
+
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo:  context.repo.repo,
+              issue_number: context.issue.number,
+            });
+
+            const existing = comments.find(c => c.body && c.body.startsWith(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner:      context.repo.owner,
+                repo:       context.repo.repo,
+                comment_id: existing.id,
+                body:       fullBody,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner:       context.repo.owner,
+                repo:        context.repo.repo,
+                issue_number: context.issue.number,
+                body:        fullBody,
+              });
+            }
+
+  # ─── 3. Apply D1 migrations (main push only) ─────────────────────────────
+  migrate:
+    name: Apply D1 Migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [validate]
+    if: >-
+      github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+    env:
+      # Expose secret presence as env vars; secrets context is not
+      # available in step-level if: conditions.
+      HAS_CLOUDFLARE_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+
+      # ── Cloudflare D1 — main DB ──────────────────────────────────────
+      - name: D1 — apply migrations (main DB)
+        id: d1_main
+        if: env.HAS_CLOUDFLARE_TOKEN == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "Applying D1 migrations for adblock-compiler-d1-database..."
+          # Retry up to 3 times to handle transient Cloudflare API errors.
+          # `wrangler d1 migrations apply` is idempotent (skips already-applied
+          # migrations) so retrying is safe.
+          for i in 1 2 3; do
+            if OUTPUT=$(deno task wrangler d1 migrations apply adblock-compiler-d1-database --remote 2>&1); then
+              echo "$OUTPUT"
+              echo "✅ Main DB migrations applied"
+              echo "result=success" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            echo "$OUTPUT"
+            # Surface auth errors immediately — no point retrying.
+            # CF error code 10000 = "Authentication error" (invalid/expired token).
+            if echo "$OUTPUT" | grep -qiE 'Authentication error|10000|Forbidden'; then
+              echo "🔐 CLOUDFLARE_API_TOKEN is missing D1:Edit permission."
+              echo "   Update: https://dash.cloudflare.com/profile/api-tokens"
+              echo "result=auth_error" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            if [ "$i" -lt 3 ]; then
+              echo "Attempt $i failed — retrying in 15s..."
+              sleep 15
+            else
+              echo "❌ All 3 attempts failed for main DB migrations"
+              echo "result=failed" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+          done
+
+      # ── Cloudflare D1 — admin DB ─────────────────────────────────────
+      - name: D1 — apply migrations (admin DB)
+        id: d1_admin
+        if: env.HAS_CLOUDFLARE_TOKEN == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          echo "Applying D1 migrations for adblock-compiler-admin-d1..."
+          for i in 1 2 3; do
+            if OUTPUT=$(deno task wrangler d1 migrations apply adblock-compiler-admin-d1 --remote 2>&1); then
+              echo "$OUTPUT"
+              echo "✅ Admin DB migrations applied"
+              echo "result=success" >> "$GITHUB_OUTPUT"
+              break
+            fi
+            echo "$OUTPUT"
+            # CF error code 10000 = "Authentication error" (invalid/expired token).
+            if echo "$OUTPUT" | grep -qiE 'Authentication error|10000|Forbidden'; then
+              echo "🔐 CLOUDFLARE_API_TOKEN is missing D1:Edit permission."
+              echo "result=auth_error" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+            if [ "$i" -lt 3 ]; then
+              echo "Attempt $i failed — retrying in 15s..."
+              sleep 15
+            else
+              echo "❌ All 3 attempts failed for admin DB migrations"
+              echo "result=failed" >> "$GITHUB_OUTPUT"
+              exit 1
+            fi
+          done
+
+      # ── Summary ──────────────────────────────────────────────────────
+      - name: D1 migration summary
+        if: always()
+        run: |
+          echo "=== D1 Migration Summary ==="
+          D1_MAIN="${{ steps.d1_main.outputs.result }}"
+          D1_ADMIN="${{ steps.d1_admin.outputs.result }}"
+
+          echo "D1 main DB  : ${D1_MAIN:-skipped}"
+          echo "D1 admin DB : ${D1_ADMIN:-skipped}"
+
+          if [ "${D1_MAIN}" = "failed" ] || [ "${D1_ADMIN}" = "failed" ]; then
+            echo "❌ One or more D1 migrations failed"
+            exit 1
+          fi
+          echo "✅ D1 migrations completed successfully"
+
+  # ─── 4. Apply PostgreSQL migrations → Staging ────────────────────────────
+  pg_migrate_staging:
+    name: Apply Prisma Migrations → Staging
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [validate]
+    if: >-
+      (github.event_name == 'push' && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) ||
+      (github.event_name == 'workflow_dispatch' && (inputs.target == 'staging' || inputs.target == 'both'))
+    env:
+      DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL_STAGING }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+      - name: Apply Prisma migrations to staging
+        if: env.DIRECT_DATABASE_URL != ''
+        run: deno run -A npm:prisma migrate deploy
+
+  # ─── 5. Apply PostgreSQL migrations → Production ─────────────────────────
+  pg_migrate_production:
+    name: Apply Prisma Migrations → Production
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [validate]
+    if: >-
+      github.event_name == 'release' ||
+      (github.event_name == 'workflow_dispatch' && (inputs.target == 'production' || inputs.target == 'both'))
+    env:
+      DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+      - name: Ensure DIRECT_DATABASE_URL is set for production migrations
+        run: |
+          if [ -z "${{ env.DIRECT_DATABASE_URL }}" ]; then
+              echo "ERROR: DIRECT_DATABASE_URL secret is not configured; cannot run production Prisma migrations."
+              exit 1
+          fi
+      - name: Apply Prisma migrations to production
+        run: deno run -A npm:prisma migrate deploy

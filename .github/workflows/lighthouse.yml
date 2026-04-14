@@ -1,99 +1,99 @@
 name: Lighthouse CI
 
 on:
-    # Fires automatically when the main CI workflow completes on main — which
-    # means the Cloudflare Worker deploy step has already finished. ci.yml does
-    # not create GitHub Deployment/Status events, so workflow_run is the
-    # correct trigger here instead of deployment_status.
-    workflow_run:
-        workflows: ['CI']
-        types: [completed]
-        branches: [main]
-    workflow_dispatch:
-        inputs:
-            url:
-                description: 'Target URL to audit'
-                required: false
-                default: 'https://adblock-compiler.jayson-knight.workers.dev'
+  # Fires automatically when the main CI workflow completes on the default branch — which
+  # means the Cloudflare Worker deploy step has already finished. ci.yml does
+  # not create GitHub Deployment/Status events, so workflow_run is the
+  # correct trigger here instead of deployment_status.
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [master, main]
+  workflow_dispatch:
+    inputs:
+      url:
+        description: "Target URL to audit"
+        required: false
+        default: "https://adblock-compiler.jayson-knight.workers.dev"
 
 env:
-    DENO_VERSION: '2.x'
+  DENO_VERSION: "2.x"
 
 permissions:
-    contents: read
-    statuses: write
+  contents: read
+  statuses: write
 
 jobs:
-    lighthouse:
-        name: Lighthouse Audit
-        runs-on: ubuntu-latest
-        timeout-minutes: 20
-        # Scores are advisory initially — regressions warn, not block
-        continue-on-error: true
-        if: >-
-            github.event_name == 'workflow_dispatch' ||
-            (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+  lighthouse:
+    name: Lighthouse Audit
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # Scores are advisory initially — regressions warn, not block
+    continue-on-error: true
+    if: >-
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
 
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Setup pnpm
-              uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-              with:
-                  node-version: '22'
-                  cache: 'pnpm'
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
+          cache: "pnpm"
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-                  install-deps: 'false'
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+          install-deps: "false"
 
-            - name: Install Lighthouse CI
-              run: pnpm add --global @lhci/cli
+      - name: Install Lighthouse CI
+        run: pnpm add --global @lhci/cli
 
-            - name: Determine target URL
-              id: target
-              run: |
-                  if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
-                    TARGET_URL="${{ github.event.inputs.url }}"
-                  else
-                    TARGET_URL="https://adblock-compiler.jayson-knight.workers.dev"
-                  fi
-                  if [ -z "$TARGET_URL" ]; then
-                    echo "❌ TARGET_URL is empty — cannot run Lighthouse audit" >&2
-                    exit 1
-                  fi
-                  echo "TARGET_URL=${TARGET_URL}" >> "$GITHUB_ENV"
-                  echo "url=${TARGET_URL}" >> "$GITHUB_OUTPUT"
+      - name: Determine target URL
+        id: target
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TARGET_URL="${{ github.event.inputs.url }}"
+          else
+            TARGET_URL="https://adblock-compiler.jayson-knight.workers.dev"
+          fi
+          if [ -z "$TARGET_URL" ]; then
+            echo "❌ TARGET_URL is empty — cannot run Lighthouse audit" >&2
+            exit 1
+          fi
+          echo "TARGET_URL=${TARGET_URL}" >> "$GITHUB_ENV"
+          echo "url=${TARGET_URL}" >> "$GITHUB_OUTPUT"
 
-            # Thresholds and settings are configured in .lighthouserc.json at the repository root.
-            - name: Run Lighthouse CI
-              run: |
-                  lhci autorun \
-                    --config=.lighthouserc.json \
-                    --collect.url="${TARGET_URL}/" \
-                    --collect.url="${TARGET_URL}/sign-in" \
-                    --collect.url="${TARGET_URL}/sign-up" \
-                    --collect.url="${TARGET_URL}/health"
-              env:
-                  LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
-                  LHCI_BUILD_CONTEXT__GITHUB_REPO_SLUG: ${{ github.repository }}
+      # Thresholds and settings are configured in .lighthouserc.json at the repository root.
+      - name: Run Lighthouse CI
+        run: |
+          lhci autorun \
+            --config=.lighthouserc.json \
+            --collect.url="${TARGET_URL}/" \
+            --collect.url="${TARGET_URL}/sign-in" \
+            --collect.url="${TARGET_URL}/sign-up" \
+            --collect.url="${TARGET_URL}/health"
+        env:
+          LHCI_BUILD_CONTEXT__CURRENT_HASH: ${{ github.sha }}
+          LHCI_BUILD_CONTEXT__GITHUB_REPO_SLUG: ${{ github.repository }}
 
-            - name: Generate step summary
-              if: always()
-              run: deno task lighthouse:summary
-              env:
-                  LHCI_OUTPUT_DIR: lhci-results
-                  TARGET_URL: ${{ steps.target.outputs.url }}
+      - name: Generate step summary
+        if: always()
+        run: deno task lighthouse:summary
+        env:
+          LHCI_OUTPUT_DIR: lhci-results
+          TARGET_URL: ${{ steps.target.outputs.url }}
 
-            - name: Upload Lighthouse results
-              if: always()
-              uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
-              with:
-                  name: lighthouse-results
-                  path: lhci-results/
-                  retention-days: 30
+      - name: Upload Lighthouse results
+        if: always()
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        with:
+          name: lighthouse-results
+          path: lhci-results/
+          retention-days: 30

@@ -2,15 +2,15 @@ name: Build & Deploy mdBook
 
 on:
   push:
-    branches: [main]
+    branches: [master, main]
     paths:
-      - 'docs/**'
-      - 'book.toml'
-      - 'scripts/mdbook-last-updated.ts'
-      - 'scripts/generate-docs.ts'
-      - 'scripts/generate-cloudflare-schema.ts'
-      - 'scripts/generate-postman-collection.ts'
-      - '.github/workflows/mdbook.yml'
+      - "docs/**"
+      - "book.toml"
+      - "scripts/mdbook-last-updated.ts"
+      - "scripts/generate-docs.ts"
+      - "scripts/generate-cloudflare-schema.ts"
+      - "scripts/generate-postman-collection.ts"
+      - ".github/workflows/mdbook.yml"
   workflow_dispatch:
 
 env:

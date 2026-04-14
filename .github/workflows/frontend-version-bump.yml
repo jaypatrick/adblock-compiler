@@ -1,282 +1,282 @@
 name: Frontend Version Bump
 
 on:
-    push:
-        branches: [main]
-        paths:
-            - 'frontend/**'
-            - 'pnpm-lock.yaml'
-    workflow_dispatch:
-        inputs:
-            bump_type:
-                description: 'Version bump type (leave empty for auto-detect from commits)'
-                required: false
-                type: choice
-                options:
-                    - ''
-                    - patch
-                    - minor
-                    - major
+  push:
+    branches: [master, main]
+    paths:
+      - "frontend/**"
+      - "pnpm-lock.yaml"
+  workflow_dispatch:
+    inputs:
+      bump_type:
+        description: "Version bump type (leave empty for auto-detect from commits)"
+        required: false
+        type: choice
+        options:
+          - ""
+          - patch
+          - minor
+          - major
 
 permissions:
-    contents: write
-    pull-requests: write
+  contents: write
+  pull-requests: write
 
 jobs:
-    frontend-version-bump:
-        name: Frontend Version Bump
-        runs-on: ubuntu-latest
-        # Skip if commit was made by github-actions bot (prevent loops)
-        # or if commit message contains [skip ci] or [skip version]
-        if: |
-            github.event_name == 'workflow_dispatch' || (
-                github.event.head_commit &&
-                !contains(github.event.head_commit.message, '[skip ci]') &&
-                !contains(github.event.head_commit.message, '[skip version]') &&
-                github.event.head_commit.author.name != 'github-actions[bot]'
-            )
-        outputs:
-            old_version: ${{ steps.bump.outputs.old }}
-            new_version: ${{ steps.bump.outputs.new }}
-            tag: ${{ steps.bump.outputs.tag }}
-        steps:
-            - name: Checkout
-              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-              with:
-                  fetch-depth: 0
-                  token: ${{ secrets.GITHUB_TOKEN }}
+  frontend-version-bump:
+    name: Frontend Version Bump
+    runs-on: ubuntu-latest
+    # Skip if commit was made by github-actions bot (prevent loops)
+    # or if commit message contains [skip ci] or [skip version]
+    if: |
+      github.event_name == 'workflow_dispatch' || (
+          github.event.head_commit &&
+          !contains(github.event.head_commit.message, '[skip ci]') &&
+          !contains(github.event.head_commit.message, '[skip version]') &&
+          github.event.head_commit.author.name != 'github-actions[bot]'
+      )
+    outputs:
+      old_version: ${{ steps.bump.outputs.old }}
+      new_version: ${{ steps.bump.outputs.new }}
+      tag: ${{ steps.bump.outputs.tag }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Setup pnpm
-              uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v4
+      - name: Setup pnpm
+        uses: pnpm/action-setup@08c4be7e2e672a47d11bd04269e27e5f3e8529cb # v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-              with:
-                  node-version: '22'
+      - name: Setup Node.js
+        uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+        with:
+          node-version: "22"
 
-            - name: Determine version bump type
-              id: determine_bump
-              env:
-                  INPUT_BUMP_TYPE: ${{ inputs.bump_type }}
-              run: |
-                  set -euo pipefail
+      - name: Determine version bump type
+        id: determine_bump
+        env:
+          INPUT_BUMP_TYPE: ${{ inputs.bump_type }}
+        run: |
+          set -euo pipefail
 
-                  # If bump_type input is provided, use it
-                  if [ -n "$INPUT_BUMP_TYPE" ]; then
-                    BUMP_TYPE="$INPUT_BUMP_TYPE"
-                    echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
-                    echo "Using manual bump type: $BUMP_TYPE"
-                    exit 0
-                  fi
+          # If bump_type input is provided, use it
+          if [ -n "$INPUT_BUMP_TYPE" ]; then
+            BUMP_TYPE="$INPUT_BUMP_TYPE"
+            echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
+            echo "Using manual bump type: $BUMP_TYPE"
+            exit 0
+          fi
 
-                  # Find the last frontend-v* tag as the anchor point
-                  LAST_FRONTEND_TAG=$(git describe --tags --match "frontend-v*" --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
-                  echo "Analyzing commits since: $LAST_FRONTEND_TAG"
+          # Find the last frontend-v* tag as the anchor point
+          LAST_FRONTEND_TAG=$(git describe --tags --match "frontend-v*" --abbrev=0 2>/dev/null || git rev-list --max-parents=0 HEAD)
+          echo "Analyzing commits since: $LAST_FRONTEND_TAG"
 
-                  # Get commit messages and bodies for commits touching frontend/**
-                  COMMITS=$(git log "${LAST_FRONTEND_TAG}..HEAD" --format="%s%n%b" -- frontend/ pnpm-lock.yaml || echo "")
+          # Get commit messages and bodies for commits touching frontend/**
+          COMMITS=$(git log "${LAST_FRONTEND_TAG}..HEAD" --format="%s%n%b" -- frontend/ pnpm-lock.yaml || echo "")
 
-                  if [ -z "$COMMITS" ]; then
-                    echo "No frontend commits to analyze, skipping version bump"
-                    echo "bump_type=none" >> "$GITHUB_OUTPUT"
-                    exit 0
-                  fi
+          if [ -z "$COMMITS" ]; then
+            echo "No frontend commits to analyze, skipping version bump"
+            echo "bump_type=none" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-                  BUMP_TYPE="none"
+          BUMP_TYPE="none"
 
-                  while IFS= read -r line; do
-                    [ -z "$line" ] && continue
+          while IFS= read -r line; do
+            [ -z "$line" ] && continue
 
-                    # Breaking change → major
-                    if echo "$line" | grep -qiE "^(feat|fix|perf|refactor)(\(.+\))?!:|BREAKING CHANGE:"; then
-                      BUMP_TYPE="major"
-                      echo "Found breaking change: $line"
-                      break
-                    fi
+            # Breaking change → major
+            if echo "$line" | grep -qiE "^(feat|fix|perf|refactor)(\(.+\))?!:|BREAKING CHANGE:"; then
+              BUMP_TYPE="major"
+              echo "Found breaking change: $line"
+              break
+            fi
 
-                    # Feature → minor
-                    if echo "$line" | grep -qiE "^feat(\(.+\))?:"; then
-                      if [ "$BUMP_TYPE" != "major" ]; then
-                        BUMP_TYPE="minor"
-                        echo "Found feature: $line"
-                      fi
-                    fi
+            # Feature → minor
+            if echo "$line" | grep -qiE "^feat(\(.+\))?:"; then
+              if [ "$BUMP_TYPE" != "major" ]; then
+                BUMP_TYPE="minor"
+                echo "Found feature: $line"
+              fi
+            fi
 
-                    # Fix or perf → patch
-                    if echo "$line" | grep -qiE "^(fix|perf)(\(.+\))?:"; then
-                      if [ "$BUMP_TYPE" != "major" ] && [ "$BUMP_TYPE" != "minor" ]; then
-                        BUMP_TYPE="patch"
-                        echo "Found fix/perf: $line"
-                      fi
-                    fi
-                  done <<< "$COMMITS"
+            # Fix or perf → patch
+            if echo "$line" | grep -qiE "^(fix|perf)(\(.+\))?:"; then
+              if [ "$BUMP_TYPE" != "major" ] && [ "$BUMP_TYPE" != "minor" ]; then
+                BUMP_TYPE="patch"
+                echo "Found fix/perf: $line"
+              fi
+            fi
+          done <<< "$COMMITS"
 
-                  echo "Determined bump type: $BUMP_TYPE"
-                  echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
+          echo "Determined bump type: $BUMP_TYPE"
+          echo "bump_type=$BUMP_TYPE" >> "$GITHUB_OUTPUT"
 
-            - name: Bump frontend version
-              id: bump
-              if: steps.determine_bump.outputs.bump_type != 'none'
-              env:
-                  BUMP_TYPE: ${{ steps.determine_bump.outputs.bump_type }}
-              run: |
-                  set -euo pipefail
+      - name: Bump frontend version
+        id: bump
+        if: steps.determine_bump.outputs.bump_type != 'none'
+        env:
+          BUMP_TYPE: ${{ steps.determine_bump.outputs.bump_type }}
+        run: |
+          set -euo pipefail
 
-                  PKG="frontend/package.json"
+          PKG="frontend/package.json"
 
-                  OLD=$(PKG_FILE="$PKG" node -e "process.stdout.write(require('./' + process.env.PKG_FILE).version)")
-                  echo "old=$OLD" >> "$GITHUB_OUTPUT"
+          OLD=$(PKG_FILE="$PKG" node -e "process.stdout.write(require('./' + process.env.PKG_FILE).version)")
+          echo "old=$OLD" >> "$GITHUB_OUTPUT"
 
-                  IFS='.' read -r major minor patch <<< "$OLD"
+          IFS='.' read -r major minor patch <<< "$OLD"
 
-                  case "$BUMP_TYPE" in
-                    major) NEW="$((major + 1)).0.0" ;;
-                    minor) NEW="$major.$((minor + 1)).0" ;;
-                    patch) NEW="$major.$minor.$((patch + 1))" ;;
-                    *)
-                      echo "Error: Unknown bump type '$BUMP_TYPE'" >&2
-                      exit 1
-                      ;;
-                  esac
+          case "$BUMP_TYPE" in
+            major) NEW="$((major + 1)).0.0" ;;
+            minor) NEW="$major.$((minor + 1)).0" ;;
+            patch) NEW="$major.$minor.$((patch + 1))" ;;
+            *)
+              echo "Error: Unknown bump type '$BUMP_TYPE'" >&2
+              exit 1
+              ;;
+          esac
 
-                  echo "new=$NEW" >> "$GITHUB_OUTPUT"
-                  echo "tag=frontend-v${NEW}" >> "$GITHUB_OUTPUT"
+          echo "new=$NEW" >> "$GITHUB_OUTPUT"
+          echo "tag=frontend-v${NEW}" >> "$GITHUB_OUTPUT"
 
-                  # Short-circuit if the target version is already tagged.
-                  # This prevents re-bumping when a previous run created the tag but the
-                  # PR wasn't merged yet (so the anchor falls back past the tag).
-                  # All local tags are available because the Checkout step uses fetch-depth: 0.
-                  LATEST_FRONTEND_TAG="$(git tag --list 'frontend-v*' --sort=-v:refname | head -n 1)"
-                  if [ -n "$LATEST_FRONTEND_TAG" ]; then
-                    LATEST_FRONTEND_VERSION="${LATEST_FRONTEND_TAG#frontend-v}"
-                    echo "Latest frontend tag version: $LATEST_FRONTEND_VERSION"
-                    # Equality check only: if the computed version is already tagged we skip —
-                    # we are not blocking bumps to versions less than the latest existing tag.
-                    if [ "$LATEST_FRONTEND_VERSION" = "$NEW" ]; then
-                      echo "Target version $NEW is already tagged ($LATEST_FRONTEND_TAG) — nothing to do"
-                      exit 0
-                    fi
-                  fi
-                  echo "Bumping frontend version: $OLD → $NEW ($BUMP_TYPE)"
+          # Short-circuit if the target version is already tagged.
+          # This prevents re-bumping when a previous run created the tag but the
+          # PR wasn't merged yet (so the anchor falls back past the tag).
+          # All local tags are available because the Checkout step uses fetch-depth: 0.
+          LATEST_FRONTEND_TAG="$(git tag --list 'frontend-v*' --sort=-v:refname | head -n 1)"
+          if [ -n "$LATEST_FRONTEND_TAG" ]; then
+            LATEST_FRONTEND_VERSION="${LATEST_FRONTEND_TAG#frontend-v}"
+            echo "Latest frontend tag version: $LATEST_FRONTEND_VERSION"
+            # Equality check only: if the computed version is already tagged we skip —
+            # we are not blocking bumps to versions less than the latest existing tag.
+            if [ "$LATEST_FRONTEND_VERSION" = "$NEW" ]; then
+              echo "Target version $NEW is already tagged ($LATEST_FRONTEND_TAG) — nothing to do"
+              exit 0
+            fi
+          fi
+          echo "Bumping frontend version: $OLD → $NEW ($BUMP_TYPE)"
 
-                  # Update version in frontend/package.json
-                  PKG_PATH="frontend/package.json"
-                  NEW_VERSION="$NEW" PKG_FILE="$PKG_PATH" node -e "
-                    const fs = require('fs');
-                    const pkg = JSON.parse(fs.readFileSync(process.env.PKG_FILE, 'utf8'));
-                    pkg.version = process.env.NEW_VERSION;
-                    fs.writeFileSync(process.env.PKG_FILE, JSON.stringify(pkg, null, 4) + '\n');
-                  "
-                  echo "Updated ${PKG_PATH} to version ${NEW}"
+          # Update version in frontend/package.json
+          PKG_PATH="frontend/package.json"
+          NEW_VERSION="$NEW" PKG_FILE="$PKG_PATH" node -e "
+            const fs = require('fs');
+            const pkg = JSON.parse(fs.readFileSync(process.env.PKG_FILE, 'utf8'));
+            pkg.version = process.env.NEW_VERSION;
+            fs.writeFileSync(process.env.PKG_FILE, JSON.stringify(pkg, null, 4) + '\n');
+          "
+          echo "Updated ${PKG_PATH} to version ${NEW}"
 
-            - name: Commit, tag, and push
-              id: commit
-              if: steps.determine_bump.outputs.bump_type != 'none'
-              env:
-                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-                  NEW_VERSION: ${{ steps.bump.outputs.new }}
-                  TAG_NAME: ${{ steps.bump.outputs.tag }}
-              run: |
-                  set -euo pipefail
+      - name: Commit, tag, and push
+        id: commit
+        if: steps.determine_bump.outputs.bump_type != 'none'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NEW_VERSION: ${{ steps.bump.outputs.new }}
+          TAG_NAME: ${{ steps.bump.outputs.tag }}
+        run: |
+          set -euo pipefail
 
-                  git config user.name "github-actions[bot]"
-                  git config user.email "github-actions[bot]@users.noreply.github.com"
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
 
-                  if git diff --quiet; then
-                    echo "No changes detected, skipping commit"
-                    exit 0
-                  fi
+          if git diff --quiet; then
+            echo "No changes detected, skipping commit"
+            exit 0
+          fi
 
-                  BRANCH_NAME="chore/frontend-version-bump-${NEW_VERSION}-${GITHUB_RUN_ID}"
+          BRANCH_NAME="chore/frontend-version-bump-${NEW_VERSION}-${GITHUB_RUN_ID}"
 
-                  git checkout -b "$BRANCH_NAME"
-                  git add frontend/package.json
-                  git commit -m "chore(frontend): bump version to $NEW_VERSION [skip version]"
+          git checkout -b "$BRANCH_NAME"
+          git add frontend/package.json
+          git commit -m "chore(frontend): bump version to $NEW_VERSION [skip version]"
 
-                  # Check whether the tag already exists on the remote.
-                  # Use --exit-code so network/auth errors (exit != 2) are distinguishable
-                  # from "tag not found" (exit 2) and are treated as real failures.
-                  # Set the default output before any early exit paths so downstream
-                  # steps always see a value.
-                  TAG_CREATED=false
-                  echo "tag_created=false" >> "$GITHUB_OUTPUT"
-                  LS_REMOTE_EXIT=0
-                  git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null || LS_REMOTE_EXIT=$?
-                  if [ "$LS_REMOTE_EXIT" -eq 0 ]; then
-                    echo "Tag $TAG_NAME already exists on remote, skipping tag creation"
-                  elif [ "$LS_REMOTE_EXIT" -eq 2 ]; then
-                    git tag -a "$TAG_NAME" -m "Frontend release $NEW_VERSION"
-                    TAG_CREATED=true
-                    echo "tag_created=true" >> "$GITHUB_OUTPUT"
-                  else
-                    echo "git ls-remote failed with status $LS_REMOTE_EXIT, aborting" >&2
-                    exit "$LS_REMOTE_EXIT"
-                  fi
+          # Check whether the tag already exists on the remote.
+          # Use --exit-code so network/auth errors (exit != 2) are distinguishable
+          # from "tag not found" (exit 2) and are treated as real failures.
+          # Set the default output before any early exit paths so downstream
+          # steps always see a value.
+          TAG_CREATED=false
+          echo "tag_created=false" >> "$GITHUB_OUTPUT"
+          LS_REMOTE_EXIT=0
+          git ls-remote --exit-code --tags origin "refs/tags/$TAG_NAME" >/dev/null || LS_REMOTE_EXIT=$?
+          if [ "$LS_REMOTE_EXIT" -eq 0 ]; then
+            echo "Tag $TAG_NAME already exists on remote, skipping tag creation"
+          elif [ "$LS_REMOTE_EXIT" -eq 2 ]; then
+            git tag -a "$TAG_NAME" -m "Frontend release $NEW_VERSION"
+            TAG_CREATED=true
+            echo "tag_created=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "git ls-remote failed with status $LS_REMOTE_EXIT, aborting" >&2
+            exit "$LS_REMOTE_EXIT"
+          fi
 
-                  # Always push the bump branch and create/merge the PR — even if the tag
-                  # already existed — so the version bump commit reaches main in cases where
-                  # a previous run pushed the tag but the PR was lost before merging.
-                  git push origin "$BRANCH_NAME"
-                  if [ "$TAG_CREATED" = "true" ]; then
-                    git push origin "$TAG_NAME"
-                  fi
+          # Always push the bump branch and create/merge the PR — even if the tag
+          # already existed — so the version bump commit reaches main in cases where
+          # a previous run pushed the tag but the PR was lost before merging.
+          git push origin "$BRANCH_NAME"
+          if [ "$TAG_CREATED" = "true" ]; then
+            git push origin "$TAG_NAME"
+          fi
 
-                  PR_NUMBER=$(gh pr create \
-                    --base main \
-                    --head "$BRANCH_NAME" \
-                    --title "chore(frontend): bump version to $NEW_VERSION" \
-                    --body "Automated frontend version bump to \`$NEW_VERSION\` ([skip version])." \
-                    --label "automated" \
-                    --json number \
-                    --jq '.number')
+          PR_NUMBER=$(gh pr create \
+            --base main \
+            --head "$BRANCH_NAME" \
+            --title "chore(frontend): bump version to $NEW_VERSION" \
+            --body "Automated frontend version bump to \`$NEW_VERSION\` ([skip version])." \
+            --label "automated" \
+            --json number \
+            --jq '.number')
 
-                  # Use --merge (not --squash) so the tagged commit stays in main history
-                  # and git describe --match "frontend-v*" can find the tag from main.
-                  # --delete-branch cleans up the short-lived bump branch automatically.
-                  gh pr merge "$PR_NUMBER" --auto --merge --delete-branch
+          # Use --merge (not --squash) so the tagged commit stays in main history
+          # and git describe --match "frontend-v*" can find the tag from main.
+          # --delete-branch cleans up the short-lived bump branch automatically.
+          gh pr merge "$PR_NUMBER" --auto --merge --delete-branch
 
-                  if [ "$TAG_CREATED" = "true" ]; then
-                    echo "Committed, tagged $TAG_NAME, and opened PR from $BRANCH_NAME into main"
-                  else
-                    echo "Committed (tag $TAG_NAME already existed on remote), opened PR from $BRANCH_NAME into main"
-                  fi
+          if [ "$TAG_CREATED" = "true" ]; then
+            echo "Committed, tagged $TAG_NAME, and opened PR from $BRANCH_NAME into main"
+          else
+            echo "Committed (tag $TAG_NAME already existed on remote), opened PR from $BRANCH_NAME into main"
+          fi
 
-            - name: Summary
-              if: steps.determine_bump.outputs.bump_type != 'none'
-              env:
-                  OLD_VERSION: ${{ steps.bump.outputs.old }}
-                  NEW_VERSION: ${{ steps.bump.outputs.new }}
-                  TAG: ${{ steps.bump.outputs.tag }}
-                  BUMP_TYPE: ${{ steps.determine_bump.outputs.bump_type }}
-                  TAG_CREATED: ${{ steps.commit.outputs.tag_created }}
-              run: |
-                  if [ "$TAG_CREATED" = "true" ]; then
-                    TAG_LINE="The \`$TAG\` tag has been created."
-                  else
-                    TAG_LINE="The \`$TAG\` tag already exists on the remote (skipped creation)."
-                  fi
-                  cat <<EOF >> $GITHUB_STEP_SUMMARY
-                  ## 🏷️ Frontend Version Bump
+      - name: Summary
+        if: steps.determine_bump.outputs.bump_type != 'none'
+        env:
+          OLD_VERSION: ${{ steps.bump.outputs.old }}
+          NEW_VERSION: ${{ steps.bump.outputs.new }}
+          TAG: ${{ steps.bump.outputs.tag }}
+          BUMP_TYPE: ${{ steps.determine_bump.outputs.bump_type }}
+          TAG_CREATED: ${{ steps.commit.outputs.tag_created }}
+        run: |
+          if [ "$TAG_CREATED" = "true" ]; then
+            TAG_LINE="The \`$TAG\` tag has been created."
+          else
+            TAG_LINE="The \`$TAG\` tag already exists on the remote (skipped creation)."
+          fi
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          ## 🏷️ Frontend Version Bump
 
-                  - **Old Version**: $OLD_VERSION
-                  - **New Version**: $NEW_VERSION
-                  - **Tag**: $TAG
-                  - **Bump Type**: $BUMP_TYPE
+          - **Old Version**: $OLD_VERSION
+          - **New Version**: $NEW_VERSION
+          - **Tag**: $TAG
+          - **Bump Type**: $BUMP_TYPE
 
-                  $TAG_LINE
-                  EOF
+          $TAG_LINE
+          EOF
 
-            - name: Skip summary
-              if: steps.determine_bump.outputs.bump_type == 'none'
-              run: |
-                  cat <<EOF >> $GITHUB_STEP_SUMMARY
-                  ## ℹ️ No Frontend Version Bump Required
+      - name: Skip summary
+        if: steps.determine_bump.outputs.bump_type == 'none'
+        run: |
+          cat <<EOF >> $GITHUB_STEP_SUMMARY
+          ## ℹ️ No Frontend Version Bump Required
 
-                  No frontend commits requiring a version bump were found since the last \`frontend-v*\` tag.
+          No frontend commits requiring a version bump were found since the last \`frontend-v*\` tag.
 
-                  Commits that trigger a frontend version bump:
-                  - \`feat:\` / \`feat(frontend):\` → minor bump
-                  - \`fix:\` / \`fix(frontend):\` → patch bump
-                  - \`perf:\` / \`perf(frontend):\` → patch bump
-                  - \`BREAKING CHANGE:\` or \`feat!:\` → major bump
-                  EOF
+          Commits that trigger a frontend version bump:
+          - \`feat:\` / \`feat(frontend):\` → minor bump
+          - \`fix:\` / \`fix(frontend):\` → patch bump
+          - \`perf:\` / \`perf(frontend):\` → patch bump
+          - \`BREAKING CHANGE:\` or \`feat!:\` → major bump
+          EOF

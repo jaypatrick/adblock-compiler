@@ -2,21 +2,21 @@ name: Benchmark
 
 on:
     push:
-        branches: [main]
+        branches: [master, main]
         paths:
-            - 'src/**'
-            - 'deno.json'
-            - 'deno.lock'
+            - "src/**"
+            - "deno.json"
+            - "deno.lock"
     pull_request:
-        branches: [main]
+        branches: [master, main]
         paths:
-            - 'src/**'
-            - 'deno.json'
-            - 'deno.lock'
+            - "src/**"
+            - "deno.json"
+            - "deno.lock"
     workflow_dispatch:
 
 env:
-    DENO_VERSION: '2.x'
+    DENO_VERSION: "2.x"
 
 jobs:
     bench:

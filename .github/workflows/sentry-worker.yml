@@ -2,14 +2,14 @@ name: Sentry Source Maps (Worker)
 
 on:
     push:
-        branches: [main]
+        branches: [master, main]
         paths:
-            - 'worker/**'
-            - 'src/**'
-            - 'wrangler.toml'
+            - "worker/**"
+            - "src/**"
+            - "wrangler.toml"
         tags:
-            - 'compiler-v*'
-            - 'v*'
+            - "compiler-v*"
+            - "v*"
     workflow_dispatch:
 
 jobs:
