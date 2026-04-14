@@ -92,7 +92,7 @@ export const CreateFilterSourceSchema = z.object({
     description: z.string().max(1000).optional(),
     homepage: UrlSchema.optional(),
     license: z.string().max(100).optional(),
-    isPublic: z.boolean().default(true),
+    visibility: z.enum(['private', 'org', 'public', 'featured']).default('private'),
     ownerUserId: UuidSchema.optional(),
     refreshIntervalSeconds: z.number().int().min(60).max(86400).default(3600),
 });

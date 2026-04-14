@@ -123,7 +123,7 @@ function createMockPrismaClient(): any {
                     }
                 }
 
-                // Simple where for flat conditions (e.g. { isPublic: true })
+                // Simple where for flat conditions (e.g. { visibility: 'public' })
                 if (args.where && !args.where.AND) {
                     for (const [k, v] of Object.entries(args.where)) {
                         if (typeof v === 'boolean' || typeof v === 'string' || typeof v === 'number') {
@@ -688,7 +688,7 @@ Deno.test('createFilterSource - returns { id }', async () => {
     const result = await adapter.createFilterSource({
         url: 'https://easylist.to/easylist.txt',
         name: 'EasyList',
-        isPublic: true,
+        visibility: 'public',
         refreshIntervalSeconds: 86400,
     });
     assertExists(result.id);
@@ -704,13 +704,13 @@ Deno.test('listFilterSources - returns array', async () => {
     await adapter.createFilterSource({
         url: 'https://list1.example.com',
         name: 'List1',
-        isPublic: true,
+        visibility: 'public',
         refreshIntervalSeconds: 3600,
     });
     await adapter.createFilterSource({
         url: 'https://list2.example.com',
         name: 'List2',
-        isPublic: false,
+        visibility: 'private',
         refreshIntervalSeconds: 3600,
     });
 

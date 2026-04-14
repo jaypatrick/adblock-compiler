@@ -156,10 +156,18 @@ CREATE UNIQUE INDEX filter_sources_url_owner_unique
     ON filter_sources(url, owner_user_id, organization_id);
 ```
 
+> **Note on NULL handling**: PostgreSQL UNIQUE indexes allow multiple `NULL` values, so the composite index does not enforce uniqueness for system-managed/global rows where both owner columns are `NULL`. A separate **partial unique index** handles this case:
+>
+> ```sql
+> CREATE UNIQUE INDEX filter_sources_url_global_unique
+>     ON filter_sources(url)
+>     WHERE owner_user_id IS NULL AND organization_id IS NULL;
+> ```
+
 This allows:
 - Org A and Org B to both subscribe to the same EasyList URL independently
 - A user and an org to both own copies of the same URL
-- System-managed global sources (both FKs null) to remain unique per URL
+- System-managed global sources (both FKs null) to remain unique per URL (enforced by the partial index above)
 
 ---
 
@@ -171,8 +179,10 @@ All `organizationId` and `ownerUserId` FK columns are indexed for efficient tena
 |---|---|---|
 | `users` | `users_plan_id_idx` | Plan-tier lookup |
 | `organization` | `organization_plan_id_idx` | Plan-tier lookup |
+| `filter_sources` | `filter_sources_owner_user_id_idx` | User-scoped source listing + FK cascades |
 | `filter_sources` | `filter_sources_organization_id_idx` | Org-scoped source listing |
 | `filter_sources` | `filter_sources_visibility_idx` | Discovery / public listing |
+| `filter_sources` | `filter_sources_url_global_unique` (partial) | Uniqueness for system/global sources |
 | `compiled_outputs` | `compiled_outputs_organization_id_idx` | Org-scoped output listing |
 | `compiled_outputs` | `compiled_outputs_visibility_idx` | Shared output discovery |
 | `configurations` | `configurations_owner_user_id_idx` | User config listing |

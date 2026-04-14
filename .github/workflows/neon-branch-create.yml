@@ -219,7 +219,9 @@ jobs:
           #   - "P3009"                            — printed by `prisma migrate deploy`
           # A non-zero exit alone means *pending* (unapplied) migrations, which is
           # normal on a fresh branch and must NOT trigger the resolve step.
-          if echo "$STATUS" | grep -qE "P3009|Following migration.*failed|have failed"; then
+          # The patterns are intentionally narrow to avoid false positives on unrelated
+          # log lines (e.g. mentions of "failed" in migration names or tool output).
+          if echo "$STATUS" | grep -qE "P3009|Following migration.*have failed"; then
             echo "⚠️  Stuck failed migration(s) detected — resolving via prisma migrate resolve."
 
             # Extract failed migration name(s).  They appear on the lines

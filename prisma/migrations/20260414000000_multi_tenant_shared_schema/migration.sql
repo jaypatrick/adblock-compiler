@@ -107,8 +107,11 @@ CREATE INDEX IF NOT EXISTS "users_plan_id_idx" ON "users"("plan_id");
 -- ============================================================================
 -- 5. Modify filter_sources:
 --    a) Drop old global @unique on url
---    b) Add organization_id, visibility, is_featured columns
+--    b) Add organization_id, visibility columns
+--       (is_featured removed in favour of visibility='featured' as single source of truth)
 --    c) Add composite unique (url, owner_user_id, organization_id)
+--    d) Add partial unique index for global/system-managed rows (both FKs NULL)
+--    e) Add FK constraint + index for owner_user_id
 -- ============================================================================
 
 -- Drop the old global unique constraint on url (name from Prisma init migration)
@@ -117,8 +120,7 @@ DROP INDEX IF EXISTS "filter_sources_url_key";
 -- Add new columns
 ALTER TABLE "filter_sources"
     ADD COLUMN IF NOT EXISTS "organization_id" UUID        REFERENCES "organization"("id") ON DELETE CASCADE,
-    ADD COLUMN IF NOT EXISTS "visibility"      TEXT        NOT NULL DEFAULT 'private',
-    ADD COLUMN IF NOT EXISTS "is_featured"     BOOLEAN     NOT NULL DEFAULT false;
+    ADD COLUMN IF NOT EXISTS "visibility"      TEXT        NOT NULL DEFAULT 'private';
 
 -- Composite unique: a URL must be unique per owner context.
 -- Migration note: existing rows have owner_user_id either set or NULL and organization_id = NULL
@@ -131,6 +133,29 @@ ALTER TABLE "filter_sources"
 CREATE UNIQUE INDEX IF NOT EXISTS "filter_sources_url_owner_unique"
     ON "filter_sources"("url", "owner_user_id", "organization_id");
 
+-- Partial unique index: global/system-managed sources (both FK columns NULL) must be unique per URL.
+-- The composite index above does NOT enforce this because PostgreSQL UNIQUE allows multiple NULL values.
+CREATE UNIQUE INDEX IF NOT EXISTS "filter_sources_url_global_unique"
+    ON "filter_sources"("url")
+    WHERE "owner_user_id" IS NULL AND "organization_id" IS NULL;
+
+-- FK constraint + index for owner_user_id (required for ON DELETE SET NULL to work at the DB level
+-- and for efficient tenant-scoped queries on owner_user_id).
+-- Uses DO block for idempotency — ADD CONSTRAINT IF NOT EXISTS is not supported in PostgreSQL.
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'filter_sources_owner_user_id_fkey'
+          AND table_name = 'filter_sources'
+          AND constraint_type = 'FOREIGN KEY'
+    ) THEN
+        ALTER TABLE "filter_sources"
+            ADD CONSTRAINT "filter_sources_owner_user_id_fkey"
+            FOREIGN KEY ("owner_user_id") REFERENCES "users"("id") ON DELETE SET NULL;
+    END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS "filter_sources_owner_user_id_idx"    ON "filter_sources"("owner_user_id");
 CREATE INDEX IF NOT EXISTS "filter_sources_organization_id_idx" ON "filter_sources"("organization_id");
 CREATE INDEX IF NOT EXISTS "filter_sources_visibility_idx"       ON "filter_sources"("visibility");
 
@@ -209,7 +234,11 @@ CREATE TABLE IF NOT EXISTS "data_retention_consents" (
     "ip_address"      TEXT,
     "user_agent"      TEXT,
 
-    CONSTRAINT "data_retention_consents_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "data_retention_consents_pkey" PRIMARY KEY ("id"),
+    -- Exactly one of user_id / organization_id must be set per row.
+    -- XOR: one is NOT NULL and the other IS NULL.
+    CONSTRAINT "data_retention_consents_owner_xor_check"
+        CHECK ((user_id IS NOT NULL) <> (organization_id IS NOT NULL))
 );
 
 CREATE INDEX IF NOT EXISTS "data_retention_consents_user_id_idx"         ON "data_retention_consents"("user_id");

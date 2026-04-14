@@ -265,13 +265,12 @@ model FilterSource {
   ownerUserId            String?   @map("owner_user_id") @db.Uuid
   organizationId         String?   @map("organization_id") @db.Uuid
 
-  // Sharing / discovery
+  // Sharing / discovery — single source of truth.
   // private  → only owner/org members can see and use this source
   // org      → all members of the owning org can see and use this source
   // public   → globally discoverable and usable by any authenticated user
-  // featured → globally listed and pinned in UI (admin-set only)
+  // featured → globally listed and pinned in UI (admin-set only); implies public
   visibility             String    @default("private") @map("visibility")
-  isFeatured             Boolean   @default(false) @map("is_featured")
 
   refreshIntervalSeconds Int       @default(3600) @map("refresh_interval_seconds")
   lastCheckedAt          DateTime? @map("last_checked_at") @db.Timestamptz
@@ -291,6 +290,10 @@ model FilterSource {
 
   // A URL can appear multiple times in the table but must be unique per owner context.
   // Two different orgs can independently subscribe to the same upstream EasyList URL.
+  // Note: This composite unique does not enforce uniqueness for rows where BOTH owner columns
+  // are NULL (PostgreSQL UNIQUE allows multiple NULL values). A partial unique index on
+  // (url) WHERE owner_user_id IS NULL AND organization_id IS NULL is created in the migration
+  // to enforce global-source uniqueness at the DB level.
   @@unique([url, ownerUserId, organizationId], name: "filter_sources_url_owner_unique")
   @@index([ownerUserId])
   @@index([organizationId])
@@ -327,7 +330,8 @@ model FilterListVersion {
 // ============================================================================
 
 /// Stores parsed AST representations of filter lists.
-/// Gated by SubscriptionPlan.astStorageEnabled — only available to pro+ and vendor tiers.
+/// Gated by SubscriptionPlan.astStorageEnabled — only available to pro+ tiers
+/// (pro, vendor, and enterprise); free tier cannot store ASTs.
 /// The `ast` field is schema-agnostic JSON; the `parserVersion` field tracks which
 /// parser version produced this AST so it can be re-parsed if the schema changes.
 model FilterListAst {
@@ -627,10 +631,13 @@ model CompilationMetadata {
 ///   - what categories of data are stored
 ///   - why each category is stored
 ///   - how long each category is retained (retentionDays)
+/// DB CHECK constraint enforces that exactly one of userId / organizationId is set per row.
 model DataRetentionConsent {
   id              String   @id @default(uuid()) @db.Uuid
 
-  // One of these is set — user-level or org-level consent
+  // Exactly one of these is set — user-level or org-level consent.
+  // Enforced by a CHECK constraint in the migration SQL:
+  //   CHECK ((user_id IS NOT NULL) <> (organization_id IS NOT NULL))
   userId          String?  @map("user_id") @db.Uuid
   organizationId  String?  @map("organization_id") @db.Uuid
 
