@@ -130,10 +130,23 @@ UPDATE "filter_sources"
 SET "visibility" = CASE WHEN "is_public" THEN 'public' ELSE 'private' END
 WHERE "visibility" IS NULL;
 
--- Now enforce NOT NULL with default for future inserts
+-- Now enforce NOT NULL with default for future inserts, and add a CHECK to guard the closed set.
 ALTER TABLE "filter_sources"
     ALTER COLUMN "visibility" SET NOT NULL,
     ALTER COLUMN "visibility" SET DEFAULT 'private';
+
+-- Enforce that visibility is a member of the closed set (idempotent via DO block).
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'filter_sources_visibility_check'
+          AND table_name = 'filter_sources'
+    ) THEN
+        ALTER TABLE "filter_sources"
+            ADD CONSTRAINT "filter_sources_visibility_check"
+            CHECK ("visibility" IN ('private', 'org', 'public', 'featured'));
+    END IF;
+END $$;
 
 -- Composite unique: a URL must be unique per owner context.
 -- Migration note: existing rows have owner_user_id either set or NULL and organization_id = NULL
@@ -152,8 +165,11 @@ CREATE UNIQUE INDEX IF NOT EXISTS "filter_sources_url_global_unique"
     ON "filter_sources"("url")
     WHERE "owner_user_id" IS NULL AND "organization_id" IS NULL;
 
--- FK constraint + index for owner_user_id (required for ON DELETE SET NULL to work at the DB level
+-- FK constraint + index for owner_user_id (required for ON DELETE CASCADE to work at the DB level
 -- and for efficient tenant-scoped queries on owner_user_id).
+-- Uses CASCADE (not SET NULL) to avoid a conflict with the partial unique index
+-- filter_sources_url_global_unique: nulling owner_user_id on delete would promote the row to
+-- "global" scope, potentially violating UNIQUE(url) WHERE both FK columns are NULL.
 -- Uses DO block for idempotency — ADD CONSTRAINT IF NOT EXISTS is not supported in PostgreSQL.
 DO $$ BEGIN
     IF NOT EXISTS (
@@ -164,7 +180,7 @@ DO $$ BEGIN
     ) THEN
         ALTER TABLE "filter_sources"
             ADD CONSTRAINT "filter_sources_owner_user_id_fkey"
-            FOREIGN KEY ("owner_user_id") REFERENCES "users"("id") ON DELETE SET NULL;
+            FOREIGN KEY ("owner_user_id") REFERENCES "users"("id") ON DELETE CASCADE;
     END IF;
 END $$;
 
@@ -178,6 +194,18 @@ CREATE INDEX IF NOT EXISTS "filter_sources_visibility_idx"       ON "filter_sour
 ALTER TABLE "compiled_outputs"
     ADD COLUMN IF NOT EXISTS "organization_id" UUID REFERENCES "organization"("id") ON DELETE SET NULL,
     ADD COLUMN IF NOT EXISTS "visibility"      TEXT NOT NULL DEFAULT 'private';
+
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'compiled_outputs_visibility_check'
+          AND table_name = 'compiled_outputs'
+    ) THEN
+        ALTER TABLE "compiled_outputs"
+            ADD CONSTRAINT "compiled_outputs_visibility_check"
+            CHECK ("visibility" IN ('private', 'org', 'public', 'featured'));
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS "compiled_outputs_organization_id_idx" ON "compiled_outputs"("organization_id");
 CREATE INDEX IF NOT EXISTS "compiled_outputs_visibility_idx"       ON "compiled_outputs"("visibility");
@@ -201,7 +229,9 @@ CREATE TABLE IF NOT EXISTS "configurations" (
 
     CONSTRAINT "configurations_pkey" PRIMARY KEY ("id"),
     CONSTRAINT "configurations_forked_from_id_fkey"
-        FOREIGN KEY ("forked_from_id") REFERENCES "configurations"("id") ON DELETE SET NULL
+        FOREIGN KEY ("forked_from_id") REFERENCES "configurations"("id") ON DELETE SET NULL,
+    CONSTRAINT "configurations_visibility_check"
+        CHECK ("visibility" IN ('private', 'org', 'public', 'featured'))
 );
 
 CREATE INDEX IF NOT EXISTS "configurations_owner_user_id_idx"   ON "configurations"("owner_user_id");
@@ -225,7 +255,9 @@ CREATE TABLE IF NOT EXISTS "filter_list_asts" (
     "created_at"      TIMESTAMPTZ NOT NULL DEFAULT now(),
     "updated_at"      TIMESTAMPTZ NOT NULL,
 
-    CONSTRAINT "filter_list_asts_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "filter_list_asts_pkey" PRIMARY KEY ("id"),
+    CONSTRAINT "filter_list_asts_visibility_check"
+        CHECK ("visibility" IN ('private', 'org', 'public', 'featured'))
 );
 
 CREATE INDEX IF NOT EXISTS "filter_list_asts_owner_user_id_idx"   ON "filter_list_asts"("owner_user_id");
@@ -236,12 +268,16 @@ CREATE INDEX IF NOT EXISTS "filter_list_asts_visibility_idx"       ON "filter_li
 -- ============================================================================
 -- 9. Create data_retention_consents table (append-only audit log)
 -- ============================================================================
+-- user_id and organization_id are plain UUID columns with NO FK constraints.
+-- This is intentional: consent rows must survive hard-deletes of the referenced
+-- user/org to preserve the compliance audit trail. The XOR CHECK constraint still
+-- enforces that exactly one of the two columns is set per row.
+-- An idempotent block below drops any pre-existing RESTRICT FKs if they were
+-- created by an earlier version of this migration.
 CREATE TABLE IF NOT EXISTS "data_retention_consents" (
     "id"              UUID        NOT NULL DEFAULT gen_random_uuid(),
-    -- RESTRICT (not SET NULL) because SET NULL would violate the XOR CHECK constraint below:
-    -- deleting a user/org would attempt to null the FK, making both columns NULL.
-    "user_id"         UUID        REFERENCES "users"("id")        ON DELETE RESTRICT,
-    "organization_id" UUID        REFERENCES "organization"("id") ON DELETE RESTRICT,
+    "user_id"         UUID,
+    "organization_id" UUID,
     "policy_version"  TEXT        NOT NULL,
     "retention_days"  INTEGER     NOT NULL,
     "data_categories" TEXT[]      NOT NULL,
@@ -255,6 +291,30 @@ CREATE TABLE IF NOT EXISTS "data_retention_consents" (
     CONSTRAINT "data_retention_consents_owner_xor_check"
         CHECK ((user_id IS NOT NULL) <> (organization_id IS NOT NULL))
 );
+
+-- Drop pre-existing RESTRICT FKs if they were created by an earlier run of this migration.
+-- These FKs conflict with hard-deletes of users/orgs (see note above).
+DO $$ BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'data_retention_consents_user_id_fkey'
+          AND table_name = 'data_retention_consents'
+          AND constraint_type = 'FOREIGN KEY'
+    ) THEN
+        ALTER TABLE "data_retention_consents" DROP CONSTRAINT "data_retention_consents_user_id_fkey";
+    END IF;
+END $$;
+
+DO $$ BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.table_constraints
+        WHERE constraint_name = 'data_retention_consents_organization_id_fkey'
+          AND table_name = 'data_retention_consents'
+          AND constraint_type = 'FOREIGN KEY'
+    ) THEN
+        ALTER TABLE "data_retention_consents" DROP CONSTRAINT "data_retention_consents_organization_id_fkey";
+    END IF;
+END $$;
 
 CREATE INDEX IF NOT EXISTS "data_retention_consents_user_id_idx"         ON "data_retention_consents"("user_id");
 CREATE INDEX IF NOT EXISTS "data_retention_consents_organization_id_idx" ON "data_retention_consents"("organization_id");

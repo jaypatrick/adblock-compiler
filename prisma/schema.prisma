@@ -103,7 +103,6 @@ model User {
   filterSources       FilterSource[]
   configurations      Configuration[]
   filterListAsts      FilterListAst[]
-  dataRetentionConsents DataRetentionConsent[]
 
   @@index([planId])
   @@map("users")
@@ -220,7 +219,6 @@ model Organization {
   configurations        Configuration[]
   compiledOutputs       CompiledOutput[]
   filterListAsts        FilterListAst[]
-  dataRetentionConsents DataRetentionConsent[]
 
   @@index([planId])
   @@map("organization")
@@ -270,6 +268,7 @@ model FilterSource {
   // org      → all members of the owning org can see and use this source
   // public   → globally discoverable and usable by any authenticated user
   // featured → globally listed and pinned in UI (admin-set only); implies public
+  // Closed set enforced at the DB level by a CHECK constraint in the migration.
   visibility             String    @default("private") @map("visibility")
 
   refreshIntervalSeconds Int       @default(3600) @map("refresh_interval_seconds")
@@ -281,7 +280,7 @@ model FilterSource {
   createdAt              DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt              DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  ownerUser       User?         @relation(fields: [ownerUserId], references: [id], onDelete: SetNull)
+  ownerUser       User?         @relation(fields: [ownerUserId], references: [id], onDelete: Cascade)
   organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   versions        FilterListVersion[]
   healthSnapshots SourceHealthSnapshot[]
@@ -632,12 +631,15 @@ model CompilationMetadata {
 ///   - why each category is stored
 ///   - how long each category is retained (retentionDays)
 /// DB CHECK constraint enforces that exactly one of userId / organizationId is set per row.
+/// No FK constraints — user_id / organization_id are stored as plain UUIDs so that the audit log
+/// rows survive hard-deletes of the referenced user/org (immutable compliance trail).
 model DataRetentionConsent {
   id              String   @id @default(uuid()) @db.Uuid
 
   // Exactly one of these is set — user-level or org-level consent.
   // Enforced by a CHECK constraint in the migration SQL:
   //   CHECK ((user_id IS NOT NULL) <> (organization_id IS NOT NULL))
+  // No DB FK — consent rows intentionally outlive the referenced user/org (audit trail).
   userId          String?  @map("user_id") @db.Uuid
   organizationId  String?  @map("organization_id") @db.Uuid
 
@@ -650,12 +652,6 @@ model DataRetentionConsent {
   acceptedAt      DateTime @default(now()) @map("accepted_at") @db.Timestamptz
   ipAddress       String?  @map("ip_address")
   userAgent       String?  @map("user_agent")
-
-  // onDelete: Restrict — SET NULL would violate the XOR CHECK constraint
-  // (both FKs becoming NULL after delete). App must delete consent records
-  // before deleting the parent user/org.
-  user            User?         @relation(fields: [userId], references: [id], onDelete: Restrict)
-  organization    Organization? @relation(fields: [organizationId], references: [id], onDelete: Restrict)
 
   @@index([userId])
   @@index([organizationId])

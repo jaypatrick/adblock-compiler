@@ -84,7 +84,16 @@ Every content resource (`FilterSource`, `Configuration`, `CompiledOutput`, `Filt
 | `visibility` | `TEXT` | `private` \| `org` \| `public` |
 
 **Staleness Detection:**
-When the parser library is upgraded, the `parserVersion` field can be compared against the current library version to detect stale ASTs that need re-parsing. Queries like `WHERE parser_version < '2.0.0'` identify ASTs produced by an older schema.
+When the parser library is upgraded, the `parserVersion` field can be used to detect stale ASTs that need re-parsing.
+
+> ⚠️ **Do not use lexicographic `<` / `>` comparisons on `parserVersion`** — `TEXT` ordering does not follow semver (e.g. `'10.0.0' < '2.0.0'` evaluates to `true` lexicographically, which is incorrect for semver). Instead, compare for exact version equality or inequality:
+>
+> ```sql
+> -- Find all ASTs NOT produced by the current parser version:
+> SELECT * FROM filter_list_asts WHERE parser_version != '2.0.0';
+> ```
+>
+> For ordered range queries, consider storing the version as an integer (e.g. `schema_version INT DEFAULT 1`) and incrementing it on breaking parser changes, or maintain an explicit `is_stale BOOLEAN DEFAULT false` flag toggled during upgrades.
 
 ---
 
