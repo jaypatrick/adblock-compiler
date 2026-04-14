@@ -11,15 +11,15 @@
  *   { path: 'compiler', title: 'Compiler', data: { metaDescription: '...' } }
  *
  * Resulting document title:
- *   "Compiler | Adblock Compiler"
+ *   "Compiler | Bloqr"
  */
 
 import { Injectable, inject } from '@angular/core';
 import { Meta, Title } from '@angular/platform-browser';
 import { ActivatedRouteSnapshot, RouterStateSnapshot, TitleStrategy } from '@angular/router';
 
-const APP_NAME = 'Adblock Compiler';
-const DEFAULT_DESCRIPTION = 'Compile, validate, and transform adblock filter lists in real-time. Open-source compiler-as-a-service powered by Cloudflare Workers.';
+const APP_NAME = 'Bloqr';
+const DEFAULT_DESCRIPTION = 'AI-powered adblock list management and real-time threat intelligence. Block ads, trackers, and malware at the network level — without routing your traffic anywhere.';
 
 @Injectable({ providedIn: 'root' })
 export class AppTitleStrategy extends TitleStrategy {
