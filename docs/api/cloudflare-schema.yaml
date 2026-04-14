@@ -51,13 +51,13 @@ tags:
     -
         name: Authentication
         description: >-
-            User-level authentication endpoints — API key management and webhook receivers. Requires Clerk JWT or API
-            key auth.
+            User-level authentication endpoints — API key management and webhook receivers. Requires Bearer token
+            (Better Auth JWT or API key).
     -
         name: LocalAuth
         description: >-
-            Local JWT auth bridge — self-contained sign-up/login until Clerk is production-ready. When `CLERK_JWKS_URL`
-            is set the provider auto-switches to Clerk and these endpoints are no longer used.
+            Local JWT auth bridge — self-contained sign-up/login. When Better Auth is configured these endpoints are no
+            longer the primary auth flow.
     -
         name: Info
         description: 'API metadata and self-describing schema endpoints (anonymous access, cached).'
@@ -1303,11 +1303,11 @@ paths:
             description: |
                 Creates a new API key for the authenticated user.
                 The raw API key (with `abc_` prefix) is returned **only once** — store it securely.
-                Requires Clerk JWT authentication.
+                Requires Bearer token (Better Auth JWT or API key).
             operationId: userCreateApiKey
             security:
                 -
-                    ClerkJWT: []
+                    BearerAuth: []
             requestBody:
                 required: true
                 content:
@@ -1332,11 +1332,11 @@ paths:
             description: |
                 Lists all API keys belonging to the authenticated user.
                 Returns metadata only — never the key hash or plaintext.
-                Requires Clerk JWT authentication.
+                Requires Bearer token (Better Auth JWT or API key).
             operationId: userListApiKeys
             security:
                 -
-                    ClerkJWT: []
+                    BearerAuth: []
             responses:
                 '200':
                     description: List of API keys
@@ -1358,7 +1358,7 @@ paths:
             operationId: userRevokeApiKey
             security:
                 -
-                    ClerkJWT: []
+                    BearerAuth: []
             parameters:
                 -
                     name: keyId
@@ -1390,11 +1390,11 @@ paths:
             summary: Update API key
             description: |
                 Updates an API key's name or scopes. Only the key owner can update their own keys.
-                Requires Clerk JWT authentication.
+                Requires Bearer token (Better Auth JWT or API key).
             operationId: userUpdateApiKey
             security:
                 -
-                    ClerkJWT: []
+                    BearerAuth: []
             parameters:
                 -
                     name: keyId
@@ -1423,72 +1423,6 @@ paths:
                     $ref: '#/components/responses/UnauthorizedError'
                 '404':
                     description: API key not found or already revoked
-    /api/webhooks/clerk:
-        post:
-            tags:
-                - Authentication
-            summary: Clerk webhook receiver
-            description: |
-                Receives Clerk webhook events (user.created, user.updated, user.deleted, session.created).
-                Verified via Svix webhook signature. This endpoint is called by Clerk's webhook infrastructure
-                and should not be called directly.
-            operationId: clerkWebhook
-            requestBody:
-                required: true
-                content:
-                    application/json:
-                        schema:
-                            type: object
-                            description: Clerk webhook event payload (Svix-signed)
-                            properties:
-                                type:
-                                    type: string
-                                    description: 'Event type (e.g. user.created, user.updated)'
-                                data:
-                                    type: object
-                                    description: Event-specific payload
-                                object:
-                                    type: string
-                                    enum:
-                                        - event
-            parameters:
-                -
-                    name: svix-id
-                    in: header
-                    required: true
-                    schema:
-                        type: string
-                    description: Svix webhook ID
-                -
-                    name: svix-timestamp
-                    in: header
-                    required: true
-                    schema:
-                        type: string
-                    description: Svix webhook timestamp
-                -
-                    name: svix-signature
-                    in: header
-                    required: true
-                    schema:
-                        type: string
-                    description: Svix webhook signature
-            responses:
-                '200':
-                    description: Webhook processed successfully
-                    content:
-                        application/json:
-                            schema:
-                                type: object
-                                properties:
-                                    success:
-                                        type: boolean
-                                    message:
-                                        type: string
-                '400':
-                    description: Invalid webhook signature or payload
-                '401':
-                    description: Webhook signature verification failed
     /admin/migrate/d1-to-pg:
         post:
             tags:
@@ -2017,8 +1951,7 @@ paths:
 
                 **Rate limited** (anonymous tier). Returns a signed HS256 JWT on success.
 
-                > Only active when `CLERK_JWKS_URL` is not configured. When Clerk is live,
-                > sign up via the Clerk-hosted UI instead.
+                > Only active when Better Auth is not the primary provider.
             operationId: localSignup
             requestBody:
                 required: true
@@ -2411,7 +2344,7 @@ paths:
                 - `TIER_REGISTRY` — all tiers with rate limits and ordering
                 - `ROUTE_PERMISSION_REGISTRY` — all registered route permission rules
 
-                Also reports which auth provider is active (`local-jwt` vs `clerk`).
+                Also reports which auth provider is active (`local-jwt` vs `better-auth`).
                 Requires Admin tier + admin role.
             operationId: adminAuthConfig
             security:
@@ -2450,7 +2383,7 @@ paths:
                     required: true
                     schema:
                         type: string
-                    description: User ID (UUID or Clerk user ID)
+                    description: User ID (UUID)
                 -
                     name: days
                     in: query
@@ -4789,7 +4722,7 @@ components:
                     type: string
                     enum:
                         - local-jwt
-                        - clerk
+                        - better-auth
                     description: Active auth provider
                 roles:
                     type: array
@@ -4910,11 +4843,6 @@ components:
             in: header
             name: X-Admin-Key
             description: Admin API key for protected admin endpoints
-        ClerkJWT:
-            type: http
-            scheme: bearer
-            bearerFormat: JWT
-            description: Clerk-issued JWT for authenticated user requests. Obtain via Clerk sign-in flow.
         UserApiKey:
             type: http
             scheme: bearer

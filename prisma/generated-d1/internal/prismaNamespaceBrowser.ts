@@ -57,8 +57,7 @@ export const ModelName = {
   CompilationMetadata: 'CompilationMetadata',
   SourceSnapshot: 'SourceSnapshot',
   SourceHealth: 'SourceHealth',
-  SourceAttempt: 'SourceAttempt',
-  LocalAuthUser: 'LocalAuthUser'
+  SourceAttempt: 'SourceAttempt'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -81,7 +80,6 @@ export const UserScalarFieldEnum = {
   role: 'role',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  clerkUserId: 'clerkUserId',
   tier: 'tier',
   firstName: 'firstName',
   lastName: 'lastName',
@@ -179,21 +177,6 @@ export const SourceAttemptScalarFieldEnum = {
 } as const
 
 export type SourceAttemptScalarFieldEnum = (typeof SourceAttemptScalarFieldEnum)[keyof typeof SourceAttemptScalarFieldEnum]
-
-
-export const LocalAuthUserScalarFieldEnum = {
-  id: 'id',
-  identifier: 'identifier',
-  identifierType: 'identifierType',
-  passwordHash: 'passwordHash',
-  role: 'role',
-  tier: 'tier',
-  apiDisabled: 'apiDisabled',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-} as const
-
-export type LocalAuthUserScalarFieldEnum = (typeof LocalAuthUserScalarFieldEnum)[keyof typeof LocalAuthUserScalarFieldEnum]
 
 
 export const SortOrder = {

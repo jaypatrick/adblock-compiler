@@ -289,7 +289,7 @@ interface RoleFormData {
                 </mat-card-header>
                 <mat-card-content>
                     <mat-form-field appearance="outline" class="full-width">
-                        <mat-label>Clerk User ID</mat-label>
+                        <mat-label>User ID</mat-label>
                         <input matInput [(ngModel)]="assignUserId" placeholder="user_xxxx" />
                     </mat-form-field>
                 </mat-card-content>

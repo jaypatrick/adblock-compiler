@@ -9,7 +9,6 @@ import { ApiKeysComponent } from './api-keys.component';
 function makeKey(overrides: Partial<{
     id: string;
     keyPrefix: string;
-    clerkUserId: string;
     name: string;
     revokedAt: string | null;
     expiresAt: string | null;
@@ -17,7 +16,6 @@ function makeKey(overrides: Partial<{
     return {
         id: overrides.id ?? 'key-1',
         keyPrefix: overrides.keyPrefix ?? 'sk_test',
-        clerkUserId: overrides.clerkUserId ?? 'user_1',
         name: overrides.name ?? 'Test Key',
         scopes: [],
         rateLimitPerMinute: 60,
@@ -105,9 +103,9 @@ describe('ApiKeysComponent', () => {
     // ── applyFilters() ────────────────────────────────────────────────────────
     describe('applyFilters()', () => {
         const keys = [
-            makeKey({ id: 'k1', keyPrefix: 'sk_abc', clerkUserId: 'user_a', name: 'Alpha',   expiresAt: FUTURE }),
-            makeKey({ id: 'k2', keyPrefix: 'sk_xyz', clerkUserId: 'user_b', name: 'Beta',    revokedAt: NOW   }),
-            makeKey({ id: 'k3', keyPrefix: 'sk_exp', clerkUserId: 'user_c', name: 'Expired', expiresAt: PAST  }),
+            makeKey({ id: 'k1', keyPrefix: 'sk_abc', name: 'Alpha',   expiresAt: FUTURE }),
+            makeKey({ id: 'k2', keyPrefix: 'sk_xyz', name: 'Beta',    revokedAt: NOW   }),
+            makeKey({ id: 'k3', keyPrefix: 'sk_exp', name: 'Expired', expiresAt: PAST  }),
         ];
 
         beforeEach(() => {
@@ -131,12 +129,6 @@ describe('ApiKeysComponent', () => {
 
         it('filters by name substring', () => {
             component.searchQuery = 'Beta';
-            component.applyFilters();
-            expect(component.filteredKeys().length).toBe(1);
-        });
-
-        it('filters by clerkUserId substring', () => {
-            component.searchQuery = 'user_c';
             component.applyFilters();
             expect(component.filteredKeys().length).toBe(1);
         });

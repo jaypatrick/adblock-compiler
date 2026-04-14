@@ -280,7 +280,7 @@ Networking:
 
 Authentication:
       --api-key <key>          API key for authenticated worker API requests (abc_ prefix)
-      --bearer-token <token>   Clerk JWT bearer token for authenticated requests
+      --bearer-token <token>   Better Auth JWT bearer token for authenticated requests
       --api-url <url>          Base URL for the worker API [default: http://localhost:8787]
                                Used with --use-queue for remote compilation
 
