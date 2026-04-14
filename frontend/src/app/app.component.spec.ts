@@ -10,8 +10,6 @@ import { AppComponent } from './app.component';
 import { GlobalErrorHandler } from './error/global-error-handler';
 import { API_BASE_URL } from './tokens';
 
-/** Lightweight stub used as a route target to avoid recursively rendering AppComponent. */
-// StubComponent removed — no longer needed after isLandingPage removal
 
 describe('AppComponent', () => {
     let fixture: ComponentFixture<AppComponent>;

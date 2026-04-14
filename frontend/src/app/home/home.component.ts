@@ -708,8 +708,8 @@ export class HomeComponent {
         return {
             totalRequests: m ? m.totalRequests.toLocaleString() : '—',
             avgDuration:   m ? `${m.averageDuration.toFixed(1)} ms` : '—',
-            cacheHitRate:  m ? `${(m.cacheHitRate * 100).toFixed(1)}%` : '—',
-            successRate:   m ? `${(m.successRate * 100).toFixed(1)}%` : '—',
+            cacheHitRate:  m ? `${m.cacheHitRate.toFixed(1)}%` : '—',
+            successRate:   m ? `${m.successRate.toFixed(1)}%` : '—',
             queueDepth:    q ? q.currentDepth.toString() : '—',
         };
     });

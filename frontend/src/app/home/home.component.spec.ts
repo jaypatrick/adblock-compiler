@@ -13,10 +13,10 @@ describe('HomeComponent', () => {
     let httpTesting: HttpTestingController;
 
     /** Flush the initial MetricsStore HTTP requests so signals settle. */
-    function flushPendingRequests(opts: { status?: 'healthy' | 'degraded' | 'down' } = {}): void {
+    function flushPendingRequests(opts: { status?: 'healthy' | 'degraded' | 'unhealthy' } = {}): void {
         const status = opts.status ?? 'healthy';
         httpTesting.match('/api/metrics').forEach(req =>
-            req.flush({ totalRequests: 100, averageDuration: 45.5, cacheHitRate: 0.85, successRate: 0.98 }),
+            req.flush({ totalRequests: 100, averageDuration: 45.5, cacheHitRate: 85, successRate: 98 }),
         );
         httpTesting.match('/api/health').forEach(req =>
             req.flush({ status, version: '1.2.3' }),
@@ -48,7 +48,6 @@ describe('HomeComponent', () => {
 
     afterEach(() => {
         vi.restoreAllMocks();
-        httpTesting.match(() => true).forEach(req => req.flush({}));
         httpTesting.verify();
     });
 
