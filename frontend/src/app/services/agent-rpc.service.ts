@@ -7,7 +7,7 @@
  *
  * ## Authentication
  * HTTP requests are authenticated automatically via the existing AuthInterceptor
- * that attaches the Clerk/Better-Auth Bearer token to every request.
+ * that attaches the Better Auth Bearer token to every request.
  *
  * WebSocket connections use the Sec-WebSocket-Protocol header to pass the token,
  * which is the only standard mechanism available during the HTTP→WebSocket upgrade
@@ -292,7 +292,7 @@ export class AgentRpcService {
             // See: https://developers.cloudflare.com/agents/configuration/authentication/
             //
             // Security note: The Sec-WebSocket-Protocol header uses comma as a separator.
-            // JWT/Bearer tokens from Clerk/Better Auth are Base64url-encoded strings that
+            // JWT/Bearer tokens from Better Auth are Base64url-encoded strings that
             // contain only [A-Za-z0-9._-] — safe to embed directly. Strip any whitespace or
             // commas defensively to prevent header injection if an unexpected token format arrives.
             const safeToken = token?.replace(/[\s,]/g, '') ?? '';

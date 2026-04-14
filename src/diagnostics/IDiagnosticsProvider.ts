@@ -36,7 +36,7 @@ export type DiagnosticsLevel = 'debug' | 'info' | 'warning' | 'error' | 'fatal';
 
 /** User identity context. Pass to setUser() to associate events with a user. */
 export interface DiagnosticsUser {
-    /** Unique identifier (e.g., Clerk user ID). */
+    /** Unique identifier (e.g., Better Auth user UUID). */
     id?: string;
     username?: string;
     email?: string;

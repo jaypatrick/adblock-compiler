@@ -262,7 +262,7 @@ export async function getAuditLogsByResource(
  * Results are ordered newest-first.
  *
  * @param db      - ADMIN_DB D1 binding
- * @param actorId - Clerk user ID of the admin
+ * @param actorId - User ID of the admin
  * @param limit   - Max rows to return (default 50)
  */
 export async function getAuditLogsByActor(

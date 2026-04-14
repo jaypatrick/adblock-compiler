@@ -609,7 +609,6 @@ async function probeOpenApi(baseUrl: string, timeoutMs: number): Promise<DiagPro
 async function probeConfigEndpoints(baseUrl: string, timeoutMs: number): Promise<DiagProbeResult[]> {
     const checks = [
         { path: '/api/sentry-config', label: 'config-sentry', key: 'dsn' },
-        { path: '/api/clerk-config', label: 'config-clerk', key: 'publishableKey' },
     ];
 
     const results: DiagProbeResult[] = [];

@@ -48,7 +48,7 @@ export interface AgentRegistryEntry {
 export interface AgentSession {
     /** UUID primary key. */
     readonly id: string;
-    /** Clerk/Better Auth user ID of the session owner. */
+    /** Better Auth user ID of the session owner. */
     readonly user_id: string;
     /** kebab-case agent slug (e.g. 'mcp-agent'). */
     readonly agent_slug: string;
@@ -100,7 +100,7 @@ export interface AgentAuditLogEntry {
     readonly id: string;
     /** Foreign key to agent_sessions.id; may be null for non-session events. */
     readonly session_id: string | null;
-    /** Clerk/Better Auth user ID. */
+    /** Better Auth user ID. */
     readonly user_id: string;
     /** kebab-case agent slug. */
     readonly agent_slug: string;

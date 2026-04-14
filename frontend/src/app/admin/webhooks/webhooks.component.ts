@@ -1,7 +1,7 @@
 /**
- * WebhooksComponent — Clerk webhook event viewer.
+ * WebhooksComponent — Webhook event viewer.
  *
- * Displays recent Clerk webhook events in a read-only Material table
+ * Displays recent webhook events in a read-only Material table
  * with a secondary "DLQ" tab for failed events. Gracefully handles
  * 404 responses (API not yet implemented) with a "Coming soon" message.
  */
@@ -54,7 +54,7 @@ interface WebhookEventsResponse {
         <mat-card-header>
             <mat-icon mat-card-avatar aria-hidden="true">webhook</mat-icon>
             <mat-card-title>Webhooks</mat-card-title>
-            <mat-card-subtitle>Clerk webhook event viewer</mat-card-subtitle>
+            <mat-card-subtitle>Webhook event viewer</mat-card-subtitle>
         </mat-card-header>
         <mat-card-actions>
             <button mat-stroked-button (click)="loadData()" [disabled]="loading()">
@@ -69,7 +69,7 @@ interface WebhookEventsResponse {
                 <div class="coming-soon">
                     <mat-icon aria-hidden="true" class="coming-soon-icon">construction</mat-icon>
                     <h3>Coming Soon</h3>
-                    <p>The webhook events API is not yet available. This viewer will display Clerk webhook events
+                    <p>The webhook events API is not yet available. This viewer will display webhook events
                        once the <code>/admin/webhooks/events</code> endpoint is implemented.</p>
                 </div>
             </mat-card-content>

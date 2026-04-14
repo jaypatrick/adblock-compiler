@@ -29,10 +29,10 @@
       "description": "Admin API key for protected admin endpoints (X-Admin-Key header)"
     },
     {
-      "key": "clerkToken",
+      "key": "bearerToken",
       "value": "",
       "type": "string",
-      "description": "Clerk JWT for authenticated user requests (Bearer token)"
+      "description": "Bearer token for authenticated user requests (Better Auth JWT or API key)"
     },
     {
       "key": "userApiKey",
@@ -2051,7 +2051,7 @@
                 "config"
               ]
             },
-            "description": "Returns a read-only snapshot of all three extensibility registries at runtime:\n- `LOCAL_ROLE_REGISTRY` — all defined roles, their tiers, and self-register flag\n- `TIER_REGISTRY` — all tiers with rate limits and ordering\n- `ROUTE_PERMISSION_REGISTRY` — all registered route permission rules\n\nAlso reports which auth provider is active (`local-jwt` vs `clerk`).\nRequires Admin tier + admin role.\n"
+            "description": "Returns a read-only snapshot of all three extensibility registries at runtime:\n- `LOCAL_ROLE_REGISTRY` — all defined roles, their tiers, and self-register flag\n- `TIER_REGISTRY` — all tiers with rate limits and ordering\n- `ROUTE_PERMISSION_REGISTRY` — all registered route permission rules\n\nAlso reports which auth provider is active (`local-jwt` vs `better-auth`).\nRequires Admin tier + admin role.\n"
           }
         },
         {
@@ -2683,7 +2683,7 @@
     },
     {
       "name": "Authentication",
-      "description": "User-level authentication endpoints — API key management and webhook receivers. Requires Clerk JWT or API key auth.",
+      "description": "User-level authentication endpoints — API key management and webhook receivers. Requires Bearer token (Better Auth JWT or API key).",
       "item": [
         {
           "name": "List user's API keys",
@@ -2718,7 +2718,7 @@
                 "keys"
               ]
             },
-            "description": "Lists all API keys belonging to the authenticated user.\nReturns metadata only — never the key hash or plaintext.\nRequires Clerk JWT authentication.\n"
+            "description": "Lists all API keys belonging to the authenticated user.\nReturns metadata only — never the key hash or plaintext.\nRequires Bearer token (Better Auth JWT or API key).\n"
           }
         },
         {
@@ -2769,7 +2769,7 @@
                 }
               }
             },
-            "description": "Creates a new API key for the authenticated user.\nThe raw API key (with `abc_` prefix) is returned **only once** — store it securely.\nRequires Clerk JWT authentication.\n"
+            "description": "Creates a new API key for the authenticated user.\nThe raw API key (with `abc_` prefix) is returned **only once** — store it securely.\nRequires Bearer token (Better Auth JWT or API key).\n"
           }
         },
         {
@@ -2828,7 +2828,7 @@
                 }
               }
             },
-            "description": "Updates an API key's name or scopes. Only the key owner can update their own keys.\nRequires Clerk JWT authentication.\n"
+            "description": "Updates an API key's name or scopes. Only the key owner can update their own keys.\nRequires Bearer token (Better Auth JWT or API key).\n"
           }
         },
         {
@@ -2874,64 +2874,12 @@
             },
             "description": "Revokes (soft-deletes) an API key. The key remains in the database for audit\npurposes but is no longer valid for authentication.\nOnly the key owner can revoke their own keys.\n"
           }
-        },
-        {
-          "name": "Clerk webhook receiver",
-          "description": "Receives Clerk webhook events (user.created, user.updated, user.deleted, session.created).",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response is JSON', function () {",
-                  "    pm.response.to.be.json;",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/api/webhooks/clerk",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "api",
-                "webhooks",
-                "clerk"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"type\": \"string\",\n    \"data\": {},\n    \"object\": \"event\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "Receives Clerk webhook events (user.created, user.updated, user.deleted, session.created).\nVerified via Svix webhook signature. This endpoint is called by Clerk's webhook infrastructure\nand should not be called directly.\n"
-          }
         }
       ]
     },
     {
       "name": "LocalAuth",
-      "description": "Local JWT auth bridge — self-contained sign-up/login until Clerk is production-ready. When `CLERK_JWKS_URL` is set the provider auto-switches to Clerk and these endpoints are no longer used.",
+      "description": "Local JWT auth bridge — self-contained sign-up/login. When Better Auth is configured these endpoints are no longer the primary auth flow.",
       "item": [
         {
           "name": "Register a new local account",
@@ -2981,7 +2929,7 @@
                 }
               }
             },
-            "description": "Create a new account using an email address or E.164 phone number and password.\nAll self-registered users receive the `user` role (Free tier).\nAdmin role must be granted via `POST /admin/local-users`.\n\n**Rate limited** (anonymous tier). Returns a signed HS256 JWT on success.\n\n> Only active when `CLERK_JWKS_URL` is not configured. When Clerk is live,\n> sign up via the Clerk-hosted UI instead.\n"
+            "description": "Create a new account using an email address or E.164 phone number and password.\nAll self-registered users receive the `user` role (Free tier).\nAdmin role must be granted via `POST /admin/local-users`.\n\n**Rate limited** (anonymous tier). Returns a signed HS256 JWT on success.\n\n> Only active when Better Auth is not the primary provider.\n"
           }
         },
         {

@@ -31,7 +31,7 @@ describe('ApiKeysComponent', () => {
     let isLoadedSignal: WritableSignal<boolean>;
 
     let mockApiKeyService: Record<string, unknown>;
-    let mockClerkService: Record<string, unknown>;
+    let mockAuthService: Record<string, unknown>;
 
     beforeEach(async () => {
         // Fresh writable signals each test
@@ -56,7 +56,7 @@ describe('ApiKeysComponent', () => {
             updateKey: vi.fn().mockResolvedValue(true),
         };
 
-        mockClerkService = {
+        mockAuthService = {
             isSignedIn: isSignedInSignal.asReadonly(),
             isLoaded: isLoadedSignal.asReadonly(),
             user: signal(null).asReadonly(),

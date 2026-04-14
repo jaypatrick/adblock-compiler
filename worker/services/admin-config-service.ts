@@ -525,7 +525,7 @@ export async function getActiveAnnouncements(
  *
  * @param db        - D1 database binding (ADMIN_DB).
  * @param data      - Validated create request payload.
- * @param createdBy - Identifier of the admin who created the announcement (e.g. Clerk user ID).
+ * @param createdBy - Identifier of the admin who created the announcement (e.g. Better Auth user ID).
  * @returns The newly inserted, validated {@link AdminAnnouncementRow}.
  */
 export async function createAnnouncement(
