@@ -74,7 +74,14 @@ ALTER TABLE "filter_sources"
     ADD COLUMN IF NOT EXISTS "visibility"      TEXT        NOT NULL DEFAULT 'private',
     ADD COLUMN IF NOT EXISTS "is_featured"     BOOLEAN     NOT NULL DEFAULT false;
 
--- Composite unique: a URL must be unique per owner context
+-- Composite unique: a URL must be unique per owner context.
+-- Migration note: existing rows have owner_user_id either set or NULL and organization_id = NULL
+-- (organization_id was not present before this migration). Because the new column defaults to NULL,
+-- all pre-existing rows effectively map to (url, owner_user_id, NULL), which is the same uniqueness
+-- contract as the former global unique on url if owner_user_id was already distinct per url.
+-- If your existing data has duplicate (url, owner_user_id) combinations (e.g. multiple rows with
+-- the same url AND the same (or both null) owner_user_id) you must deduplicate those rows before
+-- applying this constraint or the CREATE UNIQUE INDEX will fail.
 CREATE UNIQUE INDEX IF NOT EXISTS "filter_sources_url_owner_unique"
     ON "filter_sources"("url", "owner_user_id", "organization_id");
 

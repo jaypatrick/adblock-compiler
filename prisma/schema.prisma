@@ -72,7 +72,7 @@ model User {
   createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz
   updatedAt      DateTime  @updatedAt @map("updated_at") @db.Timestamptz
 
-  tier           String    @default("free") // anonymous | free | pro | admin
+  tier           String    @default("free") // free | pro | vendor | enterprise (anonymous for unauthenticated hot-path; admin is a role, not a tier)
   firstName      String?   @map("first_name")
   lastName       String?   @map("last_name")
   imageUrl       String?   @map("image_url")
