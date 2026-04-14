@@ -303,6 +303,19 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c, next) => {
         });
         return response;
     } catch (error) {
+        if (error instanceof SyntaxError) {
+            // deno-lint-ignore no-console
+            console.error('[better-auth] Invalid JSON body on', url.pathname, ':', error.message);
+            c.get('analytics')?.trackSecurityEvent({
+                eventType: 'auth_failure',
+                authMethod: 'better-auth',
+                reason: 'better_auth_invalid_json_body',
+                path: url.pathname,
+                method: c.req.method,
+                clientIpHash: AnalyticsService.hashIp(c.get('ip') ?? 'unknown'),
+            });
+            return c.json({ success: false, error: 'Invalid JSON body' }, 400);
+        }
         if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
             // deno-lint-ignore no-console
             console.error('[better-auth] Handler timeout: DB call exceeded 10s on', url.pathname);

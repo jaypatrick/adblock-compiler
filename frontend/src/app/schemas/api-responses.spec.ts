@@ -15,6 +15,8 @@
  *   - AdminListResponseSchema: generic paginated list
  *   - FeatureFlagSchema: feature flag object
  *   - AnnouncementSeveritySchema: valid/invalid severity values
+ *   - MetricsResponseSchema: /api/metrics response with defaults
+ *   - HealthResponseSchema: /api/health response with defaults
  *
  * @see frontend/src/app/schemas/api-responses.ts
  */
@@ -28,6 +30,8 @@ import {
     CompileResponseSchema,
     FeatureFlagSchema,
     GetKeysResponseSchema,
+    HealthResponseSchema,
+    MetricsResponseSchema,
     validateResponse,
     ValidationResultSchema,
 } from './api-responses';
@@ -303,5 +307,79 @@ describe('FeatureFlagSchema', () => {
 
     it('rejects non-number rollout_percentage', () => {
         expect(FeatureFlagSchema.safeParse({ ...validFlag, rollout_percentage: '50%' }).success).toBe(false);
+    });
+});
+
+// ============================================================================
+// MetricsResponseSchema
+// ============================================================================
+
+describe('MetricsResponseSchema', () => {
+    const validMetrics = {
+        totalRequests: 1000,
+        averageDuration: 42.5,
+        cacheHitRate: 75.0,
+        successRate: 99.1,
+    };
+
+    it('accepts a valid metrics response', () => {
+        expect(MetricsResponseSchema.safeParse(validMetrics).success).toBe(true);
+    });
+
+    it('defaults missing numeric fields to 0', () => {
+        const result = MetricsResponseSchema.parse({});
+        expect(result.totalRequests).toBe(0);
+        expect(result.averageDuration).toBe(0);
+        expect(result.cacheHitRate).toBe(0);
+        expect(result.successRate).toBe(0);
+    });
+
+    it('defaults individual missing fields to 0', () => {
+        const result = MetricsResponseSchema.parse({ totalRequests: 50 });
+        expect(result.totalRequests).toBe(50);
+        expect(result.averageDuration).toBe(0);
+    });
+
+    it('rejects negative totalRequests', () => {
+        expect(MetricsResponseSchema.safeParse({ ...validMetrics, totalRequests: -1 }).success).toBe(false);
+    });
+
+    it('rejects cacheHitRate above 100', () => {
+        expect(MetricsResponseSchema.safeParse({ ...validMetrics, cacheHitRate: 101 }).success).toBe(false);
+    });
+
+    it('rejects string instead of number', () => {
+        expect(MetricsResponseSchema.safeParse({ ...validMetrics, successRate: '99%' }).success).toBe(false);
+    });
+});
+
+// ============================================================================
+// HealthResponseSchema
+// ============================================================================
+
+describe('HealthResponseSchema', () => {
+    it('accepts healthy status', () => {
+        expect(HealthResponseSchema.safeParse({ status: 'healthy', version: '1.0.0' }).success).toBe(true);
+    });
+
+    it('accepts degraded status', () => {
+        expect(HealthResponseSchema.safeParse({ status: 'degraded', version: '1.0.0' }).success).toBe(true);
+    });
+
+    it('accepts unhealthy status', () => {
+        expect(HealthResponseSchema.safeParse({ status: 'unhealthy', version: '1.0.0' }).success).toBe(true);
+    });
+
+    it('defaults missing version to "unknown"', () => {
+        const result = HealthResponseSchema.parse({ status: 'healthy' });
+        expect(result.version).toBe('unknown');
+    });
+
+    it('rejects unknown status value', () => {
+        expect(HealthResponseSchema.safeParse({ status: 'ok', version: '1.0.0' }).success).toBe(false);
+    });
+
+    it('rejects missing status field', () => {
+        expect(HealthResponseSchema.safeParse({ version: '1.0.0' }).success).toBe(false);
     });
 });

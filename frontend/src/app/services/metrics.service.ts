@@ -7,8 +7,10 @@
 
 import { inject, Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { Observable, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 import { API_BASE_URL } from '../tokens';
+import { HealthResponseSchema, MetricsResponseSchema } from '../schemas/api-responses';
 
 /** Metrics response from /api/metrics */
 export interface MetricsResponse {
@@ -31,11 +33,17 @@ export class MetricsService {
 
     /** Fetch compilation metrics */
     getMetrics(): Observable<MetricsResponse> {
-        return this.http.get<MetricsResponse>(`${this.apiBaseUrl}/metrics`);
+        return this.http.get<unknown>(`${this.apiBaseUrl}/metrics`).pipe(
+            map(raw => MetricsResponseSchema.parse(raw)),
+            catchError(() => of({ totalRequests: 0, averageDuration: 0, cacheHitRate: 0, successRate: 0 })),
+        );
     }
 
     /** Fetch system health status */
     getHealth(): Observable<HealthResponse> {
-        return this.http.get<HealthResponse>(`${this.apiBaseUrl}/health`);
+        return this.http.get<unknown>(`${this.apiBaseUrl}/health`).pipe(
+            map(raw => HealthResponseSchema.parse(raw)),
+            catchError(() => of({ status: 'degraded' as const, version: 'unknown' })),
+        );
     }
 }
