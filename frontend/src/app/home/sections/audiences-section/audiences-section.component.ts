@@ -40,7 +40,8 @@ interface Persona {
                         [attr.id]="'panel-' + persona.id"
                         [attr.aria-labelledby]="'tab-' + persona.id"
                         [class.panel-active]="activePersona() === persona.id"
-                        [attr.aria-hidden]="activePersona() !== persona.id">
+                        [attr.aria-hidden]="activePersona() !== persona.id"
+                        [attr.inert]="activePersona() !== persona.id ? '' : null">
                         <h3 class="persona-headline">{{ persona.headline }}</h3>
                         <p class="persona-body">{{ persona.body }}</p>
                         <a href="#pricing" class="bloqr-btn-primary">{{ persona.cta }}</a>

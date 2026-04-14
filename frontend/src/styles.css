@@ -1081,7 +1081,7 @@ code {
     font-weight: 700;
     letter-spacing: 0.2em;
     text-transform: uppercase;
-    color: #FF5500;
+    color: var(--color-orange-500);
     margin-bottom: 16px;
     display: block;
 }
@@ -1091,31 +1091,31 @@ code {
     font-weight: 800;
     letter-spacing: -0.03em;
     line-height: 1.1;
-    color: #F1F5F9;
+    color: var(--color-text-primary);
     margin: 0 0 16px;
 }
 .bloqr-section-desc {
     font-size: 1.05rem;
-    color: #94A3B8;
+    color: var(--color-text-secondary);
     line-height: 1.65;
     max-width: 640px;
 }
 .bloqr-card {
-    background: #0E1829;
-    border: 1px solid #1E2D40;
+    background: var(--color-bg-surface);
+    border: 1px solid var(--color-border);
     border-radius: 12px;
     padding: 24px;
     transition: border-color 0.2s, background 0.2s;
 }
 .bloqr-card:hover {
-    border-color: rgba(255,85,0,0.3);
-    background: #162035;
+    border-color: rgba(255, 85, 0, 0.3);
+    background: var(--color-bg-elevated);
 }
 .bloqr-btn-primary {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    background: #FF5500;
+    background: var(--color-orange-500);
     color: white;
     border: none;
     border-radius: 8px;
@@ -1126,19 +1126,19 @@ code {
     cursor: pointer;
     text-decoration: none;
     transition: background 0.2s, box-shadow 0.2s;
-    box-shadow: 0 0 20px rgba(255,85,0,0.25);
+    box-shadow: 0 0 20px var(--color-orange-glow);
 }
 .bloqr-btn-primary:hover {
-    background: #cc4400;
-    box-shadow: 0 0 32px rgba(255,85,0,0.40);
+    background: var(--color-orange-600);
+    box-shadow: 0 0 32px rgba(255, 85, 0, 0.4);
 }
 .bloqr-btn-ghost {
     display: inline-flex;
     align-items: center;
     gap: 8px;
     background: transparent;
-    color: #94A3B8;
-    border: 1px solid #2A3F5A;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border-accent);
     border-radius: 8px;
     padding: 12px 24px;
     font-family: 'Space Grotesk', sans-serif;
@@ -1149,8 +1149,8 @@ code {
     transition: border-color 0.2s, color 0.2s;
 }
 .bloqr-btn-ghost:hover {
-    border-color: #94A3B8;
-    color: #F1F5F9;
+    border-color: var(--color-text-secondary);
+    color: var(--color-text-primary);
 }
 
 /* Sidenav brand */

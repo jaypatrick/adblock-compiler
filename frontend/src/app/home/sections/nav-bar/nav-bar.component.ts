@@ -9,9 +9,8 @@ import { RouterLink } from '@angular/router';
     <nav class="bloqr-nav" [class.scrolled]="scrolled()" role="navigation" aria-label="Main navigation">
         <div class="bloqr-nav-inner">
             <a class="bloqr-nav-brand" routerLink="/" aria-label="Bloqr home">
-                <img src="https://raw.githubusercontent.com/jaypatrick/bloqr-landing/main/brand/logo.svg"
-                     alt="Bloqr logo" width="32" height="32"
-                     (error)="$any($event.target).style.display='none'" />
+                <img src="assets/logo.svg"
+                     alt="Bloqr logo" width="32" height="32" />
                 <span class="bloqr-wordmark">Bloqr</span>
             </a>
             <div class="bloqr-nav-links" [class.open]="menuOpen()">

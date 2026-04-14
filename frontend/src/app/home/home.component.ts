@@ -38,7 +38,7 @@ import { FooterSectionComponent } from './sections/footer-section/footer-section
     ],
     template: `
     <app-nav-bar />
-    <main id="main-content" role="main">
+    <div class="landing-content">
         <app-hero-section />
         <app-problem-section />
         <app-features-section />
@@ -47,7 +47,7 @@ import { FooterSectionComponent } from './sections/footer-section/footer-section
         <app-audiences-section />
         <app-pricing-section />
         <app-cta-banner-section />
-    </main>
+    </div>
     <app-footer-section />
     `,
     styles: [`
@@ -56,7 +56,7 @@ import { FooterSectionComponent } from './sections/footer-section/footer-section
         background: #070B14;
         min-height: 100vh;
     }
-    main {
+    .landing-content {
         background: #070B14;
     }
     `],

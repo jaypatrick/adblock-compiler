@@ -7,6 +7,7 @@ interface PricingTier {
     readonly period: string;
     readonly features: string[];
     readonly cta: string;
+    readonly ctaHref: string;
     readonly highlighted: boolean;
     readonly badge?: string;
 }
@@ -43,7 +44,7 @@ interface PricingTier {
                                 </li>
                             }
                         </ul>
-                        <a href="#" class="tier-cta"
+                        <a [href]="tier.ctaHref" class="tier-cta"
                            [class.bloqr-btn-primary]="tier.highlighted"
                            [class.bloqr-btn-ghost]="!tier.highlighted">
                             {{ tier.cta }}
@@ -155,6 +156,7 @@ export class PricingSectionComponent {
                 'Basic config builder',
             ],
             cta: 'Join the waitlist',
+            ctaHref: 'https://github.com/jaypatrick/adblock-compiler',
             highlighted: false,
         },
         {
@@ -170,6 +172,7 @@ export class PricingSectionComponent {
                 'AI threat intelligence',
             ],
             cta: 'Get early access',
+            ctaHref: 'https://github.com/jaypatrick/adblock-compiler',
             highlighted: true,
         },
         {
@@ -184,6 +187,7 @@ export class PricingSectionComponent {
                 'CLI + CI/CD pipeline integration',
             ],
             cta: 'Get early access',
+            ctaHref: 'https://github.com/jaypatrick/adblock-compiler',
             highlighted: false,
         },
     ];

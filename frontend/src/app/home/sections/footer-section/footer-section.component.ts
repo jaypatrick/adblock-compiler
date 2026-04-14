@@ -9,9 +9,8 @@ import { Component } from '@angular/core';
             <div class="footer-grid">
                 <div class="footer-brand">
                     <div class="footer-brand-row">
-                        <img src="https://raw.githubusercontent.com/jaypatrick/bloqr-landing/main/brand/logo.svg"
-                             alt="Bloqr logo" width="28" height="28"
-                             (error)="$any($event.target).style.display='none'" />
+                        <img src="assets/logo.svg"
+                             alt="Bloqr logo" width="28" height="28" />
                         <span class="footer-wordmark">Bloqr</span>
                     </div>
                     <p class="footer-tagline">Internet Hygiene. Automated.</p>
@@ -23,7 +22,7 @@ import { Component } from '@angular/core';
                         <li><a href="#features">Features</a></li>
                         <li><a href="#how-it-works">How It Works</a></li>
                         <li><a href="#pricing">Pricing</a></li>
-                        <li><a href="#">Changelog</a></li>
+                        <li><a href="https://github.com/jaypatrick/adblock-compiler/releases" target="_blank" rel="noopener noreferrer">Changelog</a></li>
                     </ul>
                 </div>
                 <div class="footer-col">
@@ -31,17 +30,17 @@ import { Component } from '@angular/core';
                     <ul>
                         <li><a href="https://docs.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer">Docs</a></li>
                         <li><a href="https://github.com/jaypatrick/adblock-compiler" target="_blank" rel="noopener noreferrer">GitHub</a></li>
-                        <li><a href="#">API Reference</a></li>
-                        <li><a href="#">Blog</a></li>
+                        <li><a href="https://docs.bloqr.jaysonknight.com/api" target="_blank" rel="noopener noreferrer">API Reference</a></li>
+                        <li><a href="https://github.com/jaypatrick/adblock-compiler/discussions" target="_blank" rel="noopener noreferrer">Blog</a></li>
                     </ul>
                 </div>
                 <div class="footer-col">
                     <h4 class="footer-heading">Company</h4>
                     <ul>
-                        <li><a href="#">About</a></li>
-                        <li><a href="#">Privacy</a></li>
-                        <li><a href="#">Terms</a></li>
-                        <li><a href="#">Security</a></li>
+                        <li><a href="https://github.com/jaypatrick/adblock-compiler" target="_blank" rel="noopener noreferrer">About</a></li>
+                        <li><a href="https://github.com/jaypatrick/adblock-compiler/blob/main/PRIVACY.md" target="_blank" rel="noopener noreferrer">Privacy</a></li>
+                        <li><a href="https://github.com/jaypatrick/adblock-compiler/blob/main/TERMS.md" target="_blank" rel="noopener noreferrer">Terms</a></li>
+                        <li><a href="https://github.com/jaypatrick/adblock-compiler/security" target="_blank" rel="noopener noreferrer">Security</a></li>
                     </ul>
                 </div>
             </div>

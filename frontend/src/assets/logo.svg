@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Bloqr logo">
+  <defs>
+    <linearGradient id="bloqr-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#FF7033"/>
+      <stop offset="100%" stop-color="#CC4400"/>
+    </linearGradient>
+    <radialGradient id="bloqr-glow" cx="50%" cy="35%" r="55%">
+      <stop offset="0%" stop-color="#FF5500" stop-opacity="0.22"/>
+      <stop offset="100%" stop-color="#FF5500" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <!-- Dark navy background -->
+  <rect width="64" height="64" rx="12" fill="#070B14"/>
+  <!-- Orange shield outline -->
+  <path d="M32 10 Q32 10 51 20 V37 Q51 51 32 58 Q13 51 13 37 V20 Z"
+        fill="#0E1829" stroke="url(#bloqr-orange)" stroke-width="2.5" stroke-linejoin="round"/>
+  <!-- Ambient glow -->
+  <path d="M32 10 Q32 10 51 20 V37 Q51 51 32 58 Q13 51 13 37 V20 Z"
+        fill="url(#bloqr-glow)"/>
+  <!-- "B" lettermark in orange -->
+  <text x="32" y="41" text-anchor="middle"
+        font-family="'Space Grotesk', 'Segoe UI', Arial, sans-serif"
+        font-size="24" font-weight="800" fill="url(#bloqr-orange)">B</text>
+</svg>
