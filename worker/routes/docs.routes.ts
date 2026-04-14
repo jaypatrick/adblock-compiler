@@ -101,7 +101,12 @@ export function docsLandingHandler(env: Env): Response {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bloqr API — Internet Hygiene. Automated.</title>
-    <!-- Space Grotesk via CDN — exception for standalone HTML response only; Angular app self-hosts via @fontsource -->
+    <!-- Space Grotesk via Google Fonts CDN.
+         REQUIRED EXCEPTION: This is a standalone HTML response served directly by the Cloudflare Worker,
+         not rendered through the Angular SPA. The @fontsource npm packages (used elsewhere in the app)
+         are not available in this context. Using a CDN for this one endpoint is the only viable option.
+         Privacy note: users visiting the API docs landing page may be subject to Google's font CDN
+         terms. This is an accepted trade-off for the standalone developer-facing landing page only. -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
