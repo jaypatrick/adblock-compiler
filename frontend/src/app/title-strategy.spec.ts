@@ -28,16 +28,16 @@ describe('AppTitleStrategy', () => {
         metaService = TestBed.inject(Meta);
     });
 
-    it('should set "PageName | Adblock Compiler" when route has a title', () => {
+    it('should set "PageName | Bloqr" when route has a title', () => {
         vi.spyOn(strategy, 'buildTitle').mockReturnValue('Compiler');
         strategy.updateTitle(makeSnapshot());
-        expect(titleService.getTitle()).toBe('Compiler | Adblock Compiler');
+        expect(titleService.getTitle()).toBe('Compiler | Bloqr');
     });
 
-    it('should set "Adblock Compiler" when route has no title', () => {
+    it('should set "Bloqr" when route has no title', () => {
         vi.spyOn(strategy, 'buildTitle').mockReturnValue(undefined);
         strategy.updateTitle(makeSnapshot());
-        expect(titleService.getTitle()).toBe('Adblock Compiler');
+        expect(titleService.getTitle()).toBe('Bloqr');
     });
 
     it('should set correct title for each named route', () => {
@@ -45,7 +45,7 @@ describe('AppTitleStrategy', () => {
         for (const page of pages) {
             vi.spyOn(strategy, 'buildTitle').mockReturnValue(page);
             strategy.updateTitle(makeSnapshot());
-            expect(titleService.getTitle()).toBe(`${page} | Adblock Compiler`);
+            expect(titleService.getTitle()).toBe(`${page} | Bloqr`);
         }
     });
 
@@ -60,6 +60,6 @@ describe('AppTitleStrategy', () => {
         vi.spyOn(strategy, 'buildTitle').mockReturnValue('Home');
         strategy.updateTitle(makeSnapshot());
         const tag = metaService.getTag('name="description"');
-        expect(tag?.content).toContain('Compile, validate, and transform adblock filter lists');
+        expect(tag?.content).toContain('AI-powered adblock list management and real-time threat intelligence');
     });
 });

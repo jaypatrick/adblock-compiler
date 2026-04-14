@@ -162,7 +162,7 @@ interface NavItem {
           <main id="main-content" class="app-main-content" role="main" aria-label="Main content" tabindex="-1">
             <!-- toolbar-title: required by AppComponent unit tests (app.component.spec.ts line 112).
                  Do not remove even though it is visually hidden. -->
-            <span class="toolbar-title" aria-hidden="true" style="display:none">Adblock Compiler</span>
+            <span class="toolbar-title" aria-hidden="true" style="display:none">Bloqr</span>
             <router-outlet />
           </main>
 
