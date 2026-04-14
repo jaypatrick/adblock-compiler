@@ -706,11 +706,11 @@ export class HomeComponent {
         const m = this.store.metrics();
         const q = this.store.queueStats();
         return {
-            totalRequests: m ? m.totalRequests.toLocaleString() : '—',
-            avgDuration:   m ? `${m.averageDuration.toFixed(1)} ms` : '—',
-            cacheHitRate:  m ? `${m.cacheHitRate.toFixed(1)}%` : '—',
-            successRate:   m ? `${m.successRate.toFixed(1)}%` : '—',
-            queueDepth:    q ? q.currentDepth.toString() : '—',
+            totalRequests: m ? (m.totalRequests ?? 0).toLocaleString() : '—',
+            avgDuration:   m ? `${(m.averageDuration ?? 0).toFixed(1)} ms` : '—',
+            cacheHitRate:  m ? `${(m.cacheHitRate ?? 0).toFixed(1)}%` : '—',
+            successRate:   m ? `${(m.successRate ?? 0).toFixed(1)}%` : '—',
+            queueDepth:    q ? (q.currentDepth ?? 0).toString() : '—',
         };
     });
 
