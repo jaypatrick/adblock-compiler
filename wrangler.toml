@@ -238,13 +238,13 @@ name = "COMPILATION_COORDINATOR"
 # Requires Docker running locally or in CI.
 # See: https://developers.cloudflare.com/containers/
 #
-# instance_type valid values: "standard" | "small" | "large"
-# (NOT "basic" — that value is rejected with VALIDATE_INPUT by the CF API)
+# instance_type valid values: "basic" | "small" | "large"
+# (NOT "standard" — that value is rejected with VALIDATE_INPUT by the CF API)
 [[containers]]
 class_name = "AdblockCompiler"
 image = "./Dockerfile.container"
 max_instances = 5
-instance_type = "standard"
+instance_type = "basic"
 
 # ─── Migrations ──────────────────────────────────────────────────────────────
 [[migrations]]
