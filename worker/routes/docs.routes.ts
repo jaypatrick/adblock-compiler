@@ -85,8 +85,11 @@ docsRoutes.get('/redoc/*', redocDocsHandler);
 /**
  * Render the Bloqr API developer landing page.
  *
- * Completely inline HTML/CSS — no external CDN dependencies.
- * Purple/violet palette, dark theme, responsive layout.
+ * Completely inline HTML/CSS — no @fontsource available in standalone HTML responses.
+ * Space Grotesk loaded via Google Fonts CDN (exception: this is a standalone HTML
+ * response not served through the Angular SPA, so self-hosting via @fontsource is
+ * not possible here).
+ * Bloqr dark palette, orange #FF5500 accent, responsive layout.
  */
 export function docsLandingHandler(env: Env): Response {
     const urls = getProjectUrls(env);
@@ -97,80 +100,147 @@ export function docsLandingHandler(env: Env): Response {
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bloqr API</title>
+    <title>Bloqr API — Internet Hygiene. Automated.</title>
+    <!-- Space Grotesk via CDN — exception for standalone HTML response only; Angular app self-hosts via @fontsource -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         :root {
-            --bg:        #0d0d14;
-            --surface:   #16162a;
-            --border:    #2a2a45;
-            --purple:    #7c3aed;
-            --violet:    #6d28d9;
-            --purple-lt: #a78bfa;
-            --text:      #e2e2f0;
-            --muted:     #8888aa;
-            --radius:    12px;
+            --bg:            #070B14;
+            --surface:       #0E1829;
+            --elevated:      #162035;
+            --overlay:       #1C2A45;
+            --border:        #1E2D40;
+            --border-accent: #2A4060;
+            --orange:        #FF5500;
+            --orange-hover:  #FF7033;
+            --orange-glow:   rgba(255, 85, 0, 0.15);
+            --cyan:          #00D4FF;
+            --cyan-glow:     rgba(0, 212, 255, 0.12);
+            --text:          #F1F5F9;
+            --text-muted:    #94A3B8;
+            --radius:        12px;
         }
-        html, body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; min-height: 100vh; }
-        a { color: var(--purple-lt); text-decoration: none; }
-        a:hover { text-decoration: underline; }
+        html, body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Space Grotesk', system-ui, -apple-system, sans-serif;
+            min-height: 100vh;
+        }
+        a { color: var(--orange); text-decoration: none; }
+        a:hover { color: var(--orange-hover); text-decoration: underline; }
 
-        /* ── Header ─── */
+        /* ── Hero ─── */
         .hero {
-            background: linear-gradient(135deg, #1a0533 0%, #130d3a 50%, #0a1a3a 100%);
+            background:
+                radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 85, 0, 0.12), transparent),
+                radial-gradient(ellipse 60% 40% at 80% 60%, rgba(0, 212, 255, 0.06), transparent),
+                var(--bg);
             border-bottom: 1px solid var(--border);
-            padding: 3.5rem 2rem 3rem;
+            padding: 4rem 2rem 3.5rem;
             text-align: center;
         }
         .hero-badge {
             display: inline-block;
-            background: rgba(124, 58, 237, 0.2);
-            border: 1px solid rgba(124, 58, 237, 0.5);
+            background: rgba(255, 85, 0, 0.12);
+            border: 1px solid rgba(255, 85, 0, 0.25);
             border-radius: 999px;
             padding: 0.25rem 1rem;
-            font-size: 0.78rem;
-            letter-spacing: 0.08em;
+            font-size: 0.75rem;
+            font-weight: 700;
+            letter-spacing: 0.2em;
             text-transform: uppercase;
-            color: var(--purple-lt);
-            margin-bottom: 1.25rem;
+            color: var(--orange);
+            margin-bottom: 1.5rem;
         }
-        .hero h1 { font-size: clamp(1.8rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1.15; }
-        .hero h1 span { background: linear-gradient(90deg, #c084fc, #818cf8); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
-        .hero p { margin-top: 1rem; color: var(--muted); font-size: 1.05rem; max-width: 560px; margin-inline: auto; line-height: 1.65; }
-        .hero-links { margin-top: 2rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+        .hero h1 {
+            font-size: clamp(2rem, 5vw, 3.25rem);
+            font-weight: 700;
+            letter-spacing: -0.03em;
+            line-height: 1.1;
+            color: var(--text);
+        }
+        .hero-tagline {
+            margin-top: 0.75rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--orange);
+            letter-spacing: -0.01em;
+        }
+        .hero p { margin-top: 1rem; color: var(--text-muted); font-size: 1rem; max-width: 560px; margin-inline: auto; line-height: 1.65; }
+        .hero-links { margin-top: 2.25rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
         .hero-links a {
             display: inline-flex; align-items: center; gap: 0.4rem;
-            padding: 0.5rem 1.1rem; border-radius: 8px; font-size: 0.88rem; font-weight: 500;
-            transition: opacity 0.15s;
+            padding: 0.6rem 1.25rem; border-radius: 8px; font-size: 0.875rem; font-weight: 600;
+            transition: all 150ms cubic-bezier(0.16, 1, 0.3, 1);
         }
-        .hero-links a:hover { opacity: 0.85; text-decoration: none; }
-        .btn-primary { background: var(--purple); color: #fff; }
-        .btn-outline { border: 1px solid var(--border); color: var(--text); background: transparent; }
+        .btn-primary {
+            background: var(--orange);
+            color: #ffffff;
+            box-shadow: 0 0 20px rgba(255, 85, 0, 0.30);
+        }
+        .btn-primary:hover {
+            background: var(--orange-hover);
+            box-shadow: 0 0 32px rgba(255, 85, 0, 0.45);
+            transform: translateY(-1px);
+            text-decoration: none;
+            color: #ffffff;
+        }
+        .btn-outline {
+            border: 1px solid var(--border-accent);
+            color: var(--text-muted);
+            background: transparent;
+        }
+        .btn-outline:hover {
+            border-color: var(--orange);
+            color: var(--text);
+            background: rgba(255, 85, 0, 0.06);
+            text-decoration: none;
+            transform: translateY(-1px);
+        }
 
         /* ── Cards ─── */
-        .container { max-width: 900px; margin: 0 auto; padding: 3rem 1.5rem; }
-        .section-title { font-size: 0.8rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); margin-bottom: 1.25rem; }
-        .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 1.25rem; }
+        .container { max-width: 960px; margin: 0 auto; padding: 3rem 1.5rem; }
+        .section-label {
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.2em;
+            text-transform: uppercase;
+            color: var(--orange);
+            margin-bottom: 1.5rem;
+        }
+        .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 1.5rem;
-            transition: border-color 0.18s, transform 0.18s;
+            transition: border-color 150ms, background 150ms, transform 150ms;
         }
-        .card:hover { border-color: var(--purple); transform: translateY(-2px); }
-        .card-icon { font-size: 1.6rem; margin-bottom: 0.75rem; }
-        .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; }
-        .card-desc { font-size: 0.85rem; color: var(--muted); line-height: 1.6; margin-bottom: 1rem; }
+        .card:hover {
+            border-color: var(--border-accent);
+            background: var(--elevated);
+            transform: translateY(-2px);
+        }
+        .card-icon { font-size: 1.5rem; margin-bottom: 0.75rem; }
+        .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--text); }
+        .card-desc { font-size: 0.85rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1rem; }
         .card-link {
             display: inline-flex; align-items: center; gap: 0.3rem;
-            font-size: 0.82rem; font-weight: 600; color: var(--purple-lt);
+            font-size: 0.82rem; font-weight: 600; color: var(--orange);
             padding: 0.35rem 0.85rem;
-            border: 1px solid rgba(167, 139, 250, 0.35);
+            border: 1px solid rgba(255, 85, 0, 0.25);
             border-radius: 6px;
-            transition: background 0.15s;
+            transition: background 150ms, box-shadow 150ms;
         }
-        .card-link:hover { background: rgba(124, 58, 237, 0.15); text-decoration: none; }
+        .card-link:hover {
+            background: rgba(255, 85, 0, 0.10);
+            box-shadow: 0 0 12px rgba(255, 85, 0, 0.20);
+            text-decoration: none;
+            color: var(--orange-hover);
+        }
 
         /* ── Status ─── */
         .status-bar {
@@ -181,18 +251,18 @@ export function docsLandingHandler(env: Env): Response {
             display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap;
             margin-top: 2.5rem; font-size: 0.85rem;
         }
-        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
-        .status-label { color: var(--muted); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22C55E; flex-shrink: 0; }
+        .status-label { color: var(--text-muted); }
         .status-value { color: var(--text); font-weight: 600; }
-        .status-sep { color: var(--border); }
+        .status-sep { color: var(--border-accent); }
 
         /* ── Footer ─── */
-        footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 2rem 1rem 3rem; }
-        footer a { color: var(--muted); }
-        footer a:hover { color: var(--purple-lt); }
+        footer { text-align: center; color: var(--text-muted); font-size: 0.8rem; padding: 2rem 1rem 3rem; }
+        footer a { color: var(--text-muted); }
+        footer a:hover { color: var(--orange); }
 
         @media (max-width: 480px) {
-            .hero { padding: 2.5rem 1.25rem 2rem; }
+            .hero { padding: 3rem 1.25rem 2.5rem; }
             .container { padding: 2rem 1rem; }
         }
     </style>
@@ -200,10 +270,11 @@ export function docsLandingHandler(env: Env): Response {
 <body>
     <header class="hero">
         <div class="hero-badge">API v1 &nbsp;·&nbsp; OpenAPI 3.0</div>
-        <h1><span>Bloqr API</span></h1>
-        <p>Adblock &amp; Privacy Filter <strong>Compiler-as-a-Service</strong> — transform, optimize, and combine filter lists from multiple sources in real time.</p>
+        <h1>Bloqr API</h1>
+        <p class="hero-tagline">Internet Hygiene. Automated.</p>
+        <p>Compile, manage, and deploy adblock filter lists at network scale. REST, streaming, and embedded library. JSON/YAML config. Fully typed.</p>
         <nav class="hero-links">
-            <a href="/api/docs" class="btn-primary"><span aria-hidden="true">&#9654;</span> Try the API</a>
+            <a href="/api/docs" class="btn-primary"><span aria-hidden="true">&#9654;</span> Explore the API</a>
             <a href="${urls.frontend}" class="btn-outline"><span aria-hidden="true">&#9670;</span> Open App</a>
             <a href="${urls.docs}" class="btn-outline"><span aria-hidden="true">&#128196;</span> Docs</a>
             <a href="${urls.landing}" class="btn-outline"><span aria-hidden="true">&#8962;</span> Home</a>
@@ -211,24 +282,24 @@ export function docsLandingHandler(env: Env): Response {
     </header>
 
     <main class="container">
-        <p class="section-title">Documentation UIs</p>
+        <p class="section-label">API Explorer</p>
         <div class="cards">
             <div class="card">
                 <div class="card-icon" aria-hidden="true">&#9670;</div>
                 <div class="card-title">Scalar UI</div>
-                <div class="card-desc">Modern interactive API explorer with a clean purple theme. Try requests directly in the browser.</div>
+                <div class="card-desc">Modern interactive API explorer. Try requests directly in the browser with one click.</div>
                 <a href="/api/docs" class="card-link">Open Scalar <span aria-hidden="true">&#8599;</span></a>
             </div>
             <div class="card">
                 <div class="card-icon" aria-hidden="true">&#128218;</div>
                 <div class="card-title">Swagger UI</div>
-                <div class="card-desc">Classic Swagger interface — familiar to most API developers. Supports all standard OpenAPI operations.</div>
+                <div class="card-desc">Classic Swagger interface. Supports all standard OpenAPI operations — familiar to most teams.</div>
                 <a href="/api/swagger" class="card-link">Open Swagger <span aria-hidden="true">&#8599;</span></a>
             </div>
             <div class="card">
                 <div class="card-icon" aria-hidden="true">&#128196;</div>
                 <div class="card-title">ReDoc</div>
-                <div class="card-desc">Three-panel reference documentation rendered with the Scalar classic layout for easy navigation.</div>
+                <div class="card-desc">Three-panel reference documentation rendered with the Scalar classic layout.</div>
                 <a href="/api/redoc" class="card-link">Open ReDoc <span aria-hidden="true">&#8599;</span></a>
             </div>
             <div class="card">
@@ -254,7 +325,7 @@ export function docsLandingHandler(env: Env): Response {
     <footer>
         &copy; ${new Date().getFullYear()} Bloqr &mdash;
         <a href="${urls.frontend}">App</a> &middot;
-        <a href="${urls.docs}">mdBook Docs</a> &middot;
+        <a href="${urls.docs}">Docs</a> &middot;
         <a href="/api/openapi.json">OpenAPI spec</a>
     </footer>
 </body>

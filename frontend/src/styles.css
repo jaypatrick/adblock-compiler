@@ -1,8 +1,8 @@
 /* =================================================================
-   Adblock Compiler — Design System: "Deep Ink + Electric Amber"
+   Bloqr — Design System: Dark-First Brand
    Angular 21 + Material Design 3
-   Fonts: IBM Plex Sans (body) · Syne (headings) · JetBrains Mono (code)
-   Primary: Electric Amber (#f59e0b / #b45309)
+   Fonts: Space Grotesk (display/headings) · Inter (body) · JetBrains Mono (code)
+   Primary: Orange (#FF5500) · Secondary: Cyan (#00D4FF)
    ================================================================= */
 
 /* -----------------------------------------------------------------
@@ -10,7 +10,7 @@
    ----------------------------------------------------------------- */
 @import "tailwindcss";
 
-/* Dark mode variant: matches existing ThemeService selectors */
+/* Dark mode Tailwind variant (preserved for dark: utility compatibility) */
 @custom-variant dark (&:where(body.dark-theme *, [data-theme='dark'] *));
 
 /* -----------------------------------------------------------------
@@ -23,9 +23,9 @@
      text-on-surface     → color: var(--mat-sys-on-surface)
      border-outline      → border-color: var(--mat-sys-outline)
      bg-surface-variant  → background-color: var(--mat-sys-surface-variant)
-     font-sans           → font-family: IBM Plex Sans
+     font-sans           → font-family: Inter, Space Grotesk
      font-mono           → font-family: JetBrains Mono
-     font-display        → font-family: Syne
+     font-display        → font-family: Space Grotesk
      text-stat           → font-size: 2rem (primary metric value)
      text-stat-lg        → font-size: 1.75rem (admin stat tiles)
      text-code           → font-size: 0.8125rem (inline code)
@@ -79,10 +79,11 @@
     --color-info: var(--app-info);
     --color-info-light: var(--app-info-light);
 
-    /* ── Typography: map to project font stack ───────────────────── */
-    --font-sans: 'IBM Plex Sans', sans-serif;
-    --font-mono: 'JetBrains Mono', monospace;
-    --font-display: 'Syne', sans-serif;
+    /* ── Typography: map to Bloqr font stack ────────────────────── */
+    --font-sans:    'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --font-body:    'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --font-mono:    'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    --font-display: 'Space Grotesk', 'DM Sans', system-ui, sans-serif;
 
     /* ── Semantic font sizes ─────────────────────────────────────── */
     --text-stat: 2rem;       /* primary metric value in StatCardComponent */
@@ -104,115 +105,159 @@
       cover the static English UI chrome; user content with non-Latin
       characters will fall back to system/browser fonts.
    ----------------------------------------------------------------- */
-@import '@fontsource/syne/latin-400.css';
-@import '@fontsource/syne/latin-600.css';
-@import '@fontsource/syne/latin-700.css';
-@import '@fontsource/syne/latin-800.css';
-@import '@fontsource/ibm-plex-sans/latin-300.css';
-@import '@fontsource/ibm-plex-sans/latin-400.css';
-@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource/space-grotesk/latin-400.css';
+@import '@fontsource/space-grotesk/latin-500.css';
+@import '@fontsource/space-grotesk/latin-600.css';
+@import '@fontsource/space-grotesk/latin-700.css';
+@import '@fontsource/inter/latin-400.css';
+@import '@fontsource/inter/latin-500.css';
 @import '@fontsource/jetbrains-mono/latin-400.css';
 @import '@fontsource/jetbrains-mono/latin-700.css';
 @import './material-symbols-outlined.css'; /* local copy with font-display: swap (upstream uses block → causes CLS) */
 
 /* =================================================================
-   CSS Custom Properties — Light Theme (Default)
-   All --mat-sys-* tokens override azure-blue prebuilt defaults.
-   All --app-* tokens are app-layer design tokens.
+   CSS Custom Properties — Bloqr Dark-First Design System
+   Dark is the only mode. All tokens are set for the dark palette.
+   --mat-sys-* tokens override the azure-blue prebuilt defaults.
+   --app-*     tokens are app-layer aliases.
+   --color-*   tokens are Bloqr brand canonical names.
    ================================================================= */
 :root {
-    /* ── M3 Color Tokens — Amber Palette ─────────────────────────── */
-    --mat-sys-primary: #b45309;
-    --mat-sys-on-primary: #ffffff;
-    --mat-sys-primary-container: #fef3c7;
-    --mat-sys-on-primary-container: #431407;
-    --mat-sys-primary-fixed: #fef3c7;
-    --mat-sys-primary-fixed-dim: #fcd34d;
-    --mat-sys-on-primary-fixed: #431407;
-    --mat-sys-on-primary-fixed-variant: #92400e;
-    --mat-sys-inverse-primary: #f59e0b;
-    --mat-sys-surface-tint: #b45309;
+    /* ── Bloqr Brand Tokens — Backgrounds ────────────────────────── */
+    --color-bg-base:     #070B14;
+    --color-bg-surface:  #0E1829;
+    --color-bg-elevated: #162035;
+    --color-bg-overlay:  #1C2A45;
 
-    --mat-sys-secondary: #0369a1;
-    --mat-sys-on-secondary: #ffffff;
-    --mat-sys-secondary-container: #e0f2fe;
-    --mat-sys-on-secondary-container: #023e6a;
-    --mat-sys-secondary-fixed: #e0f2fe;
-    --mat-sys-secondary-fixed-dim: #7dd3fc;
-    --mat-sys-on-secondary-fixed: #023e6a;
-    --mat-sys-on-secondary-fixed-variant: #0369a1;
+    /* ── Bloqr Brand Tokens — Orange (primary accent) ────────────── */
+    --color-orange-500:  #FF5500;
+    --color-orange-400:  #FF7033;
+    --color-orange-600:  #CC4400;
+    --color-orange-900:  #1A0A00;
+    --color-orange-glow: rgba(255, 85, 0, 0.15);
 
-    --mat-sys-tertiary: #059669;
-    --mat-sys-on-tertiary: #ffffff;
-    --mat-sys-tertiary-container: #d1fae5;
-    --mat-sys-on-tertiary-container: #022c22;
-    --mat-sys-tertiary-fixed: #d1fae5;
-    --mat-sys-tertiary-fixed-dim: #6ee7b7;
-    --mat-sys-on-tertiary-fixed: #022c22;
-    --mat-sys-on-tertiary-fixed-variant: #059669;
+    /* ── Bloqr Brand Tokens — Cyan (secondary accent) ────────────── */
+    --color-cyan-500:    #00D4FF;
+    --color-cyan-400:    #33DDFF;
+    --color-cyan-900:    #001829;
+    --color-cyan-glow:   rgba(0, 212, 255, 0.12);
 
-    --mat-sys-error: #dc2626;
-    --mat-sys-on-error: #ffffff;
-    --mat-sys-error-container: #fee2e2;
-    --mat-sys-on-error-container: #7f1d1d;
+    /* ── Bloqr Brand Tokens — Text ───────────────────────────────── */
+    --color-text-primary:   #F1F5F9;
+    --color-text-secondary: #94A3B8;
+    --color-text-muted:     #475569;
+    --color-text-inverse:   #070B14;
 
-    --mat-sys-background: #fafaf8;
-    --mat-sys-on-background: #111111;
-    --mat-sys-surface: #ffffff;
-    --mat-sys-on-surface: #111111;
-    --mat-sys-surface-variant: #f5f2ed;
-    --mat-sys-on-surface-variant: #4b4540;
-    --mat-sys-surface-dim: #dbd7d0;
-    --mat-sys-surface-bright: #ffffff;
-    --mat-sys-surface-container-lowest: #ffffff;
-    --mat-sys-surface-container-low: #f9f6f1;
-    --mat-sys-surface-container: #f5f2ed;
-    --mat-sys-surface-container-high: #ede9e2;
-    --mat-sys-surface-container-highest: #e5e1da;
+    /* ── Bloqr Brand Tokens — Borders ────────────────────────────── */
+    --color-border:        #1E2D40;
+    --color-border-subtle: #162035;
+    --color-border-accent: #2A4060;
 
-    --mat-sys-inverse-surface: #1a1613;
-    --mat-sys-inverse-on-surface: #f5f2ed;
+    /* ── Bloqr Brand Tokens — Semantic ───────────────────────────── */
+    --color-success: #22C55E;
+    --color-warning: #F59E0B;
+    --color-error:   #EF4444;
+    --color-info:    #00D4FF;
 
-    --mat-sys-outline: #c9c4be;
-    --mat-sys-outline-variant: #e5e1da;
-    --mat-sys-scrim: rgba(0, 0, 0, 0.32);
-    --mat-sys-shadow: rgba(0, 0, 0, 0.2);
-    --mat-sys-neutral10: #1a1613;
-    --mat-sys-neutral-variant20: #362e27;
+    /* ── Bloqr Brand Tokens — Shadows ────────────────────────────── */
+    --shadow-sm:     0 1px 3px rgba(0, 0, 0, 0.4);
+    --shadow-md:     0 4px 12px rgba(0, 0, 0, 0.5);
+    --shadow-lg:     0 8px 32px rgba(0, 0, 0, 0.6);
+    --shadow-orange: 0 0 24px rgba(255, 85, 0, 0.15), 0 0 48px rgba(255, 85, 0, 0.15);
+    --shadow-cyan:   0 0 24px rgba(0, 212, 255, 0.12);
 
-    /* ── M3 Typography Tokens — IBM Plex Sans + Syne ─────────────── */
-    --mat-sys-body-large-font: 'IBM Plex Sans', sans-serif;
-    --mat-sys-body-medium-font: 'IBM Plex Sans', sans-serif;
-    --mat-sys-body-small-font: 'IBM Plex Sans', sans-serif;
-    --mat-sys-label-large-font: 'IBM Plex Sans', sans-serif;
-    --mat-sys-label-medium-font: 'IBM Plex Sans', sans-serif;
-    --mat-sys-label-small-font: 'IBM Plex Sans', sans-serif;
-    --mat-sys-title-small-font: 'IBM Plex Sans', sans-serif;
-    --mat-sys-title-medium-font: 'IBM Plex Sans', sans-serif;
-    --mat-sys-title-large-font: 'Syne', sans-serif;
-    --mat-sys-headline-small-font: 'Syne', sans-serif;
-    --mat-sys-headline-medium-font: 'Syne', sans-serif;
-    --mat-sys-headline-large-font: 'Syne', sans-serif;
-    --mat-sys-display-small-font: 'Syne', sans-serif;
-    --mat-sys-display-medium-font: 'Syne', sans-serif;
-    --mat-sys-display-large-font: 'Syne', sans-serif;
+    /* ── M3 Color Tokens — Bloqr Dark Palette ─────────────────────── */
+    --mat-sys-primary: #FF5500;
+    --mat-sys-on-primary: #070B14;
+    --mat-sys-primary-container: #1A0A00;
+    --mat-sys-on-primary-container: #FF7033;
+    --mat-sys-primary-fixed: #CC4400;
+    --mat-sys-primary-fixed-dim: #FF5500;
+    --mat-sys-on-primary-fixed: #070B14;
+    --mat-sys-on-primary-fixed-variant: #FF7033;
+    --mat-sys-inverse-primary: #CC4400;
+    --mat-sys-surface-tint: #FF5500;
+
+    --mat-sys-secondary: #00D4FF;
+    --mat-sys-on-secondary: #070B14;
+    --mat-sys-secondary-container: #001829;
+    --mat-sys-on-secondary-container: #33DDFF;
+    --mat-sys-secondary-fixed: #001829;
+    --mat-sys-secondary-fixed-dim: #00D4FF;
+    --mat-sys-on-secondary-fixed: #070B14;
+    --mat-sys-on-secondary-fixed-variant: #33DDFF;
+
+    --mat-sys-tertiary: #22C55E;
+    --mat-sys-on-tertiary: #070B14;
+    --mat-sys-tertiary-container: rgba(34, 197, 94, 0.15);
+    --mat-sys-on-tertiary-container: #22C55E;
+    --mat-sys-tertiary-fixed: rgba(34, 197, 94, 0.15);
+    --mat-sys-tertiary-fixed-dim: #22C55E;
+    --mat-sys-on-tertiary-fixed: #070B14;
+    --mat-sys-on-tertiary-fixed-variant: #22C55E;
+
+    --mat-sys-error: #EF4444;
+    --mat-sys-on-error: #070B14;
+    --mat-sys-error-container: rgba(239, 68, 68, 0.15);
+    --mat-sys-on-error-container: #EF4444;
+
+    --mat-sys-background: #070B14;
+    --mat-sys-on-background: #F1F5F9;
+    --mat-sys-surface: #0E1829;
+    --mat-sys-on-surface: #F1F5F9;
+    --mat-sys-surface-variant: #162035;
+    --mat-sys-on-surface-variant: #94A3B8;
+    --mat-sys-surface-dim: #070B14;
+    --mat-sys-surface-bright: #1C2A45;
+    --mat-sys-surface-container-lowest: #050A12;
+    --mat-sys-surface-container-low: #0E1829;
+    --mat-sys-surface-container: #162035;
+    --mat-sys-surface-container-high: #1C2A45;
+    --mat-sys-surface-container-highest: #243350;
+
+    --mat-sys-inverse-surface: #F1F5F9;
+    --mat-sys-inverse-on-surface: #070B14;
+
+    --mat-sys-outline: #1E2D40;
+    --mat-sys-outline-variant: #162035;
+    --mat-sys-scrim: rgba(0, 0, 0, 0.5);
+    --mat-sys-shadow: rgba(0, 0, 0, 0.4);
+    --mat-sys-neutral10: #0E1829;
+    --mat-sys-neutral-variant20: #1E2D40;
+
+    /* ── M3 Typography Tokens — Space Grotesk + Inter ─────────────── */
+    --mat-sys-body-large-font:    'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-body-medium-font:   'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-body-small-font:    'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-large-font:   'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-medium-font:  'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-small-font:   'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-small-font:   'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-medium-font:  'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-large-font:   'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-small-font:  'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-medium-font: 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-large-font:  'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-small-font:   'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-medium-font:  'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-large-font:   'Space Grotesk', system-ui, sans-serif;
 
     /* Composite shorthand typography tokens */
-    --mat-sys-body-large: 400 1rem / 1.5rem 'IBM Plex Sans', sans-serif;
-    --mat-sys-body-medium: 400 0.875rem / 1.25rem 'IBM Plex Sans', sans-serif;
-    --mat-sys-body-small: 400 0.75rem / 1rem 'IBM Plex Sans', sans-serif;
-    --mat-sys-label-large: 500 0.875rem / 1.25rem 'IBM Plex Sans', sans-serif;
-    --mat-sys-label-medium: 500 0.75rem / 1rem 'IBM Plex Sans', sans-serif;
-    --mat-sys-label-small: 500 0.688rem / 1rem 'IBM Plex Sans', sans-serif;
-    --mat-sys-title-small: 500 0.875rem / 1.25rem 'IBM Plex Sans', sans-serif;
-    --mat-sys-title-medium: 500 1rem / 1.5rem 'IBM Plex Sans', sans-serif;
-    --mat-sys-title-large: 600 1.375rem / 1.75rem 'Syne', sans-serif;
-    --mat-sys-headline-small: 600 1.5rem / 2rem 'Syne', sans-serif;
-    --mat-sys-headline-medium: 700 1.75rem / 2.25rem 'Syne', sans-serif;
-    --mat-sys-headline-large: 700 2rem / 2.5rem 'Syne', sans-serif;
-    --mat-sys-display-small: 700 2.25rem / 2.75rem 'Syne', sans-serif;
-    --mat-sys-display-medium: 800 2.812rem / 3.25rem 'Syne', sans-serif;
-    --mat-sys-display-large: 800 3.562rem / 4rem 'Syne', sans-serif;
+    --mat-sys-body-large:    400 1rem / 1.5rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-body-medium:   400 0.875rem / 1.25rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-body-small:    400 0.75rem / 1rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-large:   500 0.875rem / 1.25rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-medium:  500 0.75rem / 1rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-label-small:   500 0.688rem / 1rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-small:   500 0.875rem / 1.25rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-medium:  500 1rem / 1.5rem 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-title-large:   600 1.375rem / 1.75rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-small:  600 1.5rem / 2rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-medium: 700 1.75rem / 2.25rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-headline-large:  700 2rem / 2.5rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-small:   700 2.25rem / 2.75rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-medium:  800 2.812rem / 3.25rem 'Space Grotesk', system-ui, sans-serif;
+    --mat-sys-display-large:   800 3.562rem / 4rem 'Space Grotesk', system-ui, sans-serif;
 
     /* ── M3 Shape Tokens — tighter, industrial ───────────────────── */
     --mat-sys-corner-extra-small: 2px;
@@ -226,28 +271,28 @@
     --mat-sys-corner-extra-large: 12px;
     --mat-sys-corner-extra-large-top: 12px 12px 0 0;
 
-    /* ── App Design Tokens — derived from M3 palette ─────────────── */
+    /* ── App Design Tokens — derived from Bloqr palette ─────────────── */
     --app-primary: var(--mat-sys-primary);
-    --app-primary-dark: #92400e;
-    --app-primary-light: #d97706;
+    --app-primary-dark: #CC4400;
+    --app-primary-light: #FF7033;
     --app-secondary: var(--mat-sys-secondary);
     --app-tertiary: var(--mat-sys-tertiary);
 
-    --app-success: #059669;
-    --app-success-light: #d1fae5;
-    --app-error: #dc2626;
-    --app-error-light: #fee2e2;
-    --app-warning: #d97706;
-    --app-warning-light: #fef3c7;
-    --app-info: #0284c7;
-    --app-info-light: #e0f2fe;
+    --app-success: #22C55E;
+    --app-success-light: rgba(34, 197, 94, 0.12);
+    --app-error: #EF4444;
+    --app-error-light: rgba(239, 68, 68, 0.12);
+    --app-warning: #F59E0B;
+    --app-warning-light: rgba(245, 158, 11, 0.12);
+    --app-info: #00D4FF;
+    --app-info-light: rgba(0, 212, 255, 0.10);
 
     --app-surface: var(--mat-sys-surface);
     --app-surface-variant: var(--mat-sys-surface-variant);
     --app-card-bg: var(--mat-sys-surface-container-low);
     --app-input-bg: var(--mat-sys-surface-container-lowest);
     --app-code-bg: var(--mat-sys-surface-container);
-    --app-log-bg: #0d0d0d;
+    --app-log-bg: #050A12;
 
     --app-text: var(--mat-sys-on-background);
     --app-text-muted: var(--mat-sys-on-surface-variant);
@@ -255,108 +300,38 @@
     --app-text-inverse: var(--mat-sys-inverse-on-surface);
     --app-heading: var(--mat-sys-on-background);
 
-    --app-border: var(--mat-sys-outline-variant);
-    --app-border-light: var(--mat-sys-surface-container-highest);
+    --app-border: var(--mat-sys-outline);
+    --app-border-light: var(--mat-sys-outline-variant);
 
-    --app-shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.18);
-    --app-shadow-md: 0 4px 8px rgba(15, 23, 42, 0.22);
-    --app-shadow-lg: 0 12px 24px rgba(15, 23, 42, 0.28);
-    --app-shadow-hover: 0 4px 16px rgba(180, 83, 9, 0.18);
+    --app-shadow-sm: var(--shadow-sm);
+    --app-shadow-md: var(--shadow-md);
+    --app-shadow-lg: var(--shadow-lg);
+    --app-shadow-hover: var(--shadow-orange);
 
     --app-radius-sm: var(--mat-sys-corner-extra-small);
     --app-radius-md: var(--mat-sys-corner-small);
     --app-radius-lg: var(--mat-sys-corner-medium);
     --app-radius-xl: var(--mat-sys-corner-large);
 
-    --app-transition-fast: 0.15s cubic-bezier(0.2, 0, 0, 1);
-    --app-transition: 0.25s cubic-bezier(0.2, 0, 0, 1);
+    --app-transition-fast: 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+    --app-transition: 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 
-    --app-badge-success-bg: var(--app-success-light);
-    --app-badge-success-text: #047857;
-    --app-badge-error-bg: var(--app-error-light);
-    --app-badge-error-text: #b91c1c;
-    --app-badge-warning-bg: var(--app-warning-light);
-    --app-badge-warning-text: #b45309;
-    --app-badge-info-bg: var(--app-info-light);
-    --app-badge-info-text: #0369a1;
+    --app-badge-success-bg: rgba(34, 197, 94, 0.12);
+    --app-badge-success-text: #22C55E;
+    --app-badge-error-bg: rgba(239, 68, 68, 0.12);
+    --app-badge-error-text: #EF4444;
+    --app-badge-warning-bg: rgba(245, 158, 11, 0.12);
+    --app-badge-warning-text: #F59E0B;
+    --app-badge-info-bg: rgba(0, 212, 255, 0.10);
+    --app-badge-info-text: #00D4FF;
 
     --app-table-header-bg: var(--mat-sys-surface-container);
     --app-table-row-hover: var(--mat-sys-surface-container-low);
-    --app-table-border: var(--mat-sys-outline-variant);
+    --app-table-border: var(--mat-sys-outline);
 
-    --app-header-bg: #0d0d0d;
-    --app-header-text: #f0ece4;
-    --app-header-accent: #f59e0b;
-}
-
-/* =================================================================
-   Dark Theme — M3 token + app token overrides
-   Selectors cover: body.dark-theme and html[data-theme='dark'].
-   ================================================================= */
-body.dark-theme,
-html[data-theme='dark'] {
-    /* ── M3 Dark Palette ─────────────────────────────────────────── */
-    --mat-sys-primary: #f59e0b;
-    --mat-sys-on-primary: #000000;
-    --mat-sys-primary-container: #92400e;
-    --mat-sys-on-primary-container: #fef3c7;
-    --mat-sys-primary-fixed: #fef3c7;
-    --mat-sys-primary-fixed-dim: #fcd34d;
-    --mat-sys-on-primary-fixed: #431407;
-    --mat-sys-on-primary-fixed-variant: #b45309;
-    --mat-sys-inverse-primary: #b45309;
-    --mat-sys-surface-tint: #f59e0b;
-
-    --mat-sys-secondary: #38bdf8;
-    --mat-sys-on-secondary: #000000;
-    --mat-sys-secondary-container: #0369a1;
-    --mat-sys-on-secondary-container: #e0f2fe;
-
-    --mat-sys-tertiary: #34d399;
-    --mat-sys-on-tertiary: #000000;
-    --mat-sys-tertiary-container: #047857;
-    --mat-sys-on-tertiary-container: #d1fae5;
-
-    --mat-sys-error: #f87171;
-    --mat-sys-on-error: #000000;
-    --mat-sys-error-container: #7f1d1d;
-    --mat-sys-on-error-container: #fecaca;
-
-    --mat-sys-background: #080808;
-    --mat-sys-on-background: #f0ece4;
-    --mat-sys-surface: #0f0f0f;
-    --mat-sys-on-surface: #f0ece4;
-    --mat-sys-surface-variant: #1a1a1a;
-    --mat-sys-on-surface-variant: #c9c4be;
-    --mat-sys-surface-dim: #080808;
-    --mat-sys-surface-bright: #262626;
-    --mat-sys-surface-container-lowest: #050505;
-    --mat-sys-surface-container-low: #111111;
-    --mat-sys-surface-container: #141414;
-    --mat-sys-surface-container-high: #1c1c1c;
-    --mat-sys-surface-container-highest: #242424;
-
-    --mat-sys-inverse-surface: #f0ece4;
-    --mat-sys-inverse-on-surface: #1a1613;
-
-    --mat-sys-outline: #6b6560;
-    --mat-sys-outline-variant: #3a3630;
-    --mat-sys-neutral10: #1a1613;
-    --mat-sys-neutral-variant20: #3a3630;
-
-    /* ── Dark App Tokens ─────────────────────────────────────────── */
-    --app-log-bg: #060606;
-    --app-header-bg: #080808;
-    --app-shadow-hover: 0 4px 20px rgba(245, 158, 11, 0.2);
-
-    --app-badge-success-bg: rgba(5, 150, 105, 0.15);
-    --app-badge-success-text: #34d399;
-    --app-badge-error-bg: rgba(220, 38, 38, 0.15);
-    --app-badge-error-text: #f87171;
-    --app-badge-warning-bg: rgba(217, 119, 6, 0.15);
-    --app-badge-warning-text: #fbbf24;
-    --app-badge-info-bg: rgba(2, 132, 199, 0.15);
-    --app-badge-info-text: #38bdf8;
+    --app-header-bg: rgba(7, 11, 20, 0.85);
+    --app-header-text: #F1F5F9;
+    --app-header-accent: #FF5500;
 }
 
 /* =================================================================
@@ -407,16 +382,18 @@ body {
     font-size: 15px;
     color: var(--mat-sys-on-background);
     background-color: var(--mat-sys-background);
-    background-image: radial-gradient(circle, rgba(0, 0, 0, 0.055) 1px, transparent 1px);
-    background-size: 28px 28px;
+    background:
+        radial-gradient(ellipse 80% 50% at 50% -10%, rgba(255, 85, 0, 0.12), transparent),
+        radial-gradient(ellipse 60% 40% at 80% 60%, rgba(0, 212, 255, 0.06), transparent),
+        var(--mat-sys-background);
     background-attachment: fixed;
     line-height: 1.6;
     /* Reserve space for the vertical scrollbar at all times so that its
        appearance/disappearance during route transitions does not shift the
        layout horizontally (the "page looks wider" flicker, issue #942). */
     scrollbar-gutter: stable;
-    transition: background-color 0.25s cubic-bezier(0.2, 0, 0, 1),
-                color 0.25s cubic-bezier(0.2, 0, 0, 1);
+    transition: background-color 0.25s cubic-bezier(0.16, 1, 0.3, 1),
+                color 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
@@ -447,13 +424,6 @@ body {
     to   { opacity: 1; }
 }
 
-html.dark-theme,
-body.dark-theme,
-html[data-theme='dark'] {
-    background-image: radial-gradient(circle, rgba(245, 158, 11, 0.04) 1px, transparent 1px);
-    background-size: 28px 28px;
-}
-
 /* =================================================================
    Typography Hierarchy
    ================================================================= */
@@ -467,7 +437,7 @@ h1, h2, h3, h4, h5, h6,
 .mat-title-large,
 .mat-display-large,
 .mat-display-medium {
-    font-family: var(--mat-sys-headline-large-font);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
     color: var(--mat-sys-on-background);
     letter-spacing: -0.02em;
 }
@@ -538,7 +508,7 @@ h1, h2, h3, h4, h5, h6,
 
 /* =================================================================
    App Shell — Page Layout
-   The .page-wrapper "card" floats on the dot-grid body background.
+   The .page-wrapper frames the main content below the header.
    ================================================================= */
 .page-wrapper {
     max-width: 1200px;
@@ -546,14 +516,9 @@ h1, h2, h3, h4, h5, h6,
     background: var(--mat-sys-surface);
     border-radius: var(--mat-sys-corner-large);
     border: 1px solid var(--mat-sys-outline-variant);
-    box-shadow: var(--app-shadow-lg);
+    box-shadow: var(--shadow-lg);
     overflow: hidden;
     min-height: calc(100vh - 48px);
-}
-
-body.dark-theme .page-wrapper,
-html[data-theme='dark'] .page-wrapper {
-    box-shadow: 0 20px 80px rgba(0, 0, 0, 0.7);
 }
 
 @media (max-width: 768px) {
@@ -565,24 +530,26 @@ html[data-theme='dark'] .page-wrapper {
     }
 }
 
-/* =================================================================
-   App Header Shell
-   Dark ink background — brand identity, not theme-dependent.
-   Thin amber gradient accent stripe at top.
-   ================================================================= */
-.app-header-shell {
-    background: var(--app-header-bg);
-    color: var(--app-header-text);
-    padding: 0;
-    position: relative;
+/* :focus-visible — Bloqr accessibility ring */
+:focus-visible {
+    outline: 2px solid #FF5500;
+    outline-offset: 3px;
 }
 
-/* 2px amber accent stripe at the very top */
-.app-header-shell::before {
-    content: '';
-    display: block;
-    height: 2px;
-    background: linear-gradient(90deg, #b45309 0%, #f59e0b 40%, #fcd34d 100%);
+/* =================================================================
+   App Header Shell
+   Bloqr nav bar: sticky, glass morphism, orange accent.
+   ================================================================= */
+.app-header-shell {
+    position: sticky;
+    top: 0;
+    z-index: 50;
+    background: var(--app-header-bg);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--color-border);
+    color: var(--app-header-text);
+    padding: 0;
 }
 
 .app-header-shell .app-header-inner {
@@ -600,11 +567,11 @@ html[data-theme='dark'] .page-wrapper {
 }
 
 .app-header-shell .app-brand-title {
-    font-family: 'Syne', sans-serif;
-    font-size: 2.5rem;
-    font-weight: 800;
+    font-family: 'Space Grotesk', system-ui, sans-serif;
+    font-size: 1.5rem;
+    font-weight: 700;
     margin: 0;
-    color: var(--app-header-accent);
+    color: var(--app-header-text);
     letter-spacing: -0.03em;
     display: flex;
     align-items: center;
@@ -618,12 +585,12 @@ html[data-theme='dark'] .page-wrapper {
 }
 
 .app-header-shell .app-subtitle {
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 1rem;
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    font-size: 0.875rem;
     font-weight: 400;
     margin: 0 0 16px 0;
-    color: rgba(240, 236, 228, 0.95);
-    letter-spacing: 0.02em;
+    color: var(--color-text-secondary);
+    letter-spacing: 0.01em;
     text-align: center;
 }
 
@@ -660,11 +627,11 @@ html[data-theme='dark'] .page-wrapper {
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
-    font-family: 'IBM Plex Sans', sans-serif;
-    font-size: 0.9rem;
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
+    font-size: 14px;
     font-weight: 500;
     cursor: pointer;
-    color: rgba(240, 236, 228, 0.55);
+    color: var(--color-text-secondary);
     transition: color var(--app-transition-fast),
                 background var(--app-transition-fast),
                 border-color var(--app-transition-fast);
@@ -674,14 +641,14 @@ html[data-theme='dark'] .page-wrapper {
 }
 
 .app-nav-tabs a:hover {
-    color: rgba(240, 236, 228, 0.9);
-    background: rgba(245, 158, 11, 0.07);
+    color: var(--color-text-primary);
+    background: rgba(255, 85, 0, 0.05);
 }
 
 .app-nav-tabs a.active-tab {
-    color: var(--app-header-accent);
-    border-bottom-color: var(--app-header-accent);
-    background: rgba(245, 158, 11, 0.1);
+    color: var(--color-orange-500);
+    border-bottom-color: var(--color-orange-500);
+    background: rgba(255, 85, 0, 0.08);
     font-weight: 600;
 }
 
@@ -696,7 +663,7 @@ html[data-theme='dark'] .page-wrapper {
     text-align: center;
     background: var(--mat-sys-surface-container);
     color: var(--mat-sys-on-surface-variant);
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
     font-size: 0.825rem;
     border-top: 1px solid var(--mat-sys-outline-variant);
 }
@@ -718,10 +685,10 @@ html[data-theme='dark'] .page-wrapper {
 
 .app-mobile-sidenav .sidenav-brand {
     padding: 20px 16px;
-    background: #0d0d0d;
-    border-bottom: 2px solid var(--app-header-accent);
-    color: var(--app-header-accent);
-    font-family: 'Syne', sans-serif;
+    background: var(--color-bg-base);
+    border-bottom: 2px solid var(--color-orange-500);
+    color: var(--color-orange-500);
+    font-family: 'Space Grotesk', system-ui, sans-serif;
     font-size: 1.3rem;
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -740,7 +707,7 @@ html[data-theme='dark'] .page-wrapper {
     }
 
     .app-header-shell .app-brand-title {
-        font-size: 1.5rem;
+        font-size: 1.2rem;
     }
 
     .app-header-shell .app-subtitle {
@@ -768,29 +735,29 @@ html[data-theme='dark'] .page-wrapper {
    Code & JSON Viewer
    ================================================================= */
 code {
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
     font-size: 0.85em;
     padding: 2px 6px;
     border-radius: var(--mat-sys-corner-extra-small);
     background-color: var(--mat-sys-surface-container);
-    color: var(--mat-sys-primary);
-    border: 1px solid var(--mat-sys-outline-variant);
+    color: var(--color-orange-400);
+    border: 1px solid var(--color-border);
 }
 
 .json-viewer {
     background: var(--app-log-bg);
-    color: #e2e8f0;
+    color: var(--color-text-primary);
     padding: 20px;
     border-radius: var(--mat-sys-corner-medium);
     overflow-x: auto;
-    font-family: 'JetBrains Mono', 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
     font-size: 13px;
     line-height: 1.6;
     max-height: 500px;
     overflow-y: auto;
     white-space: pre-wrap;
     word-wrap: break-word;
-    border: 1px solid rgba(245, 158, 11, 0.12);
+    border: 1px solid var(--color-border);
 }
 
 .json-key     { color: #93c5fd; }
@@ -809,16 +776,32 @@ code {
     gap: 6px;
     padding: 4px 12px;
     border-radius: var(--mat-sys-corner-small);
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
     font-size: 12px;
     font-weight: 600;
     letter-spacing: 0.02em;
 }
 
-.status-badge.success { background: var(--app-badge-success-bg); color: var(--app-badge-success-text); }
-.status-badge.error   { background: var(--app-badge-error-bg);   color: var(--app-badge-error-text); }
-.status-badge.warning { background: var(--app-badge-warning-bg); color: var(--app-badge-warning-text); }
-.status-badge.info    { background: var(--app-badge-info-bg);    color: var(--app-badge-info-text); }
+.status-badge.success {
+    background: var(--app-badge-success-bg);
+    color: var(--app-badge-success-text);
+    border: 1px solid rgba(34, 197, 94, 0.25);
+}
+.status-badge.error {
+    background: var(--app-badge-error-bg);
+    color: var(--app-badge-error-text);
+    border: 1px solid rgba(239, 68, 68, 0.25);
+}
+.status-badge.warning {
+    background: var(--app-badge-warning-bg);
+    color: var(--app-badge-warning-text);
+    border: 1px solid rgba(245, 158, 11, 0.25);
+}
+.status-badge.info {
+    background: var(--app-badge-info-bg);
+    color: var(--app-badge-info-text);
+    border: 1px solid rgba(0, 212, 255, 0.20);
+}
 
 /* =================================================================
    Status Dot (pulsing live indicator)
@@ -844,7 +827,7 @@ code {
    Method Badges (HTTP verbs)
    ================================================================= */
 .method-badge {
-    font-family: 'JetBrains Mono', 'Courier New', monospace;
+    font-family: 'JetBrains Mono', 'Fira Code', monospace;
     font-size: 11px;
     font-weight: 700;
     padding: 3px 8px;
@@ -919,7 +902,7 @@ code {
 .toast.info::before    { background: var(--app-info); }
 
 .toast-title {
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
     font-weight: 600;
     color: var(--mat-sys-on-surface);
     margin-bottom: 2px;
@@ -927,7 +910,7 @@ code {
 }
 
 .toast-message {
-    font-family: 'IBM Plex Sans', sans-serif;
+    font-family: 'Inter', 'Space Grotesk', system-ui, sans-serif;
     font-size: 13px;
     color: var(--mat-sys-on-surface-variant);
 }

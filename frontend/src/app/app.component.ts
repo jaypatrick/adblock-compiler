@@ -71,7 +71,7 @@ interface NavItem {
         class="app-mobile-sidenav"
         (closedStart)="sidenavOpen.set(false)"
       >
-        <div class="sidenav-brand">⚡ BLOQR</div>
+        <div class="sidenav-brand">⚡ Bloqr</div>
         <mat-nav-list>
           @for (item of navItems; track item.path) {
             @if (item.external) {
@@ -105,7 +105,7 @@ interface NavItem {
       <mat-sidenav-content>
         <div class="page-wrapper">
 
-          <!-- Header — gradient background matching original design -->
+          <!-- Header — Bloqr nav bar: sticky, glass morphism, orange accent -->
           <header class="app-header-shell">
             <div class="app-title-row">
               @if (isMobile()) {
@@ -122,7 +122,7 @@ interface NavItem {
               }
               <p class="app-brand-title">
                 <img class="app-brand-logo" src="favicon.svg" alt="" aria-hidden="true" width="28" height="28">
-                BLOQR
+                Bloqr
               </p>
               <div class="header-actions">
                 <app-user-button />

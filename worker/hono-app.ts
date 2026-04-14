@@ -232,6 +232,7 @@ app.use('*', timing());
 // ── 0a. API versioning header — set on every response (including errors) ──────
 app.use('*', async (c, next) => {
     c.header('X-API-Version', 'v1');
+    c.header('X-Powered-By', 'Bloqr');
     await next();
 });
 
@@ -629,7 +630,8 @@ export const OPENAPI_DOCUMENT_ARGS = {
     info: {
         title: 'Bloqr API',
         version: '2.0.0',
-        description: 'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.',
+        description:
+            'Bloqr API — Internet Hygiene. Automated. Compile, manage, and deploy adblock filter lists at network scale. REST, streaming, and embedded library. JSON/YAML config. Fully typed.',
         license: { name: 'GPL-3.0', url: 'https://github.com/jaypatrick/adblock-compiler/blob/master/LICENSE' },
         contact: { name: 'Jayson Knight', url: 'https://github.com/jaypatrick/adblock-compiler' },
     },
