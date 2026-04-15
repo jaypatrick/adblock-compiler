@@ -90,11 +90,11 @@ jobs:
           # in-tree files (docs/api/, docs/postman/) before this step runs.
           # --config wrangler.pages.toml: use the Pages-specific config to avoid wrangler
           # picking up root wrangler.toml (Workers config, lacks pages_build_output_dir).
-          # pages_build_output_dir="book" is declared in wrangler.pages.toml.
+          # name and pages_build_output_dir are declared in wrangler.pages.toml (single
+          # source of truth — no --project-name flag needed).
           # Retry with 30s initial delay (3 total attempts; sleeps: 30s → 60s).
           retry_command 3 30 deno task wrangler pages deploy \
             --config wrangler.pages.toml \
-            --project-name="${{ env.CLOUDFLARE_PAGES_PROJECT }}" \
             --branch=main \
             --commit-dirty=true
           echo "✅ Documentation deployed successfully"
