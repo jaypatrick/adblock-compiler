@@ -80,11 +80,11 @@ const scalarDocsHandler = apiReference({
     layout: 'modern',
     url: '/api/openapi.json',
     defaultHttpClient: { targetKey: 'js', clientKey: 'fetch' },
-    pageTitle: 'Bloqr API Documentation',
+    pageTitle: 'Bloqr — API Documentation',
     favicon: '/favicon.svg',
     customCss: BLOQR_SCALAR_CSS,
     metaData: {
-        title: 'Bloqr API',
+        title: 'Bloqr — API',
         description: 'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources.',
         ogDescription: 'Interactive API documentation for Bloqr — Adblock & Privacy Filter Compiler-as-a-Service',
     },
@@ -165,7 +165,7 @@ const swaggerDocsHandler = swaggerUI({
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bloqr API &#x2014; Swagger</title>
+    <title>Bloqr — API &#x2014; Swagger</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="${SWAGGER_CDN_BASE}/swagger-ui.css" />
     <style>${BLOQR_SWAGGER_CSS}</style>
@@ -203,11 +203,11 @@ const redocDocsHandler = apiReference({
     theme: 'none',
     layout: 'classic',
     url: '/api/openapi.json',
-    pageTitle: 'Bloqr API Reference',
+    pageTitle: 'Bloqr — API Reference',
     favicon: '/favicon.svg',
     customCss: BLOQR_SCALAR_CSS,
     metaData: {
-        title: 'Bloqr API Reference',
+        title: 'Bloqr — API Reference',
         description: 'Compiler-as-a-Service for adblock filter lists.',
     },
 });
@@ -263,7 +263,7 @@ export function docsLandingHandler(env: Env): Response {
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bloqr API — Internet Hygiene. Automated.</title>
+    <title>Bloqr — API</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <!-- Space Grotesk via Google Fonts CDN.
          REQUIRED EXCEPTION: This is a standalone HTML response served directly by the Cloudflare Worker,

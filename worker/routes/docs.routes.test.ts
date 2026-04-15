@@ -44,7 +44,7 @@ Deno.test('GET /api/docs returns Scalar UI page', async () => {
     const res = await fetchApp('/api/docs');
     const html = await res.text();
     // Scalar UI should contain these markers
-    assertEquals(html.includes('Bloqr API'), true);
+    assertEquals(html.includes('Bloqr — API'), true);
 });
 
 Deno.test('GET /api/docs is publicly accessible (no auth required)', async () => {
