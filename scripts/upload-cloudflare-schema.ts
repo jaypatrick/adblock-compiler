@@ -1,6 +1,7 @@
 #!/usr/bin/env -S deno run --allow-read --allow-net --allow-env
 
 /**
+ * @module upload-cloudflare-schema
  * Cloudflare API Shield Schema Uploader
  *
  * Uploads docs/api/cloudflare-schema.yaml to Cloudflare API Shield using a
@@ -10,6 +11,9 @@
  *   3. POST the new schema.
  *   4. PATCH to enable validation on the new schema.
  *   5. DELETE the previously-active schema (prevents validation blackout).
+ *
+ * All API responses are Zod-validated at the service boundary — unexpected shapes
+ * surface as {@link ZodError} before any downstream logic runs.
  *
  * Required environment variables:
  *   CLOUDFLARE_ZONE_ID           — zone to upload to
@@ -21,6 +25,7 @@
  */
 
 import { parseArgs } from '@std/cli/parse-args';
+import { z } from 'zod';
 import { createCloudflareApiService } from '../src/services/cloudflareApiService.ts';
 import type { ApiShieldSchema } from '../src/services/cloudflareApiService.ts';
 
@@ -29,6 +34,9 @@ const SCHEMA_NAME = 'adblock-compiler-openapi';
 
 /**
  * Compute a hex-encoded SHA-256 digest of a UTF-8 string.
+ *
+ * @param text - The input string to hash.
+ * @returns A lowercase hex string (64 characters) representing the SHA-256 digest.
  */
 async function sha256Hex(text: string): Promise<string> {
     const data = new TextEncoder().encode(text);
@@ -38,6 +46,33 @@ async function sha256Hex(text: string): Promise<string> {
         .join('');
 }
 
+/**
+ * Zod schema for the required environment variables.
+ *
+ * Both variables must be non-empty strings — absent or empty values are rejected
+ * immediately so the script fails fast with a clear diagnostic rather than
+ * surfacing cryptic Cloudflare API errors downstream.
+ *
+ * CLOUDFLARE_API_SHIELD_TOKEN must be a token scoped to "API Gateway: Edit" only.
+ * Never reuse the wrangler deployment token — it has much broader permissions.
+ */
+const EnvSchema = z.object({
+    /** Cloudflare zone ID (32-character hex string from the dashboard). */
+    CLOUDFLARE_ZONE_ID: z.string().min(1, 'CLOUDFLARE_ZONE_ID environment variable is required'),
+    /**
+     * API token with "API Gateway: Edit" scope.
+     * Create a dedicated token — do NOT reuse CLOUDFLARE_API_TOKEN / wrangler token.
+     */
+    CLOUDFLARE_API_SHIELD_TOKEN: z.string().min(1, 'CLOUDFLARE_API_SHIELD_TOKEN environment variable is required'),
+});
+
+/**
+ * Orchestrates the zero-downtime API Shield schema upload sequence:
+ * validates environment variables, reads the local schema file, compares
+ * it against the live schema hash (when `--skip-if-unchanged` is set),
+ * uploads the new schema, enables validation on it, and removes the
+ * previously-active schema.
+ */
 async function main(): Promise<void> {
     const args = parseArgs(Deno.args, {
         boolean: ['dry-run', 'skip-if-unchanged'],
@@ -47,17 +82,17 @@ async function main(): Promise<void> {
     const dryRun = args['dry-run'] as boolean;
     const skipIfUnchanged = args['skip-if-unchanged'] as boolean;
 
-    const zoneId = Deno.env.get('CLOUDFLARE_ZONE_ID');
-    const apiToken = Deno.env.get('CLOUDFLARE_API_SHIELD_TOKEN');
-
-    if (!zoneId) {
-        console.error('❌ CLOUDFLARE_ZONE_ID environment variable is required');
+    const envResult = EnvSchema.safeParse({
+        CLOUDFLARE_ZONE_ID: Deno.env.get('CLOUDFLARE_ZONE_ID'),
+        CLOUDFLARE_API_SHIELD_TOKEN: Deno.env.get('CLOUDFLARE_API_SHIELD_TOKEN'),
+    });
+    if (!envResult.success) {
+        for (const issue of envResult.error.issues) {
+            console.error(`❌ ${issue.message}`);
+        }
         Deno.exit(1);
     }
-    if (!apiToken) {
-        console.error('❌ CLOUDFLARE_API_SHIELD_TOKEN environment variable is required');
-        Deno.exit(1);
-    }
+    const { CLOUDFLARE_ZONE_ID: zoneId, CLOUDFLARE_API_SHIELD_TOKEN: apiToken } = envResult.data;
 
     // Read local schema
     let schemaContent: string;

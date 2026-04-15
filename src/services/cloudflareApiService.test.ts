@@ -7,7 +7,7 @@ import Cloudflare from 'cloudflare';
 import type { IBasicLogger } from '../types/index.ts';
 import { CloudflareApiService, createCloudflareApiService } from './cloudflareApiService.ts';
 import type { D1Param } from './cloudflareApiService.ts';
-import type { PublicSchema, SchemaUpload } from 'cloudflare/resources/api-gateway/user-schemas/user-schemas';
+import type { ApiShieldSchema, ApiShieldUploadResult } from './cloudflareApiService.ts';
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
 
@@ -79,7 +79,7 @@ function createMockCloudflareClient() {
                                 created_at: '2024-01-01T00:00:00Z',
                                 source: 'openapi: 3.0.0',
                                 validation_enabled: true,
-                            } as PublicSchema,
+                            } as ApiShieldSchema,
                         ]),
                     ),
                 create: (_params: unknown) =>
@@ -89,8 +89,8 @@ function createMockCloudflareClient() {
                             name: 'my-schema',
                             kind: 'openapi_v3',
                             created_at: '2024-01-02T00:00:00Z',
-                        } as PublicSchema,
-                    } as SchemaUpload),
+                        } as ApiShieldSchema,
+                    } as ApiShieldUploadResult),
                 edit: (_schemaId: string, _params: unknown) =>
                     Promise.resolve({
                         schema_id: 'schema-id-1',
@@ -98,7 +98,7 @@ function createMockCloudflareClient() {
                         kind: 'openapi_v3',
                         created_at: '2024-01-01T00:00:00Z',
                         validation_enabled: true,
-                    } as PublicSchema),
+                    } as ApiShieldSchema),
                 delete: (_schemaId: string, _params: unknown) => Promise.resolve(undefined),
             },
         },
@@ -518,8 +518,8 @@ Deno.test('CloudflareApiService - listApiShieldSchemas', async (t) => {
         const schemas = await service.listApiShieldSchemas('zone-1');
 
         assertEquals(schemas.length, 1);
-        assertEquals((schemas[0] as PublicSchema).schema_id, 'schema-id-1');
-        assertEquals((schemas[0] as PublicSchema).validation_enabled, true);
+        assertEquals((schemas[0] as ApiShieldSchema).schema_id, 'schema-id-1');
+        assertEquals((schemas[0] as ApiShieldSchema).validation_enabled, true);
     });
 
     await t.step('should pass zone_id and omit_source=false to the client', async () => {
@@ -590,7 +590,7 @@ Deno.test('CloudflareApiService - uploadApiShieldSchema', async (t) => {
 
         const result = await service.uploadApiShieldSchema('zone-1', 'my-schema', 'openapi: 3.0.0');
 
-        assertEquals((result as SchemaUpload).schema.schema_id, 'schema-id-new');
+        assertEquals((result as ApiShieldUploadResult).schema.schema_id, 'schema-id-new');
     });
 
     await t.step('should pass zone_id, kind, and name to the client', async () => {
@@ -605,8 +605,8 @@ Deno.test('CloudflareApiService - uploadApiShieldSchema', async (t) => {
                     create: (params: unknown) => {
                         capturedParams = params;
                         return Promise.resolve({
-                            schema: { schema_id: 'new-id', name: 'n', kind: 'openapi_v3', created_at: '' } as PublicSchema,
-                        } as SchemaUpload);
+                            schema: { schema_id: 'new-id', name: 'n', kind: 'openapi_v3', created_at: '' } as ApiShieldSchema,
+                        } as ApiShieldUploadResult);
                     },
                 },
             },
@@ -651,8 +651,8 @@ Deno.test('CloudflareApiService - enableApiShieldSchema', async (t) => {
 
         const result = await service.enableApiShieldSchema('zone-1', 'schema-id-1');
 
-        assertEquals((result as PublicSchema).schema_id, 'schema-id-1');
-        assertEquals((result as PublicSchema).validation_enabled, true);
+        assertEquals((result as ApiShieldSchema).schema_id, 'schema-id-1');
+        assertEquals((result as ApiShieldSchema).validation_enabled, true);
     });
 
     await t.step('should pass zone_id, schema_id, and validation_enabled=true', async () => {

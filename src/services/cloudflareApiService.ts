@@ -3,13 +3,65 @@
 
 import Cloudflare from 'cloudflare';
 import type { ZoneListParams } from 'cloudflare/resources/zones/zones';
-import type { PublicSchema, SchemaUpload } from 'cloudflare/resources/api-gateway/user-schemas/user-schemas';
 import type { IBasicLogger } from '../types/index.ts';
 import { silentLogger } from '../utils/logger.ts';
+import { z } from 'zod';
 
-// ─── API Shield return-type helpers ──────────────────────────────────────────
+// ─── API Shield Zod schemas ─────────────────────────────────────────────────
 
-export type { PublicSchema as ApiShieldSchema, SchemaUpload as ApiShieldUploadResult };
+/**
+ * Zod schema for a Cloudflare API Shield (API Gateway) user schema object.
+ *
+ * Mirrors the `PublicSchema` interface from `cloudflare@5.2.0`. The `source`
+ * field is only populated when the listing request is made with `omit_source=false`.
+ */
+export const ApiShieldSchemaSchema = z.object({
+    /** ISO 8601 timestamp indicating when the schema was created. */
+    created_at: z.string(),
+    /** Schema format — always `'openapi_v3'` for user-uploaded schemas. */
+    kind: z.literal('openapi_v3'),
+    /** Human-readable name given to the schema at upload time. */
+    name: z.string(),
+    /** Stable identifier for the schema within the zone. */
+    schema_id: z.string(),
+    /** Raw schema source content — only present when `omit_source=false` was requested. */
+    source: z.string().optional(),
+    /** Whether API Shield validation is currently active for this schema. */
+    validation_enabled: z.boolean().optional(),
+});
+/** Inferred type from {@link ApiShieldSchemaSchema}. */
+export type ApiShieldSchema = z.infer<typeof ApiShieldSchemaSchema>;
+
+/**
+ * Zod schema for the response returned when uploading an API Shield schema.
+ *
+ * Mirrors the `SchemaUpload` interface from `cloudflare@5.2.0`. The `upload_details`
+ * field carries any parser warnings emitted during schema validation.
+ */
+export const ApiShieldUploadResultSchema = z.object({
+    /** The schema object that was created. */
+    schema: ApiShieldSchemaSchema,
+    /** Optional upload diagnostics including any parser warnings. */
+    upload_details: z
+        .object({
+            /** Non-fatal warnings produced by the API Gateway schema parser. */
+            warnings: z
+                .array(
+                    z.object({
+                        /** Numeric warning code. */
+                        code: z.number(),
+                        /** JSON Pointer or XPath locations in the schema that triggered the warning. */
+                        locations: z.array(z.string()).optional(),
+                        /** Human-readable description of the warning. */
+                        message: z.string().optional(),
+                    }),
+                )
+                .optional(),
+        })
+        .optional(),
+});
+/** Inferred type from {@link ApiShieldUploadResultSchema}. */
+export type ApiShieldUploadResult = z.infer<typeof ApiShieldUploadResultSchema>;
 
 // ─── Return-type helpers ──────────────────────────────────────────────────────
 
@@ -121,34 +173,79 @@ export class CloudflareApiService {
 
     // ── API Shield ────────────────────────────────────────────────────────────
 
-    async listApiShieldSchemas(zoneId: string): Promise<PublicSchema[]> {
+    /**
+     * Lists all API Shield user schemas registered for the given zone.
+     *
+     * Fetches all pages via the SDK's paginated endpoint with `omit_source=false`
+     * so that each item includes the raw schema source YAML.
+     *
+     * @param zoneId - Cloudflare zone ID (32-character hex string).
+     * @returns Array of {@link ApiShieldSchema} objects describing each registered schema.
+     * @throws {ZodError} if any item returned by the API does not match {@link ApiShieldSchemaSchema}.
+     */
+    async listApiShieldSchemas(zoneId: string): Promise<ApiShieldSchema[]> {
         this.logger.info(`[CloudflareApiService] listApiShieldSchemas zoneId=${zoneId}`);
 
         const page = await this.client.apiGateway.userSchemas.list({ zone_id: zoneId, omit_source: false });
-        return page.getPaginatedItems();
+        return page.getPaginatedItems().map((item) => ApiShieldSchemaSchema.parse(item));
     }
 
-    async uploadApiShieldSchema(zoneId: string, name: string, content: string): Promise<SchemaUpload> {
+    /**
+     * Uploads a new OpenAPI v3 schema to API Shield for the given zone.
+     *
+     * The schema content is sent as an `application/yaml` file. Cloudflare may
+     * return non-fatal parser warnings inside `upload_details.warnings`.
+     *
+     * @param zoneId - Cloudflare zone ID (32-character hex string).
+     * @param name - Human-readable label for the schema (e.g. `'my-api-v2'`).
+     * @param content - Raw YAML or JSON content of the OpenAPI v3 schema.
+     * @returns The {@link ApiShieldUploadResult} including the created schema and any parser warnings.
+     * @throws {ZodError} if the API response does not match {@link ApiShieldUploadResultSchema}.
+     */
+    async uploadApiShieldSchema(zoneId: string, name: string, content: string): Promise<ApiShieldUploadResult> {
         this.logger.info(`[CloudflareApiService] uploadApiShieldSchema zoneId=${zoneId} name=${name}`);
 
         const file = new File([content], name, { type: 'application/yaml' });
-        return await this.client.apiGateway.userSchemas.create({
+        const raw = await this.client.apiGateway.userSchemas.create({
             zone_id: zoneId,
             file,
             kind: 'openapi_v3',
             name,
         });
+        return ApiShieldUploadResultSchema.parse(raw);
     }
 
-    async enableApiShieldSchema(zoneId: string, schemaId: string): Promise<PublicSchema> {
+    /**
+     * Enables API Shield validation for the given schema.
+     *
+     * PATCHes the schema with `validation_enabled: true` so that incoming
+     * requests are validated against the schema's operation definitions.
+     *
+     * @param zoneId - Cloudflare zone ID (32-character hex string).
+     * @param schemaId - Schema ID returned by {@link uploadApiShieldSchema}.
+     * @returns The updated {@link ApiShieldSchema} with `validation_enabled: true`.
+     * @throws {ZodError} if the API response does not match {@link ApiShieldSchemaSchema}.
+     */
+    async enableApiShieldSchema(zoneId: string, schemaId: string): Promise<ApiShieldSchema> {
         this.logger.info(`[CloudflareApiService] enableApiShieldSchema zoneId=${zoneId} schemaId=${schemaId}`);
 
-        return await this.client.apiGateway.userSchemas.edit(schemaId, {
+        const raw = await this.client.apiGateway.userSchemas.edit(schemaId, {
             zone_id: zoneId,
             validation_enabled: true,
         });
+        return ApiShieldSchemaSchema.parse(raw);
     }
 
+    /**
+     * Deletes an API Shield schema from the given zone.
+     *
+     * Should only be called after the replacement schema has been uploaded and
+     * validation has been enabled on it, to avoid a validation blackout window.
+     *
+     * @param zoneId - Cloudflare zone ID (32-character hex string).
+     * @param schemaId - ID of the schema to delete.
+     * @returns Resolves when the deletion is confirmed by the API.
+     */
     async deleteApiShieldSchema(zoneId: string, schemaId: string): Promise<void> {
         this.logger.info(`[CloudflareApiService] deleteApiShieldSchema zoneId=${zoneId} schemaId=${schemaId}`);
 
