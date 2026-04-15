@@ -47,6 +47,18 @@ Deno.test('GET /api/docs returns Scalar UI page', async () => {
     assertEquals(html.includes('Bloqr \u2014 API'), true);
 });
 
+Deno.test('GET /api/docs page title is "Bloqr — API Documentation"', async () => {
+    const res = await fetchApp('/api/docs');
+    const html = await res.text();
+    assertStringIncludes(html, 'Bloqr \u2014 API Documentation');
+});
+
+Deno.test('GET /api/docs page uses /favicon.svg', async () => {
+    const res = await fetchApp('/api/docs');
+    const html = await res.text();
+    assertStringIncludes(html, '/favicon.svg');
+});
+
 Deno.test('GET /api/docs is publicly accessible (no auth required)', async () => {
     // Should not return 401 for anonymous users
     const res = await fetchApp('/api/docs');
@@ -85,6 +97,19 @@ Deno.test('GET /api/swagger is publicly accessible (no auth required)', async ()
     assertEquals(res.status !== 401 && res.status !== 403, true);
 });
 
+Deno.test('GET /api/swagger page title is "Bloqr — API — Swagger"', async () => {
+    const res = await fetchApp('/api/swagger');
+    const html = await res.text();
+    // Em dash is literal in the first position; second separator is the HTML entity &#x2014;
+    assertStringIncludes(html, 'Bloqr \u2014 API &#x2014; Swagger');
+});
+
+Deno.test('GET /api/swagger page uses /favicon.svg', async () => {
+    const res = await fetchApp('/api/swagger');
+    const html = await res.text();
+    assertStringIncludes(html, '/favicon.svg');
+});
+
 // ── GET /api/redoc — Scalar classic / ReDoc ───────────────────────────────────
 
 Deno.test('GET /api/redoc returns 200 and HTML content', async () => {
@@ -109,6 +134,18 @@ Deno.test('GET /api/redoc/ (trailing slash) returns 200 and HTML', async () => {
 Deno.test('GET /api/redoc/ is publicly accessible (no auth required)', async () => {
     const res = await fetchApp('/api/redoc/');
     assertEquals(res.status !== 401 && res.status !== 403, true);
+});
+
+Deno.test('GET /api/redoc page title is "Bloqr — API Reference"', async () => {
+    const res = await fetchApp('/api/redoc');
+    const html = await res.text();
+    assertStringIncludes(html, 'Bloqr \u2014 API Reference');
+});
+
+Deno.test('GET /api/redoc page uses /favicon.svg', async () => {
+    const res = await fetchApp('/api/redoc');
+    const html = await res.text();
+    assertStringIncludes(html, '/favicon.svg');
 });
 
 // ── GET / — Landing page ──────────────────────────────────────────────────────
@@ -153,6 +190,19 @@ Deno.test('GET / landing page links to OpenAPI spec', async () => {
 Deno.test('GET / is publicly accessible (no auth required)', async () => {
     const res = await fetchApp('/');
     assertEquals(res.status !== 401 && res.status !== 403, true);
+});
+
+Deno.test('GET / landing page title is "Bloqr — API"', async () => {
+    const res = await fetchApp('/');
+    const html = await res.text();
+    // The <h1> says "Bloqr API" (no em dash); the <title> is "Bloqr — API".
+    assertStringIncludes(html, '<title>Bloqr \u2014 API</title>');
+});
+
+Deno.test('GET / landing page uses /favicon.svg', async () => {
+    const res = await fetchApp('/');
+    const html = await res.text();
+    assertStringIncludes(html, '/favicon.svg');
 });
 
 // ── GET /api — Landing page (same content) ────────────────────────────────────
