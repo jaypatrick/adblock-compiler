@@ -71,7 +71,7 @@ const EnvSchema = z.object({
         .string({
             error: 'CLOUDFLARE_API_SHIELD_TOKEN environment variable is required',
         })
-        .min(1, 'CLOUDFLARE_API_SHIELD_TOKEN environment variable is required'),
+        .min(1, 'CLOUDFLARE_API_SHIELD_TOKEN must not be empty'),
 });
 
 /**
