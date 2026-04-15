@@ -256,7 +256,7 @@ export interface EndpointInfo {
         <h2 id="external-nav-heading" class="section-heading">More Bloqr</h2>
         <div class="nav-grid">
           <a href="https://api.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
-            <mat-card appearance="outlined" class="nav-card nav-card--external bloqr-card cursor-pointer">
+            <mat-card appearance="outlined" class="nav-card bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">api</mat-icon>
                 <mat-card-title class="nav-card-title">API Portal</mat-card-title>
@@ -267,7 +267,7 @@ export interface EndpointInfo {
             </mat-card>
           </a>
           <a href="https://docs.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
-            <mat-card appearance="outlined" class="nav-card nav-card--external bloqr-card cursor-pointer">
+            <mat-card appearance="outlined" class="nav-card bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">menu_book</mat-icon>
                 <mat-card-title class="nav-card-title">Documentation</mat-card-title>
@@ -278,7 +278,7 @@ export interface EndpointInfo {
             </mat-card>
           </a>
           <a href="https://bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
-            <mat-card appearance="outlined" class="nav-card nav-card--external bloqr-card cursor-pointer">
+            <mat-card appearance="outlined" class="nav-card bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">open_in_new</mat-icon>
                 <mat-card-title class="nav-card-title">Bloqr.com</mat-card-title>
