@@ -255,7 +255,7 @@ export interface EndpointInfo {
       <section aria-labelledby="external-nav-heading" class="nav-section">
         <h2 id="external-nav-heading" class="section-heading">More Bloqr</h2>
         <div class="nav-grid">
-          <a href="https://api.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="nav-card bloqr-card nav-card--external">
+          <a href="https://api.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="nav-card nav-card--external">
             <mat-card appearance="outlined" class="bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">api</mat-icon>
@@ -266,7 +266,7 @@ export interface EndpointInfo {
               </mat-card-content>
             </mat-card>
           </a>
-          <a href="https://docs.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="nav-card bloqr-card nav-card--external">
+          <a href="https://docs.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="nav-card nav-card--external">
             <mat-card appearance="outlined" class="bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">menu_book</mat-icon>
@@ -277,7 +277,7 @@ export interface EndpointInfo {
               </mat-card-content>
             </mat-card>
           </a>
-          <a href="https://bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="nav-card bloqr-card nav-card--external">
+          <a href="https://bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="nav-card nav-card--external">
             <mat-card appearance="outlined" class="bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">open_in_new</mat-icon>
