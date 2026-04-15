@@ -165,7 +165,7 @@ const swaggerDocsHandler = swaggerUI({
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bloqr — API &#x2014; Swagger</title>
+    <title>Bloqr — API — Swagger</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="${SWAGGER_CDN_BASE}/swagger-ui.css" />
     <style>${BLOQR_SWAGGER_CSS}</style>

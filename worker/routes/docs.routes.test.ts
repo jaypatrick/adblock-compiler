@@ -100,8 +100,7 @@ Deno.test('GET /api/swagger is publicly accessible (no auth required)', async ()
 Deno.test('GET /api/swagger page title is "Bloqr — API — Swagger"', async () => {
     const res = await fetchApp('/api/swagger');
     const html = await res.text();
-    // Em dash is literal in the first position; second separator is the HTML entity &#x2014;
-    assertStringIncludes(html, 'Bloqr \u2014 API &#x2014; Swagger');
+    assertStringIncludes(html, 'Bloqr \u2014 API \u2014 Swagger');
 });
 
 Deno.test('GET /api/swagger page uses /favicon.svg', async () => {
