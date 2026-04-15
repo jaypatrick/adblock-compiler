@@ -243,8 +243,8 @@ export class CloudflareApiService {
      *
      * @param zoneId - Cloudflare zone ID (32-character hex string).
      * @param schemaId - Schema ID returned by {@link uploadApiShieldSchema}.
-     * @returns The updated {@link ApiShieldSchema} with `validation_enabled: true`, as confirmed by Zod.
-     * @throws {ZodError} if the API response does not match {@link ApiShieldSchemaSchema} or if
+     * @returns The updated {@link EnabledApiShieldSchema} with `validation_enabled: true`, as confirmed by Zod.
+     * @throws {ZodError} if the API response does not match {@link EnabledApiShieldSchemaSchema} or if
      *   `validation_enabled` is not `true` in the response.
      */
     async enableApiShieldSchema(zoneId: string, schemaId: string): Promise<EnabledApiShieldSchema> {
