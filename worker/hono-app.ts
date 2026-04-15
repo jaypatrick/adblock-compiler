@@ -82,6 +82,7 @@ import { configurationRoutes } from './routes/configuration.routes.ts';
 import { docsLandingHandler, docsRoutes } from './routes/docs.routes.ts';
 import { metaRoutes } from './routes/meta.routes.ts';
 import { monitoringRoutes } from './routes/monitoring.routes.ts';
+import { paygRoutes } from './routes/payg.routes.ts';
 import { proxyRoutes } from './routes/proxy.routes.ts';
 import { queueRoutes } from './routes/queue.routes.ts';
 import { rulesRoutes } from './routes/rules.routes.ts';
@@ -131,6 +132,7 @@ const PRE_AUTH_PATHS = [
     '/api/redoc',
     '/api/redoc/',
     '/api/auth/providers',
+    '/api/payg/pricing',
     ...MONITORING_API_PATHS,
 ] as const;
 
@@ -452,7 +454,7 @@ app.use(
             return matchOrigin(origin, c.env as Env) ?? undefined;
         },
         allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-        allowHeaders: ['Content-Type', 'Authorization', 'X-Turnstile-Token'],
+        allowHeaders: ['Content-Type', 'Authorization', 'X-Turnstile-Token', 'X-Payg-Session', 'X-Payment-Response', 'X-Stripe-Customer-Id'],
         maxAge: 86400,
         credentials: true,
     }),
@@ -611,6 +613,7 @@ routes.route('/', monitoringRoutes);
 routes.route('/', apiKeysRoutes);
 routes.route('/', webhookRoutes);
 routes.route('/', stripeRoutes);
+routes.route('/', paygRoutes);
 routes.route('/', workflowRoutes);
 routes.route('/', workflowDiagramRoutes);
 routes.route('/', browserRoutes);

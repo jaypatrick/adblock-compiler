@@ -77,7 +77,10 @@ export const ModelName = {
   DataRetentionConsent: 'DataRetentionConsent',
   UserConfiguration: 'UserConfiguration',
   DeploymentHistory: 'DeploymentHistory',
-  DeploymentCounter: 'DeploymentCounter'
+  DeploymentCounter: 'DeploymentCounter',
+  PaygCustomer: 'PaygCustomer',
+  PaygPaymentEvent: 'PaygPaymentEvent',
+  PaygSession: 'PaygSession'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -136,7 +139,8 @@ export const UserScalarFieldEnum = {
   banned: 'banned',
   banReason: 'banReason',
   banExpires: 'banExpires',
-  planId: 'planId'
+  planId: 'planId',
+  stripeCustomerId: 'stripeCustomerId'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -223,6 +227,9 @@ export const OrganizationScalarFieldEnum = {
   metadata: 'metadata',
   tier: 'tier',
   planId: 'planId',
+  stripeCustomerId: 'stripeCustomerId',
+  stripeSubscriptionId: 'stripeSubscriptionId',
+  stripeSubscriptionStatus: 'stripeSubscriptionStatus',
   retentionDays: 'retentionDays',
   retentionPolicyAcceptedAt: 'retentionPolicyAcceptedAt',
   createdAt: 'createdAt',
@@ -527,6 +534,48 @@ export const DeploymentCounterScalarFieldEnum = {
 } as const
 
 export type DeploymentCounterScalarFieldEnum = (typeof DeploymentCounterScalarFieldEnum)[keyof typeof DeploymentCounterScalarFieldEnum]
+
+
+export const PaygCustomerScalarFieldEnum = {
+  id: 'id',
+  stripeCustomerId: 'stripeCustomerId',
+  totalSpendUsdCents: 'totalSpendUsdCents',
+  totalRequests: 'totalRequests',
+  firstSeenAt: 'firstSeenAt',
+  lastSeenAt: 'lastSeenAt',
+  convertedAt: 'convertedAt',
+  convertedUserId: 'convertedUserId'
+} as const
+
+export type PaygCustomerScalarFieldEnum = (typeof PaygCustomerScalarFieldEnum)[keyof typeof PaygCustomerScalarFieldEnum]
+
+
+export const PaygPaymentEventScalarFieldEnum = {
+  id: 'id',
+  paygCustomerId: 'paygCustomerId',
+  stripePaymentIntentId: 'stripePaymentIntentId',
+  amountUsdCents: 'amountUsdCents',
+  endpoint: 'endpoint',
+  requestId: 'requestId',
+  workerRegion: 'workerRegion',
+  createdAt: 'createdAt'
+} as const
+
+export type PaygPaymentEventScalarFieldEnum = (typeof PaygPaymentEventScalarFieldEnum)[keyof typeof PaygPaymentEventScalarFieldEnum]
+
+
+export const PaygSessionScalarFieldEnum = {
+  id: 'id',
+  paygCustomerId: 'paygCustomerId',
+  sessionToken: 'sessionToken',
+  requestsGranted: 'requestsGranted',
+  requestsUsed: 'requestsUsed',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt',
+  revokedAt: 'revokedAt'
+} as const
+
+export type PaygSessionScalarFieldEnum = (typeof PaygSessionScalarFieldEnum)[keyof typeof PaygSessionScalarFieldEnum]
 
 
 export const SortOrder = {

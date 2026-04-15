@@ -192,3 +192,26 @@ export type DeploymentHistory = Prisma.DeploymentHistoryModel
  * 
  */
 export type DeploymentCounter = Prisma.DeploymentCounterModel
+/**
+ * Model PaygCustomer
+ * Pay-As-You-Go customer record.
+ * Identity is the Stripe Customer ID (fiat path via Stripe facilitator).
+ * Created on first successful PAYG charge; no sign-up required.
+ * When a PAYG customer converts to a subscription, convertedUserId is set.
+ */
+export type PaygCustomer = Prisma.PaygCustomerModel
+/**
+ * Model PaygPaymentEvent
+ * Append-only record of every PAYG payment event.
+ * stripePaymentIntentId is the Stripe PaymentIntent ID — used for reconciliation.
+ * NEVER delete rows from this table.
+ */
+export type PaygPaymentEvent = Prisma.PaygPaymentEventModel
+/**
+ * Model PaygSession
+ * x402-style PAYG session token.
+ * Issued after a successful Stripe payment; grants a fixed number of requests
+ * within a TTL window. The client includes the session token in the
+ * X-Payg-Session request header to avoid re-paying per call.
+ */
+export type PaygSession = Prisma.PaygSessionModel

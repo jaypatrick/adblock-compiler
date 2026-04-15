@@ -35,6 +35,14 @@ export interface Variables {
     isSSR: boolean; // true when the request originated from the SSR Worker via env.API.fetch()
     /** Request-scoped PrismaClient — set by the global inline middleware in hono-app.ts when HYPERDRIVE is bound. */
     prisma?: InstanceType<typeof PrismaClient>;
+    /**
+     * Set to `true` by `paygConversionCheckMiddleware()` when a PAYG customer's
+     * cumulative spend crosses the conversion threshold.  Route handlers may read
+     * this to surface a subscription upsell prompt in the response body.
+     *
+     * @see worker/middleware/payg-middleware.ts — paygConversionCheckMiddleware
+     */
+    paygConversionEligible?: boolean;
 }
 
 export type AppContext = Context<{ Bindings: Env; Variables: Variables }>;

@@ -410,7 +410,10 @@ export const ModelName = {
   DataRetentionConsent: 'DataRetentionConsent',
   UserConfiguration: 'UserConfiguration',
   DeploymentHistory: 'DeploymentHistory',
-  DeploymentCounter: 'DeploymentCounter'
+  DeploymentCounter: 'DeploymentCounter',
+  PaygCustomer: 'PaygCustomer',
+  PaygPaymentEvent: 'PaygPaymentEvent',
+  PaygSession: 'PaygSession'
 } as const
 
 export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -426,7 +429,7 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
     omit: GlobalOmitOptions
   }
   meta: {
-    modelProps: "subscriptionPlan" | "user" | "apiKey" | "session" | "twoFactor" | "account" | "verification" | "organization" | "member" | "filterSource" | "filterListVersion" | "filterListAst" | "compiledOutput" | "configuration" | "compilationEvent" | "sourceHealthSnapshot" | "sourceChangeEvent" | "agentSession" | "agentInvocation" | "agentAuditLog" | "storageEntry" | "filterCache" | "compilationMetadata" | "dataRetentionConsent" | "userConfiguration" | "deploymentHistory" | "deploymentCounter"
+    modelProps: "subscriptionPlan" | "user" | "apiKey" | "session" | "twoFactor" | "account" | "verification" | "organization" | "member" | "filterSource" | "filterListVersion" | "filterListAst" | "compiledOutput" | "configuration" | "compilationEvent" | "sourceHealthSnapshot" | "sourceChangeEvent" | "agentSession" | "agentInvocation" | "agentAuditLog" | "storageEntry" | "filterCache" | "compilationMetadata" | "dataRetentionConsent" | "userConfiguration" | "deploymentHistory" | "deploymentCounter" | "paygCustomer" | "paygPaymentEvent" | "paygSession"
     txIsolationLevel: TransactionIsolationLevel
   }
   model: {
@@ -2428,6 +2431,228 @@ export type TypeMap<ExtArgs extends runtime.Types.Extensions.InternalArgs = runt
         }
       }
     }
+    PaygCustomer: {
+      payload: Prisma.$PaygCustomerPayload<ExtArgs>
+      fields: Prisma.PaygCustomerFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PaygCustomerFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygCustomerPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PaygCustomerFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygCustomerPayload>
+        }
+        findFirst: {
+          args: Prisma.PaygCustomerFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygCustomerPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PaygCustomerFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygCustomerPayload>
+        }
+        findMany: {
+          args: Prisma.PaygCustomerFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygCustomerPayload>[]
+        }
+        create: {
+          args: Prisma.PaygCustomerCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygCustomerPayload>
+        }
+        createMany: {
+          args: Prisma.PaygCustomerCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PaygCustomerCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygCustomerPayload>[]
+        }
+        delete: {
+          args: Prisma.PaygCustomerDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygCustomerPayload>
+        }
+        update: {
+          args: Prisma.PaygCustomerUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygCustomerPayload>
+        }
+        deleteMany: {
+          args: Prisma.PaygCustomerDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PaygCustomerUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PaygCustomerUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygCustomerPayload>[]
+        }
+        upsert: {
+          args: Prisma.PaygCustomerUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygCustomerPayload>
+        }
+        aggregate: {
+          args: Prisma.PaygCustomerAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePaygCustomer>
+        }
+        groupBy: {
+          args: Prisma.PaygCustomerGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PaygCustomerGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PaygCustomerCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PaygCustomerCountAggregateOutputType> | number
+        }
+      }
+    }
+    PaygPaymentEvent: {
+      payload: Prisma.$PaygPaymentEventPayload<ExtArgs>
+      fields: Prisma.PaygPaymentEventFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PaygPaymentEventFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygPaymentEventPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PaygPaymentEventFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygPaymentEventPayload>
+        }
+        findFirst: {
+          args: Prisma.PaygPaymentEventFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygPaymentEventPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PaygPaymentEventFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygPaymentEventPayload>
+        }
+        findMany: {
+          args: Prisma.PaygPaymentEventFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygPaymentEventPayload>[]
+        }
+        create: {
+          args: Prisma.PaygPaymentEventCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygPaymentEventPayload>
+        }
+        createMany: {
+          args: Prisma.PaygPaymentEventCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PaygPaymentEventCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygPaymentEventPayload>[]
+        }
+        delete: {
+          args: Prisma.PaygPaymentEventDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygPaymentEventPayload>
+        }
+        update: {
+          args: Prisma.PaygPaymentEventUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygPaymentEventPayload>
+        }
+        deleteMany: {
+          args: Prisma.PaygPaymentEventDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PaygPaymentEventUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PaygPaymentEventUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygPaymentEventPayload>[]
+        }
+        upsert: {
+          args: Prisma.PaygPaymentEventUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygPaymentEventPayload>
+        }
+        aggregate: {
+          args: Prisma.PaygPaymentEventAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePaygPaymentEvent>
+        }
+        groupBy: {
+          args: Prisma.PaygPaymentEventGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PaygPaymentEventGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PaygPaymentEventCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PaygPaymentEventCountAggregateOutputType> | number
+        }
+      }
+    }
+    PaygSession: {
+      payload: Prisma.$PaygSessionPayload<ExtArgs>
+      fields: Prisma.PaygSessionFieldRefs
+      operations: {
+        findUnique: {
+          args: Prisma.PaygSessionFindUniqueArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygSessionPayload> | null
+        }
+        findUniqueOrThrow: {
+          args: Prisma.PaygSessionFindUniqueOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygSessionPayload>
+        }
+        findFirst: {
+          args: Prisma.PaygSessionFindFirstArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygSessionPayload> | null
+        }
+        findFirstOrThrow: {
+          args: Prisma.PaygSessionFindFirstOrThrowArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygSessionPayload>
+        }
+        findMany: {
+          args: Prisma.PaygSessionFindManyArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygSessionPayload>[]
+        }
+        create: {
+          args: Prisma.PaygSessionCreateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygSessionPayload>
+        }
+        createMany: {
+          args: Prisma.PaygSessionCreateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        createManyAndReturn: {
+          args: Prisma.PaygSessionCreateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygSessionPayload>[]
+        }
+        delete: {
+          args: Prisma.PaygSessionDeleteArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygSessionPayload>
+        }
+        update: {
+          args: Prisma.PaygSessionUpdateArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygSessionPayload>
+        }
+        deleteMany: {
+          args: Prisma.PaygSessionDeleteManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateMany: {
+          args: Prisma.PaygSessionUpdateManyArgs<ExtArgs>
+          result: BatchPayload
+        }
+        updateManyAndReturn: {
+          args: Prisma.PaygSessionUpdateManyAndReturnArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygSessionPayload>[]
+        }
+        upsert: {
+          args: Prisma.PaygSessionUpsertArgs<ExtArgs>
+          result: runtime.Types.Utils.PayloadToResult<Prisma.$PaygSessionPayload>
+        }
+        aggregate: {
+          args: Prisma.PaygSessionAggregateArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.AggregatePaygSession>
+        }
+        groupBy: {
+          args: Prisma.PaygSessionGroupByArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PaygSessionGroupByOutputType>[]
+        }
+        count: {
+          args: Prisma.PaygSessionCountArgs<ExtArgs>
+          result: runtime.Types.Utils.Optional<Prisma.PaygSessionCountAggregateOutputType> | number
+        }
+      }
+    }
   }
 } & {
   other: {
@@ -2507,7 +2732,8 @@ export const UserScalarFieldEnum = {
   banned: 'banned',
   banReason: 'banReason',
   banExpires: 'banExpires',
-  planId: 'planId'
+  planId: 'planId',
+  stripeCustomerId: 'stripeCustomerId'
 } as const
 
 export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -2594,6 +2820,9 @@ export const OrganizationScalarFieldEnum = {
   metadata: 'metadata',
   tier: 'tier',
   planId: 'planId',
+  stripeCustomerId: 'stripeCustomerId',
+  stripeSubscriptionId: 'stripeSubscriptionId',
+  stripeSubscriptionStatus: 'stripeSubscriptionStatus',
   retentionDays: 'retentionDays',
   retentionPolicyAcceptedAt: 'retentionPolicyAcceptedAt',
   createdAt: 'createdAt',
@@ -2900,6 +3129,48 @@ export const DeploymentCounterScalarFieldEnum = {
 export type DeploymentCounterScalarFieldEnum = (typeof DeploymentCounterScalarFieldEnum)[keyof typeof DeploymentCounterScalarFieldEnum]
 
 
+export const PaygCustomerScalarFieldEnum = {
+  id: 'id',
+  stripeCustomerId: 'stripeCustomerId',
+  totalSpendUsdCents: 'totalSpendUsdCents',
+  totalRequests: 'totalRequests',
+  firstSeenAt: 'firstSeenAt',
+  lastSeenAt: 'lastSeenAt',
+  convertedAt: 'convertedAt',
+  convertedUserId: 'convertedUserId'
+} as const
+
+export type PaygCustomerScalarFieldEnum = (typeof PaygCustomerScalarFieldEnum)[keyof typeof PaygCustomerScalarFieldEnum]
+
+
+export const PaygPaymentEventScalarFieldEnum = {
+  id: 'id',
+  paygCustomerId: 'paygCustomerId',
+  stripePaymentIntentId: 'stripePaymentIntentId',
+  amountUsdCents: 'amountUsdCents',
+  endpoint: 'endpoint',
+  requestId: 'requestId',
+  workerRegion: 'workerRegion',
+  createdAt: 'createdAt'
+} as const
+
+export type PaygPaymentEventScalarFieldEnum = (typeof PaygPaymentEventScalarFieldEnum)[keyof typeof PaygPaymentEventScalarFieldEnum]
+
+
+export const PaygSessionScalarFieldEnum = {
+  id: 'id',
+  paygCustomerId: 'paygCustomerId',
+  sessionToken: 'sessionToken',
+  requestsGranted: 'requestsGranted',
+  requestsUsed: 'requestsUsed',
+  expiresAt: 'expiresAt',
+  createdAt: 'createdAt',
+  revokedAt: 'revokedAt'
+} as const
+
+export type PaygSessionScalarFieldEnum = (typeof PaygSessionScalarFieldEnum)[keyof typeof PaygSessionScalarFieldEnum]
+
+
 export const SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -3152,6 +3423,9 @@ export type GlobalOmitConfig = {
   userConfiguration?: Prisma.UserConfigurationOmit
   deploymentHistory?: Prisma.DeploymentHistoryOmit
   deploymentCounter?: Prisma.DeploymentCounterOmit
+  paygCustomer?: Prisma.PaygCustomerOmit
+  paygPaymentEvent?: Prisma.PaygPaymentEventOmit
+  paygSession?: Prisma.PaygSessionOmit
 }
 
 /* Types for Logging */

@@ -4,7 +4,17 @@
  * Stripe webhook integration routes.
  *
  * Routes:
- *   POST /stripe/webhook — Stripe webhook endpoint for subscription events
+ *   POST /stripe/webhook          — Stripe webhook endpoint for subscription and PAYG payment events
+ *   POST /stripe/payg/checkout    — Initiate a Stripe Checkout Session for PAYG
+ *
+ * ## Handled Webhook Events
+ *   - `checkout.session.completed`      — PAYG: upsert PaygCustomer, issue PaygSession
+ *   - `invoice.payment_succeeded`       — Subscription: update user/org tier
+ *   - `payment_intent.succeeded`        — PAYG: record payment event
+ *   - `customer.subscription.created`   — Subscription: stub (see TODO)
+ *   - `customer.subscription.updated`   — Subscription: stub (see TODO)
+ *   - `customer.subscription.deleted`   — Subscription: downgrade user/org to free
+ *   - `customer.subscription.trial_will_end` — Subscription: stub (see TODO)
  *
  * ## Overview
  * This is a stub implementation ready for go-live. When Stripe is enabled:
@@ -18,7 +28,8 @@
  * - Rate limiting applied
  * - All events logged to Analytics Engine
  *
- * @see docs/integrations/stripe.md — setup and usage guide (TBD)
+ * @see docs/billing/stripe-setup.md — Stripe setup guide
+ * @see docs/billing/payg.md — PAYG billing model
  */
 
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
@@ -51,6 +62,23 @@ const stripeWebhookResponseSchema = z.object({
     eventId: z.string().optional(),
 });
 
+const paygCheckoutRequestSchema = z.object({
+    stripeCustomerId: z.string().optional().describe(
+        'Existing Stripe Customer ID. When provided, the checkout session is attached to this customer.',
+    ),
+    requestsToPurchase: z.number().int().min(1).max(100).default(10).describe(
+        'Number of API call credits to purchase.',
+    ),
+    successUrl: z.string().url().optional().describe('URL to redirect to after successful payment.'),
+    cancelUrl: z.string().url().optional().describe('URL to redirect to if payment is cancelled.'),
+});
+
+const paygCheckoutResponseSchema = z.object({
+    success: z.literal(true),
+    checkoutUrl: z.string().describe('Stripe Checkout Session URL — redirect the customer here.'),
+    sessionId: z.string().describe('Stripe Checkout Session ID.'),
+});
+
 // ── Routes ────────────────────────────────────────────────────────────────────
 
 const stripeWebhookRoute = createRoute({
@@ -58,7 +86,7 @@ const stripeWebhookRoute = createRoute({
     path: '/stripe/webhook',
     tags: ['Stripe', 'Webhooks'],
     summary: 'Stripe webhook endpoint',
-    description: 'Receives and processes Stripe subscription webhook events',
+    description: 'Receives and processes Stripe subscription and PAYG payment webhook events.',
     request: {
         body: {
             content: {
@@ -102,11 +130,59 @@ const stripeWebhookRoute = createRoute({
     },
 });
 
+const paygCheckoutRoute = createRoute({
+    method: 'post',
+    path: '/stripe/payg/checkout',
+    tags: ['Stripe', 'PAYG', 'Billing'],
+    summary: 'Create a Stripe Checkout Session for PAYG',
+    description: 'Creates a Stripe Checkout Session for Pay-As-You-Go API credits. ' +
+        'Redirect the customer to the returned `checkoutUrl`. ' +
+        'On completion, the Stripe webhook (payment_intent.succeeded) will issue a PaygSession. ' +
+        'TODO(billing-next-milestone): Wire Stripe SDK to create the Checkout Session.',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    schema: paygCheckoutRequestSchema,
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Checkout Session created — redirect customer to checkoutUrl.',
+            content: { 'application/json': { schema: paygCheckoutResponseSchema } },
+        },
+        400: {
+            description: 'Bad request — invalid body.',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.literal(false), error: z.string() }),
+                },
+            },
+        },
+        501: {
+            description: 'Not implemented — Stripe SDK not yet wired.',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.literal(false), error: z.string(), todo: z.string() }),
+                },
+            },
+        },
+    },
+});
+
 stripeRoutes.use('/stripe/webhook', bodySizeMiddleware());
 stripeRoutes.use('/stripe/webhook', rateLimitMiddleware());
 stripeRoutes.openapi(stripeWebhookRoute, (c) => {
     // deno-lint-ignore no-explicit-any
     return handleStripeWebhook(c.req.raw, c.env, c.get('requestId')) as any;
+});
+
+stripeRoutes.use('/stripe/payg/checkout', rateLimitMiddleware());
+stripeRoutes.openapi(paygCheckoutRoute, (c) => {
+    // deno-lint-ignore no-explicit-any
+    return handlePaygCheckout(c.req.raw, c.env) as any;
 });
 
 async function handleStripeWebhook(request: Request, env: Env, requestId: string | undefined): Promise<Response> {
@@ -161,6 +237,10 @@ async function handleStripeWebhook(request: Request, env: Env, requestId: string
             case 'invoice.payment_succeeded':
             case 'invoice.payment_failed':
                 await handleInvoiceEvent(env, event);
+                break;
+
+            case 'payment_intent.succeeded':
+                await handlePaygPaymentSucceeded(env, event);
                 break;
 
             case 'checkout.session.completed':
@@ -250,4 +330,58 @@ async function handleCheckoutEvent(_env: Env, event: Record<string, unknown>): P
     // 2. Send welcome email
     // 3. Create user account if needed
     // 4. Grant initial API access
+}
+
+/**
+ * Handle PAYG payment_intent.succeeded event.
+ *
+ * Stub: logs event. In the full implementation this will:
+ * 1. Upsert the PaygCustomer record.
+ * 2. Append a PaygPaymentEvent row.
+ * 3. Increment the customer's totalSpendUsdCents / totalRequests counters.
+ * 4. Issue a new PaygSession so the customer can start making API calls.
+ *
+ * @param _env - Worker environment bindings.
+ * @param event - Stripe webhook event payload.
+ */
+async function handlePaygPaymentSucceeded(_env: Env, event: Record<string, unknown>): Promise<void> {
+    const intent = (event.data as Record<string, unknown>).object as Record<string, unknown>;
+    const customerId = intent.customer as string;
+    const amount = intent.amount as number;
+
+    console.info(`[Stripe Stub] PAYG payment succeeded for customer ${customerId}, amount: ${amount} cents`);
+
+    // TODO(billing-next-milestone): Wire DB writes here.
+    // 1. prisma.paygCustomer.upsert({ where: { stripeCustomerId: customerId }, ... })
+    // 2. prisma.paygPaymentEvent.create({ data: { stripePaymentIntentId: intent.id, ... } })
+    // 3. prisma.paygCustomer.update({ data: { totalSpendUsdCents: { increment: amount } } })
+    // 4. prisma.paygSession.create({ data: { requestsGranted: DEFAULT_REQUESTS_PER_SESSION, ... } })
+    // Reference: docs/billing/payg.md — webhook handling
+}
+
+/**
+ * POST /stripe/payg/checkout
+ *
+ * Creates a Stripe Checkout Session for purchasing PAYG API credits.
+ * Stub: returns 501 until the Stripe SDK is wired.
+ *
+ * @param _request - Incoming HTTP request.
+ * @param _env - Worker environment bindings.
+ * @returns JSON stub response.
+ */
+async function handlePaygCheckout(_request: Request, _env: Env): Promise<Response> {
+    // TODO(billing-next-milestone): Implement Stripe Checkout Session creation.
+    // 1. Validate request body (stripeCustomerId, requestsToPurchase).
+    // 2. Create a Stripe Checkout Session with line_items pointing to STRIPE_PAYG_PRICE_ID.
+    // 3. Attach to existing stripeCustomerId if provided, or create a new Stripe Customer.
+    // 4. Return { checkoutUrl, sessionId }.
+    // Reference: docs/billing/stripe-setup.md — Checkout Session creation
+    return Response.json(
+        {
+            success: false,
+            error: 'PAYG Checkout not yet implemented.',
+            todo: 'Wire Stripe SDK in handlePaygCheckout — see TODO(billing-next-milestone)',
+        },
+        { status: 501 },
+    );
 }
