@@ -131,7 +131,7 @@ export function serveWebUI(request: Request): Response {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Adblock Compiler — a compiler-as-a-service for adblock and DNS filter lists. POST /compile to merge, deduplicate, and transform filter rules at the edge.">
     <title>Bloqr — API</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23070B14'/%3E%3Crect x='6' y='8' width='20' height='3' rx='2' fill='%23F1F5F9'/%3E%3Crect x='6' y='14.5' width='15' height='3' rx='2' fill='%2300D4FF'/%3E%3Crect x='6' y='21' width='8' height='3' rx='2' fill='%23FF5500'/%3E%3C/svg%3E" />
 </head>
 <body style="font-family: sans-serif; max-width: 800px; margin: 50px auto; padding: 20px;">
     <h1>🛡️ Adblock Compiler API</h1>

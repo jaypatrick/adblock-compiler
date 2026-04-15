@@ -156,7 +156,7 @@ const SWAGGER_CDN_BASE = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14';
 
 const swaggerDocsHandler = swaggerUI({
     url: '/api/openapi.json',
-    title: 'Bloqr API — Swagger',
+    title: 'Bloqr — API — Swagger',
     // `manuallySwaggerUIHtml` is the only type-safe way to inject custom CSS in
     // @hono/swagger-ui@0.6.1 (the package does not expose a `customCss` option).
     manuallySwaggerUIHtml: (_asset) => {
@@ -165,7 +165,7 @@ const swaggerDocsHandler = swaggerUI({
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bloqr — API &#x2014; Swagger</title>
+    <title>Bloqr — API — Swagger</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="${SWAGGER_CDN_BASE}/swagger-ui.css" />
     <style>${BLOQR_SWAGGER_CSS}</style>
