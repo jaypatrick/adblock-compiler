@@ -11,7 +11,7 @@
  *   { path: 'compiler', title: 'Compiler', data: { metaDescription: '...' } }
  *
  * Resulting document title:
- *   "Compiler | Bloqr"
+ *   "Bloqr — Compiler"
  */
 
 import { Injectable, inject } from '@angular/core';
@@ -28,7 +28,7 @@ export class AppTitleStrategy extends TitleStrategy {
 
     override updateTitle(snapshot: RouterStateSnapshot): void {
         const routeTitle = this.buildTitle(snapshot);
-        this.title.setTitle(routeTitle ? `${routeTitle} | ${APP_NAME}` : APP_NAME);
+        this.title.setTitle(routeTitle ? `${APP_NAME} \u2014 ${routeTitle}` : APP_NAME);
 
         const description = this.getDeepestData(snapshot.root, 'metaDescription') ?? DEFAULT_DESCRIPTION;
         this.meta.updateTag({ name: 'description', content: description });

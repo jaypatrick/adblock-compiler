@@ -130,7 +130,7 @@ interface NavItem {
                 </button>
               }
               <p class="app-brand-title">
-                <img class="app-brand-logo" src="assets/logo.svg" alt="Bloqr Adblock Compiler" width="120" height="29">
+                <img class="app-brand-logo" src="assets/logo.svg" alt="Bloqr" width="120" height="30">
               </p>
               <div class="header-actions">
                 <app-user-button />
@@ -176,7 +176,11 @@ interface NavItem {
 
           <!-- Footer matching original -->
           <footer class="app-footer-shell">
-            <p>Powered by <a href="https://github.com/jaypatrick/adblock-compiler" target="_blank" rel="noopener noreferrer">@jk-com/adblock-compiler<span class="visually-hidden"> (opens in new tab)</span></a></p>
+            <p>
+              <a href="https://bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer">Bloqr<span class="visually-hidden"> (opens in new tab)</span></a>
+              &mdash; Internet Hygiene. Automated. &mdash;
+              Powered by <a href="https://github.com/jaypatrick/adblock-compiler" target="_blank" rel="noopener noreferrer">@jk-com/adblock-compiler<span class="visually-hidden"> (opens in new tab)</span></a>
+            </p>
           </footer>
 
         </div>
@@ -208,17 +212,19 @@ interface NavItem {
 })
 export class AppComponent {
     readonly navItems: NavItem[] = [
-        { path: '/',             label: 'Home',         icon: 'home'              },
-        { path: '/compiler',     label: 'Compiler',     icon: 'build'             },
-        { path: '/performance',  label: 'Performance',  icon: 'monitoring'        },
-        { path: '/validation',   label: 'Validation',   icon: 'check_circle'      },
-        { path: '/config-builder', label: 'Config Builder', icon: 'settings'      },
-        { path: '/diff',         label: 'Diff',         icon: 'compare_arrows'    },
-        { path: '/ast-viewer',   label: 'AST Viewer',   icon: 'account_tree'      },
-        { path: '/api-docs',     label: 'API Docs',     icon: 'description'       },
-        { path: '/api-keys',     label: 'API Keys',     icon: 'vpn_key'           },
-        { path: '/admin',        label: 'Admin',        icon: 'admin_panel_settings' },
-        { path: 'https://docs.bloqr.jaysonknight.com/', label: 'Docs', icon: 'menu_book', external: true },
+        { path: '/',               label: 'Dashboard',      icon: 'dashboard'            },
+        { path: '/compiler',       label: 'Compiler',       icon: 'build'                },
+        { path: '/performance',    label: 'Performance',    icon: 'monitoring'           },
+        { path: '/validation',     label: 'Validation',     icon: 'check_circle'         },
+        { path: '/config-builder', label: 'Config Builder', icon: 'settings'             },
+        { path: '/diff',           label: 'Diff',           icon: 'compare_arrows'       },
+        { path: '/ast-viewer',     label: 'AST Viewer',     icon: 'account_tree'         },
+        { path: '/api-docs',       label: 'API Docs',       icon: 'description'          },
+        { path: '/api-keys',       label: 'API Keys',       icon: 'vpn_key'              },
+        { path: '/admin',          label: 'Admin',          icon: 'admin_panel_settings' },
+        { path: 'https://api.bloqr.jaysonknight.com/',  label: 'API Portal', icon: 'api',         external: true },
+        { path: 'https://docs.bloqr.jaysonknight.com/', label: 'Docs',       icon: 'menu_book',   external: true },
+        { path: 'https://bloqr.jaysonknight.com/',      label: 'Bloqr.com',  icon: 'open_in_new', external: true },
     ];
 
     /**

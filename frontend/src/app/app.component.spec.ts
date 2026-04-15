@@ -55,15 +55,15 @@ describe('AppComponent', () => {
         expect(component).toBeTruthy();
     });
 
-    it('should have 11 navigation items', () => {
-        expect(component.navItems.length).toBe(11);
+    it('should have 13 navigation items', () => {
+        expect(component.navItems.length).toBe(13);
     });
 
-    it('should include Home nav item', () => {
+    it('should include Dashboard nav item', () => {
         const home = component.navItems.find(i => i.path === '/');
         expect(home).toBeTruthy();
-        expect(home!.label).toBe('Home');
-        expect(home!.icon).toBe('home');
+        expect(home!.label).toBe('Dashboard');
+        expect(home!.icon).toBe('dashboard');
     });
 
     it('should include Compiler nav item', () => {

@@ -1,6 +1,15 @@
-# AdBlock Compiler Documentation
+# Bloqr Documentation
 
-Welcome to the AdBlock Compiler documentation. This directory contains all the detailed documentation for the project.
+Welcome to the Bloqr documentation. This directory contains all the detailed documentation for the project.
+
+## Bloqr Properties
+
+| Property | URL | Description |
+|---|---|---|
+| Landing | [bloqr.jaysonknight.com](https://bloqr.jaysonknight.com/) | Main marketing site |
+| App | [app.bloqr.jaysonknight.com](https://app.bloqr.jaysonknight.com/) | Angular compiler dashboard |
+| API | [api.bloqr.jaysonknight.com](https://api.bloqr.jaysonknight.com/) | API portal (Scalar/Swagger) |
+| Docs | [docs.bloqr.jaysonknight.com](https://docs.bloqr.jaysonknight.com/) | This site |
 
 ## Quick Links
 
