@@ -605,7 +605,7 @@ Deno.test('CloudflareApiService - uploadApiShieldSchema', async (t) => {
                     create: (params: unknown) => {
                         capturedParams = params;
                         return Promise.resolve({
-                            schema: { schema_id: 'new-id', name: 'n', kind: 'openapi_v3', created_at: '' } as ApiShieldSchema,
+                            schema: { schema_id: 'new-id', name: 'n', kind: 'openapi_v3', created_at: '2024-01-03T00:00:00Z' } as ApiShieldSchema,
                         } as ApiShieldUploadResult);
                     },
                 },
@@ -672,7 +672,7 @@ Deno.test('CloudflareApiService - enableApiShieldSchema', async (t) => {
                             schema_id: schemaId,
                             name: 'n',
                             kind: 'openapi_v3' as const,
-                            created_at: '',
+                            created_at: '2024-01-03T00:00:00Z',
                             validation_enabled: true,
                         });
                     },

@@ -17,7 +17,7 @@ import { z } from 'zod';
  */
 export const ApiShieldSchemaSchema = z.object({
     /** ISO 8601 timestamp indicating when the schema was created. */
-    created_at: z.string(),
+    created_at: z.string().datetime(),
     /** Schema format — always `'openapi_v3'` for user-uploaded schemas. */
     kind: z.literal('openapi_v3'),
     /** Human-readable name given to the schema at upload time. */

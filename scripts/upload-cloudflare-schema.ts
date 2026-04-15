@@ -57,8 +57,10 @@ async function sha256Hex(text: string): Promise<string> {
  * Never reuse the wrangler deployment token — it has much broader permissions.
  */
 const EnvSchema = z.object({
-    /** Cloudflare zone ID (32-character hex string from the dashboard). */
-    CLOUDFLARE_ZONE_ID: z.string().min(1, 'CLOUDFLARE_ZONE_ID environment variable is required'),
+    /** Cloudflare zone ID (32-character lowercase hex string from the dashboard). */
+    CLOUDFLARE_ZONE_ID: z
+        .string()
+        .regex(/^[a-f0-9]{32}$/i, 'CLOUDFLARE_ZONE_ID must be a 32-character hex string (found in the Cloudflare dashboard)'),
     /**
      * API token with "API Gateway: Edit" scope.
      * Create a dedicated token — do NOT reuse CLOUDFLARE_API_TOKEN / wrangler token.
