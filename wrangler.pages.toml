@@ -1,6 +1,0 @@
-# wrangler.pages.toml — Minimal Cloudflare Pages deploy configuration.
-# Used exclusively by the mdBook CI deploy step to avoid wrangler picking
-# up the root wrangler.toml (Workers config) which lacks pages_build_output_dir.
-name = "adblock-docs"
-pages_build_output_dir = "book"
-compatibility_date = "2026-01-01"
