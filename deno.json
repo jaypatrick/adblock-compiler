@@ -45,6 +45,7 @@
         "openapi:shield": "deno task openapi:validate && deno task schema:cloudflare && deno task check:drift:cloudflare",
         "openapi:docs": "deno run --allow-read --allow-write --allow-net scripts/generate-docs.ts",
         "schema:cloudflare": "deno run --allow-read --allow-write scripts/generate-cloudflare-schema.ts",
+        "schema:upload": "deno run --allow-read --allow-net --allow-env scripts/upload-cloudflare-schema.ts",
         "postman:collection": "deno run --allow-read --allow-write scripts/generate-postman-collection.ts",
         "generate:endpoints": "deno run --allow-read --allow-write scripts/generate-endpoint-registry.ts",
         "schema:generate": "deno task schema:cloudflare && deno task postman:collection",

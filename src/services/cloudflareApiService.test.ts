@@ -7,6 +7,7 @@ import Cloudflare from 'cloudflare';
 import type { IBasicLogger } from '../types/index.ts';
 import { CloudflareApiService, createCloudflareApiService } from './cloudflareApiService.ts';
 import type { D1Param } from './cloudflareApiService.ts';
+import type { ApiShieldSchema, ApiShieldUploadResult, EnabledApiShieldSchema } from './cloudflareApiService.ts';
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
 
@@ -65,6 +66,41 @@ function createMockCloudflareClient() {
                 Promise.resolve(
                     makeMockPage([{ id: 'zone-id-1', name: 'example.com' }]),
                 ),
+        },
+        apiGateway: {
+            userSchemas: {
+                list: (_params: unknown) =>
+                    Promise.resolve(
+                        makeMockPage([
+                            {
+                                schema_id: 'schema-id-1',
+                                name: 'my-schema',
+                                kind: 'openapi_v3',
+                                created_at: '2024-01-01T00:00:00Z',
+                                source: 'openapi: 3.0.0',
+                                validation_enabled: true,
+                            } as ApiShieldSchema,
+                        ]),
+                    ),
+                create: (_params: unknown) =>
+                    Promise.resolve({
+                        schema: {
+                            schema_id: 'schema-id-new',
+                            name: 'my-schema',
+                            kind: 'openapi_v3',
+                            created_at: '2024-01-02T00:00:00Z',
+                        } as ApiShieldSchema,
+                    } as ApiShieldUploadResult),
+                edit: (_schemaId: string, _params: unknown) =>
+                    Promise.resolve({
+                        schema_id: 'schema-id-1',
+                        name: 'my-schema',
+                        kind: 'openapi_v3',
+                        created_at: '2024-01-01T00:00:00Z',
+                        validation_enabled: true,
+                    } as ApiShieldSchema),
+                delete: (_schemaId: string, _params: unknown) => Promise.resolve(undefined),
+            },
         },
         post: (_path: string, _opts: unknown) => Promise.resolve({ data: [{ total_requests: 100 }] }),
     };
@@ -469,5 +505,248 @@ Deno.test('CloudflareApiService - queryAnalyticsEngine', async (t) => {
             Error,
             'Analytics unavailable',
         );
+    });
+});
+
+// ─── listApiShieldSchemas ─────────────────────────────────────────────────────
+
+Deno.test('CloudflareApiService - listApiShieldSchemas', async (t) => {
+    await t.step('should return schema list from client', async () => {
+        const mock = createMockCloudflareClient();
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+
+        const schemas = await service.listApiShieldSchemas('zone-1');
+
+        assertEquals(schemas.length, 1);
+        assertEquals((schemas[0] as ApiShieldSchema).schema_id, 'schema-id-1');
+        assertEquals((schemas[0] as ApiShieldSchema).validation_enabled, true);
+    });
+
+    await t.step('should pass zone_id and omit_source=false to the client', async () => {
+        let capturedParams: unknown;
+
+        const mock = {
+            ...createMockCloudflareClient(),
+            apiGateway: {
+                ...createMockCloudflareClient().apiGateway,
+                userSchemas: {
+                    ...createMockCloudflareClient().apiGateway.userSchemas,
+                    list: (params: unknown) => {
+                        capturedParams = params;
+                        return Promise.resolve(makeMockPage([]));
+                    },
+                },
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await service.listApiShieldSchemas('my-zone');
+
+        assertEquals((capturedParams as { zone_id: string }).zone_id, 'my-zone');
+        assertEquals((capturedParams as { omit_source: boolean }).omit_source, false);
+    });
+
+    await t.step('should return empty array when no schemas exist', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            apiGateway: {
+                ...createMockCloudflareClient().apiGateway,
+                userSchemas: {
+                    ...createMockCloudflareClient().apiGateway.userSchemas,
+                    list: (_params: unknown) => Promise.resolve(makeMockPage([])),
+                },
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        const schemas = await service.listApiShieldSchemas('zone-1');
+
+        assertEquals(schemas.length, 0);
+    });
+
+    await t.step('should propagate SDK errors', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            apiGateway: {
+                ...createMockCloudflareClient().apiGateway,
+                userSchemas: {
+                    ...createMockCloudflareClient().apiGateway.userSchemas,
+                    list: (_params: unknown) => Promise.reject(new Error('List failed')),
+                },
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await assertRejects(() => service.listApiShieldSchemas('zone-1'), Error, 'List failed');
+    });
+});
+
+// ─── uploadApiShieldSchema ────────────────────────────────────────────────────
+
+Deno.test('CloudflareApiService - uploadApiShieldSchema', async (t) => {
+    await t.step('should return create response from client', async () => {
+        const mock = createMockCloudflareClient();
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+
+        const result = await service.uploadApiShieldSchema('zone-1', 'my-schema', 'openapi: 3.0.0');
+
+        assertEquals((result as ApiShieldUploadResult).schema.schema_id, 'schema-id-new');
+    });
+
+    await t.step('should pass zone_id, kind, and name to the client', async () => {
+        let capturedParams: unknown;
+
+        const mock = {
+            ...createMockCloudflareClient(),
+            apiGateway: {
+                ...createMockCloudflareClient().apiGateway,
+                userSchemas: {
+                    ...createMockCloudflareClient().apiGateway.userSchemas,
+                    create: (params: unknown) => {
+                        capturedParams = params;
+                        return Promise.resolve({
+                            schema: { schema_id: 'new-id', name: 'n', kind: 'openapi_v3', created_at: '2024-01-03T00:00:00Z' } as ApiShieldSchema,
+                        } as ApiShieldUploadResult);
+                    },
+                },
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await service.uploadApiShieldSchema('zone-abc', 'test-schema', 'content');
+
+        assertEquals((capturedParams as { zone_id: string }).zone_id, 'zone-abc');
+        assertEquals((capturedParams as { kind: string }).kind, 'openapi_v3');
+        assertEquals((capturedParams as { name: string }).name, 'test-schema');
+        assertEquals(typeof (capturedParams as { file: unknown }).file, 'object');
+    });
+
+    await t.step('should propagate SDK errors', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            apiGateway: {
+                ...createMockCloudflareClient().apiGateway,
+                userSchemas: {
+                    ...createMockCloudflareClient().apiGateway.userSchemas,
+                    create: (_params: unknown) => Promise.reject(new Error('Upload failed')),
+                },
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await assertRejects(
+            () => service.uploadApiShieldSchema('zone-1', 'schema', 'content'),
+            Error,
+            'Upload failed',
+        );
+    });
+});
+
+// ─── enableApiShieldSchema ────────────────────────────────────────────────────
+
+Deno.test('CloudflareApiService - enableApiShieldSchema', async (t) => {
+    await t.step('should return updated schema from client', async () => {
+        const mock = createMockCloudflareClient();
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+
+        const result = await service.enableApiShieldSchema('zone-1', 'schema-id-1');
+
+        assertEquals((result as EnabledApiShieldSchema).schema_id, 'schema-id-1');
+        assertEquals((result as EnabledApiShieldSchema).validation_enabled, true);
+    });
+
+    await t.step('should pass zone_id, schema_id, and validation_enabled=true', async () => {
+        let capturedSchemaId = '';
+        let capturedParams: unknown;
+
+        const mock = {
+            ...createMockCloudflareClient(),
+            apiGateway: {
+                ...createMockCloudflareClient().apiGateway,
+                userSchemas: {
+                    ...createMockCloudflareClient().apiGateway.userSchemas,
+                    edit: (schemaId: string, params: unknown) => {
+                        capturedSchemaId = schemaId;
+                        capturedParams = params;
+                        return Promise.resolve({
+                            schema_id: schemaId,
+                            name: 'n',
+                            kind: 'openapi_v3' as const,
+                            created_at: '2024-01-03T00:00:00Z',
+                            validation_enabled: true,
+                        });
+                    },
+                },
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await service.enableApiShieldSchema('zone-xyz', 'sid-42');
+
+        assertEquals(capturedSchemaId, 'sid-42');
+        assertEquals((capturedParams as { zone_id: string }).zone_id, 'zone-xyz');
+        assertEquals((capturedParams as { validation_enabled: boolean }).validation_enabled, true);
+    });
+
+    await t.step('should propagate SDK errors', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            apiGateway: {
+                ...createMockCloudflareClient().apiGateway,
+                userSchemas: {
+                    ...createMockCloudflareClient().apiGateway.userSchemas,
+                    edit: (_schemaId: string, _params: unknown) => Promise.reject(new Error('Enable failed')),
+                },
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await assertRejects(() => service.enableApiShieldSchema('zone-1', 'sid-1'), Error, 'Enable failed');
+    });
+});
+
+// ─── deleteApiShieldSchema ────────────────────────────────────────────────────
+
+Deno.test('CloudflareApiService - deleteApiShieldSchema', async (t) => {
+    await t.step('should call delete with zone_id and schema_id', async () => {
+        let capturedSchemaId = '';
+        let capturedParams: unknown;
+
+        const mock = {
+            ...createMockCloudflareClient(),
+            apiGateway: {
+                ...createMockCloudflareClient().apiGateway,
+                userSchemas: {
+                    ...createMockCloudflareClient().apiGateway.userSchemas,
+                    delete: (schemaId: string, params: unknown) => {
+                        capturedSchemaId = schemaId;
+                        capturedParams = params;
+                        return Promise.resolve(undefined);
+                    },
+                },
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await service.deleteApiShieldSchema('zone-abc', 'del-id-1');
+
+        assertEquals(capturedSchemaId, 'del-id-1');
+        assertEquals((capturedParams as { zone_id: string }).zone_id, 'zone-abc');
+    });
+
+    await t.step('should propagate SDK errors', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            apiGateway: {
+                ...createMockCloudflareClient().apiGateway,
+                userSchemas: {
+                    ...createMockCloudflareClient().apiGateway.userSchemas,
+                    delete: (_schemaId: string, _params: unknown) => Promise.reject(new Error('Delete failed')),
+                },
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await assertRejects(() => service.deleteApiShieldSchema('zone-1', 'sid-1'), Error, 'Delete failed');
     });
 });
