@@ -90,11 +90,12 @@ jobs:
           # in-tree files (docs/api/, docs/postman/) before this step runs.
           # NOTE: do NOT add --config here. Wrangler v4 does not support custom config
           # file paths for `pages deploy` and will hard-error immediately. The project
-          # name and output directory are passed as CLI flags instead so no separate
-          # wrangler.pages.toml is needed (and none should be created).
+          # name is passed as a CLI flag and the output directory is passed as the
+          # positional `book` argument, so no separate wrangler.pages.toml is needed
+          # (and none should be created).
           # Retry with 30s initial delay (3 total attempts; sleeps: 30s → 60s).
           retry_command 3 30 deno task wrangler pages deploy book \
-            --project-name adblock-docs \
+            --project-name "$CLOUDFLARE_PAGES_PROJECT" \
             --branch=main \
             --commit-dirty=true
           echo "✅ Documentation deployed successfully"

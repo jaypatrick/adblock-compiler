@@ -91,7 +91,7 @@
         "wrangler:versions:view": "deno run -A npm:wrangler@^4.83.0 versions view",
         "wrangler:deployments:list": "deno run -A npm:wrangler@^4.83.0 deployments list",
         "wrangler:deployments:status": "deno run -A npm:wrangler@^4.83.0 deployments status",
-        "wrangler:pages:deploy": "deno run -A npm:wrangler@^4.83.0 pages deploy --config wrangler.pages.toml --branch=main --commit-dirty=true",
+        "wrangler:pages:deploy": "deno run -A npm:wrangler@^4.83.0 pages deploy book --project-name adblock-docs --branch=main --commit-dirty=true",
         "version:sync": "deno run --allow-read --allow-write scripts/sync-version.ts",
         "ui:build:ng": "pnpm --filter adblock-frontend run build",
         "ui:build:ng:dev": "pnpm --filter adblock-frontend run build:dev",
