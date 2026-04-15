@@ -73,10 +73,11 @@ interface NavItem {
       >
         <div class="sidenav-brand">
           <!-- Tri-line Bloqr icon (inline SVG — Angular component template context;
-               shares design tokens with favicon.svg and worker/routes/docs.routes.ts) -->
+               shares design tokens with favicon.svg and worker/routes/docs.routes.ts:
+               white #F1F5F9 / cyan #00D4FF / orange #FF5500) -->
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 18 18" width="18" height="18" aria-hidden="true" class="sidenav-brand-icon">
             <rect x="0" y="1" width="18" height="3" rx="1.5" fill="#F1F5F9"/>
-            <rect x="0" y="8" width="12" height="3" rx="1.5" fill="#F1F5F9" opacity="0.65"/>
+            <rect x="0" y="8" width="12" height="3" rx="1.5" fill="#00D4FF"/>
             <rect x="0" y="15" width="6"  height="3" rx="1.5" fill="#FF5500"/>
           </svg>Bloqr
         </div>

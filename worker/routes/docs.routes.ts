@@ -225,7 +225,8 @@ docsRoutes.get('/redoc/*', redocDocsHandler);
 //   3. Here (TRI_LINE_LOGO_SVG)            — Worker-rendered standalone HTML; the Cloudflare Worker bundle is
 //                                            built separately from the frontend and cannot import frontend assets
 //                                            at runtime. Inlining is the only option in this server-side context.
-// All three instances share the same design tokens (#070B14, #FF5500, #F1F5F9) to maintain visual consistency.
+// All three instances share the same design tokens to maintain visual consistency:
+// background #070B14; bar fills #F1F5F9, #00D4FF, and #FF5500; and #FF5500 for the top stripe/glow accents.
 const TRI_LINE_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
   <defs>
     <filter id="heroOrangeGlow" x="-50%" y="-50%" width="200%" height="200%">
@@ -239,7 +240,7 @@ const TRI_LINE_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 
   <rect width="64" height="64" rx="12" fill="#070B14"/>
   <rect x="0" y="0" width="64" height="3" rx="1.5" fill="#FF5500"/>
   <rect x="12" y="20" width="40" height="6" rx="3" fill="#F1F5F9"/>
-  <rect x="12" y="31" width="27" height="6" rx="3" fill="#F1F5F9" opacity="0.65"/>
+  <rect x="12" y="31" width="27" height="6" rx="3" fill="#00D4FF"/>
   <rect x="12" y="42" width="14" height="6" rx="3" fill="#FF5500" filter="url(#heroOrangeGlow)"/>
   <path d="M28 45 L33 45 L30.5 42 Z" fill="#FF5500" opacity="0.7"/>
 </svg>`;
@@ -285,8 +286,6 @@ export function docsLandingHandler(env: Env): Response {
             --orange:        #FF5500;
             --orange-hover:  #FF7033;
             --orange-glow:   rgba(255, 85, 0, 0.15);
-            --cyan:          #00D4FF;
-            --cyan-glow:     rgba(0, 212, 255, 0.12);
             --text:          #F1F5F9;
             --text-muted:    #94A3B8;
             --radius:        12px;
@@ -383,7 +382,7 @@ export function docsLandingHandler(env: Env): Response {
             color: var(--orange);
             margin-bottom: 1.5rem;
         }
-        .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1.25rem; }
+        .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 1.25rem; }
         .card {
             background: var(--surface);
             border: 1px solid var(--border);
@@ -426,16 +425,6 @@ export function docsLandingHandler(env: Env): Response {
             text-decoration: none;
             color: var(--orange-hover);
         }
-        .card-link-cyan {
-            color: var(--cyan);
-            border-color: rgba(0, 212, 255, 0.25);
-        }
-        .card-link-cyan:hover {
-            background: rgba(0, 212, 255, 0.08);
-            box-shadow: 0 0 12px rgba(0, 212, 255, 0.20);
-            color: var(--cyan);
-        }
-
         /* ── Status ─── */
         .status-bar {
             background: var(--surface);
@@ -499,12 +488,6 @@ export function docsLandingHandler(env: Env): Response {
                 <div class="card-title">ReDoc</div>
                 <div class="card-desc">Three-panel reference documentation. Clean, readable layout ideal for browsing the full API surface.</div>
                 <a href="/api/redoc" class="card-link">Open ReDoc <span aria-hidden="true">&#8599;</span></a>
-            </div>
-            <div class="card">
-                <div class="card-icon" aria-hidden="true">{ }</div>
-                <div class="card-title">OpenAPI Spec</div>
-                <div class="card-desc">Machine-readable OpenAPI 3.0 JSON spec. Import into Insomnia, Postman, or generate a client SDK.</div>
-                <a href="/api/openapi.json" class="card-link card-link-cyan">Download JSON <span aria-hidden="true">&#8599;</span></a>
             </div>
         </div>
 

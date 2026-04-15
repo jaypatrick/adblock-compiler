@@ -2,7 +2,7 @@
   <!-- Tri-line icon group -->
   <g>
     <rect x="0" y="4"  width="32" height="5" rx="2.5" fill="#F1F5F9"/>
-    <rect x="0" y="14" width="21" height="5" rx="2.5" fill="#F1F5F9" opacity="0.65"/>
+    <rect x="0" y="14" width="21" height="5" rx="2.5" fill="#00D4FF"/>
     <rect x="0" y="24" width="11" height="5" rx="2.5" fill="#FF5500"/>
     <path d="M13 26.5 L17 26.5 L15 24 Z" fill="#FF5500" opacity="0.6"/>
   </g>
