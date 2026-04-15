@@ -11,7 +11,7 @@ test.describe('Home Page', () => {
 
     test('should show navigation cards', async ({ page }) => {
         const navCards = page.locator('.nav-card');
-        await expect(navCards).toHaveCount(5);
+        await expect(navCards).toHaveCount(6);
     });
 
     test('should navigate to Compiler page', async ({ page }) => {
