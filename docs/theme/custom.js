@@ -31,7 +31,7 @@
     const sep = ' - ';
     if (title.includes(sep)) {
         const parts = title.split(sep);
-        const bookTitle = parts.pop(); // "AdBlock Compiler" or "Bloqr"
+        parts.pop(); // "AdBlock Compiler" or "Bloqr"
         const pageTitle = parts.join(sep);
         if (pageTitle && pageTitle !== 'Bloqr') {
             document.title = 'Bloqr \u2014 ' + pageTitle;
