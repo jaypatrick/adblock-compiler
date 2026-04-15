@@ -3,8 +3,13 @@
 
 import Cloudflare from 'cloudflare';
 import type { ZoneListParams } from 'cloudflare/resources/zones/zones';
+import type { OldPublicSchema, UserSchemaCreateResponse } from 'cloudflare/resources/api-gateway/user-schemas/user-schemas';
 import type { IBasicLogger } from '../types/index.ts';
 import { silentLogger } from '../utils/logger.ts';
+
+// ─── API Shield return-type helpers ──────────────────────────────────────────
+
+export type { OldPublicSchema as ApiShieldSchema, UserSchemaCreateResponse as ApiShieldUploadResult };
 
 // ─── Return-type helpers ──────────────────────────────────────────────────────
 
@@ -112,6 +117,42 @@ export class CloudflareApiService {
             `/accounts/${accountId}/analytics_engine/sql`,
             { body: { query: sql } },
         );
+    }
+
+    // ── API Shield ────────────────────────────────────────────────────────────
+
+    async listApiShieldSchemas(zoneId: string): Promise<OldPublicSchema[]> {
+        this.logger.info(`[CloudflareApiService] listApiShieldSchemas zoneId=${zoneId}`);
+
+        const page = await this.client.apiGateway.userSchemas.list({ zone_id: zoneId, omit_source: false });
+        return page.getPaginatedItems();
+    }
+
+    async uploadApiShieldSchema(zoneId: string, name: string, content: string): Promise<UserSchemaCreateResponse> {
+        this.logger.info(`[CloudflareApiService] uploadApiShieldSchema zoneId=${zoneId} name=${name}`);
+
+        const file = new File([content], name, { type: 'application/yaml' });
+        return await this.client.apiGateway.userSchemas.create({
+            zone_id: zoneId,
+            file,
+            kind: 'openapi_v3',
+            name,
+        });
+    }
+
+    async enableApiShieldSchema(zoneId: string, schemaId: string): Promise<OldPublicSchema> {
+        this.logger.info(`[CloudflareApiService] enableApiShieldSchema zoneId=${zoneId} schemaId=${schemaId}`);
+
+        return await this.client.apiGateway.userSchemas.edit(schemaId, {
+            zone_id: zoneId,
+            validation_enabled: true,
+        });
+    }
+
+    async deleteApiShieldSchema(zoneId: string, schemaId: string): Promise<void> {
+        this.logger.info(`[CloudflareApiService] deleteApiShieldSchema zoneId=${zoneId} schemaId=${schemaId}`);
+
+        await this.client.apiGateway.userSchemas.delete(schemaId, { zone_id: zoneId });
     }
 }
 
