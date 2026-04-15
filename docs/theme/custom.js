@@ -1,4 +1,4 @@
-// AdBlock Compiler — mdBook custom JS
+// Bloqr — mdBook custom JS
 // Inject build timestamp next to the menu title (populated by build-info.js)
 (function () {
     function injectBuildTimestamp() {
@@ -22,5 +22,19 @@
         document.addEventListener('DOMContentLoaded', injectBuildTimestamp);
     } else {
         injectBuildTimestamp();
+    }
+})();
+
+// Rewrite page title to match Bloqr format: "Bloqr — PageTitle"
+(function () {
+    const title = document.title;
+    const sep = ' - ';
+    if (title.includes(sep)) {
+        const parts = title.split(sep);
+        parts.pop(); // "AdBlock Compiler" or "Bloqr"
+        const pageTitle = parts.join(sep);
+        if (pageTitle && pageTitle !== 'Bloqr') {
+            document.title = 'Bloqr \u2014 ' + pageTitle;
+        }
     }
 })();

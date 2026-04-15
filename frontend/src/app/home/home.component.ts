@@ -1,5 +1,5 @@
 /**
- * HomeComponent — Adblock Compiler Dashboard
+ * HomeComponent — Bloqr Dashboard
  *
  * Full-featured application dashboard at route `/`.
  * Displays system health, live performance stats, quick actions,
@@ -77,8 +77,8 @@ export interface EndpointInfo {
 
       <!-- Page Header -->
       <div class="dashboard-header">
-        <h1 class="dashboard-title">Adblock Compiler Dashboard</h1>
-        <p class="dashboard-subtitle">Manage, compile, and monitor adblock filter lists.</p>
+        <h1 class="dashboard-title">Bloqr Dashboard</h1>
+        <p class="dashboard-subtitle">Manage, compile, and monitor filter lists.</p>
       </div>
 
       <!-- System Status Bar -->
@@ -248,6 +248,46 @@ export interface EndpointInfo {
               </mat-card-content>
             </mat-card>
           }
+        </div>
+      </section>
+
+      <!-- Cross-site navigation tiles -->
+      <section aria-labelledby="external-nav-heading" class="nav-section">
+        <h2 id="external-nav-heading" class="section-heading">More Bloqr</h2>
+        <div class="nav-grid">
+          <a href="https://api.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
+            <mat-card appearance="outlined" class="nav-card bloqr-card cursor-pointer">
+              <mat-card-header>
+                <mat-icon mat-card-avatar class="nav-card-icon">api</mat-icon>
+                <mat-card-title class="nav-card-title">API Portal</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <p class="nav-card-desc">Interactive REST API explorer. Try requests in the browser.</p>
+              </mat-card-content>
+            </mat-card>
+          </a>
+          <a href="https://docs.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
+            <mat-card appearance="outlined" class="nav-card bloqr-card cursor-pointer">
+              <mat-card-header>
+                <mat-icon mat-card-avatar class="nav-card-icon">menu_book</mat-icon>
+                <mat-card-title class="nav-card-title">Documentation</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <p class="nav-card-desc">Full technical reference, guides, and architecture docs.</p>
+              </mat-card-content>
+            </mat-card>
+          </a>
+          <a href="https://bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
+            <mat-card appearance="outlined" class="nav-card bloqr-card cursor-pointer">
+              <mat-card-header>
+                <mat-icon mat-card-avatar class="nav-card-icon">open_in_new</mat-icon>
+                <mat-card-title class="nav-card-title">Bloqr.com</mat-card-title>
+              </mat-card-header>
+              <mat-card-content>
+                <p class="nav-card-desc">Marketing site, waitlist, and product overview.</p>
+              </mat-card-content>
+            </mat-card>
+          </a>
         </div>
       </section>
 
@@ -446,6 +486,12 @@ export interface EndpointInfo {
     .nav-card {
         cursor: pointer;
         transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .external-tile-link {
+        display: block;
+        text-decoration: none;
+        color: inherit;
     }
 
     .nav-card:hover {
