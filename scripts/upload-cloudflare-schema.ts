@@ -7,7 +7,10 @@
  * Uploads docs/api/cloudflare-schema.yaml to Cloudflare API Shield using a
  * zero-downtime upsert sequence:
  *   1. Compute SHA-256 of the local schema.
- *   2. List existing schemas; skip upload if hash matches (--skip-if-unchanged).
+ *   2. List existing schemas.
+ *      --skip-if-unchanged: if a schema with the same hash exists and validation
+ *      is enabled, exit 0.  If the hash matches but validation is disabled, PATCH
+ *      the existing schema to enable validation (no duplicate upload) and exit 0.
  *   3. POST the new schema.
  *   4. PATCH to enable validation on the new schema.
  *   5. DELETE the previously-active schema (prevents validation blackout).
@@ -55,9 +58,15 @@ async function sha256Hex(text: string): Promise<string> {
  *
  * CLOUDFLARE_API_SHIELD_TOKEN must be a token scoped to "API Gateway: Edit" only.
  * Never reuse the wrangler deployment token — it has much broader permissions.
+ *
+ * The `{ error: '...' }` parameter is the Zod v4 replacement for the v3
+ * `required_error`/`invalid_type_error` pair. It covers ALL validation failures
+ * on that schema node, including the type mismatch that occurs when
+ * `Deno.env.get()` returns `undefined`, so the intended diagnostic message is
+ * shown instead of the generic "Invalid input" default.
  */
 const EnvSchema = z.object({
-    /** Cloudflare zone ID (32-character hex string from the dashboard). */
+    /** Cloudflare zone ID (32-character hex string from the dashboard; upper- or lowercase accepted). */
     CLOUDFLARE_ZONE_ID: z
         .string({
             error: 'CLOUDFLARE_ZONE_ID environment variable is required',
@@ -132,30 +141,75 @@ async function main(): Promise<void> {
 
     // Check if schema is unchanged (skip-if-unchanged mode).
     // Only skip the upload entirely when the hash matches AND validation is already enabled.
-    // If the hash matches but validation is disabled we fall through so validation gets enabled.
+    // If the hash matches but validation is disabled, PATCH-enable on the matched schema ID
+    // directly instead of re-uploading a duplicate — avoids unnecessary schema churn.
     if (skipIfUnchanged) {
-        let matchedUnchangedSchema = false;
+        let matchedSchema: ApiShieldSchema | undefined;
         for (const schema of existingSchemas) {
             if (schema.source) {
                 const existingHash = await sha256Hex(schema.source);
                 if (existingHash === localHash) {
-                    matchedUnchangedSchema = true;
-                    if (schema.validation_enabled) {
-                        console.log(
-                            `✅ Schema "${schema.name}" (${schema.schema_id}) is unchanged and validation is enabled — skipping upload.`,
-                        );
-                        Deno.exit(0);
-                    }
-                    console.warn(
-                        `⚠️  Schema "${schema.name}" (${schema.schema_id}) is unchanged, but validation is not enabled. Proceeding with upload so validation can be enabled.`,
-                    );
+                    matchedSchema = schema;
                     break;
                 }
             }
         }
-        if (!matchedUnchangedSchema) {
-            console.log('🔄 Schema has changed (or no source to compare) — proceeding with upload.');
+
+        if (matchedSchema) {
+            if (matchedSchema.validation_enabled) {
+                console.log(
+                    `✅ Schema "${matchedSchema.name}" (${matchedSchema.schema_id}) is unchanged and validation is enabled — skipping upload.`,
+                );
+                Deno.exit(0);
+            }
+
+            // Hash matches but validation is disabled — enable it directly on the existing
+            // schema ID without uploading a duplicate.
+            console.warn(
+                `⚠️  Schema "${matchedSchema.name}" (${matchedSchema.schema_id}) is unchanged, but validation is not enabled. Enabling validation without re-uploading.`,
+            );
+
+            // If a different schema currently has validation enabled it will become the one
+            // we clean up after activating the matched schema.
+            const { schema_id: matchedSchemaId } = matchedSchema;
+            const activeSchema = existingSchemas.find((s) => s.validation_enabled === true && s.schema_id !== matchedSchemaId);
+
+            if (dryRun) {
+                console.log(`🔍 Would enable validation on existing schema "${matchedSchema.name}" (${matchedSchema.schema_id})`);
+                if (activeSchema) {
+                    console.log(`🔍 Would delete previously-active schema "${activeSchema.name}" (${activeSchema.schema_id})`);
+                }
+                console.log('✅ Dry-run complete.');
+                Deno.exit(0);
+            }
+
+            try {
+                await service.enableApiShieldSchema(zoneId, matchedSchema.schema_id);
+                console.log(`✅ Enabled validation on existing schema ${matchedSchema.schema_id}`);
+            } catch (err) {
+                console.error(
+                    `❌ Failed to enable validation on schema ${matchedSchema.schema_id}: ${err instanceof Error ? err.message : String(err)}`,
+                );
+                Deno.exit(1);
+            }
+
+            if (activeSchema) {
+                try {
+                    await service.deleteApiShieldSchema(zoneId, activeSchema.schema_id);
+                    console.log(`✅ Deleted previously-active schema "${activeSchema.name}" (${activeSchema.schema_id})`);
+                } catch (err) {
+                    console.error(
+                        `❌ Failed to delete previously-active schema ${activeSchema.schema_id}: ${err instanceof Error ? err.message : String(err)}`,
+                    );
+                    Deno.exit(1);
+                }
+            }
+
+            console.log('\n🎉 API Shield schema validation enabled (no re-upload needed)!');
+            Deno.exit(0);
         }
+
+        console.log('🔄 Schema has changed (or no source to compare) — proceeding with upload.');
     }
 
     // Identify the previous schema to delete after a successful upload.
