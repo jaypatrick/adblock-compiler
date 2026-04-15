@@ -225,7 +225,8 @@ docsRoutes.get('/redoc/*', redocDocsHandler);
 //   3. Here (TRI_LINE_LOGO_SVG)            — Worker-rendered standalone HTML; the Cloudflare Worker bundle is
 //                                            built separately from the frontend and cannot import frontend assets
 //                                            at runtime. Inlining is the only option in this server-side context.
-// All three instances share the same design tokens (#F1F5F9, #00D4FF, #FF5500) to maintain visual consistency.
+// All three instances share the same design tokens to maintain visual consistency:
+// background #070B14; bar fills #F1F5F9, #00D4FF, and #FF5500; and #FF5500 for the top stripe/glow accents.
 const TRI_LINE_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64" aria-hidden="true" focusable="false">
   <defs>
     <filter id="heroOrangeGlow" x="-50%" y="-50%" width="200%" height="200%">
@@ -285,8 +286,6 @@ export function docsLandingHandler(env: Env): Response {
             --orange:        #FF5500;
             --orange-hover:  #FF7033;
             --orange-glow:   rgba(255, 85, 0, 0.15);
-            --cyan:          #00D4FF;
-            --cyan-glow:     rgba(0, 212, 255, 0.12);
             --text:          #F1F5F9;
             --text-muted:    #94A3B8;
             --radius:        12px;
@@ -426,16 +425,6 @@ export function docsLandingHandler(env: Env): Response {
             text-decoration: none;
             color: var(--orange-hover);
         }
-        .card-link-cyan {
-            color: var(--cyan);
-            border-color: rgba(0, 212, 255, 0.25);
-        }
-        .card-link-cyan:hover {
-            background: rgba(0, 212, 255, 0.08);
-            box-shadow: 0 0 12px rgba(0, 212, 255, 0.20);
-            color: var(--cyan);
-        }
-
         /* ── Status ─── */
         .status-bar {
             background: var(--surface);
