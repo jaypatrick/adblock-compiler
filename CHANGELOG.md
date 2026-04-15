@@ -78,6 +78,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.87.0] - 2026-04-15
+
+### Added- automate Cloudflare API Shield schema upload in CI/CD pipeline (#1597)
+- align Bloqr UI branding across Angular app, mdBook docs, and book.toml (#1596)
+
+### Fixed
+
+- rewrite retry.sh with actual newlines and add defensive guards (fixes exit 127 in mdbook deploy) (#1598)
+- **swagger**: replace fragile dynamic asset injection with pinned CDN URLs (#1594)
+
+
 ## [0.86.0] - 2026-04-14
 
 ### Added- multi-tenant shared-schema — SubscriptionPlan, org scope, visibility, AST storage, data retention consent (#1588)
