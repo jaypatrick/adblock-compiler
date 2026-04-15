@@ -69,6 +69,16 @@ Deno.test('GET /api/swagger returns Swagger UI page', async () => {
     assertEquals(html.includes('swagger-ui'), true);
 });
 
+Deno.test('GET /api/swagger HTML includes required Swagger UI CDN assets', async () => {
+    const res = await fetchApp('/api/swagger');
+    const html = await res.text();
+    // Both scripts are required: bundle provides SwaggerUIBundle, standalone-preset provides
+    // SwaggerUIStandalonePreset which is needed for StandaloneLayout.
+    assertStringIncludes(html, 'swagger-ui-bundle.js');
+    assertStringIncludes(html, 'swagger-ui-standalone-preset.js');
+    assertStringIncludes(html, 'swagger-ui.css');
+});
+
 Deno.test('GET /api/swagger is publicly accessible (no auth required)', async () => {
     // Should not return 401 for anonymous users
     const res = await fetchApp('/api/swagger');

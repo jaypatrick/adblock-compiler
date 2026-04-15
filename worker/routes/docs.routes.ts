@@ -103,8 +103,8 @@ docsRoutes.get('/docs/*', scalarDocsHandler);
 // The dynamic asset injection pattern (asset.css.filter(...) / asset.js.filter(...))
 // is fragile: if the library's CDN URLs change or the standalone preset is omitted
 // from the asset list, SwaggerUIBundle is never defined and the page renders blank.
-// Pinning to a specific swagger-ui-dist major version on cdn.jsdelivr.net is stable,
-// auditable, and guarantees both required scripts are always loaded.
+// Pinning to an exact swagger-ui-dist version on cdn.jsdelivr.net is stable,
+// reproducible across deploys, and guarantees both required scripts are always loaded.
 
 const BLOQR_SWAGGER_CSS = `
 body { background: #070B14 !important; margin: 0; }
@@ -151,7 +151,8 @@ body { background: #070B14 !important; margin: 0; }
 .swagger-ui .highlight-code > .microlight { color: #F1F5F9 !important; }
 `;
 
-const SWAGGER_CDN_BASE = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5';
+// Pin to an exact Swagger UI dist version so CDN assets are reproducible across deploys.
+const SWAGGER_CDN_BASE = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14';
 
 const swaggerDocsHandler = swaggerUI({
     url: '/api/openapi.json',
