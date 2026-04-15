@@ -5,7 +5,7 @@
  *   - fetchAssetWithRedirects: follows a 301 redirect
  *   - fetchAssetWithRedirects: returns a non-redirect response directly
  *   - serveWebUI: returns 200 with Content-Type text/html; charset=utf-8
- *   - serveWebUI: body contains "Adblock Compiler"
+ *   - serveWebUI: body contains "Bloqr"
  *   - serveStaticAsset: root "/" with ASSETS serves the SPA shell
  *   - serveStaticAsset: server-prefix path (/api/…) returns 404
  *   - serveStaticAsset: extensionless path with Accept:text/html serves SPA shell
@@ -85,10 +85,10 @@ Deno.test('serveWebUI - returns 200 with Content-Type text/html; charset=utf-8',
     assertEquals(res.headers.get('Content-Type'), 'text/html; charset=utf-8');
 });
 
-Deno.test('serveWebUI - body contains "Adblock Compiler"', async () => {
+Deno.test('serveWebUI - body contains "Bloqr"', async () => {
     const res = serveWebUI(new Request('http://localhost/'));
     const body = await res.text();
-    assertEquals(body.includes('Adblock Compiler'), true);
+    assertEquals(body.includes('Bloqr'), true);
 });
 
 // ============================================================================
