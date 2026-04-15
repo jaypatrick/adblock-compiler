@@ -255,8 +255,8 @@ export interface EndpointInfo {
       <section aria-labelledby="external-nav-heading" class="nav-section">
         <h2 id="external-nav-heading" class="section-heading">More Bloqr</h2>
         <div class="nav-grid">
-          <a href="https://api.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="nav-card nav-card--external">
-            <mat-card appearance="outlined" class="bloqr-card cursor-pointer">
+          <a href="https://api.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
+            <mat-card appearance="outlined" class="nav-card nav-card--external bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">api</mat-icon>
                 <mat-card-title class="nav-card-title">API Portal</mat-card-title>
@@ -266,8 +266,8 @@ export interface EndpointInfo {
               </mat-card-content>
             </mat-card>
           </a>
-          <a href="https://docs.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="nav-card nav-card--external">
-            <mat-card appearance="outlined" class="bloqr-card cursor-pointer">
+          <a href="https://docs.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
+            <mat-card appearance="outlined" class="nav-card nav-card--external bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">menu_book</mat-icon>
                 <mat-card-title class="nav-card-title">Documentation</mat-card-title>
@@ -277,8 +277,8 @@ export interface EndpointInfo {
               </mat-card-content>
             </mat-card>
           </a>
-          <a href="https://bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="nav-card nav-card--external">
-            <mat-card appearance="outlined" class="bloqr-card cursor-pointer">
+          <a href="https://bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
+            <mat-card appearance="outlined" class="nav-card nav-card--external bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">open_in_new</mat-icon>
                 <mat-card-title class="nav-card-title">Bloqr.com</mat-card-title>
@@ -486,6 +486,12 @@ export interface EndpointInfo {
     .nav-card {
         cursor: pointer;
         transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .external-tile-link {
+        display: block;
+        text-decoration: none;
+        color: inherit;
     }
 
     .nav-card:hover {

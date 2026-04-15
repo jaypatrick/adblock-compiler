@@ -26,7 +26,7 @@ export const routes: Routes = [
     {
         path: '',
         loadComponent: () => import('./home/home.component').then((m) => m.HomeComponent),
-        title: 'Home',
+        title: 'Dashboard',
         data: { metaDescription: 'Compile, validate, and transform adblock filter lists in real-time. Open-source compiler-as-a-service with streaming, batch, and async modes.' },
     },
     {
