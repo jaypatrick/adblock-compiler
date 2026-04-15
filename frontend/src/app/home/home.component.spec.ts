@@ -142,7 +142,7 @@ describe('HomeComponent', () => {
         await fixture.whenStable();
         fixture.detectChanges();
         const h1 = fixture.nativeElement.querySelector('h1');
-        expect(h1?.textContent).toContain('Adblock Compiler Dashboard');
+        expect(h1?.textContent).toContain('Bloqr Dashboard');
     });
 });
 

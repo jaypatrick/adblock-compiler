@@ -28,10 +28,10 @@ describe('AppTitleStrategy', () => {
         metaService = TestBed.inject(Meta);
     });
 
-    it('should set "PageName | Bloqr" when route has a title', () => {
+    it('should set "Bloqr — PageName" when route has a title', () => {
         vi.spyOn(strategy, 'buildTitle').mockReturnValue('Compiler');
         strategy.updateTitle(makeSnapshot());
-        expect(titleService.getTitle()).toBe('Compiler | Bloqr');
+        expect(titleService.getTitle()).toBe('Bloqr \u2014 Compiler');
     });
 
     it('should set "Bloqr" when route has no title', () => {
@@ -45,7 +45,7 @@ describe('AppTitleStrategy', () => {
         for (const page of pages) {
             vi.spyOn(strategy, 'buildTitle').mockReturnValue(page);
             strategy.updateTitle(makeSnapshot());
-            expect(titleService.getTitle()).toBe(`${page} | Bloqr`);
+            expect(titleService.getTitle()).toBe(`Bloqr \u2014 ${page}`);
         }
     });
 

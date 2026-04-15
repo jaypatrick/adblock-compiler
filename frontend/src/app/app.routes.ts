@@ -98,13 +98,13 @@ export const routes: Routes = [
         path: 'api-docs',
         loadComponent: () => import('./api-docs/api-docs.component').then((m) => m.ApiDocsComponent),
         title: 'API Reference',
-        data: { description: 'HTTP API endpoint documentation', metaDescription: 'Complete HTTP API reference for the Adblock Compiler service. Covers compile, stream, batch, async, AST parse, metrics, and queue endpoints.' },
+        data: { description: 'HTTP API endpoint documentation', metaDescription: 'Complete HTTP API reference for Bloqr. Covers compile, stream, batch, async, AST parse, metrics, and queue endpoints.' },
     },
     {
         path: 'api-keys',
         loadComponent: () => import('./components/api-keys/api-keys.component').then((m) => m.ApiKeysComponent),
         title: 'API Keys',
-        data: { description: 'Manage API keys', metaDescription: 'Create and manage personal API keys for programmatic access to the Adblock Compiler service.' },
+        data: { description: 'Manage API keys', metaDescription: 'Create and manage personal API keys for programmatic access to Bloqr.' },
         canActivate: [authGuard],
     },
     {
@@ -112,7 +112,7 @@ export const routes: Routes = [
         loadComponent: () => import('./admin/admin.component').then((m) => m.AdminComponent),
         loadChildren: () => import('./admin/admin.routes').then((m) => m.ADMIN_ROUTES),
         title: 'Admin',
-        data: { description: 'Administration', metaDescription: 'Adblock Compiler administration console. Manage users, storage, configuration, and system settings.' },
+        data: { description: 'Administration', metaDescription: 'Bloqr administration console. Manage users, storage, configuration, and system settings.' },
         canActivate: [adminGuard],
     },
     {
