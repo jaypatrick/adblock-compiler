@@ -1,6 +1,8 @@
 # Cloudflare Mesh: Private Agent Networking for adblock-compiler
 
-**Date:** 2026-04-15 00:04:05\n**Status:** Strategic Evaluation — Awaiting SDK Maturity\n**Relates to:** [Issue #1377](https://github.com/jaypatrick/adblock-compiler/issues/1377), [ideas/CLOUDFLARE_DYNAMIC_WORKERS_PIVOT.md](./CLOUDFLARE_DYNAMIC_WORKERS_PIVOT.md)
+**Date:** 2026-04-15 00:11:51
+**Status:** Strategic Evaluation — Awaiting SDK Maturity
+**Relates to:** [Issue #1592](https://github.com/jaypatrick/adblock-compiler/issues/1592), [Issue #1377](https://github.com/jaypatrick/adblock-compiler/issues/1377), [ideas/CLOUDFLARE_DYNAMIC_WORKERS_PIVOT.md](./CLOUDFLARE_DYNAMIC_WORKERS_PIVOT.md)
 
 ---
 
@@ -8,7 +10,10 @@
 
 On April 14, 2026, Cloudflare launched [Cloudflare Mesh](https://blog.cloudflare.com/mesh/) — a private networking layer purpose-built for connecting users, services, and AI agents into a unified, identity-driven network fabric. Unlike a VPN, Mesh assigns each agent, node, and user a distinct cryptographic identity, enabling fine-grained access policies enforced at the network level — not the application level.
 
-This document evaluates Mesh's fit within the adblock-compiler platform, which already runs a production Cloudflare agent infrastructure (Agents SDK, Durable Objects, AGENT_REGISTRY, MCP agent) and enforces Zero Trust Architecture (ZTA) at every layer. The thesis: **Mesh is a natural structural enforcement layer on top of everything already built**, and should be integrated once the `cloudflare` SDK (`^5.x`) exposes stable typed Mesh methods.
+This document evaluates Mesh's fit within the adblock-compiler platform across **two distinct scopes**:
+
+1. **Infrastructure ZTA** — Mesh as a structural enforcement layer on top of the existing Cloudflare agent stack (Agents SDK, Durable Objects, AGENT_REGISTRY, MCP agent).
+2. **User-facing product feature (Bloqr Mesh)** — Mesh as a consumer/prosumer private network feature, competitive with NordVPN Meshnet, bundled natively with adblocking.
 
 ---
 
@@ -42,11 +47,44 @@ Cloudflare Mesh is a **private overlay network** that:
 
 ---
 
-## Current Architecture: What Mesh Augments
+## Competitive Context: NordVPN Meshnet
+
+NordVPN Meshnet is the closest existing consumer product to what Cloudflare Mesh enables at the user level. Understanding the comparison is critical to positioning Bloqr Mesh correctly.
+
+### Feature Comparison
+
+| Feature | NordVPN Meshnet | Cloudflare Mesh (via Bloqr) |
+|---|---|---|
+| **Core concept** | P2P overlay network between user devices | Private overlay network for users, agents, services, and Workers |
+| **Encryption** | End-to-end via NordLynx (WireGuard) | End-to-end on private fabric, enforced by Cloudflare infrastructure |
+| **Identity** | Per-device identity | Per-node cryptographic identity (agents, DOs, Workers, users, CI) |
+| **Access policies** | Coarse — device-to-device allow/deny | Fine-grained — per-identity, per-binding, per-resource policies |
+| **Target user** | Consumers + small teams (gaming LAN, remote desktop, file sharing) | Privacy-focused users, developers, prosumers, enterprise |
+| **Pricing** | ~$3–5/mo bundled with NordVPN, or standalone | Marginal on top of existing Cloudflare infrastructure; significantly cheaper |
+| **Platform dependency** | NordVPN app required on every device | Cloudflare WARP client (Mesh node) — lighter weight, no VPN subscription required |
+| **Adblocking** | None natively (separate NordVPN feature, addon pricing) | **Native — Bloqr blocklists applied uniformly across all enrolled Mesh devices** |
+| **AI agent support** | None | First-class — designed for agentic workloads |
+| **Privacy model** | Traffic routed through NordVPN infrastructure | P2P direct overlay — Cloudflare provides identity/policy fabric only, not traffic relay |
+
+### The Opportunity
+
+NordVPN Meshnet is a **consumer feature bolted onto a VPN product**. Bloqr can offer something categorically better:
+
+1. **Native adblocking across the Mesh** — every device on the Bloqr Mesh private network has the user's compiled blocklist applied. NordVPN charges separately for "Threat Protection"; we bundle it.
+2. **No VPN subscription required** — Cloudflare Mesh runs on Cloudflare's edge, not a VPN server fleet. The marginal infrastructure cost is minimal; we pass the savings directly to users.
+3. **Stronger privacy narrative** — NordVPN's Meshnet still transits NordVPN infrastructure at points. Cloudflare Mesh is a direct P2P overlay — Cloudflare provides the identity fabric, not a traffic relay.
+4. **Prosumer-to-enterprise continuity** — the same Mesh identity model that protects a user's home devices also protects their CI/CD runners and production agents. NordVPN has no story here.
+5. **Pricing**: Bloqr can undercut NordVPN Meshnet by targeting the prosumer segment that wants Meshnet but not a full VPN subscription.
+
+---
+
+## Part 1: Infrastructure ZTA Integration
+
+### Current Architecture: What Mesh Augments
 
 The adblock-compiler already has a deep Cloudflare ZTA stack. Mesh is not a replacement — it is a structural enforcement layer on top of what exists.
 
-### Existing ZTA Middleware Chain
+#### Existing ZTA Middleware Chain
 
 ```mermaid
 flowchart LR
@@ -64,7 +102,7 @@ flowchart LR
     REQ --> CFAC --> CJW --> RL --> AA --> H
 ```
 
-### Existing Agent Infrastructure
+#### Existing Agent Infrastructure
 
 ```mermaid
 flowchart TD
@@ -86,7 +124,7 @@ flowchart TD
     MCP --> KV
 ```
 
-### What Mesh Adds (Structural Layer)
+#### What Mesh Adds (Structural Layer)
 
 ```mermaid
 flowchart TD
@@ -107,9 +145,7 @@ flowchart TD
     MESH_FABRIC --> KV
 ```
 
----
-
-## Gap Analysis: What Mesh Solves
+### Gap Analysis: What Mesh Solves (Infrastructure)
 
 | Current State | Current Workaround | Mesh Solution |
 |---|---|---|
@@ -122,7 +158,7 @@ flowchart TD
 
 ---
 
-## Integration Plan
+## Part 2: Infrastructure Integration Plan
 
 ### Phase 0: Foundation (Build Now — No SDK Dependency)
 
@@ -138,7 +174,8 @@ export interface MeshNodeEnrollment {
     nodeId: string;
     identity: string;
     enrolledAt: string;
-    agentSlug?: string; // corresponds to AgentRegistryEntry.slug
+    agentSlug?: string;       // internal: corresponds to AgentRegistryEntry.slug
+    clerkUserId?: string;     // user-facing: corresponds to enrolled end-user device
 }
 
 export interface MeshAccessPolicy {
@@ -151,13 +188,19 @@ export interface MeshAccessPolicy {
 // CloudflareApiService extension:
 mesh = {
     enrollNode: (_agentSlug: string): Promise<MeshNodeEnrollment> => {
-        throw new Error('Mesh SDK not yet available — tracking: [issue link]');
+        throw new Error('Mesh SDK not yet available — tracking: https://github.com/jaypatrick/adblock-compiler/issues/1592');
+    },
+    enrollUserDevice: (_clerkUserId: string, _deviceLabel: string): Promise<MeshNodeEnrollment> => {
+        throw new Error('Mesh SDK not yet available — tracking: https://github.com/jaypatrick/adblock-compiler/issues/1592');
     },
     applyAccessPolicy: (_policy: MeshAccessPolicy): Promise<void> => {
-        throw new Error('Mesh SDK not yet available — tracking: [issue link]');
+        throw new Error('Mesh SDK not yet available — tracking: https://github.com/jaypatrick/adblock-compiler/issues/1592');
     },
     listNodes: (): Promise<MeshNodeEnrollment[]> => {
-        throw new Error('Mesh SDK not yet available — tracking: [issue link]');
+        throw new Error('Mesh SDK not yet available — tracking: https://github.com/jaypatrick/adblock-compiler/issues/1592');
+    },
+    revokeNode: (_nodeId: string): Promise<void> => {
+        throw new Error('Mesh SDK not yet available — tracking: https://github.com/jaypatrick/adblock-compiler/issues/1592');
     },
 };
 ```
@@ -254,6 +297,145 @@ Audit all `/admin/*` routes in `worker/routes/admin.routes.ts` and tag each with
 
 ---
 
+## Part 3: Bloqr Mesh — User-Facing Product Feature
+
+> **Strategic framing:** NordVPN Meshnet charges ~$3–5/month for a P2P device network with no adblocking. Bloqr can offer a better product — private device network + native adblocking across every enrolled device — for less. This is a meaningful product differentiator and a new revenue surface.
+
+### Product Vision
+
+**Bloqr Mesh** is a user-facing private network feature that:
+
+- Lets users enroll their devices (laptop, phone, home server, router, VPS) into a private Bloqr-managed network
+- Applies the user's compiled Bloqr blocklist **uniformly across all enrolled devices** — even on untrusted public Wi-Fi
+- Requires no VPN subscription — Bloqr Mesh is a lighter-weight P2P overlay, not a VPN tunnel through a third-party server
+- Ties each device identity to the user's Bloqr/Clerk account — single pane of glass for device + blocklist management
+
+### User-Facing Architecture
+
+```mermaid
+flowchart TD
+    classDef user fill:#1565c0,stroke:#0d47a1,color:#fff
+    classDef mesh fill:#00695c,stroke:#004d40,color:#fff
+    classDef platform fill:#4a148c,stroke:#2d0a6e,color:#fff
+    classDef device fill:#37474f,stroke:#1a2327,color:#fff
+
+    USER["Bloqr User\n(Clerk account)"]:::user
+
+    subgraph DEVICES["Enrolled Devices"]
+        LAPTOP["Laptop\n(Mesh node)"]:::device
+        PHONE["Phone\n(Mesh node)"]:::device
+        SERVER["Home Server\n(Mesh node)"]:::device
+    end
+
+    subgraph BLOQR["Bloqr Platform (Cloudflare Edge)"]
+        MESH_ID["Mesh Identity Service\n(CloudflareApiService.mesh)"]:::mesh
+        BLOCKLIST["Compiled Blocklist\n(user's filter rules from R2)"]:::platform
+        WORKER["Orchestrator Worker\n(hono-app.ts)"]:::platform
+    end
+
+    USER -->|"enroll device via\nBloqr dashboard"| MESH_ID
+    MESH_ID -->|"assign node identity\ntied to clerkUserId"| LAPTOP
+    MESH_ID -->|"assign node identity\ntied to clerkUserId"| PHONE
+    MESH_ID -->|"assign node identity\ntied to clerkUserId"| SERVER
+    BLOCKLIST -->|"applied at edge\nfor all enrolled nodes"| LAPTOP
+    BLOCKLIST -->|"applied at edge\nfor all enrolled nodes"| PHONE
+    LAPTOP <-->|"private P2P fabric\n(no public internet)"| SERVER
+```
+
+### Pricing Tier Model
+
+Aligns with the existing `UserTier` model already in `worker/types.ts`:
+
+| Bloqr Tier | Mesh Device Limit | Adblocking | Private Fabric | Notes |
+|---|---|---|---|---|
+| **Free** | 2 devices | ✅ Basic blocklist | ✅ | Sufficient for personal use |
+| **Pro** | 10 devices | ✅ Custom + community lists | ✅ | Family / small team |
+| **Admin / Enterprise** | Unlimited | ✅ Full compiler access | ✅ + policy management UI | Dev teams, power users |
+
+**Competitive price target:** < $3/month for Pro tier (NordVPN Meshnet standalone equivalent). Marginal CF infrastructure cost makes this easily achievable.
+
+### Competitive Positioning vs. NordVPN Meshnet
+
+```mermaid
+flowchart LR
+    classDef bloqr fill:#00695c,stroke:#004d40,color:#fff
+    classDef nord fill:#c62828,stroke:#8e0000,color:#fff
+    classDef shared fill:#37474f,stroke:#1a2327,color:#fff
+
+    subgraph NORDVPN["NordVPN Meshnet (~$3–5/mo)"]
+        N1["P2P device network"]:::nord
+        N2["End-to-end encryption"]:::nord
+        N3["No adblocking\n(separate addon)"]:::nord
+        N4["Routes via NordVPN infra\nat points"]:::nord
+        N5["No agent/service support"]:::nord
+    end
+
+    subgraph BLOQR["Bloqr Mesh (target: <$3/mo)"]
+        B1["P2P device network"]:::bloqr
+        B2["End-to-end encryption"]:::bloqr
+        B3["Native adblocking\nacross ALL devices"]:::bloqr
+        B4["True P2P overlay —\nCloudflare identity only"]:::bloqr
+        B5["Agent + CI/CD\nnode support"]:::bloqr
+    end
+```
+
+### Implementation Plan (Phase 3)
+
+**Trigger:** Cloudflare Mesh SDK GA + Phase 2 (infra) validated in production.
+
+#### 3.1 — User Device Enrollment API
+
+New Worker routes under `/mesh/*`, gated by Clerk JWT + tier check:
+
+```typescript
+// worker/routes/mesh.routes.ts (new file)
+// POST /mesh/devices        — enroll a new device (calls CloudflareApiService.mesh.enrollUserDevice)
+// GET  /mesh/devices        — list user's enrolled devices
+// DELETE /mesh/devices/:id  — revoke a device node
+// GET  /mesh/status         — health/connectivity status of enrolled nodes
+```
+
+All routes follow ZTA PR checklist:
+- `requireAuth(authContext)` at handler top
+- `checkRateLimitTiered` on every public endpoint
+- Device limit enforced by `UserTier` before calling Mesh enrollment API
+- All inputs Zod-validated (`MeshDeviceEnrollRequestSchema`)
+- `AnalyticsService.trackSecurityEvent()` on auth failure + enrollment events
+
+#### 3.2 — D1 Schema: `mesh_devices` Table
+
+Track enrolled devices per user for the Bloqr dashboard. Mirrors the `agent_sessions` pattern from the agent backend (PR #1382):
+
+```sql
+CREATE TABLE mesh_devices (
+    id          TEXT PRIMARY KEY,
+    clerk_user_id TEXT NOT NULL,
+    node_id     TEXT NOT NULL UNIQUE,   -- Cloudflare Mesh node ID
+    label       TEXT NOT NULL,          -- user-assigned device name
+    enrolled_at TEXT NOT NULL,
+    last_seen   TEXT,
+    revoked_at  TEXT,
+    FOREIGN KEY (clerk_user_id) REFERENCES users(clerk_user_id)
+);
+CREATE INDEX idx_mesh_devices_user ON mesh_devices(clerk_user_id) WHERE revoked_at IS NULL;
+```
+
+#### 3.3 — Blocklist Application Across Mesh
+
+The core differentiator: route all DNS/HTTP traffic from enrolled Mesh nodes through the user's Bloqr-compiled blocklist. This likely requires Cloudflare Gateway integration (DNS filtering policy applied to Mesh network traffic). Detailed design deferred to a sub-issue once Mesh GA lands and Gateway + Mesh integration docs are available.
+
+#### 3.4 — Bloqr Dashboard: Mesh Management Panel
+
+New Angular component following the `AgentsDashboardComponent` pattern (PR #1383):
+
+- **`MeshDashboardComponent`** — device list cards, enrollment status chips, node health indicators
+- **`MeshEnrollComponent`** — device enrollment flow (label input → enrollment token → WARP client QR/link)
+- **`MeshDeviceCardComponent`** — per-device: label, node ID, last seen, revoke action
+- Route: `/dashboard/mesh` — lazy-loaded, tier-gated (`UserTier.Free` and above)
+- Angular `CanActivateFn` guard: redirect to upgrade page if `mesh` feature flag is off for tier
+
+---
+
 ## Relationship to Other Strategic Initiatives
 
 ```mermaid
@@ -262,40 +444,42 @@ flowchart LR
     classDef dw fill:#e65100,stroke:#bf360c,color:#fff
     classDef agents fill:#1a237e,stroke:#0d1257,color:#fff
     classDef current fill:#37474f,stroke:#1a2327,color:#fff
+    classDef product fill:#880e4f,stroke:#560930,color:#fff
 
     ZTA["ZTA Middleware Chain\n(current)"]:::current
     AGENTS_SDK["Cloudflare Agents SDK\n(#1377)"]:::agents
     DW["Dynamic Workers\n(CLOUDFLARE_DYNAMIC_WORKERS_PIVOT.md)"]:::dw
-    MESH["Cloudflare Mesh\n(this doc)"]:::mesh
+    MESH_INFRA["CF Mesh — Infrastructure\n(Phases 0–2)"]:::mesh
+    MESH_PRODUCT["Bloqr Mesh — Product\n(Phase 3)"]:::product
 
     ZTA -->|"application-layer enforcement"| AGENTS_SDK
     AGENTS_SDK -->|"per-user agent isolation\n(policy-based)"| DW
-    DW -->|"structural V8 isolate isolation"| MESH
-    MESH -->|"network-layer identity enforcement\n(structural)"| ZTA
+    DW -->|"structural V8 isolate isolation"| MESH_INFRA
+    MESH_INFRA -->|"network-layer enforcement\n+ user node identity model"| MESH_PRODUCT
+    MESH_PRODUCT -->|"revenue + competitive moat"| ZTA
 
-    style MESH stroke-width:3px
+    style MESH_PRODUCT stroke-width:3px
 ```
 
-The three initiatives are **additive, not competing**:
-
-| Initiative | Isolation Layer | Enforced By |
-|---|---|---|
-| ZTA middleware (current) | Application | Application code |
-| Dynamic Workers | Compute | V8 runtime |
-| Cloudflare Mesh | Network | Cloudflare infrastructure |
-
-Together they form a three-layer Zero Trust stack where no single layer is the last line of defence.
+| Initiative | Layer | Enforced By | User-Facing? |
+|---|---|---|---|
+| ZTA middleware (current) | Application | Application code | No |
+| Dynamic Workers | Compute | V8 runtime | No |
+| CF Mesh — Infrastructure (Phases 0–2) | Network | Cloudflare infrastructure | No |
+| **Bloqr Mesh — Product (Phase 3)** | **Network + Product** | **Cloudflare infrastructure** | **Yes — revenue surface** |
 
 ---
 
 ## What We Can Build Right Now (Phase 0 Checklist)
 
-- [ ] `MeshService` stub namespace added to `src/services/cloudflareApiService.ts`
+- [ ] `MeshService` stub namespace added to `src/services/cloudflareApiService.ts` (includes `enrollUserDevice` + `revokeNode` stubs for Phase 3)
 - [ ] `AgentMeshPolicy` type + `meshPolicy` optional field added to `AgentRegistryEntry` in `worker/agents/registry.ts`
 - [ ] MCP agent entry in `AGENT_REGISTRY` updated with intended `meshPolicy` (with `autoEnroll: false`)
 - [ ] `/api/health` response extended with `mesh: { status: 'not_configured' }` placeholder
 - [ ] Admin route audit complete — each route tagged with intended Mesh isolation level in comments
 - [ ] `validateAgentRegistry()` extended to validate `meshPolicy.allowedBindings` does not include denied bindings (static consistency check)
+- [ ] `MeshDeviceEnrollRequestSchema` Zod schema drafted in `worker/schemas/mesh.ts` (no handler yet — schema-first)
+- [ ] `mesh_devices` D1 migration file drafted in `prisma/migrations/` (pending Mesh GA before applying)
 
 ---
 
@@ -307,20 +491,23 @@ Together they form a three-layer Zero Trust stack where no single layer is the l
 | 2026-04-15 | Hold Phase 1 (live Mesh enrollment) pending `cloudflare@^5.x` Mesh methods | Mandatory `CloudflareApiService` rule blocks raw API calls; wait for typed SDK |
 | 2026-04-15 | `AgentMeshPolicy` field added to `AGENT_REGISTRY` as documentation-as-code | Drives automatic policy enrollment when SDK is ready; zero rework on Phase 1 |
 | 2026-04-15 | Mesh does not replace Clerk JWT or `verifyCfAccessJwt` in Phase 1 | Defense-in-depth; Mesh is an additional layer, not a replacement |
+| 2026-04-15 | Add Phase 3: Bloqr Mesh as user-facing product feature | NordVPN Meshnet competitive opportunity; native adblocking across Mesh is a unique differentiator; marginal CF infra cost enables aggressive pricing |
+| 2026-04-15 | Blocklist-across-Mesh implementation deferred to sub-issue | Requires Cloudflare Gateway + Mesh integration details not yet documented; design after SDK GA |
 
 ---
 
 ## Related Issues & Documents
 
-- [Tracking Issue: Cloudflare Mesh Integration](https://github.com/jaypatrick/adblock-compiler/issues/TBD)
+- [Tracking Issue #1592: Cloudflare Mesh Integration](https://github.com/jaypatrick/adblock-compiler/issues/1592)
 - [Issue #1377: Evaluate and Document Integration of Cloudflare Agents SDK](https://github.com/jaypatrick/adblock-compiler/issues/1377)
 - [ideas/CLOUDFLARE_DYNAMIC_WORKERS_PIVOT.md](./CLOUDFLARE_DYNAMIC_WORKERS_PIVOT.md)
 - [ideas/AI_CLOUDFLARE_INTEGRATION.md](./AI_CLOUDFLARE_INTEGRATION.md)
 - [docs/cloudflare/CLOUDFLARE_AGENTS.md](../docs/cloudflare/CLOUDFLARE_AGENTS.md)
 - [docs/auth/cloudflare-access.md](../docs/auth/cloudflare-access.md)
+- [docs/PITCH_SUMMARY.md](../docs/PITCH_SUMMARY.md)
 - [worker/agents/registry.ts](../worker/agents/registry.ts)
 - [src/services/cloudflareApiService.ts](../src/services/cloudflareApiService.ts)
 
 ---
 
-*Document authored with GitHub Copilot on 2026-04-15. Based on live analysis of the adblock-compiler codebase and the Cloudflare Mesh launch announcement.*
+*Document authored with GitHub Copilot on 2026-04-15. Based on live analysis of the adblock-compiler codebase, the Cloudflare Mesh launch, and competitive analysis of NordVPN Meshnet.*
