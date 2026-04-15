@@ -103,7 +103,7 @@ function buildX402PaymentSpec(pricePerCallCents: number, env: Env): Record<strin
         network: 'stripe',
         maxAmountRequired: String(pricePerCallCents),
         resource: env.STRIPE_PAYG_PRICE_ID ?? 'payg_per_call',
-        description: `Pay As You Go — $${(pricePerCallCents / 100).toFixed(2)} per API call`,
+        description: `Pay As You Go - $${(pricePerCallCents / 100).toFixed(2)} per API call`,
         mimeType: 'application/json',
         outputSchema: null,
         extra: {

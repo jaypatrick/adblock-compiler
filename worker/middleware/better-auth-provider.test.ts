@@ -35,7 +35,7 @@ Deno.test('resolveTier - returns Free when tier is empty string', () => {
 });
 
 Deno.test('resolveTier - returns Free for unknown tier string', () => {
-    assertEquals(resolveTier('enterprise'), UserTier.Free);
+    assertEquals(resolveTier('superuser'), UserTier.Free);
 });
 
 Deno.test('resolveTier - returns Free tier', () => {

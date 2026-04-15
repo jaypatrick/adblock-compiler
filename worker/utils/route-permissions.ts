@@ -123,6 +123,16 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     // Batch proxy requires Pro tier — used for hybrid mode
     ['/proxy/fetch/batch', { minTier: UserTier.Pro, description: 'CORS proxy batch fetch (hybrid mode, Pro+)' }],
 
+    // ── PAYG billing ──────────────────────────────────────────────────────────
+    // Pricing is public; session endpoints accept session-token auth (handled by paygSessionMiddleware).
+    ['/payg/pricing', { minTier: UserTier.Anonymous, description: 'PAYG pricing information (public)' }],
+    ['/payg/session/status', { minTier: UserTier.Anonymous, description: 'PAYG session status (session-token auth)' }],
+    ['/payg/session/create', { minTier: UserTier.Free, description: 'Create PAYG session (Better Auth required)' }],
+    ['/payg/usage', { minTier: UserTier.Anonymous, description: 'PAYG usage summary (Stripe customer ID or auth)' }],
+
+    // ── Stripe webhooks / checkout ────────────────────────────────────────────
+    ['/stripe/*', { minTier: UserTier.Anonymous, description: 'Stripe webhook receivers and checkout stubs (self-authenticated)' }],
+
     // ── Pro tier (paid / upgraded) ─────────────────────────────────────────────
     ['/compile/async', { minTier: UserTier.Pro, description: 'Async compilation (Pro+)' }],
     ['/compile/batch/async', { minTier: UserTier.Pro, description: 'Async batch compilation (Pro+)' }],
