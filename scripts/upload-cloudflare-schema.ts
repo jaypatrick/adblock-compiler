@@ -106,8 +106,7 @@ async function main(): Promise<void> {
 
     // Identify the previous schema to delete after a successful upload.
     // Prefer the validation-enabled schema; fall back to the most recent one.
-    const previousSchema: ApiShieldSchema | undefined =
-        existingSchemas.find((s) => s.validation_enabled === true) ?? existingSchemas[0];
+    const previousSchema: ApiShieldSchema | undefined = existingSchemas.find((s) => s.validation_enabled === true) ?? existingSchemas[0];
 
     if (dryRun) {
         console.log(`🔍 Would upload schema "${SCHEMA_NAME}" (${schemaContent.length} bytes) to zone ${zoneId}`);

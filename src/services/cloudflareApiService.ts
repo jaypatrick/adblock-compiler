@@ -3,13 +3,13 @@
 
 import Cloudflare from 'cloudflare';
 import type { ZoneListParams } from 'cloudflare/resources/zones/zones';
-import type { OldPublicSchema, UserSchemaCreateResponse } from 'cloudflare/resources/api-gateway/user-schemas/user-schemas';
+import type { PublicSchema, SchemaUpload } from 'cloudflare/resources/api-gateway/user-schemas/user-schemas';
 import type { IBasicLogger } from '../types/index.ts';
 import { silentLogger } from '../utils/logger.ts';
 
 // ─── API Shield return-type helpers ──────────────────────────────────────────
 
-export type { OldPublicSchema as ApiShieldSchema, UserSchemaCreateResponse as ApiShieldUploadResult };
+export type { PublicSchema as ApiShieldSchema, SchemaUpload as ApiShieldUploadResult };
 
 // ─── Return-type helpers ──────────────────────────────────────────────────────
 
@@ -121,14 +121,14 @@ export class CloudflareApiService {
 
     // ── API Shield ────────────────────────────────────────────────────────────
 
-    async listApiShieldSchemas(zoneId: string): Promise<OldPublicSchema[]> {
+    async listApiShieldSchemas(zoneId: string): Promise<PublicSchema[]> {
         this.logger.info(`[CloudflareApiService] listApiShieldSchemas zoneId=${zoneId}`);
 
         const page = await this.client.apiGateway.userSchemas.list({ zone_id: zoneId, omit_source: false });
         return page.getPaginatedItems();
     }
 
-    async uploadApiShieldSchema(zoneId: string, name: string, content: string): Promise<UserSchemaCreateResponse> {
+    async uploadApiShieldSchema(zoneId: string, name: string, content: string): Promise<SchemaUpload> {
         this.logger.info(`[CloudflareApiService] uploadApiShieldSchema zoneId=${zoneId} name=${name}`);
 
         const file = new File([content], name, { type: 'application/yaml' });
@@ -140,7 +140,7 @@ export class CloudflareApiService {
         });
     }
 
-    async enableApiShieldSchema(zoneId: string, schemaId: string): Promise<OldPublicSchema> {
+    async enableApiShieldSchema(zoneId: string, schemaId: string): Promise<PublicSchema> {
         this.logger.info(`[CloudflareApiService] enableApiShieldSchema zoneId=${zoneId} schemaId=${schemaId}`);
 
         return await this.client.apiGateway.userSchemas.edit(schemaId, {
