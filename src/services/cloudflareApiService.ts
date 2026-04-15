@@ -63,6 +63,21 @@ export const ApiShieldUploadResultSchema = z.object({
 /** Inferred type from {@link ApiShieldUploadResultSchema}. */
 export type ApiShieldUploadResult = z.infer<typeof ApiShieldUploadResultSchema>;
 
+/**
+ * Zod schema for an API Shield schema object with validation confirmed active.
+ *
+ * Extends {@link ApiShieldSchemaSchema} by requiring `validation_enabled: true`
+ * (a `z.literal`). Used as the parse target of
+ * {@link CloudflareApiService.enableApiShieldSchema} to enforce the post-condition
+ * at the trust boundary that the PATCH response confirms validation is on.
+ */
+export const EnabledApiShieldSchemaSchema = ApiShieldSchemaSchema.extend({
+    /** Validation is confirmed active — `z.literal(true)` rejects absent or `false` values. */
+    validation_enabled: z.literal(true),
+});
+/** Inferred type from {@link EnabledApiShieldSchemaSchema}. */
+export type EnabledApiShieldSchema = z.infer<typeof EnabledApiShieldSchemaSchema>;
+
 // ─── Return-type helpers ──────────────────────────────────────────────────────
 
 // D1 accepts string | number | boolean | null at runtime; SDK types `params` as Array<string>.
@@ -232,16 +247,16 @@ export class CloudflareApiService {
      * @throws {ZodError} if the API response does not match {@link ApiShieldSchemaSchema} or if
      *   `validation_enabled` is not `true` in the response.
      */
-    async enableApiShieldSchema(zoneId: string, schemaId: string): Promise<ApiShieldSchema> {
+    async enableApiShieldSchema(zoneId: string, schemaId: string): Promise<EnabledApiShieldSchema> {
         this.logger.info(`[CloudflareApiService] enableApiShieldSchema zoneId=${zoneId} schemaId=${schemaId}`);
 
         const raw = await this.client.apiGateway.userSchemas.edit(schemaId, {
             zone_id: zoneId,
             validation_enabled: true,
         });
-        // Use an extended schema that requires validation_enabled === true so the post-condition
-        // is enforced at the trust boundary rather than left as an unchecked assumption.
-        return ApiShieldSchemaSchema.extend({ validation_enabled: z.literal(true) }).parse(raw);
+        // Use EnabledApiShieldSchemaSchema (which requires validation_enabled === true) so the
+        // post-condition is enforced at the trust boundary rather than left as an unchecked assumption.
+        return EnabledApiShieldSchemaSchema.parse(raw);
     }
 
     /**

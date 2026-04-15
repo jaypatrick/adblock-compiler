@@ -7,7 +7,7 @@ import Cloudflare from 'cloudflare';
 import type { IBasicLogger } from '../types/index.ts';
 import { CloudflareApiService, createCloudflareApiService } from './cloudflareApiService.ts';
 import type { D1Param } from './cloudflareApiService.ts';
-import type { ApiShieldSchema, ApiShieldUploadResult } from './cloudflareApiService.ts';
+import type { ApiShieldSchema, ApiShieldUploadResult, EnabledApiShieldSchema } from './cloudflareApiService.ts';
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
 
@@ -651,8 +651,8 @@ Deno.test('CloudflareApiService - enableApiShieldSchema', async (t) => {
 
         const result = await service.enableApiShieldSchema('zone-1', 'schema-id-1');
 
-        assertEquals((result as ApiShieldSchema).schema_id, 'schema-id-1');
-        assertEquals((result as ApiShieldSchema).validation_enabled, true);
+        assertEquals((result as EnabledApiShieldSchema).schema_id, 'schema-id-1');
+        assertEquals((result as EnabledApiShieldSchema).validation_enabled, true);
     });
 
     await t.step('should pass zone_id, schema_id, and validation_enabled=true', async () => {
