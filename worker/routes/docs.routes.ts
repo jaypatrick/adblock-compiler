@@ -97,6 +97,14 @@ docsRoutes.get('/docs/*', scalarDocsHandler);
 // ── Swagger UI endpoint (Bloqr dark theme) ────────────────────────────────────
 // Traditional Swagger UI documentation at /api/swagger.
 // Reference: https://hono.dev/examples/swagger-ui/
+//
+// NOTE: We use manuallySwaggerUIHtml with pinned CDN URLs instead of relying on
+// the `asset` object from @hono/swagger-ui's internal remoteAssets() helper.
+// The dynamic asset injection pattern (asset.css.filter(...) / asset.js.filter(...))
+// is fragile: if the library's CDN URLs change or the standalone preset is omitted
+// from the asset list, SwaggerUIBundle is never defined and the page renders blank.
+// Pinning to a specific swagger-ui-dist major version on cdn.jsdelivr.net is stable,
+// auditable, and guarantees both required scripts are always loaded.
 
 const BLOQR_SWAGGER_CSS = `
 body { background: #070B14 !important; margin: 0; }
@@ -143,42 +151,14 @@ body { background: #070B14 !important; margin: 0; }
 .swagger-ui .highlight-code > .microlight { color: #F1F5F9 !important; }
 `;
 
+const SWAGGER_CDN_BASE = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5';
+
 const swaggerDocsHandler = swaggerUI({
     url: '/api/openapi.json',
     title: 'Bloqr API — Swagger',
     // `manuallySwaggerUIHtml` is the only type-safe way to inject custom CSS in
     // @hono/swagger-ui@0.6.1 (the package does not expose a `customCss` option).
-    // The `asset` object is produced by the library's internal `remoteAssets()`
-    // helper and contains hard-coded CDN URLs — they are not derived from user
-    // input. URL validation below guards against unlikely supply-chain scenarios.
-    manuallySwaggerUIHtml: (asset) => {
-        // Validate asset URLs — allowlist the CDN origins used by swagger-ui-dist.
-        // The `asset` object is produced by the library's internal `remoteAssets()`
-        // helper which returns only absolute CDN URLs, never relative or user-supplied paths.
-        // This check guards against unlikely supply-chain compromise scenarios.
-        const TRUSTED_ASSET_ORIGINS = ['https://unpkg.com', 'https://cdn.jsdelivr.net'];
-        const isValidUrl = (url: string): boolean => TRUSTED_ASSET_ORIGINS.some((origin) => url.startsWith(origin));
-
-        // Escape HTML attribute values to prevent injection if a URL ever contains
-        // special characters (quote, angle bracket, ampersand).
-        const escapeAttr = (s: string): string =>
-            s
-                .replace(/&/g, '&amp;')
-                .replace(/"/g, '&quot;')
-                .replace(/'/g, '&#39;')
-                .replace(/</g, '&lt;')
-                .replace(/>/g, '&gt;');
-
-        const safeStyles = asset.css
-            .filter(isValidUrl)
-            .map((url: string) => `<link rel="stylesheet" href="${escapeAttr(url)}" />`)
-            .join('');
-
-        const safeScripts = asset.js
-            .filter(isValidUrl)
-            .map((url: string) => `<script src="${escapeAttr(url)}" crossorigin="anonymous"></script>`)
-            .join('');
-
+    manuallySwaggerUIHtml: (_asset) => {
         return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -186,12 +166,13 @@ const swaggerDocsHandler = swaggerUI({
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bloqr API &#x2014; Swagger</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    ${safeStyles}
+    <link rel="stylesheet" href="${SWAGGER_CDN_BASE}/swagger-ui.css" />
     <style>${BLOQR_SWAGGER_CSS}</style>
 </head>
 <body>
     <div id="swagger-ui"></div>
-    ${safeScripts}
+    <script src="${SWAGGER_CDN_BASE}/swagger-ui-bundle.js" crossorigin="anonymous"></script>
+    <script src="${SWAGGER_CDN_BASE}/swagger-ui-standalone-preset.js" crossorigin="anonymous"></script>
     <script>
         window.onload = function() {
             window.ui = SwaggerUIBundle({
