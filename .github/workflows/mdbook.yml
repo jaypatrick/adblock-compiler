@@ -88,11 +88,12 @@ jobs:
           echo "Deploying documentation to Cloudflare Pages..."
           # --commit-dirty=true: required because regenerated OpenAPI/Postman docs modify
           # in-tree files (docs/api/, docs/postman/) before this step runs.
-          # --no-config: prevents wrangler from picking up the root wrangler.toml (Worker config).
+          # --config wrangler.pages.toml: explicit Pages-only config prevents wrangler from
+          # auto-detecting the root wrangler.toml (Workers config, no pages_build_output_dir).
           # Retry with 30s initial delay (3 total attempts; sleeps: 30s → 60s).
           retry_command 3 30 deno task wrangler pages deploy book \
             --project-name="${{ env.CLOUDFLARE_PAGES_PROJECT }}" \
             --branch=main \
             --commit-dirty=true \
-            --no-config
+            --config wrangler.pages.toml
           echo "✅ Documentation deployed successfully"
