@@ -63,7 +63,8 @@ function validateLocalRefs(spec: OpenAPISpec): string[] {
 
     function resolvePointer(pointer: string): boolean {
         // pointer = "#/components/responses/ForbiddenError"
-        const segments = pointer.slice(2).split('/'); // strip "#/" then split
+        // Per RFC 6901 §3, each segment must be unescaped: ~1 → / then ~0 → ~
+        const segments = pointer.slice(2).split('/').map((s) => s.replaceAll('~1', '/').replaceAll('~0', '~'));
         let current: unknown = spec;
         for (const segment of segments) {
             if (current == null || typeof current !== 'object') {
