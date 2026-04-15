@@ -49,8 +49,8 @@ function generateRedocHTML(specJson: string): string {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Adblock Compiler API Documentation</title>
-    <link rel="icon" type="image/png" href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==">
+    <title>Bloqr — API Documentation</title>
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23070B14'/%3E%3Crect x='6' y='8' width='20' height='3' rx='2' fill='%23F1F5F9'/%3E%3Crect x='6' y='14.5' width='15' height='3' rx='2' fill='%2300D4FF'/%3E%3Crect x='6' y='21' width='8' height='3' rx='2' fill='%23FF5500'/%3E%3C/svg%3E">
     <style>
         body {
             margin: 0;
