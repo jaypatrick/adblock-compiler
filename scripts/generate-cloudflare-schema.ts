@@ -50,6 +50,58 @@ interface OpenAPISpec {
     [key: string]: any;
 }
 
+/**
+ * Walk the spec and return every local JSON-pointer `$ref` (starting with `#/`)
+ * that cannot be resolved within the document.
+ *
+ * @param spec - The parsed OpenAPI spec object.
+ * @returns An array of unresolved ref strings.
+ */
+function validateLocalRefs(spec: OpenAPISpec): string[] {
+    const unresolvedRefs: string[] = [];
+    const seen = new Set<string>();
+
+    function resolvePointer(pointer: string): boolean {
+        // pointer = "#/components/responses/ForbiddenError"
+        const segments = pointer.slice(2).split('/'); // strip "#/" then split
+        let current: unknown = spec;
+        for (const segment of segments) {
+            if (current == null || typeof current !== 'object') {
+                return false;
+            }
+            current = (current as Record<string, unknown>)[segment];
+        }
+        return current !== undefined;
+    }
+
+    function walk(node: unknown): void {
+        if (node == null || typeof node !== 'object') {
+            return;
+        }
+        if (Array.isArray(node)) {
+            for (const item of node) {
+                walk(item);
+            }
+            return;
+        }
+        for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+            if (key === '$ref' && typeof value === 'string' && value.startsWith('#/')) {
+                if (!seen.has(value)) {
+                    seen.add(value);
+                    if (!resolvePointer(value)) {
+                        unresolvedRefs.push(value);
+                    }
+                }
+            } else {
+                walk(value);
+            }
+        }
+    }
+
+    walk(spec);
+    return unresolvedRefs;
+}
+
 async function generateCloudflareSchema(): Promise<void> {
     console.log('🚀 Generating Cloudflare API Shield schema...\n');
 
@@ -104,6 +156,18 @@ async function generateCloudflareSchema(): Promise<void> {
     } else {
         console.log('✅ No x-* extensions found in operations');
     }
+
+    // Validate all local $refs resolve within the document
+    const unresolvedRefs = validateLocalRefs(spec);
+    if (unresolvedRefs.length > 0) {
+        console.error('❌ Unresolved local $ref(s) found in OpenAPI spec:');
+        for (const ref of unresolvedRefs) {
+            console.error(`   ${ref}`);
+        }
+        console.error('Fix the missing definitions before regenerating the schema.');
+        Deno.exit(1);
+    }
+    console.log('✅ All local $refs resolve correctly');
 
     // Add header comment
     const header = `# Auto-generated Cloudflare API Shield Schema
