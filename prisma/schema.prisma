@@ -743,7 +743,6 @@ model PaygCustomer {
   paymentEvents PaygPaymentEvent[]
   sessions      PaygSession[]
 
-  @@index([stripeCustomerId])
   @@index([totalSpendUsdCents(sort: Desc)])
   @@map("payg_customers")
 }
@@ -784,7 +783,6 @@ model PaygSession {
 
   customer PaygCustomer @relation(fields: [paygCustomerId], references: [id], onDelete: Cascade)
 
-  @@index([sessionToken])
   @@index([paygCustomerId])
   @@index([expiresAt])
   @@map("payg_sessions")

@@ -137,7 +137,7 @@ const paygCheckoutRoute = createRoute({
     summary: 'Create a Stripe Checkout Session for PAYG',
     description: 'Creates a Stripe Checkout Session for Pay-As-You-Go API credits. ' +
         'Redirect the customer to the returned `checkoutUrl`. ' +
-        'On completion, the Stripe webhook (payment_intent.succeeded) will issue a PaygSession. ' +
+        'On completion, the Stripe webhook (checkout.session.completed) will issue a PaygSession. ' +
         'TODO(billing-next-milestone): Wire Stripe SDK to create the Checkout Session.',
     request: {
         body: {

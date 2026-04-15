@@ -126,7 +126,7 @@ export const TIER_REGISTRY: Readonly<Record<UserTier, ITierConfig>> = {
     [UserTier.Anonymous]: { order: 0, rateLimit: 10, displayName: 'Anonymous', description: 'Unauthenticated user — basic access' },
     [UserTier.Free]: { order: 1, rateLimit: 60, displayName: 'Free', description: 'Registered free-tier user' },
     [UserTier.Pro]: { order: 2, rateLimit: 300, displayName: 'Pro', description: 'Paid pro-tier user — higher limits' },
-    [UserTier.Admin]: { order: 3, rateLimit: Infinity, displayName: 'Admin', description: 'Administrator — unrestricted access' },
+    [UserTier.Admin]: { order: 4, rateLimit: Infinity, displayName: 'Admin', description: 'Administrator — unrestricted access' },
     [UserTier.PayAsYouGo]: { order: 1.5, rateLimit: 120, displayName: 'Pay As You Go', description: 'Per-call billing via Stripe — no subscription required' },
     [UserTier.Vendor]: { order: 2.5, rateLimit: 600, displayName: 'Vendor', description: 'High-volume org subscription with negotiated limits' },
     [UserTier.Enterprise]: { order: 3, rateLimit: Infinity, displayName: 'Enterprise', description: 'Enterprise org — dedicated limits and SLA' },
@@ -192,13 +192,15 @@ export const PAYG_TIER_LIMITS = {
 export type PaygTierLimits = typeof PAYG_TIER_LIMITS;
 
 /**
- * Operational limits for subscription-based customers (Pro, Vendor, Enterprise).
+ * Operational limits and feature flags for subscription-based customers (Pro, Vendor, Enterprise).
  *
- * These mirror the corresponding `SubscriptionPlan` fields in `prisma/schema.prisma`.
- * At runtime, the Worker validates its in-memory plan definition against the
- * database-persisted plan record to detect drift.
+ * These are the Worker's in-memory operational defaults and feature flags for
+ * subscription tiers. They are related to billing configuration but are not a
+ * guaranteed 1:1 mirror of the `SubscriptionPlan` columns in `prisma/schema.prisma`.
+ * Some keys represent Worker-only execution or queueing behaviour (e.g. `queuePriority`,
+ * `maxRulesPerList`) that do not exist as Prisma columns.
  *
- * @see prisma/schema.prisma — SubscriptionPlan model
+ * @see prisma/schema.prisma — SubscriptionPlan billing context
  * @see docs/billing/README.md — billing model overview
  */
 export const SUBSCRIPTION_TIER_LIMITS = {
@@ -241,16 +243,16 @@ export const SUBSCRIPTION_TIER_LIMITS = {
         cdnDistributionEnabled: true,
     },
     [UserTier.Enterprise]: {
-        requestsPerMinute: Infinity,
-        requestsPerDay: Infinity,
-        maxRulesPerList: Infinity,
-        maxSourcesPerCompile: Infinity,
-        maxListSizeBytes: Infinity,
-        maxConcurrentJobs: Infinity,
+        requestsPerMinute: null,
+        requestsPerDay: null,
+        maxRulesPerList: null,
+        maxSourcesPerCompile: null,
+        maxListSizeBytes: null,
+        maxConcurrentJobs: null,
         queuePriority: 'high' as const,
         queueTimeoutMs: 600_000,
-        retentionDays: Infinity,
-        maxStoredOutputs: Infinity,
+        retentionDays: null,
+        maxStoredOutputs: null,
         astStorageEnabled: true,
         translationEnabled: true,
         globalSharingEnabled: true,

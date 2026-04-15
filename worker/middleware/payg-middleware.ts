@@ -264,12 +264,14 @@ export function paygSessionMiddleware(): AppMiddleware {
                 method: c.req.method,
                 clientIpHash: AnalyticsService.hashIp(c.get('ip')),
             });
+            const isDatabaseFailure = result.error === 'database_unavailable' || result.error === 'database_error';
+            const status = isDatabaseFailure ? 503 : 402;
             return c.json(
                 {
-                    paymentRequired: true,
+                    paymentRequired: !isDatabaseFailure,
                     error: result.error ?? 'PAYG session is invalid, exhausted, or expired.',
                 },
-                402,
+                status,
             );
         }
 
@@ -372,41 +374,60 @@ async function validateAndDecrementSession(
     }
 
     try {
-        const session = await prisma.paygSession.findUnique({
-            where: { sessionToken },
+        const now = new Date();
+
+        // Atomic conditional update: only increments if the session is valid and has remaining requests.
+        // This prevents TOCTOU races where concurrent requests both pass a pre-check and over-consume.
+        const updateResult = await prisma.paygSession.updateMany({
+            where: {
+                sessionToken,
+                revokedAt: null,
+                expiresAt: { gt: now },
+                requestsUsed: { lt: prisma.paygSession.fields.requestsGranted },
+            },
+            data: { requestsUsed: { increment: 1 } },
         });
 
-        if (!session) {
-            return { valid: false, error: 'session_not_found' };
-        }
+        if (updateResult.count === 0) {
+            // Determine the specific failure reason for accurate error reporting.
+            const session = await prisma.paygSession.findUnique({
+                where: { sessionToken },
+            });
 
-        if (session.revokedAt !== null) {
-            return { valid: false, error: 'session_revoked' };
-        }
-
-        if (session.expiresAt < new Date()) {
-            return { valid: false, error: 'session_expired' };
-        }
-
-        if (session.requestsUsed >= session.requestsGranted) {
+            if (!session) {
+                return { valid: false, error: 'session_not_found' };
+            }
+            if (session.revokedAt !== null) {
+                return { valid: false, error: 'session_revoked' };
+            }
+            if (session.expiresAt <= now) {
+                return { valid: false, error: 'session_expired' };
+            }
             return { valid: false, error: 'session_exhausted' };
         }
 
-        // Atomically increment requestsUsed
-        const updated = await prisma.paygSession.update({
-            where: { id: session.id },
-            data: { requestsUsed: { increment: 1 } },
-            select: { requestsGranted: true, requestsUsed: true },
+        const updated = await prisma.paygSession.findUnique({
+            where: { sessionToken },
+            select: {
+                id: true,
+                requestsGranted: true,
+                requestsUsed: true,
+                expiresAt: true,
+            },
         });
+
+        if (!updated) {
+            return { valid: false, error: 'session_not_found' };
+        }
 
         return {
             valid: true,
             requestsRemaining: updated.requestsGranted - updated.requestsUsed,
             session: {
-                id: session.id,
+                id: updated.id,
                 requestsGranted: updated.requestsGranted,
                 requestsUsed: updated.requestsUsed,
-                expiresAt: session.expiresAt,
+                expiresAt: updated.expiresAt,
             },
         };
     } catch (err) {

@@ -145,7 +145,7 @@ Deno.test('paygMiddleware - 402 body exposes PAYG_TIER_LIMITS', async () => {
     assertEquals(body.tierLimits.batchApiEnabled, false);
 });
 
-Deno.test('paygMiddleware - returns 402 when X-Payg-Session header present but prisma unavailable', async () => {
+Deno.test('paygMiddleware - returns 503 when X-Payg-Session header present but prisma unavailable', async () => {
     const app = makeTestApp(paygMiddleware());
     const req = new Request('http://localhost/test', {
         method: 'GET',
@@ -153,8 +153,8 @@ Deno.test('paygMiddleware - returns 402 when X-Payg-Session header present but p
     });
     const res = await app.fetch(req, makeEnv());
 
-    // prisma is undefined in test env — session validation fails → 402
-    assertEquals(res.status, 402);
+    // prisma is undefined in test env — database_unavailable → 503 (not 402)
+    assertEquals(res.status, 503);
 });
 
 Deno.test('paygMiddleware - x402 payment spec includes correct network and version', async () => {

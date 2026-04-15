@@ -159,16 +159,20 @@ const paygUsageRoute = createRoute({
     path: '/payg/usage',
     tags: ['PAYG', 'Billing'],
     summary: 'Get PAYG usage summary',
-    description: 'Returns cumulative PAYG usage for a customer. ' +
-        'Requires either an authenticated session with stripeCustomerId, or an explicit ' +
-        'X-Stripe-Customer-Id request header.',
+    description: 'Returns cumulative PAYG usage for the authenticated customer. ' +
+        'Requires a valid Better Auth session; the stripeCustomerId is resolved ' +
+        'from the authenticated user record — it cannot be supplied by the caller.',
     responses: {
         200: {
             description: 'Usage summary retrieved successfully',
             content: { 'application/json': { schema: paygUsageResponseSchema } },
         },
-        400: {
-            description: 'Missing stripeCustomerId',
+        401: {
+            description: 'Unauthorized — authentication required',
+            content: { 'application/json': { schema: errorResponseSchema } },
+        },
+        404: {
+            description: 'No PAYG customer record for this account',
             content: { 'application/json': { schema: errorResponseSchema } },
         },
         503: {
@@ -204,6 +208,7 @@ paygRoutes.use('/payg/session/status', rateLimitMiddleware());
 paygRoutes.use('/payg/session/status', paygSessionMiddleware());
 
 paygRoutes.use('/payg/usage', rateLimitMiddleware());
+paygRoutes.use('/payg/usage', requireAuthMiddleware());
 
 // /payg/pricing is public — no auth middleware
 
@@ -250,54 +255,19 @@ paygRoutes.openapi(paygPricingRoute, async (c) => {
  * @returns JSON response with session token and expiry.
  */
 async function handleCreateSession(c: AppContext): Promise<Response> {
-    const body = await c.req.json() as { stripeCustomerId?: string; requestsToPurchase?: number };
-
-    // Resolve stripeCustomerId from body or X-Stripe-Customer-Id header
-    const stripeCustomerId = body.stripeCustomerId ??
-        c.req.header('X-Stripe-Customer-Id');
-
-    if (!stripeCustomerId) {
-        return JsonResponse.error(
-            'Missing stripeCustomerId — provide it in the request body or X-Stripe-Customer-Id header',
-            400,
-        );
-    }
-
-    const prisma = c.get('prisma');
-    if (!prisma) {
-        return JsonResponse.error('Database unavailable', 503);
-    }
-
-    const requestsToPurchase = body.requestsToPurchase ?? DEFAULT_REQUESTS_PER_SESSION;
-
-    // Upsert PaygCustomer — idempotent on repeated calls with same Stripe customer ID
-    const customer = await prisma.paygCustomer.upsert({
-        where: { stripeCustomerId },
-        create: { stripeCustomerId },
-        update: { lastSeenAt: new Date() },
-    });
-
-    // Generate a cryptographically strong opaque session token (32 bytes of entropy, hex-encoded)
-    const tokenBytes = new Uint8Array(32);
-    crypto.getRandomValues(tokenBytes);
-    const sessionToken = Array.from(tokenBytes).map((b) => b.toString(16).padStart(2, '0')).join('');
-    const expiresAt = new Date(Date.now() + DEFAULT_SESSION_TTL_MS);
-
-    await prisma.paygSession.create({
-        data: {
-            paygCustomerId: customer.id,
-            sessionToken,
-            requestsGranted: requestsToPurchase,
-            expiresAt,
+    // TODO(billing-next-milestone): This endpoint is a stub. Stripe payment verification
+    // is not yet wired. Until the facilitator is connected, we return 501 so callers
+    // know the feature is not yet live rather than silently issuing unearned sessions.
+    // Reference: docs/billing/payg.md — PAYG session creation flow.
+    return c.json(
+        {
+            success: false as const,
+            error: 'PAYG session creation requires a verified Stripe payment. ' +
+                'This endpoint will be activated in the next billing milestone. ' +
+                'Use the Stripe Checkout flow at /api/stripe/payg/checkout to purchase credits.',
         },
-    });
-
-    return c.json({
-        success: true as const,
-        sessionToken,
-        requestsGranted: requestsToPurchase,
-        expiresAt: expiresAt.toISOString(),
-    });
+        501,
+    );
 }
 
 /**
@@ -347,25 +317,36 @@ async function handleSessionStatus(c: AppContext): Promise<Response> {
 /**
  * GET /payg/usage
  *
- * Returns cumulative usage for a PAYG customer. Resolves the Stripe customer
- * ID from the X-Stripe-Customer-Id header (or, in a future iteration, from
- * the authenticated Better Auth session).
+ * Returns cumulative usage for the authenticated PAYG customer. Resolves the
+ * Stripe customer ID from the authenticated user DB record — callers cannot
+ * supply their own customer ID (ZTA: no trusted caller-supplied identity).
  *
  * @param c - Hono context.
  * @returns JSON response with cumulative usage and conversion eligibility.
  */
 async function handlePaygUsage(c: AppContext): Promise<Response> {
-    const stripeCustomerId = c.req.header('X-Stripe-Customer-Id');
-    if (!stripeCustomerId) {
-        return JsonResponse.error(
-            'Missing X-Stripe-Customer-Id header. Provide the Stripe customer ID to query usage.',
-            400,
-        );
+    const authContext = c.get('authContext');
+    const userId = authContext?.userId;
+    if (!userId) {
+        return JsonResponse.error('Authentication required', 401);
     }
 
     const prisma = c.get('prisma');
     if (!prisma) {
         return JsonResponse.error('Database unavailable', 503);
+    }
+
+    // Resolve stripeCustomerId from the authenticated user record — never trust a caller-supplied header.
+    const user = await prisma.user.findUnique({
+        where: { id: userId },
+        select: { stripeCustomerId: true },
+    });
+    const stripeCustomerId = user?.stripeCustomerId ?? null;
+    if (!stripeCustomerId) {
+        return JsonResponse.error(
+            'No Stripe customer ID on your account. Purchase PAYG credits at /api/stripe/payg/checkout first.',
+            404,
+        );
     }
 
     const customer = await prisma.paygCustomer.findUnique({

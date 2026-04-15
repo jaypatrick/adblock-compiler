@@ -93,15 +93,13 @@ Deno.test('GET /api/payg/pricing - tierLimits contains expected keys', async () 
 });
 
 // ============================================================================
-// GET /api/payg/usage — requires X-Stripe-Customer-Id or auth
+// GET /api/payg/usage — requires auth
 // ============================================================================
 
-Deno.test('GET /api/payg/usage - returns 400 without X-Stripe-Customer-Id', async () => {
+Deno.test('GET /api/payg/usage - returns 401 without auth', async () => {
     const res = await fetchApp('/api/payg/usage');
-    // Without a stripe customer ID and no DB, expect 400 or pass-through to auth
-    // The route requires rateLimitMiddleware which needs auth context — may be 401 from unified auth
-    // Accept 400 or 401 — either is valid depending on middleware order
-    assertEquals([400, 401, 403].includes(res.status), true);
+    // requireAuthMiddleware blocks anonymous requests
+    assertEquals([401, 403].includes(res.status), true);
 });
 
 // ============================================================================
@@ -131,12 +129,12 @@ Deno.test('GET /api/payg/session/status - returns 401 without X-Payg-Session hea
     assertExists(body.error);
 });
 
-Deno.test('GET /api/payg/session/status - returns 402 with invalid session token', async () => {
+Deno.test('GET /api/payg/session/status - returns 503 with invalid session token (no DB)', async () => {
     const res = await fetchApp('/api/payg/session/status', {
         headers: { 'X-Payg-Session': 'not-a-real-token' },
     });
-    // paygSessionMiddleware: no DB → database_unavailable → 402
-    assertEquals(res.status, 402);
+    // paygSessionMiddleware: no DB → database_unavailable → 503
+    assertEquals(res.status, 503);
     const body = await res.json() as { paymentRequired: boolean };
-    assertEquals(body.paymentRequired, true);
+    assertEquals(body.paymentRequired, false);
 });

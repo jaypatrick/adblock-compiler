@@ -128,7 +128,7 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/payg/pricing', { minTier: UserTier.Anonymous, description: 'PAYG pricing information (public)' }],
     ['/payg/session/status', { minTier: UserTier.Anonymous, description: 'PAYG session status (session-token auth)' }],
     ['/payg/session/create', { minTier: UserTier.Free, description: 'Create PAYG session (Better Auth required)' }],
-    ['/payg/usage', { minTier: UserTier.Anonymous, description: 'PAYG usage summary (Stripe customer ID or auth)' }],
+    ['/payg/usage', { minTier: UserTier.Free, description: 'PAYG usage summary (Better Auth required — customer ID from session)' }],
 
     // ── Stripe webhooks / checkout ────────────────────────────────────────────
     ['/stripe/*', { minTier: UserTier.Anonymous, description: 'Stripe webhook receivers and checkout stubs (self-authenticated)' }],

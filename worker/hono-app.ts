@@ -455,6 +455,7 @@ app.use(
         },
         allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
         allowHeaders: ['Content-Type', 'Authorization', 'X-Turnstile-Token', 'X-Payg-Session', 'X-Payment-Response', 'X-Stripe-Customer-Id'],
+        exposeHeaders: ['X-Payg-Session-Remaining', 'X-Payment-Required', 'X-Request-Id'],
         maxAge: 86400,
         credentials: true,
     }),

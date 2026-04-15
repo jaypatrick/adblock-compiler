@@ -11,8 +11,6 @@
 ALTER TABLE "users"
     ADD COLUMN IF NOT EXISTS "stripe_customer_id" TEXT UNIQUE;
 
-CREATE UNIQUE INDEX IF NOT EXISTS "users_stripe_customer_id_key" ON "users"("stripe_customer_id");
-
 -- ============================================================================
 -- 2. Add Stripe fields to organization table
 -- ============================================================================
@@ -20,9 +18,6 @@ ALTER TABLE "organization"
     ADD COLUMN IF NOT EXISTS "stripe_customer_id" TEXT UNIQUE,
     ADD COLUMN IF NOT EXISTS "stripe_subscription_id" TEXT UNIQUE,
     ADD COLUMN IF NOT EXISTS "stripe_subscription_status" TEXT;
-
-CREATE UNIQUE INDEX IF NOT EXISTS "organization_stripe_customer_id_key" ON "organization"("stripe_customer_id");
-CREATE UNIQUE INDEX IF NOT EXISTS "organization_stripe_subscription_id_key" ON "organization"("stripe_subscription_id");
 
 -- ============================================================================
 -- 3. Create payg_customers table
@@ -84,6 +79,5 @@ CREATE TABLE IF NOT EXISTS "payg_sessions" (
 );
 
 CREATE UNIQUE INDEX IF NOT EXISTS "payg_sessions_session_token_key" ON "payg_sessions"("session_token");
-CREATE INDEX IF NOT EXISTS "payg_sessions_session_token_idx" ON "payg_sessions"("session_token");
 CREATE INDEX IF NOT EXISTS "payg_sessions_payg_customer_id_idx" ON "payg_sessions"("payg_customer_id");
 CREATE INDEX IF NOT EXISTS "payg_sessions_expires_at_idx" ON "payg_sessions"("expires_at");
