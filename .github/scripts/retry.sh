@@ -1,1 +1,21 @@
-# retry_command <max_attempts> <initial_delay_seconds> <command> [args...]\n#\n# Retries a command up to max_attempts times with exponential backoff.\n# Returns 0 on success, 1 if all attempts fail.\n#\n# Usage:\n#   source .github/scripts/retry.sh\n#   retry_command 3 15 some-command --flag value\nretry_command() {\n    local max=$1 delay=$2 attempt=1; shift 2\n    until "$@"; do\n        (( attempt++ ))\n        if (( attempt > max )); then\n            echo "All $max attempts failed." >&2\n            return 1\n        fi\n        echo "Attempt $(( attempt - 1 ))/$max failed. Retrying in ${delay}s..." >&2\n        sleep "$delay"\n        delay=$(( delay * 2 ))\n    done\n}
+# retry_command <max_attempts> <initial_delay_seconds> <command> [args...]
+#
+# Retries a command up to max_attempts times with exponential backoff.
+# Returns 0 on success, 1 if all attempts fail.
+#
+# Usage:
+#   source .github/scripts/retry.sh
+#   retry_command 3 15 some-command --flag value
+retry_command() {
+    local max=$1 delay=$2 attempt=1; shift 2
+    until "$@"; do
+        (( attempt++ ))
+        if (( attempt > max )); then
+            echo "All $max attempts failed." >&2
+            return 1
+        fi
+        echo "Attempt $(( attempt - 1 ))/$max failed. Retrying in ${delay}s..." >&2
+        sleep "$delay"
+        delay=$(( delay * 2 ))
+    done
+}
