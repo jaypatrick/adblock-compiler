@@ -221,10 +221,16 @@ export class CloudflareApiService {
      * PATCHes the schema with `validation_enabled: true` so that incoming
      * requests are validated against the schema's operation definitions.
      *
+     * The API response is validated with a stricter inline schema that asserts
+     * `validation_enabled === true`, so a {@link ZodError} is thrown if the API
+     * returns the schema without the field being set — making the post-condition
+     * explicit at the trust boundary.
+     *
      * @param zoneId - Cloudflare zone ID (32-character hex string).
      * @param schemaId - Schema ID returned by {@link uploadApiShieldSchema}.
-     * @returns The updated {@link ApiShieldSchema} with `validation_enabled: true`.
-     * @throws {ZodError} if the API response does not match {@link ApiShieldSchemaSchema}.
+     * @returns The updated {@link ApiShieldSchema} with `validation_enabled: true`, as confirmed by Zod.
+     * @throws {ZodError} if the API response does not match {@link ApiShieldSchemaSchema} or if
+     *   `validation_enabled` is not `true` in the response.
      */
     async enableApiShieldSchema(zoneId: string, schemaId: string): Promise<ApiShieldSchema> {
         this.logger.info(`[CloudflareApiService] enableApiShieldSchema zoneId=${zoneId} schemaId=${schemaId}`);
@@ -233,7 +239,9 @@ export class CloudflareApiService {
             zone_id: zoneId,
             validation_enabled: true,
         });
-        return ApiShieldSchemaSchema.parse(raw);
+        // Use an extended schema that requires validation_enabled === true so the post-condition
+        // is enforced at the trust boundary rather than left as an unchecked assumption.
+        return ApiShieldSchemaSchema.extend({ validation_enabled: z.literal(true) }).parse(raw);
     }
 
     /**

@@ -124,26 +124,46 @@ async function main(): Promise<void> {
         Deno.exit(1);
     }
 
-    // Check if schema is unchanged (skip-if-unchanged mode)
+    // Check if schema is unchanged (skip-if-unchanged mode).
+    // Only skip the upload entirely when the hash matches AND validation is already enabled.
+    // If the hash matches but validation is disabled we fall through so validation gets enabled.
     if (skipIfUnchanged) {
+        let matchedUnchangedSchema = false;
         for (const schema of existingSchemas) {
             if (schema.source) {
                 const existingHash = await sha256Hex(schema.source);
                 if (existingHash === localHash) {
-                    console.log(`✅ Schema "${schema.name}" (${schema.schema_id}) is unchanged — skipping upload.`);
-                    if (!schema.validation_enabled) {
-                        console.warn(`⚠️  Validation is not enabled on the current schema. Run without --skip-if-unchanged to re-upload and enable.`);
+                    matchedUnchangedSchema = true;
+                    if (schema.validation_enabled) {
+                        console.log(
+                            `✅ Schema "${schema.name}" (${schema.schema_id}) is unchanged and validation is enabled — skipping upload.`,
+                        );
+                        Deno.exit(0);
                     }
-                    Deno.exit(0);
+                    console.warn(
+                        `⚠️  Schema "${schema.name}" (${schema.schema_id}) is unchanged, but validation is not enabled. Proceeding with upload so validation can be enabled.`,
+                    );
+                    break;
                 }
             }
         }
-        console.log('🔄 Schema has changed (or no source to compare) — proceeding with upload.');
+        if (!matchedUnchangedSchema) {
+            console.log('🔄 Schema has changed (or no source to compare) — proceeding with upload.');
+        }
     }
 
     // Identify the previous schema to delete after a successful upload.
-    // Prefer the validation-enabled schema; fall back to the most recent one.
-    const previousSchema: ApiShieldSchema | undefined = existingSchemas.find((s) => s.validation_enabled === true) ?? existingSchemas[0];
+    // Prefer the validation-enabled schema; fall back to the most recently created one
+    // (determined by created_at timestamp) so the choice is deterministic regardless of
+    // list ordering returned by the SDK.
+    const validationEnabledSchema = existingSchemas.find((schema) => schema.validation_enabled === true);
+    const mostRecentSchema = existingSchemas.reduce<ApiShieldSchema | undefined>((latestSchema, schema) => {
+        if (!latestSchema) {
+            return schema;
+        }
+        return new Date(schema.created_at).getTime() > new Date(latestSchema.created_at).getTime() ? schema : latestSchema;
+    }, undefined);
+    const previousSchema: ApiShieldSchema | undefined = validationEnabledSchema ?? mostRecentSchema;
 
     if (dryRun) {
         console.log(`🔍 Would upload schema "${SCHEMA_NAME}" (${schemaContent.length} bytes) to zone ${zoneId}`);
