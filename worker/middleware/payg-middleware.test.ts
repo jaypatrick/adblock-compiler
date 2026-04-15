@@ -186,7 +186,7 @@ Deno.test('paygSessionMiddleware - returns 401 when X-Payg-Session header missin
     assertExists(body.error);
 });
 
-Deno.test('paygSessionMiddleware - returns 402 when session is invalid (no DB)', async () => {
+Deno.test('paygSessionMiddleware - returns 503 when session is invalid (no DB)', async () => {
     const app = makeTestApp(paygSessionMiddleware());
     const req = new Request('http://localhost/test', {
         method: 'GET',
@@ -194,22 +194,22 @@ Deno.test('paygSessionMiddleware - returns 402 when session is invalid (no DB)',
     });
     const res = await app.fetch(req, makeEnv());
 
-    // prisma is undefined — validation returns database_unavailable
-    assertEquals(res.status, 402);
+    // prisma is undefined — validation returns database_unavailable → 503 (not 402)
+    assertEquals(res.status, 503);
     const body = await res.json() as { paymentRequired: boolean };
-    assertEquals(body.paymentRequired, true);
+    assertEquals(body.paymentRequired, false);
 });
 
 // ============================================================================
 // paygConversionCheckMiddleware
 // ============================================================================
 
-Deno.test('paygConversionCheckMiddleware - passes through when no X-Stripe-Customer-Id header', async () => {
+Deno.test('paygConversionCheckMiddleware - passes through when no authenticated userId', async () => {
     const app = makeTestApp(paygConversionCheckMiddleware());
     const req = new Request('http://localhost/test', { method: 'GET' });
     const res = await app.fetch(req, makeEnv());
 
-    // Should pass through to the success handler
+    // authContext.userId is null (anonymous) — middleware exits early, request passes through
     assertEquals(res.status, 200);
     const body = await res.json() as { success: boolean };
     assertEquals(body.success, true);
@@ -217,13 +217,11 @@ Deno.test('paygConversionCheckMiddleware - passes through when no X-Stripe-Custo
 
 Deno.test('paygConversionCheckMiddleware - non-blocking when prisma unavailable', async () => {
     const app = makeTestApp(paygConversionCheckMiddleware());
-    const req = new Request('http://localhost/test', {
-        method: 'GET',
-        headers: { 'X-Stripe-Customer-Id': 'cus_test123' },
-    });
+    // No X-Stripe-Customer-Id header; authContext.userId is null → prisma lookup skipped
+    const req = new Request('http://localhost/test', { method: 'GET' });
     const res = await app.fetch(req, makeEnv());
 
-    // prisma undefined — should still return 200 (non-blocking)
+    // prisma is undefined, but middleware is non-blocking — should still return 200
     assertEquals(res.status, 200);
     const body = await res.json() as { success: boolean };
     assertEquals(body.success, true);

@@ -54,8 +54,11 @@ X-Payg-Session-Remaining: 9
 ### 4. Check your usage
 
 ```bash
+# /api/payg/usage requires a valid Better Auth session.
+# The API resolves your stripeCustomerId from the authenticated user record
+# and does not trust a client-supplied X-Stripe-Customer-Id header.
 curl https://api.bloqr.jaysonknight.com/api/payg/usage \
-  -H 'X-Stripe-Customer-Id: cus_...'
+  -H 'Cookie: better-auth.session_token=<your-session-token>'
 ```
 
 ---

@@ -64,28 +64,29 @@ Subscription pricing is managed via Stripe and reflected in the `SubscriptionPla
 
 ## Architecture
 
-```
-Worker (hono-app.ts)
-  ├── /api/payg/pricing              → public — returns PAYG_TIER_LIMITS
-  ├── /api/payg/session/create       → creates PaygSession in DB
-  ├── /api/payg/session/status       → validates X-Payg-Session header
-  ├── /api/payg/usage                → returns cumulative PAYG spend
-  ├── /api/stripe/webhook            → handles Stripe events
-  └── /api/stripe/payg/checkout      → creates Stripe Checkout Session (stub)
+```mermaid
+flowchart TD
+  Worker["Worker (hono-app.ts)"]
+  Middleware["Middleware (worker/middleware/)"]
+  Types["Types (worker/types.ts)"]
+  Database["Database (prisma/schema.prisma)"]
 
-Middleware (worker/middleware/)
-  ├── payg-middleware.ts             → paygMiddleware(), paygSessionMiddleware(),
-  │                                     paygConversionCheckMiddleware()
-  └── hono-middleware.ts             → rateLimitMiddleware(), requireAuthMiddleware()
+  Worker --> Pricing["/api/payg/pricing → public — returns PAYG_TIER_LIMITS"]
+  Worker --> SessionCreate["/api/payg/session/create → 501 stub; session issuance not live until Stripe facilitator is wired"]
+  Worker --> SessionStatus["/api/payg/session/status → validates X-Payg-Session header"]
+  Worker --> Usage["/api/payg/usage → returns cumulative PAYG spend (requires Better Auth)"]
+  Worker --> StripeWebhook["/api/stripe/webhook → handles Stripe events; checkout.session.completed issues PaygSession"]
+  Worker --> StripeCheckout["/api/stripe/payg/checkout → creates Stripe Checkout Session (stub)"]
 
-Types (worker/types.ts)
-  ├── PAYG_TIER_LIMITS               → operational limits for PAYG tier
-  └── SUBSCRIPTION_TIER_LIMITS       → operational limits for subscription tiers
+  Middleware --> PaygMiddleware["payg-middleware.ts → paygMiddleware(), paygSessionMiddleware(), paygConversionCheckMiddleware()"]
+  Middleware --> HonoMiddleware["hono-middleware.ts → rateLimitMiddleware(), requireAuthMiddleware()"]
 
-Database (prisma/schema.prisma)
-  ├── PaygCustomer                   → Stripe customer record (no account required)
-  ├── PaygPaymentEvent               → append-only payment audit log
-  └── PaygSession                    → x402-style session tokens
+  Types --> PaygTierLimits["PAYG_TIER_LIMITS → operational limits for PAYG tier"]
+  Types --> SubscriptionTierLimits["SUBSCRIPTION_TIER_LIMITS → operational limits for subscription tiers"]
+
+  Database --> PaygCustomer["PaygCustomer → Stripe customer record"]
+  Database --> PaygPaymentEvent["PaygPaymentEvent → append-only payment audit log"]
+  Database --> PaygSession["PaygSession → x402-style session tokens"]
 ```
 
 ---

@@ -161,7 +161,6 @@ export function paygMiddleware(): AppMiddleware {
                 await next();
                 return;
             }
-            // Session invalid or exhausted — fall through to 402
             analytics.trackSecurityEvent({
                 eventType: 'auth_failure',
                 authMethod: 'payg_session',
@@ -171,6 +170,12 @@ export function paygMiddleware(): AppMiddleware {
                 clientIpHash: AnalyticsService.hashIp(ip),
                 requestId: requestId ?? 'unknown',
             });
+            // DB outage is not a payment failure — return 503 so clients don't retry payment unnecessarily.
+            const isDbFailure = sessionResult.error === 'database_unavailable' || sessionResult.error === 'database_error';
+            if (isDbFailure) {
+                return c.json({ paymentRequired: false, error: sessionResult.error }, 503);
+            }
+            // Session exhausted / expired / revoked — fall through to 402 with payment spec
         }
 
         // ── Path 2: x402 payment proof ────────────────────────────────────────
@@ -305,13 +310,22 @@ export function paygConversionCheckMiddleware(): AppMiddleware {
     return async (c, next) => {
         await next();
 
-        const stripeCustomerId = c.req.header('X-Stripe-Customer-Id');
-        if (!stripeCustomerId) return;
+        // Derive the Stripe customer ID from the authenticated user record — never trust a caller-supplied header.
+        const authContext = c.get('authContext');
+        const userId = authContext?.userId;
+        if (!userId) return;
 
         const prisma = c.get('prisma');
         if (!prisma) return;
 
         try {
+            const user = await prisma.user.findUnique({
+                where: { id: userId },
+                select: { stripeCustomerId: true },
+            });
+            const stripeCustomerId = user?.stripeCustomerId ?? null;
+            if (!stripeCustomerId) return;
+
             const customer = await prisma.paygCustomer.findUnique({
                 where: { stripeCustomerId },
                 select: { totalSpendUsdCents: true },

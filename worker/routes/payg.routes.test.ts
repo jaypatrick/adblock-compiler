@@ -98,22 +98,22 @@ Deno.test('GET /api/payg/pricing - tierLimits contains expected keys', async () 
 
 Deno.test('GET /api/payg/usage - returns 401 without auth', async () => {
     const res = await fetchApp('/api/payg/usage');
-    // requireAuthMiddleware blocks anonymous requests
-    assertEquals([401, 403].includes(res.status), true);
+    // requireAuthMiddleware blocks anonymous requests with 401
+    assertEquals(res.status, 401);
 });
 
 // ============================================================================
 // POST /api/payg/session/create — requires auth
 // ============================================================================
 
-Deno.test('POST /api/payg/session/create - returns 401 or 403 without auth', async () => {
+Deno.test('POST /api/payg/session/create - returns 401 without auth', async () => {
     const res = await fetchApp('/api/payg/session/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ requestsToPurchase: 10 }),
     });
-    // requireAuthMiddleware blocks anonymous requests
-    assertEquals([401, 403].includes(res.status), true);
+    // requireAuthMiddleware blocks anonymous requests with 401
+    assertEquals(res.status, 401);
 });
 
 // ============================================================================

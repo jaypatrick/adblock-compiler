@@ -96,9 +96,9 @@ const createSessionRoute = createRoute({
     tags: ['PAYG', 'Billing'],
     summary: 'Create a PAYG session',
     description: 'Create a Pay-As-You-Go session token that grants a fixed number of API calls. ' +
-        'Requires either an authenticated Better Auth session with stripeCustomerId, or an ' +
-        'explicit X-Stripe-Customer-Id header. ' +
-        'TODO(billing-next-milestone): Verify Stripe payment before issuing session.',
+        'Requires an authenticated Better Auth session. ' +
+        'NOTE: Returns 501 until Stripe payment facilitator is wired in the next billing milestone. ' +
+        'Use POST /api/stripe/payg/checkout to initiate a payment; the webhook will issue the session.',
     request: {
         body: {
             content: {
@@ -118,7 +118,11 @@ const createSessionRoute = createRoute({
             content: { 'application/json': { schema: errorResponseSchema } },
         },
         401: {
-            description: 'Unauthorized — no auth context or Stripe customer ID',
+            description: 'Unauthorized — authentication required',
+            content: { 'application/json': { schema: errorResponseSchema } },
+        },
+        501: {
+            description: 'Not implemented — Stripe payment facilitator not yet wired',
             content: { 'application/json': { schema: errorResponseSchema } },
         },
         503: {
@@ -161,18 +165,16 @@ const paygUsageRoute = createRoute({
     summary: 'Get PAYG usage summary',
     description: 'Returns cumulative PAYG usage for the authenticated customer. ' +
         'Requires a valid Better Auth session; the stripeCustomerId is resolved ' +
-        'from the authenticated user record — it cannot be supplied by the caller.',
+        'from the authenticated user record — it cannot be supplied by the caller. ' +
+        'If the authenticated account does not yet have a PAYG customer record, ' +
+        'the endpoint returns a zeroed usage summary with HTTP 200.',
     responses: {
         200: {
-            description: 'Usage summary retrieved successfully',
+            description: 'Usage summary retrieved successfully, or a zeroed summary when no PAYG customer record exists yet',
             content: { 'application/json': { schema: paygUsageResponseSchema } },
         },
         401: {
             description: 'Unauthorized — authentication required',
-            content: { 'application/json': { schema: errorResponseSchema } },
-        },
-        404: {
-            description: 'No PAYG customer record for this account',
             content: { 'application/json': { schema: errorResponseSchema } },
         },
         503: {
@@ -343,10 +345,16 @@ async function handlePaygUsage(c: AppContext): Promise<Response> {
     });
     const stripeCustomerId = user?.stripeCustomerId ?? null;
     if (!stripeCustomerId) {
-        return JsonResponse.error(
-            'No Stripe customer ID on your account. Purchase PAYG credits at /api/stripe/payg/checkout first.',
-            404,
-        );
+        // No Stripe customer yet — return zeroed summary (consistent with the "no PaygCustomer" baseline below)
+        return c.json({
+            success: true as const,
+            totalRequests: 0,
+            totalSpendUsdCents: 0,
+            thisMonthRequests: 0,
+            thisMonthSpendUsdCents: 0,
+            conversionEligible: false,
+            suggestedPlan: null,
+        });
     }
 
     const customer = await prisma.paygCustomer.findUnique({
