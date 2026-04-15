@@ -3060,7 +3060,7 @@
             },
             "body": {
               "mode": "raw",
-              "raw": "{}",
+              "raw": "{\n    \"currentPassword\": \"string\",\n    \"newPassword\": \"string\"\n}",
               "options": {
                 "raw": {
                   "language": "json"

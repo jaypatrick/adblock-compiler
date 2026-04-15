@@ -3952,119 +3952,6 @@ components:
                     type: integer
                     description: Number of unreachable URLs.
 
-    responses:
-        BadRequest:
-            description: Bad request - input validation failed
-            content:
-                application/json:
-                    schema:
-                        type: object
-                        properties:
-                            success: { type: boolean, example: false }
-                            error: { type: string, example: 'requestId: Invalid requestId format' }
-
-        Unauthorized:
-            description: Unauthorized - authentication required
-            content:
-                application/json:
-                    schema:
-                        type: object
-                        properties:
-                            success: { type: boolean, example: false }
-                            error: { type: string, example: 'Authentication required' }
-
-        RateLimited:
-            description: Rate limit exceeded
-            headers:
-                Retry-After:
-                    schema: { type: integer }
-                    description: Seconds until retry allowed
-                X-RateLimit-Limit:
-                    schema: { type: integer }
-                X-RateLimit-Remaining:
-                    schema: { type: integer }
-                X-RateLimit-Reset:
-                    schema: { type: integer }
-            content:
-                application/json:
-                    schema:
-                        type: object
-                        properties:
-                            success: { type: boolean, example: false }
-                            error: { type: string, example: 'Rate limit exceeded.' }
-
-        BadRequestError:
-            description: Bad request - request body failed schema validation
-            content:
-                application/json:
-                    schema:
-                        type: object
-                        properties:
-                            success:
-                                type: boolean
-                                example: false
-                            error:
-                                type: string
-                                example: Invalid request body
-
-        RateLimitError:
-            description: Rate limit exceeded
-            headers:
-                Retry-After:
-                    schema:
-                        type: integer
-                    description: Seconds until retry allowed
-            content:
-                application/json:
-                    schema:
-                        type: object
-                        properties:
-                            success:
-                                type: boolean
-                                example: false
-                            error:
-                                type: string
-                                example: Rate limit exceeded. Maximum 10 requests per minute.
-
-        CompilationError:
-            description: Compilation failed
-            content:
-                application/json:
-                    schema:
-                        type: object
-                        properties:
-                            success:
-                                type: boolean
-                                example: false
-                            error:
-                                type: string
-
-        UnauthorizedError:
-            description: Unauthorized - missing or invalid admin key
-            content:
-                application/json:
-                    schema:
-                        type: object
-                        properties:
-                            success:
-                                type: boolean
-                                example: false
-                            error:
-                                type: string
-
-        ServiceUnavailable:
-            description: Service unavailable - required binding not configured
-            content:
-                application/json:
-                    schema:
-                        type: object
-                        properties:
-                            success:
-                                type: boolean
-                                example: false
-                            error:
-                                type: string
-
         # Rule Validation Schemas
         ConvertRuleRequest:
             type: object
@@ -4699,6 +4586,129 @@ components:
                                 additionalProperties:
                                     type: integer
                                 description: Per-route request counts for this day
+
+    responses:
+        BadRequest:
+            description: Bad request - input validation failed
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success: { type: boolean, example: false }
+                            error: { type: string, example: 'requestId: Invalid requestId format' }
+
+        Unauthorized:
+            description: Unauthorized - authentication required
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success: { type: boolean, example: false }
+                            error: { type: string, example: 'Authentication required' }
+
+        RateLimited:
+            description: Rate limit exceeded
+            headers:
+                Retry-After:
+                    schema: { type: integer }
+                    description: Seconds until retry allowed
+                X-RateLimit-Limit:
+                    schema: { type: integer }
+                X-RateLimit-Remaining:
+                    schema: { type: integer }
+                X-RateLimit-Reset:
+                    schema: { type: integer }
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success: { type: boolean, example: false }
+                            error: { type: string, example: 'Rate limit exceeded.' }
+
+        BadRequestError:
+            description: Bad request - request body failed schema validation
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
+                                example: Invalid request body
+
+        RateLimitError:
+            description: Rate limit exceeded
+            headers:
+                Retry-After:
+                    schema:
+                        type: integer
+                    description: Seconds until retry allowed
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
+                                example: Rate limit exceeded. Maximum 10 requests per minute.
+
+        CompilationError:
+            description: Compilation failed
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
+
+        UnauthorizedError:
+            description: Unauthorized - missing or invalid admin key
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
+
+        ForbiddenError:
+            description: Forbidden - insufficient permissions
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success: { type: boolean, example: false }
+                            error: { type: string, example: 'Forbidden' }
+
+        ServiceUnavailable:
+            description: Service unavailable - required binding not configured
+            content:
+                application/json:
+                    schema:
+                        type: object
+                        properties:
+                            success:
+                                type: boolean
+                                example: false
+                            error:
+                                type: string
 
     securitySchemes:
         Turnstile:
