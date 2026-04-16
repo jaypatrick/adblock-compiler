@@ -102,3 +102,17 @@ CONTAINER_SECRET=dev-local-secret
 URL_FRONTEND=http://localhost:4200
 URL_API=http://localhost:8787
 URL_DOCS=https://docs.bloqr.jaysonknight.com
+
+# ─── Stripe (PAYG + Subscriptions) ───────────────────────────────────────────
+# Publishable key (non-secret — safe to expose to frontend, wrangler.toml [vars])
+# STRIPE_PUBLISHABLE_KEY=pk_test_...
+# Secret key (secret — production: `wrangler secret put STRIPE_SECRET_KEY`)
+# STRIPE_SECRET_KEY=sk_test_...
+# Stripe webhook signing secret (secret — production: `wrangler secret put STRIPE_WEBHOOK_SECRET`)
+# STRIPE_WEBHOOK_SECRET=whsec_...
+# Stripe PAYG price ID (non-secret — wrangler.toml [vars])
+# STRIPE_PAYG_PRICE_ID=price_...
+# PAYG price per API call in USD cents (default: 1 = $0.01)
+# PAYG_PRICE_PER_CALL_USD_CENTS=1
+# PAYG spend threshold in USD cents for subscription upsell (default: 2000 = $20)
+# PAYG_CONVERSION_THRESHOLD_USD_CENTS=2000

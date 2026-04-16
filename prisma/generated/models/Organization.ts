@@ -41,6 +41,9 @@ export type OrganizationMinAggregateOutputType = {
   logo: string | null
   tier: string | null
   planId: string | null
+  stripeCustomerId: string | null
+  stripeSubscriptionId: string | null
+  stripeSubscriptionStatus: string | null
   retentionDays: number | null
   retentionPolicyAcceptedAt: Date | null
   createdAt: Date | null
@@ -54,6 +57,9 @@ export type OrganizationMaxAggregateOutputType = {
   logo: string | null
   tier: string | null
   planId: string | null
+  stripeCustomerId: string | null
+  stripeSubscriptionId: string | null
+  stripeSubscriptionStatus: string | null
   retentionDays: number | null
   retentionPolicyAcceptedAt: Date | null
   createdAt: Date | null
@@ -68,6 +74,9 @@ export type OrganizationCountAggregateOutputType = {
   metadata: number
   tier: number
   planId: number
+  stripeCustomerId: number
+  stripeSubscriptionId: number
+  stripeSubscriptionStatus: number
   retentionDays: number
   retentionPolicyAcceptedAt: number
   createdAt: number
@@ -91,6 +100,9 @@ export type OrganizationMinAggregateInputType = {
   logo?: true
   tier?: true
   planId?: true
+  stripeCustomerId?: true
+  stripeSubscriptionId?: true
+  stripeSubscriptionStatus?: true
   retentionDays?: true
   retentionPolicyAcceptedAt?: true
   createdAt?: true
@@ -104,6 +116,9 @@ export type OrganizationMaxAggregateInputType = {
   logo?: true
   tier?: true
   planId?: true
+  stripeCustomerId?: true
+  stripeSubscriptionId?: true
+  stripeSubscriptionStatus?: true
   retentionDays?: true
   retentionPolicyAcceptedAt?: true
   createdAt?: true
@@ -118,6 +133,9 @@ export type OrganizationCountAggregateInputType = {
   metadata?: true
   tier?: true
   planId?: true
+  stripeCustomerId?: true
+  stripeSubscriptionId?: true
+  stripeSubscriptionStatus?: true
   retentionDays?: true
   retentionPolicyAcceptedAt?: true
   createdAt?: true
@@ -219,6 +237,9 @@ export type OrganizationGroupByOutputType = {
   metadata: runtime.JsonValue | null
   tier: string
   planId: string | null
+  stripeCustomerId: string | null
+  stripeSubscriptionId: string | null
+  stripeSubscriptionStatus: string | null
   retentionDays: number
   retentionPolicyAcceptedAt: Date | null
   createdAt: Date
@@ -256,6 +277,9 @@ export type OrganizationWhereInput = {
   metadata?: Prisma.JsonNullableFilter<"Organization">
   tier?: Prisma.StringFilter<"Organization"> | string
   planId?: Prisma.UuidNullableFilter<"Organization"> | string | null
+  stripeCustomerId?: Prisma.StringNullableFilter<"Organization"> | string | null
+  stripeSubscriptionId?: Prisma.StringNullableFilter<"Organization"> | string | null
+  stripeSubscriptionStatus?: Prisma.StringNullableFilter<"Organization"> | string | null
   retentionDays?: Prisma.IntFilter<"Organization"> | number
   retentionPolicyAcceptedAt?: Prisma.DateTimeNullableFilter<"Organization"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Organization"> | Date | string
@@ -276,6 +300,9 @@ export type OrganizationOrderByWithRelationInput = {
   metadata?: Prisma.SortOrderInput | Prisma.SortOrder
   tier?: Prisma.SortOrder
   planId?: Prisma.SortOrderInput | Prisma.SortOrder
+  stripeCustomerId?: Prisma.SortOrderInput | Prisma.SortOrder
+  stripeSubscriptionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  stripeSubscriptionStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   retentionDays?: Prisma.SortOrder
   retentionPolicyAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -291,6 +318,8 @@ export type OrganizationOrderByWithRelationInput = {
 export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   id?: string
   slug?: string
+  stripeCustomerId?: string
+  stripeSubscriptionId?: string
   AND?: Prisma.OrganizationWhereInput | Prisma.OrganizationWhereInput[]
   OR?: Prisma.OrganizationWhereInput[]
   NOT?: Prisma.OrganizationWhereInput | Prisma.OrganizationWhereInput[]
@@ -299,6 +328,7 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   metadata?: Prisma.JsonNullableFilter<"Organization">
   tier?: Prisma.StringFilter<"Organization"> | string
   planId?: Prisma.UuidNullableFilter<"Organization"> | string | null
+  stripeSubscriptionStatus?: Prisma.StringNullableFilter<"Organization"> | string | null
   retentionDays?: Prisma.IntFilter<"Organization"> | number
   retentionPolicyAcceptedAt?: Prisma.DateTimeNullableFilter<"Organization"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Organization"> | Date | string
@@ -309,7 +339,7 @@ export type OrganizationWhereUniqueInput = Prisma.AtLeast<{
   configurations?: Prisma.ConfigurationListRelationFilter
   compiledOutputs?: Prisma.CompiledOutputListRelationFilter
   filterListAsts?: Prisma.FilterListAstListRelationFilter
-}, "id" | "slug">
+}, "id" | "slug" | "stripeCustomerId" | "stripeSubscriptionId">
 
 export type OrganizationOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
@@ -319,6 +349,9 @@ export type OrganizationOrderByWithAggregationInput = {
   metadata?: Prisma.SortOrderInput | Prisma.SortOrder
   tier?: Prisma.SortOrder
   planId?: Prisma.SortOrderInput | Prisma.SortOrder
+  stripeCustomerId?: Prisma.SortOrderInput | Prisma.SortOrder
+  stripeSubscriptionId?: Prisma.SortOrderInput | Prisma.SortOrder
+  stripeSubscriptionStatus?: Prisma.SortOrderInput | Prisma.SortOrder
   retentionDays?: Prisma.SortOrder
   retentionPolicyAcceptedAt?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -341,6 +374,9 @@ export type OrganizationScalarWhereWithAggregatesInput = {
   metadata?: Prisma.JsonNullableWithAggregatesFilter<"Organization">
   tier?: Prisma.StringWithAggregatesFilter<"Organization"> | string
   planId?: Prisma.UuidNullableWithAggregatesFilter<"Organization"> | string | null
+  stripeCustomerId?: Prisma.StringNullableWithAggregatesFilter<"Organization"> | string | null
+  stripeSubscriptionId?: Prisma.StringNullableWithAggregatesFilter<"Organization"> | string | null
+  stripeSubscriptionStatus?: Prisma.StringNullableWithAggregatesFilter<"Organization"> | string | null
   retentionDays?: Prisma.IntWithAggregatesFilter<"Organization"> | number
   retentionPolicyAcceptedAt?: Prisma.DateTimeNullableWithAggregatesFilter<"Organization"> | Date | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Organization"> | Date | string
@@ -354,6 +390,9 @@ export type OrganizationCreateInput = {
   logo?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -374,6 +413,9 @@ export type OrganizationUncheckedCreateInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
   planId?: string | null
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -392,6 +434,9 @@ export type OrganizationUpdateInput = {
   logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -412,6 +457,9 @@ export type OrganizationUncheckedUpdateInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -431,6 +479,9 @@ export type OrganizationCreateManyInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
   planId?: string | null
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -444,6 +495,9 @@ export type OrganizationUpdateManyMutationInput = {
   logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -458,6 +512,9 @@ export type OrganizationUncheckedUpdateManyInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -482,6 +539,9 @@ export type OrganizationCountOrderByAggregateInput = {
   metadata?: Prisma.SortOrder
   tier?: Prisma.SortOrder
   planId?: Prisma.SortOrder
+  stripeCustomerId?: Prisma.SortOrder
+  stripeSubscriptionId?: Prisma.SortOrder
+  stripeSubscriptionStatus?: Prisma.SortOrder
   retentionDays?: Prisma.SortOrder
   retentionPolicyAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -499,6 +559,9 @@ export type OrganizationMaxOrderByAggregateInput = {
   logo?: Prisma.SortOrder
   tier?: Prisma.SortOrder
   planId?: Prisma.SortOrder
+  stripeCustomerId?: Prisma.SortOrder
+  stripeSubscriptionId?: Prisma.SortOrder
+  stripeSubscriptionStatus?: Prisma.SortOrder
   retentionDays?: Prisma.SortOrder
   retentionPolicyAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -512,6 +575,9 @@ export type OrganizationMinOrderByAggregateInput = {
   logo?: Prisma.SortOrder
   tier?: Prisma.SortOrder
   planId?: Prisma.SortOrder
+  stripeCustomerId?: Prisma.SortOrder
+  stripeSubscriptionId?: Prisma.SortOrder
+  stripeSubscriptionStatus?: Prisma.SortOrder
   retentionDays?: Prisma.SortOrder
   retentionPolicyAcceptedAt?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -659,6 +725,9 @@ export type OrganizationCreateWithoutPlanInput = {
   logo?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -677,6 +746,9 @@ export type OrganizationUncheckedCreateWithoutPlanInput = {
   logo?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -725,6 +797,9 @@ export type OrganizationScalarWhereInput = {
   metadata?: Prisma.JsonNullableFilter<"Organization">
   tier?: Prisma.StringFilter<"Organization"> | string
   planId?: Prisma.UuidNullableFilter<"Organization"> | string | null
+  stripeCustomerId?: Prisma.StringNullableFilter<"Organization"> | string | null
+  stripeSubscriptionId?: Prisma.StringNullableFilter<"Organization"> | string | null
+  stripeSubscriptionStatus?: Prisma.StringNullableFilter<"Organization"> | string | null
   retentionDays?: Prisma.IntFilter<"Organization"> | number
   retentionPolicyAcceptedAt?: Prisma.DateTimeNullableFilter<"Organization"> | Date | string | null
   createdAt?: Prisma.DateTimeFilter<"Organization"> | Date | string
@@ -738,6 +813,9 @@ export type OrganizationCreateWithoutMembersInput = {
   logo?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -757,6 +835,9 @@ export type OrganizationUncheckedCreateWithoutMembersInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
   planId?: string | null
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -790,6 +871,9 @@ export type OrganizationUpdateWithoutMembersInput = {
   logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -809,6 +893,9 @@ export type OrganizationUncheckedUpdateWithoutMembersInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -826,6 +913,9 @@ export type OrganizationCreateWithoutFilterSourcesInput = {
   logo?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -845,6 +935,9 @@ export type OrganizationUncheckedCreateWithoutFilterSourcesInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
   planId?: string | null
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -878,6 +971,9 @@ export type OrganizationUpdateWithoutFilterSourcesInput = {
   logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -897,6 +993,9 @@ export type OrganizationUncheckedUpdateWithoutFilterSourcesInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -914,6 +1013,9 @@ export type OrganizationCreateWithoutFilterListAstsInput = {
   logo?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -933,6 +1035,9 @@ export type OrganizationUncheckedCreateWithoutFilterListAstsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
   planId?: string | null
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -966,6 +1071,9 @@ export type OrganizationUpdateWithoutFilterListAstsInput = {
   logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -985,6 +1093,9 @@ export type OrganizationUncheckedUpdateWithoutFilterListAstsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1002,6 +1113,9 @@ export type OrganizationCreateWithoutCompiledOutputsInput = {
   logo?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -1021,6 +1135,9 @@ export type OrganizationUncheckedCreateWithoutCompiledOutputsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
   planId?: string | null
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -1054,6 +1171,9 @@ export type OrganizationUpdateWithoutCompiledOutputsInput = {
   logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1073,6 +1193,9 @@ export type OrganizationUncheckedUpdateWithoutCompiledOutputsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1090,6 +1213,9 @@ export type OrganizationCreateWithoutConfigurationsInput = {
   logo?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -1109,6 +1235,9 @@ export type OrganizationUncheckedCreateWithoutConfigurationsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
   planId?: string | null
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -1142,6 +1271,9 @@ export type OrganizationUpdateWithoutConfigurationsInput = {
   logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1161,6 +1293,9 @@ export type OrganizationUncheckedUpdateWithoutConfigurationsInput = {
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
   planId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1178,6 +1313,9 @@ export type OrganizationCreateManyPlanInput = {
   logo?: string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: string
+  stripeCustomerId?: string | null
+  stripeSubscriptionId?: string | null
+  stripeSubscriptionStatus?: string | null
   retentionDays?: number
   retentionPolicyAcceptedAt?: Date | string | null
   createdAt?: Date | string
@@ -1191,6 +1329,9 @@ export type OrganizationUpdateWithoutPlanInput = {
   logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1209,6 +1350,9 @@ export type OrganizationUncheckedUpdateWithoutPlanInput = {
   logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1227,6 +1371,9 @@ export type OrganizationUncheckedUpdateManyWithoutPlanInput = {
   logo?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   metadata?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   tier?: Prisma.StringFieldUpdateOperationsInput | string
+  stripeCustomerId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  stripeSubscriptionStatus?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   retentionDays?: Prisma.IntFieldUpdateOperationsInput | number
   retentionPolicyAcceptedAt?: Prisma.NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -1308,6 +1455,9 @@ export type OrganizationSelect<ExtArgs extends runtime.Types.Extensions.Internal
   metadata?: boolean
   tier?: boolean
   planId?: boolean
+  stripeCustomerId?: boolean
+  stripeSubscriptionId?: boolean
+  stripeSubscriptionStatus?: boolean
   retentionDays?: boolean
   retentionPolicyAcceptedAt?: boolean
   createdAt?: boolean
@@ -1329,6 +1479,9 @@ export type OrganizationSelectCreateManyAndReturn<ExtArgs extends runtime.Types.
   metadata?: boolean
   tier?: boolean
   planId?: boolean
+  stripeCustomerId?: boolean
+  stripeSubscriptionId?: boolean
+  stripeSubscriptionStatus?: boolean
   retentionDays?: boolean
   retentionPolicyAcceptedAt?: boolean
   createdAt?: boolean
@@ -1344,6 +1497,9 @@ export type OrganizationSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.
   metadata?: boolean
   tier?: boolean
   planId?: boolean
+  stripeCustomerId?: boolean
+  stripeSubscriptionId?: boolean
+  stripeSubscriptionStatus?: boolean
   retentionDays?: boolean
   retentionPolicyAcceptedAt?: boolean
   createdAt?: boolean
@@ -1359,13 +1515,16 @@ export type OrganizationSelectScalar = {
   metadata?: boolean
   tier?: boolean
   planId?: boolean
+  stripeCustomerId?: boolean
+  stripeSubscriptionId?: boolean
+  stripeSubscriptionStatus?: boolean
   retentionDays?: boolean
   retentionPolicyAcceptedAt?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type OrganizationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "slug" | "logo" | "metadata" | "tier" | "planId" | "retentionDays" | "retentionPolicyAcceptedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["organization"]>
+export type OrganizationOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "slug" | "logo" | "metadata" | "tier" | "planId" | "stripeCustomerId" | "stripeSubscriptionId" | "stripeSubscriptionStatus" | "retentionDays" | "retentionPolicyAcceptedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["organization"]>
 export type OrganizationInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   plan?: boolean | Prisma.Organization$planArgs<ExtArgs>
   members?: boolean | Prisma.Organization$membersArgs<ExtArgs>
@@ -1400,6 +1559,9 @@ export type $OrganizationPayload<ExtArgs extends runtime.Types.Extensions.Intern
     metadata: runtime.JsonValue | null
     tier: string
     planId: string | null
+    stripeCustomerId: string | null
+    stripeSubscriptionId: string | null
+    stripeSubscriptionStatus: string | null
     retentionDays: number
     retentionPolicyAcceptedAt: Date | null
     createdAt: Date
@@ -1840,6 +2002,9 @@ export interface OrganizationFieldRefs {
   readonly metadata: Prisma.FieldRef<"Organization", 'Json'>
   readonly tier: Prisma.FieldRef<"Organization", 'String'>
   readonly planId: Prisma.FieldRef<"Organization", 'String'>
+  readonly stripeCustomerId: Prisma.FieldRef<"Organization", 'String'>
+  readonly stripeSubscriptionId: Prisma.FieldRef<"Organization", 'String'>
+  readonly stripeSubscriptionStatus: Prisma.FieldRef<"Organization", 'String'>
   readonly retentionDays: Prisma.FieldRef<"Organization", 'Int'>
   readonly retentionPolicyAcceptedAt: Prisma.FieldRef<"Organization", 'DateTime'>
   readonly createdAt: Prisma.FieldRef<"Organization", 'DateTime'>

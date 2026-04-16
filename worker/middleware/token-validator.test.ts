@@ -138,7 +138,7 @@ Deno.test('ClaimsIntegrityValidator - fails when userId is empty string', async 
 });
 
 Deno.test('ClaimsIntegrityValidator - fails when tier is invalid', async () => {
-    const ctx = makeAuthContext({ tier: 'enterprise' as unknown as UserTier });
+    const ctx = makeAuthContext({ tier: 'superuser' as unknown as UserTier });
     const env = makeEnv();
     const result = await ClaimsIntegrityValidator.validate('token', ctx, env);
     assertEquals(result.valid, false);

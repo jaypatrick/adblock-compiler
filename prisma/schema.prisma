@@ -91,6 +91,7 @@ model User {
   // tier (String) is kept as a fast-read denormalized cache for the Worker hot path.
   // Keep tier in sync with plan.name whenever planId changes.
   planId       String?  @map("plan_id") @db.Uuid
+  stripeCustomerId String? @unique @map("stripe_customer_id") // set when user subscribes via Stripe
 
   apiKeys       ApiKey[]
   sessions      Session[]
@@ -204,6 +205,9 @@ model Organization {
   // tier is a denormalized cache — planId is authoritative.
   tier        String   @default("free")  // free | pro | vendor | enterprise
   planId      String?  @map("plan_id") @db.Uuid
+  stripeCustomerId     String? @unique @map("stripe_customer_id")
+  stripeSubscriptionId String? @unique @map("stripe_subscription_id")
+  stripeSubscriptionStatus String? @map("stripe_subscription_status")
 
   // Data retention policy — set from SubscriptionPlan.retentionDays on plan assignment.
   // Stored here for fast enforcement without a JOIN on every request.
@@ -713,4 +717,73 @@ model DeploymentCounter {
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamptz
 
   @@map("deployment_counter")
+}
+
+// ============================================================================
+// Pay-As-You-Go (PAYG) Billing
+// ============================================================================
+
+/// Pay-As-You-Go customer record.
+/// Identity is the Stripe Customer ID (fiat path via Stripe facilitator).
+/// Created on first successful PAYG charge; no sign-up required.
+/// When a PAYG customer converts to a subscription, convertedUserId is set.
+model PaygCustomer {
+  id               String   @id @default(uuid()) @db.Uuid
+  stripeCustomerId String   @unique @map("stripe_customer_id")
+
+  totalSpendUsdCents Int      @default(0) @map("total_spend_usd_cents")
+  totalRequests      Int      @default(0) @map("total_requests")
+  firstSeenAt        DateTime @default(now()) @map("first_seen_at") @db.Timestamptz
+  lastSeenAt         DateTime @updatedAt @map("last_seen_at") @db.Timestamptz
+
+  // Conversion tracking — set when customer subscribes
+  convertedAt        DateTime? @map("converted_at") @db.Timestamptz
+  convertedUserId    String?   @map("converted_user_id") @db.Uuid  // plain UUID, no FK (user may not exist in same DB)
+
+  paymentEvents PaygPaymentEvent[]
+  sessions      PaygSession[]
+
+  @@index([totalSpendUsdCents(sort: Desc)])
+  @@map("payg_customers")
+}
+
+/// Append-only record of every PAYG payment event.
+/// stripePaymentIntentId is the Stripe PaymentIntent ID — used for reconciliation.
+/// NEVER delete rows from this table.
+model PaygPaymentEvent {
+  id                     String   @id @default(uuid()) @db.Uuid
+  paygCustomerId         String   @map("payg_customer_id") @db.Uuid
+  stripePaymentIntentId  String   @unique @map("stripe_payment_intent_id")
+  amountUsdCents         Int      @map("amount_usd_cents")
+  endpoint               String   // e.g. "/api/compile"
+  requestId              String?  @map("request_id")
+  workerRegion           String?  @map("worker_region")
+  createdAt              DateTime @default(now()) @map("created_at") @db.Timestamptz
+
+  customer PaygCustomer @relation(fields: [paygCustomerId], references: [id], onDelete: Cascade)
+
+  @@index([paygCustomerId])
+  @@index([createdAt(sort: Desc)])
+  @@map("payg_payment_events")
+}
+
+/// x402-style PAYG session token.
+/// Issued after a successful Stripe payment; grants a fixed number of requests
+/// within a TTL window. The client includes the session token in the
+/// X-Payg-Session request header to avoid re-paying per call.
+model PaygSession {
+  id                String   @id @default(uuid()) @db.Uuid
+  paygCustomerId    String   @map("payg_customer_id") @db.Uuid
+  sessionToken      String   @unique @map("session_token")
+  requestsGranted   Int      @map("requests_granted")
+  requestsUsed      Int      @default(0) @map("requests_used")
+  expiresAt         DateTime @map("expires_at") @db.Timestamptz
+  createdAt         DateTime @default(now()) @map("created_at") @db.Timestamptz
+  revokedAt         DateTime? @map("revoked_at") @db.Timestamptz
+
+  customer PaygCustomer @relation(fields: [paygCustomerId], references: [id], onDelete: Cascade)
+
+  @@index([paygCustomerId])
+  @@index([expiresAt])
+  @@map("payg_sessions")
 }

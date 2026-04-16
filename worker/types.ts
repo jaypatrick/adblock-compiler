@@ -106,6 +106,9 @@ export enum UserTier {
     Free = 'free',
     Pro = 'pro',
     Admin = 'admin',
+    PayAsYouGo = 'payg',
+    Vendor = 'vendor',
+    Enterprise = 'enterprise',
 }
 
 // ---------------------------------------------------------------------------
@@ -123,7 +126,10 @@ export const TIER_REGISTRY: Readonly<Record<UserTier, ITierConfig>> = {
     [UserTier.Anonymous]: { order: 0, rateLimit: 10, displayName: 'Anonymous', description: 'Unauthenticated user — basic access' },
     [UserTier.Free]: { order: 1, rateLimit: 60, displayName: 'Free', description: 'Registered free-tier user' },
     [UserTier.Pro]: { order: 2, rateLimit: 300, displayName: 'Pro', description: 'Paid pro-tier user — higher limits' },
-    [UserTier.Admin]: { order: 3, rateLimit: Infinity, displayName: 'Admin', description: 'Administrator — unrestricted access' },
+    [UserTier.Admin]: { order: 4, rateLimit: Infinity, displayName: 'Admin', description: 'Administrator — unrestricted access' },
+    [UserTier.PayAsYouGo]: { order: 1.5, rateLimit: 120, displayName: 'Pay As You Go', description: 'Per-call billing via Stripe — no subscription required' },
+    [UserTier.Vendor]: { order: 2.5, rateLimit: 600, displayName: 'Vendor', description: 'High-volume org subscription with negotiated limits' },
+    [UserTier.Enterprise]: { order: 3, rateLimit: Infinity, displayName: 'Enterprise', description: 'Enterprise org — dedicated limits and SLA' },
 } as const;
 
 // @deprecated: Use TIER_REGISTRY[tier].rateLimit instead.
@@ -132,11 +138,132 @@ export const TIER_RATE_LIMITS: Readonly<Record<UserTier, number>> = {
     [UserTier.Free]: TIER_REGISTRY[UserTier.Free].rateLimit,
     [UserTier.Pro]: TIER_REGISTRY[UserTier.Pro].rateLimit,
     [UserTier.Admin]: TIER_REGISTRY[UserTier.Admin].rateLimit,
+    [UserTier.PayAsYouGo]: TIER_REGISTRY[UserTier.PayAsYouGo].rateLimit,
+    [UserTier.Vendor]: TIER_REGISTRY[UserTier.Vendor].rateLimit,
+    [UserTier.Enterprise]: TIER_REGISTRY[UserTier.Enterprise].rateLimit,
 } as const;
 
 export function isTierSufficient(actual: UserTier, required: UserTier): boolean {
     return TIER_REGISTRY[actual].order >= TIER_REGISTRY[required].order;
 }
+
+// ---------------------------------------------------------------------------
+// PAYG Tier Limits — single source of truth for all PAYG operational limits
+// ---------------------------------------------------------------------------
+
+/**
+ * Operational limits for Pay-As-You-Go (PAYG) customers.
+ *
+ * All PAYG gating decisions must reference this constant — never hardcode
+ * individual limit values in route handlers or middleware.
+ *
+ * @see worker/middleware/payg-middleware.ts — enforces these limits at the request layer
+ * @see docs/billing/payg.md — user-facing documentation
+ */
+export const PAYG_TIER_LIMITS = {
+    // Rate limiting
+    requestsPerMinute: 120,
+    requestsPerDay: 500,
+
+    // Compilation limits
+    maxRulesPerList: 50_000,
+    maxSourcesPerCompile: 5,
+    maxListSizeBytes: 5_242_880,
+
+    // Throughput / queueing
+    maxConcurrentJobs: 2,
+    queuePriority: 'standard' as const,
+    queueTimeoutMs: 30_000,
+
+    // Storage / durability
+    retentionDays: 7,
+    maxStoredOutputs: 10,
+
+    // Features disabled for PAYG
+    astStorageEnabled: false,
+    translationEnabled: false,
+    globalSharingEnabled: false,
+    batchApiEnabled: false,
+    webhooksEnabled: false,
+    versionHistoryEnabled: false,
+    cdnDistributionEnabled: false,
+} as const;
+
+export type PaygTierLimits = typeof PAYG_TIER_LIMITS;
+
+/**
+ * Operational limits and feature flags for subscription-based customers (Pro, Vendor, Enterprise).
+ *
+ * These are the Worker's in-memory operational defaults and feature flags for
+ * subscription tiers. They are related to billing configuration but are not a
+ * guaranteed 1:1 mirror of the `SubscriptionPlan` columns in `prisma/schema.prisma`.
+ * Some keys represent Worker-only execution or queueing behaviour (e.g. `queuePriority`,
+ * `maxRulesPerList`) that do not exist as Prisma columns.
+ *
+ * @see prisma/schema.prisma — SubscriptionPlan billing context
+ * @see docs/billing/README.md — billing model overview
+ */
+export const SUBSCRIPTION_TIER_LIMITS = {
+    [UserTier.Pro]: {
+        requestsPerMinute: 300,
+        requestsPerDay: 10_000,
+        maxRulesPerList: 200_000,
+        maxSourcesPerCompile: 20,
+        maxListSizeBytes: 52_428_800,
+        maxConcurrentJobs: 10,
+        queuePriority: 'high' as const,
+        queueTimeoutMs: 120_000,
+        retentionDays: 90,
+        maxStoredOutputs: 500,
+        astStorageEnabled: true,
+        translationEnabled: false,
+        globalSharingEnabled: true,
+        batchApiEnabled: true,
+        webhooksEnabled: true,
+        versionHistoryEnabled: true,
+        cdnDistributionEnabled: false,
+    },
+    [UserTier.Vendor]: {
+        requestsPerMinute: 600,
+        requestsPerDay: 50_000,
+        maxRulesPerList: 500_000,
+        maxSourcesPerCompile: 50,
+        maxListSizeBytes: 104_857_600,
+        maxConcurrentJobs: 25,
+        queuePriority: 'high' as const,
+        queueTimeoutMs: 300_000,
+        retentionDays: 365,
+        maxStoredOutputs: 2_000,
+        astStorageEnabled: true,
+        translationEnabled: true,
+        globalSharingEnabled: true,
+        batchApiEnabled: true,
+        webhooksEnabled: true,
+        versionHistoryEnabled: true,
+        cdnDistributionEnabled: true,
+    },
+    [UserTier.Enterprise]: {
+        requestsPerMinute: null,
+        requestsPerDay: null,
+        maxRulesPerList: null,
+        maxSourcesPerCompile: null,
+        maxListSizeBytes: null,
+        maxConcurrentJobs: null,
+        queuePriority: 'high' as const,
+        queueTimeoutMs: 600_000,
+        retentionDays: null,
+        maxStoredOutputs: null,
+        astStorageEnabled: true,
+        translationEnabled: true,
+        globalSharingEnabled: true,
+        batchApiEnabled: true,
+        webhooksEnabled: true,
+        versionHistoryEnabled: true,
+        cdnDistributionEnabled: true,
+    },
+} as const;
+
+export type SubscriptionTierLimits = typeof SUBSCRIPTION_TIER_LIMITS;
 
 // ---------------------------------------------------------------------------
 // Scope Registry — single source of truth for API scopes
@@ -415,6 +542,33 @@ export interface Env {
     NEON_API_KEY?: string;
     /** Default Neon project ID for admin reporting endpoints. */
     NEON_PROJECT_ID?: string;
+    /**
+     * Stripe publishable key (non-secret, safe to expose to frontend).
+     * Set in wrangler.toml [vars].
+     */
+    STRIPE_PUBLISHABLE_KEY?: string;
+    /**
+     * Stripe secret key for server-side Stripe API calls.
+     * Local dev: add to .dev.vars
+     * Production: wrangler secret put STRIPE_SECRET_KEY
+     */
+    STRIPE_SECRET_KEY?: string;
+    /**
+     * Price per PAYG API call in USD cents (e.g. "1" = $0.01).
+     * Set in wrangler.toml [vars]. Defaults to 1 cent if not set.
+     */
+    PAYG_PRICE_PER_CALL_USD_CENTS?: string;
+    /**
+     * PAYG spend threshold in USD cents at which a customer is flagged
+     * for subscription conversion upsell (e.g. "2000" = $20).
+     * Set in wrangler.toml [vars]. Defaults to 2000.
+     */
+    PAYG_CONVERSION_THRESHOLD_USD_CENTS?: string;
+    /**
+     * Stripe PAYG product/price ID for the Checkout Session.
+     * Set in wrangler.toml [vars].
+     */
+    STRIPE_PAYG_PRICE_ID?: string;
 }
 
 /**
