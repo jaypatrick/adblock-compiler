@@ -93,7 +93,7 @@ If you're setting up Cloudflare Pages through the dashboard, use these settings:
 
 | Variable | Value |
 |----------|-------|
-| `NODE_VERSION` | `22` |
+| `NODE_VERSION` | `24` |
 
 ### ⚠️ Critical: Deploy Command
 

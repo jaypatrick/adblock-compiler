@@ -59,7 +59,7 @@ All composite actions live in `.github/actions/` and are called with `uses: ./.g
 - name: Setup pnpm and Node.js
   uses: ./.github/actions/setup-pnpm-node
   with:
-    node-version: '22'   # optional, defaults to '22'
+    node-version: '24.15'   # optional, defaults to '24.15'
 ```
 
 #### `zta-checks`

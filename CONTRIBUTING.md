@@ -18,7 +18,7 @@ Thank you for your interest in contributing to the Adblock Compiler project! Thi
 
 1. **Prerequisites**
    - [Deno](https://deno.land/) 2.x or higher
-   - [Node.js](https://nodejs.org/) 22.x or higher (for Angular frontend)
+   - [Node.js](https://nodejs.org/) 24.x or higher (for Angular frontend)
    - [pnpm](https://pnpm.io/) 10.x or higher
    - Git
 

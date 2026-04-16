@@ -210,7 +210,7 @@ jobs:
             - name: Setup pnpm and Node.js
               uses: ./.github/actions/setup-pnpm-node
               with:
-                  node-version: '22'
+                  node-version: '24.15'
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
@@ -239,7 +239,7 @@ jobs:
             - name: Setup pnpm and Node.js
               uses: ./.github/actions/setup-pnpm-node
               with:
-                  node-version: '22'
+                  node-version: '24.15'
 
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
@@ -395,7 +395,7 @@ jobs:
             - name: Setup pnpm and Node.js
               uses: ./.github/actions/setup-pnpm-node
               with:
-                  node-version: '22'
+                  node-version: '24.15'
 
             - name: Check pnpm lockfile is in sync
               run: |
@@ -721,7 +721,7 @@ jobs:
             - name: Setup pnpm and Node.js
               uses: ./.github/actions/setup-pnpm-node
               with:
-                  node-version: '22'
+                  node-version: '24.15'
 
             - name: Install frontend dependencies
               run: pnpm install --frozen-lockfile
