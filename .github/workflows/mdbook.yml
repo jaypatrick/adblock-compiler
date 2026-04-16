@@ -10,6 +10,7 @@ on:
       - 'scripts/generate-docs.ts'
       - 'scripts/generate-cloudflare-schema.ts'
       - 'scripts/generate-postman-collection.ts'
+      - 'wrangler.docs.toml'
       - '.github/workflows/mdbook.yml'
   workflow_dispatch:
 
