@@ -14,5 +14,6 @@ after = ["mermaid"]
 site-url = "/"
 git-repository-url = "https://github.com/jaypatrick/adblock-compiler"
 edit-url-template = "https://github.com/jaypatrick/adblock-compiler/edit/main/{path}"
+input-404 = "docs/404.md"
 additional-css = ["docs/theme/custom.css"]
 additional-js = ["docs/theme/build-info.js", "docs/theme/mermaid.min.js", "docs/theme/mermaid-init.js", "docs/theme/custom.js"]

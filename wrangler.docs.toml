@@ -33,9 +33,8 @@ directory = "./book"
 binding = "ASSETS"
 # Ensures /page and /page/ resolve to the same HTML file.
 html_handling = "auto-trailing-slash"
-# Use Cloudflare's default not-found behavior; this config does not assume
-# a generated ./book/404.html exists at deploy time.
-not_found_handling = "none"
+# Return mdBook's generated 404 page for unknown paths.
+not_found_handling = "404-page"
 
 # ─── Observability ────────────────────────────────────────────────────────
 [observability.logs]
