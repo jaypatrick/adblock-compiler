@@ -7,13 +7,14 @@
 # (project: adblock-docs) to avoid the `wrangler pages deploy` regression
 # in wrangler 4.83.x+.
 #
-# Build:  mdbook build   (output → ./book/)
-# Deploy: deno task docs:deploy
+# Build:  mdbook build / deno task docs:build   (output → ./book/)
+# Deploy: deno task docs:deploy   (after building ./book)
 #
 # THREE ENVIRONMENTS:
 #   Local dev  →  deno task docs:serve     (mdbook serve, port 3000)
 #   Dev        →  deno task docs:deploy:dev
-#   Production →  deno task docs:deploy    (→ docs.bloqr.jaysonknight.com)
+#   Production →  build docs first, then run deno task docs:deploy
+#                 (→ docs.bloqr.jaysonknight.com)
 # ============================================================================
 
 name = "adblock-docs"
