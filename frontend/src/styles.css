@@ -389,6 +389,10 @@ body {
         var(--mat-sys-background);
     background-attachment: fixed;
     line-height: 1.6;
+    /* Prevent horizontal scrollbar: any content wider than the viewport is
+       clipped at the document level.  The vertical axis is left at its default
+       (auto) so the sidenav-content scroll container continues to work. */
+    overflow-x: hidden;
     /* Reserve space for the vertical scrollbar at all times so that its
        appearance/disappearance during route transitions does not shift the
        layout horizontally (the "page looks wider" flicker, issue #942). */
@@ -518,7 +522,14 @@ h1, h2, h3, h4, h5, h6,
     border-radius: var(--mat-sys-corner-large);
     border: 1px solid var(--mat-sys-outline-variant);
     box-shadow: var(--shadow-lg);
-    overflow: hidden;
+    /* overflow: clip clips content at the border-radius boundary (same visual
+       result as "hidden") but does NOT create a new scroll container.
+       Using "hidden" here would make mat-sidenav-content (overflow: auto) no
+       longer be the scroll ancestor for position:sticky, breaking the sticky
+       header.  With "clip" the sticky header correctly remains fixed to the
+       sidenav-content viewport while child elements (e.g. .app-nav-tabs) can
+       still act as their own scroll containers. */
+    overflow: clip;
     min-height: calc(100vh - 48px);
 }
 
@@ -615,7 +626,14 @@ h1, h2, h3, h4, h5, h6,
     gap: 0;
     margin: 0;
     overflow-x: auto;
-    justify-content: center;
+    /* Do NOT use justify-content: center here.  When the total width of all
+       tab links exceeds the container (13 items ≈ 1340 px > 1200 px max-width)
+       a centred flex container overflows symmetrically to both sides.  Because
+       overflow-x: auto only lets the user scroll toward the end (right), the
+       items that overflow to the start (left) become permanently unreachable.
+       Keeping the default flex-start ensures all items are accessible: they
+       start at the left edge and any overflow extends only to the right, where
+       a hidden scrollbar (scrollbar-width: none) lets users scroll through. */
     scrollbar-width: none;
 }
 
