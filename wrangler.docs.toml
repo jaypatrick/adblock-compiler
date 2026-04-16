@@ -30,7 +30,6 @@ custom_domain = true
 # No worker script is needed — assets are served natively.
 [assets]
 directory = "./book"
-binding = "ASSETS"
 # Ensures /page and /page/ resolve to the same HTML file.
 html_handling = "auto-trailing-slash"
 # Return mdBook's generated 404 page for unknown paths.
