@@ -82,5 +82,5 @@ jobs:
         run: |
           set -euo pipefail
           echo "Deploying documentation to Cloudflare Worker..."
-          deno run -A npm:wrangler@^4.83.0 deploy --config wrangler.docs.toml --env=""
+          deno run -A npm:wrangler@^4.83.0 deploy --config wrangler.docs.toml
           echo "✅ Documentation deployed successfully"
