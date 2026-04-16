@@ -185,7 +185,7 @@ jobs:
       - name: Setup pnpm and Node.js
         uses: ./.github/actions/setup-pnpm-node
         with:
-          node-version: '22'
+          node-version: '24.15'
 
       # Install only the dependencies needed for Prisma migrations
       - name: Install dependencies

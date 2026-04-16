@@ -10,7 +10,7 @@
 ARG DENO_VERSION=2.7.7
 
 # Stage 1: Node.js image for building with Wrangler
-FROM node:22-bookworm-slim AS node-base
+FROM node:24-bookworm-slim AS node-base
 
 # Proxy configuration - these can be overridden at build time
 # Set them to empty to bypass proxy for Docker Hub
@@ -61,7 +61,7 @@ RUN corepack enable
 WORKDIR /app
 
 # Stage 2: Angular frontend build
-FROM node:22-bookworm-slim AS frontend-builder
+FROM node:24-bookworm-slim AS frontend-builder
 
 # Enable corepack so that pnpm is available
 RUN corepack enable
