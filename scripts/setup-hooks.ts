@@ -13,11 +13,11 @@ const prePushPath = join(hooksDir, 'pre-push');
 const prePushScript = `#!/usr/bin/env bash
 # Auto-installed by: deno task setup:hooks
 # Runs preflight checks (fmt, lint, type-check all entry points, OpenAPI validation,
-# schema drift detection) before every push. Fast path; does NOT run tests.
+# schema drift detection, pnpm lockfile sync) before every push. Fast path; does NOT run tests.
 # To also run tests: deno task preflight:full
 set -euo pipefail
 
-echo "🔍 Running pre-push preflight checks (fmt, lint, types, schema drift)..."
+echo "🔍 Running pre-push preflight checks (fmt, lint, types, schema/lockfile drift)..."
 echo "   Tip: run 'deno task preflight:full' to include tests before opening a PR."
 echo ""
 
@@ -35,7 +35,7 @@ try {
     await Deno.writeTextFile(prePushPath, prePushScript);
     await new Deno.Command('chmod', { args: ['+x', prePushPath] }).output();
     console.log(`✅ Installed pre-push hook: ${prePushPath}`);
-    console.log('   Runs: fmt, lint, type-check (all entry points), OpenAPI validate, schema drift check.');
+    console.log('   Runs: fmt, lint, type-check (all entry points), OpenAPI validate, schema drift check, pnpm lockfile sync check.');
     console.log('   For full checks (incl. tests): deno task preflight:full');
 } catch (err) {
     console.error(`❌ Failed to install hook: ${err instanceof Error ? err.message : String(err)}`);
