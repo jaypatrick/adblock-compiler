@@ -94,7 +94,10 @@ jobs:
           # positional `book` argument, so no separate wrangler.pages.toml is needed
           # (and none should be created).
           # Retry with 30s initial delay (3 total attempts; sleeps: 30s → 60s).
-          retry_command 3 30 deno task wrangler pages deploy book \
+          # NOTE: wrangler 4.83.x has an intermittent `fetch failed` regression on
+          # `pages deploy` in GitHub Actions. Keep mdBook deploy pinned to 4.81.0
+          # (last known good in this workflow) until upstream fix is verified.
+          retry_command 3 30 deno run -A npm:wrangler@4.81.0 pages deploy book \
             --project-name "$CLOUDFLARE_PAGES_PROJECT" \
             --branch=main \
             --commit-dirty=true
