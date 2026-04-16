@@ -42,7 +42,7 @@ enabled = true
 head_sampling_rate = 1
 persist = true
 invocation_logs = true
-destinations = ["sentry-logs"]
+destinations = [ "sentry-logs" ]
 
 # ─── Runtime variables ────────────────────────────────────────────────────
 [vars]
