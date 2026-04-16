@@ -42,7 +42,7 @@ jobs:
                   token: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Setup Deno
-              uses: denoland/setup-deno@e95548e56dfa95d4e1a28d6f422fafe75c4c26fb # v2.0.3
+              uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
               with:
                   deno-version: '2.x'
 
@@ -71,7 +71,7 @@ jobs:
             #          updated package.json version pins.
             # ----------------------------------------------------------------
             - name: Setup pnpm
-              uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4
+              uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
 
             - name: Setup Node.js
               uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0

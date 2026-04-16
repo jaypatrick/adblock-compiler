@@ -46,13 +46,13 @@ jobs:
             compiler_changed: ${{ steps.determine_bump.outputs.compiler_changed || 'false' }}
         steps:
             - name: Checkout
-              uses: actions/checkout@v6.0.2
+              uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
               with:
                   fetch-depth: 0 # full history required: git log --grep searches all commits to find last version bump
                   token: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Setup Deno
-              uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2
+              uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
               with:
                   deno-version: '2.x'
 
@@ -414,7 +414,7 @@ jobs:
             actions: write
         steps:
             - name: Trigger release workflow
-              uses: actions/github-script@v9
+              uses: actions/github-script@3a2844b7e9c422d3c10d287c895573f7108da1b3 # v9.0.0
               with:
                   script: |
                       await github.rest.actions.createWorkflowDispatch({

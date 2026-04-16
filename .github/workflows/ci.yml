@@ -191,7 +191,7 @@ jobs:
 
             - name: Upload Trivy results to GitHub Security
               if: always() && hashFiles('trivy-results.sarif') != ''
-              uses: github/codeql-action/upload-sarif@dd677812177e0c29f9c970a6c58d8607ae1bfefd # v4
+              uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3.35.2
               continue-on-error: true
               with:
                   sarif_file: trivy-results.sarif
@@ -248,7 +248,7 @@ jobs:
               run: pnpm --filter adblock-frontend run build
 
             - name: Upload frontend build artifact
-              uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: frontend-dist
                   path: frontend/dist/
