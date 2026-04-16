@@ -10,11 +10,9 @@ on:
       - 'scripts/generate-docs.ts'
       - 'scripts/generate-cloudflare-schema.ts'
       - 'scripts/generate-postman-collection.ts'
+      - 'wrangler.docs.toml'
       - '.github/workflows/mdbook.yml'
   workflow_dispatch:
-
-env:
-  CLOUDFLARE_PAGES_PROJECT: adblock-docs
 
 jobs:
   build-deploy:
@@ -80,25 +78,9 @@ jobs:
         continue-on-error: true
         run: deno task docs:api
 
-      - name: Deploy to Cloudflare Pages
+      - name: Deploy docs to Cloudflare Worker
         run: |
           set -euo pipefail
-          # shellcheck source=.github/scripts/retry.sh
-          source .github/scripts/retry.sh
-          echo "Deploying documentation to Cloudflare Pages..."
-          # --commit-dirty=true: required because regenerated OpenAPI/Postman docs modify
-          # in-tree files (docs/api/, docs/postman/) before this step runs.
-          # NOTE: do NOT add --config here. Wrangler v4 does not support custom config
-          # file paths for `pages deploy` and will hard-error immediately. The project
-          # name is passed as a CLI flag and the output directory is passed as the
-          # positional `book` argument, so no separate wrangler.pages.toml is needed
-          # (and none should be created).
-          # Retry with 30s initial delay (3 total attempts; sleeps: 30s → 60s).
-          # NOTE: wrangler 4.83.x has an intermittent `fetch failed` regression on
-          # `pages deploy` in GitHub Actions. Keep mdBook deploy pinned to 4.81.0
-          # (last known good in this workflow) until upstream fix is verified.
-          retry_command 3 30 deno run -A npm:wrangler@4.81.0 pages deploy book \
-            --project-name "$CLOUDFLARE_PAGES_PROJECT" \
-            --branch=main \
-            --commit-dirty=true
+          echo "Deploying documentation to Cloudflare Worker..."
+          deno run -A npm:wrangler@^4.83.0 deploy --config wrangler.docs.toml
           echo "✅ Documentation deployed successfully"

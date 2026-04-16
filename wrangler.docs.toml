@@ -1,0 +1,56 @@
+# ============================================================================
+# wrangler.docs.toml — Documentation Worker configuration (Cloudflare)
+# ============================================================================
+#
+# Serves the mdBook static output (./book/) as a Cloudflare Worker with
+# static assets. This replaces the previous Cloudflare Pages deployment
+# (project: adblock-docs) to avoid the `wrangler pages deploy` regression
+# in wrangler 4.83.x+.
+#
+# Build:  mdbook build / deno task docs:build   (output → ./book/)
+# Deploy: deno task docs:deploy   (after building ./book)
+#
+# THREE ENVIRONMENTS:
+#   Local dev  →  deno task docs:serve     (mdbook serve, port 3000)
+#   Dev        →  deno task docs:deploy:dev
+#   Production →  build docs first, then run deno task docs:deploy
+#                 (→ docs.bloqr.jaysonknight.com)
+# ============================================================================
+
+name = "adblock-docs"
+compatibility_date = "2026-01-01"
+workers_dev = true
+
+[[routes]]
+pattern = "docs.bloqr.jaysonknight.com"
+custom_domain = true
+
+# ─── Static assets ────────────────────────────────────────────────────────
+# Cloudflare serves these directly from the CDN edge.
+# No worker script is needed — assets are served natively.
+[assets]
+directory = "./book"
+binding = "ASSETS"
+# Ensures /page and /page/ resolve to the same HTML file.
+html_handling = "auto-trailing-slash"
+# Return mdBook's generated 404 page for unknown paths.
+not_found_handling = "404-page"
+
+# ─── Observability ────────────────────────────────────────────────────────
+[observability.logs]
+enabled = true
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+destinations = [ "sentry-logs" ]
+
+# ─── Runtime variables ────────────────────────────────────────────────────
+[vars]
+ENVIRONMENT = "production"
+URL_DOCS = "https://docs.bloqr.jaysonknight.com"
+
+# ─── Dev environment ──────────────────────────────────────────────────────
+[env.dev]
+[env.dev.vars]
+ENVIRONMENT = "development"
+URL_DOCS = "https://docs.bloqr.jaysonknight.com"
