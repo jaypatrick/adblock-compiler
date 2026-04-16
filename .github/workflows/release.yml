@@ -25,15 +25,15 @@ jobs:
         name: Validate Release
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v6.0.2
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Setup Deno
-              uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2
+              uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
               with:
                   deno-version: ${{ env.DENO_VERSION }}
 
             - name: Cache Deno dependencies
-              uses: actions/cache@v5
+              uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
               with:
                   path: |
                       ~/.cache/deno
@@ -90,15 +90,15 @@ jobs:
               if: runner.os == 'Windows'
               run: git config --global core.longpaths true
 
-            - uses: actions/checkout@v6.0.2
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Setup Deno
-              uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2
+              uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
               with:
                   deno-version: ${{ env.DENO_VERSION }}
 
             - name: Cache Deno dependencies
-              uses: actions/cache@v5
+              uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
               with:
                   path: |
                       ~/.cache/deno
@@ -127,7 +127,7 @@ jobs:
                   fi
 
             - name: Upload artifact
-              uses: actions/upload-artifact@v7
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
               with:
                   name: ${{ matrix.artifact }}
                   path: compressed/*
@@ -142,7 +142,7 @@ jobs:
             contents: read
             packages: write
         steps:
-            - uses: actions/checkout@v6.0.2
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Get version
               id: version
@@ -167,20 +167,20 @@ jobs:
                   echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
             - name: Set up QEMU
-              uses: docker/setup-qemu-action@v4
+              uses: docker/setup-qemu-action@ce360397dd3f832beb865e1373c09c0e9f86d70a # v4.0.0
 
             - name: Set up Docker Buildx
-              uses: docker/setup-buildx-action@v4
+              uses: docker/setup-buildx-action@4d04d5d9486b7bd6fa91e7baf45bbb4f8b9deedd # v4.0.0
 
             - name: Log in to GitHub Container Registry
-              uses: docker/login-action@v4
+              uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4.1.0
               with:
                   registry: ghcr.io
                   username: ${{ github.actor }}
                   password: ${{ secrets.GITHUB_TOKEN }}
 
             - name: Build and push Docker image
-              uses: docker/build-push-action@v7
+              uses: docker/build-push-action@bcafcacb16a39f128d818304e6c9c0c18556b85f # v7.1.0
               with:
                   context: .
                   push: true
@@ -202,7 +202,7 @@ jobs:
         needs: [build-binaries]
         if: needs.build-binaries.result == 'success'
         steps:
-            - uses: actions/checkout@v6.0.2
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
             - name: Get version
               id: version
@@ -221,7 +221,7 @@ jobs:
                   fi
 
             - name: Download all artifacts
-              uses: actions/download-artifact@v8
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
               with:
                   path: artifacts
                   pattern: adblock-compiler-*
@@ -308,7 +308,7 @@ jobs:
                   fi
 
             - name: Create GitHub Release
-              uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v2
+              uses: softprops/action-gh-release@b4309332981a82ec1c5618f44dd2e27cc8bfbfda # v3.0.0
               with:
                   tag_name: ${{ steps.version.outputs.tag }}
                   name: v${{ steps.version.outputs.version }}
