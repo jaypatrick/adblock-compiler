@@ -1,19 +1,8 @@
 /**
- * Tests for WsHibernationDO Durable Object.
+ * Tests for the WsHibernationDO Durable Object.
  *
- * Covers:
- *  - Non-WebSocket upgrade request to /ws returns 426
- *  - /sessions returns empty list initially
- *  - /broadcast returns sent count (0 when no sockets connected)
- *  - /disconnect with unknown tag succeeds (no-op)
- *  - webSocketMessage: ping → pong
- *  - webSocketMessage: presence update → broadcasts session list
- *  - webSocketMessage: message → ack
- *  - webSocketMessage: invalid JSON → error response
- *  - webSocketClose: removes session from storage
- *  - webSocketError: removes session from storage
- *  - /broadcast with tag filter routes to tagged sockets only
- *  - Unknown path returns 404
+ * Covers request handling plus WebSocket message and lifecycle behavior that is
+ * explicitly asserted in this file.
  */
 
 import { assertEquals, assertExists } from '@std/assert';
@@ -322,4 +311,63 @@ Deno.test('WsHibernationDO - unknown path returns 404', async () => {
 
     const res = await do_.fetch(new Request('https://do/unknown-path'));
     assertEquals(res.status, 404);
+});
+
+Deno.test('WsHibernationDO - /broadcast with malformed JSON returns 400', async () => {
+    const state = createMockState();
+    const do_ = new WsHibernationDO(state, {});
+
+    const res = await do_.fetch(
+        new Request('https://do/broadcast', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: 'not-json',
+        }),
+    );
+    assertEquals(res.status, 400);
+
+    const data = await res.json() as { success: boolean; error: string };
+    assertEquals(data.success, false);
+    assertExists(data.error);
+});
+
+Deno.test('WsHibernationDO - /disconnect with malformed JSON returns 400', async () => {
+    const state = createMockState();
+    const do_ = new WsHibernationDO(state, {});
+
+    const res = await do_.fetch(
+        new Request('https://do/disconnect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: '{bad json',
+        }),
+    );
+    assertEquals(res.status, 400);
+
+    const data = await res.json() as { success: boolean; error: string };
+    assertEquals(data.success, false);
+    assertExists(data.error);
+});
+
+Deno.test('WsHibernationDO - webSocketMessage: presence returns session list', async () => {
+    const session: SessionMeta = {
+        tag: 'presence-tag',
+        connectedAt: Date.now(),
+        lastActivity: Date.now(),
+        userId: 'user_presence',
+    };
+    const state = createMockState({ 'session:presence-tag': session });
+    const do_ = new WsHibernationDO(state, {});
+    const ws = createMockWebSocket();
+
+    // Override getTags so updateLastActivity can resolve the tag.
+    (state as unknown as { getTags: (ws: unknown) => string[] }).getTags = () => ['presence-tag'];
+
+    await do_.webSocketMessage(ws as unknown as WebSocket, JSON.stringify({ type: 'presence' }));
+
+    assertEquals(ws.sent.length, 1);
+    const response = ws.sent[0] as { type: string; sessions: SessionMeta[] };
+    assertEquals(response.type, 'presence:update');
+    assertEquals(response.sessions.length, 1);
+    assertEquals(response.sessions[0].userId, 'user_presence');
 });

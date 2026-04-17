@@ -129,13 +129,15 @@ export class WsHibernationDO implements DurableObject {
          * WebSocket upgrade endpoint.  Clients connect here; the DO accepts
          * the socket via the hibernatable API.
          *
-         * Query params:
-         *   tag      - optional session tag (defaults to a random ID)
-         *   userId   - optional authenticated user ID for presence tracking
+         * Security model:
+         *   - The session tag is always generated server-side by this DO.
+         *   - The authenticated Worker route may pass the user identity via
+         *     the `X-User-Id` header for presence tracking.
+         *   - Client-supplied query params for `tag` or `userId` are not used.
          */
         this.app.get('/ws', async (c) => {
             const upgradeHeader = c.req.header('Upgrade');
-            if (upgradeHeader !== 'websocket') {
+            if (upgradeHeader?.trim().toLowerCase() !== 'websocket') {
                 return c.text('Expected WebSocket upgrade', 426);
             }
 
@@ -189,7 +191,13 @@ export class WsHibernationDO implements DurableObject {
          * Push a message to all connected (or tag-filtered) WebSockets.
          */
         this.app.post('/broadcast', async (c) => {
-            const parsed = BroadcastRequestSchema.safeParse(await c.req.json());
+            let requestBody: unknown;
+            try {
+                requestBody = await c.req.json();
+            } catch {
+                return c.json({ success: false, error: 'Invalid JSON body' }, 400);
+            }
+            const parsed = BroadcastRequestSchema.safeParse(requestBody);
             if (!parsed.success) {
                 return c.json({ success: false, error: parsed.error.issues[0]?.message ?? 'Invalid request' }, 400);
             }
@@ -213,7 +221,13 @@ export class WsHibernationDO implements DurableObject {
          * Force-close a specific tagged WebSocket.
          */
         this.app.post('/disconnect', async (c) => {
-            const parsed = DisconnectRequestSchema.safeParse(await c.req.json());
+            let body: unknown;
+            try {
+                body = await c.req.json();
+            } catch {
+                return c.json({ success: false, error: 'Invalid JSON body' }, 400);
+            }
+            const parsed = DisconnectRequestSchema.safeParse(body);
             if (!parsed.success) {
                 return c.json({ success: false, error: parsed.error.issues[0]?.message ?? 'Invalid request' }, 400);
             }

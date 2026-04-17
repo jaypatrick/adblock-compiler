@@ -155,8 +155,8 @@ sequenceDiagram
     Note over DO: Wakes from hibernation
     DO-->>C: {type:"pong", timestamp:"..."}
 
-    C->>DO: {type:"presence", userId:"user_abc"}
-    DO->>S: update session userId
+    C->>DO: {type:"presence"}
+    Note over DO: userId comes from X-User-Id set at connect time — not from client
     DO-->>C: {type:"presence:update", sessions:[...]}
 
     C->>DO: (connection closed)
@@ -167,7 +167,7 @@ sequenceDiagram
 
 | Method | Path | Description |
 |---|---|---|
-| `GET` | `/ws` | WebSocket upgrade using the hibernatable API. Query params: `tag`, `userId`. |
+| `GET` | `/ws` | WebSocket upgrade using the hibernatable API. Session tag is server-generated; `userId` is injected via `X-User-Id` header by the authenticated Worker route. |
 | `GET` | `/sessions` | List all active session metadata from DO Storage. |
 | `POST` | `/broadcast` | Push message to all (or tag-filtered) connected sockets. |
 | `POST` | `/disconnect` | Force-close a tagged socket. |

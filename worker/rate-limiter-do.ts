@@ -132,7 +132,13 @@ export class RateLimiterDO implements DurableObject {
     private setupRoutes(): void {
         /** POST /increment — atomic increment; returns IRateLimitResult. */
         this.app.post('/increment', async (c) => {
-            const parsed = IncrementRequestSchema.safeParse(await c.req.json());
+            let body: unknown;
+            try {
+                body = await c.req.json();
+            } catch {
+                return c.json({ success: false, error: 'Invalid JSON body' }, 400);
+            }
+            const parsed = IncrementRequestSchema.safeParse(body);
             if (!parsed.success) {
                 return c.json({ success: false, error: parsed.error.issues[0]?.message ?? 'Invalid request' }, 400);
             }

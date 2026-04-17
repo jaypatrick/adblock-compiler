@@ -245,6 +245,22 @@ Deno.test('RateLimiterDO - /increment with invalid body returns 400', async () =
     assertEquals(res.status, 400);
 });
 
+Deno.test('RateLimiterDO - /increment with malformed JSON returns 400', async () => {
+    const state = createMockState();
+    const do_ = new RateLimiterDO(state, {});
+
+    const res = await do_.fetch(
+        new Request('https://do/increment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: 'not-json{',
+        }),
+    );
+    assertEquals(res.status, 400);
+    const data = await res.json() as { success: boolean; error: string };
+    assertEquals(data.success, false);
+});
+
 Deno.test('RateLimiterDO - unknown path returns 404', async () => {
     const state = createMockState();
     const do_ = new RateLimiterDO(state, {});
