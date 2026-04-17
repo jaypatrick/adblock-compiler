@@ -1,3 +1,5 @@
+/// <reference types="@cloudflare/workers-types" />
+
 import { assertEquals, assertExists } from '@std/assert';
 import { WorkflowEvents } from './WorkflowEvents.ts';
 import type { WorkflowEventLog } from './types.ts';
@@ -29,7 +31,7 @@ Deno.test('WorkflowEvents buffers events in memory until flush is called', async
     const kv = new MockKvNamespace();
     const events = new WorkflowEvents(kv as unknown as KVNamespace, 'wf-1', 'compilation');
 
-    await events.emitWorkflowStarted({ configName: 'EasyList' });
+    await events.emitStepStarted('validate');
     await events.emitProgress(25, 'Compiling');
 
     assertEquals(kv.putCalls, 0);
@@ -42,8 +44,22 @@ Deno.test('WorkflowEvents buffers events in memory until flush is called', async
     const eventLog = await events.getEvents();
     assertExists(eventLog);
     assertEquals(eventLog.events.length, 2);
-    assertEquals(eventLog.events[0].type, 'workflow:started');
+    assertEquals(eventLog.events[0].type, 'workflow:step:started');
     assertEquals(eventLog.events[1].type, 'workflow:progress');
+});
+
+Deno.test('WorkflowEvents flushes milestone events immediately for polling visibility', async () => {
+    const kv = new MockKvNamespace();
+    const events = new WorkflowEvents(kv as unknown as KVNamespace, 'wf-4', 'health-monitoring');
+
+    await events.emitWorkflowStarted({ sourceCount: 5 });
+    assertEquals(kv.putCalls, 1);
+
+    await events.emitProgress(10, 'running');
+    assertEquals(kv.putCalls, 1);
+
+    await events.emitStepCompleted('load-health-history');
+    assertEquals(kv.putCalls, 2);
 });
 
 Deno.test('WorkflowEvents flush stores completion timestamp from final terminal event', async () => {
@@ -58,6 +74,33 @@ Deno.test('WorkflowEvents flush stores completion timestamp from final terminal 
     assertExists(eventLog);
     assertExists(eventLog.completedAt);
     assertEquals(eventLog.completedAt, eventLog.events[eventLog.events.length - 1].timestamp);
+});
+
+Deno.test('WorkflowEvents flush derives startedAt from first buffered event timestamp', async () => {
+    const kv = new MockKvNamespace();
+    const events = new WorkflowEvents(kv as unknown as KVNamespace, 'wf-5', 'compilation');
+
+    await events.emitProgress(5, 'queued');
+    await events.flush();
+
+    const eventLog = await events.getEvents();
+    assertExists(eventLog);
+    assertEquals(eventLog.startedAt, eventLog.events[0].timestamp);
+});
+
+Deno.test('WorkflowEvents sets completedAt from terminal event even if followed by non-terminal events', async () => {
+    const kv = new MockKvNamespace();
+    const events = new WorkflowEvents(kv as unknown as KVNamespace, 'wf-6', 'compilation');
+
+    await events.emit('workflow:completed', { ok: true }, { message: 'done' });
+    await events.emitProgress(100, 'post-complete message');
+    await events.flush();
+
+    const eventLog = await events.getEvents();
+    assertExists(eventLog);
+    const completedEvent = eventLog.events.find((event) => event.type === 'workflow:completed');
+    assertExists(completedEvent);
+    assertEquals(eventLog.completedAt, completedEvent.timestamp);
 });
 
 Deno.test('WorkflowEvents flush trims persisted events to the configured maximum', async () => {

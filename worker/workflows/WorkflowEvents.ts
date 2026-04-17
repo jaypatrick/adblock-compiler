@@ -58,8 +58,8 @@ export class WorkflowEvents {
     /**
      * Emit a workflow event and buffer it in memory.
      *
-     * Call flush() at the end of the workflow to persist all events in one KV
-     * read-modify-write cycle.
+     * Call flush() at workflow milestones to persist events in KV while
+     * reducing write amplification.
      */
     async emit(
         type: WorkflowEventType,
@@ -97,7 +97,7 @@ export class WorkflowEvents {
             eventLog = {
                 workflowId: this.workflowId,
                 workflowType: this.workflowType,
-                startedAt: new Date().toISOString(),
+                startedAt: this.pendingEvents[0]?.timestamp ?? new Date().toISOString(),
                 events: [],
             };
         }
@@ -108,9 +108,14 @@ export class WorkflowEvents {
             eventLog.events = eventLog.events.slice(-MAX_EVENTS);
         }
 
-        const lastEvent = this.pendingEvents[this.pendingEvents.length - 1];
-        if (lastEvent && (lastEvent.type === 'workflow:completed' || lastEvent.type === 'workflow:failed')) {
-            eventLog.completedAt = lastEvent.timestamp;
+        // Scan from newest to oldest so completedAt reflects the most recent
+        // terminal event persisted in the log.
+        for (let index = eventLog.events.length - 1; index >= 0; index--) {
+            const event = eventLog.events[index];
+            if (event.type === 'workflow:completed' || event.type === 'workflow:failed') {
+                eventLog.completedAt = event.timestamp;
+                break;
+            }
         }
 
         try {
@@ -140,6 +145,7 @@ export class WorkflowEvents {
             progress: 0,
             message: `Workflow ${this.workflowType} started`,
         });
+        await this.flush();
     }
 
     /**
@@ -150,6 +156,7 @@ export class WorkflowEvents {
             progress: 100,
             message: `Workflow ${this.workflowType} completed successfully`,
         });
+        await this.flush();
     }
 
     /**
@@ -159,6 +166,7 @@ export class WorkflowEvents {
         await this.emit('workflow:failed', { ...data, error }, {
             message: `Workflow ${this.workflowType} failed: ${error}`,
         });
+        await this.flush();
     }
 
     /**
@@ -179,6 +187,7 @@ export class WorkflowEvents {
             step: stepName,
             message: `Completed step: ${stepName}`,
         });
+        await this.flush();
     }
 
     /**
@@ -189,6 +198,7 @@ export class WorkflowEvents {
             step: stepName,
             message: `Step ${stepName} failed: ${error}`,
         });
+        await this.flush();
     }
 
     /**
