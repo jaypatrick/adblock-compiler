@@ -45,6 +45,7 @@ export function handleInfo(request: Request, env: Env): Response {
             'POST /compile/async': 'Queue a compilation job for async processing',
             'POST /compile/batch/async': 'Queue multiple compilations for async processing',
             'GET /ws/compile': 'WebSocket endpoint for bidirectional real-time compilation',
+            'GET /ws/compile/v2': 'Hibernatable WebSocket endpoint backed by WsHibernationDO (session presence)',
             'POST /validate-rule': 'Validate a single adblock rule (optionally test against a URL)',
             'GET /rules': 'List saved rule sets',
             'POST /rules': 'Create a new saved rule set',

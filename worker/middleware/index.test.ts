@@ -418,3 +418,53 @@ Deno.test('checkRateLimitTiered - apiKeyRateLimit=null uses tier default', async
     const freeConfig = getRateLimitConfig(UserTier.Free);
     assertEquals(result.limit, freeConfig.maxRequests);
 });
+
+// ============================================================================
+// checkRateLimitTiered — RATE_LIMITER_DO path
+// ============================================================================
+
+Deno.test('checkRateLimitTiered - uses RATE_LIMITER_DO when bound (DO path returns allowed:true)', async () => {
+    // Stub a DO namespace that returns allowed:true on the first increment
+    let doCallCount = 0;
+    const stubDo = {
+        idFromName: (_name: string) => ({ toString: () => 'stub-id' }),
+        get: (_id: unknown) => ({
+            fetch: async (_req: Request) => {
+                doCallCount++;
+                return new Response(
+                    JSON.stringify({ allowed: true, limit: 60, remaining: 59, resetAt: Date.now() + 60_000 }),
+                    { status: 200, headers: { 'Content-Type': 'application/json' } },
+                );
+            },
+        }),
+    };
+
+    const env = makeEnv({ RATE_LIMITER_DO: stubDo as unknown as DurableObjectNamespace });
+    const result = await checkRateLimitTiered(env, '10.0.0.1', makeAnonymousCtx());
+
+    assertEquals(result.allowed, true);
+    assertEquals(result.limit, 60);
+    assertEquals(doCallCount, 1);
+});
+
+Deno.test('checkRateLimitTiered - falls back to KV when RATE_LIMITER_DO returns non-OK', async () => {
+    // DO returns 500 — should fall back to KV
+    const stubDo = {
+        idFromName: (_name: string) => ({ toString: () => 'stub-id' }),
+        get: (_id: unknown) => ({
+            fetch: async (_req: Request) => new Response('error', { status: 500 }),
+        }),
+    };
+
+    const kv: KVData = new Map();
+    const env = makeEnv({
+        RATE_LIMIT: makeKvNamespace(kv),
+        RATE_LIMITER_DO: stubDo as unknown as DurableObjectNamespace,
+    });
+
+    const result = await checkRateLimitTiered(env, '10.0.0.2', makeAnonymousCtx());
+    // KV fallback succeeds
+    assertEquals(result.allowed, true);
+    // KV should have a new entry
+    assertEquals(kv.size > 0, true);
+});

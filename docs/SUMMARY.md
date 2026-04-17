@@ -78,6 +78,7 @@
   - [Hono Routing](architecture/hono-routing.md)
   - [Hono RPC Client](architecture/hono-rpc-client.md)
   - [tRPC API Layer](architecture/trpc.md)
+  - [Durable Objects](architecture/durable-objects.md)
 - [Frontend](frontend/README.md)
   - [Angular Frontend](frontend/ANGULAR_FRONTEND.md)
   - [Angular Parity Checklist](frontend/ANGULAR_PARITY_CHECKLIST.md)

@@ -232,6 +232,24 @@ name = "MCP_AGENT"
 class_name = "CompilationCoordinator"
 name = "COMPILATION_COORDINATOR"
 
+# RATE_LIMITER_DO — Atomic per-identity rate limiting (replaces KV-based rate limiting)
+# Provides strongly-consistent, race-free rate limiting via DO shard per identity.
+# Each unique user ID or IP address gets its own DO shard (idFromName).
+# checkRateLimitTiered() prefers this DO when bound; falls back to RATE_LIMIT KV.
+# @see worker/rate-limiter-do.ts
+[[durable_objects.bindings]]
+class_name = "RateLimiterDO"
+name = "RATE_LIMITER_DO"
+
+# WS_HIBERNATION_DO — Hibernatable WebSocket connections with session presence
+# Keeps long-lived WebSocket connections alive across Worker isolate teardowns.
+# DO hibernates between messages — zero idle cost while connections stay open.
+# Also tracks session presence (connected clients) via DO Storage.
+# @see worker/ws-hibernation-do.ts
+[[durable_objects.bindings]]
+class_name = "WsHibernationDO"
+name = "WS_HIBERNATION_DO"
+
 # ─── Containers ─────────────────────────────────────────────────────────
 # Each AdblockCompiler Durable Object manages one Docker container.
 # Wrangler builds the image from Dockerfile.container on `wrangler deploy`.
@@ -261,6 +279,10 @@ new_sqlite_classes = ["PlaywrightMcpAgent"]
 [[migrations]]
 tag = "v3"
 new_sqlite_classes = ["CompilationCoordinator"]
+
+[[migrations]]
+tag = "v4"
+new_sqlite_classes = ["RateLimiterDO", "WsHibernationDO"]
 
 # ─── Tail Workers ────────────────────────────────────────────────────────────
 # Deploy wrangler.tail.toml first; the tail worker must exist in your account
