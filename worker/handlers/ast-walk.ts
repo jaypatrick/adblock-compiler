@@ -21,7 +21,8 @@
  * }
  * ```
  *
- * Exactly one of `rules` or `text` must be supplied.
+ * Exactly one of `rules` or `text` must be supplied (enforced by
+ * {@link ASTWalkRequestSchema} — supplying both is a 422 validation error).
  *
  * ## Response body
  *
@@ -102,7 +103,7 @@ export async function handleASTWalkRequest(request: Request, _env: Env): Promise
         if (text !== undefined) {
             filterListText = text;
         } else {
-            // rules is guaranteed defined by Zod refine
+            // rules is guaranteed defined since text is absent (XOR enforced by schema)
             filterListText = (rules as string[]).join('\n');
         }
 

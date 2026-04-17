@@ -748,6 +748,11 @@ Examples:
 
             // Handle --ast-walk before the usual compile pipeline
             if (this.args['ast-walk']) {
+                // Route all log output to stderr so the JSON written to stdout is clean
+                // and pipeable without log messages interleaving with the JSON stream.
+                if (this.logger instanceof ConsoleLogger) {
+                    this.logger.setUseStderr(true);
+                }
                 await this.runASTWalk();
                 return;
             }

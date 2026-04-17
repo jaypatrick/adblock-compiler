@@ -34,8 +34,7 @@
  * @module
  */
 
-import type { AdblockSyntax } from '@adguard/agtree';
-
+import type { AdblockSyntax, AnyRule, FilterList, Node } from './AGTreeParser.ts';
 import type { ParseResult, ParserOptions } from './AGTreeParser.ts';
 import type { AGTreeNodeVisitor, AGTreeTypedVisitor } from './AGTreeWalker.ts';
 
@@ -74,7 +73,7 @@ export interface IFilterRuleParser {
      * @param options - Optional parser configuration.
      * @returns The root `FilterList` node, or throws on catastrophic failure.
      */
-    parseFilterList(text: string, options?: ParserOptions): import('@adguard/agtree').FilterList;
+    parseFilterList(text: string, options?: ParserOptions): FilterList;
 
     /**
      * Detect the adblock syntax of a single rule string.
@@ -133,7 +132,7 @@ export interface IFilterRuleGenerator {
      * @param ast - A parsed rule node (any `AnyRule` variant).
      * @returns The serialized rule string.
      */
-    serialize(ast: import('@adguard/agtree').AnyRule): string;
+    serialize(ast: AnyRule): string;
 
     /**
      * Serialize an array of `AnyRule` nodes, joining them with newlines.
@@ -141,7 +140,7 @@ export interface IFilterRuleGenerator {
      * @param rules - Array of parsed rule nodes.
      * @returns Multi-line string with one rule per line.
      */
-    serializeAll(rules: import('@adguard/agtree').AnyRule[]): string;
+    serializeAll(rules: AnyRule[]): string;
 }
 
 /**
@@ -183,17 +182,17 @@ export interface IAGTreeWalker {
      * });
      *
      * // Stop at the first network rule found
-     * let first: import('@adguard/agtree').NetworkRule | undefined;
+     * let first: Node | undefined;
      * parser.walkDeep(filterList, (node) => {
      *     if (node.type === 'NetworkRule') {
-     *         first = node as import('@adguard/agtree').NetworkRule;
+     *         first = node; // narrowed to NetworkRule at runtime
      *         return false; // halt
      *     }
      * });
      * ```
      */
     walkDeep(
-        root: import('@adguard/agtree').Node | import('@adguard/agtree').Node[],
+        root: Node | Node[],
         visitor: AGTreeNodeVisitor | AGTreeTypedVisitor,
     ): void;
 }

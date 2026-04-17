@@ -48,6 +48,17 @@ Deno.test('handleASTWalkRequest — returns 422 when neither rules nor text prov
     assertMatch(body.error, /rules.*text|text.*rules/i);
 });
 
+Deno.test('handleASTWalkRequest — returns 422 when both rules and text provided', async () => {
+    const res = await handleASTWalkRequest(
+        makeRequest({ rules: ['||example.org^'], text: '||example.org^' }),
+        makeEnv(),
+    );
+    assertEquals(res.status, 422);
+    const body = await res.json() as { success: boolean; error: string };
+    assertEquals(body.success, false);
+    assertMatch(body.error, /mutually exclusive/i);
+});
+
 Deno.test('handleASTWalkRequest — returns 422 when rules exceed 5000 items', async () => {
     const rules = Array.from({ length: 5_001 }, (_, i) => `||example${i}.com^`);
     const res = await handleASTWalkRequest(makeRequest({ rules }), makeEnv());

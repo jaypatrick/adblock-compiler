@@ -317,7 +317,7 @@ const astWalkRoute = createRoute({
             },
         },
         400: {
-            description: 'Missing rules/text',
+            description: 'Invalid JSON body',
             content: {
                 'application/json': {
                     schema: z.object({ success: z.literal(false), error: z.string() }),

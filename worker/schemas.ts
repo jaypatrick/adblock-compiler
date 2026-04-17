@@ -72,8 +72,11 @@ const AGTreeNodeTypeSchema = z.enum([
     'Modifier',
     'HostnameList',
     'ElementHidingRule',
+    'ElementHidingRuleBody',
     'CssInjectionRule',
+    'CssInjectionRuleBody',
     'ScriptletInjectionRule',
+    'ScriptletInjectionRuleBody',
     'HtmlFilteringRule',
     'JsInjectionRule',
     'DomainList',
@@ -82,6 +85,7 @@ const AGTreeNodeTypeSchema = z.enum([
     'MetadataCommentRule',
     'HintCommentRule',
     'ConfigCommentRule',
+    'ConfigNode',
     'AgentCommentRule',
     'PreProcessorCommentRule',
     'EmptyRule',
@@ -136,6 +140,9 @@ export const ASTWalkRequestSchema = z.object({
 }).refine(
     (d) => d.rules !== undefined || d.text !== undefined,
     { message: 'Either rules or text must be provided' },
+).refine(
+    (d) => !(d.rules !== undefined && d.text !== undefined),
+    { message: 'rules and text are mutually exclusive — provide exactly one' },
 );
 
 // ============================================================================
