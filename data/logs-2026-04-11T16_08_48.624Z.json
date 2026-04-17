@@ -96,7 +96,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -140,7 +140,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -256,10 +256,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
         "path": "/sitemap.xml",
         "schema": "https"
       },
@@ -338,7 +338,7 @@
       "traceId": "b945746d93375dfdb57627545addc504",
       "spanId": "b622d2b808895f23",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
       "startTime": "2026-04-11T14:26:28.551Z",
       "endTime": "2026-04-11T14:26:28.551Z",
       "service": "adblock-compiler",
@@ -366,7 +366,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -410,7 +410,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -526,10 +526,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -608,7 +608,7 @@
       "traceId": "0b294264f82112f856cfdadb167f848a",
       "spanId": "0f58351b3b513780",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-11T14:26:27.521Z",
       "endTime": "2026-04-11T14:26:28.471Z",
       "service": "adblock-compiler",
@@ -678,7 +678,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -722,7 +722,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -838,10 +838,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -927,7 +927,7 @@
       "traceId": "a399d52644cc4a8b8a756fed2759b3bd",
       "spanId": "d93193ef66fb72b2",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-11T13:18:54.225Z",
       "endTime": "2026-04-11T13:18:55.497Z",
       "service": "adblock-compiler",
@@ -1053,7 +1053,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -1097,7 +1097,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -1157,10 +1157,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
         "path": "/sitemap.xml",
         "schema": "https"
       },
@@ -1239,7 +1239,7 @@
       "traceId": "05c1eedda93885f33d7d7162e0da3ccf",
       "spanId": "2973fa7a307b9783",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
       "startTime": "2026-04-11T13:00:04.221Z",
       "endTime": "2026-04-11T13:00:04.221Z",
       "service": "adblock-compiler",
@@ -1267,7 +1267,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -1311,7 +1311,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -1427,10 +1427,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -1509,7 +1509,7 @@
       "traceId": "481136357e247448aed36ce6998e395c",
       "spanId": "5a369e2cd517c6e4",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-11T13:00:03.142Z",
       "endTime": "2026-04-11T13:00:04.110Z",
       "service": "adblock-compiler",
@@ -1921,7 +1921,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -1965,7 +1965,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -2081,10 +2081,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
         "path": "/sitemap.xml",
         "schema": "https"
       },
@@ -2163,7 +2163,7 @@
       "traceId": "5500434371713c5ffe13c32d97f505a6",
       "spanId": "403b55e27ced2293",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
       "startTime": "2026-04-11T11:35:03.401Z",
       "endTime": "2026-04-11T11:35:03.401Z",
       "service": "adblock-compiler",
@@ -2191,7 +2191,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -2235,7 +2235,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -2351,10 +2351,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -2433,7 +2433,7 @@
       "traceId": "b103ca57a9b882bd008fbeb01a6e45dd",
       "spanId": "7a197e0b3a35f158",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-11T11:35:02.359Z",
       "endTime": "2026-04-11T11:35:03.321Z",
       "service": "adblock-compiler",
@@ -2806,7 +2806,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/api/openapi.json",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/api/openapi.json",
           "method": "GET",
           "path": "/api/openapi.json"
         }
@@ -2850,7 +2850,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/api/openapi.json",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/api/openapi.json",
           "method": "GET",
           "path": "/api/openapi.json"
         }
@@ -2966,10 +2966,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/api/openapi.json",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/api/openapi.json",
         "path": "/api/openapi.json",
         "schema": "https"
       },
@@ -3048,7 +3048,7 @@
       "traceId": "c8ba3b9cf41bcefa2c9297546c55b1d7",
       "spanId": "c6edb6366aca1c2b",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/api/openapi.json",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/api/openapi.json",
       "startTime": "2026-04-11T09:57:35.862Z",
       "endTime": "2026-04-11T09:57:36.032Z",
       "service": "adblock-compiler",
@@ -3133,7 +3133,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/api/redoc",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/api/redoc",
           "method": "GET",
           "path": "/api/redoc"
         }
@@ -3177,7 +3177,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/api/redoc",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/api/redoc",
           "method": "GET",
           "path": "/api/redoc"
         }
@@ -3237,10 +3237,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/api/redoc",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/api/redoc",
         "path": "/api/redoc",
         "schema": "https"
       },
@@ -3319,7 +3319,7 @@
       "traceId": "457b61e76e41f143034fc376d4305c83",
       "spanId": "e7dac0e46bfae162",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/api/redoc",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/api/redoc",
       "startTime": "2026-04-11T09:57:35.575Z",
       "endTime": "2026-04-11T09:57:35.731Z",
       "service": "adblock-compiler",
@@ -3348,7 +3348,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/api/swagger",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/api/swagger",
           "method": "GET",
           "path": "/api/swagger"
         }
@@ -3392,7 +3392,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/api/swagger",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/api/swagger",
           "method": "GET",
           "path": "/api/swagger"
         }
@@ -3508,10 +3508,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/api/swagger",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/api/swagger",
         "path": "/api/swagger",
         "schema": "https"
       },
@@ -3590,7 +3590,7 @@
       "traceId": "f37f40f14b676656acc21510d24091ae",
       "spanId": "24b664415f4d81b1",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/api/swagger",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/api/swagger",
       "startTime": "2026-04-11T09:57:20.691Z",
       "endTime": "2026-04-11T09:57:21.911Z",
       "service": "adblock-compiler",
@@ -3675,7 +3675,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/api/docs",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/api/docs",
           "method": "GET",
           "path": "/api/docs"
         }
@@ -3719,7 +3719,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/api/docs",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/api/docs",
           "method": "GET",
           "path": "/api/docs"
         }
@@ -3779,10 +3779,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/api/docs",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/api/docs",
         "path": "/api/docs",
         "schema": "https"
       },
@@ -3861,7 +3861,7 @@
       "traceId": "149dd7dcd0fdb61bb82408eb889455f9",
       "spanId": "652b3a927e0f2c15",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/api/docs",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/api/docs",
       "startTime": "2026-04-11T09:53:07.614Z",
       "endTime": "2026-04-11T09:53:07.819Z",
       "service": "adblock-compiler",
@@ -3946,7 +3946,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -3990,7 +3990,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -4050,10 +4050,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -4132,7 +4132,7 @@
       "traceId": "a7b7189086884736e6020534cf2e3f94",
       "spanId": "a34b6c9fcb1afd46",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-11T09:50:31.659Z",
       "endTime": "2026-04-11T09:50:32.568Z",
       "service": "adblock-compiler",
@@ -4202,7 +4202,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -4246,7 +4246,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -4362,10 +4362,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
         "path": "/sitemap.xml",
         "schema": "https"
       },
@@ -4444,7 +4444,7 @@
       "traceId": "32499186a2a17858365ddfc1c1ddbef3",
       "spanId": "fda94ab234eec024",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
       "startTime": "2026-04-11T08:26:37.041Z",
       "endTime": "2026-04-11T08:26:37.944Z",
       "service": "adblock-compiler",
@@ -4529,7 +4529,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/",
           "method": "GET",
           "path": "/"
         }
@@ -4573,7 +4573,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/",
           "method": "GET",
           "path": "/"
         }
@@ -4633,10 +4633,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/",
         "path": "/",
         "schema": "https"
       },
@@ -4715,7 +4715,7 @@
       "traceId": "e0fd9e74ba815a190b2c31b2f92ef284",
       "spanId": "a4e31437888c230a",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/",
       "startTime": "2026-04-11T08:03:51.820Z",
       "endTime": "2026-04-11T08:03:52.115Z",
       "service": "adblock-compiler",
@@ -4800,7 +4800,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -4844,7 +4844,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -4904,10 +4904,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -4986,7 +4986,7 @@
       "traceId": "ff243569e6c1d5c7d108b637dadcab31",
       "spanId": "8711b99a1886934a",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-11T08:03:50.777Z",
       "endTime": "2026-04-11T08:03:51.735Z",
       "service": "adblock-compiler",
@@ -5550,7 +5550,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -5594,7 +5594,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -5654,10 +5654,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
         "path": "/sitemap.xml",
         "schema": "https"
       },
@@ -5736,7 +5736,7 @@
       "traceId": "d206aa7a3b2a93f06322e86ec4996392",
       "spanId": "cdb75da06d8baa8e",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
       "startTime": "2026-04-11T05:40:51.777Z",
       "endTime": "2026-04-11T05:40:51.777Z",
       "service": "adblock-compiler",
@@ -5820,7 +5820,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -5864,7 +5864,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -5924,10 +5924,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -6006,7 +6006,7 @@
       "traceId": "6f0021600fb921e7d5dafc93db71b8f9",
       "spanId": "aea440d56944a851",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-11T05:40:50.829Z",
       "endTime": "2026-04-11T05:40:51.686Z",
       "service": "adblock-compiler",
@@ -6132,7 +6132,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "http://adblock-compiler.jk-com.workers.dev/",
+          "url": "http://adblock-compiler.jayson-knight.workers.dev/",
           "method": "GET",
           "path": "/"
         }
@@ -6176,7 +6176,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "http://adblock-compiler.jk-com.workers.dev/",
+          "url": "http://adblock-compiler.jayson-knight.workers.dev/",
           "method": "GET",
           "path": "/"
         }
@@ -6236,10 +6236,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "http://adblock-compiler.jk-com.workers.dev/",
+        "full": "http://adblock-compiler.jayson-knight.workers.dev/",
         "path": "/",
         "schema": "http"
       },
@@ -6327,7 +6327,7 @@
       "traceId": "d12c1fcd441c17607345b33520edb972",
       "spanId": "349fd08c3d35abac",
       "trigger": "adblock-compiler",
-      "transactionName": "GET http://adblock-compiler.jk-com.workers.dev/",
+      "transactionName": "GET http://adblock-compiler.jayson-knight.workers.dev/",
       "startTime": "2026-04-11T04:35:36.062Z",
       "endTime": "2026-04-11T04:35:37.710Z",
       "service": "adblock-compiler",
@@ -6774,7 +6774,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -6818,7 +6818,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -6878,10 +6878,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
         "path": "/sitemap.xml",
         "schema": "https"
       },
@@ -6960,7 +6960,7 @@
       "traceId": "d8a0f42cd18bb3681c463e5ab88c59f3",
       "spanId": "5e1b33f249d63981",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
       "startTime": "2026-04-11T02:43:08.366Z",
       "endTime": "2026-04-11T02:43:08.366Z",
       "service": "adblock-compiler",
@@ -7044,7 +7044,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -7088,7 +7088,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -7148,10 +7148,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -7230,7 +7230,7 @@
       "traceId": "52583a911313800729ba8614c07671a0",
       "spanId": "93ff2e605b78938d",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-11T02:43:07.311Z",
       "endTime": "2026-04-11T02:43:08.285Z",
       "service": "adblock-compiler",
@@ -7259,7 +7259,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -7303,7 +7303,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -7403,7 +7403,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -7447,7 +7447,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -7564,10 +7564,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
         "path": "/sitemap.xml",
         "schema": "https"
       },
@@ -7646,7 +7646,7 @@
       "traceId": "4d4c9df0c75ac7a502ee96df4fd62264",
       "spanId": "b927fba077cbae09",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
       "startTime": "2026-04-11T02:20:18.568Z",
       "endTime": "2026-04-11T02:20:19.595Z",
       "service": "adblock-compiler",
@@ -7692,10 +7692,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -7782,7 +7782,7 @@
       "traceId": "2cf838c51fa71ea3a74f43722991cd62",
       "spanId": "4c389d40eed2dc5d",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-11T02:20:18.560Z",
       "endTime": "2026-04-11T02:20:20.453Z",
       "service": "adblock-compiler",
@@ -10852,7 +10852,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -10896,7 +10896,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -11012,10 +11012,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
         "path": "/sitemap.xml",
         "schema": "https"
       },
@@ -11094,7 +11094,7 @@
       "traceId": "a0268461096ba7caf95938dade916e54",
       "spanId": "94f5681ee774512e",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
       "startTime": "2026-04-10T23:27:52.681Z",
       "endTime": "2026-04-10T23:27:52.681Z",
       "service": "adblock-compiler",
@@ -11178,7 +11178,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -11222,7 +11222,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -11282,10 +11282,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -11364,7 +11364,7 @@
       "traceId": "46cb1395195d27e1f7ca85e581e6fd61",
       "spanId": "e296e54fd9a69c03",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-10T23:27:52.615Z",
       "endTime": "2026-04-10T23:27:52.615Z",
       "service": "adblock-compiler",
@@ -13269,7 +13269,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -13313,7 +13313,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -13430,10 +13430,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
         "path": "/sitemap.xml",
         "schema": "https"
       },
@@ -13512,7 +13512,7 @@
       "traceId": "807e2cd38489b0ce1c59201f5b35da2f",
       "spanId": "a16b0e25011f3da8",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
       "startTime": "2026-04-10T23:20:40.323Z",
       "endTime": "2026-04-10T23:20:40.324Z",
       "service": "adblock-compiler",
@@ -17158,7 +17158,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -17202,7 +17202,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -17318,10 +17318,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
         "path": "/sitemap.xml",
         "schema": "https"
       },
@@ -17400,7 +17400,7 @@
       "traceId": "36e4e7e141b2b1c4828afea3726baf8d",
       "spanId": "3eb4359a74a75931",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
       "startTime": "2026-04-10T20:47:58.326Z",
       "endTime": "2026-04-10T20:47:58.326Z",
       "service": "adblock-compiler",
@@ -17428,7 +17428,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -17472,7 +17472,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -17588,10 +17588,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -17670,7 +17670,7 @@
       "traceId": "a7653d9a91b18ef4ae308853ef794a63",
       "spanId": "7eab850defd4d840",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-10T20:47:58.227Z",
       "endTime": "2026-04-10T20:47:58.227Z",
       "service": "adblock-compiler",
@@ -17754,7 +17754,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -17798,7 +17798,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
           "method": "GET",
           "path": "/sitemap.xml"
         }
@@ -17859,10 +17859,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
         "path": "/sitemap.xml",
         "schema": "https"
       },
@@ -17941,7 +17941,7 @@
       "traceId": "4fe8575e4e1d0d6352bd1afc79add931",
       "spanId": "22a2fd73c6f59bb2",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/sitemap.xml",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/sitemap.xml",
       "startTime": "2026-04-10T20:44:26.161Z",
       "endTime": "2026-04-10T20:44:26.161Z",
       "service": "adblock-compiler",
@@ -17969,7 +17969,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -18013,7 +18013,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -18130,10 +18130,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -18212,7 +18212,7 @@
       "traceId": "256bf6126b721590550c7a0fbd307f1c",
       "spanId": "d011f6a969d58a27",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-10T20:44:22.902Z",
       "endTime": "2026-04-10T20:44:25.021Z",
       "service": "adblock-compiler",
@@ -18282,7 +18282,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
           "method": "GET",
           "path": "/api/auth/providers"
         }
@@ -18326,7 +18326,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
           "method": "GET",
           "path": "/api/auth/providers"
         }
@@ -18442,10 +18442,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-frontend.jk-com.workers.dev"
+        "address": "adblock-frontend.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
         "path": "/api/auth/providers",
         "schema": "https"
       },
@@ -18515,7 +18515,7 @@
       "traceId": "7f82c00ea85444b1efff99fc97c81e1c",
       "spanId": "04c1d58ca0c1fb95",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
       "startTime": "2026-04-10T19:11:59.329Z",
       "endTime": "2026-04-10T19:11:59.584Z",
       "service": "adblock-compiler",
@@ -18544,7 +18544,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -18588,7 +18588,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+          "url": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
           "method": "GET",
           "path": "/robots.txt"
         }
@@ -18704,10 +18704,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -18793,7 +18793,7 @@
       "traceId": "13ed1fa3b51f433f909526db4849165c",
       "spanId": "7af255e19e3ad661",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-10T19:02:00.045Z",
       "endTime": "2026-04-10T19:02:00.045Z",
       "service": "adblock-compiler",
@@ -21835,7 +21835,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
           "method": "GET",
           "path": "/api/auth/providers"
         }
@@ -21879,7 +21879,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
           "method": "GET",
           "path": "/api/auth/providers"
         }
@@ -21995,10 +21995,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-frontend.jk-com.workers.dev"
+        "address": "adblock-frontend.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
         "path": "/api/auth/providers",
         "schema": "https"
       },
@@ -22068,7 +22068,7 @@
       "traceId": "666515f8190817834e8f9e431f342413",
       "spanId": "8a007fd0b3adeb58",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
       "startTime": "2026-04-10T18:42:54.084Z",
       "endTime": "2026-04-10T18:42:56.101Z",
       "service": "adblock-compiler",
@@ -22234,10 +22234,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-compiler.jk-com.workers.dev"
+        "address": "adblock-compiler.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-compiler.jk-com.workers.dev/robots.txt",
+        "full": "https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
         "path": "/robots.txt",
         "schema": "https"
       },
@@ -22316,7 +22316,7 @@
       "traceId": "e78beeaba13aa588f99cd2f29ca3144d",
       "spanId": "90ca1230b96e5b26",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-compiler.jk-com.workers.dev/robots.txt",
+      "transactionName": "GET https://adblock-compiler.jayson-knight.workers.dev/robots.txt",
       "startTime": "2026-04-10T17:40:58.060Z",
       "endTime": "2026-04-10T17:40:58.060Z",
       "service": "adblock-compiler",
@@ -22344,7 +22344,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
           "method": "GET",
           "path": "/api/auth/providers"
         }
@@ -22388,7 +22388,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
           "method": "GET",
           "path": "/api/auth/providers"
         }
@@ -22504,10 +22504,10 @@
         "version": "f8f774d2-f3aa-43b2-8a46-1b2c20aa0cd9"
       },
       "server": {
-        "address": "adblock-frontend.jk-com.workers.dev"
+        "address": "adblock-frontend.jayson-knight.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
         "path": "/api/auth/providers",
         "schema": "https"
       },
@@ -22577,7 +22577,7 @@
       "traceId": "e1cde8fe54932951c32e01f4e4b160c0",
       "spanId": "68c86c950b116943",
       "trigger": "adblock-compiler",
-      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
+      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
       "startTime": "2026-04-10T17:26:36.381Z",
       "endTime": "2026-04-10T17:26:38.637Z",
       "service": "adblock-compiler",
