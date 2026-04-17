@@ -79,7 +79,7 @@ jobs:
         run: deno task docs:api
 
       - name: Set up pnpm
-        uses: pnpm/action-setup@v4
+        uses: pnpm/action-setup@<FULL_40_CHAR_COMMIT_SHA_FOR_THE_INTENDED_V4_RELEASE>
         with:
           run_install: false
 
