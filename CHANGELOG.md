@@ -79,6 +79,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.88.0] - 2026-04-17
+
+### Added- **utils,worker,cli**: implement deep AGTree walker, adapter interfaces, /ast/walk endpoint, and CLI flags (#1632)
+- Cloudflare Durable Objects for rate limiting, WebSocket hibernation, and session presence (#1631)
+
+### Fixed
+
+- **mdbook**: restore docs/theme asset paths in book.toml (#1625)
+- **frontend**: eliminate horizontal clipping and scrollbar in app shell (#1622)
+- **mdbook**: correct docs-relative paths in `book.toml` html output config (#1620)
+- **ci**: stabilize mdBook deploy by pinning wrangler in workflow (#1616)
+
+
 ## [0.87.0] - 2026-04-16
 
 ### Added- billing foundation — PAYG infrastructure, x402 scaffold, tier extensions (#1611)
