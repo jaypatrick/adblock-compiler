@@ -171,4 +171,13 @@ export default withSentryWorker(workerHandler, (env) => ({
 // ============================================================================
 // Export Workflow classes for Cloudflare Workers runtime
 // ============================================================================
-export { BatchCompilationWorkflow, CacheWarmingWorkflow, CompilationCoordinator, CompilationWorkflow, HealthMonitoringWorkflow, PlaywrightMcpAgent, RateLimiterDO, WsHibernationDO };
+export {
+    BatchCompilationWorkflow,
+    CacheWarmingWorkflow,
+    CompilationCoordinator,
+    CompilationWorkflow,
+    HealthMonitoringWorkflow,
+    PlaywrightMcpAgent,
+    RateLimiterDO,
+    WsHibernationDO,
+};
