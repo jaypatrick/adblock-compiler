@@ -45,6 +45,100 @@ export const ASTParseRequestSchema = z.object({
 );
 
 // ============================================================================
+// AST Walk Request/Response Schemas
+// ============================================================================
+
+/**
+ * Maximum number of rules accepted in a single /ast/walk request.
+ * Prevents DoS via large payloads.
+ */
+const AST_WALK_MAX_RULES = 5_000;
+
+/**
+ * Maximum depth the walker will descend.
+ * Prevents runaway traversal on pathological inputs.
+ */
+const AST_WALK_MAX_DEPTH = 50;
+
+/**
+ * All AGTree node type strings that the typed visitor map recognises.
+ * Kept in sync with {@link AGTreeTypedVisitor} in src/utils/AGTreeWalker.ts.
+ */
+const AGTreeNodeTypeSchema = z.enum([
+    'FilterList',
+    'NetworkRule',
+    'HostRule',
+    'ModifierList',
+    'Modifier',
+    'HostnameList',
+    'ElementHidingRule',
+    'CssInjectionRule',
+    'ScriptletInjectionRule',
+    'HtmlFilteringRule',
+    'JsInjectionRule',
+    'DomainList',
+    'Domain',
+    'CommentRule',
+    'MetadataCommentRule',
+    'HintCommentRule',
+    'ConfigCommentRule',
+    'AgentCommentRule',
+    'PreProcessorCommentRule',
+    'EmptyRule',
+    'Value',
+    'ParameterList',
+    'Hint',
+    'Agent',
+    'Operator',
+    'Parenthesis',
+    'Variable',
+    'App',
+    'Method',
+    'StealthOption',
+    'InvalidRule',
+]);
+
+/**
+ * Zod schema for POST /ast/walk request body.
+ *
+ * Either `rules` (an array of raw rule strings) or `text` (a full filter list
+ * as a single newline-separated string) must be provided.  The optional
+ * `nodeTypes` filter lets callers request only specific node type names — the
+ * walker still traverses the entire tree but only includes matching nodes in
+ * the response.  `maxDepth` limits how deep the walker descends (default: 50).
+ * `includeContext` controls whether depth/parent-key information is included
+ * per node in the response.
+ */
+export const ASTWalkRequestSchema = z.object({
+    /** Array of raw rule strings to walk. Mutually exclusive with `text`. */
+    rules: z.array(z.string().max(4_096, 'Individual rule must be ≤ 4 096 characters'))
+        .max(AST_WALK_MAX_RULES, `Maximum ${AST_WALK_MAX_RULES} rules per request`)
+        .optional(),
+    /** Full filter list text (newline-separated). Mutually exclusive with `rules`. */
+    text: z.string().max(1_048_576, 'Filter list text must be ≤ 1 MiB').optional(),
+    /**
+     * Restrict the response to nodes whose `type` matches one of these values.
+     * When omitted all node types are included.
+     */
+    nodeTypes: z.array(AGTreeNodeTypeSchema).max(30).optional(),
+    /**
+     * Maximum traversal depth (0-indexed, inclusive).
+     * Defaults to 50.  Nodes deeper than this value are silently skipped.
+     */
+    maxDepth: z.number().int().min(0).max(AST_WALK_MAX_DEPTH).optional(),
+    /**
+     * When `true`, each result node includes `depth`, `key`, and `index` from
+     * the {@link WalkContext}.  Defaults to `false`.
+     */
+    includeContext: z.boolean().optional(),
+    /** Optional Cloudflare Turnstile token. */
+    turnstileToken: z.string().optional(),
+}).refine(
+    (d) => d.rules !== undefined || d.text !== undefined,
+    { message: 'Either rules or text must be provided' },
+);
+
+// ============================================================================
 // Convert Rule Request Schema
 // ============================================================================
 

@@ -21,6 +21,7 @@ import type { DownloaderOptions } from '../downloader/index.ts';
 import { ConfigurationManager, FileConfigurationSource, ObjectConfigurationSource, OverrideConfigurationSource } from '../configuration/index.ts';
 import type { IConfigurationSource } from '../configuration/index.ts';
 import { formatDuration } from '../utils/index.ts';
+import { AGTreeParser } from '../utils/AGTreeParser.ts';
 
 // Log level constants
 const LOG_LEVEL_ERROR = 1;
@@ -93,6 +94,19 @@ interface ICliArgs {
     override?: string;
     /** Print the fully-resolved effective configuration as JSON, then exit. */
     'dump-config'?: boolean;
+    // AST walk mode
+    /**
+     * Activate AST walk mode.  Instead of compiling, parses a filter list and
+     * performs a deep, structure-aware walk of its AGTree AST, printing a JSON
+     * summary to stdout.  Input comes from `--input` (first file path) or
+     * stdin when no `--input` is given.  Use `--ast-walk-types` to restrict
+     * results to specific node types and `--ast-walk-depth` to cap traversal.
+     */
+    'ast-walk'?: boolean;
+    /** Restrict walk output to the listed node types (repeatable). */
+    'ast-walk-types'?: string[];
+    /** Maximum traversal depth (default 50). */
+    'ast-walk-depth'?: number;
 }
 
 /**
@@ -290,6 +304,15 @@ Configuration management:
                                Example: --override '{"name":"My Build"}'
       --dump-config            Print the fully-resolved effective configuration as JSON, then exit
 
+AST Walk mode:
+      --ast-walk               Parse a filter list and deep-walk its AGTree AST instead of
+                               compiling.  Outputs a JSON object containing every visited node
+                               together with a per-type count summary.
+                               Input: --input <file> or stdin.  Output: stdout.
+      --ast-walk-types <type>  Restrict results to a specific AGTree node type (repeatable).
+                               Example: --ast-walk-types NetworkRule --ast-walk-types Modifier
+      --ast-walk-depth <n>     Maximum traversal depth (default 50)
+
 Examples:
   adblock-compiler -c config.json -o output.txt
       compile a blocklist and write the output to output.txt
@@ -336,8 +359,9 @@ Examples:
                 'convert-to-ascii',
                 'no-env-overrides',
                 'dump-config',
+                'ast-walk',
             ],
-            collect: ['input', 'transformation', 'exclude', 'exclude-from', 'include', 'include-from'],
+            collect: ['input', 'transformation', 'exclude', 'exclude-from', 'include', 'include-from', 'ast-walk-types'],
             alias: {
                 c: 'config',
                 i: 'input',
@@ -407,6 +431,9 @@ Examples:
             'no-env-overrides': parsed['no-env-overrides'],
             override: parsed.override,
             'dump-config': parsed['dump-config'],
+            'ast-walk': parsed['ast-walk'],
+            'ast-walk-types': toArr(parsed['ast-walk-types']).length > 0 ? toArr(parsed['ast-walk-types']) : undefined,
+            'ast-walk-depth': toNum(parsed['ast-walk-depth'], 'ast-walk-depth'),
         };
     }
 
@@ -621,6 +648,85 @@ Examples:
     }
 
     /**
+     * Executes AST walk mode (`--ast-walk`).
+     *
+     * Reads filter list text from the first `--input` file path or from stdin,
+     * parses it into an AGTree `FilterList` AST, performs a deep pre-order walk
+     * via {@link AGTreeParser.walkDeep}, and writes the collected nodes as a
+     * JSON object to stdout.
+     *
+     * The JSON output has the following shape:
+     *
+     * ```json
+     * {
+     *   "nodes": [{ "type": "NetworkRule", "depth": 1, "node": { ... } }],
+     *   "summary": { "NetworkRule": 2, "Modifier": 5, "total": 7 }
+     * }
+     * ```
+     *
+     * Flags respected in this mode:
+     * - `--ast-walk-types <type>` (repeatable) — restrict results to specific node types
+     * - `--ast-walk-depth <n>` — maximum traversal depth (default 50)
+     */
+    private async runASTWalk(): Promise<void> {
+        const nodeTypeFilter = this.args['ast-walk-types']?.length ? new Set(this.args['ast-walk-types']) : null;
+        const maxDepth = this.args['ast-walk-depth'] ?? 50;
+
+        // Read input text
+        let filterListText: string;
+        const firstInput = this.args.input?.[0];
+        if (firstInput) {
+            this.logger.debug(`[ast-walk] Reading from file: ${firstInput}`);
+            filterListText = await Deno.readTextFile(firstInput);
+        } else {
+            this.logger.debug('[ast-walk] Reading from stdin');
+            const chunks: Uint8Array[] = [];
+            for await (const chunk of Deno.stdin.readable) {
+                chunks.push(chunk);
+            }
+            filterListText = new TextDecoder().decode(
+                chunks.reduce((acc, c) => {
+                    const merged = new Uint8Array(acc.length + c.length);
+                    merged.set(acc, 0);
+                    merged.set(c, acc.length);
+                    return merged;
+                }, new Uint8Array(0)),
+            );
+        }
+
+        if (!filterListText.trim()) {
+            throw new Error('--ast-walk: no input provided (use --input <file> or pipe via stdin)');
+        }
+
+        // Parse the filter list
+        const filterList = AGTreeParser.parseFilterList(filterListText);
+
+        // Collect visited nodes
+        const nodes: Array<{ type: string; depth: number; key: string | null; index: number | null; node: unknown }> = [];
+
+        AGTreeParser.walkDeep(filterList, (node, ctx) => {
+            if (ctx.depth > maxDepth) return;
+
+            const nodeType = (node as { type?: string }).type ?? '';
+            if (nodeTypeFilter !== null && !nodeTypeFilter.has(nodeType)) return;
+
+            nodes.push({ type: nodeType, depth: ctx.depth, key: ctx.key, index: ctx.index, node });
+        });
+
+        // Summarise
+        const summary: Record<string, number> = {};
+        for (const n of nodes) {
+            summary[n.type] = (summary[n.type] ?? 0) + 1;
+        }
+        summary['total'] = nodes.length;
+
+        // Write JSON to stdout
+        await Deno.stdout.write(
+            new TextEncoder().encode(JSON.stringify({ nodes, summary }, null, 2) + '\n'),
+        );
+    }
+
+    /**
      * Runs the CLI application.
      */
     public async run(argv: string[]): Promise<void> {
@@ -636,6 +742,12 @@ Examples:
             // Handle --help
             if (this.args.help) {
                 this.showHelp();
+                return;
+            }
+
+            // Handle --ast-walk before the usual compile pipeline
+            if (this.args['ast-walk']) {
+                await this.runASTWalk();
                 return;
             }
 

@@ -57,6 +57,11 @@ export type {
     WalkContext,
 } from './AGTreeParser.ts';
 
+// AGTree adapter interfaces (issue #1131 — Phase 1)
+// These formal contracts insulate the codebase from upstream AGTree API changes.
+// AGTreeParser is the sole concrete implementation; import from here, never from @adguard/agtree.
+export type { IAGTreeWalker, IFilterRuleConverter, IFilterRuleGenerator, IFilterRuleParser } from './IAGTreeAdapter.ts';
+
 // String utilities
 export { StringUtils } from './StringUtils.ts';
 export * from './StringUtils.ts'; // Export functional utilities
