@@ -39,6 +39,7 @@ import {
 import { handleConvertRule } from '../handlers/convert-rule.ts';
 import { handleValidateRule } from '../handlers/validate-rule.ts';
 import { handleDiff } from '../handlers/diff.ts';
+import { handleASTWalkRequest } from '../handlers/ast-walk.ts';
 import { handleWebSocketUpgrade } from '../websocket.ts';
 export const compileRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
@@ -263,6 +264,84 @@ compileRoutes.use('/ast/parse', turnstileMiddleware());
 compileRoutes.openapi(astParseRoute, (c) => {
     // deno-lint-ignore no-explicit-any
     return handleASTParseRequest(buildSyntheticRequest(c, c.req.valid('json')), c.env) as any;
+});
+
+// ── AST Walk ──────────────────────────────────────────────────────────────────
+
+const astWalkRoute = createRoute({
+    method: 'post',
+    path: '/ast/walk',
+    tags: ['Compile'],
+    summary: 'Deep-walk filter list AST',
+    description: 'Performs a deep, structure-aware walk of the AGTree AST built from the supplied filter list rules. ' +
+        'Unlike /ast/parse (which returns top-level rule nodes only), this endpoint descends into every ' +
+        'structurally meaningful sub-node (modifier lists, domain lists, rule bodies, scriptlet parameter ' +
+        'lists, preprocessor expression trees, etc.) and returns a flat list of every visited node, ' +
+        'optionally filtered by type. Part of the AGTree adapter layer (issue #1131).',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        rules: z.array(z.string()).max(5_000).optional(),
+                        text: z.string().max(1_048_576).optional(),
+                        nodeTypes: z.array(z.string()).max(30).optional()
+                            .describe('Filter results to specific node types, e.g. ["NetworkRule","Modifier"]'),
+                        maxDepth: z.number().int().min(0).max(50).optional()
+                            .describe('Maximum traversal depth (default 50)'),
+                        includeContext: z.boolean().optional()
+                            .describe('Include depth/key/index context per node in the response'),
+                        turnstileToken: z.string().optional(),
+                    }).describe('Walk request — either rules or text must be provided'),
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Walk results',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.boolean(),
+                        nodes: z.array(z.object({
+                            type: z.string().describe('AGTree node type discriminant'),
+                            depth: z.number().int().describe('Traversal depth — 0 is the FilterList root, rule children start at 1'),
+                            key: z.string().nullable().optional().describe('Parent property key'),
+                            index: z.number().nullable().optional().describe('Array index in parent collection'),
+                            node: z.record(z.string(), z.unknown()).describe('Full AGTree AST node'),
+                        })),
+                        summary: z.record(z.string(), z.number()).describe('Node-type counts plus total'),
+                        duration: z.string().describe('Server-side processing time'),
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Invalid JSON body',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.literal(false), error: z.string() }),
+                },
+            },
+        },
+        422: {
+            description: 'Validation error',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.literal(false), error: z.string() }),
+                },
+            },
+        },
+    },
+});
+
+compileRoutes.use('/ast/walk', bodySizeMiddleware());
+compileRoutes.use('/ast/walk', rateLimitMiddleware());
+compileRoutes.use('/ast/walk', turnstileMiddleware());
+compileRoutes.openapi(astWalkRoute, (c) => {
+    // deno-lint-ignore no-explicit-any
+    return handleASTWalkRequest(buildSyntheticRequest(c, c.req.valid('json')), c.env) as any;
 });
 
 const validateRoute = createRoute({

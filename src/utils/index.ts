@@ -30,8 +30,10 @@
 export { RuleUtils } from './RuleUtils.ts';
 
 // AGTree Parser (adblock rule parsing with AST)
-export { AdblockSyntax, AdblockSyntaxError, AGTreeParser, CommentRuleType, CosmeticRuleType, NetworkRuleType, RuleCategory } from './AGTreeParser.ts';
+export { AdblockSyntax, AdblockSyntaxError, AGTreeParser, CommentRuleType, CosmeticRuleType, NetworkRuleType, RuleCategory, walkAGTree } from './AGTreeParser.ts';
 export type {
+    AGTreeNodeVisitor,
+    AGTreeTypedVisitor,
     AnyCommentRule,
     AnyCosmeticRule,
     AnyNetworkRule,
@@ -49,9 +51,16 @@ export type {
     ModifierList,
     NetworkRule,
     NetworkRuleProperties,
+    Node,
     ParseResult,
     ParserOptions,
+    WalkContext,
 } from './AGTreeParser.ts';
+
+// AGTree adapter interfaces (issue #1131 — Phase 1)
+// These formal contracts insulate the codebase from upstream AGTree API changes.
+// AGTreeParser is the sole concrete implementation; import from here, never from @adguard/agtree.
+export type { IAGTreeWalker, IFilterRuleConverter, IFilterRuleGenerator, IFilterRuleParser } from './IAGTreeAdapter.ts';
 
 // String utilities
 export { StringUtils } from './StringUtils.ts';

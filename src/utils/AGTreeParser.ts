@@ -31,6 +31,7 @@ import {
     type ModifierList,
     type NetworkRule,
     NetworkRuleType,
+    type Node,
     type ParserOptions,
     type PreProcessorCommentRule,
     RawFilterListConverter,
@@ -41,6 +42,7 @@ import {
     RuleGenerator,
     RuleParser,
 } from '@adguard/agtree';
+import { type AGTreeNodeVisitor, type AGTreeTypedVisitor, walkAGTree } from './AGTreeWalker.ts';
 
 /**
  * Result of parsing a rule with error information.
@@ -153,6 +155,23 @@ const DEFAULT_PARSER_OPTIONS: ParserOptions = {
 
 /**
  * AGTree Parser wrapper class providing simplified access to adblock rule parsing.
+ *
+ * This class is the **single concrete implementation** of the four adapter contracts
+ * required by issue #1131:
+ *
+ * - {@link IFilterRuleParser}    — parse individual rules and full filter lists
+ * - {@link IFilterRuleConverter} — convert rules between adblock syntaxes
+ * - {@link IFilterRuleGenerator} — serialize AST nodes back to rule strings
+ * - {@link IAGTreeWalker}        — deep, structure-aware AST traversal
+ *
+ * Because all methods are static, `AGTreeParser` does not carry the TypeScript
+ * `implements` keyword.  Instead the adapter contracts are declared in
+ * {@link ./IAGTreeAdapter.ts} for documentation, testability, and migration safety.
+ * Any future replacement (fork, WASM back-end) must satisfy those interface shapes.
+ *
+ * All internal code must use `AGTreeParser` (or the free functions exported from
+ * `./AGTreeWalker.ts`) rather than importing from `@adguard/agtree` directly.
+ * This insulates the codebase from upstream API changes.
  *
  * @example
  * ```typescript
@@ -585,6 +604,30 @@ export class AGTreeParser {
         return RuleGenerator.generate(rule);
     }
 
+    /**
+     * Serialize an AST node back to its canonical rule string.
+     *
+     * Alias for {@link generate} — satisfies the {@link IFilterRuleGenerator} adapter contract.
+     *
+     * @param rule - A parsed rule AST node.
+     * @returns The serialized rule string.
+     */
+    static serialize(rule: AnyRule): string {
+        return RuleGenerator.generate(rule);
+    }
+
+    /**
+     * Serialize an array of AST rule nodes to a newline-joined string.
+     *
+     * Satisfies the {@link IFilterRuleGenerator} adapter contract.
+     *
+     * @param rules - Array of parsed rule AST nodes.
+     * @returns Multi-line string with one serialized rule per line.
+     */
+    static serializeAll(rules: AnyRule[]): string {
+        return rules.map((r) => RuleGenerator.generate(r)).join('\n');
+    }
+
     // =========================================================================
     // Syntax Detection
     // =========================================================================
@@ -685,6 +728,46 @@ export class AGTreeParser {
     static convertFilterListToAdg(filterListText: string): { result: string; isConverted: boolean } {
         return RawFilterListConverter.convertToAdg(filterListText);
     }
+
+    // =========================================================================
+    // Deep Walker
+    // =========================================================================
+
+    /**
+     * Walk the AGTree AST rooted at `root` in a deep, structure-aware manner,
+     * calling `visitor` for every node encountered in pre-order (depth-first)
+     * traversal.
+     *
+     * This is a convenience wrapper around {@link walkAGTree} that lives on
+     * `AGTreeParser` for discoverability.  It understands the schema of every
+     * AGTree node type and descends into semantically meaningful child nodes
+     * (modifiers, domain lists, bodies, scriptlet parameter lists, etc.) rather
+     * than blindly reflecting over all object properties.
+     *
+     * @param root    - A single AGTree {@link Node} or an array of nodes.
+     * @param visitor - Either a simple {@link AGTreeNodeVisitor} callback or a
+     *                  {@link AGTreeTypedVisitor} map of per-type handlers.
+     *
+     * @example
+     * ```typescript
+     * const filterList = AGTreeParser.parseFilterList(rawText);
+     *
+     * // Collect all domain names from the filter list
+     * const domains: string[] = [];
+     * AGTreeParser.walkDeep(filterList, {
+     *     Domain(d) { domains.push(d.value); },
+     * });
+     *
+     * // Count every modifier across all rules
+     * let modCount = 0;
+     * AGTreeParser.walkDeep(filterList, (node) => {
+     *     if (node.type === 'Modifier') modCount++;
+     * });
+     * ```
+     */
+    static walkDeep(root: Node | Node[], visitor: AGTreeNodeVisitor | AGTreeTypedVisitor): void {
+        walkAGTree(root, visitor);
+    }
 }
 
 // Re-export commonly used types from AGTree for convenience
@@ -707,7 +790,11 @@ export {
     type ModifierList,
     type NetworkRule,
     NetworkRuleType,
+    type Node,
     type ParserOptions,
     RuleCategory,
     RuleConversionError,
 };
+
+// Re-export walker types and function
+export { type AGTreeNodeVisitor, type AGTreeTypedVisitor, walkAGTree, type WalkContext } from './AGTreeWalker.ts';
