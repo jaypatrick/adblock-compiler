@@ -345,21 +345,25 @@ pipeline = "c846e37117874905a94b1ef9da2e138e"
 name = "compilation-workflow"
 binding = "COMPILATION_WORKFLOW"
 class_name = "CompilationWorkflow"
+execution_model = "stateful"
 
 [[workflows]]
 name = "batch-compilation-workflow"
 binding = "BATCH_COMPILATION_WORKFLOW"
 class_name = "BatchCompilationWorkflow"
+execution_model = "stateful"
 
 [[workflows]]
 name = "cache-warming-workflow"
 binding = "CACHE_WARMING_WORKFLOW"
 class_name = "CacheWarmingWorkflow"
+execution_model = "stateful"
 
 [[workflows]]
 name = "health-monitoring-workflow"
 binding = "HEALTH_MONITORING_WORKFLOW"
 class_name = "HealthMonitoringWorkflow"
+execution_model = "stateful"
 
 # ─── Hyperdrive ──────────────────────────────────────────────────────────────
 # Production connection string is set via `wrangler hyperdrive update`.
