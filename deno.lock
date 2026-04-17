@@ -17,6 +17,7 @@
     "jsr:@std/testing@^1.0.17": "1.0.17",
     "jsr:@std/yaml@^1.0.12": "1.0.12",
     "jsr:@zod/zod@^4.3.6": "4.3.6",
+    "npm:@adguard/agtree@4.0.4": "4.0.4",
     "npm:@adguard/agtree@^4.0.4": "4.0.4",
     "npm:@cloudflare/containers@~0.1.1": "0.1.1",
     "npm:@cloudflare/playwright-mcp@^0.0.5": "0.0.5_@cloudflare+workers-types@4.20260413.1",
