@@ -61,6 +61,8 @@ import { withTimeout } from './utils/with-timeout.ts';
 import { BatchCompilationWorkflow, CacheWarmingWorkflow, CompilationWorkflow, HealthMonitoringWorkflow } from './workflows/index.ts';
 import { PlaywrightMcpAgent } from './mcp-agent.ts';
 import { CompilationCoordinator } from './compilation-coordinator.ts';
+import { RateLimiterDO } from './rate-limiter-do.ts';
+import { WsHibernationDO } from './ws-hibernation-do.ts';
 
 // Re-export Env for compatibility with existing imports
 export type { Env };
@@ -169,4 +171,4 @@ export default withSentryWorker(workerHandler, (env) => ({
 // ============================================================================
 // Export Workflow classes for Cloudflare Workers runtime
 // ============================================================================
-export { BatchCompilationWorkflow, CacheWarmingWorkflow, CompilationCoordinator, CompilationWorkflow, HealthMonitoringWorkflow, PlaywrightMcpAgent };
+export { BatchCompilationWorkflow, CacheWarmingWorkflow, CompilationCoordinator, CompilationWorkflow, HealthMonitoringWorkflow, PlaywrightMcpAgent, RateLimiterDO, WsHibernationDO };

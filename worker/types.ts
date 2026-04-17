@@ -472,6 +472,18 @@ export interface Env {
     ADBLOCK_COMPILER?: DurableObjectNamespace;
     // Compilation Coordinator Durable Object namespace (global request deduplication)
     COMPILATION_COORDINATOR?: DurableObjectNamespace;
+    // RateLimiterDO — Durable Object for atomic per-identity rate limiting.
+    // Replaces KV-based rate limiting with strongly-consistent DO shards.
+    // When bound, checkRateLimitTiered() uses this DO; falls back to RATE_LIMIT KV if absent.
+    // @see worker/rate-limiter-do.ts
+    // @see docs/architecture/durable-objects.md
+    RATE_LIMITER_DO?: DurableObjectNamespace;
+    // WsHibernationDO — Durable Object for hibernatable WebSocket connections.
+    // Keeps long-lived WebSocket connections open across Worker isolate teardowns.
+    // Also provides session presence tracking via DO Storage.
+    // @see worker/ws-hibernation-do.ts
+    // @see docs/architecture/durable-objects.md
+    WS_HIBERNATION_DO?: DurableObjectNamespace;
     // Dynamic Dispatch Namespace binding (optional — add to wrangler.toml to enable)
     // [[dynamic_dispatch_namespaces]], binding = "LOADER", namespace = "adblock-compiler-dynamic"
     // @see https://developers.cloudflare.com/dynamic-workers/

@@ -7,6 +7,7 @@ import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
 import { ErrorUtils } from '../../src/utils/index.ts';
 import type { Env, IAuthContext, RateLimitData, TurnstileResult, TurnstileVerifyResponse } from '../types.ts';
 import { ANONYMOUS_AUTH_CONTEXT, TIER_RATE_LIMITS, UserTier } from '../types.ts';
+import type { RateLimitResult } from '../rate-limiter-do.ts';
 
 // ============================================================================
 // Configuration Constants
@@ -86,6 +87,20 @@ export async function checkRateLimitTiered(
     // Key by userId for authenticated users, IP for anonymous
     const identity = authContext.userId ? `user:${authContext.userId}` : `ip:${ip}`;
     const key = `ratelimit:${identity}`;
+
+    // ── Durable Object path (preferred — atomic, strongly consistent) ─────────
+    if (env.RATE_LIMITER_DO) {
+        try {
+            const result = await checkRateLimitWithDO(env, key, maxRequests, RATE_LIMIT_WINDOW);
+            if (result !== null) {
+                return result;
+            }
+        } catch {
+            // DO temporarily unavailable — fall through to KV.
+        }
+    }
+
+    // ── KV fallback (eventually consistent) ──────────────────────────────────
     const now = Date.now();
     const windowMs = RATE_LIMIT_WINDOW * 1000;
 
@@ -115,6 +130,46 @@ export async function checkRateLimitTiered(
     );
 
     return { allowed: true, limit: maxRequests, remaining: maxRequests - newCount, resetAt: data.resetAt };
+}
+
+// ============================================================================
+// Durable Object rate-limit helper
+// ============================================================================
+
+/**
+ * Delegate a single rate-limit increment to the `RateLimiterDO`.
+ *
+ * Returns `null` if the DO stub returns a non-OK response (caller should fall
+ * back to KV).  All other errors propagate so the caller can decide.
+ *
+ * @param env             - Worker bindings (must have `RATE_LIMITER_DO`)
+ * @param identity        - Shard key, e.g. `"ratelimit:user:abc"` or `"ratelimit:ip:1.2.3.4"`
+ * @param maxRequests     - Tier limit to enforce
+ * @param windowSeconds   - Rate-limit window length in seconds
+ */
+async function checkRateLimitWithDO(
+    env: Env,
+    identity: string,
+    maxRequests: number,
+    windowSeconds: number,
+): Promise<IRateLimitResult | null> {
+    if (!env.RATE_LIMITER_DO) {
+        return null;
+    }
+    const id = env.RATE_LIMITER_DO.idFromName(identity);
+    const stub = env.RATE_LIMITER_DO.get(id);
+    const response = await stub.fetch(
+        new Request('https://do/increment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ maxRequests, windowSeconds }),
+        }),
+    );
+    if (!response.ok) {
+        return null;
+    }
+    const result = await response.json() as RateLimitResult;
+    return result;
 }
 
 /**

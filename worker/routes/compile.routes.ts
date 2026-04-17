@@ -10,6 +10,7 @@
  *   POST /ast/parse
  *   POST /validate
  *   GET  /ws/compile
+ *   GET  /ws/compile/v2      ← Hibernatable WebSocket DO (new)
  *   POST /validate-rule
  *   POST /compile/async
  *   POST /compile/batch/async
@@ -355,7 +356,76 @@ compileRoutes.openapi(wsCompileRoute, async (c) => {
     return handleWebSocketUpgrade(c.req.raw, c.env) as any;
 });
 
-// ── Validate-rule ─────────────────────────────────────────────────────────────
+// ── WebSocket v2 (Hibernatable DO) ───────────────────────────────────────────
+
+const wsCompileV2Route = createRoute({
+    method: 'get',
+    path: '/ws/compile/v2',
+    tags: ['Compile'],
+    summary: 'Hibernatable WebSocket compile endpoint',
+    description: 'WebSocket endpoint backed by WsHibernationDO. ' +
+        'Connections survive Worker isolate teardowns between messages; ' +
+        'session presence is tracked in Durable Object Storage.',
+    request: {
+        query: z.object({
+            turnstileToken: z.string().optional(),
+            /** Session tag — defaults to a random ID assigned by the DO. */
+            tag: z.string().optional(),
+            /** User ID for presence tracking (usually set from auth context by middleware). */
+            userId: z.string().optional(),
+        }),
+    },
+    responses: {
+        101: { description: 'WebSocket upgrade successful (hibernatable DO)' },
+        403: {
+            description: 'Turnstile verification failed',
+            content: { 'application/json': { schema: z.object({ success: z.boolean(), error: z.string() }) } },
+        },
+        503: {
+            description: 'WS_HIBERNATION_DO binding not configured',
+            content: { 'application/json': { schema: z.object({ success: z.boolean(), error: z.string() }) } },
+        },
+    },
+});
+
+compileRoutes.openapi(wsCompileV2Route, async (c) => {
+    if (c.env.TURNSTILE_SECRET_KEY) {
+        const url = new URL(c.req.url);
+        const token = url.searchParams.get('turnstileToken') || '';
+        const result = await verifyTurnstileToken(c.env, token, c.get('ip'));
+        if (!result.success) {
+            return c.json({ success: false, error: result.error || 'Turnstile verification failed' }, 403);
+        }
+    }
+
+    if (!c.env.WS_HIBERNATION_DO) {
+        return c.json({ success: false, error: 'WS_HIBERNATION_DO binding not configured' }, 503);
+    }
+
+    // Route to a single DO instance per user (or a global room).
+    // Using userId provides per-user isolation; using 'global' shares one instance.
+    const authCtx = c.get('authContext');
+    const roomId = authCtx?.userId ?? 'global';
+    const id = c.env.WS_HIBERNATION_DO.idFromName(roomId);
+    const stub = c.env.WS_HIBERNATION_DO.get(id);
+
+    // Forward the upgrade request (including query params) to the DO's /ws handler.
+    const url = new URL(c.req.url);
+    const doUrl = new URL('/ws', 'https://do');
+    if (url.searchParams.get('tag')) {
+        doUrl.searchParams.set('tag', url.searchParams.get('tag')!);
+    }
+    if (url.searchParams.get('userId') || authCtx?.userId) {
+        doUrl.searchParams.set('userId', url.searchParams.get('userId') ?? authCtx?.userId ?? '');
+    }
+
+    const doRequest = new Request(doUrl.toString(), {
+        headers: c.req.raw.headers,
+    });
+
+    // deno-lint-ignore no-explicit-any
+    return stub.fetch(doRequest) as any;
+});
 
 const validateRuleRoute = createRoute({
     method: 'post',

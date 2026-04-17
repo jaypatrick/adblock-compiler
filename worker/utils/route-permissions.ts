@@ -104,6 +104,7 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/validate-rule', { minTier: UserTier.Free, description: 'Validate single rule' }],
     ['/diff', { minTier: UserTier.Free, description: 'Diff two filter lists via AGTree AST' }],
     ['/ws/compile', { minTier: UserTier.Free, description: 'WebSocket compile (Free+)' }],
+    ['/ws/compile/v2', { minTier: UserTier.Free, description: 'Hibernatable WebSocket compile via DO (Free+)' }],
     // API keys (user-owned)
     ['/keys', { minTier: UserTier.Free, description: 'API key management' }],
     ['/keys/*', { minTier: UserTier.Free, description: 'API key operations' }],
