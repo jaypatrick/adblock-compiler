@@ -65,6 +65,30 @@ const HEALTH_THRESHOLDS = {
     failureThreshold: 3,
 };
 
+const SOURCE_CHECK_STEP_TIMEOUT = '30 seconds';
+
+export function formatHealthCheckStepError(error: unknown, stepTimeout = SOURCE_CHECK_STEP_TIMEOUT): string {
+    const timeoutPattern = /(timeout|timed out|abort|aborted)/i;
+
+    if (error instanceof Error) {
+        const message = error.message.trim();
+        const isTimeoutError = timeoutPattern.test(error.name) || timeoutPattern.test(message);
+        if (isTimeoutError) {
+            const detail = message ? `${error.name}: ${message}` : error.name;
+            return detail ? `Step timed out after ${stepTimeout} (${detail})` : `Step timed out after ${stepTimeout}`;
+        }
+
+        return message || error.name || 'Unknown error';
+    }
+
+    const fallback = String(error);
+    if (timeoutPattern.test(fallback)) {
+        return `Step timed out after ${stepTimeout} (${fallback})`;
+    }
+
+    return fallback;
+}
+
 export async function readResponseSample(response: Response, maxBytes: number): Promise<string> {
     if (!response.body || maxBytes <= 0) {
         return '';
@@ -183,7 +207,9 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 await events.emitHealthCheckStarted(source.name, source.url);
                 const healthResult = await step.do(`check-source-${sourceNumber}`, {
                     retries: { limit: 2, delay: '5 seconds' },
-                    timeout: '30 seconds',
+                    // Applied per attempt by the Workflows runtime; retries may
+                    // extend total per-source wall time.
+                    timeout: SOURCE_CHECK_STEP_TIMEOUT,
                 }, async () => {
                     console.log(
                         `[WORKFLOW:HEALTH] Checking source ${sourceNumber}/${sourcesToCheck.length}: ${source.name}`,
@@ -242,12 +268,7 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                         );
                     } catch (error) {
                         result.responseTimeMs = Date.now() - checkStart;
-
-                        if (error instanceof Error) {
-                            result.error = error.message;
-                        } else {
-                            result.error = String(error);
-                        }
+                        result.error = formatHealthCheckStepError(error);
 
                         console.error(
                             `[WORKFLOW:HEALTH] Source "${source.name}" unhealthy: ${result.error}`,
