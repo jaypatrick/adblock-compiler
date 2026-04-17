@@ -65,6 +65,35 @@ const HEALTH_THRESHOLDS = {
     failureThreshold: 3,
 };
 
+const SOURCE_CHECK_STEP_TIMEOUT_DURATION = '30 seconds';
+
+/**
+ * Formats source health-check step errors for alerting and logs.
+ *
+ * Timeout-style failures are normalized to include the configured step timeout
+ * while preserving original error details for troubleshooting.
+ */
+export function formatHealthCheckStepError(error: unknown, stepTimeout: string = SOURCE_CHECK_STEP_TIMEOUT_DURATION): string {
+    const timeoutPattern = /(timeout|timed out|abort|aborted)/i;
+
+    if (error instanceof Error) {
+        const message = error.message.trim();
+        const isTimeoutError = timeoutPattern.test(error.name) || timeoutPattern.test(message);
+        if (isTimeoutError) {
+            return `Step timed out after ${stepTimeout} (${message ? `${error.name}: ${message}` : error.name})`;
+        }
+
+        return message || error.name || 'Unknown error';
+    }
+
+    const fallback = String(error);
+    if (timeoutPattern.test(fallback)) {
+        return `Step timed out after ${stepTimeout} (${fallback})`;
+    }
+
+    return fallback;
+}
+
 export async function readResponseSample(response: Response, maxBytes: number): Promise<string> {
     if (!response.body || maxBytes <= 0) {
         return '';
@@ -143,18 +172,18 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 `sources: ${sourcesToCheck.length}, alertOnFailure: ${alertOnFailure})`,
         );
 
-        // Emit workflow started event
-        await events.emitWorkflowStarted({
-            sourceCount: sourcesToCheck.length,
-            alertOnFailure,
-        });
-
         const results: SourceHealthResult[] = [];
         let healthySources = 0;
         let unhealthySources = 0;
         let alertsSent = false;
 
         try {
+            // Emit workflow started event
+            await events.emitWorkflowStarted({
+                sourceCount: sourcesToCheck.length,
+                alertOnFailure,
+            });
+
             // Step 1: Load recent health history for trend analysis
             await events.emitStepStarted('load-health-history');
             const healthHistory = await step.do('load-health-history', {
@@ -183,7 +212,9 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 await events.emitHealthCheckStarted(source.name, source.url);
                 const healthResult = await step.do(`check-source-${sourceNumber}`, {
                     retries: { limit: 2, delay: '5 seconds' },
-                    timeout: '2 minutes',
+                    // Applied per attempt by the Workflows runtime; retries may
+                    // extend total per-source wall time.
+                    timeout: SOURCE_CHECK_STEP_TIMEOUT_DURATION,
                 }, async () => {
                     console.log(
                         `[WORKFLOW:HEALTH] Checking source ${sourceNumber}/${sourcesToCheck.length}: ${source.name}`,
@@ -198,71 +229,51 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                     };
 
                     try {
-                        const controller = new AbortController();
-                        const timeoutId = setTimeout(
-                            () => controller.abort(),
-                            HEALTH_THRESHOLDS.maxResponseTimeMs,
-                        );
+                        const response = await fetch(source.url, {
+                            method: 'GET',
+                            headers: {
+                                'User-Agent': 'AdblockCompiler-HealthCheck/1.0',
+                                'Range': 'bytes=0-8191',
+                            },
+                        });
 
-                        try {
-                            const response = await fetch(source.url, {
-                                method: 'GET',
-                                signal: controller.signal,
-                                headers: {
-                                    'User-Agent': 'AdblockCompiler-HealthCheck/1.0',
-                                    'Range': 'bytes=0-8191',
-                                },
-                            });
-
-                            result.statusCode = response.status;
-                            result.responseTimeMs = Date.now() - checkStart;
-
-                            if (response.status !== 200 && response.status !== 206) {
-                                result.error = `HTTP ${response.status}: ${response.statusText}`;
-                                return result;
-                            }
-
-                            const sample = await readResponseSample(response, HEALTH_THRESHOLDS.maxSampleBytes);
-                            const sampleLines = sample.split('\n').filter((line) => {
-                                const trimmed = line.trim();
-                                return trimmed && !trimmed.startsWith('!') && !trimmed.startsWith('#');
-                            });
-
-                            result.ruleCount = sampleLines.length;
-
-                            // For an 8KB sample probe, cap the minimum to a small
-                            // threshold so large-list expected counts do not reject
-                            // otherwise healthy partial responses.
-                            const minRules = Math.min(
-                                source.expectedMinRules || HEALTH_THRESHOLDS.defaultMinRules,
-                                HEALTH_THRESHOLDS.minRulesInSample,
-                            );
-                            if (sampleLines.length < minRules) {
-                                result.error = `Source appears empty - only ${sampleLines.length} rules found in 8KB sample`;
-                                return result;
-                            }
-
-                            // All checks passed
-                            result.healthy = true;
-                            console.log(
-                                `[WORKFLOW:HEALTH] Source "${source.name}" healthy: ` +
-                                    `${result.ruleCount} rules, ${result.responseTimeMs}ms`,
-                            );
-                        } finally {
-                            clearTimeout(timeoutId);
-                        }
-                    } catch (error) {
+                        result.statusCode = response.status;
                         result.responseTimeMs = Date.now() - checkStart;
 
-                        if (error instanceof Error) {
-                            if (error.name === 'AbortError') {
-                                result.error = `Timeout after ${HEALTH_THRESHOLDS.maxResponseTimeMs}ms`;
-                            } else {
-                                result.error = error.message;
-                            }
-                        } else {
-                            result.error = String(error);
+                        if (response.status !== 200 && response.status !== 206) {
+                            result.error = `HTTP ${response.status}: ${response.statusText}`;
+                            return result;
                         }
+
+                        const sample = await readResponseSample(response, HEALTH_THRESHOLDS.maxSampleBytes);
+                        const sampleLines = sample.split('\n').filter((line) => {
+                            const trimmed = line.trim();
+                            return trimmed && !trimmed.startsWith('!') && !trimmed.startsWith('#');
+                        });
+
+                        result.ruleCount = sampleLines.length;
+
+                        // For an 8KB sample probe, cap the minimum to a small
+                        // threshold so large-list expected counts do not reject
+                        // otherwise healthy partial responses.
+                        const minRules = Math.min(
+                            source.expectedMinRules || HEALTH_THRESHOLDS.defaultMinRules,
+                            HEALTH_THRESHOLDS.minRulesInSample,
+                        );
+                        if (sampleLines.length < minRules) {
+                            result.error = `Source appears empty - only ${sampleLines.length} rules found in 8KB sample`;
+                            return result;
+                        }
+
+                        // All checks passed
+                        result.healthy = true;
+                        console.log(
+                            `[WORKFLOW:HEALTH] Source "${source.name}" healthy: ` +
+                                `${result.ruleCount} rules, ${result.responseTimeMs}ms`,
+                        );
+                    } catch (error) {
+                        result.responseTimeMs = Date.now() - checkStart;
+                        result.error = formatHealthCheckStepError(error);
 
                         console.error(
                             `[WORKFLOW:HEALTH] Source "${source.name}" unhealthy: ${result.error}`,

@@ -8,8 +8,12 @@ class MockKvNamespace {
     private readonly store = new Map<string, string>();
     putCalls = 0;
     lastPutOptions?: KVNamespacePutOptions;
+    throwOnGet = false;
 
     async get<T>(key: string, type?: 'text' | 'json'): Promise<T | string | null> {
+        if (this.throwOnGet) {
+            throw new Error('KV get failed');
+        }
         const value = this.store.get(key);
         if (!value) {
             return null;
@@ -118,4 +122,22 @@ Deno.test('WorkflowEvents flush trims persisted events to the configured maximum
     assertEquals(typedEventLog.events.length, 100);
     assertEquals(typedEventLog.events[0].message, 'Progress 5');
     assertEquals(typedEventLog.events[99].message, 'Progress 104');
+});
+
+Deno.test('WorkflowEvents flush swallows KV get errors and retries successfully on next flush', async () => {
+    const kv = new MockKvNamespace();
+    const events = new WorkflowEvents(kv as unknown as KVNamespace, 'wf-7', 'health-monitoring');
+
+    await events.emitStepStarted('first-step');
+    kv.throwOnGet = true;
+    await events.flush();
+    assertEquals(kv.putCalls, 0);
+
+    kv.throwOnGet = false;
+    await events.flush();
+    assertEquals(kv.putCalls, 1);
+
+    const eventLog = await events.getEvents();
+    assertExists(eventLog);
+    assertEquals(eventLog.events.some((event) => event.step === 'first-step'), true);
 });

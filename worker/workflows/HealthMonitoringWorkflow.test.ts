@@ -1,7 +1,7 @@
 /// <reference types="@cloudflare/workers-types" />
 
 import { assertEquals } from '@std/assert';
-import { readResponseSample } from './HealthMonitoringWorkflow.ts';
+import { formatHealthCheckStepError, readResponseSample } from './HealthMonitoringWorkflow.ts';
 
 function createChunkedResponse(chunks: string[]): Response {
     const encoder = new TextEncoder();
@@ -43,4 +43,28 @@ Deno.test('readResponseSample returns entire payload when shorter than limit', a
 Deno.test('readResponseSample returns empty string when response has no body', async () => {
     const sample = await readResponseSample(new Response(null, { status: 200 }), 8192);
     assertEquals(sample, '');
+});
+
+Deno.test('formatHealthCheckStepError formats timeout-style errors with step timeout context', () => {
+    const error = new Error('The operation timed out');
+    error.name = 'TimeoutError';
+    const formatted = formatHealthCheckStepError(error, '30 seconds');
+    assertEquals(formatted, 'Step timed out after 30 seconds (TimeoutError: The operation timed out)');
+});
+
+Deno.test('formatHealthCheckStepError preserves non-timeout error details', () => {
+    const formatted = formatHealthCheckStepError(new Error('DNS resolution failed'));
+    assertEquals(formatted, 'DNS resolution failed');
+});
+
+Deno.test('formatHealthCheckStepError handles timeout-style error names without message details', () => {
+    const error = new Error('');
+    error.name = 'AbortError';
+    const formatted = formatHealthCheckStepError(error, '30 seconds');
+    assertEquals(formatted, 'Step timed out after 30 seconds (AbortError)');
+});
+
+Deno.test('formatHealthCheckStepError handles timeout-style non-Error inputs', () => {
+    const formatted = formatHealthCheckStepError('request aborted by runtime', '30 seconds');
+    assertEquals(formatted, 'Step timed out after 30 seconds (request aborted by runtime)');
 });
