@@ -79,8 +79,8 @@ jobs:
         run: deno task docs:api
 
       - name: Deploy docs to Cloudflare Worker
-        run: |
-          set -euo pipefail
-          echo "Deploying documentation to Cloudflare Worker..."
-          deno run -A npm:wrangler@^4.83.0 deploy --config wrangler.docs.toml --env=""
-          echo "✅ Documentation deployed successfully"
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy --config wrangler.docs.toml
