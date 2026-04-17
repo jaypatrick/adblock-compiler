@@ -53,12 +53,12 @@ import type { Env } from '../types.ts';
 export interface WalkResultNode {
     /** AGTree node type discriminant (e.g. `'NetworkRule'`, `'Modifier'`). */
     type: string;
-    /** Traversal depth (root node = 1 since the FilterList itself is depth 0). */
+    /** Traversal depth — 0 is the FilterList root, rule children start at 1. */
     depth: number;
-    /** Property name on the parent that holds this node, or `null` for root. */
-    key: string | null;
-    /** Zero-based array index if the node lives inside a collection, else `null`. */
-    index: number | null;
+    /** Property name on the parent that holds this node. Only present when `includeContext` is `true`. */
+    key?: string | null;
+    /** Zero-based array index if the node lives inside a collection. Only present when `includeContext` is `true`. */
+    index?: number | null;
     /** The full AGTree AST node object. */
     // deno-lint-ignore no-explicit-any
     node: Record<string, any>;
@@ -121,21 +121,20 @@ export async function handleASTWalkRequest(request: Request, _env: Env): Promise
             // Apply node-type filter
             if (nodeTypeSet !== null && !nodeTypeSet.has(nodeType)) return;
 
-            const entry: WalkResultNode = {
+            // deno-lint-ignore no-explicit-any
+            const base: { type: string; depth: number; node: Record<string, any>; key?: string | null; index?: number | null } = {
                 type: nodeType,
                 depth: ctx.depth,
-                key: includeContext ? ctx.key : null,
-                index: includeContext ? ctx.index : null,
                 // deno-lint-ignore no-explicit-any
                 node: node as Record<string, any>,
             };
 
-            if (!includeContext) {
-                delete (entry as Partial<WalkResultNode>).key;
-                delete (entry as Partial<WalkResultNode>).index;
+            if (includeContext) {
+                base.key = ctx.key;
+                base.index = ctx.index;
             }
 
-            results.push(entry);
+            results.push(base as WalkResultNode);
         });
 
         // ── Build summary ─────────────────────────────────────────────────────

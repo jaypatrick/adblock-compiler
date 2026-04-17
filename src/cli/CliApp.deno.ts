@@ -681,17 +681,18 @@ Examples:
         } else {
             this.logger.debug('[ast-walk] Reading from stdin');
             const chunks: Uint8Array[] = [];
+            let totalLength = 0;
             for await (const chunk of Deno.stdin.readable) {
                 chunks.push(chunk);
+                totalLength += chunk.length;
             }
-            filterListText = new TextDecoder().decode(
-                chunks.reduce((acc, c) => {
-                    const merged = new Uint8Array(acc.length + c.length);
-                    merged.set(acc, 0);
-                    merged.set(c, acc.length);
-                    return merged;
-                }, new Uint8Array(0)),
-            );
+            const merged = new Uint8Array(totalLength);
+            let offset = 0;
+            for (const chunk of chunks) {
+                merged.set(chunk, offset);
+                offset += chunk.length;
+            }
+            filterListText = new TextDecoder().decode(merged);
         }
 
         if (!filterListText.trim()) {

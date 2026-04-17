@@ -305,7 +305,7 @@ const astWalkRoute = createRoute({
                         success: z.boolean(),
                         nodes: z.array(z.object({
                             type: z.string().describe('AGTree node type discriminant'),
-                            depth: z.number().int().describe('Traversal depth (0-indexed)'),
+                            depth: z.number().int().describe('Traversal depth — 0 is the FilterList root, rule children start at 1'),
                             key: z.string().nullable().optional().describe('Parent property key'),
                             index: z.number().nullable().optional().describe('Array index in parent collection'),
                             node: z.record(z.string(), z.unknown()).describe('Full AGTree AST node'),
