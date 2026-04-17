@@ -172,6 +172,21 @@ function applyErrorCorsHeaders(c: AppContext): void {
     c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
 }
 
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<void | T> {
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeoutPromise = new Promise<void>((resolve) => {
+        timeoutId = setTimeout(resolve, timeoutMs);
+    });
+    return Promise.race([
+        promise.finally(() => {
+            if (timeoutId !== undefined) {
+                clearTimeout(timeoutId);
+            }
+        }),
+        timeoutPromise,
+    ]);
+}
+
 // ============================================================================
 // App setup
 // ============================================================================
@@ -562,7 +577,7 @@ routes.use('*', async (c, next) => {
         });
         return accessDenied;
     }
-    c.executionCtx.waitUntil(trackApiUsage(authContext, path, c.req.method, c.env));
+    c.executionCtx.waitUntil(withTimeout(trackApiUsage(authContext, path, c.req.method, c.env), 5_000));
     await next();
 });
 
@@ -657,14 +672,18 @@ export const OPENAPI_DOCUMENT_ARGS = {
     servers: [{ url: 'https://api.bloqr.jaysonknight.com', description: 'Production server' }],
 };
 
+const _openApiSpecCache = new Map<string, ReturnType<typeof app.getOpenAPIDocument>>();
+
 app.get('/api/openapi.json', (c) => {
     const urls = getProjectUrls(c.env);
-    const args = {
-        ...OPENAPI_DOCUMENT_ARGS,
-        servers: [{ url: urls.api, description: 'Production server' }],
-    };
-    const spec = app.getOpenAPIDocument(args);
-    return c.json(spec);
+    if (!_openApiSpecCache.has(urls.api)) {
+        const args = {
+            ...OPENAPI_DOCUMENT_ARGS,
+            servers: [{ url: urls.api, description: 'Production server' }],
+        };
+        _openApiSpecCache.set(urls.api, app.getOpenAPIDocument(args));
+    }
+    return c.json(_openApiSpecCache.get(urls.api)!);
 });
 
 // tRPC — all versions, public + authenticated
@@ -695,7 +714,7 @@ app.use('/api/trpc/*', async (c, next) => {
         });
         return accessDenied;
     }
-    c.executionCtx.waitUntil(trackApiUsage(authContext, c.req.path, c.req.method, c.env));
+    c.executionCtx.waitUntil(withTimeout(trackApiUsage(authContext, c.req.path, c.req.method, c.env), 5_000));
     await next();
 });
 

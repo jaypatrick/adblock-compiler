@@ -125,7 +125,18 @@ const workerHandler: WorkerHandler = {
             throw err;
         } finally {
             requestSpan.end();
-            ctx.waitUntil(diagnostics.flush());
+            let timeoutId: ReturnType<typeof setTimeout> | undefined;
+            const flushWithTimeout = Promise.race([
+                diagnostics.flush().finally(() => {
+                    if (timeoutId !== undefined) {
+                        clearTimeout(timeoutId);
+                    }
+                }),
+                new Promise<void>((resolve) => {
+                    timeoutId = setTimeout(resolve, 3_000);
+                }),
+            ]);
+            ctx.waitUntil(flushWithTimeout);
         }
     },
 

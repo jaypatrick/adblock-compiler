@@ -339,6 +339,7 @@ export class BatchCompilationWorkflow extends WorkflowEntrypoint<Env, BatchCompi
                 failed,
                 totalDurationMs: totalDuration,
             });
+            await events.flush();
 
             // Track workflow completed via Analytics Engine
             analytics.trackWorkflowCompleted({
@@ -382,6 +383,7 @@ export class BatchCompilationWorkflow extends WorkflowEntrypoint<Env, BatchCompi
                 failed: requests.length - successful,
                 totalDurationMs: Date.now() - startTime,
             });
+            await events.flush();
 
             return {
                 batchId,
