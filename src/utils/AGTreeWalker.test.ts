@@ -2,7 +2,7 @@
  * Tests for the deep, structure-aware AGTree walker (AGTreeWalker).
  */
 
-import { assertEquals, assertExists } from '@std/assert';
+import { assertArrayIncludes, assertEquals, assertExists } from '@std/assert';
 import type { FilterList, Node } from '@adguard/agtree';
 import { AGTreeParser } from './AGTreeParser.ts';
 import { walkAGTree } from './AGTreeWalker.ts';
@@ -104,8 +104,8 @@ Deno.test('walkAGTree — visits Domain nodes inside DomainList', () => {
             domains.push(d.value);
         },
     });
-    assertEquals(domains.includes('example.com'), true);
-    assertEquals(domains.includes('ads.example.com'), true);
+    assertArrayIncludes(domains, ['example.com']);
+    assertArrayIncludes(domains, ['ads.example.com']);
 });
 
 Deno.test('walkAGTree — descends into ScriptletInjectionRule body and parameters', () => {
@@ -342,8 +342,8 @@ Deno.test('walkAGTree — Domain exception flag is accessible in visitor', () =>
             }
         },
     });
-    assertEquals(includedDomains.includes('example.com'), true);
-    assertEquals(excludedDomains.includes('safe.example.com'), true);
+    assertArrayIncludes(includedDomains, ['example.com']);
+    assertArrayIncludes(excludedDomains, ['safe.example.com']);
 });
 
 // ── Empty filter list ─────────────────────────────────────────────────────────
