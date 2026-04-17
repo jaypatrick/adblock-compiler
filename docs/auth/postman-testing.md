@@ -28,7 +28,7 @@ This guide explains how to configure Postman to authenticate against the adblock
 ## Prerequisites
 
 - [Postman](https://www.postman.com/downloads/) desktop app (v10+) or Postman Web
-- An account registered at the adblock-compiler web UI (`https://adblock-compiler.jayson-knight.workers.dev/`)  
+- An account registered at the adblock-compiler web UI (`https://adblock-compiler.jk-com.workers.dev/`)  
   _or_ a locally running worker (`http://localhost:8787`)
 - (Optional) Clerk account access for your adblock-compiler application — see [Clerk Dashboard Setup](clerk-setup.md)
 
@@ -46,7 +46,7 @@ Create a dedicated Postman environment to avoid hard-coding values into requests
 
 | Variable | Type | Initial / Current Value | Notes |
 |----------|------|------------------------|-------|
-| `baseUrl` | default | `https://adblock-compiler.jayson-knight.workers.dev` | Change to `http://localhost:8787` for local dev |
+| `baseUrl` | default | `https://adblock-compiler.jk-com.workers.dev` | Change to `http://localhost:8787` for local dev |
 | `apiKey` | secret | _(your `abc_...` key)_ | Obtained from Settings → API Keys in the web UI |
 | `clerkJwt` | secret | _(leave blank — populated automatically)_ | Set by pre-request script or manually |
 | `clerkPublishableKey` | default | `pk_test_...` or `pk_live_...` | From Clerk Dashboard → API Keys |

@@ -9,7 +9,7 @@
 
 ## Symptom Description
 
-The live site at `https://adblock-frontend.jayson-knight.workers.dev/` showed:
+The live site at `https://adblock-frontend.jk-com.workers.dev/` showed:
 
 - **"Degraded performance — v0.75.0"** banner on every page (including anonymous/public pages)
 - **"Data may be stale"** secondary banner
@@ -27,7 +27,7 @@ The problem affected **all visitors** — not just authenticated users — becau
 ### 1. Health endpoint check
 
 ```bash
-curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health | jq .services.database
+curl -s https://adblock-frontend.jk-com.workers.dev/api/health | jq .services.database
 ```
 
 Output:
@@ -71,7 +71,7 @@ Output:
 ### 3. Deployed version verification
 
 ```bash
-curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health | jq .version
+curl -s https://adblock-frontend.jk-com.workers.dev/api/health | jq .version
 # "0.76.0"
 
 wrangler deployments list

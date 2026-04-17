@@ -361,7 +361,7 @@ describe('AgentRpcService', () => {
 
             const req = httpMock.expectOne('/admin/agents/sessions/session-xyz');
             const problemBody = {
-                type: 'https://adblock-compiler.jayson-knight.workers.dev/probs/forbidden',
+                type: 'https://adblock-compiler.jk-com.workers.dev/probs/forbidden',
                 title: 'Forbidden',
                 status: 403,
                 detail: 'API key is suspended.',

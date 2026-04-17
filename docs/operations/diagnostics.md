@@ -74,7 +74,7 @@ export interface DiagResult {
 
 | Flag | Default | Description |
 |---|---|---|
-| `--url` | `https://adblock-frontend.jayson-knight.workers.dev` | Base URL to probe |
+| `--url` | `https://adblock-frontend.jk-com.workers.dev` | Base URL to probe |
 | `--probe` | `all` | Comma-separated probe names, or `all` |
 | `--timeout` | `15000` | Per-probe timeout in milliseconds |
 | `--ci` | `false` | Non-interactive CI mode |
@@ -84,7 +84,7 @@ export interface DiagResult {
 
 ```
 📋 adblock-compiler diagnostic CLI
-   URL: https://adblock-frontend.jayson-knight.workers.dev
+   URL: https://adblock-frontend.jk-com.workers.dev
 
 Select a probe to run:
   1. probeHealth
@@ -138,7 +138,7 @@ deno task diag:prod
 ```bash
 deno run --allow-net --allow-env scripts/diag-cli.ts \
   --probe probeHealth,probeResponseEncoding \
-  --url https://adblock-frontend.jayson-knight.workers.dev
+  --url https://adblock-frontend.jk-com.workers.dev
 ```
 
 ### CI mode (all probes, exit 0/1)
@@ -152,7 +152,7 @@ deno task diag:ci
 ```bash
 deno run --allow-net --allow-env scripts/diag-cli.ts \
   --ci \
-  --url https://adblock-compiler-staging.jayson-knight.workers.dev
+  --url https://adblock-compiler-staging.jk-com.workers.dev
 ```
 
 ---

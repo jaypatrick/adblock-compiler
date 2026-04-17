@@ -14,7 +14,7 @@ When the CLI operates in **queue mode** (`--use-queue`), it submits compilation 
 |------|------|-------------|
 | `--api-key <key>` | string | API key for authenticated worker API requests. Must start with `abc_` followed by key material (e.g., `abc_Xk9mP2nL...`). |
 | `--bearer-token <jwt>` | string | Clerk JWT bearer token for authenticated worker API requests. Typically a short-lived `eyJ...` token. |
-| `--api-url <url>` | string | Base URL of the worker API. Defaults to `https://adblock-compiler.jayson-knight.workers.dev`. |
+| `--api-url <url>` | string | Base URL of the worker API. Defaults to `https://adblock-compiler.jk-com.workers.dev`. |
 
 ### Mutual Exclusion
 
@@ -84,7 +84,7 @@ adblock-compiler \
 
 API keys are long-lived and ideal for scripts, CI/CD pipelines, and CLI usage.
 
-1. Sign in to the web UI at `https://adblock-compiler.jayson-knight.workers.dev/`
+1. Sign in to the web UI at `https://adblock-compiler.jk-com.workers.dev/`
 2. Navigate to **Settings → API Keys**
 3. Click **"Create API Key"**
 4. Select scopes:

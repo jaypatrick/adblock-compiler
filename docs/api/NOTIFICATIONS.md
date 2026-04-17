@@ -159,7 +159,7 @@ The event is submitted to the Datadog Events v1 API (`/api/v1/events`):
 ### cURL
 
 ```bash
-curl -X POST https://adblock-compiler.jayson-knight.workers.dev/api/notify \
+curl -X POST https://adblock-compiler.jk-com.workers.dev/api/notify \
   -H "Content-Type: application/json" \
   -d '{
     "event": "compilation.completed",

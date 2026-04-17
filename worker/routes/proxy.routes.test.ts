@@ -65,7 +65,7 @@ Deno.test('GET /api/proxy/fetch — metadata endpoint rejected as 400 (SSRF prot
 Deno.test('GET /api/proxy/fetch — workers.dev URL rejected as 400 (self-SSRF protection)', async () => {
     // *.workers.dev hostnames are Cloudflare Worker subdomains and must never be
     // proxy-fetchable — they create self-referential request loops.
-    const res = await fetchApp('/api/proxy/fetch?url=https%3A%2F%2Fadblock-frontend.jayson-knight.workers.dev%2Ffavicon.png');
+    const res = await fetchApp('/api/proxy/fetch?url=https%3A%2F%2Fadblock-frontend.jk-com.workers.dev%2Ffavicon.png');
     assertEquals(res.status === 400 || res.status === 422, true);
 });
 

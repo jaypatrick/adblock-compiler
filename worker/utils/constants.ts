@@ -41,12 +41,12 @@ export const DOCS_SITE_URL = DOCS_SITE_URL_FALLBACK;
 /**
  * Fallback URL for the frontend worker, used when env.URL_FRONTEND is absent.
  */
-export const FRONTEND_URL_FALLBACK = 'https://adblock-frontend.jayson-knight.workers.dev';
+export const FRONTEND_URL_FALLBACK = 'https://adblock-frontend.jk-com.workers.dev';
 
 /**
  * Fallback URL for the backend / API worker, used when env.URL_API is absent.
  */
-export const API_URL_FALLBACK = 'https://adblock-compiler.jayson-knight.workers.dev';
+export const API_URL_FALLBACK = 'https://adblock-compiler.jk-com.workers.dev';
 
 /**
  * Fallback URL for the landing / marketing page, used when env.URL_LANDING is absent.

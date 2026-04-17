@@ -10,8 +10,8 @@
  *   http://localhost:8787/agents/mcp-agent/default       (WebSocket — new clients)
  *
  * When deployed to production:
- *   https://adblock-compiler.jayson-knight.workers.dev/agents/mcp-agent/default/sse
- *   https://adblock-compiler.jayson-knight.workers.dev/agents/mcp-agent/default
+ *   https://adblock-compiler.jk-com.workers.dev/agents/mcp-agent/default/sse
+ *   https://adblock-compiler.jk-com.workers.dev/agents/mcp-agent/default
  *
  * The URL segment `mcp-agent` is derived automatically from the `MCP_AGENT` binding
  * name by the agents SDK (UPPER_SNAKE_CASE → kebab-case).

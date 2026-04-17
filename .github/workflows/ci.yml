@@ -767,7 +767,7 @@ jobs:
                   CURL_EXIT=0
                   set +e
                   HTTP=$(curl -sS -o /tmp/health.json -w "%{http_code}" \
-                    https://adblock-compiler.jayson-knight.workers.dev/api/health)
+                    https://adblock-compiler.jk-com.workers.dev/api/health)
                   CURL_EXIT=$?
                   set -e
                   if [ "$CURL_EXIT" -ne 0 ]; then
@@ -797,7 +797,7 @@ jobs:
                   CURL_EXIT=0
                   set +e
                   HTTP=$(curl -sS -o /tmp/version.json -w "%{http_code}" \
-                    https://adblock-compiler.jayson-knight.workers.dev/api/version)
+                    https://adblock-compiler.jk-com.workers.dev/api/version)
                   CURL_EXIT=$?
                   set -e
                   if [ "$CURL_EXIT" -ne 0 ]; then
@@ -820,7 +820,7 @@ jobs:
                   CURL_EXIT=0
                   set +e
                   HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
-                    https://adblock-compiler.jayson-knight.workers.dev/api/auth/providers)
+                    https://adblock-compiler.jk-com.workers.dev/api/auth/providers)
                   CURL_EXIT=$?
                   set -e
                   if [ "$CURL_EXIT" -ne 0 ]; then
@@ -874,7 +874,7 @@ jobs:
                   CURL_EXIT=0
                   set +e
                   HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
-                    https://adblock-frontend.jayson-knight.workers.dev/)
+                    https://adblock-frontend.jk-com.workers.dev/)
                   CURL_EXIT=$?
                   set -e
                   if [ "$CURL_EXIT" -ne 0 ]; then
@@ -897,7 +897,7 @@ jobs:
                   CURL_EXIT=0
                   set +e
                   HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
-                    https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers)
+                    https://adblock-frontend.jk-com.workers.dev/api/auth/providers)
                   CURL_EXIT=$?
                   set -e
                   if [ "$CURL_EXIT" -ne 0 ]; then
@@ -920,7 +920,7 @@ jobs:
                   CURL_EXIT=0
                   set +e
                   HTTP=$(curl -sS -o /tmp/fe-health.json -w "%{http_code}" \
-                    https://adblock-frontend.jayson-knight.workers.dev/api/health)
+                    https://adblock-frontend.jk-com.workers.dev/api/health)
                   CURL_EXIT=$?
                   set -e
                   if [ "$CURL_EXIT" -ne 0 ]; then
@@ -982,6 +982,6 @@ jobs:
 
                   | Component | Status | URL |
                   |---|---|---|
-                  | Backend Worker | $(backend_icon "$BACKEND") | https://adblock-compiler.jayson-knight.workers.dev |
-                  | Frontend Worker | $(frontend_icon "$FRONTEND") | https://adblock-frontend.jayson-knight.workers.dev |
+                  | Backend Worker | $(backend_icon "$BACKEND") | https://adblock-compiler.jk-com.workers.dev |
+                  | Frontend Worker | $(frontend_icon "$FRONTEND") | https://adblock-frontend.jk-com.workers.dev |
                   EOF

@@ -105,17 +105,17 @@ actual Zod validation message(s) joined by `; `.
 
 ```bash
 # Basic validation
-curl -X POST https://adblock-compiler.jayson-knight.workers.dev/api/validate-rule \
+curl -X POST https://adblock-compiler.jk-com.workers.dev/api/validate-rule \
   -H "Content-Type: application/json" \
   -d '{"rule":"||ads.example.com^"}'
 
 # With URL match test
-curl -X POST https://adblock-compiler.jayson-knight.workers.dev/api/validate-rule \
+curl -X POST https://adblock-compiler.jk-com.workers.dev/api/validate-rule \
   -H "Content-Type: application/json" \
   -d '{"rule":"||ads.example.com^","testUrl":"https://ads.example.com/banner.png"}'
 
 # Strict mode
-curl -X POST https://adblock-compiler.jayson-knight.workers.dev/api/validate-rule \
+curl -X POST https://adblock-compiler.jk-com.workers.dev/api/validate-rule \
   -H "Content-Type: application/json" \
   -d '{"rule":"||ads.example.com^$important","strict":true}'
 ```

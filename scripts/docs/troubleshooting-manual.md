@@ -10,13 +10,13 @@ Run these one-liners to verify the Worker is up:
 
 ```bash
 # Basic health check
-curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health | jq .
+curl -s https://adblock-frontend.jk-com.workers.dev/api/health | jq .
 
 # Database smoke test
-curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health/db-smoke | jq .
+curl -s https://adblock-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
 
 # Auth providers (verifies auth stack is reachable)
-curl -s https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers | jq .
+curl -s https://adblock-frontend.jk-com.workers.dev/api/auth/providers | jq .
 
 # Run all diagnostic probes at once
 deno task diag:ci
@@ -170,7 +170,7 @@ deno task wrangler:tail
 
 ```bash
 # Check auth providers endpoint
-curl -v https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers
+curl -v https://adblock-frontend.jk-com.workers.dev/api/auth/providers
 
 # Check tail logs for better_auth_timeout
 deno task wrangler:tail

@@ -32,7 +32,7 @@ All write endpoints require authentication. Three methods are supported:
 
 ## REST API Endpoints
 
-Base URL: `https://adblock-compiler.jayson-knight.workers.dev/api`  
+Base URL: `https://adblock-compiler.jk-com.workers.dev/api`  
 Local dev: `http://localhost:8787/api`
 
 All endpoints return JSON. Streaming endpoints (`/compile/stream`) return `text/event-stream`.
@@ -115,7 +115,7 @@ All endpoints return JSON. Streaming endpoints (`/compile/stream`) return `text/
 ### Compile a Filter List (Sync)
 
 ```bash
-curl -X POST https://adblock-compiler.jayson-knight.workers.dev/api/compile \
+curl -X POST https://adblock-compiler.jk-com.workers.dev/api/compile \
   -H "Authorization: Bearer <session-token-or-api-key>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -135,7 +135,7 @@ curl -X POST https://adblock-compiler.jayson-knight.workers.dev/api/compile \
 ### Sign In and Get Session Token
 
 ```bash
-curl -X POST https://adblock-compiler.jayson-knight.workers.dev/api/auth/sign-in/email \
+curl -X POST https://adblock-compiler.jk-com.workers.dev/api/auth/sign-in/email \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com", "password": "yourpassword"}'
 # Response: { "token": "...", "user": { ... } }
@@ -144,7 +144,7 @@ curl -X POST https://adblock-compiler.jayson-knight.workers.dev/api/auth/sign-in
 ### Check API Health
 
 ```bash
-curl https://adblock-compiler.jayson-knight.workers.dev/api/health
+curl https://adblock-compiler.jk-com.workers.dev/api/health
 # Response: { "status": "healthy", "version": "<current-version>", "timestamp": "..." }
 ```
 
@@ -154,14 +154,14 @@ curl https://adblock-compiler.jayson-knight.workers.dev/api/health
 
 ```bash
 # 1. Submit job
-curl -X POST https://adblock-compiler.jayson-knight.workers.dev/api/compile/async \
+curl -X POST https://adblock-compiler.jk-com.workers.dev/api/compile/async \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{ "configuration": { "sources": [{ "url": "https://..." }] } }'
 # Response: { "requestId": "req_abc123", "status": "queued" }
 
 # 2. Poll for results
-curl https://adblock-compiler.jayson-knight.workers.dev/api/queue/results/req_abc123 \
+curl https://adblock-compiler.jk-com.workers.dev/api/queue/results/req_abc123 \
   -H "Authorization: Bearer <token>"
 ```
 

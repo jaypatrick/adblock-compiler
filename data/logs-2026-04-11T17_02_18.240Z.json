@@ -2,7 +2,7 @@
   {
     "source": {
       "level": "error",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/favicon-16x16.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/favicon-16x16.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-11T06:24:23.962Z",
@@ -10,7 +10,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/favicon-16x16.png",
+          "url": "https://adblock-frontend.jk-com.workers.dev/favicon-16x16.png",
           "method": "GET",
           "path": "/favicon-16x16.png"
         }
@@ -30,19 +30,19 @@
       "trigger": "GET /favicon-16x16.png",
       "service": "adblock-frontend",
       "level": "error",
-      "error": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/favicon-16x16.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/favicon-16x16.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "error": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/favicon-16x16.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/favicon-16x16.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker",
       "fingerprint": "1539b28c188745d746b3232184c4205d",
       "origin": "fetch",
-      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/favicon-16x16.png\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/favicon-16x16.png\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     }
   },
   {
     "source": {
       "level": "error",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-11T06:24:23.962Z",
@@ -50,7 +50,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png",
+          "url": "https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png",
           "method": "GET",
           "path": "/apple-touch-icon.png"
         }
@@ -70,19 +70,19 @@
       "trigger": "GET /apple-touch-icon.png",
       "service": "adblock-frontend",
       "level": "error",
-      "error": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "error": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker",
       "fingerprint": "670c67754ed5e1f60665926bb6abda1a",
       "origin": "fetch",
-      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     }
   },
   {
     "source": {
       "level": "error",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon-precomposed.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon-precomposed.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-11T06:24:23.961Z",
@@ -90,7 +90,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon-precomposed.png",
+          "url": "https://adblock-frontend.jk-com.workers.dev/apple-touch-icon-precomposed.png",
           "method": "GET",
           "path": "/apple-touch-icon-precomposed.png"
         }
@@ -110,19 +110,19 @@
       "trigger": "GET /apple-touch-icon-precomposed.png",
       "service": "adblock-frontend",
       "level": "error",
-      "error": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon-precomposed.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon-precomposed.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "error": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon-precomposed.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon-precomposed.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker",
       "fingerprint": "09b73e86088f019805452927db4f9346",
       "origin": "fetch",
-      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon-precomposed.png\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon-precomposed.png\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     }
   },
   {
     "source": {
       "level": "error",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-11T06:24:23.960Z",
@@ -130,7 +130,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png",
+          "url": "https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png",
           "method": "GET",
           "path": "/apple-touch-icon.png"
         }
@@ -150,19 +150,19 @@
       "trigger": "GET /apple-touch-icon.png",
       "service": "adblock-frontend",
       "level": "error",
-      "error": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "error": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker",
       "fingerprint": "670c67754ed5e1f60665926bb6abda1a",
       "origin": "fetch",
-      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     }
   },
   {
     "source": {
       "level": "error",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/favicon-32x32.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/favicon-32x32.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-11T06:24:23.953Z",
@@ -170,7 +170,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/favicon-32x32.png",
+          "url": "https://adblock-frontend.jk-com.workers.dev/favicon-32x32.png",
           "method": "GET",
           "path": "/favicon-32x32.png"
         }
@@ -190,19 +190,19 @@
       "trigger": "GET /favicon-32x32.png",
       "service": "adblock-frontend",
       "level": "error",
-      "error": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/favicon-32x32.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/favicon-32x32.png\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "error": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/favicon-32x32.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/favicon-32x32.png\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker",
       "fingerprint": "a52e803dee56664d691eb35efb7548a1",
       "origin": "fetch",
-      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/favicon-32x32.png\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/favicon-32x32.png\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     }
   },
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-11T06:24:23.850Z",
@@ -266,7 +266,7 @@
               "deliveryRate": 338648
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png",
+          "url": "https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -277,7 +277,7 @@
             "cf-ray": "9ea7e8750a6b160a",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "priority": "u=7, i",
             "user-agent": "NetworkingExtension/8624.1.16.10.6 Network/5812.102.3 iOS/26.4.1",
             "x-forwarded-proto": "https",
@@ -308,12 +308,12 @@
       "trigger": "GET /apple-touch-icon.png",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png"
     }
   },
   {
@@ -347,10 +347,10 @@
         "version": "f3c1beba-9dbe-4839-9b4a-9673c6f1e11f"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png",
+        "full": "https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png",
         "path": "/apple-touch-icon.png",
         "schema": "https"
       },
@@ -421,7 +421,7 @@
       "traceId": "7336ced211fadbd14836994ee9ecfeb0",
       "spanId": "da94fd54162434f8",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png",
       "startTime": "2026-04-11T06:24:23.849Z",
       "endTime": "2026-04-11T06:24:23.985Z",
       "service": "adblock-frontend",
@@ -437,7 +437,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/favicon-16x16.png"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/favicon-16x16.png"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-11T06:24:23.836Z",
@@ -501,7 +501,7 @@
               "deliveryRate": 338648
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/favicon-16x16.png",
+          "url": "https://adblock-frontend.jk-com.workers.dev/favicon-16x16.png",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -512,7 +512,7 @@
             "cf-ray": "9ea7e874ea65160a",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "priority": "u=7, i",
             "user-agent": "NetworkingExtension/8624.1.16.10.6 Network/5812.102.3 iOS/26.4.1",
             "x-forwarded-proto": "https",
@@ -543,12 +543,12 @@
       "trigger": "GET /favicon-16x16.png",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/favicon-16x16.png",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/favicon-16x16.png",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/favicon-16x16.png"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/favicon-16x16.png"
     }
   },
   {
@@ -582,10 +582,10 @@
         "version": "f3c1beba-9dbe-4839-9b4a-9673c6f1e11f"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/favicon-16x16.png",
+        "full": "https://adblock-frontend.jk-com.workers.dev/favicon-16x16.png",
         "path": "/favicon-16x16.png",
         "schema": "https"
       },
@@ -656,7 +656,7 @@
       "traceId": "5aaf900d2ad18be624bdd4480ecca56d",
       "spanId": "280b8b7f3ae9c602",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/favicon-16x16.png",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/favicon-16x16.png",
       "startTime": "2026-04-11T06:24:23.836Z",
       "endTime": "2026-04-11T06:24:23.985Z",
       "service": "adblock-frontend",
@@ -672,7 +672,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/favicon-32x32.png"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/favicon-32x32.png"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-11T06:24:23.834Z",
@@ -736,7 +736,7 @@
               "deliveryRate": 338648
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/favicon-32x32.png",
+          "url": "https://adblock-frontend.jk-com.workers.dev/favicon-32x32.png",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -747,7 +747,7 @@
             "cf-ray": "9ea7e874ea66160a",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "priority": "u=7, i",
             "user-agent": "NetworkingExtension/8624.1.16.10.6 Network/5812.102.3 iOS/26.4.1",
             "x-forwarded-proto": "https",
@@ -778,12 +778,12 @@
       "trigger": "GET /favicon-32x32.png",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/favicon-32x32.png",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/favicon-32x32.png",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/favicon-32x32.png"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/favicon-32x32.png"
     }
   },
   {
@@ -817,10 +817,10 @@
         "version": "f3c1beba-9dbe-4839-9b4a-9673c6f1e11f"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/favicon-32x32.png",
+        "full": "https://adblock-frontend.jk-com.workers.dev/favicon-32x32.png",
         "path": "/favicon-32x32.png",
         "schema": "https"
       },
@@ -891,7 +891,7 @@
       "traceId": "a842416cdf9c2a11ff69e975822959ca",
       "spanId": "0c80657b7803b635",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/favicon-32x32.png",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/favicon-32x32.png",
       "startTime": "2026-04-11T06:24:23.833Z",
       "endTime": "2026-04-11T06:24:23.977Z",
       "service": "adblock-frontend",
@@ -907,7 +907,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon-precomposed.png"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon-precomposed.png"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-11T06:24:23.799Z",
@@ -971,7 +971,7 @@
               "deliveryRate": 338648
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon-precomposed.png",
+          "url": "https://adblock-frontend.jk-com.workers.dev/apple-touch-icon-precomposed.png",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -982,7 +982,7 @@
             "cf-ray": "9ea7e874aa5f160a",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "priority": "u=7, i",
             "user-agent": "NetworkingExtension/8624.1.16.10.6 Network/5812.102.3 iOS/26.4.1",
             "x-forwarded-proto": "https",
@@ -1013,12 +1013,12 @@
       "trigger": "GET /apple-touch-icon-precomposed.png",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon-precomposed.png",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon-precomposed.png",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon-precomposed.png"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon-precomposed.png"
     }
   },
   {
@@ -1052,10 +1052,10 @@
         "version": "f3c1beba-9dbe-4839-9b4a-9673c6f1e11f"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon-precomposed.png",
+        "full": "https://adblock-frontend.jk-com.workers.dev/apple-touch-icon-precomposed.png",
         "path": "/apple-touch-icon-precomposed.png",
         "schema": "https"
       },
@@ -1126,7 +1126,7 @@
       "traceId": "d90eecff0b6bf93557be459aadc4ef5e",
       "spanId": "a9788700995b6e31",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon-precomposed.png",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon-precomposed.png",
       "startTime": "2026-04-11T06:24:23.799Z",
       "endTime": "2026-04-11T06:24:23.985Z",
       "service": "adblock-frontend",
@@ -1142,7 +1142,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-11T06:24:23.797Z",
@@ -1206,7 +1206,7 @@
               "deliveryRate": 338648
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png",
+          "url": "https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -1217,7 +1217,7 @@
             "cf-ray": "9ea7e874aa60160a",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "priority": "u=7, i",
             "user-agent": "NetworkingExtension/8624.1.16.10.6 Network/5812.102.3 iOS/26.4.1",
             "x-forwarded-proto": "https",
@@ -1248,12 +1248,12 @@
       "trigger": "GET /apple-touch-icon.png",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png"
     }
   },
   {
@@ -1287,10 +1287,10 @@
         "version": "f3c1beba-9dbe-4839-9b4a-9673c6f1e11f"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png",
+        "full": "https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png",
         "path": "/apple-touch-icon.png",
         "schema": "https"
       },
@@ -1361,7 +1361,7 @@
       "traceId": "2842a71a03058cf460d3f023f0c83b9c",
       "spanId": "3359dded70ed7687",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/apple-touch-icon.png",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/apple-touch-icon.png",
       "startTime": "2026-04-11T06:24:23.797Z",
       "endTime": "2026-04-11T06:24:23.982Z",
       "service": "adblock-frontend",
@@ -10192,7 +10192,7 @@
         }
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/health",
         "scheme": "https",
         "path": "/api/health"
       },
@@ -10200,7 +10200,7 @@
         "original": "curl/8.5.0"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "scope": {
         "name": "workers-observability"
@@ -10267,7 +10267,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/health"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T21:05:49.922Z",
@@ -10336,7 +10336,7 @@
               "deliveryRate": 306986
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+          "url": "https://adblock-frontend.jk-com.workers.dev/api/health",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -10346,7 +10346,7 @@
             "cf-ray": "9ea4b63efe37671d",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "user-agent": "curl/8.5.0",
             "x-forwarded-proto": "https",
             "x-real-ip": "52.176.19.193"
@@ -10376,12 +10376,12 @@
       "trigger": "GET /api/health",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/health",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/api/health"
     }
   },
   {
@@ -10415,10 +10415,10 @@
         "version": "f3c1beba-9dbe-4839-9b4a-9673c6f1e11f"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/health",
         "path": "/api/health",
         "schema": "https"
       },
@@ -10488,7 +10488,7 @@
       "traceId": "43d695773b41d14530d0d0e54b30a90d",
       "spanId": "743edb18b2931d93",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/api/health",
       "startTime": "2026-04-10T21:05:49.921Z",
       "endTime": "2026-04-10T21:05:53.537Z",
       "service": "adblock-frontend",
@@ -10525,7 +10525,7 @@
         }
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
         "scheme": "https",
         "path": "/api/auth/providers"
       },
@@ -10533,7 +10533,7 @@
         "original": "curl/8.5.0"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "scope": {
         "name": "workers-observability"
@@ -10600,7 +10600,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T21:05:48.140Z",
@@ -10669,7 +10669,7 @@
               "deliveryRate": 304694
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+          "url": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -10679,7 +10679,7 @@
             "cf-ray": "9ea4b633d894e5bb",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "user-agent": "curl/8.5.0",
             "x-forwarded-proto": "https",
             "x-real-ip": "52.176.19.193"
@@ -10709,12 +10709,12 @@
       "trigger": "GET /api/auth/providers",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers"
     }
   },
   {
@@ -10748,10 +10748,10 @@
         "version": "f3c1beba-9dbe-4839-9b4a-9673c6f1e11f"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
         "path": "/api/auth/providers",
         "schema": "https"
       },
@@ -10821,7 +10821,7 @@
       "traceId": "79d24fcd118bace7f38533d6459d3543",
       "spanId": "af42f96fef32cf9d",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
       "startTime": "2026-04-10T21:05:48.140Z",
       "endTime": "2026-04-10T21:05:49.833Z",
       "service": "adblock-frontend",
@@ -10858,7 +10858,7 @@
         }
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/health",
         "scheme": "https",
         "path": "/api/health"
       },
@@ -10866,7 +10866,7 @@
         "original": "curl/8.5.0"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "scope": {
         "name": "workers-observability"
@@ -10933,7 +10933,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/health"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T19:11:59.691Z",
@@ -11002,7 +11002,7 @@
               "deliveryRate": 2948382
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+          "url": "https://adblock-frontend.jk-com.workers.dev/api/health",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -11012,7 +11012,7 @@
             "cf-ray": "9ea40f7dffca2710",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "user-agent": "curl/8.5.0",
             "x-forwarded-proto": "https",
             "x-real-ip": "172.184.174.145"
@@ -11042,12 +11042,12 @@
       "trigger": "GET /api/health",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/health",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/api/health"
     }
   },
   {
@@ -11081,10 +11081,10 @@
         "version": "2f91817b-073d-405c-bddb-9d91c84f3d11"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/health",
         "path": "/api/health",
         "schema": "https"
       },
@@ -11154,7 +11154,7 @@
       "traceId": "cfe8caa5c026748bfe60a22170fc1044",
       "spanId": "3e7591e237901d19",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/api/health",
       "startTime": "2026-04-10T19:11:59.691Z",
       "endTime": "2026-04-10T19:12:01.363Z",
       "service": "adblock-frontend",
@@ -11191,7 +11191,7 @@
         }
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
         "scheme": "https",
         "path": "/api/auth/providers"
       },
@@ -11199,7 +11199,7 @@
         "original": "curl/8.5.0"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "scope": {
         "name": "workers-observability"
@@ -11266,7 +11266,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T19:11:58.971Z",
@@ -11335,7 +11335,7 @@
               "deliveryRate": 3360000
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+          "url": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -11345,7 +11345,7 @@
             "cf-ray": "9ea40f797ddcce90",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "user-agent": "curl/8.5.0",
             "x-forwarded-proto": "https",
             "x-real-ip": "172.184.174.145"
@@ -11375,12 +11375,12 @@
       "trigger": "GET /api/auth/providers",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers"
     }
   },
   {
@@ -11414,10 +11414,10 @@
         "version": "2f91817b-073d-405c-bddb-9d91c84f3d11"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
         "path": "/api/auth/providers",
         "schema": "https"
       },
@@ -11487,7 +11487,7 @@
       "traceId": "f6de13fb137151b58c636be54af34681",
       "spanId": "787f1f23a935005c",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
       "startTime": "2026-04-10T19:11:58.971Z",
       "endTime": "2026-04-10T19:11:59.613Z",
       "service": "adblock-frontend",
@@ -13870,7 +13870,7 @@
   {
     "source": {
       "level": "error",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/documentation\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/documentation\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T18:53:22.649Z",
@@ -13878,7 +13878,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/documentation",
+          "url": "https://adblock-frontend.jk-com.workers.dev/documentation",
           "method": "GET",
           "path": "/documentation"
         }
@@ -13898,8 +13898,8 @@
       "trigger": "GET /documentation",
       "service": "adblock-frontend",
       "level": "error",
-      "error": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/documentation\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/documentation\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "error": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/documentation\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/documentation\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker",
       "fingerprint": "06d21f48035e8b884740c5f4b65c7142",
@@ -13910,7 +13910,7 @@
   {
     "source": {
       "level": "error",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/guide\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/guide\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T18:53:22.581Z",
@@ -13918,7 +13918,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/guide",
+          "url": "https://adblock-frontend.jk-com.workers.dev/guide",
           "method": "GET",
           "path": "/guide"
         }
@@ -13938,19 +13938,19 @@
       "trigger": "GET /guide",
       "service": "adblock-frontend",
       "level": "error",
-      "error": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/guide\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/guide\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "error": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/guide\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/guide\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker",
       "fingerprint": "197efb1167e45d827c138b4da6dab079",
       "origin": "fetch",
-      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/guide\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/guide\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     }
   },
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/guide"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/guide"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T18:53:22.581Z",
@@ -14019,7 +14019,7 @@
               "deliveryRate": 2962876
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/guide",
+          "url": "https://adblock-frontend.jk-com.workers.dev/guide",
           "method": "GET",
           "headers": {
             "accept": "text/html, text/plain;q=0.9, application/xhtml+xml;q=0.8",
@@ -14030,7 +14030,7 @@
             "cf-ray": "9ea3f4381b01d160",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "sec-fetch-mode": "cors",
             "user-agent": "Mozilla/5.0 (compatible; GitDianColdToolBot/1.0; +https://local3000.luckytad.vip)",
             "x-forwarded-proto": "https",
@@ -14061,12 +14061,12 @@
       "trigger": "GET /guide",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/guide",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/guide",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/guide"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/guide"
     }
   },
   {
@@ -14100,10 +14100,10 @@
         "version": "2f91817b-073d-405c-bddb-9d91c84f3d11"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/guide",
+        "full": "https://adblock-frontend.jk-com.workers.dev/guide",
         "path": "/guide",
         "schema": "https"
       },
@@ -14174,7 +14174,7 @@
       "traceId": "0f38b100542d2ba842c64daea0ee65ee",
       "spanId": "aec6d8a89036b7b7",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/guide",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/guide",
       "startTime": "2026-04-10T18:53:22.581Z",
       "endTime": "2026-04-10T18:53:22.582Z",
       "service": "adblock-frontend",
@@ -14190,7 +14190,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/documentation"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/documentation"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T18:53:22.491Z",
@@ -14259,7 +14259,7 @@
               "deliveryRate": 417050
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/documentation",
+          "url": "https://adblock-frontend.jk-com.workers.dev/documentation",
           "method": "GET",
           "headers": {
             "accept": "text/html, text/plain;q=0.9, application/xhtml+xml;q=0.8",
@@ -14270,7 +14270,7 @@
             "cf-ray": "9ea3f4378fa5d1d7",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "sec-fetch-mode": "cors",
             "user-agent": "Mozilla/5.0 (compatible; GitDianColdToolBot/1.0; +https://local3000.luckytad.vip)",
             "x-forwarded-proto": "https",
@@ -14301,12 +14301,12 @@
       "trigger": "GET /documentation",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/documentation",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/documentation",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/documentation"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/documentation"
     }
   },
   {
@@ -14340,10 +14340,10 @@
         "version": "2f91817b-073d-405c-bddb-9d91c84f3d11"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/documentation",
+        "full": "https://adblock-frontend.jk-com.workers.dev/documentation",
         "path": "/documentation",
         "schema": "https"
       },
@@ -14414,7 +14414,7 @@
       "traceId": "5ded6455390f78912fba78b91132fc65",
       "spanId": "5778d81594f666d1",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/documentation",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/documentation",
       "startTime": "2026-04-10T18:53:22.491Z",
       "endTime": "2026-04-10T18:53:22.670Z",
       "service": "adblock-frontend",
@@ -14430,7 +14430,7 @@
   {
     "source": {
       "level": "error",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/doc\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/doc\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T18:53:22.483Z",
@@ -14438,7 +14438,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/doc",
+          "url": "https://adblock-frontend.jk-com.workers.dev/doc",
           "method": "GET",
           "path": "/doc"
         }
@@ -14458,19 +14458,19 @@
       "trigger": "GET /doc",
       "service": "adblock-frontend",
       "level": "error",
-      "error": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/doc\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/doc\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "error": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/doc\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/doc\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker",
       "fingerprint": "7729efc222bb36f8af22a4bf06f2d2db",
       "origin": "fetch",
-      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/doc\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "messageTemplate": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/doc\").\nURL with hostname \"<DOMAIN>\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     }
   },
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/doc"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/doc"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T18:53:22.483Z",
@@ -14539,7 +14539,7 @@
               "deliveryRate": 451230
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/doc",
+          "url": "https://adblock-frontend.jk-com.workers.dev/doc",
           "method": "GET",
           "headers": {
             "accept": "text/html, text/plain;q=0.9, application/xhtml+xml;q=0.8",
@@ -14550,7 +14550,7 @@
             "cf-ray": "9ea3f4377d30c8ef",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "sec-fetch-mode": "cors",
             "user-agent": "Mozilla/5.0 (compatible; GitDianColdToolBot/1.0; +https://local3000.luckytad.vip)",
             "x-forwarded-proto": "https",
@@ -14581,12 +14581,12 @@
       "trigger": "GET /doc",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/doc",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/doc",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/doc"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/doc"
     }
   },
   {
@@ -14620,10 +14620,10 @@
         "version": "2f91817b-073d-405c-bddb-9d91c84f3d11"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/doc",
+        "full": "https://adblock-frontend.jk-com.workers.dev/doc",
         "path": "/doc",
         "schema": "https"
       },
@@ -14694,7 +14694,7 @@
       "traceId": "1aa05503ce92738fc466ae7a2dc21eb6",
       "spanId": "e1ae106e7bdce832",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/doc",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/doc",
       "startTime": "2026-04-10T18:53:22.483Z",
       "endTime": "2026-04-10T18:53:22.484Z",
       "service": "adblock-frontend",
@@ -14709,7 +14709,7 @@
   {
     "source": {
       "level": "error",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/docs\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/docs\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T18:53:22.423Z",
@@ -14717,7 +14717,7 @@
       "truncated": false,
       "event": {
         "request": {
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/docs",
+          "url": "https://adblock-frontend.jk-com.workers.dev/docs",
           "method": "GET",
           "path": "/docs"
         }
@@ -14737,8 +14737,8 @@
       "trigger": "GET /docs",
       "service": "adblock-frontend",
       "level": "error",
-      "error": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/docs\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
-      "message": "ERROR: Bad Request (\"https://adblock-frontend.jayson-knight.workers.dev/docs\").\nURL with hostname \"adblock-frontend.jayson-knight.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "error": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/docs\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
+      "message": "ERROR: Bad Request (\"https://adblock-frontend.jk-com.workers.dev/docs\").\nURL with hostname \"adblock-frontend.jk-com.workers.dev\" is not allowed.\nFalling back to client side rendering. This will become a 400 Bad Request in a future major version.\n\nFor more information, see https://angular.dev/best-practices/security#preventing-server-side-request-forgery-ssrf",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker",
       "fingerprint": "06d21f48035e8b884740c5f4b65c7142",
@@ -14749,7 +14749,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/docs"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/docs"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T18:53:22.261Z",
@@ -14818,7 +14818,7 @@
               "deliveryRate": 2962876
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/docs",
+          "url": "https://adblock-frontend.jk-com.workers.dev/docs",
           "method": "GET",
           "headers": {
             "accept": "text/html, text/plain;q=0.9, application/xhtml+xml;q=0.8",
@@ -14829,7 +14829,7 @@
             "cf-ray": "9ea3f4361f4ed160",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "sec-fetch-mode": "cors",
             "user-agent": "Mozilla/5.0 (compatible; GitDianColdToolBot/1.0; +https://local3000.luckytad.vip)",
             "x-forwarded-proto": "https",
@@ -14860,12 +14860,12 @@
       "trigger": "GET /docs",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/docs",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/docs",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/docs"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/docs"
     }
   },
   {
@@ -14899,10 +14899,10 @@
         "version": "2f91817b-073d-405c-bddb-9d91c84f3d11"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/docs",
+        "full": "https://adblock-frontend.jk-com.workers.dev/docs",
         "path": "/docs",
         "schema": "https"
       },
@@ -14973,7 +14973,7 @@
       "traceId": "ecac398641771ff95ec5a270cbbe5a9b",
       "spanId": "b25ca9ec95fa14e6",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/docs",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/docs",
       "startTime": "2026-04-10T18:53:22.261Z",
       "endTime": "2026-04-10T18:53:22.445Z",
       "service": "adblock-frontend",
@@ -15010,7 +15010,7 @@
         }
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/health",
         "scheme": "https",
         "path": "/api/health"
       },
@@ -15018,7 +15018,7 @@
         "original": "curl/8.5.0"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "scope": {
         "name": "workers-observability"
@@ -15085,7 +15085,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/health"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T18:42:56.237Z",
@@ -15154,7 +15154,7 @@
               "deliveryRate": 782751
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+          "url": "https://adblock-frontend.jk-com.workers.dev/api/health",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -15164,7 +15164,7 @@
             "cf-ray": "9ea3e4ed6899f270",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "user-agent": "curl/8.5.0",
             "x-forwarded-proto": "https",
             "x-real-ip": "145.132.99.132"
@@ -15194,12 +15194,12 @@
       "trigger": "GET /api/health",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/health",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/api/health"
     }
   },
   {
@@ -15233,10 +15233,10 @@
         "version": "2f91817b-073d-405c-bddb-9d91c84f3d11"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/health",
         "path": "/api/health",
         "schema": "https"
       },
@@ -15306,7 +15306,7 @@
       "traceId": "6b5dffedde9d0146fa5933a91ad3ccec",
       "spanId": "ec1446bc7a421dc5",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/api/health",
       "startTime": "2026-04-10T18:42:56.237Z",
       "endTime": "2026-04-10T18:42:58.094Z",
       "service": "adblock-frontend",
@@ -15343,7 +15343,7 @@
         }
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
         "scheme": "https",
         "path": "/api/auth/providers"
       },
@@ -15351,7 +15351,7 @@
         "original": "curl/8.5.0"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "scope": {
         "name": "workers-observability"
@@ -15418,7 +15418,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T18:42:53.867Z",
@@ -15487,7 +15487,7 @@
               "deliveryRate": 704373
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+          "url": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -15497,7 +15497,7 @@
             "cf-ray": "9ea3e4de9f4ce643",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "user-agent": "curl/8.5.0",
             "x-forwarded-proto": "https",
             "x-real-ip": "145.132.99.132"
@@ -15527,12 +15527,12 @@
       "trigger": "GET /api/auth/providers",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers"
     }
   },
   {
@@ -15566,10 +15566,10 @@
         "version": "2f91817b-073d-405c-bddb-9d91c84f3d11"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
         "path": "/api/auth/providers",
         "schema": "https"
       },
@@ -15639,7 +15639,7 @@
       "traceId": "3ad3d28b9464ecd12fe4ff5edaf6cbd8",
       "spanId": "ce71e8eb9e6c4a73",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
       "startTime": "2026-04-10T18:42:53.867Z",
       "endTime": "2026-04-10T18:42:56.161Z",
       "service": "adblock-frontend",
@@ -15676,7 +15676,7 @@
         }
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/health",
         "scheme": "https",
         "path": "/api/health"
       },
@@ -15684,7 +15684,7 @@
         "original": "curl/8.5.0"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "scope": {
         "name": "workers-observability"
@@ -15751,7 +15751,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/health"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T17:26:38.785Z",
@@ -15820,7 +15820,7 @@
               "deliveryRate": 767741
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+          "url": "https://adblock-frontend.jk-com.workers.dev/api/health",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -15830,7 +15830,7 @@
             "cf-ray": "9ea3752c4a4ff685",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "user-agent": "curl/8.5.0",
             "x-forwarded-proto": "https",
             "x-real-ip": "172.172.119.101"
@@ -15860,12 +15860,12 @@
       "trigger": "GET /api/health",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/health",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/api/health"
     }
   },
   {
@@ -15899,10 +15899,10 @@
         "version": "924a81d3-7a8f-42e9-8f53-3e51836342c9"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/health",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/health",
         "path": "/api/health",
         "schema": "https"
       },
@@ -15972,7 +15972,7 @@
       "traceId": "64508f38e5f09e7139cc8f49b8d4b47d",
       "spanId": "41025a1f7e0959ed",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/api/health",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/api/health",
       "startTime": "2026-04-10T17:26:38.785Z",
       "endTime": "2026-04-10T17:26:40.521Z",
       "service": "adblock-frontend",
@@ -16009,7 +16009,7 @@
         }
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
         "scheme": "https",
         "path": "/api/auth/providers"
       },
@@ -16017,7 +16017,7 @@
         "original": "curl/8.5.0"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "scope": {
         "name": "workers-observability"
@@ -16084,7 +16084,7 @@
   {
     "source": {
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers"
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers"
     },
     "dataset": "cloudflare-workers",
     "timestamp": "2026-04-10T17:26:36.158Z",
@@ -16153,7 +16153,7 @@
               "deliveryRate": 746731
             }
           },
-          "url": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+          "url": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
           "method": "GET",
           "headers": {
             "accept": "*/*",
@@ -16163,7 +16163,7 @@
             "cf-ray": "9ea3751befe6c768",
             "cf-visitor": "{\"scheme\":\"https\"}",
             "connection": "Keep-Alive",
-            "host": "adblock-frontend.jayson-knight.workers.dev",
+            "host": "adblock-frontend.jk-com.workers.dev",
             "user-agent": "curl/8.5.0",
             "x-forwarded-proto": "https",
             "x-real-ip": "172.172.119.101"
@@ -16193,12 +16193,12 @@
       "trigger": "GET /api/auth/providers",
       "service": "adblock-frontend",
       "level": "info",
-      "message": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+      "message": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
       "account": "07a1f8d207654fe5d838174af4813126",
       "type": "cf-worker-event",
       "fingerprint": "c892a17c18a7c701cc7f59a2cb96f9d8",
       "origin": "fetch",
-      "messageTemplate": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers"
+      "messageTemplate": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers"
     }
   },
   {
@@ -16232,10 +16232,10 @@
         "version": "924a81d3-7a8f-42e9-8f53-3e51836342c9"
       },
       "server": {
-        "address": "adblock-frontend.jayson-knight.workers.dev"
+        "address": "adblock-frontend.jk-com.workers.dev"
       },
       "url": {
-        "full": "https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+        "full": "https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
         "path": "/api/auth/providers",
         "schema": "https"
       },
@@ -16305,7 +16305,7 @@
       "traceId": "9b112650f9f381c0cff0b7a9e048c5ba",
       "spanId": "1d0eb00be5f4073f",
       "trigger": "adblock-frontend",
-      "transactionName": "GET https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers",
+      "transactionName": "GET https://adblock-frontend.jk-com.workers.dev/api/auth/providers",
       "startTime": "2026-04-10T17:26:36.158Z",
       "endTime": "2026-04-10T17:26:38.703Z",
       "service": "adblock-frontend",

@@ -12,7 +12,7 @@ Admin requests require a valid JWT with `role === 'admin'`. The Angular admin pa
 
 ```bash
 # Obtain a session token, then:
-curl -X GET https://adblock-compiler.jayson-knight.workers.dev/admin/local-users \
+curl -X GET https://adblock-compiler.jk-com.workers.dev/admin/local-users \
   -H "Authorization: Bearer <your-jwt>"
 ```
 

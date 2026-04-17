@@ -499,7 +499,7 @@ Adblock Compiler is open-source and actively maintained:
 - **Repository**: https://github.com/jaypatrick/adblock-compiler
 - **JSR Package**: https://jsr.io/@jk-com/adblock-compiler
 - **Issues & Discussions**: https://github.com/jaypatrick/adblock-compiler/issues
-- **Live Demo**: https://adblock-compiler.jayson-knight.workers.dev/
+- **Live Demo**: https://adblock-compiler.jk-com.workers.dev/
 
 ## Summary
 
@@ -539,7 +539,7 @@ docker compose up -d
 - 🔧 **[API Documentation](api/README.md)** - REST API reference
 - 🐳 **[Docker Deployment](deployment/DOCKER.md)** - Production deployment
 - 📖 **[Extensibility Guide](../development/EXTENSIBILITY.md)** - Build custom features
-- 🌐 **[Live Demo](https://adblock-compiler.jayson-knight.workers.dev/)** - Try it now
+- 🌐 **[Live Demo](https://adblock-compiler.jk-com.workers.dev/)** - Try it now
 
 ---
 

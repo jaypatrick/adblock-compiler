@@ -188,7 +188,7 @@ const batchRequest = {
     })),
 };
 
-const compiled = await fetch('https://adblock-compiler.jayson-knight.workers.dev/compile/batch', {
+const compiled = await fetch('https://adblock-compiler.jk-com.workers.dev/compile/batch', {
     method: 'POST',
     body: JSON.stringify(batchRequest),
 });

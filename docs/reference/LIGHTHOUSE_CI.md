@@ -41,13 +41,13 @@ The workflow (`.github/workflows/lighthouse.yml`) runs on two triggers:
 
 ### 1. `workflow_run` on `CI` (automatic)
 
-Fires automatically when the main CI workflow (defined in `ci.yml`) completes successfully on the `main` branch — which means the Cloudflare Worker deploy step has already finished. The audited URL is the fixed production URL `https://adblock-compiler.jayson-knight.workers.dev`.
+Fires automatically when the main CI workflow (defined in `ci.yml`) completes successfully on the `main` branch — which means the Cloudflare Worker deploy step has already finished. The audited URL is the fixed production URL `https://adblock-compiler.jk-com.workers.dev`.
 
 > **Why not `deployment_status`?** The `ci.yml` deploy job uses `wrangler` directly and records deployments to Cloudflare D1; it does not create GitHub Deployment or Deployment Status events. The `deployment_status` trigger would therefore never fire. `workflow_run` is the correct alternative.
 
 ### 2. `workflow_dispatch` (manual)
 
-Trigger a run manually from the **Actions** tab. You can supply a custom URL via the `url` input (defaults to `https://adblock-compiler.jayson-knight.workers.dev`).
+Trigger a run manually from the **Actions** tab. You can supply a custom URL via the `url` input (defaults to `https://adblock-compiler.jk-com.workers.dev`).
 
 ---
 
@@ -147,10 +147,10 @@ Or with an explicit URL override:
 
 ```bash
 pnpm exec lhci autorun --config=.lighthouserc.json \
-  --collect.url="https://adblock-compiler.jayson-knight.workers.dev/" \
-  --collect.url="https://adblock-compiler.jayson-knight.workers.dev/sign-in" \
-  --collect.url="https://adblock-compiler.jayson-knight.workers.dev/sign-up" \
-  --collect.url="https://adblock-compiler.jayson-knight.workers.dev/health"
+  --collect.url="https://adblock-compiler.jk-com.workers.dev/" \
+  --collect.url="https://adblock-compiler.jk-com.workers.dev/sign-in" \
+  --collect.url="https://adblock-compiler.jk-com.workers.dev/sign-up" \
+  --collect.url="https://adblock-compiler.jk-com.workers.dev/health"
 ```
 
 This requires a live URL — it cannot run against a local dev server without additional `startServerCommand` configuration.

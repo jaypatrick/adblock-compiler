@@ -15,8 +15,8 @@ new URLs without env overrides, also updating the fallback constants in
 
 | Variable       | Description                              | Default (*.workers.dev)                                   |
 |----------------|------------------------------------------|-----------------------------------------------------------|
-| `URL_FRONTEND` | Angular frontend worker                  | `https://adblock-frontend.jayson-knight.workers.dev`      |
-| `URL_API`      | Backend / API worker                     | `https://adblock-compiler.jayson-knight.workers.dev`      |
+| `URL_FRONTEND` | Angular frontend worker                  | `https://adblock-frontend.jk-com.workers.dev`      |
+| `URL_API`      | Backend / API worker                     | `https://adblock-compiler.jk-com.workers.dev`      |
 | `URL_DOCS`     | mdBook documentation (Cloudflare Pages)  | `https://docs.bloqr.jaysonknight.com`                     |
 
 ## Changing the domain
