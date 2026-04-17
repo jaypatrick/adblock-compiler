@@ -78,6 +78,11 @@ jobs:
         continue-on-error: true
         run: deno task docs:api
 
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          run_install: false
+
       - name: Deploy docs to Cloudflare Worker
         uses: cloudflare/wrangler-action@v3
         with:
