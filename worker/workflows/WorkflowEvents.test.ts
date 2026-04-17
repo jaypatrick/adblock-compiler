@@ -32,7 +32,7 @@ Deno.test('WorkflowEvents buffers events in memory until flush is called', async
     const events = new WorkflowEvents(kv as unknown as KVNamespace, 'wf-1', 'compilation');
 
     await events.emitStepStarted('validate');
-    await events.emitProgress(25, 'Compiling');
+    await events.emitSourceFetchStarted('EasyList', 'https://example.com/easylist.txt');
 
     assertEquals(kv.putCalls, 0);
 
@@ -45,7 +45,7 @@ Deno.test('WorkflowEvents buffers events in memory until flush is called', async
     assertExists(eventLog);
     assertEquals(eventLog.events.length, 2);
     assertEquals(eventLog.events[0].type, 'workflow:step:started');
-    assertEquals(eventLog.events[1].type, 'workflow:progress');
+    assertEquals(eventLog.events[1].type, 'source:fetch:started');
 });
 
 Deno.test('WorkflowEvents flushes milestone events immediately for polling visibility', async () => {
@@ -56,10 +56,10 @@ Deno.test('WorkflowEvents flushes milestone events immediately for polling visib
     assertEquals(kv.putCalls, 1);
 
     await events.emitProgress(10, 'running');
-    assertEquals(kv.putCalls, 1);
+    assertEquals(kv.putCalls, 2);
 
     await events.emitStepCompleted('load-health-history');
-    assertEquals(kv.putCalls, 2);
+    assertEquals(kv.putCalls, 3);
 });
 
 Deno.test('WorkflowEvents flush stores completion timestamp from final terminal event', async () => {

@@ -55,6 +55,8 @@ const DEFAULT_SOURCES = [
 const HEALTH_THRESHOLDS = {
     /** Maximum acceptable response time in ms */
     maxResponseTimeMs: 10_000,
+    /** Maximum bytes to inspect per source response */
+    maxSampleBytes: 8_192,
     /** Minimum expected rules (if not specified per-source) */
     defaultMinRules: 100,
     /** Minimum non-comment rules required in the 8KB sample probe */
@@ -62,6 +64,51 @@ const HEALTH_THRESHOLDS = {
     /** Number of failed checks before alerting */
     failureThreshold: 3,
 };
+
+export async function readResponseSample(response: Response, maxBytes: number): Promise<string> {
+    if (!response.body || maxBytes <= 0) {
+        return '';
+    }
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+
+    try {
+        while (totalBytes < maxBytes) {
+            const { done, value } = await reader.read();
+            if (done || !value) {
+                break;
+            }
+
+            const remainingBytes = maxBytes - totalBytes;
+            if (value.byteLength > remainingBytes) {
+                const boundedChunk = value.subarray(0, remainingBytes);
+                chunks.push(boundedChunk);
+                totalBytes += boundedChunk.byteLength;
+                break;
+            }
+
+            chunks.push(value);
+            totalBytes += value.byteLength;
+        }
+    } finally {
+        await reader.cancel().catch(() => undefined);
+    }
+
+    if (totalBytes === 0) {
+        return '';
+    }
+
+    const sampleBytes = new Uint8Array(totalBytes);
+    let writeOffset = 0;
+    for (const chunk of chunks) {
+        sampleBytes.set(chunk, writeOffset);
+        writeOffset += chunk.byteLength;
+    }
+
+    return new TextDecoder().decode(sampleBytes);
+}
 
 /**
  * HealthMonitoringWorkflow checks source availability and content validity.
@@ -175,7 +222,7 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                                 return result;
                             }
 
-                            const sample = await response.text();
+                            const sample = await readResponseSample(response, HEALTH_THRESHOLDS.maxSampleBytes);
                             const sampleLines = sample.split('\n').filter((line) => {
                                 const trimmed = line.trim();
                                 return trimmed && !trimmed.startsWith('!') && !trimmed.startsWith('#');

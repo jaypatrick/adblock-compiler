@@ -135,6 +135,7 @@ export class WorkflowEvents {
      */
     async emitProgress(progress: number, message: string, data?: Record<string, unknown>): Promise<void> {
         await this.emit('workflow:progress', data, { progress, message });
+        await this.flush();
     }
 
     /**
