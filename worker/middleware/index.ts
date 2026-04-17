@@ -86,12 +86,12 @@ export async function checkRateLimitTiered(
 
     // Key by userId for authenticated users, IP for anonymous
     const identity = authContext.userId ? `user:${authContext.userId}` : `ip:${ip}`;
-    const key = `ratelimit:${identity}`;
+    const kvKey = `ratelimit:${identity}`;
 
     // ── Durable Object path (preferred — atomic, strongly consistent) ─────────
     if (env.RATE_LIMITER_DO) {
         try {
-            const result = await checkRateLimitWithDO(env, key, maxRequests, RATE_LIMIT_WINDOW);
+            const result = await checkRateLimitWithDO(env, kvKey, maxRequests, RATE_LIMIT_WINDOW);
             if (result !== null) {
                 return result;
             }
@@ -104,13 +104,13 @@ export async function checkRateLimitTiered(
     const now = Date.now();
     const windowMs = RATE_LIMIT_WINDOW * 1000;
 
-    const data = await env.RATE_LIMIT.get(key, 'json') as RateLimitData | null;
+    const data = await env.RATE_LIMIT.get(kvKey, 'json') as RateLimitData | null;
 
     if (!data || now > data.resetAt) {
         // First request or window expired — start new window
         const resetAt = now + windowMs;
         await env.RATE_LIMIT.put(
-            key,
+            kvKey,
             JSON.stringify({ count: 1, resetAt }),
             { expirationTtl: RATE_LIMIT_WINDOW + 10 },
         );
@@ -124,7 +124,7 @@ export async function checkRateLimitTiered(
     // Increment count
     const newCount = data.count + 1;
     await env.RATE_LIMIT.put(
-        key,
+        kvKey,
         JSON.stringify({ count: newCount, resetAt: data.resetAt }),
         { expirationTtl: RATE_LIMIT_WINDOW + 10 },
     );

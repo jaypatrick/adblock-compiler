@@ -198,15 +198,27 @@ export class RateLimiterDO implements DurableObject {
 
         // Window is still active — update the stored limit in case the caller
         // passed a different maxRequests (e.g. due to a tier change).
+        const limitChanged = this.limit !== maxRequests;
         this.limit = maxRequests;
 
         if (this.count >= maxRequests) {
+            // Persist limit change even on rejection so wake-up sees correct limit.
+            if (limitChanged) {
+                await this.state.storage.put(STORAGE_KEY_LIMIT, this.limit);
+            }
             return { allowed: false, limit: maxRequests, remaining: 0, resetAt: this.resetAt };
         }
 
         this.count++;
-        // Only persist the count — resetAt and limit are unchanged.
-        await this.state.storage.put(STORAGE_KEY_COUNT, this.count);
+        if (limitChanged) {
+            // Persist both count and updated limit atomically.
+            await this.state.storage.put({
+                [STORAGE_KEY_COUNT]: this.count,
+                [STORAGE_KEY_LIMIT]: this.limit,
+            });
+        } else {
+            await this.state.storage.put(STORAGE_KEY_COUNT, this.count);
+        }
 
         return {
             allowed: true,

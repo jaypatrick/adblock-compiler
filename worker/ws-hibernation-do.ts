@@ -141,8 +141,12 @@ export class WsHibernationDO implements DurableObject {
                 return c.text('Expected WebSocket upgrade', 426);
             }
 
-            const tag = c.req.query('tag') ?? `ws-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
-            const userId = c.req.query('userId');
+            // Use crypto.randomUUID() for unpredictable session tags. Client-supplied
+            // tags are ignored to prevent session impersonation.
+            const tag = `ws-${crypto.randomUUID()}`;
+            // userId comes from the X-User-Id header set by the authenticated Worker route —
+            // never from the client-supplied query string (would allow impersonation).
+            const userId = c.req.header('X-User-Id') ?? undefined;
 
             // Create WebSocket pair
             const pair = new WebSocketPair();

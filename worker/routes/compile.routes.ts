@@ -369,10 +369,6 @@ const wsCompileV2Route = createRoute({
     request: {
         query: z.object({
             turnstileToken: z.string().optional(),
-            /** Session tag — defaults to a random ID assigned by the DO. */
-            tag: z.string().optional(),
-            /** User ID for presence tracking (usually set from auth context by middleware). */
-            userId: z.string().optional(),
         }),
     },
     responses: {
@@ -409,19 +405,14 @@ compileRoutes.openapi(wsCompileV2Route, async (c) => {
     const id = c.env.WS_HIBERNATION_DO.idFromName(roomId);
     const stub = c.env.WS_HIBERNATION_DO.get(id);
 
-    // Forward the upgrade request (including query params) to the DO's /ws handler.
-    const url = new URL(c.req.url);
-    const doUrl = new URL('/ws', 'https://do');
-    if (url.searchParams.get('tag')) {
-        doUrl.searchParams.set('tag', url.searchParams.get('tag')!);
-    }
-    if (url.searchParams.get('userId') || authCtx?.userId) {
-        doUrl.searchParams.set('userId', url.searchParams.get('userId') ?? authCtx?.userId ?? '');
+    // Copy original headers and inject userId from the verified auth context only.
+    // Never trust client-supplied userId query params (would allow impersonation).
+    const doHeaders = new Headers(c.req.raw.headers);
+    if (authCtx?.userId) {
+        doHeaders.set('X-User-Id', authCtx.userId);
     }
 
-    const doRequest = new Request(doUrl.toString(), {
-        headers: c.req.raw.headers,
-    });
+    const doRequest = new Request('https://do/ws', { headers: doHeaders });
 
     // deno-lint-ignore no-explicit-any
     return stub.fetch(doRequest) as any;
