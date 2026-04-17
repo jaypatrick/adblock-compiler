@@ -31,6 +31,7 @@ import {
     type ModifierList,
     type NetworkRule,
     NetworkRuleType,
+    type Node,
     type ParserOptions,
     type PreProcessorCommentRule,
     RawFilterListConverter,
@@ -41,6 +42,7 @@ import {
     RuleGenerator,
     RuleParser,
 } from '@adguard/agtree';
+import { type AGTreeNodeVisitor, type AGTreeTypedVisitor, walkAGTree } from './AGTreeWalker.ts';
 
 /**
  * Result of parsing a rule with error information.
@@ -685,6 +687,46 @@ export class AGTreeParser {
     static convertFilterListToAdg(filterListText: string): { result: string; isConverted: boolean } {
         return RawFilterListConverter.convertToAdg(filterListText);
     }
+
+    // =========================================================================
+    // Deep Walker
+    // =========================================================================
+
+    /**
+     * Walk the AGTree AST rooted at `root` in a deep, structure-aware manner,
+     * calling `visitor` for every node encountered in pre-order (depth-first)
+     * traversal.
+     *
+     * This is a convenience wrapper around {@link walkAGTree} that lives on
+     * `AGTreeParser` for discoverability.  It understands the schema of every
+     * AGTree node type and descends into semantically meaningful child nodes
+     * (modifiers, domain lists, bodies, scriptlet parameter lists, etc.) rather
+     * than blindly reflecting over all object properties.
+     *
+     * @param root    - A single AGTree {@link Node} or an array of nodes.
+     * @param visitor - Either a simple {@link AGTreeNodeVisitor} callback or a
+     *                  {@link AGTreeTypedVisitor} map of per-type handlers.
+     *
+     * @example
+     * ```typescript
+     * const filterList = AGTreeParser.parseFilterList(rawText);
+     *
+     * // Collect all domain names from the filter list
+     * const domains: string[] = [];
+     * AGTreeParser.walkDeep(filterList, {
+     *     Domain(d) { domains.push(d.value); },
+     * });
+     *
+     * // Count every modifier across all rules
+     * let modCount = 0;
+     * AGTreeParser.walkDeep(filterList, (node) => {
+     *     if (node.type === 'Modifier') modCount++;
+     * });
+     * ```
+     */
+    static walkDeep(root: Node | Node[], visitor: AGTreeNodeVisitor | AGTreeTypedVisitor): void {
+        walkAGTree(root, visitor);
+    }
 }
 
 // Re-export commonly used types from AGTree for convenience
@@ -707,7 +749,11 @@ export {
     type ModifierList,
     type NetworkRule,
     NetworkRuleType,
+    type Node,
     type ParserOptions,
     RuleCategory,
     RuleConversionError,
 };
+
+// Re-export walker types and function
+export { type AGTreeNodeVisitor, type AGTreeTypedVisitor, walkAGTree, type WalkContext } from './AGTreeWalker.ts';
