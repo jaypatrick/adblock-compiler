@@ -65,9 +65,15 @@ const HEALTH_THRESHOLDS = {
     failureThreshold: 3,
 };
 
-const SOURCE_CHECK_STEP_TIMEOUT = '30 seconds';
+const SOURCE_CHECK_STEP_TIMEOUT_DURATION = '30 seconds';
 
-export function formatHealthCheckStepError(error: unknown, stepTimeout = SOURCE_CHECK_STEP_TIMEOUT): string {
+/**
+ * Formats source health-check step errors for alerting and logs.
+ *
+ * Timeout-style failures are normalized to include the configured step timeout
+ * while preserving original error details for troubleshooting.
+ */
+export function formatHealthCheckStepError(error: unknown, stepTimeout = SOURCE_CHECK_STEP_TIMEOUT_DURATION): string {
     const timeoutPattern = /(timeout|timed out|abort|aborted)/i;
 
     if (error instanceof Error) {
@@ -209,7 +215,7 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                     retries: { limit: 2, delay: '5 seconds' },
                     // Applied per attempt by the Workflows runtime; retries may
                     // extend total per-source wall time.
-                    timeout: SOURCE_CHECK_STEP_TIMEOUT,
+                    timeout: SOURCE_CHECK_STEP_TIMEOUT_DURATION,
                 }, async () => {
                     console.log(
                         `[WORKFLOW:HEALTH] Checking source ${sourceNumber}/${sourcesToCheck.length}: ${source.name}`,

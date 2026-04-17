@@ -56,3 +56,15 @@ Deno.test('formatHealthCheckStepError preserves non-timeout error details', () =
     const formatted = formatHealthCheckStepError(new Error('DNS resolution failed'));
     assertEquals(formatted, 'DNS resolution failed');
 });
+
+Deno.test('formatHealthCheckStepError handles timeout-style error names without message details', () => {
+    const error = new Error('');
+    error.name = 'AbortError';
+    const formatted = formatHealthCheckStepError(error, '30 seconds');
+    assertEquals(formatted, 'Step timed out after 30 seconds (AbortError)');
+});
+
+Deno.test('formatHealthCheckStepError handles timeout-style non-Error inputs', () => {
+    const formatted = formatHealthCheckStepError('request aborted by runtime', '30 seconds');
+    assertEquals(formatted, 'Step timed out after 30 seconds (request aborted by runtime)');
+});
