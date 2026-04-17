@@ -189,7 +189,7 @@ Clients connected to `/ws/compile/v2` communicate with JSON messages:
 ```ts
 // Client → Server
 { type: "ping" }
-{ type: "presence", userId?: string }
+{ type: "presence" }
 { type: "message", data: unknown }
 
 // Server → Client

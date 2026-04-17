@@ -202,9 +202,13 @@ export class RateLimiterDO implements DurableObject {
         this.limit = maxRequests;
 
         if (this.count >= maxRequests) {
-            // Persist limit change even on rejection so wake-up sees correct limit.
+            // Persist limit (and count for consistency) atomically on rejection so
+            // that after DO hibernation both values are restored in sync.
             if (limitChanged) {
-                await this.state.storage.put(STORAGE_KEY_LIMIT, this.limit);
+                await this.state.storage.put({
+                    [STORAGE_KEY_COUNT]: this.count,
+                    [STORAGE_KEY_LIMIT]: this.limit,
+                });
             }
             return { allowed: false, limit: maxRequests, remaining: 0, resetAt: this.resetAt };
         }

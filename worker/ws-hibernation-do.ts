@@ -84,11 +84,9 @@ export const DisconnectRequestSchema = z.object({
 /** WebSocket message payload — sent by clients to the server. */
 export const WsClientMessageSchema = z.discriminatedUnion('type', [
     z.object({ type: z.literal('ping') }),
-    z.object({
-        type: z.literal('presence'),
-        /** Optional client-supplied display name or user ID. */
-        userId: z.string().optional(),
-    }),
+    // `presence` signals the client is active; userId comes from the authenticated
+    // session established at connection time — clients cannot set it themselves.
+    z.object({ type: z.literal('presence') }),
     z.object({
         type: z.literal('message'),
         data: z.unknown(),
@@ -272,10 +270,8 @@ export class WsHibernationDO implements DurableObject {
                 break;
 
             case 'presence': {
-                // Allow clients to register their userId at any time.
-                if (tag && parsed.userId) {
-                    await this.upsertSessionUserId(tag, parsed.userId);
-                }
+                // The session's userId is set from the authenticated X-User-Id header
+                // at connection time. Clients cannot override it via presence messages.
                 const sessions = await this.loadAllSessions();
                 ws.send(JSON.stringify({ type: 'presence:update', sessions }));
                 break;
@@ -336,14 +332,6 @@ export class WsHibernationDO implements DurableObject {
         const existing = await this.state.storage.get<SessionMeta>(key);
         if (existing) {
             await this.state.storage.put(key, { ...existing, lastActivity: Date.now() });
-        }
-    }
-
-    private async upsertSessionUserId(tag: string, userId: string): Promise<void> {
-        const key = sessionKey(tag);
-        const existing = await this.state.storage.get<SessionMeta>(key);
-        if (existing) {
-            await this.state.storage.put(key, { ...existing, userId });
         }
     }
 
