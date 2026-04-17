@@ -57,6 +57,8 @@ const HEALTH_THRESHOLDS = {
     maxResponseTimeMs: 10_000,
     /** Minimum expected rules (if not specified per-source) */
     defaultMinRules: 100,
+    /** Minimum non-comment rules required in the 8KB sample probe */
+    minRulesInSample: 5,
     /** Number of failed checks before alerting */
     failureThreshold: 3,
 };
@@ -181,12 +183,15 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
 
                             result.ruleCount = sampleLines.length;
 
+                            // For an 8KB sample probe, cap the minimum to a small
+                            // threshold so large-list expected counts do not reject
+                            // otherwise healthy partial responses.
                             const minRules = Math.min(
                                 source.expectedMinRules || HEALTH_THRESHOLDS.defaultMinRules,
-                                5,
+                                HEALTH_THRESHOLDS.minRulesInSample,
                             );
                             if (sampleLines.length < minRules) {
-                                result.error = `Source appears empty — only ${sampleLines.length} rules found in 8KB sample`;
+                                result.error = `Source appears empty - only ${sampleLines.length} rules found in 8KB sample`;
                                 return result;
                             }
 

@@ -5,6 +5,7 @@ import type { WorkflowEventLog } from './types.ts';
 class MockKvNamespace {
     private readonly store = new Map<string, string>();
     putCalls = 0;
+    lastPutOptions?: KVNamespacePutOptions;
 
     async get<T>(key: string, type?: 'text' | 'json'): Promise<T | string | null> {
         const value = this.store.get(key);
@@ -17,9 +18,10 @@ class MockKvNamespace {
         return value;
     }
 
-    async put(key: string, value: string): Promise<void> {
+    async put(key: string, value: string, options?: KVNamespacePutOptions): Promise<void> {
         this.putCalls++;
         this.store.set(key, value);
+        this.lastPutOptions = options;
     }
 }
 
@@ -35,6 +37,7 @@ Deno.test('WorkflowEvents buffers events in memory until flush is called', async
     await events.flush();
 
     assertEquals(kv.putCalls, 1);
+    assertEquals(kv.lastPutOptions?.expirationTtl, 3600);
 
     const eventLog = await events.getEvents();
     assertExists(eventLog);
@@ -66,8 +69,10 @@ Deno.test('WorkflowEvents flush trims persisted events to the configured maximum
     }
     await events.flush();
 
-    const eventLog = await events.getEvents() as WorkflowEventLog;
-    assertEquals(eventLog.events.length, 100);
-    assertEquals(eventLog.events[0].message, 'Progress 5');
-    assertEquals(eventLog.events[99].message, 'Progress 104');
+    const eventLog = await events.getEvents();
+    assertExists(eventLog);
+    const typedEventLog = eventLog as WorkflowEventLog;
+    assertEquals(typedEventLog.events.length, 100);
+    assertEquals(typedEventLog.events[0].message, 'Progress 5');
+    assertEquals(typedEventLog.events[99].message, 'Progress 104');
 });

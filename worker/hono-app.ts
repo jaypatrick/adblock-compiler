@@ -63,6 +63,7 @@ import { createPgPool } from './utils/pg-pool.ts';
 import { checkRoutePermission } from './utils/route-permissions.ts';
 import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
+import { withTimeout } from './utils/with-timeout.ts';
 import { isPublicEndpoint, matchOrigin } from './utils/cors.ts';
 import { getProjectUrls } from './utils/constants.ts';
 import { ProblemResponse } from './utils/problem-details.ts';
@@ -170,21 +171,6 @@ function applyErrorCorsHeaders(c: AppContext): void {
     c.header('Access-Control-Allow-Credentials', 'true');
     c.header('Access-Control-Allow-Methods', 'GET,POST,PUT,PATCH,DELETE,OPTIONS');
     c.header('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Requested-With');
-}
-
-function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<void | T> {
-    let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const timeoutPromise = new Promise<void>((resolve) => {
-        timeoutId = setTimeout(resolve, timeoutMs);
-    });
-    return Promise.race([
-        promise.finally(() => {
-            if (timeoutId !== undefined) {
-                clearTimeout(timeoutId);
-            }
-        }),
-        timeoutPromise,
-    ]);
 }
 
 // ============================================================================
@@ -672,18 +658,24 @@ export const OPENAPI_DOCUMENT_ARGS = {
     servers: [{ url: 'https://api.bloqr.jaysonknight.com', description: 'Production server' }],
 };
 
-const _openApiSpecCache = new Map<string, ReturnType<typeof app.getOpenAPIDocument>>();
+const openApiSpecCache = new Map<string, ReturnType<typeof app.getOpenAPIDocument>>();
+// Cache is isolate-local and intentionally invalidated by Worker redeploy.
+// Keying by urls.api keeps custom-domain and workers.dev specs isolated.
+// getOpenAPIDocument() is synchronous, so this cache fill executes atomically
+// per request without async race windows.
 
 app.get('/api/openapi.json', (c) => {
     const urls = getProjectUrls(c.env);
-    if (!_openApiSpecCache.has(urls.api)) {
+    let spec = openApiSpecCache.get(urls.api);
+    if (!spec) {
         const args = {
             ...OPENAPI_DOCUMENT_ARGS,
             servers: [{ url: urls.api, description: 'Production server' }],
         };
-        _openApiSpecCache.set(urls.api, app.getOpenAPIDocument(args));
+        spec = app.getOpenAPIDocument(args);
+        openApiSpecCache.set(urls.api, spec);
     }
-    return c.json(_openApiSpecCache.get(urls.api)!);
+    return c.json(spec);
 });
 
 // tRPC — all versions, public + authenticated

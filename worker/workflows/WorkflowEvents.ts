@@ -37,6 +37,8 @@ export class WorkflowEvents {
     private readonly workflowType: string;
     private readonly eventKey: string;
     private readonly eventTtl: number;
+    // Workflows execute orchestrator logic in a single isolate invocation, so
+    // this in-memory buffer is used sequentially by emit()/flush() calls.
     private readonly pendingEvents: WorkflowProgressEvent[] = [];
 
     /**
@@ -115,13 +117,12 @@ export class WorkflowEvents {
             await this.kv.put(this.eventKey, JSON.stringify(eventLog), {
                 expirationTtl: this.eventTtl,
             });
+            this.pendingEvents.splice(0, this.pendingEvents.length);
         } catch (error) {
             console.error(
                 `[WORKFLOW:EVENT] Failed to flush events for ${this.workflowType}/${this.workflowId}: ${error instanceof Error ? error.message : String(error)}`,
             );
         }
-
-        this.pendingEvents.length = 0;
     }
 
     /**

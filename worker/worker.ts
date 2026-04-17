@@ -55,6 +55,7 @@ import { handleErrorQueue } from './handlers/error-queue.ts';
 // Services
 import { createDiagnosticsProvider } from './services/diagnostics-factory.ts';
 import { withSentryWorker } from './services/sentry-init.ts';
+import { withTimeout } from './utils/with-timeout.ts';
 
 // Workflows and MCP agent
 import { BatchCompilationWorkflow, CacheWarmingWorkflow, CompilationWorkflow, HealthMonitoringWorkflow } from './workflows/index.ts';
@@ -125,18 +126,7 @@ const workerHandler: WorkerHandler = {
             throw err;
         } finally {
             requestSpan.end();
-            let timeoutId: ReturnType<typeof setTimeout> | undefined;
-            const flushWithTimeout = Promise.race([
-                diagnostics.flush().finally(() => {
-                    if (timeoutId !== undefined) {
-                        clearTimeout(timeoutId);
-                    }
-                }),
-                new Promise<void>((resolve) => {
-                    timeoutId = setTimeout(resolve, 3_000);
-                }),
-            ]);
-            ctx.waitUntil(flushWithTimeout);
+            ctx.waitUntil(withTimeout(diagnostics.flush(), 3_000));
         }
     },
 
