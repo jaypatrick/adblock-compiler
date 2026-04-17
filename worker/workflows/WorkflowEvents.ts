@@ -37,6 +37,9 @@ export class WorkflowEvents {
     private readonly workflowType: string;
     private readonly eventKey: string;
     private readonly eventTtl: number;
+    // Workflows execute orchestrator logic in a single isolate invocation, so
+    // this in-memory buffer is used sequentially by emit()/flush() calls.
+    private readonly pendingEvents: WorkflowProgressEvent[] = [];
 
     /**
      * @param kv - KV namespace for event storage
@@ -53,14 +56,10 @@ export class WorkflowEvents {
     }
 
     /**
-     * Emit a workflow event and store it in KV
+     * Emit a workflow event and buffer it in memory.
      *
-     * NOTE: This method has a potential race condition due to read-modify-write operations
-     * not being atomic. If multiple events are emitted concurrently, some events may be lost
-     * as the second put() will overwrite the first. This is an acceptable trade-off for
-     * progress tracking where eventual consistency is sufficient and complete event history
-     * is not critical. For critical events, consider using a queue-based approach or accepting
-     * potential event loss.
+     * Call flush() at workflow milestones to persist events in KV while
+     * reducing write amplification.
      */
     async emit(
         type: WorkflowEventType,
@@ -78,46 +77,57 @@ export class WorkflowEvents {
             data,
         };
 
-        // Load existing event log or create new one
+        this.pendingEvents.push(event);
+
+        // Also log for visibility
+        console.log(`[WORKFLOW:EVENT] ${this.workflowType}/${this.workflowId} - ${type}`, options?.message || '');
+    }
+
+    /**
+     * Flush all buffered events to KV in a single read-modify-write operation.
+     */
+    async flush(): Promise<void> {
+        if (this.pendingEvents.length === 0) {
+            return;
+        }
+
         let eventLog = await this.kv.get<WorkflowEventLog>(this.eventKey, 'json');
 
         if (!eventLog) {
             eventLog = {
                 workflowId: this.workflowId,
                 workflowType: this.workflowType,
-                startedAt: new Date().toISOString(),
+                startedAt: this.pendingEvents[0]?.timestamp ?? new Date().toISOString(),
                 events: [],
             };
         }
 
-        // Add event
-        eventLog.events.push(event);
+        eventLog.events.push(...this.pendingEvents);
 
-        // Trim to max events
         if (eventLog.events.length > MAX_EVENTS) {
             eventLog.events = eventLog.events.slice(-MAX_EVENTS);
         }
 
-        // Update completion timestamp if applicable
-        if (type === 'workflow:completed' || type === 'workflow:failed') {
-            eventLog.completedAt = new Date().toISOString();
+        // Scan from newest to oldest so completedAt reflects the most recent
+        // terminal event persisted in the log.
+        for (let index = eventLog.events.length - 1; index >= 0; index--) {
+            const event = eventLog.events[index];
+            if (event.type === 'workflow:completed' || event.type === 'workflow:failed') {
+                eventLog.completedAt = event.timestamp;
+                break;
+            }
         }
 
-        // Store with TTL (note: concurrent workflows may overwrite events due to
-        // read-modify-write; this is acceptable since events are observability data)
         try {
             await this.kv.put(this.eventKey, JSON.stringify(eventLog), {
                 expirationTtl: this.eventTtl,
             });
+            this.pendingEvents.splice(0, this.pendingEvents.length);
         } catch (error) {
-            // Log but don't fail the workflow for event storage errors
             console.error(
-                `[WORKFLOW:EVENT] Failed to store event for ${this.workflowType}/${this.workflowId}: ${error instanceof Error ? error.message : String(error)}`,
+                `[WORKFLOW:EVENT] Failed to flush events for ${this.workflowType}/${this.workflowId}: ${error instanceof Error ? error.message : String(error)}`,
             );
         }
-
-        // Also log for visibility
-        console.log(`[WORKFLOW:EVENT] ${this.workflowType}/${this.workflowId} - ${type}`, options?.message || '');
     }
 
     /**
@@ -125,6 +135,7 @@ export class WorkflowEvents {
      */
     async emitProgress(progress: number, message: string, data?: Record<string, unknown>): Promise<void> {
         await this.emit('workflow:progress', data, { progress, message });
+        await this.flush();
     }
 
     /**
@@ -135,6 +146,7 @@ export class WorkflowEvents {
             progress: 0,
             message: `Workflow ${this.workflowType} started`,
         });
+        await this.flush();
     }
 
     /**
@@ -145,6 +157,7 @@ export class WorkflowEvents {
             progress: 100,
             message: `Workflow ${this.workflowType} completed successfully`,
         });
+        await this.flush();
     }
 
     /**
@@ -154,6 +167,7 @@ export class WorkflowEvents {
         await this.emit('workflow:failed', { ...data, error }, {
             message: `Workflow ${this.workflowType} failed: ${error}`,
         });
+        await this.flush();
     }
 
     /**
@@ -174,6 +188,7 @@ export class WorkflowEvents {
             step: stepName,
             message: `Completed step: ${stepName}`,
         });
+        await this.flush();
     }
 
     /**
@@ -184,6 +199,7 @@ export class WorkflowEvents {
             step: stepName,
             message: `Step ${stepName} failed: ${error}`,
         });
+        await this.flush();
     }
 
     /**

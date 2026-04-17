@@ -344,6 +344,7 @@ export class CompilationWorkflow extends WorkflowEntrypoint<Env, CompilationPara
                 totalDurationMs: result.totalDurationMs,
                 cacheKey: result.cacheKey,
             });
+            await events.flush();
 
             console.log(
                 `[WORKFLOW:COMPILE] Workflow completed successfully for "${configuration.name}" ` +
@@ -360,6 +361,7 @@ export class CompilationWorkflow extends WorkflowEntrypoint<Env, CompilationPara
                 configName: configuration.name,
                 totalDurationMs: Date.now() - startTime,
             });
+            await events.flush();
 
             // Update failure metrics
             try {

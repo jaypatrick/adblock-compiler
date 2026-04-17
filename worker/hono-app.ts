@@ -63,6 +63,7 @@ import { createPgPool } from './utils/pg-pool.ts';
 import { checkRoutePermission } from './utils/route-permissions.ts';
 import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
+import { withTimeout } from './utils/with-timeout.ts';
 import { isPublicEndpoint, matchOrigin } from './utils/cors.ts';
 import { getProjectUrls } from './utils/constants.ts';
 import { ProblemResponse } from './utils/problem-details.ts';
@@ -562,7 +563,7 @@ routes.use('*', async (c, next) => {
         });
         return accessDenied;
     }
-    c.executionCtx.waitUntil(trackApiUsage(authContext, path, c.req.method, c.env));
+    c.executionCtx.waitUntil(withTimeout(trackApiUsage(authContext, path, c.req.method, c.env), 5_000));
     await next();
 });
 
@@ -657,13 +658,23 @@ export const OPENAPI_DOCUMENT_ARGS = {
     servers: [{ url: 'https://api.bloqr.jaysonknight.com', description: 'Production server' }],
 };
 
+const openApiSpecCache = new Map<string, ReturnType<typeof app.getOpenAPIDocument>>();
+// Cache is isolate-local and intentionally invalidated by Worker redeploy.
+// Keying by urls.api keeps custom-domain and workers.dev specs isolated.
+// getOpenAPIDocument() is synchronous, so this cache fill executes atomically
+// per request without async race windows.
+
 app.get('/api/openapi.json', (c) => {
     const urls = getProjectUrls(c.env);
-    const args = {
-        ...OPENAPI_DOCUMENT_ARGS,
-        servers: [{ url: urls.api, description: 'Production server' }],
-    };
-    const spec = app.getOpenAPIDocument(args);
+    let spec = openApiSpecCache.get(urls.api);
+    if (!spec) {
+        const args = {
+            ...OPENAPI_DOCUMENT_ARGS,
+            servers: [{ url: urls.api, description: 'Production server' }],
+        };
+        spec = app.getOpenAPIDocument(args);
+        openApiSpecCache.set(urls.api, spec);
+    }
     return c.json(spec);
 });
 
@@ -695,7 +706,7 @@ app.use('/api/trpc/*', async (c, next) => {
         });
         return accessDenied;
     }
-    c.executionCtx.waitUntil(trackApiUsage(authContext, c.req.path, c.req.method, c.env));
+    c.executionCtx.waitUntil(withTimeout(trackApiUsage(authContext, c.req.path, c.req.method, c.env), 5_000));
     await next();
 });
 

@@ -149,6 +149,7 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 console.log(`[WORKFLOW:CACHE-WARM] All caches are fresh, nothing to warm`);
                 await events.emitProgress(100, 'All caches are fresh');
                 await events.emitWorkflowCompleted({ warmed: 0, skipped: configsToWarm.length });
+                await events.flush();
                 return {
                     runId,
                     scheduled,
@@ -343,6 +344,7 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 failedConfigurations,
                 totalDurationMs: totalDuration,
             });
+            await events.flush();
 
             // Track workflow completed via Analytics Engine
             analytics.trackWorkflowCompleted({
@@ -385,6 +387,7 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 warmedConfigurations,
                 failedConfigurations: configsToWarm.length - warmedConfigurations,
             });
+            await events.flush();
 
             return {
                 runId,

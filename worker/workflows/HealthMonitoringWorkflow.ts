@@ -54,12 +54,61 @@ const DEFAULT_SOURCES = [
  */
 const HEALTH_THRESHOLDS = {
     /** Maximum acceptable response time in ms */
-    maxResponseTimeMs: 30000,
+    maxResponseTimeMs: 10_000,
+    /** Maximum bytes to inspect per source response */
+    maxSampleBytes: 8_192,
     /** Minimum expected rules (if not specified per-source) */
     defaultMinRules: 100,
+    /** Minimum non-comment rules required in the 8KB sample probe */
+    minRulesInSample: 5,
     /** Number of failed checks before alerting */
     failureThreshold: 3,
 };
+
+export async function readResponseSample(response: Response, maxBytes: number): Promise<string> {
+    if (!response.body || maxBytes <= 0) {
+        return '';
+    }
+
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let totalBytes = 0;
+
+    try {
+        while (totalBytes < maxBytes) {
+            const { done, value } = await reader.read();
+            if (done || !value) {
+                break;
+            }
+
+            const remainingBytes = maxBytes - totalBytes;
+            if (value.byteLength > remainingBytes) {
+                const boundedChunk = value.subarray(0, remainingBytes);
+                chunks.push(boundedChunk);
+                totalBytes += boundedChunk.byteLength;
+                break;
+            }
+
+            chunks.push(value);
+            totalBytes += value.byteLength;
+        }
+    } finally {
+        await reader.cancel().catch(() => undefined);
+    }
+
+    if (totalBytes === 0) {
+        return '';
+    }
+
+    const sampleBytes = new Uint8Array(totalBytes);
+    let writeOffset = 0;
+    for (const chunk of chunks) {
+        sampleBytes.set(chunk, writeOffset);
+        writeOffset += chunk.byteLength;
+    }
+
+    return new TextDecoder().decode(sampleBytes);
+}
 
 /**
  * HealthMonitoringWorkflow checks source availability and content validity.
@@ -161,30 +210,35 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                                 signal: controller.signal,
                                 headers: {
                                     'User-Agent': 'AdblockCompiler-HealthCheck/1.0',
+                                    'Range': 'bytes=0-8191',
                                 },
                             });
 
                             result.statusCode = response.status;
                             result.responseTimeMs = Date.now() - checkStart;
 
-                            if (!response.ok) {
+                            if (response.status !== 200 && response.status !== 206) {
                                 result.error = `HTTP ${response.status}: ${response.statusText}`;
                                 return result;
                             }
 
-                            // Check content validity
-                            const content = await response.text();
-                            const lines = content.split('\n').filter((line) => {
+                            const sample = await readResponseSample(response, HEALTH_THRESHOLDS.maxSampleBytes);
+                            const sampleLines = sample.split('\n').filter((line) => {
                                 const trimmed = line.trim();
                                 return trimmed && !trimmed.startsWith('!') && !trimmed.startsWith('#');
                             });
 
-                            result.ruleCount = lines.length;
+                            result.ruleCount = sampleLines.length;
 
-                            // Validate rule count
-                            const minRules = source.expectedMinRules || HEALTH_THRESHOLDS.defaultMinRules;
-                            if (lines.length < minRules) {
-                                result.error = `Rule count ${lines.length} below minimum ${minRules}`;
+                            // For an 8KB sample probe, cap the minimum to a small
+                            // threshold so large-list expected counts do not reject
+                            // otherwise healthy partial responses.
+                            const minRules = Math.min(
+                                source.expectedMinRules || HEALTH_THRESHOLDS.defaultMinRules,
+                                HEALTH_THRESHOLDS.minRulesInSample,
+                            );
+                            if (sampleLines.length < minRules) {
+                                result.error = `Source appears empty - only ${sampleLines.length} rules found in 8KB sample`;
                                 return result;
                             }
 
@@ -422,6 +476,7 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 alertsSent,
                 totalDurationMs: totalDuration,
             });
+            await events.flush();
 
             console.log(
                 `[WORKFLOW:HEALTH] Health monitoring completed: ${healthySources}/${sourcesToCheck.length} ` +
@@ -447,6 +502,7 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 unhealthySources,
                 alertsSent,
             });
+            await events.flush();
 
             // Rethrow so the CF Workflows runtime captures the real exception message in telemetry
             throw error;
