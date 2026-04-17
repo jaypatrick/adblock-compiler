@@ -79,7 +79,7 @@ jobs:
         run: deno task docs:api
 
       - name: Deploy docs to Cloudflare Worker
-        uses: cloudflare/wrangler-action@v3.15.0
+        uses: cloudflare/wrangler-action@a2d7a5d49d4dbb1ed9c0a4a6b3f8a6e3b5f6d8c9 # v3.15.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
