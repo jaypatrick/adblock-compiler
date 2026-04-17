@@ -10,7 +10,7 @@
  *   deno run --allow-net --allow-env scripts/diag-cli.ts --help
  *
  * Flags:
- *   --url      Base URL to probe (default: https://adblock-frontend.jayson-knight.workers.dev)
+ *   --url      Base URL to probe (default: https://adblock-frontend.jk-com.workers.dev)
  *   --probe    Comma-separated probe names, or "all" (default: all)
  *   --timeout  Per-probe timeout in ms (default: 15000)
  *   --ci       Non-interactive CI mode: run all probes, print table, exit 0/1
@@ -29,7 +29,7 @@ const args = parseArgs(Deno.args, {
     string: ['url', 'probe', 'timeout'],
     boolean: ['ci', 'help'],
     default: {
-        url: 'https://adblock-frontend.jayson-knight.workers.dev',
+        url: 'https://adblock-frontend.jk-com.workers.dev',
         probe: 'all',
         timeout: '15000',
         ci: false,
@@ -45,7 +45,7 @@ Usage:
   deno run --allow-net --allow-env scripts/diag-cli.ts [flags]
 
 Flags:
-  --url       Base URL to probe (default: https://adblock-frontend.jayson-knight.workers.dev)
+  --url       Base URL to probe (default: https://adblock-frontend.jk-com.workers.dev)
   --probe     Comma-separated probe names, or "all" (default: all)
   --timeout   Per-probe timeout in ms (default: 15000)
   --ci        Non-interactive CI mode: run all probes, print table, exit 0/1

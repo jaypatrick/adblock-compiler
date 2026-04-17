@@ -10,7 +10,7 @@
  *   deno run --allow-net --allow-env --allow-write scripts/diag-full.ts --help
  *
  * Flags:
- *   --url       Base URL (default: https://adblock-frontend.jayson-knight.workers.dev)
+ *   --url       Base URL (default: https://adblock-frontend.jk-com.workers.dev)
  *   --timeout   Per-probe timeout in ms (default: 15000)
  *   --ci        Non-interactive CI mode: run all probes, exit 0/1
  *   --output    Write JSON bundle to diag-report-<timestamp>.json
@@ -102,7 +102,7 @@ async function readProjectVersion(): Promise<string> {
         return 'unknown';
     }
 }
-const DEFAULT_BASE_URL = 'https://adblock-frontend.jayson-knight.workers.dev';
+const DEFAULT_BASE_URL = 'https://adblock-frontend.jk-com.workers.dev';
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 /**
@@ -111,7 +111,7 @@ const DEFAULT_TIMEOUT_MS = 15_000;
  * one of these — not a wildcard (`*`) and not an unexpected third party.
  */
 const CORS_ALLOWED_ORIGINS = new Set([
-    'https://adblock-frontend.jayson-knight.workers.dev',
+    'https://adblock-frontend.jk-com.workers.dev',
     'http://localhost:4200',
     'http://localhost:8787',
 ]);
@@ -245,7 +245,7 @@ async function runExistingProbes(baseUrl: string, timeoutMs: number): Promise<Di
 async function probeCors(baseUrl: string, timeoutMs: number): Promise<DiagProbeResult> {
     const url = `${baseUrl}/api/compile`;
     // Use an expected origin from the allowlist so the preflight returns the actual allowed value
-    const probeOrigin = 'https://adblock-frontend.jayson-knight.workers.dev';
+    const probeOrigin = 'https://adblock-frontend.jk-com.workers.dev';
     const result = await safeFetch(
         url,
         {

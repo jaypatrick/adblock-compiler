@@ -14,10 +14,10 @@ description: |-
   ## Links
   - [GitHub Repository](https://github.com/jaypatrick/adblock-compiler)
   - [Documentation](https://github.com/jaypatrick/adblock-compiler/tree/master/docs)
-  - [Web UI](https://adblock-compiler.jayson-knight.workers.dev/)
+  - [Web UI](https://adblock-compiler.jk-com.workers.dev/)
 
 
   Contact Support:
    Name: Jayson Knight
 variables:
-  baseUrl: https://adblock-compiler.jayson-knight.workers.dev
+  baseUrl: https://adblock-compiler.jk-com.workers.dev

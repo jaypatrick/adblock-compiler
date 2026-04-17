@@ -255,17 +255,17 @@ After every successful backend or frontend deploy to `main`, CI automatically ru
 
 | Check | URL | Pass condition |
 |---|---|---|
-| `/api/health` | `https://adblock-compiler.jayson-knight.workers.dev/api/health` | HTTP 200 + `status` is `"healthy"` or `"degraded"` |
-| `/api/version` | `https://adblock-compiler.jayson-knight.workers.dev/api/version` | HTTP 200 |
-| `/api/auth/providers` | `https://adblock-compiler.jayson-knight.workers.dev/api/auth/providers` | HTTP 200 |
+| `/api/health` | `https://adblock-compiler.jk-com.workers.dev/api/health` | HTTP 200 + `status` is `"healthy"` or `"degraded"` |
+| `/api/version` | `https://adblock-compiler.jk-com.workers.dev/api/version` | HTTP 200 |
+| `/api/auth/providers` | `https://adblock-compiler.jk-com.workers.dev/api/auth/providers` | HTTP 200 |
 
 #### `smoke-test-frontend` (needs `deploy-frontend`)
 
 | Check | URL | Pass condition |
 |---|---|---|
-| Homepage | `https://adblock-frontend.jayson-knight.workers.dev/` | HTTP 200 |
-| SSR API proxy | `https://adblock-frontend.jayson-knight.workers.dev/api/auth/providers` | HTTP 200 (confirms the SSR Worker proxies to the backend correctly) |
-| Health via proxy | `https://adblock-frontend.jayson-knight.workers.dev/api/health` | HTTP 200 + `status` is `"healthy"` or `"degraded"` |
+| Homepage | `https://adblock-frontend.jk-com.workers.dev/` | HTTP 200 |
+| SSR API proxy | `https://adblock-frontend.jk-com.workers.dev/api/auth/providers` | HTTP 200 (confirms the SSR Worker proxies to the backend correctly) |
+| Health via proxy | `https://adblock-frontend.jk-com.workers.dev/api/health` | HTTP 200 + `status` is `"healthy"` or `"degraded"` |
 
 Both smoke tests:
 

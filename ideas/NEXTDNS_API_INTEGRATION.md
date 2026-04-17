@@ -139,7 +139,7 @@ await Promise.all(
 Host your compiled filter list as a public URL and subscribe NextDNS to it — one subscription update instead of per-domain POSTs:
 
 ```typescript
-const compiledUrl = `https://adblock-compiler.jayson-knight.workers.dev/lists/${listId}`;
+const compiledUrl = `https://adblock-compiler.jk-com.workers.dev/lists/${listId}`;
 
 await fetch(`https://api.nextdns.io/profiles/${profileId}/blocklists`, {
     method: 'POST',
@@ -174,7 +174,7 @@ const batchRequest = {
 };
 
 const compiled = await fetch(
-    'https://adblock-compiler.jayson-knight.workers.dev/compile/batch',
+    'https://adblock-compiler.jk-com.workers.dev/compile/batch',
     { method: 'POST', body: JSON.stringify(batchRequest) }
 );
 ```

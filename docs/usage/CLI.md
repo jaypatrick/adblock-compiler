@@ -120,7 +120,7 @@ These flags are used when submitting jobs to the remote worker API via `--use-qu
 |---|---|---|
 | `--api-key <key>` | string | API key for worker API requests (starts with `abc_`) |
 | `--bearer-token <jwt>` | string | Clerk JWT bearer token for worker API requests |
-| `--api-url <url>` | string | Base URL of the worker API [default: `https://adblock-compiler.jayson-knight.workers.dev`] |
+| `--api-url <url>` | string | Base URL of the worker API [default: `https://adblock-compiler.jk-com.workers.dev`] |
 
 > `--api-key` and `--bearer-token` are **mutually exclusive** — choose one per invocation. A warning is emitted if auth flags are used without `--use-queue`.
 

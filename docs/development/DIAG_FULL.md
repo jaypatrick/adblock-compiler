@@ -81,7 +81,7 @@ All tasks are defined in `deno.json` and require no additional setup.
 |------|-------------|
 | `deno task diag:full` | Run all probes against the production URL. Prints a summary table to stdout. |
 | `deno task diag:full:ci` | CI mode — runs all probes, exits `0` (all pass) or `1` (any failure). Suitable for GitHub Actions steps. |
-| `deno task diag:full:prod` | Explicit `--url https://adblock-frontend.jayson-knight.workers.dev`. Identical to `diag:full` but self-documenting in scripts. |
+| `deno task diag:full:prod` | Explicit `--url https://adblock-frontend.jk-com.workers.dev`. Identical to `diag:full` but self-documenting in scripts. |
 | `deno task diag:full:output` | Run all probes and write the full JSON bundle to `diag-report-<timestamp>.json` in the current directory. |
 | `deno task diag:report` | Re-render a saved bundle. Accepts `--file <path>` or reads from stdin. |
 
@@ -98,7 +98,7 @@ All tasks are defined in `deno.json` and require no additional setup.
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--url` | string | `https://adblock-frontend.jayson-knight.workers.dev` | Base URL to probe. Must include protocol (`http://` or `https://`). |
+| `--url` | string | `https://adblock-frontend.jk-com.workers.dev` | Base URL to probe. Must include protocol (`http://` or `https://`). |
 | `--timeout` | number (ms) | `15000` | Per-probe fetch timeout. The DNS and WebSocket probes use shorter internal timeouts regardless. |
 | `--ci` | boolean | `false` | Non-interactive CI mode: prints the summary table, then exits `0` if all probes pass or `1` if any fail. |
 | `--output` | boolean | `false` | Write the JSON bundle to `diag-report-<timestamp>.json` in the current directory and print the filename. |
@@ -159,7 +159,7 @@ Re-runs the 6 standard probes that the basic `deno task diag` harness uses. Thes
 ### 5. `cors` — CORS preflight check
 
 Sends an `OPTIONS` preflight to `<baseUrl>/api/compile` with:
-- `Origin: https://adblock-frontend.jayson-knight.workers.dev`
+- `Origin: https://adblock-frontend.jk-com.workers.dev`
 - `Access-Control-Request-Method: POST`
 - `Access-Control-Request-Headers: Content-Type, Authorization`
 
@@ -169,7 +169,7 @@ Sends an `OPTIONS` preflight to `<baseUrl>/api/compile` with:
 | `access-control-allow-origin` | Not `*` AND is in the known allowlist |
 
 The known allowlist (`CORS_ALLOWED_ORIGINS`) contains:
-- `https://adblock-frontend.jayson-knight.workers.dev`
+- `https://adblock-frontend.jk-com.workers.dev`
 - `http://localhost:4200`
 - `http://localhost:8787`
 
@@ -350,7 +350,7 @@ interface DiagProbeResult {
     "tool": "adblock-compiler-diag-full",
     "version": "0.79.4",
     "timestamp": "2026-04-08T12:30:00.000Z",
-    "baseUrl": "https://adblock-frontend.jayson-knight.workers.dev",
+    "baseUrl": "https://adblock-frontend.jk-com.workers.dev",
     "timeoutMs": 15000,
     "deno": { "deno": "2.3.1", "v8": "13.1.201.16", "typescript": "5.6.2" },
     "os": { "os": "linux", "arch": "x86_64" },
@@ -539,7 +539,7 @@ flowchart TD
 ### `error: Requires net access`
 
 ```
-error: Requires net access to "adblock-frontend.jayson-knight.workers.dev"
+error: Requires net access to "adblock-frontend.jk-com.workers.dev"
 ```
 
 Use `deno task diag:full` instead of running `diag-full.ts` directly with bare `deno run`. The task entry includes all required flags (`--allow-net --allow-env --allow-read --allow-write`). If running directly, add all four flags:

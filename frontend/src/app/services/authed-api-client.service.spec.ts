@@ -282,7 +282,7 @@ describe('AuthedApiClientService', () => {
         it('extracts detail from application/problem+json error response', async () => {
             setup();
             const problem = {
-                type: 'https://adblock-compiler.jayson-knight.workers.dev/probs/rate-limited',
+                type: 'https://adblock-compiler.jk-com.workers.dev/probs/rate-limited',
                 title: 'Too Many Requests',
                 status: 429,
                 detail: 'Rate limit exceeded. Retry after 30 seconds.',
@@ -305,7 +305,7 @@ describe('AuthedApiClientService', () => {
         it('falls back to title when detail absent in problem+json', async () => {
             setup();
             const problem = {
-                type: 'https://adblock-compiler.jayson-knight.workers.dev/probs/unauthorized',
+                type: 'https://adblock-compiler.jk-com.workers.dev/probs/unauthorized',
                 title: 'Unauthorized',
                 status: 401,
             };

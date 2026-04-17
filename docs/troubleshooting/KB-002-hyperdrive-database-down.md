@@ -22,7 +22,7 @@ This section captures the live troubleshooting session that led to the discovery
 
 ```bash
 # Step 1: Inspect the full health response
-curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health | jq .services.database
+curl -s https://adblock-frontend.jk-com.workers.dev/api/health | jq .services.database
 # Result:
 # {
 #   "status": "down",
@@ -35,7 +35,7 @@ wrangler hyperdrive get 800f7e2edc86488ab24e8621982e9ad7
 # Result showed "scheme": "postgres" — Hyperdrive uses postgres://, not postgresql://
 
 # Step 3: Check deployed version
-curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health | jq .version
+curl -s https://adblock-frontend.jk-com.workers.dev/api/health | jq .version
 # "0.76.0" — schema fix was deployed
 
 # Step 4: Tail live worker logs
@@ -76,7 +76,7 @@ The hardening work in this PR added:
 After deploying, run:
 
 ```bash
-curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health/db-smoke | jq .
+curl -s https://adblock-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
 ```
 
 Expected healthy output:
@@ -99,7 +99,7 @@ If it returns `ok: false`, the `error` field will now contain a redacted error m
 
 ## Symptom
 
-The live site at `https://adblock-frontend.jayson-knight.workers.dev/` displays two error banners:
+The live site at `https://adblock-frontend.jk-com.workers.dev/` displays two error banners:
 
 - **"Degraded performance — v0.75.0"**
 - **"Data may be stale"**

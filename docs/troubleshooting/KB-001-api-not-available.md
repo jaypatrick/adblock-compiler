@@ -2,7 +2,7 @@
 
 **Series:** Adblock Compiler Operations & Troubleshooting KB  
 **Component:** `worker/worker.ts` — Cloudflare Worker API entrypoint  
-**Service URL:** `https://adblock-compiler.jayson-knight.workers.dev`  
+**Service URL:** `https://adblock-compiler.jk-com.workers.dev`  
 **Date Created:** 2026-03-17  
 **Status:** Active  
 
@@ -10,7 +10,7 @@
 
 ## Symptom
 
-The Angular SPA home page shows **"Getting API is not available"** on initial load at `https://adblock-compiler.jayson-knight.workers.dev`.
+The Angular SPA home page shows **"Getting API is not available"** on initial load at `https://adblock-compiler.jk-com.workers.dev`.
 
 API fetches from the frontend to `/api/version`, `/api/clerk-config`, `/api/turnstile-config`, or `/api/sentry-config` may be returning non-200 responses, causing the Angular app to render the error state.
 
@@ -37,16 +37,16 @@ Run these from any terminal. A healthy deployment returns `200` with a JSON body
 
 ```bash
 # 1. Test root API info (bypasses HTML redirect)
-curl -s "https://adblock-compiler.jayson-knight.workers.dev/api?format=json" | jq .
+curl -s "https://adblock-compiler.jk-com.workers.dev/api?format=json" | jq .
 
 # 2. Test the version endpoint (hits D1)
-curl -s "https://adblock-compiler.jayson-knight.workers.dev/api/version" | jq .
+curl -s "https://adblock-compiler.jk-com.workers.dev/api/version" | jq .
 
 # 3. Test health (checks D1, KV, compiler binding, auth, gateway)
-curl -s "https://adblock-compiler.jayson-knight.workers.dev/health" | jq .
+curl -s "https://adblock-compiler.jk-com.workers.dev/health" | jq .
 
 # 4. Test metrics (hits KV METRICS namespace)
-curl -s "https://adblock-compiler.jayson-knight.workers.dev/metrics" | jq .
+curl -s "https://adblock-compiler.jk-com.workers.dev/metrics" | jq .
 
 # 5. Tail the live worker log
 wrangler tail
@@ -101,7 +101,7 @@ The worker reads the `CORS_ALLOWED_ORIGINS` value at runtime. There are **two so
 
 | Source | Value | Precedence |
 |---|---|---|
-| `wrangler.toml [vars]` | `"http://localhost:4200,...,https://adblock-compiler.jayson-knight.workers.dev"` | Lower |
+| `wrangler.toml [vars]` | `"http://localhost:4200,...,https://adblock-compiler.jk-com.workers.dev"` | Lower |
 | `wrangler secret put CORS_ALLOWED_ORIGINS` | Whatever was set when the command was last run | **Higher — overrides [vars]** |
 
 **If a secret was previously set** with an outdated or incorrect value, it silently overrides the `[vars]` entry.
@@ -112,7 +112,7 @@ wrangler secret list
 
 # If CORS_ALLOWED_ORIGINS is listed as a secret, re-set it:
 wrangler secret put CORS_ALLOWED_ORIGINS
-# Enter: http://localhost:4200,http://localhost:8787,https://adblock-compiler.jayson-knight.workers.dev
+# Enter: http://localhost:4200,http://localhost:8787,https://adblock-compiler.jk-com.workers.dev
 ```
 
 To verify, open Chrome DevTools → Network tab, look for the OPTIONS preflight or the failing GET, and check the `Access-Control-Allow-Origin` response header.

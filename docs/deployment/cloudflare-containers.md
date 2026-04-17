@@ -268,7 +268,7 @@ Use the `container:health` script to quickly verify that a running container ser
 deno task container:health
 
 # Check a deployed container with the compile smoke-test
-deno task container:health -- --url https://adblock-compiler.jayson-knight.workers.dev --secret my-secret
+deno task container:health -- --url https://adblock-compiler.jk-com.workers.dev --secret my-secret
 
 # Override the request timeout
 deno task container:health -- --url http://localhost:8787 --timeout 30

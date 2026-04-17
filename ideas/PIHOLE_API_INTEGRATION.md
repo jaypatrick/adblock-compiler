@@ -181,7 +181,7 @@ await Promise.all(
 
 Host compiled output as a public URL and add it as a Pi-hole adlist subscription:
 
-const compiledUrl = `https://adblock-compiler.jayson-knight.workers.dev/lists/${listId}`;
+const compiledUrl = `https://adblock-compiler.jk-com.workers.dev/lists/${listId}`;
 
 await fetch(`${piholeBaseUrl}/api/lists`, {
     method: 'POST',

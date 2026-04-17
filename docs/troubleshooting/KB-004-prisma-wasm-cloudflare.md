@@ -94,7 +94,7 @@ Cloudflare Workers support WASM, but only when the WASM module is bundled static
 ### Step 1 — Confirm the WASM error
 
 ```bash
-curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health/db-smoke | jq .
+curl -s https://adblock-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
 ```
 
 If you see `"error": "WebAssembly.Module(): Wasm code generation disallowed by embedder"`, this KB applies.
@@ -175,10 +175,10 @@ wrangler deploy
 
 ```bash
 # Full health check
-curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health | jq .services.database
+curl -s https://adblock-frontend.jk-com.workers.dev/api/health | jq .services.database
 
 # Smoke test
-curl -s https://adblock-frontend.jayson-knight.workers.dev/api/health/db-smoke | jq .
+curl -s https://adblock-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
 ```
 
 Expected healthy responses:
