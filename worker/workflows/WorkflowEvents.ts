@@ -91,34 +91,34 @@ export class WorkflowEvents {
             return;
         }
 
-        let eventLog = await this.kv.get<WorkflowEventLog>(this.eventKey, 'json');
-
-        if (!eventLog) {
-            eventLog = {
-                workflowId: this.workflowId,
-                workflowType: this.workflowType,
-                startedAt: this.pendingEvents[0]?.timestamp ?? new Date().toISOString(),
-                events: [],
-            };
-        }
-
-        eventLog.events.push(...this.pendingEvents);
-
-        if (eventLog.events.length > MAX_EVENTS) {
-            eventLog.events = eventLog.events.slice(-MAX_EVENTS);
-        }
-
-        // Scan from newest to oldest so completedAt reflects the most recent
-        // terminal event persisted in the log.
-        for (let index = eventLog.events.length - 1; index >= 0; index--) {
-            const event = eventLog.events[index];
-            if (event.type === 'workflow:completed' || event.type === 'workflow:failed') {
-                eventLog.completedAt = event.timestamp;
-                break;
-            }
-        }
-
         try {
+            let eventLog = await this.kv.get<WorkflowEventLog>(this.eventKey, 'json');
+
+            if (!eventLog) {
+                eventLog = {
+                    workflowId: this.workflowId,
+                    workflowType: this.workflowType,
+                    startedAt: this.pendingEvents[0]?.timestamp ?? new Date().toISOString(),
+                    events: [],
+                };
+            }
+
+            eventLog.events.push(...this.pendingEvents);
+
+            if (eventLog.events.length > MAX_EVENTS) {
+                eventLog.events = eventLog.events.slice(-MAX_EVENTS);
+            }
+
+            // Scan from newest to oldest so completedAt reflects the most recent
+            // terminal event persisted in the log.
+            for (let index = eventLog.events.length - 1; index >= 0; index--) {
+                const event = eventLog.events[index];
+                if (event.type === 'workflow:completed' || event.type === 'workflow:failed') {
+                    eventLog.completedAt = event.timestamp;
+                    break;
+                }
+            }
+
             await this.kv.put(this.eventKey, JSON.stringify(eventLog), {
                 expirationTtl: this.eventTtl,
             });
