@@ -78,13 +78,8 @@ jobs:
         continue-on-error: true
         run: deno task docs:api
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-        with:
-          run_install: false
-
       - name: Deploy docs to Cloudflare Worker
-        uses: cloudflare/wrangler-action@5b5a1b51eadea0b8c1c0f091b0baf9d0b66f0f3d # v3
+        uses: cloudflare/wrangler-action@v3.15.0
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
