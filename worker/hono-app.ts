@@ -505,11 +505,11 @@ app.all('/poc/*', async (c) => {
 // ============================================================================
 
 // GET / → landing page (API overview)
-app.get('/', (c) => docsLandingHandler(c.env));
+app.get('/', (c) => docsLandingHandler(c.env, c.req.url));
 // GET /api → landing page (same content, canonical API prefix)
 // Note: app.route('/api', docsRoutes) also registers docsRoutes.get('/') at /api,
 // but this explicit route ensures it is matched before the sub-app catch-all.
-app.get('/api', (c) => docsLandingHandler(c.env));
+app.get('/api', (c) => docsLandingHandler(c.env, c.req.url));
 
 // GET /robots.txt — explicit handler to avoid ASSETS.fetch() hang for missing files
 app.get('/robots.txt', (c) => {

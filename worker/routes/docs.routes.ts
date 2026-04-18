@@ -71,28 +71,133 @@ const BLOQR_SCALAR_CSS = `
 }
 `;
 
+const BLOQR_SOCIAL_IMAGE_PATH = '/apple-touch-icon.png';
+const API_SOCIAL_IMAGE_ALT = 'Bloqr tri-line logo on dark background';
+const API_SOCIAL_DESCRIPTION = 'Compile, manage, and deploy adblock filter lists at network scale with the Bloqr API.';
+// Hono middleware signatures require a `next()` callback; docs handlers are terminal and don't need it.
+const NOOP_NEXT = async (): Promise<void> => {};
+
+function getCanonicalPageUrl(env: Env, requestUrl: string): string {
+    try {
+        const parsed = new URL(requestUrl);
+        return `${parsed.origin}${parsed.pathname}`;
+    } catch {
+        return getProjectUrls(env).api;
+    }
+}
+
+function getAbsoluteSocialImageUrl(env: Env, requestUrl: string): string {
+    try {
+        const parsed = new URL(requestUrl);
+        return `${parsed.origin}${BLOQR_SOCIAL_IMAGE_PATH}`;
+    } catch {
+        return `${getProjectUrls(env).api.replace(/\/$/, '')}${BLOQR_SOCIAL_IMAGE_PATH}`;
+    }
+}
+
+function runApiReference<TRequestContext>(c: TRequestContext, config: Parameters<typeof apiReference>[0]): Response | Promise<Response> {
+    const handler = apiReference(config) as unknown as (ctx: TRequestContext, next: () => Promise<void>) => Response | Promise<Response>;
+    return handler(c, NOOP_NEXT);
+}
+
+function runSwaggerUI<TRequestContext>(c: TRequestContext, config: Parameters<typeof swaggerUI>[0]): Response | Promise<Response> {
+    const handler = swaggerUI(config) as unknown as (ctx: TRequestContext, next: () => Promise<void>) => Response | Promise<Response>;
+    return handler(c, NOOP_NEXT);
+}
+
+function buildScalarMetaData(pageUrl: string, socialImageUrl: string, title: string): Record<string, string> {
+    return {
+        title,
+        description: API_SOCIAL_DESCRIPTION,
+        ogTitle: title,
+        ogDescription: API_SOCIAL_DESCRIPTION,
+        ogUrl: pageUrl,
+        ogImage: socialImageUrl,
+        ogImageAlt: API_SOCIAL_IMAGE_ALT,
+        twitterCard: 'summary_large_image',
+        twitterTitle: title,
+        twitterDescription: API_SOCIAL_DESCRIPTION,
+        twitterImage: socialImageUrl,
+    };
+}
+
+function buildSwaggerHtml(pageUrl: string, socialImageUrl: string): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bloqr — API — Swagger</title>
+    <meta name="description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bloqr — API — Swagger" />
+    <meta property="og:description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta property="og:image" content="${socialImageUrl}" />
+    <meta property="og:image:alt" content="${API_SOCIAL_IMAGE_ALT}" />
+    <meta property="og:url" content="${pageUrl}" />
+    <meta property="og:site_name" content="Bloqr" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Bloqr — API — Swagger" />
+    <meta name="twitter:description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta name="twitter:image" content="${socialImageUrl}" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="${SWAGGER_CDN_BASE}/swagger-ui.css" />
+    <style>${BLOQR_SWAGGER_CSS}</style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="${SWAGGER_CDN_BASE}/swagger-ui-bundle.js" crossorigin="anonymous"></script>
+    <script src="${SWAGGER_CDN_BASE}/swagger-ui-standalone-preset.js" crossorigin="anonymous"></script>
+    <script>
+        window.onload = function() {
+            window.ui = SwaggerUIBundle({
+                dom_id: '#swagger-ui',
+                url: '/api/openapi.json',
+                presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+                plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+                layout: 'StandaloneLayout',
+                persistAuthorization: true,
+                deepLinking: true,
+            });
+        };
+    </script>
+</body>
+</html>`;
+}
+
 // ── Scalar UI endpoint (Bloqr / modern) ──────────────────────────────────────
 // Primary interactive OpenAPI documentation UI at /api/docs.
 // Reference: https://hono.dev/examples/scalar/
 
-const scalarDocsHandler = apiReference({
-    theme: 'none',
-    layout: 'modern',
-    url: '/api/openapi.json',
-    defaultHttpClient: { targetKey: 'js', clientKey: 'fetch' },
-    pageTitle: 'Bloqr — API Documentation',
-    favicon: '/favicon.svg',
-    customCss: BLOQR_SCALAR_CSS,
-    metaData: {
-        title: 'Bloqr — API',
-        description: 'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources.',
-        ogDescription: 'Interactive API documentation for Bloqr — Adblock & Privacy Filter Compiler-as-a-Service',
-    },
+docsRoutes.get('/docs', (c) => {
+    const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
+    const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
+    return runApiReference(c, {
+        theme: 'none',
+        layout: 'modern',
+        url: '/api/openapi.json',
+        defaultHttpClient: { targetKey: 'js', clientKey: 'fetch' },
+        pageTitle: 'Bloqr — API Documentation',
+        favicon: '/favicon.svg',
+        customCss: BLOQR_SCALAR_CSS,
+        metaData: buildScalarMetaData(pageUrl, socialImageUrl, 'Bloqr — API Documentation'),
+    });
 });
-
-docsRoutes.get('/docs', scalarDocsHandler);
 // Wildcard variant handles trailing slashes and deep-links (e.g. /api/docs/).
-docsRoutes.get('/docs/*', scalarDocsHandler);
+docsRoutes.get('/docs/*', (c) => {
+    const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
+    const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
+    return runApiReference(c, {
+        theme: 'none',
+        layout: 'modern',
+        url: '/api/openapi.json',
+        defaultHttpClient: { targetKey: 'js', clientKey: 'fetch' },
+        pageTitle: 'Bloqr — API Documentation',
+        favicon: '/favicon.svg',
+        customCss: BLOQR_SCALAR_CSS,
+        metaData: buildScalarMetaData(pageUrl, socialImageUrl, 'Bloqr — API Documentation'),
+    });
+});
 
 // ── Swagger UI endpoint (Bloqr dark theme) ────────────────────────────────────
 // Traditional Swagger UI documentation at /api/swagger.
@@ -154,66 +259,57 @@ body { background: #070B14 !important; margin: 0; }
 // Pin to an exact Swagger UI dist version so CDN assets are reproducible across deploys.
 const SWAGGER_CDN_BASE = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14';
 
-const swaggerDocsHandler = swaggerUI({
-    url: '/api/openapi.json',
-    title: 'Bloqr — API — Swagger',
-    // `manuallySwaggerUIHtml` is the only type-safe way to inject custom CSS in
-    // @hono/swagger-ui@0.6.1 (the package does not expose a `customCss` option).
-    manuallySwaggerUIHtml: (_asset) => {
-        return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bloqr — API — Swagger</title>
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="${SWAGGER_CDN_BASE}/swagger-ui.css" />
-    <style>${BLOQR_SWAGGER_CSS}</style>
-</head>
-<body>
-    <div id="swagger-ui"></div>
-    <script src="${SWAGGER_CDN_BASE}/swagger-ui-bundle.js" crossorigin="anonymous"></script>
-    <script src="${SWAGGER_CDN_BASE}/swagger-ui-standalone-preset.js" crossorigin="anonymous"></script>
-    <script>
-        window.onload = function() {
-            window.ui = SwaggerUIBundle({
-                dom_id: '#swagger-ui',
-                url: '/api/openapi.json',
-                presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
-                plugins: [SwaggerUIBundle.plugins.DownloadUrl],
-                layout: 'StandaloneLayout',
-                persistAuthorization: true,
-                deepLinking: true,
-            });
-        };
-    </script>
-</body>
-</html>`;
-    },
+docsRoutes.get('/swagger', (c) => {
+    const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
+    const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
+    return runSwaggerUI(c, {
+        url: '/api/openapi.json',
+        title: 'Bloqr — API — Swagger',
+        // `manuallySwaggerUIHtml` is the only type-safe way to inject custom CSS in
+        // @hono/swagger-ui@0.6.1 (the package does not expose a `customCss` option).
+        manuallySwaggerUIHtml: (_asset) => buildSwaggerHtml(pageUrl, socialImageUrl),
+    });
 });
-
-docsRoutes.get('/swagger', swaggerDocsHandler);
 // Wildcard variant handles trailing slashes and deep-links (e.g. /api/swagger/).
-docsRoutes.get('/swagger/*', swaggerDocsHandler);
+docsRoutes.get('/swagger/*', (c) => {
+    const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
+    const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
+    return runSwaggerUI(c, {
+        url: '/api/openapi.json',
+        title: 'Bloqr — API — Swagger',
+        manuallySwaggerUIHtml: (_asset) => buildSwaggerHtml(pageUrl, socialImageUrl),
+    });
+});
 
 // ── ReDoc endpoint (Scalar classic layout, Bloqr dark theme) ─────────────────
 // Classic three-panel OpenAPI documentation UI at /api/redoc.
 
-const redocDocsHandler = apiReference({
-    theme: 'none',
-    layout: 'classic',
-    url: '/api/openapi.json',
-    pageTitle: 'Bloqr — API Reference',
-    favicon: '/favicon.svg',
-    customCss: BLOQR_SCALAR_CSS,
-    metaData: {
-        title: 'Bloqr — API Reference',
-        description: 'Compiler-as-a-Service for adblock filter lists.',
-    },
+docsRoutes.get('/redoc', (c) => {
+    const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
+    const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
+    return runApiReference(c, {
+        theme: 'none',
+        layout: 'classic',
+        url: '/api/openapi.json',
+        pageTitle: 'Bloqr — API Reference',
+        favicon: '/favicon.svg',
+        customCss: BLOQR_SCALAR_CSS,
+        metaData: buildScalarMetaData(pageUrl, socialImageUrl, 'Bloqr — API Reference'),
+    });
 });
-
-docsRoutes.get('/redoc', redocDocsHandler);
-docsRoutes.get('/redoc/*', redocDocsHandler);
+docsRoutes.get('/redoc/*', (c) => {
+    const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
+    const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
+    return runApiReference(c, {
+        theme: 'none',
+        layout: 'classic',
+        url: '/api/openapi.json',
+        pageTitle: 'Bloqr — API Reference',
+        favicon: '/favicon.svg',
+        customCss: BLOQR_SCALAR_CSS,
+        metaData: buildScalarMetaData(pageUrl, socialImageUrl, 'Bloqr — API Reference'),
+    });
+});
 
 // ── Landing page handler ──────────────────────────────────────────────────────
 // Shared HTML handler used by both GET / and GET /api.
@@ -254,9 +350,11 @@ const TRI_LINE_LOGO_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 
  * not possible here).
  * Bloqr dark palette, orange #FF5500 accent, cyan #00D4FF accent, responsive layout.
  */
-export function docsLandingHandler(env: Env): Response {
+export function docsLandingHandler(env: Env, requestUrl?: string): Response {
     const urls = getProjectUrls(env);
     const version = (env as { COMPILER_VERSION?: string }).COMPILER_VERSION ?? '—';
+    const canonicalPageUrl = requestUrl ? getCanonicalPageUrl(env, requestUrl) : urls.api;
+    const socialImageUrl = requestUrl ? getAbsoluteSocialImageUrl(env, requestUrl) : `${urls.api.replace(/\/$/, '')}${BLOQR_SOCIAL_IMAGE_PATH}`;
 
     const html = `<!DOCTYPE html>
 <html lang="en">
@@ -264,6 +362,18 @@ export function docsLandingHandler(env: Env): Response {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bloqr — API</title>
+    <meta name="description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bloqr — API" />
+    <meta property="og:description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta property="og:url" content="${canonicalPageUrl}" />
+    <meta property="og:site_name" content="Bloqr" />
+    <meta property="og:image" content="${socialImageUrl}" />
+    <meta property="og:image:alt" content="${API_SOCIAL_IMAGE_ALT}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Bloqr — API" />
+    <meta name="twitter:description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta name="twitter:image" content="${socialImageUrl}" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <!-- Space Grotesk via Google Fonts CDN.
          REQUIRED EXCEPTION: This is a standalone HTML response served directly by the Cloudflare Worker,
@@ -522,4 +632,4 @@ export function docsLandingHandler(env: Env): Response {
 // Also registered here so they are available via app.route('/api', docsRoutes)
 // and can be tested through the docs router directly.
 
-docsRoutes.get('/', (c) => docsLandingHandler(c.env));
+docsRoutes.get('/', (c) => docsLandingHandler(c.env, c.req.url));
