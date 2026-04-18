@@ -4,6 +4,7 @@
 - [API Reference](api-reference.md)
 - [REST / HTTP API](api/README.md)
   - [AGTree Integration](api/AGTREE_INTEGRATION.md)
+  - [AST Walk](api/AST_WALK.md)
   - [Batch API Guide](api/BATCH_API_GUIDE.md)
   - [Configuration API](api/CONFIGURATION_API.md)
   - [Library API](api/LIBRARY.md)
