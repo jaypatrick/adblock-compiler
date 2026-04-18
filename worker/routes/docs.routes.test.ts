@@ -62,9 +62,9 @@ Deno.test('GET /api/docs page uses /favicon.svg', async () => {
 Deno.test('GET /api/docs includes Open Graph metadata', async () => {
     const res = await fetchApp('/api/docs');
     const html = await res.text();
-    assertStringIncludes(html, '"ogTitle": "Bloqr — API Documentation"');
-    assertStringIncludes(html, '"ogImage": "/apple-touch-icon.png"');
-    assertStringIncludes(html, '"twitterCard": "summary_large_image"');
+    assertEquals(/"ogTitle"\s*:\s*"Bloqr — API Documentation"/.test(html), true);
+    assertEquals(/"ogImage"\s*:\s*"https:\/\/worker\.example\.com\/apple-touch-icon\.png"/.test(html), true);
+    assertEquals(/"twitterCard"\s*:\s*"summary_large_image"/.test(html), true);
 });
 
 Deno.test('GET /api/docs is publicly accessible (no auth required)', async () => {
@@ -121,7 +121,8 @@ Deno.test('GET /api/swagger includes Open Graph metadata', async () => {
     const res = await fetchApp('/api/swagger');
     const html = await res.text();
     assertStringIncludes(html, 'property="og:title" content="Bloqr — API — Swagger"');
-    assertStringIncludes(html, 'property="og:image" content="/apple-touch-icon.png"');
+    assertStringIncludes(html, 'property="og:image" content="https://worker.example.com/apple-touch-icon.png"');
+    assertStringIncludes(html, 'property="og:url" content="https://worker.example.com/api/swagger"');
     assertStringIncludes(html, 'name="twitter:card" content="summary_large_image"');
 });
 
@@ -166,9 +167,9 @@ Deno.test('GET /api/redoc page uses /favicon.svg', async () => {
 Deno.test('GET /api/redoc includes Open Graph metadata', async () => {
     const res = await fetchApp('/api/redoc');
     const html = await res.text();
-    assertStringIncludes(html, '"ogTitle": "Bloqr — API Reference"');
-    assertStringIncludes(html, '"ogImage": "/apple-touch-icon.png"');
-    assertStringIncludes(html, '"twitterCard": "summary_large_image"');
+    assertEquals(/"ogTitle"\s*:\s*"Bloqr — API Reference"/.test(html), true);
+    assertEquals(/"ogImage"\s*:\s*"https:\/\/worker\.example\.com\/apple-touch-icon\.png"/.test(html), true);
+    assertEquals(/"twitterCard"\s*:\s*"summary_large_image"/.test(html), true);
 });
 
 // ── GET / — Landing page ──────────────────────────────────────────────────────
@@ -232,7 +233,8 @@ Deno.test('GET / landing page includes Open Graph metadata', async () => {
     const res = await fetchApp('/');
     const html = await res.text();
     assertStringIncludes(html, 'property="og:title" content="Bloqr — API"');
-    assertStringIncludes(html, 'property="og:image" content="/apple-touch-icon.png"');
+    assertStringIncludes(html, 'property="og:url" content="https://worker.example.com/"');
+    assertStringIncludes(html, 'property="og:image" content="https://worker.example.com/apple-touch-icon.png"');
     assertStringIncludes(html, 'name="twitter:card" content="summary_large_image"');
 });
 
@@ -254,6 +256,14 @@ Deno.test('GET /api landing page contains Bloqr API branding', async () => {
 Deno.test('GET /api is publicly accessible (no auth required)', async () => {
     const res = await fetchApp('/api');
     assertEquals(res.status !== 401 && res.status !== 403, true);
+});
+
+Deno.test('GET /api landing page includes Open Graph metadata', async () => {
+    const res = await fetchApp('/api');
+    const html = await res.text();
+    assertStringIncludes(html, 'property="og:title" content="Bloqr — API"');
+    assertStringIncludes(html, 'property="og:url" content="https://worker.example.com/api"');
+    assertStringIncludes(html, 'property="og:image" content="https://worker.example.com/apple-touch-icon.png"');
 });
 
 // ── Trailing slash and subpath variants ───────────────────────────────────────
