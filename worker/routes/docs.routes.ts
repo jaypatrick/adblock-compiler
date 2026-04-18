@@ -94,6 +94,76 @@ function getAbsoluteSocialImageUrl(env: Env, requestUrl: string): string {
     }
 }
 
+function runApiReference<TContext>(c: TContext, config: Parameters<typeof apiReference>[0]): Response | Promise<Response> {
+    const handler = apiReference(config) as unknown as (ctx: TContext, next: () => Promise<void>) => Response | Promise<Response>;
+    return handler(c, NOOP_NEXT);
+}
+
+function runSwaggerUI<TContext>(c: TContext, config: Parameters<typeof swaggerUI>[0]): Response | Promise<Response> {
+    const handler = swaggerUI(config) as unknown as (ctx: TContext, next: () => Promise<void>) => Response | Promise<Response>;
+    return handler(c, NOOP_NEXT);
+}
+
+function buildScalarMetaData(pageUrl: string, socialImageUrl: string, title: string): Record<string, string> {
+    return {
+        title,
+        description: API_SOCIAL_DESCRIPTION,
+        ogTitle: title,
+        ogDescription: API_SOCIAL_DESCRIPTION,
+        ogUrl: pageUrl,
+        ogImage: socialImageUrl,
+        ogImageAlt: API_SOCIAL_IMAGE_ALT,
+        twitterCard: 'summary_large_image',
+        twitterTitle: title,
+        twitterDescription: API_SOCIAL_DESCRIPTION,
+        twitterImage: socialImageUrl,
+    };
+}
+
+function buildSwaggerHtml(pageUrl: string, socialImageUrl: string): string {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bloqr — API — Swagger</title>
+    <meta name="description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bloqr — API — Swagger" />
+    <meta property="og:description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta property="og:image" content="${socialImageUrl}" />
+    <meta property="og:image:alt" content="${API_SOCIAL_IMAGE_ALT}" />
+    <meta property="og:url" content="${pageUrl}" />
+    <meta property="og:site_name" content="Bloqr" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Bloqr — API — Swagger" />
+    <meta name="twitter:description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta name="twitter:image" content="${socialImageUrl}" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="${SWAGGER_CDN_BASE}/swagger-ui.css" />
+    <style>${BLOQR_SWAGGER_CSS}</style>
+</head>
+<body>
+    <div id="swagger-ui"></div>
+    <script src="${SWAGGER_CDN_BASE}/swagger-ui-bundle.js" crossorigin="anonymous"></script>
+    <script src="${SWAGGER_CDN_BASE}/swagger-ui-standalone-preset.js" crossorigin="anonymous"></script>
+    <script>
+        window.onload = function() {
+            window.ui = SwaggerUIBundle({
+                dom_id: '#swagger-ui',
+                url: '/api/openapi.json',
+                presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
+                plugins: [SwaggerUIBundle.plugins.DownloadUrl],
+                layout: 'StandaloneLayout',
+                persistAuthorization: true,
+                deepLinking: true,
+            });
+        };
+    </script>
+</body>
+</html>`;
+}
+
 // ── Scalar UI endpoint (Bloqr / modern) ──────────────────────────────────────
 // Primary interactive OpenAPI documentation UI at /api/docs.
 // Reference: https://hono.dev/examples/scalar/
@@ -101,7 +171,7 @@ function getAbsoluteSocialImageUrl(env: Env, requestUrl: string): string {
 docsRoutes.get('/docs', (c) => {
     const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
     const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
-    const handler = apiReference({
+    return runApiReference(c, {
         theme: 'none',
         layout: 'modern',
         url: '/api/openapi.json',
@@ -109,27 +179,14 @@ docsRoutes.get('/docs', (c) => {
         pageTitle: 'Bloqr — API Documentation',
         favicon: '/favicon.svg',
         customCss: BLOQR_SCALAR_CSS,
-        metaData: {
-            title: 'Bloqr — API',
-            description: API_SOCIAL_DESCRIPTION,
-            ogTitle: 'Bloqr — API Documentation',
-            ogDescription: API_SOCIAL_DESCRIPTION,
-            ogUrl: pageUrl,
-            ogImage: socialImageUrl,
-            ogImageAlt: API_SOCIAL_IMAGE_ALT,
-            twitterCard: 'summary_large_image',
-            twitterTitle: 'Bloqr — API Documentation',
-            twitterDescription: API_SOCIAL_DESCRIPTION,
-            twitterImage: socialImageUrl,
-        },
-    }) as unknown as (ctx: typeof c, next: () => Promise<void>) => Response | Promise<Response>;
-    return handler(c, NOOP_NEXT);
+        metaData: buildScalarMetaData(pageUrl, socialImageUrl, 'Bloqr — API Documentation'),
+    });
 });
 // Wildcard variant handles trailing slashes and deep-links (e.g. /api/docs/).
 docsRoutes.get('/docs/*', (c) => {
     const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
     const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
-    const handler = apiReference({
+    return runApiReference(c, {
         theme: 'none',
         layout: 'modern',
         url: '/api/openapi.json',
@@ -137,21 +194,8 @@ docsRoutes.get('/docs/*', (c) => {
         pageTitle: 'Bloqr — API Documentation',
         favicon: '/favicon.svg',
         customCss: BLOQR_SCALAR_CSS,
-        metaData: {
-            title: 'Bloqr — API',
-            description: API_SOCIAL_DESCRIPTION,
-            ogTitle: 'Bloqr — API Documentation',
-            ogDescription: API_SOCIAL_DESCRIPTION,
-            ogUrl: pageUrl,
-            ogImage: socialImageUrl,
-            ogImageAlt: API_SOCIAL_IMAGE_ALT,
-            twitterCard: 'summary_large_image',
-            twitterTitle: 'Bloqr — API Documentation',
-            twitterDescription: API_SOCIAL_DESCRIPTION,
-            twitterImage: socialImageUrl,
-        },
-    }) as unknown as (ctx: typeof c, next: () => Promise<void>) => Response | Promise<Response>;
-    return handler(c, NOOP_NEXT);
+        metaData: buildScalarMetaData(pageUrl, socialImageUrl, 'Bloqr — API Documentation'),
+    });
 });
 
 // ── Swagger UI endpoint (Bloqr dark theme) ────────────────────────────────────
@@ -217,109 +261,23 @@ const SWAGGER_CDN_BASE = 'https://cdn.jsdelivr.net/npm/swagger-ui-dist@5.17.14';
 docsRoutes.get('/swagger', (c) => {
     const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
     const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
-    const handler = swaggerUI({
+    return runSwaggerUI(c, {
         url: '/api/openapi.json',
         title: 'Bloqr — API — Swagger',
         // `manuallySwaggerUIHtml` is the only type-safe way to inject custom CSS in
         // @hono/swagger-ui@0.6.1 (the package does not expose a `customCss` option).
-        manuallySwaggerUIHtml: (_asset) => {
-            return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bloqr — API — Swagger</title>
-    <meta name="description" content="${API_SOCIAL_DESCRIPTION}" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Bloqr — API — Swagger" />
-    <meta property="og:description" content="${API_SOCIAL_DESCRIPTION}" />
-    <meta property="og:image" content="${socialImageUrl}" />
-    <meta property="og:image:alt" content="${API_SOCIAL_IMAGE_ALT}" />
-    <meta property="og:url" content="${pageUrl}" />
-    <meta property="og:site_name" content="Bloqr" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Bloqr — API — Swagger" />
-    <meta name="twitter:description" content="${API_SOCIAL_DESCRIPTION}" />
-    <meta name="twitter:image" content="${socialImageUrl}" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="${SWAGGER_CDN_BASE}/swagger-ui.css" />
-    <style>${BLOQR_SWAGGER_CSS}</style>
-</head>
-<body>
-    <div id="swagger-ui"></div>
-    <script src="${SWAGGER_CDN_BASE}/swagger-ui-bundle.js" crossorigin="anonymous"></script>
-    <script src="${SWAGGER_CDN_BASE}/swagger-ui-standalone-preset.js" crossorigin="anonymous"></script>
-    <script>
-        window.onload = function() {
-            window.ui = SwaggerUIBundle({
-                dom_id: '#swagger-ui',
-                url: '/api/openapi.json',
-                presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
-                plugins: [SwaggerUIBundle.plugins.DownloadUrl],
-                layout: 'StandaloneLayout',
-                persistAuthorization: true,
-                deepLinking: true,
-            });
-        };
-    </script>
-</body>
-</html>`;
-        },
-    }) as unknown as (ctx: typeof c, next: () => Promise<void>) => Response | Promise<Response>;
-    return handler(c, NOOP_NEXT);
+        manuallySwaggerUIHtml: (_asset) => buildSwaggerHtml(pageUrl, socialImageUrl),
+    });
 });
 // Wildcard variant handles trailing slashes and deep-links (e.g. /api/swagger/).
 docsRoutes.get('/swagger/*', (c) => {
     const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
     const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
-    const handler = swaggerUI({
+    return runSwaggerUI(c, {
         url: '/api/openapi.json',
         title: 'Bloqr — API — Swagger',
-        manuallySwaggerUIHtml: (_asset) => {
-            return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Bloqr — API — Swagger</title>
-    <meta name="description" content="${API_SOCIAL_DESCRIPTION}" />
-    <meta property="og:type" content="website" />
-    <meta property="og:title" content="Bloqr — API — Swagger" />
-    <meta property="og:description" content="${API_SOCIAL_DESCRIPTION}" />
-    <meta property="og:image" content="${socialImageUrl}" />
-    <meta property="og:image:alt" content="${API_SOCIAL_IMAGE_ALT}" />
-    <meta property="og:url" content="${pageUrl}" />
-    <meta property="og:site_name" content="Bloqr" />
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Bloqr — API — Swagger" />
-    <meta name="twitter:description" content="${API_SOCIAL_DESCRIPTION}" />
-    <meta name="twitter:image" content="${socialImageUrl}" />
-    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <link rel="stylesheet" href="${SWAGGER_CDN_BASE}/swagger-ui.css" />
-    <style>${BLOQR_SWAGGER_CSS}</style>
-</head>
-<body>
-    <div id="swagger-ui"></div>
-    <script src="${SWAGGER_CDN_BASE}/swagger-ui-bundle.js" crossorigin="anonymous"></script>
-    <script src="${SWAGGER_CDN_BASE}/swagger-ui-standalone-preset.js" crossorigin="anonymous"></script>
-    <script>
-        window.onload = function() {
-            window.ui = SwaggerUIBundle({
-                dom_id: '#swagger-ui',
-                url: '/api/openapi.json',
-                presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
-                plugins: [SwaggerUIBundle.plugins.DownloadUrl],
-                layout: 'StandaloneLayout',
-                persistAuthorization: true,
-                deepLinking: true,
-            });
-        };
-    </script>
-</body>
-</html>`;
-        },
-    }) as unknown as (ctx: typeof c, next: () => Promise<void>) => Response | Promise<Response>;
-    return handler(c, NOOP_NEXT);
+        manuallySwaggerUIHtml: (_asset) => buildSwaggerHtml(pageUrl, socialImageUrl),
+    });
 });
 
 // ── ReDoc endpoint (Scalar classic layout, Bloqr dark theme) ─────────────────
@@ -328,54 +286,28 @@ docsRoutes.get('/swagger/*', (c) => {
 docsRoutes.get('/redoc', (c) => {
     const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
     const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
-    const handler = apiReference({
+    return runApiReference(c, {
         theme: 'none',
         layout: 'classic',
         url: '/api/openapi.json',
         pageTitle: 'Bloqr — API Reference',
         favicon: '/favicon.svg',
         customCss: BLOQR_SCALAR_CSS,
-        metaData: {
-            title: 'Bloqr — API Reference',
-            description: API_SOCIAL_DESCRIPTION,
-            ogTitle: 'Bloqr — API Reference',
-            ogDescription: API_SOCIAL_DESCRIPTION,
-            ogUrl: pageUrl,
-            ogImage: socialImageUrl,
-            ogImageAlt: API_SOCIAL_IMAGE_ALT,
-            twitterCard: 'summary_large_image',
-            twitterTitle: 'Bloqr — API Reference',
-            twitterDescription: API_SOCIAL_DESCRIPTION,
-            twitterImage: socialImageUrl,
-        },
-    }) as unknown as (ctx: typeof c, next: () => Promise<void>) => Response | Promise<Response>;
-    return handler(c, NOOP_NEXT);
+        metaData: buildScalarMetaData(pageUrl, socialImageUrl, 'Bloqr — API Reference'),
+    });
 });
 docsRoutes.get('/redoc/*', (c) => {
     const pageUrl = getCanonicalPageUrl(c.env, c.req.url);
     const socialImageUrl = getAbsoluteSocialImageUrl(c.env, c.req.url);
-    const handler = apiReference({
+    return runApiReference(c, {
         theme: 'none',
         layout: 'classic',
         url: '/api/openapi.json',
         pageTitle: 'Bloqr — API Reference',
         favicon: '/favicon.svg',
         customCss: BLOQR_SCALAR_CSS,
-        metaData: {
-            title: 'Bloqr — API Reference',
-            description: API_SOCIAL_DESCRIPTION,
-            ogTitle: 'Bloqr — API Reference',
-            ogDescription: API_SOCIAL_DESCRIPTION,
-            ogUrl: pageUrl,
-            ogImage: socialImageUrl,
-            ogImageAlt: API_SOCIAL_IMAGE_ALT,
-            twitterCard: 'summary_large_image',
-            twitterTitle: 'Bloqr — API Reference',
-            twitterDescription: API_SOCIAL_DESCRIPTION,
-            twitterImage: socialImageUrl,
-        },
-    }) as unknown as (ctx: typeof c, next: () => Promise<void>) => Response | Promise<Response>;
-    return handler(c, NOOP_NEXT);
+        metaData: buildScalarMetaData(pageUrl, socialImageUrl, 'Bloqr — API Reference'),
+    });
 });
 
 // ── Landing page handler ──────────────────────────────────────────────────────
