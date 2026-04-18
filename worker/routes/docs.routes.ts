@@ -74,6 +74,7 @@ const BLOQR_SCALAR_CSS = `
 const BLOQR_SOCIAL_IMAGE_PATH = '/apple-touch-icon.png';
 const API_SOCIAL_IMAGE_ALT = 'Bloqr tri-line logo on dark background';
 const API_SOCIAL_DESCRIPTION = 'Compile, manage, and deploy adblock filter lists at network scale with the Bloqr API.';
+// Hono middleware signatures require a `next()` callback; docs handlers are terminal and don't need it.
 const NOOP_NEXT = async (): Promise<void> => {};
 
 function getCanonicalPageUrl(env: Env, requestUrl: string): string {
@@ -94,13 +95,13 @@ function getAbsoluteSocialImageUrl(env: Env, requestUrl: string): string {
     }
 }
 
-function runApiReference<TContext>(c: TContext, config: Parameters<typeof apiReference>[0]): Response | Promise<Response> {
-    const handler = apiReference(config) as unknown as (ctx: TContext, next: () => Promise<void>) => Response | Promise<Response>;
+function runApiReference<TRequestContext>(c: TRequestContext, config: Parameters<typeof apiReference>[0]): Response | Promise<Response> {
+    const handler = apiReference(config) as unknown as (ctx: TRequestContext, next: () => Promise<void>) => Response | Promise<Response>;
     return handler(c, NOOP_NEXT);
 }
 
-function runSwaggerUI<TContext>(c: TContext, config: Parameters<typeof swaggerUI>[0]): Response | Promise<Response> {
-    const handler = swaggerUI(config) as unknown as (ctx: TContext, next: () => Promise<void>) => Response | Promise<Response>;
+function runSwaggerUI<TRequestContext>(c: TRequestContext, config: Parameters<typeof swaggerUI>[0]): Response | Promise<Response> {
+    const handler = swaggerUI(config) as unknown as (ctx: TRequestContext, next: () => Promise<void>) => Response | Promise<Response>;
     return handler(c, NOOP_NEXT);
 }
 
