@@ -232,7 +232,7 @@ Deno.test('GET / landing page includes Open Graph metadata', async () => {
     const res = await fetchApp('/');
     const html = await res.text();
     assertStringIncludes(html, 'property="og:title" content="Bloqr — API"');
-    assertStringIncludes(html, 'property="og:image"');
+    assertStringIncludes(html, 'property="og:image" content="/apple-touch-icon.png"');
     assertStringIncludes(html, 'name="twitter:card" content="summary_large_image"');
 });
 
