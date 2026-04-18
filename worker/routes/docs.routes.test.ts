@@ -59,6 +59,14 @@ Deno.test('GET /api/docs page uses /favicon.svg', async () => {
     assertStringIncludes(html, '/favicon.svg');
 });
 
+Deno.test('GET /api/docs includes Open Graph metadata', async () => {
+    const res = await fetchApp('/api/docs');
+    const html = await res.text();
+    assertStringIncludes(html, '"ogTitle": "Bloqr — API Documentation"');
+    assertStringIncludes(html, '"ogImage": "/apple-touch-icon.png"');
+    assertStringIncludes(html, '"twitterCard": "summary_large_image"');
+});
+
 Deno.test('GET /api/docs is publicly accessible (no auth required)', async () => {
     // Should not return 401 for anonymous users
     const res = await fetchApp('/api/docs');
@@ -109,6 +117,14 @@ Deno.test('GET /api/swagger page uses /favicon.svg', async () => {
     assertStringIncludes(html, '/favicon.svg');
 });
 
+Deno.test('GET /api/swagger includes Open Graph metadata', async () => {
+    const res = await fetchApp('/api/swagger');
+    const html = await res.text();
+    assertStringIncludes(html, 'property="og:title" content="Bloqr — API — Swagger"');
+    assertStringIncludes(html, 'property="og:image" content="/apple-touch-icon.png"');
+    assertStringIncludes(html, 'name="twitter:card" content="summary_large_image"');
+});
+
 // ── GET /api/redoc — Scalar classic / ReDoc ───────────────────────────────────
 
 Deno.test('GET /api/redoc returns 200 and HTML content', async () => {
@@ -145,6 +161,14 @@ Deno.test('GET /api/redoc page uses /favicon.svg', async () => {
     const res = await fetchApp('/api/redoc');
     const html = await res.text();
     assertStringIncludes(html, '/favicon.svg');
+});
+
+Deno.test('GET /api/redoc includes Open Graph metadata', async () => {
+    const res = await fetchApp('/api/redoc');
+    const html = await res.text();
+    assertStringIncludes(html, '"ogTitle": "Bloqr — API Reference"');
+    assertStringIncludes(html, '"ogImage": "/apple-touch-icon.png"');
+    assertStringIncludes(html, '"twitterCard": "summary_large_image"');
 });
 
 // ── GET / — Landing page ──────────────────────────────────────────────────────
@@ -202,6 +226,14 @@ Deno.test('GET / landing page uses /favicon.svg', async () => {
     const res = await fetchApp('/');
     const html = await res.text();
     assertStringIncludes(html, '/favicon.svg');
+});
+
+Deno.test('GET / landing page includes Open Graph metadata', async () => {
+    const res = await fetchApp('/');
+    const html = await res.text();
+    assertStringIncludes(html, 'property="og:title" content="Bloqr — API"');
+    assertStringIncludes(html, 'property="og:image"');
+    assertStringIncludes(html, 'name="twitter:card" content="summary_large_image"');
 });
 
 // ── GET /api — Landing page (same content) ────────────────────────────────────

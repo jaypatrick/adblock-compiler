@@ -71,6 +71,10 @@ const BLOQR_SCALAR_CSS = `
 }
 `;
 
+const API_SOCIAL_IMAGE_PATH = '/apple-touch-icon.png';
+const API_SOCIAL_IMAGE_ALT = 'Bloqr tri-line logo on dark background';
+const API_SOCIAL_DESCRIPTION = 'Compile, manage, and deploy adblock filter lists at network scale with the Bloqr API.';
+
 // ── Scalar UI endpoint (Bloqr / modern) ──────────────────────────────────────
 // Primary interactive OpenAPI documentation UI at /api/docs.
 // Reference: https://hono.dev/examples/scalar/
@@ -85,8 +89,15 @@ const scalarDocsHandler = apiReference({
     customCss: BLOQR_SCALAR_CSS,
     metaData: {
         title: 'Bloqr — API',
-        description: 'Compiler-as-a-Service for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources.',
-        ogDescription: 'Interactive API documentation for Bloqr — Adblock & Privacy Filter Compiler-as-a-Service',
+        description: API_SOCIAL_DESCRIPTION,
+        ogTitle: 'Bloqr — API Documentation',
+        ogDescription: API_SOCIAL_DESCRIPTION,
+        ogImage: API_SOCIAL_IMAGE_PATH,
+        ogImageAlt: API_SOCIAL_IMAGE_ALT,
+        twitterCard: 'summary_large_image',
+        twitterTitle: 'Bloqr — API Documentation',
+        twitterDescription: API_SOCIAL_DESCRIPTION,
+        twitterImage: API_SOCIAL_IMAGE_PATH,
     },
 });
 
@@ -166,6 +177,18 @@ const swaggerDocsHandler = swaggerUI({
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bloqr — API — Swagger</title>
+    <meta name="description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bloqr — API — Swagger" />
+    <meta property="og:description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta property="og:image" content="${API_SOCIAL_IMAGE_PATH}" />
+    <meta property="og:image:alt" content="${API_SOCIAL_IMAGE_ALT}" />
+    <meta property="og:url" content="/api/swagger" />
+    <meta property="og:site_name" content="Bloqr" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Bloqr — API — Swagger" />
+    <meta name="twitter:description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta name="twitter:image" content="${API_SOCIAL_IMAGE_PATH}" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="stylesheet" href="${SWAGGER_CDN_BASE}/swagger-ui.css" />
     <style>${BLOQR_SWAGGER_CSS}</style>
@@ -208,7 +231,15 @@ const redocDocsHandler = apiReference({
     customCss: BLOQR_SCALAR_CSS,
     metaData: {
         title: 'Bloqr — API Reference',
-        description: 'Compiler-as-a-Service for adblock filter lists.',
+        description: API_SOCIAL_DESCRIPTION,
+        ogTitle: 'Bloqr — API Reference',
+        ogDescription: API_SOCIAL_DESCRIPTION,
+        ogImage: API_SOCIAL_IMAGE_PATH,
+        ogImageAlt: API_SOCIAL_IMAGE_ALT,
+        twitterCard: 'summary_large_image',
+        twitterTitle: 'Bloqr — API Reference',
+        twitterDescription: API_SOCIAL_DESCRIPTION,
+        twitterImage: API_SOCIAL_IMAGE_PATH,
     },
 });
 
@@ -264,6 +295,18 @@ export function docsLandingHandler(env: Env): Response {
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Bloqr — API</title>
+    <meta name="description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Bloqr — API" />
+    <meta property="og:description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta property="og:url" content="${urls.api}" />
+    <meta property="og:site_name" content="Bloqr" />
+    <meta property="og:image" content="${urls.frontend}${API_SOCIAL_IMAGE_PATH}" />
+    <meta property="og:image:alt" content="${API_SOCIAL_IMAGE_ALT}" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Bloqr — API" />
+    <meta name="twitter:description" content="${API_SOCIAL_DESCRIPTION}" />
+    <meta name="twitter:image" content="${urls.frontend}${API_SOCIAL_IMAGE_PATH}" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <!-- Space Grotesk via Google Fonts CDN.
          REQUIRED EXCEPTION: This is a standalone HTML response served directly by the Cloudflare Worker,
