@@ -77,10 +77,19 @@ const API_SOCIAL_DESCRIPTION = 'Compile, manage, and deploy adblock filter lists
 // Hono middleware signatures require a `next()` callback; docs handlers are terminal and don't need it.
 const NOOP_NEXT = async (): Promise<void> => {};
 
+function normalizeCanonicalPathname(pathname: string): string {
+    if (pathname === '/') {
+        return pathname;
+    }
+
+    return pathname.replace(/\/+$/, '');
+}
+
 function getCanonicalPageUrl(env: Env, requestUrl: string): string {
     try {
         const parsed = new URL(requestUrl);
-        return `${parsed.origin}${parsed.pathname}`;
+        const normalizedPathname = normalizeCanonicalPathname(parsed.pathname);
+        return `${parsed.origin}${normalizedPathname}`;
     } catch {
         return getProjectUrls(env).api;
     }

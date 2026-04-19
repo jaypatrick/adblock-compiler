@@ -280,6 +280,13 @@ Deno.test('GET /api/docs/ is publicly accessible (no auth required)', async () =
     assertEquals(res.status !== 401 && res.status !== 403, true);
 });
 
+Deno.test('GET /api/docs/ normalizes Open Graph canonical metadata', async () => {
+    const res = await fetchApp('/api/docs/');
+    const html = await res.text();
+    assertEquals(/"ogUrl"\s*:\s*"https:\/\/worker\.example\.com\/api\/docs"/.test(html), true);
+    assertEquals(/"ogImage"\s*:\s*"https:\/\/worker\.example\.com\/apple-touch-icon\.png"/.test(html), true);
+});
+
 Deno.test('GET /api/swagger/ (trailing slash) returns 200 and HTML content', async () => {
     const res = await fetchApp('/api/swagger/');
     assertEquals(res.status, 200);
@@ -290,4 +297,11 @@ Deno.test('GET /api/swagger/ (trailing slash) returns 200 and HTML content', asy
 Deno.test('GET /api/swagger/ is publicly accessible (no auth required)', async () => {
     const res = await fetchApp('/api/swagger/');
     assertEquals(res.status !== 401 && res.status !== 403, true);
+});
+
+Deno.test('GET /api/swagger/ normalizes Open Graph canonical metadata', async () => {
+    const res = await fetchApp('/api/swagger/');
+    const html = await res.text();
+    assertStringIncludes(html, 'property="og:url" content="https://worker.example.com/api/swagger"');
+    assertStringIncludes(html, 'property="og:image" content="https://worker.example.com/apple-touch-icon.png"');
 });
