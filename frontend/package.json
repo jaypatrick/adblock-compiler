@@ -43,7 +43,7 @@
         "@fontsource/jetbrains-mono": "^5.2.8",
         "@fontsource/space-grotesk": "^5.2.10",
         "@sentry/angular": "^10.43.0",
-        "@sentry/cloudflare": "^10.43.0",
+        "@sentry/cloudflare": "^10.49.0",
         "@trpc/client": "^11.15.1",
         "hono": "^4.12.12",
         "material-symbols": "^0.40.2",
