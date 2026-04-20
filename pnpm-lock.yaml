@@ -201,8 +201,8 @@ importers:
         version: 4.3.6
     devDependencies:
       '@analogjs/vitest-angular':
-        specifier: ^2.3.1
-        version: 2.3.1(@analogjs/vite-plugin-angular@2.3.1(@angular-devkit/build-angular@21.2.2(df60758fcb858265e46f9828b774c423))(@angular/build@21.2.2(163952887f70773b8bf75dadf7e47876)))(@angular-devkit/architect@0.2102.2(chokidar@5.0.0))(@angular-devkit/schematics@21.2.2(chokidar@5.0.0))(vitest@4.1.0(@opentelemetry/api@1.9.1)(@types/node@25.5.0)(jsdom@28.1.0(@noble/hashes@2.0.1))(vite@7.3.2(@types/node@25.5.0)(jiti@2.6.1)(less@4.4.2)(lightningcss@1.32.0)(sass@1.97.3)(terser@5.46.0)(yaml@2.8.3)))
+        specifier: ^2.4.9
+        version: 2.4.9(@analogjs/vite-plugin-angular@2.3.1(@angular-devkit/build-angular@21.2.2(df60758fcb858265e46f9828b774c423))(@angular/build@21.2.2(163952887f70773b8bf75dadf7e47876)))(@angular-devkit/architect@0.2102.2(chokidar@5.0.0))(@angular-devkit/schematics@21.2.2(chokidar@5.0.0))(vitest@4.1.0(@opentelemetry/api@1.9.1)(@types/node@25.5.0)(jsdom@28.1.0(@noble/hashes@2.0.1))(vite@7.3.2(@types/node@25.5.0)(jiti@2.6.1)(less@4.4.2)(lightningcss@1.32.0)(sass@1.97.3)(terser@5.46.0)(yaml@2.8.3)))
       '@angular-devkit/build-angular':
         specifier: ^21.2.2
         version: 21.2.2(df60758fcb858265e46f9828b774c423)
@@ -374,8 +374,8 @@ packages:
       '@angular/build':
         optional: true
 
-  '@analogjs/vitest-angular@2.3.1':
-    resolution: {integrity: sha512-wbTLgeWDR9qPohE5vzGi4GJ0oHC/GmAhkzEMbt6xoAHbhvMsRrqsiiku03tejHcPqErMlsBotIeR/huAbJferQ==}
+  '@analogjs/vitest-angular@2.4.9':
+    resolution: {integrity: sha512-xPwkDUD+mh4uMd9lRr75SINJAWzRDHYqjJOw976jzmgl79EHhPWZylKTP4lnPvrRtXdqrgWGE+MsRSLlCvMplQ==}
     peerDependencies:
       '@analogjs/vite-plugin-angular': '*'
       '@angular-devkit/architect': '>=0.1500.0 < 0.2200.0'
@@ -2246,8 +2246,8 @@ packages:
       '@cfworker/json-schema':
         optional: true
 
-  '@mongodb-js/saslprep@1.4.6':
-    resolution: {integrity: sha512-y+x3H1xBZd38n10NZF/rEBlvDOOMQ6LKUTHqr8R9VkJ+mmQOYtJFxIlkkK8fZrtOiL6VixbOBWMbZGBdal3Z1g==}
+  '@mongodb-js/saslprep@1.4.8':
+    resolution: {integrity: sha512-kpjr2jy2w71w0oqAMI8oibBmiF9lXxWkEQs5gMkW4hVE48bsqINGLxnCSYW62ck/NHXJQpQEfA9WlJ1sY0eqBg==}
 
   '@mrleebo/prisma-ast@0.13.1':
     resolution: {integrity: sha512-XyroGQXcHrZdvmrGJvsA9KNeOOgGMg1Vg9OlheUsBOSKznLMDl+YChxbkboRHvtFYJEMRYmlV3uoo/njCw05iw==}
@@ -7247,7 +7247,7 @@ snapshots:
       '@angular-devkit/build-angular': 21.2.2(df60758fcb858265e46f9828b774c423)
       '@angular/build': 21.2.2(163952887f70773b8bf75dadf7e47876)
 
-  '@analogjs/vitest-angular@2.3.1(@analogjs/vite-plugin-angular@2.3.1(@angular-devkit/build-angular@21.2.2(df60758fcb858265e46f9828b774c423))(@angular/build@21.2.2(163952887f70773b8bf75dadf7e47876)))(@angular-devkit/architect@0.2102.2(chokidar@5.0.0))(@angular-devkit/schematics@21.2.2(chokidar@5.0.0))(vitest@4.1.0(@opentelemetry/api@1.9.1)(@types/node@25.5.0)(jsdom@28.1.0(@noble/hashes@2.0.1))(vite@7.3.2(@types/node@25.5.0)(jiti@2.6.1)(less@4.4.2)(lightningcss@1.32.0)(sass@1.97.3)(terser@5.46.0)(yaml@2.8.3)))':
+  '@analogjs/vitest-angular@2.4.9(@analogjs/vite-plugin-angular@2.3.1(@angular-devkit/build-angular@21.2.2(df60758fcb858265e46f9828b774c423))(@angular/build@21.2.2(163952887f70773b8bf75dadf7e47876)))(@angular-devkit/architect@0.2102.2(chokidar@5.0.0))(@angular-devkit/schematics@21.2.2(chokidar@5.0.0))(vitest@4.1.0(@opentelemetry/api@1.9.1)(@types/node@25.5.0)(jsdom@28.1.0(@noble/hashes@2.0.1))(vite@7.3.2(@types/node@25.5.0)(jiti@2.6.1)(less@4.4.2)(lightningcss@1.32.0)(sass@1.97.3)(terser@5.46.0)(yaml@2.8.3)))':
     dependencies:
       '@analogjs/vite-plugin-angular': 2.3.1(@angular-devkit/build-angular@21.2.2(df60758fcb858265e46f9828b774c423))(@angular/build@21.2.2(163952887f70773b8bf75dadf7e47876))
       '@angular-devkit/architect': 0.2102.2(chokidar@5.0.0)
@@ -9277,7 +9277,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mongodb-js/saslprep@1.4.6':
+  '@mongodb-js/saslprep@1.4.8':
     dependencies:
       sparse-bitfield: 3.0.3
     optional: true
@@ -12503,7 +12503,7 @@ snapshots:
 
   mongodb@7.1.0(socks@2.8.7):
     dependencies:
-      '@mongodb-js/saslprep': 1.4.6
+      '@mongodb-js/saslprep': 1.4.8
       bson: 7.2.0
       mongodb-connection-string-url: 7.0.1
     optionalDependencies:
