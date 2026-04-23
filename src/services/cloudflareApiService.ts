@@ -326,8 +326,8 @@ export class CloudflareApiService {
 
         // The generic get() still routes through the SDK's auth, retries, and
         // error-handling middleware — only the path type is untyped.
-        // TODO: implement cursor-based pagination if zones exceed 100 detected scripts.
-        const raw = await this.client.get<Record<string, never>, PageShieldScriptsResponse>(
+        // TODO(@copilot): implement cursor-based pagination if zones exceed 100 detected scripts.
+        const raw = await this.client.get<{ per_page?: number }, PageShieldScriptsResponse>(
             `/zones/${zoneId}/page_shield/scripts`,
             { query: { per_page: 100 } },
         );
