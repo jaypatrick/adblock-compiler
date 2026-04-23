@@ -22,6 +22,7 @@ The adblock-compiler implements Zero Trust Architecture (ZTA) across every layer
 | Rate abuse | 5-tier rate limiting keyed by authenticated user or IP |
 | Secret leakage | Worker Secrets only; CI lint checks for secrets in `[vars]` |
 | **BOLA / IDOR** | **Resource queries scoped to `authContext.userId`; validated by API Shield Vulnerability Scanner** |
+| **Client-side script injection / supply-chain compromise** | **CSP enforcement via `contentSecurityPolicyMiddleware()`; violations reported to `POST /api/csp-report` and persisted to D1; Page Shield script-inventory sync generates ABP block/allow rules — see [Page Shield Integration](PAGE_SHIELD_INTEGRATION.md)** |
 
 ## Architecture Layers
 
