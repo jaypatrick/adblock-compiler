@@ -22,12 +22,7 @@
  */
 
 import { createCloudflareApiService, type PageShieldScript } from '../src/services/cloudflareApiService.ts';
-import {
-    PAGE_SHIELD_ALLOW_THRESHOLD,
-    PAGE_SHIELD_BLOCK_THRESHOLD,
-    toAllowRule,
-    toBlockRule,
-} from '../src/utils/pageshield-rules.ts';
+import { PAGE_SHIELD_ALLOW_THRESHOLD, PAGE_SHIELD_BLOCK_THRESHOLD, toAllowRule, toBlockRule } from '../src/utils/pageshield-rules.ts';
 
 const CF_ZONE_ID = Deno.env.get('CF_ZONE_ID');
 const CF_PAGE_SHIELD_API_TOKEN = Deno.env.get('CF_PAGE_SHIELD_API_TOKEN');
@@ -83,8 +78,7 @@ async function syncToAdblockRules(): Promise<void> {
     // Narrow once to scripts that Cloudflare has already scored, eliminating
     // the repeated `typeof s.malicious_score === 'number'` guard below.
     const scoredScripts = scripts.filter(
-        (s): s is PageShieldScript & { malicious_score: number } =>
-            typeof s.malicious_score === 'number',
+        (s): s is PageShieldScript & { malicious_score: number } => typeof s.malicious_score === 'number',
     );
 
     const malicious = scoredScripts.filter((s) => s.malicious_score > PAGE_SHIELD_BLOCK_THRESHOLD);

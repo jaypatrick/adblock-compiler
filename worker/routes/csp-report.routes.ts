@@ -60,8 +60,7 @@ const cspReportRoute = createRoute({
     path: '/csp-report',
     tags: ['Security'],
     summary: 'Receive CSP violation report',
-    description:
-        'Accepts browser Content-Security-Policy violation reports and persists them to the D1 `csp_violations` table. ' +
+    description: 'Accepts browser Content-Security-Policy violation reports and persists them to the D1 `csp_violations` table. ' +
         'No authentication required — the endpoint is intentionally public so browsers can submit reports without credentials.',
     request: {
         body: {

@@ -46,9 +46,9 @@ function buildCspDirectives(): string {
         "base-uri 'self'",
         "form-action 'self'",
         // Cloudflare Turnstile renders in a sandboxed iframe from challenges.cloudflare.com
-        "frame-src https://challenges.cloudflare.com",
+        'frame-src https://challenges.cloudflare.com',
         "frame-ancestors 'none'",
-        "upgrade-insecure-requests",
+        'upgrade-insecure-requests',
         'report-uri /api/csp-report',
     ].join('; ');
 }

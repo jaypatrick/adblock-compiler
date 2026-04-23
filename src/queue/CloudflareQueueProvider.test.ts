@@ -44,7 +44,7 @@ Deno.test('CloudflareQueueProvider - should return false for health check when n
 
 Deno.test('CloudflareQueueProvider - should return true for health check when binding set', async () => {
     const provider = new CloudflareQueueProvider();
-    provider.setBinding(new MockQueue());
+    provider.setBinding(new MockQueue() as unknown as Queue<unknown>);
     assertEquals(await provider.healthCheck(), true);
 });
 
@@ -81,7 +81,7 @@ Deno.test('CloudflareQueueProvider - should log error via logger when processBat
     };
 
     // deno-lint-ignore require-await
-    await provider.processBatch(batch, async () => {
+    await provider.processBatch(batch as unknown as MessageBatch<AnyQueueMessage>, async () => {
         throw new Error('Handler failed');
     });
 
@@ -114,7 +114,7 @@ Deno.test('CloudflareQueueProvider - should log error via logger when wrapBatch 
         retryAll: () => {},
     };
 
-    const result = provider.wrapBatch(batch);
+    const result = provider.wrapBatch(batch as unknown as MessageBatch<AnyQueueMessage>);
     assertEquals(result.messages.length, 1);
 
     await result.messages[0].fail('Test failure reason');

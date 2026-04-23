@@ -8,12 +8,7 @@
 
 import type { Env } from '../types.ts';
 import { createCloudflareApiService, type PageShieldScript } from '../../src/services/cloudflareApiService.ts';
-import {
-    PAGE_SHIELD_ALLOW_THRESHOLD,
-    PAGE_SHIELD_BLOCK_THRESHOLD,
-    toAllowRule,
-    toBlockRule,
-} from '../../src/utils/pageshield-rules.ts';
+import { PAGE_SHIELD_ALLOW_THRESHOLD, PAGE_SHIELD_BLOCK_THRESHOLD, toAllowRule, toBlockRule } from '../../src/utils/pageshield-rules.ts';
 
 // ── Page Shield ───────────────────────────────────────────────────────────────
 
@@ -51,21 +46,24 @@ async function syncPageShieldScripts(env: Env): Promise<void> {
     // Narrow once to scripts that Cloudflare has already scored, eliminating
     // the repeated `typeof s.malicious_score === 'number'` guard below.
     const scoredScripts = scripts.filter(
-        (s): s is PageShieldScript & { malicious_score: number } =>
-            typeof s.malicious_score === 'number',
+        (s): s is PageShieldScript & { malicious_score: number } => typeof s.malicious_score === 'number',
     );
 
-    const blockRules = [...new Set(
-        scoredScripts
-            .filter((s) => s.malicious_score > PAGE_SHIELD_BLOCK_THRESHOLD)
-            .map((s) => toBlockRule(s.url)),
-    )];
+    const blockRules = [
+        ...new Set(
+            scoredScripts
+                .filter((s) => s.malicious_score > PAGE_SHIELD_BLOCK_THRESHOLD)
+                .map((s) => toBlockRule(s.url)),
+        ),
+    ];
 
-    const allowRules = [...new Set(
-        scoredScripts
-            .filter((s) => s.malicious_score < PAGE_SHIELD_ALLOW_THRESHOLD)
-            .map((s) => toAllowRule(s.url)),
-    )];
+    const allowRules = [
+        ...new Set(
+            scoredScripts
+                .filter((s) => s.malicious_score < PAGE_SHIELD_ALLOW_THRESHOLD)
+                .map((s) => toAllowRule(s.url)),
+        ),
+    ];
 
     // Persist to KV so compiler routes can include them as optional sources.
     if (env.COMPILATION_CACHE) {
