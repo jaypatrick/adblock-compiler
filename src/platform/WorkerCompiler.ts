@@ -377,13 +377,18 @@ export class WorkerCompiler {
 
             collector?.setSourceCount(configuration.sources.length);
 
-            // Combine results with headers
-            // concat() is iterative; push(...largeArray) exhausts the JS call stack
-            // for rule sets that exceed V8's ~65 k argument limit (e.g. AdGuard Base).
-            let finalList: string[] = [];
+            // Combine results with headers using element-by-element push to avoid both
+            // the V8 ~65 k spread-argument limit (hit by AdGuard Base at 200 k+ rules)
+            // and the O(n²) full-array copies that concat() produces inside a loop.
+            const finalList: string[] = [];
             for (const { source, rules } of sourceResults) {
                 const sourceHeader = this.prepareSourceHeader(source);
-                finalList = finalList.concat(sourceHeader, rules);
+                for (const line of sourceHeader) {
+                    finalList.push(line);
+                }
+                for (const rule of rules) {
+                    finalList.push(rule);
+                }
             }
 
             const inputRuleCount = finalList.length;
