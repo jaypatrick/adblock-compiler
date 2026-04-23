@@ -34,10 +34,11 @@ function buildCspDirectives(): string {
     return [
         "default-src 'self'",
         // Cloudflare Turnstile (api.js) + Web Analytics + Swagger UI (cdn.jsdelivr.net)
+        // 'unsafe-inline' is required by swagger-ui-bundle.js which injects inline scripts at runtime.
         "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'unsafe-inline'",
         // Cloudflare Analytics beacon + Sentry error ingest
         "connect-src 'self' https://cloudflareinsights.com https://*.ingest.sentry.io",
-        // Swagger UI styles from cdn.jsdelivr.net
+        // Swagger UI injects inline <style> blocks; cdn.jsdelivr.net supplies the stylesheet.
         "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'",
         "img-src 'self' data: https:",
         "font-src 'self' data:",

@@ -149,7 +149,7 @@ cspReportRoutes.openapi(cspReportRoute, async (c) => {
     } catch (error) {
         // deno-lint-ignore no-console
         console.error('[csp-report] Failed to persist violation to D1', error);
-        return c.json({ success: false, error: 'Database write failed' }, 503);
+        return c.json({ success: false, error: 'Failed to persist CSP violation report to D1' }, 503);
     }
 
     // 204 No Content — browsers ignore the response body.
