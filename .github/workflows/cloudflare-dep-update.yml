@@ -24,6 +24,10 @@ on:
         - cron: '0 6 * * *'
     workflow_dispatch: {}
 
+env:
+    # Keep in sync with the DENO_VERSION pin in ci.yml
+    DENO_VERSION: '2.7.11'
+
 permissions:
     contents: write
     workflows: write
@@ -42,10 +46,12 @@ jobs:
                   fetch-depth: 0
                   token: ${{ secrets.GITHUB_TOKEN }}
 
-            - name: Setup Deno
-              uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
+            - name: Setup Deno environment
+              uses: ./.github/actions/setup-deno-env
               with:
-                  deno-version: '2.x'
+                  deno-version: ${{ env.DENO_VERSION }}
+                  # Skip deno install — we are about to regenerate deno.lock from scratch
+                  install-deps: 'false'
 
             # ----------------------------------------------------------------
             # Step 1 — Update all version pin strings across the repo
@@ -71,15 +77,8 @@ jobs:
             # Step 4 — Regenerate pnpm-lock.yaml so it stays in sync with the
             #          updated package.json version pins.
             # ----------------------------------------------------------------
-            - name: Setup pnpm
-              uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
-
-            - name: Setup Node.js
-              uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
-              with:
-                  node-version: '24.15'
-                  cache: 'pnpm'
-                  cache-dependency-path: 'pnpm-lock.yaml'
+            - name: Setup pnpm and Node.js
+              uses: ./.github/actions/setup-pnpm-node
 
             - name: Regenerate pnpm-lock.yaml
               run: pnpm install --lockfile-only --ignore-scripts
