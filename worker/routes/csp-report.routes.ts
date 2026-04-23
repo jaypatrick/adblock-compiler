@@ -27,23 +27,23 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 
 import type { Env } from '../types.ts';
-import { rateLimitMiddleware } from '../middleware/hono-middleware.ts';
+import { bodySizeMiddleware, rateLimitMiddleware } from '../middleware/hono-middleware.ts';
 import type { Variables } from './shared.ts';
 
 export const cspReportRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
-// Rate-limit public writes: browsers should not be able to flood D1 with synthetic reports.
-cspReportRoutes.use('/csp-report', rateLimitMiddleware());
+// Cap payload size early, then rate-limit: browsers should not flood D1 with large or synthetic reports.
+cspReportRoutes.use('/csp-report', bodySizeMiddleware(), rateLimitMiddleware());
 
 // ── Zod schema ───────────────────────────────────────────────────────────────
 
 /** Shape of the `csp-report` sub-object sent by browsers. */
 const CspReportBodySchema = z.object({
     'csp-report': z.object({
-        // Always present in conforming browsers; `.default('')` tolerates malformed reports.
-        'document-uri': z.string().max(2048).default(''),
-        'blocked-uri': z.string().max(2048).default(''),
-        'violated-directive': z.string().max(512).default(''),
+        // Required for structurally valid reports; reject missing or empty values.
+        'document-uri': z.string().min(1).max(2048),
+        'blocked-uri': z.string().min(1).max(2048),
+        'violated-directive': z.string().min(1).max(512),
         /** Full CSP header value that triggered the violation. */
         'original-policy': z.string().max(4096).optional(),
         /** Normalized directive name (may differ from `violated-directive`). */

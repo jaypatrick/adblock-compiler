@@ -124,6 +124,17 @@ Deno.test('POST /api/csp-report — missing csp-report key returns 400', async (
     assertEquals(res.status, 400);
 });
 
+Deno.test('POST /api/csp-report — empty csp-report sub-object (missing required fields) returns 400', async () => {
+    const env = makeEnv({ DB: makeWritableDb() });
+    const res = await fetchApp('/api/csp-report', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 'csp-report': {} }),
+        env,
+    });
+    assertEquals(res.status, 400);
+});
+
 // ── POST /api/csp-report — DB unavailable ─────────────────────────────────────
 
 Deno.test('POST /api/csp-report — missing DB binding returns 503', async () => {
