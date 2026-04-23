@@ -235,6 +235,7 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                                 'User-Agent': 'AdblockCompiler-HealthCheck/1.0',
                                 'Range': 'bytes=0-8191',
                             },
+                            signal: AbortSignal.timeout(HEALTH_THRESHOLDS.maxResponseTimeMs),
                         });
 
                         result.statusCode = response.status;
@@ -505,7 +506,7 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            console.error(`[WORKFLOW:HEALTH] Health monitoring failed (runId: ${runId}):`, errorMessage);
+            console.error(`[WORKFLOW:HEALTH] Health monitoring failed (runId: ${runId}): ${errorMessage}`);
 
             // Emit workflow failed event
             await events.emitWorkflowFailed(errorMessage, {
@@ -515,8 +516,9 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             });
             await events.flush();
 
-            // Rethrow so the CF Workflows runtime captures the real exception message in telemetry
-            throw error;
+            // Always throw an Error instance so CF Workflows telemetry captures the real
+            // message (non-Error throws are logged as the generic category label "workflow").
+            throw error instanceof Error ? error : new Error(`[WORKFLOW:HEALTH] run=${runId}: ${errorMessage}`);
         }
     }
 }

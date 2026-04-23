@@ -210,6 +210,8 @@ export class RateLimiterDO implements DurableObject {
         if (this.count >= maxRequests) {
             // Persist limit (and count for consistency) atomically on rejection so
             // that after DO hibernation both values are restored in sync.
+            // Keep this write confirmed: the rejection path is infrequent, and losing
+            // it on eviction would allow over-limit requests after hibernation.
             if (limitChanged) {
                 await this.state.storage.put({
                     [STORAGE_KEY_COUNT]: this.count,
@@ -222,12 +224,14 @@ export class RateLimiterDO implements DurableObject {
         this.count++;
         if (limitChanged) {
             // Persist both count and updated limit atomically.
+            // Fire-and-forget: losing one write on crash is acceptable for rate limiting.
             await this.state.storage.put({
                 [STORAGE_KEY_COUNT]: this.count,
                 [STORAGE_KEY_LIMIT]: this.limit,
-            });
+            }, { allowUnconfirmed: true });
         } else {
-            await this.state.storage.put(STORAGE_KEY_COUNT, this.count);
+            // Fire-and-forget: losing one count on crash is acceptable for rate limiting.
+            await this.state.storage.put(STORAGE_KEY_COUNT, this.count, { allowUnconfirmed: true });
         }
 
         return {

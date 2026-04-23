@@ -377,11 +377,19 @@ export class WorkerCompiler {
 
             collector?.setSourceCount(configuration.sources.length);
 
-            // Combine results with headers
+            // Element-by-element push avoids both the V8 ~65 k spread-argument limit
+            // (stack overflow on AdGuard Base at 200 k+ rules) and the O(n²) full-array
+            // copies that concat()-in-a-loop produces per source iteration.
+            // Must be `let` — the transformation pipeline reassigns this below.
             let finalList: string[] = [];
             for (const { source, rules } of sourceResults) {
                 const sourceHeader = this.prepareSourceHeader(source);
-                finalList.push(...sourceHeader, ...rules);
+                for (const line of sourceHeader) {
+                    finalList.push(line);
+                }
+                for (const rule of rules) {
+                    finalList.push(rule);
+                }
             }
 
             const inputRuleCount = finalList.length;

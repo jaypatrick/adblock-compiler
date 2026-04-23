@@ -177,8 +177,9 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 const chunkNumber = chunkIndex + 1;
 
                 // Use sleep between chunks to avoid overwhelming external sources
+                // Each step ID must be unique within a CF Workflows run.
                 if (chunkIndex > 0) {
-                    await step.sleep('inter-chunk-delay', '10 seconds');
+                    await step.sleep(`inter-chunk-delay-${chunkIndex}`, '10 seconds');
                 }
 
                 await events.emitStepStarted(`warm-chunk-${chunkNumber}`, {
