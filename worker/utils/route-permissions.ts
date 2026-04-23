@@ -85,6 +85,8 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/browser/health', { minTier: UserTier.Anonymous, description: 'Browser Rendering binding health check' }],
     // Webhook receivers use self-authentication (HMAC/signatures)
     ['/webhooks/*', { minTier: UserTier.Anonymous, description: 'Webhook receivers (self-authenticated)' }],
+    // CSP violation reports — intentionally unauthenticated (browsers cannot carry Bearer tokens)
+    ['/csp-report', { minTier: UserTier.Anonymous, description: 'CSP violation report ingestion (browser-native, no auth)' }],
     // API documentation — publicly readable
     ['/docs', { minTier: UserTier.Anonymous, description: 'API documentation (Scalar UI)' }],
     ['/swagger', { minTier: UserTier.Anonymous, description: 'API documentation (Swagger UI)' }],

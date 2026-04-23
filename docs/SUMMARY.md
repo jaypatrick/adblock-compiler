@@ -143,6 +143,7 @@
 - [Security](security/ZERO_TRUST_ARCHITECTURE.md)
   - [ZTA Developer Guide](security/ZTA_DEVELOPER_GUIDE.md)
   - [API Shield Vulnerability Scanner](security/API_SHIELD_VULNERABILITY_SCANNER.md)
+  - [Page Shield Integration](security/PAGE_SHIELD_INTEGRATION.md)
 - [Testing](testing/README.md)
   - [Testing Guide](testing/testing.md)
   - [Database Testing](testing/database-testing.md)

@@ -455,6 +455,38 @@ Examples:
     }
 
     /**
+     * Appends Page Shield-generated rule sources to an existing configuration.
+     *
+     * Called during `run()` to optionally layer in the blocklist/allowlist files
+     * produced by `deno task pageshield:sync`.
+     * Files are silently skipped if they do not exist (e.g. on a fresh clone),
+     * so the compiler pipeline is never blocked by missing Page Shield data.
+     *
+     * @param config - The resolved `IConfiguration` to augment in place.
+     */
+    private async appendPageShieldSources(config: IConfiguration): Promise<void> {
+        const candidates: Array<{ path: string; label: string }> = [
+            { path: 'data/pageshield-blocklist.txt', label: 'Page Shield blocklist' },
+            { path: 'data/pageshield-allowlist.txt', label: 'Page Shield allowlist' },
+        ];
+
+        for (const { path, label } of candidates) {
+            try {
+                // Deno.stat() throws NotFound if the file is absent — we only care about existence.
+                await Deno.stat(path);
+                config.sources.push({
+                    name: label,
+                    source: path,
+                    type: SourceType.Adblock,
+                });
+                this.logger.debug(`Appended Page Shield source: ${path}`);
+            } catch {
+                this.logger.debug(`Page Shield source not found, skipping: ${path}`);
+            }
+        }
+    }
+
+    /**
      * Reads and resolves the configuration file using ConfigurationManager.
      *
      * Supports:
@@ -803,8 +835,9 @@ Examples:
             // Initialize compiler with optional event handlers
             this.initCompiler();
 
-            // Get configuration
+            // Get configuration and append any Page Shield sources
             const config = this.args.input ? await this.createConfig() : await this.readConfig();
+            await this.appendPageShieldSources(config);
 
             this.logger.debug(`Configuration: ${JSON.stringify(config, null, 4)}`);
 

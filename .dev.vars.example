@@ -116,3 +116,11 @@ URL_DOCS=https://docs.bloqr.jaysonknight.com
 # PAYG_PRICE_PER_CALL_USD_CENTS=1
 # PAYG spend threshold in USD cents for subscription upsell (default: 2000 = $20)
 # PAYG_CONVERSION_THRESHOLD_USD_CENTS=2000
+
+# ─── Cloudflare Page Shield (Worker runtime secrets) ──────────────────────────
+# Zone ID for Page Shield API access. Required for the hourly Page Shield sync cron.
+# wrangler secret put CF_ZONE_ID
+# CF_ZONE_ID=your_zone_id_here
+# Scoped CF API token with Zone.Page Shield read permissions.
+# wrangler secret put CF_PAGE_SHIELD_API_TOKEN
+# CF_PAGE_SHIELD_API_TOKEN=your_page_shield_api_token_here

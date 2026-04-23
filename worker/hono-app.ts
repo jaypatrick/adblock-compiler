@@ -91,6 +91,8 @@ import { stripeRoutes } from './routes/stripe.routes.ts';
 import { webhookRoutes } from './routes/webhook.routes.ts';
 import { workflowRoutes } from './routes/workflow.routes.ts';
 import { workflowDiagramRoutes } from './routes/workflow-diagram.routes.ts';
+import { cspReportRoutes } from './routes/csp-report.routes.ts';
+import { contentSecurityPolicyMiddleware } from './security-headers.ts';
 
 // Prisma middleware
 import { createPrismaClient } from './lib/prisma.ts';
@@ -465,6 +467,11 @@ app.use(
 // ── 5. Secure headers ─────────────────────────────────────────────────────────
 app.use('*', secureHeaders());
 
+// ── 5a. Content Security Policy ───────────────────────────────────────────────
+// Sets Content-Security-Policy header with report-uri /api/csp-report so that
+// browser violations are collected in D1 via the cspReportRoutes handler.
+app.use('*', contentSecurityPolicyMiddleware());
+
 // ── 6. Pretty JSON ────────────────────────────────────────────────────────────
 app.use('*', prettyJSON());
 
@@ -619,6 +626,9 @@ routes.route('/', paygRoutes);
 routes.route('/', workflowRoutes);
 routes.route('/', workflowDiagramRoutes);
 routes.route('/', browserRoutes);
+// CSP report endpoint — keep this mounted before proxyRoutes so any broad
+// proxy route matching does not shadow POST /csp-report.
+routes.route('/', cspReportRoutes);
 routes.route('/', proxyRoutes);
 
 // ── Mount meta routes (API discovery, version info, config) ──────────────────

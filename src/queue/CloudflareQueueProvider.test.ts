@@ -7,17 +7,23 @@ import type { IBasicLogger } from '../types/index.ts';
 import type { AnyQueueMessage } from './IQueueProvider.ts';
 import { CloudflareQueueProvider, createCloudflareQueueProvider } from './CloudflareQueueProvider.ts';
 
-// Mock queue binding
-class MockQueue {
+// Mock queue binding that fully implements Queue<unknown> without unsafe casts.
+class MockQueue implements Queue<unknown> {
     public sentMessages: unknown[] = [];
-    public batches: Array<{ body: unknown }>[] = [];
+    public batches: MessageSendRequest<unknown>[][] = [];
 
-    async send(message: unknown): Promise<void> {
-        this.sentMessages.push(message);
+    async metrics(): Promise<QueueMetrics> {
+        return { backlogCount: 0, backlogBytes: 0 };
     }
 
-    async sendBatch(messages: Array<{ body: unknown }>): Promise<void> {
-        this.batches.push(messages);
+    async send(message: unknown): Promise<QueueSendResponse> {
+        this.sentMessages.push(message);
+        return { metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } } };
+    }
+
+    async sendBatch(messages: Iterable<MessageSendRequest<unknown>>): Promise<QueueSendBatchResponse> {
+        this.batches.push([...messages]);
+        return { metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } } };
     }
 }
 
@@ -78,10 +84,11 @@ Deno.test('CloudflareQueueProvider - should log error via logger when processBat
         queue: 'test-queue',
         ackAll: () => {},
         retryAll: () => {},
+        metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
     };
 
     // deno-lint-ignore require-await
-    await provider.processBatch(batch, async () => {
+    await provider.processBatch(batch as MessageBatch<AnyQueueMessage>, async () => {
         throw new Error('Handler failed');
     });
 
@@ -112,9 +119,10 @@ Deno.test('CloudflareQueueProvider - should log error via logger when wrapBatch 
         queue: 'test-queue',
         ackAll: () => {},
         retryAll: () => {},
+        metadata: { metrics: { backlogCount: 0, backlogBytes: 0 } },
     };
 
-    const result = provider.wrapBatch(batch);
+    const result = provider.wrapBatch(batch as MessageBatch<AnyQueueMessage>);
     assertEquals(result.messages.length, 1);
 
     await result.messages[0].fail('Test failure reason');
