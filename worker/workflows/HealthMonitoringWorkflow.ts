@@ -518,9 +518,7 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
 
             // Always throw an Error instance so CF Workflows telemetry captures the real
             // message (non-Error throws are logged as the generic category label "workflow").
-            throw error instanceof Error
-                ? error
-                : new Error(`[WORKFLOW:HEALTH] run=${runId}: ${errorMessage}`);
+            throw error instanceof Error ? error : new Error(`[WORKFLOW:HEALTH] run=${runId}: ${errorMessage}`);
         }
     }
 }
