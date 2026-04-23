@@ -65,10 +65,17 @@ const cspReportRoute = createRoute({
     request: {
         body: {
             required: true,
+            // Only declare application/csp-report here.
+            // Declaring application/json would cause @hono/zod-openapi to add a
+            // JSON body validator that runs for ALL incoming content types: for
+            // application/csp-report requests it passes {} to Zod (wrong CT ->
+            // skipped body read) and returns 400; for application/json + invalid
+            // JSON it throws HTTPException(400) which the global onError handler
+            // converts to 500.  With only a non-JSON content type declared no
+            // automatic body validator is injected, so the handler's own
+            // c.req.text() + JSON.parse() + try/catch handles both content types
+            // correctly.
             content: {
-                'application/json': {
-                    schema: CspReportBodySchema,
-                },
                 'application/csp-report': {
                     schema: CspReportBodySchema,
                 },
