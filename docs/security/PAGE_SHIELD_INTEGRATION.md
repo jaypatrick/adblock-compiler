@@ -265,8 +265,8 @@ This module is the **single source of truth** for threshold constants and rule-g
 |---|---|---|
 | `PAGE_SHIELD_BLOCK_THRESHOLD` | `number` (0.7) | Scripts with `malicious_score > 0.7` become block rules |
 | `PAGE_SHIELD_ALLOW_THRESHOLD` | `number` (0.1) | Scripts with `malicious_score < 0.1` become allow rules |
-| `toBlockRule(url)` | `(url: string) => string` | Returns `\|\|hostname^` (ABP block syntax) |
-| `toAllowRule(url)` | `(url: string) => string` | Returns `@@\|\|hostname^` (ABP exception syntax) |
+| `toBlockRule(url)` | `(url: string) => string` | Returns `||hostname^` (ABP block syntax) |
+| `toAllowRule(url)` | `(url: string) => string` | Returns `@@||hostname^` (ABP exception syntax) |
 
 Both helpers gracefully fall back to using the raw value when `url` is not a valid URL (e.g., bare hostnames or empty strings).
 
@@ -289,8 +289,8 @@ Fetches the Page Shield script inventory for your zone via `CloudflareApiService
 
 | File | Contents |
 |---|---|
-| `data/pageshield-blocklist.txt` | `\|\|hostname^` rules for scripts with `malicious_score > 0.7` |
-| `data/pageshield-allowlist.txt` | `@@\|\|hostname^` rules for scripts with `malicious_score < 0.1` |
+| `data/pageshield-blocklist.txt` | `||hostname^` rules for scripts with `malicious_score > 0.7` |
+| `data/pageshield-allowlist.txt` | `@@||hostname^` rules for scripts with `malicious_score < 0.1` |
 
 Each file begins with a generation header:
 
