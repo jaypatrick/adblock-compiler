@@ -8,46 +8,18 @@
 
 import type { Env } from '../types.ts';
 import { createCloudflareApiService, type PageShieldScript } from '../../src/services/cloudflareApiService.ts';
+import {
+    PAGE_SHIELD_ALLOW_THRESHOLD,
+    PAGE_SHIELD_BLOCK_THRESHOLD,
+    toAllowRule,
+    toBlockRule,
+} from '../../src/utils/pageshield-rules.ts';
 
 // ── Page Shield ───────────────────────────────────────────────────────────────
 
 // KV entries expire after two cron cycles (1 h each) to provide a buffer window
 // in case a sync run fails. Stale data is preferable to a cache miss.
 const PAGE_SHIELD_KV_TTL_SECONDS = 7200;
-
-/** Scores above this threshold are written as ABP block rules. */
-const PAGE_SHIELD_BLOCK_THRESHOLD = 0.7;
-
-/** Scores below this threshold are written as ABP allow rules. */
-const PAGE_SHIELD_ALLOW_THRESHOLD = 0.1;
-
-/**
- * Converts a script URL to an ABP-format block rule (`||hostname^`).
- *
- * @param url - The script URL.
- * @returns ABP block rule string.
- */
-function toBlockRule(url: string): string {
-    try {
-        return `||${new URL(url).hostname}^`;
-    } catch {
-        return `||${url}^`;
-    }
-}
-
-/**
- * Converts a script URL to an ABP-format allow rule (`@@||hostname^`).
- *
- * @param url - The script URL.
- * @returns ABP allow rule string.
- */
-function toAllowRule(url: string): string {
-    try {
-        return `@@||${new URL(url).hostname}^`;
-    } catch {
-        return `@@||${url}^`;
-    }
-}
 
 /**
  * Fetches Page Shield scripts and stores generated ABP rules in Cloudflare KV.

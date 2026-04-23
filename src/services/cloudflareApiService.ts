@@ -332,6 +332,14 @@ export class CloudflareApiService {
             { query: { per_page: 100 } },
         );
         const parsed = PageShieldScriptsResponseSchema.parse(raw);
+
+        if (!parsed.success) {
+            const errorDetails = parsed.errors.length > 0
+                ? JSON.stringify(parsed.errors)
+                : 'Unknown Cloudflare API error';
+            throw new Error(`Cloudflare Page Shield scripts request failed: ${errorDetails}`);
+        }
+
         return parsed.result ?? [];
     }
 }

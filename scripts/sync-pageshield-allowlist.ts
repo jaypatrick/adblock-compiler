@@ -22,50 +22,20 @@
  */
 
 import { createCloudflareApiService, type PageShieldScript } from '../src/services/cloudflareApiService.ts';
+import {
+    PAGE_SHIELD_ALLOW_THRESHOLD,
+    PAGE_SHIELD_BLOCK_THRESHOLD,
+    toAllowRule,
+    toBlockRule,
+} from '../src/utils/pageshield-rules.ts';
 
 const CF_ZONE_ID = Deno.env.get('CF_ZONE_ID');
 const CF_PAGE_SHIELD_API_TOKEN = Deno.env.get('CF_PAGE_SHIELD_API_TOKEN');
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
-/** Scripts with a malicious score above this threshold are blocked. */
-const BLOCK_THRESHOLD = 0.7;
-
-/** Scripts with a malicious score below this threshold are explicitly allowed. */
-const ALLOW_THRESHOLD = 0.1;
-
 const BLOCKLIST_PATH = 'data/pageshield-blocklist.txt';
 const ALLOWLIST_PATH = 'data/pageshield-allowlist.txt';
-
-// ── Rule generators ──────────────────────────────────────────────────────────
-
-/**
- * Converts a script URL to an ABP-format block rule.
- *
- * @param url - The script URL.
- * @returns ABP block rule string (e.g. `||hostname^`).
- */
-function toBlockRule(url: string): string {
-    try {
-        return `||${new URL(url).hostname}^`;
-    } catch {
-        return `||${url}^`;
-    }
-}
-
-/**
- * Converts a script URL to an ABP-format allow rule.
- *
- * @param url - The script URL.
- * @returns ABP allow rule string (e.g. `@@||hostname^`).
- */
-function toAllowRule(url: string): string {
-    try {
-        return `@@||${new URL(url).hostname}^`;
-    } catch {
-        return `@@||${url}^`;
-    }
-}
 
 // ── File writers ─────────────────────────────────────────────────────────────
 
@@ -117,8 +87,8 @@ async function syncToAdblockRules(): Promise<void> {
             typeof s.malicious_score === 'number',
     );
 
-    const malicious = scoredScripts.filter((s) => s.malicious_score > BLOCK_THRESHOLD);
-    const trusted = scoredScripts.filter((s) => s.malicious_score < ALLOW_THRESHOLD);
+    const malicious = scoredScripts.filter((s) => s.malicious_score > PAGE_SHIELD_BLOCK_THRESHOLD);
+    const trusted = scoredScripts.filter((s) => s.malicious_score < PAGE_SHIELD_ALLOW_THRESHOLD);
 
     // Deduplicate by hostname
     const blockRules = [...new Set(malicious.map((s) => toBlockRule(s.url)))];

@@ -626,8 +626,8 @@ routes.route('/', paygRoutes);
 routes.route('/', workflowRoutes);
 routes.route('/', workflowDiagramRoutes);
 routes.route('/', browserRoutes);
-// CSP report endpoint — must precede proxyRoutes (catch-all) so the wildcard
-// static-asset handler does not swallow POST /csp-report requests.
+// CSP report endpoint — keep this mounted before proxyRoutes so any broad
+// proxy route matching does not shadow POST /csp-report.
 routes.route('/', cspReportRoutes);
 routes.route('/', proxyRoutes);
 

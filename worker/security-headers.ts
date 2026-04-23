@@ -23,22 +23,29 @@ import type { Variables } from './routes/shared.ts';
  * Builds the Content-Security-Policy header value.
  *
  * Directives are tuned for the Bloqr SPA + API worker:
- * - `script-src` allows Cloudflare Web Analytics (static.cloudflareinsights.com)
- * - `connect-src` allows Cloudflare Analytics beacon (cloudflareinsights.com)
+ * - `script-src` allows Cloudflare Turnstile and Web Analytics, plus the
+ *   swagger-ui-dist bundle hosted on cdn.jsdelivr.net for /api/swagger
+ * - `frame-src` allows Cloudflare Turnstile challenge iframes
+ * - `connect-src` allows Cloudflare Analytics beacon and Sentry error ingest
  * - `report-uri /api/csp-report` enables browser-native CSP violation reporting
  *   which feeds the Page Shield detection loop and the csp_violations D1 table
  */
 function buildCspDirectives(): string {
     return [
         "default-src 'self'",
-        "script-src 'self' https://static.cloudflareinsights.com",
-        "connect-src 'self' https://cloudflareinsights.com",
-        "style-src 'self'",
+        // Cloudflare Turnstile (api.js) + Web Analytics + Swagger UI (cdn.jsdelivr.net)
+        "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'unsafe-inline'",
+        // Cloudflare Analytics beacon + Sentry error ingest
+        "connect-src 'self' https://cloudflareinsights.com https://*.ingest.sentry.io",
+        // Swagger UI styles from cdn.jsdelivr.net
+        "style-src 'self' https://cdn.jsdelivr.net 'unsafe-inline'",
         "img-src 'self' data: https:",
         "font-src 'self' data:",
         "object-src 'none'",
         "base-uri 'self'",
         "form-action 'self'",
+        // Cloudflare Turnstile renders in a sandboxed iframe from challenges.cloudflare.com
+        "frame-src https://challenges.cloudflare.com",
         "frame-ancestors 'none'",
         "upgrade-insecure-requests",
         'report-uri /api/csp-report',

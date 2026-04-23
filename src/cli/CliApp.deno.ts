@@ -458,7 +458,7 @@ Examples:
      * Appends Page Shield-generated rule sources to an existing configuration.
      *
      * Called during `run()` to optionally layer in the blocklist/allowlist files
-     * produced by `deno task pageshield:sync` (or the Worker cron job via KV).
+     * produced by `deno task pageshield:sync`.
      * Files are silently skipped if they do not exist (e.g. on a fresh clone),
      * so the compiler pipeline is never blocked by missing Page Shield data.
      *

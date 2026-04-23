@@ -9,13 +9,13 @@
  *
  * ## Security
  * - No auth required: browsers submit CSP reports without credentials.
- * - Rate limiting is applied via the global rateLimitMiddleware.
+ * - Rate limiting should be applied per-use via `rateLimitMiddleware()` on the route.
  * - Input is Zod-validated before any DB write.
  *
  * ## Browser report format
- * Browsers submit `application/csp-report` (older) or `application/reports+json` (newer).
- * Both carry a JSON body; this endpoint parses the JSON and extracts the
- * `csp-report` sub-object.
+ * Browsers submit `application/csp-report` (older) or `application/json` (newer).
+ * Both carry a JSON body with a `csp-report` sub-object; this endpoint parses and
+ * validates that sub-object before persisting it.
  *
  * ## ZTA checklist
  * - [x] No auth required for reporting endpoint (browsers cannot carry Bearer tokens)
@@ -27,9 +27,13 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 
 import type { Env } from '../types.ts';
+import { rateLimitMiddleware } from '../middleware/hono-middleware.ts';
 import type { Variables } from './shared.ts';
 
 export const cspReportRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
+
+// Rate-limit public writes: browsers should not be able to flood D1 with synthetic reports.
+cspReportRoutes.use('/csp-report', rateLimitMiddleware());
 
 // ── Zod schema ───────────────────────────────────────────────────────────────
 
@@ -143,9 +147,9 @@ cspReportRoutes.openapi(cspReportRoute, async (c) => {
             )
             .run();
     } catch (error) {
-        // Non-fatal: log and return 204 so the browser does not retry aggressively.
         // deno-lint-ignore no-console
         console.error('[csp-report] Failed to persist violation to D1', error);
+        return c.json({ success: false, error: 'Database write failed' }, 503);
     }
 
     // 204 No Content — browsers ignore the response body.
