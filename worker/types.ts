@@ -546,6 +546,19 @@ export interface Env {
     URL_LANDING?: string;
     /** Canonical root domain (e.g. "bloqr.ai"). Used for crawl-protection noindex logic. */
     CANONICAL_DOMAIN?: string;
+    // --- Cloudflare Page Shield ---
+    /**
+     * Cloudflare zone ID. Required for the Page Shield sync cron job
+     * (`handleScheduled` → `syncPageShieldScripts`).
+     * Production: `wrangler secret put CF_ZONE_ID`
+     */
+    CF_ZONE_ID?: string;
+    /**
+     * Scoped Cloudflare API token with Page Shield read permissions.
+     * Required for the Page Shield sync cron job.
+     * Production: `wrangler secret put CF_PAGE_SHIELD_API_TOKEN`
+     */
+    CF_PAGE_SHIELD_API_TOKEN?: string;
     // --- Cloudflare Containers ---
     // Shared secret for Worker→Container auth (X-Container-Secret). Must match container env. Set via `wrangler secret put CONTAINER_SECRET`.
     CONTAINER_SECRET?: string;

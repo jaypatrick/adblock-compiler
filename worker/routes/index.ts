@@ -16,5 +16,6 @@ export { workflowRoutes } from './workflow.routes.ts';
 export { workflowDiagramRoutes } from './workflow-diagram.routes.ts';
 export { browserRoutes } from './browser.routes.ts';
 export { proxyRoutes } from './proxy.routes.ts';
+export { cspReportRoutes } from './csp-report.routes.ts';
 export type { AppContext, Variables } from './shared.ts';
 export { buildSyntheticRequest, verifyTurnstileInline, zodValidationError } from './shared.ts';

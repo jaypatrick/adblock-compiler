@@ -119,7 +119,8 @@
         "diag:report": "deno run --allow-read --allow-write scripts/diag-report.ts",
         "ci:cloudflare-check": "deno run --allow-net --allow-read scripts/ci/cloudflare-upgrade-check.ts",
         "ci:cloudflare-update": "deno run --allow-net --allow-read --allow-write scripts/ci/cloudflare-dep-update.ts",
-        "ci:cloudflare-allowscripts-sync": "deno run --allow-read --allow-write scripts/ci/cloudflare-allowscripts-sync.ts"
+        "ci:cloudflare-allowscripts-sync": "deno run --allow-read --allow-write scripts/ci/cloudflare-allowscripts-sync.ts",
+        "pageshield:sync": "deno run --allow-net --allow-env --allow-write scripts/sync-pageshield-allowlist.ts"
     },
     "imports": {
         "@/": "./src/",
