@@ -80,6 +80,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.89.0] - 2026-04-23
+
+### Added- Integrate Cloudflare Page Shield client-side security (#1651)
+
+### Fixed
+
+- three production error classes — stack overflow, duplicate workflow step ID, DO storage timeout, hung health fetch (#1653)
+
+
 ## [0.88.0] - 2026-04-17
 
 ### Added- **utils,worker,cli**: implement deep AGTree walker, adapter interfaces, /ast/walk endpoint, and CLI flags (#1632)
