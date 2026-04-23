@@ -7,6 +7,37 @@ import type { IBasicLogger } from '../types/index.ts';
 import { silentLogger } from '../utils/logger.ts';
 import { z } from 'zod';
 
+// ─── Page Shield Zod schemas ─────────────────────────────────────────────────
+
+/**
+ * Zod schema for a single Cloudflare Page Shield script record.
+ *
+ * The `malicious_score` field is optional/nullable — the API omits it for
+ * scripts that have not yet been analysed.
+ */
+export const PageShieldScriptSchema = z.object({
+    /** Stable identifier for the detected script. */
+    id: z.string(),
+    /** Full URL of the script as observed on the zone. */
+    url: z.string(),
+    /**
+     * Cloudflare threat score in the range [0, 1].
+     * `null` means the script has not been analysed yet.
+     */
+    malicious_score: z.number().nullable().optional(),
+});
+/** Inferred type from {@link PageShieldScriptSchema}. */
+export type PageShieldScript = z.infer<typeof PageShieldScriptSchema>;
+
+/** Zod schema for the v4 API envelope returned by the Page Shield scripts endpoint. */
+export const PageShieldScriptsResponseSchema = z.object({
+    result: z.array(PageShieldScriptSchema).nullable(),
+    success: z.boolean(),
+    errors: z.array(z.object({ code: z.number(), message: z.string() })),
+});
+/** Inferred type from {@link PageShieldScriptsResponseSchema}. */
+export type PageShieldScriptsResponse = z.infer<typeof PageShieldScriptsResponseSchema>;
+
 // ─── API Shield Zod schemas ─────────────────────────────────────────────────
 
 /**
@@ -273,6 +304,41 @@ export class CloudflareApiService {
         this.logger.info(`[CloudflareApiService] deleteApiShieldSchema zoneId=${zoneId} schemaId=${schemaId}`);
 
         await this.client.apiGateway.userSchemas.delete(schemaId, { zone_id: zoneId });
+    }
+
+    // ── Page Shield ───────────────────────────────────────────────────────────
+
+    /**
+     * Lists all scripts detected by Cloudflare Page Shield for the given zone.
+     *
+     * The Page Shield Scripts endpoint is not yet exposed as a typed resource
+     * in the `cloudflare@5.x` SDK. The generic `get()` method is used so that
+     * all SDK features (auth, retries, error handling) still apply; only the
+     * path-level type safety is sacrificed.  The response is Zod-validated at
+     * the trust boundary via {@link PageShieldScriptsResponseSchema}.
+     *
+     * @param zoneId - Cloudflare zone ID (32-character hex string).
+     * @returns Array of {@link PageShieldScript} objects.
+     * @throws {ZodError} if the API response does not match {@link PageShieldScriptsResponseSchema}.
+     */
+    async getPageShieldScripts(zoneId: string): Promise<PageShieldScript[]> {
+        this.logger.info(`[CloudflareApiService] getPageShieldScripts zoneId=${zoneId}`);
+
+        // The generic get() still routes through the SDK's auth, retries, and
+        // error-handling middleware — only the path type is untyped.
+        // TODO(@copilot): implement cursor-based pagination if zones exceed 100 detected scripts.
+        const raw = await this.client.get<{ per_page?: number }, PageShieldScriptsResponse>(
+            `/zones/${zoneId}/page_shield/scripts`,
+            { query: { per_page: 100 } },
+        );
+        const parsed = PageShieldScriptsResponseSchema.parse(raw);
+
+        if (!parsed.success) {
+            const errorDetails = parsed.errors.length > 0 ? JSON.stringify(parsed.errors) : 'Unknown Cloudflare API error';
+            throw new Error(`Cloudflare Page Shield scripts request failed: ${errorDetails}`);
+        }
+
+        return parsed.result ?? [];
     }
 }
 

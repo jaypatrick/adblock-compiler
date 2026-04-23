@@ -90,6 +90,9 @@ jobs:
             - name: Route-order lint
               run: deno task lint:routes
 
+    # Keeps deno.lock / package.json wrangler pins current automatically so this
+    # check stays green without manual intervention on every Cloudflare release.
+    # See: .github/workflows/cloudflare-dep-update.yml
     cloudflare-dep-check:
         name: Cloudflare Dependency Check
         runs-on: ubuntu-latest

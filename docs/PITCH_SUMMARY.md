@@ -72,6 +72,17 @@ The Angular admin UI for managing agents:
 - **Vitest tests** — service and component specs, zoneless, signal-based mocks
 - **Documentation** — `docs/frontend/AGENTS_FRONTEND.md`, `docs/PITCH_SUMMARY.md`
 
+### Phase 4 — Cloudflare Page Shield Integration *(PR #1651)*
+Full client-side security layer powered by Cloudflare Page Shield:
+- **Path-scoped CSP middleware** — strict policy (no `'unsafe-inline'`) on all SPA/API routes; relaxed policy scoped only to `/api/swagger*`; `report-uri` wires every browser into the violation pipeline
+- **`POST /api/csp-report`** — unauthenticated ingestion endpoint with `bodySizeMiddleware` + `rateLimitMiddleware` + Zod field validation; 204 on success, 400 on invalid/missing required fields, 503 on D1 write failure
+- **`csp_violations` D1 table** — indexed on `timestamp` and `violated_directive` for operational queries
+- **`deno task pageshield:sync`** — fetches Page Shield script inventory via `CloudflareApiService`, partitions by `malicious_score`, deduplicates by hostname, writes `data/pageshield-{blocklist,allowlist}.txt` in ABP format
+- **Shared `pageshield-rules.ts` utility** — `toBlockRule()`, `toAllowRule()`, and threshold constants as a single source of truth for both the Worker cron and the CLI sync script
+- **ZTA-compliant** — Anonymous tier in `ROUTE_PERMISSION_REGISTRY`, parameterized D1 inserts, no raw SQL
+- **19 unit tests** for rule utilities; **9 route-level tests** for the CSP endpoint
+- **Full documentation** — `docs/security/PAGE_SHIELD_INTEGRATION.md`
+
 ---
 
 ## Why This Is Bleeding Edge
@@ -127,8 +138,17 @@ LLMs write TypeScript functions against our APIs directly ("Code Mode") — pote
 - **All queries parameterized** — Prisma `.prepare().bind()` throughout
 - **Security events emitted** — every auth failure, rate limit hit, and termination goes to Analytics Engine
 - **Admin-only gating** — agent panel invisible to non-admin users at the route level
+- **Passive client-side threat detection** — every browser session reports CSP violations to D1 in real time; Page Shield script scoring auto-generates adblock rules that harden the filter pipeline
 
 This is not retrofitted security. Zero Trust Architecture was baked in from the first commit.
+
+---
+
+### Page Shield: Passive Script Threat Detection *(landing page blurb)*
+
+> **Your users' browsers are now your security sensors.**
+>
+> adblock-compiler ships with deep Cloudflare Page Shield integration. Every browser that loads your application automatically reports Content Security Policy violations to a dedicated endpoint — no JavaScript agents, no SDK, no sampling. Supply-chain compromises, injected trackers, and typosquatted CDN scripts are captured, Zod-validated, and persisted to Cloudflare D1 in real time. Combine this with Page Shield's AI-scored script inventory to automatically generate adblock block and allow rules, continuously hardening your compiled filter lists against the latest client-side threats. Enterprise-grade client-side security, built in from day one.
 
 ---
 
