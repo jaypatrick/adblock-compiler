@@ -82,6 +82,14 @@ function buildSwaggerCspDirectives(): string {
 const CSP_STRICT = buildStrictCspDirectives();
 const CSP_SWAGGER = buildSwaggerCspDirectives();
 
+/**
+ * Path prefixes that serve API documentation (Swagger UI, Scalar, ReDoc).
+ * These routes receive the relaxed CSP variant because their bundled renderers
+ * inject inline scripts/styles at runtime.  Add new prefixes here whenever a
+ * new documentation renderer is mounted.
+ */
+const DOC_PATH_PREFIXES: readonly string[] = ['/api/swagger', '/api/docs', '/api/redoc'];
+
 // ============================================================================
 // Middleware
 // ============================================================================
@@ -110,7 +118,7 @@ export function contentSecurityPolicyMiddleware(): MiddlewareHandler<{ Bindings:
         await next();
         // Apply relaxed CSP for API documentation paths; all other routes get the strict policy.
         const path = c.req.path;
-        const isDocPath = path.startsWith('/api/swagger') || path.startsWith('/api/docs') || path.startsWith('/api/redoc');
+        const isDocPath = DOC_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
         const csp = isDocPath ? CSP_SWAGGER : CSP_STRICT;
         c.header('Content-Security-Policy', csp);
         c.header('X-Content-Type-Options', 'nosniff');

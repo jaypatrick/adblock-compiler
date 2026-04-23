@@ -14,7 +14,7 @@ import type { Env } from '../types.ts';
  * lifetime.  The cron fires hourly; without this the Worker logs would fill
  * with identical "disabled" messages every hour.
  */
-let _pageShieldWarnLogged = false;
+let pageShieldWarnLogged = false;
 
 /**
  * Page Shield sync is intentionally disabled until the generated KV entries are
@@ -29,10 +29,10 @@ let _pageShieldWarnLogged = false;
  * @param _env - Worker environment bindings.
  */
 async function syncPageShieldScripts(_env: Env): Promise<void> {
-    if (!_pageShieldWarnLogged) {
+    if (!pageShieldWarnLogged) {
         // deno-lint-ignore no-console
         console.warn('[pageshield:sync] Disabled: no in-repo consumer for pageshield:blocklist or pageshield:allowlist yet');
-        _pageShieldWarnLogged = true;
+        pageShieldWarnLogged = true;
     }
 }
 

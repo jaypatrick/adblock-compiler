@@ -142,6 +142,9 @@ cspReportRoutes.openapi(cspReportRoute, async (c) => {
     const cspReport = report['csp-report'];
 
     try {
+        // `timestamp` is intentionally omitted — D1 applies the second-precision
+        // DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')) from the schema, which
+        // keeps the column format consistent without requiring the Worker to format it.
         await c.env.DB.prepare(
             `INSERT INTO csp_violations (id, document_uri, blocked_uri, violated_directive)
              VALUES (?, ?, ?, ?)`,
