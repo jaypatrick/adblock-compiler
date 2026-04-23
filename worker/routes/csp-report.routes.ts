@@ -61,7 +61,9 @@ const cspReportRoute = createRoute({
     tags: ['Security'],
     summary: 'Receive CSP violation report',
     description: 'Accepts browser Content-Security-Policy violation reports and persists them to the D1 `csp_violations` table. ' +
-        'No authentication required — the endpoint is intentionally public so browsers can submit reports without credentials.',
+        'No authentication required — the endpoint is intentionally public so browsers can submit reports without credentials. ' +
+        'Accepts both `application/csp-report` (legacy browsers) and `application/json` content types; both carry the same ' +
+        '`{ "csp-report": { ... } }` JSON envelope.',
     request: {
         body: {
             required: true,
@@ -141,15 +143,14 @@ cspReportRoutes.openapi(cspReportRoute, async (c) => {
 
     try {
         await c.env.DB.prepare(
-            `INSERT INTO csp_violations (id, document_uri, blocked_uri, violated_directive, timestamp)
-             VALUES (?, ?, ?, ?, ?)`,
+            `INSERT INTO csp_violations (id, document_uri, blocked_uri, violated_directive)
+             VALUES (?, ?, ?, ?)`,
         )
             .bind(
                 crypto.randomUUID(),
                 cspReport['document-uri'],
                 cspReport['blocked-uri'],
                 cspReport['violated-directive'],
-                new Date().toISOString(),
             )
             .run();
     } catch (error) {

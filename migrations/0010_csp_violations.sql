@@ -5,9 +5,9 @@
 
 CREATE TABLE IF NOT EXISTS csp_violations (
     id TEXT PRIMARY KEY,
-    document_uri TEXT NOT NULL DEFAULT '',
-    blocked_uri TEXT NOT NULL DEFAULT '',
-    violated_directive TEXT NOT NULL DEFAULT '',
+    document_uri TEXT NOT NULL,
+    blocked_uri TEXT NOT NULL,
+    violated_directive TEXT NOT NULL,
     timestamp TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
 );
 

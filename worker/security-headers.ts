@@ -8,8 +8,9 @@
  *
  * Two CSP variants are served:
  * - **Strict** (default): applied to all SPA and API responses; no `'unsafe-inline'`.
- * - **Swagger** (`/api/swagger*`): relaxed to permit the inline scripts and styles
- *   injected by swagger-ui-bundle.js and cdn.jsdelivr.net stylesheets.
+ * - **Relaxed** (`/api/swagger*`, `/api/docs*`, `/api/redoc*`): permits the inline
+ *   scripts and styles injected by swagger-ui-bundle.js, Scalar, ReDoc, and CDN
+ *   stylesheets from cdn.jsdelivr.net.
  *
  * @see worker/routes/csp-report.routes.ts — violation ingestion endpoint (POST /api/csp-report)
  * @see https://developers.cloudflare.com/page-shield/
@@ -50,10 +51,10 @@ function buildStrictCspDirectives(): string {
 }
 
 /**
- * Relaxed CSP for Swagger UI pages only (`/api/swagger*`).
- * `'unsafe-inline'` is required because swagger-ui-bundle.js injects inline scripts
- * and styles at runtime, and cdn.jsdelivr.net hosts the swagger-ui stylesheet.
- * This policy is intentionally scoped to the `/api/swagger*` path.
+ * Relaxed CSP for API documentation pages (`/api/swagger*`, `/api/docs*`, `/api/redoc*`).
+ * `'unsafe-inline'` is required because swagger-ui-bundle.js, Scalar, and ReDoc all
+ * inject inline scripts and styles at runtime; cdn.jsdelivr.net hosts their stylesheets.
+ * This policy is intentionally scoped to documentation paths only.
  */
 function buildSwaggerCspDirectives(): string {
     return [
@@ -90,9 +91,10 @@ const CSP_SWAGGER = buildSwaggerCspDirectives();
  * `report-uri /api/csp-report`) plus `X-Content-Type-Options` and
  * `X-Frame-Options` to every outgoing response.
  *
- * Serves a **strict** CSP for all paths except `/api/swagger*`, which receives
- * a relaxed policy that permits the `'unsafe-inline'` scripts/styles required
- * by swagger-ui-bundle.js.
+ * Serves a **strict** CSP for all paths except the API documentation paths
+ * (`/api/swagger*`, `/api/docs*`, `/api/redoc*`), which receive a relaxed policy
+ * that permits the `'unsafe-inline'` scripts/styles required by swagger-ui-bundle.js,
+ * Scalar, and ReDoc.
  *
  * Mount this **after** `secureHeaders()` in the global middleware chain so
  * the CSP overrides any partial CSP that Hono might set by default.
@@ -106,8 +108,10 @@ const CSP_SWAGGER = buildSwaggerCspDirectives();
 export function contentSecurityPolicyMiddleware(): MiddlewareHandler<{ Bindings: Env; Variables: Variables }> {
     return async (c, next) => {
         await next();
-        // Apply relaxed CSP only for Swagger UI paths; all other routes get the strict policy.
-        const csp = c.req.path.startsWith('/api/swagger') ? CSP_SWAGGER : CSP_STRICT;
+        // Apply relaxed CSP for API documentation paths; all other routes get the strict policy.
+        const path = c.req.path;
+        const isDocPath = path.startsWith('/api/swagger') || path.startsWith('/api/docs') || path.startsWith('/api/redoc');
+        const csp = isDocPath ? CSP_SWAGGER : CSP_STRICT;
         c.header('Content-Security-Policy', csp);
         c.header('X-Content-Type-Options', 'nosniff');
         c.header('X-Frame-Options', 'DENY');

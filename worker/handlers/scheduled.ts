@@ -10,17 +10,30 @@ import type { Env } from '../types.ts';
 // ── Page Shield ───────────────────────────────────────────────────────────────
 
 /**
+ * Module-level flag to suppress repeated warnings within the same isolate
+ * lifetime.  The cron fires hourly; without this the Worker logs would fill
+ * with identical "disabled" messages every hour.
+ */
+let _pageShieldWarnLogged = false;
+
+/**
  * Page Shield sync is intentionally disabled until the generated KV entries are
  * consumed by the compilation pipeline or another in-repo reader.
  *
  * Keeping this as a no-op avoids an hourly Cloudflare API call and unused KV
  * writes to `pageshield:blocklist` / `pageshield:allowlist`.
  *
+ * The warning is emitted only once per isolate lifetime (guarded by
+ * `_pageShieldWarnLogged`) to avoid alert fatigue in production logs.
+ *
  * @param _env - Worker environment bindings.
  */
 async function syncPageShieldScripts(_env: Env): Promise<void> {
-    // deno-lint-ignore no-console
-    console.warn('[pageshield:sync] Disabled: no in-repo consumer for pageshield:blocklist or pageshield:allowlist yet');
+    if (!_pageShieldWarnLogged) {
+        // deno-lint-ignore no-console
+        console.warn('[pageshield:sync] Disabled: no in-repo consumer for pageshield:blocklist or pageshield:allowlist yet');
+        _pageShieldWarnLogged = true;
+    }
 }
 
 // ── Scheduled handler ─────────────────────────────────────────────────────────
