@@ -20,7 +20,7 @@
  * ## Problem type URIs
  *
  * Each factory method in {@link ProblemResponse} maps to a stable, versioned
- * URI under `https://adblock-compiler.jk-com.workers.dev/probs/`.
+ * URI under `https://api.bloqr.dev/probs/` (e.g. `/probs/rate-limited`).
  * Callers can register these URIs in their own documentation to let agents
  * render appropriate guidance (e.g. "disable your adblocker to access the
  * Turnstile-protected endpoint").
@@ -36,7 +36,7 @@
  *
  * // Use the low-level factory for custom problem types:
  * return ProblemResponse.create({
- *   type: 'https://adblock-compiler.jk-com.workers.dev/probs/custom',
+ *   type: 'https://api.bloqr.dev/probs/custom',
  *   title: 'Custom Problem',
  *   status: 422,
  *   detail: 'The configuration contained an unsupported rule.',
@@ -62,7 +62,7 @@ export const PROBLEM_CONTENT_TYPE = 'application/problem+json';
  * Base URI for well-known problem types served by this API.
  * Resolves to documentation that explains the error and remediation steps.
  */
-export const PROBLEM_TYPE_BASE = 'https://adblock-compiler.jk-com.workers.dev/probs';
+export const PROBLEM_TYPE_BASE = 'https://api.bloqr.dev/probs';
 
 /** Well-known problem type URIs — one per distinct error class. */
 export const PROBLEM_TYPES = {

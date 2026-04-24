@@ -350,7 +350,7 @@ export class ApiDocsComponent {
 
     readonly exampleWebSocketUsage = {
         description: 'Upgrade an HTTP request to a WebSocket connection at /ws/compile, then send a compile payload as JSON text. The server streams progress events and the final compiled output.',
-        example: "const ws = new WebSocket('wss://adblock-compiler.jk-com.workers.dev/ws/compile');\nws.onopen = () => ws.send(JSON.stringify({ configuration: { sources: [...] } }));\nws.onmessage = ({ data }) => console.log(JSON.parse(data));",
+        example: "const ws = new WebSocket('wss://api.bloqr.dev/ws/compile');\nws.onopen = () => ws.send(JSON.stringify({ configuration: { sources: [...] } }));\nws.onmessage = ({ data }) => console.log(JSON.parse(data));",
     };
 
     readonly selectedEndpoint = signal('/compile');
