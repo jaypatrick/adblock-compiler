@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Adblock Compiler API",
-    "description": "Auto-generated from docs/api/openapi.yaml. Run 'deno task postman:collection' to regenerate.\n\n**Compiler-as-a-Service** for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.\n\n## Features\n- 🎯 Multi-Source Compilation\n- ⚡ Performance (Gzip compression, caching, request deduplication)\n- 🔄 Circuit Breaker with retry logic\n- 📊 Visual Diff between compilations\n- 📡 Real-time progress via SSE and WebSocket\n- 🎪 Batch Processing\n- 🌍 Universal (Deno, Node.js, Cloudflare Workers, browsers)\n\n## Links\n- [GitHub Repository](https://github.com/jaypatrick/adblock-compiler)\n- [Documentation](https://github.com/jaypatrick/adblock-compiler/tree/master/docs)\n- [Web UI](https://adblock-compiler.jk-com.workers.dev/)",
+    "description": "Auto-generated from docs/api/openapi.yaml. Run 'deno task postman:collection' to regenerate.\n\n**Compiler-as-a-Service** for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.\n\n## Features\n- 🎯 Multi-Source Compilation\n- ⚡ Performance (Gzip compression, caching, request deduplication)\n- 🔄 Circuit Breaker with retry logic\n- 📊 Visual Diff between compilations\n- 📡 Real-time progress via SSE and WebSocket\n- 🎪 Batch Processing\n- 🌍 Universal (Deno, Node.js, Cloudflare Workers, browsers)\n\n## Links\n- [GitHub Repository](https://github.com/jaypatrick/adblock-compiler)\n- [Documentation](https://github.com/jaypatrick/adblock-compiler/tree/master/docs)\n- [Web UI](https://bloqr.dev/)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "adblock-compiler-api",
     "version": "2.0.0"
@@ -14,7 +14,7 @@
     },
     {
       "key": "prodUrl",
-      "value": "https://adblock-compiler.jk-com.workers.dev",
+      "value": "https://bloqr.dev",
       "type": "string"
     },
     {
