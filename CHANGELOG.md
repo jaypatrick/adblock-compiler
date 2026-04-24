@@ -81,6 +81,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.89.1] - 2026-04-24
+
+### Added### Fixed
+
+- three production bugs from Logpush runtime logs (2026-04-23/24) (#1658)
+
+
 ## [0.89.0] - 2026-04-23
 
 ### Added- Integrate Cloudflare Page Shield client-side security (#1651)
