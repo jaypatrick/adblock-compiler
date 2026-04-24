@@ -151,6 +151,8 @@ export function createAuth(env: Env, baseURL?: string) {
             },
         },
         advanced: {
+            // ⚠️ BREAKING: changing this prefix renames all Better Auth cookies and
+            // forcibly logs out every existing session on the next request.
             cookiePrefix: 'bloqr',
             defaultCookieAttributes: {
                 httpOnly: true,
@@ -177,6 +179,9 @@ export function createAuth(env: Env, baseURL?: string) {
             //   POST /api/auth/two-factor/enable   — generate TOTP secret + QR URI
             //   POST /api/auth/two-factor/verify    — verify TOTP code (enables 2FA)
             //   POST /api/auth/two-factor/disable   — remove 2FA for the current user
+            // ⚠️ BREAKING: changing the issuer label updates the otpauth URI and
+            // invalidates every existing authenticator-app TOTP registration.
+            // Users must re-enroll their 2FA device after this change is deployed.
             twoFactor({
                 issuer: 'bloqr',
             }),

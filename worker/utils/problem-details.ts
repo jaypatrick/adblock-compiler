@@ -20,7 +20,7 @@
  * ## Problem type URIs
  *
  * Each factory method in {@link ProblemResponse} maps to a stable, versioned
- * URI under `https://api.bloqr.dev/probs/`.
+ * URI under `https://api.bloqr.dev/probs`.
  * Callers can register these URIs in their own documentation to let agents
  * render appropriate guidance (e.g. "disable your adblocker to access the
  * Turnstile-protected endpoint").

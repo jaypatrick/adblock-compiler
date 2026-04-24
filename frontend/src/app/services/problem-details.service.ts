@@ -49,7 +49,7 @@ import { z } from 'zod';
 
 // ── Problem type URIs — must match worker/utils/problem-details.ts ─────────────
 
-const PROBLEM_TYPE_BASE = 'https://adblock-compiler.jk-com.workers.dev/probs';
+const PROBLEM_TYPE_BASE = 'https://api.bloqr.dev/probs';
 
 /** Subset of well-known problem type URIs used for client-side branching. */
 export const CLIENT_PROBLEM_TYPES = {
