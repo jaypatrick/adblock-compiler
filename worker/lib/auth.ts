@@ -151,7 +151,7 @@ export function createAuth(env: Env, baseURL?: string) {
             },
         },
         advanced: {
-            cookiePrefix: 'adblock',
+            cookiePrefix: 'bloqr',
             defaultCookieAttributes: {
                 httpOnly: true,
                 secure: true,
@@ -178,7 +178,7 @@ export function createAuth(env: Env, baseURL?: string) {
             //   POST /api/auth/two-factor/verify    — verify TOTP code (enables 2FA)
             //   POST /api/auth/two-factor/disable   — remove 2FA for the current user
             twoFactor({
-                issuer: 'adblock-compiler',
+                issuer: 'bloqr',
             }),
             // Multi-session management — auto-exposes:
             //   GET    /api/auth/list-sessions                — list all active sessions
