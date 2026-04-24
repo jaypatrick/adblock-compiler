@@ -2,7 +2,7 @@
  * Typed tRPC client for Angular and other API consumers.
  *
  * Usage in Angular service:
- *   const client = createTrpcClient('https://adblock-compiler.jk-com.workers.dev',
+ *   const client = createTrpcClient('https://api.bloqr.dev',
  *                                   () => authService.getToken());
  *   const health = await client.v1.health.get.query();
  *   const result = await client.v1.compile.json.mutate({
