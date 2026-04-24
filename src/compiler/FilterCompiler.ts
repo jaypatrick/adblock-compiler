@@ -371,14 +371,17 @@ export class FilterCompiler {
 
             collector?.setSourceCount(configuration.sources.length);
 
-            // Combine results maintaining order; concat() avoids spreading large arrays
-            // as call-stack arguments (which causes "Maximum call stack size exceeded"
-            // for filter lists with 30 000+ rules, e.g. AdGuard Base).
-            let finalList: string[] = [];
+            // Combine results maintaining order.
+            // Accumulate into chunks (one pair of small arrays per source) then
+            // flatten once with Array.prototype.flat() to avoid O(N·R) quadratic
+            // reallocation from repeating concat inside the loop, and to avoid
+            // spreading 30 000+ elements as call-stack arguments.
+            const chunks: string[][] = [];
             for (const { source, rules } of sourceResults) {
                 const sourceHeader = this.prepareSourceHeader(source);
-                finalList = finalList.concat(sourceHeader, rules);
+                chunks.push(sourceHeader, rules);
             }
+            let finalList: string[] = chunks.flat();
 
             const inputRuleCount = finalList.length;
             collector?.setRuleCount(inputRuleCount);
