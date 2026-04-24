@@ -17,7 +17,7 @@
 #                 Run:  deno task wrangler:deploy:dev
 #
 #   Production →  `wrangler deploy`
-#                 Deploys to api.bloqr.jaysonknight.com via the [[routes]] block.
+#                 Deploys to api.bloqr.dev via the [[routes]] block.
 #                 ENVIRONMENT = "production". No [env.production] block needed —
 #                 this file IS the production configuration.
 #
@@ -49,7 +49,7 @@ workers_dev = true
 logpush = true
 
 [[routes]]
-pattern = "api.bloqr.jaysonknight.com"
+pattern = "api.bloqr.dev"
 custom_domain = true
 
 # ─── import.meta.url shim ────────────────────────────────────────────────────
@@ -83,7 +83,7 @@ command = "sh scripts/build-worker.sh"
 #
 # Verify the binding is active:
 #   wrangler dev --remote  (local dev with real CF bindings)
-#   GET https://api.bloqr.jaysonknight.com/api/browser/health  (production check)
+#   GET https://api.bloqr.dev/api/browser/health  (production check)
 [browser]
 binding = "BROWSER"
 
@@ -115,16 +115,16 @@ ENVIRONMENT = "production"
 TURNSTILE_SITE_KEY = "0x4AAAAAACMKiPZdJh8I8IEM"
 # Keep in sync with URL_FRONTEND, URL_API, and URL_DOCS below.
 # For production, prefer: wrangler secret put CORS_ALLOWED_ORIGINS
-CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787,https://app.bloqr.jaysonknight.com,https://api.bloqr.jaysonknight.com"
+CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787,https://app.bloqr.dev,https://api.bloqr.dev"
 # ─── Project URLs ─────────────────────────────────────────────────────────────
 # Single source of truth for all public-facing service URLs.
 # When you switch to a custom domain, update these values only, or run:
 #   deno task domain:swap
-URL_FRONTEND     = "https://app.bloqr.jaysonknight.com"
-URL_API          = "https://api.bloqr.jaysonknight.com"
-URL_DOCS         = "https://docs.bloqr.jaysonknight.com"
-URL_LANDING      = "https://bloqr.jaysonknight.com"
-CANONICAL_DOMAIN = "bloqr.ai"
+URL_FRONTEND     = "https://app.bloqr.dev"
+URL_API          = "https://api.bloqr.dev"
+URL_DOCS         = "https://docs.bloqr.dev"
+URL_LANDING      = "https://bloqr.dev"
+CANONICAL_DOMAIN = "bloqr.dev"
 
 # ─── KV Namespaces ───────────────────────────────────────────────────────────
 # `wrangler dev` binds to these live namespaces by default.
@@ -427,9 +427,9 @@ logpush = false
 [env.dev.vars]
 ENVIRONMENT = "development"
 COMPILER_VERSION = "0.83.0-dev"
-CANONICAL_DOMAIN = "bloqr.ai"
+CANONICAL_DOMAIN = "bloqr.dev"
 CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:8787"
-URL_FRONTEND = "https://app.bloqr.jaysonknight.com"
-URL_API      = "https://api.bloqr.jaysonknight.com"
-URL_DOCS     = "https://docs.bloqr.jaysonknight.com"
-URL_LANDING  = "https://bloqr.jaysonknight.com"
+URL_FRONTEND = "http://localhost:4200"
+URL_API      = "http://localhost:8787"
+URL_DOCS     = "https://docs.bloqr.dev"
+URL_LANDING  = "https://bloqr.dev"

@@ -6,10 +6,10 @@ Welcome to the Bloqr documentation. This directory contains all the detailed doc
 
 | Property | URL | Description |
 |---|---|---|
-| Landing | [bloqr.jaysonknight.com](https://bloqr.jaysonknight.com/) | Main marketing site |
-| App | [app.bloqr.jaysonknight.com](https://app.bloqr.jaysonknight.com/) | Angular compiler dashboard |
-| API | [api.bloqr.jaysonknight.com](https://api.bloqr.jaysonknight.com/) | API portal (Scalar/Swagger) |
-| Docs | [docs.bloqr.jaysonknight.com](https://docs.bloqr.jaysonknight.com/) | This site |
+| Landing | [bloqr.dev](https://bloqr.dev/) | Main marketing site |
+| App | [app.bloqr.dev](https://app.bloqr.dev/) | Angular compiler dashboard |
+| API | [api.bloqr.dev](https://api.bloqr.dev/) | API portal (Scalar/Swagger) |
+| Docs | [docs.bloqr.dev](https://docs.bloqr.dev/) | This site |
 
 ## Quick Links
 

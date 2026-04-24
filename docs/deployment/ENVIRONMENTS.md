@@ -142,9 +142,9 @@ receive the noindex header. This prevents `*.workers.dev` and other temporary ho
 from being indexed by search engines while a custom domain is active.
 
 > **Important:** `CANONICAL_DOMAIN` must be the *full* domain you use — not just the
-> registrable root. For `api.bloqr.ai`, set `CANONICAL_DOMAIN = "bloqr.ai"` so that
-> all `*.bloqr.ai` subdomains are treated as canonical. Setting it to `ai` would match
-> every `.ai` TLD hostname, which is wrong.
+> registrable root. For `api.bloqr.dev`, set `CANONICAL_DOMAIN = "bloqr.dev"` so that
+> all `*.bloqr.dev` subdomains are treated as canonical. Setting it to `dev` would match
+> every `.dev` TLD hostname, which is wrong.
 
 To swap all URLs at once, run:
 
@@ -153,11 +153,11 @@ To swap all URLs at once, run:
 deno task domain:swap
 
 # Non-interactive examples
-deno task domain:swap -- --domain bloqr.jaysonknight.com
-deno task domain:swap -- --domain bloqr.ai --canonical bloqr.ai
+deno task domain:swap -- --domain bloqr.dev
+deno task domain:swap -- --domain bloqr.dev --canonical bloqr.dev
 
 # Preview changes without writing any files
-deno task domain:swap -- --domain bloqr.ai --dry-run
+deno task domain:swap -- --domain bloqr.dev --dry-run
 ```
 
 The script updates **both** `[vars]` and `[env.dev.vars]` in each `wrangler.toml`, so

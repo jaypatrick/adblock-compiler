@@ -6,7 +6,7 @@ compatibility_date = "2026-01-01"
 workers_dev = true
 
 [[routes]]
-pattern = "docs.bloqr.jaysonknight.com"
+pattern = "docs.bloqr.dev"
 custom_domain = true
 
 [assets]
@@ -15,4 +15,4 @@ html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
 [vars]
 ENVIRONMENT = "production"
-URL_DOCS = "https://docs.bloqr.jaysonknight.com"
+URL_DOCS = "https://docs.bloqr.dev"

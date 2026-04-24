@@ -255,7 +255,7 @@ export interface EndpointInfo {
       <section aria-labelledby="external-nav-heading" class="nav-section">
         <h2 id="external-nav-heading" class="section-heading">More Bloqr</h2>
         <div class="nav-grid">
-          <a href="https://api.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
+          <a href="https://api.bloqr.dev/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
             <mat-card appearance="outlined" class="nav-card bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">api</mat-icon>
@@ -266,7 +266,7 @@ export interface EndpointInfo {
               </mat-card-content>
             </mat-card>
           </a>
-          <a href="https://docs.bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
+          <a href="https://docs.bloqr.dev/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
             <mat-card appearance="outlined" class="nav-card bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">menu_book</mat-icon>
@@ -277,7 +277,7 @@ export interface EndpointInfo {
               </mat-card-content>
             </mat-card>
           </a>
-          <a href="https://bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
+          <a href="https://bloqr.dev/" target="_blank" rel="noopener noreferrer" class="external-tile-link">
             <mat-card appearance="outlined" class="nav-card bloqr-card cursor-pointer">
               <mat-card-header>
                 <mat-icon mat-card-avatar class="nav-card-icon">open_in_new</mat-icon>
@@ -725,7 +725,7 @@ export class HomeComponent {
             tag: 'Admin',
         },
         {
-            path: 'https://docs.bloqr.jaysonknight.com/',
+            path: 'https://docs.bloqr.dev/',
             label: 'Documentation',
             icon: 'menu_book',
             description: 'Full developer documentation: API reference, guides, and examples.',

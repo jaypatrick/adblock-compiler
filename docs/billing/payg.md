@@ -10,7 +10,7 @@ You pay $0.01 per call (configurable) and receive a session token granting 10 re
 ### 1. Check the current pricing
 
 ```bash
-curl https://api.bloqr.jaysonknight.com/api/payg/pricing
+curl https://api.bloqr.dev/api/payg/pricing
 ```
 
 Response:
@@ -29,7 +29,7 @@ Visit the PAYG Checkout page (returned as `checkoutUrl` from `/api/stripe/payg/c
 complete payment with your card, and receive a `X-Payg-Session` token.
 
 ```bash
-curl -X POST https://api.bloqr.jaysonknight.com/api/stripe/payg/checkout \
+curl -X POST https://api.bloqr.dev/api/stripe/payg/checkout \
   -H 'Content-Type: application/json' \
   -d '{ "requestsToPurchase": 10 }'
 ```
@@ -39,7 +39,7 @@ curl -X POST https://api.bloqr.jaysonknight.com/api/stripe/payg/checkout \
 Include the `X-Payg-Session` header on every API request:
 
 ```bash
-curl https://api.bloqr.jaysonknight.com/api/compile \
+curl https://api.bloqr.dev/api/compile \
   -H 'X-Payg-Session: <your-session-token>' \
   -H 'Content-Type: application/json' \
   -d '{ ... }'
@@ -57,7 +57,7 @@ X-Payg-Session-Remaining: 9
 # /api/payg/usage requires a valid Better Auth session.
 # The API resolves your stripeCustomerId from the authenticated user record
 # and does not trust a client-supplied X-Stripe-Customer-Id header.
-curl https://api.bloqr.jaysonknight.com/api/payg/usage \
+curl https://api.bloqr.dev/api/payg/usage \
   -H 'Cookie: better-auth.session_token=<your-session-token>'
 ```
 

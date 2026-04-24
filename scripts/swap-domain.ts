@@ -5,17 +5,17 @@
  * Usage:
  *   deno task domain:swap
  *   deno task domain:swap -- --dry-run
- *   deno task domain:swap -- --domain bloqr.jaysonknight.com
- *   deno task domain:swap -- --domain bloqr.jaysonknight.com --canonical bloqr.ai
+ *   deno task domain:swap -- --domain bloqr.dev
+ *   deno task domain:swap -- --domain bloqr.dev --canonical bloqr.dev
  *
  * The script:
  *   1. Reads wrangler.toml and frontend/wrangler.toml.
- *   2. Prompts for a root domain (e.g. "bloqr.jaysonknight.com") unless
+ *   2. Prompts for a root domain (e.g. "bloqr.dev") unless
  *      --domain <value> is provided on the CLI.
  *   3. Prompts for a canonical domain (used for crawl-protection noindex logic)
  *      unless --canonical <value> is provided. Defaults to the root domain.
  *      Set a different value when the root domain is a staging subdomain but
- *      the canonical brand domain is something else (e.g. bloqr.ai).
+ *      the canonical brand domain is something else (e.g. bloqr.dev).
  *   4. Derives all URL vars and CORS_ALLOWED_ORIGINS from the root domain.
  *   5. Replaces existing values in-place (idempotent — safe to run multiple times).
  *      Both [vars] and [env.dev.vars] sections are updated to keep them in sync.
@@ -62,7 +62,7 @@ interface ProjectUrls {
  * Derive all project URLs and CORS origins from a root domain.
  *
  * Convention:
- *   root domain  → bloqr.jaysonknight.com  (or bloqr.ai for production)
+ *   root domain  → bloqr.dev  (or bloqr.dev for production)
  *   landing      → https://{root}
  *   app          → https://app.{root}
  *   api          → https://api.{root}
@@ -72,7 +72,7 @@ interface ProjectUrls {
  *
  * Note: canonical is NOT inferred from DNS labels (e.g. slice(-2)) because that
  * is incorrect for multi-label TLDs and produces the wrong value for staging
- * domains like `bloqr.jaysonknight.com` (would give `jaysonknight.com`).
+ * domains like `bloqr.dev` (would give `dev`).
  * Pass `canonicalOverride` to use a different value (e.g. when the root domain
  * is a staging subdomain but the canonical brand domain is different).
  */
@@ -194,7 +194,7 @@ async function main(): Promise<void> {
     // 1. Determine root domain
     let rootDomain = domainArg;
     if (!rootDomain) {
-        const input = prompt('Enter root domain (e.g. bloqr.jaysonknight.com):');
+        const input = prompt('Enter root domain (e.g. bloqr.dev):');
         rootDomain = input?.trim();
     }
     if (!rootDomain) {
@@ -204,8 +204,8 @@ async function main(): Promise<void> {
 
     // 2. Determine canonical domain (used for crawl-protection noindex logic).
     // Defaults to rootDomain itself.  Override with --canonical or by prompting
-    // when the root domain is a staging subdomain (e.g. bloqr.jaysonknight.com)
-    // but the real brand domain is different (e.g. bloqr.ai).
+    // when the root domain is a staging subdomain (e.g. bloqr.dev)
+    // but the real brand domain is different.
     let canonicalDomain = canonicalArg;
     if (!canonicalDomain) {
         const input = prompt(`Enter canonical domain for crawl protection (default: ${rootDomain}):`);

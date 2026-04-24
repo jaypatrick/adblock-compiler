@@ -665,7 +665,7 @@ export const OPENAPI_DOCUMENT_ARGS = {
     },
     // Static fallback only — the /api/openapi.json handler overrides this dynamically
     // using getProjectUrls(c.env).api so the spec always reflects the actual deployment URL.
-    servers: [{ url: 'https://api.bloqr.jaysonknight.com', description: 'Production server' }],
+    servers: [{ url: 'https://api.bloqr.dev', description: 'Production server' }],
 };
 
 const openApiSpecCache = new Map<string, ReturnType<typeof app.getOpenAPIDocument>>();

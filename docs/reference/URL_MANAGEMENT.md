@@ -17,7 +17,7 @@ new URLs without env overrides, also updating the fallback constants in
 |----------------|------------------------------------------|-----------------------------------------------------------|
 | `URL_FRONTEND` | Angular frontend worker                  | `https://adblock-frontend.jk-com.workers.dev`      |
 | `URL_API`      | Backend / API worker                     | `https://adblock-compiler.jk-com.workers.dev`      |
-| `URL_DOCS`     | mdBook documentation (Cloudflare Pages)  | `https://docs.bloqr.jaysonknight.com`                     |
+| `URL_DOCS`     | mdBook documentation (Cloudflare Pages)  | `https://docs.bloqr.dev`                     |
 
 ## Changing the domain
 
@@ -39,7 +39,7 @@ Copy `.dev.vars.example` → `.dev.vars` and set:
 ```dotenv
 URL_FRONTEND=http://localhost:4200
 URL_API=http://localhost:8787
-URL_DOCS=https://docs.bloqr.jaysonknight.com
+URL_DOCS=https://docs.bloqr.dev
 ```
 
 These override the `wrangler.toml` values during `wrangler dev`.
