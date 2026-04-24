@@ -275,8 +275,36 @@ Deno.test('FilterCompiler - should pass downloaderOptions to FilterDownloader.do
 });
 
 // ---------------------------------------------------------------------------
-// Hook manager tests
+// Large rule set regression tests (stack overflow regression guard)
 // ---------------------------------------------------------------------------
+
+Deno.test('FilterCompiler.compileWithMetrics - handles 40k+ rule sets', async () => {
+    // 40 000+ rules: previously `push(...rules)` exhausted the call stack for
+    // lists like AdGuard Base (~30 000 rules).
+    const largeRuleSet = Array.from({ length: 40_000 }, (_, i) => `||example${i}.com^`);
+
+    const downloadStub = stub(
+        FilterDownloader,
+        'download',
+        (_source: string, _options?: DownloaderOptions) => Promise.resolve(largeRuleSet),
+    );
+
+    try {
+        const compiler = new FilterCompiler(silentLogger);
+        const config = createTestConfig({
+            sources: [{ source: 'https://example.com/large.txt', type: SourceType.Adblock }],
+        });
+
+        const result = await compiler.compileWithMetrics(config, false);
+
+        assertExists(result.rules);
+        assertEquals(Array.isArray(result.rules), true);
+        // Output must contain all 40k rules (plus header lines)
+        assertEquals(result.rules.length > 40_000, true);
+    } finally {
+        downloadStub.restore();
+    }
+});
 
 Deno.test('FilterCompiler - hookManager hooks fire during compile', async () => {
     const { TransformationHookManager } = await import('../transformations/TransformationHooks.ts');

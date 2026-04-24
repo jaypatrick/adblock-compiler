@@ -371,12 +371,17 @@ export class FilterCompiler {
 
             collector?.setSourceCount(configuration.sources.length);
 
-            // Combine results maintaining order, using push for efficiency
-            let finalList: string[] = [];
+            // Combine results maintaining order.
+            // Accumulate into chunks (one pair of small arrays per source) then
+            // flatten once with Array.prototype.flat() to avoid O(N·R) quadratic
+            // reallocation from repeating concat inside the loop, and to avoid
+            // spreading 30 000+ elements as call-stack arguments.
+            const chunks: string[][] = [];
             for (const { source, rules } of sourceResults) {
                 const sourceHeader = this.prepareSourceHeader(source);
-                finalList.push(...sourceHeader, ...rules);
+                chunks.push(sourceHeader, rules);
             }
+            let finalList: string[] = chunks.flat();
 
             const inputRuleCount = finalList.length;
             collector?.setRuleCount(inputRuleCount);
@@ -437,7 +442,7 @@ export class FilterCompiler {
             const header = this.prepareHeader(configuration);
             this.logger.info(`Final length of the list is ${header.length + finalList.length}`);
 
-            let rules = [...header, ...finalList];
+            let rules = header.concat(finalList);
 
             // Add checksum to the header
             rules = await addChecksumToHeader(rules);

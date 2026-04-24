@@ -269,6 +269,24 @@ Deno.test('RateLimiterDO - unknown path returns 404', async () => {
     assertEquals(res.status, 404);
 });
 
+Deno.test('RateLimiterDO - alarm() handles storage.deleteAll failures gracefully', async () => {
+    // Regression: before the try/catch fix, a transient storage error propagated
+    // as an unhandled rejection and CF Workers recorded the alarm timestamp as
+    // the error message (outcome: "exception", message: "<DATETIME>").
+    const state = createMockState();
+
+    // Simulate a transient DO storage failure on deleteAll
+    (state.storage as unknown as Record<string, unknown>).deleteAll = async () => {
+        throw new Error('Transient storage failure');
+    };
+
+    const do_ = new RateLimiterDO(state, {});
+    await postIncrement(do_, 5);
+
+    // alarm() must resolve — not throw — even when storage.deleteAll() rejects
+    await do_.alarm();
+});
+
 Deno.test('RateLimiterDO - resetAt is set and persisted across increments', async () => {
     const state = createMockState();
     const do_ = new RateLimiterDO(state, {});
