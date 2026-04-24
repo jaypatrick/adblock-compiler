@@ -97,6 +97,45 @@ function getAngularApp(): Promise<AngularAppEngine> {
     return angularAppPromise;
 }
 
+// ── Content Security Policy ────────────────────────────────────────────────
+// Pre-built once per isolate lifetime and cached.  URL_API is a runtime env
+// binding, so caching happens on first request rather than at module init.
+// Violations are reported to /api/csp-report, proxied to the API Worker via
+// the API service binding — no external network hop required.
+
+let cachedFrontendCsp: string | null = null;
+
+function buildFrontendCspDirectives(apiUrl: string): string {
+    return [
+        "default-src 'self'",
+        // Cloudflare Turnstile (api.js) + Web Analytics beacon
+        "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
+        // Angular Material requires 'unsafe-inline'; @fontsource self-hosts all fonts
+        "style-src 'self' 'unsafe-inline'",
+        // External images: OG/social card previews and user avatars
+        "img-src 'self' data: https:",
+        // @fontsource self-hosts fonts as static assets; data: covers base64 fallbacks
+        "font-src 'self' data:",
+        // API Worker service binding + Cloudflare Analytics beacon + Sentry error ingest
+        `connect-src 'self' ${apiUrl} https://cloudflareinsights.com https://o*.ingest.sentry.io https://o*.ingest.us.sentry.io`,
+        // Cloudflare Turnstile renders in a sandboxed iframe
+        "frame-src https://challenges.cloudflare.com",
+        "frame-ancestors 'none'",
+        "object-src 'none'",
+        "base-uri 'self'",
+        "form-action 'self'",
+        "upgrade-insecure-requests",
+        "report-uri /api/csp-report",
+    ].join('; ');
+}
+
+function getFrontendCsp(apiUrl: string): string {
+    if (!cachedFrontendCsp) {
+        cachedFrontendCsp = buildFrontendCspDirectives(apiUrl);
+    }
+    return cachedFrontendCsp;
+}
+
 /**
  * Cloudflare Workers fetch handler.
  *
@@ -128,21 +167,11 @@ const handler = {
         const response = await (await getAngularApp()).handle(request);
         if (!response) return new Response('Not found', { status: 404 });
 
-        // Item 2: Add Content-Security-Policy headers to HTML responses
+        // Apply Content-Security-Policy and other security headers to all HTML responses.
+        // CSP is pre-built once per isolate lifetime (see buildFrontendCspDirectives above).
         const contentType = response.headers.get('Content-Type') ?? '';
         if (contentType.includes('text/html')) {
-            const apiUrl = env.URL_API ?? 'https://api.bloqr.dev';
-            const csp = [
-                "default-src 'self'",
-                "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-                "style-src 'self' 'unsafe-inline'",
-                "img-src 'self' data:",
-                "font-src 'self'",
-                `connect-src 'self' ${apiUrl} https://o*.ingest.sentry.io https://o*.ingest.us.sentry.io`,
-                "frame-src https://challenges.cloudflare.com",
-                "object-src 'none'",
-                "base-uri 'self'",
-            ].join('; ');
+            const csp = getFrontendCsp(env.URL_API ?? 'https://api.bloqr.dev');
 
             const headers = new Headers(response.headers);
             headers.set('Content-Security-Policy', csp);
