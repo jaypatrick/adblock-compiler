@@ -544,7 +544,7 @@ export interface Env {
     URL_DOCS?: string;
     /** Public URL of the landing / marketing page. Set in wrangler.toml [vars]. */
     URL_LANDING?: string;
-    /** Canonical root domain (e.g. "bloqr.ai"). Used for crawl-protection noindex logic. */
+    /** Canonical root domain (e.g. "bloqr.dev"). Used for crawl-protection noindex logic. */
     CANONICAL_DOMAIN?: string;
     // --- Cloudflare Page Shield ---
     /**

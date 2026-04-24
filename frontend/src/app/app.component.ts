@@ -177,7 +177,7 @@ interface NavItem {
           <!-- Footer matching original -->
           <footer class="app-footer-shell">
             <p>
-              <a href="https://bloqr.jaysonknight.com/" target="_blank" rel="noopener noreferrer">Bloqr<span class="visually-hidden"> (opens in new tab)</span></a>
+              <a href="https://bloqr.dev/" target="_blank" rel="noopener noreferrer">Bloqr<span class="visually-hidden"> (opens in new tab)</span></a>
               &mdash; Internet Hygiene. Automated. &mdash;
               Powered by <a href="https://github.com/jaypatrick/adblock-compiler" target="_blank" rel="noopener noreferrer">@jk-com/adblock-compiler<span class="visually-hidden"> (opens in new tab)</span></a>
             </p>
@@ -222,9 +222,9 @@ export class AppComponent {
         { path: '/api-docs',       label: 'API Docs',       icon: 'description'          },
         { path: '/api-keys',       label: 'API Keys',       icon: 'vpn_key'              },
         { path: '/admin',          label: 'Admin',          icon: 'admin_panel_settings' },
-        { path: 'https://api.bloqr.jaysonknight.com/',  label: 'API Portal', icon: 'api',         external: true },
-        { path: 'https://docs.bloqr.jaysonknight.com/', label: 'Docs',       icon: 'menu_book',   external: true },
-        { path: 'https://bloqr.jaysonknight.com/',      label: 'Bloqr.com',  icon: 'open_in_new', external: true },
+        { path: 'https://api.bloqr.dev/',  label: 'API Portal', icon: 'api',         external: true },
+        { path: 'https://docs.bloqr.dev/', label: 'Docs',       icon: 'menu_book',   external: true },
+        { path: 'https://bloqr.dev/',      label: 'Bloqr.com',  icon: 'open_in_new', external: true },
     ];
 
     /**

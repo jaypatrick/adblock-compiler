@@ -131,7 +131,7 @@ const handler = {
         // Item 2: Add Content-Security-Policy headers to HTML responses
         const contentType = response.headers.get('Content-Type') ?? '';
         if (contentType.includes('text/html')) {
-            const apiUrl = env.URL_API ?? 'https://api.bloqr.jaysonknight.com';
+            const apiUrl = env.URL_API ?? 'https://api.bloqr.dev';
             const csp = [
                 "default-src 'self'",
                 "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
@@ -230,6 +230,6 @@ export interface Env {
     URL_DOCS?: string;
     /** Public URL of the landing / marketing page. Set in frontend/wrangler.toml [vars]. */
     URL_LANDING?: string;
-    /** Canonical root domain (e.g. "bloqr.ai"). Used for crawl-protection noindex logic. */
+    /** Canonical root domain (e.g. "bloqr.dev"). Used for crawl-protection noindex logic. */
     CANONICAL_DOMAIN?: string;
 }

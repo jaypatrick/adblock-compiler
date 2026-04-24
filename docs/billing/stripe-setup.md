@@ -93,7 +93,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ### Production
 
 1. Stripe Dashboard → **Developers** → **Webhooks** → **Add endpoint**.
-2. Endpoint URL: `https://api.bloqr.jaysonknight.com/api/stripe/webhook`
+2. Endpoint URL: `https://api.bloqr.dev/api/stripe/webhook`
 3. Events to listen for:
 
 ```

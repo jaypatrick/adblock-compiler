@@ -30,7 +30,7 @@ export const SPA_SERVER_PREFIXES: readonly string[] = [
 ];
 
 /** URL of the mdBook documentation site hosted on Cloudflare Pages. */
-export const DOCS_SITE_URL_FALLBACK = 'https://docs.bloqr.jaysonknight.com/';
+export const DOCS_SITE_URL_FALLBACK = 'https://docs.bloqr.dev/';
 
 /**
  * @deprecated Use {@link getProjectUrls}`(env).docs` at runtime; this re-export exists only for
@@ -51,7 +51,7 @@ export const API_URL_FALLBACK = 'https://adblock-compiler.jk-com.workers.dev';
 /**
  * Fallback URL for the landing / marketing page, used when env.URL_LANDING is absent.
  */
-export const LANDING_URL_FALLBACK = 'https://bloqr.jaysonknight.com';
+export const LANDING_URL_FALLBACK = 'https://bloqr.dev';
 
 /**
  * Returns the project URLs from the worker env, falling back to the hardcoded

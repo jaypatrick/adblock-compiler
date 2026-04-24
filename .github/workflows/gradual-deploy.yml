@@ -72,7 +72,7 @@ on:
                     Override when validating a different environment or endpoint.
                 required: false
                 type: string
-                default: 'https://api.bloqr.jaysonknight.com/api/health'
+                default: 'https://api.bloqr.dev/api/health'
 
 env:
     DENO_VERSION: '2.x'

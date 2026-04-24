@@ -17,7 +17,7 @@
 #                 Run:  deno task wrangler:deploy:dev
 #
 #   Production →  `wrangler deploy`
-#                 Deploys to api.bloqr.jaysonknight.com via the [[routes]] block.
+#                 Deploys to api.bloqr.dev via the [[routes]] block.
 #                 ENVIRONMENT = "production". No [env.production] block needed —
 #                 this file IS the production configuration.
 #
@@ -83,7 +83,7 @@ command = "sh scripts/build-worker.sh"
 #
 # Verify the binding is active:
 #   wrangler dev --remote  (local dev with real CF bindings)
-#   GET https://api.bloqr.jaysonknight.com/api/browser/health  (production check)
+#   GET https://api.bloqr.dev/api/browser/health  (production check)
 [browser]
 binding = "BROWSER"
 

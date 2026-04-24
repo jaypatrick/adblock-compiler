@@ -103,10 +103,10 @@ Check the Cloudflare dashboard and the metrics endpoint:
 deno task wrangler:tail
 
 # Health endpoint
-curl https://api.bloqr.jaysonknight.com/api/health
+curl https://api.bloqr.dev/api/health
 
 # Error rates (Cloudflare Analytics Engine)
-curl https://api.bloqr.jaysonknight.com/api/metrics
+curl https://api.bloqr.dev/api/metrics
 ```
 
 ### Step 4 — Increase or roll back

@@ -24,7 +24,7 @@
 #
 #   Production →  `npm run build && npm run deploy`
 #                 Builds with `ng build` (production config — optimised, minified).
-#                 Deploys to app.bloqr.jaysonknight.com via the [[routes]] block.
+#                 Deploys to app.bloqr.dev via the [[routes]] block.
 #                 ENVIRONMENT = "production".
 #
 # API Worker dependency:
