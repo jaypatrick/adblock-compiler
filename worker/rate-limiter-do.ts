@@ -98,7 +98,7 @@ const STORAGE_KEY_LIMIT = 'rl:limit';
  * One instance per identity (keyed by `idFromName`). Hibernates between
  * requests; storage is restored on wake-up via `blockConcurrencyWhile`.
  */
-export class RateLimiterDOBase implements DurableObject {
+class RateLimiterDOBase implements DurableObject {
     private readonly state: DurableObjectState;
     private readonly app: Hono;
 
