@@ -92,7 +92,7 @@ tail_consumers = [{ service = "adblock-tail" }]
 # NOT as a top-level key. Wildcards and paths are also not allowed for
 # custom_domain = true entries; use a bare hostname only.
 [[routes]]
-pattern = "app.bloqr.jaysonknight.com"
+pattern = "app.bloqr.dev"
 custom_domain = true
 
 # ─── Module rules ─────────────────────────────────────────────────────────────
@@ -138,11 +138,11 @@ ENVIRONMENT = "production"
 # Single source of truth for all public-facing service URLs.
 # When you switch to a custom domain, update these values only, or run:
 #   deno task domain:swap
-URL_FRONTEND     = "https://app.bloqr.jaysonknight.com"
-URL_API          = "https://api.bloqr.jaysonknight.com"
-URL_DOCS         = "https://docs.bloqr.jaysonknight.com"
-URL_LANDING      = "https://bloqr.jaysonknight.com"
-CANONICAL_DOMAIN = "bloqr.ai"
+URL_FRONTEND     = "https://app.bloqr.dev"
+URL_API          = "https://api.bloqr.dev"
+URL_DOCS         = "https://docs.bloqr.dev"
+URL_LANDING      = "https://bloqr.dev"
+CANONICAL_DOMAIN = "bloqr.dev"
 
 [observability.logs]
 enabled = true
@@ -188,8 +188,8 @@ logpush = false
 
 [env.dev.vars]
 ENVIRONMENT  = "development"
-CANONICAL_DOMAIN = "bloqr.ai"
-URL_FRONTEND = "https://app.bloqr.jaysonknight.com"
-URL_API      = "https://api.bloqr.jaysonknight.com"
-URL_DOCS     = "https://docs.bloqr.jaysonknight.com"
-URL_LANDING  = "https://bloqr.jaysonknight.com"
+CANONICAL_DOMAIN = "bloqr.dev"
+URL_FRONTEND = "https://app.bloqr.dev"
+URL_API      = "https://api.bloqr.dev"
+URL_DOCS     = "https://docs.bloqr.dev"
+URL_LANDING  = "https://bloqr.dev"
