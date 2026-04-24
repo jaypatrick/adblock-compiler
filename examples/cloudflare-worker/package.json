@@ -12,6 +12,6 @@
     "@cloudflare/kv-asset-handler": "^0.4.2",
     "@cloudflare/workers-types": "^4.20260423.1",
     "typescript": "^6.0.2",
-    "wrangler": "^4.84.1"
+    "wrangler": "^4.85.0"
   }
 }
