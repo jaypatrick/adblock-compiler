@@ -306,7 +306,6 @@ Deno.test('FilterCompiler.compileWithMetrics - handles 40k+ rule sets', async ()
     }
 });
 
-
 Deno.test('FilterCompiler - hookManager hooks fire during compile', async () => {
     const { TransformationHookManager } = await import('../transformations/TransformationHooks.ts');
 
