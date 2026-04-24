@@ -13,6 +13,7 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
+import * as Sentry from '@sentry/cloudflare';
 import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 import { createTracingContext, type IConfiguration, TransformationType, WorkerCompiler } from '../../src/index.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
@@ -80,7 +81,7 @@ const DEFAULT_POPULAR_CONFIGS: IConfiguration[] = [
  * 2. warm-chunk-N - Process configurations in chunks
  * 3. report-results - Log results and update metrics
  */
-export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingParams> {
+class CacheWarmingWorkflowBase extends WorkflowEntrypoint<Env, CacheWarmingParams> {
     /**
      * Main workflow execution
      */
@@ -405,3 +406,13 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
         }
     }
 }
+
+export const CacheWarmingWorkflow = Sentry.instrumentWorkflowWithSentry(
+    (env: Env) => ({
+        dsn: env.SENTRY_DSN,
+        release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
+        environment: env.ENVIRONMENT ?? 'production',
+        tracesSampleRate: 0.1,
+    }),
+    CacheWarmingWorkflowBase,
+);

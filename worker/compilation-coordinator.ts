@@ -41,6 +41,10 @@
  * ```
  */
 
+import * as Sentry from '@sentry/cloudflare';
+
+import type { Env } from './types.ts';
+
 interface CompilationState {
     /** True if a compilation is currently in-flight */
     inFlight: boolean;
@@ -57,7 +61,7 @@ interface CompilationState {
 /**
  * Durable Object that coordinates global request deduplication.
  */
-export class CompilationCoordinator implements DurableObject {
+class CompilationCoordinatorBase implements DurableObject {
     /** Compilation state for this cache key */
     private compilationState: CompilationState = {
         inFlight: false,
@@ -223,3 +227,13 @@ export class CompilationCoordinator implements DurableObject {
         });
     }
 }
+
+export const CompilationCoordinator = Sentry.instrumentDurableObjectWithSentry(
+    (env: Env) => ({
+        dsn: env.SENTRY_DSN,
+        release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
+        environment: env.ENVIRONMENT ?? 'production',
+        tracesSampleRate: 0.1,
+    }),
+    CompilationCoordinatorBase,
+);

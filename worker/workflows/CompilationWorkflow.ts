@@ -14,6 +14,7 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
+import * as Sentry from '@sentry/cloudflare';
 import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 import { createTracingContext, WorkerCompiler } from '../../src/index.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
@@ -60,7 +61,7 @@ const CACHE_TTL = 86400;
  * 4. generate-header - Generate the output header
  * 5. cache-result - Compress and cache the final result
  */
-export class CompilationWorkflow extends WorkflowEntrypoint<Env, CompilationParams> {
+class CompilationWorkflowBase extends WorkflowEntrypoint<Env, CompilationParams> {
     /**
      * Main workflow execution
      */
@@ -404,3 +405,13 @@ export class CompilationWorkflow extends WorkflowEntrypoint<Env, CompilationPara
         }
     }
 }
+
+export const CompilationWorkflow = Sentry.instrumentWorkflowWithSentry(
+    (env: Env) => ({
+        dsn: env.SENTRY_DSN,
+        release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
+        environment: env.ENVIRONMENT ?? 'production',
+        tracesSampleRate: 0.1,
+    }),
+    CompilationWorkflowBase,
+);

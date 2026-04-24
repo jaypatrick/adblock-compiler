@@ -13,6 +13,7 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
+import * as Sentry from '@sentry/cloudflare';
 import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 import type { Env } from '../worker.ts';
 import type { HealthMonitoringParams, HealthMonitoringResult, SourceHealthResult } from './types.ts';
@@ -148,7 +149,7 @@ export async function readResponseSample(response: Response, maxBytes: number): 
  * 3. analyze-results - Determine if alerts needed
  * 4. store-results - Persist health data
  */
-export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMonitoringParams> {
+class HealthMonitoringWorkflowBase extends WorkflowEntrypoint<Env, HealthMonitoringParams> {
     /**
      * Main workflow execution
      */
@@ -526,3 +527,13 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
         }
     }
 }
+
+export const HealthMonitoringWorkflow = Sentry.instrumentWorkflowWithSentry(
+    (env: Env) => ({
+        dsn: env.SENTRY_DSN,
+        release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
+        environment: env.ENVIRONMENT ?? 'production',
+        tracesSampleRate: 0.1,
+    }),
+    HealthMonitoringWorkflowBase,
+);

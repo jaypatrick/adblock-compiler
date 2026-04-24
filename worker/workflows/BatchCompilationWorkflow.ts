@@ -13,6 +13,7 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
+import * as Sentry from '@sentry/cloudflare';
 import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 import { createTracingContext, WorkerCompiler } from '../../src/index.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
@@ -59,7 +60,7 @@ const MAX_CONCURRENT = 3;
  * 2. compile-chunk-N - Process compilations in chunks
  * 3. aggregate-results - Combine results and update metrics
  */
-export class BatchCompilationWorkflow extends WorkflowEntrypoint<Env, BatchCompilationParams> {
+class BatchCompilationWorkflowBase extends WorkflowEntrypoint<Env, BatchCompilationParams> {
     /**
      * Main workflow execution
      */
@@ -396,3 +397,13 @@ export class BatchCompilationWorkflow extends WorkflowEntrypoint<Env, BatchCompi
         }
     }
 }
+
+export const BatchCompilationWorkflow = Sentry.instrumentWorkflowWithSentry(
+    (env: Env) => ({
+        dsn: env.SENTRY_DSN,
+        release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
+        environment: env.ENVIRONMENT ?? 'production',
+        tracesSampleRate: 0.1,
+    }),
+    BatchCompilationWorkflowBase,
+);

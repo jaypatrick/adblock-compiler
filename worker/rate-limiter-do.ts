@@ -45,8 +45,11 @@
  * ```
  */
 
+import * as Sentry from '@sentry/cloudflare';
 import { Hono } from 'hono';
 import { z } from 'zod';
+
+import type { Env } from './types.ts';
 
 // ============================================================================
 // Schemas (Zod-validated at every trust boundary)
@@ -95,7 +98,7 @@ const STORAGE_KEY_LIMIT = 'rl:limit';
  * One instance per identity (keyed by `idFromName`). Hibernates between
  * requests; storage is restored on wake-up via `blockConcurrencyWhile`.
  */
-export class RateLimiterDO implements DurableObject {
+export class RateLimiterDOBase implements DurableObject {
     private readonly state: DurableObjectState;
     private readonly app: Hono;
 
@@ -274,3 +277,13 @@ export class RateLimiterDO implements DurableObject {
         return Promise.resolve(this.app.fetch(request));
     }
 }
+
+export const RateLimiterDO = Sentry.instrumentDurableObjectWithSentry(
+    (env: Env) => ({
+        dsn: env.SENTRY_DSN,
+        release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
+        environment: env.ENVIRONMENT ?? 'production',
+        tracesSampleRate: 0.1,
+    }),
+    RateLimiterDOBase,
+);

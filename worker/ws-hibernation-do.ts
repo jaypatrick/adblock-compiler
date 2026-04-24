@@ -51,8 +51,11 @@
  * @see docs/architecture/durable-objects.md
  */
 
+import * as Sentry from '@sentry/cloudflare';
 import { Hono } from 'hono';
 import { z } from 'zod';
+
+import type { Env } from './types.ts';
 
 // ============================================================================
 // Schemas
@@ -109,7 +112,7 @@ const sessionKey = (tag: string): string => `session:${tag}`;
  * Durable Object that provides hibernatable WebSocket connections with
  * session-presence tracking.
  */
-export class WsHibernationDO implements DurableObject {
+class WsHibernationDOBase implements DurableObject {
     private readonly state: DurableObjectState;
     private readonly app: Hono;
 
@@ -357,3 +360,13 @@ export class WsHibernationDO implements DurableObject {
         return Promise.resolve(this.app.fetch(request));
     }
 }
+
+export const WsHibernationDO = Sentry.instrumentDurableObjectWithSentry(
+    (env: Env) => ({
+        dsn: env.SENTRY_DSN,
+        release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
+        environment: env.ENVIRONMENT ?? 'production',
+        tracesSampleRate: 0.1,
+    }),
+    WsHibernationDOBase,
+);
