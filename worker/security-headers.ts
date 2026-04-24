@@ -93,8 +93,10 @@ function buildLandingCspDirectives(): string {
         "default-src 'self'",
         // Cloudflare Turnstile (api.js) + Web Analytics; no CDN or inline scripts here.
         "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com",
-        // Cloudflare Analytics beacon + Sentry error ingest
-        "connect-src 'self' https://cloudflareinsights.com https://*.ingest.sentry.io",
+        // Cloudflare Analytics beacon + Sentry error ingest; Google Fonts origins are also included
+        // because docsLandingHandler emits <link rel="preconnect"> to both fonts hosts and
+        // preconnect hints are governed by connect-src.
+        "connect-src 'self' https://cloudflareinsights.com https://*.ingest.sentry.io https://fonts.googleapis.com https://fonts.gstatic.com",
         // 'unsafe-inline' required for the inline <style> block in docsLandingHandler;
         // fonts.googleapis.com serves the Space Grotesk CSS stylesheet.
         "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
@@ -158,7 +160,8 @@ export function contentSecurityPolicyMiddleware(): MiddlewareHandler<{ Bindings:
         const isDocPath = DOC_PATH_PREFIXES.some((prefix) => path.startsWith(prefix));
         // 2. Landing page exact paths — landing CSP (inline style + Google Fonts).
         //    Checked AFTER doc paths so /api/docs etc. are not accidentally caught here.
-        const isLandingPath = path === '/' || path === '/api';
+        //    '/api/' (trailing slash) is included to handle browsers that append one.
+        const isLandingPath = path === '/' || path === '/api' || path === '/api/';
         const csp = isDocPath ? CSP_SWAGGER : isLandingPath ? CSP_LANDING : CSP_STRICT;
         c.header('Content-Security-Policy', csp);
         c.header('X-Content-Type-Options', 'nosniff');
