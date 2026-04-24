@@ -256,8 +256,18 @@ export class RateLimiterDO implements DurableObject {
 
     /** Called by Cloudflare when the window-expiry alarm fires. */
     async alarm(): Promise<void> {
-        await this.resetCounter();
-        // DO will now hibernate; next request starts a fresh window.
+        try {
+            await this.resetCounter();
+            // DO will now hibernate; next request starts a fresh window.
+        } catch (error) {
+            console.error(
+                '[RateLimiterDO] alarm(): reset failed, DO may retain stale counter until next request:',
+                error instanceof Error ? error.message : String(error),
+            );
+            // Do not rethrow — a failed alarm reset is non-fatal; the next
+            // incoming request will start a fresh window via the expired-window
+            // branch in increment().
+        }
     }
 
     fetch(request: Request): Promise<Response> {

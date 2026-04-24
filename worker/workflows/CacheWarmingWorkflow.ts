@@ -86,7 +86,11 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
      */
     override async run(event: WorkflowEvent<CacheWarmingParams>, step: WorkflowStep): Promise<CacheWarmingResult> {
         const startTime = Date.now();
-        const { runId, configurations, scheduled } = event.payload;
+        const {
+            runId = `cache-warm-${Date.now()}`,
+            configurations = [],
+            scheduled = false,
+        } = event.payload;
 
         // Initialize event emitter for real-time progress tracking
         const events = new WorkflowEvents(this.env.METRICS, runId, 'cache-warming');

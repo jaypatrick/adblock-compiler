@@ -154,7 +154,11 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
      */
     override async run(event: WorkflowEvent<HealthMonitoringParams>, step: WorkflowStep): Promise<HealthMonitoringResult> {
         const startTime = Date.now();
-        const { runId, sources, alertOnFailure } = event.payload;
+        const {
+            runId = `health-${Date.now()}`,
+            sources = [],
+            alertOnFailure = false,
+        } = event.payload;
 
         // Fail fast if METRICS KV binding is absent — avoids a hung KV call
         if (!this.env.METRICS) {
