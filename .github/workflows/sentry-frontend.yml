@@ -10,12 +10,12 @@ on:
     workflow_dispatch:
 
 jobs:
-    upload-sourcemaps:
-        name: Upload Frontend Source Maps to Sentry
+    upload-browser:
+        name: Upload Frontend Browser Source Maps to Sentry
         runs-on: ubuntu-latest
         permissions:
             contents: read
-        if: ${{ vars.SENTRY_ORG != '' }}
+        if: ${{ vars.SENTRY_ORG != '' && vars.SENTRY_PROJECT != '' }}
         steps:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -31,24 +31,49 @@ jobs:
             - name: Install dependencies
               run: pnpm install --frozen-lockfile
 
-            - name: Build Angular frontend (with source maps)
-              run: pnpm --filter adblock-frontend run build -- --source-map=true
+            - name: Build Angular frontend (production, source maps enabled)
+              run: pnpm --filter adblock-frontend run build
               env:
                   NODE_ENV: production
 
-            - name: Upload source maps to Sentry
-              working-directory: frontend
+            - name: Inject Sentry debug IDs into browser bundle
+              run: pnpm exec sentry-cli sourcemaps inject frontend/dist/adblock-compiler/browser
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+
+            - name: Create Sentry release
+              run: pnpm exec sentry-cli releases new "${{ github.sha }}"
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+
+            - name: Upload browser source maps to Sentry
               run: |
-                  npx @sentry/cli sourcemaps upload \
+                  pnpm exec sentry-cli sourcemaps upload \
                     --org "${{ vars.SENTRY_ORG }}" \
                     --project "${{ vars.SENTRY_PROJECT }}" \
                     --release "${{ github.sha }}" \
                     --url-prefix "~/" \
-                    ./dist/adblock-compiler/browser
+                    frontend/dist/adblock-compiler/browser
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
 
-    upload-frontend-ssr:
+            - name: Finalize Sentry release and create deploy record
+              run: |
+                  pnpm exec sentry-cli releases finalize "${{ github.sha }}"
+                  pnpm exec sentry-cli releases deploys new "${{ github.sha }}" \
+                    --env "${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}"
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+
+    upload-ssr:
         name: Upload Frontend SSR Source Maps to Sentry
         runs-on: ubuntu-latest
         continue-on-error: true
@@ -71,18 +96,42 @@ jobs:
               run: pnpm install --frozen-lockfile --filter adblock-frontend
 
             - name: Build Angular frontend SSR bundle (with source maps)
-              run: pnpm --filter adblock-frontend run build -- --source-map=true
+              run: pnpm --filter adblock-frontend run build
               env:
                   NODE_ENV: production
                   CF_WEB_ANALYTICS_TOKEN: ''
 
+            - name: Inject Sentry debug IDs into SSR bundle
+              run: pnpm exec sentry-cli sourcemaps inject frontend/dist/adblock-compiler/server
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_FRONTEND_PROJECT != '' && vars.SENTRY_FRONTEND_PROJECT || vars.SENTRY_PROJECT }}
+
+            - name: Create Sentry release
+              run: pnpm exec sentry-cli releases new "${{ github.sha }}"
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_FRONTEND_PROJECT != '' && vars.SENTRY_FRONTEND_PROJECT || vars.SENTRY_PROJECT }}
+
             - name: Upload frontend SSR source maps to Sentry
-              working-directory: frontend
               run: |
-                  npx @sentry/cli sourcemaps upload \
+                  pnpm exec sentry-cli sourcemaps upload \
                     --org "${{ vars.SENTRY_ORG }}" \
                     --project "${{ vars.SENTRY_FRONTEND_PROJECT != '' && vars.SENTRY_FRONTEND_PROJECT || vars.SENTRY_PROJECT }}" \
                     --release "${{ github.sha }}" \
-                    ./dist/adblock-compiler/server
+                    frontend/dist/adblock-compiler/server
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+
+            - name: Finalize Sentry release and create deploy record
+              run: |
+                  pnpm exec sentry-cli releases finalize "${{ github.sha }}"
+                  pnpm exec sentry-cli releases deploys new "${{ github.sha }}" \
+                    --env "${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}"
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_FRONTEND_PROJECT != '' && vars.SENTRY_FRONTEND_PROJECT || vars.SENTRY_PROJECT }}
