@@ -361,6 +361,12 @@ class WsHibernationDOBase implements DurableObject {
     }
 }
 
+// The inner cast bridges the gap between our `implements DurableObject` constructor
+// (which uses `_env: unknown`) and the `new(state, env: Env) => DurableObject<Env, {}>`
+// signature that `instrumentDurableObjectWithSentry` requires (the actual runtime
+// class is `cloudflare:workers`'s branded `DurableObject<Env, {}>`).  The outer cast
+// restores `typeof WsHibernationDOBase` so callers see non-optional `fetch`/WebSocket
+// event methods and an `unknown`-typed env parameter.
 export const WsHibernationDO = Sentry.instrumentDurableObjectWithSentry(
     (env: Env) => ({
         dsn: env.SENTRY_DSN,
@@ -368,5 +374,5 @@ export const WsHibernationDO = Sentry.instrumentDurableObjectWithSentry(
         environment: env.ENVIRONMENT ?? 'production',
         tracesSampleRate: 0.1,
     }),
-    WsHibernationDOBase,
-);
+    WsHibernationDOBase as unknown as new (state: DurableObjectState, env: Env) => DurableObject<Env, {}>,
+) as unknown as typeof WsHibernationDOBase;

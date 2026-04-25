@@ -278,6 +278,12 @@ class RateLimiterDOBase implements DurableObject {
     }
 }
 
+// The inner cast bridges the gap between our `implements DurableObject` constructor
+// (which uses `_env: unknown`) and the `new(state, env: Env) => DurableObject<Env, {}>`
+// signature that `instrumentDurableObjectWithSentry` requires (the actual runtime
+// class is `cloudflare:workers`'s branded `DurableObject<Env, {}>`).  The outer cast
+// restores `typeof RateLimiterDOBase` so callers (including tests) see non-optional
+// `fetch`/`alarm` methods and an `unknown`-typed env parameter.
 export const RateLimiterDO = Sentry.instrumentDurableObjectWithSentry(
     (env: Env) => ({
         dsn: env.SENTRY_DSN,
@@ -285,5 +291,5 @@ export const RateLimiterDO = Sentry.instrumentDurableObjectWithSentry(
         environment: env.ENVIRONMENT ?? 'production',
         tracesSampleRate: 0.1,
     }),
-    RateLimiterDOBase,
-);
+    RateLimiterDOBase as unknown as new (state: DurableObjectState, env: Env) => DurableObject<Env, {}>,
+) as unknown as typeof RateLimiterDOBase;

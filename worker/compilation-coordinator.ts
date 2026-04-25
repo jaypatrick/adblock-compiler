@@ -228,6 +228,12 @@ class CompilationCoordinatorBase implements DurableObject {
     }
 }
 
+// The inner cast bridges the gap between our `implements DurableObject` constructor
+// (which uses `_env: unknown`) and the `new(state, env: Env) => DurableObject<Env, {}>`
+// signature that `instrumentDurableObjectWithSentry` requires (the actual runtime
+// class is `cloudflare:workers`'s branded `DurableObject<Env, {}>`).  The outer cast
+// restores `typeof CompilationCoordinatorBase` so callers see non-optional methods
+// and an `unknown`-typed env parameter.
 export const CompilationCoordinator = Sentry.instrumentDurableObjectWithSentry(
     (env: Env) => ({
         dsn: env.SENTRY_DSN,
@@ -235,5 +241,5 @@ export const CompilationCoordinator = Sentry.instrumentDurableObjectWithSentry(
         environment: env.ENVIRONMENT ?? 'production',
         tracesSampleRate: 0.1,
     }),
-    CompilationCoordinatorBase,
-);
+    CompilationCoordinatorBase as unknown as new (state: DurableObjectState, env: Env) => DurableObject<Env, {}>,
+) as unknown as typeof CompilationCoordinatorBase;
