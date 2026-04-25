@@ -173,17 +173,14 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
                 retries: { limit: 3, delay: '10 seconds', backoff: 'exponential' },
                 timeout: '30 seconds',
             }, async () => {
-                // Use direct provider (bypass queue) to avoid queue→workflow→queue recursion.
-                const mailer = createEmailService(this.env, { useQueue: false });
-
-                // Determine the active provider name for the receipt
-                const providerName: 'cf_email_worker' | 'none' = this.env.SEND_EMAIL ? 'cf_email_worker' : 'none';
-
-                if (providerName === 'none') {
-                    // No direct provider — throw so the step retry/backoff fires and
-                    // the workflow is marked as failed rather than reporting false success.
+                // Guard first — fail fast before any logging/instantiation when unconfigured.
+                if (!this.env.SEND_EMAIL) {
                     throw new Error('No email provider configured for workflow delivery (SEND_EMAIL absent).');
                 }
+
+                // Use direct provider (bypass queue) to avoid queue→workflow→queue recursion.
+                const mailer = createEmailService(this.env, { useQueue: false });
+                const providerName = 'cf_email_worker' as const;
 
                 await mailer.sendEmail(validatedPayload);
                 // deno-lint-ignore no-console

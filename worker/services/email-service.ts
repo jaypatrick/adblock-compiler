@@ -327,7 +327,7 @@ export class CfEmailWorkerService implements IEmailService {
 // ============================================================================
 
 /**
- * No-op email provider used when no email binding or env var is configured.
+ * No-op email provider used when neither `EMAIL_QUEUE` nor `SEND_EMAIL` is configured.
  *
  * Every call logs a warning and immediately resolves. This ensures callers never
  * fail due to missing email configuration — degrading gracefully is preferred
@@ -338,7 +338,7 @@ export class NullEmailService implements IEmailService {
         // deno-lint-ignore no-console
         console.warn(
             `[NullEmailService] No email provider configured — email to <${payload.to}> was dropped. ` +
-                'Set SEND_EMAIL binding or FROM_EMAIL env var to enable transactional email.',
+                'Set EMAIL_QUEUE binding or SEND_EMAIL binding to enable transactional email.',
         );
     }
 }
