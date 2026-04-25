@@ -8,9 +8,10 @@
  *
  * | Priority | Class                        | When used                                             |
  * |----------|------------------------------|-------------------------------------------------------|
- * | 1 (best) | {@link CfEmailWorkerService} | `SEND_EMAIL` binding present (adblock-email worker)   |
- * | 2        | {@link MailChannelsEmailService} | `FROM_EMAIL` env var set, no `SEND_EMAIL` binding  |
- * | 3        | {@link NullEmailService}     | Neither configured — logs a warning, no sends         |
+ * | 1 (best) | {@link QueuedEmailService}   | `EMAIL_QUEUE` binding present (durable, retryable)    |
+ * | 2        | {@link CfEmailWorkerService} | `SEND_EMAIL` binding present (adblock-email worker)   |
+ * | 3        | {@link MailChannelsEmailService} | `FROM_EMAIL` env var set, no `SEND_EMAIL` binding  |
+ * | 4        | {@link NullEmailService}     | Neither configured — logs a warning, no sends         |
  *
  * ## Integration points
  *   1. **Compilation complete** — notify Pro/Vendor/Enterprise users
@@ -25,7 +26,7 @@
  *
  * const mailer = createEmailService(env);
  * ctx.waitUntil(
- *     mailer.sendEmail(renderCompilationComplete({ userEmail, configName, ruleCount, durationMs, requestId }))
+ *     mailer.sendEmail(renderCompilationComplete({ configName, ruleCount, durationMs, requestId }))
  *         .catch((err) => console.warn('[email] send failed:', err))
  * );
  * ```
@@ -76,8 +77,13 @@ export type EmailEnv = z.infer<typeof EmailEnvSchema>;
 export const EmailPayloadSchema = z.object({
     /** Recipient email address. */
     to: z.string().email().describe('Recipient email address'),
-    /** Email subject line. */
-    subject: z.string().min(1).max(998).describe('Email subject line (max 998 chars per RFC 5322)'),
+    /** Email subject line. CR/LF characters are forbidden to prevent MIME header injection. */
+    subject: z
+        .string()
+        .min(1)
+        .max(998)
+        .regex(/^[^\r\n]*$/, 'Subject must not contain CR or LF characters')
+        .describe('Email subject line (max 998 chars per RFC 5322)'),
     /** HTML body. Must be non-empty. */
     html: z.string().min(1).describe('HTML body of the email'),
     /** Plain-text fallback body. Must be non-empty. */
@@ -135,6 +141,68 @@ interface SendEmailBinding {
 }
 
 // ============================================================================
+// Address / header helpers
+// ============================================================================
+
+/**
+ * Parse a potentially display-name-qualified email address into its components.
+ *
+ * Handles both plain addresses (`notifications@bloqr.dev`) and RFC 5322
+ * display-name format (`"Bloqr" <notifications@bloqr.dev>` or
+ * `Bloqr <notifications@bloqr.dev>`).
+ *
+ * @param displayAddress - Raw address string (plain or display-name qualified).
+ * @returns Object with `email` (bare address) and optional `name`.
+ */
+export function parseEmailAddress(displayAddress: string): { email: string; name?: string } {
+    const match = displayAddress.match(/^(.+?)\s*<([^>]+)>$/);
+    if (match) {
+        // Strip CRLF first, then remove leading/trailing quotes, to prevent
+        // injection if quotes themselves contain CR or LF characters.
+        const name = match[1].trim().replace(/[\r\n]/g, '').replace(/^["']+|["']+$/g, '');
+        const email = match[2].trim();
+        // Reject obviously malformed addresses (must contain '@').
+        // Return the extracted part so downstream validators see the intended value.
+        if (!email.includes('@')) {
+            return { email };
+        }
+        return name ? { email, name } : { email };
+    }
+    return { email: displayAddress.trim() };
+}
+
+/**
+ * Encode an email subject for use in an RFC 5322 `Subject:` header.
+ *
+ * If the subject contains only printable ASCII characters (0x20–0x7E) it is
+ * returned unchanged. Otherwise it is wrapped in an RFC 2047 Base64 encoded
+ * word (`=?UTF-8?B?<base64>?=`) so that non-ASCII characters (emojis, dashes,
+ * accented letters, etc.) are transmitted correctly and do not corrupt the MIME
+ * structure.
+ *
+ * This encoding is applied **before** the value is interpolated into a raw MIME
+ * header string — it is the last defence against garbled subjects in non-ASCII
+ * locales.
+ *
+ * @param subject - Raw subject string (already stripped of CR/LF by the Zod schema).
+ * @returns        RFC 2047-safe subject value ready for interpolation into a header line.
+ */
+export function encodeSubjectRfc2047(subject: string): string {
+    // Printable ASCII only — safe to use as-is
+    if (/^[\x20-\x7E]*$/.test(subject)) {
+        return subject;
+    }
+    // RFC 2047 Base64 encoded word: =?UTF-8?B?<base64>?=
+    // Build the binary string iteratively to avoid spread-operator stack risk.
+    const bytes = new TextEncoder().encode(subject);
+    const chars = new Array<string>(bytes.length);
+    for (let i = 0; i < bytes.length; i++) {
+        chars[i] = String.fromCharCode(bytes[i]);
+    }
+    return `=?UTF-8?B?${btoa(chars.join(''))}?=`;
+}
+
+// ============================================================================
 // MIME builder (for CfEmailWorkerService)
 // ============================================================================
 
@@ -146,8 +214,9 @@ interface SendEmailBinding {
  *
  * @param from    - Sender address (envelope From).
  * @param to      - Recipient address (envelope To).
- * @param subject - Subject line (special characters are NOT encoded here;
- *                  callers must ensure subject is RFC 5322 safe).
+ * @param subject - Subject line. Non-ASCII characters are RFC 2047 Base64-encoded
+ *                  automatically; CR/LF must be stripped by the Zod schema before
+ *                  reaching this function.
  * @param text    - Plain-text body.
  * @param html    - HTML body.
  * @returns       Raw MIME message string.
@@ -165,7 +234,7 @@ export function buildRawMimeMessage(
         'MIME-Version: 1.0',
         `From: ${from}`,
         `To: ${to}`,
-        `Subject: ${subject}`,
+        `Subject: ${encodeSubjectRfc2047(subject)}`,
         `Content-Type: multipart/alternative; boundary="${boundary}"`,
         '',
         `--${boundary}`,
@@ -212,15 +281,23 @@ export function buildRawMimeMessage(
  */
 export class CfEmailWorkerService implements IEmailService {
     private readonly binding: SendEmailBinding;
-    private readonly fromAddress: string;
+    /** Bare email address for the SMTP envelope (no display name). */
+    private readonly envelopeFrom: string;
+    /** Full display address for the MIME `From:` header (may include display name). */
+    private readonly mimeFrom: string;
 
     /**
      * @param binding     - The `SEND_EMAIL` binding from `env`.
-     * @param fromAddress - Sender address (e.g. `"Bloqr <notifications@bloqr.dev>"`).
+     * @param fromAddress - Sender address. May be a plain address
+     *                      (`notifications@bloqr.dev`) or a display-name qualified
+     *                      address (`"Bloqr <notifications@bloqr.dev>"`).
+     *                      The bare email is extracted for the SMTP envelope;
+     *                      the full value is used for the MIME `From:` header.
      */
     constructor(binding: SendEmailBinding, fromAddress: string) {
         this.binding = binding;
-        this.fromAddress = fromAddress;
+        this.mimeFrom = fromAddress;
+        this.envelopeFrom = parseEmailAddress(fromAddress).email;
     }
 
     /**
@@ -239,8 +316,8 @@ export class CfEmailWorkerService implements IEmailService {
         }
 
         const { to, subject, html, text } = parsed.data;
-        const rawMime = buildRawMimeMessage(this.fromAddress, to, subject, text, html);
-        const message = new EmailMessage(this.fromAddress, to, rawMime);
+        const rawMime = buildRawMimeMessage(this.mimeFrom, to, subject, text, html);
+        const message = new EmailMessage(this.envelopeFrom, to, rawMime);
 
         try {
             await this.binding.send(message);
@@ -325,8 +402,10 @@ export class MailChannelsEmailService implements IEmailService {
                 : {}),
         };
 
+        const { email: fromEmail, name: fromName } = parseEmailAddress(FROM_EMAIL);
+
         const body: MailChannelsSendBody = {
-            from: { email: FROM_EMAIL },
+            from: fromName ? { email: fromEmail, name: fromName } : { email: fromEmail },
             personalizations: [personalization],
             subject,
             content: [
@@ -409,7 +488,7 @@ export class NullEmailService implements IEmailService {
  * ```ts
  * const mailer = new QueuedEmailService(env, { requestId: 'abc', reason: 'compilation_complete' });
  * ctx.waitUntil(
- *     mailer.sendEmail(renderCompilationComplete({ userEmail, configName, ruleCount, durationMs, requestId }))
+ *     mailer.sendEmail(renderCompilationComplete({ configName, ruleCount, durationMs, requestId }))
  *         .catch((err) => console.warn('[email] queue error:', err))
  * );
  * ```
@@ -474,20 +553,6 @@ export class QueuedEmailService implements IEmailService {
         }
     }
 }
-
-// ============================================================================
-// Backward-compat alias
-// ============================================================================
-
-/**
- * @deprecated Prefer {@link MailChannelsEmailService} or {@link createEmailService}.
- *
- * `EmailService` is kept as an alias for backward compatibility with existing
- * call sites that instantiate it directly. New code should use the factory
- * ({@link createEmailService}) or inject {@link IEmailService} via the interface.
- */
-// Re-export as both value and type so `new EmailService()` and `import type { EmailService }` both work.
-export { MailChannelsEmailService as EmailService };
 
 // ============================================================================
 // Factory

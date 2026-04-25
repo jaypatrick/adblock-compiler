@@ -201,27 +201,76 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
             result.deliveredAt = deliveryResult.deliveredAt;
             result.success = true;
 
-            // ─── Step 3: Record delivery receipt in KV ────────────────────────
+            // ─── Step 3: Record delivery receipt in KV and D1 ────────────────
             await step.do('record-send', {
                 retries: { limit: 1, delay: '5 seconds' },
             }, async () => {
-                if (!this.env.METRICS) {
-                    return; // KV not configured in test envs — skip silently
+                const now = new Date().toISOString();
+                const completedAtEpoch = Math.floor(Date.now() / 1000);
+
+                // 3a. Persist to KV (fast edge cache, 7-day TTL)
+                if (this.env.METRICS) {
+                    const receipt = {
+                        idempotencyKey,
+                        to: validatedPayload.to,
+                        subject: validatedPayload.subject,
+                        provider: result.provider,
+                        reason,
+                        deliveredAt: result.deliveredAt,
+                        success: true,
+                    };
+                    await this.env.METRICS.put(receiptKey(idempotencyKey), JSON.stringify(receipt), {
+                        expirationTtl: RECEIPT_TTL_SECONDS,
+                    });
                 }
-                const receipt = {
-                    idempotencyKey,
-                    to: validatedPayload.to,
-                    subject: validatedPayload.subject,
-                    provider: result.provider,
-                    reason,
-                    deliveredAt: result.deliveredAt,
-                    success: true,
-                };
-                await this.env.METRICS.put(receiptKey(idempotencyKey), JSON.stringify(receipt), {
-                    expirationTtl: RECEIPT_TTL_SECONDS,
-                });
+
+                // 3b. Persist to D1 edge database (durable audit log + fast idempotency checks)
+                if (this.env.DB) {
+                    try {
+                        // Write to the lightweight edge email_log_edge table
+                        await this.env.DB.prepare(
+                            `INSERT INTO email_log_edge
+                                (id, idempotency_key, provider, to_address, subject, status, reason, created_at)
+                             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                             ON CONFLICT (idempotency_key) DO NOTHING`,
+                        ).bind(
+                            crypto.randomUUID(),
+                            idempotencyKey,
+                            result.provider,
+                            validatedPayload.to,
+                            validatedPayload.subject.substring(0, 255),
+                            'sent',
+                            reason ?? null,
+                            completedAtEpoch,
+                        ).run();
+
+                        // Register the idempotency key so the queue consumer can skip replays
+                        const expiresAt = completedAtEpoch + RECEIPT_TTL_SECONDS;
+                        await this.env.DB.prepare(
+                            `INSERT INTO email_idempotency_keys
+                                (key, workflow_id, processed_at, expires_at)
+                             VALUES (?, ?, ?, ?)
+                             ON CONFLICT (key) DO NOTHING`,
+                        ).bind(
+                            idempotencyKey,
+                            idempotencyKey,
+                            completedAtEpoch,
+                            expiresAt,
+                        ).run();
+                    } catch (dbErr: unknown) {
+                        // Non-fatal — D1 write failure must not fail the delivery.
+                        // deno-lint-ignore no-console
+                        console.warn(
+                            '[WORKFLOW:EMAIL] Step 3 D1 write failed (non-fatal):',
+                            dbErr instanceof Error ? dbErr.message : String(dbErr),
+                        );
+                    }
+                }
+
                 // deno-lint-ignore no-console
-                console.log(`[WORKFLOW:EMAIL] Step 3 record-send: receipt stored (key=${idempotencyKey})`);
+                console.log(
+                    `[WORKFLOW:EMAIL] Step 3 record-send: receipt stored (key=${idempotencyKey}, now=${now})`,
+                );
             });
         } catch (error: unknown) {
             const message = error instanceof Error ? error.message : String(error);

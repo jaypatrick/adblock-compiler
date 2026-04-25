@@ -7,8 +7,23 @@
  *
  * Covers:
  *
+ * parseEmailAddress():
+ *   - Plain address → returns { email }
+ *   - Display-name format → returns { email, name }
+ *   - Quoted display-name → strips quotes, returns { email, name }
+ *
+ * encodeSubjectRfc2047():
+ *   - Pure ASCII subject → returned unchanged
+ *   - Subject with emoji → wrapped in =?UTF-8?B?...?= encoded word
+ *   - Subject with em-dash → wrapped in encoded word
+ *
+ * EmailPayloadSchema:
+ *   - Subject with CR → rejected with 'must not contain CR or LF characters'
+ *   - Subject with LF → rejected with 'must not contain CR or LF characters'
+ *
  * MailChannelsEmailService:
  *   - Valid payload → `fetch` called with correct MailChannels URL and body
+ *   - FROM_EMAIL display-name format → from.email is bare, from.name populated
  *   - DKIM env vars absent → DKIM fields omitted from personalizations
  *   - DKIM env vars fully present → DKIM fields included in personalizations
  *   - Non-2xx response → resolves without throwing (logs warning only)
@@ -17,9 +32,11 @@
  *
  * CfEmailWorkerService:
  *   - Valid payload → binding.send() called once with an EmailMessage
+ *   - Display-name FROM_EMAIL → envelope uses bare address, MIME From: has display name
  *   - binding.send() throws → resolves without rethrowing (fire-and-forget)
  *   - Invalid payload → throws 'Invalid email payload'
  *   - buildRawMimeMessage() → produces correct RFC 5322 headers and boundary
+ *   - Non-ASCII subject → RFC 2047 encoded in Subject header
  *
  * NullEmailService:
  *   - sendEmail() resolves immediately without calling fetch or a binding
@@ -45,9 +62,10 @@ import {
     buildRawMimeMessage,
     CfEmailWorkerService,
     createEmailService,
-    EmailService,
+    encodeSubjectRfc2047,
     MailChannelsEmailService,
     NullEmailService,
+    parseEmailAddress,
     QueuedEmailService,
 } from './email-service.ts';
 import type { EmailEnv, EmailPayload } from './email-service.ts';
@@ -147,6 +165,87 @@ function makeMockSendEmailBinding(): {
 }
 
 // ============================================================================
+// parseEmailAddress
+// ============================================================================
+
+Deno.test('parseEmailAddress() — plain address returns { email }', () => {
+    const result = parseEmailAddress('notifications@bloqr.dev');
+    assertEquals(result, { email: 'notifications@bloqr.dev' });
+});
+
+Deno.test('parseEmailAddress() — display-name format returns { email, name }', () => {
+    const result = parseEmailAddress('Bloqr <notifications@bloqr.dev>');
+    assertEquals(result, { email: 'notifications@bloqr.dev', name: 'Bloqr' });
+});
+
+Deno.test('parseEmailAddress() — quoted display-name strips quotes', () => {
+    const result = parseEmailAddress('"Bloqr Notifications" <noreply@bloqr.dev>');
+    assertEquals(result, { email: 'noreply@bloqr.dev', name: 'Bloqr Notifications' });
+});
+
+Deno.test('parseEmailAddress() — address with no display name has no name field', () => {
+    const result = parseEmailAddress('plain@bloqr.dev');
+    assertEquals(result.email, 'plain@bloqr.dev');
+    assertEquals(result.name, undefined);
+});
+
+// ============================================================================
+// encodeSubjectRfc2047
+// ============================================================================
+
+Deno.test('encodeSubjectRfc2047() — pure ASCII subject returned unchanged', () => {
+    assertEquals(encodeSubjectRfc2047('Hello World'), 'Hello World');
+    assertEquals(encodeSubjectRfc2047('[CRITICAL] Error in /api/compile'), '[CRITICAL] Error in /api/compile');
+    assertEquals(encodeSubjectRfc2047('Compilation complete (3 rules)'), 'Compilation complete (3 rules)');
+});
+
+Deno.test('encodeSubjectRfc2047() — subject with emoji is wrapped in RFC 2047 encoded word', () => {
+    const encoded = encodeSubjectRfc2047('✅ Compilation complete');
+    // Must start with =?UTF-8?B? (RFC 2047 Base64 encoded word)
+    assertStringIncludes(encoded, '=?UTF-8?B?');
+    assertStringIncludes(encoded, '?=');
+    // Must NOT contain the raw emoji
+    assertEquals(encoded.includes('✅'), false);
+});
+
+Deno.test('encodeSubjectRfc2047() — subject with em-dash is RFC 2047 encoded', () => {
+    const encoded = encodeSubjectRfc2047('Result — done');
+    assertStringIncludes(encoded, '=?UTF-8?B?');
+    assertEquals(encoded.includes('—'), false);
+});
+
+// ============================================================================
+// EmailPayloadSchema — CRLF rejection
+// ============================================================================
+
+Deno.test('EmailPayloadSchema — subject with CR character is rejected', async () => {
+    const svc = new MailChannelsEmailService(makeEnvNoDkim());
+    await assertRejects(
+        () => svc.sendEmail(makePayload({ subject: 'Bad\rSubject' })),
+        Error,
+        'Invalid email payload',
+    );
+});
+
+Deno.test('EmailPayloadSchema — subject with LF character is rejected', async () => {
+    const svc = new MailChannelsEmailService(makeEnvNoDkim());
+    await assertRejects(
+        () => svc.sendEmail(makePayload({ subject: 'Injected\nHeader: x' })),
+        Error,
+        'Invalid email payload',
+    );
+});
+
+Deno.test('EmailPayloadSchema — subject with CRLF sequence is rejected', async () => {
+    const svc = new MailChannelsEmailService(makeEnvNoDkim());
+    await assertRejects(
+        () => svc.sendEmail(makePayload({ subject: 'Bad\r\nHeader: injected' })),
+        Error,
+        'Invalid email payload',
+    );
+});
+
+// ============================================================================
 // MailChannelsEmailService — valid payload, correct MailChannels request
 // ============================================================================
 
@@ -173,6 +272,16 @@ Deno.test('MailChannelsEmailService.sendEmail() — request body contains correc
     assertEquals(content.some((c) => c.type === 'text/html' && c.value === '<b>hi</b>'), true);
     const personalizations = body.personalizations as Array<{ to: Array<{ email: string }> }>;
     assertEquals(personalizations[0].to[0].email, 'dest@example.com');
+});
+
+Deno.test('MailChannelsEmailService.sendEmail() — display-name FROM_EMAIL sets from.email (bare) and from.name', async () => {
+    const svc = new MailChannelsEmailService({ FROM_EMAIL: 'Bloqr Notifications <noreply@bloqr.dev>' });
+    const calls = await withMockFetch(202, () => svc.sendEmail(makePayload()));
+
+    const body = JSON.parse(calls[0].init['body'] as string) as Record<string, unknown>;
+    const from = body.from as { email: string; name?: string };
+    assertEquals(from.email, 'noreply@bloqr.dev');
+    assertEquals(from.name, 'Bloqr Notifications');
 });
 
 // ============================================================================
@@ -268,15 +377,6 @@ Deno.test("MailChannelsEmailService.sendEmail() — throws 'Invalid email payloa
 });
 
 // ============================================================================
-// EmailService backward-compat alias
-// ============================================================================
-
-Deno.test('EmailService — backward-compat alias is MailChannelsEmailService', () => {
-    const svc = new EmailService(makeEnvNoDkim());
-    assertEquals(svc instanceof MailChannelsEmailService, true);
-});
-
-// ============================================================================
 // buildRawMimeMessage
 // ============================================================================
 
@@ -321,6 +421,34 @@ Deno.test('CfEmailWorkerService.sendEmail() — calls binding.send() once with a
     assertEquals(msg.from, 'notifications@bloqr.dev');
     assertEquals(msg.to, 'user@example.com');
     assertStringIncludes(msg.raw as string, 'Subject: Hello');
+});
+
+Deno.test('CfEmailWorkerService.sendEmail() — display-name address: envelope uses bare email, MIME From has display name', async () => {
+    const { binding, calls } = makeMockSendEmailBinding();
+    const svc = new CfEmailWorkerService(binding, 'Bloqr <notifications@bloqr.dev>');
+    await svc.sendEmail(makePayload({ to: 'user@example.com', subject: 'Hi' }));
+
+    assertEquals(calls.length, 1);
+    const msg = calls[0] as { from: string; to: string; raw: string };
+    // Envelope 'from' must be the bare email address (no display name)
+    assertEquals(msg.from, 'notifications@bloqr.dev');
+    assertEquals(msg.to, 'user@example.com');
+    // MIME From: header may include the display name
+    assertStringIncludes(msg.raw as string, 'From: Bloqr <notifications@bloqr.dev>');
+});
+
+Deno.test('CfEmailWorkerService.sendEmail() — non-ASCII subject is RFC 2047 encoded in MIME header', async () => {
+    const { binding, calls } = makeMockSendEmailBinding();
+    const svc = new CfEmailWorkerService(binding, 'n@bloqr.dev');
+    await svc.sendEmail(makePayload({ subject: '✅ Compilation complete' }));
+
+    assertEquals(calls.length, 1);
+    const msg = calls[0] as { from: string; to: string; raw: string };
+    // The raw MIME must not contain the bare emoji in the Subject header
+    const subjectLine = (msg.raw as string).split('\r\n').find((l) => l.startsWith('Subject:'));
+    assertEquals(subjectLine !== undefined, true);
+    assertEquals(subjectLine!.includes('✅'), false);
+    assertStringIncludes(subjectLine!, '=?UTF-8?B?');
 });
 
 Deno.test('CfEmailWorkerService.sendEmail() — resolves without rethrowing when binding.send() throws', async () => {

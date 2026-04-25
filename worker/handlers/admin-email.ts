@@ -69,7 +69,7 @@ export const AdminEmailConfigResponseSchema = z.object({
     send_email_binding_configured: z.boolean(),
     /** `true` when `FROM_EMAIL` env var is set (used by MailChannels provider). */
     from_email_configured: z.boolean(),
-    /** Sender address extracted from `FROM_EMAIL` (masked if absent). */
+    /** Sender address extracted from `FROM_EMAIL`, or `null` if absent. */
     from_address: z.string().nullable().describe('Configured sender address, or null if not set'),
     /**
      * DKIM signing status.

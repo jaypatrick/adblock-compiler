@@ -20,7 +20,6 @@ import { escapeHtml } from '../utils/escape-html.ts';
 // ============================================================================
 
 export interface RenderCompilationCompleteOpts {
-    readonly userEmail: string;
     readonly configName: string;
     readonly ruleCount: number;
     readonly durationMs: number;
