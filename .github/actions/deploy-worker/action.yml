@@ -122,6 +122,7 @@ runs:
         create_or_confirm_queue "adblock-compiler-worker-queue-high-priority"
         create_or_confirm_queue "adblock-compiler-dlq"
         create_or_confirm_queue "adblock-compiler-error-queue"
+        create_or_confirm_queue "adblock-compiler-email-queue"
         create_or_confirm_r2_bucket "adblock-compiler-r2-storage"
 
     - name: Authenticate Docker with Cloudflare Container Registry
