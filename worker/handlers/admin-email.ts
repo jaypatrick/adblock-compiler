@@ -57,11 +57,14 @@ export const AdminEmailConfigResponseSchema = z.object({
     /**
      * Active email provider identifier.
      *
-     * - `'cf_email_worker'` — Cloudflare Email Workers (`SEND_EMAIL` binding)
-     * - `'mailchannels'`    — MailChannels HTTP API (`FROM_EMAIL` env var)
+     * - `'queued'`         — Durable queue-backed delivery (`EMAIL_QUEUE` → `EmailDeliveryWorkflow`)
+     * - `'cf_email_worker'` — Cloudflare Email Workers (`SEND_EMAIL` binding, direct)
+     * - `'mailchannels'`    — MailChannels HTTP API (`FROM_EMAIL` env var, direct)
      * - `'none'`            — No provider configured; sends are dropped
      */
-    provider: z.enum(['cf_email_worker', 'mailchannels', 'none']).describe('Active email provider'),
+    provider: z.enum(['queued', 'cf_email_worker', 'mailchannels', 'none']).describe('Active email provider'),
+    /** `true` when the `EMAIL_QUEUE` binding is present (durable queue delivery). */
+    email_queue_configured: z.boolean(),
     /** `true` when the `SEND_EMAIL` CF Email Workers binding is present. */
     send_email_binding_configured: z.boolean(),
     /** `true` when `FROM_EMAIL` env var is set (used by MailChannels provider). */
@@ -101,6 +104,24 @@ export const AdminEmailTestResponseSchema = z.object({
 
 /** Determine active provider label from env. */
 function detectProvider(env: {
+    EMAIL_QUEUE?: unknown;
+    SEND_EMAIL?: unknown;
+    FROM_EMAIL?: string;
+}): 'queued' | 'cf_email_worker' | 'mailchannels' | 'none' {
+    if (env.EMAIL_QUEUE) return 'queued';
+    if (env.SEND_EMAIL) return 'cf_email_worker';
+    if (env.FROM_EMAIL) return 'mailchannels';
+    return 'none';
+}
+
+/**
+ * Determine the direct (non-queue) provider for admin test sends.
+ *
+ * Admin test emails always bypass the queue so admins get synchronous feedback.
+ * Returns the best direct provider available, or `'none'` when neither
+ * `SEND_EMAIL` nor `FROM_EMAIL` is configured.
+ */
+function detectDirectProvider(env: {
     SEND_EMAIL?: unknown;
     FROM_EMAIL?: string;
 }): 'cf_email_worker' | 'mailchannels' | 'none' {
@@ -150,6 +171,7 @@ export async function handleAdminEmailConfig(c: AppContext): Promise<Response> {
         success: true,
         timestamp: new Date().toISOString(),
         provider,
+        email_queue_configured: Boolean(c.env.EMAIL_QUEUE),
         send_email_binding_configured: Boolean(c.env.SEND_EMAIL),
         from_email_configured: Boolean(c.env.FROM_EMAIL),
         from_address: c.env.FROM_EMAIL ?? null,
@@ -188,10 +210,20 @@ export async function handleAdminEmailTest(c: AppContext): Promise<Response> {
     const denied = checkRoutePermission('/admin/email/test', c.get('authContext'));
     if (denied) return denied;
 
-    const provider = detectProvider(c.env);
-    if (provider === 'none') {
+    // Check any provider exists (includes queue-backed) for 503 guard
+    const anyProvider = detectProvider(c.env);
+    if (anyProvider === 'none') {
         return JsonResponse.serviceUnavailable(
-            'No email provider configured. Set SEND_EMAIL binding or FROM_EMAIL env var.',
+            'No email provider configured. Set EMAIL_QUEUE binding, SEND_EMAIL binding, or FROM_EMAIL env var.',
+        );
+    }
+
+    // Admin tests always use direct delivery (bypass queue) for synchronous feedback
+    const directProvider = detectDirectProvider(c.env);
+    if (directProvider === 'none') {
+        return JsonResponse.serviceUnavailable(
+            'No direct email provider configured for admin test sends. ' +
+                'Set SEND_EMAIL binding or FROM_EMAIL env var in addition to EMAIL_QUEUE.',
         );
     }
 
@@ -211,13 +243,13 @@ export async function handleAdminEmailTest(c: AppContext): Promise<Response> {
     const { to, subject } = parsed.data;
     const timestamp = new Date().toISOString();
 
-    const mailer = createEmailService(c.env);
+    const mailer = createEmailService(c.env, { useQueue: false });
 
     const testSubject = subject ?? `[Bloqr] Email configuration test — ${timestamp}`;
     const testText = [
         'This is a test email sent from the Bloqr admin panel.',
         '',
-        `Provider: ${provider}`,
+        `Provider: ${directProvider}`,
         `Timestamp: ${timestamp}`,
         '',
         'If you received this message, outbound email is working correctly.',
@@ -231,7 +263,7 @@ export async function handleAdminEmailTest(c: AppContext): Promise<Response> {
   <p>This is a test email sent from the <strong>Bloqr admin panel</strong>.</p>
   <table style="border-collapse:collapse;width:100%;margin:16px 0;">
     <tr><td style="padding:6px 12px;background:#f4f4f8;font-weight:600;width:120px;">Provider</td>
-        <td style="padding:6px 12px;border-bottom:1px solid #e0e0e8;">${provider}</td></tr>
+        <td style="padding:6px 12px;border-bottom:1px solid #e0e0e8;">${directProvider}</td></tr>
     <tr><td style="padding:6px 12px;background:#f4f4f8;font-weight:600;">Timestamp</td>
         <td style="padding:6px 12px;border-bottom:1px solid #e0e0e8;">${escapeHtml(timestamp)}</td></tr>
     <tr><td style="padding:6px 12px;background:#f4f4f8;font-weight:600;">Recipient</td>
@@ -248,8 +280,8 @@ export async function handleAdminEmailTest(c: AppContext): Promise<Response> {
     return JsonResponse.success({
         success: true,
         timestamp,
-        message: `Test email dispatched to <${to}> via ${provider}. Check your inbox — delivery may take up to 60 seconds.`,
-        provider,
+        message: `Test email dispatched to <${to}> via ${directProvider}. Check your inbox — delivery may take up to 60 seconds.`,
+        provider: directProvider,
         to,
     });
 }

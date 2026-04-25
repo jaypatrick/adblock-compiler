@@ -24,15 +24,32 @@
  * NullEmailService:
  *   - sendEmail() resolves immediately without calling fetch or a binding
  *
+ * QueuedEmailService:
+ *   - Valid payload → queue.send() called once with correct message shape
+ *   - Invalid payload → throws 'Invalid email payload'
+ *   - queue.send() throws → resolves without rethrowing (fire-and-forget contract)
+ *   - idempotencyKey derived from requestId option
+ *   - reason field included in queue message when provided
+ *
  * createEmailService() factory:
- *   - SEND_EMAIL binding present → returns CfEmailWorkerService
- *   - FROM_EMAIL set, no binding → returns MailChannelsEmailService
+ *   - EMAIL_QUEUE binding present (useQueue=true default) → returns QueuedEmailService
+ *   - EMAIL_QUEUE present but useQueue=false → skips queue, uses SEND_EMAIL binding
+ *   - SEND_EMAIL binding present, no EMAIL_QUEUE → returns CfEmailWorkerService
+ *   - FROM_EMAIL set, no binding or queue → returns MailChannelsEmailService
  *   - Neither configured → returns NullEmailService
  *   - Returned MailChannels service can send emails
  */
 
 import { assertEquals, assertRejects, assertStringIncludes } from '@std/assert';
-import { buildRawMimeMessage, CfEmailWorkerService, createEmailService, EmailService, MailChannelsEmailService, NullEmailService } from './email-service.ts';
+import {
+    buildRawMimeMessage,
+    CfEmailWorkerService,
+    createEmailService,
+    EmailService,
+    MailChannelsEmailService,
+    NullEmailService,
+    QueuedEmailService,
+} from './email-service.ts';
 import type { EmailEnv, EmailPayload } from './email-service.ts';
 
 // ============================================================================
@@ -340,7 +357,33 @@ Deno.test('NullEmailService.sendEmail() — resolves without calling fetch or a 
 // createEmailService() factory
 // ============================================================================
 
-Deno.test('createEmailService() — returns CfEmailWorkerService when SEND_EMAIL binding is present', () => {
+function makeMockQueue(): { queue: { send: (msg: unknown, opts?: unknown) => Promise<void> }; messages: unknown[] } {
+    const messages: unknown[] = [];
+    return {
+        queue: {
+            async send(msg: unknown, _opts?: unknown) {
+                messages.push(msg);
+            },
+        },
+        messages,
+    };
+}
+
+Deno.test('createEmailService() — returns QueuedEmailService when EMAIL_QUEUE binding is present (default useQueue=true)', () => {
+    const { queue } = makeMockQueue();
+    const { binding } = makeMockSendEmailBinding();
+    const svc = createEmailService({ EMAIL_QUEUE: queue, SEND_EMAIL: binding, FROM_EMAIL: 'n@bloqr.dev' });
+    assertEquals(svc instanceof QueuedEmailService, true);
+});
+
+Deno.test('createEmailService() — skips queue and returns CfEmailWorkerService when useQueue=false', () => {
+    const { queue } = makeMockQueue();
+    const { binding } = makeMockSendEmailBinding();
+    const svc = createEmailService({ EMAIL_QUEUE: queue, SEND_EMAIL: binding, FROM_EMAIL: 'n@bloqr.dev' }, { useQueue: false });
+    assertEquals(svc instanceof CfEmailWorkerService, true);
+});
+
+Deno.test('createEmailService() — returns CfEmailWorkerService when SEND_EMAIL binding is present (no EMAIL_QUEUE)', () => {
     const { binding } = makeMockSendEmailBinding();
     const svc = createEmailService({ SEND_EMAIL: binding, FROM_EMAIL: 'n@bloqr.dev' });
     assertEquals(svc instanceof CfEmailWorkerService, true);
@@ -369,3 +412,58 @@ Deno.test('createEmailService() — returned CF Email Worker service calls bindi
     assertEquals(calls.length, 1);
 });
 
+// ============================================================================
+// QueuedEmailService
+// ============================================================================
+
+Deno.test('QueuedEmailService.sendEmail() — valid payload enqueues message with correct shape', async () => {
+    const { queue, messages } = makeMockQueue();
+    const svc = new QueuedEmailService(queue, { requestId: 'req-123', reason: 'test' });
+    await svc.sendEmail(makePayload());
+    assertEquals(messages.length, 1);
+    const msg = messages[0] as Record<string, unknown>;
+    assertEquals(msg['type'], 'email');
+    assertEquals(msg['reason'], 'test');
+    assertEquals((msg['payload'] as Record<string, unknown>)['to'], 'user@example.com');
+    assertEquals(typeof msg['timestamp'], 'number');
+    assertEquals(typeof msg['idempotencyKey'], 'string');
+    assertStringIncludes(msg['idempotencyKey'] as string, 'req-123');
+});
+
+Deno.test('QueuedEmailService.sendEmail() — invalid payload throws "Invalid email payload"', async () => {
+    const { queue } = makeMockQueue();
+    const svc = new QueuedEmailService(queue);
+    const bad = { to: '', subject: 'x', html: '<p>x</p>', text: 'x' } as EmailPayload;
+    await assertRejects(
+        () => svc.sendEmail(bad),
+        Error,
+        'Invalid email payload',
+    );
+});
+
+Deno.test('QueuedEmailService.sendEmail() — queue.send() throws, resolves without rethrowing', async () => {
+    const failQueue = {
+        async send(_msg: unknown, _opts?: unknown) {
+            throw new Error('queue unavailable');
+        },
+    };
+    const svc = new QueuedEmailService(failQueue);
+    // Fire-and-forget: should resolve, not throw
+    await svc.sendEmail(makePayload());
+});
+
+Deno.test('QueuedEmailService.sendEmail() — idempotencyKey includes requestId when provided', async () => {
+    const { queue, messages } = makeMockQueue();
+    const svc = new QueuedEmailService(queue, { requestId: 'abc-def-999' });
+    await svc.sendEmail(makePayload());
+    const msg = messages[0] as Record<string, unknown>;
+    assertStringIncludes(msg['idempotencyKey'] as string, 'abc-def-999');
+});
+
+Deno.test('QueuedEmailService.sendEmail() — reason field included in queue message when provided', async () => {
+    const { queue, messages } = makeMockQueue();
+    const svc = new QueuedEmailService(queue, { reason: 'compilation_complete' });
+    await svc.sendEmail(makePayload());
+    const msg = messages[0] as Record<string, unknown>;
+    assertEquals(msg['reason'], 'compilation_complete');
+});

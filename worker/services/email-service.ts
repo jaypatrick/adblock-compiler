@@ -383,6 +383,99 @@ export class NullEmailService implements IEmailService {
 }
 
 // ============================================================================
+// Provider: Queued (via Cloudflare Queue → EmailDeliveryWorkflow)
+// ============================================================================
+
+/**
+ * Email provider that enqueues delivery jobs on the `adblock-compiler-email-queue`
+ * Cloudflare Queue, which is consumed by `handleEmailQueue` and dispatched to
+ * `EmailDeliveryWorkflow` for durable, step-checkpointed delivery.
+ *
+ * ## When to use
+ *
+ * Prefer `QueuedEmailService` over direct providers (`CfEmailWorkerService`,
+ * `MailChannelsEmailService`) for **critical sends** where durability is
+ * required (e.g. compilation-complete notifications for paying users):
+ *
+ * - Survives Worker restarts and isolate evictions (queue is durable).
+ * - Automatic retry on transient delivery failures (via the Workflow).
+ * - Deduplication via `idempotencyKey` — replayed queue messages never send twice.
+ * - Observable progress and delivery receipts in KV.
+ *
+ * For low-stakes sends (admin test emails, best-effort alerts) the direct
+ * providers are sufficient.
+ *
+ * ## Usage
+ * ```ts
+ * const mailer = new QueuedEmailService(env, { requestId: 'abc', reason: 'compilation_complete' });
+ * ctx.waitUntil(
+ *     mailer.sendEmail(renderCompilationComplete({ userEmail, configName, ruleCount, durationMs, requestId }))
+ *         .catch((err) => console.warn('[email] queue error:', err))
+ * );
+ * ```
+ *
+ * @see worker/handlers/email-queue.ts — queue consumer
+ * @see worker/workflows/EmailDeliveryWorkflow.ts — durable delivery workflow
+ */
+export class QueuedEmailService implements IEmailService {
+    private readonly queue: { send: (msg: unknown, opts?: { contentType?: string }) => Promise<void> };
+    private readonly requestId?: string;
+    private readonly reason?: string;
+
+    constructor(
+        queue: { send: (msg: unknown, opts?: { contentType?: string }) => Promise<void> },
+        opts: { requestId?: string; reason?: string } = {},
+    ) {
+        this.queue = queue;
+        this.requestId = opts.requestId;
+        this.reason = opts.reason;
+    }
+
+    /**
+     * Enqueue an email delivery job on `EMAIL_QUEUE`.
+     *
+     * Does **not** send the email directly — the queue consumer
+     * (`handleEmailQueue`) will create an `EmailDeliveryWorkflow` instance to
+     * handle the actual delivery with retries.
+     *
+     * @param payload - Email payload to deliver.
+     * @throws {Error} `'Invalid email payload'` on Zod validation failure.
+     */
+    async sendEmail(payload: EmailPayload): Promise<void> {
+        const parsed = EmailPayloadSchema.safeParse(payload);
+        if (!parsed.success) {
+            throw new Error('Invalid email payload');
+        }
+
+        const idempotencyKey = `email-${this.requestId ?? crypto.randomUUID()}`;
+
+        const message = {
+            type: 'email' as const,
+            requestId: this.requestId,
+            timestamp: Date.now(),
+            payload: parsed.data,
+            idempotencyKey,
+            reason: this.reason,
+        };
+
+        try {
+            await this.queue.send(message, { contentType: 'json' });
+            // deno-lint-ignore no-console
+            console.log(
+                `[QueuedEmailService] Enqueued email delivery (key=${idempotencyKey}, to=${parsed.data.to})`,
+            );
+        } catch (err: unknown) {
+            // Queue failure — log warning, do not rethrow (fire-and-forget contract)
+            // deno-lint-ignore no-console
+            console.warn(
+                '[QueuedEmailService] Failed to enqueue email job:',
+                err instanceof Error ? err.message : String(err),
+            );
+        }
+    }
+}
+
+// ============================================================================
 // Backward-compat alias
 // ============================================================================
 
@@ -404,48 +497,75 @@ export { MailChannelsEmailService as EmailService };
  * Create the best available {@link IEmailService} from the Worker `Env`.
  *
  * **Provider selection order** (first match wins):
- * 1. `SEND_EMAIL` binding present → {@link CfEmailWorkerService} (`adblock-email` worker).
- * 2. `FROM_EMAIL` env var set → {@link MailChannelsEmailService} (HTTP API).
- * 3. Neither → {@link NullEmailService} (logs a warning, no sends).
+ * 1. `EMAIL_QUEUE` binding present + `useQueue !== false` →
+ *    {@link QueuedEmailService} (durable, queue-backed + Workflow delivery).
+ * 2. `SEND_EMAIL` binding present → {@link CfEmailWorkerService} (`adblock-email` worker).
+ * 3. `FROM_EMAIL` env var set → {@link MailChannelsEmailService} (HTTP API).
+ * 4. Neither → {@link NullEmailService} (logs a warning, no sends).
  *
- * ## Usage
+ * The `QueuedEmailService` is the preferred production choice for critical
+ * notifications: it enqueues the job on `EMAIL_QUEUE`, which is consumed by
+ * `handleEmailQueue` and dispatched to `EmailDeliveryWorkflow` for durable,
+ * step-checkpointed delivery with automatic retry.
+ *
+ * Pass `{ useQueue: false }` to bypass the queue and send directly — useful
+ * for admin test emails where you want immediate synchronous feedback.
+ *
+ * ## Usage (preferred — durable queue-backed)
  * ```ts
  * import { createEmailService } from './services/email-service.ts';
  *
  * // In a handler:
- * const mailer = createEmailService(env);
+ * const mailer = createEmailService(env, { requestId: ctx.requestId, reason: 'compilation_complete' });
  * ctx.waitUntil(
  *     mailer.sendEmail({ to, subject, html, text })
- *         .catch((err) => console.warn('[email] send failed:', err))
+ *         .catch((err) => console.warn('[email] enqueue failed:', err))
  * );
  * ```
  *
- * @param env - Worker `Env` object (or any partial that has `SEND_EMAIL`
- *              and/or the MailChannels env vars).
- * @returns   An {@link IEmailService} instance appropriate for the environment.
+ * ## Usage (direct — for admin test sends)
+ * ```ts
+ * const mailer = createEmailService(env, { useQueue: false });
+ * await mailer.sendEmail({ to, subject, html, text });
+ * ```
+ *
+ * @param env  - Worker `Env` object (or any partial that has the required bindings).
+ * @param opts - Optional options: `useQueue` (default `true`) and tracing fields.
+ * @returns    An {@link IEmailService} instance appropriate for the environment.
  */
-export function createEmailService(env: {
-    SEND_EMAIL?: SendEmailBinding | null;
-    FROM_EMAIL?: string;
-    DKIM_DOMAIN?: string;
-    DKIM_SELECTOR?: string;
-    DKIM_PRIVATE_KEY?: string;
-}): IEmailService {
-    // Priority 1: CF Email Workers binding (adblock-email worker)
+export function createEmailService(
+    env: {
+        EMAIL_QUEUE?: { send: (msg: unknown, opts?: { contentType?: string }) => Promise<void> } | null;
+        SEND_EMAIL?: SendEmailBinding | null;
+        FROM_EMAIL?: string;
+        DKIM_DOMAIN?: string;
+        DKIM_SELECTOR?: string;
+        DKIM_PRIVATE_KEY?: string;
+    },
+    opts: { useQueue?: boolean; requestId?: string; reason?: string } = {},
+): IEmailService {
+    const { useQueue = true, requestId, reason } = opts;
+
+    // Priority 1: Durable queue-backed delivery (EMAIL_QUEUE → EmailDeliveryWorkflow)
+    if (useQueue && env.EMAIL_QUEUE) {
+        return new QueuedEmailService(env.EMAIL_QUEUE, { requestId, reason });
+    }
+
+    // Priority 2: CF Email Workers binding (adblock-email worker)
     if (env.SEND_EMAIL) {
         return new CfEmailWorkerService(env.SEND_EMAIL, env.FROM_EMAIL ?? 'notifications@bloqr.dev');
     }
 
-    // Priority 2: MailChannels HTTP API
+    // Priority 3: MailChannels HTTP API
     const mailchannelsParsed = EmailEnvSchema.safeParse(env);
     if (mailchannelsParsed.success) {
         return new MailChannelsEmailService(mailchannelsParsed.data);
     }
 
-    // Priority 3: No-op fallback
+    // Priority 4: No-op fallback
     // deno-lint-ignore no-console
     console.warn(
-        '[createEmailService] No email provider configured (SEND_EMAIL binding and FROM_EMAIL both absent). ' +
+        '[createEmailService] No email provider configured (EMAIL_QUEUE, SEND_EMAIL, and FROM_EMAIL all absent). ' +
             'Falling back to NullEmailService — all email sends will be dropped.',
     );
     return new NullEmailService();

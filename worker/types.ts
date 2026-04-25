@@ -459,6 +459,42 @@ export interface Env {
     BATCH_COMPILATION_WORKFLOW?: Workflow<BatchCompilationParams>;
     CACHE_WARMING_WORKFLOW?: Workflow<CacheWarmingParams>;
     HEALTH_MONITORING_WORKFLOW?: Workflow<HealthMonitoringParams>;
+    /**
+     * Durable email delivery workflow binding.
+     *
+     * Creates a step-checkpointed `EmailDeliveryWorkflow` instance for each email
+     * job, providing automatic retry with exponential back-off, crash recovery,
+     * and delivery-receipt storage in KV.
+     *
+     * wrangler.toml:
+     * ```toml
+     * [[workflows]]
+     * name       = "email-delivery-workflow"
+     * binding    = "EMAIL_DELIVERY_WORKFLOW"
+     * class_name = "EmailDeliveryWorkflow"
+     * ```
+     *
+     * @see worker/workflows/EmailDeliveryWorkflow.ts
+     */
+    EMAIL_DELIVERY_WORKFLOW?: Workflow<import('./workflows/EmailDeliveryWorkflow.ts').EmailDeliveryParams>;
+    /**
+     * Email delivery queue producer binding.
+     *
+     * `QueuedEmailService.sendEmail()` enqueues jobs here.  The queue consumer
+     * (`handleEmailQueue`) reads messages and creates `EmailDeliveryWorkflow`
+     * instances for durable delivery.
+     *
+     * wrangler.toml:
+     * ```toml
+     * [[queues.producers]]
+     * queue   = "adblock-compiler-email-queue"
+     * binding = "EMAIL_QUEUE"
+     * ```
+     *
+     * @see worker/handlers/email-queue.ts
+     * @see worker/services/email-service.ts — QueuedEmailService
+     */
+    EMAIL_QUEUE?: Queue<EmailQueueMessage>;
     // Analytics Engine binding (optional - for metrics tracking)
     ANALYTICS_ENGINE?: AnalyticsEngineDataset;
     // Analytics Engine SQL API credentials (required for GET /metrics/prometheus)
@@ -796,6 +832,42 @@ export interface BatchCompileQueueMessage extends QueueMessage {
 export interface CacheWarmQueueMessage extends QueueMessage {
     type: 'cache-warm';
     configurations: IConfiguration[];
+}
+
+/**
+ * Message placed on `adblock-compiler-email-queue` by {@link QueuedEmailService}.
+ *
+ * The queue consumer (`handleEmailQueue`) reads these messages and creates an
+ * `EmailDeliveryWorkflow` instance for each one, providing durable, retryable
+ * email delivery with step-level checkpointing.
+ *
+ * @see worker/handlers/email-queue.ts
+ * @see worker/services/email-service.ts — QueuedEmailService
+ * @see worker/workflows/EmailDeliveryWorkflow.ts
+ */
+export interface EmailQueueMessage {
+    /** Discriminator — always `'email'`. */
+    readonly type: 'email';
+    /** Optional caller-supplied request ID for tracing. */
+    readonly requestId?: string;
+    /** Unix ms timestamp when the message was enqueued. */
+    readonly timestamp: number;
+    /** Email payload to deliver. */
+    readonly payload: {
+        readonly to: string;
+        readonly subject: string;
+        readonly html: string;
+        readonly text: string;
+    };
+    /**
+     * Stable idempotency key for deduplication.
+     *
+     * Used as the Workflow instance ID so replayed queue messages never
+     * send the same email twice. Recommended format: `email-<requestId>`.
+     */
+    readonly idempotencyKey?: string;
+    /** Human-readable label for the send reason (logged in Workflow steps). */
+    readonly reason?: string;
 }
 
 // ============================================================================
