@@ -461,18 +461,25 @@ h1, h2, h3, h4, h5, h6,
     font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
 }
 
-/* Cards — force M3 surface token + correct text color inheritance */
+/* Cards — force M3 surface token + correct text color inheritance.
+   border-width/style use !important to ensure a consistent 1px solid outline, but
+   border-color intentionally omits !important so component-scoped semantic variants
+   (e.g. .error-card, .results-card, .warn-card) can override it without !important. */
 .mat-mdc-card {
     background-color: var(--mat-sys-surface-container-low) !important;
     border-radius: var(--mat-sys-corner-extra-large) !important;
     color: var(--mat-sys-on-surface) !important;
-    border: 1px solid var(--color-border-accent) !important;
+    border-width: 1px !important;
+    border-style: solid !important;
+    border-color: var(--color-border-accent);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
     transition: border-color var(--app-transition-fast), box-shadow var(--app-transition-fast) !important;
 }
 
+/* Depth affordance for all cards on hover; border-color change is intentionally
+   absent here so semantic card variants (.error-card, .warn-card, etc.) keep their
+   meaning.  The orange border treatment is scoped to .card-interactive:hover below. */
 .mat-mdc-card:hover {
-    border-color: rgba(255, 85, 0, 0.3) !important;
     box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 85, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
