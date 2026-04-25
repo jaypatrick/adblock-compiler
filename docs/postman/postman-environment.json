@@ -27,5 +27,5 @@
         }
     ],
     "_postman_variable_scope": "environment",
-    "_postman_exported_using": "deno task postman:collection"
+    "_postman_exported_using": "deno task schema:sync:local"
 }

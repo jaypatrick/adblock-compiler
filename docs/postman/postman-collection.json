@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Adblock Compiler API",
-    "description": "Auto-generated from docs/api/openapi.yaml. Run 'deno task postman:collection' to regenerate.\n\n**Compiler-as-a-Service** for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.\n\n## Features\n- 🎯 Multi-Source Compilation\n- ⚡ Performance (Gzip compression, caching, request deduplication)\n- 🔄 Circuit Breaker with retry logic\n- 📊 Visual Diff between compilations\n- 📡 Real-time progress via SSE and WebSocket\n- 🎪 Batch Processing\n- 🌍 Universal (Deno, Node.js, Cloudflare Workers, browsers)\n\n## Links\n- [GitHub Repository](https://github.com/jaypatrick/adblock-compiler)\n- [Documentation](https://github.com/jaypatrick/adblock-compiler/tree/master/docs)\n- [Web UI](https://bloqr.dev/)",
+    "description": "Auto-generated from docs/api/openapi.yaml. Run 'deno task schema:sync:local' to regenerate.\n\n**Compiler-as-a-Service** for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.\n\n## Features\n- 🎯 Multi-Source Compilation\n- ⚡ Performance (Gzip compression, caching, request deduplication)\n- 🔄 Circuit Breaker with retry logic\n- 📊 Visual Diff between compilations\n- 📡 Real-time progress via SSE and WebSocket\n- 🎪 Batch Processing\n- 🌍 Universal (Deno, Node.js, Cloudflare Workers, browsers)\n\n## Links\n- [GitHub Repository](https://github.com/jaypatrick/adblock-compiler)\n- [Documentation](https://github.com/jaypatrick/adblock-compiler/tree/master/docs)\n- [Web UI](https://bloqr.dev/)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "adblock-compiler-api",
     "version": "2.0.0"
@@ -26,31 +26,31 @@
       "key": "adminKey",
       "value": "",
       "type": "string",
-      "description": "Admin API key for protected admin endpoints (X-Admin-Key header)"
+      "description": "Admin API key"
     },
     {
       "key": "bearerToken",
       "value": "",
       "type": "string",
-      "description": "Bearer token for authenticated user requests (Better Auth JWT or API key)"
+      "description": "Bearer token"
     },
     {
       "key": "userApiKey",
       "value": "",
       "type": "string",
-      "description": "User API key with abc_ prefix for API key authentication"
+      "description": "User API key"
     },
     {
       "key": "userId",
       "value": "",
       "type": "string",
-      "description": "User ID captured from Create User response"
+      "description": "User ID"
     },
     {
       "key": "apiKeyPrefix",
       "value": "",
       "type": "string",
-      "description": "API key prefix captured from Create API Key response"
+      "description": "API key prefix"
     }
   ],
   "item": [
@@ -227,10 +227,6 @@
                 "exec": [
                   "pm.test('Status code is 200', function () {",
                   "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response is SSE stream', function () {",
-                  "    pm.expect(pm.response.headers.get('Content-Type')).to.include('text/event-stream');",
                   "});"
                 ]
               }
