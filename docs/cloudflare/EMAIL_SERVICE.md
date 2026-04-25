@@ -70,7 +70,7 @@ class_name = "EmailDeliveryWorkflow"
 
 ### 2. Worker Secrets
 
-No additional Worker Secrets are required for email delivery. The `SEND_EMAIL` binding handles authentication natively via the `[[send_email]]` Wrangler binding.
+No additional Worker Secrets are required for email delivery. The `SEND_EMAIL` binding handles authentication natively via the Worker runtime.
 
 ### 3. D1 migration (edge tracking tables)
 
