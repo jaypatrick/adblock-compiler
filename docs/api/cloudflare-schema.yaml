@@ -2547,7 +2547,6 @@ paths:
                                         enum:
                                             - cf_email_worker
                                             - mailchannels
-                                            - none
                                         description: >-
                                             Direct provider used for the test send (queue is always bypassed for admin
                                             tests)

@@ -844,7 +844,7 @@ model EmailLog {
   reason          String?
   /// Error message if status is `failed`.
   error           String?
-  /// Optional FK to the Clerk user who triggered the email.
+  /// Optional FK to the app user record who triggered the email.
   userId          String?   @map("user_id") @db.Uuid
   /// When the delivery attempt started.
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz

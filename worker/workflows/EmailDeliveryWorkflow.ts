@@ -173,22 +173,23 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
                 retries: { limit: 3, delay: '10 seconds', backoff: 'exponential' },
                 timeout: '30 seconds',
             }, async () => {
-                const mailer = createEmailService(this.env);
+                // Use direct provider (bypass queue) to avoid queue→workflow→queue recursion.
+                const mailer = createEmailService(this.env, { useQueue: false });
 
                 // Determine the active provider name for the receipt
                 const providerName: 'cf_email_worker' | 'mailchannels' | 'none' = this.env.SEND_EMAIL ? 'cf_email_worker' : this.env.FROM_EMAIL ? 'mailchannels' : 'none';
 
                 if (providerName === 'none') {
-                    // No provider — resolve without error (NullEmailService logs a warning)
-                    // deno-lint-ignore no-console
-                    console.warn('[WORKFLOW:EMAIL] No email provider configured — send dropped.');
-                } else {
-                    await mailer.sendEmail(validatedPayload);
-                    // deno-lint-ignore no-console
-                    console.log(
-                        `[WORKFLOW:EMAIL] Step 2 deliver: sent via ${providerName} to ${validatedPayload.to}`,
-                    );
+                    // No direct provider — throw so the step retry/backoff fires and
+                    // the workflow is marked as failed rather than reporting false success.
+                    throw new Error('No email provider configured for workflow delivery (SEND_EMAIL and FROM_EMAIL both absent).');
                 }
+
+                await mailer.sendEmail(validatedPayload);
+                // deno-lint-ignore no-console
+                console.log(
+                    `[WORKFLOW:EMAIL] Step 2 deliver: sent via ${providerName} to ${validatedPayload.to}`,
+                );
 
                 return { providerName, deliveredAt: new Date().toISOString() };
             });

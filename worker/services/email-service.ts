@@ -151,16 +151,6 @@ interface SendEmailBinding {
  * display-name format (`"Bloqr" <notifications@bloqr.dev>` or
  * `Bloqr <notifications@bloqr.dev>`).
  *
- * @param displayAddress - Raw address string (plain or display-name qualified).
- * @returns Object with `email` (bare address) and optional `name`.
- */
-/**
- * Parse a potentially display-name-qualified email address into its components.
- *
- * Handles both plain addresses (`notifications@bloqr.dev`) and RFC 5322
- * display-name format (`"Bloqr" <notifications@bloqr.dev>` or
- * `Bloqr <notifications@bloqr.dev>`).
- *
  * **Invalid addresses:** If the extracted local-part is missing an `@`
  * character, the function returns `{ email }` with the malformed value.
  * This is intentional — the caller (Zod `z.string().email()`) is the
@@ -314,8 +304,12 @@ export class CfEmailWorkerService implements IEmailService {
      */
     constructor(binding: SendEmailBinding, fromAddress: string) {
         this.binding = binding;
-        this.mimeFrom = fromAddress;
-        this.envelopeFrom = parseEmailAddress(fromAddress).email;
+        // Strip CR/LF from display name to prevent MIME header injection in the
+        // From: header.  The bare email address is safe because parseEmailAddress
+        // only captures characters inside the angle brackets (no newlines allowed).
+        const sanitized = fromAddress.replace(/[\r\n]/g, '');
+        this.mimeFrom = sanitized;
+        this.envelopeFrom = parseEmailAddress(sanitized).email;
     }
 
     /**

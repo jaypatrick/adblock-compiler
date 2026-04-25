@@ -2426,7 +2426,7 @@ paths:
                                         example: "Test email dispatched to <admin@example.com> via cf_email_worker."
                                     provider:
                                         type: string
-                                        enum: [cf_email_worker, mailchannels, none]
+                                        enum: [cf_email_worker, mailchannels]
                                         description: Direct provider used for the test send (queue is always bypassed for admin tests)
                                     to:
                                         type: string

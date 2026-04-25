@@ -93,7 +93,7 @@ export const AdminEmailTestResponseSchema = z.object({
     /** Human-readable result message. */
     message: z.string().describe('Result message'),
     /** Provider used for this send attempt. */
-    provider: z.enum(['cf_email_worker', 'mailchannels', 'none']).describe('Provider used'),
+    provider: z.enum(['cf_email_worker', 'mailchannels']).describe('Provider used'),
     /** Recipient address used for the test. */
     to: z.string().email().describe('Recipient address'),
 });

@@ -205,7 +205,7 @@ model SourceAttempt {
 /// `status` is 'sent' | 'failed' | 'dropped'.
 /// Rows older than 30 days should be pruned by a scheduled task.
 model EmailLogEdge {
-  id             String @id @default(cuid())
+  id             String @id
   /// Deduplication key — matches the Workflow/queue idempotencyKey.
   idempotencyKey String @unique @map("idempotency_key")
   /// Delivery provider: queued | cf_email_worker | mailchannels | none.

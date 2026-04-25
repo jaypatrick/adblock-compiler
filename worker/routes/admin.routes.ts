@@ -2865,7 +2865,7 @@ const adminEmailTestRoute = createRoute({
                         success: z.literal(true),
                         timestamp: z.string().describe('ISO 8601 timestamp'),
                         message: z.string().describe('Result message'),
-                        provider: z.enum(['cf_email_worker', 'mailchannels', 'none']).describe(
+                        provider: z.enum(['cf_email_worker', 'mailchannels']).describe(
                             'Provider used for the test send (always direct — queue is bypassed for admin tests)',
                         ),
                         to: z.string().email().describe('Recipient address'),

@@ -85,7 +85,10 @@ export async function handleEmailQueue(batch: MessageBatch<EmailQueueMessage>, e
                         `[email-queue] Invalid message body (id=${msgId}):`,
                         parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; '),
                     );
-                    // Ack malformed messages immediately — retrying won't fix them.
+                    // Ack malformed messages immediately — retrying won't fix a schema violation.
+                    // These messages are dropped (not forwarded to the DLQ) because structural
+                    // invalidity is a permanent, non-transient failure.  The DLQ receives only
+                    // messages that exhaust their retry budget after transient failures.
                     message.ack();
                     return;
                 }
