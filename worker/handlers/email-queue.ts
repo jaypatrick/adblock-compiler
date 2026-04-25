@@ -40,7 +40,7 @@
 
 import { z } from 'zod';
 import type { Env, EmailQueueMessage } from '../types.ts';
-import { EmailDeliveryParamsSchema } from '../workflows/EmailDeliveryWorkflow.ts';
+import { EmailPayloadSchema } from '../services/email-service.ts';
 
 /**
  * Process a batch of messages from `adblock-compiler-email-queue`.
@@ -125,10 +125,18 @@ export async function handleEmailQueue(batch: MessageBatch<EmailQueueMessage>, e
  *
  * Mirrors {@link EmailQueueMessage} in `worker/types.ts`.
  * Validated by the queue consumer before creating a Workflow instance.
+ *
+ * Fields are explicitly listed (rather than spread from `EmailDeliveryParamsSchema`)
+ * to make the composition clear and avoid accidental field shadowing.
  */
 export const EmailQueueMessageSchema = z.object({
     type: z.literal('email'),
     requestId: z.string().optional(),
     timestamp: z.number(),
-    ...EmailDeliveryParamsSchema.shape,
+    /** Email content to deliver — see {@link EmailPayloadSchema}. */
+    payload: EmailPayloadSchema,
+    /** Stable deduplication key; used as the Workflow instance ID. */
+    idempotencyKey: z.string().optional(),
+    /** Human-readable label for the send reason (logged in Workflow steps). */
+    reason: z.string().optional(),
 });
