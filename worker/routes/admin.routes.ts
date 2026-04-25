@@ -2779,7 +2779,8 @@ const adminEmailConfigRoute = createRoute({
     tags: ['Admin'],
     operationId: 'admin-email-get-config',
     summary: 'Email provider configuration status',
-    description: 'Returns which email provider is active (CF Email Workers binding or MailChannels HTTP API), sender address, and DKIM signing status. Admin tier and admin role required.',
+    description:
+        'Returns which email provider is active (CF Email Workers binding or MailChannels HTTP API), sender address, and DKIM signing status. Admin tier and admin role required.',
     responses: {
         200: {
             description: 'Email configuration status',
@@ -2837,7 +2838,8 @@ const adminEmailTestRoute = createRoute({
     tags: ['Admin'],
     operationId: 'admin-email-post-test',
     summary: 'Send a test email',
-    description: 'Sends a test transactional email to the specified recipient using the currently configured email provider (CF Email Workers or MailChannels). Returns 503 when no provider is configured. Admin tier and admin role required.',
+    description:
+        'Sends a test transactional email to the specified recipient using the currently configured email provider (CF Email Workers or MailChannels). Returns 503 when no provider is configured. Admin tier and admin role required.',
     request: {
         body: {
             required: true,

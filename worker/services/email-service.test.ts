@@ -32,14 +32,7 @@
  */
 
 import { assertEquals, assertRejects, assertStringIncludes } from '@std/assert';
-import {
-    buildRawMimeMessage,
-    CfEmailWorkerService,
-    createEmailService,
-    EmailService,
-    MailChannelsEmailService,
-    NullEmailService,
-} from './email-service.ts';
+import { buildRawMimeMessage, CfEmailWorkerService, createEmailService, EmailService, MailChannelsEmailService, NullEmailService } from './email-service.ts';
 import type { EmailEnv, EmailPayload } from './email-service.ts';
 
 // ============================================================================
