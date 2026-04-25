@@ -39,7 +39,7 @@
  */
 
 import { z } from 'zod';
-import type { Env, EmailQueueMessage } from '../types.ts';
+import type { EmailQueueMessage, Env } from '../types.ts';
 import { EmailPayloadSchema } from '../services/email-service.ts';
 
 /**
@@ -68,6 +68,10 @@ export async function handleEmailQueue(batch: MessageBatch<EmailQueueMessage>, e
         return;
     }
 
+    // env.EMAIL_DELIVERY_WORKFLOW is guaranteed non-null by the early return above.
+    // Capture in a local const so TypeScript's narrowing carries into the async lambda.
+    const workflow = env.EMAIL_DELIVERY_WORKFLOW;
+
     // Process each message individually so one bad message doesn't block the batch.
     await Promise.allSettled(
         batch.messages.map(async (message) => {
@@ -90,7 +94,7 @@ export async function handleEmailQueue(batch: MessageBatch<EmailQueueMessage>, e
 
                 // Create a Workflow instance. If the instance already exists with
                 // this ID (replayed message), the Workflow runtime is a no-op.
-                await env.EMAIL_DELIVERY_WORKFLOW.create({
+                await workflow.create({
                     id: idempotencyKey,
                     params: {
                         payload,

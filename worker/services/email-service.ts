@@ -515,12 +515,14 @@ export class NullEmailService implements IEmailService {
  * @see worker/workflows/EmailDeliveryWorkflow.ts — durable delivery workflow
  */
 export class QueuedEmailService implements IEmailService {
-    private readonly queue: { send: (msg: unknown, opts?: { contentType?: string }) => Promise<void> };
+    // deno-lint-ignore no-explicit-any
+    private readonly queue: { send: (msg: any, opts?: { contentType?: string }) => Promise<unknown> };
     private readonly requestId?: string;
     private readonly reason?: string;
 
     constructor(
-        queue: { send: (msg: unknown, opts?: { contentType?: string }) => Promise<void> },
+        // deno-lint-ignore no-explicit-any
+        queue: { send: (msg: any, opts?: { contentType?: string }) => Promise<unknown> },
         opts: { requestId?: string; reason?: string } = {},
     ) {
         this.queue = queue;
@@ -618,7 +620,8 @@ export class QueuedEmailService implements IEmailService {
  */
 export function createEmailService(
     env: {
-        EMAIL_QUEUE?: { send: (msg: unknown, opts?: { contentType?: string }) => Promise<void> } | null;
+        // deno-lint-ignore no-explicit-any
+        EMAIL_QUEUE?: { send: (msg: any, opts?: { contentType?: string }) => Promise<unknown> } | null;
         SEND_EMAIL?: SendEmailBinding | null;
         FROM_EMAIL?: string;
         DKIM_DOMAIN?: string;

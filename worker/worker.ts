@@ -12,7 +12,7 @@
 /// <reference path="../node_modules/@cloudflare/workers-types/index.d.ts" />
 
 // Types
-import type { Env, ErrorQueueMessage, EmailQueueMessage, QueueMessage } from './types.ts';
+import type { EmailQueueMessage, Env, ErrorQueueMessage, QueueMessage } from './types.ts';
 
 // Container class for Cloudflare Containers deployment.
 // @deno-types="./cloudflare-containers-types.d.ts"
