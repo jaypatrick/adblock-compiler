@@ -45,9 +45,6 @@ type SentryModule = typeof import('@sentry/cloudflare');
 /** Cached import promise.  Cleared on import failure to allow retry. */
 let sentryModulePromise: Promise<SentryModule> | null = null;
 
-/** True once `Sentry.init()` has been called for this isolate. */
-let sentryInitialized = false;
-
 /**
  * Lazy-loads `@sentry/cloudflare`.
  *
@@ -82,6 +79,11 @@ async function getSentryModule(env: Env): Promise<SentryModule | null> {
  * matching `withSentryWorker`) and calls `captureException(error)`.  No-op
  * when `SENTRY_DSN` is absent or the SDK fails to load.
  *
+ * `@sentry/cloudflare` does not export `init()` from its main package index.
+ * Instead, we construct a `CloudflareClient` directly from the exported class
+ * and wire it up via `setCurrentClient` + `client.init()` — the same steps
+ * the SDK's internal `init()` helper performs.
+ *
  * @param env   The Worker `Env` binding object (must include `SENTRY_DSN` et al.)
  * @param error The exception to report.
  */
@@ -91,20 +93,49 @@ export async function captureExceptionInIsolate(env: Env, error: unknown): Promi
         return;
     }
 
-    if (!sentryInitialized) {
+    if (!Sentry.isInitialized()) {
+        // `@sentry/cloudflare` does not export `init()` from its main index.
+        // Build the client from the exported `CloudflareClient` class and connect
+        // it via `setCurrentClient` — replicating what the SDK's internal `init()`
+        // function does in `@sentry/cloudflare/build/esm/sdk.js`.
+        //
         // Mirrors the configuration used in withSentryWorker (sentry-init.ts):
         // - release: prefer an explicit SENTRY_RELEASE (git SHA injected at deploy)
         //   then fall back to COMPILER_VERSION so something meaningful always appears.
         // - tracesSampleRate: 0.1 (10 %) matches the main worker setting; DO/Workflow
         //   isolates process fewer requests so 10 % gives sufficient trace volume without
         //   excessive overhead.
-        Sentry.init({
+        const client = new Sentry.CloudflareClient({
             dsn: env.SENTRY_DSN,
             release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
             environment: env.ENVIRONMENT ?? 'production',
             tracesSampleRate: 0.1,
+            integrations: Sentry.getDefaultIntegrations({ dsn: env.SENTRY_DSN }),
+            // Minimal fetch-based transport: functionally equivalent to the SDK's
+            // internal `makeCloudflareTransport`, built from the exported `createTransport`.
+            transport: (options) =>
+                Sentry.createTransport(options, async (request) => {
+                    const response = await fetch(options.url, {
+                        body: request.body as BodyInit,
+                        method: 'POST',
+                        headers: options.headers,
+                    });
+                    // Consume the body to prevent connection stalls in CF Workers.
+                    await response.text().catch(() => {});
+                    return {
+                        statusCode: response.status,
+                        headers: {
+                            'x-sentry-rate-limits': response.headers.get('X-Sentry-Rate-Limits') ?? '',
+                            'retry-after': response.headers.get('Retry-After') ?? '',
+                        },
+                    };
+                }),
+            // Minimal no-op stack parser — exceptions are still captured with their
+            // message and type; raw stack strings are preserved as `extra` context.
+            stackParser: (_stack) => [],
         });
-        sentryInitialized = true;
+        Sentry.setCurrentClient(client);
+        client.init();
     }
 
     Sentry.captureException(error);
