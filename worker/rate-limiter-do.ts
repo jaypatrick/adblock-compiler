@@ -49,29 +49,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 
 import type { Env } from './types.ts';
-
-// ---------------------------------------------------------------------------
-// Lazy Sentry loader — mirrors the pattern used in sentry-init.ts so that
-// @sentry/cloudflare is never bundled / imported when SENTRY_DSN is absent.
-// ---------------------------------------------------------------------------
-
-type SentryModule = typeof import('@sentry/cloudflare');
-
-let sentryModulePromise: Promise<SentryModule | null> | null = null;
-
-async function getSentryModule(env: Env): Promise<SentryModule | null> {
-    if (!env.SENTRY_DSN) {
-        return null;
-    }
-    sentryModulePromise ??= (async (): Promise<SentryModule | null> => {
-        try {
-            return await import('@sentry/cloudflare');
-        } catch {
-            return null;
-        }
-    })();
-    return sentryModulePromise;
-}
+import { captureExceptionInIsolate } from './services/sentry-isolate-init.ts';
 
 // ============================================================================
 // Schemas (Zod-validated at every trust boundary)
@@ -287,7 +265,7 @@ export class RateLimiterDO implements DurableObject {
             await this.resetCounter();
             // DO will now hibernate; next request starts a fresh window.
         } catch (error) {
-            (await getSentryModule(this.env as Env))?.captureException(error);
+            await captureExceptionInIsolate(this.env as Env, error);
             console.error(
                 '[RateLimiterDO] alarm(): reset failed, DO may retain stale counter until next request:',
                 error instanceof Error ? error.message : String(error),

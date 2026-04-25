@@ -20,29 +20,7 @@ import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import type { Env } from '../worker.ts';
 import type { CompilationParams, SourceFetchResult, TransformationResult, WorkflowCompilationResult } from './types.ts';
 import { WorkflowEvents } from './WorkflowEvents.ts';
-
-// ---------------------------------------------------------------------------
-// Lazy Sentry loader — mirrors the pattern used in sentry-init.ts so that
-// @sentry/cloudflare is never bundled / imported when SENTRY_DSN is absent.
-// ---------------------------------------------------------------------------
-
-type SentryModule = typeof import('@sentry/cloudflare');
-
-let sentryModulePromise: Promise<SentryModule | null> | null = null;
-
-async function getSentryModule(env: Env): Promise<SentryModule | null> {
-    if (!env.SENTRY_DSN) {
-        return null;
-    }
-    sentryModulePromise ??= (async (): Promise<SentryModule | null> => {
-        try {
-            return await import('@sentry/cloudflare');
-        } catch {
-            return null;
-        }
-    })();
-    return sentryModulePromise;
-}
+import { captureExceptionInIsolate } from '../services/sentry-isolate-init.ts';
 
 /**
  * Compresses data using gzip (duplicated from worker.ts for workflow isolation)
@@ -377,7 +355,7 @@ export class CompilationWorkflow extends WorkflowEntrypoint<Env, CompilationPara
             return result;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            (await getSentryModule(this.env))?.captureException(error);
+            await captureExceptionInIsolate(this.env, error);
             console.error(`[WORKFLOW:COMPILE] Workflow failed for "${configuration.name}":`, errorMessage);
 
             // Emit workflow failed event

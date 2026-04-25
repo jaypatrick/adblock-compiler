@@ -55,29 +55,8 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 
 import type { Env } from './types.ts';
+import { captureExceptionInIsolate } from './services/sentry-isolate-init.ts';
 
-// ---------------------------------------------------------------------------
-// Lazy Sentry loader — mirrors the pattern used in sentry-init.ts so that
-// @sentry/cloudflare is never bundled / imported when SENTRY_DSN is absent.
-// ---------------------------------------------------------------------------
-
-type SentryModule = typeof import('@sentry/cloudflare');
-
-let sentryModulePromise: Promise<SentryModule | null> | null = null;
-
-async function getSentryModule(env: Env): Promise<SentryModule | null> {
-    if (!env.SENTRY_DSN) {
-        return null;
-    }
-    sentryModulePromise ??= (async (): Promise<SentryModule | null> => {
-        try {
-            return await import('@sentry/cloudflare');
-        } catch {
-            return null;
-        }
-    })();
-    return sentryModulePromise;
-}
 
 // ============================================================================
 // Schemas
@@ -340,7 +319,9 @@ export class WsHibernationDO implements DurableObject {
      * Called when a WebSocket error occurs.
      */
     async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
-        (await getSentryModule(this.env as Env))?.captureException(error);
+        // Fire-and-forget: schedule Sentry capture via waitUntil so WebSocket
+        // teardown is not blocked on the async module load / network flush.
+        this.state.waitUntil(captureExceptionInIsolate(this.env as Env, error));
         const tags = this.state.getTags(ws);
         const tag = tags[0];
         if (tag) {
