@@ -22,6 +22,18 @@ jobs:
         steps:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
+            - name: Setup pnpm
+              uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+
+            - name: Setup Node.js
+              uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+              with:
+                  node-version: '24.15'
+                  cache: 'pnpm'
+
+            - name: Install root dependencies (provides @sentry/cli and wrangler)
+              run: pnpm install --frozen-lockfile --ignore-scripts
+
             - name: Setup Deno
               uses: denoland/setup-deno@667a34cdef165d8d2b2e98dde39547c9daac7282 # v2.0.4
               with:
@@ -30,12 +42,40 @@ jobs:
             - name: Build Worker bundle (dry-run for source maps)
               run: deno run --allow-read --allow-net --allow-env --allow-run --allow-write=dist/worker npm:wrangler@^4.85.0 deploy --dry-run --outdir dist/worker
 
+            - name: Inject Sentry debug IDs into Worker bundle
+              run: pnpm exec sentry-cli sourcemaps inject ./dist/worker
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT_WORKER }}
+
+            - name: Create Sentry release
+              # sentry-cli releases new is idempotent — safe to call even when the frontend
+              # workflow already created a release for the same SHA in the same org.
+              run: pnpm exec sentry-cli releases new "${{ github.sha }}"
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT_WORKER }}
+
             - name: Upload Worker source maps to Sentry
               run: |
-                  npx @sentry/cli sourcemaps upload \
+                  pnpm exec sentry-cli sourcemaps upload \
                     --org "${{ vars.SENTRY_ORG }}" \
                     --project "${{ vars.SENTRY_PROJECT_WORKER }}" \
                     --release "${{ github.sha }}" \
                     ./dist/worker
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT_WORKER }}
+
+            - name: Finalize Sentry release and create deploy record
+              run: |
+                  pnpm exec sentry-cli releases finalize "${{ github.sha }}"
+                  pnpm exec sentry-cli releases deploys new "${{ github.sha }}" \
+                    --env "${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}"
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT_WORKER }}
