@@ -594,6 +594,21 @@ export interface Env {
      * Set in wrangler.toml [vars].
      */
     STRIPE_PAYG_PRICE_ID?: string;
+    // ─── Email (MailChannels via CF Workers — transactional, outbound) ───────────
+    /**
+     * Sender address for transactional email (e.g. "Bloqr <notifications@bloqr.dev>").
+     * Set in wrangler.toml [vars] — non-secret.
+     */
+    FROM_EMAIL?: string;
+    /** Domain used for DKIM signing (must match DNS TXT record). Set in wrangler.toml [vars]. */
+    DKIM_DOMAIN?: string;
+    /** DKIM selector. Set in wrangler.toml [vars]. */
+    DKIM_SELECTOR?: string;
+    /**
+     * DKIM private key (base64-encoded RSA private key).
+     * Production: wrangler secret put DKIM_PRIVATE_KEY
+     */
+    DKIM_PRIVATE_KEY?: string;
 }
 
 /**
