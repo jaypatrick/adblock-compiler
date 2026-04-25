@@ -50,6 +50,8 @@ jobs:
                   SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT_WORKER }}
 
             - name: Create Sentry release
+              # sentry-cli releases new is idempotent — safe to call even when the frontend
+              # workflow already created a release for the same SHA in the same org.
               run: pnpm exec sentry-cli releases new "${{ github.sha }}"
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}

@@ -10,8 +10,39 @@ on:
     workflow_dispatch:
 
 jobs:
+    create-release:
+        name: Create Sentry release
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        if: ${{ vars.SENTRY_ORG != '' }}
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+
+            - name: Setup Node.js
+              uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+              with:
+                  node-version: '24.15'
+                  cache: 'pnpm'
+
+            - name: Install root dependencies (provides @sentry/cli)
+              run: pnpm install --frozen-lockfile --ignore-scripts
+
+            - name: Create Sentry release
+              # sentry-cli releases new is idempotent — safe to call even if the worker workflow
+              # already created a release for this SHA in the same org.
+              run: pnpm exec sentry-cli releases new "${{ github.sha }}"
+              env:
+                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+
     upload-browser:
         name: Upload Frontend Browser Source Maps to Sentry
+        needs: create-release
         runs-on: ubuntu-latest
         permissions:
             contents: read
@@ -28,23 +59,18 @@ jobs:
                   node-version: '24.15'
                   cache: 'pnpm'
 
-            - name: Install dependencies
-              run: pnpm install --frozen-lockfile
+            - name: Install root dependencies (provides @sentry/cli)
+              run: pnpm install --frozen-lockfile --ignore-scripts
 
             - name: Build Angular frontend (production, source maps enabled)
-              run: pnpm --filter adblock-frontend run build
+              # --source-map=true is required: the Angular production config does not enable
+              # sourceMap by default, so we must pass it explicitly to emit .map files.
+              run: pnpm --filter adblock-frontend run build -- --source-map=true
               env:
                   NODE_ENV: production
 
             - name: Inject Sentry debug IDs into browser bundle
               run: pnpm exec sentry-cli sourcemaps inject frontend/dist/adblock-compiler/browser
-              env:
-                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
-                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
-
-            - name: Create Sentry release
-              run: pnpm exec sentry-cli releases new "${{ github.sha }}"
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}
@@ -63,23 +89,14 @@ jobs:
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}
                   SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
 
-            - name: Finalize Sentry release and create deploy record
-              run: |
-                  pnpm exec sentry-cli releases finalize "${{ github.sha }}"
-                  pnpm exec sentry-cli releases deploys new "${{ github.sha }}" \
-                    --env "${{ github.ref == 'refs/heads/main' && 'production' || 'development' }}"
-              env:
-                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
-                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
-
     upload-ssr:
         name: Upload Frontend SSR Source Maps to Sentry
+        needs: create-release
         runs-on: ubuntu-latest
         continue-on-error: true
         permissions:
             contents: read
-        if: ${{ vars.SENTRY_ORG != '' }}
+        if: ${{ vars.SENTRY_ORG != '' && (vars.SENTRY_FRONTEND_PROJECT != '' || vars.SENTRY_PROJECT != '') }}
         steps:
             - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -92,24 +109,21 @@ jobs:
                   node-version: '24.15'
                   cache: 'pnpm'
 
-            - name: Install frontend dependencies
-              run: pnpm install --frozen-lockfile --filter adblock-frontend
+            - name: Install root dependencies (provides @sentry/cli)
+              # Install from root (no --filter) so root workspace binaries such as
+              # @sentry/cli are available via pnpm exec.
+              run: pnpm install --frozen-lockfile --ignore-scripts
 
             - name: Build Angular frontend SSR bundle (with source maps)
-              run: pnpm --filter adblock-frontend run build
+              # --source-map is required: the Angular production config does not enable
+              # sourceMap by default, so we must pass it explicitly to emit .map files.
+              run: pnpm --filter adblock-frontend run build -- --source-map
               env:
                   NODE_ENV: production
                   CF_WEB_ANALYTICS_TOKEN: ''
 
             - name: Inject Sentry debug IDs into SSR bundle
               run: pnpm exec sentry-cli sourcemaps inject frontend/dist/adblock-compiler/server
-              env:
-                  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
-                  SENTRY_ORG: ${{ vars.SENTRY_ORG }}
-                  SENTRY_PROJECT: ${{ vars.SENTRY_FRONTEND_PROJECT != '' && vars.SENTRY_FRONTEND_PROJECT || vars.SENTRY_PROJECT }}
-
-            - name: Create Sentry release
-              run: pnpm exec sentry-cli releases new "${{ github.sha }}"
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}
@@ -125,6 +139,31 @@ jobs:
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_FRONTEND_PROJECT != '' && vars.SENTRY_FRONTEND_PROJECT || vars.SENTRY_PROJECT }}
+
+    finalize-release:
+        name: Finalize Sentry release
+        needs: [create-release, upload-browser, upload-ssr]
+        runs-on: ubuntu-latest
+        permissions:
+            contents: read
+        # Run even if upload-browser or upload-ssr was skipped/failed, as long as the
+        # release was created successfully.
+        if: ${{ always() && needs.create-release.result == 'success' }}
+        steps:
+            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+            - name: Setup pnpm
+              uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v5.0.0
+
+            - name: Setup Node.js
+              uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6.3.0
+              with:
+                  node-version: '24.15'
+                  cache: 'pnpm'
+
+            - name: Install root dependencies (provides @sentry/cli)
+              run: pnpm install --frozen-lockfile --ignore-scripts
 
             - name: Finalize Sentry release and create deploy record
               run: |
@@ -134,4 +173,4 @@ jobs:
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}
-                  SENTRY_PROJECT: ${{ vars.SENTRY_FRONTEND_PROJECT != '' && vars.SENTRY_FRONTEND_PROJECT || vars.SENTRY_PROJECT }}
+                  SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
