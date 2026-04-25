@@ -123,7 +123,7 @@ const STORAGE_KEY_LIMIT = 'rl:limit';
 export class RateLimiterDO implements DurableObject {
     private readonly state: DurableObjectState;
     private readonly app: Hono;
-    private readonly _env: unknown;
+    private readonly env: unknown;
 
     /** Current request count within the active window. */
     private count: number = 0;
@@ -134,7 +134,7 @@ export class RateLimiterDO implements DurableObject {
 
     constructor(state: DurableObjectState, env: unknown) {
         this.state = state;
-        this._env = env;
+        this.env = env;
         this.app = new Hono();
         this.setupRoutes();
 
@@ -287,7 +287,7 @@ export class RateLimiterDO implements DurableObject {
             await this.resetCounter();
             // DO will now hibernate; next request starts a fresh window.
         } catch (error) {
-            (await getSentryModule(this._env as Env))?.captureException(error);
+            (await getSentryModule(this.env as Env))?.captureException(error);
             console.error(
                 '[RateLimiterDO] alarm(): reset failed, DO may retain stale counter until next request:',
                 error instanceof Error ? error.message : String(error),

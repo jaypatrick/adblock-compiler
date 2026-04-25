@@ -137,11 +137,11 @@ const sessionKey = (tag: string): string => `session:${tag}`;
 export class WsHibernationDO implements DurableObject {
     private readonly state: DurableObjectState;
     private readonly app: Hono;
-    private readonly _env: unknown;
+    private readonly env: unknown;
 
     constructor(state: DurableObjectState, env: unknown) {
         this.state = state;
-        this._env = env;
+        this.env = env;
         this.app = new Hono();
         this.setupRoutes();
     }
@@ -340,7 +340,7 @@ export class WsHibernationDO implements DurableObject {
      * Called when a WebSocket error occurs.
      */
     async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
-        (await getSentryModule(this._env as Env))?.captureException(error);
+        (await getSentryModule(this.env as Env))?.captureException(error);
         const tags = this.state.getTags(ws);
         const tag = tags[0];
         if (tag) {

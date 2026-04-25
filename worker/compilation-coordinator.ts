@@ -88,10 +88,10 @@ export class CompilationCoordinator implements DurableObject {
         inFlight: false,
         waiters: 0,
     };
-    private readonly _env: unknown;
+    private readonly env: unknown;
 
     constructor(_state: DurableObjectState, env: unknown) {
-        this._env = env;
+        this.env = env;
     }
 
     async fetch(request: Request): Promise<Response> {
@@ -117,7 +117,7 @@ export class CompilationCoordinator implements DurableObject {
                     );
             }
         } catch (err) {
-            (await getSentryModule(this._env as Env))?.captureException(err);
+            (await getSentryModule(this.env as Env))?.captureException(err);
             return Response.json(
                 {
                     success: false,
