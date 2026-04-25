@@ -1,6 +1,6 @@
 # Auto-generated Cloudflare API Shield Schema
 # Generated from docs/api/openapi.yaml
-# Run 'deno task schema:sync:local' to regenerate
+# Run 'deno task schema:cloudflare' to regenerate
 # DO NOT EDIT DIRECTLY
 
 openapi: 3.0.3

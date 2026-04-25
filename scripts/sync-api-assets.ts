@@ -207,7 +207,7 @@ async function stepGenerateCloudflareSchema(dryRun: boolean): Promise<void> {
     }
 
     const header =
-        `# Auto-generated Cloudflare API Shield Schema\n# Generated from docs/api/openapi.yaml\n# Run 'deno task schema:sync:local' to regenerate\n# DO NOT EDIT DIRECTLY\n\n`;
+        `# Auto-generated Cloudflare API Shield Schema\n# Generated from docs/api/openapi.yaml\n# Run 'deno task schema:cloudflare' to regenerate\n# DO NOT EDIT DIRECTLY\n\n`;
     const yamlContent = stringify(spec, { indent: 4, lineWidth: 120, sortKeys: false });
     await Deno.writeTextFile(CLOUDFLARE_SCHEMA_PATH, header + yamlContent);
     console.log(`✅ Generated: ${CLOUDFLARE_SCHEMA_PATH}`);
@@ -685,7 +685,7 @@ async function stepGeneratePostmanCollection(dryRun: boolean): Promise<void> {
     const collection = {
         info: {
             name: spec.info.title,
-            description: `Auto-generated from docs/api/openapi.yaml. Run 'deno task schema:sync:local' to regenerate.\n\n${spec.info.description ?? ''}`.trim(),
+            description: `Auto-generated from docs/api/openapi.yaml. Run 'deno task postman:collection' to regenerate.\n\n${spec.info.description ?? ''}`.trim(),
             schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
             _postman_id: 'adblock-compiler-api',
             version: spec.info.version,
@@ -694,11 +694,11 @@ async function stepGeneratePostmanCollection(dryRun: boolean): Promise<void> {
             { key: 'baseUrl', value: baseUrlValue, type: 'string' },
             { key: 'prodUrl', value: prodUrlValue, type: 'string' },
             { key: 'requestId', value: '', type: 'string' },
-            { key: 'adminKey', value: '', type: 'string', description: 'Admin API key' },
-            { key: 'bearerToken', value: '', type: 'string', description: 'Bearer token' },
-            { key: 'userApiKey', value: '', type: 'string', description: 'User API key' },
-            { key: 'userId', value: '', type: 'string', description: 'User ID' },
-            { key: 'apiKeyPrefix', value: '', type: 'string', description: 'API key prefix' },
+            { key: 'adminKey', value: '', type: 'string', description: 'Admin API key for protected admin endpoints (X-Admin-Key header)' },
+            { key: 'bearerToken', value: '', type: 'string', description: 'Bearer token for authenticated user requests (Better Auth JWT or API key)' },
+            { key: 'userApiKey', value: '', type: 'string', description: 'User API key with abc_ prefix for API key authentication' },
+            { key: 'userId', value: '', type: 'string', description: 'User ID captured from Create User response' },
+            { key: 'apiKeyPrefix', value: '', type: 'string', description: 'API key prefix captured from Create API Key response' },
         ],
         item: folderItems,
     };
@@ -712,7 +712,7 @@ async function stepGeneratePostmanCollection(dryRun: boolean): Promise<void> {
             { key: 'userApiKey', value: '', type: 'secret', enabled: true },
         ],
         _postman_variable_scope: 'environment',
-        _postman_exported_using: 'deno task schema:sync:local',
+        _postman_exported_using: 'deno task postman:collection',
     };
 
     if (dryRun) {
