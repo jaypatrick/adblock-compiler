@@ -756,12 +756,10 @@ async function main(): Promise<void> {
     // Step 2: Validate OpenAPI
     await stepValidateOpenAPI();
 
-    // Step 3: Upload (unless skipped)
-    if (!skipUpload && !dryRun) {
-        await stepUploadToApiShield(dryRun, skipIfUnchanged);
-    } else if (skipUpload) {
+    // Step 3: Upload (unless --skip-upload; dry-run is handled inside stepUploadToApiShield)
+    if (skipUpload) {
         console.log('\n─── Step 3: Upload skipped (--skip-upload) ─────────────────\n');
-    } else if (dryRun) {
+    } else {
         await stepUploadToApiShield(dryRun, skipIfUnchanged);
     }
 
