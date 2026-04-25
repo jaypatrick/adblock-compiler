@@ -176,8 +176,7 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
                 const mailer = createEmailService(this.env);
 
                 // Determine the active provider name for the receipt
-                const providerName: 'cf_email_worker' | 'mailchannels' | 'none' =
-                    this.env.SEND_EMAIL ? 'cf_email_worker' : this.env.FROM_EMAIL ? 'mailchannels' : 'none';
+                const providerName: 'cf_email_worker' | 'mailchannels' | 'none' = this.env.SEND_EMAIL ? 'cf_email_worker' : this.env.FROM_EMAIL ? 'mailchannels' : 'none';
 
                 if (providerName === 'none') {
                     // No provider — resolve without error (NullEmailService logs a warning)

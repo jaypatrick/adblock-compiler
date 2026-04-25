@@ -516,13 +516,13 @@ export class NullEmailService implements IEmailService {
  */
 export class QueuedEmailService implements IEmailService {
     // deno-lint-ignore no-explicit-any
-    private readonly queue: { send: (msg: any, opts?: { contentType?: string }) => Promise<unknown> };
+    private readonly queue: { send: (msg: any, opts?: any) => Promise<unknown> };
     private readonly requestId?: string;
     private readonly reason?: string;
 
     constructor(
         // deno-lint-ignore no-explicit-any
-        queue: { send: (msg: any, opts?: { contentType?: string }) => Promise<unknown> },
+        queue: { send: (msg: any, opts?: any) => Promise<unknown> },
         opts: { requestId?: string; reason?: string } = {},
     ) {
         this.queue = queue;
@@ -621,7 +621,7 @@ export class QueuedEmailService implements IEmailService {
 export function createEmailService(
     env: {
         // deno-lint-ignore no-explicit-any
-        EMAIL_QUEUE?: { send: (msg: any, opts?: { contentType?: string }) => Promise<unknown> } | null;
+        EMAIL_QUEUE?: { send: (msg: any, opts?: any) => Promise<unknown> } | null;
         SEND_EMAIL?: SendEmailBinding | null;
         FROM_EMAIL?: string;
         DKIM_DOMAIN?: string;
