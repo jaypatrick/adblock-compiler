@@ -257,6 +257,9 @@ paths:
                                     value: |
                                         event: metric
                                         data: {"metric":"download_speed","value":218.5,"unit":"KB/s"}
+                        application/json:
+                            schema:
+                                type: object
                 '400':
                     $ref: '#/components/responses/BadRequestError'
                 '429':
@@ -368,6 +371,12 @@ paths:
             responses:
                 '101':
                     description: WebSocket connection established
+                '200':
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                type: object
                 '426':
                     description: Upgrade required (not a WebSocket request)
     /metrics:

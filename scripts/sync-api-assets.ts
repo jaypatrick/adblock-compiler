@@ -31,6 +31,7 @@ import { parse, stringify } from '@std/yaml';
 import { z } from 'zod';
 import { createCloudflareApiService } from '../src/services/cloudflareApiService.ts';
 import type { ApiShieldSchema } from '../src/services/cloudflareApiService.ts';
+import { findInvalid2xx, HTTP_METHODS, inject2xxStubs } from './schema-2xx-helpers.ts';
 
 // ---------------------------------------------------------------------------
 // Paths
@@ -178,10 +179,9 @@ async function stepGenerateCloudflareSchema(dryRun: boolean): Promise<void> {
     }
 
     // Remove x-* extensions from operations
-    const httpMethods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'];
     let extensionsRemoved = 0;
     for (const [_path, pathItem] of Object.entries(spec.paths)) {
-        for (const method of httpMethods) {
+        for (const method of HTTP_METHODS) {
             if (pathItem[method]) {
                 const operation = pathItem[method];
                 const extensionKeys = Object.keys(operation).filter((key) => key.startsWith('x-'));
@@ -193,6 +193,34 @@ async function stepGenerateCloudflareSchema(dryRun: boolean): Promise<void> {
         }
     }
     console.log(extensionsRemoved > 0 ? `✅ Removed ${extensionsRemoved} x-* extension(s)` : '✅ No x-* extensions found');
+
+    // Inject stub 2xx responses for operations that are missing them.
+    // Cloudflare API Shield ignores operations without a 2xx response, causing those
+    // endpoints to not appear in the dashboard. We patch the generated schema so every
+    // operation has at least a stub 200 response, and print a summary so operators know
+    // which endpoints need to be fixed in the upstream openapi.yaml.
+    const patchedOps = inject2xxStubs(spec, HTTP_METHODS);
+    if (patchedOps.length > 0) {
+        console.log(
+            `\n⚠️  Patched ${patchedOps.length} operation(s) with stub 2xx response or schema (fix upstream openapi.yaml):`,
+        );
+        for (const op of patchedOps) {
+            console.log(`   • ${op}`);
+        }
+    } else {
+        console.log('✅ All operations have valid 2xx responses');
+    }
+
+    // Post-patch validation: fail loudly if any operation is still missing a valid 2xx
+    // with application/json schema.  Guards against regressions in the patch logic itself.
+    const stillMissing = findInvalid2xx(spec, HTTP_METHODS);
+    if (stillMissing.length > 0) {
+        const list = stillMissing.map((op) => `  • ${op}`).join('\n');
+        throw new Error(
+            `[CI FAIL] ${stillMissing.length} operation(s) still missing a valid 2xx response after patching.\n` +
+                `Fix these in openapi.yaml or extend the patch logic:\n${list}`,
+        );
+    }
 
     // Validate local $refs
     const unresolvedRefs = validateLocalRefs(spec);

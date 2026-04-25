@@ -180,7 +180,18 @@ jobs:
                   echo "✅ cloudflare-schema.yaml matches openapi.yaml"
 
             # ----------------------------------------------------------------
-            # 5. Summary
+            # 5. Verify every operation in the generated schema has a 2xx response.
+            #    Cloudflare API Shield silently ignores operations without a 2xx,
+            #    causing those endpoints to disappear from the dashboard.
+            #    The generator auto-injects stubs, so this check should always
+            #    pass — but a hard failure here makes regressions immediately
+            #    visible in CI rather than silently missing endpoints.
+            # ----------------------------------------------------------------
+            - name: Check all operations have a 2xx response (schema:check:2xx)
+              run: deno task schema:check:2xx
+
+            # ----------------------------------------------------------------
+            # 6. Summary
             # ----------------------------------------------------------------
             - name: API Shield readiness summary
               if: success()
