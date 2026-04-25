@@ -46,6 +46,7 @@
         "openapi:shield": "deno task openapi:validate && deno task schema:cloudflare && deno task check:drift:cloudflare",
         "openapi:docs": "deno run --allow-read --allow-write --allow-net scripts/generate-docs.ts",
         "schema:cloudflare": "deno run --allow-read --allow-write scripts/generate-cloudflare-schema.ts",
+        "schema:check:2xx": "deno run --allow-read scripts/check-schema-2xx.ts",
         "schema:upload": "deno run --allow-read --allow-net --allow-env --env=.env.local scripts/upload-cloudflare-schema.ts",
         "schema:sync": "deno run --allow-read --allow-write --allow-net --allow-env --env=.env.local scripts/sync-api-assets.ts",
         "schema:sync:dry": "deno run --allow-read --allow-write --allow-net --allow-env --env=.env.local scripts/sync-api-assets.ts --dry-run",
