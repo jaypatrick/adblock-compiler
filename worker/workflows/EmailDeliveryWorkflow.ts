@@ -92,7 +92,7 @@ export interface EmailDeliveryResult {
     /** Workflow-level idempotency key (mirrors `params.idempotencyKey`). */
     idempotencyKey: string;
     /** Active provider name used for the send. */
-    provider: 'cf_email_worker' | 'mailchannels' | 'none';
+    provider: 'cf_email_worker' | 'none';
     /** Recipient address (from the validated payload). */
     to: string;
     /** ISO 8601 timestamp when delivery was attempted. */
@@ -177,12 +177,12 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
                 const mailer = createEmailService(this.env, { useQueue: false });
 
                 // Determine the active provider name for the receipt
-                const providerName: 'cf_email_worker' | 'mailchannels' | 'none' = this.env.SEND_EMAIL ? 'cf_email_worker' : this.env.FROM_EMAIL ? 'mailchannels' : 'none';
+                const providerName: 'cf_email_worker' | 'none' = this.env.SEND_EMAIL ? 'cf_email_worker' : 'none';
 
                 if (providerName === 'none') {
                     // No direct provider — throw so the step retry/backoff fires and
                     // the workflow is marked as failed rather than reporting false success.
-                    throw new Error('No email provider configured for workflow delivery (SEND_EMAIL and FROM_EMAIL both absent).');
+                    throw new Error('No email provider configured for workflow delivery (SEND_EMAIL absent).');
                 }
 
                 await mailer.sendEmail(validatedPayload);

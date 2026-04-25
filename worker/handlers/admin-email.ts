@@ -4,8 +4,8 @@
  * Provides two admin-only endpoints for managing and verifying the Worker's
  * outbound email configuration:
  *
- *   GET  /admin/email/config — returns which email provider is active, which
- *                              bindings/vars are present, and DKIM status.
+ *   GET  /admin/email/config — returns which email provider is active and which
+ *                              bindings are present.
  *   POST /admin/email/test   — sends a test email to a specified recipient to
  *                              verify end-to-end delivery.
  *
@@ -57,28 +57,15 @@ export const AdminEmailConfigResponseSchema = z.object({
     /**
      * Active email provider identifier.
      *
-     * - `'queued'`         — Durable queue-backed delivery (`EMAIL_QUEUE` → `EmailDeliveryWorkflow`)
+     * - `'queued'`          — Durable queue-backed delivery (`EMAIL_QUEUE` → `EmailDeliveryWorkflow`)
      * - `'cf_email_worker'` — Cloudflare Email Workers (`SEND_EMAIL` binding, direct)
-     * - `'mailchannels'`    — MailChannels HTTP API (`FROM_EMAIL` env var, direct)
      * - `'none'`            — No provider configured; sends are dropped
      */
-    provider: z.enum(['queued', 'cf_email_worker', 'mailchannels', 'none']).describe('Active email provider'),
+    provider: z.enum(['queued', 'cf_email_worker', 'none']).describe('Active email provider'),
     /** `true` when the `EMAIL_QUEUE` binding is present (durable queue delivery). */
     email_queue_configured: z.boolean(),
     /** `true` when the `SEND_EMAIL` CF Email Workers binding is present. */
     send_email_binding_configured: z.boolean(),
-    /** `true` when `FROM_EMAIL` env var is set (used by MailChannels provider). */
-    from_email_configured: z.boolean(),
-    /** Sender address extracted from `FROM_EMAIL`, or `null` if absent. */
-    from_address: z.string().nullable().describe('Configured sender address, or null if not set'),
-    /**
-     * DKIM signing status.
-     *
-     * `'configured'` — all three DKIM env vars are present.
-     * `'partial'`    — one or two DKIM env vars are set but not all three.
-     * `'disabled'`   — no DKIM env vars are set.
-     */
-    dkim_status: z.enum(['configured', 'partial', 'disabled']).describe('DKIM signing status'),
 });
 
 export type AdminEmailConfigResponse = z.infer<typeof AdminEmailConfigResponseSchema>;
@@ -93,7 +80,7 @@ export const AdminEmailTestResponseSchema = z.object({
     /** Human-readable result message. */
     message: z.string().describe('Result message'),
     /** Provider used for this send attempt. */
-    provider: z.enum(['cf_email_worker', 'mailchannels']).describe('Provider used'),
+    provider: z.enum(['cf_email_worker']).describe('Provider used'),
     /** Recipient address used for the test. */
     to: z.string().email().describe('Recipient address'),
 });
@@ -106,11 +93,9 @@ export const AdminEmailTestResponseSchema = z.object({
 function detectProvider(env: {
     EMAIL_QUEUE?: unknown;
     SEND_EMAIL?: unknown;
-    FROM_EMAIL?: string;
-}): 'queued' | 'cf_email_worker' | 'mailchannels' | 'none' {
+}): 'queued' | 'cf_email_worker' | 'none' {
     if (env.EMAIL_QUEUE) return 'queued';
     if (env.SEND_EMAIL) return 'cf_email_worker';
-    if (env.FROM_EMAIL) return 'mailchannels';
     return 'none';
 }
 
@@ -118,28 +103,13 @@ function detectProvider(env: {
  * Determine the direct (non-queue) provider for admin test sends.
  *
  * Admin test emails always bypass the queue so admins get synchronous feedback.
- * Returns the best direct provider available, or `'none'` when neither
- * `SEND_EMAIL` nor `FROM_EMAIL` is configured.
+ * Returns `'cf_email_worker'` when `SEND_EMAIL` is present, `'none'` otherwise.
  */
 function detectDirectProvider(env: {
     SEND_EMAIL?: unknown;
-    FROM_EMAIL?: string;
-}): 'cf_email_worker' | 'mailchannels' | 'none' {
+}): 'cf_email_worker' | 'none' {
     if (env.SEND_EMAIL) return 'cf_email_worker';
-    if (env.FROM_EMAIL) return 'mailchannels';
     return 'none';
-}
-
-/** Determine DKIM status from env. */
-function detectDkimStatus(env: {
-    DKIM_DOMAIN?: string;
-    DKIM_SELECTOR?: string;
-    DKIM_PRIVATE_KEY?: string;
-}): 'configured' | 'partial' | 'disabled' {
-    const presentCount = [env.DKIM_DOMAIN, env.DKIM_SELECTOR, env.DKIM_PRIVATE_KEY].filter(Boolean).length;
-    if (presentCount === 3) return 'configured';
-    if (presentCount > 0) return 'partial';
-    return 'disabled';
 }
 
 // ============================================================================
@@ -149,8 +119,8 @@ function detectDkimStatus(env: {
 /**
  * Returns the current email configuration status.
  *
- * Reports which provider is active, whether the `SEND_EMAIL` binding and
- * `FROM_EMAIL` env var are present, the sender address, and DKIM status.
+ * Reports which provider is active and whether the `SEND_EMAIL` binding
+ * and `EMAIL_QUEUE` binding are present.
  * No secrets or private keys are surfaced in the response.
  *
  * ### Response codes
@@ -165,7 +135,6 @@ export async function handleAdminEmailConfig(c: AppContext): Promise<Response> {
     if (denied) return denied;
 
     const provider = detectProvider(c.env);
-    const dkimStatus = detectDkimStatus(c.env);
 
     const response: AdminEmailConfigResponse = {
         success: true,
@@ -173,9 +142,6 @@ export async function handleAdminEmailConfig(c: AppContext): Promise<Response> {
         provider,
         email_queue_configured: Boolean(c.env.EMAIL_QUEUE),
         send_email_binding_configured: Boolean(c.env.SEND_EMAIL),
-        from_email_configured: Boolean(c.env.FROM_EMAIL),
-        from_address: c.env.FROM_EMAIL ?? null,
-        dkim_status: dkimStatus,
     };
 
     return JsonResponse.success(response);
@@ -214,7 +180,7 @@ export async function handleAdminEmailTest(c: AppContext): Promise<Response> {
     const anyProvider = detectProvider(c.env);
     if (anyProvider === 'none') {
         return JsonResponse.serviceUnavailable(
-            'No email provider configured. Set EMAIL_QUEUE binding, SEND_EMAIL binding, or FROM_EMAIL env var.',
+            'No email provider configured. Set EMAIL_QUEUE binding or SEND_EMAIL binding.',
         );
     }
 
@@ -223,7 +189,7 @@ export async function handleAdminEmailTest(c: AppContext): Promise<Response> {
     if (directProvider === 'none') {
         return JsonResponse.serviceUnavailable(
             'No direct email provider configured for admin test sends. ' +
-                'Set SEND_EMAIL binding or FROM_EMAIL env var in addition to EMAIL_QUEUE.',
+                'Set SEND_EMAIL binding in addition to EMAIL_QUEUE.',
         );
     }
 

@@ -656,8 +656,8 @@ export interface Env {
      * Cloudflare Email Workers outbound send binding.
      *
      * Configured via `[[send_email]]` in `wrangler.toml` with the `adblock-email`
-     * email worker. When present, {@link createEmailService} prefers this binding
-     * over the MailChannels HTTP API.
+     * email worker. When present, {@link createEmailService} uses this binding
+     * directly as the priority-2 provider.
      *
      * wrangler.toml:
      * ```toml
@@ -668,21 +668,6 @@ export interface Env {
      * @see https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/
      */
     SEND_EMAIL?: SendEmail;
-    // ─── Email (MailChannels via CF Workers — transactional, outbound) ───────────
-    /**
-     * Sender address for transactional email (e.g. "Bloqr <notifications@bloqr.dev>").
-     * Set in wrangler.toml [vars] — non-secret.
-     */
-    FROM_EMAIL?: string;
-    /** Domain used for DKIM signing (must match DNS TXT record). Set in wrangler.toml [vars]. */
-    DKIM_DOMAIN?: string;
-    /** DKIM selector. Set in wrangler.toml [vars]. */
-    DKIM_SELECTOR?: string;
-    /**
-     * DKIM private key (base64-encoded RSA private key).
-     * Production: wrangler secret put DKIM_PRIVATE_KEY
-     */
-    DKIM_PRIVATE_KEY?: string;
 }
 
 /**
