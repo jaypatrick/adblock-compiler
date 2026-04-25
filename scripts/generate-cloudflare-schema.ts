@@ -268,7 +268,9 @@ async function generateCloudflareSchema(): Promise<void> {
     // know which endpoints need to be fixed in the upstream openapi.yaml.
     const patchedOps = inject2xxStubs(spec, httpMethods);
     if (patchedOps.length > 0) {
-        console.log(`\n⚠️  Injected stub 2xx response into ${patchedOps.length} operation(s) (fix upstream openapi.yaml):`);
+        console.log(
+            `\n⚠️  Patched ${patchedOps.length} operation(s) with stub 2xx response or schema (fix upstream openapi.yaml):`,
+        );
         for (const op of patchedOps) {
             console.log(`   • ${op}`);
         }
