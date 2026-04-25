@@ -1,990 +1,981 @@
 name: CI
 
 on:
-    push:
-        branches: [main]
-    pull_request:
-        branches: [main]
-    workflow_dispatch:
-        inputs:
-            force_deploy_frontend:
-                description: 'Force deploy the frontend worker even if no frontend files changed'
-                required: false
-                default: 'false'
-                type: choice
-                options:
-                    - 'false'
-                    - 'true'
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      force_deploy_frontend:
+        description: "Force deploy the frontend worker even if no frontend files changed"
+        required: false
+        default: "false"
+        type: choice
+        options:
+          - "false"
+          - "true"
 
 env:
-    # Pinned to 2.7.11: 2.7.12 introduced a regression that breaks wrangler deploy
-    # (SocketError: other side closed). Unpin once Deno releases a fix.
-    # See: https://github.com/cloudflare/workers-sdk/issues/13443
-    DENO_VERSION: '2.7.11'
+  # Pinned to 2.7.11: 2.7.12 introduced a regression that breaks wrangler deploy
+  # (SocketError: other side closed). Unpin once Deno releases a fix.
+  # See: https://github.com/cloudflare/workers-sdk/issues/13443
+  DENO_VERSION: "2.7.11"
 
 concurrency:
-    group: ${{ github.workflow }}-${{ github.ref }}
-    cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
-    changes:
-        name: Detect Changed Paths
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-        permissions:
-            contents: read
-        outputs:
-            compiler: ${{ steps.filter.outputs.compiler }}
-            frontend: ${{ steps.filter.outputs.frontend }}
-            migrations: ${{ steps.filter.outputs.migrations }}
-            worker: ${{ steps.filter.outputs.worker }}
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+  changes:
+    name: Detect Changed Paths
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    outputs:
+      compiler: ${{ steps.filter.outputs.compiler }}
+      frontend: ${{ steps.filter.outputs.frontend }}
+      migrations: ${{ steps.filter.outputs.migrations }}
+      worker: ${{ steps.filter.outputs.worker }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Detect changed paths
-              id: filter
-              uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
-              with:
-                  filters: |
-                      compiler:
-                          - 'src/**'
-                          - '!src/**/*.test.ts'
-                          - 'deno.json'
-                          - 'deno.lock'
-                      frontend:
-                          - 'frontend/**'
-                          - 'pnpm-lock.yaml'
-                          - 'wrangler.toml'
-                          - 'src/version.ts'
-                      migrations:
-                          - 'migrations/**'
-                          - 'admin-migrations/**'
-                      worker:
-                          - 'worker/**'
-                          - 'src/**'
-                          - 'wrangler.toml'
+      - name: Detect changed paths
+        id: filter
+        uses: dorny/paths-filter@fbd0ab8f3e69293af611ebaee6363fc25e6d187d # v4.0.1
+        with:
+          filters: |
+            compiler:
+                - 'src/**'
+                - '!src/**/*.test.ts'
+                - 'deno.json'
+                - 'deno.lock'
+            frontend:
+                - 'frontend/**'
+                - 'pnpm-lock.yaml'
+                - 'wrangler.toml'
+                - 'src/version.ts'
+            migrations:
+                - 'migrations/**'
+                - 'admin-migrations/**'
+            worker:
+                - 'worker/**'
+                - 'src/**'
+                - 'wrangler.toml'
 
-    lint-format:
-        name: Lint & Format Check
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        needs: [changes]
-        if: needs.changes.outputs.compiler == 'true'
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+  lint-format:
+    name: Lint & Format Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ changes ]
+    if: needs.changes.outputs.compiler == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-                  install-deps: 'false'
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+          install-deps: "false"
 
-            - name: Lint
-              run: deno lint
+      - name: Lint
+        run: deno lint
 
-            - name: Format check
-              run: deno fmt --check
+      - name: Format check
+        run: deno fmt --check
 
-            - name: Route-order lint
-              run: deno task lint:routes
+      - name: Route-order lint
+        run: deno task lint:routes
 
-    # Keeps deno.lock / package.json wrangler pins current automatically so this
-    # check stays green without manual intervention on every Cloudflare release.
-    # See: .github/workflows/cloudflare-dep-update.yml
-    cloudflare-dep-check:
-        name: Cloudflare Dependency Check
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+  # Keeps deno.lock / package.json wrangler pins current automatically so this
+  # check stays green without manual intervention on every Cloudflare release.
+  # See: .github/workflows/cloudflare-dep-update.yml
+  cloudflare-dep-check:
+    name: Cloudflare Dependency Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-                  # The upgrade-check script only reads local files and fetches npm metadata;
-                  # it has no npm/jsr imports of its own, so no dep install is required.
-                  install-deps: 'false'
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+          # The upgrade-check script only reads local files and fetches npm metadata;
+          # it has no npm/jsr imports of its own, so no dep install is required.
+          install-deps: "false"
 
-            - name: Check Cloudflare dependency versions
-              run: deno task ci:cloudflare-check
+      - name: Check Cloudflare dependency versions
+        run: deno task ci:cloudflare-check
 
-    typecheck:
-        name: Type Check
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        needs: [changes]
-        if: needs.changes.outputs.compiler == 'true'
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ changes ]
+    if: needs.changes.outputs.compiler == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
 
-            - name: Type check all entry points
-              run: deno task check
+      - name: Type check all entry points
+        run: deno task check
 
-    test:
-        name: Test
-        runs-on: ubuntu-latest
-        timeout-minutes: 20
-        needs: [changes]
-        if: needs.changes.outputs.compiler == 'true'
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    needs: [ changes ]
+    if: needs.changes.outputs.compiler == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Load environment variables
-              uses: ./.github/actions/setup-env
+      - name: Load environment variables
+        uses: ./.github/actions/setup-env
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
 
-            - name: Run tests with coverage
-              run: deno task test:coverage
-              env:
-                  DENO_TLS_CA_STORE: system
+      - name: Run tests with coverage
+        run: deno task test:coverage
+        env:
+          DENO_TLS_CA_STORE: system
 
-            - name: Generate coverage report
-              if: always() && hashFiles('coverage/**') != ''
-              continue-on-error: true
-              run: deno coverage coverage --lcov --output=coverage/lcov.info
-
-            - name: Upload coverage to Codecov
-              if: always() && hashFiles('coverage/lcov.info') != ''
-              uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
-              continue-on-error: true
-              with:
-                  files: coverage/lcov.info
-                  flags: deno
-                  fail_ci_if_error: false
-
-    security:
-        name: Security Scan
-        runs-on: ubuntu-latest
-        timeout-minutes: 15
-        # Security scan should not block deployments
+      - name: Generate coverage report
+        if: always() && hashFiles('coverage/**') != ''
         continue-on-error: true
-        permissions:
-            contents: read
-            security-events: write
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        run: deno coverage coverage --lcov --output=coverage/lcov.info
 
-            - name: Run Trivy vulnerability scanner
-              uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
-              continue-on-error: true
-              with:
-                  scan-type: fs
-                  scan-ref: .
-                  format: sarif
-                  output: trivy-results.sarif
-                  severity: 'CRITICAL,HIGH,MEDIUM'
+      - name: Upload coverage to Codecov
+        if: always() && hashFiles('coverage/lcov.info') != ''
+        uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        continue-on-error: true
+        with:
+          files: coverage/lcov.info
+          flags: deno
+          fail_ci_if_error: false
 
-            - name: Upload Trivy results to GitHub Security
-              if: always() && hashFiles('trivy-results.sarif') != ''
-              uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3.35.2
-              continue-on-error: true
-              with:
-                  sarif_file: trivy-results.sarif
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Security scan should not block deployments
+    continue-on-error: true
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-    frontend-lint-test:
-        name: Frontend (lint, test)
-        runs-on: ubuntu-latest
-        timeout-minutes: 15
-        needs: [changes]
-        if: needs.changes.outputs.frontend == 'true'
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Run Trivy vulnerability scanner
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # 0.35.0
+        continue-on-error: true
+        with:
+          scan-type: fs
+          scan-ref: .
+          format: sarif
+          output: trivy-results.sarif
+          severity: "CRITICAL,HIGH,MEDIUM"
 
-            - name: Setup pnpm and Node.js
-              uses: ./.github/actions/setup-pnpm-node
-              with:
-                  node-version: '24.15'
+      - name: Upload Trivy results to GitHub Security
+        if: always() && hashFiles('trivy-results.sarif') != ''
+        uses: github/codeql-action/upload-sarif@ce64ddcb0d8d890d2df4a9d1c04ff297367dea2a # v3.35.2
+        continue-on-error: true
+        with:
+          sarif_file: trivy-results.sarif
 
-            - name: Install dependencies
-              run: pnpm install --frozen-lockfile
+  frontend-lint-test:
+    name: Frontend (lint, test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [ changes ]
+    if: needs.changes.outputs.frontend == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Lint frontend
-              run: pnpm --filter adblock-frontend run lint
+      - name: Setup pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm-node
+        with:
+          node-version: "24.15"
 
-            - name: Test frontend
-              run: pnpm --filter adblock-frontend run test
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-    frontend-build:
-        name: Frontend (build)
-        runs-on: ubuntu-latest
-        timeout-minutes: 15
-        needs: [changes]
-        if: >-
-            needs.changes.outputs.frontend == 'true' ||
-            needs.changes.outputs.worker == 'true' ||
-            needs.changes.outputs.compiler == 'true' ||
-            (github.event.inputs.force_deploy_frontend || 'false') == 'true'
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Lint frontend
+        run: pnpm --filter adblock-frontend run lint
 
-            - name: Setup pnpm and Node.js
-              uses: ./.github/actions/setup-pnpm-node
-              with:
-                  node-version: '24.15'
+      - name: Test frontend
+        run: pnpm --filter adblock-frontend run test
 
-            - name: Install dependencies
-              run: pnpm install --frozen-lockfile
+  frontend-build:
+    name: Frontend (build)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [ changes ]
+    if: >-
+      needs.changes.outputs.frontend == 'true' || needs.changes.outputs.worker
+      == 'true' || needs.changes.outputs.compiler == 'true' ||
+      (github.event.inputs.force_deploy_frontend || 'false') == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Build Angular frontend
-              run: pnpm --filter adblock-frontend run build
+      - name: Setup pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm-node
+        with:
+          node-version: "24.15"
 
-            - name: Upload frontend build artifact
-              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
-              with:
-                  name: frontend-dist
-                  path: frontend/dist/
-                  retention-days: 1
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
 
-    validate-artifacts:
-        name: Validate Generated Artifacts
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        needs: [changes]
-        if: needs.changes.outputs.compiler == 'true'
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Build Angular frontend
+        run: pnpm --filter adblock-frontend run build
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
+      - name: Upload frontend build artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+          retention-days: 1
 
-            - name: Validate OpenAPI specification
-              run: deno task openapi:validate
+  validate-artifacts:
+    name: Validate Generated Artifacts
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ changes ]
+    if: needs.changes.outputs.compiler == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Regenerate all artifacts
-              run: deno task schema:generate
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
 
-            - name: Check all artifacts are up to date
-              run: |
-                  DRIFT=0
-                  if ! git diff --quiet docs/api/cloudflare-schema.yaml; then
-                      echo "❌ docs/api/cloudflare-schema.yaml is out of date!"
-                      echo ""
-                      git diff docs/api/cloudflare-schema.yaml
-                      DRIFT=1
-                  fi
-                  if ! git diff --quiet docs/postman/postman-collection.json docs/postman/postman-environment.json; then
-                      echo "❌ Postman collection or environment is out of date!"
-                      echo ""
-                      git diff docs/postman/postman-collection.json docs/postman/postman-environment.json
-                      DRIFT=1
-                  fi
-                  if [ "$DRIFT" -eq 1 ]; then
-                      echo ""
-                      echo "Run 'deno task schema:generate' locally, commit the updated files, and push again."
-                      echo "Tip: run 'deno task setup:hooks' to catch drift automatically before every push."
-                      exit 1
-                  fi
-                  echo "✅ All generated artifacts are up to date"
+      - name: Validate OpenAPI specification
+        run: deno task openapi:validate
 
-    check-slow-types:
-        name: Check Slow Types
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        needs: [changes]
-        if: needs.changes.outputs.compiler == 'true'
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Regenerate all artifacts
+        run: deno task schema:generate
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
+      - name: Check all artifacts are up to date
+        run: |
+          DRIFT=0
+          if ! git diff --quiet docs/api/cloudflare-schema.yaml; then
+              echo "❌ docs/api/cloudflare-schema.yaml is out of date!"
+              echo ""
+              git diff docs/api/cloudflare-schema.yaml
+              DRIFT=1
+          fi
+          if ! git diff --quiet docs/postman/postman-collection.json docs/postman/postman-environment.json; then
+              echo "❌ Postman collection or environment is out of date!"
+              echo ""
+              git diff docs/postman/postman-collection.json docs/postman/postman-environment.json
+              DRIFT=1
+          fi
+          if [ "$DRIFT" -eq 1 ]; then
+              echo ""
+              echo "Run 'deno task schema:generate' locally, commit the updated files, and push again."
+              echo "Tip: run 'deno task setup:hooks' to catch drift automatically before every push."
+              exit 1
+          fi
+          echo "✅ All generated artifacts are up to date"
 
-            - name: Check for slow types
-              run: deno publish --dry-run --allow-dirty
+  check-slow-types:
+    name: Check Slow Types
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ changes ]
+    if: needs.changes.outputs.compiler == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-    audit-public-surface:
-        name: Audit Public Surface (IP Protection)
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        needs: [changes]
-        if: needs.changes.outputs.compiler == 'true'
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
+      - name: Check for slow types
+        run: deno publish --dry-run --allow-dirty
 
-            - name: Audit public surface for IP leaks
-              run: |
-                  set -euo pipefail
-                  # Capture the dry-run output; grep for lines listing files to be published
-                  # deno publish --dry-run prints each file it would publish, one per line
-                  PUBLISHED=$(deno publish --dry-run --allow-dirty 2>&1 | grep -oP '(?<=  )\S+' || true)
-                  LEAKED=$(echo "$PUBLISHED" | grep -E "^(worker/|frontend/|prisma/|migrations/)" || true)
-                  if [ -n "$LEAKED" ]; then
-                    echo "❌ IP LEAK DETECTED: The following files from private packages are in the JSR publish surface:"
-                    echo "$LEAKED"
-                    exit 1
-                  fi
-                  echo "✅ Public surface audit passed — no private package files detected"
+  audit-public-surface:
+    name: Audit Public Surface (IP Protection)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ changes ]
+    if: needs.changes.outputs.compiler == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-    validate-migrations:
-        name: Validate Migrations
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-        needs: [changes]
-        if: needs.changes.outputs.migrations == 'true'
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
 
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-                  install-deps: 'false'
+      - name: Audit public surface for IP leaks
+        run: |
+          set -euo pipefail
+          # Capture the dry-run output; grep for lines listing files to be published
+          # deno publish --dry-run prints each file it would publish, one per line
+          PUBLISHED=$(deno publish --dry-run --allow-dirty 2>&1 | grep -oP '(?<=  )\S+' || true)
+          LEAKED=$(echo "$PUBLISHED" | grep -E "^(worker/|frontend/|prisma/|migrations/)" || true)
+          if [ -n "$LEAKED" ]; then
+            echo "❌ IP LEAK DETECTED: The following files from private packages are in the JSR publish surface:"
+            echo "$LEAKED"
+            exit 1
+          fi
+          echo "✅ Public surface audit passed — no private package files detected"
 
-            - name: Validate migration file naming and ordering
-              run: deno task migrate:validate
+  validate-migrations:
+    name: Validate Migrations
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [ changes ]
+    if: needs.changes.outputs.migrations == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-    zta-lint:
-        name: ZTA Lint
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        needs: [changes]
-        if: needs.changes.outputs.worker == 'true' || needs.changes.outputs.frontend == 'true'
-        permissions:
-            contents: read
-        continue-on-error: false
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+          install-deps: "false"
 
-            - name: Run ZTA security checks
-              uses: ./.github/actions/zta-checks
+      - name: Validate migration file naming and ordering
+        run: deno task migrate:validate
 
-    lockfile-check:
-        name: Lockfile Sync Check
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+  zta-lint:
+    name: ZTA Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ changes ]
+    if: needs.changes.outputs.worker == 'true' || needs.changes.outputs.frontend ==
+      'true'
+    permissions:
+      contents: read
+    continue-on-error: false
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Setup pnpm and Node.js
-              uses: ./.github/actions/setup-pnpm-node
-              with:
-                  node-version: '24.15'
+      - name: Run ZTA security checks
+        uses: ./.github/actions/zta-checks
 
-            - name: Check pnpm lockfile is in sync
-              run: |
-                  pnpm install --frozen-lockfile --ignore-scripts || {
-                      echo "❌ pnpm-lock.yaml is out of sync with package.json!"
-                      echo ""
-                      echo "Run 'pnpm install' locally, commit the updated pnpm-lock.yaml, and push again."
-                      echo "Tip: run 'deno task setup:hooks' to catch drift automatically before every push."
-                      exit 1
-                  }
-                  echo "✅ pnpm-lock.yaml is in sync with package.json"
+  lockfile-check:
+    name: Lockfile Sync Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-    ci-gate:
-        name: CI Gate
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-        needs:
-            - changes
-            - lint-format
-            - typecheck
-            - test
-            - validate-artifacts
-            - validate-migrations
-            - frontend-lint-test
-            - frontend-build
-            - check-slow-types
-            - audit-public-surface
-            # verify-deploy is a PR-only safety check (it is skipped on push to main).
-            # Keeping it in needs caused GitHub Actions to propagate the 'skipped' result
-            # upward, which could cause ci-gate itself to be treated as skipped, silently
-            # preventing deploy and publish from running on push.  verify-deploy remains
-            # a standalone job and still runs on every pull_request.
-            # zta-lint uses path filters and will be skipped when no relevant files change;
-            # the gate's Python logic treats 'skipped' as passing, so this is safe to include.
-            - zta-lint
-            - lockfile-check
-        if: ${{ always() && !cancelled() }}
-        steps:
-            - name: Check all jobs passed
-              env:
-                  NEEDS_JSON: ${{ toJSON(needs) }}
-              run: |
-                  echo "Job results: $NEEDS_JSON"
-                  python3 - <<'PY'
-                  import os
-                  import json
+      - name: Setup pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm-node
+        with:
+          node-version: "24.15"
 
-                  needs = json.loads(os.environ['NEEDS_JSON'])
-                  cancelled = [name for name, data in needs.items() if data['result'] == 'cancelled']
-                  if cancelled:
-                      print('Run interrupted by concurrency cancellation (cancelled jobs: ' + ', '.join(cancelled) + ')')
-                      print('A newer run will verify these checks — exiting gracefully.')
-                      raise SystemExit(0)
-                  failures = [name for name, data in needs.items() if data['result'] not in ('success', 'skipped')]
-                  if failures:
-                      print('FAILED: ' + ', '.join(failures))
-                      raise SystemExit(1)
-                  print('All checks passed')
-                  PY
+      - name: Check pnpm lockfile is in sync
+        run: |
+          pnpm install --frozen-lockfile --ignore-scripts || {
+              echo "❌ pnpm-lock.yaml is out of sync with package.json!"
+              echo ""
+              echo "Run 'pnpm install' locally, commit the updated pnpm-lock.yaml, and push again."
+              echo "Tip: run 'deno task setup:hooks' to catch drift automatically before every push."
+              exit 1
+          }
+          echo "✅ pnpm-lock.yaml is in sync with package.json"
 
-            - name: Write CI summary
-              if: always()
-              env:
-                  NEEDS_JSON: ${{ toJSON(needs) }}
-              run: |
-                  python3 - <<'PY'
-                  import os, json
-                  needs = json.loads(os.environ['NEEDS_JSON'])
-                  lines = ["## CI Gate Summary", "", "| Job | Result |", "|---|---|"]
-                  icons = {'success': '✅', 'failure': '❌', 'skipped': '⏭️', 'cancelled': '🚫'}
-                  for name, data in needs.items():
-                      result = data['result']
-                      icon = icons.get(result, '❓')
-                      lines.append(f"| `{name}` | {icon} {result} |")
-                  print('\n'.join(lines))
-                  with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
-                      f.write('\n'.join(lines) + '\n')
-                  PY
-
-
-    publish:
-        name: Publish to JSR
-        runs-on: ubuntu-latest
-        timeout-minutes: 10
-        needs: [ci-gate, changes]
-        # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
-        # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
-        # is the real gate.
-        if: >-
-            always() &&
-            needs.ci-gate.result == 'success' &&
-            github.event_name == 'push' &&
-            github.ref == 'refs/heads/main' &&
-            needs.changes.outputs.compiler == 'true'
-        permissions:
-            contents: read
-            id-token: write
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-
-            - name: Check if version already published on JSR
-              id: jsr_check
-              run: |
-                  set -euo pipefail
-                  VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
-                  # Read the JSR package name from deno.json so the check stays in sync
-                  # even if the package scope/name is changed in the future.
-                  PACKAGE=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).name)")
-                  if [ -z "${VERSION}" ] || [ "${VERSION}" = "undefined" ]; then
-                    echo "Error: deno.json.version is missing, empty, or undefined. Cannot check/publish to JSR." >&2
-                    exit 1
-                  fi
-                  if [ -z "${PACKAGE}" ] || [ "${PACKAGE}" = "undefined" ]; then
-                    echo "Error: deno.json.name (JSR package name) is missing, empty, or undefined. Cannot check/publish to JSR." >&2
-                    exit 1
-                  fi
-                  echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-                  echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
-                  HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
-                    "https://jsr.io/${PACKAGE}/${VERSION}_meta.json")
-                  if [ "$HTTP_STATUS" = "200" ]; then
-                    echo "already_published=true" >> "$GITHUB_OUTPUT"
-                    echo "[SKIP] Version ${VERSION} already on JSR (HTTP 200) — skipping publish"
-                  elif [ "$HTTP_STATUS" = "404" ]; then
-                    echo "already_published=false" >> "$GITHUB_OUTPUT"
-                    echo "Version ${VERSION} not yet on JSR (HTTP 404) — will publish"
-                  else
-                    echo "Failed to probe JSR for ${PACKAGE}@${VERSION}. HTTP status: ${HTTP_STATUS}" >&2
-                    echo "Treating this as a connectivity/auth error so CI can surface the real issue." >&2
-                    exit 1
-                  fi
-
-            - name: Publish to JSR
-              if: steps.jsr_check.outputs.already_published == 'false'
-              run: |
-                  set -euo pipefail
-                  if ! OUTPUT="$(deno publish --allow-dirty 2>&1)"; then
-                    echo "${OUTPUT}"
-                    if echo "${OUTPUT}" | grep -qiE 'version .*already (exists|published)'; then
-                      echo "Version already published, skipping."
-                      exit 0
-                    fi
-                    echo "Publish failed with unexpected error."
-                    exit 1
-                  fi
-                  echo "Successfully published to JSR"
-
-            - name: Publish summary
-              if: always()
-              env:
-                  VERSION: ${{ steps.jsr_check.outputs.version }}
-                  PACKAGE: ${{ steps.jsr_check.outputs.package }}
-                  ALREADY_PUBLISHED: ${{ steps.jsr_check.outputs.already_published }}
-              run: |
-                  set -euo pipefail
-                  if [ "${ALREADY_PUBLISHED}" = "true" ]; then
-                    cat <<EOF >> "$GITHUB_STEP_SUMMARY"
-                  ## ⏭️ JSR Publish Skipped
-
-                  Version **${VERSION}** was already published on JSR.
-
-                  📦 https://jsr.io/${PACKAGE}@${VERSION}
-                  EOF
-                  else
-                    cat <<EOF >> "$GITHUB_STEP_SUMMARY"
-                  ## 📦 Published to JSR
-
-                  Version **${VERSION}** has been published.
-
-                  📦 https://jsr.io/${PACKAGE}@${VERSION}
-                  EOF
-                  fi
-
-    # Verify the worker bundles correctly on every PR — catches build failures
-    # before they reach main. No secrets required; --dry-run bundles without
-    # uploading to Cloudflare. Runs in parallel with other checks (only waits
-    # for frontend-build to produce the artifact) so failures are surfaced fast.
-    verify-deploy:
-        name: Verify Worker Build
-        runs-on: ubuntu-latest
-        timeout-minutes: 15
-        needs: [changes, frontend-build]
-        if: >-
-            always() &&
-            (needs.frontend-build.result == 'success' || needs.frontend-build.result == 'skipped') &&
-            (github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch') &&
-            (needs.changes.outputs.worker == 'true' || needs.changes.outputs.frontend == 'true')
-        permissions:
-            contents: read
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
-
-            - name: Validate wrangler.toml
-              uses: ./.github/actions/validate-wrangler-toml
-
-            - name: Load environment variables
-              uses: ./.github/actions/setup-env
-
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-
-            - name: Download frontend build artifact
-              if: needs.frontend-build.result == 'success'
-              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-              with:
-                  name: frontend-dist
-                  path: frontend/dist/
-
-            - name: Verify worker build (dry run)
-              run: |
-                  for i in 1 2 3; do
-                      deno task wrangler:verify && break
-                      if [ "$i" -lt 3 ]; then
-                          echo "Attempt $i failed, retrying in 15s..."
-                          sleep 15
-                      else
-                          echo "All 3 attempts failed."
-                          exit 1
-                      fi
-                  done
-
-    # Deploy jobs only run on main pushes
-    deploy:
-        name: Deploy to Cloudflare
-        runs-on: ubuntu-latest
-        timeout-minutes: 30
-        needs: [ci-gate, changes, frontend-build]
-        # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
-        # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
-        # is the real gate.
-        # frontend-build always runs when worker or compiler files change (same triggers as this
-        # job), so the frontend artifact is always available when the deploy runs.
-        if: >-
-            always() &&
-            needs.ci-gate.result == 'success' &&
-            (needs.frontend-build.result == 'success' || needs.frontend-build.result == 'skipped') &&
-            github.event_name == 'push' &&
-            github.ref == 'refs/heads/main' &&
-            (needs.changes.outputs.worker == 'true' || needs.changes.outputs.compiler == 'true')
-        permissions:
-            contents: read
+  ci-gate:
+    name: CI Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs:
+      - changes
+      - lint-format
+      - typecheck
+      - test
+      - validate-artifacts
+      - validate-migrations
+      - frontend-lint-test
+      - frontend-build
+      - check-slow-types
+      - audit-public-surface
+      # verify-deploy is a PR-only safety check (it is skipped on push to main).
+      # Keeping it in needs caused GitHub Actions to propagate the 'skipped' result
+      # upward, which could cause ci-gate itself to be treated as skipped, silently
+      # preventing deploy and publish from running on push.  verify-deploy remains
+      # a standalone job and still runs on every pull_request.
+      # zta-lint uses path filters and will be skipped when no relevant files change;
+      # the gate's Python logic treats 'skipped' as passing, so this is safe to include.
+      - zta-lint
+      - lockfile-check
+    if: ${{ always() && !cancelled() }}
+    steps:
+      - name: Check all jobs passed
         env:
-            CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-            CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-            CF_WEB_ANALYTICS_TOKEN: ${{ secrets.CF_WEB_ANALYTICS_TOKEN }}
-            DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          echo "Job results: $NEEDS_JSON"
+          python3 - <<'PY'
+          import os
+          import json
 
-            - name: Validate wrangler.toml
-              uses: ./.github/actions/validate-wrangler-toml
+          needs = json.loads(os.environ['NEEDS_JSON'])
+          cancelled = [name for name, data in needs.items() if data['result'] == 'cancelled']
+          if cancelled:
+              print('Run interrupted by concurrency cancellation (cancelled jobs: ' + ', '.join(cancelled) + ')')
+              print('A newer run will verify these checks — exiting gracefully.')
+              raise SystemExit(0)
+          failures = [name for name, data in needs.items() if data['result'] not in ('success', 'skipped')]
+          if failures:
+              print('FAILED: ' + ', '.join(failures))
+              raise SystemExit(1)
+          print('All checks passed')
+          PY
 
-            - name: Load environment variables
-              uses: ./.github/actions/setup-env
-
-            - name: Setup Deno environment
-              uses: ./.github/actions/setup-deno-env
-              with:
-                  deno-version: ${{ env.DENO_VERSION }}
-
-            - name: Download frontend build artifact
-              if: needs.frontend-build.result == 'success'
-              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-              with:
-                  name: frontend-dist
-                  path: frontend/dist/
-
-            - name: Deploy worker
-              uses: ./.github/actions/deploy-worker
-              with:
-                  github-sha: ${{ github.sha }}
-                  cloudflare-containers-token: ${{ secrets.CLOUDFLARE_CONTAINERS_TOKEN }}
-
-            - name: Upload API Shield schema
-              env:
-                  CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
-                  CLOUDFLARE_API_SHIELD_TOKEN: ${{ secrets.CLOUDFLARE_API_SHIELD_TOKEN }}
-              run: deno task schema:upload -- --skip-if-unchanged
-
-            - name: Show deploy version
-              if: always()
-              run: |
-                  set -euo pipefail
-                  VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
-                  echo "## 🚀 Deploying version $VERSION to Cloudflare" >> "$GITHUB_STEP_SUMMARY"
-
-    deploy-frontend:
-        name: Deploy Frontend Worker
-        runs-on: ubuntu-latest
-        timeout-minutes: 15
-        needs: [ci-gate, changes, frontend-build]
-        # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
-        # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
-        # is the real gate.
-        if: >-
-            always() &&
-            needs.ci-gate.result == 'success' &&
-            needs.frontend-build.result == 'success' &&
-            github.ref == 'refs/heads/main' &&
-            (github.event_name == 'push' || github.event_name == 'workflow_dispatch') &&
-            (
-              needs.changes.outputs.frontend == 'true' ||
-              needs.changes.outputs.worker == 'true' ||
-              needs.changes.outputs.compiler == 'true' ||
-              (github.event.inputs.force_deploy_frontend || 'false') == 'true'
-            )
-        permissions:
-            contents: read
+      - name: Write CI summary
+        if: always()
         env:
-            CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-            CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-            CF_WEB_ANALYTICS_TOKEN: ${{ secrets.CF_WEB_ANALYTICS_TOKEN }}
-        steps:
-            - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+          NEEDS_JSON: ${{ toJSON(needs) }}
+        run: |
+          python3 - <<'PY'
+          import os, json
+          needs = json.loads(os.environ['NEEDS_JSON'])
+          lines = ["## CI Gate Summary", "", "| Job | Result |", "|---|---|"]
+          icons = {'success': '✅', 'failure': '❌', 'skipped': '⏭️', 'cancelled': '🚫'}
+          for name, data in needs.items():
+              result = data['result']
+              icon = icons.get(result, '❓')
+              lines.append(f"| `{name}` | {icon} {result} |")
+          print('\n'.join(lines))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as f:
+              f.write('\n'.join(lines) + '\n')
+          PY
 
-            - name: Setup pnpm and Node.js
-              uses: ./.github/actions/setup-pnpm-node
-              with:
-                  node-version: '24.15'
+  publish:
+    name: Publish to JSR
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [ ci-gate, changes ]
+    # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
+    # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
+    # is the real gate.
+    if: >-
+      always() && needs.ci-gate.result == 'success' && github.event_name ==
+      'push' && github.ref == 'refs/heads/main' &&
+      needs.changes.outputs.compiler == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            - name: Install frontend dependencies
-              run: pnpm install --frozen-lockfile
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
 
-            - name: Download frontend build artifact
-              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
-              with:
-                  name: frontend-dist
-                  path: frontend/dist/
+      - name: Check if version already published on JSR
+        id: jsr_check
+        run: |
+          set -euo pipefail
+          VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
+          # Read the JSR package name from deno.json so the check stays in sync
+          # even if the package scope/name is changed in the future.
+          PACKAGE=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).name)")
+          if [ -z "${VERSION}" ] || [ "${VERSION}" = "undefined" ]; then
+            echo "Error: deno.json.version is missing, empty, or undefined. Cannot check/publish to JSR." >&2
+            exit 1
+          fi
+          if [ -z "${PACKAGE}" ] || [ "${PACKAGE}" = "undefined" ]; then
+            echo "Error: deno.json.name (JSR package name) is missing, empty, or undefined. Cannot check/publish to JSR." >&2
+            exit 1
+          fi
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "package=$PACKAGE" >> "$GITHUB_OUTPUT"
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" \
+            "https://jsr.io/${PACKAGE}/${VERSION}_meta.json")
+          if [ "$HTTP_STATUS" = "200" ]; then
+            echo "already_published=true" >> "$GITHUB_OUTPUT"
+            echo "[SKIP] Version ${VERSION} already on JSR (HTTP 200) — skipping publish"
+          elif [ "$HTTP_STATUS" = "404" ]; then
+            echo "already_published=false" >> "$GITHUB_OUTPUT"
+            echo "Version ${VERSION} not yet on JSR (HTTP 404) — will publish"
+          else
+            echo "Failed to probe JSR for ${PACKAGE}@${VERSION}. HTTP status: ${HTTP_STATUS}" >&2
+            echo "Treating this as a connectivity/auth error so CI can surface the real issue." >&2
+            exit 1
+          fi
 
-            - name: Inject CF Web Analytics token into built HTML
-              env:
-                  CF_WEB_ANALYTICS_TOKEN: ${{ secrets.CF_WEB_ANALYTICS_TOKEN }}
-              run: sh scripts/build-worker.sh
+      - name: Publish to JSR
+        if: steps.jsr_check.outputs.already_published == 'false'
+        run: |
+          set -euo pipefail
+          if ! OUTPUT="$(deno publish --allow-dirty 2>&1)"; then
+            echo "${OUTPUT}"
+            if echo "${OUTPUT}" | grep -qiE 'version .*already (exists|published)'; then
+              echo "Version already published, skipping."
+              exit 0
+            fi
+            echo "Publish failed with unexpected error."
+            exit 1
+          fi
+          echo "Successfully published to JSR"
 
-            - name: Deploy Frontend Worker
-              if: env.CLOUDFLARE_API_TOKEN != ''
-              working-directory: frontend
-              run: |
-                  echo "Deploying adblock-frontend..."
-                  pnpm run deploy
+      - name: Publish summary
+        if: always()
+        env:
+          VERSION: ${{ steps.jsr_check.outputs.version }}
+          PACKAGE: ${{ steps.jsr_check.outputs.package }}
+          ALREADY_PUBLISHED: ${{ steps.jsr_check.outputs.already_published }}
+        run: |
+          set -euo pipefail
+          if [ "${ALREADY_PUBLISHED}" = "true" ]; then
+            cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          ## ⏭️ JSR Publish Skipped
 
-    smoke-test-backend:
-        name: Smoke Test — Backend
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-        needs: [deploy]
-        permissions: {}
-        if: >-
-            always() &&
-            needs.deploy.result == 'success' &&
-            github.event_name == 'push' &&
-            github.ref == 'refs/heads/main'
-        steps:
-            - name: Wait for Cloudflare propagation
-              run: sleep 15
+          Version **${VERSION}** was already published on JSR.
 
-            - name: Check /api/health
-              id: health
-              run: |
-                  set -euo pipefail
-                  HTTP=""
-                  CURL_EXIT=0
-                  set +e
-                  HTTP=$(curl -sS -o /tmp/health.json -w "%{http_code}" \
-                    https://adblock-compiler.jk-com.workers.dev/api/health)
-                  CURL_EXIT=$?
-                  set -e
-                  if [ "$CURL_EXIT" -ne 0 ]; then
-                    echo "❌ Network error while calling /api/health (curl exit $CURL_EXIT)"
-                    echo "http_code=000" >> "$GITHUB_OUTPUT"
-                    exit 1
-                  fi
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ /api/health returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  # "degraded" is acceptable — it means non-critical services (e.g. Hyperdrive) are
-                  # slow but the API is functional. Only "down" indicates a complete outage.
-                  jq -e '.status == "healthy" or .status == "degraded"' /tmp/health.json || {
-                    echo "❌ /api/health status is not healthy or degraded:"
-                    cat /tmp/health.json
-                    exit 1
-                  }
-                  echo "✅ /api/health OK ($(jq -r .status /tmp/health.json))"
+          📦 https://jsr.io/${PACKAGE}@${VERSION}
+          EOF
+          else
+            cat <<EOF >> "$GITHUB_STEP_SUMMARY"
+          ## 📦 Published to JSR
 
-            - name: Check /api/version
-              id: version
-              run: |
-                  set -euo pipefail
-                  HTTP=""
-                  CURL_EXIT=0
-                  set +e
-                  HTTP=$(curl -sS -o /tmp/version.json -w "%{http_code}" \
-                    https://adblock-compiler.jk-com.workers.dev/api/version)
-                  CURL_EXIT=$?
-                  set -e
-                  if [ "$CURL_EXIT" -ne 0 ]; then
-                    echo "❌ Network error while calling /api/version (curl exit $CURL_EXIT)"
-                    echo "http_code=000" >> "$GITHUB_OUTPUT"
-                    exit 1
-                  fi
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ /api/version returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  echo "✅ /api/version OK"
+          Version **${VERSION}** has been published.
 
-            - name: Check /api/auth/providers
-              id: auth
-              run: |
-                  set -euo pipefail
-                  HTTP=""
-                  CURL_EXIT=0
-                  set +e
-                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
-                    https://adblock-compiler.jk-com.workers.dev/api/auth/providers)
-                  CURL_EXIT=$?
-                  set -e
-                  if [ "$CURL_EXIT" -ne 0 ]; then
-                    echo "❌ Network error while calling /api/auth/providers (curl exit $CURL_EXIT)"
-                    echo "http_code=000" >> "$GITHUB_OUTPUT"
-                    exit 1
-                  fi
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ /api/auth/providers returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  echo "✅ /api/auth/providers OK"
+          📦 https://jsr.io/${PACKAGE}@${VERSION}
+          EOF
+          fi
 
-            - name: Write smoke test summary
-              if: always()
-              run: |
-                  HEALTH_CODE="${{ steps.health.outputs.http_code || '—' }}"
-                  VERSION_CODE="${{ steps.version.outputs.http_code || '—' }}"
-                  AUTH_CODE="${{ steps.auth.outputs.http_code || '—' }}"
-                  cat >> "$GITHUB_STEP_SUMMARY" << EOF
-                  ## 🔍 Backend Smoke Tests
+  # Verify the worker bundles correctly on every PR — catches build failures
+  # before they reach main. No secrets required; --dry-run bundles without
+  # uploading to Cloudflare. Runs in parallel with other checks (only waits
+  # for frontend-build to produce the artifact) so failures are surfaced fast.
+  verify-deploy:
+    name: Verify Worker Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [ changes, frontend-build ]
+    if: >-
+      always() && (needs.frontend-build.result == 'success' ||
+      needs.frontend-build.result == 'skipped') && (github.event_name ==
+      'pull_request' || github.event_name == 'workflow_dispatch') &&
+      (needs.changes.outputs.worker == 'true' || needs.changes.outputs.frontend
+      == 'true')
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-                  | Endpoint | HTTP Status | Result |
-                  |---|---|---|
-                  | \`/api/health\` | $HEALTH_CODE | $( [ "$HEALTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  | \`/api/version\` | $VERSION_CODE | $( [ "$VERSION_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  | \`/api/auth/providers\` | $AUTH_CODE | $( [ "$AUTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  EOF
+      - name: Validate wrangler.toml
+        uses: ./.github/actions/validate-wrangler-toml
 
-    smoke-test-frontend:
-        name: Smoke Test — Frontend
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-        needs: [deploy-frontend]
-        permissions: {}
-        if: >-
-            always() &&
-            needs.deploy-frontend.result == 'success' &&
-            github.event_name == 'push' &&
-            github.ref == 'refs/heads/main'
-        steps:
-            - name: Wait for Cloudflare propagation
-              run: sleep 15
+      - name: Load environment variables
+        uses: ./.github/actions/setup-env
 
-            - name: Check homepage returns 200
-              id: homepage
-              run: |
-                  set -euo pipefail
-                  HTTP=""
-                  CURL_EXIT=0
-                  set +e
-                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
-                    https://adblock-frontend.jk-com.workers.dev/)
-                  CURL_EXIT=$?
-                  set -e
-                  if [ "$CURL_EXIT" -ne 0 ]; then
-                    echo "❌ Network error while calling homepage (curl exit $CURL_EXIT)"
-                    echo "http_code=000" >> "$GITHUB_OUTPUT"
-                    exit 1
-                  fi
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ Homepage returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  echo "✅ Homepage OK"
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
 
-            - name: Check SSR API proxy (/api/auth/providers)
-              id: proxy
-              run: |
-                  set -euo pipefail
-                  HTTP=""
-                  CURL_EXIT=0
-                  set +e
-                  HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
-                    https://adblock-frontend.jk-com.workers.dev/api/auth/providers)
-                  CURL_EXIT=$?
-                  set -e
-                  if [ "$CURL_EXIT" -ne 0 ]; then
-                    echo "❌ Network error while calling SSR API proxy (curl exit $CURL_EXIT)"
-                    echo "http_code=000" >> "$GITHUB_OUTPUT"
-                    exit 1
-                  fi
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ SSR API proxy /api/auth/providers returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  echo "✅ SSR API proxy OK"
+      - name: Download frontend build artifact
+        if: needs.frontend-build.result == 'success'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: frontend-dist
+          path: frontend/dist/
 
-            - name: Check health via SSR proxy
-              id: health
-              run: |
-                  set -euo pipefail
-                  HTTP=""
-                  CURL_EXIT=0
-                  set +e
-                  HTTP=$(curl -sS -o /tmp/fe-health.json -w "%{http_code}" \
-                    https://adblock-frontend.jk-com.workers.dev/api/health)
-                  CURL_EXIT=$?
-                  set -e
-                  if [ "$CURL_EXIT" -ne 0 ]; then
-                    echo "❌ Network error while calling /api/health via frontend (curl exit $CURL_EXIT)"
-                    echo "http_code=000" >> "$GITHUB_OUTPUT"
-                    exit 1
-                  fi
-                  echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
-                  if [ "$HTTP" != "200" ]; then
-                    echo "❌ /api/health via frontend returned HTTP $HTTP"
-                    exit 1
-                  fi
-                  # "degraded" is acceptable — it means non-critical services are slow but the API
-                  # is functional. Only "down" indicates a complete outage.
-                  jq -e '.status == "healthy" or .status == "degraded"' /tmp/fe-health.json || {
-                    echo "❌ /api/health status is not healthy or degraded:"
-                    cat /tmp/fe-health.json
-                    exit 1
-                  }
-                  echo "✅ /api/health via frontend OK"
+      - name: Verify worker build (dry run)
+        run: |
+          for i in 1 2 3; do
+              deno task wrangler:verify && break
+              if [ "$i" -lt 3 ]; then
+                  echo "Attempt $i failed, retrying in 15s..."
+                  sleep 15
+              else
+                  echo "All 3 attempts failed."
+                  exit 1
+              fi
+          done
 
-            - name: Write smoke test summary
-              if: always()
-              run: |
-                  HOMEPAGE_CODE="${{ steps.homepage.outputs.http_code || '—' }}"
-                  PROXY_CODE="${{ steps.proxy.outputs.http_code || '—' }}"
-                  HEALTH_CODE="${{ steps.health.outputs.http_code || '—' }}"
-                  cat >> "$GITHUB_STEP_SUMMARY" << EOF
-                  ## 🔍 Frontend Smoke Tests
+  # Deploy jobs only run on main pushes
+  deploy:
+    name: Deploy to Cloudflare
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [ ci-gate, changes, frontend-build ]
+    # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
+    # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
+    # is the real gate.
+    # frontend-build always runs when worker or compiler files change (same triggers as this
+    # job), so the frontend artifact is always available when the deploy runs.
+    if: >-
+      always() && needs.ci-gate.result == 'success' &&
+      (needs.frontend-build.result == 'success' || needs.frontend-build.result
+      == 'skipped') && github.event_name == 'push' && github.ref ==
+      'refs/heads/main' && (needs.changes.outputs.worker == 'true' ||
+      needs.changes.outputs.compiler == 'true')
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_WEB_ANALYTICS_TOKEN: ${{ secrets.CF_WEB_ANALYTICS_TOKEN }}
+      DIRECT_DATABASE_URL: ${{ secrets.DIRECT_DATABASE_URL }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-                  | Check | HTTP Status | Result |
-                  |---|---|---|
-                  | Homepage | $HOMEPAGE_CODE | $( [ "$HOMEPAGE_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  | SSR API proxy (\`/api/auth/providers\`) | $PROXY_CODE | $( [ "$PROXY_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  | Health via proxy (\`/api/health\`) | $HEALTH_CODE | $( [ "$HEALTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
-                  EOF
+      - name: Validate wrangler.toml
+        uses: ./.github/actions/validate-wrangler-toml
 
-    deploy-status:
-        name: Deployment Status
-        runs-on: ubuntu-latest
-        timeout-minutes: 5
-        needs: [smoke-test-backend, smoke-test-frontend]
-        permissions: {}
-        if: >-
-            always() &&
-            (needs.smoke-test-backend.result == 'success' || needs.smoke-test-backend.result == 'skipped') &&
-            (needs.smoke-test-frontend.result == 'success' || needs.smoke-test-frontend.result == 'skipped') &&
-            github.event_name == 'push' &&
-            github.ref == 'refs/heads/main'
-        steps:
-            - name: Write deployment summary
-              run: |
-                  BACKEND="${{ needs.smoke-test-backend.result }}"
-                  FRONTEND="${{ needs.smoke-test-frontend.result }}"
-                  backend_icon() { [ "$1" = "success" ] && echo "✅ healthy" || echo "⏭️ skipped"; }
-                  frontend_icon() { [ "$1" = "success" ] && echo "✅ 200 OK" || echo "⏭️ skipped"; }
-                  cat >> "$GITHUB_STEP_SUMMARY" << EOF
-                  ## ✅ Deployment Complete
+      - name: Load environment variables
+        uses: ./.github/actions/setup-env
 
-                  | Component | Status | URL |
-                  |---|---|---|
-                  | Backend Worker | $(backend_icon "$BACKEND") | https://adblock-compiler.jk-com.workers.dev |
-                  | Frontend Worker | $(frontend_icon "$FRONTEND") | https://adblock-frontend.jk-com.workers.dev |
-                  EOF
+      - name: Setup Deno environment
+        uses: ./.github/actions/setup-deno-env
+        with:
+          deno-version: ${{ env.DENO_VERSION }}
+
+      - name: Download frontend build artifact
+        if: needs.frontend-build.result == 'success'
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Deploy worker
+        uses: ./.github/actions/deploy-worker
+        with:
+          github-sha: ${{ github.sha }}
+          cloudflare-containers-token: ${{ secrets.CLOUDFLARE_CONTAINERS_TOKEN }}
+
+      - name: Upload API Shield schema
+        env:
+          CLOUDFLARE_ZONE_ID: ${{ secrets.CLOUDFLARE_ZONE_ID }}
+          CLOUDFLARE_API_SHIELD_TOKEN: ${{ secrets.CLOUDFLARE_API_SHIELD_TOKEN }}
+        run: deno task schema:upload -- --skip-if-unchanged
+
+      - name: Show deploy version
+        if: always()
+        run: |
+          set -euo pipefail
+          VERSION=$(deno eval "console.log(JSON.parse(Deno.readTextFileSync('deno.json')).version)")
+          echo "## 🚀 Deploying version $VERSION to Cloudflare" >> "$GITHUB_STEP_SUMMARY"
+
+  deploy-frontend:
+    name: Deploy Frontend Worker
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [ ci-gate, changes, frontend-build ]
+    # verify-deploy is no longer in ci-gate's needs (Issue 1 fix), so the always() guard
+    # is kept as a safety net for any other skipped dependency. ci-gate.result == 'success'
+    # is the real gate.
+    if: >-
+      always() && needs.ci-gate.result == 'success' &&
+      needs.frontend-build.result == 'success' && github.ref ==
+      'refs/heads/main' && (github.event_name == 'push' || github.event_name ==
+      'workflow_dispatch') && (
+        needs.changes.outputs.frontend == 'true' ||
+        needs.changes.outputs.worker == 'true' ||
+        needs.changes.outputs.compiler == 'true' ||
+        (github.event.inputs.force_deploy_frontend || 'false') == 'true'
+      )
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      CF_WEB_ANALYTICS_TOKEN: ${{ secrets.CF_WEB_ANALYTICS_TOKEN }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup pnpm and Node.js
+        uses: ./.github/actions/setup-pnpm-node
+        with:
+          node-version: "24.15"
+
+      - name: Install frontend dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download frontend build artifact
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: frontend-dist
+          path: frontend/dist/
+
+      - name: Inject CF Web Analytics token into built HTML
+        env:
+          CF_WEB_ANALYTICS_TOKEN: ${{ secrets.CF_WEB_ANALYTICS_TOKEN }}
+        run: sh scripts/build-worker.sh
+
+      - name: Deploy Frontend Worker
+        if: env.CLOUDFLARE_API_TOKEN != ''
+        working-directory: frontend
+        run: |
+          echo "Deploying adblock-frontend..."
+          pnpm run deploy
+
+  smoke-test-backend:
+    name: Smoke Test — Backend
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [ deploy ]
+    permissions: {}
+    if: >-
+      always() && needs.deploy.result == 'success' && github.event_name ==
+      'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Wait for Cloudflare propagation
+        run: sleep 15
+
+      - name: Check /api/health
+        id: health
+        run: |
+          set -euo pipefail
+          HTTP=""
+          CURL_EXIT=0
+          set +e
+          HTTP=$(curl -sS -o /tmp/health.json -w "%{http_code}" \
+            https://adblock-compiler.jk-com.workers.dev/api/health)
+          CURL_EXIT=$?
+          set -e
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "❌ Network error while calling /api/health (curl exit $CURL_EXIT)"
+            echo "http_code=000" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+          if [ "$HTTP" != "200" ]; then
+            echo "❌ /api/health returned HTTP $HTTP"
+            exit 1
+          fi
+          # "degraded" is acceptable — it means non-critical services (e.g. Hyperdrive) are
+          # slow but the API is functional. Only "down" indicates a complete outage.
+          jq -e '.status == "healthy" or .status == "degraded"' /tmp/health.json || {
+            echo "❌ /api/health status is not healthy or degraded:"
+            cat /tmp/health.json
+            exit 1
+          }
+          echo "✅ /api/health OK ($(jq -r .status /tmp/health.json))"
+
+      - name: Check /api/version
+        id: version
+        run: |
+          set -euo pipefail
+          HTTP=""
+          CURL_EXIT=0
+          set +e
+          HTTP=$(curl -sS -o /tmp/version.json -w "%{http_code}" \
+            https://adblock-compiler.jk-com.workers.dev/api/version)
+          CURL_EXIT=$?
+          set -e
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "❌ Network error while calling /api/version (curl exit $CURL_EXIT)"
+            echo "http_code=000" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+          if [ "$HTTP" != "200" ]; then
+            echo "❌ /api/version returned HTTP $HTTP"
+            exit 1
+          fi
+          echo "✅ /api/version OK"
+
+      - name: Check /api/auth/providers
+        id: auth
+        run: |
+          set -euo pipefail
+          HTTP=""
+          CURL_EXIT=0
+          set +e
+          HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+            https://adblock-compiler.jk-com.workers.dev/api/auth/providers)
+          CURL_EXIT=$?
+          set -e
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "❌ Network error while calling /api/auth/providers (curl exit $CURL_EXIT)"
+            echo "http_code=000" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+          if [ "$HTTP" != "200" ]; then
+            echo "❌ /api/auth/providers returned HTTP $HTTP"
+            exit 1
+          fi
+          echo "✅ /api/auth/providers OK"
+
+      - name: Write smoke test summary
+        if: always()
+        run: |
+          HEALTH_CODE="${{ steps.health.outputs.http_code || '—' }}"
+          VERSION_CODE="${{ steps.version.outputs.http_code || '—' }}"
+          AUTH_CODE="${{ steps.auth.outputs.http_code || '—' }}"
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## 🔍 Backend Smoke Tests
+
+          | Endpoint | HTTP Status | Result |
+          |---|---|---|
+          | \`/api/health\` | $HEALTH_CODE | $( [ "$HEALTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+          | \`/api/version\` | $VERSION_CODE | $( [ "$VERSION_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+          | \`/api/auth/providers\` | $AUTH_CODE | $( [ "$AUTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+          EOF
+
+  smoke-test-frontend:
+    name: Smoke Test — Frontend
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [ deploy-frontend ]
+    permissions: {}
+    if: >-
+      always() && needs.deploy-frontend.result == 'success' && github.event_name
+      == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Wait for Cloudflare propagation
+        run: sleep 15
+
+      - name: Check homepage returns 200
+        id: homepage
+        run: |
+          set -euo pipefail
+          HTTP=""
+          CURL_EXIT=0
+          set +e
+          HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+            https://adblock-frontend.jk-com.workers.dev/)
+          CURL_EXIT=$?
+          set -e
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "❌ Network error while calling homepage (curl exit $CURL_EXIT)"
+            echo "http_code=000" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+          if [ "$HTTP" != "200" ]; then
+            echo "❌ Homepage returned HTTP $HTTP"
+            exit 1
+          fi
+          echo "✅ Homepage OK"
+
+      - name: Check SSR API proxy (/api/auth/providers)
+        id: proxy
+        run: |
+          set -euo pipefail
+          HTTP=""
+          CURL_EXIT=0
+          set +e
+          HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
+            https://adblock-frontend.jk-com.workers.dev/api/auth/providers)
+          CURL_EXIT=$?
+          set -e
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "❌ Network error while calling SSR API proxy (curl exit $CURL_EXIT)"
+            echo "http_code=000" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+          if [ "$HTTP" != "200" ]; then
+            echo "❌ SSR API proxy /api/auth/providers returned HTTP $HTTP"
+            exit 1
+          fi
+          echo "✅ SSR API proxy OK"
+
+      - name: Check health via SSR proxy
+        id: health
+        run: |
+          set -euo pipefail
+          HTTP=""
+          CURL_EXIT=0
+          set +e
+          HTTP=$(curl -sS -o /tmp/fe-health.json -w "%{http_code}" \
+            https://adblock-frontend.jk-com.workers.dev/api/health)
+          CURL_EXIT=$?
+          set -e
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            echo "❌ Network error while calling /api/health via frontend (curl exit $CURL_EXIT)"
+            echo "http_code=000" >> "$GITHUB_OUTPUT"
+            exit 1
+          fi
+          echo "http_code=$HTTP" >> "$GITHUB_OUTPUT"
+          if [ "$HTTP" != "200" ]; then
+            echo "❌ /api/health via frontend returned HTTP $HTTP"
+            exit 1
+          fi
+          # "degraded" is acceptable — it means non-critical services are slow but the API
+          # is functional. Only "down" indicates a complete outage.
+          jq -e '.status == "healthy" or .status == "degraded"' /tmp/fe-health.json || {
+            echo "❌ /api/health status is not healthy or degraded:"
+            cat /tmp/fe-health.json
+            exit 1
+          }
+          echo "✅ /api/health via frontend OK"
+
+      - name: Write smoke test summary
+        if: always()
+        run: |
+          HOMEPAGE_CODE="${{ steps.homepage.outputs.http_code || '—' }}"
+          PROXY_CODE="${{ steps.proxy.outputs.http_code || '—' }}"
+          HEALTH_CODE="${{ steps.health.outputs.http_code || '—' }}"
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## 🔍 Frontend Smoke Tests
+
+          | Check | HTTP Status | Result |
+          |---|---|---|
+          | Homepage | $HOMEPAGE_CODE | $( [ "$HOMEPAGE_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+          | SSR API proxy (\`/api/auth/providers\`) | $PROXY_CODE | $( [ "$PROXY_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+          | Health via proxy (\`/api/health\`) | $HEALTH_CODE | $( [ "$HEALTH_CODE" = "200" ] && echo "✅ OK" || echo "❌ FAIL" ) |
+          EOF
+
+  deploy-status:
+    name: Deployment Status
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    needs: [ smoke-test-backend, smoke-test-frontend ]
+    permissions: {}
+    if: >-
+      always() && (needs.smoke-test-backend.result == 'success' ||
+      needs.smoke-test-backend.result == 'skipped') &&
+      (needs.smoke-test-frontend.result == 'success' ||
+      needs.smoke-test-frontend.result == 'skipped') && github.event_name ==
+      'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Write deployment summary
+        run: |
+          BACKEND="${{ needs.smoke-test-backend.result }}"
+          FRONTEND="${{ needs.smoke-test-frontend.result }}"
+          backend_icon() { [ "$1" = "success" ] && echo "✅ healthy" || echo "⏭️ skipped"; }
+          frontend_icon() { [ "$1" = "success" ] && echo "✅ 200 OK" || echo "⏭️ skipped"; }
+          cat >> "$GITHUB_STEP_SUMMARY" << EOF
+          ## ✅ Deployment Complete
+
+          | Component | Status | URL |
+          |---|---|---|
+          | Backend Worker | $(backend_icon "$BACKEND") | https://adblock-compiler.jk-com.workers.dev |
+          | Frontend Worker | $(frontend_icon "$FRONTEND") | https://adblock-frontend.jk-com.workers.dev |
+          EOF
