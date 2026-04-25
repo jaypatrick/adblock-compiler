@@ -19,6 +19,7 @@ import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import type { Env } from '../worker.ts';
 import type { BatchCompilationParams, BatchWorkflowResult, WorkflowCompilationResult } from './types.ts';
 import { WorkflowEvents } from './WorkflowEvents.ts';
+import { captureExceptionInIsolate } from '../services/sentry-isolate-init.ts';
 
 /**
  * Compresses data using gzip
@@ -366,6 +367,7 @@ export class BatchCompilationWorkflow extends WorkflowEntrypoint<Env, BatchCompi
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            await captureExceptionInIsolate(this.env, error);
             console.error(`[WORKFLOW:BATCH] Batch workflow failed (batchId: ${batchId}):`, errorMessage);
 
             // Track workflow failed via Analytics Engine

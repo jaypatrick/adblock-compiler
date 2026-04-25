@@ -20,6 +20,7 @@ import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import type { Env } from '../worker.ts';
 import type { CompilationParams, SourceFetchResult, TransformationResult, WorkflowCompilationResult } from './types.ts';
 import { WorkflowEvents } from './WorkflowEvents.ts';
+import { captureExceptionInIsolate } from '../services/sentry-isolate-init.ts';
 
 /**
  * Compresses data using gzip (duplicated from worker.ts for workflow isolation)
@@ -354,6 +355,7 @@ export class CompilationWorkflow extends WorkflowEntrypoint<Env, CompilationPara
             return result;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            await captureExceptionInIsolate(this.env, error);
             console.error(`[WORKFLOW:COMPILE] Workflow failed for "${configuration.name}":`, errorMessage);
 
             // Emit workflow failed event

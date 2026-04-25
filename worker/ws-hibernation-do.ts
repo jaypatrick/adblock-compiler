@@ -54,6 +54,9 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 
+import type { Env } from './types.ts';
+import { captureExceptionInIsolate } from './services/sentry-isolate-init.ts';
+
 // ============================================================================
 // Schemas
 // ============================================================================
@@ -112,9 +115,11 @@ const sessionKey = (tag: string): string => `session:${tag}`;
 export class WsHibernationDO implements DurableObject {
     private readonly state: DurableObjectState;
     private readonly app: Hono;
+    private readonly env: unknown;
 
-    constructor(state: DurableObjectState, _env: unknown) {
+    constructor(state: DurableObjectState, env: unknown) {
         this.state = state;
+        this.env = env;
         this.app = new Hono();
         this.setupRoutes();
     }
@@ -312,7 +317,10 @@ export class WsHibernationDO implements DurableObject {
     /**
      * Called when a WebSocket error occurs.
      */
-    async webSocketError(ws: WebSocket, _error: unknown): Promise<void> {
+    async webSocketError(ws: WebSocket, error: unknown): Promise<void> {
+        // Fire-and-forget: schedule Sentry capture via waitUntil so WebSocket
+        // teardown is not blocked on the async module load / network flush.
+        this.state.waitUntil(captureExceptionInIsolate(this.env as Env, error));
         const tags = this.state.getTags(ws);
         const tag = tags[0];
         if (tag) {

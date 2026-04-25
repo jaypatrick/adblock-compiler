@@ -17,6 +17,7 @@ import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:work
 import type { Env } from '../worker.ts';
 import type { HealthMonitoringParams, HealthMonitoringResult, SourceHealthResult } from './types.ts';
 import { WorkflowEvents } from './WorkflowEvents.ts';
+import { captureExceptionInIsolate } from '../services/sentry-isolate-init.ts';
 
 /**
  * Default sources to monitor
@@ -510,6 +511,7 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            await captureExceptionInIsolate(this.env, error);
             console.error(`[WORKFLOW:HEALTH] Health monitoring failed (runId: ${runId}): ${errorMessage}`);
 
             // Emit workflow failed event
