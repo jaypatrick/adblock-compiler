@@ -43,7 +43,7 @@
         "check:lockfile": "pnpm install --frozen-lockfile --ignore-scripts",
         "cache": "deno cache src/index.ts",
         "openapi:validate": "deno run --allow-read --allow-net scripts/validate-openapi.ts",
-        "openapi:shield": "deno task openapi:validate && deno task schema:cloudflare && deno task check:drift:cloudflare",
+        "openapi:shield": "deno task openapi:validate && deno task schema:cloudflare && deno task check:drift:cloudflare && deno task schema:check:2xx",
         "openapi:docs": "deno run --allow-read --allow-write --allow-net scripts/generate-docs.ts",
         "schema:cloudflare": "deno run --allow-read --allow-write scripts/generate-cloudflare-schema.ts",
         "schema:check:2xx": "deno run --allow-read scripts/check-schema-2xx.ts",

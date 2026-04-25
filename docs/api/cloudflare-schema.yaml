@@ -257,6 +257,9 @@ paths:
                                     value: |
                                         event: metric
                                         data: {"metric":"download_speed","value":218.5,"unit":"KB/s"}
+                        application/json:
+                            schema:
+                                type: object
                 '400':
                     $ref: '#/components/responses/BadRequestError'
                 '429':

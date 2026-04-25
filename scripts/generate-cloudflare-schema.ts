@@ -9,6 +9,7 @@
 
 import { parse, stringify } from '@std/yaml';
 import { existsSync } from '@std/fs';
+import { findInvalid2xx, HTTP_METHODS, inject2xxStubs } from './schema-2xx-helpers.ts';
 
 const OPENAPI_PATH = './docs/api/openapi.yaml';
 const OUTPUT_PATH = './docs/api/cloudflare-schema.yaml';
@@ -103,109 +104,6 @@ function validateLocalRefs(spec: OpenAPISpec): string[] {
     return unresolvedRefs;
 }
 
-// ---------------------------------------------------------------------------
-// 2xx response helpers
-// ---------------------------------------------------------------------------
-
-/**
- * Determine whether an operation's responses map contains at least one 2xx code.
- *
- * @param responses - The `responses` object from an OpenAPI operation.
- * @returns `true` if any key parses to an integer in [200, 299].
- */
-function has2xxResponse(responses: Record<string, unknown> | undefined): boolean {
-    if (!responses) {
-        return false;
-    }
-    return Object.keys(responses).some((code) => {
-        const num = parseInt(code, 10);
-        return num >= 200 && num < 300;
-    });
-}
-
-/**
- * Walk all operations in `spec.paths` and inject a minimal stub 200 response
- * wherever a 2xx response is absent.  When a 2xx response exists but its
- * `application/json` media type is missing `content` or `schema`, fill that
- * in too so Cloudflare API Shield can parse and display the endpoint.
- *
- * @param spec       - The (mutated in-place) OpenAPI specification object.
- * @param methods    - HTTP method names to inspect.
- * @returns A list of human-readable strings describing each patched operation.
- */
-function inject2xxStubs(spec: OpenAPISpec, methods: string[]): string[] {
-    const patched: string[] = [];
-    const STUB_RESPONSE = {
-        description: 'OK',
-        content: { 'application/json': { schema: { type: 'object' } } },
-    };
-
-    for (const [path, pathItem] of Object.entries(spec.paths)) {
-        for (const method of methods) {
-            // deno-lint-ignore no-explicit-any
-            const operation: Record<string, any> | undefined = pathItem[method];
-            if (!operation) {
-                continue;
-            }
-
-            // deno-lint-ignore no-explicit-any
-            const responses: Record<string, any> = operation.responses ?? {};
-
-            if (!has2xxResponse(responses)) {
-                // No 2xx at all — inject a stub 200.
-                operation.responses = { ...responses, '200': STUB_RESPONSE };
-                patched.push(`${method.toUpperCase()} ${path} (injected stub 200)`);
-                continue;
-            }
-
-            // A 2xx exists.  Check that its application/json entry has a schema.
-            for (const [code, response] of Object.entries(responses)) {
-                const num = parseInt(code, 10);
-                if (num < 200 || num >= 300) {
-                    continue;
-                }
-                // deno-lint-ignore no-explicit-any
-                const resp = response as Record<string, any>;
-                if (!resp.content) {
-                    resp.content = { 'application/json': { schema: { type: 'object' } } };
-                    patched.push(`${method.toUpperCase()} ${path} (injected content into ${code})`);
-                } else if (resp.content['application/json'] && !resp.content['application/json'].schema) {
-                    resp.content['application/json'].schema = { type: 'object' };
-                    patched.push(`${method.toUpperCase()} ${path} (injected schema into ${code})`);
-                }
-                break; // Only patch the first 2xx response.
-            }
-        }
-    }
-
-    return patched;
-}
-
-/**
- * Return a list of `"METHOD /path"` strings for every operation that still
- * lacks a 2xx response.  Used as a post-patch sanity check.
- *
- * @param spec    - The OpenAPI specification object to inspect.
- * @param methods - HTTP method names to inspect.
- * @returns An array of operation identifiers missing a 2xx response.
- */
-function findMissing2xx(spec: OpenAPISpec, methods: string[]): string[] {
-    const missing: string[] = [];
-    for (const [path, pathItem] of Object.entries(spec.paths)) {
-        for (const method of methods) {
-            // deno-lint-ignore no-explicit-any
-            const operation: Record<string, any> | undefined = pathItem[method];
-            if (!operation) {
-                continue;
-            }
-            if (!has2xxResponse(operation.responses)) {
-                missing.push(`${method.toUpperCase()} ${path}`);
-            }
-        }
-    }
-    return missing;
-}
-
 async function generateCloudflareSchema(): Promise<void> {
     console.log('🚀 Generating Cloudflare API Shield schema...\n');
 
@@ -239,10 +137,9 @@ async function generateCloudflareSchema(): Promise<void> {
 
     // Remove x-* extensions from path operations
     let extensionsRemoved = 0;
-    const httpMethods = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'];
 
     for (const [_path, pathItem] of Object.entries(spec.paths)) {
-        for (const method of httpMethods) {
+        for (const method of HTTP_METHODS) {
             if (pathItem[method]) {
                 const operation = pathItem[method];
                 const extensionKeys = Object.keys(operation).filter((key) => key.startsWith('x-'));
@@ -266,7 +163,7 @@ async function generateCloudflareSchema(): Promise<void> {
     // endpoints to not appear in the dashboard. We patch the generated schema so every
     // operation has at least a stub 200 response, and we print a summary so operators
     // know which endpoints need to be fixed in the upstream openapi.yaml.
-    const patchedOps = inject2xxStubs(spec, httpMethods);
+    const patchedOps = inject2xxStubs(spec, HTTP_METHODS);
     if (patchedOps.length > 0) {
         console.log(
             `\n⚠️  Patched ${patchedOps.length} operation(s) with stub 2xx response or schema (fix upstream openapi.yaml):`,
@@ -278,10 +175,11 @@ async function generateCloudflareSchema(): Promise<void> {
         console.log('✅ All operations have valid 2xx responses');
     }
 
-    // Post-patch validation: fail loudly if any operation is still missing a 2xx response.
-    const stillMissing = findMissing2xx(spec, httpMethods);
+    // Post-patch validation: fail loudly if any operation is still missing a valid 2xx
+    // with application/json schema.  Guards against regressions in the patch logic itself.
+    const stillMissing = findInvalid2xx(spec, HTTP_METHODS);
     if (stillMissing.length > 0) {
-        console.error(`\n❌ ${stillMissing.length} operation(s) still missing a 2xx response after patching:`);
+        console.error(`\n❌ ${stillMissing.length} operation(s) still missing a valid 2xx response after patching:`);
         for (const op of stillMissing) {
             console.error(`   • ${op}`);
         }
