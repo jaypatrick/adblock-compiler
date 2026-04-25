@@ -41,6 +41,9 @@
  * ```
  */
 
+import type { Env } from './types.ts';
+import { captureExceptionInIsolate } from './services/sentry-isolate-init.ts';
+
 interface CompilationState {
     /** True if a compilation is currently in-flight */
     inFlight: boolean;
@@ -63,9 +66,10 @@ export class CompilationCoordinator implements DurableObject {
         inFlight: false,
         waiters: 0,
     };
+    private readonly env: unknown;
 
-    constructor(_state: DurableObjectState, _env: unknown) {
-        // State and env are currently unused but required by DurableObject interface
+    constructor(_state: DurableObjectState, env: unknown) {
+        this.env = env;
     }
 
     async fetch(request: Request): Promise<Response> {
@@ -91,6 +95,7 @@ export class CompilationCoordinator implements DurableObject {
                     );
             }
         } catch (err) {
+            await captureExceptionInIsolate(this.env as Env, err);
             return Response.json(
                 {
                     success: false,

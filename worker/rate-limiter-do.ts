@@ -48,6 +48,9 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 
+import type { Env } from './types.ts';
+import { captureExceptionInIsolate } from './services/sentry-isolate-init.ts';
+
 // ============================================================================
 // Schemas (Zod-validated at every trust boundary)
 // ============================================================================
@@ -98,6 +101,7 @@ const STORAGE_KEY_LIMIT = 'rl:limit';
 export class RateLimiterDO implements DurableObject {
     private readonly state: DurableObjectState;
     private readonly app: Hono;
+    private readonly env: unknown;
 
     /** Current request count within the active window. */
     private count: number = 0;
@@ -106,8 +110,9 @@ export class RateLimiterDO implements DurableObject {
     /** Configured max requests (stored so alarm() can log correctly). */
     private limit: number = 0;
 
-    constructor(state: DurableObjectState, _env: unknown) {
+    constructor(state: DurableObjectState, env: unknown) {
         this.state = state;
+        this.env = env;
         this.app = new Hono();
         this.setupRoutes();
 
@@ -260,6 +265,7 @@ export class RateLimiterDO implements DurableObject {
             await this.resetCounter();
             // DO will now hibernate; next request starts a fresh window.
         } catch (error) {
+            await captureExceptionInIsolate(this.env as Env, error);
             console.error(
                 '[RateLimiterDO] alarm(): reset failed, DO may retain stale counter until next request:',
                 error instanceof Error ? error.message : String(error),

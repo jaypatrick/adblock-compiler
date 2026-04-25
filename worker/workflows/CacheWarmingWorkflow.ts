@@ -19,6 +19,7 @@ import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import type { Env } from '../worker.ts';
 import type { CacheWarmingParams, CacheWarmingResult } from './types.ts';
 import { WorkflowEvents } from './WorkflowEvents.ts';
+import { captureExceptionInIsolate } from '../services/sentry-isolate-init.ts';
 
 /**
  * Compresses data using gzip
@@ -376,6 +377,7 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            await captureExceptionInIsolate(this.env, error);
             console.error(`[WORKFLOW:CACHE-WARM] Cache warming workflow failed (runId: ${runId}):`, errorMessage);
 
             // Track workflow failed via Analytics Engine
