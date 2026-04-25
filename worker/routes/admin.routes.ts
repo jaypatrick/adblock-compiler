@@ -33,6 +33,8 @@
  *   GET    /admin/agents/audit
  *   DELETE /admin/agents/sessions/:sessionId
  *   GET    /admin/security/overview
+ *   GET    /admin/email/config
+ *   POST   /admin/email/test
  */
 
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
@@ -2756,6 +2758,160 @@ adminRoutes.openapi(adminSecurityOverviewRoute, async (c) => {
     const { handleSecurityOverview } = await import('../handlers/security-overview.ts');
     // deno-lint-ignore no-explicit-any
     return handleSecurityOverview(c.req.raw, c.env) as any;
+});
+
+// ── Admin Email routes ────────────────────────────────────────────────────────
+
+/**
+ * Email provider configuration status.
+ *
+ * Returns which email provider is active (`queued`, `cf_email_worker`, `mailchannels`, or
+ * `none`), whether the `EMAIL_QUEUE` binding, `SEND_EMAIL` binding, and `FROM_EMAIL` env
+ * var are present, the sender address, and DKIM signing status. No private keys or secrets
+ * are included in the response.
+ *
+ * ZTA: Admin tier + admin role required. Implemented via
+ * `checkRoutePermission('/admin/email/config', authContext)` in the handler.
+ */
+const adminEmailConfigRoute = createRoute({
+    method: 'get',
+    path: '/admin/email/config',
+    tags: ['Admin'],
+    operationId: 'admin-email-get-config',
+    summary: 'Email provider configuration status',
+    description:
+        'Returns which email provider is active (Queue+Workflow, CF Email Workers, MailChannels, or none), binding/env-var presence, sender address, and DKIM signing status. Admin tier and admin role required.',
+    responses: {
+        200: {
+            description: 'Email configuration status',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.literal(true),
+                        timestamp: z.string().describe('ISO 8601 timestamp'),
+                        provider: z.enum(['queued', 'cf_email_worker', 'mailchannels', 'none']).describe(
+                            'Active email provider: queued = EMAIL_QUEUE→EmailDeliveryWorkflow; cf_email_worker = direct SEND_EMAIL binding; mailchannels = MailChannels HTTP API',
+                        ),
+                        email_queue_configured: z.boolean().describe('Whether EMAIL_QUEUE binding is present (durable queue-backed delivery)'),
+                        send_email_binding_configured: z.boolean().describe('Whether SEND_EMAIL binding is present'),
+                        from_email_configured: z.boolean().describe('Whether FROM_EMAIL env var is set'),
+                        from_address: z.string().nullable().describe('Configured sender address, or null if not set'),
+                        dkim_status: z.enum(['configured', 'partial', 'disabled']).describe('DKIM signing status'),
+                    }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.boolean(), error: z.string() }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden — admin role required',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.boolean(), error: z.string() }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminEmailConfigRoute, async (c) => {
+    const { handleAdminEmailConfig } = await import('../handlers/admin-email.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminEmailConfig(c as any) as any;
+});
+
+/**
+ * Send a test email to verify end-to-end delivery.
+ *
+ * Uses the same `createEmailService` factory as production sends, so the
+ * test reflects the actual active provider. Returns 503 when no provider
+ * is configured.
+ *
+ * ZTA: Admin tier + admin role required.
+ */
+const adminEmailTestRoute = createRoute({
+    method: 'post',
+    path: '/admin/email/test',
+    tags: ['Admin'],
+    operationId: 'admin-email-post-test',
+    summary: 'Send a test email',
+    description:
+        'Sends a test transactional email to the specified recipient using the currently configured email provider (CF Email Workers, MailChannels, or Queue+Workflow). Returns 503 when no provider is configured. Admin test sends always use direct delivery (bypassing the queue) for immediate synchronous feedback. Admin tier and admin role required.',
+    request: {
+        body: {
+            required: true,
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        to: z.string().email().describe('Recipient email address for the test send'),
+                        subject: z.string().min(1).max(200).optional().describe('Optional subject override'),
+                    }),
+                },
+            },
+        },
+    },
+    responses: {
+        200: {
+            description: 'Test email dispatched',
+            content: {
+                'application/json': {
+                    schema: z.object({
+                        success: z.literal(true),
+                        timestamp: z.string().describe('ISO 8601 timestamp'),
+                        message: z.string().describe('Result message'),
+                        provider: z.enum(['cf_email_worker', 'mailchannels']).describe(
+                            'Provider used for the test send (always direct — queue is bypassed for admin tests)',
+                        ),
+                        to: z.string().email().describe('Recipient address'),
+                    }),
+                },
+            },
+        },
+        400: {
+            description: 'Invalid request body',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.boolean(), error: z.string() }),
+                },
+            },
+        },
+        401: {
+            description: 'Unauthorized',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.boolean(), error: z.string() }),
+                },
+            },
+        },
+        403: {
+            description: 'Forbidden — admin role required',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.boolean(), error: z.string() }),
+                },
+            },
+        },
+        503: {
+            description: 'No email provider configured',
+            content: {
+                'application/json': {
+                    schema: z.object({ success: z.boolean(), error: z.string() }),
+                },
+            },
+        },
+    },
+});
+
+adminRoutes.openapi(adminEmailTestRoute, async (c) => {
+    const { handleAdminEmailTest } = await import('../handlers/admin-email.ts');
+    // deno-lint-ignore no-explicit-any
+    return handleAdminEmailTest(c as any) as any;
 });
 
 // ── Admin session revocation handler ─────────────────────────────────────────

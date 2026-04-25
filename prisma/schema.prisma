@@ -787,3 +787,98 @@ model PaygSession {
   @@index([expiresAt])
   @@map("payg_sessions")
 }
+
+// ============================================================================
+// Email System
+// ============================================================================
+
+/// Customizable email templates stored in Postgres.
+///
+/// Templates are keyed by `name` (unique slug, e.g. `compilation_complete`).
+/// `subjectTemplate`, `htmlTemplate`, and `textTemplate` are Handlebars-style
+/// string templates. `variables` documents the expected interpolation keys.
+/// Managed by admins via the admin API; served to the Worker at runtime.
+model EmailTemplate {
+  id              String    @id @default(uuid()) @db.Uuid
+  /// Unique slug identifying the template (e.g. `compilation_complete`).
+  name            String    @unique
+  /// Human-readable display name.
+  displayName     String    @map("display_name")
+  /// Subject line template (may contain {{variable}} placeholders).
+  subjectTemplate String    @map("subject_template")
+  /// HTML body template.
+  htmlTemplate    String    @map("html_template") @db.Text
+  /// Plain-text fallback template.
+  textTemplate    String    @map("text_template") @db.Text
+  /// JSON object documenting supported interpolation variable names and types.
+  variables       Json?     @db.JsonB
+  isActive        Boolean   @default(true) @map("is_active")
+  createdBy       String?   @map("created_by")
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@index([name])
+  @@index([isActive])
+  @@map("email_templates")
+}
+
+/// Full audit trail for every outbound email delivery attempt.
+///
+/// One row per send attempt. `idempotencyKey` matches the Workflow instance ID
+/// so you can correlate this log with Cloudflare Workflows dashboard entries.
+/// `status` is `sent`, `failed`, or `dropped` (NullEmailService no-op).
+/// NEVER delete rows from this table — it is an append-only audit log.
+model EmailLog {
+  id              String    @id @default(uuid()) @db.Uuid
+  /// Deduplication key — matches the Workflow/queue idempotencyKey.
+  idempotencyKey  String    @unique @map("idempotency_key")
+  /// Delivery provider used: `queued`, `cf_email_worker`, `mailchannels`, `none`.
+  provider        String
+  /// Recipient email address.
+  toAddress       String    @map("to_address")
+  /// Subject line as sent.
+  subject         String
+  /// Delivery outcome: `sent` | `failed` | `dropped`.
+  status          String    @default("sent")
+  /// Human-readable label for the send reason (e.g. `compilation_complete`).
+  reason          String?
+  /// Error message if status is `failed`.
+  error           String?
+  /// Optional FK to the app user record who triggered the email.
+  userId          String?   @map("user_id") @db.Uuid
+  /// When the delivery attempt started.
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  /// When the delivery attempt completed (null = in-flight or queued).
+  completedAt     DateTime? @map("completed_at") @db.Timestamptz
+  /// Total delivery duration in milliseconds (null when queued).
+  durationMs      Int?      @map("duration_ms")
+
+  @@index([idempotencyKey])
+  @@index([toAddress])
+  @@index([status])
+  @@index([reason])
+  @@index([userId])
+  @@index([createdAt(sort: Desc)])
+  @@map("email_log")
+}
+
+/// Per-user email notification preferences.
+///
+/// One row per (userId, notificationType) pair. Missing row = use the system
+/// default (typically `enabled: true`). Managed by users via the account
+/// settings page and by admins via the admin API.
+model EmailNotificationPreference {
+  id               String   @id @default(uuid()) @db.Uuid
+  userId           String   @map("user_id") @db.Uuid
+  /// Notification type slug (e.g. `compilation_complete`, `critical_error_alert`).
+  notificationType String   @map("notification_type")
+  /// Whether the user has opted in (`true`) or out (`false`).
+  enabled          Boolean  @default(true)
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@unique([userId, notificationType], name: "email_notification_preference_unique")
+  @@index([userId])
+  @@index([notificationType])
+  @@map("email_notification_preferences")
+}

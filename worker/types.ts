@@ -30,6 +30,27 @@ export type Workflow<Params = unknown> = globalThis.Workflow<Params>;
 export type WorkflowInstance = globalThis.WorkflowInstance;
 
 // ============================================================================
+// Email Binding
+// ============================================================================
+
+/**
+ * CF Email Workers binding type.
+ *
+ * Bound to `env.SEND_EMAIL` via `[[send_email]]` in `wrangler.toml`.
+ * The `adblock-email` email worker handles routing.
+ *
+ * At runtime the Cloudflare Workers runtime provides the concrete `SendEmail`
+ * global. We define the interface locally so `types.ts` compiles in Deno
+ * without depending on `globalThis.SendEmail` being resolvable.
+ *
+ * @see https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/
+ */
+export interface SendEmail {
+    // deno-lint-ignore no-explicit-any
+    send(message: any): Promise<void>;
+}
+
+// ============================================================================
 // Hyperdrive Binding
 // ============================================================================
 
@@ -438,6 +459,42 @@ export interface Env {
     BATCH_COMPILATION_WORKFLOW?: Workflow<BatchCompilationParams>;
     CACHE_WARMING_WORKFLOW?: Workflow<CacheWarmingParams>;
     HEALTH_MONITORING_WORKFLOW?: Workflow<HealthMonitoringParams>;
+    /**
+     * Durable email delivery workflow binding.
+     *
+     * Creates a step-checkpointed `EmailDeliveryWorkflow` instance for each email
+     * job, providing automatic retry with exponential back-off, crash recovery,
+     * and delivery-receipt storage in KV.
+     *
+     * wrangler.toml:
+     * ```toml
+     * [[workflows]]
+     * name       = "email-delivery-workflow"
+     * binding    = "EMAIL_DELIVERY_WORKFLOW"
+     * class_name = "EmailDeliveryWorkflow"
+     * ```
+     *
+     * @see worker/workflows/EmailDeliveryWorkflow.ts
+     */
+    EMAIL_DELIVERY_WORKFLOW?: Workflow<import('./workflows/EmailDeliveryWorkflow.ts').EmailDeliveryParams>;
+    /**
+     * Email delivery queue producer binding.
+     *
+     * `QueuedEmailService.sendEmail()` enqueues jobs here.  The queue consumer
+     * (`handleEmailQueue`) reads messages and creates `EmailDeliveryWorkflow`
+     * instances for durable delivery.
+     *
+     * wrangler.toml:
+     * ```toml
+     * [[queues.producers]]
+     * queue   = "adblock-compiler-email-queue"
+     * binding = "EMAIL_QUEUE"
+     * ```
+     *
+     * @see worker/handlers/email-queue.ts
+     * @see worker/services/email-service.ts — QueuedEmailService
+     */
+    EMAIL_QUEUE?: Queue<EmailQueueMessage>;
     // Analytics Engine binding (optional - for metrics tracking)
     ANALYTICS_ENGINE?: AnalyticsEngineDataset;
     // Analytics Engine SQL API credentials (required for GET /metrics/prometheus)
@@ -594,6 +651,38 @@ export interface Env {
      * Set in wrangler.toml [vars].
      */
     STRIPE_PAYG_PRICE_ID?: string;
+    // ─── Email (CF Email Workers binding — adblock-email) ────────────────────
+    /**
+     * Cloudflare Email Workers outbound send binding.
+     *
+     * Configured via `[[send_email]]` in `wrangler.toml` with the `adblock-email`
+     * email worker. When present, {@link createEmailService} prefers this binding
+     * over the MailChannels HTTP API.
+     *
+     * wrangler.toml:
+     * ```toml
+     * [[send_email]]
+     * name = "SEND_EMAIL"
+     * ```
+     *
+     * @see https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/
+     */
+    SEND_EMAIL?: SendEmail;
+    // ─── Email (MailChannels via CF Workers — transactional, outbound) ───────────
+    /**
+     * Sender address for transactional email (e.g. "Bloqr <notifications@bloqr.dev>").
+     * Set in wrangler.toml [vars] — non-secret.
+     */
+    FROM_EMAIL?: string;
+    /** Domain used for DKIM signing (must match DNS TXT record). Set in wrangler.toml [vars]. */
+    DKIM_DOMAIN?: string;
+    /** DKIM selector. Set in wrangler.toml [vars]. */
+    DKIM_SELECTOR?: string;
+    /**
+     * DKIM private key (base64-encoded RSA private key).
+     * Production: wrangler secret put DKIM_PRIVATE_KEY
+     */
+    DKIM_PRIVATE_KEY?: string;
 }
 
 /**
@@ -743,6 +832,42 @@ export interface BatchCompileQueueMessage extends QueueMessage {
 export interface CacheWarmQueueMessage extends QueueMessage {
     type: 'cache-warm';
     configurations: IConfiguration[];
+}
+
+/**
+ * Message placed on `adblock-compiler-email-queue` by {@link QueuedEmailService}.
+ *
+ * The queue consumer (`handleEmailQueue`) reads these messages and creates an
+ * `EmailDeliveryWorkflow` instance for each one, providing durable, retryable
+ * email delivery with step-level checkpointing.
+ *
+ * @see worker/handlers/email-queue.ts
+ * @see worker/services/email-service.ts — QueuedEmailService
+ * @see worker/workflows/EmailDeliveryWorkflow.ts
+ */
+export interface EmailQueueMessage {
+    /** Discriminator — always `'email'`. */
+    readonly type: 'email';
+    /** Optional caller-supplied request ID for tracing. */
+    readonly requestId?: string;
+    /** Unix ms timestamp when the message was enqueued. */
+    readonly timestamp: number;
+    /** Email payload to deliver. */
+    readonly payload: {
+        readonly to: string;
+        readonly subject: string;
+        readonly html: string;
+        readonly text: string;
+    };
+    /**
+     * Stable idempotency key for deduplication.
+     *
+     * Used as the Workflow instance ID so replayed queue messages never
+     * send the same email twice. Recommended format: `email-<requestId>`.
+     */
+    readonly idempotencyKey?: string;
+    /** Human-readable label for the send reason (logged in Workflow steps). */
+    readonly reason?: string;
 }
 
 // ============================================================================

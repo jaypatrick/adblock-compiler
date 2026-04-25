@@ -186,3 +186,66 @@ model SourceAttempt {
 // Better Auth tables (user, session, account, verification) are managed by
 // Better Auth's programmatic migration — NOT by Prisma. Do not add them here.
 // ============================================================================
+
+// ============================================================================
+// Email System (edge-optimised)
+// ============================================================================
+//
+// Lightweight email tracking tables for the D1 edge database.
+// These complement the full Neon `email_log` / `email_templates` tables — they
+// provide fast edge-local lookups (idempotency checks, recent delivery status)
+// without a round-trip to Neon.
+//
+// Note: SQLite uses INTEGER for boolean (1 = true, 0 = false) and for
+//       timestamps (Unix epoch seconds).
+
+/// Edge delivery log — fast status lookups and idempotency guards.
+///
+/// Written by `EmailDeliveryWorkflow` after each delivery attempt.
+/// `status` is 'sent' | 'failed' | 'dropped'.
+/// Rows older than 30 days should be pruned by a scheduled task.
+model EmailLogEdge {
+  id             String @id
+  /// Deduplication key — matches the Workflow/queue idempotencyKey.
+  idempotencyKey String @unique @map("idempotency_key")
+  /// Delivery provider: queued | cf_email_worker | mailchannels | none.
+  provider       String
+  /// Recipient email address.
+  toAddress      String @map("to_address")
+  /// Subject line as sent (truncated to 255 chars for storage efficiency).
+  subject        String
+  /// Delivery outcome: sent | failed | dropped.
+  status         String @default("sent")
+  /// Human-readable send reason (e.g. compilation_complete).
+  reason         String?
+  /// Error message if status is 'failed'.
+  error          String?
+  /// Unix epoch seconds when the delivery was attempted.
+  createdAt      Int    @map("created_at")
+
+  @@index([idempotencyKey])
+  @@index([toAddress])
+  @@index([status])
+  @@index([createdAt])
+  @@map("email_log_edge")
+}
+
+/// Idempotency key store for the CF Email Queue consumer.
+///
+/// Tracks processed queue messages to prevent duplicate Workflow creation on
+/// at-least-once queue re-delivery. Keys expire after 7 days.
+model EmailIdempotencyKey {
+  /// The idempotency key value (e.g. `email-<requestId>`).
+  key         String @id
+  /// Cloudflare Workflow instance ID created for this key.
+  /// This is the same value as `key` since the queue consumer sets the
+  /// Workflow instance `id` to the idempotency key (see email-queue.ts).
+  workflowId  String @map("workflow_id")
+  /// Unix epoch seconds when this key was processed.
+  processedAt Int    @map("processed_at")
+  /// Unix epoch seconds when this key expires and may be pruned (7-day TTL).
+  expiresAt   Int    @map("expires_at")
+
+  @@index([expiresAt])
+  @@map("email_idempotency_keys")
+}
