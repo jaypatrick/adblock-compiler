@@ -169,8 +169,6 @@ export class EmailService {
 /**
  * Create an {@link EmailService} from an `EmailEnv`-compatible environment.
  *
- * Validates the required `FROM_EMAIL` field; throws if absent or invalid.
- *
  * @example
  * ```ts
  * import { createEmailService } from './services/email-service.ts';
