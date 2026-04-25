@@ -63,7 +63,8 @@ async function getSentryModule(env: Env): Promise<SentryModule | null> {
         sentryModulePromise = import('@sentry/cloudflare').catch((error: unknown) => {
             // Clear so the next invocation retries instead of permanently returning null.
             sentryModulePromise = null;
-            console.warn('[Sentry] Failed to load @sentry/cloudflare; will retry on next invocation.', error);
+            const msg = error instanceof Error ? error.message : String(error);
+            console.warn(`[Sentry] Failed to load @sentry/cloudflare; will retry on next invocation. ${msg}`);
             throw error;
         });
     }
@@ -91,6 +92,12 @@ export async function captureExceptionInIsolate(env: Env, error: unknown): Promi
     }
 
     if (!sentryInitialized) {
+        // Mirrors the configuration used in withSentryWorker (sentry-init.ts):
+        // - release: prefer an explicit SENTRY_RELEASE (git SHA injected at deploy)
+        //   then fall back to COMPILER_VERSION so something meaningful always appears.
+        // - tracesSampleRate: 0.1 (10 %) matches the main worker setting; DO/Workflow
+        //   isolates process fewer requests so 10 % gives sufficient trace volume without
+        //   excessive overhead.
         Sentry.init({
             dsn: env.SENTRY_DSN,
             release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
