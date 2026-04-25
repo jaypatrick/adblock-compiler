@@ -13,13 +13,35 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-import * as Sentry from '@sentry/cloudflare';
 import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 import { createTracingContext, WorkerCompiler } from '../../src/index.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import type { Env } from '../worker.ts';
 import type { BatchCompilationParams, BatchWorkflowResult, WorkflowCompilationResult } from './types.ts';
 import { WorkflowEvents } from './WorkflowEvents.ts';
+
+// ---------------------------------------------------------------------------
+// Lazy Sentry loader — mirrors the pattern used in sentry-init.ts so that
+// @sentry/cloudflare is never bundled / imported when SENTRY_DSN is absent.
+// ---------------------------------------------------------------------------
+
+type SentryModule = typeof import('@sentry/cloudflare');
+
+let sentryModulePromise: Promise<SentryModule | null> | null = null;
+
+async function getSentryModule(env: Env): Promise<SentryModule | null> {
+    if (!env.SENTRY_DSN) {
+        return null;
+    }
+    sentryModulePromise ??= (async (): Promise<SentryModule | null> => {
+        try {
+            return await import('@sentry/cloudflare');
+        } catch {
+            return null;
+        }
+    })();
+    return sentryModulePromise;
+}
 
 /**
  * Compresses data using gzip
@@ -60,7 +82,7 @@ const MAX_CONCURRENT = 3;
  * 2. compile-chunk-N - Process compilations in chunks
  * 3. aggregate-results - Combine results and update metrics
  */
-class BatchCompilationWorkflowBase extends WorkflowEntrypoint<Env, BatchCompilationParams> {
+export class BatchCompilationWorkflow extends WorkflowEntrypoint<Env, BatchCompilationParams> {
     /**
      * Main workflow execution
      */
@@ -367,6 +389,7 @@ class BatchCompilationWorkflowBase extends WorkflowEntrypoint<Env, BatchCompilat
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            (await getSentryModule(this.env))?.captureException(error);
             console.error(`[WORKFLOW:BATCH] Batch workflow failed (batchId: ${batchId}):`, errorMessage);
 
             // Track workflow failed via Analytics Engine
@@ -397,13 +420,3 @@ class BatchCompilationWorkflowBase extends WorkflowEntrypoint<Env, BatchCompilat
         }
     }
 }
-
-export const BatchCompilationWorkflow = Sentry.instrumentWorkflowWithSentry(
-    (env: Env) => ({
-        dsn: env.SENTRY_DSN,
-        release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
-        environment: env.ENVIRONMENT ?? 'production',
-        tracesSampleRate: 0.1,
-    }),
-    BatchCompilationWorkflowBase,
-);

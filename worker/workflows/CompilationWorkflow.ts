@@ -14,13 +14,35 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-import * as Sentry from '@sentry/cloudflare';
 import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 import { createTracingContext, WorkerCompiler } from '../../src/index.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import type { Env } from '../worker.ts';
 import type { CompilationParams, SourceFetchResult, TransformationResult, WorkflowCompilationResult } from './types.ts';
 import { WorkflowEvents } from './WorkflowEvents.ts';
+
+// ---------------------------------------------------------------------------
+// Lazy Sentry loader — mirrors the pattern used in sentry-init.ts so that
+// @sentry/cloudflare is never bundled / imported when SENTRY_DSN is absent.
+// ---------------------------------------------------------------------------
+
+type SentryModule = typeof import('@sentry/cloudflare');
+
+let sentryModulePromise: Promise<SentryModule | null> | null = null;
+
+async function getSentryModule(env: Env): Promise<SentryModule | null> {
+    if (!env.SENTRY_DSN) {
+        return null;
+    }
+    sentryModulePromise ??= (async (): Promise<SentryModule | null> => {
+        try {
+            return await import('@sentry/cloudflare');
+        } catch {
+            return null;
+        }
+    })();
+    return sentryModulePromise;
+}
 
 /**
  * Compresses data using gzip (duplicated from worker.ts for workflow isolation)
@@ -61,7 +83,7 @@ const CACHE_TTL = 86400;
  * 4. generate-header - Generate the output header
  * 5. cache-result - Compress and cache the final result
  */
-class CompilationWorkflowBase extends WorkflowEntrypoint<Env, CompilationParams> {
+export class CompilationWorkflow extends WorkflowEntrypoint<Env, CompilationParams> {
     /**
      * Main workflow execution
      */
@@ -355,6 +377,7 @@ class CompilationWorkflowBase extends WorkflowEntrypoint<Env, CompilationParams>
             return result;
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            (await getSentryModule(this.env))?.captureException(error);
             console.error(`[WORKFLOW:COMPILE] Workflow failed for "${configuration.name}":`, errorMessage);
 
             // Emit workflow failed event
@@ -405,13 +428,3 @@ class CompilationWorkflowBase extends WorkflowEntrypoint<Env, CompilationParams>
         }
     }
 }
-
-export const CompilationWorkflow = Sentry.instrumentWorkflowWithSentry(
-    (env: Env) => ({
-        dsn: env.SENTRY_DSN,
-        release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
-        environment: env.ENVIRONMENT ?? 'production',
-        tracesSampleRate: 0.1,
-    }),
-    CompilationWorkflowBase,
-);

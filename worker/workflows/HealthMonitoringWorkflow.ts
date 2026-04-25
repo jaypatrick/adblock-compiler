@@ -13,11 +13,33 @@
 
 /// <reference types="@cloudflare/workers-types" />
 
-import * as Sentry from '@sentry/cloudflare';
 import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 import type { Env } from '../worker.ts';
 import type { HealthMonitoringParams, HealthMonitoringResult, SourceHealthResult } from './types.ts';
 import { WorkflowEvents } from './WorkflowEvents.ts';
+
+// ---------------------------------------------------------------------------
+// Lazy Sentry loader — mirrors the pattern used in sentry-init.ts so that
+// @sentry/cloudflare is never bundled / imported when SENTRY_DSN is absent.
+// ---------------------------------------------------------------------------
+
+type SentryModule = typeof import('@sentry/cloudflare');
+
+let sentryModulePromise: Promise<SentryModule | null> | null = null;
+
+async function getSentryModule(env: Env): Promise<SentryModule | null> {
+    if (!env.SENTRY_DSN) {
+        return null;
+    }
+    sentryModulePromise ??= (async (): Promise<SentryModule | null> => {
+        try {
+            return await import('@sentry/cloudflare');
+        } catch {
+            return null;
+        }
+    })();
+    return sentryModulePromise;
+}
 
 /**
  * Default sources to monitor
@@ -149,7 +171,7 @@ export async function readResponseSample(response: Response, maxBytes: number): 
  * 3. analyze-results - Determine if alerts needed
  * 4. store-results - Persist health data
  */
-class HealthMonitoringWorkflowBase extends WorkflowEntrypoint<Env, HealthMonitoringParams> {
+export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMonitoringParams> {
     /**
      * Main workflow execution
      */
@@ -511,6 +533,7 @@ class HealthMonitoringWorkflowBase extends WorkflowEntrypoint<Env, HealthMonitor
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
+            (await getSentryModule(this.env))?.captureException(error);
             console.error(`[WORKFLOW:HEALTH] Health monitoring failed (runId: ${runId}): ${errorMessage}`);
 
             // Emit workflow failed event
@@ -527,13 +550,3 @@ class HealthMonitoringWorkflowBase extends WorkflowEntrypoint<Env, HealthMonitor
         }
     }
 }
-
-export const HealthMonitoringWorkflow = Sentry.instrumentWorkflowWithSentry(
-    (env: Env) => ({
-        dsn: env.SENTRY_DSN,
-        release: env.SENTRY_RELEASE ?? env.COMPILER_VERSION,
-        environment: env.ENVIRONMENT ?? 'production',
-        tracesSampleRate: 0.1,
-    }),
-    HealthMonitoringWorkflowBase,
-);
