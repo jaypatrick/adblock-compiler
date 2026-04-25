@@ -51,6 +51,9 @@ The following bindings are already present in `wrangler.toml`:
 ```toml
 [[send_email]]
 name = "SEND_EMAIL"
+# Optional: restrict sends to a single verified address.
+# Omit to allow sending to all verified addresses.
+# destination_address = "notifications@bloqr.dev"
 
 [[queues.producers]]
 queue = "adblock-compiler-email-queue"
@@ -59,7 +62,7 @@ binding = "EMAIL_QUEUE"
 [[queues.consumers]]
 queue = "adblock-compiler-email-queue"
 max_batch_size = 5
-max_batch_timeout = 5
+max_batch_timeout = 5  # seconds
 max_retries = 3
 dead_letter_queue = "adblock-compiler-email-dlq"
 
