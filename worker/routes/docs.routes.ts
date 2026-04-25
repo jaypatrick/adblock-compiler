@@ -405,6 +405,7 @@ export function docsLandingHandler(env: Env, requestUrl?: string): Response {
             --orange:        #FF5500;
             --orange-hover:  #FF7033;
             --orange-glow:   rgba(255, 85, 0, 0.15);
+            --orange-border: rgba(255, 85, 0, 0.30);
             --text:          #F1F5F9;
             --text-muted:    #94A3B8;
             --radius:        12px;
@@ -511,7 +512,7 @@ export function docsLandingHandler(env: Env, requestUrl?: string): Response {
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
         }
         .card:hover {
-            border-color: rgba(255, 85, 0, 0.30);
+            border-color: var(--orange-border);
             background: var(--elevated);
             transform: translateY(-2px);
             box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 85, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06);

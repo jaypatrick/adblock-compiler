@@ -202,13 +202,13 @@
     --mat-sys-error-container: rgba(239, 68, 68, 0.15);
     --mat-sys-on-error-container: #EF4444;
 
-    --mat-sys-background: #070B14;
+    --mat-sys-background: #050810;
     --mat-sys-on-background: #F1F5F9;
     --mat-sys-surface: #0E1829;
     --mat-sys-on-surface: #F1F5F9;
     --mat-sys-surface-variant: #162035;
     --mat-sys-on-surface-variant: #94A3B8;
-    --mat-sys-surface-dim: #070B14;
+    --mat-sys-surface-dim: #050810;
     --mat-sys-surface-bright: #1C2A45;
     --mat-sys-surface-container-lowest: #050A12;
     --mat-sys-surface-container-low: #0E1829;
@@ -464,7 +464,7 @@ h1, h2, h3, h4, h5, h6,
 /* Cards — force M3 surface token + correct text color inheritance */
 .mat-mdc-card {
     background-color: var(--mat-sys-surface-container-low) !important;
-    border-radius: 12px !important;
+    border-radius: var(--mat-sys-corner-extra-large) !important;
     color: var(--mat-sys-on-surface) !important;
     border: 1px solid var(--color-border-accent) !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
@@ -648,20 +648,14 @@ h1, h2, h3, h4, h5, h6,
     background: rgba(3, 6, 12, 0.7);
     border-top: 1px solid var(--color-border-accent);
     border-bottom: 1px solid var(--color-border-accent);
-    mask-image: linear-gradient(
-        to right,
-        transparent 0px,
-        black 28px,
-        black calc(100% - 28px),
-        transparent 100%
-    );
-    -webkit-mask-image: linear-gradient(
-        to right,
-        transparent 0px,
-        black 28px,
-        black calc(100% - 28px),
-        transparent 100%
-    );
+    /* Scroll-affordance fades: inset box-shadows stay fixed relative to the
+       scroll-container viewport, not the scroll content, so they always mark
+       the edges that have hidden tabs.  Unlike mask-image they do NOT clip
+       child :focus-visible outlines — child elements paint above the parent's
+       inset box-shadow layer in CSS paint order. */
+    box-shadow:
+        inset  28px 0 20px -12px var(--color-bg-base),
+        inset -28px 0 20px -12px var(--color-bg-base);
 }
 
 .app-nav-tabs::-webkit-scrollbar {
