@@ -114,11 +114,11 @@ export function inject2xxStubs(spec: OpenAPISpec2xx, methods: readonly string[])
                     // Scenario 2: 2xx has no content at all.
                     resp.content = { 'application/json': { schema: { type: 'object' } } };
                     patched.push(`${method.toUpperCase()} ${path} (injected content into ${code})`);
-                } else if (!resp.content['application/json']) {
+                } else if (!resp.content?.['application/json']) {
                     // Scenario 3: content exists but application/json media type is absent.
                     resp.content['application/json'] = { schema: { type: 'object' } };
                     patched.push(`${method.toUpperCase()} ${path} (injected application/json into ${code})`);
-                } else if (!resp.content['application/json'].schema) {
+                } else if (!resp.content['application/json']?.schema) {
                     // Scenario 4: application/json present but schema is missing.
                     resp.content['application/json'].schema = { type: 'object' };
                     patched.push(`${method.toUpperCase()} ${path} (injected schema into ${code})`);
