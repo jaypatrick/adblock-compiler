@@ -19,12 +19,12 @@ flowchart TD
     QSvc --> Queue["EMAIL_QUEUE\n(Cloudflare Queue)"]
     Queue --> QHandler["email-queue.ts handler"]
     QHandler --> WF["EmailDeliveryWorkflow"]
-    WF --> DirectFactory["createDirectEmailService(env)"]
+    WF --> DirectFactory["createEmailService(env, { useQueue: false })"]
     DirectFactory --> CFSvc2["CfEmailWorkerService (primary)"]
     DirectFactory --> MCSvc2["MailChannelsEmailService (fallback)"]
     WF --> Receipt["Delivery receipt"]
+    Receipt --> KV["KV: METRICS (7-day TTL)"]
     Receipt --> D1["D1: email_log_edge"]
-    Receipt --> Neon["Neon: EmailLog"]
 
     Queue --> DLQ["EMAIL_DLQ\n(dead-letter queue)"]
 ```
@@ -51,26 +51,22 @@ The following bindings are already present in `wrangler.toml`:
 ```toml
 [[send_email]]
 name = "SEND_EMAIL"
-destination_address = "notifications@bloqr.dev"
 
 [[queues.producers]]
 queue = "adblock-compiler-email-queue"
 binding = "EMAIL_QUEUE"
 
-[[queues.producers]]
-queue = "adblock-compiler-email-dlq"
-binding = "EMAIL_DLQ"
-
 [[queues.consumers]]
 queue = "adblock-compiler-email-queue"
-max_batch_size = 10
+max_batch_size = 5
 max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "adblock-compiler-email-dlq"
 
 [[workflows]]
 name = "email-delivery-workflow"
 binding = "EMAIL_DELIVERY_WORKFLOW"
 class_name = "EmailDeliveryWorkflow"
-script_name = "adblock-compiler"
 ```
 
 ### 2. Worker Secrets
@@ -121,7 +117,6 @@ import { renderCompilationComplete } from '../services/email-templates.ts';
 // Inside a handler that has access to ctx (ExecutionContext):
 const mailer = createEmailService(env);
 const payload = renderCompilationComplete({
-    userEmail: user.email,
     configName: req.configName,
     ruleCount: result.ruleCount,
     durationMs: elapsed,
@@ -150,16 +145,16 @@ ctx.waitUntil(
 
 ## Idempotency
 
-`QueuedEmailService` supports an `idempotencyKey` option:
+`QueuedEmailService` derives an idempotency key internally as `email-${requestId ?? uuid}`. Pass the optional `requestId` option to make the key deterministic:
 
 ```typescript
 const mailer = new QueuedEmailService(env.EMAIL_QUEUE, {
-    requestId: compilationRequestId,   // used as idempotencyKey
+    requestId: compilationRequestId,   // derives idempotencyKey = "email-<compilationRequestId>"
     reason: 'compilation_complete',
 });
 ```
 
-Inside `EmailDeliveryWorkflow`, Step 1 checks `email_idempotency_keys` (D1) before attempting delivery. If a row with the same key already exists, the workflow exits without sending. This prevents duplicate emails when a queue message is replayed after a Worker restart.
+Inside `EmailDeliveryWorkflow`, the Workflow instance ID is set to the idempotency key when the queue consumer creates the workflow (`env.EMAIL_DELIVERY_WORKFLOW.create({ id: idempotencyKey })`). Cloudflare's Workflow runtime rejects duplicate `create()` calls with the same instance ID, preventing duplicate workflow runs. After successful delivery, Step 3 writes the key to `email_idempotency_keys` (D1) so the queue consumer can short-circuit replays before even triggering a new workflow.
 
 ---
 

@@ -220,56 +220,28 @@ async function stepGenerateCloudflareSchema(dryRun: boolean): Promise<void> {
 async function stepValidateOpenAPI(): Promise<void> {
     console.log('\n─── Step 2: Validate OpenAPI ───────────────────────────────\n');
 
-    if (!existsSync(OPENAPI_PATH)) {
-        throw new Error(`OpenAPI file not found: ${OPENAPI_PATH}`);
+    const validatorScriptPath = new URL('./validate-openapi.ts', import.meta.url).pathname;
+    const command = new Deno.Command(Deno.execPath(), {
+        args: ['run', '--allow-read', '--allow-net', validatorScriptPath],
+        stdout: 'piped',
+        stderr: 'piped',
+    });
+
+    const { code, stdout, stderr } = await command.output();
+    const decoder = new TextDecoder();
+    const standardOutput = decoder.decode(stdout);
+    const standardError = decoder.decode(stderr);
+
+    if (standardOutput.length > 0) {
+        console.log(standardOutput.trimEnd());
+    }
+    if (standardError.length > 0) {
+        console.error(standardError.trimEnd());
     }
 
-    const content = await Deno.readTextFile(OPENAPI_PATH);
-    // deno-lint-ignore no-explicit-any
-    const spec = parse(content) as any;
-    const errors: string[] = [];
-
-    if (!spec.openapi) {
-        errors.push('Missing "openapi" field');
+    if (code !== 0) {
+        throw new Error(`OpenAPI validation failed via scripts/validate-openapi.ts (exit code ${code})`);
     }
-    if (!spec.info?.title) {
-        errors.push('Missing info.title');
-    }
-    if (!spec.info?.version) {
-        errors.push('Missing info.version');
-    }
-    if (!spec.paths || Object.keys(spec.paths).length === 0) {
-        errors.push('No paths defined');
-    }
-
-    // Check for duplicate operationIds
-    const operationIds = new Set<string>();
-    for (const [path, pathItem] of Object.entries(spec.paths ?? {})) {
-        for (const method of ['get', 'post', 'put', 'patch', 'delete', 'options', 'head']) {
-            // deno-lint-ignore no-explicit-any
-            const operation = (pathItem as any)[method];
-            if (!operation) {
-                continue;
-            }
-            if (operation.operationId) {
-                if (operationIds.has(operation.operationId)) {
-                    errors.push(`Duplicate operationId: ${operation.operationId}`);
-                } else {
-                    operationIds.add(operation.operationId);
-                }
-            }
-            if (!operation.responses || Object.keys(operation.responses).length === 0) {
-                errors.push(`${method.toUpperCase()} ${path} has no responses defined`);
-            }
-        }
-    }
-
-    if (errors.length > 0) {
-        throw new Error(`OpenAPI validation failed:\n${errors.map((e) => `  ❌ ${e}`).join('\n')}`);
-    }
-
-    const pathCount = Object.keys(spec.paths ?? {}).length;
-    console.log(`✅ OpenAPI valid — ${pathCount} paths, ${operationIds.size} operationIds`);
 }
 
 // ---------------------------------------------------------------------------
@@ -324,10 +296,20 @@ async function stepUploadToApiShield(dryRun: boolean, skipIfUnchanged: boolean):
                         console.log(`✅ Schema unchanged and validation enabled — skipping upload.`);
                         return;
                     }
-                    // Hash matches but validation disabled — enable it
+                    // Hash matches but validation disabled — enable it, then remove any other active schema
                     console.warn(`⚠️  Schema unchanged but validation disabled — enabling validation.`);
                     await service.enableApiShieldSchema(zoneId, schema.schema_id);
                     console.log(`✅ Enabled validation on existing schema ${schema.schema_id}`);
+
+                    const previousValidationEnabledSchema = existingSchemas.find((existingSchema) =>
+                        existingSchema.validation_enabled === true && existingSchema.schema_id !== schema.schema_id
+                    );
+                    if (previousValidationEnabledSchema) {
+                        await service.deleteApiShieldSchema(zoneId, previousValidationEnabledSchema.schema_id);
+                        console.log(
+                            `🗑️  Deleted previous validation-enabled schema ${previousValidationEnabledSchema.schema_id}`,
+                        );
+                    }
                     return;
                 }
             }
@@ -596,6 +578,7 @@ function buildRequestItemPM(path: string, method: HttpMethodPm, operation: OAOpe
     const statusNum = parseInt(successStatus, 10);
     const contentTypes = Object.keys((operation.responses?.[successStatus] as { content?: Record<string, unknown> })?.content ?? {});
     const isJson = contentTypes.some((ct) => ct.includes('json'));
+    const isSse = contentTypes.some((ct) => ct.includes('event-stream'));
 
     const testLines: string[] = [
         `pm.test('Status code is ${statusNum}', function () {`,
@@ -604,6 +587,14 @@ function buildRequestItemPM(path: string, method: HttpMethodPm, operation: OAOpe
     ];
     if (isJson) {
         testLines.push('', "pm.test('Response is JSON', function () {", '    pm.response.to.be.json;', '});');
+    }
+    if (isSse) {
+        testLines.push(
+            '',
+            "pm.test('Response is SSE stream', function () {",
+            "    pm.expect(pm.response.headers.get('Content-Type')).to.include('text/event-stream');",
+            '});',
+        );
     }
 
     return {

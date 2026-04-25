@@ -8,7 +8,7 @@ This document explains why Durable Objects and Cloudflare Workflows require thei
 
 Every Durable Object class instance and every Cloudflare Workflow run executes inside its own **V8 isolate** — a fully independent JavaScript runtime, separate from the main Worker fetch handler.
 
-The main Worker wraps its `fetch`, `queue`, and `scheduled` entry points with `withSentryWorker` (in `worker/services/sentry-init.ts`). That wrapper lazily imports `@sentry/cloudflare`, calls `Sentry.init()`, and attaches the resulting client to the **main isolate's** module-scope hub.
+The main Worker wraps its `fetch`, `queue`, and `scheduled` entry points with `withSentryWorker` (in `worker/services/sentry-init.ts`). That wrapper lazily imports `@sentry/cloudflare` and uses `Sentry.withSentry(() => config, handler)` to configure Sentry handling for the **main isolate**.
 
 A Durable Object's `alarm()`, `fetch()`, or `webSocketMessage()` handler — and a Workflow's `run()` — execute in a *different* isolate. They never share module scope with the main Worker, so `withSentryWorker`'s Sentry client is invisible to them. Any unhandled exception thrown inside a DO or Workflow is **silently dropped** by the Sentry SDK unless the DO/Workflow explicitly initialises its own client.
 

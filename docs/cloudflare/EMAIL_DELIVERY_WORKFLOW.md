@@ -30,7 +30,7 @@ stateDiagram-v2
     Deliver --> Deliver : transient error → backoff retry
     Deliver --> DeadLetter : maxRetries exceeded
 
-    WriteReceipt --> [*] : done (non-fatal if D1/Neon write fails)
+    WriteReceipt --> [*] : done (non-fatal if D1/KV write fails)
     DeadLetter --> [*] : workflow failed
 ```
 
@@ -46,17 +46,17 @@ stateDiagram-v2
 
 ### Step 2 — Deliver
 
-- Calls `createDirectEmailService(env).sendEmail(payload)`.
-- `createDirectEmailService` selects the best **non-queue** provider (`CfEmailWorkerService` or `MailChannelsEmailService`) — see [below](#why-createdirectemailservice-not-createemailservice).
+- Calls `createEmailService(env, { useQueue: false }).sendEmail(payload)`.
+- `{ useQueue: false }` selects the best **non-queue** provider (`CfEmailWorkerService` or `MailChannelsEmailService`) — see [below](#why-createemailservice-with-usequeue-false-not-createemailservice).
 - Default retry configuration:
-  - `maxRetries`: `3`
-  - `initialIntervalSeconds`: `5`
-  - `backoffCoefficient`: `2` (exponential back-off: 5 s → 10 s → 20 s)
-- After `maxRetries` exhausted, the workflow is marked `failed` and the message enters the dead-letter queue (`EMAIL_DLQ`).
+  - `limit`: `3`
+  - `delay`: `'10 seconds'`
+  - `backoff`: `'exponential'` (10 s → 20 s → 40 s)
+- After all retries exhausted, the workflow is marked `failed` and the message enters the dead-letter queue (`EMAIL_DLQ`).
 
 ### Step 3 — Write delivery receipt
 
-- Writes a row to `email_log_edge` (D1) and `EmailLog` (Neon) with delivery status, timestamp, and provider used.
+- Writes a row to `email_log_edge` (D1) and the `email_idempotency_keys` D1 table, and stores a receipt object in KV (`METRICS`) with a 7-day TTL.
 - Runs with `retries: 1` and is **non-fatal**: a failure here does not mark the workflow as failed. The email was already sent in Step 2.
 
 ---
@@ -67,21 +67,21 @@ The retry configuration is defined as constants in `worker/workflows/EmailDelive
 
 | Parameter | Default | Description |
 |-----------|---------|-------------|
-| `maxRetries` | `3` | Number of retry attempts for Step 2 (delivery) |
-| `initialIntervalSeconds` | `5` | Initial back-off wait after first failure |
-| `backoffCoefficient` | `2` | Multiplier applied to the interval on each retry |
+| `limit` | `3` | Number of retry attempts for Step 2 (delivery) |
+| `delay` | `'10 seconds'` | Initial back-off wait after first failure |
+| `backoff` | `'exponential'` | Multiplier strategy applied to the interval on each retry |
 
 ---
 
-## Why `createDirectEmailService` not `createEmailService`?
+## Why `createEmailService(env, { useQueue: false })` not `createEmailService(env)`?
 
-`createEmailService(env)` selects `QueuedEmailService` as the highest-priority provider when `EMAIL_QUEUE` is configured. If `EmailDeliveryWorkflow` called `createEmailService`, it would enqueue the message *back* onto `EMAIL_QUEUE`, which would trigger *another* `EmailDeliveryWorkflow` instance — infinite recursion.
+`createEmailService(env)` selects `QueuedEmailService` as the highest-priority provider when `EMAIL_QUEUE` is configured. If `EmailDeliveryWorkflow` called `createEmailService(env)`, it would enqueue the message *back* onto `EMAIL_QUEUE`, which would trigger *another* `EmailDeliveryWorkflow` instance — infinite recursion.
 
-`createDirectEmailService(env)` skips the queue and selects `CfEmailWorkerService` or `MailChannelsEmailService` directly, breaking the cycle.
+Passing `{ useQueue: false }` skips the queue and selects `CfEmailWorkerService` or `MailChannelsEmailService` directly, breaking the cycle.
 
 ```typescript
 // Inside EmailDeliveryWorkflow.run():
-const mailer = createDirectEmailService(this.env);
+const mailer = createEmailService(this.env, { useQueue: false });
 // NOT: createEmailService(this.env)  ← would cause queue→workflow→queue recursion
 ```
 
