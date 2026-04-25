@@ -12,7 +12,7 @@
 /// <reference path="../node_modules/@cloudflare/workers-types/index.d.ts" />
 
 // Types
-import type { Env, ErrorQueueMessage, QueueMessage } from './types.ts';
+import type { EmailQueueMessage, Env, ErrorQueueMessage, QueueMessage } from './types.ts';
 
 // Container class for Cloudflare Containers deployment.
 // @deno-types="./cloudflare-containers-types.d.ts"
@@ -58,7 +58,7 @@ import { withSentryWorker } from './services/sentry-init.ts';
 import { withTimeout } from './utils/with-timeout.ts';
 
 // Workflows and MCP agent
-import { BatchCompilationWorkflow, CacheWarmingWorkflow, CompilationWorkflow, HealthMonitoringWorkflow } from './workflows/index.ts';
+import { BatchCompilationWorkflow, CacheWarmingWorkflow, CompilationWorkflow, EmailDeliveryWorkflow, HealthMonitoringWorkflow } from './workflows/index.ts';
 import { PlaywrightMcpAgent } from './mcp-agent.ts';
 import { CompilationCoordinator } from './compilation-coordinator.ts';
 import { RateLimiterDO } from './rate-limiter-do.ts';
@@ -142,6 +142,10 @@ const workerHandler: WorkerHandler = {
         } else if (queueName === 'adblock-compiler-worker-queue' || queueName === 'adblock-compiler-worker-queue-high-priority') {
             // Compilation queues - process compile jobs
             await handleQueue(batch as MessageBatch<QueueMessage>, env);
+        } else if (queueName === 'adblock-compiler-email-queue') {
+            // Email delivery queue — creates an EmailDeliveryWorkflow instance per message
+            const { handleEmailQueue } = await import('./handlers/email-queue.ts');
+            await handleEmailQueue(batch as MessageBatch<EmailQueueMessage>, env);
         } else {
             // Unknown queue - log warning and ack all messages to prevent retries
             // deno-lint-ignore no-console
@@ -176,6 +180,7 @@ export {
     CacheWarmingWorkflow,
     CompilationCoordinator,
     CompilationWorkflow,
+    EmailDeliveryWorkflow,
     HealthMonitoringWorkflow,
     PlaywrightMcpAgent,
     RateLimiterDO,

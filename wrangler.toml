@@ -284,6 +284,29 @@ new_sqlite_classes = ["CompilationCoordinator"]
 tag = "v4"
 new_sqlite_classes = ["RateLimiterDO", "WsHibernationDO"]
 
+# ─── Email Workers (outbound — adblock-email) ────────────────────────────────
+# Cloudflare Email Workers `[[send_email]]` binding for transactional outbound
+# email. The `adblock-email` worker handles routing and delivery via Cloudflare
+# Email Routing infrastructure.
+#
+# Prerequisites:
+#   1. Cloudflare Email Routing must be enabled on your zone.
+#   2. The `adblock-email` email worker must exist in your account.
+#   3. Allowed destination addresses must be verified in Email Routing.
+#
+# wrangler CLI setup:
+#   # No extra CLI command needed — wrangler reads the binding from this file.
+#   # Verify setup with: wrangler email list-addresses
+#
+# Optional: restrict sends to a single verified address:
+#   destination_address = "notifications@bloqr.dev"
+# Omit destination_address to allow sending to all verified addresses.
+#
+# The SEND_EMAIL binding is exposed as `env.SEND_EMAIL` in the Worker.
+# EmailService prefers this binding over the MailChannels HTTP API.
+[[send_email]]
+name = "SEND_EMAIL"
+
 # ─── Tail Workers ────────────────────────────────────────────────────────────
 # Deploy wrangler.tail.toml first; the tail worker must exist in your account
 # before this binding can be registered.
@@ -310,6 +333,14 @@ binding = "ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY"
 queue = "adblock-compiler-error-queue"
 binding = "ERROR_QUEUE"
 
+# EMAIL_QUEUE — durable email delivery queue.
+# QueuedEmailService enqueues EmailQueueMessage items here.
+# Consumer (handleEmailQueue) creates an EmailDeliveryWorkflow instance per message.
+# Create with: wrangler queues create adblock-compiler-email-queue
+[[queues.producers]]
+queue = "adblock-compiler-email-queue"
+binding = "EMAIL_QUEUE"
+
 [[queues.consumers]]
 queue = "adblock-compiler-worker-queue"
 max_batch_size = 10
@@ -327,6 +358,19 @@ dead_letter_queue = "adblock-compiler-dlq"
 queue = "adblock-compiler-error-queue"
 max_batch_size = 25
 max_batch_timeout = 10
+
+# EMAIL_QUEUE consumer — creates an EmailDeliveryWorkflow instance per message.
+# Small batches (5) and short timeout (5s) to minimise delivery latency.
+# Dead-letter queue captures messages that exhaust retries.
+# Create queues with:
+#   wrangler queues create adblock-compiler-email-queue
+#   wrangler queues create adblock-compiler-email-dlq
+[[queues.consumers]]
+queue = "adblock-compiler-email-queue"
+max_batch_size = 5
+max_batch_timeout = 5
+max_retries = 3
+dead_letter_queue = "adblock-compiler-email-dlq"
 
 # ─── Analytics Engine ────────────────────────────────────────────────────────
 [[analytics_engine_datasets]]
@@ -363,6 +407,17 @@ execution_model = "stateful"
 name = "health-monitoring-workflow"
 binding = "HEALTH_MONITORING_WORKFLOW"
 class_name = "HealthMonitoringWorkflow"
+execution_model = "stateful"
+
+# EMAIL_DELIVERY_WORKFLOW — durable, step-checkpointed email delivery.
+# Triggered by handleEmailQueue (via EMAIL_QUEUE consumer) for guaranteed delivery.
+# Provides: automatic retry (3 retries, exponential back-off), crash recovery,
+# delivery-receipt storage in METRICS KV, and observable step-level progress.
+# Create with: wrangler workflows create email-delivery-workflow EmailDeliveryWorkflow
+[[workflows]]
+name = "email-delivery-workflow"
+binding = "EMAIL_DELIVERY_WORKFLOW"
+class_name = "EmailDeliveryWorkflow"
 execution_model = "stateful"
 
 # ─── Hyperdrive ──────────────────────────────────────────────────────────────

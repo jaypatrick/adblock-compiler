@@ -2404,6 +2404,164 @@ paths:
                     $ref: '#/components/responses/UnauthorizedError'
                 '403':
                     $ref: '#/components/responses/ForbiddenError'
+    /admin/email/config:
+        get:
+            operationId: admin-email-get-config
+            summary: Email provider configuration status
+            description: >
+                Returns which email provider is currently active (Queue+Workflow, CF Email Workers, MailChannels, or
+                none), the presence of the EMAIL_QUEUE binding, SEND_EMAIL binding, and FROM_EMAIL env var, the
+                configured sender address, and DKIM signing status. No secrets or private keys are included in the
+                response. Admin tier and admin role required.
+            tags:
+                - Admin
+            security:
+                -
+                    AdminKey: []
+            responses:
+                '200':
+                    description: Email configuration status
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                required:
+                                    - success
+                                    - timestamp
+                                    - provider
+                                    - email_queue_configured
+                                    - send_email_binding_configured
+                                    - from_email_configured
+                                    - from_address
+                                    - dkim_status
+                                properties:
+                                    success:
+                                        type: boolean
+                                        example: true
+                                    timestamp:
+                                        type: string
+                                        format: date-time
+                                        description: ISO 8601 timestamp when the config status was evaluated
+                                    provider:
+                                        type: string
+                                        enum:
+                                            - queued
+                                            - cf_email_worker
+                                            - mailchannels
+                                            - none
+                                        description: >
+                                            Active email provider. queued = EMAIL_QUEUE → EmailDeliveryWorkflow
+                                            (durable, retryable); cf_email_worker = direct SEND_EMAIL binding
+                                            (adblock-email worker); mailchannels = MailChannels HTTP API; none = no
+                                            provider configured.
+                                        example: queued
+                                    email_queue_configured:
+                                        type: boolean
+                                        description: >-
+                                            Whether the EMAIL_QUEUE binding is present (durable queue-backed delivery
+                                            via Cloudflare Queues + Workflows)
+                                    send_email_binding_configured:
+                                        type: boolean
+                                        description: Whether the SEND_EMAIL CF Email Workers binding is present
+                                    from_email_configured:
+                                        type: boolean
+                                        description: Whether the FROM_EMAIL env var is set (used by MailChannels provider)
+                                    from_address:
+                                        type: string
+                                        nullable: true
+                                        description: 'Configured sender address, or null if FROM_EMAIL is not set'
+                                        example: Bloqr <notifications@bloqr.dev>
+                                    dkim_status:
+                                        type: string
+                                        enum:
+                                            - configured
+                                            - partial
+                                            - disabled
+                                        description: >
+                                            DKIM signing status. configured = all three DKIM env vars present; partial =
+                                            one or two DKIM env vars set; disabled = no DKIM env vars set.
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
+    /admin/email/test:
+        post:
+            operationId: admin-email-post-test
+            summary: Send a test email
+            description: >
+                Sends a test transactional email to the specified recipient using the currently configured direct email
+                provider (CF Email Workers or MailChannels). Admin test sends always bypass the queue so admins get
+                immediate synchronous feedback. Returns 503 when no direct provider is configured. Admin tier and admin
+                role required.
+            tags:
+                - Admin
+            security:
+                -
+                    AdminKey: []
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            required:
+                                - to
+                            properties:
+                                to:
+                                    type: string
+                                    format: email
+                                    description: Recipient email address for the test send
+                                    example: admin@example.com
+                                subject:
+                                    type: string
+                                    minLength: 1
+                                    maxLength: 200
+                                    description: Optional subject override (defaults to a standard test subject)
+                                    example: '[Bloqr] Email configuration test'
+            responses:
+                '200':
+                    description: Test email dispatched successfully
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                required:
+                                    - success
+                                    - timestamp
+                                    - message
+                                    - provider
+                                    - to
+                                properties:
+                                    success:
+                                        type: boolean
+                                        example: true
+                                    timestamp:
+                                        type: string
+                                        format: date-time
+                                    message:
+                                        type: string
+                                        description: Human-readable result message
+                                        example: Test email dispatched to <admin@example.com> via cf_email_worker.
+                                    provider:
+                                        type: string
+                                        enum:
+                                            - cf_email_worker
+                                            - mailchannels
+                                        description: >-
+                                            Direct provider used for the test send (queue is always bypassed for admin
+                                            tests)
+                                    to:
+                                        type: string
+                                        format: email
+                                        description: Recipient address used for the test
+                '400':
+                    $ref: '#/components/responses/BadRequestError'
+                '401':
+                    $ref: '#/components/responses/UnauthorizedError'
+                '403':
+                    $ref: '#/components/responses/ForbiddenError'
+                '503':
+                    $ref: '#/components/responses/ServiceUnavailable'
 components:
     schemas:
         ErrorResponse:

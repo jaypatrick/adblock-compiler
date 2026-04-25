@@ -16,6 +16,7 @@
 export { CompilationWorkflow } from './CompilationWorkflow.ts';
 export { BatchCompilationWorkflow } from './BatchCompilationWorkflow.ts';
 export { CacheWarmingWorkflow } from './CacheWarmingWorkflow.ts';
+export { EmailDeliveryWorkflow } from './EmailDeliveryWorkflow.ts';
 export { HealthMonitoringWorkflow } from './HealthMonitoringWorkflow.ts';
 
 // Export event utilities
@@ -44,3 +45,5 @@ export type {
     // Status types
     WorkflowStatus,
 } from './types.ts';
+
+export type { EmailDeliveryParams, EmailDeliveryResult } from './EmailDeliveryWorkflow.ts';
