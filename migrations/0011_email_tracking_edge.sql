@@ -44,7 +44,7 @@ CREATE INDEX IF NOT EXISTS "email_log_edge_created_at_idx"
 
 CREATE TABLE IF NOT EXISTS "email_idempotency_keys" (
     "key"          TEXT    NOT NULL,
-    "workflow_id"  TEXT    NOT NULL,
+    "workflow_id"  TEXT    NOT NULL, -- Cloudflare Workflow instance ID (equals key, since email-queue.ts sets id=idempotencyKey)
     "processed_at" INTEGER NOT NULL, -- Unix epoch seconds
     "expires_at"   INTEGER NOT NULL, -- Unix epoch seconds (7-day TTL)
 

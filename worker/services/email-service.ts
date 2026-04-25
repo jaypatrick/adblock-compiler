@@ -154,6 +154,23 @@ interface SendEmailBinding {
  * @param displayAddress - Raw address string (plain or display-name qualified).
  * @returns Object with `email` (bare address) and optional `name`.
  */
+/**
+ * Parse a potentially display-name-qualified email address into its components.
+ *
+ * Handles both plain addresses (`notifications@bloqr.dev`) and RFC 5322
+ * display-name format (`"Bloqr" <notifications@bloqr.dev>` or
+ * `Bloqr <notifications@bloqr.dev>`).
+ *
+ * **Invalid addresses:** If the extracted local-part is missing an `@`
+ * character, the function returns `{ email }` with the malformed value.
+ * This is intentional — the caller (Zod `z.string().email()`) is the
+ * authoritative validator and must reject invalid addresses. Passing the
+ * value through ensures the validator sees the intended input rather than
+ * a silently substituted placeholder.
+ *
+ * @param displayAddress - Raw address string (plain or display-name qualified).
+ * @returns Object with `email` (bare address, possibly malformed) and optional `name`.
+ */
 export function parseEmailAddress(displayAddress: string): { email: string; name?: string } {
     const match = displayAddress.match(/^(.+?)\s*<([^>]+)>$/);
     if (match) {
@@ -161,12 +178,8 @@ export function parseEmailAddress(displayAddress: string): { email: string; name
         // injection if quotes themselves contain CR or LF characters.
         const name = match[1].trim().replace(/[\r\n]/g, '').replace(/^["']+|["']+$/g, '');
         const email = match[2].trim();
-        // Reject obviously malformed addresses (must contain '@').
-        // Return the extracted part so downstream validators see the intended value.
-        if (!email.includes('@')) {
-            return { email };
-        }
-        return name ? { email, name } : { email };
+        // Pass malformed addresses (missing '@') to downstream Zod validators.
+        return name && email.includes('@') ? { email, name } : { email };
     }
     return { email: displayAddress.trim() };
 }
@@ -193,7 +206,12 @@ export function encodeSubjectRfc2047(subject: string): string {
         return subject;
     }
     // RFC 2047 Base64 encoded word: =?UTF-8?B?<base64>?=
-    // Build the binary string iteratively to avoid spread-operator stack risk.
+    //
+    // Build the binary string via a pre-allocated array to avoid spread-operator
+    // stack overflow on subjects approaching the 998-character RFC 5322 limit.
+    // `String.fromCharCode(...bytes)` is avoided for the same reason — it
+    // spreads all bytes as function arguments and will throw a RangeError on
+    // long subjects in V8/SpiderMonkey.
     const bytes = new TextEncoder().encode(subject);
     const chars = new Array<string>(bytes.length);
     for (let i = 0; i < bytes.length; i++) {

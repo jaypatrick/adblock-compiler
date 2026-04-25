@@ -244,7 +244,9 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
                             completedAtEpoch,
                         ).run();
 
-                        // Register the idempotency key so the queue consumer can skip replays
+                        // Register the idempotency key so the queue consumer can skip replays.
+                        // workflow_id = idempotencyKey because email-queue.ts sets the Workflow
+                        // instance id to the idempotency key (env.EMAIL_DELIVERY_WORKFLOW.create({ id: idempotencyKey })).
                         const expiresAt = completedAtEpoch + RECEIPT_TTL_SECONDS;
                         await this.env.DB.prepare(
                             `INSERT INTO email_idempotency_keys

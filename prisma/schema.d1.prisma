@@ -238,6 +238,8 @@ model EmailIdempotencyKey {
   /// The idempotency key value (e.g. `email-<requestId>`).
   key         String @id
   /// Cloudflare Workflow instance ID created for this key.
+  /// This is the same value as `key` since the queue consumer sets the
+  /// Workflow instance `id` to the idempotency key (see email-queue.ts).
   workflowId  String @map("workflow_id")
   /// Unix epoch seconds when this key was processed.
   processedAt Int    @map("processed_at")
