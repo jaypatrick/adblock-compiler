@@ -275,11 +275,12 @@ Deno.test('handleAdminEmailTest — 200 via MailChannels, response includes prov
     });
     const c = makeAppContext(req, makeEnvMailChannels(), makeAdminContext());
 
-    let res!: Response;
+    let res: Response | undefined;
     await withMockFetch(202, async () => {
         res = await handleAdminEmailTest(c);
     });
 
+    assertExists(res);
     assertEquals(res.status, 200);
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body['success'], true);

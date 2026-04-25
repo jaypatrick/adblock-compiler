@@ -159,7 +159,7 @@ export function buildRawMimeMessage(
     text: string,
     html: string,
 ): string {
-    const boundary = `b_${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+    const boundary = `b_${crypto.randomUUID().replaceAll('-', '_')}`;
 
     return [
         'MIME-Version: 1.0',

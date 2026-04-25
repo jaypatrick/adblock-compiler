@@ -27,6 +27,7 @@ import type { AppContext } from '../routes/shared.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { checkRoutePermission } from '../utils/route-permissions.ts';
 import { createEmailService } from '../services/email-service.ts';
+import { escapeHtml } from '../utils/escape-html.ts';
 
 // ============================================================================
 // Request / response Zod schemas (exported for reuse in route definitions)
@@ -232,9 +233,9 @@ export async function handleAdminEmailTest(c: AppContext): Promise<Response> {
     <tr><td style="padding:6px 12px;background:#f4f4f8;font-weight:600;width:120px;">Provider</td>
         <td style="padding:6px 12px;border-bottom:1px solid #e0e0e8;">${provider}</td></tr>
     <tr><td style="padding:6px 12px;background:#f4f4f8;font-weight:600;">Timestamp</td>
-        <td style="padding:6px 12px;border-bottom:1px solid #e0e0e8;">${timestamp}</td></tr>
+        <td style="padding:6px 12px;border-bottom:1px solid #e0e0e8;">${escapeHtml(timestamp)}</td></tr>
     <tr><td style="padding:6px 12px;background:#f4f4f8;font-weight:600;">Recipient</td>
-        <td style="padding:6px 12px;border-bottom:1px solid #e0e0e8;">${to}</td></tr>
+        <td style="padding:6px 12px;border-bottom:1px solid #e0e0e8;">${escapeHtml(to)}</td></tr>
   </table>
   <p style="color:#666;font-size:13px;">
     If you received this message, outbound email is working correctly.

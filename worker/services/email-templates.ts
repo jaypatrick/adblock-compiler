@@ -13,6 +13,8 @@
  *   - Canonical brand URL: https://bloqr.dev
  */
 
+import { escapeHtml } from '../utils/escape-html.ts';
+
 // ============================================================================
 // Compilation complete
 // ============================================================================
@@ -194,15 +196,4 @@ export function renderCriticalErrorAlert(opts: RenderCriticalErrorAlertOpts): {
 // Helpers (internal)
 // ============================================================================
 
-/**
- * Minimal HTML escape to prevent XSS when interpolating user-controlled strings
- * into HTML templates. Escapes the five characters mandated by the HTML spec.
- */
-function escapeHtml(str: string): string {
-    return str
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#39;');
-}
+// escapeHtml imported from '../utils/escape-html.ts' above.
