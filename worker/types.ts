@@ -30,6 +30,27 @@ export type Workflow<Params = unknown> = globalThis.Workflow<Params>;
 export type WorkflowInstance = globalThis.WorkflowInstance;
 
 // ============================================================================
+// Email Binding
+// ============================================================================
+
+/**
+ * CF Email Workers binding type.
+ *
+ * Bound to `env.SEND_EMAIL` via `[[send_email]]` in `wrangler.toml`.
+ * The `adblock-email` email worker handles routing.
+ *
+ * At runtime the Cloudflare Workers runtime provides the concrete `SendEmail`
+ * global. We define the interface locally so `types.ts` compiles in Deno
+ * without depending on `globalThis.SendEmail` being resolvable.
+ *
+ * @see https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/
+ */
+export interface SendEmail {
+    // deno-lint-ignore no-explicit-any
+    send(message: any): Promise<void>;
+}
+
+// ============================================================================
 // Hyperdrive Binding
 // ============================================================================
 
@@ -594,6 +615,23 @@ export interface Env {
      * Set in wrangler.toml [vars].
      */
     STRIPE_PAYG_PRICE_ID?: string;
+    // ─── Email (CF Email Workers binding — adblock-email) ────────────────────
+    /**
+     * Cloudflare Email Workers outbound send binding.
+     *
+     * Configured via `[[send_email]]` in `wrangler.toml` with the `adblock-email`
+     * email worker. When present, {@link createEmailService} prefers this binding
+     * over the MailChannels HTTP API.
+     *
+     * wrangler.toml:
+     * ```toml
+     * [[send_email]]
+     * name = "SEND_EMAIL"
+     * ```
+     *
+     * @see https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/
+     */
+    SEND_EMAIL?: SendEmail;
     // ─── Email (MailChannels via CF Workers — transactional, outbound) ───────────
     /**
      * Sender address for transactional email (e.g. "Bloqr <notifications@bloqr.dev>").

@@ -141,6 +141,7 @@
         "@cloudflare/playwright-mcp": "npm:@cloudflare/playwright-mcp@^0.0.5",
         "cloudflare": "npm:cloudflare@^5.2.0",
         "cloudflare:workers": "./worker/cloudflare-workers-shim.ts",
+        "cloudflare:email": "./worker/cloudflare-email-shim.ts",
         "@neondatabase/serverless": "npm:@neondatabase/serverless@^0.10.0",
         "better-auth": "npm:better-auth@^1.5.5",
         "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.5.0",

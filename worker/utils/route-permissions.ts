@@ -174,6 +174,8 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/admin/agents/sessions/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Agent session detail / termination' }],
     ['/admin/agents/audit', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Agent audit log' }],
     ['/admin/security/overview', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Security overview dashboard metrics' }],
+    ['/admin/email/config', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Email provider configuration status' }],
+    ['/admin/email/test', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Send a test email via the configured provider' }],
     ['/metrics/prometheus', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Prometheus metrics scrape' }],
 
     // ── Agent routes — derived from AGENT_REGISTRY ────────────────────────────

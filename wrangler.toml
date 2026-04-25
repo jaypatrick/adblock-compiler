@@ -284,6 +284,29 @@ new_sqlite_classes = ["CompilationCoordinator"]
 tag = "v4"
 new_sqlite_classes = ["RateLimiterDO", "WsHibernationDO"]
 
+# ─── Email Workers (outbound — adblock-email) ────────────────────────────────
+# Cloudflare Email Workers `[[send_email]]` binding for transactional outbound
+# email. The `adblock-email` worker handles routing and delivery via Cloudflare
+# Email Routing infrastructure.
+#
+# Prerequisites:
+#   1. Cloudflare Email Routing must be enabled on your zone.
+#   2. The `adblock-email` email worker must exist in your account.
+#   3. Allowed destination addresses must be verified in Email Routing.
+#
+# wrangler CLI setup:
+#   # No extra CLI command needed — wrangler reads the binding from this file.
+#   # Verify setup with: wrangler email list-addresses
+#
+# Optional: restrict sends to a single verified address:
+#   destination_address = "notifications@bloqr.dev"
+# Omit destination_address to allow sending to all verified addresses.
+#
+# The SEND_EMAIL binding is exposed as `env.SEND_EMAIL` in the Worker.
+# EmailService prefers this binding over the MailChannels HTTP API.
+[[send_email]]
+name = "SEND_EMAIL"
+
 # ─── Tail Workers ────────────────────────────────────────────────────────────
 # Deploy wrangler.tail.toml first; the tail worker must exist in your account
 # before this binding can be registered.
