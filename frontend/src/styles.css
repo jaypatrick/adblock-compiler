@@ -124,7 +124,7 @@
    ================================================================= */
 :root {
     /* ── Bloqr Brand Tokens — Backgrounds ────────────────────────── */
-    --color-bg-base:     #070B14;
+    --color-bg-base:     #050810;
     --color-bg-surface:  #0E1829;
     --color-bg-elevated: #162035;
     --color-bg-overlay:  #1C2A45;
@@ -330,7 +330,7 @@
     --app-table-row-hover: var(--mat-sys-surface-container-low);
     --app-table-border: var(--mat-sys-outline);
 
-    --app-header-bg: rgba(7, 11, 20, 0.85);
+    --app-header-bg: rgba(3, 6, 12, 0.92);
     --app-header-text: #F1F5F9;
     --app-header-accent: #FF5500;
 }
@@ -466,6 +466,14 @@ h1, h2, h3, h4, h5, h6,
     background-color: var(--mat-sys-surface-container-low) !important;
     border-radius: var(--mat-sys-corner-medium) !important;
     color: var(--mat-sys-on-surface) !important;
+    border: 1px solid var(--color-border-accent) !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
+    transition: border-color var(--app-transition-fast), box-shadow var(--app-transition-fast) !important;
+}
+
+.mat-mdc-card:hover {
+    border-color: rgba(255, 85, 0, 0.3) !important;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 85, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06) !important;
 }
 
 .mat-mdc-card-title,
@@ -520,7 +528,7 @@ h1, h2, h3, h4, h5, h6,
     margin: 24px auto;
     background: var(--mat-sys-surface);
     border-radius: var(--mat-sys-corner-large);
-    border: 1px solid var(--mat-sys-outline-variant);
+    border: 1px solid var(--color-border-accent);
     box-shadow: var(--shadow-lg);
     /* overflow: clip clips content at the border-radius boundary (same visual
        result as "hidden") but does NOT create a new scroll container.
@@ -557,9 +565,10 @@ h1, h2, h3, h4, h5, h6,
     top: 0;
     z-index: 50;
     background: var(--app-header-bg);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
     border-bottom: 1px solid var(--color-border);
+    box-shadow: 0 1px 0 rgba(255, 85, 0, 0.15);
     color: var(--app-header-text);
     padding: 0;
 }
@@ -635,6 +644,23 @@ h1, h2, h3, h4, h5, h6,
        start at the left edge and any overflow extends only to the right, where
        a hidden scrollbar (scrollbar-width: none) lets users scroll through. */
     scrollbar-width: none;
+    background: rgba(3, 6, 12, 0.7);
+    border-top: 1px solid var(--color-border-accent);
+    border-bottom: 1px solid var(--color-border-accent);
+    mask-image: linear-gradient(
+        to right,
+        transparent 0px,
+        black 28px,
+        black calc(100% - 28px),
+        transparent 100%
+    );
+    -webkit-mask-image: linear-gradient(
+        to right,
+        transparent 0px,
+        black 28px,
+        black calc(100% - 28px),
+        transparent 100%
+    );
 }
 
 .app-nav-tabs::-webkit-scrollbar {
@@ -642,7 +668,7 @@ h1, h2, h3, h4, h5, h6,
 }
 
 .app-nav-tabs a {
-    padding: 12px 20px;
+    padding: 13px 22px;
     background: none;
     border: none;
     border-bottom: 2px solid transparent;
@@ -653,7 +679,8 @@ h1, h2, h3, h4, h5, h6,
     color: var(--color-text-secondary);
     transition: color var(--app-transition-fast),
                 background var(--app-transition-fast),
-                border-color var(--app-transition-fast);
+                border-color var(--app-transition-fast),
+                text-shadow var(--app-transition-fast);
     text-decoration: none;
     white-space: nowrap;
     letter-spacing: 0.01em;
@@ -661,14 +688,16 @@ h1, h2, h3, h4, h5, h6,
 
 .app-nav-tabs a:hover {
     color: var(--color-text-primary);
-    background: rgba(255, 85, 0, 0.05);
+    background: rgba(255, 85, 0, 0.10);
+    text-shadow: 0 0 8px rgba(255, 85, 0, 0.4);
 }
 
 .app-nav-tabs a.active-tab {
     color: var(--color-orange-500);
     border-bottom-color: var(--color-orange-500);
-    background: rgba(255, 85, 0, 0.08);
+    background: rgba(255, 85, 0, 0.12);
     font-weight: 600;
+    box-shadow: inset 0 2px 0 rgba(255, 85, 0, 0.18);
 }
 
 /* Main content area */
@@ -872,7 +901,8 @@ code {
 
 .card-interactive:hover {
     transform: translateY(-2px);
-    box-shadow: var(--app-shadow-hover);
+    box-shadow: var(--app-shadow-hover), 0 0 0 1px rgba(255, 85, 0, 0.2);
+    border-color: rgba(255, 85, 0, 0.25);
 }
 
 /* =================================================================
