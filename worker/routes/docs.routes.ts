@@ -507,12 +507,14 @@ export function docsLandingHandler(env: Env, requestUrl?: string): Response {
             border: 1px solid var(--border);
             border-radius: var(--radius);
             padding: 1.5rem;
-            transition: border-color 150ms, background 150ms, transform 150ms;
+            transition: border-color 150ms, background 150ms, transform 150ms, box-shadow 150ms;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04);
         }
         .card:hover {
-            border-color: var(--border-accent);
+            border-color: rgba(255, 85, 0, 0.30);
             background: var(--elevated);
             transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5), 0 0 12px rgba(255, 85, 0, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.06);
         }
         .card-icon { font-size: 1.5rem; margin-bottom: 0.75rem; }
         .card-title { font-size: 1rem; font-weight: 700; margin-bottom: 0.3rem; color: var(--text); }

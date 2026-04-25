@@ -464,7 +464,7 @@ h1, h2, h3, h4, h5, h6,
 /* Cards — force M3 surface token + correct text color inheritance */
 .mat-mdc-card {
     background-color: var(--mat-sys-surface-container-low) !important;
-    border-radius: var(--mat-sys-corner-medium) !important;
+    border-radius: 12px !important;
     color: var(--mat-sys-on-surface) !important;
     border: 1px solid var(--color-border-accent) !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.04) !important;
@@ -529,7 +529,7 @@ h1, h2, h3, h4, h5, h6,
     background: var(--mat-sys-surface);
     border-radius: var(--mat-sys-corner-large);
     border: 1px solid var(--color-border-accent);
-    box-shadow: var(--shadow-lg);
+    box-shadow: var(--shadow-lg), 0 0 40px rgba(255, 85, 0, 0.05);
     /* overflow: clip clips content at the border-radius boundary (same visual
        result as "hidden") but does NOT create a new scroll container.
        Using "hidden" here would make mat-sidenav-content (overflow: auto) no
@@ -567,6 +567,7 @@ h1, h2, h3, h4, h5, h6,
     background: var(--app-header-bg);
     backdrop-filter: blur(16px);
     -webkit-backdrop-filter: blur(16px);
+    border-top: 3px solid var(--color-orange-500);
     border-bottom: 1px solid var(--color-border);
     box-shadow: 0 1px 0 rgba(255, 85, 0, 0.15);
     color: var(--app-header-text);
@@ -903,6 +904,18 @@ code {
     transform: translateY(-2px);
     box-shadow: var(--app-shadow-hover), 0 0 0 1px rgba(255, 85, 0, 0.2);
     border-color: rgba(255, 85, 0, 0.25);
+}
+
+/* =================================================================
+   Section Label — orange small-caps heading (mirrors api.bloqr.dev)
+   ================================================================= */
+.section-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--color-orange-500);
+    margin-bottom: 1.5rem;
 }
 
 /* =================================================================
