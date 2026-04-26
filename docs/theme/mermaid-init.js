@@ -2,6 +2,10 @@
 (function () {
     'use strict';
 
+    /* Tracks the last theme passed to mermaid.initialize() so the MutationObserver
+       can skip re-renders when <html> class changes are unrelated to the theme. */
+    var lastAppliedTheme = getCurrentTheme();
+
     /** Map an mdBook theme name to Mermaid theme + high-contrast variables. */
     function buildMermaidConfig(mdBookTheme) {
         var theme = mdBookTheme || 'coal';
@@ -115,6 +119,19 @@
         }
     }
 
+    /** Detect the active mdBook theme from the <html> element's class list.
+     *  Used by the MutationObserver to avoid a localStorage read on every mutation. */
+    function getThemeFromClass() {
+        var THEMES = ['coal', 'navy', 'ayu', 'light', 'rust'];
+        var classes = document.documentElement.classList;
+        for (var i = 0; i < THEMES.length; i++) {
+            if (classes.contains(THEMES[i])) {
+                return THEMES[i];
+            }
+        }
+        return 'coal';
+    }
+
     /** Snapshot raw diagram source from every .mermaid element (once). */
     function snapshotSources() {
         var diagrams = document.querySelectorAll('.mermaid');
@@ -141,9 +158,14 @@
 
     /** Re-initialise Mermaid with the current theme and re-render all diagrams. */
     function reinit() {
-        var config = buildMermaidConfig(getCurrentTheme());
+        var currentTheme = getCurrentTheme();
+        lastAppliedTheme = currentTheme;
+        var config = buildMermaidConfig(currentTheme);
         config.startOnLoad = false;
         mermaid.initialize(config);
+        /* Snapshot any .mermaid elements that appeared after the previous render
+           (e.g. dynamically injected content) before resetting. */
+        snapshotSources();
         resetDiagrams();
         try {
             mermaid.init(undefined, '.mermaid');
@@ -154,7 +176,6 @@
 
     /** First-time render after the DOM is ready. */
     function firstRender() {
-        snapshotSources();
         reinit();
     }
 
@@ -174,11 +195,16 @@
         }
     });
 
-    /* Same-tab: mdBook adds the theme name as a class on <html>. */
+    /* Same-tab: mdBook adds the theme name as a class on <html>.
+       Only re-render when the theme class itself changed; unrelated class mutations
+       (e.g. UI state toggles) are ignored. */
     var observer = new MutationObserver(function (mutations) {
         for (var i = 0; i < mutations.length; i++) {
             if (mutations[i].attributeName === 'class') {
-                reinit();
+                var newTheme = getThemeFromClass();
+                if (newTheme !== lastAppliedTheme) {
+                    reinit();
+                }
                 break;
             }
         }
