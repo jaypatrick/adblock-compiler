@@ -321,3 +321,34 @@ Deno.test('GET /sitemap.xml is publicly accessible (pre-auth bypass — no 401 f
     const res = await fetch('/sitemap.xml');
     assertNotEquals(res.status, 401);
 });
+
+// ── Favicon (#1xxx) ───────────────────────────────────────────────────────────
+// GET /favicon.svg is served directly (no ASSETS.fetch()), is public (no auth),
+// has Content-Type: image/svg+xml, and includes a long-lived Cache-Control header.
+
+Deno.test('GET /favicon.svg returns 200 with image/svg+xml content type', async () => {
+    const res = await fetch('/favicon.svg');
+    assertEquals(res.status, 200);
+    const contentType = res.headers.get('Content-Type');
+    assertEquals(contentType?.includes('image/svg+xml'), true);
+});
+
+Deno.test('GET /favicon.svg body contains a valid SVG root element', async () => {
+    const res = await fetch('/favicon.svg');
+    const body = await res.text();
+    assertStringIncludes(body, '<svg');
+    assertStringIncludes(body, 'xmlns="http://www.w3.org/2000/svg"');
+});
+
+Deno.test('GET /favicon.svg includes long-lived Cache-Control header', async () => {
+    const res = await fetch('/favicon.svg');
+    const cc = res.headers.get('Cache-Control') ?? '';
+    assertStringIncludes(cc, 'public');
+    assertStringIncludes(cc, 'max-age=604800');
+    assertStringIncludes(cc, 'stale-while-revalidate=86400');
+});
+
+Deno.test('GET /favicon.svg is publicly accessible (pre-auth bypass — no 401 for anonymous callers)', async () => {
+    const res = await fetch('/favicon.svg');
+    assertNotEquals(res.status, 401);
+});

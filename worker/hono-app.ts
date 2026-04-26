@@ -119,6 +119,7 @@ const MONITORING_API_PATHS = [
 // Pre-auth API meta paths (bypass unified auth, use anonymous context)
 const PRE_AUTH_PATHS = [
     '/',
+    '/favicon.svg',
     '/robots.txt',
     '/sitemap.xml',
     '/api',
@@ -531,6 +532,21 @@ app.get('/sitemap.xml', (c) => {
         '<?xml version="1.0" encoding="UTF-8"?><urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9"></urlset>',
         200,
         { 'Content-Type': 'application/xml', 'Cache-Control': 'public, max-age=86400' },
+    );
+});
+
+// GET /favicon.svg — Bloqr tri-line icon; referenced by all doc pages and the landing page.
+// Long-lived cache; stale-while-revalidate allows background refresh without user-visible latency.
+app.get('/favicon.svg', (c) => {
+    return c.body(
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">' +
+            '<rect width="32" height="32" rx="6" fill="#070B14"/>' +
+            '<rect x="6" y="8" width="20" height="3" rx="2" fill="#F1F5F9"/>' +
+            '<rect x="6" y="14.5" width="15" height="3" rx="2" fill="#00D4FF"/>' +
+            '<rect x="6" y="21" width="8" height="3" rx="2" fill="#FF5500"/>' +
+            '</svg>',
+        200,
+        { 'Content-Type': 'image/svg+xml', 'Cache-Control': 'public, max-age=604800, stale-while-revalidate=86400' },
     );
 });
 
