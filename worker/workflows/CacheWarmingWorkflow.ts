@@ -126,25 +126,33 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 `scheduled: ${scheduled}, configs: ${configsToWarm.length})`,
         );
 
-        // Track workflow started via Analytics Engine
-        analytics.trackWorkflowStarted({
-            requestId: runId,
-            workflowId: runId,
-            workflowType: 'cache-warming',
-            itemCount: configsToWarm.length,
-        });
-
-        // Emit workflow started event
-        await events.emitWorkflowStarted({
-            scheduled,
-            configCount: configsToWarm.length,
-        });
-
         const details: CacheWarmingResult['details'] = [];
         let warmedConfigurations = 0;
         let failedConfigurations = 0;
 
         try {
+            // Track workflow started via Analytics Engine — inside try so any
+            // Analytics/KV I/O failure is caught and reported via captureExceptionInIsolate.
+            analytics.trackWorkflowStarted({
+                requestId: runId,
+                workflowId: runId,
+                workflowType: 'cache-warming',
+                itemCount: configsToWarm.length,
+            });
+
+            // Emit workflow started event inside a step so KV I/O runs in step context,
+            // not in orchestrator context where it can hang indefinitely and produce
+            // outcome: exception with no structured error reporting.
+            await stepDo<void>(step, 'emit-workflow-started', {
+                retries: { limit: 2, delay: '1 second' },
+                timeout: '30 seconds',
+            }, async () => {
+                await events.emitWorkflowStarted({
+                    scheduled,
+                    configCount: configsToWarm.length,
+                });
+            });
+
             // Step 1: Check which caches need refreshing
             await events.emitStepStarted('check-cache-status', { configCount: configsToWarm.length });
             const configsNeedingRefresh = await stepDo<IConfiguration[]>(step, 'check-cache-status', {
@@ -412,14 +420,9 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
             });
             await events.flush();
 
-            return {
-                runId,
-                scheduled,
-                warmedConfigurations,
-                failedConfigurations: configsToWarm.length - warmedConfigurations,
-                details,
-                totalDurationMs: Date.now() - startTime,
-            };
+            // Always throw so CF Workflows records outcome: exception and surfaces the
+            // real failure reason in the dashboard (matching HealthMonitoringWorkflow).
+            throw error instanceof Error ? error : new Error(`[WORKFLOW:CACHE-WARM] run=${runId}: ${errorMessage}`);
         }
     }
 }
