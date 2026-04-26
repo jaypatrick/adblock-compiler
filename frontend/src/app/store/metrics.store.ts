@@ -46,7 +46,7 @@ export class MetricsStore {
 
     private readonly metricsSwr: SwrEntry<ExtendedMetricsResponse>;
     private readonly healthSwr: SwrEntry<ExtendedHealthResponse>;
-    private readonly queueSwr: SwrEntry<QueueStats>;
+    private readonly queueSwr: SwrEntry<QueueStats | undefined>;
 
     /** Cached metrics data (may be stale) */
     readonly metrics: Signal<ExtendedMetricsResponse | undefined>;
@@ -86,11 +86,11 @@ export class MetricsStore {
                 30_000,
             );
 
-            this.queueSwr = this.swrCache.get<QueueStats>(
+            this.queueSwr = this.swrCache.get<QueueStats | undefined>(
                 'queueStats',
                 () => this.auth.isSignedIn()
                     ? firstValueFrom(this.queueService.getStats())
-                    : Promise.resolve(undefined as unknown as QueueStats),
+                    : Promise.resolve(undefined),
                 15_000,
             );
         } else {
@@ -105,7 +105,7 @@ export class MetricsStore {
             });
             this.metricsSwr = noop<ExtendedMetricsResponse>();
             this.healthSwr = noop<ExtendedHealthResponse>();
-            this.queueSwr = noop<QueueStats>();
+            this.queueSwr = noop<QueueStats | undefined>();
         }
 
         this.metrics = this.metricsSwr.data;
