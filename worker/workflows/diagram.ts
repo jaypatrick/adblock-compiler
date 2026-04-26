@@ -133,7 +133,7 @@ function buildCacheWarmingDiagram(): Pick<WorkflowDiagram, 'nodes' | 'edges'> {
             id: 'warm-chunks',
             label: 'Warm Cache Chunks (loop with inter-chunk delay)',
             kind: 'loop',
-            metadata: { stepPattern: 'warm-chunk-${chunkNumber}', sleepBetweenChunks: '10 seconds' },
+            metadata: { stepPattern: 'warm-chunk-${chunkNumber}', sleepBetweenChunks: '15 seconds' },
         },
         { id: 'update-warming-metrics', label: 'Update Warming Metrics', kind: 'step' },
         { id: 'end', label: 'End', kind: 'end' },
