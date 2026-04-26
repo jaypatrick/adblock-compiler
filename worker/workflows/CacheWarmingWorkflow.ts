@@ -47,9 +47,12 @@ function getCacheKey(config: { name: string; sources: unknown[]; transformations
 
 /**
  * Typed wrapper for WorkflowStep.do() with options.
- * CF Workflows SDK types do not yet expose the options overload on the
- * WorkflowStep interface; this helper preserves type safety for the callback
- * return while still passing step options to the runtime.
+ * CF Workflows SDK types in this repo already expose the options overload on
+ * WorkflowStep.do(). This helper exists because the SDK constrains the callback
+ * return to Rpc.Serializable<T>, while some workflow values we return (for
+ * example IConfiguration) are not represented that narrowly in TypeScript.
+ * The wrapper preserves the local Promise<T> typing while still passing step
+ * options through to the runtime.
  */
 async function stepDo<T>(
     step: WorkflowStep,
