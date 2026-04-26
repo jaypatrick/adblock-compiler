@@ -69,6 +69,7 @@ export interface EmailDeliveryParams {
         subject: string;
         html: string;
         text: string;
+        replyTo?: string;
     };
     /**
      * Caller-supplied idempotency key — used as the Workflow instance ID so that

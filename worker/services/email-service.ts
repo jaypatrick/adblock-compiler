@@ -50,6 +50,17 @@ import { EmailMessage } from 'cloudflare:email';
  *
  * All fields are Zod-validated by {@link EmailPayloadSchema} before any network
  * call or message construction, ensuring trust-boundary integrity.
+ *
+ * ## Bloqr reply-to address conventions
+ * ```
+ *   hello@bloqr.dev        — waitlist confirmations, general contact
+ *   support@bloqr.dev      — compilation complete notifications, app support
+ *   sales@bloqr.dev        — upgrade/sales flows
+ *   news@bloqr.dev         — newsletter sends
+ *   admin@bloqr.dev        — internal admin alerts
+ *   abuse@bloqr.dev        — abuse reports
+ *   (omit replyTo)         — noreply/system notifications
+ * ```
  */
 export const EmailPayloadSchema = z.object({
     /** Recipient email address. */
@@ -65,6 +76,23 @@ export const EmailPayloadSchema = z.object({
     html: z.string().min(1).describe('HTML body of the email'),
     /** Plain-text fallback body. Must be non-empty. */
     text: z.string().min(1).describe('Plain-text fallback body of the email'),
+    /**
+     * Optional Reply-To address. When set, email clients direct replies here
+     * instead of the From address. Use to route replies to the correct
+     * @bloqr.dev alias (e.g. hello@, support@, sales@).
+     *
+     * Must be a valid RFC 5322 address or display-name qualified address,
+     * e.g. `"Bloqr Support <support@bloqr.dev>"`.
+     *
+     * Omit for noreply/system notifications.
+     */
+    replyTo: z
+        .string()
+        .min(1)
+        .max(998)
+        .regex(/^[^\r\n]*$/, 'Reply-To must not contain CR or LF characters')
+        .optional()
+        .describe('Optional Reply-To address'),
 });
 
 export type EmailPayload = z.infer<typeof EmailPayloadSchema>;
@@ -204,6 +232,10 @@ export function encodeSubjectRfc2047(subject: string): string {
  *                  reaching this function.
  * @param text    - Plain-text body.
  * @param html    - HTML body.
+ * @param replyTo - Optional Reply-To address. When set, a `Reply-To:` header is
+ *                  emitted so email clients route replies to this address instead
+ *                  of the From address. CR/LF characters are stripped defensively
+ *                  to prevent header injection when called outside Zod-validated paths.
  * @returns       Raw MIME message string.
  */
 export function buildRawMimeMessage(
@@ -212,13 +244,18 @@ export function buildRawMimeMessage(
     subject: string,
     text: string,
     html: string,
+    replyTo?: string,
 ): string {
     const boundary = `b_${crypto.randomUUID().replaceAll('-', '_')}`;
+    // Strip CR/LF defensively — this function is exported and may be called
+    // outside of the Zod-validated path (e.g. direct unit tests).
+    const safeReplyTo = replyTo?.replace(/[\r\n]/g, '');
 
     return [
         'MIME-Version: 1.0',
         `From: ${from}`,
         `To: ${to}`,
+        ...(safeReplyTo ? [`Reply-To: ${safeReplyTo}`] : []),
         `Subject: ${encodeSubjectRfc2047(subject)}`,
         `Content-Type: multipart/alternative; boundary="${boundary}"`,
         '',
@@ -304,8 +341,8 @@ export class CfEmailWorkerService implements IEmailService {
             throw new Error('Invalid email payload');
         }
 
-        const { to, subject, html, text } = parsed.data;
-        const rawMime = buildRawMimeMessage(this.mimeFrom, to, subject, text, html);
+        const { to, subject, html, text, replyTo } = parsed.data;
+        const rawMime = buildRawMimeMessage(this.mimeFrom, to, subject, text, html, replyTo);
         const message = new EmailMessage(this.envelopeFrom, to, rawMime);
 
         try {

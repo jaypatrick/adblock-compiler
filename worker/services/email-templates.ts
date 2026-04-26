@@ -34,6 +34,7 @@ export function renderCompilationComplete(opts: RenderCompilationCompleteOpts): 
     subject: string;
     html: string;
     text: string;
+    replyTo: string;
 } {
     const { configName, ruleCount, durationMs, requestId } = opts;
     const durationSec = (durationMs / 1000).toFixed(2);
@@ -98,7 +99,7 @@ export function renderCompilationComplete(opts: RenderCompilationCompleteOpts): 
 </body>
 </html>`;
 
-    return { subject, html, text };
+    return { subject, html, text, replyTo: 'Bloqr Support <support@bloqr.dev>' };
 }
 
 // ============================================================================
@@ -120,6 +121,7 @@ export function renderCriticalErrorAlert(opts: RenderCriticalErrorAlertOpts): {
     subject: string;
     html: string;
     text: string;
+    replyTo: string;
 } {
     const { requestId, path, message, timestamp } = opts;
 
@@ -188,7 +190,7 @@ export function renderCriticalErrorAlert(opts: RenderCriticalErrorAlertOpts): {
 </body>
 </html>`;
 
-    return { subject, html, text };
+    return { subject, html, text, replyTo: 'Bloqr Admin <admin@bloqr.dev>' };
 }
 
 // ============================================================================
