@@ -1,8 +1,19 @@
 import { TestBed } from '@angular/core/testing';
-import { PLATFORM_ID, provideZonelessChangeDetection, REQUEST } from '@angular/core';
+import { PLATFORM_ID, provideZonelessChangeDetection, REQUEST, signal } from '@angular/core';
 import { provideHttpClient } from '@angular/common/http';
 import { HttpTestingController, provideHttpClientTesting } from '@angular/common/http/testing';
 import { MetricsStore } from './metrics.store';
+import { AuthFacadeService } from '../services/auth-facade.service';
+
+/** Mock AuthFacadeService provider for signed-in users. */
+function provideSignedInAuth() {
+    return { provide: AuthFacadeService, useValue: { isSignedIn: signal(true) } };
+}
+
+/** Mock AuthFacadeService provider for anonymous (signed-out) users. */
+function provideAnonymousAuth() {
+    return { provide: AuthFacadeService, useValue: { isSignedIn: signal(false) } };
+}
 
 /** Flush all three SWR fetches that MetricsStore starts on initialization. */
 function flushInitialRequests(httpMock: HttpTestingController): void {
@@ -29,6 +40,7 @@ describe('MetricsStore', () => {
                     provideHttpClient(),
                     provideHttpClientTesting(),
                     { provide: PLATFORM_ID, useValue: 'browser' },
+                    provideSignedInAuth(),
                 ],
             });
             store = TestBed.inject(MetricsStore);
@@ -84,6 +96,7 @@ describe('MetricsStore', () => {
                     provideHttpClientTesting(),
                     { provide: PLATFORM_ID, useValue: 'server' },
                     // REQUEST intentionally omitted — simulates build-time prerender
+                    provideSignedInAuth(),
                 ],
             });
             store = TestBed.inject(MetricsStore);
@@ -143,6 +156,7 @@ describe('MetricsStore', () => {
                     { provide: PLATFORM_ID, useValue: 'server' },
                     // REQUEST present — simulates RenderMode.Server per-request SSR
                     { provide: REQUEST, useValue: new Request('https://example.workers.dev/') },
+                    provideSignedInAuth(),
                 ],
             });
             store = TestBed.inject(MetricsStore);
@@ -176,6 +190,44 @@ describe('MetricsStore', () => {
         it('should settle to not-loading after initial fetches complete', () => {
             // Fetches were flushed in beforeEach; microtasks have resolved by test body
             expect(store.isLoading()).toBe(false);
+        });
+    });
+
+    describe('on browser platform — anonymous (signed-out) user', () => {
+        let store: MetricsStore;
+        let httpMock: HttpTestingController;
+
+        beforeEach(() => {
+            TestBed.configureTestingModule({
+                providers: [
+                    provideZonelessChangeDetection(),
+                    provideHttpClient(),
+                    provideHttpClientTesting(),
+                    { provide: PLATFORM_ID, useValue: 'browser' },
+                    provideAnonymousAuth(),
+                ],
+            });
+            store = TestBed.inject(MetricsStore);
+            httpMock = TestBed.inject(HttpTestingController);
+            // Flush only the two public SWR fetches (metrics + health)
+            httpMock.match('/api/metrics').forEach(r =>
+                r.flush({ totalRequests: 0, averageDuration: 0, cacheHitRate: 0, successRate: 0 }),
+            );
+            httpMock.match('/api/health').forEach(r =>
+                r.flush({ status: 'healthy', version: '1.0' }),
+            );
+        });
+
+        afterEach(() => httpMock.verify());
+
+        it('should not fetch /api/queue/stats when anonymous', () => {
+            // /api/queue/stats requires Free tier — anonymous callers must not trigger
+            // the request at all to avoid a 401 response and SWR revalidation error.
+            httpMock.expectNone('/api/queue/stats');
+        });
+
+        it('should expose queueStats as undefined when anonymous', () => {
+            expect(store.queueStats()).toBeUndefined();
         });
     });
 });

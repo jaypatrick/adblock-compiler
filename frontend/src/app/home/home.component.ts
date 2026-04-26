@@ -742,7 +742,7 @@ export class HomeComponent {
         { endpoint: '/api/compile',      method: 'POST', auth: 'API Key',  description: 'Synchronous filter list compilation', rateLimit: '20/min'  },
         { endpoint: '/api/validate',     method: 'POST', auth: 'None',     description: 'Validate adblock rule syntax',        rateLimit: '60/min'  },
         { endpoint: '/api/queue/submit', method: 'POST', auth: 'API Key',  description: 'Submit async compilation job',        rateLimit: '10/min'  },
-        { endpoint: '/api/queue/stats',  method: 'GET',  auth: 'None',     description: 'Queue depth and processing stats',    rateLimit: '60/min'  },
+        { endpoint: '/api/queue/stats',  method: 'GET',  auth: 'Free tier', description: 'Queue depth and processing stats',    rateLimit: '60/min'  },
         { endpoint: '/api/ast/parse',    method: 'POST', auth: 'None',     description: 'Parse rules into AST',                rateLimit: '30/min'  },
         { endpoint: '/admin/storage',    method: 'GET',  auth: 'CF Access', description: 'Storage admin (R2/D1/KV)',           rateLimit: '30/min'  },
     ];

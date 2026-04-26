@@ -15,6 +15,7 @@ import { firstValueFrom } from 'rxjs';
 import { MetricsService, type MetricsResponse, type HealthResponse } from '../services/metrics.service';
 import { QueueService, type QueueStats } from '../services/queue.service';
 import { SwrCacheService, type SwrEntry } from '../services/swr-cache.service';
+import { AuthFacadeService } from '../services/auth-facade.service';
 
 /** Extended metrics response (PerformanceComponent needs extra fields) */
 export interface ExtendedMetricsResponse extends MetricsResponse {
@@ -41,10 +42,11 @@ export class MetricsStore {
     private readonly metricsService = inject(MetricsService);
     private readonly queueService = inject(QueueService);
     private readonly swrCache = inject(SwrCacheService);
+    private readonly auth = inject(AuthFacadeService);
 
     private readonly metricsSwr: SwrEntry<ExtendedMetricsResponse>;
     private readonly healthSwr: SwrEntry<ExtendedHealthResponse>;
-    private readonly queueSwr: SwrEntry<QueueStats>;
+    private readonly queueSwr: SwrEntry<QueueStats | undefined>;
 
     /** Cached metrics data (may be stale) */
     readonly metrics: Signal<ExtendedMetricsResponse | undefined>;
@@ -84,9 +86,11 @@ export class MetricsStore {
                 30_000,
             );
 
-            this.queueSwr = this.swrCache.get<QueueStats>(
+            this.queueSwr = this.swrCache.get<QueueStats | undefined>(
                 'queueStats',
-                () => firstValueFrom(this.queueService.getStats()),
+                () => this.auth.isSignedIn()
+                    ? firstValueFrom(this.queueService.getStats())
+                    : Promise.resolve(undefined),
                 15_000,
             );
         } else {
@@ -101,7 +105,7 @@ export class MetricsStore {
             });
             this.metricsSwr = noop<ExtendedMetricsResponse>();
             this.healthSwr = noop<ExtendedHealthResponse>();
-            this.queueSwr = noop<QueueStats>();
+            this.queueSwr = noop<QueueStats | undefined>();
         }
 
         this.metrics = this.metricsSwr.data;
