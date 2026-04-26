@@ -63,8 +63,10 @@ function buildStrictCspDirectives(): string {
 function buildSwaggerCspDirectives(): string {
     return [
         "default-src 'self'",
-        // Turnstile + Web Analytics + Swagger UI; 'unsafe-inline' required by swagger-ui-bundle.js
-        "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'unsafe-inline'",
+        // Turnstile + Web Analytics + Swagger UI; 'unsafe-inline' required by swagger-ui-bundle.js.
+        // Hash covers the window.onload init script in buildSwaggerHtml(); when extensions strip
+        // 'unsafe-inline' (e.g. AdGuard), the hash still allows the specific inline block.
+        "script-src 'self' https://challenges.cloudflare.com https://static.cloudflareinsights.com https://cdn.jsdelivr.net 'unsafe-inline' 'sha256-1Ww8iI/LZQib6QcaLt5gdg+HrekzAklnLqHNzPBrsg4='",
         // Cloudflare Analytics beacon + Sentry error ingest
         "connect-src 'self' https://cloudflareinsights.com https://*.ingest.sentry.io",
         // Swagger UI injects inline <style> blocks; cdn.jsdelivr.net supplies the stylesheet.
