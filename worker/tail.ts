@@ -380,10 +380,15 @@ const handler = {
                 );
             }
 
-            // Log summary to console for visibility
+            // Log summary to console for visibility.
+            // For non-HTTP events (scheduled, queue, cron) method/url are absent —
+            // fall back to a descriptive placeholder so the log line is never
+            // "[TAIL] exception - undefined undefined".
             if (event.outcome !== 'ok') {
+                const method = event.event?.request?.method ?? '(non-http)';
+                const url = event.event?.request?.url ?? '(no request)';
                 console.log(
-                    `[TAIL] ${event.outcome} - ${event.event?.request?.method} ${event.event?.request?.url} - ` +
+                    `[TAIL] ${event.outcome} - ${method} ${url} - ` +
                         `${event.exceptions.length} exceptions, ${event.logs.length} logs`,
                 );
             }
