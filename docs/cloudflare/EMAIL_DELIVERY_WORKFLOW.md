@@ -47,7 +47,7 @@ stateDiagram-v2
 ### Step 2 — Deliver
 
 - Calls `createEmailService(env, { useQueue: false }).sendEmail(payload)`.
-- `{ useQueue: false }` selects the best **non-queue** provider (`CfEmailWorkerService` or `MailChannelsEmailService`) — see [below](#why-createemailservice-with-usequeue-false-not-createemailservice).
+- `{ useQueue: false }` selects the best **non-queue** provider (`CfEmailWorkerService`) — see [below](#why-createemailservice-with-usequeue-false-not-createemailservice).
 - Default retry configuration:
   - `limit`: `3`
   - `delay`: `'10 seconds'`
@@ -77,7 +77,7 @@ The retry configuration is defined as constants in `worker/workflows/EmailDelive
 
 `createEmailService(env)` selects `QueuedEmailService` as the highest-priority provider when `EMAIL_QUEUE` is configured. If `EmailDeliveryWorkflow` called `createEmailService(env)`, it would enqueue the message *back* onto `EMAIL_QUEUE`, which would trigger *another* `EmailDeliveryWorkflow` instance — infinite recursion.
 
-Passing `{ useQueue: false }` skips the queue and selects `CfEmailWorkerService` or `MailChannelsEmailService` directly, breaking the cycle.
+Passing `{ useQueue: false }` skips the queue and selects `CfEmailWorkerService` directly, breaking the cycle.
 
 ```typescript
 // Inside EmailDeliveryWorkflow.run():

@@ -12,16 +12,13 @@ flowchart TD
     P1 -- yes --> QSvc["QueuedEmailService\n(durable, queue-backed)"]
     P1 -- no --> P2{SEND_EMAIL binding?}
     P2 -- yes --> CFSvc["CfEmailWorkerService\n(adblock-email worker)"]
-    P2 -- no --> P3{FROM_EMAIL set?}
-    P3 -- yes --> MCSvc["MailChannelsEmailService\n(HTTP API)"]
-    P3 -- no --> NullSvc["NullEmailService\n(no-op, logs warning)"]
+    P2 -- no --> NullSvc["NullEmailService\n(no-op, logs warning)"]
 
     QSvc --> Queue["EMAIL_QUEUE\n(Cloudflare Queue)"]
     Queue --> QHandler["email-queue.ts handler"]
     QHandler --> WF["EmailDeliveryWorkflow"]
     WF --> DirectFactory["createEmailService(env, { useQueue: false })"]
-    DirectFactory --> CFSvc2["CfEmailWorkerService (primary)"]
-    DirectFactory --> MCSvc2["MailChannelsEmailService (fallback)"]
+    DirectFactory --> CFSvc2["CfEmailWorkerService"]
     WF --> Receipt["Delivery receipt"]
     Receipt --> KV["KV: METRICS (7-day TTL)"]
     Receipt --> D1["D1: email_log_edge"]
@@ -37,8 +34,7 @@ flowchart TD
 |----------|----------|-------------------|------------|-----------|
 | 1 (best) | `QueuedEmailService` | `EMAIL_QUEUE` binding present | Durable (queue + Workflow) | Yes — Workflow retries |
 | 2 | `CfEmailWorkerService` | `SEND_EMAIL` binding present | Best-effort | No |
-| 3 | `MailChannelsEmailService` | `FROM_EMAIL` var set | Best-effort | No |
-| 4 | `NullEmailService` | Neither configured | N/A | N/A |
+| 3 | `NullEmailService` | Neither configured | N/A | N/A |
 
 ---
 
@@ -74,23 +70,9 @@ class_name = "EmailDeliveryWorkflow"
 
 ### 2. Worker Secrets
 
-Set DKIM signing credentials as Worker Secrets (never in `[vars]`):
+No additional Worker Secrets are required for email delivery. The `SEND_EMAIL` binding handles authentication natively via the Worker runtime.
 
-```bash
-wrangler secret put DKIM_PRIVATE_KEY
-# Paste your RSA/Ed25519 private key (PEM or base64-encoded)
-```
-
-### 3. Non-secret vars (`wrangler.toml [vars]`)
-
-```toml
-[vars]
-FROM_EMAIL      = "notifications@bloqr.dev"
-DKIM_DOMAIN     = "bloqr.dev"
-DKIM_SELECTOR   = "mail"
-```
-
-### 4. D1 migration (edge tracking tables)
+### 3. D1 migration (edge tracking tables)
 
 ```bash
 wrangler d1 execute adblock-db --file=migrations/0011_email_tracking_edge.sql
@@ -98,7 +80,7 @@ wrangler d1 execute adblock-db --file=migrations/0011_email_tracking_edge.sql
 
 Creates `email_log_edge` and `email_idempotency_keys` tables in D1.
 
-### 5. Neon migration (primary tracking tables)
+### 4. Neon migration (primary tracking tables)
 
 ```bash
 deno task db:migrate:deploy
@@ -163,7 +145,6 @@ Inside `EmailDeliveryWorkflow`, the Workflow instance ID is set to the idempoten
 
 ## ZTA notes
 
-- `DKIM_PRIVATE_KEY` is a **Worker Secret** — never in `wrangler.toml [vars]`.
 - All inbound `EmailPayload` objects are Zod-validated (`EmailPayloadSchema`) at the service boundary.
 - Admin endpoints (`/admin/email/*`) require `UserTier.Admin` + a valid `X-Admin-Key` header.
 - Email subject lines are RFC 2047-encoded and validated against a `^[^\r\n]*$` pattern to prevent MIME header injection.
@@ -175,9 +156,8 @@ Inside `EmailDeliveryWorkflow`, the Workflow instance ID is set to the idempoten
 
 | Symptom | Likely cause | Fix |
 |---------|-------------|-----|
-| No emails sent, no errors logged | `NullEmailService` selected — no provider configured | Set `FROM_EMAIL` (minimum), or configure `SEND_EMAIL` / `EMAIL_QUEUE` bindings |
-| DKIM failures / emails land in spam | Missing or incorrect `DKIM_PRIVATE_KEY`, `DKIM_DOMAIN`, `DKIM_SELECTOR` | Run `wrangler secret put DKIM_PRIVATE_KEY` and verify DNS TXT record matches selector |
-| Queue backlog growing | `EmailDeliveryWorkflow` failing repeatedly | Check Workflow logs via `wrangler tail`; verify `SEND_EMAIL` or `FROM_EMAIL` is correctly configured |
+| No emails sent, no errors logged | `NullEmailService` selected — no provider configured | Configure `SEND_EMAIL` or `EMAIL_QUEUE` bindings in `wrangler.toml` |
+| Queue backlog growing | `EmailDeliveryWorkflow` failing repeatedly | Check Workflow logs via `wrangler tail`; verify `SEND_EMAIL` binding is correctly configured |
 | `503` from `POST /admin/email/test` | No email provider available | Confirm bindings in `wrangler.toml` are deployed; check `GET /admin/email/config` for binding status |
 
 ---

@@ -92,7 +92,7 @@ export interface EmailDeliveryResult {
     /** Workflow-level idempotency key (mirrors `params.idempotencyKey`). */
     idempotencyKey: string;
     /** Active provider name used for the send. */
-    provider: 'cf_email_worker' | 'mailchannels' | 'none';
+    provider: 'cf_email_worker' | 'none';
     /** Recipient address (from the validated payload). */
     to: string;
     /** ISO 8601 timestamp when delivery was attempted. */
@@ -173,17 +173,14 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
                 retries: { limit: 3, delay: '10 seconds', backoff: 'exponential' },
                 timeout: '30 seconds',
             }, async () => {
+                // Guard first — fail fast before any logging/instantiation when unconfigured.
+                if (!this.env.SEND_EMAIL) {
+                    throw new Error('No email provider configured for workflow delivery (SEND_EMAIL absent).');
+                }
+
                 // Use direct provider (bypass queue) to avoid queue→workflow→queue recursion.
                 const mailer = createEmailService(this.env, { useQueue: false });
-
-                // Determine the active provider name for the receipt
-                const providerName: 'cf_email_worker' | 'mailchannels' | 'none' = this.env.SEND_EMAIL ? 'cf_email_worker' : this.env.FROM_EMAIL ? 'mailchannels' : 'none';
-
-                if (providerName === 'none') {
-                    // No direct provider — throw so the step retry/backoff fires and
-                    // the workflow is marked as failed rather than reporting false success.
-                    throw new Error('No email provider configured for workflow delivery (SEND_EMAIL and FROM_EMAIL both absent).');
-                }
+                const providerName = 'cf_email_worker' as const;
 
                 await mailer.sendEmail(validatedPayload);
                 // deno-lint-ignore no-console

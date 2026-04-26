@@ -2765,10 +2765,8 @@ adminRoutes.openapi(adminSecurityOverviewRoute, async (c) => {
 /**
  * Email provider configuration status.
  *
- * Returns which email provider is active (`queued`, `cf_email_worker`, `mailchannels`, or
- * `none`), whether the `EMAIL_QUEUE` binding, `SEND_EMAIL` binding, and `FROM_EMAIL` env
- * var are present, the sender address, and DKIM signing status. No private keys or secrets
- * are included in the response.
+ * Returns which email provider is active (`queued`, `cf_email_worker`, or `none`),
+ * and whether the `EMAIL_QUEUE` and `SEND_EMAIL` bindings are present.
  *
  * ZTA: Admin tier + admin role required. Implemented via
  * `checkRoutePermission('/admin/email/config', authContext)` in the handler.
@@ -2779,8 +2777,7 @@ const adminEmailConfigRoute = createRoute({
     tags: ['Admin'],
     operationId: 'admin-email-get-config',
     summary: 'Email provider configuration status',
-    description:
-        'Returns which email provider is active (Queue+Workflow, CF Email Workers, MailChannels, or none), binding/env-var presence, sender address, and DKIM signing status. Admin tier and admin role required.',
+    description: 'Returns which email provider is active (Queue+Workflow, CF Email Workers, or none) and binding presence. Admin tier and admin role required.',
     responses: {
         200: {
             description: 'Email configuration status',
@@ -2789,14 +2786,11 @@ const adminEmailConfigRoute = createRoute({
                     schema: z.object({
                         success: z.literal(true),
                         timestamp: z.string().describe('ISO 8601 timestamp'),
-                        provider: z.enum(['queued', 'cf_email_worker', 'mailchannels', 'none']).describe(
-                            'Active email provider: queued = EMAIL_QUEUE→EmailDeliveryWorkflow; cf_email_worker = direct SEND_EMAIL binding; mailchannels = MailChannels HTTP API',
+                        provider: z.enum(['queued', 'cf_email_worker', 'none']).describe(
+                            'Active email provider: queued = EMAIL_QUEUE→EmailDeliveryWorkflow; cf_email_worker = direct SEND_EMAIL binding; none = no provider',
                         ),
                         email_queue_configured: z.boolean().describe('Whether EMAIL_QUEUE binding is present (durable queue-backed delivery)'),
                         send_email_binding_configured: z.boolean().describe('Whether SEND_EMAIL binding is present'),
-                        from_email_configured: z.boolean().describe('Whether FROM_EMAIL env var is set'),
-                        from_address: z.string().nullable().describe('Configured sender address, or null if not set'),
-                        dkim_status: z.enum(['configured', 'partial', 'disabled']).describe('DKIM signing status'),
                     }),
                 },
             },
@@ -2842,7 +2836,7 @@ const adminEmailTestRoute = createRoute({
     operationId: 'admin-email-post-test',
     summary: 'Send a test email',
     description:
-        'Sends a test transactional email to the specified recipient using the currently configured email provider (CF Email Workers, MailChannels, or Queue+Workflow). Returns 503 when no provider is configured. Admin test sends always use direct delivery (bypassing the queue) for immediate synchronous feedback. Admin tier and admin role required.',
+        'Sends a test transactional email to the specified recipient using the currently configured email provider (CF Email Workers or Queue+Workflow). Returns 503 when no provider is configured. Admin test sends always use direct delivery (bypassing the queue) for immediate synchronous feedback. Admin tier and admin role required.',
     request: {
         body: {
             required: true,
@@ -2865,7 +2859,7 @@ const adminEmailTestRoute = createRoute({
                         success: z.literal(true),
                         timestamp: z.string().describe('ISO 8601 timestamp'),
                         message: z.string().describe('Result message'),
-                        provider: z.enum(['cf_email_worker', 'mailchannels']).describe(
+                        provider: z.enum(['cf_email_worker']).describe(
                             'Provider used for the test send (always direct — queue is bypassed for admin tests)',
                         ),
                         to: z.string().email().describe('Recipient address'),

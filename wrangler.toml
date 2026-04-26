@@ -303,7 +303,8 @@ new_sqlite_classes = ["RateLimiterDO", "WsHibernationDO"]
 # Omit destination_address to allow sending to all verified addresses.
 #
 # The SEND_EMAIL binding is exposed as `env.SEND_EMAIL` in the Worker.
-# EmailService prefers this binding over the MailChannels HTTP API.
+# When EMAIL_QUEUE is absent, CfEmailWorkerService uses this binding directly.
+# When both are absent, NullEmailService logs a warning and drops the send.
 [[send_email]]
 name = "SEND_EMAIL"
 

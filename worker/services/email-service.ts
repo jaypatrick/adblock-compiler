@@ -10,8 +10,7 @@
  * |----------|------------------------------|-------------------------------------------------------|
  * | 1 (best) | {@link QueuedEmailService}   | `EMAIL_QUEUE` binding present (durable, retryable)    |
  * | 2        | {@link CfEmailWorkerService} | `SEND_EMAIL` binding present (adblock-email worker)   |
- * | 3        | {@link MailChannelsEmailService} | `FROM_EMAIL` env var set, no `SEND_EMAIL` binding  |
- * | 4        | {@link NullEmailService}     | Neither configured — logs a warning, no sends         |
+ * | 3        | {@link NullEmailService}     | Neither configured — logs a warning, no sends         |
  *
  * ## Integration points
  *   1. **Compilation complete** — notify Pro/Vendor/Enterprise users
@@ -35,7 +34,6 @@
  * Non-2xx responses and network errors log a warning and resolve — they never
  * throw, so they never block primary Worker responses.
  *
- * @see https://api.mailchannels.net/tx/v1/send — MailChannels transactional send API
  * @see https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/ — CF Email Workers
  * @see worker/services/email-templates.ts — HTML/text template renderers
  */
@@ -44,29 +42,8 @@ import { z } from 'zod';
 import { EmailMessage } from 'cloudflare:email';
 
 // ============================================================================
-// MailChannels endpoint
-// ============================================================================
-
-const MAILCHANNELS_SEND_URL = 'https://api.mailchannels.net/tx/v1/send';
-
-// ============================================================================
 // Schemas & Types
 // ============================================================================
-
-/**
- * Environment variables required by {@link MailChannelsEmailService}.
- *
- * `FROM_EMAIL` is mandatory. DKIM fields are optional — all three must be
- * present for DKIM signing to be applied to outbound messages.
- */
-export const EmailEnvSchema = z.object({
-    FROM_EMAIL: z.string().min(1).describe('Sender address, e.g. "Bloqr <notifications@bloqr.dev>"'),
-    DKIM_DOMAIN: z.string().optional().describe('Domain used for DKIM signing (must match DNS TXT record)'),
-    DKIM_SELECTOR: z.string().optional().describe('DKIM selector name'),
-    DKIM_PRIVATE_KEY: z.string().optional().describe('Base64-encoded RSA private key for DKIM signing (Worker Secret)'),
-});
-
-export type EmailEnv = z.infer<typeof EmailEnvSchema>;
 
 /**
  * Payload for a single transactional email send.
@@ -346,118 +323,11 @@ export class CfEmailWorkerService implements IEmailService {
 }
 
 // ============================================================================
-// Provider: MailChannels HTTP API
-// ============================================================================
-
-/**
- * MailChannels wire types (internal — not exported).
- */
-interface MailChannelsPersonalization {
-    readonly to: ReadonlyArray<{ readonly email: string }>;
-    readonly dkim_domain?: string;
-    readonly dkim_selector?: string;
-    readonly dkim_private_key?: string;
-}
-
-interface MailChannelsSendBody {
-    readonly from: { readonly email: string; readonly name?: string };
-    readonly personalizations: readonly MailChannelsPersonalization[];
-    readonly subject: string;
-    readonly content: ReadonlyArray<{ readonly type: string; readonly value: string }>;
-}
-
-/**
- * Email provider that sends via the MailChannels transactional API
- * (`https://api.mailchannels.net/tx/v1/send`).
- *
- * Used as the secondary provider when the `SEND_EMAIL` CF Email Workers binding
- * is not configured. Supports optional DKIM signing via three env vars.
- *
- * @see https://api.mailchannels.net/tx/v1/send
- */
-export class MailChannelsEmailService implements IEmailService {
-    private readonly env: EmailEnv;
-
-    constructor(env: EmailEnv) {
-        this.env = env;
-    }
-
-    /**
-     * Sends a transactional email via the MailChannels HTTP API.
-     *
-     * - Validates `payload` with {@link EmailPayloadSchema}.
-     * - DKIM personalisation fields are only included when all three DKIM env
-     *   vars (`DKIM_DOMAIN`, `DKIM_SELECTOR`, `DKIM_PRIVATE_KEY`) are present.
-     * - Non-2xx responses log a warning and resolve (fire-and-forget).
-     * - Network-level errors log a warning and resolve (fire-and-forget).
-     *
-     * @param payload - Email send payload.
-     * @throws {Error} `'Invalid email payload'` when Zod validation fails.
-     */
-    async sendEmail(payload: EmailPayload): Promise<void> {
-        const parsed = EmailPayloadSchema.safeParse(payload);
-        if (!parsed.success) {
-            throw new Error('Invalid email payload');
-        }
-
-        const { to, subject, html, text } = parsed.data;
-        const { FROM_EMAIL, DKIM_DOMAIN, DKIM_SELECTOR, DKIM_PRIVATE_KEY } = this.env;
-
-        const personalization: MailChannelsPersonalization = {
-            to: [{ email: to }],
-            ...(DKIM_DOMAIN && DKIM_SELECTOR && DKIM_PRIVATE_KEY
-                ? {
-                    dkim_domain: DKIM_DOMAIN,
-                    dkim_selector: DKIM_SELECTOR,
-                    dkim_private_key: DKIM_PRIVATE_KEY,
-                }
-                : {}),
-        };
-
-        const { email: fromEmail, name: fromName } = parseEmailAddress(FROM_EMAIL);
-
-        const body: MailChannelsSendBody = {
-            from: fromName ? { email: fromEmail, name: fromName } : { email: fromEmail },
-            personalizations: [personalization],
-            subject,
-            content: [
-                { type: 'text/plain', value: text },
-                { type: 'text/html', value: html },
-            ],
-        };
-
-        let response: Response;
-        try {
-            response = await globalThis.fetch(MAILCHANNELS_SEND_URL, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(body),
-            });
-        } catch (err: unknown) {
-            // Network-level error — log warning, do not rethrow (fire-and-forget)
-            // deno-lint-ignore no-console
-            console.warn(
-                '[MailChannelsEmailService] Network error sending email:',
-                err instanceof Error ? err.message : String(err),
-            );
-            return;
-        }
-
-        if (!response.ok) {
-            // deno-lint-ignore no-console
-            console.warn(
-                `[MailChannelsEmailService] MailChannels returned non-2xx status ${response.status} for recipient <${to}>`,
-            );
-        }
-    }
-}
-
-// ============================================================================
 // Provider: Null (no-op fallback)
 // ============================================================================
 
 /**
- * No-op email provider used when no email binding or env var is configured.
+ * No-op email provider used when neither `EMAIL_QUEUE` nor `SEND_EMAIL` is configured.
  *
  * Every call logs a warning and immediately resolves. This ensures callers never
  * fail due to missing email configuration — degrading gracefully is preferred
@@ -468,7 +338,7 @@ export class NullEmailService implements IEmailService {
         // deno-lint-ignore no-console
         console.warn(
             `[NullEmailService] No email provider configured — email to <${payload.to}> was dropped. ` +
-                'Set SEND_EMAIL binding or FROM_EMAIL env var to enable transactional email.',
+                'Set EMAIL_QUEUE binding or SEND_EMAIL binding to enable transactional email.',
         );
     }
 }
@@ -484,8 +354,8 @@ export class NullEmailService implements IEmailService {
  *
  * ## When to use
  *
- * Prefer `QueuedEmailService` over direct providers (`CfEmailWorkerService`,
- * `MailChannelsEmailService`) for **critical sends** where durability is
+ * Prefer `QueuedEmailService` over the direct provider (`CfEmailWorkerService`)
+ * for **critical sends** where durability is
  * required (e.g. compilation-complete notifications for paying users):
  *
  * - Survives Worker restarts and isolate evictions (queue is durable).
@@ -579,8 +449,7 @@ export class QueuedEmailService implements IEmailService {
  * 1. `EMAIL_QUEUE` binding present + `useQueue !== false` →
  *    {@link QueuedEmailService} (durable, queue-backed + Workflow delivery).
  * 2. `SEND_EMAIL` binding present → {@link CfEmailWorkerService} (`adblock-email` worker).
- * 3. `FROM_EMAIL` env var set → {@link MailChannelsEmailService} (HTTP API).
- * 4. Neither → {@link NullEmailService} (logs a warning, no sends).
+ * 3. Neither → {@link NullEmailService} (logs a warning, no sends).
  *
  * The `QueuedEmailService` is the preferred production choice for critical
  * notifications: it enqueues the job on `EMAIL_QUEUE`, which is consumed by
@@ -617,10 +486,6 @@ export function createEmailService(
         // deno-lint-ignore no-explicit-any
         EMAIL_QUEUE?: { send: (msg: any, opts?: any) => Promise<unknown> } | null;
         SEND_EMAIL?: SendEmailBinding | null;
-        FROM_EMAIL?: string;
-        DKIM_DOMAIN?: string;
-        DKIM_SELECTOR?: string;
-        DKIM_PRIVATE_KEY?: string;
     },
     opts: { useQueue?: boolean; requestId?: string; reason?: string } = {},
 ): IEmailService {
@@ -633,19 +498,13 @@ export function createEmailService(
 
     // Priority 2: CF Email Workers binding (adblock-email worker)
     if (env.SEND_EMAIL) {
-        return new CfEmailWorkerService(env.SEND_EMAIL, env.FROM_EMAIL ?? 'notifications@bloqr.dev');
+        return new CfEmailWorkerService(env.SEND_EMAIL, 'notifications@bloqr.dev');
     }
 
-    // Priority 3: MailChannels HTTP API
-    const mailchannelsParsed = EmailEnvSchema.safeParse(env);
-    if (mailchannelsParsed.success) {
-        return new MailChannelsEmailService(mailchannelsParsed.data);
-    }
-
-    // Priority 4: No-op fallback
+    // Priority 3: No-op fallback
     // deno-lint-ignore no-console
     console.warn(
-        '[createEmailService] No email provider configured (EMAIL_QUEUE, SEND_EMAIL, and FROM_EMAIL all absent). ' +
+        '[createEmailService] No email provider configured (EMAIL_QUEUE and SEND_EMAIL both absent). ' +
             'Falling back to NullEmailService — all email sends will be dropped.',
     );
     return new NullEmailService();
