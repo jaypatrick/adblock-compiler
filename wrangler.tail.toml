@@ -44,6 +44,24 @@ id = "476d9c981b8d4e2eaa2442ae85e0c838"
 # Increase for longer audit trails; decrease to reduce KV storage costs.
 LOG_RETENTION_TTL = "86400"
 
+# ─── Observability ───────────────────────────────────────────────────────────
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+[observability.logs]
+enabled = true
+destinations = [ "sentry-logs" ]
+head_sampling_rate = 1
+persist = true
+invocation_logs = true
+
+[observability.traces]
+enabled = true
+destinations = [ "sentry-traces" ]
+persist = true
+head_sampling_rate = 1
+
 # ─── Local dev server ────────────────────────────────────────────────────────
 # These settings apply ONLY to `wrangler dev`. Ignored on `wrangler deploy`.
 # Port 8788 avoids conflict with the main worker on 8787.
