@@ -140,12 +140,17 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 itemCount: configsToWarm.length,
             });
 
-            // Emit workflow started event — inside try to prevent unhandled KV I/O
-            // hangs in orchestrator context (outside step.do()) from killing the isolate
-            // silently with outcome: exception and no structured error context.
-            await events.emitWorkflowStarted({
-                scheduled,
-                configCount: configsToWarm.length,
+            // Emit workflow started event inside a step so KV I/O runs in step context,
+            // not in orchestrator context where it can hang indefinitely and produce
+            // outcome: exception with no structured error reporting.
+            await stepDo<void>(step, 'emit-workflow-started', {
+                retries: { limit: 2, delay: '1 second' },
+                timeout: '30 seconds',
+            }, async () => {
+                await events.emitWorkflowStarted({
+                    scheduled,
+                    configCount: configsToWarm.length,
+                });
             });
 
             // Step 1: Check which caches need refreshing

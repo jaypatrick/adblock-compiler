@@ -516,13 +516,18 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             await captureExceptionInIsolate(this.env, error);
             console.error(`[WORKFLOW:HEALTH] Health monitoring failed (runId: ${runId}): ${errorMessage}`);
 
-            // Emit workflow failed event
-            await events.emitWorkflowFailed(errorMessage, {
-                healthySources,
-                unhealthySources,
-                alertsSent,
-            });
-            await events.flush();
+            // Only emit failure events when METRICS is available. If the guard threw
+            // because METRICS is absent, calling events.flush() would trigger a secondary
+            // KV error with a misleading log line. captureExceptionInIsolate above already
+            // sends the real error to Sentry.
+            if (this.env.METRICS) {
+                await events.emitWorkflowFailed(errorMessage, {
+                    healthySources,
+                    unhealthySources,
+                    alertsSent,
+                });
+                await events.flush();
+            }
 
             // Always throw an Error instance so CF Workflows telemetry captures the real
             // message (non-Error throws are logged as the generic category label "workflow").
