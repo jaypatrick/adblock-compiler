@@ -250,15 +250,23 @@ Deno.test({
     },
 });
 
-Deno.test('withSentryWorker: empty string DSN is treated as absent', async () => {
-    const fetchSpy = spy(async () => SENTINEL_RESPONSE);
-    const handler = { fetch: fetchSpy } as unknown as ExportedHandler<Env>;
-    const env = createMockEnv();
+Deno.test({
+    name: 'withSentryWorker: empty string DSN is treated as absent',
+    // The previous test (DSN-present path) dynamically imports @sentry/cloudflare,
+    // which may leave in-flight timers. Suppress the sanitizers here so those
+    // timers do not fail this unrelated test (matches the flags on the DSN-present test).
+    sanitizeOps: false,
+    sanitizeResources: false,
+    fn: async () => {
+        const fetchSpy = spy(async () => SENTINEL_RESPONSE);
+        const handler = { fetch: fetchSpy } as unknown as ExportedHandler<Env>;
+        const env = createMockEnv();
 
-    const wrapped = withSentryWorker(handler, () => ({ dsn: '' }));
-    const response = await wrapped.fetch!(createMockRequest(), env, createMockCtx());
+        const wrapped = withSentryWorker(handler, () => ({ dsn: '' }));
+        const response = await wrapped.fetch!(createMockRequest(), env, createMockCtx());
 
-    // Empty string is falsy → should take passthrough path
-    assertEquals(response, SENTINEL_RESPONSE);
-    assertSpyCalls(fetchSpy, 1);
+        // Empty string is falsy → should take passthrough path
+        assertEquals(response, SENTINEL_RESPONSE);
+        assertSpyCalls(fetchSpy, 1);
+    },
 });
