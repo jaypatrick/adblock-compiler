@@ -27,6 +27,8 @@
  *   - Invalid payload → throws 'Invalid email payload'
  *   - buildRawMimeMessage() → produces correct RFC 5322 headers and boundary
  *   - Non-ASCII subject → RFC 2047 encoded in Subject header
+ *   - replyTo set → MIME string contains Reply-To: header
+ *   - replyTo absent → MIME string does not contain Reply-To: header
  *
  * NullEmailService:
  *   - sendEmail() resolves immediately without calling fetch or a binding
@@ -37,6 +39,7 @@
  *   - queue.send() throws → resolves without rethrowing (fire-and-forget contract)
  *   - idempotencyKey derived from requestId option
  *   - reason field included in queue message when provided
+ *   - replyTo field included in enqueued message payload when provided
  *
  * createEmailService() factory:
  *   - EMAIL_QUEUE binding present (useQueue=true default) → returns QueuedEmailService
@@ -199,6 +202,16 @@ Deno.test('buildRawMimeMessage() — multipart/alternative boundary present and 
     assertStringIncludes(raw, `--${boundary}--`);
 });
 
+Deno.test('buildRawMimeMessage() — Reply-To header present when replyTo is provided', () => {
+    const raw = buildRawMimeMessage('f@x.com', 't@x.com', 'S', 'T', 'H', 'Bloqr Support <support@bloqr.dev>');
+    assertStringIncludes(raw, 'Reply-To: Bloqr Support <support@bloqr.dev>');
+});
+
+Deno.test('buildRawMimeMessage() — no Reply-To header when replyTo is omitted', () => {
+    const raw = buildRawMimeMessage('f@x.com', 't@x.com', 'S', 'T', 'H');
+    assertEquals(raw.includes('Reply-To:'), false);
+});
+
 // ============================================================================
 // CfEmailWorkerService
 // ============================================================================
@@ -262,6 +275,26 @@ Deno.test("CfEmailWorkerService.sendEmail() — throws 'Invalid email payload' o
         Error,
         'Invalid email payload',
     );
+});
+
+Deno.test('CfEmailWorkerService.sendEmail() — Reply-To header present in MIME when replyTo is set', async () => {
+    const { binding, calls } = makeMockSendEmailBinding();
+    const svc = new CfEmailWorkerService(binding, 'n@bloqr.dev');
+    await svc.sendEmail(makePayload({ replyTo: 'Bloqr Support <support@bloqr.dev>' }));
+
+    assertEquals(calls.length, 1);
+    const msg = calls[0] as { raw: string };
+    assertStringIncludes(msg.raw, 'Reply-To: Bloqr Support <support@bloqr.dev>');
+});
+
+Deno.test('CfEmailWorkerService.sendEmail() — no Reply-To header in MIME when replyTo is absent', async () => {
+    const { binding, calls } = makeMockSendEmailBinding();
+    const svc = new CfEmailWorkerService(binding, 'n@bloqr.dev');
+    await svc.sendEmail(makePayload());
+
+    assertEquals(calls.length, 1);
+    const msg = calls[0] as { raw: string };
+    assertEquals(msg.raw.includes('Reply-To:'), false);
 });
 
 // ============================================================================
@@ -376,4 +409,12 @@ Deno.test('QueuedEmailService.sendEmail() — reason field included in queue mes
     await svc.sendEmail(makePayload());
     const msg = messages[0] as Record<string, unknown>;
     assertEquals(msg['reason'], 'compilation_complete');
+});
+
+Deno.test('QueuedEmailService.sendEmail() — replyTo included in enqueued payload when provided', async () => {
+    const { queue, messages } = makeMockQueue();
+    const svc = new QueuedEmailService(queue);
+    await svc.sendEmail(makePayload({ replyTo: 'Bloqr Support <support@bloqr.dev>' }));
+    const msg = messages[0] as Record<string, unknown>;
+    assertEquals((msg['payload'] as Record<string, unknown>)['replyTo'], 'Bloqr Support <support@bloqr.dev>');
 });
