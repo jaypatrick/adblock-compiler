@@ -77,6 +77,7 @@ code, pre, .hljs {
     --links:            var(--bloqr-cyan);
     --inline-code-color: var(--bloqr-orange);
     --theme-hover:      rgba(255, 85, 0, 0.08);
+    --border:           var(--coal-border);
     --searchbar-border-color: var(--coal-border);
     --searchresults-header-fg: var(--bloqr-orange);
 }
@@ -91,6 +92,7 @@ code, pre, .hljs {
     --links:            var(--bloqr-cyan);
     --inline-code-color: var(--bloqr-orange);
     --theme-hover:      rgba(255, 85, 0, 0.08);
+    --border:           var(--navy-border);
     --searchbar-border-color: var(--navy-border);
     --searchresults-header-fg: var(--bloqr-orange);
 }
@@ -105,12 +107,13 @@ code, pre, .hljs {
     --links:            var(--bloqr-cyan);
     --inline-code-color: var(--bloqr-orange);
     --theme-hover:      rgba(255, 85, 0, 0.08);
+    --border:           var(--ayu-border);
     --searchbar-border-color: var(--ayu-border);
     --searchresults-header-fg: var(--bloqr-orange);
 }
 
 /* ── Light theme ─────────────────────────────────────────────── */
-.light {
+.light, .rust {
     --bg:          var(--light-bg);
     --fg:          var(--light-text);
     --sidebar-bg:  var(--light-surface);
@@ -119,6 +122,7 @@ code, pre, .hljs {
     --links:       var(--bloqr-orange-dim);
     --inline-code-color: var(--bloqr-orange-dim);
     --theme-hover: rgba(204, 68, 0, 0.08);
+    --border:      var(--light-border);
     --searchbar-border-color: var(--light-border);
     --searchresults-header-fg: var(--bloqr-orange-dim);
 }
