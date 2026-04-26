@@ -7,14 +7,11 @@ localResources:
     - ../docs/postman/postman-collection.json
   environments:
     - ../docs/postman/postman-environment.json
-  specs:
-    - ../docs/api/cloudflare-schema.yaml
-    - ../docs/api/openapi.yaml
+  specs: []
 
 # Each entry here maps a local resource to one or more corresponding objects in Postman Cloud
+
 cloudResources:
-  specs:
-    ../docs/api/openapi.yaml: 12d8bc34-edfe-4861-bd27-bf290b90b801
-    ../docs/api/cloudflare-schema.yaml: 7e55ba22-cfec-4de1-a062-8d1f102a162f
+  specs: {}
   collections:
     ../postman/collections/Adblock Compiler API: 566132-71856fbb-b335-4739-9202-a8180441b907
