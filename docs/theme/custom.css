@@ -25,6 +25,24 @@
     --light-border:       #E2E8F0;
     --light-text:         #0F172A;
     --light-muted:        #475569;
+
+    /* coal — true black */
+    --coal-bg:       #000000;
+    --coal-surface:  #0D0D0D;
+    --coal-elevated: #141414;
+    --coal-border:   #1A1A1A;
+
+    /* navy — deep ocean */
+    --navy-bg:       #060C1A;
+    --navy-surface:  #0A1122;
+    --navy-elevated: #0F1A30;
+    --navy-border:   #162240;
+
+    /* ayu — warm night */
+    --ayu-bg:        #0B0D10;
+    --ayu-surface:   #0F1217;
+    --ayu-elevated:  #15191F;
+    --ayu-border:    #1E2535;
 }
 
 /* ── Fonts ───────────────────────────────────────────────────── */
@@ -48,21 +66,54 @@ code, pre, .hljs {
 }
 
 /* ── Dark theme ──────────────────────────────────────────────── */
-.navy, .coal, .ayu, html {
-    --bg:          var(--bg-surface);
-    --fg:          var(--text-primary);
-    --sidebar-bg:  var(--bg-base);
-    --sidebar-fg:  var(--text-primary);
-    --sidebar-active: var(--bloqr-orange);
-    --links:       var(--bloqr-cyan);
+
+/* coal — true black: pure void */
+.coal, html {
+    --bg:               var(--coal-surface);
+    --fg:               var(--text-primary);
+    --sidebar-bg:       var(--coal-bg);
+    --sidebar-fg:       var(--text-primary);
+    --sidebar-active:   var(--bloqr-orange);
+    --links:            var(--bloqr-cyan);
     --inline-code-color: var(--bloqr-orange);
-    --theme-hover: rgba(255, 85, 0, 0.08);
-    --searchbar-border-color: var(--border);
+    --theme-hover:      rgba(255, 85, 0, 0.08);
+    --border:           var(--coal-border);
+    --searchbar-border-color: var(--coal-border);
+    --searchresults-header-fg: var(--bloqr-orange);
+}
+
+/* navy — deep ocean: rich blue-dark */
+.navy {
+    --bg:               var(--navy-surface);
+    --fg:               var(--text-primary);
+    --sidebar-bg:       var(--navy-bg);
+    --sidebar-fg:       var(--text-primary);
+    --sidebar-active:   var(--bloqr-orange);
+    --links:            var(--bloqr-cyan);
+    --inline-code-color: var(--bloqr-orange);
+    --theme-hover:      rgba(255, 85, 0, 0.08);
+    --border:           var(--navy-border);
+    --searchbar-border-color: var(--navy-border);
+    --searchresults-header-fg: var(--bloqr-orange);
+}
+
+/* ayu — warm dark: ayu's amber-inflected night */
+.ayu {
+    --bg:               var(--ayu-surface);
+    --fg:               var(--text-primary);
+    --sidebar-bg:       var(--ayu-bg);
+    --sidebar-fg:       var(--text-primary);
+    --sidebar-active:   var(--bloqr-orange);
+    --links:            var(--bloqr-cyan);
+    --inline-code-color: var(--bloqr-orange);
+    --theme-hover:      rgba(255, 85, 0, 0.08);
+    --border:           var(--ayu-border);
+    --searchbar-border-color: var(--ayu-border);
     --searchresults-header-fg: var(--bloqr-orange);
 }
 
 /* ── Light theme ─────────────────────────────────────────────── */
-.light {
+.light, .rust {
     --bg:          var(--light-bg);
     --fg:          var(--light-text);
     --sidebar-bg:  var(--light-surface);
@@ -71,13 +122,14 @@ code, pre, .hljs {
     --links:       var(--bloqr-orange-dim);
     --inline-code-color: var(--bloqr-orange-dim);
     --theme-hover: rgba(204, 68, 0, 0.08);
+    --border:      var(--light-border);
     --searchbar-border-color: var(--light-border);
     --searchresults-header-fg: var(--bloqr-orange-dim);
 }
 
 /* ── Menu bar (header) ───────────────────────────────────────── */
 #menu-bar, #menu-bar-hover-placeholder {
-    background: var(--bg-base);
+    background: var(--sidebar-bg);
     border-bottom: 1px solid var(--border);
 }
 #menu-bar .menu-title {
