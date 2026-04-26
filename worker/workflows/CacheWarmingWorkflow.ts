@@ -45,6 +45,25 @@ function getCacheKey(config: { name: string; sources: unknown[]; transformations
     return `cache:${Math.abs(hash).toString(36)}`;
 }
 
+/**
+ * Typed wrapper for WorkflowStep.do() with options.
+ * CF Workflows SDK types in this repo already expose the options overload on
+ * WorkflowStep.do(). This helper exists because the SDK constrains the callback
+ * return to Rpc.Serializable<T>, while some workflow values we return (for
+ * example IConfiguration) are not represented that narrowly in TypeScript.
+ * The wrapper preserves the local Promise<T> typing while still passing step
+ * options through to the runtime.
+ */
+async function stepDo<T>(
+    step: WorkflowStep,
+    name: string,
+    options: Parameters<WorkflowStep['do']>[1],
+    callback: () => Promise<T>,
+): Promise<T> {
+    // deno-lint-ignore no-explicit-any
+    return (step as any).do(name, options, callback) as Promise<T>;
+}
+
 const CACHE_TTL = 86400;
 
 /**
@@ -128,8 +147,7 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
         try {
             // Step 1: Check which caches need refreshing
             await events.emitStepStarted('check-cache-status', { configCount: configsToWarm.length });
-            // deno-lint-ignore no-explicit-any
-            const configsNeedingRefresh = (await (step as any).do('check-cache-status', {
+            const configsNeedingRefresh = await stepDo<IConfiguration[]>(step, 'check-cache-status', {
                 retries: { limit: 1, delay: '1 second' },
             }, async () => {
                 console.log(`[WORKFLOW:CACHE-WARM] Checking cache status for ${configsToWarm.length} configs`);
@@ -146,7 +164,7 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 }
 
                 return needsRefresh;
-            })) as IConfiguration[];
+            });
 
             await events.emitStepCompleted('check-cache-status', { needsRefresh: configsNeedingRefresh.length });
 
@@ -184,7 +202,7 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 // Use sleep between chunks to avoid overwhelming external sources
                 // Each step ID must be unique within a CF Workflows run.
                 if (chunkIndex > 0) {
-                    await step.sleep(`inter-chunk-delay-${chunkIndex}`, '10 seconds');
+                    await step.sleep(`inter-chunk-delay-${chunkIndex}`, '15 seconds');
                 }
 
                 await events.emitStepStarted(`warm-chunk-${chunkNumber}`, {
@@ -193,8 +211,7 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                     configs: chunk.map((c) => c.name),
                 });
 
-                // deno-lint-ignore no-explicit-any
-                const chunkResults = (await (step as any).do(`warm-chunk-${chunkNumber}`, {
+                const chunkResults = await stepDo<CacheWarmingResult['details']>(step, `warm-chunk-${chunkNumber}`, {
                     retries: { limit: 2, delay: '30 seconds', backoff: 'exponential' },
                     timeout: '15 minutes',
                 }, async () => {
@@ -262,13 +279,12 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                                 error: errorMessage,
                             });
                         }
-
-                        // Small delay between compilations to be nice to upstream
-                        await new Promise((resolve) => setTimeout(resolve, 2000));
+                        // NOTE: inter-config delay removed — use step.sleep() outside step.do() for durable delays;
+                        // inter-chunk-delay step provides backpressure between batches
                     }
 
                     return results;
-                })) as CacheWarmingResult['details'];
+                });
 
                 // Aggregate results
                 for (const result of chunkResults) {

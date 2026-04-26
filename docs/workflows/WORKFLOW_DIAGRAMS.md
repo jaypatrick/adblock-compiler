@@ -479,12 +479,11 @@ flowchart TD
         CHUNK1 --> WARM1[Step: warm-chunk-1]
 
         WARM1 --> W1_C1[Compile Config 1]
-        W1_C1 --> W1_WAIT1[Wait 2s<br/>Be Nice to Upstream]
-        W1_WAIT1 --> W1_C2[Compile Config 2]
+        W1_C1 --> W1_C2[Compile Config 2]
         W1_C2 --> W1_CACHE[Cache Both Results]
         W1_CACHE --> W1_EMIT[Emit: step:completed]
 
-        W1_EMIT --> CHUNK_WAIT[Wait 10s<br/>Inter-chunk Delay]
+        W1_EMIT --> CHUNK_WAIT[Wait 15s<br/>Inter-chunk Delay]
         CHUNK_WAIT --> MORE_CHUNKS{More Chunks?}
         MORE_CHUNKS -->|Yes| NEXT_CHUNK[Process Next Chunk]
         NEXT_CHUNK --> WARM1
@@ -503,7 +502,6 @@ flowchart TD
     style CRON fill:#b8860b,color:#fff,stroke:#f57c00
     style DEFAULT fill:#1b5e20,color:#fff
     style CHUNK1 fill:#1a237e,color:#fff
-    style W1_WAIT1 fill:#37474f,color:#fff
     style CHUNK_WAIT fill:#37474f,color:#fff
 ```
 
