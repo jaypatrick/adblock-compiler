@@ -181,6 +181,8 @@ export class BetterAuthService {
             await fetch(`${this.apiBaseUrl}/auth/sign-out`, {
                 method: 'POST',
                 credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({}),
             });
         } catch {
             // Ignore sign-out request failures — local state is always cleared.

@@ -15,6 +15,7 @@ import { firstValueFrom } from 'rxjs';
 import { MetricsService, type MetricsResponse, type HealthResponse } from '../services/metrics.service';
 import { QueueService, type QueueStats } from '../services/queue.service';
 import { SwrCacheService, type SwrEntry } from '../services/swr-cache.service';
+import { AuthFacadeService } from '../services/auth-facade.service';
 
 /** Extended metrics response (PerformanceComponent needs extra fields) */
 export interface ExtendedMetricsResponse extends MetricsResponse {
@@ -41,6 +42,7 @@ export class MetricsStore {
     private readonly metricsService = inject(MetricsService);
     private readonly queueService = inject(QueueService);
     private readonly swrCache = inject(SwrCacheService);
+    private readonly auth = inject(AuthFacadeService);
 
     private readonly metricsSwr: SwrEntry<ExtendedMetricsResponse>;
     private readonly healthSwr: SwrEntry<ExtendedHealthResponse>;
@@ -86,7 +88,9 @@ export class MetricsStore {
 
             this.queueSwr = this.swrCache.get<QueueStats>(
                 'queueStats',
-                () => firstValueFrom(this.queueService.getStats()),
+                () => this.auth.isSignedIn()
+                    ? firstValueFrom(this.queueService.getStats())
+                    : Promise.resolve(undefined as unknown as QueueStats),
                 15_000,
             );
         } else {

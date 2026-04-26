@@ -330,7 +330,7 @@ describe('BetterAuthService', () => {
             expect(service.user()).toBeNull();
         });
 
-        it('should NOT send Content-Type header (no body is sent)', async () => {
+        it('should send Content-Type: application/json with empty JSON body', async () => {
             const spy = mockFetch(
                 makeResponse({ user: MOCK_USER, session: { token: MOCK_TOKEN } }), // checkSession
                 new Response(null, { status: 200 }),                                // signOut
@@ -344,10 +344,12 @@ describe('BetterAuthService', () => {
             const signOutCall = spy.mock.calls.find(([url]) => String(url).includes('/auth/sign-out'));
             expect(signOutCall).toBeDefined();
             const init = signOutCall![1] as RequestInit;
-            // Sending Content-Type: application/json with no body caused Better Auth to call
-            // request.json() on an empty body, throwing SyntaxError and hanging the Worker.
+            // Better Auth calls request.json() on the body, so we must send both
+            // Content-Type: application/json and a minimal valid JSON body '{}' to
+            // avoid a SyntaxError from parsing an empty body.
             const contentType = init.headers ? new Headers(init.headers).get('Content-Type') : null;
-            expect(contentType).toBeNull();
+            expect(contentType).toBe('application/json');
+            expect(init.body).toBe('{}');
         });
 
         it('should clear user and token even when sign-out request fails', async () => {
