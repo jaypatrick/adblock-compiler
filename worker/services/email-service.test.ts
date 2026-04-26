@@ -172,6 +172,36 @@ Deno.test('EmailPayloadSchema — subject with CRLF sequence is rejected', async
     );
 });
 
+Deno.test('EmailPayloadSchema — replyTo with CR character is rejected (header injection guard)', async () => {
+    const { binding } = makeMockSendEmailBinding();
+    const svc = new CfEmailWorkerService(binding, 'n@bloqr.dev');
+    await assertRejects(
+        () => svc.sendEmail(makePayload({ replyTo: 'x\r\nBcc: attacker@evil.com' })),
+        Error,
+        'Invalid email payload',
+    );
+});
+
+Deno.test('EmailPayloadSchema — replyTo with LF character is rejected (header injection guard)', async () => {
+    const { binding } = makeMockSendEmailBinding();
+    const svc = new CfEmailWorkerService(binding, 'n@bloqr.dev');
+    await assertRejects(
+        () => svc.sendEmail(makePayload({ replyTo: 'x\nBcc: attacker@evil.com' })),
+        Error,
+        'Invalid email payload',
+    );
+});
+
+Deno.test('EmailPayloadSchema — replyTo with CRLF sequence is rejected (header injection guard)', async () => {
+    const { binding } = makeMockSendEmailBinding();
+    const svc = new CfEmailWorkerService(binding, 'n@bloqr.dev');
+    await assertRejects(
+        () => svc.sendEmail(makePayload({ replyTo: 'x\r\nBcc: attacker@evil.com' })),
+        Error,
+        'Invalid email payload',
+    );
+});
+
 // ============================================================================
 // buildRawMimeMessage
 // ============================================================================

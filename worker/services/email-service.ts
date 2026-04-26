@@ -86,7 +86,13 @@ export const EmailPayloadSchema = z.object({
      *
      * Omit for noreply/system notifications.
      */
-    replyTo: z.string().optional().describe('Optional Reply-To address'),
+    replyTo: z
+        .string()
+        .min(1)
+        .max(998)
+        .regex(/^[^\r\n]*$/, 'Reply-To must not contain CR or LF characters')
+        .optional()
+        .describe('Optional Reply-To address'),
 });
 
 export type EmailPayload = z.infer<typeof EmailPayloadSchema>;
@@ -228,7 +234,8 @@ export function encodeSubjectRfc2047(subject: string): string {
  * @param html    - HTML body.
  * @param replyTo - Optional Reply-To address. When set, a `Reply-To:` header is
  *                  emitted so email clients route replies to this address instead
- *                  of the From address.
+ *                  of the From address. CR/LF characters are stripped defensively
+ *                  to prevent header injection when called outside Zod-validated paths.
  * @returns       Raw MIME message string.
  */
 export function buildRawMimeMessage(
@@ -240,12 +247,15 @@ export function buildRawMimeMessage(
     replyTo?: string,
 ): string {
     const boundary = `b_${crypto.randomUUID().replaceAll('-', '_')}`;
+    // Strip CR/LF defensively — this function is exported and may be called
+    // outside of the Zod-validated path (e.g. direct unit tests).
+    const safeReplyTo = replyTo?.replace(/[\r\n]/g, '');
 
     return [
         'MIME-Version: 1.0',
         `From: ${from}`,
         `To: ${to}`,
-        ...(replyTo ? [`Reply-To: ${replyTo}`] : []),
+        ...(safeReplyTo ? [`Reply-To: ${safeReplyTo}`] : []),
         `Subject: ${encodeSubjectRfc2047(subject)}`,
         `Content-Type: multipart/alternative; boundary="${boundary}"`,
         '',
