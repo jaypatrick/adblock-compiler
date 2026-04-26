@@ -51,12 +51,14 @@ head_sampling_rate = 1
 
 [observability.logs]
 enabled = true
+destinations = [ "sentry-logs" ]
 head_sampling_rate = 1
 persist = true
 invocation_logs = true
 
 [observability.traces]
 enabled = true
+destinations = [ "sentry-traces" ]
 persist = true
 head_sampling_rate = 1
 
