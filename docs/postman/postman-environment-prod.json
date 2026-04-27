@@ -1,10 +1,28 @@
 {
-    "name": "Adblock Compiler API - Local",
+    "name": "Adblock Compiler API - Prod",
     "values": [
         {
             "key": "baseUrl",
-            "value": "http://localhost:8787",
+            "value": "https://bloqr.dev",
             "type": "default",
+            "enabled": true
+        },
+        {
+            "key": "bearerToken",
+            "value": "",
+            "type": "secret",
+            "enabled": true
+        },
+        {
+            "key": "userApiKey",
+            "value": "",
+            "type": "secret",
+            "enabled": true
+        },
+        {
+            "key": "adminKey",
+            "value": "",
+            "type": "secret",
             "enabled": true
         },
         {
