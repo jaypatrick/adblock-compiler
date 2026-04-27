@@ -6,7 +6,8 @@ localResources:
   collections:
     - ../docs/postman/postman-collection.json
   environments:
-    - ../docs/postman/postman-environment.json
+    - ../docs/postman/postman-environment-local.json
+    - ../docs/postman/postman-environment-prod.json
   specs:
     - ../docs/api/cloudflare-schema.yaml
     - ../docs/api/openapi.yaml
