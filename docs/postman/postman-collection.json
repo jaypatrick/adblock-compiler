@@ -18,6 +18,11 @@
       "type": "string"
     },
     {
+      "key": "requestId",
+      "value": "",
+      "type": "string"
+    },
+    {
       "key": "adminKey",
       "value": "",
       "type": "string",
