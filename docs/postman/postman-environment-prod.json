@@ -3,7 +3,7 @@
     "values": [
         {
             "key": "baseUrl",
-            "value": "https://bloqr.dev",
+            "value": "https://api.bloqr.dev",
             "type": "default",
             "enabled": true
         },

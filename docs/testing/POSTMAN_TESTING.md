@@ -125,7 +125,7 @@ pm.test('Check cache headers', function () {
 
 ### Prod environment (`postman-environment-prod.json`)
 
-- **`baseUrl`** — Production URL (`https://bloqr.dev`)
+- **`baseUrl`** — Production URL (`https://api.bloqr.dev`)
 - **`bearerToken`** — Better Auth JWT or API key (secret, empty by default)
 - **`userApiKey`** — User API key with `abc_` prefix (secret, empty by default)
 - **`adminKey`** — Admin API key (secret, empty by default)

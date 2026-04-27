@@ -27,8 +27,8 @@ info:
         url: https://github.com/jaypatrick/adblock-compiler
 
 servers:
-    - url: https://bloqr.dev
-      description: Production server
+    - url: https://api.bloqr.dev
+      description: Production API server
     - url: http://localhost:8787
       description: Local development server
 

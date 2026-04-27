@@ -14,12 +14,7 @@
     },
     {
       "key": "prodUrl",
-      "value": "https://bloqr.dev",
-      "type": "string"
-    },
-    {
-      "key": "requestId",
-      "value": "",
+      "value": "https://api.bloqr.dev",
       "type": "string"
     },
     {

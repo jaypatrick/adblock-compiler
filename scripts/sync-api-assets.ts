@@ -737,7 +737,7 @@ async function stepGeneratePostmanCollection(dryRun: boolean): Promise<void> {
         _postman_exported_using: 'deno task postman:collection',
     };
 
-    const envProdUrl = prodUrlValue || 'https://bloqr.dev';
+    const envProdUrl = prodUrlValue || 'https://api.bloqr.dev';
     const environmentProd = {
         name: `${spec.info.title} - Prod`,
         values: [
