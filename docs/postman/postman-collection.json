@@ -14,7 +14,7 @@
     },
     {
       "key": "prodUrl",
-      "value": "https://bloqr.dev",
+      "value": "https://api.bloqr.dev",
       "type": "string"
     },
     {

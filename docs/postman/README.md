@@ -9,7 +9,7 @@ Postman collection and environment files for testing the Adblock Compiler API.
 
 - `postman-collection.json` — Postman collection with all API endpoints and tests (auto-generated)
 - `postman-environment-local.json` — Local dev environment (`http://localhost:8787`, no auth vars) (auto-generated)
-- `postman-environment-prod.json` — Production environment (`https://bloqr.dev`, secret vars empty) (auto-generated)
+- `postman-environment-prod.json` — Production environment (`https://api.bloqr.dev`, secret vars empty) (auto-generated)
 - `postman-environment.json` — Legacy alias for the local environment; kept for CI/Newman backward compatibility (auto-generated)
 
 ## Regenerating
@@ -44,7 +44,7 @@ docs/postman/postman-environment.json        ← auto-generated legacy alias →
 
 ## Prod Environment & Credentials
 
-The `postman-environment-prod.json` environment sets `baseUrl` to `https://bloqr.dev` and includes three secret variables (`bearerToken`, `userApiKey`, `adminKey`) whose **Initial Values are always empty** — they must be populated at runtime and are never committed to git.
+The `postman-environment-prod.json` environment sets `baseUrl` to `https://api.bloqr.dev` and includes three secret variables (`bearerToken`, `userApiKey`, `adminKey`) whose **Initial Values are always empty** — they must be populated at runtime and are never committed to git.
 
 ### Desktop: Postman Vault
 
@@ -80,7 +80,7 @@ The committed `postman-environment-prod.json` keeps empty values — credentials
 Use the admin API to create a dedicated, scoped, revocable key — do **not** reuse your personal Clerk JWT:
 
 ```bash
-curl -X POST https://bloqr.dev/admin/auth/api-keys \
+curl -X POST https://api.bloqr.dev/admin/auth/api-keys \
   -H "X-Admin-Key: $ADMIN_KEY" \
   -H "Content-Type: application/json" \
   -d '{"name": "Postman testing", "scopes": ["read", "write"]}'

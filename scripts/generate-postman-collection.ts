@@ -418,7 +418,7 @@ async function generatePostmanCollection(): Promise<void> {
     const localServer = servers.find((s) => s.url.startsWith('http://localhost'));
 
     const baseUrlValue = localServer?.url ?? 'http://localhost:8787';
-    const prodUrlValue = prodServer?.url ?? 'https://bloqr.dev';
+    const prodUrlValue = prodServer?.url ?? 'https://api.bloqr.dev';
 
     // Build tag → folder map
     const tagOrder: string[] = (spec.tags ?? []).map((t) => t.name);
