@@ -13,9 +13,18 @@ This guide explains how to use the Postman collection to test the Adblock Compil
 
 ### 2. Import the Environment
 
+For **local development**:
+
 1. Click **Import** again
-2. Select **File** and choose `docs/postman/postman-environment.json`
-3. Select the "Adblock Compiler - Local" environment from the dropdown in the top right
+2. Select **File** and choose `docs/postman/postman-environment-local.json`
+3. Select the **Adblock Compiler API - Local** environment from the dropdown in the top right
+
+For **production testing**:
+
+1. Click **Import** again
+2. Select **File** and choose `docs/postman/postman-environment-prod.json`
+3. Select the **Adblock Compiler API - Prod** environment from the dropdown
+4. Populate the secret variables via Postman Vault — see [Credentials](#credentials) below
 
 ### 3. Start the Server
 
@@ -107,35 +116,66 @@ pm.test('Check cache headers', function () {
 
 ## Variables
 
-The collection uses the following variables:
+### Local environment (`postman-environment-local.json`)
 
-- **`baseUrl`** - Local development server URL (default: `http://localhost:8787`)
-- **`prodUrl`** - Production server URL
-- **`requestId`** - Auto-populated from async compilation responses
+- **`baseUrl`** — Local development server URL (`http://localhost:8787/api`)
+- **`requestId`** — Auto-populated from async compilation responses
+- **`userId`** — Captured from Create User response
+- **`apiKeyPrefix`** — Captured from Create API Key response
+
+### Prod environment (`postman-environment-prod.json`)
+
+- **`baseUrl`** — Production URL (`https://api.bloqr.dev/api`)
+- **`bearerToken`** — Better Auth JWT or API key (secret, empty by default)
+- **`userApiKey`** — User API key with `abc_` prefix (secret, empty by default)
+- **`adminKey`** — Admin API key (secret, empty by default)
+- **`requestId`**, **`userId`**, **`apiKeyPrefix`** — Same as local
 
 ### Switching Between Environments
 
-To test against production:
+Use the **environment dropdown** in the top-right corner of Postman to switch between **Local** and **Prod**. Each environment sets `baseUrl` to the correct host — no variable editing needed.
 
-1. Change the `baseUrl` variable to `{{prodUrl}}`
-2. Or create a new environment for production
+## Credentials
+
+Secret variables in the Prod environment (`bearerToken`, `userApiKey`, `adminKey`) are empty by default and must be populated at runtime. See [docs/postman/README.md — Prod Environment & Credentials](../postman/README.md#prod-environment--credentials) for full Postman Vault and Newman setup instructions.
+
+**Summary for desktop:**
+
+1. Open **Settings → Vault** in Postman Desktop
+2. Add `POSTMAN_BEARER_TOKEN`, `POSTMAN_USER_API_KEY`, `POSTMAN_ADMIN_KEY`
+3. In the Prod environment, set each variable's **Current Value** to `{{vault:POSTMAN_BEARER_TOKEN}}` etc.
+
+**Summary for Newman:**
+
+```bash
+newman run docs/postman/postman-collection.json \
+  -e docs/postman/postman-environment-prod.json \
+  --env-var "bearerToken=$POSTMAN_BEARER_TOKEN" \
+  --env-var "userApiKey=$POSTMAN_USER_API_KEY" \
+  --env-var "adminKey=$POSTMAN_ADMIN_KEY"
+```
 
 ## Running Collection with Newman (CLI)
-
-You can run the collection from the command line using Newman:
 
 ```bash
 # Install Newman
 npm install -g newman
 
-# Run the collection against local server
-newman run docs/postman/postman-collection.json -e docs/postman/postman-environment.json
+# Run against local server (no credentials needed)
+newman run docs/postman/postman-collection.json -e docs/postman/postman-environment-local.json
 
-# Run with detailed output
-newman run docs/postman/postman-collection.json -e docs/postman/postman-environment.json --reporters cli,json
+# Run with detailed output (local)
+newman run docs/postman/postman-collection.json -e docs/postman/postman-environment-local.json --reporters cli,json
+
+# Run against production (inject credentials at runtime)
+newman run docs/postman/postman-collection.json \
+  -e docs/postman/postman-environment-prod.json \
+  --env-var "bearerToken=$POSTMAN_BEARER_TOKEN" \
+  --env-var "userApiKey=$POSTMAN_USER_API_KEY" \
+  --env-var "adminKey=$POSTMAN_ADMIN_KEY"
 
 # Run specific folder
-newman run docs/postman/postman-collection.json -e docs/postman/postman-environment.json --folder "Compilation"
+newman run docs/postman/postman-collection.json -e docs/postman/postman-environment-local.json --folder "Compilation"
 ```
 
 ## CI/CD Integration
@@ -161,11 +201,27 @@ jobs:
       - name: Install Newman
         run: npm install -g newman
       
-      - name: Run Postman tests
-        run: newman run docs/postman/postman-collection.json -e docs/postman/postman-environment.json
+      - name: Run Postman tests (local)
+        run: newman run docs/postman/postman-collection.json -e docs/postman/postman-environment-local.json
       
       - name: Stop server
         run: docker compose down
+```
+
+For production smoke tests in CI, inject credentials from GitHub Actions secrets:
+
+```yaml
+      - name: Run Postman tests (prod)
+        env:
+          POSTMAN_BEARER_TOKEN: ${{ secrets.POSTMAN_BEARER_TOKEN }}
+          POSTMAN_USER_API_KEY: ${{ secrets.POSTMAN_USER_API_KEY }}
+          POSTMAN_ADMIN_KEY: ${{ secrets.POSTMAN_ADMIN_KEY }}
+        run: |
+          newman run docs/postman/postman-collection.json \
+            -e docs/postman/postman-environment-prod.json \
+            --env-var "bearerToken=$POSTMAN_BEARER_TOKEN" \
+            --env-var "userApiKey=$POSTMAN_USER_API_KEY" \
+            --env-var "adminKey=$POSTMAN_ADMIN_KEY"
 ```
 
 ## Advanced Testing
@@ -233,7 +289,7 @@ If you hit rate limits (429 responses), wait for the rate limit window to reset 
 
 1. **Run tests before commits** - Ensure API compatibility
 2. **Test against local first** - Avoid production impact
-3. **Use environments** - Separate dev/staging/prod configurations
+3. **Use environments** - Switch via the environment dropdown (Local vs. Prod)
 4. **Review test results** - Don't ignore failed assertions
 5. **Update tests** - Keep tests in sync with OpenAPI spec changes
 

@@ -12,7 +12,9 @@
  *
  * Run: deno task postman:collection
  * Output: docs/postman/postman-collection.json
- *         docs/postman/postman-environment.json
+ *         docs/postman/postman-environment-local.json
+ *         docs/postman/postman-environment-prod.json
+ *         docs/postman/postman-environment.json  (legacy alias → local)
  */
 
 import { parse } from '@std/yaml';
@@ -20,6 +22,9 @@ import { existsSync } from '@std/fs';
 
 const OPENAPI_PATH = './docs/api/openapi.yaml';
 const COLLECTION_OUTPUT_PATH = './docs/postman/postman-collection.json';
+const ENVIRONMENT_LOCAL_OUTPUT_PATH = './docs/postman/postman-environment-local.json';
+const ENVIRONMENT_PROD_OUTPUT_PATH = './docs/postman/postman-environment-prod.json';
+/** Legacy alias — same content as the local environment. Keeps existing CI/Newman commands working. */
 const ENVIRONMENT_OUTPUT_PATH = './docs/postman/postman-environment.json';
 
 // ---------------------------------------------------------------------------
@@ -412,8 +417,8 @@ async function generatePostmanCollection(): Promise<void> {
     const prodServer = servers.find((s) => !s.url.startsWith('http://localhost'));
     const localServer = servers.find((s) => s.url.startsWith('http://localhost'));
 
-    const baseUrlValue = localServer?.url ?? 'http://localhost:8787';
-    const prodUrlValue = prodServer?.url ?? '';
+    const baseUrlValue = localServer?.url ?? 'http://localhost:8787/api';
+    const prodUrlValue = prodServer?.url ?? 'https://api.bloqr.dev/api';
 
     // Build tag → folder map
     const tagOrder: string[] = (spec.tags ?? []).map((t) => t.name);
@@ -489,24 +494,55 @@ async function generatePostmanCollection(): Promise<void> {
         Deno.exit(1);
     }
 
-    // Also regenerate the environment file from spec servers
-    const environment = {
+    // Also regenerate the environment files from spec servers
+    const environmentLocal = {
         name: `${spec.info.title} - Local`,
         values: [
             { key: 'baseUrl', value: baseUrlValue, type: 'default', enabled: true },
-            { key: 'prodUrl', value: prodUrlValue, type: 'default', enabled: true },
+            { key: 'requestId', value: '', type: 'default', enabled: true },
+            { key: 'userId', value: '', type: 'default', enabled: true },
+            { key: 'apiKeyPrefix', value: '', type: 'default', enabled: true },
+        ],
+        _postman_variable_scope: 'environment',
+        _postman_exported_using: 'deno task postman:collection',
+    };
+
+    const environmentProd = {
+        name: `${spec.info.title} - Prod`,
+        values: [
+            { key: 'baseUrl', value: prodUrlValue, type: 'default', enabled: true },
             { key: 'bearerToken', value: '', type: 'secret', enabled: true },
             { key: 'userApiKey', value: '', type: 'secret', enabled: true },
+            { key: 'adminKey', value: '', type: 'secret', enabled: true },
+            { key: 'requestId', value: '', type: 'default', enabled: true },
+            { key: 'userId', value: '', type: 'default', enabled: true },
+            { key: 'apiKeyPrefix', value: '', type: 'default', enabled: true },
         ],
         _postman_variable_scope: 'environment',
         _postman_exported_using: 'deno task postman:collection',
     };
 
     try {
-        await Deno.writeTextFile(ENVIRONMENT_OUTPUT_PATH, JSON.stringify(environment, null, 4) + '\n');
-        console.log(`✅ Generated Postman environment: ${ENVIRONMENT_OUTPUT_PATH}`);
+        await Deno.writeTextFile(ENVIRONMENT_LOCAL_OUTPUT_PATH, JSON.stringify(environmentLocal, null, 4) + '\n');
+        console.log(`✅ Generated Postman environment (local): ${ENVIRONMENT_LOCAL_OUTPUT_PATH}`);
     } catch (error) {
-        console.error(`❌ Failed to write environment: ${error instanceof Error ? error.message : String(error)}`);
+        console.error(`❌ Failed to write local environment: ${error instanceof Error ? error.message : String(error)}`);
+        Deno.exit(1);
+    }
+
+    try {
+        await Deno.writeTextFile(ENVIRONMENT_PROD_OUTPUT_PATH, JSON.stringify(environmentProd, null, 4) + '\n');
+        console.log(`✅ Generated Postman environment (prod): ${ENVIRONMENT_PROD_OUTPUT_PATH}`);
+    } catch (error) {
+        console.error(`❌ Failed to write prod environment: ${error instanceof Error ? error.message : String(error)}`);
+        Deno.exit(1);
+    }
+
+    try {
+        await Deno.writeTextFile(ENVIRONMENT_OUTPUT_PATH, JSON.stringify(environmentLocal, null, 4) + '\n');
+        console.log(`✅ Generated Postman environment (legacy alias): ${ENVIRONMENT_OUTPUT_PATH}`);
+    } catch (error) {
+        console.error(`❌ Failed to write legacy environment: ${error instanceof Error ? error.message : String(error)}`);
         Deno.exit(1);
     }
 

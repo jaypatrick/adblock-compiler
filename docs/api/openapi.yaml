@@ -27,9 +27,9 @@ info:
         url: https://github.com/jaypatrick/adblock-compiler
 
 servers:
-    - url: https://bloqr.dev
-      description: Production server
-    - url: http://localhost:8787
+    - url: https://api.bloqr.dev/api
+      description: Production API server
+    - url: http://localhost:8787/api
       description: Local development server
 
 tags:
@@ -61,7 +61,7 @@ tags:
       description: Compilation configuration defaults, validation, and resolution endpoints.
 
 paths:
-    /api:
+    /:
         get:
             tags: [Metrics]
             summary: Get API information
@@ -75,7 +75,7 @@ paths:
                             schema:
                                 $ref: '#/components/schemas/ApiInfo'
 
-    /api/schemas:
+    /schemas:
         get:
             tags: [Info]
             operationId: getApiSchemas
@@ -411,7 +411,7 @@ paths:
                 '404':
                     description: Job not found
 
-    /api/version:
+    /version:
         get:
             tags: [Metrics]
             summary: Get latest deployment version
@@ -427,7 +427,7 @@ paths:
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
 
-    /api/deployments:
+    /deployments:
         get:
             tags: [Metrics]
             summary: Get deployment history
@@ -468,7 +468,7 @@ paths:
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
 
-    /api/deployments/stats:
+    /deployments/stats:
         get:
             tags: [Metrics]
             summary: Get deployment statistics
@@ -484,7 +484,7 @@ paths:
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
 
-    /api/turnstile-config:
+    /turnstile-config:
         get:
             tags: [Metrics]
             summary: Get Turnstile configuration
@@ -1226,7 +1226,7 @@ paths:
 
     # ─── User-Level Authentication Endpoints ───────────────────────────
 
-    /api/keys:
+    /keys:
         post:
             tags: [Authentication]
             summary: Create API key
@@ -1274,7 +1274,7 @@ paths:
                 '401':
                     $ref: '#/components/responses/UnauthorizedError'
 
-    /api/keys/{keyId}:
+    /keys/{keyId}:
         delete:
             tags: [Authentication]
             summary: Revoke API key
@@ -1518,7 +1518,7 @@ paths:
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
 
-    /api/browser/resolve-url:
+    /browser/resolve-url:
         post:
             tags: [Browser Rendering]
             summary: Resolve canonical URL via browser
@@ -1551,7 +1551,7 @@ paths:
                 '503':
                     description: BROWSER binding not configured
 
-    /api/browser/monitor:
+    /browser/monitor:
         post:
             tags: [Browser Rendering]
             summary: Monitor filter-list sources for reachability
@@ -1586,7 +1586,7 @@ paths:
                 '503':
                     description: BROWSER binding not configured
 
-    /api/browser/monitor/latest:
+    /browser/monitor/latest:
         get:
             tags: [Browser Rendering]
             summary: Retrieve the latest monitor results

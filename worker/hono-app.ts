@@ -681,7 +681,7 @@ export const OPENAPI_DOCUMENT_ARGS = {
     },
     // Static fallback only — the /api/openapi.json handler overrides this dynamically
     // using getProjectUrls(c.env).api so the spec always reflects the actual deployment URL.
-    servers: [{ url: 'https://api.bloqr.dev', description: 'Production server' }],
+    servers: [{ url: 'https://api.bloqr.dev/api', description: 'Production server' }],
 };
 
 const openApiSpecCache = new Map<string, ReturnType<typeof app.getOpenAPIDocument>>();
@@ -694,9 +694,13 @@ app.get('/api/openapi.json', (c) => {
     const urls = getProjectUrls(c.env);
     let spec = openApiSpecCache.get(urls.api);
     if (!spec) {
+        // URL_API / API_URL_FALLBACK is the bare origin (e.g. "https://api.bloqr.dev").
+        // All routes are mounted under /api, so we must append /api here to produce
+        // the correct server base URL (e.g. "https://api.bloqr.dev/api").
+        const apiServerUrl = `${urls.api.replace(/\/$/, '')}/api`;
         const args = {
             ...OPENAPI_DOCUMENT_ARGS,
-            servers: [{ url: urls.api, description: 'Production server' }],
+            servers: [{ url: apiServerUrl, description: 'Production server' }],
         };
         spec = app.getOpenAPIDocument(args);
         openApiSpecCache.set(urls.api, spec);
