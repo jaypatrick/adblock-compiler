@@ -277,6 +277,7 @@
         "npm:sharp@0.34.5",
         "npm:workerd@1.20260409.1",
         "npm:workerd@1.20260421.1",
-        "npm:workerd@1.20260424.1"
+        "npm:workerd@1.20260424.1",
+        "npm:workerd@1.20260426.1"
     ]
 }
