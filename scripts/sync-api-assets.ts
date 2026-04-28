@@ -659,7 +659,7 @@ async function stepGeneratePostmanCollection(dryRun: boolean): Promise<void> {
     const servers = spec.servers ?? [];
     const prodServer = servers.find((s) => !s.url.startsWith('http://localhost'));
     const localServer = servers.find((s) => s.url.startsWith('http://localhost'));
-    const baseUrlValue = localServer?.url ?? 'http://localhost:8787';
+    const baseUrlValue = localServer?.url ?? 'http://localhost:8787/api';
     const prodUrlValue = prodServer?.url ?? '';
 
     const tagOrder = (spec.tags ?? []).map((t) => t.name);
@@ -737,7 +737,7 @@ async function stepGeneratePostmanCollection(dryRun: boolean): Promise<void> {
         _postman_exported_using: 'deno task postman:collection',
     };
 
-    const envProdUrl = prodUrlValue || 'https://api.bloqr.dev';
+    const envProdUrl = prodUrlValue || 'https://api.bloqr.dev/api';
     const environmentProd = {
         name: `${spec.info.title} - Prod`,
         values: [
