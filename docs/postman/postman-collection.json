@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "Adblock Compiler API",
-    "description": "Auto-generated from docs/api/openapi.yaml. Run 'deno task postman:collection' to regenerate.\n\n**Compiler-as-a-Service** for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.\n\n## Features\n- 🎯 Multi-Source Compilation\n- ⚡ Performance (Gzip compression, caching, request deduplication)\n- 🔄 Circuit Breaker with retry logic\n- 📊 Visual Diff between compilations\n- 📡 Real-time progress via SSE and WebSocket\n- 🎪 Batch Processing\n- 🌍 Universal (Deno, Node.js, Cloudflare Workers, browsers)\n\n## Links\n- [GitHub Repository](https://github.com/jaypatrick/adblock-compiler)\n- [Documentation](https://github.com/jaypatrick/adblock-compiler/tree/master/docs)\n- [Web UI](https://bloqr.dev/)",
+    "description": "Auto-generated from docs/api/openapi.yaml. Run 'deno task postman:collection' to regenerate.\n\n**Compiler-as-a-Service** for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.\n\n## Features\n- \ud83c\udfaf Multi-Source Compilation\n- \u26a1 Performance (Gzip compression, caching, request deduplication)\n- \ud83d\udd04 Circuit Breaker with retry logic\n- \ud83d\udcca Visual Diff between compilations\n- \ud83d\udce1 Real-time progress via SSE and WebSocket\n- \ud83c\udfaa Batch Processing\n- \ud83c\udf0d Universal (Deno, Node.js, Cloudflare Workers, browsers)\n\n## Links\n- [GitHub Repository](https://github.com/jaypatrick/adblock-compiler)\n- [Documentation](https://github.com/jaypatrick/adblock-compiler/tree/master/docs)\n- [Web UI](https://bloqr.dev/)",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_postman_id": "adblock-compiler-api",
     "version": "2.0.0"
@@ -9,12 +9,12 @@
   "variable": [
     {
       "key": "baseUrl",
-      "value": "http://localhost:8787",
+      "value": "http://localhost:8787/api",
       "type": "string"
     },
     {
       "key": "prodUrl",
-      "value": "https://api.bloqr.dev",
+      "value": "https://api.bloqr.dev/api",
       "type": "string"
     },
     {
@@ -566,13 +566,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api",
+              "raw": "{{baseUrl}}/",
               "host": [
                 "{{baseUrl}}"
               ],
-              "path": [
-                "api"
-              ]
+              "path": []
             },
             "description": "Returns API version, available endpoints, and usage examples"
           }
@@ -636,12 +634,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/version",
+              "raw": "{{baseUrl}}/version",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "version"
               ]
             },
@@ -672,12 +669,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/deployments",
+              "raw": "{{baseUrl}}/deployments",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "deployments"
               ],
               "query": [
@@ -734,12 +730,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/deployments/stats",
+              "raw": "{{baseUrl}}/deployments/stats",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "deployments",
                 "stats"
               ]
@@ -771,12 +766,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/turnstile-config",
+              "raw": "{{baseUrl}}/turnstile-config",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "turnstile-config"
               ]
             },
@@ -818,7 +812,7 @@
                 "compile"
               ]
             },
-            "description": "Bidirectional WebSocket connection for real-time compilation with event streaming.\n\n**Client → Server Messages:**\n- `compile` - Start compilation\n- `cancel` - Cancel running compilation\n- `ping` - Heartbeat ping\n\n**Server → Client Messages:**\n- `welcome` - Connection established\n- `pong` - Heartbeat response\n- `compile:started` - Compilation started\n- `event` - Compilation event (source, transformation, progress, diagnostic, cache, network, metric)\n- `compile:complete` - Compilation finished successfully\n- `compile:error` - Compilation failed\n- `compile:cancelled` - Compilation cancelled\n- `error` - Error message\n\n**Features:**\n- Up to 3 concurrent compilations per connection\n- Automatic heartbeat (30s interval)\n- Connection timeout (5 minutes idle)\n- Session-based compilation tracking\n- Cancellation support\n"
+            "description": "Bidirectional WebSocket connection for real-time compilation with event streaming.\n\n**Client \u2192 Server Messages:**\n- `compile` - Start compilation\n- `cancel` - Cancel running compilation\n- `ping` - Heartbeat ping\n\n**Server \u2192 Client Messages:**\n- `welcome` - Connection established\n- `pong` - Heartbeat response\n- `compile:started` - Compilation started\n- `event` - Compilation event (source, transformation, progress, diagnostic, cache, network, metric)\n- `compile:complete` - Compilation finished successfully\n- `compile:error` - Compilation failed\n- `compile:cancelled` - Compilation cancelled\n- `error` - Error message\n\n**Features:**\n- Up to 3 concurrent compilations per connection\n- Automatic heartbeat (30s interval)\n- Connection timeout (5 minutes idle)\n- Session-based compilation tracking\n- Cancellation support\n"
           }
         }
       ]
@@ -1970,7 +1964,7 @@
                 }
               }
             },
-            "description": "Update a user's `tier`, `role`, and/or `api_disabled` flag.\nTier and role are independent fields — changing role does not automatically change tier unless\nno explicit tier is provided (in which case the role's default tier is applied).\nRequires Admin tier + admin role.\n"
+            "description": "Update a user's `tier`, `role`, and/or `api_disabled` flag.\nTier and role are independent fields \u2014 changing role does not automatically change tier unless\nno explicit tier is provided (in which case the role's default tier is applied).\nRequires Admin tier + admin role.\n"
           }
         },
         {
@@ -2051,7 +2045,7 @@
                 "config"
               ]
             },
-            "description": "Returns a read-only snapshot of all three extensibility registries at runtime:\n- `LOCAL_ROLE_REGISTRY` — all defined roles, their tiers, and self-register flag\n- `TIER_REGISTRY` — all tiers with rate limits and ordering\n- `ROUTE_PERMISSION_REGISTRY` — all registered route permission rules\n\nAlso reports which auth provider is active (`local-jwt` vs `better-auth`).\nRequires Admin tier + admin role.\n"
+            "description": "Returns a read-only snapshot of all three extensibility registries at runtime:\n- `LOCAL_ROLE_REGISTRY` \u2014 all defined roles, their tiers, and self-register flag\n- `TIER_REGISTRY` \u2014 all tiers with rate limits and ordering\n- `ROUTE_PERMISSION_REGISTRY` \u2014 all registered route permission rules\n\nAlso reports which auth provider is active (`local-jwt` vs `better-auth`).\nRequires Admin tier + admin role.\n"
           }
         },
         {
@@ -2103,7 +2097,7 @@
                 }
               ]
             },
-            "description": "Returns KV-backed API usage counters for a specific user:\n- `total` — lifetime request count, first/last seen timestamps\n- `days` — per-day breakdown for the requested lookback window (max 90 days)\n\nRequires Admin tier + admin role.\n"
+            "description": "Returns KV-backed API usage counters for a specific user:\n- `total` \u2014 lifetime request count, first/last seen timestamps\n- `days` \u2014 per-day breakdown for the requested lookback window (max 90 days)\n\nRequires Admin tier + admin role.\n"
           }
         },
         {
@@ -2669,12 +2663,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/browser/resolve-url",
+              "raw": "{{baseUrl}}/browser/resolve-url",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "browser",
                 "resolve-url"
               ]
@@ -2721,12 +2714,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/browser/monitor",
+              "raw": "{{baseUrl}}/browser/monitor",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "browser",
                 "monitor"
               ]
@@ -2767,12 +2759,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/browser/monitor/latest",
+              "raw": "{{baseUrl}}/browser/monitor/latest",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "browser",
                 "monitor",
                 "latest"
@@ -2785,7 +2776,7 @@
     },
     {
       "name": "Authentication",
-      "description": "User-level authentication endpoints — API key management and webhook receivers. Requires Bearer token (Better Auth JWT or API key).",
+      "description": "User-level authentication endpoints \u2014 API key management and webhook receivers. Requires Bearer token (Better Auth JWT or API key).",
       "item": [
         {
           "name": "List user's API keys",
@@ -2811,16 +2802,15 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/keys",
+              "raw": "{{baseUrl}}/keys",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "keys"
               ]
             },
-            "description": "Lists all API keys belonging to the authenticated user.\nReturns metadata only — never the key hash or plaintext.\nRequires Bearer token (Better Auth JWT or API key).\n"
+            "description": "Lists all API keys belonging to the authenticated user.\nReturns metadata only \u2014 never the key hash or plaintext.\nRequires Bearer token (Better Auth JWT or API key).\n"
           }
         },
         {
@@ -2853,12 +2843,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/keys",
+              "raw": "{{baseUrl}}/keys",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "keys"
               ]
             },
@@ -2871,7 +2860,7 @@
                 }
               }
             },
-            "description": "Creates a new API key for the authenticated user.\nThe raw API key (with `abc_` prefix) is returned **only once** — store it securely.\nRequires Bearer token (Better Auth JWT or API key).\n"
+            "description": "Creates a new API key for the authenticated user.\nThe raw API key (with `abc_` prefix) is returned **only once** \u2014 store it securely.\nRequires Bearer token (Better Auth JWT or API key).\n"
           }
         },
         {
@@ -2904,12 +2893,11 @@
               }
             ],
             "url": {
-              "raw": "{{baseUrl}}/api/keys/:keyId",
+              "raw": "{{baseUrl}}/keys/:keyId",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "keys",
                 ":keyId"
               ],
@@ -2957,12 +2945,11 @@
             "method": "DELETE",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/keys/:keyId",
+              "raw": "{{baseUrl}}/keys/:keyId",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "keys",
                 ":keyId"
               ],
@@ -2981,7 +2968,7 @@
     },
     {
       "name": "LocalAuth",
-      "description": "Local JWT auth bridge — self-contained sign-up/login. When Better Auth is configured these endpoints are no longer the primary auth flow.",
+      "description": "Local JWT auth bridge \u2014 self-contained sign-up/login. When Better Auth is configured these endpoints are no longer the primary auth flow.",
       "item": [
         {
           "name": "Register a new local account",
@@ -3202,12 +3189,11 @@
             "method": "GET",
             "header": [],
             "url": {
-              "raw": "{{baseUrl}}/api/schemas",
+              "raw": "{{baseUrl}}/schemas",
               "host": [
                 "{{baseUrl}}"
               ],
               "path": [
-                "api",
                 "schemas"
               ]
             },
