@@ -118,14 +118,14 @@ pm.test('Check cache headers', function () {
 
 ### Local environment (`postman-environment-local.json`)
 
-- **`baseUrl`** — Local development server URL (`http://localhost:8787`)
+- **`baseUrl`** — Local development server URL (`http://localhost:8787/api`)
 - **`requestId`** — Auto-populated from async compilation responses
 - **`userId`** — Captured from Create User response
 - **`apiKeyPrefix`** — Captured from Create API Key response
 
 ### Prod environment (`postman-environment-prod.json`)
 
-- **`baseUrl`** — Production URL (`https://api.bloqr.dev`)
+- **`baseUrl`** — Production URL (`https://api.bloqr.dev/api`)
 - **`bearerToken`** — Better Auth JWT or API key (secret, empty by default)
 - **`userApiKey`** — User API key with `abc_` prefix (secret, empty by default)
 - **`adminKey`** — Admin API key (secret, empty by default)

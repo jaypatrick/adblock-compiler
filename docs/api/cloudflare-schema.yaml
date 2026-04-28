@@ -16,7 +16,7 @@ info:
         url: 'https://github.com/jaypatrick/adblock-compiler'
 servers:
     -
-        url: 'https://api.bloqr.dev'
+        url: 'https://api.bloqr.dev/api'
         description: Production API server
 tags:
     -
@@ -65,7 +65,7 @@ tags:
         name: Configuration
         description: 'Compilation configuration defaults, validation, and resolution endpoints.'
 paths:
-    /api:
+    /:
         get:
             tags:
                 - Metrics
@@ -79,7 +79,7 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/ApiInfo'
-    /api/schemas:
+    /schemas:
         get:
             tags:
                 - Info
@@ -435,7 +435,7 @@ paths:
                                         $ref: '#/components/schemas/QueueJobStatus'
                 '404':
                     description: Job not found
-    /api/version:
+    /version:
         get:
             tags:
                 - Metrics
@@ -451,7 +451,7 @@ paths:
                                 $ref: '#/components/schemas/VersionResponse'
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
-    /api/deployments:
+    /deployments:
         get:
             tags:
                 - Metrics
@@ -496,7 +496,7 @@ paths:
                                 $ref: '#/components/schemas/DeploymentHistoryResponse'
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
-    /api/deployments/stats:
+    /deployments/stats:
         get:
             tags:
                 - Metrics
@@ -512,7 +512,7 @@ paths:
                                 $ref: '#/components/schemas/DeploymentStatsResponse'
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
-    /api/turnstile-config:
+    /turnstile-config:
         get:
             tags:
                 - Metrics
@@ -1304,7 +1304,7 @@ paths:
                     $ref: '#/components/responses/UnauthorizedError'
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
-    /api/keys:
+    /keys:
         post:
             tags:
                 - Authentication
@@ -1355,7 +1355,7 @@ paths:
                                 $ref: '#/components/schemas/UserListApiKeysResponse'
                 '401':
                     $ref: '#/components/responses/UnauthorizedError'
-    '/api/keys/{keyId}':
+    '/keys/{keyId}':
         delete:
             tags:
                 - Authentication
@@ -1620,7 +1620,7 @@ paths:
                     $ref: '#/components/responses/UnauthorizedError'
                 '503':
                     $ref: '#/components/responses/ServiceUnavailable'
-    /api/browser/resolve-url:
+    /browser/resolve-url:
         post:
             tags:
                 - Browser Rendering
@@ -1654,7 +1654,7 @@ paths:
                     description: Browser navigation failed
                 '503':
                     description: BROWSER binding not configured
-    /api/browser/monitor:
+    /browser/monitor:
         post:
             tags:
                 - Browser Rendering
@@ -1690,7 +1690,7 @@ paths:
                     description: Invalid request body
                 '503':
                     description: BROWSER binding not configured
-    /api/browser/monitor/latest:
+    /browser/monitor/latest:
         get:
             tags:
                 - Browser Rendering
