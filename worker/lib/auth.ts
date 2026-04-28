@@ -124,6 +124,9 @@ export function createAuth(env: Env, baseURL?: string) {
         },
 
         user: {
+            fields: {
+                name: 'displayName', // maps Better Auth's 'name' to Prisma's 'displayName' (display_name column)
+            },
             additionalFields: {
                 tier: {
                     type: 'string',
