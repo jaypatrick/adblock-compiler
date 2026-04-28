@@ -147,7 +147,7 @@
         "cloudflare:workers": "./worker/cloudflare-workers-shim.ts",
         "cloudflare:email": "./worker/cloudflare-email-shim.ts",
         "@neondatabase/serverless": "npm:@neondatabase/serverless@^0.10.0",
-        "better-auth": "npm:better-auth@^1.5.5",
+        "better-auth": "npm:better-auth@^1.5.6",
         "@prisma/adapter-pg": "npm:@prisma/adapter-pg@^7.5.0",
         "@prisma/adapter-d1": "npm:@prisma/adapter-d1@^7.5.0",
         "@prisma/client": "npm:@prisma/client@^7.5.0",

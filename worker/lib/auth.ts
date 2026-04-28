@@ -36,6 +36,24 @@ import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 
 /**
+ * Better Auth → Prisma field name mapping for the `User` model.
+ *
+ * Better Auth's canonical user shape uses `name` and `image`, but the Prisma
+ * `User` model exposes `displayName` (column `display_name`) and `imageUrl`
+ * (column `image_url`). Without this mapping, Better Auth passes the wrong
+ * field names to Prisma, causing `PrismaClientValidationError: Unknown
+ * argument 'name'` / `Unknown argument 'image'` on every sign-up or
+ * OAuth/profile-sync flow.
+ *
+ * Exported as a named constant so regression tests can assert the mapping
+ * without requiring a real Hyperdrive / PostgreSQL connection.
+ */
+export const USER_FIELD_MAPPING = {
+    name: 'displayName', // Better Auth 'name'  → Prisma 'displayName' (display_name column)
+    image: 'imageUrl', // Better Auth 'image' → Prisma 'imageUrl'     (image_url column)
+} as const;
+
+/**
  * Session duration constants — single source of truth consumed by both
  * {@link createAuth} and the admin `/admin/auth/config` inspector endpoint.
  * Changing these values here automatically propagates to both.
@@ -124,10 +142,7 @@ export function createAuth(env: Env, baseURL?: string) {
         },
 
         user: {
-            fields: {
-                name: 'displayName', // maps Better Auth's 'name' to Prisma's 'displayName' (display_name column)
-                image: 'imageUrl', // maps Better Auth's 'image' to Prisma's 'imageUrl' (image_url column)
-            },
+            fields: USER_FIELD_MAPPING,
             additionalFields: {
                 tier: {
                     type: 'string',
