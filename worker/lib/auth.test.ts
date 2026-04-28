@@ -6,6 +6,7 @@
  *
  *   - The module exports the expected symbols
  *   - The Auth type is correctly derived from createAuth
+ *   - USER_FIELD_MAPPING contains the required Prisma field name overrides
  *
  * Integration tests that exercise the full auth flow live in the E2E suite.
  *
@@ -13,7 +14,7 @@
  */
 
 import { assertEquals, assertExists, assertInstanceOf, assertStringIncludes, assertThrows } from '@std/assert';
-import { createAuth, WorkerConfigurationError } from './auth.ts';
+import { createAuth, USER_FIELD_MAPPING, WorkerConfigurationError } from './auth.ts';
 import type { Auth } from './auth.ts';
 
 // ============================================================================
@@ -101,4 +102,35 @@ Deno.test('createAuth throws when connectionString is a non-postgresql URL', () 
         BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
     } as unknown as import('../types.ts').Env;
     assertThrows(() => createAuth(fakeEnv), Error);
+});
+
+// ============================================================================
+// USER_FIELD_MAPPING — Prisma field name overrides
+// ============================================================================
+//
+// These tests are a regression guard for the Better Auth ↔ Prisma field name
+// mismatch.  Better Auth writes `name` and `image`; the Prisma User model
+// exposes `displayName` (column display_name) and `imageUrl` (column
+// image_url).  Without the mapping, Prisma throws
+// PrismaClientValidationError: Unknown argument 'name' / 'image' → HTTP 500
+// on every sign-up and OAuth/profile-sync flow.
+//
+// These tests require no database connection because USER_FIELD_MAPPING is a
+// plain constant — no betterAuth() call, no PrismaClient instantiation.
+// ============================================================================
+
+Deno.test('USER_FIELD_MAPPING is exported from auth module', () => {
+    assertExists(USER_FIELD_MAPPING);
+});
+
+Deno.test("USER_FIELD_MAPPING maps Better Auth 'name' to Prisma 'displayName'", () => {
+    assertEquals(USER_FIELD_MAPPING.name, 'displayName');
+});
+
+Deno.test("USER_FIELD_MAPPING maps Better Auth 'image' to Prisma 'imageUrl'", () => {
+    assertEquals(USER_FIELD_MAPPING.image, 'imageUrl');
+});
+
+Deno.test('USER_FIELD_MAPPING contains exactly the expected fields', () => {
+    assertEquals(Object.keys(USER_FIELD_MAPPING).sort(), ['image', 'name']);
 });
