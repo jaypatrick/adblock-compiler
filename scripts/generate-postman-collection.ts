@@ -136,6 +136,7 @@ interface PostmanRequest {
     url: PostmanUrl;
     body?: PostmanBody;
     description?: string;
+    auth?: { type: string; bearer: Array<{ key: string; value: string; type: string }> };
 }
 
 interface PostmanEvent {
@@ -152,6 +153,7 @@ interface PostmanItem {
     event?: PostmanEvent[];
     request?: PostmanRequest;
     item?: PostmanItem[];
+    auth?: { type: string; bearer: Array<{ key: string; value: string; type: string }> };
 }
 
 interface PostmanCollection {
@@ -163,6 +165,8 @@ interface PostmanCollection {
         version: string;
     };
     variable: Array<{ key: string; value: string; type: string; description?: string }>;
+    event: Array<{ listen: string; script: { type: string; exec: string[] } }>;
+    auth: { type: string; bearer: Array<{ key: string; value: string; type: string }> };
     item: PostmanItem[];
 }
 
@@ -172,6 +176,10 @@ interface PostmanCollection {
 
 const HTTP_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'] as const;
 type HttpMethod = (typeof HTTP_METHODS)[number];
+
+const TOKEN_TTL_MS = 6 * 24 * 60 * 60 * 1000;
+const SKIP_PATHS = ['/webhooks/clerk', '/clerk-config'];
+const SKIP_TAGS = ['LocalAuth'];
 
 /**
  * Resolve a $ref string against the spec components.
@@ -307,10 +315,50 @@ function buildTestScript(operation: OAOperation): string[] {
     const contentTypes = Object.keys(successResponse?.content ?? {});
     const isJson = contentTypes.some((ct) => ct.includes('json'));
     const isSse = contentTypes.some((ct) => ct.includes('event-stream'));
+    const opId = operation.operationId ?? '';
 
     lines.push(`pm.test('Status code is ${statusNum}', function () {`);
     lines.push(`    pm.response.to.have.status(${statusNum});`);
     lines.push('});');
+
+    if (opId === 'signInEmail') {
+        lines.push('');
+        lines.push('const body = pm.response.json();');
+        lines.push('if (body.token) {');
+        lines.push("    pm.collectionVariables.set('bearerToken', body.token);");
+        lines.push(`    pm.collectionVariables.set('bearerTokenExpiry', Date.now() + ${TOKEN_TTL_MS});`);
+        lines.push('}');
+        lines.push("pm.test('Has token', () => pm.expect(body.token).to.be.a('string'));");
+        lines.push("pm.test('Has user', () => pm.expect(body.user).to.have.property('email'));");
+        return lines;
+    }
+
+    if (opId === 'signUpEmail') {
+        lines.push('');
+        lines.push('const body = pm.response.json();');
+        lines.push("if (body.user?.id) pm.collectionVariables.set('userId', body.user.id);");
+        lines.push("pm.test('Has user id', () => pm.expect(body.user.id).to.be.a('string'));");
+        return lines;
+    }
+
+    if (opId === 'userCreateApiKey' || opId === 'createApiKey') {
+        lines.push('');
+        lines.push('const body = pm.response.json();');
+        lines.push("if (body.key) pm.collectionVariables.set('userApiKey', body.key);");
+        lines.push("if (body.keyPrefix) pm.collectionVariables.set('apiKeyPrefix', body.keyPrefix);");
+        lines.push("if (body.id) pm.collectionVariables.set('lastCreatedKeyId', body.id);");
+        lines.push("pm.test('Key starts with abc_', () => pm.expect(body.key).to.match(/^abc_/));");
+        lines.push("pm.test('Has id', () => pm.expect(body.id).to.be.a('string'));");
+        return lines;
+    }
+
+    if (opId === 'getSession') {
+        lines.push('');
+        lines.push('const body = pm.response.json();');
+        lines.push("if (body?.user?.id) pm.collectionVariables.set('userId', body.user.id);");
+        lines.push("pm.test('Has user', () => pm.expect(body).to.have.property('user'));");
+        return lines;
+    }
 
     if (isJson) {
         lines.push('');
@@ -387,6 +435,15 @@ function buildRequestItem(path: string, method: HttpMethod, operation: OAOperati
         },
     };
 
+    const hasNonAdminSecurity = operation.security && operation.security.length > 0 &&
+        operation.security.some((scheme) => !Object.keys(scheme).every((k) => k === 'AdminKey'));
+    if (hasNonAdminSecurity) {
+        item.auth = {
+            type: 'bearer',
+            bearer: [{ key: 'token', value: '{{bearerToken}}', type: 'string' }],
+        };
+    }
+
     return item;
 }
 
@@ -432,10 +489,14 @@ async function generatePostmanCollection(): Promise<void> {
     const untaggedItems: PostmanItem[] = [];
 
     let requestCount = 0;
+
     for (const [path, pathItem] of Object.entries(spec.paths)) {
+        if (SKIP_PATHS.some((p) => path.includes(p))) continue;
         for (const method of HTTP_METHODS) {
             const operation = pathItem[method];
             if (!operation) continue;
+            const firstTag = operation.tags?.[0];
+            if (firstTag && SKIP_TAGS.includes(firstTag)) continue;
             const item = buildRequestItem(path, method, operation, spec);
             const tag = operation.tags?.[0];
             if (tag) {
@@ -463,6 +524,169 @@ async function generatePostmanCollection(): Promise<void> {
         folderItems.push({ name: 'Other', item: untaggedItems });
     }
 
+    // Inject Better Auth endpoints at the top of the Authentication folder
+    const betterAuthItems: PostmanItem[] = [
+        {
+            name: 'Sign Up',
+            description: 'Create a new user account with email and password',
+            event: [
+                {
+                    listen: 'test',
+                    script: {
+                        type: 'text/javascript',
+                        exec: [
+                            "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                            'const body = pm.response.json();',
+                            "if (body.user?.id) pm.collectionVariables.set('userId', body.user.id);",
+                            "pm.test('Has user id', () => pm.expect(body.user.id).to.be.a('string'));",
+                        ],
+                    },
+                },
+            ],
+            request: {
+                method: 'POST',
+                header: [{ key: 'Content-Type', value: 'application/json', type: 'text' }],
+                url: {
+                    raw: '{{baseUrl}}/auth/sign-up/email',
+                    host: ['{{baseUrl}}'],
+                    path: ['auth', 'sign-up', 'email'],
+                },
+                body: {
+                    mode: 'raw',
+                    raw: JSON.stringify({ email: '{{postmanEmail}}', password: '{{postmanPassword}}', name: 'Postman Test User' }, null, 4),
+                    options: { raw: { language: 'json' } },
+                },
+            },
+        },
+        {
+            name: 'Sign In',
+            description: 'Authenticate with email and password, captures bearerToken',
+            event: [
+                {
+                    listen: 'test',
+                    script: {
+                        type: 'text/javascript',
+                        exec: [
+                            "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                            'const body = pm.response.json();',
+                            'if (body.token) {',
+                            "    pm.collectionVariables.set('bearerToken', body.token);",
+                            `    pm.collectionVariables.set('bearerTokenExpiry', Date.now() + ${TOKEN_TTL_MS});`,
+                            '}',
+                            "pm.test('Has token', () => pm.expect(body.token).to.be.a('string'));",
+                            "pm.test('Has user', () => pm.expect(body.user).to.have.property('email'));",
+                        ],
+                    },
+                },
+            ],
+            request: {
+                method: 'POST',
+                header: [{ key: 'Content-Type', value: 'application/json', type: 'text' }],
+                url: {
+                    raw: '{{baseUrl}}/auth/sign-in/email',
+                    host: ['{{baseUrl}}'],
+                    path: ['auth', 'sign-in', 'email'],
+                },
+                body: {
+                    mode: 'raw',
+                    raw: JSON.stringify({ email: '{{postmanEmail}}', password: '{{postmanPassword}}' }, null, 4),
+                    options: { raw: { language: 'json' } },
+                },
+            },
+        },
+        {
+            name: 'Get Session',
+            description: 'Retrieve the current authenticated session',
+            event: [
+                {
+                    listen: 'test',
+                    script: {
+                        type: 'text/javascript',
+                        exec: [
+                            "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                            'const body = pm.response.json();',
+                            "if (body?.user?.id) pm.collectionVariables.set('userId', body.user.id);",
+                            "pm.test('Has user', () => pm.expect(body).to.have.property('user'));",
+                        ],
+                    },
+                },
+            ],
+            auth: { type: 'bearer', bearer: [{ key: 'token', value: '{{bearerToken}}', type: 'string' }] },
+            request: {
+                method: 'GET',
+                header: [],
+                url: {
+                    raw: '{{baseUrl}}/auth/get-session',
+                    host: ['{{baseUrl}}'],
+                    path: ['auth', 'get-session'],
+                },
+            },
+        },
+        {
+            name: 'Sign Out',
+            description: 'Sign out and invalidate the current session',
+            event: [
+                {
+                    listen: 'test',
+                    script: {
+                        type: 'text/javascript',
+                        exec: ["pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"],
+                    },
+                },
+            ],
+            auth: { type: 'bearer', bearer: [{ key: 'token', value: '{{bearerToken}}', type: 'string' }] },
+            request: {
+                method: 'POST',
+                header: [{ key: 'Content-Type', value: 'application/json', type: 'text' }],
+                url: {
+                    raw: '{{baseUrl}}/auth/sign-out',
+                    host: ['{{baseUrl}}'],
+                    path: ['auth', 'sign-out'],
+                },
+            },
+        },
+    ];
+
+    const authFolder = folderItems.find((f) => f.name === 'Authentication');
+    if (authFolder) {
+        authFolder.item = [...betterAuthItems, ...(authFolder.item ?? [])];
+    } else {
+        folderItems.unshift({
+            name: 'Authentication',
+            description: 'Better Auth authentication endpoints',
+            item: betterAuthItems,
+        });
+    }
+
+    const collectionPreRequestScript: string[] = [
+        '// Auto-refresh bearerToken if missing or expired',
+        "const token = pm.collectionVariables.get('bearerToken');",
+        "const tokenExpiry = pm.collectionVariables.get('bearerTokenExpiry');",
+        'const now = Date.now();',
+        'const needsRefresh = !token || !tokenExpiry || now >= parseInt(tokenExpiry, 10);',
+        '',
+        'if (needsRefresh) {',
+        "    const baseUrl = pm.collectionVariables.get('baseUrl');",
+        "    const email = pm.collectionVariables.get('postmanEmail');",
+        "    const password = pm.collectionVariables.get('postmanPassword');",
+        "    if (!email || !password) { console.warn('[auth] postmanEmail/postmanPassword not set; skipping token refresh'); return; }",
+        '    pm.sendRequest({',
+        '        url: `${baseUrl}/auth/sign-in/email`,',
+        "        method: 'POST',",
+        "        header: { 'Content-Type': 'application/json' },",
+        "        body: { mode: 'raw', raw: JSON.stringify({ email, password }) }",
+        '    }, (err, res) => {',
+        "        if (err) { console.error('[auth] Token refresh failed:', err); return; }",
+        '        const body = res.json();',
+        '        if (body.token) {',
+        "            pm.collectionVariables.set('bearerToken', body.token);",
+        `            pm.collectionVariables.set('bearerTokenExpiry', Date.now() + ${TOKEN_TTL_MS});`,
+        "            console.log('[auth] Bearer token refreshed');",
+        '        }',
+        '    });',
+        '}',
+    ];
+
     // Build collection
     const collection: PostmanCollection = {
         info: {
@@ -481,7 +705,20 @@ async function generatePostmanCollection(): Promise<void> {
             { key: 'userApiKey', value: '', type: 'string', description: 'User API key with abc_ prefix for API key authentication' },
             { key: 'userId', value: '', type: 'string', description: 'User ID captured from Create User response' },
             { key: 'apiKeyPrefix', value: '', type: 'string', description: 'API key prefix captured from Create API Key response' },
+            { key: 'postmanEmail', value: '', type: 'string', description: 'Email for the Postman test user (used by token auto-refresh)' },
+            { key: 'postmanPassword', value: '', type: 'secret', description: 'Password for the Postman test user (used by token auto-refresh)' },
+            { key: 'bearerTokenExpiry', value: '', type: 'string', description: 'Unix timestamp ms when bearerToken expires (auto-set by pre-request script)' },
         ],
+        event: [
+            {
+                listen: 'prerequest',
+                script: { type: 'text/javascript', exec: collectionPreRequestScript },
+            },
+        ],
+        auth: {
+            type: 'bearer',
+            bearer: [{ key: 'token', value: '{{bearerToken}}', type: 'string' }],
+        },
         item: folderItems,
     };
 
@@ -502,6 +739,9 @@ async function generatePostmanCollection(): Promise<void> {
             { key: 'requestId', value: '', type: 'default', enabled: true },
             { key: 'userId', value: '', type: 'default', enabled: true },
             { key: 'apiKeyPrefix', value: '', type: 'default', enabled: true },
+            { key: 'postmanEmail', value: '', type: 'default', enabled: true },
+            { key: 'postmanPassword', value: '', type: 'secret', enabled: true },
+            { key: 'bearerTokenExpiry', value: '', type: 'default', enabled: true },
         ],
         _postman_variable_scope: 'environment',
         _postman_exported_using: 'deno task postman:collection',
@@ -517,6 +757,9 @@ async function generatePostmanCollection(): Promise<void> {
             { key: 'requestId', value: '', type: 'default', enabled: true },
             { key: 'userId', value: '', type: 'default', enabled: true },
             { key: 'apiKeyPrefix', value: '', type: 'default', enabled: true },
+            { key: 'postmanEmail', value: '', type: 'default', enabled: true },
+            { key: 'postmanPassword', value: '', type: 'secret', enabled: true },
+            { key: 'bearerTokenExpiry', value: '', type: 'default', enabled: true },
         ],
         _postman_variable_scope: 'environment',
         _postman_exported_using: 'deno task postman:collection',

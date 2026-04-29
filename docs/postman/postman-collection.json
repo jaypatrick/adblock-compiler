@@ -51,8 +51,72 @@
       "value": "",
       "type": "string",
       "description": "API key prefix captured from Create API Key response"
+    },
+    {
+      "key": "postmanEmail",
+      "value": "",
+      "type": "string",
+      "description": "Email for the Postman test user (used by token auto-refresh)"
+    },
+    {
+      "key": "postmanPassword",
+      "value": "",
+      "type": "secret",
+      "description": "Password for the Postman test user (used by token auto-refresh)"
+    },
+    {
+      "key": "bearerTokenExpiry",
+      "value": "",
+      "type": "string",
+      "description": "Unix timestamp ms when bearerToken expires (auto-set by pre-request script)"
     }
   ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Auto-refresh bearerToken if missing or expired",
+          "const token = pm.collectionVariables.get('bearerToken');",
+          "const tokenExpiry = pm.collectionVariables.get('bearerTokenExpiry');",
+          "const now = Date.now();",
+          "const needsRefresh = !token || !tokenExpiry || now >= parseInt(tokenExpiry, 10);",
+          "",
+          "if (needsRefresh) {",
+          "    const baseUrl = pm.collectionVariables.get('baseUrl');",
+          "    const email = pm.collectionVariables.get('postmanEmail');",
+          "    const password = pm.collectionVariables.get('postmanPassword');",
+          "    if (!email || !password) { console.warn('[auth] postmanEmail/postmanPassword not set; skipping token refresh'); return; }",
+          "    pm.sendRequest({",
+          "        url: `${baseUrl}/auth/sign-in/email`,",
+          "        method: 'POST',",
+          "        header: { 'Content-Type': 'application/json' },",
+          "        body: { mode: 'raw', raw: JSON.stringify({ email, password }) }",
+          "    }, (err, res) => {",
+          "        if (err) { console.error('[auth] Token refresh failed:', err); return; }",
+          "        const body = res.json();",
+          "        if (body.token) {",
+          "            pm.collectionVariables.set('bearerToken', body.token);",
+          "            pm.collectionVariables.set('bearerTokenExpiry', Date.now() + 518400000);",
+          "            console.log('[auth] Bearer token refreshed');",
+          "        }",
+          "    });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{bearerToken}}",
+        "type": "string"
+      }
+    ]
+  },
   "item": [
     {
       "name": "Compilation",
@@ -534,6 +598,16 @@
               ]
             },
             "description": "Cancels a pending queue job by its requestId.\nReturns 409 if the job is already completed, failed, or cancelled.\nRequires authentication (free tier or above).\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         }
       ]
@@ -1265,9 +1339,12 @@
                   "    pm.response.to.have.status(201);",
                   "});",
                   "",
-                  "pm.test('Response is JSON', function () {",
-                  "    pm.response.to.be.json;",
-                  "});"
+                  "const body = pm.response.json();",
+                  "if (body.key) pm.collectionVariables.set('userApiKey', body.key);",
+                  "if (body.keyPrefix) pm.collectionVariables.set('apiKeyPrefix', body.keyPrefix);",
+                  "if (body.id) pm.collectionVariables.set('lastCreatedKeyId', body.id);",
+                  "pm.test('Key starts with abc_', () => pm.expect(body.key).to.match(/^abc_/));",
+                  "pm.test('Has id', () => pm.expect(body.id).to.be.a('string'));"
                 ]
               }
             }
@@ -1811,6 +1888,16 @@
               ]
             },
             "description": "Returns a paginated list of all local auth users.\nResponses never include `password_hash`.\nRequires Admin tier + admin role.\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -1862,6 +1949,16 @@
               }
             },
             "description": "Create a new local auth user with any valid role and tier.\nAdmins can create users with privileged roles (e.g. `admin`) that cannot be self-registered.\nRequires Admin tier + admin role.\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -1906,6 +2003,16 @@
               ]
             },
             "description": "Returns the public profile of a single local auth user by UUID.\nRequires Admin tier + admin role.\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -1965,6 +2072,16 @@
               }
             },
             "description": "Update a user's `tier`, `role`, and/or `api_disabled` flag.\nTier and role are independent fields — changing role does not automatically change tier unless\nno explicit tier is provided (in which case the role's default tier is applied).\nRequires Admin tier + admin role.\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -2009,6 +2126,16 @@
               ]
             },
             "description": "Permanently deletes a local auth user by UUID.\nRequires Admin tier + admin role.\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -2046,6 +2173,16 @@
               ]
             },
             "description": "Returns a read-only snapshot of all three extensibility registries at runtime:\n- `LOCAL_ROLE_REGISTRY` — all defined roles, their tiers, and self-register flag\n- `TIER_REGISTRY` — all tiers with rate limits and ordering\n- `ROUTE_PERMISSION_REGISTRY` — all registered route permission rules\n\nAlso reports which auth provider is active (`local-jwt` vs `better-auth`).\nRequires Admin tier + admin role.\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -2098,6 +2235,16 @@
               ]
             },
             "description": "Returns KV-backed API usage counters for a specific user:\n- `total` — lifetime request count, first/last seen timestamps\n- `days` — per-day breakdown for the requested lookback window (max 90 days)\n\nRequires Admin tier + admin role.\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -2682,6 +2829,16 @@
               }
             },
             "description": "Navigates to a URL using the Cloudflare Browser Rendering binding and returns the\nfinal canonical URL after all redirects. Useful for discovering the true destination\nof redirect chains or URL shorteners before scheduling a filter-list download.\n\nRequires the `BROWSER` binding to be configured in `wrangler.toml`.\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -2733,6 +2890,16 @@
               }
             },
             "description": "Performs parallel browser-based health checks on a list of filter-list source\nURLs. For each URL a headless browser navigates to the page, verifies non-empty\ntext content, and optionally captures a full-page PNG screenshot stored in R2.\n\nThe full result set is persisted under the KV key `browser:monitor:latest`\nand is retrievable via `GET /api/browser/monitor/latest`.\n\nRequires the `BROWSER` binding. `FILTER_STORAGE` (R2) is required for\nscreenshot capture. `COMPILATION_CACHE` (KV) is required for result persistence.\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -2770,6 +2937,16 @@
               ]
             },
             "description": "Returns the most recent result set written by `POST /api/browser/monitor`. Reads\nthe KV key `browser:monitor:latest` from `COMPILATION_CACHE`.\n\nRequires the `COMPILATION_CACHE` binding.\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         }
       ]
@@ -2778,6 +2955,193 @@
       "name": "Authentication",
       "description": "User-level authentication endpoints — API key management and webhook receivers. Requires Bearer token (Better Auth JWT or API key).",
       "item": [
+        {
+          "name": "Sign Up",
+          "description": "Create a new user account with email and password",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "if (body.user?.id) pm.collectionVariables.set('userId', body.user.id);",
+                  "pm.test('Has user id', () => pm.expect(body.user.id).to.be.a('string'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sign-up/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sign-up",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{postmanEmail}}\",\n    \"password\": \"{{postmanPassword}}\",\n    \"name\": \"Postman Test User\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Sign In",
+          "description": "Authenticate with email and password, captures bearerToken",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "if (body.token) {",
+                  "    pm.collectionVariables.set('bearerToken', body.token);",
+                  "    pm.collectionVariables.set('bearerTokenExpiry', Date.now() + 518400000);",
+                  "}",
+                  "pm.test('Has token', () => pm.expect(body.token).to.be.a('string'));",
+                  "pm.test('Has user', () => pm.expect(body.user).to.have.property('email'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sign-in/email",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sign-in",
+                "email"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n    \"email\": \"{{postmanEmail}}\",\n    \"password\": \"{{postmanPassword}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "Get Session",
+          "description": "Retrieve the current authenticated session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });",
+                  "const body = pm.response.json();",
+                  "if (body?.user?.id) pm.collectionVariables.set('userId', body.user.id);",
+                  "pm.test('Has user', () => pm.expect(body).to.have.property('user'));"
+                ]
+              }
+            }
+          ],
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/auth/get-session",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "get-session"
+              ]
+            }
+          }
+        },
+        {
+          "name": "Sign Out",
+          "description": "Sign out and invalidate the current session",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status code is 200', function () { pm.response.to.have.status(200); });"
+                ]
+              }
+            }
+          ],
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
+          },
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/auth/sign-out",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "auth",
+                "sign-out"
+              ]
+            }
+          }
+        },
         {
           "name": "List user's API keys",
           "description": "Lists all API keys belonging to the authenticated user.",
@@ -2811,6 +3175,16 @@
               ]
             },
             "description": "Lists all API keys belonging to the authenticated user.\nReturns metadata only — never the key hash or plaintext.\nRequires Bearer token (Better Auth JWT or API key).\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -2826,9 +3200,12 @@
                   "    pm.response.to.have.status(201);",
                   "});",
                   "",
-                  "pm.test('Response is JSON', function () {",
-                  "    pm.response.to.be.json;",
-                  "});"
+                  "const body = pm.response.json();",
+                  "if (body.key) pm.collectionVariables.set('userApiKey', body.key);",
+                  "if (body.keyPrefix) pm.collectionVariables.set('apiKeyPrefix', body.keyPrefix);",
+                  "if (body.id) pm.collectionVariables.set('lastCreatedKeyId', body.id);",
+                  "pm.test('Key starts with abc_', () => pm.expect(body.key).to.match(/^abc_/));",
+                  "pm.test('Has id', () => pm.expect(body.id).to.be.a('string'));"
                 ]
               }
             }
@@ -2861,6 +3238,16 @@
               }
             },
             "description": "Creates a new API key for the authenticated user.\nThe raw API key (with `abc_` prefix) is returned **only once** — store it securely.\nRequires Bearer token (Better Auth JWT or API key).\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -2919,6 +3306,16 @@
               }
             },
             "description": "Updates an API key's name or scopes. Only the key owner can update their own keys.\nRequires Bearer token (Better Auth JWT or API key).\n"
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
+              {
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
+              }
+            ]
           }
         },
         {
@@ -2962,201 +3359,16 @@
               ]
             },
             "description": "Revokes (soft-deletes) an API key. The key remains in the database for audit\npurposes but is no longer valid for authentication.\nOnly the key owner can revoke their own keys.\n"
-          }
-        }
-      ]
-    },
-    {
-      "name": "LocalAuth",
-      "description": "Local JWT auth bridge — self-contained sign-up/login. When Better Auth is configured these endpoints are no longer the primary auth flow.",
-      "item": [
-        {
-          "name": "Register a new local account",
-          "description": "Create a new account using an email address or E.164 phone number and password.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 201', function () {",
-                  "    pm.response.to.have.status(201);",
-                  "});",
-                  "",
-                  "pm.test('Response is JSON', function () {",
-                  "    pm.response.to.be.json;",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
+          },
+          "auth": {
+            "type": "bearer",
+            "bearer": [
               {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
+                "key": "token",
+                "value": "{{bearerToken}}",
+                "type": "string"
               }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/signup",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "signup"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"identifier\": \"user@example.com\",\n    \"password\": \"minEightChars\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "Create a new account using an email address or E.164 phone number and password.\nAll self-registered users receive the `user` role (Free tier).\nAdmin role must be granted via `POST /admin/local-users`.\n\n**Rate limited** (anonymous tier). Returns a signed HS256 JWT on success.\n\n> Only active when Better Auth is not the primary provider.\n"
-          }
-        },
-        {
-          "name": "Authenticate and receive a JWT",
-          "description": "Authenticate with an identifier (email or phone) and password.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response is JSON', function () {",
-                  "    pm.response.to.be.json;",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/login",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "login"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"identifier\": \"user@example.com\",\n    \"password\": \"yourpassword\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "Authenticate with an identifier (email or phone) and password.\nReturns a signed HS256 JWT valid for 24 hours.\n\nTiming-safe: always runs full PBKDF2 derivation even for unknown identifiers\nto prevent user enumeration via timing side-channels.\n\n**Rate limited** (anonymous tier).\n"
-          }
-        },
-        {
-          "name": "Get current user profile",
-          "description": "Returns the authenticated user's public profile.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response is JSON', function () {",
-                  "    pm.response.to.be.json;",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{baseUrl}}/auth/me",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "me"
-              ]
-            },
-            "description": "Returns the authenticated user's public profile.\nRequires a valid `Authorization: Bearer <jwt>` header.\n"
-          }
-        },
-        {
-          "name": "Change the current user's password",
-          "description": "Update the authenticated user's password.",
-          "event": [
-            {
-              "listen": "test",
-              "script": {
-                "type": "text/javascript",
-                "exec": [
-                  "pm.test('Status code is 200', function () {",
-                  "    pm.response.to.have.status(200);",
-                  "});",
-                  "",
-                  "pm.test('Response is JSON', function () {",
-                  "    pm.response.to.be.json;",
-                  "});"
-                ]
-              }
-            }
-          ],
-          "request": {
-            "method": "POST",
-            "header": [
-              {
-                "key": "Content-Type",
-                "value": "application/json",
-                "type": "text"
-              }
-            ],
-            "url": {
-              "raw": "{{baseUrl}}/auth/change-password",
-              "host": [
-                "{{baseUrl}}"
-              ],
-              "path": [
-                "auth",
-                "change-password"
-              ]
-            },
-            "body": {
-              "mode": "raw",
-              "raw": "{\n    \"currentPassword\": \"string\",\n    \"newPassword\": \"string\"\n}",
-              "options": {
-                "raw": {
-                  "language": "json"
-                }
-              }
-            },
-            "description": "Update the authenticated user's password.\nRequires a valid `Authorization: Bearer <jwt>` header and the correct current password.\n"
+            ]
           }
         }
       ]

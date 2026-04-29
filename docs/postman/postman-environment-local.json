@@ -24,6 +24,24 @@
             "value": "",
             "type": "default",
             "enabled": true
+        },
+        {
+            "key": "postmanEmail",
+            "value": "",
+            "type": "default",
+            "enabled": true
+        },
+        {
+            "key": "postmanPassword",
+            "value": "",
+            "type": "secret",
+            "enabled": true
+        },
+        {
+            "key": "bearerTokenExpiry",
+            "value": "",
+            "type": "default",
+            "enabled": true
         }
     ],
     "_postman_variable_scope": "environment",
