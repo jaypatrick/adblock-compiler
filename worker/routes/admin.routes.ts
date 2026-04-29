@@ -2928,7 +2928,7 @@ export async function handleAdminRevokeUserSessions(
 ): Promise<Response> {
     const { verifyCfAccessJwt } = await import('../middleware/cf-access.ts');
     const { AnalyticsService } = await import('../../src/services/AnalyticsService.ts');
-    const { createPgPool } = await import('../utils/pg-pool.ts');
+    const { createPrismaClient } = await import('../lib/prisma.ts');
 
     const authContext = c.get('authContext') as { role?: string };
     if (authContext.role !== 'admin') {
@@ -2954,14 +2954,11 @@ export async function handleAdminRevokeUserSessions(
         if (!c.env.HYPERDRIVE) {
             return c.json({ success: false, error: 'Database not configured' }, 503);
         }
-        const pool = createPgPool(c.env.HYPERDRIVE.connectionString);
-        const result = await pool.query(
-            'DELETE FROM sessions WHERE user_id = $1',
-            [userId],
-        );
+        const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
+        const result = await prisma.session.deleteMany({ where: { userId } });
         return c.json({
             success: true,
-            message: `Revoked ${result.rowCount ?? 0} session(s) for user ${userId}`,
+            message: `Revoked ${result.count} session(s) for user ${userId}`,
         });
     } catch (error) {
         // deno-lint-ignore no-console

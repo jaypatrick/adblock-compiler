@@ -20,9 +20,10 @@
  */
 
 import type { Env, HyperdriveBinding, IAuthProvider } from '../types.ts';
-import { ANONYMOUS_AUTH_CONTEXT, AuthScope, type IAuthContext, type IAuthMiddlewareResult, isTierSufficient, TIER_REGISTRY, UserTier } from '../types.ts';
+import { ANONYMOUS_AUTH_CONTEXT, type IAuthContext, type IAuthMiddlewareResult, isTierSufficient, TIER_REGISTRY, UserTier } from '../types.ts';
 import { runTokenValidators } from './token-validator.ts';
-import { ApiKeyRowSchema, UserTierRowSchema } from '../schemas.ts';
+import { UserTierRowSchema } from '../schemas.ts';
+import { createPrismaClient } from '../lib/prisma.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 
 // ============================================================================
@@ -49,18 +50,6 @@ export interface AuthContext {
     apiKeyId: string;
     scopes: string[];
 }
-
-/**
- * Minimal pg Pool interface for auth queries.
- */
-interface PgPool {
-    query<T = Record<string, unknown>>(text: string, values?: unknown[]): Promise<{ rows: T[]; rowCount: number | null }>;
-}
-
-/**
- * Factory to create a pg Pool from a connection string.
- */
-export type PgPoolFactory = (connectionString: string) => PgPool;
 
 // ============================================================================
 // Token Hashing
@@ -98,28 +87,15 @@ function extractBearerToken(request: Request): string | null {
 // ============================================================================
 
 /**
- * Authenticates a request using an API key stored in PostgreSQL.
+ * Authenticates a request using an API key stored in PostgreSQL via Prisma.
  *
  * @param request - Incoming HTTP request
  * @param hyperdrive - Cloudflare Hyperdrive binding
- * @param createPool - Factory to create a pg Pool
- * @param requiredScope - Scope the API key must have (e.g., 'compile', 'admin')
  * @returns Authentication result with user context
- *
- * @example
- * ```typescript
- * const auth = await authenticateApiKey(request, env.HYPERDRIVE, poolFactory, 'compile');
- * if (!auth.authenticated) {
- *     return JsonResponse.error(auth.error, 401);
- * }
- * // auth.userId, auth.apiKeyId, auth.scopes are available
- * ```
  */
 export async function authenticateApiKey(
     request: Request,
     hyperdrive: HyperdriveBinding,
-    createPool: PgPoolFactory,
-    requiredScope?: AuthScope,
 ): Promise<ApiKeyAuthResult> {
     const token = extractBearerToken(request);
     if (!token) {
@@ -127,64 +103,45 @@ export async function authenticateApiKey(
     }
 
     const keyHash = await hashToken(token);
-    const pool = createPool(hyperdrive.connectionString);
 
     try {
-        const result = await pool.query<{
-            id: string;
-            user_id: string;
-            scopes: string[];
-            rate_limit_per_minute: number;
-            expires_at: string | null;
-            revoked_at: string | null;
-        }>(
-            `SELECT id, user_id, scopes, rate_limit_per_minute, expires_at, revoked_at
-             FROM api_keys
-             WHERE key_hash = $1`,
-            [keyHash],
-        );
+        // Cloudflare Workers are isolated per-request — there is no shared singleton
+        // state between invocations.  Creating a PrismaClient here is the standard
+        // Workers pattern; connection pooling is handled at the infrastructure level
+        // by Hyperdrive, not by the client instance.
+        const prisma = createPrismaClient(hyperdrive.connectionString);
+        const apiKey = await prisma.apiKey.findFirst({
+            where: { keyHash },
+            select: { id: true, userId: true, scopes: true, rateLimitPerMinute: true, expiresAt: true, revokedAt: true },
+        });
 
-        if (result.rows.length === 0) {
+        if (!apiKey) {
             return { authenticated: false, error: 'Invalid API key' };
         }
 
-        const rowParse = ApiKeyRowSchema.safeParse(result.rows[0]);
-        if (!rowParse.success) {
-            console.warn('[auth] Malformed API key DB row:', rowParse.error.issues);
-            return { authenticated: false, error: 'Malformed API key data' };
-        }
-        const apiKey = rowParse.data;
-
         // Check if revoked
-        if (apiKey.revoked_at) {
+        if (apiKey.revokedAt) {
             return { authenticated: false, error: 'API key has been revoked' };
         }
 
         // Check if expired
-        if (apiKey.expires_at && new Date(apiKey.expires_at) < new Date()) {
+        if (apiKey.expiresAt && apiKey.expiresAt < new Date()) {
             return { authenticated: false, error: 'API key has expired' };
         }
 
-        // Check scope
-        if (requiredScope && !apiKey.scopes.includes(requiredScope)) {
-            return {
-                authenticated: false,
-                error: `API key missing required scope: ${requiredScope}`,
-            };
-        }
-
-        // Update last_used_at (fire-and-forget, don't block the response)
-        pool.query(
-            `UPDATE api_keys SET last_used_at = NOW() WHERE id = $1`,
-            [apiKey.id],
-        ).catch(() => {/* intentional: non-critical update */});
+        // Update lastUsedAt as a non-blocking side-effect.  `lastUsedAt` is
+        // purely informational analytics data.  Loss on short-lived requests
+        // is expected and acceptable — a failure here must never abort the
+        // authentication result.  Hyperdrive typically completes the write
+        // before the Worker terminates, but this is not guaranteed.
+        prisma.apiKey.update({ where: { id: apiKey.id }, data: { lastUsedAt: new Date() } }).catch(() => {});
 
         return {
             authenticated: true,
-            userId: apiKey.user_id,
+            userId: apiKey.userId,
             apiKeyId: apiKey.id,
             scopes: apiKey.scopes,
-            rateLimitPerMinute: apiKey.rate_limit_per_minute ?? null,
+            rateLimitPerMinute: apiKey.rateLimitPerMinute ?? null,
         };
     } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
@@ -208,8 +165,8 @@ function isApiKeyToken(token: string): boolean {
  *
  * 1. **API key (fast path, always checked first)** — If the Bearer token
  *    starts with `abc_` it is hashed and looked up in PostgreSQL via
- *    Hyperdrive. The authenticated user inherits their actual tier from the
- *    `users` table (not hardcoded).
+ *    Hyperdrive using Prisma. The authenticated user inherits their actual
+ *    tier from the `users` table (not hardcoded).
  *
  * 2. **Primary auth provider (Better Auth)** — The `authProvider` param is
  *    always supplied by the caller (`BetterAuthProvider`). It is consulted
@@ -228,21 +185,19 @@ function isApiKeyToken(token: string): boolean {
  *
  * @param request          - Incoming HTTP request
  * @param env              - Worker env bindings
- * @param createPool       - Optional pg Pool factory for API key lookups
  * @param authProvider     - Primary pluggable auth provider (Better Auth)
  * @returns A {@link IAuthMiddlewareResult} with the resolved auth context
  */
 export async function authenticateRequestUnified(
     request: Request,
     env: Env,
-    createPool?: PgPoolFactory,
     authProvider?: IAuthProvider,
 ): Promise<IAuthMiddlewareResult> {
     const token = extractBearerToken(request);
 
     // --- API key path (always checked first regardless of provider) ---
     if (token && isApiKeyToken(token)) {
-        if (!env.HYPERDRIVE || !createPool) {
+        if (!env.HYPERDRIVE) {
             return {
                 context: { ...ANONYMOUS_AUTH_CONTEXT },
                 response: new Response(
@@ -252,13 +207,12 @@ export async function authenticateRequestUnified(
             };
         }
 
-        const result = await authenticateApiKey(request, env.HYPERDRIVE, createPool);
+        const result = await authenticateApiKey(request, env.HYPERDRIVE);
         if (result.authenticated) {
             // Resolve the key owner's actual tier from the database
             const ownerTier = await resolveApiKeyOwnerTier(
                 result.userId,
                 env.HYPERDRIVE,
-                createPool,
             );
 
             const context: IAuthContext = {
@@ -395,23 +349,25 @@ export async function authenticateRequestUnified(
 async function resolveApiKeyOwnerTier(
     userId: string | undefined,
     hyperdrive: HyperdriveBinding,
-    createPool: PgPoolFactory,
 ): Promise<UserTier> {
     if (!userId) return UserTier.Free;
 
     try {
-        const pool = createPool(hyperdrive.connectionString);
-        const result = await pool.query(
-            `SELECT tier FROM users WHERE id = $1 LIMIT 1`,
-            [userId],
-        );
+        // See note in authenticateApiKey: PrismaClient creation per request is
+        // correct for Cloudflare Workers; Hyperdrive pools connections externally.
+        const prisma = createPrismaClient(hyperdrive.connectionString);
+        const row = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { tier: true },
+        });
 
-        if (result.rows.length > 0) {
-            const rowParse = UserTierRowSchema.safeParse(result.rows[0]);
+        if (row) {
+            const rowParse = UserTierRowSchema.safeParse(row);
             if (rowParse.success) {
                 return rowParse.data.tier;
             }
             // Unknown/invalid tier value — fall back to Free
+            // deno-lint-ignore no-console
             console.warn('[auth] Unrecognised tier value in DB row, defaulting to Free');
         }
         return UserTier.Free;

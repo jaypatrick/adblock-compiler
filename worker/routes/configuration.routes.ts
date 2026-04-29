@@ -34,7 +34,6 @@ import {
 import { handleDeleteSavedConfiguration, handleListSavedConfigurations, handleSaveConfiguration } from '../handlers/saved-configurations.ts';
 
 import { JsonResponse } from '../utils/response.ts';
-import { createPgPool } from '../utils/pg-pool.ts';
 
 export const configurationRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
@@ -371,9 +370,8 @@ configurationRoutes.use('/configuration/saved', requireAuthMiddleware());
 configurationRoutes.use('/configuration/saved', rateLimitMiddleware());
 configurationRoutes.openapi(listSavedConfigsRoute, async (c) => {
     if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('Saved configurations require an authenticated user session');
-    if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
     // deno-lint-ignore no-explicit-any
-    return handleListSavedConfigurations(c.req.raw, c.env, c.get('authContext'), createPgPool(c.env.HYPERDRIVE.connectionString)) as any;
+    return handleListSavedConfigurations(c.req.raw, c.env, c.get('authContext'), c.get('prisma') ?? null) as any;
 });
 
 const saveSavedConfigRoute = createRoute({
@@ -449,9 +447,8 @@ const saveSavedConfigRoute = createRoute({
 
 configurationRoutes.openapi(saveSavedConfigRoute, async (c) => {
     if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('Saved configurations require an authenticated user session');
-    if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
     // deno-lint-ignore no-explicit-any
-    return handleSaveConfiguration(c.req.raw, c.env, c.get('authContext'), createPgPool(c.env.HYPERDRIVE.connectionString), c.req.valid('json')) as any;
+    return handleSaveConfiguration(c.req.raw, c.env, c.get('authContext'), c.get('prisma') ?? null, c.req.valid('json')) as any;
 });
 
 const deleteSavedConfigRoute = createRoute({
@@ -508,8 +505,7 @@ configurationRoutes.use('/configuration/saved/:id', requireAuthMiddleware());
 configurationRoutes.use('/configuration/saved/:id', rateLimitMiddleware());
 configurationRoutes.openapi(deleteSavedConfigRoute, async (c) => {
     if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('Saved configurations require an authenticated user session');
-    if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
     const { id } = c.req.valid('param');
     // deno-lint-ignore no-explicit-any
-    return handleDeleteSavedConfiguration(c.req.raw, c.env, c.get('authContext'), createPgPool(c.env.HYPERDRIVE.connectionString), id) as any;
+    return handleDeleteSavedConfiguration(c.req.raw, c.env, c.get('authContext'), c.get('prisma') ?? null, id) as any;
 });

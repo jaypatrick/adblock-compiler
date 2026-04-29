@@ -59,7 +59,6 @@ import { createAuth } from './lib/auth.ts';
 // Utils
 import { generateRequestId } from './utils/index.ts';
 import { createAnalyticsService } from './utils/analytics.ts';
-import { createPgPool } from './utils/pg-pool.ts';
 import { checkRoutePermission } from './utils/route-permissions.ts';
 import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
@@ -439,7 +438,6 @@ app.use('*', async (c, next) => {
     const authResult = await authenticateRequestUnified(
         c.req.raw,
         c.env,
-        createPgPool,
         authProvider,
     );
     endTime(c, 'auth');
@@ -492,6 +490,22 @@ app.use('*', async (c, next) => {
             c.header('X-Robots-Tag', 'noindex, nofollow');
         }
     }
+});
+
+// ── Prisma context — request-scoped PrismaClient via Hyperdrive ───────────────
+// Registered at app level (not in the routes sub-app) so that BOTH the routes
+// sub-app middleware chain AND the tRPC middleware can access `c.get('prisma')`
+// without creating duplicate clients.  Must run before the routes sub-app and
+// tRPC middleware that call checkUserApiAccess(), so the ban check always
+// receives a live Prisma client when Hyperdrive is configured.
+// Silently skips client creation when HYPERDRIVE is not configured (e.g. local
+// dev without a Hyperdrive binding, unit tests, static-asset requests).
+app.use('/api/*', async (c, next) => {
+    if (c.env.HYPERDRIVE) {
+        const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
+        c.set('prisma', prisma);
+    }
+    await next();
 });
 
 // ============================================================================
@@ -575,7 +589,7 @@ routes.use('*', async (c, next) => {
     const ip = c.get('ip');
     const path = routesPath(c);
 
-    const accessDenied = await checkUserApiAccess(authContext, c.env);
+    const accessDenied = await checkUserApiAccess(authContext, c.env, c.get('prisma') ?? null);
     if (accessDenied) {
         analytics.trackSecurityEvent({
             eventType: 'auth_failure',
@@ -615,19 +629,6 @@ routes.use('*', async (c, next) => {
 });
 
 // ── Mount domain route modules ────────────────────────────────────────────────
-
-// ── Prisma context — request-scoped PrismaClient via Hyperdrive ───────────────
-// Registered before domain route modules so every handler can access
-// `c.get('prisma')` without creating duplicate clients.
-// Silently skips client creation when HYPERDRIVE is not configured (e.g. local
-// dev without a Hyperdrive binding, unit tests, static-asset requests).
-routes.use('*', async (c, next) => {
-    if (c.env.HYPERDRIVE) {
-        const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
-        c.set('prisma', prisma);
-    }
-    await next();
-});
 
 routes.route('/', compileRoutes);
 routes.route('/', rulesRoutes);
@@ -725,7 +726,7 @@ app.use('/api/trpc/*', async (c, next) => {
     const analytics = c.get('analytics');
     const ip = c.get('ip');
 
-    const accessDenied = await checkUserApiAccess(authContext, c.env);
+    const accessDenied = await checkUserApiAccess(authContext, c.env, c.get('prisma') ?? null);
     if (accessDenied) {
         analytics.trackSecurityEvent({
             eventType: 'auth_failure',

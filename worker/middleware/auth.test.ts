@@ -21,7 +21,7 @@
  */
 
 import { assertEquals, assertExists } from '@std/assert';
-import { ANONYMOUS_AUTH_CONTEXT, type Env, type HyperdriveBinding, type IAuthContext, type IAuthProvider, type IAuthProviderResult, UserTier } from '../types.ts';
+import { ANONYMOUS_AUTH_CONTEXT, type Env, type IAuthContext, type IAuthProvider, type IAuthProviderResult, UserTier } from '../types.ts';
 import { authenticateRequestUnified, requireAuth, requireScope, requireTier } from './auth.ts';
 
 // ============================================================================
@@ -262,21 +262,6 @@ Deno.test('authenticateRequestUnified - returns 401 when JWT-like token is prese
 });
 
 // ============================================================================
-// authenticateRequestUnified — abc_ token with createPool not provided → 503
-// ============================================================================
-
-Deno.test('authenticateRequestUnified - returns 503 when abc_ token present but createPool not provided', async () => {
-    const env = makeEnv({
-        HYPERDRIVE: { connectionString: 'postgres://localhost/test' } as unknown as HyperdriveBinding,
-    });
-    const req = makeRequest('abc_validlookingtokenhere');
-
-    // No createPool provided
-    const result = await authenticateRequestUnified(req, env);
-    assertExists(result.response);
-    assertEquals(result.response!.status, 503);
-});
-
 // ============================================================================
 // authenticateRequestUnified — custom authProvider (Better Auth) paths
 // ============================================================================
@@ -295,7 +280,7 @@ Deno.test('authenticateRequestUnified - custom provider authenticates via cookie
         sessionId: 'sess_abc123',
     });
 
-    const result = await authenticateRequestUnified(req, env, undefined, provider);
+    const result = await authenticateRequestUnified(req, env, provider);
     assertEquals(result.context.authMethod, 'better-auth');
     assertEquals(result.context.userId, 'ba_user_001');
     assertEquals(result.context.tier, UserTier.Free);
@@ -314,7 +299,7 @@ Deno.test('authenticateRequestUnified - custom provider authenticates non-JWT se
         sessionId: 'sess_randomsessionid12345',
     });
 
-    const result = await authenticateRequestUnified(req, env, undefined, provider);
+    const result = await authenticateRequestUnified(req, env, provider);
     assertEquals(result.context.authMethod, 'better-auth');
     assertEquals(result.context.userId, 'ba_user_002');
     assertEquals(result.context.tier, UserTier.Pro);
@@ -326,7 +311,7 @@ Deno.test('authenticateRequestUnified - custom provider returns invalid with no 
     const req = makeRequest(); // no token
     const provider = makeAuthProviderStub({ valid: false });
 
-    const result = await authenticateRequestUnified(req, env, undefined, provider);
+    const result = await authenticateRequestUnified(req, env, provider);
     assertEquals(result.context.authMethod, 'anonymous');
     assertEquals(result.response, undefined);
 });
@@ -336,7 +321,7 @@ Deno.test('authenticateRequestUnified - custom provider rejects Bearer token →
     const req = makeRequest('sess_expiredtoken');
     const provider = makeAuthProviderStub({ valid: false, error: 'Session expired' });
 
-    const result = await authenticateRequestUnified(req, env, undefined, provider);
+    const result = await authenticateRequestUnified(req, env, provider);
     assertEquals(result.context.authMethod, 'anonymous');
     assertExists(result.response);
     assertEquals(result.response!.status, 401);
@@ -352,7 +337,7 @@ Deno.test('authenticateRequestUnified - API key is checked before custom provide
     const req = makeRequest('abc_apikey_test');
     const provider = makeAuthProviderStub({ valid: true, providerUserId: 'should_not_be_used' });
 
-    const result = await authenticateRequestUnified(req, env, undefined, provider);
+    const result = await authenticateRequestUnified(req, env, provider);
     // No HYPERDRIVE configured → 503 from API key path (not reaching the provider)
     assertExists(result.response);
     assertEquals(result.response!.status, 503);

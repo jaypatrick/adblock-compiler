@@ -36,6 +36,8 @@ type PgPoolFactory = (connectionString: string) => PgPool;
  *
  * Request body: { email: string, displayName?: string, role?: 'admin' | 'user' | 'readonly' }
  * Response: { id: string, email: string, role: string }
+ *
+ * @deprecated Use Better Auth admin API instead. This handler uses a raw pg pool and will be removed.
  */
 export async function handleCreateUser(
     request: Request,
@@ -88,6 +90,8 @@ export async function handleCreateUser(
  * Response: { apiKey: string, keyPrefix: string, id: string }
  *
  * IMPORTANT: The raw API key is only returned once. Store it securely.
+ *
+ * @deprecated Use the user-facing api-keys handlers with Prisma instead. This handler uses a raw pg pool and will be removed.
  */
 export async function handleCreateApiKey(
     request: Request,
@@ -155,6 +159,8 @@ export async function handleCreateApiKey(
  * Revokes an API key.
  *
  * Request body: { apiKeyId: string } or { keyPrefix: string }
+ *
+ * @deprecated Use the user-facing api-keys handlers with Prisma instead. This handler uses a raw pg pool and will be removed.
  */
 export async function handleRevokeApiKey(
     request: Request,
@@ -205,6 +211,8 @@ export async function handleRevokeApiKey(
  * Lists API keys for a user (without the actual key hashes).
  *
  * Query param: ?userId=<uuid>
+ *
+ * @deprecated Use the user-facing api-keys handlers with Prisma instead. This handler uses a raw pg pool and will be removed.
  */
 export async function handleListApiKeys(
     request: Request,
@@ -266,6 +274,8 @@ export async function handleListApiKeys(
  * Useful for the admin UI to test keys.
  *
  * Request body: { apiKey: string }
+ *
+ * @deprecated Use the user-facing api-keys handlers with Prisma instead. This handler uses a raw pg pool and will be removed.
  */
 export async function handleValidateApiKey(
     request: Request,

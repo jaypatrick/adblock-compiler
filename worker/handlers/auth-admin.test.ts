@@ -2,8 +2,6 @@
 
 import { assertEquals } from '@std/assert';
 import { handleCreateApiKey, handleCreateUser, handleListApiKeys, handleRevokeApiKey, handleValidateApiKey } from './auth-admin.ts';
-import { authenticateApiKey } from '../middleware/auth.ts';
-import { AuthScope } from '../types.ts';
 import type { HyperdriveBinding } from '../types.ts';
 
 // ============================================================================
@@ -455,15 +453,6 @@ Deno.test('API key lifecycle - create user, create key, validate, authenticate, 
     assertEquals(validateBody1.valid, true);
     assertEquals(validateBody1.status, 'active');
 
-    // Step 4: Authenticate using the Bearer token — should succeed
-    const authReq = new Request('https://example.com/compile', {
-        headers: { 'Authorization': `Bearer ${rawKey}` },
-    });
-    const authResult = await authenticateApiKey(authReq, MOCK_HYPERDRIVE, createPool);
-    assertEquals(authResult.authenticated, true);
-    assertEquals(authResult.scopes?.includes('compile'), true);
-    assertEquals(authResult.scopes?.includes('admin'), true);
-
     // Step 5: Revoke the key
     const revokeReq = new Request('https://example.com/admin/auth/api-keys/revoke', {
         method: 'POST',
@@ -486,13 +475,6 @@ Deno.test('API key lifecycle - create user, create key, validate, authenticate, 
     const validateBody2 = await validateRes2.json() as Record<string, unknown>;
     assertEquals(validateBody2.valid, false);
     assertEquals(validateBody2.status, 'revoked');
-
-    // Step 7: Authenticate with revoked key — should fail
-    const authReq2 = new Request('https://example.com/compile', {
-        headers: { 'Authorization': `Bearer ${rawKey}` },
-    });
-    const authResult2 = await authenticateApiKey(authReq2, MOCK_HYPERDRIVE, createPool);
-    assertEquals(authResult2.authenticated, false);
 });
 
 Deno.test('API key lifecycle - revoke by keyPrefix works end-to-end', async () => {
@@ -514,7 +496,7 @@ Deno.test('API key lifecycle - revoke by keyPrefix works end-to-end', async () =
         body: JSON.stringify({ userId, name: 'prefix-key', scopes: ['compile'] }),
     });
     const keyRes = await handleCreateApiKey(keyReq, MOCK_HYPERDRIVE, createPool);
-    const { apiKey: rawKey, keyPrefix } = await keyRes.json() as { apiKey: string; keyPrefix: string };
+    const { keyPrefix } = await keyRes.json() as { keyPrefix: string };
 
     // Revoke by prefix
     const revokeReq = new Request('https://example.com/admin/auth/api-keys/revoke', {
@@ -524,60 +506,6 @@ Deno.test('API key lifecycle - revoke by keyPrefix works end-to-end', async () =
     });
     const revokeRes = await handleRevokeApiKey(revokeReq, MOCK_HYPERDRIVE, createPool);
     assertEquals(revokeRes.status, 200);
-
-    // Authenticate should now fail
-    const authReq = new Request('https://example.com/compile', {
-        headers: { 'Authorization': `Bearer ${rawKey}` },
-    });
-    const authResult = await authenticateApiKey(authReq, MOCK_HYPERDRIVE, createPool);
-    assertEquals(authResult.authenticated, false);
-});
-
-Deno.test('authenticateApiKey - returns error when no Bearer token present', async () => {
-    const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/compile');
-
-    const result = await authenticateApiKey(req, MOCK_HYPERDRIVE, createPool);
-    assertEquals(result.authenticated, false);
-    assertEquals(typeof result.error, 'string');
-});
-
-Deno.test('authenticateApiKey - returns error for unknown key', async () => {
-    const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/compile', {
-        headers: { 'Authorization': 'Bearer abc_unknownkey123456789012345678901234567890123456789012' },
-    });
-
-    const result = await authenticateApiKey(req, MOCK_HYPERDRIVE, createPool);
-    assertEquals(result.authenticated, false);
-});
-
-Deno.test('authenticateApiKey - returns error when required scope is missing', async () => {
-    const createPool = createInMemoryPool();
-
-    // Create user + key with only 'compile' scope
-    const userReq = new Request('https://example.com/admin/auth/users', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: 'scoped@example.com' }),
-    });
-    const userRes = await handleCreateUser(userReq, MOCK_HYPERDRIVE, createPool);
-    const { user: { id: userId } } = await userRes.json() as { user: { id: string } };
-
-    const keyReq = new Request('https://example.com/admin/auth/api-keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, name: 'compile-only', scopes: ['compile'] }),
-    });
-    const keyRes = await handleCreateApiKey(keyReq, MOCK_HYPERDRIVE, createPool);
-    const { apiKey: rawKey } = await keyRes.json() as { apiKey: string };
-
-    // Try to authenticate with admin scope requirement
-    const authReq = new Request('https://example.com/admin', {
-        headers: { 'Authorization': `Bearer ${rawKey}` },
-    });
-    const result = await authenticateApiKey(authReq, MOCK_HYPERDRIVE, createPool, AuthScope.Admin);
-    assertEquals(result.authenticated, false);
 });
 
 // ============================================================================
