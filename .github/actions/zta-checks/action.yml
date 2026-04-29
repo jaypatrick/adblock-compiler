@@ -1,5 +1,5 @@
 name: 'ZTA Security Checks'
-description: 'Run all Zero Trust Architecture security lint checks: wildcard CORS, hardcoded secrets, eval/new Function, and string-interpolated SQL.'
+description: 'Run all Zero Trust Architecture security lint checks: wildcard CORS, hardcoded secrets (ADMIN_KEY + broad credential pattern), eval/new Function, string-interpolated and concatenated SQL, unsafe innerHTML, localStorage auth token storage, missing input validation, and sensitive data logging.'
 
 runs:
     using: composite
@@ -20,8 +20,21 @@ runs:
           shell: bash
           run: |
               set -euo pipefail
+              # Narrow check: ADMIN_KEY hardcoded literal (error)
               if grep -rPn "ADMIN_KEY\s*=\s*[\"'][^\$]" worker/ src/ frontend/src/ 2>/dev/null; then
                   echo "❌ ZTA VIOLATION: Possible hardcoded ADMIN_KEY secret found in worker/, src/, or frontend/src/"
+                  exit 1
+              fi
+              # Broad check: generic credential assignments (password/secret/api_key/token = "literal")
+              # Scans worker/, src/, and frontend/src/ to keep hardcoded-secret coverage aligned
+              # across all internet-facing and application source surfaces.
+              # Excludes test files, comments, template-variable-only strings, env references, and known-safe
+              # placeholder values.
+              BROAD_PATTERN='(password|secret|api.key|token)\s*=\s*["'"'"'][^"'"'"']{8,}["'"'"']'
+              if grep -rniP "$BROAD_PATTERN" worker/ src/ frontend/src/ --include='*.ts' --include='*.js' 2>/dev/null \
+                  | grep -vE 'test|spec|\.d\.ts|// |example|placeholder|\$\{|process\.env|env\.|LOCAL_[A-Z_]+' \
+                  | grep -q '.'; then
+                  echo "❌ ZTA VIOLATION: Potential hardcoded credential found. Use environment variables / Worker Secrets."
                   exit 1
               fi
               echo "✅ No hardcoded secrets detected"
@@ -66,4 +79,51 @@ runs:
                   echo "❌ ZTA VIOLATION: String-interpolated SQL found in worker/ — use .prepare().bind() instead"
                   exit 1
               fi
-              echo "✅ No string-interpolated SQL found"
+              # Flag string concatenation building SQL queries — the other common injection vector.
+              # Excludes test files, comments, .prepare() chains, .join() (array-building), and .log().
+              if grep -rPn 'query\s*\+[^=]|query\s*=.*\+\s*[a-zA-Z]' worker/ src/ --include='*.ts' 2>/dev/null \
+                  | grep -vE 'test|spec|\.d\.ts|// |\.prepare\(|\.join\(|\.log\(' \
+                  | grep -q '.'; then
+                  echo "❌ ZTA VIOLATION: SQL string concatenation found — use .prepare().bind() for parameterized queries"
+                  exit 1
+              fi
+              echo "✅ No string-interpolated or concatenated SQL found"
+
+        - name: Check for dangerous innerHTML usage
+          shell: bash
+          run: |
+              set -euo pipefail
+              SAFE_PATTERNS='test|spec|\.d\.ts|// |DomSanitizer|sanitize|bypassSecurity|\[innerHTML\]|matTooltip|tooltipText'
+              if grep -rn 'innerHTML' worker/ frontend/src/ --include='*.ts' --include='*.html' 2>/dev/null | grep -vE "$SAFE_PATTERNS" | grep -q '.'; then
+                  echo "❌ ZTA VIOLATION: Found unsafe innerHTML assignment. Use Angular's DomSanitizer or template binding."
+                  exit 1
+              fi
+              echo "✅ No unsafe innerHTML usage found"
+
+        - name: Check for localStorage auth token storage
+          shell: bash
+          run: |
+              set -euo pipefail
+              if grep -rEn 'localStorage\.setItem.*[Tt]oken|localStorage\.setItem.*[Aa]uth|localStorage\.setItem.*[Jj]wt' worker/ frontend/src/ --include='*.ts' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// ' | grep -q '.'; then
+                  echo "❌ ZTA VIOLATION: Found auth token storage in localStorage. Use Better Auth / BetterAuthService for auth state management."
+                  exit 1
+              fi
+              echo "✅ No localStorage auth token usage found"
+
+        - name: Check for missing input validation on API routes
+          shell: bash
+          run: |
+              set -euo pipefail
+              if grep -rEn 'request\.json\(\)|req\.body' worker/ --include='*.ts' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// |zod|\.parse\(|\.safeParse\(' | grep -q '.'; then
+                  echo "::warning::Found API routes potentially missing Zod input validation. Ensure all request bodies are validated."
+              fi
+              echo "✅ Input validation check complete"
+
+        - name: Check for console.log with sensitive data patterns
+          shell: bash
+          run: |
+              set -euo pipefail
+              if grep -rEn 'console\.log.*(password|token|secret|key)' worker/ src/ --include='*.ts' 2>/dev/null | grep -vE 'test|spec|\.d\.ts|// |api\.key|apiKey|keyHash|keyPrefix' | grep -q '.'; then
+                  echo "::warning::Found potential sensitive data logging. Review console.log statements."
+              fi
+              echo "✅ Sensitive data logging check complete"
