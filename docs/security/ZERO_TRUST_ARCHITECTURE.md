@@ -33,8 +33,31 @@ Before the Worker executes, Cloudflare provides:
 - **Turnstile**: Human verification on write endpoints (`/compile*`, `/validate`, `/workflow/*`)
 - **Cloudflare Access**: JWT verification on `/admin/*` and management routes
 - **WAF**: API Shield schema validation and bot score thresholds
+- **Bot Fight Mode bypass rule**: Allows curl/programmatic clients to reach all `/api/*` paths on `api.bloqr.dev` (see below)
 - **Rate Limiting**: Edge-level rate limiting before Worker invocation
 - **API Shield Vulnerability Scanner**: Stateful BOLA/logic-flaw detection using AI call graphs (beta) — see [API Shield Vulnerability Scanner](API_SHIELD_VULNERABILITY_SCANNER.md)
+
+#### WAF Bot Fight Mode Bypass Rule
+
+Bot Fight Mode is enabled on `api.bloqr.dev` to block automated browser scrapers. However, legitimate programmatic clients (curl, SDKs, CI pipelines) that send API keys must be able to reach the API without being challenged. A WAF **custom rule** configured with **Action: Skip → Bot Fight Mode** exempts them.
+
+The rule expression must cover **all** `/api/*` paths — not just `/api/admin/*`:
+
+```
+(http.host eq "api.bloqr.dev") and (http.request.uri.path wildcard "/api/*")
+```
+
+| Field | Value |
+|-------|-------|
+| **Rule name** | Allow programmatic clients on API |
+| **Expression** | `(http.host eq "api.bloqr.dev") and (http.request.uri.path wildcard "/api/*")` |
+| **Action** | Skip → Bot Fight Mode |
+| **Zone** | `bloqr.dev` → Security → WAF → Custom rules |
+
+> ⚠️ **Common misconfiguration:** Scoping the rule to `/api/admin/*` only will silently block
+> all non-browser clients on every other API endpoint (`/api/compile`, `/api/auth/*`, etc.)
+> with a `403 Forbidden` and `cf-mitigated: challenge` response header. If `curl` requests
+> return 403, check this rule first. See [KB-007](../troubleshooting/KB-007-production-debugging-session-2026-04.md) for the full diagnosis.
 
 ### Layer 2: Worker Request Handling
 
