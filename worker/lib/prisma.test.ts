@@ -85,7 +85,7 @@ Deno.test('UUID_REGEX rejects Better Auth opaque ID (no dashes, 32 chars)', () =
     assertEquals(UUID_REGEX.test('NqEqNgrxWWaQnyBqb9SLtbGG0ODl2TK2'), false, 'Better Auth opaque IDs must be detected and replaced');
 });
 
-Deno.test('UUID_REGEX rejects Better Auth opaque ID (9hrbjIfqhl2sTXOhzrWSNwL9i2kipz51)', () => {
+Deno.test('UUID_REGEX rejects Better Auth opaque ID (alternative format)', () => {
     assertEquals(UUID_REGEX.test('9hrbjIfqhl2sTXOhzrWSNwL9i2kipz51'), false, 'Better Auth opaque IDs must be detected and replaced');
 });
 

@@ -71,7 +71,7 @@ export function createPrismaClient(hyperdriveConnectionString: string) {
                         typeof args.data === 'object' &&
                         'id' in args.data &&
                         typeof args.data.id === 'string' &&
-                        !UUID_REGEX.test(args.data.id as string)
+                        !UUID_REGEX.test(args.data.id)
                     ) {
                         (args.data as Record<string, unknown>).id = crypto.randomUUID();
                     }
