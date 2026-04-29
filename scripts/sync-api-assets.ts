@@ -783,14 +783,14 @@ type CfHttpMethod = (typeof CF_HTTP_METHODS)[number];
 
 /**
  * Normalises an OpenAPI path parameter template so it can be compared against
- * Cloudflare's normalised form.  Cloudflare replaces `{anyName}` left-to-right
+ * Cloudflare's normalized form.  Cloudflare replaces `{anyName}` left-to-right
  * with `{var1}`, `{var2}`, … during insertion.  Applying the same transform
  * locally lets us check whether an operation is already saved before adding it.
  *
  * @param path - OpenAPI path, e.g. `/keys/{keyId}/sub/{subId}`
  * @returns Normalised path, e.g. `/keys/{var1}/sub/{var2}`
  */
-function normalisePathParams(path: string): string {
+function normalizePathParams(path: string): string {
     let idx = 1;
     return path.replace(/\{[^}]+\}/g, () => `{var${idx++}}`);
 }
@@ -886,7 +886,7 @@ async function stepSyncEndpoints(dryRun: boolean, skipUpload: boolean): Promise<
     const host = new URL(prodServer.url).hostname; // e.g. "api.bloqr.dev"
 
     // Build the desired set of operations from the spec.
-    const desired: Array<{ input: ApiShieldOperationInput; normalisedPath: string; tags: string[] }> = [];
+    const desired: Array<{ input: ApiShieldOperationInput; normalizedPath: string; tags: string[] }> = [];
     for (const [rawPath, pathItem] of Object.entries(cfSpec.paths ?? {})) {
         for (const method of CF_HTTP_METHODS) {
             const operation = pathItem[method.toLowerCase()];
@@ -895,7 +895,7 @@ async function stepSyncEndpoints(dryRun: boolean, skipUpload: boolean): Promise<
             }
             desired.push({
                 input: { method: method as CfHttpMethod, host, endpoint: rawPath },
-                normalisedPath: normalisePathParams(rawPath),
+                normalizedPath: normalizePathParams(rawPath),
                 tags: operation.tags ?? [],
             });
         }
@@ -913,12 +913,12 @@ async function stepSyncEndpoints(dryRun: boolean, skipUpload: boolean): Promise<
         throw new Error(`Failed to list existing operations: ${err instanceof Error ? err.message : String(err)}`);
     }
 
-    // Build a lookup of (method, normalisedPath) → operation_id for existing operations.
-    const existingKey = (method: string, path: string) => `${method.toUpperCase()}::${normalisePathParams(path)}`;
+    // Build a lookup of (method, normalizedPath) → operation_id for existing operations.
+    const existingKey = (method: string, path: string) => `${method.toUpperCase()}::${normalizePathParams(path)}`;
     const existingMap = new Map<string, string>(existing.map((op) => [existingKey(op.method, op.endpoint), op.operation_id]));
 
     // Determine which operations need to be added.
-    const toAdd = desired.filter((d) => !existingMap.has(existingKey(d.input.method, d.normalisedPath)));
+    const toAdd = desired.filter((d) => !existingMap.has(existingKey(d.input.method, d.normalizedPath)));
     console.log(`➕ New operations to add: ${toAdd.length}`);
 
     let created: ApiShieldOperation[] = [];
@@ -942,9 +942,9 @@ async function stepSyncEndpoints(dryRun: boolean, skipUpload: boolean): Promise<
     // Build label → operation_id mapping across all desired operations.
     const labelToIds = new Map<string, string[]>();
     for (const d of desired) {
-        const opId = existingMap.get(existingKey(d.input.method, d.normalisedPath));
+        const opId = existingMap.get(existingKey(d.input.method, d.normalizedPath));
         if (!opId) {
-            // Not in the map means the API returned it under a normalised path we didn't match —
+            // Not in the map means the API returned it under a normalized path we didn't match —
             // log a warning but continue so the rest of the sync succeeds.
             console.warn(`⚠️  Could not resolve operation_id for ${d.input.method} ${d.input.endpoint} — skipping label assignment`);
             continue;
