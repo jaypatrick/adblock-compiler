@@ -29,7 +29,7 @@ import type { MiddlewareHandler } from 'hono';
 import type { Env } from '../types.ts';
 import { PAYG_TIER_LIMITS } from '../types.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
-import type { createPrismaClient } from '../lib/prisma.ts';
+import type { PrismaClientExtended } from '../lib/prisma.ts';
 import type { Variables } from '../routes/shared.ts';
 
 // ============================================================================
@@ -381,7 +381,7 @@ interface SessionValidationResult {
 async function validateAndDecrementSession(
     sessionToken: string,
     _env: Env,
-    prisma: ReturnType<typeof createPrismaClient> | undefined,
+    prisma: PrismaClientExtended | undefined,
 ): Promise<SessionValidationResult> {
     if (!prisma) {
         return { valid: false, error: 'database_unavailable' };

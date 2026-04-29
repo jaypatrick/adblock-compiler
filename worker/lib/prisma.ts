@@ -49,6 +49,16 @@ export function _enforceUuidOnCreateData(data: Record<string, unknown>): void {
 }
 
 /**
+ * Prisma model names managed by Better Auth.
+ *
+ * Better Auth 1.5.x passes opaque IDs (e.g. `NqEqNgrxWWaQnyBqb9SLtbGG0ODl2TK2`)
+ * to these models before the Prisma adapter can apply `advanced.generateId`.
+ * All other models generate their own IDs (UUID or cuid) via Prisma's
+ * `@default()` expression and are not affected by the UUID enforcement extension.
+ */
+const BETTER_AUTH_MODELS = new Set(['User', 'Session', 'Account', 'Verification', 'TwoFactor', 'Organization', 'Member']);
+
+/**
  * Creates a PrismaClient connected to Neon PostgreSQL via Hyperdrive.
  *
  * Hyperdrive IS the connection pool — it proxies connections locally,
@@ -78,15 +88,18 @@ export function createPrismaClient(hyperdriveConnectionString: string) {
     const prisma = new PrismaClient({ adapter });
 
     // Better Auth 1.5.x does not reliably call advanced.generateId before
-    // passing IDs to Prisma. All model id columns are @db.Uuid in PostgreSQL,
+    // passing IDs to Prisma. The Better Auth tables (User, Session, Account,
+    // Verification, TwoFactor, Organization, Member) use @db.Uuid id columns,
     // so any non-UUID string causes "invalid input syntax for type uuid".
-    // This extension intercepts every create operation and replaces non-UUID
-    // ids with crypto.randomUUID() before the query reaches the database.
+    // This extension intercepts create operations on those models only and
+    // replaces non-UUID ids with crypto.randomUUID() before the query reaches
+    // the database. Other models (e.g. StorageEntry, FilterCache,
+    // CompilationMetadata) use @default(cuid()) and are not affected.
     return prisma.$extends({
         query: {
             $allModels: {
-                async create({ args, query }) {
-                    if (args.data && typeof args.data === 'object') {
+                async create({ model, args, query }) {
+                    if (BETTER_AUTH_MODELS.has(model) && args.data && typeof args.data === 'object') {
                         _enforceUuidOnCreateData(args.data as Record<string, unknown>);
                     }
                     return query(args);
@@ -117,3 +130,22 @@ export function createPrismaClient(hyperdriveConnectionString: string) {
  * ```
  */
 export const _internals = { createPrismaClient };
+
+/**
+ * The type of the extended PrismaClient returned by {@link createPrismaClient}.
+ *
+ * Prisma's `$extends` returns a `DynamicClientExtensionThis<...>` rather than
+ * the base `PrismaClient` class.  Import this type alias instead of using
+ * `ReturnType<typeof createPrismaClient>` at call-sites to avoid the need for
+ * a value import of `createPrismaClient` solely for its type.
+ *
+ * @example
+ * ```typescript
+ * import type { PrismaClientExtended } from '../lib/prisma.ts';
+ *
+ * interface Variables {
+ *     prisma?: PrismaClientExtended;
+ * }
+ * ```
+ */
+export type PrismaClientExtended = ReturnType<typeof createPrismaClient>;

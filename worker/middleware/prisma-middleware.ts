@@ -47,6 +47,7 @@
 import { createMiddleware } from 'hono/factory';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from '../lib/prisma.ts';
+import type { PrismaClientExtended } from '../lib/prisma.ts';
 
 // ============================================================================
 // Hono context augmentation
@@ -57,7 +58,7 @@ import { createPrismaClient } from '../lib/prisma.ts';
  * Merge into your app's Variables type to enable `c.get('prisma')`.
  */
 export interface PrismaVariables {
-    prisma: ReturnType<typeof createPrismaClient>;
+    prisma: PrismaClientExtended;
 }
 
 // ============================================================================

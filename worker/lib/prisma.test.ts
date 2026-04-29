@@ -53,8 +53,9 @@ Deno.test('PrismaClientConfigSchema validates URL with query params', () => {
 // UUID_REGEX — Better Auth non-UUID ID detection
 //
 // Better Auth 1.5.x does not reliably call advanced.generateId before passing
-// IDs to Prisma. All model id columns are @db.Uuid in PostgreSQL, so any
-// non-UUID string causes "invalid input syntax for type uuid".
+// IDs to Prisma. The Better Auth tables (User, Session, Account, Verification,
+// TwoFactor, Organization, Member) use @db.Uuid id columns, so any non-UUID
+// string causes "invalid input syntax for type uuid".
 //
 // The createPrismaClient() $extends query extension uses UUID_REGEX to detect
 // non-UUID ids and replace them with crypto.randomUUID() before the query
