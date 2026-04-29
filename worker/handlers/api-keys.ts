@@ -239,21 +239,16 @@ export async function handleRevokeApiKey(
         return userGuard;
     }
 
-    // Use a single atomic `update` rather than `updateMany`.
-    // Prisma's `update` supports non-unique filters in `where` alongside the
-    // primary key — throws P2025 if the key doesn't exist, belongs to another
-    // user, or is already revoked. All three cases map to a 404 response.
-    try {
-        await prisma.apiKey.update({
-            where: { id: keyId, userId: authContext.userId!, revokedAt: null },
-            data: { revokedAt: new Date() },
-            select: { id: true },
-        });
-    } catch (e) {
-        if (e instanceof Error && 'code' in e && (e as { code: string }).code === 'P2025') {
-            return JsonResponse.notFound('API key not found or already revoked');
-        }
-        throw e;
+    // `updateMany` supports the ownership and active-key filters we need here.
+    // A zero row count means the key doesn't exist, belongs to another user,
+    // or has already been revoked. All three cases map to a 404 response.
+    const revokeResult = await prisma.apiKey.updateMany({
+        where: { id: keyId, userId: authContext.userId!, revokedAt: null },
+        data: { revokedAt: new Date() },
+    });
+
+    if (revokeResult.count === 0) {
+        return JsonResponse.notFound('API key not found or already revoked');
     }
 
     return JsonResponse.success({ message: 'API key revoked' });
@@ -296,45 +291,47 @@ export async function handleUpdateApiKey(
         updateData.scopes = data.scopes;
     }
 
-    // Use a single atomic `update` rather than `updateMany` + `findFirst`.
-    // Prisma's `update` where clause accepts additional (non-unique) filter
-    // conditions alongside the primary key; if no row matches all conditions
-    // Prisma throws P2025 which we catch and map to a 404.
-    try {
-        const row = await prisma.apiKey.update({
-            where: { id: keyId, userId: authContext.userId!, revokedAt: null },
-            data: updateData,
-            select: {
-                id: true,
-                keyPrefix: true,
-                name: true,
-                scopes: true,
-                rateLimitPerMinute: true,
-                lastUsedAt: true,
-                expiresAt: true,
-                createdAt: true,
-                updatedAt: true,
-            },
-        });
+    // `updateMany` supports the ownership and active-key filters we need here.
+    // A zero row count means the key doesn't exist, belongs to another user,
+    // or has already been revoked. All three cases map to a 404 response.
+    const updateResult = await prisma.apiKey.updateMany({
+        where: { id: keyId, userId: authContext.userId!, revokedAt: null },
+        data: updateData,
+    });
 
-        return JsonResponse.success({
-            id: row.id,
-            keyPrefix: row.keyPrefix,
-            name: row.name,
-            scopes: row.scopes,
-            rateLimitPerMinute: row.rateLimitPerMinute,
-            lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null,
-            expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
-            createdAt: row.createdAt.toISOString(),
-            updatedAt: row.updatedAt.toISOString(),
-        });
-    } catch (e) {
-        // P2025 = "An operation failed because it depends on one or more records
-        // that were required but not found." — key doesn't exist, belongs to a
-        // different user, or is already revoked.
-        if (e instanceof Error && 'code' in e && (e as { code: string }).code === 'P2025') {
-            return JsonResponse.notFound('API key not found or already revoked');
-        }
-        throw e;
+    if (updateResult.count === 0) {
+        return JsonResponse.notFound('API key not found or already revoked');
     }
+
+    // Fetch the updated row to return full key metadata in the response.
+    const row = await prisma.apiKey.findUnique({
+        where: { id: keyId },
+        select: {
+            id: true,
+            keyPrefix: true,
+            name: true,
+            scopes: true,
+            rateLimitPerMinute: true,
+            lastUsedAt: true,
+            expiresAt: true,
+            createdAt: true,
+            updatedAt: true,
+        },
+    });
+
+    if (!row) {
+        return JsonResponse.notFound('API key not found');
+    }
+
+    return JsonResponse.success({
+        id: row.id,
+        keyPrefix: row.keyPrefix,
+        name: row.name,
+        scopes: row.scopes,
+        rateLimitPerMinute: row.rateLimitPerMinute,
+        lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null,
+        expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
+    });
 }

@@ -104,13 +104,12 @@ export async function authenticateApiKey(
 
     const keyHash = await hashToken(token);
 
-    // Cloudflare Workers are isolated per-request — there is no shared singleton
-    // state between invocations.  Creating a PrismaClient here is the standard
-    // Workers pattern; connection pooling is handled at the infrastructure level
-    // by Hyperdrive, not by the client instance.
-    const prisma = createPrismaClient(hyperdrive.connectionString);
-
     try {
+        // Cloudflare Workers are isolated per-request — there is no shared singleton
+        // state between invocations.  Creating a PrismaClient here is the standard
+        // Workers pattern; connection pooling is handled at the infrastructure level
+        // by Hyperdrive, not by the client instance.
+        const prisma = createPrismaClient(hyperdrive.connectionString);
         const apiKey = await prisma.apiKey.findFirst({
             where: { keyHash },
             select: { id: true, userId: true, scopes: true, rateLimitPerMinute: true, expiresAt: true, revokedAt: true },

@@ -89,29 +89,31 @@ function createPrismaMock(): any {
                 return rows;
             },
 
-            async update({ where, data, select }: {
-                where: { id: string; userId: string; revokedAt?: null };
+            async updateMany({ where, data }: {
+                where: { id: string; userId: string; revokedAt: null };
                 data: Partial<StoredKey>;
-                select?: Record<string, boolean>;
             }) {
                 const row = store.find((k) =>
                     k.id === where.id &&
                     k.userId === where.userId &&
-                    (where.revokedAt === null ? k.revokedAt === null : true)
+                    k.revokedAt === null
                 );
-                if (!row) {
-                    // Mimic Prisma P2025 "Record not found" error
-                    const err = new Error('Record to update not found.');
-                    // deno-lint-ignore no-explicit-any
-                    (err as any).code = 'P2025';
-                    throw err;
-                }
+                if (!row) return { count: 0 };
                 Object.assign(row, data, { updatedAt: new Date() });
+                return { count: 1 };
+            },
+
+            async findUnique({ where, select }: {
+                where: { id: string };
+                select?: Record<string, boolean>;
+            }) {
+                const row = store.find((k) => k.id === where.id);
+                if (!row) return null;
                 if (!select) return row;
-                // Return only the selected fields
                 // deno-lint-ignore no-explicit-any
                 const result: any = {};
                 for (const key of Object.keys(select)) {
+                    // deno-lint-ignore no-explicit-any
                     if (select[key]) result[key] = (row as any)[key];
                 }
                 return result;
@@ -210,7 +212,7 @@ Deno.test('handleCreateApiKey - enforces per-user key limit', async () => {
                 throw new Error('should not create');
             },
             findMany: async () => [],
-            update: async () => {
+            updateMany: async () => {
                 throw new Error('should not update');
             },
         },

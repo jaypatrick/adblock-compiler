@@ -492,6 +492,22 @@ app.use('*', async (c, next) => {
     }
 });
 
+// ── Prisma context — request-scoped PrismaClient via Hyperdrive ───────────────
+// Registered at app level (not in the routes sub-app) so that BOTH the routes
+// sub-app middleware chain AND the tRPC middleware can access `c.get('prisma')`
+// without creating duplicate clients.  Must run before the routes sub-app and
+// tRPC middleware that call checkUserApiAccess(), so the ban check always
+// receives a live Prisma client when Hyperdrive is configured.
+// Silently skips client creation when HYPERDRIVE is not configured (e.g. local
+// dev without a Hyperdrive binding, unit tests, static-asset requests).
+app.use('/api/*', async (c, next) => {
+    if (c.env.HYPERDRIVE) {
+        const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
+        c.set('prisma', prisma);
+    }
+    await next();
+});
+
 // ============================================================================
 // PoC routes
 // ============================================================================
@@ -613,19 +629,6 @@ routes.use('*', async (c, next) => {
 });
 
 // ── Mount domain route modules ────────────────────────────────────────────────
-
-// ── Prisma context — request-scoped PrismaClient via Hyperdrive ───────────────
-// Registered before domain route modules so every handler can access
-// `c.get('prisma')` without creating duplicate clients.
-// Silently skips client creation when HYPERDRIVE is not configured (e.g. local
-// dev without a Hyperdrive binding, unit tests, static-asset requests).
-routes.use('*', async (c, next) => {
-    if (c.env.HYPERDRIVE) {
-        const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
-        c.set('prisma', prisma);
-    }
-    await next();
-});
 
 routes.route('/', compileRoutes);
 routes.route('/', rulesRoutes);
