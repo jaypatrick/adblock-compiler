@@ -10,7 +10,6 @@ captured in one step flow into the next automatically.
 
 - `curl` and `jq` installed
 - `psql` CLI with access to the Neon production database
-- `wrangler` CLI authenticated
 
 Set these once before starting:
 
@@ -59,7 +58,7 @@ echo "User ID: $USER_ID"
   },
   "session": {
     "id": "01965f3b-...",
-    "token": "adblock.session_...",
+    "token": "bloqr.session_...",
     "expiresAt": "2026-05-06T00:00:00.000Z"
   }
 }
@@ -74,17 +73,17 @@ the `set-role` call. Promote directly via SQL using the `neondb_owner` role.
 
 ```bash
 psql "$NEON_CONN" <<SQL
-UPDATE "User"
+UPDATE users
 SET    role = 'admin',
        tier = 'admin'
-WHERE  email = '$ADMIN_EMAIL';
+WHERE  id = '$USER_ID';
 SQL
 ```
 
 Verify the update:
 
 ```bash
-psql "$NEON_CONN" -c "SELECT id, email, role, tier FROM \"User\" WHERE email = '$ADMIN_EMAIL';"
+psql "$NEON_CONN" -c "SELECT id, email, role, tier FROM users WHERE id = '$USER_ID';"
 ```
 
 Expected output:
@@ -101,7 +100,7 @@ Expected output:
 ## Step 3 — Sign In and Capture the Bearer Token
 
 Sign in to obtain a fresh session token. The token is returned in the response body
-and is also set as the `adblock.session_token` cookie.
+and is also set as the `bloqr.session_token` cookie.
 
 ```bash
 SIGNIN_RESPONSE=$(curl -s -X POST "$API_BASE/auth/sign-in/email" \
@@ -129,7 +128,7 @@ echo "Bearer token: $BEARER_TOKEN"
   },
   "session": {
     "id": "01965f3b-...",
-    "token": "adblock.session_...",
+    "token": "bloqr.session_...",
     "expiresAt": "2026-05-06T00:00:00.000Z"
   }
 }
@@ -144,7 +143,8 @@ Verify that `tier` and `role` are both `admin` — confirming the promotion from
 ### Sign-out (requires an explicit empty JSON body)
 
 `POST /api/auth/sign-out` **must** include `Content-Type: application/json` **and**
-`-d '{}'`. Omitting the body returns `500`.
+`-d '{}'`. Omitting the body causes a request error; the worker currently responds with
+`400 Bad Request` for an invalid JSON body.
 
 ```bash
 curl -s -X POST "$API_BASE/auth/sign-out" \
@@ -196,8 +196,8 @@ curl -s "$API_BASE/keys" \
 Use `POST /api/keys` with the Better Auth Bearer token. No `X-Admin-Key` is needed for
 self-service key creation.
 
-> **Important**: always include `"scopes": ["compile"]` explicitly until the default-scope
-> schema fix lands — omitting it may result in a key with no scopes.
+> **Note**: `scopes` defaults to `["compile"]` if omitted. This example includes
+> `"scopes": ["compile"]` explicitly for clarity.
 
 ```bash
 KEY_RESPONSE=$(curl -s -X POST "$API_BASE/keys" \
@@ -211,7 +211,7 @@ KEY_RESPONSE=$(curl -s -X POST "$API_BASE/keys" \
 
 echo "$KEY_RESPONSE" | jq .
 
-export API_KEY=$(echo "$KEY_RESPONSE" | jq -r '.key.token')
+export API_KEY=$(echo "$KEY_RESPONSE" | jq -r '.key')
 echo "API key: $API_KEY"
 ```
 
@@ -220,17 +220,18 @@ echo "API key: $API_KEY"
 ```json
 {
   "success": true,
-  "key": {
-    "id": "key_...",
-    "name": "Postman Testing",
-    "token": "abc_Xk9mP2...",
-    "scopes": ["compile"],
-    "expiresAt": "2026-07-29T00:00:00.000Z"
-  }
+  "id": "...",
+  "key": "abc_Xk9mP2...",
+  "keyPrefix": "abc_Xk9m",
+  "name": "Postman Testing",
+  "scopes": ["compile"],
+  "rateLimitPerMinute": 60,
+  "expiresAt": "2026-07-29T00:00:00.000Z",
+  "createdAt": "2026-04-29T00:00:00.000Z"
 }
 ```
 
-> **Copy the `token` value immediately** — it is only returned once and cannot be
+> **Copy the `key` value immediately** — it is only returned once and cannot be
 > retrieved again.
 
 ---
@@ -249,7 +250,7 @@ Use the variables captured above to configure Postman for ongoing testing.
 |------------|---------|--------------------------------------------|
 | `baseUrl`  | default | `https://api.bloqr.dev`                    |
 | `apiBase`  | default | `https://api.bloqr.dev/api`                |
-| `apiKey`   | secret  | _(paste the `token` value from Step 5)_    |
+| `apiKey`   | secret  | _(paste the `key` value from Step 5)_      |
 | `bearerToken` | secret | _(paste `$BEARER_TOKEN` from Step 3/4)_ |
 
 4. Click **Save** and select `bloqr-prod` as the active environment.
@@ -282,10 +283,10 @@ No auth required. Expected response:
 
 | Symptom | Likely Cause | Fix |
 |---------|-------------|-----|
-| `POST /api/auth/sign-out` → `500` | Missing `Content-Type` or empty body | Add `-H "Content-Type: application/json" -d '{}'` |
+| `POST /api/auth/sign-out` → `400` | Missing `Content-Type` or empty body | Add `-H "Content-Type: application/json" -d '{}'` |
 | Sign-in response shows `tier: free` / `role: user` after promotion | Neon promotion query didn't commit | Re-run the `UPDATE` in Step 2; verify with the `SELECT` below it |
 | `POST /api/keys` → `403 Forbidden` | Bearer token belongs to a `free` user | Ensure Neon promotion ran successfully and re-sign-in |
-| `POST /api/keys` → key with empty `scopes` | `scopes` field omitted from request body | Always pass `"scopes": ["compile"]` explicitly |
+| `POST /api/keys` → key with empty `scopes` | `scopes` field omitted from request body | Pass `"scopes": ["compile"]` explicitly — the default is `["compile"]` but explicit is safer |
 | `401 Unauthorized` in Postman | Expired Bearer token | Re-run Step 3/4 and update `{{bearerToken}}` in the environment |
 
 ---
