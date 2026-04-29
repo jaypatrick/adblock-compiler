@@ -30,6 +30,14 @@ on:
         - cron: '0 6 * * *'
     workflow_dispatch: {}
 
+# Ensure only one instance of this workflow runs at a time across all triggers
+# (schedule, push, workflow_dispatch). When a new run starts while one is
+# already in progress, the older run is cancelled cleanly rather than racing
+# to commit — preventing the "cancelled = failure" noise on the Actions page.
+concurrency:
+    group: cloudflare-dep-update
+    cancel-in-progress: true
+
 env:
     # Keep in sync with the DENO_VERSION pin in ci.yml
     DENO_VERSION: '2.7.11'

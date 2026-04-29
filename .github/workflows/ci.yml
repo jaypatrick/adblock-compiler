@@ -740,7 +740,10 @@ jobs:
         working-directory: frontend
         run: |
           echo "Deploying adblock-frontend..."
-          pnpm run deploy
+          # --config is explicit even though working-directory already points here;
+          # this ensures no_bundle = true in wrangler.toml is never bypassed by
+          # a stray --bundle flag or a different config resolution path.
+          pnpm run deploy -- --config wrangler.toml
 
   smoke-test-backend:
     name: Smoke Test — Backend
