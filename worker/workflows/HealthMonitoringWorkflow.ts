@@ -141,6 +141,24 @@ export async function readResponseSample(response: Response, maxBytes: number): 
 }
 
 /**
+ * Typed wrapper for WorkflowStep.do() with options.
+ * CF Workflows SDK types in this repo already expose the options overload on
+ * WorkflowStep.do(). This helper exists because the SDK constrains the callback
+ * return to Rpc.Serializable<T>, while some workflow values we return are not
+ * represented that narrowly in TypeScript. The wrapper preserves the local
+ * Promise<T> typing while still passing step options through to the runtime.
+ */
+async function stepDo<T>(
+    step: WorkflowStep,
+    name: string,
+    options: Parameters<WorkflowStep['do']>[1],
+    callback: () => Promise<T>,
+): Promise<T> {
+    // deno-lint-ignore no-explicit-any
+    return (step as any).do(name, options, callback) as Promise<T>;
+}
+
+/**
  * HealthMonitoringWorkflow checks source availability and content validity.
  *
  * Steps:
@@ -185,10 +203,17 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 throw new Error('[WORKFLOW:HEALTH] METRICS KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
             }
 
-            // Emit workflow started event
-            await events.emitWorkflowStarted({
-                sourceCount: sourcesToCheck.length,
-                alertOnFailure,
+            // Emit workflow started event inside a step so KV I/O runs in step context,
+            // not in orchestrator context where it can hang indefinitely and produce
+            // outcome: exception with no structured error reporting.
+            await stepDo<void>(step, 'emit-workflow-started', {
+                retries: { limit: 2, delay: '1 second' },
+                timeout: '30 seconds',
+            }, async () => {
+                await events.emitWorkflowStarted({
+                    sourceCount: sourcesToCheck.length,
+                    alertOnFailure,
+                });
             });
 
             // Step 1: Load recent health history for trend analysis
@@ -206,10 +231,11 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                     }>;
                 } | null;
 
-                return history || { checks: [] };
+                await events.emitProgress(10, 'Health history loaded');
+                const resolvedHistory = history || { checks: [] };
+                await events.emitStepCompleted('load-health-history', { checkCount: resolvedHistory.checks.length });
+                return resolvedHistory;
             });
-            await events.emitStepCompleted('load-health-history', { checkCount: healthHistory.checks.length });
-            await events.emitProgress(10, 'Health history loaded');
 
             // Step 2: Check each source
             for (let i = 0; i < sourcesToCheck.length; i++) {
@@ -288,6 +314,8 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                         );
                     }
 
+                    const checkProgress = 10 + Math.round(((i + 1) / sourcesToCheck.length) * 60);
+                    await events.emitProgress(checkProgress, `Checked ${sourceNumber}/${sourcesToCheck.length} sources`);
                     return result;
                 });
 
@@ -305,9 +333,6 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                     healthResult.ruleCount,
                 );
 
-                const checkProgress = 10 + Math.round(((i + 1) / sourcesToCheck.length) * 60);
-                await events.emitProgress(checkProgress, `Checked ${sourceNumber}/${sourcesToCheck.length} sources`);
-
                 // Small delay between checks to avoid rate limiting
                 if (i < sourcesToCheck.length - 1) {
                     await step.sleep(`delay-after-${sourceNumber}`, '2 seconds');
@@ -324,6 +349,8 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 const shouldAlert: string[] = [];
 
                 if (!alertOnFailure) {
+                    await events.emitProgress(75, 'Analysis complete');
+                    await events.emitStepCompleted('analyze-results', { alertsNeeded: 0 });
                     return { shouldAlert: [], triggeredAlerts: false };
                 }
 
@@ -347,15 +374,13 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                     }
                 }
 
+                await events.emitProgress(75, 'Analysis complete');
+                await events.emitStepCompleted('analyze-results', { alertsNeeded: shouldAlert.length });
                 return {
                     shouldAlert,
                     triggeredAlerts: shouldAlert.length > 0,
                 };
             });
-            await events.emitStepCompleted('analyze-results', {
-                alertsNeeded: alertAnalysis.shouldAlert.length,
-            });
-            await events.emitProgress(75, 'Analysis complete');
 
             // Step 4: Send alerts if needed
             if (alertAnalysis.triggeredAlerts && alertAnalysis.shouldAlert.length > 0) {
@@ -481,21 +506,28 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                     expirationTtl: 86400 * 30,
                 });
 
+                await events.emitProgress(100, 'Health monitoring complete');
+                await events.emitStepCompleted('store-results');
                 return { stored: true };
             });
-            await events.emitStepCompleted('store-results');
 
             const totalDuration = Date.now() - startTime;
 
-            // Emit workflow completed event
-            await events.emitProgress(100, 'Health monitoring complete');
-            await events.emitWorkflowCompleted({
-                healthySources,
-                unhealthySources,
-                alertsSent,
-                totalDurationMs: totalDuration,
+            // Emit workflow completed event inside a step so KV I/O runs in step
+            // context, not orchestrator context. The explicit flush() that followed
+            // emitWorkflowCompleted is removed because emitWorkflowCompleted already
+            // calls flush() internally.
+            await stepDo<void>(step, 'emit-workflow-completed', {
+                retries: { limit: 2, delay: '1 second' },
+                timeout: '30 seconds',
+            }, async () => {
+                await events.emitWorkflowCompleted({
+                    healthySources,
+                    unhealthySources,
+                    alertsSent,
+                    totalDurationMs: totalDuration,
+                });
             });
-            await events.flush();
 
             console.log(
                 `[WORKFLOW:HEALTH] Health monitoring completed: ${healthySources}/${sourcesToCheck.length} ` +
@@ -520,13 +552,19 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             // because METRICS is absent, calling events.flush() would trigger a secondary
             // KV error with a misleading log line. captureExceptionInIsolate above already
             // sends the real error to Sentry.
+            // Wrapped in stepDo so the KV flush runs in step context, not orchestrator
+            // context. The explicit flush() is removed — emitWorkflowFailed already flushes.
             if (this.env.METRICS) {
-                await events.emitWorkflowFailed(errorMessage, {
-                    healthySources,
-                    unhealthySources,
-                    alertsSent,
+                await stepDo<void>(step, 'emit-workflow-failed', {
+                    retries: { limit: 2, delay: '1 second' },
+                    timeout: '30 seconds',
+                }, async () => {
+                    await events.emitWorkflowFailed(errorMessage, {
+                        healthySources,
+                        unhealthySources,
+                        alertsSent,
+                    });
                 });
-                await events.flush();
             }
 
             // Always throw an Error instance so CF Workflows telemetry captures the real
