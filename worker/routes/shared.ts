@@ -13,7 +13,7 @@ import type { Context } from 'hono';
 import type { Env, IAuthContext } from '../types.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import { verifyTurnstileToken } from '../middleware/index.ts';
-import type { PrismaClient } from '../../prisma/generated/client.ts';
+import type { createPrismaClient } from '../lib/prisma.ts';
 
 // ============================================================================
 // Types
@@ -34,7 +34,7 @@ export interface Variables {
     ip: string;
     isSSR: boolean; // true when the request originated from the SSR Worker via env.API.fetch()
     /** Request-scoped PrismaClient — set by the global inline middleware in hono-app.ts when HYPERDRIVE is bound. */
-    prisma?: InstanceType<typeof PrismaClient>;
+    prisma?: ReturnType<typeof createPrismaClient>;
     /**
      * Set to `true` by `paygConversionCheckMiddleware()` when a PAYG customer's
      * cumulative spend crosses the conversion threshold.  Route handlers may read
