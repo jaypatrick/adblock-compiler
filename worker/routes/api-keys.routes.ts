@@ -143,8 +143,9 @@ apiKeysRoutes.use('/keys', rateLimitMiddleware());
 apiKeysRoutes.openapi(createApiKeyRoute, async (c) => {
     if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
     if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
+    const body = await c.req.json();
     // deno-lint-ignore no-explicit-any
-    return handleCreateApiKey(c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool) as any;
+    return handleCreateApiKey(body, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool) as any;
 });
 
 const listApiKeysRoute = createRoute({
@@ -387,6 +388,7 @@ const updateApiKeyRoute = createRoute({
 apiKeysRoutes.openapi(updateApiKeyRoute, async (c) => {
     if (!INTERACTIVE_AUTH_METHODS.has(c.get('authContext').authMethod)) return JsonResponse.forbidden('API key management requires an authenticated user session');
     if (!c.env.HYPERDRIVE) return JsonResponse.serviceUnavailable('Database not configured');
+    const body = await c.req.json();
     // deno-lint-ignore no-explicit-any
-    return handleUpdateApiKey(c.req.param('id')!, c.req.raw, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool) as any;
+    return handleUpdateApiKey(c.req.param('id')!, body, c.get('authContext'), c.env.HYPERDRIVE.connectionString, createPgPool) as any;
 });

@@ -128,7 +128,7 @@ function requireUserId(authContext: IAuthContext): Response | null {
  * The returned row is validated against {@link ApiKeyRowSchema}.
  */
 export async function handleCreateApiKey(
-    request: Request,
+    body: unknown,
     authContext: IAuthContext,
     connectionString: string,
     createPool: PgPoolFactory,
@@ -138,24 +138,17 @@ export async function handleCreateApiKey(
         return userGuard;
     }
 
-    let rawBody: unknown;
-    try {
-        rawBody = await request.json();
-    } catch {
-        return JsonResponse.badRequest('Invalid JSON body');
-    }
-
-    const parsed = CreateApiKeyRequestSchema.safeParse(rawBody);
+    const parsed = CreateApiKeyRequestSchema.safeParse(body);
     if (!parsed.success) {
         return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
     }
-    const body = parsed.data;
+    const { data } = parsed;
 
     // Validate expiry
     let expiresAt: string | null = null;
-    if (body.expiresInDays !== undefined) {
+    if (data.expiresInDays !== undefined) {
         const expiry = new Date();
-        expiry.setDate(expiry.getDate() + body.expiresInDays);
+        expiry.setDate(expiry.getDate() + data.expiresInDays);
         expiresAt = expiry.toISOString();
     }
 
@@ -185,7 +178,7 @@ export async function handleCreateApiKey(
             60, $6, NOW(), NOW()
         ) RETURNING id, key_prefix, name, scopes, rate_limit_per_minute,
                     expires_at, created_at`,
-        [authContext.userId, keyHash, keyPrefix, body.name.trim(), body.scopes, expiresAt],
+        [authContext.userId, keyHash, keyPrefix, data.name.trim(), data.scopes, expiresAt],
     );
 
     const row = result.rows[0];
@@ -301,7 +294,7 @@ export async function handleRevokeApiKey(
  */
 export async function handleUpdateApiKey(
     keyId: string,
-    request: Request,
+    body: unknown,
     authContext: IAuthContext,
     connectionString: string,
     createPool: PgPoolFactory,
@@ -311,18 +304,11 @@ export async function handleUpdateApiKey(
         return userGuard;
     }
 
-    let rawBody: unknown;
-    try {
-        rawBody = await request.json();
-    } catch {
-        return JsonResponse.badRequest('Invalid JSON body');
-    }
-
-    const parsed = UpdateApiKeyRequestSchema.safeParse(rawBody);
+    const parsed = UpdateApiKeyRequestSchema.safeParse(body);
     if (!parsed.success) {
         return JsonResponse.badRequest(parsed.error.issues[0]?.message ?? 'Invalid request body');
     }
-    const body = parsed.data;
+    const { data } = parsed;
 
     const pool = createPool(connectionString);
 
@@ -331,15 +317,15 @@ export async function handleUpdateApiKey(
     const values: unknown[] = [];
     let paramIndex = 1;
 
-    if (body.name !== undefined) {
+    if (data.name !== undefined) {
         setClauses.push(`name = $${paramIndex}`);
-        values.push(body.name.trim());
+        values.push(data.name.trim());
         paramIndex++;
     }
 
-    if (body.scopes !== undefined) {
+    if (data.scopes !== undefined) {
         setClauses.push(`scopes = $${paramIndex}`);
-        values.push(body.scopes);
+        values.push(data.scopes);
         paramIndex++;
     }
 
