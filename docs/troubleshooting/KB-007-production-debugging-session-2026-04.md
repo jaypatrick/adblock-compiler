@@ -141,14 +141,15 @@ app.route('/api', routes);   // ← single mount point
 // app.route('/', routes);   // ← this double-mount was intentionally removed in Phase 4
 ```
 
-The bare domain `https://api.bloqr.dev/` is handled by the Worker's root handler, which redirects browsers to the API docs and returns a JSON info object to `Accept: application/json` clients. Actual API endpoints are **only** reachable under `/api`.
+The bare domain `https://api.bloqr.dev/` and `https://api.bloqr.dev/api` are both handled by the Worker's `docsLandingHandler`, which serves an HTML landing page (with links to the Scalar and Swagger UI). Actual API endpoints are **only** reachable under `/api`.
 
 ### Correct Base URL
 
 | Use case | URL |
 |----------|-----|
-| Browser — API docs portal | `https://api.bloqr.dev/` (redirects to Scalar UI) |
-| Programmatic — all API requests | `https://api.bloqr.dev/api` |
+| Browser — API landing page | `https://api.bloqr.dev/` or `https://api.bloqr.dev/api` (HTML landing page via `docsLandingHandler`) |
+| Browser — interactive API explorer | `https://api.bloqr.dev/api/docs` (Scalar UI) · `https://api.bloqr.dev/api/swagger` (Swagger UI) |
+| Programmatic — all API requests | `https://api.bloqr.dev/api` (prefix for all endpoints) |
 
 ### Impact
 

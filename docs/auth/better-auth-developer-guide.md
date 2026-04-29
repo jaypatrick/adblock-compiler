@@ -161,10 +161,10 @@ additionalFields: {
 2. Add the column to `prisma/schema.prisma`:
 
 ```prisma
-model user {
-  id          String   @id
+model User {
+  id          String   @id @default(uuid()) @db.Uuid
   displayName String?  @map("display_name")   // ← mapped via USER_FIELD_MAPPING
-  email       String   @unique
+  email       String?  @unique
   tier        String   @default("free")
   role        String   @default("user")
   companyName String?                         // ← new column

@@ -17,6 +17,7 @@ Each article follows a consistent structure: symptom, diagnostic commands, root 
 | [KB-005](./KB-005-better-auth-cloudflare-ip-timeout.md) | Better Auth Cloudflare integration — Worker CPU timeout & rate limiting | ✅ Active |
 | [KB-006](./KB-006-d1-authorization-7403.md) | D1 Authorization Error (7403) — API Token Missing D1:Edit Permission | ✅ Active |
 | [KB-007](./KB-007-production-debugging-session-2026-04.md) | Production Debugging Session — Sign-up 500 / curl 403 / Migration Drift (2026-04) | ✅ Active |
+| [KB-008](./KB-008-prisma7-wasm-cloudflare-workers.md) | Prisma 7 + Cloudflare Workers: `WebAssembly.Module()` Disallowed by Embedder | ✅ Active |
 
 ---
 
