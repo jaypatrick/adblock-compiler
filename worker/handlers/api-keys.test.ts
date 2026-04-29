@@ -194,13 +194,8 @@ function createInMemoryPool(): PgPoolFactory {
 
 Deno.test('handleCreateApiKey - creates key with valid name', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'My API Key' }),
-    });
 
-    const res = await handleCreateApiKey(req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'My API Key' }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 201);
 
     const body = await res.json() as Record<string, unknown>;
@@ -213,13 +208,8 @@ Deno.test('handleCreateApiKey - creates key with valid name', async () => {
 
 Deno.test('handleCreateApiKey - creates key with custom scopes', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Admin Key', scopes: ['compile', 'rules', 'admin'] }),
-    });
 
-    const res = await handleCreateApiKey(req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Admin Key', scopes: ['compile', 'rules', 'admin'] }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 201);
 
     const body = await res.json() as Record<string, unknown>;
@@ -228,13 +218,8 @@ Deno.test('handleCreateApiKey - creates key with custom scopes', async () => {
 
 Deno.test('handleCreateApiKey - creates key with expiry', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Temp Key', expiresInDays: 30 }),
-    });
 
-    const res = await handleCreateApiKey(req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Temp Key', expiresInDays: 30 }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 201);
 
     const body = await res.json() as Record<string, unknown>;
@@ -243,72 +228,43 @@ Deno.test('handleCreateApiKey - creates key with expiry', async () => {
 
 Deno.test('handleCreateApiKey - rejects empty name', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: '' }),
-    });
 
-    const res = await handleCreateApiKey(req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: '' }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleCreateApiKey - rejects name exceeding 100 characters', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'x'.repeat(101) }),
-    });
 
-    const res = await handleCreateApiKey(req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'x'.repeat(101) }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleCreateApiKey - rejects invalid scopes', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Bad Scopes', scopes: ['compile', 'hacker'] }),
-    });
 
-    const res = await handleCreateApiKey(req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Bad Scopes', scopes: ['compile', 'hacker'] }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleCreateApiKey - rejects expiresInDays < 1', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Bad Expiry', expiresInDays: 0 }),
-    });
 
-    const res = await handleCreateApiKey(req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Bad Expiry', expiresInDays: 0 }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleCreateApiKey - rejects expiresInDays > 365', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Bad Expiry', expiresInDays: 400 }),
-    });
 
-    const res = await handleCreateApiKey(req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Bad Expiry', expiresInDays: 400 }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 400);
 });
 
-Deno.test('handleCreateApiKey - rejects invalid JSON', async () => {
+Deno.test('handleCreateApiKey - rejects non-object body', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        body: 'not json',
-    });
 
-    const res = await handleCreateApiKey(req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey('not json', makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 400);
 });
 
@@ -323,13 +279,7 @@ Deno.test('handleCreateApiKey - enforces per-user key limit', async () => {
         },
     });
 
-    const req = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Over Limit' }),
-    });
-
-    const res = await handleCreateApiKey(req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Over Limit' }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 400);
     const body = await res.json() as Record<string, unknown>;
     assertEquals((body.error as string).includes('25'), true);
@@ -337,13 +287,8 @@ Deno.test('handleCreateApiKey - enforces per-user key limit', async () => {
 
 Deno.test('handleCreateApiKey - rejects request when auth context has no userId', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'No User' }),
-    });
 
-    const res = await handleCreateApiKey(req, makeAuthContext({ userId: null }), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'No User' }, makeAuthContext({ userId: null }), CONNECTION_STRING, createPool);
     assertEquals(res.status, 403);
 });
 
@@ -368,12 +313,7 @@ Deno.test('handleListApiKeys - returns keys created by the user', async () => {
 
     // Create two keys
     for (const name of ['Key A', 'Key B']) {
-        const req = new Request('https://example.com/api/keys', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ name }),
-        });
-        await handleCreateApiKey(req, ctx, CONNECTION_STRING, createPool);
+        await handleCreateApiKey({ name }, ctx, CONNECTION_STRING, createPool);
     }
 
     const res = await handleListApiKeys(ctx, CONNECTION_STRING, createPool);
@@ -387,12 +327,7 @@ Deno.test('handleListApiKeys - does not return keys from other users', async () 
     const createPool = createInMemoryPool();
 
     // Create a key for user A
-    const reqA = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Key A' }),
-    });
-    await handleCreateApiKey(reqA, makeAuthContext({ userId: 'user-A' }), CONNECTION_STRING, createPool);
+    await handleCreateApiKey({ name: 'Key A' }, makeAuthContext({ userId: 'user-A' }), CONNECTION_STRING, createPool);
 
     // List for user B should be empty
     const res = await handleListApiKeys(makeAuthContext({ userId: 'user-B' }), CONNECTION_STRING, createPool);
@@ -417,12 +352,7 @@ Deno.test('handleRevokeApiKey - revokes an existing key', async () => {
     const ctx = makeAuthContext();
 
     // Create a key first
-    const createReq = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Temp Key' }),
-    });
-    const createRes = await handleCreateApiKey(createReq, ctx, CONNECTION_STRING, createPool);
+    const createRes = await handleCreateApiKey({ name: 'Temp Key' }, ctx, CONNECTION_STRING, createPool);
     const createBody = await createRes.json() as Record<string, unknown>;
     const keyId = createBody.id as string;
 
@@ -444,12 +374,7 @@ Deno.test("handleRevokeApiKey - prevents revoking another user's key", async () 
     const createPool = createInMemoryPool();
 
     // Create a key for user A
-    const createReq = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'User A Key' }),
-    });
-    const createRes = await handleCreateApiKey(createReq, makeAuthContext({ userId: 'user-A' }), CONNECTION_STRING, createPool);
+    const createRes = await handleCreateApiKey({ name: 'User A Key' }, makeAuthContext({ userId: 'user-A' }), CONNECTION_STRING, createPool);
     const createBody = await createRes.json() as Record<string, unknown>;
     const keyId = createBody.id as string;
 
@@ -473,22 +398,12 @@ Deno.test('handleUpdateApiKey - updates key name', async () => {
     const ctx = makeAuthContext();
 
     // Create
-    const createReq = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Original' }),
-    });
-    const createRes = await handleCreateApiKey(createReq, ctx, CONNECTION_STRING, createPool);
+    const createRes = await handleCreateApiKey({ name: 'Original' }, ctx, CONNECTION_STRING, createPool);
     const createBody = await createRes.json() as Record<string, unknown>;
     const keyId = createBody.id as string;
 
     // Update name
-    const updateReq = new Request('https://example.com/api/keys/' + keyId, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Renamed' }),
-    });
-    const res = await handleUpdateApiKey(keyId, updateReq, ctx, CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey(keyId, { name: 'Renamed' }, ctx, CONNECTION_STRING, createPool);
     assertEquals(res.status, 200);
 
     const body = await res.json() as Record<string, unknown>;
@@ -499,91 +414,52 @@ Deno.test('handleUpdateApiKey - updates key scopes', async () => {
     const createPool = createInMemoryPool();
     const ctx = makeAuthContext();
 
-    const createReq = new Request('https://example.com/api/keys', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Scope Test', scopes: ['compile'] }),
-    });
-    const createRes = await handleCreateApiKey(createReq, ctx, CONNECTION_STRING, createPool);
+    const createRes = await handleCreateApiKey({ name: 'Scope Test', scopes: ['compile'] }, ctx, CONNECTION_STRING, createPool);
     const createBody = await createRes.json() as Record<string, unknown>;
     const keyId = createBody.id as string;
 
-    const updateReq = new Request('https://example.com/api/keys/' + keyId, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scopes: ['compile', 'rules'] }),
-    });
-    const res = await handleUpdateApiKey(keyId, updateReq, ctx, CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey(keyId, { scopes: ['compile', 'rules'] }, ctx, CONNECTION_STRING, createPool);
     assertEquals(res.status, 200);
 });
 
 Deno.test('handleUpdateApiKey - rejects empty update body', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys/123', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-    });
 
-    const res = await handleUpdateApiKey('123', req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey('123', {}, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleUpdateApiKey - rejects invalid scopes in update', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys/123', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ scopes: ['invalid'] }),
-    });
 
-    const res = await handleUpdateApiKey('123', req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey('123', { scopes: ['invalid'] }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleUpdateApiKey - rejects name exceeding max length', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys/123', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'x'.repeat(101) }),
-    });
 
-    const res = await handleUpdateApiKey('123', req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey('123', { name: 'x'.repeat(101) }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleUpdateApiKey - returns 404 for non-existent key', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys/non-existent', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'New Name' }),
-    });
 
-    const res = await handleUpdateApiKey('non-existent', req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey('non-existent', { name: 'New Name' }, makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 404);
 });
 
-Deno.test('handleUpdateApiKey - rejects invalid JSON', async () => {
+Deno.test('handleUpdateApiKey - rejects non-object body', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys/123', {
-        method: 'PATCH',
-        body: 'not json',
-    });
 
-    const res = await handleUpdateApiKey('123', req, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey('123', 'not json', makeAuthContext(), CONNECTION_STRING, createPool);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleUpdateApiKey - rejects request when auth context has no userId', async () => {
     const createPool = createInMemoryPool();
-    const req = new Request('https://example.com/api/keys/123', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: 'Renamed' }),
-    });
 
-    const res = await handleUpdateApiKey('123', req, makeAuthContext({ userId: null }), CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey('123', { name: 'Renamed' }, makeAuthContext({ userId: null }), CONNECTION_STRING, createPool);
     assertEquals(res.status, 403);
 });
