@@ -140,6 +140,15 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 itemCount: configsToWarm.length,
             });
 
+            // Fail fast if required KV bindings are absent — inside try so the catch
+            // handler can call captureExceptionInIsolate and re-throw with context.
+            if (!this.env.COMPILATION_CACHE) {
+                throw new Error('[WORKFLOW:CACHE-WARM] COMPILATION_CACHE KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
+            }
+            if (!this.env.METRICS) {
+                throw new Error('[WORKFLOW:CACHE-WARM] METRICS KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
+            }
+
             // Emit workflow started event inside a step so KV I/O runs in step context,
             // not in orchestrator context where it can hang indefinitely and produce
             // outcome: exception with no structured error reporting.
