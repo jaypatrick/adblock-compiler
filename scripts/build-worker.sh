@@ -75,34 +75,31 @@ fi
 
 # Patch polyfills.server.mjs for Cloudflare Workers compatibility.
 # Angular's SSR build generates polyfills.server.mjs that calls
-# createRequire(import.meta.url) at module scope. In Cloudflare Workers,
-# import.meta.url is undefined at script-validation time, causing error 10021.
-# Patch to use a nullish-coalescing fallback URL so the module
-# initialises without error in the Workers runtime.
+# createRequire(import.meta.url) at module scope (sometimes via an alias).
+# In Cloudflare Workers, import.meta.url is undefined at script-validation
+# time, causing error 10021.  Replace every bare import.meta.url with a
+# nullish-coalescing fallback so the module initialises safely.
 POLYFILLS_FILE="frontend/dist/adblock-compiler/server/polyfills.server.mjs"
 if [ -f "$POLYFILLS_FILE" ]; then
-    # Check whether the pattern still exists before attempting to patch.
-    # Angular 21.2+ may no longer emit createRequire(import.meta.url) at module
-    # scope, in which case no patch is needed and we skip silently.
-    if ! grep -qF 'createRequire(import.meta.url)' "$POLYFILLS_FILE"; then
-        echo "build-worker.sh: 'createRequire(import.meta.url)' not found in $POLYFILLS_FILE — Angular output may have changed or no longer requires this patch. Skipping."
+    if grep -qF "(import.meta.url ?? 'file:///worker')" "$POLYFILLS_FILE"; then
+        echo "build-worker.sh: $POLYFILLS_FILE already patched — skipping."
+    elif ! grep -qF 'import.meta.url' "$POLYFILLS_FILE"; then
+        echo "build-worker.sh: 'import.meta.url' not found in $POLYFILLS_FILE — no patch needed. Skipping."
     else
-        # Apply the patch into a temporary file.
-        if ! sed "s|createRequire(import\.meta\.url)|createRequire(import.meta.url ?? 'file:///worker')|g" \
+        if ! sed "s|import\.meta\.url|(import.meta.url ?? 'file:///worker')|g" \
             "$POLYFILLS_FILE" > "$POLYFILLS_FILE.tmp"; then
             echo "Error: failed to patch $POLYFILLS_FILE (sed exited with an error)." >&2
             rm -f "$POLYFILLS_FILE.tmp"
             exit 1
         fi
 
-        # Verify that the replacement was actually applied.
-        if ! grep -qF "createRequire(import.meta.url ?? 'file:///worker')" "$POLYFILLS_FILE.tmp"; then
+        if ! grep -qF "(import.meta.url ?? 'file:///worker')" "$POLYFILLS_FILE.tmp"; then
             echo "Error: patch verification failed for $POLYFILLS_FILE; replacement not found in patched output." >&2
             rm -f "$POLYFILLS_FILE.tmp"
             exit 1
         fi
 
         mv "$POLYFILLS_FILE.tmp" "$POLYFILLS_FILE"
-        echo "Patched $POLYFILLS_FILE for Cloudflare Workers (createRequire fallback)."
+        echo "Patched $POLYFILLS_FILE for Cloudflare Workers (import.meta.url ?? 'file:///worker' fallback)."
     fi
 fi
