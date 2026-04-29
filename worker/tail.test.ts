@@ -434,6 +434,14 @@ Deno.test('default export - has a tail() method', () => {
     assertEquals(typeof tailDefault.tail, 'function');
 });
 
+Deno.test('default export: fetch() returns 404', async () => {
+    const env = createMockTailEnv({});
+    const ctx = createMockTailCtx();
+    const req = new Request('https://tail.bloqr.dev/');
+    const res = await tailDefault.fetch(req, env, ctx);
+    assertEquals(res.status, 404);
+});
+
 Deno.test({
     name: 'default export tail() - completes without throwing when SENTRY_DSN is absent',
     sanitizeOps: false,
