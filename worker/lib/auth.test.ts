@@ -134,3 +134,25 @@ Deno.test("USER_FIELD_MAPPING maps Better Auth 'image' to Prisma 'imageUrl'", ()
 Deno.test('USER_FIELD_MAPPING contains exactly the expected fields', () => {
     assertEquals(Object.keys(USER_FIELD_MAPPING).sort(), ['image', 'name']);
 });
+
+// ============================================================================
+// generateId — UUID format guard
+// ============================================================================
+//
+// Better Auth generates opaque random strings by default (e.g.
+// "9hrbjIfqhl2sTXOhzrWSNwL9i2kipz51") which PostgreSQL rejects with
+// "invalid input syntax for type uuid" when the column type is uuid.
+// The createAuth() config sets `advanced.generateId` to crypto.randomUUID()
+// so every ID inserted by Better Auth is a valid UUID v4.
+//
+// This test verifies the native crypto.randomUUID() API (used inline in the
+// config) produces the expected 8-4-4-4-12 hex format that PostgreSQL accepts.
+// It requires no database connection.
+// ============================================================================
+
+Deno.test('crypto.randomUUID produces a valid UUID v4 accepted by PostgreSQL uuid column type', () => {
+    const id = crypto.randomUUID();
+    // PostgreSQL uuid type requires the canonical 8-4-4-4-12 hex format.
+    const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+    assertEquals(uuidV4Regex.test(id), true, `Expected a UUID v4, got: ${id}`);
+});

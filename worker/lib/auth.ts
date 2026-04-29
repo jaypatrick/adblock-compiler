@@ -170,6 +170,12 @@ export function createAuth(env: Env, baseURL?: string) {
             },
         },
         advanced: {
+            // Force UUIDs so Better Auth IDs satisfy PostgreSQL `uuid` column type.
+            // Better Auth generates opaque random strings by default (e.g.
+            // "9hrbjIfqhl2sTXOhzrWSNwL9i2kipz51") which PostgreSQL rejects with
+            // "invalid input syntax for type uuid".  crypto.randomUUID() is available
+            // natively in Cloudflare Workers — no import needed.
+            generateId: () => crypto.randomUUID(),
             // ⚠️ BREAKING: changing this prefix renames all Better Auth cookies and
             // forcibly logs out every existing session on the next request.
             cookiePrefix: 'bloqr',
