@@ -552,13 +552,19 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             // because METRICS is absent, calling events.flush() would trigger a secondary
             // KV error with a misleading log line. captureExceptionInIsolate above already
             // sends the real error to Sentry.
+            // Wrapped in stepDo so the KV flush runs in step context, not orchestrator
+            // context. The explicit flush() is removed — emitWorkflowFailed already flushes.
             if (this.env.METRICS) {
-                await events.emitWorkflowFailed(errorMessage, {
-                    healthySources,
-                    unhealthySources,
-                    alertsSent,
+                await stepDo<void>(step, 'emit-workflow-failed', {
+                    retries: { limit: 2, delay: '1 second' },
+                    timeout: '30 seconds',
+                }, async () => {
+                    await events.emitWorkflowFailed(errorMessage, {
+                        healthySources,
+                        unhealthySources,
+                        alertsSent,
+                    });
                 });
-                await events.flush();
             }
 
             // Always throw an Error instance so CF Workflows telemetry captures the real

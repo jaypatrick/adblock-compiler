@@ -180,16 +180,23 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                     needsRefresh.push(config);
                 }
 
+                await events.emitStepCompleted('check-cache-status', { needsRefresh: needsRefresh.length });
+                if (needsRefresh.length > 0) {
+                    await events.emitProgress(10, `${needsRefresh.length} configs need warming`);
+                }
                 return needsRefresh;
             });
 
-            await events.emitStepCompleted('check-cache-status', { needsRefresh: configsNeedingRefresh.length });
-
             if (configsNeedingRefresh.length === 0) {
                 console.log(`[WORKFLOW:CACHE-WARM] All caches are fresh, nothing to warm`);
-                await events.emitProgress(100, 'All caches are fresh');
-                await events.emitWorkflowCompleted({ warmed: 0, skipped: configsToWarm.length });
-                await events.flush();
+                await stepDo<void>(step, 'emit-workflow-completed', {
+                    retries: { limit: 2, delay: '1 second' },
+                    timeout: '30 seconds',
+                }, async () => {
+                    await events.emitProgress(100, 'All caches are fresh');
+                    await events.emitWorkflowCompleted({ warmed: 0, skipped: configsToWarm.length });
+                    // No explicit flush() — emitWorkflowCompleted already flushes.
+                });
                 return {
                     runId,
                     scheduled,
@@ -199,8 +206,6 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                     totalDurationMs: Date.now() - startTime,
                 };
             }
-
-            await events.emitProgress(10, `${configsNeedingRefresh.length} configs need warming`);
 
             // Step 2: Process in chunks
             const chunks: Array<typeof configsNeedingRefresh> = [];
@@ -300,6 +305,12 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                         // inter-chunk-delay step provides backpressure between batches
                     }
 
+                    const chunkProgress = 10 + Math.round(((chunkIndex + 1) / chunks.length) * 75);
+                    await events.emitStepCompleted(`warm-chunk-${chunkNumber}`, {
+                        warmed: results.filter((r) => r.success).length,
+                        failed: results.filter((r) => !r.success).length,
+                    });
+                    await events.emitProgress(chunkProgress, `Chunk ${chunkNumber}/${chunks.length} complete`);
                     return results;
                 });
 
@@ -312,14 +323,6 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                         failedConfigurations++;
                     }
                 }
-
-                await events.emitStepCompleted(`warm-chunk-${chunkNumber}`, {
-                    warmed: chunkResults.filter((r) => r.success).length,
-                    failed: chunkResults.filter((r) => !r.success).length,
-                });
-
-                const chunkProgress = 10 + Math.round(((chunkIndex + 1) / chunks.length) * 75);
-                await events.emitProgress(chunkProgress, `Chunk ${chunkNumber}/${chunks.length} complete`);
             }
 
             // Step 3: Update metrics
@@ -369,21 +372,26 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                     expirationTtl: 86400 * 30, // 30 days
                 });
 
+                await events.emitStepCompleted('update-warming-metrics');
                 return { updated: true };
             });
 
-            await events.emitStepCompleted('update-warming-metrics');
-
             const totalDuration = Date.now() - startTime;
 
-            // Emit workflow completed event
-            await events.emitProgress(100, 'Cache warming complete');
-            await events.emitWorkflowCompleted({
-                warmedConfigurations,
-                failedConfigurations,
-                totalDurationMs: totalDuration,
+            // Emit workflow completed event inside a step so KV I/O runs in step
+            // context, not orchestrator context. The explicit flush() that followed
+            // emitWorkflowCompleted is removed — emitWorkflowCompleted already flushes.
+            await stepDo<void>(step, 'emit-workflow-completed', {
+                retries: { limit: 2, delay: '1 second' },
+                timeout: '30 seconds',
+            }, async () => {
+                await events.emitProgress(100, 'Cache warming complete');
+                await events.emitWorkflowCompleted({
+                    warmedConfigurations,
+                    failedConfigurations,
+                    totalDurationMs: totalDuration,
+                });
             });
-            await events.flush();
 
             // Track workflow completed via Analytics Engine
             analytics.trackWorkflowCompleted({
@@ -425,14 +433,19 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
             // Emit workflow failed event — only when METRICS is available. If the
             // binding guard above threw because METRICS is absent, calling
             // events.emitWorkflowFailed()/flush() would raise a secondary TypeError
-            // that masks the original descriptive error. This mirrors the guard pattern
-            // already used in HealthMonitoringWorkflow.
+            // that masks the original descriptive error. Wrapped in stepDo so the KV
+            // flush runs in step context, not orchestrator context. The explicit flush()
+            // is removed — emitWorkflowFailed already flushes.
             if (this.env.METRICS) {
-                await events.emitWorkflowFailed(errorMessage, {
-                    warmedConfigurations,
-                    failedConfigurations: configsToWarm.length - warmedConfigurations,
+                await stepDo<void>(step, 'emit-workflow-failed', {
+                    retries: { limit: 2, delay: '1 second' },
+                    timeout: '30 seconds',
+                }, async () => {
+                    await events.emitWorkflowFailed(errorMessage, {
+                        warmedConfigurations,
+                        failedConfigurations: configsToWarm.length - warmedConfigurations,
+                    });
                 });
-                await events.flush();
             }
 
             // Always throw so CF Workflows records outcome: exception and surfaces the
