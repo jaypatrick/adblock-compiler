@@ -13,8 +13,10 @@ Each article follows a consistent structure: symptom, diagnostic commands, root 
 | [KB-001](./KB-001-api-not-available.md) | "Getting API is not available" on the main page | ✅ Active |
 | [KB-002](./KB-002-hyperdrive-database-down.md) | Hyperdrive binding connected but `database` service reports `down` | ✅ Active |
 | [KB-003](./KB-003-neon-hyperdrive-live-session-2026-03-25.md) | Database Down After Deploy — Live Debugging Session (2026-03-25) | ✅ Active |
-| KB-004 | Cloudflare Queue consumer not processing messages | 🗓 Planned |
-| KB-005 | Angular SPA serves stale build after worker deploy | 🗓 Planned |
+| [KB-004](./KB-004-prisma-wasm-cloudflare.md) | Prisma WASM binary not found in Cloudflare Workers | ✅ Active |
+| [KB-005](./KB-005-better-auth-cloudflare-ip-timeout.md) | Better Auth Cloudflare integration — Worker CPU timeout & rate limiting | ✅ Active |
+| [KB-006](./KB-006-d1-authorization-7403.md) | D1 Authorization Error (7403) — API Token Missing D1:Edit Permission | ✅ Active |
+| [KB-007](./KB-007-production-debugging-session-2026-04.md) | Production Debugging Session — Sign-up 500 / curl 403 / Migration Drift (2026-04) | ✅ Active |
 
 ---
 

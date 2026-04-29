@@ -79,10 +79,52 @@ activate any of them.
 
 ## User Model Extension
 
-The `user` table has two custom fields added in `worker/lib/auth.ts`:
+The `user` block in `worker/lib/auth.ts` configures two things:
+
+1. **`fields`** — maps Better Auth's canonical field names to the Prisma model's field names.
+2. **`additionalFields`** — declares custom columns that extend the built-in user schema.
+
+### Field Name Mapping (`fields`)
+
+Better Auth's internal user object uses `name` (display name) and `image` (avatar URL).
+The Prisma `User` model uses `displayName` (column `display_name`) and `imageUrl`
+(column `image_url`) to follow the project's database naming conventions.
+
+Without this mapping, Better Auth passes `name` and `image` directly to Prisma on every
+sign-up and OAuth profile-sync, causing `PrismaClientValidationError: Unknown argument 'name'`
+and a 500 to the client.
+
+The mapping is declared in `worker/lib/auth.ts` and exported as `USER_FIELD_MAPPING` so
+regression tests can assert it without requiring a database connection:
+
+```typescript
+// worker/lib/auth.ts
+export const USER_FIELD_MAPPING = {
+    name: 'displayName', // Better Auth 'name'  → Prisma 'displayName' (display_name column)
+    image: 'imageUrl',   // Better Auth 'image' → Prisma 'imageUrl'    (image_url column)
+} as const;
+
+// Inside createAuth():
+user: {
+    fields: USER_FIELD_MAPPING,  // ← required; prevents PrismaClientValidationError on sign-up
+    additionalFields: {
+        tier: { ... },
+        role: { ... },
+    },
+},
+```
+
+> **⚠️ Regression risk:** If `fields` is removed or the Prisma model fields are renamed,
+> every sign-up and OAuth sign-in will return a 500. The exported `USER_FIELD_MAPPING`
+> constant and its associated regression test guard against this.
+
+### Additional Fields (`additionalFields`)
+
+Two custom fields are added to the `user` table:
 
 ```typescript
 user: {
+  fields: USER_FIELD_MAPPING,
   additionalFields: {
     tier: {
       type: 'string',
@@ -121,14 +163,18 @@ additionalFields: {
 ```prisma
 model user {
   id          String   @id
-  name        String
+  displayName String?  @map("display_name")   // ← mapped via USER_FIELD_MAPPING
   email       String   @unique
   tier        String   @default("free")
   role        String   @default("user")
-  companyName String?                    // ← new column
+  companyName String?                         // ← new column
   // ...
 }
 ```
+
+> **Note:** Do not use `name` as a column name in the `user` model — it conflicts with
+> Better Auth's internal `name` field. Use `displayName` (mapped via `USER_FIELD_MAPPING`)
+> instead.
 
 3. Run the migration:
 
