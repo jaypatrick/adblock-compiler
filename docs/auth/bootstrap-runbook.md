@@ -128,7 +128,7 @@ echo "Bearer token: $BEARER_TOKEN"
   },
   "session": {
     "id": "01965f3b-...",
-    "token": "bloqr.session_...",
+    "token": "sess_...",
     "expiresAt": "2026-05-06T00:00:00.000Z"
   }
 }
