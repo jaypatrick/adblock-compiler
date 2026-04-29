@@ -285,7 +285,7 @@ No auth required. Expected response:
 |---------|-------------|-----|
 | `POST /api/auth/sign-out` → `400` | Missing `Content-Type` or empty body | Add `-H "Content-Type: application/json" -d '{}'` |
 | Sign-in response shows `tier: free` / `role: user` after promotion | Neon promotion query didn't commit | Re-run the `UPDATE` in Step 2; verify with the `SELECT` below it |
-| `POST /api/keys` → `403 Forbidden` | Bearer token belongs to a `free` user | Ensure Neon promotion ran successfully and re-sign-in |
+| `POST /api/keys` → `403 Forbidden` | Request used a non-interactive auth method (for example, API key-on-API-key) or failed the interactive-session guard | Sign in normally to obtain a fresh interactive Bearer token, then retry `POST /api/keys` with that token instead of an API key or other non-interactive credential |
 | `POST /api/keys` → key with empty `scopes` | `scopes` field omitted from request body | Pass `"scopes": ["compile"]` explicitly — the default is `["compile"]` but explicit is safer |
 | `401 Unauthorized` in Postman | Expired Bearer token | Re-run Step 3/4 and update `{{bearerToken}}` in the environment |
 
