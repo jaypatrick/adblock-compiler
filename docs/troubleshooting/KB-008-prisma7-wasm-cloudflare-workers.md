@@ -1,4 +1,4 @@
-# KB-004 — Prisma 7 + Cloudflare Workers: `WebAssembly.Module()` Disallowed by Embedder
+# KB-008 — Prisma 7 + Cloudflare Workers: `WebAssembly.Module()` Disallowed by Embedder
 
 **Status:** Resolved  
 **Severity:** Critical (site down / database unreachable)  

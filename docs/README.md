@@ -8,7 +8,7 @@ Welcome to the Bloqr documentation. This directory contains all the detailed doc
 |---|---|---|
 | Landing | [bloqr.dev](https://bloqr.dev/) | Main marketing site |
 | App | [app.bloqr.dev](https://app.bloqr.dev/) | Angular compiler dashboard |
-| API | [api.bloqr.dev](https://api.bloqr.dev/) | API portal (Scalar/Swagger) |
+| API | [api.bloqr.dev](https://api.bloqr.dev/) | API portal (Scalar/Swagger) — programmatic base URL: `https://api.bloqr.dev/api` |
 | Docs | [docs.bloqr.dev](https://docs.bloqr.dev/) | This site |
 
 ## Quick Links
@@ -59,6 +59,7 @@ mindmap
 - [API Documentation](api/README.md) - REST API reference and examples
 - [Client Libraries](guides/clients.md) - Client examples for Python, TypeScript, and Go
 - [Troubleshooting](guides/TROUBLESHOOTING.md) - Common issues and solutions
+- [KB Articles](troubleshooting/README.md) - Production incident knowledge base (KB-001 … KB-007)
 
 ### Usage
 

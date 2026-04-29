@@ -106,6 +106,41 @@ DIRECT_DATABASE_URL="<connection-string>" npx prisma migrate status
 DATABASE_URL="<pooler-url>" DIRECT_DATABASE_URL="<direct-url>" npx prisma migrate deploy
 ```
 
+### Deploy pending migrations to the production Neon branch
+
+> **Use this when the production branch is behind local.** The production Neon branch
+> has its own `_prisma_migrations` table — migrations applied to dev/staging branches
+> are **not** automatically promoted to production. You must run `migrate deploy`
+> explicitly against the production direct connection string.
+
+```bash
+# Obtain the production direct connection string from:
+#   https://console.neon.tech → project adblock-db → branch: production
+#   → Connection Details → Direct (not pooled)
+DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require" \
+  deno task db:migrate:deploy
+```
+
+Or using `npx prisma` directly (equivalent; useful without Deno):
+
+```bash
+DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require" \
+  DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/adblock-compiler?sslmode=require" \
+  npx prisma migrate deploy
+```
+
+> ⚠️ **Always use the direct (non-pooled) endpoint for `DIRECT_DATABASE_URL`**.  
+> The pooler endpoint (hostname contains `-pooler`) is for application connections through
+> Hyperdrive. Prisma requires a direct connection for DDL operations.
+
+Verify afterwards:
+
+```bash
+DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require" \
+  npx prisma migrate status
+# Expected: "All migrations have been applied."
+```
+
 ### Open Prisma Studio (visual DB browser)
 ```bash
 DIRECT_DATABASE_URL="<direct-neon-url>" npx prisma studio
