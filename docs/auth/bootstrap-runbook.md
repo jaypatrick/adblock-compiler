@@ -185,7 +185,8 @@ curl -s "$API_BASE/keys" \
 ```json
 {
   "success": true,
-  "keys": []
+  "keys": [],
+  "total": 0
 }
 ```
 
