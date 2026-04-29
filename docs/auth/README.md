@@ -8,6 +8,7 @@ the Prisma ORM. No third-party auth service is required at runtime.
 
 | Document | Audience | Description |
 |----------|----------|-------------|
+| [Bootstrap Runbook](bootstrap-runbook.md) | Operators | Step-by-step: first admin setup, smoke test, API key creation, Postman config |
 | [Better Auth User Guide](better-auth-user-guide.md) | All users | Sign-up, sign-in, 2FA, session management, API keys |
 | [Better Auth Admin Guide](better-auth-admin-guide.md) | Operators | User management, banning, secret rotation, migrations |
 | [Better Auth Developer Guide](better-auth-developer-guide.md) | Developers | Plugin catalogue, adapter swapping, custom providers |
