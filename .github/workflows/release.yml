@@ -132,11 +132,14 @@ jobs:
                   path: compressed/*
                   retention-days: 7
 
-    # Docker images are built and pushed by docker-publish.yml, which fires on the
-    # same v*.*.* tags and additionally handles Docker Hub, cosign signing, the
-    # Cloudflare Containers image (Dockerfile.container), and daily security rebuilds.
-    # The build-docker job was removed from this workflow to prevent double-pushes to
-    # GHCR on release tags.
+    # Docker images are built and pushed by docker-publish.yml for semver release
+    # tags matching v*.*.*. That workflow additionally handles Docker Hub, cosign
+    # signing, the Cloudflare Containers image (Dockerfile.container), and daily
+    # security rebuilds. The build-docker job was removed from this workflow to
+    # prevent double-pushes to GHCR on release tags.
+    # Note: release.yml also fires on non-semver v* tags (e.g. v1, v1.2) for binary
+    # builds. Docker images are only published for full semver v*.*.* tags because
+    # docker-publish.yml uses a stricter 'v*.*.*' path filter.
 
     create-release:
         name: Create GitHub Release
