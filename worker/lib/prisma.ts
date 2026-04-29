@@ -59,34 +59,16 @@ export function _enforceUuidOnCreateData(data: Record<string, unknown>): void {
 const BETTER_AUTH_MODELS = new Set(['User', 'Session', 'Account', 'Verification', 'TwoFactor', 'Organization', 'Member']);
 
 /**
- * Creates a PrismaClient connected to Neon PostgreSQL via Hyperdrive.
+ * Builds the `$extends` query extension that enforces UUID ids on Better Auth
+ * models, and returns the extended client.
  *
- * Hyperdrive IS the connection pool — it proxies connections locally,
- * so creating a new PrismaClient per request connects to a local proxy socket,
- * not directly to PostgreSQL. This makes per-request instantiation safe.
+ * Extracted as a separate function so {@link PrismaClientExtended} can be
+ * derived from its return type without creating a circular reference through
+ * {@link createPrismaClient}.
  *
- * The returned client includes a query extension that intercepts every `create`
- * operation and replaces any non-UUID `data.id` with `crypto.randomUUID()`.
- * This is necessary because Better Auth 1.5.x does not reliably call
- * `advanced.generateId` before passing IDs to the Prisma adapter, causing
- * PostgreSQL to reject them with "invalid input syntax for type uuid".
- *
- * @param hyperdriveConnectionString - The connection string from `env.HYPERDRIVE.connectionString`
- * @returns A configured PrismaClient instance with UUID enforcement extension
- * @throws {z.ZodError} If the connection string is invalid
- *
- * @example
- * ```typescript
- * const prisma = createPrismaClient(c.env.HYPERDRIVE!.connectionString);
- * const user = await prisma.user.findUnique({ where: { id } });
- * ```
+ * @internal
  */
-export function createPrismaClient(hyperdriveConnectionString: string) {
-    PrismaClientConfigSchema.parse({ connectionString: hyperdriveConnectionString });
-
-    const adapter = new PrismaPg({ connectionString: hyperdriveConnectionString });
-    const prisma = new PrismaClient({ adapter });
-
+function _buildUuidExtension(prisma: PrismaClient) {
     // Better Auth 1.5.x does not reliably call advanced.generateId before
     // passing IDs to Prisma. The Better Auth tables (User, Session, Account,
     // Verification, TwoFactor, Organization, Member) use @db.Uuid id columns,
@@ -110,6 +92,55 @@ export function createPrismaClient(hyperdriveConnectionString: string) {
 }
 
 /**
+ * The type of the extended PrismaClient returned by {@link createPrismaClient}.
+ *
+ * Derived from {@link _buildUuidExtension} rather than from
+ * `ReturnType<typeof createPrismaClient>` to avoid a circular type reference.
+ * Import this type alias wherever the extended client type is needed.
+ *
+ * @example
+ * ```typescript
+ * import type { PrismaClientExtended } from '../lib/prisma.ts';
+ *
+ * interface Variables {
+ *     prisma?: PrismaClientExtended;
+ * }
+ * ```
+ */
+export type PrismaClientExtended = ReturnType<typeof _buildUuidExtension>;
+
+/**
+ * Creates a PrismaClient connected to Neon PostgreSQL via Hyperdrive.
+ *
+ * Hyperdrive IS the connection pool — it proxies connections locally,
+ * so creating a new PrismaClient per request connects to a local proxy socket,
+ * not directly to PostgreSQL. This makes per-request instantiation safe.
+ *
+ * The returned client includes a query extension that intercepts `create`
+ * operations on Better Auth models and replaces any non-UUID `data.id` with
+ * `crypto.randomUUID()`. This is necessary because Better Auth 1.5.x does not
+ * reliably call `advanced.generateId` before passing IDs to the Prisma adapter,
+ * causing PostgreSQL to reject them with "invalid input syntax for type uuid".
+ *
+ * @param hyperdriveConnectionString - The connection string from `env.HYPERDRIVE.connectionString`
+ * @returns A configured PrismaClient instance with UUID enforcement extension
+ * @throws {z.ZodError} If the connection string is invalid
+ *
+ * @example
+ * ```typescript
+ * const prisma = createPrismaClient(c.env.HYPERDRIVE!.connectionString);
+ * const user = await prisma.user.findUnique({ where: { id } });
+ * ```
+ */
+export function createPrismaClient(hyperdriveConnectionString: string): PrismaClientExtended {
+    PrismaClientConfigSchema.parse({ connectionString: hyperdriveConnectionString });
+
+    const adapter = new PrismaPg({ connectionString: hyperdriveConnectionString });
+    const prisma = new PrismaClient({ adapter });
+    return _buildUuidExtension(prisma);
+}
+
+/**
  * Mutable indirection object used by handlers that need `createPrismaClient`
  * to be stubbable in unit tests.
  *
@@ -130,22 +161,3 @@ export function createPrismaClient(hyperdriveConnectionString: string) {
  * ```
  */
 export const _internals = { createPrismaClient };
-
-/**
- * The type of the extended PrismaClient returned by {@link createPrismaClient}.
- *
- * Prisma's `$extends` returns a `DynamicClientExtensionThis<...>` rather than
- * the base `PrismaClient` class.  Import this type alias instead of using
- * `ReturnType<typeof createPrismaClient>` at call-sites to avoid the need for
- * a value import of `createPrismaClient` solely for its type.
- *
- * @example
- * ```typescript
- * import type { PrismaClientExtended } from '../lib/prisma.ts';
- *
- * interface Variables {
- *     prisma?: PrismaClientExtended;
- * }
- * ```
- */
-export type PrismaClientExtended = ReturnType<typeof createPrismaClient>;

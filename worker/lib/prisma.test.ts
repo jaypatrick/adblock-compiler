@@ -73,8 +73,11 @@ Deno.test('UUID_REGEX is exported from prisma module', () => {
     assertEquals(UUID_REGEX instanceof RegExp, true);
 });
 
-Deno.test('UUID_REGEX accepts a canonical UUID v4', () => {
-    // Hardcoded UUIDs from RFC 4122 test vectors — deterministic and always valid.
+Deno.test('UUID_REGEX accepts canonical UUIDs of any RFC 4122 version', () => {
+    // UUID v4 (550e8400-...) and v1 (6ba7b810-...) — confirms the regex
+    // validates format only, not the version nibble.  crypto.randomUUID()
+    // always produces v4; the v1 sample verifies no false negatives for
+    // other valid RFC 4122 forms.
     assertEquals(UUID_REGEX.test('550e8400-e29b-41d4-a716-446655440000'), true);
     assertEquals(UUID_REGEX.test('6ba7b810-9dad-11d1-80b4-00c04fd430c8'), true);
 });
