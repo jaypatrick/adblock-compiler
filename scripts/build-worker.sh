@@ -81,7 +81,9 @@ fi
 # nullish-coalescing fallback so the module initialises safely.
 POLYFILLS_FILE="frontend/dist/adblock-compiler/server/polyfills.server.mjs"
 if [ -f "$POLYFILLS_FILE" ]; then
-    if ! grep -qF 'import.meta.url' "$POLYFILLS_FILE"; then
+    if grep -qF "(import.meta.url ?? 'file:///worker')" "$POLYFILLS_FILE"; then
+        echo "build-worker.sh: $POLYFILLS_FILE already patched — skipping."
+    elif ! grep -qF 'import.meta.url' "$POLYFILLS_FILE"; then
         echo "build-worker.sh: 'import.meta.url' not found in $POLYFILLS_FILE — no patch needed. Skipping."
     else
         if ! sed "s|import\.meta\.url|(import.meta.url ?? 'file:///worker')|g" \
