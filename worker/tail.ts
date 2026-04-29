@@ -309,6 +309,16 @@ export async function captureSentryExceptions(
  * Main tail handler
  */
 const handler = {
+    /**
+     * Stub fetch handler — tail workers are not intended to serve HTTP traffic.
+     * This prevents the Cloudflare runtime from throwing
+     * "Handler does not export a fetch() function." when bots or scanners
+     * send direct HTTP requests to tail.bloqr.dev.
+     */
+    async fetch(_request: Request, _env: TailEnv, _ctx: ExecutionContext): Promise<Response> {
+        return new Response('Not Found', { status: 404 });
+    },
+
     async tail(events: TailEvent[], env: TailEnv, ctx: ExecutionContext) {
         // Process each event
         const promises: Promise<void>[] = [];
