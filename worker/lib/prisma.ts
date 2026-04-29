@@ -29,6 +29,23 @@ export { PrismaClientConfigSchema } from './prisma-config.ts';
 export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /**
+ * Applies UUID enforcement to a Prisma `create` operation's data argument.
+ *
+ * If `data` contains an `id` property that is a non-empty string but does NOT
+ * satisfy {@link UUID_REGEX}, it is replaced with `crypto.randomUUID()`.
+ *
+ * Extracted from the `$extends` callback so the enforcement logic can be
+ * unit-tested without a database connection.
+ *
+ * @internal exported for testing only
+ */
+export function _enforceUuidOnCreateData(data: Record<string, unknown>): void {
+    if ('id' in data && typeof data.id === 'string' && !UUID_REGEX.test(data.id)) {
+        data.id = crypto.randomUUID();
+    }
+}
+
+/**
  * Creates a PrismaClient connected to Neon PostgreSQL via Hyperdrive.
  *
  * Hyperdrive IS the connection pool — it proxies connections locally,
@@ -66,14 +83,8 @@ export function createPrismaClient(hyperdriveConnectionString: string) {
         query: {
             $allModels: {
                 async create({ args, query }) {
-                    if (
-                        args.data &&
-                        typeof args.data === 'object' &&
-                        'id' in args.data &&
-                        typeof args.data.id === 'string' &&
-                        !UUID_REGEX.test(args.data.id)
-                    ) {
-                        (args.data as Record<string, unknown>).id = crypto.randomUUID();
+                    if (args.data && typeof args.data === 'object') {
+                        _enforceUuidOnCreateData(args.data as Record<string, unknown>);
                     }
                     return query(args);
                 },

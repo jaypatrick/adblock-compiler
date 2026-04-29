@@ -1,6 +1,6 @@
-import { assertEquals, assertExists } from '@std/assert';
+import { assertEquals, assertExists, assertMatch } from '@std/assert';
 import { PrismaClientConfigSchema } from './prisma-config.ts';
-import { UUID_REGEX } from './prisma.ts';
+import { UUID_REGEX, _enforceUuidOnCreateData } from './prisma.ts';
 
 Deno.test('PrismaClientConfigSchema validates postgres:// shorthand (Hyperdrive)', () => {
     const result = PrismaClientConfigSchema.safeParse({
@@ -100,4 +100,38 @@ Deno.test('UUID_REGEX rejects UUID with wrong segment lengths', () => {
 
 Deno.test('UUID_REGEX rejects UUID missing dashes', () => {
     assertEquals(UUID_REGEX.test('550e8400e29b41d4a716446655440000'), false);
+});
+
+// ============================================================================
+// _enforceUuidOnCreateData — create operation interceptor
+//
+// These tests verify the replacement logic used by the $extends query
+// extension in createPrismaClient(). Tests run without a database connection.
+// ============================================================================
+
+Deno.test('_enforceUuidOnCreateData replaces non-UUID id with a valid UUID', () => {
+    const data: Record<string, unknown> = { id: 'NqEqNgrxWWaQnyBqb9SLtbGG0ODl2TK2', name: 'Alice' };
+    _enforceUuidOnCreateData(data);
+    assertMatch(data.id as string, UUID_REGEX);
+    assertEquals(data.name, 'Alice'); // other fields are untouched
+});
+
+Deno.test('_enforceUuidOnCreateData preserves a valid UUID id unchanged', () => {
+    const uuid = '550e8400-e29b-41d4-a716-446655440000';
+    const data: Record<string, unknown> = { id: uuid };
+    _enforceUuidOnCreateData(data);
+    assertEquals(data.id, uuid);
+});
+
+Deno.test('_enforceUuidOnCreateData leaves data without id property unchanged', () => {
+    const data: Record<string, unknown> = { name: 'Alice' };
+    _enforceUuidOnCreateData(data);
+    assertEquals(data.id, undefined);
+    assertEquals(data.name, 'Alice');
+});
+
+Deno.test('_enforceUuidOnCreateData replaces the second Better Auth opaque ID format', () => {
+    const data: Record<string, unknown> = { id: '9hrbjIfqhl2sTXOhzrWSNwL9i2kipz51' };
+    _enforceUuidOnCreateData(data);
+    assertMatch(data.id as string, UUID_REGEX);
 });
