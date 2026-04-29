@@ -7,7 +7,7 @@
  *   - DELETE /api/keys/:id   (handleRevokeApiKey)
  *   - PATCH  /api/keys/:id   (handleUpdateApiKey)
  *
- * Uses in-memory PgPool mock (same pattern as auth-admin.test.ts).
+ * Uses an in-memory Prisma mock object (no real database).
  */
 
 import { assertEquals } from '@std/assert';
@@ -16,20 +16,8 @@ import { UserTier } from '../types.ts';
 import type { IAuthContext } from '../types.ts';
 
 // ============================================================================
-// Types mirroring local interfaces in api-keys.ts
-// ============================================================================
-
-interface PgPool {
-    query<T = Record<string, unknown>>(text: string, values?: unknown[]): Promise<{ rows: T[]; rowCount: number | null }>;
-}
-
-type PgPoolFactory = (connectionString: string) => PgPool;
-
-// ============================================================================
 // Fixtures
 // ============================================================================
-
-const CONNECTION_STRING = 'postgresql://test:test@localhost:5432/testdb';
 
 function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
     return {
@@ -45,147 +33,91 @@ function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
 }
 
 // ============================================================================
-// In-memory PgPool factory for api-keys handlers
+// In-memory Prisma mock for api-keys handlers
 // ============================================================================
 
-interface ApiKeyRow {
+interface StoredKey {
     id: string;
-    user_id: string;
-    key_prefix: string;
-    key_hash: string;
+    userId: string;
+    keyHash: string;
+    keyPrefix: string;
     name: string;
     scopes: string[];
-    rate_limit_per_minute: number;
-    last_used_at: string | null;
-    expires_at: string | null;
-    revoked_at: string | null;
-    created_at: string;
-    updated_at: string;
+    rateLimitPerMinute: number;
+    lastUsedAt: Date | null;
+    expiresAt: Date | null;
+    revokedAt: Date | null;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
-function createInMemoryPool(): PgPoolFactory {
-    const apiKeys: ApiKeyRow[] = [];
+// deno-lint-ignore no-explicit-any
+function createPrismaMock(): any {
+    const store: StoredKey[] = [];
 
-    return (_connectionString: string): PgPool => ({
-        async query<T>(text: string, values?: unknown[]): Promise<{ rows: T[]; rowCount: number | null }> {
-            // SELECT COUNT(*)::text AS count FROM api_keys WHERE user_id = $1 AND revoked_at IS NULL
-            if (/SELECT COUNT\(\*\)::text AS count FROM api_keys/.test(text)) {
-                const userId = values?.[0] as string;
-                const count = apiKeys.filter((k) => k.user_id === userId && k.revoked_at === null).length;
-                return { rows: [{ count: String(count) }] as T[], rowCount: 1 };
-            }
+    return {
+        apiKey: {
+            async count({ where }: { where: { userId: string; revokedAt: null | undefined } }) {
+                return store.filter((k) => k.userId === where.userId && k.revokedAt === null).length;
+            },
 
-            // INSERT INTO api_keys ... RETURNING id, key_prefix, name, scopes, ...
-            if (/INSERT INTO api_keys/.test(text) && /RETURNING/.test(text)) {
-                const [userId, keyHash, keyPrefix, name, scopes, expiresAt] = values as [
-                    string,
-                    string,
-                    string,
-                    string,
-                    string[],
-                    string | null,
-                ];
-                const id = crypto.randomUUID();
-                const now = new Date().toISOString();
-                const row: ApiKeyRow = {
-                    id,
-                    user_id: userId,
-                    key_hash: keyHash,
-                    key_prefix: keyPrefix,
-                    name,
-                    scopes: scopes ?? ['compile'],
-                    rate_limit_per_minute: 60,
-                    last_used_at: null,
-                    expires_at: expiresAt,
-                    revoked_at: null,
-                    created_at: now,
-                    updated_at: now,
+            async create({ data }: { data: Omit<StoredKey, 'id' | 'createdAt' | 'updatedAt' | 'lastUsedAt' | 'revokedAt'> }) {
+                const now = new Date();
+                const row: StoredKey = {
+                    id: crypto.randomUUID(),
+                    userId: data.userId,
+                    keyHash: data.keyHash,
+                    keyPrefix: data.keyPrefix,
+                    name: data.name,
+                    scopes: data.scopes,
+                    rateLimitPerMinute: data.rateLimitPerMinute ?? 60,
+                    lastUsedAt: null,
+                    expiresAt: data.expiresAt ?? null,
+                    revokedAt: null,
+                    createdAt: now,
+                    updatedAt: now,
                 };
-                apiKeys.push(row);
-                return {
-                    rows: [{
-                        id: row.id,
-                        key_prefix: row.key_prefix,
-                        name: row.name,
-                        scopes: row.scopes,
-                        rate_limit_per_minute: row.rate_limit_per_minute,
-                        expires_at: row.expires_at,
-                        created_at: row.created_at,
-                    }] as T[],
-                    rowCount: 1,
-                };
-            }
+                store.push(row);
+                return row;
+            },
 
-            // SELECT ... FROM api_keys WHERE user_id = $1 ORDER BY created_at DESC
-            if (/FROM api_keys/.test(text) && /WHERE user_id = \$1/.test(text) && /ORDER BY/.test(text)) {
-                const userId = values?.[0] as string;
-                const rows = apiKeys
-                    .filter((k) => k.user_id === userId)
-                    .sort((a, b) => b.created_at.localeCompare(a.created_at))
-                    .map((k) => ({
-                        id: k.id,
-                        key_prefix: k.key_prefix,
-                        name: k.name,
-                        scopes: k.scopes,
-                        rate_limit_per_minute: k.rate_limit_per_minute,
-                        last_used_at: k.last_used_at,
-                        expires_at: k.expires_at,
-                        revoked_at: k.revoked_at,
-                        created_at: k.created_at,
-                        updated_at: k.updated_at,
-                    }));
-                return { rows: rows as T[], rowCount: rows.length };
-            }
-
-            // UPDATE api_keys SET revoked_at ... WHERE id = $1 AND user_id = $2
-            if (/UPDATE api_keys/.test(text) && /SET revoked_at/.test(text) && /WHERE id = \$1/.test(text)) {
-                const keyId = values?.[0] as string;
-                const userId = values?.[1] as string;
-                const key = apiKeys.find((k) => k.id === keyId && k.user_id === userId && k.revoked_at === null);
-                if (!key) return { rows: [], rowCount: 0 };
-                key.revoked_at = new Date().toISOString();
-                key.updated_at = new Date().toISOString();
-                return { rows: [], rowCount: 1 };
-            }
-
-            // UPDATE api_keys SET ... WHERE id = $N AND user_id = $N+1 AND revoked_at IS NULL RETURNING ...
-            if (/UPDATE api_keys/.test(text) && /RETURNING/.test(text) && /revoked_at IS NULL/.test(text)) {
-                // Dynamic SET: last two values are (keyId, userId)
-                const keyId = values?.[values.length - 2] as string;
-                const userId = values?.[values.length - 1] as string;
-                const key = apiKeys.find((k) => k.id === keyId && k.user_id === userId && k.revoked_at === null);
-                if (!key) return { rows: [], rowCount: 0 };
-
-                // Apply SET fields from the SQL text
-                if (/name = \$/.test(text) && values && values.length >= 3) {
-                    key.name = values[0] as string;
+            async findMany({ where, orderBy }: { where: { userId: string }; orderBy?: { createdAt: string } }) {
+                let rows = store.filter((k) => k.userId === where.userId);
+                if (orderBy?.createdAt === 'desc') {
+                    rows = rows.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
                 }
-                if (/scopes = \$/.test(text)) {
-                    // scopes is the first or second positional value depending on whether name is also being set
-                    const scopesIdx = /name = \$/.test(text) ? 1 : 0;
-                    key.scopes = values?.[scopesIdx] as string[];
+                return rows;
+            },
+
+            async update({ where, data, select }: {
+                where: { id: string; userId: string; revokedAt?: null };
+                data: Partial<StoredKey>;
+                select?: Record<string, boolean>;
+            }) {
+                const row = store.find((k) =>
+                    k.id === where.id &&
+                    k.userId === where.userId &&
+                    (where.revokedAt === null ? k.revokedAt === null : true)
+                );
+                if (!row) {
+                    // Mimic Prisma P2025 "Record not found" error
+                    const err = new Error('Record to update not found.');
+                    // deno-lint-ignore no-explicit-any
+                    (err as any).code = 'P2025';
+                    throw err;
                 }
-                key.updated_at = new Date().toISOString();
-
-                return {
-                    rows: [{
-                        id: key.id,
-                        key_prefix: key.key_prefix,
-                        name: key.name,
-                        scopes: key.scopes,
-                        rate_limit_per_minute: key.rate_limit_per_minute,
-                        last_used_at: key.last_used_at,
-                        expires_at: key.expires_at,
-                        created_at: key.created_at,
-                        updated_at: key.updated_at,
-                    }] as T[],
-                    rowCount: 1,
-                };
-            }
-
-            return { rows: [], rowCount: 0 };
+                Object.assign(row, data, { updatedAt: new Date() });
+                if (!select) return row;
+                // Return only the selected fields
+                // deno-lint-ignore no-explicit-any
+                const result: any = {};
+                for (const key of Object.keys(select)) {
+                    if (select[key]) result[key] = (row as any)[key];
+                }
+                return result;
+            },
         },
-    });
+    };
 }
 
 // ============================================================================
@@ -193,9 +125,9 @@ function createInMemoryPool(): PgPoolFactory {
 // ============================================================================
 
 Deno.test('handleCreateApiKey - creates key with valid name', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleCreateApiKey({ name: 'My API Key' }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'My API Key' }, makeAuthContext(), prisma);
     assertEquals(res.status, 201);
 
     const body = await res.json() as Record<string, unknown>;
@@ -207,9 +139,9 @@ Deno.test('handleCreateApiKey - creates key with valid name', async () => {
 });
 
 Deno.test('handleCreateApiKey - creates key with custom scopes', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleCreateApiKey({ name: 'Admin Key', scopes: ['compile', 'rules', 'admin'] }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Admin Key', scopes: ['compile', 'rules', 'admin'] }, makeAuthContext(), prisma);
     assertEquals(res.status, 201);
 
     const body = await res.json() as Record<string, unknown>;
@@ -217,9 +149,9 @@ Deno.test('handleCreateApiKey - creates key with custom scopes', async () => {
 });
 
 Deno.test('handleCreateApiKey - creates key with expiry', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleCreateApiKey({ name: 'Temp Key', expiresInDays: 30 }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Temp Key', expiresInDays: 30 }, makeAuthContext(), prisma);
     assertEquals(res.status, 201);
 
     const body = await res.json() as Record<string, unknown>;
@@ -227,68 +159,78 @@ Deno.test('handleCreateApiKey - creates key with expiry', async () => {
 });
 
 Deno.test('handleCreateApiKey - rejects empty name', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleCreateApiKey({ name: '' }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: '' }, makeAuthContext(), prisma);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleCreateApiKey - rejects name exceeding 100 characters', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleCreateApiKey({ name: 'x'.repeat(101) }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'x'.repeat(101) }, makeAuthContext(), prisma);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleCreateApiKey - rejects invalid scopes', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleCreateApiKey({ name: 'Bad Scopes', scopes: ['compile', 'hacker'] }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Bad Scopes', scopes: ['compile', 'hacker'] }, makeAuthContext(), prisma);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleCreateApiKey - rejects expiresInDays < 1', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleCreateApiKey({ name: 'Bad Expiry', expiresInDays: 0 }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Bad Expiry', expiresInDays: 0 }, makeAuthContext(), prisma);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleCreateApiKey - rejects expiresInDays > 365', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleCreateApiKey({ name: 'Bad Expiry', expiresInDays: 400 }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Bad Expiry', expiresInDays: 400 }, makeAuthContext(), prisma);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleCreateApiKey - rejects non-object body', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleCreateApiKey('not json', makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey('not json', makeAuthContext(), prisma);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleCreateApiKey - enforces per-user key limit', async () => {
-    // Pool that reports 25 existing keys
-    const createPool: PgPoolFactory = (_cs: string): PgPool => ({
-        async query<T>(text: string, _values?: unknown[]): Promise<{ rows: T[]; rowCount: number | null }> {
-            if (/SELECT COUNT/.test(text)) {
-                return { rows: [{ count: '25' }] as T[], rowCount: 1 };
-            }
-            return { rows: [], rowCount: 0 };
+    // Mock that always returns 25 for count
+    // deno-lint-ignore no-explicit-any
+    const prisma: any = {
+        apiKey: {
+            count: async () => 25,
+            create: async () => {
+                throw new Error('should not create');
+            },
+            findMany: async () => [],
+            update: async () => {
+                throw new Error('should not update');
+            },
         },
-    });
+    };
 
-    const res = await handleCreateApiKey({ name: 'Over Limit' }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleCreateApiKey({ name: 'Over Limit' }, makeAuthContext(), prisma);
     assertEquals(res.status, 400);
     const body = await res.json() as Record<string, unknown>;
     assertEquals((body.error as string).includes('25'), true);
 });
 
-Deno.test('handleCreateApiKey - rejects request when auth context has no userId', async () => {
-    const createPool = createInMemoryPool();
+Deno.test('handleCreateApiKey - returns 503 when prisma is null', async () => {
+    const res = await handleCreateApiKey({ name: 'Test' }, makeAuthContext(), null);
+    assertEquals(res.status, 503);
+});
 
-    const res = await handleCreateApiKey({ name: 'No User' }, makeAuthContext({ userId: null }), CONNECTION_STRING, createPool);
+Deno.test('handleCreateApiKey - rejects request when auth context has no userId', async () => {
+    const prisma = createPrismaMock();
+
+    const res = await handleCreateApiKey({ name: 'No User' }, makeAuthContext({ userId: null }), prisma);
     assertEquals(res.status, 403);
 });
 
@@ -297,8 +239,8 @@ Deno.test('handleCreateApiKey - rejects request when auth context has no userId'
 // ============================================================================
 
 Deno.test('handleListApiKeys - returns empty array for user with no keys', async () => {
-    const createPool = createInMemoryPool();
-    const res = await handleListApiKeys(makeAuthContext(), CONNECTION_STRING, createPool);
+    const prisma = createPrismaMock();
+    const res = await handleListApiKeys(makeAuthContext(), prisma);
 
     assertEquals(res.status, 200);
     const body = await res.json() as Record<string, unknown>;
@@ -308,15 +250,15 @@ Deno.test('handleListApiKeys - returns empty array for user with no keys', async
 });
 
 Deno.test('handleListApiKeys - returns keys created by the user', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const ctx = makeAuthContext();
 
     // Create two keys
     for (const name of ['Key A', 'Key B']) {
-        await handleCreateApiKey({ name }, ctx, CONNECTION_STRING, createPool);
+        await handleCreateApiKey({ name }, ctx, prisma);
     }
 
-    const res = await handleListApiKeys(ctx, CONNECTION_STRING, createPool);
+    const res = await handleListApiKeys(ctx, prisma);
     assertEquals(res.status, 200);
 
     const body = await res.json() as Record<string, unknown>;
@@ -324,22 +266,27 @@ Deno.test('handleListApiKeys - returns keys created by the user', async () => {
 });
 
 Deno.test('handleListApiKeys - does not return keys from other users', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
     // Create a key for user A
-    await handleCreateApiKey({ name: 'Key A' }, makeAuthContext({ userId: 'user-A' }), CONNECTION_STRING, createPool);
+    await handleCreateApiKey({ name: 'Key A' }, makeAuthContext({ userId: 'user-A' }), prisma);
 
     // List for user B should be empty
-    const res = await handleListApiKeys(makeAuthContext({ userId: 'user-B' }), CONNECTION_STRING, createPool);
+    const res = await handleListApiKeys(makeAuthContext({ userId: 'user-B' }), prisma);
     assertEquals(res.status, 200);
 
     const body = await res.json() as Record<string, unknown>;
     assertEquals(body.total, 0);
 });
 
+Deno.test('handleListApiKeys - returns 503 when prisma is null', async () => {
+    const res = await handleListApiKeys(makeAuthContext(), null);
+    assertEquals(res.status, 503);
+});
+
 Deno.test('handleListApiKeys - rejects request when auth context has no userId', async () => {
-    const createPool = createInMemoryPool();
-    const res = await handleListApiKeys(makeAuthContext({ userId: null }), CONNECTION_STRING, createPool);
+    const prisma = createPrismaMock();
+    const res = await handleListApiKeys(makeAuthContext({ userId: null }), prisma);
     assertEquals(res.status, 403);
 });
 
@@ -348,16 +295,16 @@ Deno.test('handleListApiKeys - rejects request when auth context has no userId',
 // ============================================================================
 
 Deno.test('handleRevokeApiKey - revokes an existing key', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const ctx = makeAuthContext();
 
     // Create a key first
-    const createRes = await handleCreateApiKey({ name: 'Temp Key' }, ctx, CONNECTION_STRING, createPool);
+    const createRes = await handleCreateApiKey({ name: 'Temp Key' }, ctx, prisma);
     const createBody = await createRes.json() as Record<string, unknown>;
     const keyId = createBody.id as string;
 
     // Revoke
-    const res = await handleRevokeApiKey(keyId, ctx, CONNECTION_STRING, createPool);
+    const res = await handleRevokeApiKey(keyId, ctx, prisma);
     assertEquals(res.status, 200);
 
     const body = await res.json() as Record<string, unknown>;
@@ -365,27 +312,32 @@ Deno.test('handleRevokeApiKey - revokes an existing key', async () => {
 });
 
 Deno.test('handleRevokeApiKey - returns 404 for non-existent key', async () => {
-    const createPool = createInMemoryPool();
-    const res = await handleRevokeApiKey('non-existent-id', makeAuthContext(), CONNECTION_STRING, createPool);
+    const prisma = createPrismaMock();
+    const res = await handleRevokeApiKey('non-existent-id', makeAuthContext(), prisma);
     assertEquals(res.status, 404);
 });
 
 Deno.test("handleRevokeApiKey - prevents revoking another user's key", async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
     // Create a key for user A
-    const createRes = await handleCreateApiKey({ name: 'User A Key' }, makeAuthContext({ userId: 'user-A' }), CONNECTION_STRING, createPool);
+    const createRes = await handleCreateApiKey({ name: 'User A Key' }, makeAuthContext({ userId: 'user-A' }), prisma);
     const createBody = await createRes.json() as Record<string, unknown>;
     const keyId = createBody.id as string;
 
     // User B tries to revoke
-    const res = await handleRevokeApiKey(keyId, makeAuthContext({ userId: 'user-B' }), CONNECTION_STRING, createPool);
+    const res = await handleRevokeApiKey(keyId, makeAuthContext({ userId: 'user-B' }), prisma);
     assertEquals(res.status, 404);
 });
 
+Deno.test('handleRevokeApiKey - returns 503 when prisma is null', async () => {
+    const res = await handleRevokeApiKey('key-123', makeAuthContext(), null);
+    assertEquals(res.status, 503);
+});
+
 Deno.test('handleRevokeApiKey - rejects request when auth context has no userId', async () => {
-    const createPool = createInMemoryPool();
-    const res = await handleRevokeApiKey('key-123', makeAuthContext({ userId: null }), CONNECTION_STRING, createPool);
+    const prisma = createPrismaMock();
+    const res = await handleRevokeApiKey('key-123', makeAuthContext({ userId: null }), prisma);
     assertEquals(res.status, 403);
 });
 
@@ -394,16 +346,16 @@ Deno.test('handleRevokeApiKey - rejects request when auth context has no userId'
 // ============================================================================
 
 Deno.test('handleUpdateApiKey - updates key name', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const ctx = makeAuthContext();
 
     // Create
-    const createRes = await handleCreateApiKey({ name: 'Original' }, ctx, CONNECTION_STRING, createPool);
+    const createRes = await handleCreateApiKey({ name: 'Original' }, ctx, prisma);
     const createBody = await createRes.json() as Record<string, unknown>;
     const keyId = createBody.id as string;
 
     // Update name
-    const res = await handleUpdateApiKey(keyId, { name: 'Renamed' }, ctx, CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey(keyId, { name: 'Renamed' }, ctx, prisma);
     assertEquals(res.status, 200);
 
     const body = await res.json() as Record<string, unknown>;
@@ -411,55 +363,60 @@ Deno.test('handleUpdateApiKey - updates key name', async () => {
 });
 
 Deno.test('handleUpdateApiKey - updates key scopes', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const ctx = makeAuthContext();
 
-    const createRes = await handleCreateApiKey({ name: 'Scope Test', scopes: ['compile'] }, ctx, CONNECTION_STRING, createPool);
+    const createRes = await handleCreateApiKey({ name: 'Scope Test', scopes: ['compile'] }, ctx, prisma);
     const createBody = await createRes.json() as Record<string, unknown>;
     const keyId = createBody.id as string;
 
-    const res = await handleUpdateApiKey(keyId, { scopes: ['compile', 'rules'] }, ctx, CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey(keyId, { scopes: ['compile', 'rules'] }, ctx, prisma);
     assertEquals(res.status, 200);
 });
 
 Deno.test('handleUpdateApiKey - rejects empty update body', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleUpdateApiKey('123', {}, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey('123', {}, makeAuthContext(), prisma);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleUpdateApiKey - rejects invalid scopes in update', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleUpdateApiKey('123', { scopes: ['invalid'] }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey('123', { scopes: ['invalid'] }, makeAuthContext(), prisma);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleUpdateApiKey - rejects name exceeding max length', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleUpdateApiKey('123', { name: 'x'.repeat(101) }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey('123', { name: 'x'.repeat(101) }, makeAuthContext(), prisma);
     assertEquals(res.status, 400);
 });
 
 Deno.test('handleUpdateApiKey - returns 404 for non-existent key', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleUpdateApiKey('non-existent', { name: 'New Name' }, makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey('non-existent', { name: 'New Name' }, makeAuthContext(), prisma);
     assertEquals(res.status, 404);
 });
 
 Deno.test('handleUpdateApiKey - rejects non-object body', async () => {
-    const createPool = createInMemoryPool();
+    const prisma = createPrismaMock();
 
-    const res = await handleUpdateApiKey('123', 'not json', makeAuthContext(), CONNECTION_STRING, createPool);
+    const res = await handleUpdateApiKey('123', 'not json', makeAuthContext(), prisma);
     assertEquals(res.status, 400);
 });
 
-Deno.test('handleUpdateApiKey - rejects request when auth context has no userId', async () => {
-    const createPool = createInMemoryPool();
+Deno.test('handleUpdateApiKey - returns 503 when prisma is null', async () => {
+    const res = await handleUpdateApiKey('123', { name: 'Renamed' }, makeAuthContext(), null);
+    assertEquals(res.status, 503);
+});
 
-    const res = await handleUpdateApiKey('123', { name: 'Renamed' }, makeAuthContext({ userId: null }), CONNECTION_STRING, createPool);
+Deno.test('handleUpdateApiKey - rejects request when auth context has no userId', async () => {
+    const prisma = createPrismaMock();
+
+    const res = await handleUpdateApiKey('123', { name: 'Renamed' }, makeAuthContext({ userId: null }), prisma);
     assertEquals(res.status, 403);
 });

@@ -6,14 +6,13 @@
  *   - POST   /api/configuration/saved         (handleSaveConfiguration)
  *   - DELETE /api/configuration/saved/:id     (handleDeleteSavedConfiguration)
  *
- * Uses in-memory PgPool mock (same pattern as api-keys.test.ts).
+ * Uses an in-memory Prisma mock object (no real database).
  */
 
 import { assertEquals } from '@std/assert';
 import { handleDeleteSavedConfiguration, handleListSavedConfigurations, handleSaveConfiguration } from './saved-configurations.ts';
 import { UserTier } from '../types.ts';
 import type { IAuthContext } from '../types.ts';
-import type { PgPool } from '../utils/pg-pool.ts';
 
 // ============================================================================
 // Fixtures
@@ -33,77 +32,82 @@ function makeAuthContext(overrides: Partial<IAuthContext> = {}): IAuthContext {
 }
 
 // ============================================================================
-// In-memory PgPool mock for saved-configurations handlers
+// In-memory Prisma mock for saved-configurations handlers
 // ============================================================================
 
-interface UserConfigRow {
+interface StoredConfig {
     id: string;
-    user_id: string;
+    userId: string;
     name: string;
     description: string | null;
     config: Record<string, unknown>;
-    created_at: string;
-    updated_at: string;
+    createdAt: Date;
+    updatedAt: Date;
 }
 
-function createInMemoryPool(): PgPool {
-    const rows: UserConfigRow[] = [
+// deno-lint-ignore no-explicit-any
+function createPrismaMock(): any {
+    const rows: StoredConfig[] = [
         {
             id: 'cfg-001',
-            user_id: 'user-uuid-001',
+            userId: 'user-uuid-001',
             name: 'My Filter List',
             description: 'A test list',
             config: { name: 'My Filter List', sources: [] },
-            created_at: '2025-01-01T00:00:00.000Z',
-            updated_at: '2025-01-01T00:00:00.000Z',
+            createdAt: new Date('2025-01-01T00:00:00.000Z'),
+            updatedAt: new Date('2025-01-01T00:00:00.000Z'),
         },
     ];
 
     return {
-        async query<T>(text: string, values?: unknown[]): Promise<{ rows: T[]; rowCount: number | null }> {
-            // SELECT — list
-            if (/SELECT[\s\S]*FROM user_configurations[\s\S]*WHERE user_id/.test(text)) {
-                const userId = values?.[0] as string;
-                const filtered = rows.filter((r) => r.user_id === userId);
-                // Return metadata-only columns (no config)
-                const result = filtered.map((r) => ({
-                    id: r.id,
-                    user_id: r.user_id,
-                    name: r.name,
-                    description: r.description,
-                    created_at: r.created_at,
-                    updated_at: r.updated_at,
-                }));
-                return { rows: result as T[], rowCount: result.length };
-            }
+        userConfiguration: {
+            async findMany({ where, orderBy, take, select }: {
+                where: { userId: string };
+                orderBy?: { updatedAt?: string };
+                take?: number;
+                select?: Record<string, boolean>;
+            }) {
+                let filtered = rows.filter((r) => r.userId === where.userId);
+                if (orderBy?.updatedAt === 'desc') {
+                    filtered = filtered.sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+                }
+                if (take !== undefined) {
+                    filtered = filtered.slice(0, take);
+                }
+                // Return only selected fields if select is provided
+                if (select) {
+                    return filtered.map((r) => {
+                        const out: Record<string, unknown> = {};
+                        for (const key of Object.keys(select)) {
+                            if (select[key]) out[key] = r[key as keyof StoredConfig];
+                        }
+                        return out;
+                    });
+                }
+                return filtered;
+            },
 
-            // INSERT
-            if (/INSERT INTO user_configurations/.test(text)) {
-                const [userId, name, description, configJson] = values as [string, string, string | null, string];
-                const newRow: UserConfigRow = {
-                    id: 'cfg-new-001',
-                    user_id: userId,
-                    name,
-                    description,
-                    config: JSON.parse(configJson) as Record<string, unknown>,
-                    created_at: '2025-06-01T00:00:00.000Z',
-                    updated_at: '2025-06-01T00:00:00.000Z',
+            async create({ data }: { data: { userId: string; name: string; description?: string | null; config: Record<string, unknown> } }) {
+                const now = new Date();
+                const row: StoredConfig = {
+                    id: `cfg-new-${rows.length + 1}`,
+                    userId: data.userId,
+                    name: data.name,
+                    description: data.description ?? null,
+                    config: data.config,
+                    createdAt: now,
+                    updatedAt: now,
                 };
-                rows.push(newRow);
-                return { rows: [newRow as unknown as T], rowCount: 1 };
-            }
+                rows.push(row);
+                return row;
+            },
 
-            // DELETE
-            if (/DELETE FROM user_configurations/.test(text)) {
-                const [id, userId] = values as [string, string];
+            async deleteMany({ where }: { where: { id: string; userId: string } }) {
                 const before = rows.length;
-                const idx = rows.findIndex((r) => r.id === id && r.user_id === userId);
+                const idx = rows.findIndex((r) => r.id === where.id && r.userId === where.userId);
                 if (idx !== -1) rows.splice(idx, 1);
-                const deleted = rows.length < before ? 1 : 0;
-                return { rows: [] as T[], rowCount: deleted };
-            }
-
-            return { rows: [] as T[], rowCount: 0 };
+                return { count: rows.length < before ? 1 : 0 };
+            },
         },
     };
 }
@@ -113,11 +117,10 @@ function createInMemoryPool(): PgPool {
 // ============================================================================
 
 Deno.test('handleListSavedConfigurations — returns user configs', async () => {
-    const auth = makeAuthContext();
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved');
 
-    const response = await handleListSavedConfigurations(request, {}, auth, pool);
+    const response = await handleListSavedConfigurations(request, {}, makeAuthContext(), prisma);
 
     assertEquals(response.status, 200);
     const body = await response.json() as { success: boolean; configs: unknown[]; total: number };
@@ -127,25 +130,29 @@ Deno.test('handleListSavedConfigurations — returns user configs', async () => 
 });
 
 Deno.test('handleListSavedConfigurations — 403 when no userId', async () => {
-    const auth = makeAuthContext({ userId: null });
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved');
 
-    const response = await handleListSavedConfigurations(request, {}, auth, pool);
+    const response = await handleListSavedConfigurations(request, {}, makeAuthContext({ userId: null }), prisma);
 
     assertEquals(response.status, 403);
 });
 
 Deno.test('handleListSavedConfigurations — returns empty list for unknown user', async () => {
-    const auth = makeAuthContext({ userId: 'user-unknown' });
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved');
 
-    const response = await handleListSavedConfigurations(request, {}, auth, pool);
+    const response = await handleListSavedConfigurations(request, {}, makeAuthContext({ userId: 'user-unknown' }), prisma);
 
     assertEquals(response.status, 200);
     const body = await response.json() as { total: number };
     assertEquals(body.total, 0);
+});
+
+Deno.test('handleListSavedConfigurations — returns 503 when prisma is null', async () => {
+    const request = new Request('http://localhost/api/configuration/saved');
+    const response = await handleListSavedConfigurations(request, {}, makeAuthContext(), null);
+    assertEquals(response.status, 503);
 });
 
 // ============================================================================
@@ -153,8 +160,7 @@ Deno.test('handleListSavedConfigurations — returns empty list for unknown user
 // ============================================================================
 
 Deno.test('handleSaveConfiguration — creates a new config', async () => {
-    const auth = makeAuthContext();
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved', { method: 'POST' });
 
     const body = {
@@ -163,7 +169,7 @@ Deno.test('handleSaveConfiguration — creates a new config', async () => {
         config: { name: 'New Config', sources: [] },
     };
 
-    const response = await handleSaveConfiguration(request, {}, auth, pool, body);
+    const response = await handleSaveConfiguration(request, {}, makeAuthContext(), prisma, body);
 
     assertEquals(response.status, 201);
     const result = await response.json() as { success: boolean; id: string; name: string };
@@ -173,47 +179,48 @@ Deno.test('handleSaveConfiguration — creates a new config', async () => {
 });
 
 Deno.test('handleSaveConfiguration — 403 when no userId', async () => {
-    const auth = makeAuthContext({ userId: null });
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved', { method: 'POST' });
-    const body = { name: 'Test', config: {} };
 
-    const response = await handleSaveConfiguration(request, {}, auth, pool, body);
+    const response = await handleSaveConfiguration(request, {}, makeAuthContext({ userId: null }), prisma, { name: 'Test', config: {} });
 
     assertEquals(response.status, 403);
 });
 
 Deno.test('handleSaveConfiguration — 400 for invalid body', async () => {
-    const auth = makeAuthContext();
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved', { method: 'POST' });
 
-    const response = await handleSaveConfiguration(request, {}, auth, pool, { name: '' });
+    const response = await handleSaveConfiguration(request, {}, makeAuthContext(), prisma, { name: '' });
 
     assertEquals(response.status, 400);
 });
 
 Deno.test('handleSaveConfiguration — 400 when config is missing', async () => {
-    const auth = makeAuthContext();
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved', { method: 'POST' });
 
-    const response = await handleSaveConfiguration(request, {}, auth, pool, { name: 'ok' });
+    const response = await handleSaveConfiguration(request, {}, makeAuthContext(), prisma, { name: 'ok' });
 
     assertEquals(response.status, 400);
 });
 
 Deno.test('handleSaveConfiguration — optional description defaults to null', async () => {
-    const auth = makeAuthContext();
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved', { method: 'POST' });
     const body = { name: 'No Desc', config: { name: 'No Desc', sources: [] } };
 
-    const response = await handleSaveConfiguration(request, {}, auth, pool, body);
+    const response = await handleSaveConfiguration(request, {}, makeAuthContext(), prisma, body);
 
     assertEquals(response.status, 201);
     const result = await response.json() as { description: string | null };
     assertEquals(result.description, null);
+});
+
+Deno.test('handleSaveConfiguration — returns 503 when prisma is null', async () => {
+    const request = new Request('http://localhost/api/configuration/saved', { method: 'POST' });
+    const response = await handleSaveConfiguration(request, {}, makeAuthContext(), null, { name: 'Test', config: {} });
+    assertEquals(response.status, 503);
 });
 
 // ============================================================================
@@ -221,41 +228,43 @@ Deno.test('handleSaveConfiguration — optional description defaults to null', a
 // ============================================================================
 
 Deno.test('handleDeleteSavedConfiguration — deletes owned config', async () => {
-    const auth = makeAuthContext();
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved/cfg-001', { method: 'DELETE' });
 
-    const response = await handleDeleteSavedConfiguration(request, {}, auth, pool, 'cfg-001');
+    const response = await handleDeleteSavedConfiguration(request, {}, makeAuthContext(), prisma, 'cfg-001');
 
     assertEquals(response.status, 204);
 });
 
 Deno.test('handleDeleteSavedConfiguration — 403 when no userId', async () => {
-    const auth = makeAuthContext({ userId: null });
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved/cfg-001', { method: 'DELETE' });
 
-    const response = await handleDeleteSavedConfiguration(request, {}, auth, pool, 'cfg-001');
+    const response = await handleDeleteSavedConfiguration(request, {}, makeAuthContext({ userId: null }), prisma, 'cfg-001');
 
     assertEquals(response.status, 403);
 });
 
 Deno.test('handleDeleteSavedConfiguration — 404 for non-existent config', async () => {
-    const auth = makeAuthContext();
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved/cfg-not-found', { method: 'DELETE' });
 
-    const response = await handleDeleteSavedConfiguration(request, {}, auth, pool, 'cfg-not-found');
+    const response = await handleDeleteSavedConfiguration(request, {}, makeAuthContext(), prisma, 'cfg-not-found');
 
     assertEquals(response.status, 404);
 });
 
 Deno.test('handleDeleteSavedConfiguration — 404 when config belongs to different user', async () => {
-    const auth = makeAuthContext({ userId: 'user-other' });
-    const pool = createInMemoryPool();
+    const prisma = createPrismaMock();
     const request = new Request('http://localhost/api/configuration/saved/cfg-001', { method: 'DELETE' });
 
-    const response = await handleDeleteSavedConfiguration(request, {}, auth, pool, 'cfg-001');
+    const response = await handleDeleteSavedConfiguration(request, {}, makeAuthContext({ userId: 'user-other' }), prisma, 'cfg-001');
 
     assertEquals(response.status, 404);
+});
+
+Deno.test('handleDeleteSavedConfiguration — returns 503 when prisma is null', async () => {
+    const request = new Request('http://localhost/api/configuration/saved/cfg-001', { method: 'DELETE' });
+    const response = await handleDeleteSavedConfiguration(request, {}, makeAuthContext(), null, 'cfg-001');
+    assertEquals(response.status, 503);
 });

@@ -9,6 +9,7 @@
  */
 
 import type { Env, IAuthContext } from '../types.ts';
+import type { PrismaClientExtended } from '../lib/prisma.ts';
 import { JsonResponse } from '../utils/response.ts';
 
 /**
@@ -17,7 +18,7 @@ import { JsonResponse } from '../utils/response.ts';
  * Returns null if:
  *   - The user is not authenticated via better-auth (api-key/anonymous: their own path)
  *   - The user is not banned
- *   - DB is not configured (fail-open to avoid breaking non-D1 deployments)
+ *   - Prisma is not configured (fail-open to avoid breaking non-Hyperdrive deployments)
  *
  * Returns a 403 Response if the user is banned.
  *
@@ -25,19 +26,21 @@ import { JsonResponse } from '../utils/response.ts';
  */
 export async function checkUserApiAccess(
     authContext: IAuthContext,
-    env: Env,
+    _env: Env,
+    prisma?: PrismaClientExtended | null,
 ): Promise<Response | null> {
     // Only enforced for better-auth users; API-key and anonymous users have their own access controls
     if (authContext.authMethod !== 'better-auth') return null;
     // No userId means token is malformed — let auth pipeline reject it
     if (!authContext.userId) return null;
-    if (!env.DB) return null;
+    // Fail-open when prisma is not configured
+    if (!prisma) return null;
 
     try {
-        const row = await env.DB
-            .prepare('SELECT banned, banReason FROM "user" WHERE id = ?')
-            .bind(authContext.userId)
-            .first<{ banned: number; banReason: string | null }>();
+        const row = await prisma.user.findUnique({
+            where: { id: authContext.userId },
+            select: { banned: true, banReason: true },
+        });
 
         if (row?.banned) {
             const message = row.banReason ? `Account has been suspended: ${row.banReason}` : 'Account has been suspended';

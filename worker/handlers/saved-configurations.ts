@@ -13,34 +13,16 @@
  *
  * ## Storage
  *
- * Uses raw pg queries via Hyperdrive (no Prisma client at runtime).
+ * Uses Prisma ORM via Hyperdrive for all database operations.
  * The `user_configurations` table schema is defined in `prisma/schema.prisma`.
  *
- * All DB queries use parameterized statements — no string interpolation.
- *
- * @see worker/handlers/api-keys.ts — same PgPool pattern
  * @see worker/routes/configuration.routes.ts — route definitions
  * @see prisma/schema.prisma — UserConfiguration model
  */
 
 import { JsonResponse } from '../utils/response.ts';
 import { type IAuthContext } from '../types.ts';
-import { type PgPool } from '../utils/pg-pool.ts';
-
-// ---------------------------------------------------------------------------
-// Row types
-// ---------------------------------------------------------------------------
-
-/** Row shape for user_configurations table queries. */
-interface UserConfigRow {
-    id: string;
-    user_id: string;
-    name: string;
-    description: string | null;
-    config: Record<string, unknown>;
-    created_at: string;
-    updated_at: string;
-}
+import type { PrismaClientExtended } from '../lib/prisma.ts';
 
 // ---------------------------------------------------------------------------
 // Request body type
@@ -79,33 +61,32 @@ function isValidSaveBody(body: unknown): body is SaveConfigBody {
 /**
  * GET /api/configuration/saved — List the authenticated user's saved configurations.
  *
- * Returns up to 50 entries ordered by `updated_at DESC`.
+ * Returns up to 50 entries ordered by `updatedAt DESC`.
  * Never returns the `config` JSON blob in the list — only metadata.
  */
 export async function handleListSavedConfigurations(
     _request: Request,
     _env: unknown,
     auth: IAuthContext,
-    pool: PgPool,
+    prisma: PrismaClientExtended | null,
 ): Promise<Response> {
+    if (!prisma) return JsonResponse.serviceUnavailable('Database not configured');
     const userGuard = requireUserId(auth);
     if (userGuard) return userGuard;
 
-    const result = await pool.query<UserConfigRow>(
-        `SELECT id, user_id, name, description, created_at, updated_at
-         FROM user_configurations
-         WHERE user_id = $1
-         ORDER BY updated_at DESC
-         LIMIT 50`,
-        [auth.userId],
-    );
+    const rows = await prisma.userConfiguration.findMany({
+        where: { userId: auth.userId! },
+        orderBy: { updatedAt: 'desc' },
+        take: 50,
+        select: { id: true, name: true, description: true, createdAt: true, updatedAt: true },
+    });
 
-    const configs = result.rows.map((row) => ({
+    const configs = rows.map((row) => ({
         id: row.id,
         name: row.name,
         description: row.description,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
     }));
 
     return JsonResponse.success({ configs, total: configs.length });
@@ -123,9 +104,10 @@ export async function handleSaveConfiguration(
     _request: Request,
     _env: unknown,
     auth: IAuthContext,
-    pool: PgPool,
+    prisma: PrismaClientExtended | null,
     body: unknown,
 ): Promise<Response> {
+    if (!prisma) return JsonResponse.serviceUnavailable('Database not configured');
     const userGuard = requireUserId(auth);
     if (userGuard) return userGuard;
 
@@ -135,17 +117,14 @@ export async function handleSaveConfiguration(
 
     const { name, description, config } = body;
 
-    const result = await pool.query<UserConfigRow>(
-        `INSERT INTO user_configurations (id, user_id, name, description, config, created_at, updated_at)
-         VALUES (gen_random_uuid(), $1, $2, $3, $4::jsonb, now(), now())
-         RETURNING id, user_id, name, description, config, created_at, updated_at`,
-        [auth.userId, name.trim(), description ?? null, JSON.stringify(config)],
-    );
-
-    const row = result.rows[0];
-    if (!row) {
-        return JsonResponse.serverError('Failed to save configuration');
-    }
+    const row = await prisma.userConfiguration.create({
+        data: {
+            userId: auth.userId!,
+            name: name.trim(),
+            description: description ?? null,
+            config: config as object,
+        },
+    });
 
     return JsonResponse.success(
         {
@@ -153,8 +132,8 @@ export async function handleSaveConfiguration(
             name: row.name,
             description: row.description,
             config: row.config,
-            createdAt: row.created_at,
-            updatedAt: row.updated_at,
+            createdAt: row.createdAt.toISOString(),
+            updatedAt: row.updatedAt.toISOString(),
         },
         { status: 201 },
     );
@@ -172,19 +151,18 @@ export async function handleDeleteSavedConfiguration(
     _request: Request,
     _env: unknown,
     auth: IAuthContext,
-    pool: PgPool,
+    prisma: PrismaClientExtended | null,
     id: string,
 ): Promise<Response> {
+    if (!prisma) return JsonResponse.serviceUnavailable('Database not configured');
     const userGuard = requireUserId(auth);
     if (userGuard) return userGuard;
 
-    const result = await pool.query(
-        `DELETE FROM user_configurations
-         WHERE id = $1 AND user_id = $2`,
-        [id, auth.userId],
-    );
+    const result = await prisma.userConfiguration.deleteMany({
+        where: { id, userId: auth.userId! },
+    });
 
-    if ((result.rowCount ?? 0) === 0) {
+    if (result.count === 0) {
         return JsonResponse.notFound('Saved configuration not found');
     }
 

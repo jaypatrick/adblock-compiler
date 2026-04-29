@@ -25,7 +25,6 @@
 import type { Env, IAuthContext } from '../types.ts';
 import { authenticateRequestUnified, requireAuth, requireScope, requireTier } from '../middleware/auth.ts';
 import { checkRateLimitTiered } from '../middleware/index.ts';
-import { createPgPool } from '../utils/pg-pool.ts';
 import { BetterAuthProvider } from '../middleware/better-auth-provider.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 // SecurityEventData.eventType includes 'auth_failure' | 'auth_success' | 'rate_limit' | ...
@@ -218,7 +217,6 @@ export async function runAgentAuthGate(
     const { context: authContext, response: authErrorResponse } = await authenticateRequestUnified(
         request,
         env,
-        env.HYPERDRIVE ? createPgPool : undefined,
         authProvider,
     );
 

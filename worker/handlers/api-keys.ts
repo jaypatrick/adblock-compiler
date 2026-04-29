@@ -23,9 +23,9 @@
  *
  * All request/response bodies are Zod-validated via the schemas in
  * `worker/schemas.ts` ({@link CreateApiKeyRequestSchema},
- * {@link UpdateApiKeyRequestSchema}, {@link ApiKeyRowSchema}).
+ * {@link UpdateApiKeyRequestSchema}).
  *
- * Uses raw pg Pool via Hyperdrive (no Prisma client at runtime).
+ * Uses Prisma ORM via Hyperdrive.
  *
  * @see worker/middleware/auth.ts — authenticateRequestUnified (dual provider)
  * @see worker/hono-app.ts — INTERACTIVE_AUTH_METHODS guard
@@ -34,36 +34,8 @@
 
 import { JsonResponse } from '../utils/response.ts';
 import { type IAuthContext } from '../types.ts';
-import { ApiKeyRowSchema, CreateApiKeyRequestSchema, UpdateApiKeyRequestSchema } from '../schemas.ts';
-
-// ---------------------------------------------------------------------------
-// PgPool interface (matches worker/middleware/auth.ts)
-// ---------------------------------------------------------------------------
-
-interface PgPool {
-    query<T = Record<string, unknown>>(text: string, values?: unknown[]): Promise<{ rows: T[]; rowCount: number | null }>;
-}
-
-type PgPoolFactory = (connectionString: string) => PgPool;
-
-// ---------------------------------------------------------------------------
-// Row types
-// ---------------------------------------------------------------------------
-
-/** Row shape for api_keys table queries. */
-interface ApiKeyRow {
-    id: string;
-    user_id: string;
-    key_prefix: string;
-    name: string;
-    scopes: string[];
-    rate_limit_per_minute: number;
-    last_used_at: string | null;
-    expires_at: string | null;
-    revoked_at: string | null;
-    created_at: string;
-    updated_at: string;
-}
+import { CreateApiKeyRequestSchema, UpdateApiKeyRequestSchema } from '../schemas.ts';
+import type { PrismaClientExtended } from '../lib/prisma.ts';
 
 // ---------------------------------------------------------------------------
 // Key generation helpers
@@ -119,20 +91,22 @@ function requireUserId(authContext: IAuthContext): Response | null {
  * POST /api/keys — Create a new API key.
  *
  * The `authContext.userId` is the authenticated Better Auth user ID.
- * The resulting `user_id` stored in `api_keys` is the Better Auth user UUID.
+ * The resulting `userId` stored in `api_keys` is the Better Auth user UUID.
  *
  * The plaintext key is returned in the response body **once**. The caller must
  * store it securely; only the SHA-256 hash is persisted.
  *
  * Request body is validated against {@link CreateApiKeyRequestSchema}.
- * The returned row is validated against {@link ApiKeyRowSchema}.
  */
 export async function handleCreateApiKey(
     body: unknown,
     authContext: IAuthContext,
-    connectionString: string,
-    createPool: PgPoolFactory,
+    prisma: PrismaClientExtended | null,
 ): Promise<Response> {
+    if (prisma === null) {
+        return JsonResponse.serviceUnavailable('Database not configured');
+    }
+
     const userGuard = requireUserId(authContext);
     if (userGuard) {
         return userGuard;
@@ -145,21 +119,17 @@ export async function handleCreateApiKey(
     const { data } = parsed;
 
     // Validate expiry
-    let expiresAt: string | null = null;
+    let expiresAt: Date | null = null;
     if (data.expiresInDays !== undefined) {
         const expiry = new Date();
         expiry.setDate(expiry.getDate() + data.expiresInDays);
-        expiresAt = expiry.toISOString();
+        expiresAt = expiry;
     }
 
-    const pool = createPool(connectionString);
-
     // Enforce per-user key limit
-    const countResult = await pool.query<{ count: string }>(
-        'SELECT COUNT(*)::text AS count FROM api_keys WHERE user_id = $1 AND revoked_at IS NULL',
-        [authContext.userId],
-    );
-    const currentCount = parseInt(countResult.rows[0]?.count ?? '0', 10);
+    const currentCount = await prisma.apiKey.count({
+        where: { userId: authContext.userId!, revokedAt: null },
+    });
     if (currentCount >= MAX_KEYS_PER_USER) {
         return JsonResponse.badRequest(`Maximum of ${MAX_KEYS_PER_USER} active API keys per user`);
     }
@@ -169,38 +139,39 @@ export async function handleCreateApiKey(
     const keyHash = await hashKey(plaintext);
     const keyPrefix = plaintext.substring(0, API_KEY_PREFIX.length + 4); // "abc_XXXX"
 
-    const result = await pool.query<ApiKeyRow>(
-        `INSERT INTO api_keys (
-            id, user_id, key_hash, key_prefix, name, scopes,
-            rate_limit_per_minute, expires_at, created_at, updated_at
-        ) VALUES (
-            gen_random_uuid(), $1, $2, $3, $4, $5,
-            60, $6, NOW(), NOW()
-        ) RETURNING id, key_prefix, name, scopes, rate_limit_per_minute,
-                    expires_at, created_at`,
-        [authContext.userId, keyHash, keyPrefix, data.name.trim(), data.scopes, expiresAt],
-    );
-
-    const row = result.rows[0];
-    if (!row) {
-        return JsonResponse.serverError('Failed to create API key');
-    }
-
-    const rowParse = ApiKeyRowSchema.safeParse(row);
-    if (!rowParse.success) {
-        console.error('[api-keys] CREATE returned unexpected row shape', rowParse.error.issues);
-        return JsonResponse.serverError('Failed to create API key');
-    }
+    const row = await prisma.apiKey.create({
+        data: {
+            userId: authContext.userId!,
+            keyHash,
+            keyPrefix,
+            name: data.name.trim(),
+            // `data.scopes` is guaranteed non-undefined here because
+            // `CreateApiKeyRequestSchema` declares `.default([AuthScope.Compile])`
+            // in `worker/schemas.ts`, so Zod always fills in the default value.
+            scopes: data.scopes,
+            rateLimitPerMinute: 60,
+            expiresAt: expiresAt,
+        },
+        select: {
+            id: true,
+            keyPrefix: true,
+            name: true,
+            scopes: true,
+            rateLimitPerMinute: true,
+            expiresAt: true,
+            createdAt: true,
+        },
+    });
 
     return JsonResponse.success({
-        id: rowParse.data.id,
+        id: row.id,
         key: plaintext, // Plaintext returned only on creation
-        keyPrefix: rowParse.data.key_prefix,
-        name: rowParse.data.name,
-        scopes: rowParse.data.scopes,
-        rateLimitPerMinute: rowParse.data.rate_limit_per_minute,
-        expiresAt: rowParse.data.expires_at,
-        createdAt: rowParse.data.created_at,
+        keyPrefix: row.keyPrefix,
+        name: row.name,
+        scopes: row.scopes,
+        rateLimitPerMinute: row.rateLimitPerMinute,
+        expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
+        createdAt: row.createdAt.toISOString(),
     }, { status: 201 });
 }
 
@@ -213,37 +184,34 @@ export async function handleCreateApiKey(
  */
 export async function handleListApiKeys(
     authContext: IAuthContext,
-    connectionString: string,
-    createPool: PgPoolFactory,
+    prisma: PrismaClientExtended | null,
 ): Promise<Response> {
+    if (prisma === null) {
+        return JsonResponse.serviceUnavailable('Database not configured');
+    }
+
     const userGuard = requireUserId(authContext);
     if (userGuard) {
         return userGuard;
     }
 
-    const pool = createPool(connectionString);
+    const rows = await prisma.apiKey.findMany({
+        where: { userId: authContext.userId! },
+        orderBy: { createdAt: 'desc' },
+    });
 
-    const result = await pool.query<ApiKeyRow>(
-        `SELECT id, key_prefix, name, scopes, rate_limit_per_minute,
-                last_used_at, expires_at, revoked_at, created_at, updated_at
-         FROM api_keys
-         WHERE user_id = $1
-         ORDER BY created_at DESC`,
-        [authContext.userId],
-    );
-
-    const keys = result.rows.map((row) => ({
+    const keys = rows.map((row) => ({
         id: row.id,
-        keyPrefix: row.key_prefix,
+        keyPrefix: row.keyPrefix,
         name: row.name,
         scopes: row.scopes,
-        rateLimitPerMinute: row.rate_limit_per_minute,
-        lastUsedAt: row.last_used_at,
-        expiresAt: row.expires_at,
-        revokedAt: row.revoked_at,
-        createdAt: row.created_at,
-        updatedAt: row.updated_at,
-        isActive: row.revoked_at === null && (row.expires_at === null || new Date(row.expires_at) > new Date()),
+        rateLimitPerMinute: row.rateLimitPerMinute,
+        lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null,
+        expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
+        revokedAt: row.revokedAt ? row.revokedAt.toISOString() : null,
+        createdAt: row.createdAt.toISOString(),
+        updatedAt: row.updatedAt.toISOString(),
+        isActive: row.revokedAt === null && (row.expiresAt === null || row.expiresAt > new Date()),
     }));
 
     return JsonResponse.success({ keys, total: keys.length });
@@ -254,31 +222,38 @@ export async function handleListApiKeys(
  *
  * Ownership is verified against `authContext.userId` (Better Auth user ID).
  *
- * Sets `revoked_at` to the current timestamp. The key remains in the
+ * Sets `revokedAt` to the current timestamp. The key remains in the
  * database for audit purposes but is no longer valid for authentication.
  */
 export async function handleRevokeApiKey(
     keyId: string,
     authContext: IAuthContext,
-    connectionString: string,
-    createPool: PgPoolFactory,
+    prisma: PrismaClientExtended | null,
 ): Promise<Response> {
+    if (prisma === null) {
+        return JsonResponse.serviceUnavailable('Database not configured');
+    }
+
     const userGuard = requireUserId(authContext);
     if (userGuard) {
         return userGuard;
     }
 
-    const pool = createPool(connectionString);
-
-    const result = await pool.query(
-        `UPDATE api_keys
-         SET revoked_at = NOW(), updated_at = NOW()
-         WHERE id = $1 AND user_id = $2 AND revoked_at IS NULL`,
-        [keyId, authContext.userId],
-    );
-
-    if ((result.rowCount ?? 0) === 0) {
-        return JsonResponse.notFound('API key not found or already revoked');
+    // Use a single atomic `update` rather than `updateMany`.
+    // Prisma's `update` supports non-unique filters in `where` alongside the
+    // primary key — throws P2025 if the key doesn't exist, belongs to another
+    // user, or is already revoked. All three cases map to a 404 response.
+    try {
+        await prisma.apiKey.update({
+            where: { id: keyId, userId: authContext.userId!, revokedAt: null },
+            data: { revokedAt: new Date() },
+            select: { id: true },
+        });
+    } catch (e) {
+        if (e instanceof Error && 'code' in e && (e as { code: string }).code === 'P2025') {
+            return JsonResponse.notFound('API key not found or already revoked');
+        }
+        throw e;
     }
 
     return JsonResponse.success({ message: 'API key revoked' });
@@ -290,15 +265,17 @@ export async function handleRevokeApiKey(
  * Ownership is verified against `authContext.userId` (Better Auth user ID).
  *
  * Request body is validated against {@link UpdateApiKeyRequestSchema}.
- * The returned row is validated against {@link ApiKeyRowSchema}.
  */
 export async function handleUpdateApiKey(
     keyId: string,
     body: unknown,
     authContext: IAuthContext,
-    connectionString: string,
-    createPool: PgPoolFactory,
+    prisma: PrismaClientExtended | null,
 ): Promise<Response> {
+    if (prisma === null) {
+        return JsonResponse.serviceUnavailable('Database not configured');
+    }
+
     const userGuard = requireUserId(authContext);
     if (userGuard) {
         return userGuard;
@@ -310,55 +287,54 @@ export async function handleUpdateApiKey(
     }
     const { data } = parsed;
 
-    const pool = createPool(connectionString);
-
-    // Build dynamic SET clause
-    const setClauses: string[] = ['updated_at = NOW()'];
-    const values: unknown[] = [];
-    let paramIndex = 1;
-
+    // Build update data object
+    const updateData: { name?: string; scopes?: string[] } = {};
     if (data.name !== undefined) {
-        setClauses.push(`name = $${paramIndex}`);
-        values.push(data.name.trim());
-        paramIndex++;
+        updateData.name = data.name.trim();
     }
-
     if (data.scopes !== undefined) {
-        setClauses.push(`scopes = $${paramIndex}`);
-        values.push(data.scopes);
-        paramIndex++;
+        updateData.scopes = data.scopes;
     }
 
-    values.push(keyId, authContext.userId);
+    // Use a single atomic `update` rather than `updateMany` + `findFirst`.
+    // Prisma's `update` where clause accepts additional (non-unique) filter
+    // conditions alongside the primary key; if no row matches all conditions
+    // Prisma throws P2025 which we catch and map to a 404.
+    try {
+        const row = await prisma.apiKey.update({
+            where: { id: keyId, userId: authContext.userId!, revokedAt: null },
+            data: updateData,
+            select: {
+                id: true,
+                keyPrefix: true,
+                name: true,
+                scopes: true,
+                rateLimitPerMinute: true,
+                lastUsedAt: true,
+                expiresAt: true,
+                createdAt: true,
+                updatedAt: true,
+            },
+        });
 
-    const result = await pool.query<ApiKeyRow>(
-        `UPDATE api_keys
-         SET ${setClauses.join(', ')}
-         WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1} AND revoked_at IS NULL
-         RETURNING id, key_prefix, name, scopes, rate_limit_per_minute,
-                   last_used_at, expires_at, created_at, updated_at`,
-        values,
-    );
-
-    if (result.rows.length === 0) {
-        return JsonResponse.notFound('API key not found or already revoked');
+        return JsonResponse.success({
+            id: row.id,
+            keyPrefix: row.keyPrefix,
+            name: row.name,
+            scopes: row.scopes,
+            rateLimitPerMinute: row.rateLimitPerMinute,
+            lastUsedAt: row.lastUsedAt ? row.lastUsedAt.toISOString() : null,
+            expiresAt: row.expiresAt ? row.expiresAt.toISOString() : null,
+            createdAt: row.createdAt.toISOString(),
+            updatedAt: row.updatedAt.toISOString(),
+        });
+    } catch (e) {
+        // P2025 = "An operation failed because it depends on one or more records
+        // that were required but not found." — key doesn't exist, belongs to a
+        // different user, or is already revoked.
+        if (e instanceof Error && 'code' in e && (e as { code: string }).code === 'P2025') {
+            return JsonResponse.notFound('API key not found or already revoked');
+        }
+        throw e;
     }
-
-    const rowParse = ApiKeyRowSchema.safeParse(result.rows[0]);
-    if (!rowParse.success) {
-        console.error('[api-keys] UPDATE returned unexpected row shape', rowParse.error.issues);
-        return JsonResponse.serverError('Failed to update API key');
-    }
-
-    return JsonResponse.success({
-        id: rowParse.data.id,
-        keyPrefix: rowParse.data.key_prefix,
-        name: rowParse.data.name,
-        scopes: rowParse.data.scopes,
-        rateLimitPerMinute: rowParse.data.rate_limit_per_minute,
-        lastUsedAt: rowParse.data.last_used_at,
-        expiresAt: rowParse.data.expires_at,
-        createdAt: rowParse.data.created_at,
-        updatedAt: rowParse.data.updated_at,
-    });
 }

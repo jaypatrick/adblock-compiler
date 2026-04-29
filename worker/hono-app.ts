@@ -59,7 +59,6 @@ import { createAuth } from './lib/auth.ts';
 // Utils
 import { generateRequestId } from './utils/index.ts';
 import { createAnalyticsService } from './utils/analytics.ts';
-import { createPgPool } from './utils/pg-pool.ts';
 import { checkRoutePermission } from './utils/route-permissions.ts';
 import { checkUserApiAccess } from './utils/user-access.ts';
 import { trackApiUsage } from './utils/api-usage.ts';
@@ -439,7 +438,6 @@ app.use('*', async (c, next) => {
     const authResult = await authenticateRequestUnified(
         c.req.raw,
         c.env,
-        createPgPool,
         authProvider,
     );
     endTime(c, 'auth');
@@ -575,7 +573,7 @@ routes.use('*', async (c, next) => {
     const ip = c.get('ip');
     const path = routesPath(c);
 
-    const accessDenied = await checkUserApiAccess(authContext, c.env);
+    const accessDenied = await checkUserApiAccess(authContext, c.env, c.get('prisma') ?? null);
     if (accessDenied) {
         analytics.trackSecurityEvent({
             eventType: 'auth_failure',
@@ -725,7 +723,7 @@ app.use('/api/trpc/*', async (c, next) => {
     const analytics = c.get('analytics');
     const ip = c.get('ip');
 
-    const accessDenied = await checkUserApiAccess(authContext, c.env);
+    const accessDenied = await checkUserApiAccess(authContext, c.env, c.get('prisma') ?? null);
     if (accessDenied) {
         analytics.trackSecurityEvent({
             eventType: 'auth_failure',

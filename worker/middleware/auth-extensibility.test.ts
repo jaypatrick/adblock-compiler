@@ -258,7 +258,7 @@ Deno.test('authenticateRequestUnified - resolves userId from providerUserId for 
         headers: { Cookie: 'adblock-session=abc123' },
     });
 
-    const result = await authenticateRequestUnified(request, env, undefined, provider);
+    const result = await authenticateRequestUnified(request, env, provider);
     assertEquals(result.response, undefined);
     assertEquals(result.context.userId, 'ba-user-123');
     assertEquals(result.context.authMethod, 'better-auth');
