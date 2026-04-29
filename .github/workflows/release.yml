@@ -138,8 +138,9 @@ jobs:
     # security rebuilds. The build-docker job was removed from this workflow to
     # prevent double-pushes to GHCR on release tags.
     # Note: release.yml also fires on non-semver v* tags (e.g. v1, v1.2) for binary
-    # builds. Docker images are only published for full semver v*.*.* tags because
-    # docker-publish.yml uses a stricter 'v*.*.*' path filter.
+    # builds. Docker images are only published when docker-publish.yml is triggered,
+    # which uses a stricter 'v*.*.*' tag filter for semver tags; if that workflow
+    # also defines `paths:` filters, those must match on the tagged commit as well.
 
     create-release:
         name: Create GitHub Release

@@ -26,11 +26,13 @@ runs:
                   exit 1
               fi
               # Broad check: generic credential assignments (password/secret/api_key/token = "literal")
+              # Scans worker/, src/, and frontend/src/ to keep hardcoded-secret coverage aligned
+              # across all internet-facing and application source surfaces.
               # Excludes test files, comments, template-variable-only strings, env references, and known-safe
               # placeholder values.
               BROAD_PATTERN='(password|secret|api.key|token)\s*=\s*["'"'"'][^"'"'"']{8,}["'"'"']'
-              if grep -rniP "$BROAD_PATTERN" worker/ src/ --include='*.ts' --include='*.js' 2>/dev/null \
-                  | grep -vE 'test|spec|\.d\.ts|// |example|placeholder|\$\{|process\.env|env\.' \
+              if grep -rniP "$BROAD_PATTERN" worker/ src/ frontend/src/ --include='*.ts' --include='*.js' 2>/dev/null \
+                  | grep -vE 'test|spec|\.d\.ts|// |example|placeholder|\$\{|process\.env|env\.|LOCAL_[A-Z_]+' \
                   | grep -q '.'; then
                   echo "❌ ZTA VIOLATION: Potential hardcoded credential found. Use environment variables / Worker Secrets."
                   exit 1
@@ -79,7 +81,7 @@ runs:
               fi
               # Flag string concatenation building SQL queries — the other common injection vector.
               # Excludes test files, comments, .prepare() chains, .join() (array-building), and .log().
-              if grep -rEn 'query\s*\+[^=]|query\s*=.*\+\s*[a-zA-Z]' worker/ src/ --include='*.ts' 2>/dev/null \
+              if grep -rPn 'query\s*\+[^=]|query\s*=.*\+\s*[a-zA-Z]' worker/ src/ --include='*.ts' 2>/dev/null \
                   | grep -vE 'test|spec|\.d\.ts|// |\.prepare\(|\.join\(|\.log\(' \
                   | grep -q '.'; then
                   echo "❌ ZTA VIOLATION: SQL string concatenation found — use .prepare().bind() for parameterized queries"

@@ -201,7 +201,7 @@ Examples:
 | Workflow | Trigger | Purpose |
 | --- | --- | --- |
 | [`ci.yml`](.github/workflows/ci.yml) | Push/PR to `main`, `workflow_dispatch` | Lint, type-check, test, build, deploy to Cloudflare, publish to JSR. Includes ZTA security lint via the [`zta-checks`](.github/actions/zta-checks/action.yml) composite action. |
-| [`docker-publish.yml`](.github/workflows/docker-publish.yml) | Push/PR to `main` on Dockerfile/src paths, `v*.*.*` tags, daily schedule | Build and push Docker images to GHCR and Docker Hub; build Cloudflare Containers image; cosign signing; daily security rebuilds. |
+| [`docker-publish.yml`](.github/workflows/docker-publish.yml) | Push/PR to `main` on `Dockerfile`/`Dockerfile.container` paths, `v*.*.*` tags, daily schedule | Build and push Docker images to GHCR and Docker Hub; build Cloudflare Containers image; cosign signing; daily security rebuilds. |
 | [`release.yml`](.github/workflows/release.yml) | `v*` and `compiler-v*` tags, `workflow_dispatch` | Compile cross-platform binaries and create GitHub Releases. Docker images are handled by `docker-publish.yml`. |
 | [`bench.yml`](.github/workflows/bench.yml) | Push/PR to `main` on `src/**` changes, `workflow_dispatch` | Run `deno bench` and upload results as artifacts. |
 | [`lighthouse.yml`](.github/workflows/lighthouse.yml) | After CI completes on `main`, `workflow_dispatch` | Lighthouse performance audit of the deployed frontend. |
@@ -209,7 +209,7 @@ Examples:
 | [`api-shield-scan.yml`](.github/workflows/api-shield-scan.yml) | Push/PR to `main` on API spec changes, `workflow_dispatch` | Upload OpenAPI schema to Cloudflare API Shield. |
 | [`sentry-frontend.yml`](.github/workflows/sentry-frontend.yml) | Push to `main` on `frontend/**`, `v*` tags, `workflow_dispatch` | Upload Angular browser + SSR source maps to Sentry. |
 | [`sentry-worker.yml`](.github/workflows/sentry-worker.yml) | Push to `main` on `worker/**`, `v*` and `compiler-v*` tags, `workflow_dispatch` | Build worker bundle and upload source maps to Sentry. |
-| [`version-bump.yml`](.github/workflows/version-bump.yml) | Push to `main`, `workflow_dispatch` | Automatically bump `deno.json` version from conventional commit messages. |
+| [`version-bump.yml`](.github/workflows/version-bump.yml) | Push to `main` and `master`, `workflow_dispatch` | Automatically bump `deno.json` version from conventional commit messages. |
 | [`frontend-version-bump.yml`](.github/workflows/frontend-version-bump.yml) | Push to `main` on `frontend/**`, `workflow_dispatch` | Sync `frontend/package.json` version with `deno.json`. |
 | [`create-version-tag.yml`](.github/workflows/create-version-tag.yml) | Version-bump PR merged, `workflow_dispatch` | Create a Git tag after a version bump. |
 | [`gradual-deploy.yml`](.github/workflows/gradual-deploy.yml) | `workflow_dispatch` | Gradually roll out a Worker deployment via Cloudflare traffic management. |
@@ -219,8 +219,8 @@ Examples:
 | [`neon-branch-create.yml`](.github/workflows/neon-branch-create.yml) | PR opened/synchronize on Prisma paths, `workflow_dispatch` | Create a Neon database branch for preview environments. |
 | [`neon-branch-cleanup.yml`](.github/workflows/neon-branch-cleanup.yml) | PR closed on Prisma paths, branch deleted, `workflow_dispatch` | Delete the Neon preview branch. |
 | [`cleanup-branches.yml`](.github/workflows/cleanup-branches.yml) | PR closed, `workflow_dispatch` | Delete head branches after PR merge and clean stale branches. |
-| [`lint-workflows.yml`](.github/workflows/lint-workflows.yml) | Push/PR on `.github/workflows/**` | Lint workflow YAML files. |
-| [`claude.yml`](.github/workflows/claude.yml) | Issue/PR comments mentioning `@claude` | Claude AI code assistant. |
+| [`lint-workflows.yml`](.github/workflows/lint-workflows.yml) | Push/PR on `.github/workflows/**`, `.github/actions/**` | Lint workflow YAML files. |
+| [`claude.yml`](.github/workflows/claude.yml) | Issue/PR comments, `issues`, PR review events, push on `.github/workflows/claude.yml` | Claude AI code assistant. |
 
 > **Note:** `zta-lint.yml` was removed — its ZTA security checks are fully consolidated into the `zta-checks` composite action run by `ci.yml`. The `build-docker` job was removed from `release.yml` — Docker image builds are owned by `docker-publish.yml`. This table summarizes the primary triggers; for the complete configuration check each workflow file's `on:` block.
 
