@@ -23,23 +23,27 @@ import { rateLimitMiddleware, requireAuthMiddleware } from '../middleware/hono-m
 import { handleCreateApiKey, handleListApiKeys, handleRevokeApiKey, handleUpdateApiKey } from '../handlers/api-keys.ts';
 import { JsonResponse } from '../utils/response.ts';
 import { createPgPool } from '../utils/pg-pool.ts';
+import { AuthScope } from '../types.ts';
 
 /** Auth methods that represent an interactive user session (not API key or anonymous). */
 const INTERACTIVE_AUTH_METHODS = new Set(['better-auth']);
 
 export const apiKeysRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
-// Inline OpenAPI-compatible schemas for API key management
+// OpenAPI-compatible request schemas aligned with the shared schemas in worker/schemas.ts
 const createApiKeyRequestSchema = z.object({
-    name: z.string().min(1).max(128).describe('Human-readable name for the API key'),
-    scopes: z.array(z.string()).min(1).max(10).describe('Array of permission scopes'),
+    name: z.string().trim().min(1).max(100).describe('Human-readable name for the API key'),
+    scopes: z.array(z.nativeEnum(AuthScope)).optional().default([AuthScope.Compile]).describe('Permission scopes for the key (defaults to [compile])'),
     expiresInDays: z.number().int().min(1).max(365).optional().describe('Optional expiration period in days'),
 });
 
 const updateApiKeyRequestSchema = z.object({
-    name: z.string().min(1).max(128).optional().describe('Updated name for the API key'),
-    scopes: z.array(z.string()).min(1).max(10).optional().describe('Updated permission scopes'),
-});
+    name: z.string().trim().min(1).max(100).optional().describe('Updated name for the API key'),
+    scopes: z.array(z.nativeEnum(AuthScope)).optional().describe('Updated permission scopes'),
+}).refine(
+    (d) => d.name !== undefined || d.scopes !== undefined,
+    { message: 'At least one of name or scopes is required' },
+);
 
 const apiKeyListItemSchema = z.object({
     id: z.string().uuid().describe('Unique identifier for the API key'),
