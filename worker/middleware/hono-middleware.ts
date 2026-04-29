@@ -49,7 +49,7 @@ import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import { WORKER_DEFAULTS } from '../../src/config/defaults.ts';
 import { requireAuth } from './auth.ts';
 import { checkRateLimitTiered, validateRequestSize, verifyTurnstileToken } from './index.ts';
-import type { PrismaClient } from '../../prisma/generated/client.ts';
+import type { PrismaClientExtended } from '../lib/prisma.ts';
 import { ProblemResponse } from '../utils/problem-details.ts';
 
 // ============================================================================
@@ -65,7 +65,7 @@ interface AppVars {
     requestId: string;
     ip: string;
     /** Request-scoped PrismaClient — set by prismaMiddleware() when HYPERDRIVE is bound. */
-    prisma?: InstanceType<typeof PrismaClient>;
+    prisma?: PrismaClientExtended;
 }
 
 type AppEnv = { Bindings: Env; Variables: AppVars };
