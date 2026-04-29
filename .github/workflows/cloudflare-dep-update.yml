@@ -18,6 +18,12 @@ name: Cloudflare Dependency Update
 #      If everything is already up to date the workflow exits cleanly with no PR.
 
 on:
+    # push trigger with path filter prevents GitHub 'workflow file issue'
+    # errors when this file is modified in a push to main
+    push:
+        branches: [main]
+        paths:
+            - '.github/workflows/cloudflare-dep-update.yml'
     schedule:
         # Daily at 06:00 UTC — well before the US business day so that any
         # Cloudflare release from the previous day is already on npm.
@@ -97,13 +103,13 @@ jobs:
             - name: Check for changes
               id: changes
               run: |
-                  if git diff --quiet; then
+                  if [ -z "$(git status --porcelain)" ]; then
                       echo "has_changes=false" >> "$GITHUB_OUTPUT"
                       echo "✅  All Cloudflare dependencies are already up to date — nothing to commit."
                   else
                       echo "has_changes=true" >> "$GITHUB_OUTPUT"
                       echo "📋  Files changed:"
-                      git diff --stat
+                      git status --short
                   fi
 
             - name: Create pull request
