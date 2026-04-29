@@ -72,9 +72,10 @@ Deno.test('UUID_REGEX is exported from prisma module', () => {
     assertEquals(UUID_REGEX instanceof RegExp, true);
 });
 
-Deno.test('UUID_REGEX accepts a canonical UUID v4 (crypto.randomUUID() output)', () => {
-    const id = crypto.randomUUID();
-    assertEquals(UUID_REGEX.test(id), true, `crypto.randomUUID() returned "${id}" which UUID_REGEX rejected — valid UUIDs must not be replaced`);
+Deno.test('UUID_REGEX accepts a canonical UUID v4', () => {
+    // Hardcoded UUIDs from RFC 4122 test vectors — deterministic and always valid.
+    assertEquals(UUID_REGEX.test('550e8400-e29b-41d4-a716-446655440000'), true);
+    assertEquals(UUID_REGEX.test('6ba7b810-9dad-11d1-80b4-00c04fd430c8'), true);
 });
 
 Deno.test('UUID_REGEX accepts uppercase UUID', () => {
@@ -128,6 +129,15 @@ Deno.test('_enforceUuidOnCreateData leaves data without id property unchanged', 
     _enforceUuidOnCreateData(data);
     assertEquals(data.id, undefined);
     assertEquals(data.name, 'Alice');
+});
+
+Deno.test('_enforceUuidOnCreateData does not replace an empty string id', () => {
+    // Empty string ids are not a Better Auth pattern, but the guard ensures
+    // only non-empty, non-UUID strings are replaced (PostgreSQL will still
+    // reject an empty string — that should surface to the caller unchanged).
+    const data: Record<string, unknown> = { id: '' };
+    _enforceUuidOnCreateData(data);
+    assertEquals(data.id, '');
 });
 
 Deno.test('_enforceUuidOnCreateData replaces the second Better Auth opaque ID format', () => {

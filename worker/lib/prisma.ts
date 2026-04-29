@@ -34,13 +34,16 @@ export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9
  * If `data` contains an `id` property that is a non-empty string but does NOT
  * satisfy {@link UUID_REGEX}, it is replaced with `crypto.randomUUID()`.
  *
+ * **Mutates** `data` in place — Prisma's `$extends` callback passes `args.data`
+ * by reference and expects modifications to be made directly on the object.
+ *
  * Extracted from the `$extends` callback so the enforcement logic can be
  * unit-tested without a database connection.
  *
  * @internal exported for testing only
  */
 export function _enforceUuidOnCreateData(data: Record<string, unknown>): void {
-    if ('id' in data && typeof data.id === 'string' && !UUID_REGEX.test(data.id)) {
+    if ('id' in data && typeof data.id === 'string' && data.id.length > 0 && !UUID_REGEX.test(data.id)) {
         data.id = crypto.randomUUID();
     }
 }
