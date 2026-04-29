@@ -422,12 +422,18 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 error: errorMessage,
             });
 
-            // Emit workflow failed event
-            await events.emitWorkflowFailed(errorMessage, {
-                warmedConfigurations,
-                failedConfigurations: configsToWarm.length - warmedConfigurations,
-            });
-            await events.flush();
+            // Emit workflow failed event — only when METRICS is available. If the
+            // binding guard above threw because METRICS is absent, calling
+            // events.emitWorkflowFailed()/flush() would raise a secondary TypeError
+            // that masks the original descriptive error. This mirrors the guard pattern
+            // already used in HealthMonitoringWorkflow.
+            if (this.env.METRICS) {
+                await events.emitWorkflowFailed(errorMessage, {
+                    warmedConfigurations,
+                    failedConfigurations: configsToWarm.length - warmedConfigurations,
+                });
+                await events.flush();
+            }
 
             // Always throw so CF Workflows records outcome: exception and surfaces the
             // real failure reason in the dashboard (matching HealthMonitoringWorkflow).

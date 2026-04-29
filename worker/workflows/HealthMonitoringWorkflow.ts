@@ -232,9 +232,10 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 } | null;
 
                 await events.emitProgress(10, 'Health history loaded');
-                return history || { checks: [] };
+                const resolvedHistory = history || { checks: [] };
+                await events.emitStepCompleted('load-health-history', { checkCount: resolvedHistory.checks.length });
+                return resolvedHistory;
             });
-            await events.emitStepCompleted('load-health-history', { checkCount: healthHistory.checks.length });
 
             // Step 2: Check each source
             for (let i = 0; i < sourcesToCheck.length; i++) {
@@ -349,6 +350,7 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
 
                 if (!alertOnFailure) {
                     await events.emitProgress(75, 'Analysis complete');
+                    await events.emitStepCompleted('analyze-results', { alertsNeeded: 0 });
                     return { shouldAlert: [], triggeredAlerts: false };
                 }
 
@@ -373,13 +375,11 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 }
 
                 await events.emitProgress(75, 'Analysis complete');
+                await events.emitStepCompleted('analyze-results', { alertsNeeded: shouldAlert.length });
                 return {
                     shouldAlert,
                     triggeredAlerts: shouldAlert.length > 0,
                 };
-            });
-            await events.emitStepCompleted('analyze-results', {
-                alertsNeeded: alertAnalysis.shouldAlert.length,
             });
 
             // Step 4: Send alerts if needed
@@ -507,20 +507,27 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 });
 
                 await events.emitProgress(100, 'Health monitoring complete');
+                await events.emitStepCompleted('store-results');
                 return { stored: true };
             });
-            await events.emitStepCompleted('store-results');
 
             const totalDuration = Date.now() - startTime;
 
-            // Emit workflow completed event
-            await events.emitWorkflowCompleted({
-                healthySources,
-                unhealthySources,
-                alertsSent,
-                totalDurationMs: totalDuration,
+            // Emit workflow completed event inside a step so KV I/O runs in step
+            // context, not orchestrator context. The explicit flush() that followed
+            // emitWorkflowCompleted is removed because emitWorkflowCompleted already
+            // calls flush() internally.
+            await stepDo<void>(step, 'emit-workflow-completed', {
+                retries: { limit: 2, delay: '1 second' },
+                timeout: '30 seconds',
+            }, async () => {
+                await events.emitWorkflowCompleted({
+                    healthySources,
+                    unhealthySources,
+                    alertsSent,
+                    totalDurationMs: totalDuration,
+                });
             });
-            await events.flush();
 
             console.log(
                 `[WORKFLOW:HEALTH] Health monitoring completed: ${healthySources}/${sourcesToCheck.length} ` +
