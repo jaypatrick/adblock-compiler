@@ -5,6 +5,8 @@ Postman collection and environment files for testing the Adblock Compiler API.
 > **Auto-generated** — do not edit these files directly.
 > Run `deno task postman:collection` to regenerate from `docs/api/openapi.yaml`.
 
+> **Better Auth augmentation**: The collection includes `/auth/sign-up/email`, `/auth/sign-in/email`, `/auth/get-session`, and `/auth/sign-out` requests that are **not** in `openapi.yaml`. Better Auth serves these routes at runtime without an OpenAPI route definition, so the generator injects them manually into the `Authentication` folder. If these routes change, update `betterAuthItems` in `scripts/generate-postman-collection.ts` and regenerate.
+
 ## Files
 
 - `postman-collection.json` — Postman collection with all API endpoints and tests (auto-generated)
@@ -57,6 +59,8 @@ docs/postman/postman-environment.json        ← auto-generated legacy alias →
 | `postmanPassword` | **Manual — Current Value only** | Password of the Postman test user |
 | `userApiKey` | Auto-set by Create API key | User-scoped API key (`abc_...`) |
 | `apiKeyPrefix` | Auto-set by Create API key | Prefix of the last created API key |
+| `keyId` | Auto-set by Create API key | ID of the last created API key; used by Update/Revoke API Key requests |
+| `lastCreatedKeyId` | Auto-set by Create API key | Alias for `keyId` — both are set simultaneously |
 | `userId` | Auto-set by Sign Up / Get Session | Authenticated user ID |
 | `adminKey` | Manual | Admin API key for `X-Admin-Key` protected endpoints |
 | `requestId` | Manual / auto | Request ID for async queue operations |

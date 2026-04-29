@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-env
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-env --allow-run
 
 /**
  * @module sync-api-assets
@@ -510,7 +510,11 @@ async function stepSyncEndpoints(dryRun: boolean, skipUpload: boolean): Promise<
     if (!prodServer) {
         throw new Error('No production server found in cloudflare-schema.yaml — cannot derive API host.');
     }
-    const host = new URL(prodServer.url).hostname; // e.g. "api.bloqr.dev"
+    const parsedServerUrl = new URL(prodServer.url);
+    const host = parsedServerUrl.hostname; // e.g. "api.bloqr.dev"
+    // Preserve the server base path so uploaded operations match real traffic.
+    // e.g. https://api.bloqr.dev/api  →  basePath = "/api"
+    const basePath = parsedServerUrl.pathname.replace(/\/$/, '');
 
     // Build the desired set of operations from the spec.
     const desired: Array<{ input: ApiShieldOperationInput; normalizedPath: string; tags: string[] }> = [];
@@ -520,9 +524,10 @@ async function stepSyncEndpoints(dryRun: boolean, skipUpload: boolean): Promise<
             if (!operation) {
                 continue;
             }
+            const fullPath = `${basePath}${rawPath}`;
             desired.push({
-                input: { method: method as CfHttpMethod, host, endpoint: rawPath },
-                normalizedPath: normalizePathParams(rawPath),
+                input: { method: method as CfHttpMethod, host, endpoint: fullPath },
+                normalizedPath: normalizePathParams(fullPath),
                 tags: operation.tags ?? [],
             });
         }

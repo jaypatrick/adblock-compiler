@@ -53,6 +53,18 @@
       "description": "API key prefix captured from Create API Key response"
     },
     {
+      "key": "keyId",
+      "value": "",
+      "type": "string",
+      "description": "API key ID captured from Create API Key response; used by Update/Revoke API Key requests (auto-set)"
+    },
+    {
+      "key": "lastCreatedKeyId",
+      "value": "",
+      "type": "string",
+      "description": "Alias for keyId — the ID of the last created API key (auto-set by Create API Key)"
+    },
+    {
       "key": "postmanEmail",
       "value": "",
       "type": "string",

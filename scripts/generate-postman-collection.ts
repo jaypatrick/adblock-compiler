@@ -10,6 +10,22 @@
  * OpenAPI examples, resolves $ref schema references for body placeholders,
  * and adds basic pm.test assertions for each endpoint.
  *
+ * ## Better Auth augmentation
+ *
+ * Better Auth serves its own auth routes at `/auth/*` (sign-up, sign-in,
+ * get-session, sign-out) but does NOT expose them via the OpenAPI spec
+ * because they are handled by the Better Auth library at runtime, not by
+ * a hand-written Hono route with a `createRoute()` definition.
+ *
+ * This generator therefore **augments** the spec-derived collection with a
+ * hard-coded set of Better Auth requests prepended to the "Authentication"
+ * folder.  These requests are intentionally kept in sync with the Better Auth
+ * endpoint paths and request shapes documented in the Better Auth v1 API
+ * reference; they cannot be derived from `openapi.yaml` automatically.
+ *
+ * If Better Auth endpoint paths or shapes change, update the `betterAuthItems`
+ * array in the `generatePostmanCollection()` function and re-run this script.
+ *
  * Run: deno task postman:collection
  * Output: docs/postman/postman-collection.json
  *         docs/postman/postman-environment-local.json
@@ -706,6 +722,8 @@ async function generatePostmanCollection(): Promise<void> {
             { key: 'userApiKey', value: '', type: 'string', description: 'User API key with abc_ prefix for API key authentication' },
             { key: 'userId', value: '', type: 'string', description: 'User ID captured from Create User response' },
             { key: 'apiKeyPrefix', value: '', type: 'string', description: 'API key prefix captured from Create API Key response' },
+            { key: 'keyId', value: '', type: 'string', description: 'API key ID captured from Create API Key response; used by Update/Revoke API Key requests (auto-set)' },
+            { key: 'lastCreatedKeyId', value: '', type: 'string', description: 'Alias for keyId — the ID of the last created API key (auto-set by Create API Key)' },
             { key: 'postmanEmail', value: '', type: 'string', description: 'Email for the Postman test user (used by token auto-refresh)' },
             { key: 'postmanPassword', value: '', type: 'secret', description: 'Password for the Postman test user (used by token auto-refresh)' },
             { key: 'bearerTokenExpiry', value: '', type: 'string', description: 'Unix timestamp ms when bearerToken expires (auto-set by pre-request script)' },
