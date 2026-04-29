@@ -1,6 +1,6 @@
 import { assertEquals, assertExists, assertMatch } from '@std/assert';
 import { PrismaClientConfigSchema } from './prisma-config.ts';
-import { UUID_REGEX, _enforceUuidOnCreateData } from './prisma.ts';
+import { _enforceUuidOnCreateData, UUID_REGEX } from './prisma.ts';
 
 Deno.test('PrismaClientConfigSchema validates postgres:// shorthand (Hyperdrive)', () => {
     const result = PrismaClientConfigSchema.safeParse({
