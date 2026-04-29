@@ -196,11 +196,11 @@ export function createAuth(env: Env, baseURL?: string) {
             },
         },
         advanced: {
-            // Force UUIDs so Better Auth IDs satisfy PostgreSQL `uuid` column type.
-            // Better Auth generates opaque random strings by default (e.g.
-            // "9hrbjIfqhl2sTXOhzrWSNwL9i2kipz51") which PostgreSQL rejects with
-            // "invalid input syntax for type uuid".  crypto.randomUUID() is available
-            // natively in Cloudflare Workers — no import needed.
+            // Belt-and-suspenders fallback: Better Auth 1.5.x does not reliably call
+            // generateId before the Prisma adapter is invoked. The primary fix is the
+            // $extends query extension in worker/lib/prisma.ts, which intercepts every
+            // create operation and replaces non-UUID ids at the Prisma layer.
+            // This generateId covers code paths where Better Auth calls it directly.
             generateId: AUTH_ID_GENERATOR,
             // ⚠️ BREAKING: changing this prefix renames all Better Auth cookies and
             // forcibly logs out every existing session on the next request.

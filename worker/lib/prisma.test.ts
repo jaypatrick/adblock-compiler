@@ -1,5 +1,6 @@
-import { assertEquals } from '@std/assert';
+import { assertEquals, assertExists } from '@std/assert';
 import { PrismaClientConfigSchema } from './prisma-config.ts';
+import { UUID_REGEX } from './prisma.ts';
 
 Deno.test('PrismaClientConfigSchema validates postgres:// shorthand (Hyperdrive)', () => {
     const result = PrismaClientConfigSchema.safeParse({
@@ -46,4 +47,57 @@ Deno.test('PrismaClientConfigSchema validates URL with query params', () => {
         connectionString: 'postgresql://user:pass@host:5432/db?sslmode=require',
     });
     assertEquals(result.success, true);
+});
+
+// ============================================================================
+// UUID_REGEX — Better Auth non-UUID ID detection
+//
+// Better Auth 1.5.x does not reliably call advanced.generateId before passing
+// IDs to Prisma. All model id columns are @db.Uuid in PostgreSQL, so any
+// non-UUID string causes "invalid input syntax for type uuid".
+//
+// The createPrismaClient() $extends query extension uses UUID_REGEX to detect
+// non-UUID ids and replace them with crypto.randomUUID() before the query
+// reaches the database.
+//
+// These tests guard against regressions in UUID detection:
+//   - UUID_REGEX must be exported (import fails if removed)
+//   - UUID_REGEX must accept canonical UUID strings (crypto.randomUUID() output)
+//   - UUID_REGEX must reject Better Auth opaque IDs (no dashes, wrong length)
+//   - UUID_REGEX must reject empty / null-like strings
+// ============================================================================
+
+Deno.test('UUID_REGEX is exported from prisma module', () => {
+    assertExists(UUID_REGEX);
+    assertEquals(UUID_REGEX instanceof RegExp, true);
+});
+
+Deno.test('UUID_REGEX accepts a canonical UUID v4 (crypto.randomUUID() output)', () => {
+    const id = crypto.randomUUID();
+    assertEquals(UUID_REGEX.test(id), true, `crypto.randomUUID() returned "${id}" which UUID_REGEX rejected — valid UUIDs must not be replaced`);
+});
+
+Deno.test('UUID_REGEX accepts uppercase UUID', () => {
+    assertEquals(UUID_REGEX.test('550E8400-E29B-41D4-A716-446655440000'), true);
+});
+
+Deno.test('UUID_REGEX rejects Better Auth opaque ID (no dashes, 32 chars)', () => {
+    assertEquals(UUID_REGEX.test('NqEqNgrxWWaQnyBqb9SLtbGG0ODl2TK2'), false, 'Better Auth opaque IDs must be detected and replaced');
+});
+
+Deno.test('UUID_REGEX rejects Better Auth opaque ID (9hrbjIfqhl2sTXOhzrWSNwL9i2kipz51)', () => {
+    assertEquals(UUID_REGEX.test('9hrbjIfqhl2sTXOhzrWSNwL9i2kipz51'), false, 'Better Auth opaque IDs must be detected and replaced');
+});
+
+Deno.test('UUID_REGEX rejects empty string', () => {
+    assertEquals(UUID_REGEX.test(''), false);
+});
+
+Deno.test('UUID_REGEX rejects UUID with wrong segment lengths', () => {
+    // 8-4-3-4-12 (missing one char in 3rd segment)
+    assertEquals(UUID_REGEX.test('550e8400-e29b-41d-a716-446655440000'), false);
+});
+
+Deno.test('UUID_REGEX rejects UUID missing dashes', () => {
+    assertEquals(UUID_REGEX.test('550e8400e29b41d4a716446655440000'), false);
 });

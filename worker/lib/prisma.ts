@@ -18,14 +18,31 @@ import { PrismaClientConfigSchema } from './prisma-config.ts';
 export { PrismaClientConfigSchema } from './prisma-config.ts';
 
 /**
+ * UUID regex used to detect non-UUID IDs that PostgreSQL would reject.
+ *
+ * PostgreSQL's `uuid` type requires the canonical 8-4-4-4-12 hex format.
+ * Better Auth 1.5.x may generate opaque alphanumeric IDs (e.g.
+ * `NqEqNgrxWWaQnyBqb9SLtbGG0ODl2TK2`) that fail this check.
+ *
+ * Exported so unit tests can assert detection behaviour without a database connection.
+ */
+export const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
  * Creates a PrismaClient connected to Neon PostgreSQL via Hyperdrive.
  *
  * Hyperdrive IS the connection pool — it proxies connections locally,
  * so creating a new PrismaClient per request connects to a local proxy socket,
  * not directly to PostgreSQL. This makes per-request instantiation safe.
  *
+ * The returned client includes a query extension that intercepts every `create`
+ * operation and replaces any non-UUID `data.id` with `crypto.randomUUID()`.
+ * This is necessary because Better Auth 1.5.x does not reliably call
+ * `advanced.generateId` before passing IDs to the Prisma adapter, causing
+ * PostgreSQL to reject them with "invalid input syntax for type uuid".
+ *
  * @param hyperdriveConnectionString - The connection string from `env.HYPERDRIVE.connectionString`
- * @returns A configured PrismaClient instance
+ * @returns A configured PrismaClient instance with UUID enforcement extension
  * @throws {z.ZodError} If the connection string is invalid
  *
  * @example
@@ -34,11 +51,35 @@ export { PrismaClientConfigSchema } from './prisma-config.ts';
  * const user = await prisma.user.findUnique({ where: { id } });
  * ```
  */
-export function createPrismaClient(hyperdriveConnectionString: string): InstanceType<typeof PrismaClient> {
+export function createPrismaClient(hyperdriveConnectionString: string) {
     PrismaClientConfigSchema.parse({ connectionString: hyperdriveConnectionString });
 
     const adapter = new PrismaPg({ connectionString: hyperdriveConnectionString });
-    return new PrismaClient({ adapter }) as InstanceType<typeof PrismaClient>;
+    const prisma = new PrismaClient({ adapter });
+
+    // Better Auth 1.5.x does not reliably call advanced.generateId before
+    // passing IDs to Prisma. All model id columns are @db.Uuid in PostgreSQL,
+    // so any non-UUID string causes "invalid input syntax for type uuid".
+    // This extension intercepts every create operation and replaces non-UUID
+    // ids with crypto.randomUUID() before the query reaches the database.
+    return prisma.$extends({
+        query: {
+            $allModels: {
+                async create({ args, query }) {
+                    if (
+                        args.data &&
+                        typeof args.data === 'object' &&
+                        'id' in args.data &&
+                        typeof args.data.id === 'string' &&
+                        !UUID_REGEX.test(args.data.id as string)
+                    ) {
+                        (args.data as Record<string, unknown>).id = crypto.randomUUID();
+                    }
+                    return query(args);
+                },
+            },
+        },
+    });
 }
 
 /**
