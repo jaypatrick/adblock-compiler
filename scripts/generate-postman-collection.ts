@@ -347,6 +347,7 @@ function buildTestScript(operation: OAOperation): string[] {
         lines.push("if (body.key) pm.collectionVariables.set('userApiKey', body.key);");
         lines.push("if (body.keyPrefix) pm.collectionVariables.set('apiKeyPrefix', body.keyPrefix);");
         lines.push("if (body.id) pm.collectionVariables.set('lastCreatedKeyId', body.id);");
+        lines.push("if (body.id) pm.collectionVariables.set('keyId', body.id);");
         lines.push("pm.test('Key starts with abc_', () => pm.expect(body.key).to.match(/^abc_/));");
         lines.push("pm.test('Has id', () => pm.expect(body.id).to.be.a('string'));");
         return lines;
@@ -495,8 +496,7 @@ async function generatePostmanCollection(): Promise<void> {
         for (const method of HTTP_METHODS) {
             const operation = pathItem[method];
             if (!operation) continue;
-            const firstTag = operation.tags?.[0];
-            if (firstTag && SKIP_TAGS.includes(firstTag)) continue;
+            if (operation.tags?.some((tag) => SKIP_TAGS.includes(tag))) continue;
             const item = buildRequestItem(path, method, operation, spec);
             const tag = operation.tags?.[0];
             if (tag) {

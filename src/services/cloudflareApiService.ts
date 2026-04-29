@@ -182,6 +182,15 @@ const ApiShieldOperationsBulkCreateResponseSchema = z.object({
     errors: z.array(z.object({ code: z.number(), message: z.string() })),
 });
 
+/**
+ * Zod schema for the API-level envelope returned when attaching/detaching operations to a managed label.
+ * `PUT /zones/{zone_id}/api_gateway/labels/managed/{name}/resources/operation` returns 200 with this envelope.
+ */
+const ManagedLabelOperationsResponseSchema = z.object({
+    success: z.boolean(),
+    errors: z.array(z.object({ code: z.number(), message: z.string() })),
+});
+
 // ─── Return-type helpers ──────────────────────────────────────────────────────
 
 // D1 accepts string | number | boolean | null at runtime; SDK types `params` as Array<string>.
@@ -484,10 +493,16 @@ export class CloudflareApiService {
             `[CloudflareApiService] setManagedLabelOperations zoneId=${zoneId} label=${labelName} ops=${operationIds.length}`,
         );
 
-        await this.client.put<{ selector: { include: { operation_ids: string[] } } }, unknown>(
+        const raw = await this.client.put<{ selector: { include: { operation_ids: string[] } } }, unknown>(
             `/zones/${zoneId}/api_gateway/labels/managed/${encodeURIComponent(labelName)}/resources/operation`,
             { body: { selector: { include: { operation_ids: operationIds } } } },
         );
+
+        const parsed = ManagedLabelOperationsResponseSchema.parse(raw);
+        if (!parsed.success) {
+            const errorDetails = parsed.errors.length > 0 ? JSON.stringify(parsed.errors) : 'Unknown Cloudflare API error';
+            throw new Error(`Cloudflare API Shield set managed label operations failed: ${errorDetails}`);
+        }
     }
 
     // ── Page Shield ───────────────────────────────────────────────────────────

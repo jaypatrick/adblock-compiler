@@ -1344,6 +1344,7 @@
                   "if (body.key) pm.collectionVariables.set('userApiKey', body.key);",
                   "if (body.keyPrefix) pm.collectionVariables.set('apiKeyPrefix', body.keyPrefix);",
                   "if (body.id) pm.collectionVariables.set('lastCreatedKeyId', body.id);",
+                  "if (body.id) pm.collectionVariables.set('keyId', body.id);",
                   "pm.test('Key starts with abc_', () => pm.expect(body.key).to.match(/^abc_/));",
                   "pm.test('Has id', () => pm.expect(body.id).to.be.a('string'));"
                 ]
@@ -3205,6 +3206,7 @@
                   "if (body.key) pm.collectionVariables.set('userApiKey', body.key);",
                   "if (body.keyPrefix) pm.collectionVariables.set('apiKeyPrefix', body.keyPrefix);",
                   "if (body.id) pm.collectionVariables.set('lastCreatedKeyId', body.id);",
+                  "if (body.id) pm.collectionVariables.set('keyId', body.id);",
                   "pm.test('Key starts with abc_', () => pm.expect(body.key).to.match(/^abc_/));",
                   "pm.test('Has id', () => pm.expect(body.id).to.be.a('string'));"
                 ]

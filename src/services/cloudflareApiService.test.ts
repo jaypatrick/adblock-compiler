@@ -933,7 +933,7 @@ Deno.test('CloudflareApiService - setManagedLabelOperations', async (t) => {
             put: (path: string, opts: { body: unknown }) => {
                 capturedPath = path;
                 capturedBody = opts.body;
-                return Promise.resolve({});
+                return Promise.resolve({ success: true, errors: [] });
             },
         };
 
@@ -954,14 +954,15 @@ Deno.test('CloudflareApiService - setManagedLabelOperations', async (t) => {
             ...createMockCloudflareClient(),
             put: (path: string, _opts: unknown) => {
                 capturedPath = path;
-                return Promise.resolve({});
+                return Promise.resolve({ success: true, errors: [] });
             },
         };
 
+        // Label with characters that require percent-encoding: space → %20, / → %2F
         const service = new CloudflareApiService(mock as unknown as Cloudflare);
-        await service.setManagedLabelOperations('zone-abc', 'cf-log-in', []);
+        await service.setManagedLabelOperations('zone-abc', 'cf sign/up', []);
 
-        assertEquals(capturedPath.includes('cf-log-in'), true);
+        assertEquals(capturedPath.includes('cf%20sign%2Fup'), true);
     });
 
     await t.step('should accept empty operation ids (detach all)', async () => {
@@ -970,7 +971,7 @@ Deno.test('CloudflareApiService - setManagedLabelOperations', async (t) => {
             ...createMockCloudflareClient(),
             put: (_path: string, opts: { body: unknown }) => {
                 capturedBody = opts.body;
-                return Promise.resolve({});
+                return Promise.resolve({ success: true, errors: [] });
             },
         };
 
@@ -980,6 +981,20 @@ Deno.test('CloudflareApiService - setManagedLabelOperations', async (t) => {
         assertEquals(
             (capturedBody as { selector: { include: { operation_ids: string[] } } }).selector.include.operation_ids,
             [],
+        );
+    });
+
+    await t.step('should throw when API returns success: false', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            put: (_path: string, _opts: unknown) => Promise.resolve({ success: false, errors: [{ code: 7003, message: 'Label not found' }] }),
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await assertRejects(
+            () => service.setManagedLabelOperations('zone-abc', 'cf-log-in', ['op-1']),
+            Error,
+            'set managed label operations failed',
         );
     });
 
