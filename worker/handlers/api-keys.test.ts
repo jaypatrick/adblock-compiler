@@ -261,7 +261,7 @@ Deno.test('handleCreateApiKey - rejects expiresInDays > 365', async () => {
     assertEquals(res.status, 400);
 });
 
-Deno.test('handleCreateApiKey - rejects invalid JSON', async () => {
+Deno.test('handleCreateApiKey - rejects non-object body', async () => {
     const createPool = createInMemoryPool();
 
     const res = await handleCreateApiKey('not json', makeAuthContext(), CONNECTION_STRING, createPool);
@@ -450,7 +450,7 @@ Deno.test('handleUpdateApiKey - returns 404 for non-existent key', async () => {
     assertEquals(res.status, 404);
 });
 
-Deno.test('handleUpdateApiKey - rejects invalid JSON', async () => {
+Deno.test('handleUpdateApiKey - rejects non-object body', async () => {
     const createPool = createInMemoryPool();
 
     const res = await handleUpdateApiKey('123', 'not json', makeAuthContext(), CONNECTION_STRING, createPool);
