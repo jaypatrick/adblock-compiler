@@ -30,7 +30,7 @@ import { existsSync } from '@std/fs';
 import { parse, stringify } from '@std/yaml';
 import { z } from 'zod';
 import { createCloudflareApiService } from '../src/services/cloudflareApiService.ts';
-import type { ApiShieldSchema } from '../src/services/cloudflareApiService.ts';
+import type { ApiShieldOperation, ApiShieldOperationInput, ApiShieldSchema } from '../src/services/cloudflareApiService.ts';
 import { findInvalid2xx, HTTP_METHODS, inject2xxStubs } from './schema-2xx-helpers.ts';
 
 // ---------------------------------------------------------------------------
@@ -774,18 +774,222 @@ async function stepGeneratePostmanCollection(dryRun: boolean): Promise<void> {
 }
 
 // ---------------------------------------------------------------------------
+// Step 5: Sync API Shield Endpoint Management
+// ---------------------------------------------------------------------------
+
+/** HTTP methods accepted by Cloudflare Endpoint Management. */
+const CF_HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE'] as const;
+type CfHttpMethod = (typeof CF_HTTP_METHODS)[number];
+
+/**
+ * Normalises an OpenAPI path parameter template so it can be compared against
+ * Cloudflare's normalised form.  Cloudflare replaces `{anyName}` left-to-right
+ * with `{var1}`, `{var2}`, … during insertion.  Applying the same transform
+ * locally lets us check whether an operation is already saved before adding it.
+ *
+ * @param path - OpenAPI path, e.g. `/keys/{keyId}/sub/{subId}`
+ * @returns Normalised path, e.g. `/keys/{var1}/sub/{var2}`
+ */
+function normalisePathParams(path: string): string {
+    let idx = 1;
+    return path.replace(/\{[^}]+\}/g, () => `{var${idx++}}`);
+}
+
+/**
+ * Derives managed label names from an endpoint's path and OpenAPI tags.
+ *
+ * Returns zero or more labels from Cloudflare's `cf-*` catalogue that are
+ * appropriate for the endpoint.  See:
+ * https://developers.cloudflare.com/api-shield/management-and-monitoring/endpoint-labels/
+ */
+function managedLabelsForOperation(path: string, tags: string[]): string[] {
+    const labels: string[] = [];
+    const p = path.toLowerCase();
+
+    if (p.includes('/sign-in') || p.includes('/login') || p.includes('/sign-out') || p.includes('/get-session')) {
+        labels.push('cf-log-in');
+    }
+    if (p.includes('/sign-up') || p.includes('/signup') || p.includes('/register')) {
+        labels.push('cf-sign-up');
+    }
+    if (p.includes('/password') || p.includes('/reset-password') || p.includes('/change-password')) {
+        labels.push('cf-password-reset');
+    }
+    if (p.includes('/account') || p.includes('/profile') || p.includes('/account-update')) {
+        labels.push('cf-account-update');
+    }
+    if (tags.some((t) => t.toLowerCase() === 'compilation') || p.includes('/compile')) {
+        labels.push('cf-content');
+    }
+
+    return [...new Set(labels)];
+}
+
+/**
+ * Syncs all OpenAPI operations to Cloudflare API Shield Endpoint Management
+ * and attaches managed labels to the relevant operations.
+ *
+ * Behaviour:
+ * - Reads the already-generated `cloudflare-schema.yaml` for the canonical source.
+ * - Extracts every `{method, path}` combination and the production host from the
+ *   first non-localhost server.
+ * - Lists saved operations in API Shield; skips operations that are already present
+ *   (after normalising path parameters to Cloudflare's `{varN}` form).
+ * - Uploads new operations in a single bulk request.
+ * - Collects all operation IDs (new + previously existing) that qualify for each
+ *   managed label and calls `setManagedLabelOperations` to attach them.
+ *
+ * @param dryRun - When `true` logs intended actions but makes no API calls.
+ * @param skipUpload - When `true` skips the step entirely (mirrors `--skip-upload`).
+ */
+async function stepSyncEndpoints(dryRun: boolean, skipUpload: boolean): Promise<void> {
+    console.log('\n─── Step 5: Sync API Shield Endpoint Management ────────────\n');
+
+    if (dryRun) {
+        console.log('🔍 Dry-run: would sync operations and labels to Cloudflare API Shield Endpoint Management.');
+        return;
+    }
+
+    if (skipUpload) {
+        console.log('⏭️  Endpoint sync skipped (--skip-upload / --skip-endpoints).');
+        return;
+    }
+
+    // Re-use the same env validation as the schema-upload step.
+    const envResult = EnvSchema.safeParse({
+        CLOUDFLARE_ZONE_ID: Deno.env.get('CLOUDFLARE_ZONE_ID'),
+        CLOUDFLARE_API_SHIELD_TOKEN: Deno.env.get('CLOUDFLARE_API_SHIELD_TOKEN'),
+    });
+    if (!envResult.success) {
+        const messages = envResult.error.issues.map((i) => i.message).join('\n  ');
+        throw new Error(`Missing env vars for endpoint sync step:\n  ${messages}`);
+    }
+    const { CLOUDFLARE_ZONE_ID: zoneId, CLOUDFLARE_API_SHIELD_TOKEN: apiToken } = envResult.data;
+
+    // Read the generated Cloudflare schema (guaranteed to exist after step 1).
+    let schemaContent: string;
+    try {
+        schemaContent = await Deno.readTextFile(CLOUDFLARE_SCHEMA_PATH);
+    } catch (err) {
+        throw new Error(`Failed to read ${CLOUDFLARE_SCHEMA_PATH}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    const cfSpec = parse(schemaContent) as {
+        servers?: Array<{ url: string }>;
+        paths: Record<string, Record<string, { tags?: string[] }>>;
+    };
+
+    // Derive the production host from the first non-localhost server.
+    const prodServer = (cfSpec.servers ?? []).find((s) => !s.url.startsWith('http://localhost'));
+    if (!prodServer) {
+        throw new Error('No production server found in cloudflare-schema.yaml — cannot derive API host.');
+    }
+    const host = new URL(prodServer.url).hostname; // e.g. "api.bloqr.dev"
+
+    // Build the desired set of operations from the spec.
+    const desired: Array<{ input: ApiShieldOperationInput; normalisedPath: string; tags: string[] }> = [];
+    for (const [rawPath, pathItem] of Object.entries(cfSpec.paths ?? {})) {
+        for (const method of CF_HTTP_METHODS) {
+            const operation = pathItem[method.toLowerCase()];
+            if (!operation) {
+                continue;
+            }
+            desired.push({
+                input: { method: method as CfHttpMethod, host, endpoint: rawPath },
+                normalisedPath: normalisePathParams(rawPath),
+                tags: operation.tags ?? [],
+            });
+        }
+    }
+    console.log(`📋 Desired operations from schema: ${desired.length}`);
+
+    const service = createCloudflareApiService({ apiToken });
+
+    // Fetch already-saved operations to avoid duplicates.
+    let existing: ApiShieldOperation[];
+    try {
+        existing = await service.listApiShieldOperations(zoneId);
+        console.log(`📡 Found ${existing.length} existing saved operation(s)`);
+    } catch (err) {
+        throw new Error(`Failed to list existing operations: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    // Build a lookup of (method, normalisedPath) → operation_id for existing operations.
+    const existingKey = (method: string, path: string) => `${method.toUpperCase()}::${normalisePathParams(path)}`;
+    const existingMap = new Map<string, string>(existing.map((op) => [existingKey(op.method, op.endpoint), op.operation_id]));
+
+    // Determine which operations need to be added.
+    const toAdd = desired.filter((d) => !existingMap.has(existingKey(d.input.method, d.normalisedPath)));
+    console.log(`➕ New operations to add: ${toAdd.length}`);
+
+    let created: ApiShieldOperation[] = [];
+    if (toAdd.length > 0) {
+        // Cloudflare recommends batches of ≤500; our spec is well under that limit.
+        try {
+            created = await service.addApiShieldOperations(zoneId, toAdd.map((d) => d.input));
+            console.log(`✅ Added ${created.length} operation(s) to API Shield Endpoint Management`);
+        } catch (err) {
+            throw new Error(`Failed to add operations: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    } else {
+        console.log('✅ All operations already saved — nothing to add');
+    }
+
+    // Merge created operations into the lookup so label assignment works for both new and existing.
+    for (const op of created) {
+        existingMap.set(existingKey(op.method, op.endpoint), op.operation_id);
+    }
+
+    // Build label → operation_id mapping across all desired operations.
+    const labelToIds = new Map<string, string[]>();
+    for (const d of desired) {
+        const opId = existingMap.get(existingKey(d.input.method, d.normalisedPath));
+        if (!opId) {
+            // Not in the map means the API returned it under a normalised path we didn't match —
+            // log a warning but continue so the rest of the sync succeeds.
+            console.warn(`⚠️  Could not resolve operation_id for ${d.input.method} ${d.input.endpoint} — skipping label assignment`);
+            continue;
+        }
+        for (const label of managedLabelsForOperation(d.input.endpoint, d.tags)) {
+            if (!labelToIds.has(label)) {
+                labelToIds.set(label, []);
+            }
+            labelToIds.get(label)!.push(opId);
+        }
+    }
+
+    if (labelToIds.size === 0) {
+        console.log('ℹ️  No managed labels to assign for this spec');
+        return;
+    }
+
+    // Assign managed labels — each call fully replaces the label's operation set.
+    for (const [label, ids] of labelToIds) {
+        try {
+            await service.setManagedLabelOperations(zoneId, label, ids);
+            console.log(`🏷️  Set managed label "${label}" on ${ids.length} operation(s)`);
+        } catch (err) {
+            // Label assignment is best-effort — warn but don't fail the pipeline.
+            console.warn(
+                `⚠️  Failed to set managed label "${label}": ${err instanceof Error ? err.message : String(err)}`,
+            );
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Main
 // ---------------------------------------------------------------------------
 
 async function main(): Promise<void> {
     const args = parseArgs(Deno.args, {
-        boolean: ['dry-run', 'skip-upload', 'skip-if-unchanged'],
-        default: { 'dry-run': false, 'skip-upload': false, 'skip-if-unchanged': true },
+        boolean: ['dry-run', 'skip-upload', 'skip-if-unchanged', 'skip-endpoints'],
+        default: { 'dry-run': false, 'skip-upload': false, 'skip-if-unchanged': true, 'skip-endpoints': false },
     });
 
     const dryRun = args['dry-run'] as boolean;
     const skipUpload = args['skip-upload'] as boolean;
     const skipIfUnchanged = args['skip-if-unchanged'] as boolean;
+    const skipEndpoints = args['skip-endpoints'] as boolean;
 
     console.log('🚀 sync-api-assets — full API asset sync pipeline');
     if (dryRun) {
@@ -811,6 +1015,9 @@ async function main(): Promise<void> {
 
     // Step 4: Regenerate Postman collection
     await stepGeneratePostmanCollection(dryRun);
+
+    // Step 5: Sync API Shield Endpoint Management + labels
+    await stepSyncEndpoints(dryRun, skipUpload || skipEndpoints);
 
     console.log('\n🎉 sync-api-assets complete!\n');
 }

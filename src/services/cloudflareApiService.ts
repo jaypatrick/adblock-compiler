@@ -109,6 +109,79 @@ export const EnabledApiShieldSchemaSchema = ApiShieldSchemaSchema.extend({
 /** Inferred type from {@link EnabledApiShieldSchemaSchema}. */
 export type EnabledApiShieldSchema = z.infer<typeof EnabledApiShieldSchemaSchema>;
 
+// ─── API Shield Endpoint Management Zod schemas ───────────────────────────────
+
+/** HTTP methods supported by API Shield Endpoint Management. */
+const API_SHIELD_HTTP_METHOD = z.enum(['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE']);
+
+/**
+ * Zod schema for an operation saved in API Shield Endpoint Management.
+ *
+ * Mirrors the `OperationID` + `BasicOperation` shape returned by
+ * `GET /zones/{zone_id}/api_gateway/operations`.
+ */
+export const ApiShieldOperationSchema = z.object({
+    /** Stable UUID for the operation. */
+    operation_id: z.string().uuid(),
+    /** HTTP method. */
+    method: API_SHIELD_HTTP_METHOD,
+    /** RFC 3986 host (e.g. `api.bloqr.dev`). */
+    host: z.string(),
+    /** URI-template endpoint path (e.g. `/api/auth/sign-in/email` or `/keys/{var1}`). */
+    endpoint: z.string(),
+    /** ISO 8601 timestamp of the last update. */
+    last_updated: z.string().datetime(),
+});
+/** Inferred type from {@link ApiShieldOperationSchema}. */
+export type ApiShieldOperation = z.infer<typeof ApiShieldOperationSchema>;
+
+/**
+ * Zod schema for the API-level envelope returned by the operations list endpoint.
+ * Only the fields consumed by the service are declared; extra fields are stripped by Zod.
+ */
+const ApiShieldOperationsListResponseSchema = z.object({
+    result: z.array(ApiShieldOperationSchema),
+    success: z.boolean(),
+    errors: z.array(z.object({ code: z.number(), message: z.string() })),
+    result_info: z
+        .object({
+            count: z.number().optional(),
+            total_count: z.number().optional(),
+            page: z.number().optional(),
+            per_page: z.number().optional(),
+            total_pages: z.number().optional(),
+        })
+        .optional(),
+});
+
+/**
+ * Zod schema for the input payload when adding operations in bulk.
+ * Matches the array item schema of `POST /zones/{zone_id}/api_gateway/operations`.
+ */
+export const ApiShieldOperationInputSchema = z.object({
+    /** HTTP method for the operation. */
+    method: API_SHIELD_HTTP_METHOD,
+    /** RFC 3986 host of the API endpoint. */
+    host: z.string(),
+    /**
+     * URI-template path. Path parameters may use any name inside `{…}` — Cloudflare
+     * normalises them to `{var1}`, `{var2}` … left-to-right during insertion.
+     */
+    endpoint: z.string(),
+});
+/** Inferred type from {@link ApiShieldOperationInputSchema}. */
+export type ApiShieldOperationInput = z.infer<typeof ApiShieldOperationInputSchema>;
+
+/**
+ * Zod schema for the API-level envelope returned when adding operations in bulk.
+ * `POST /zones/{zone_id}/api_gateway/operations` returns 201 with the created operations.
+ */
+const ApiShieldOperationsBulkCreateResponseSchema = z.object({
+    result: z.array(ApiShieldOperationSchema).nullable(),
+    success: z.boolean(),
+    errors: z.array(z.object({ code: z.number(), message: z.string() })),
+});
+
 // ─── Return-type helpers ──────────────────────────────────────────────────────
 
 // D1 accepts string | number | boolean | null at runtime; SDK types `params` as Array<string>.
@@ -304,6 +377,117 @@ export class CloudflareApiService {
         this.logger.info(`[CloudflareApiService] deleteApiShieldSchema zoneId=${zoneId} schemaId=${schemaId}`);
 
         await this.client.apiGateway.userSchemas.delete(schemaId, { zone_id: zoneId });
+    }
+
+    // ── API Shield Endpoint Management ───────────────────────────────────────
+
+    /**
+     * Lists all operations saved in API Shield Endpoint Management for the given zone.
+     *
+     * Iterates all pages (50 results max per page) and returns a flat array.
+     * Responses are Zod-validated at the trust boundary via
+     * {@link ApiShieldOperationsListResponseSchema}.
+     *
+     * @param zoneId - Cloudflare zone ID (32-character hex string).
+     * @returns Array of {@link ApiShieldOperation} objects.
+     * @throws {ZodError} if any page response does not match the expected envelope shape.
+     */
+    async listApiShieldOperations(zoneId: string): Promise<ApiShieldOperation[]> {
+        this.logger.info(`[CloudflareApiService] listApiShieldOperations zoneId=${zoneId}`);
+
+        const allOperations: ApiShieldOperation[] = [];
+        let page = 1;
+        const perPage = 50; // API maximum
+
+        while (true) {
+            const raw = await this.client.get<
+                { page: number; per_page: number },
+                unknown
+            >(`/zones/${zoneId}/api_gateway/operations`, { query: { page, per_page: perPage } });
+
+            const parsed = ApiShieldOperationsListResponseSchema.parse(raw);
+            if (!parsed.success) {
+                const errorDetails = parsed.errors.length > 0 ? JSON.stringify(parsed.errors) : 'Unknown Cloudflare API error';
+                throw new Error(`Cloudflare API Shield list operations failed: ${errorDetails}`);
+            }
+
+            allOperations.push(...parsed.result);
+
+            const totalPages = parsed.result_info?.total_pages ?? 1;
+            // Stop when we've consumed all pages, or when the API returns an empty page
+            // (guards against an infinite loop if the API returns inconsistent pagination metadata).
+            if (page >= totalPages || parsed.result.length === 0) {
+                break;
+            }
+            page++;
+        }
+
+        return allOperations;
+    }
+
+    /**
+     * Adds a batch of operations to API Shield Endpoint Management.
+     *
+     * Cloudflare de-duplicates operations on its side — submitting an operation
+     * that already exists is a no-op (the existing record is returned). Path
+     * parameters in `{anyName}` format are normalised to `{var1}`, `{var2}` …
+     * left-to-right during insertion by the API.
+     *
+     * The request body is capped at 500 operations per call; callers should
+     * chunk larger sets before invoking this method.
+     *
+     * @param zoneId - Cloudflare zone ID (32-character hex string).
+     * @param operations - Array of {@link ApiShieldOperationInput} objects to add.
+     * @returns Array of created (or already-existing) {@link ApiShieldOperation} objects.
+     * @throws {ZodError} if the API response does not match the expected shape.
+     */
+    async addApiShieldOperations(zoneId: string, operations: ApiShieldOperationInput[]): Promise<ApiShieldOperation[]> {
+        this.logger.info(`[CloudflareApiService] addApiShieldOperations zoneId=${zoneId} count=${operations.length}`);
+
+        if (operations.length === 0) {
+            return [];
+        }
+
+        const raw = await this.client.post<ApiShieldOperationInput[], unknown>(
+            `/zones/${zoneId}/api_gateway/operations`,
+            { body: operations },
+        );
+
+        const parsed = ApiShieldOperationsBulkCreateResponseSchema.parse(raw);
+        if (!parsed.success) {
+            const errorDetails = parsed.errors.length > 0 ? JSON.stringify(parsed.errors) : 'Unknown Cloudflare API error';
+            throw new Error(`Cloudflare API Shield add operations failed: ${errorDetails}`);
+        }
+
+        return parsed.result ?? [];
+    }
+
+    /**
+     * Replaces the set of operations attached to a Cloudflare-managed label.
+     *
+     * Uses `PUT /zones/{zone_id}/api_gateway/labels/managed/{name}/resources/operation`
+     * which fully replaces the operations list for the given managed label (not additive).
+     * Pass an empty `operationIds` array to detach all operations from the label.
+     *
+     * Managed label names follow the `cf-*` convention (e.g. `cf-log-in`, `cf-sign-up`).
+     * See {@link https://developers.cloudflare.com/api-shield/management-and-monitoring/endpoint-labels/}
+     * for the full catalogue.
+     *
+     * @param zoneId - Cloudflare zone ID (32-character hex string).
+     * @param labelName - Managed label name (e.g. `'cf-log-in'`).
+     * @param operationIds - UUIDs of the operations to attach. Replaces the existing list.
+     * @returns Resolves when the label assignment is confirmed by the API.
+     * @throws {Error} if the API call fails.
+     */
+    async setManagedLabelOperations(zoneId: string, labelName: string, operationIds: string[]): Promise<void> {
+        this.logger.info(
+            `[CloudflareApiService] setManagedLabelOperations zoneId=${zoneId} label=${labelName} ops=${operationIds.length}`,
+        );
+
+        await this.client.put<{ selector: { include: { operation_ids: string[] } } }, unknown>(
+            `/zones/${zoneId}/api_gateway/labels/managed/${encodeURIComponent(labelName)}/resources/operation`,
+            { body: { selector: { include: { operation_ids: operationIds } } } },
+        );
     }
 
     // ── Page Shield ───────────────────────────────────────────────────────────

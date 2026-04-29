@@ -7,7 +7,7 @@ import Cloudflare from 'cloudflare';
 import type { IBasicLogger } from '../types/index.ts';
 import { CloudflareApiService, createCloudflareApiService } from './cloudflareApiService.ts';
 import type { D1Param } from './cloudflareApiService.ts';
-import type { ApiShieldSchema, ApiShieldUploadResult, EnabledApiShieldSchema } from './cloudflareApiService.ts';
+import type { ApiShieldOperation, ApiShieldSchema, ApiShieldUploadResult, EnabledApiShieldSchema } from './cloudflareApiService.ts';
 
 // ─── Mock helpers ─────────────────────────────────────────────────────────────
 
@@ -102,7 +102,15 @@ function createMockCloudflareClient() {
                 delete: (_schemaId: string, _params: unknown) => Promise.resolve(undefined),
             },
         },
+        get: (_path: string, _opts: unknown) =>
+            Promise.resolve({
+                result: [],
+                result_info: { page: 1, per_page: 50, total_pages: 1, total_count: 0 },
+                success: true,
+                errors: [],
+            }),
         post: (_path: string, _opts: unknown) => Promise.resolve({ data: [{ total_requests: 100 }] }),
+        put: (_path: string, _opts: unknown) => Promise.resolve({}),
     };
 }
 
@@ -748,5 +756,240 @@ Deno.test('CloudflareApiService - deleteApiShieldSchema', async (t) => {
 
         const service = new CloudflareApiService(mock as unknown as Cloudflare);
         await assertRejects(() => service.deleteApiShieldSchema('zone-1', 'sid-1'), Error, 'Delete failed');
+    });
+});
+
+// ─── listApiShieldOperations ──────────────────────────────────────────────────
+
+Deno.test('CloudflareApiService - listApiShieldOperations', async (t) => {
+    const mockOperation: ApiShieldOperation = {
+        operation_id: 'f174e90a-fafe-4643-bbbc-4a0ed4fc8415',
+        method: 'GET',
+        host: 'api.bloqr.dev',
+        endpoint: '/compile',
+        last_updated: '2024-01-01T00:00:00Z',
+    };
+
+    await t.step('should return empty array when there are no operations', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            get: (_path: string, _opts: unknown) => Promise.resolve({ result: [], result_info: { total_pages: 1 }, success: true, errors: [] }),
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        const result = await service.listApiShieldOperations('zone-abc');
+
+        assertEquals(result, []);
+    });
+
+    await t.step('should return operations from a single-page response', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            get: (_path: string, _opts: unknown) => Promise.resolve({ result: [mockOperation], result_info: { total_pages: 1 }, success: true, errors: [] }),
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        const result = await service.listApiShieldOperations('zone-abc');
+
+        assertEquals(result.length, 1);
+        assertEquals(result[0].operation_id, mockOperation.operation_id);
+        assertEquals(result[0].method, 'GET');
+        assertEquals(result[0].host, 'api.bloqr.dev');
+    });
+
+    await t.step('should paginate across multiple pages', async () => {
+        const op1: ApiShieldOperation = { ...mockOperation, operation_id: 'f174e90a-fafe-4643-bbbc-4a0ed4fc0001' };
+        const op2: ApiShieldOperation = { ...mockOperation, operation_id: 'f174e90a-fafe-4643-bbbc-4a0ed4fc0002' };
+        let callCount = 0;
+
+        const mock = {
+            ...createMockCloudflareClient(),
+            get: (_path: string, opts: { query?: { page?: number } }) => {
+                callCount++;
+                const page = opts?.query?.page ?? 1;
+                if (page === 1) {
+                    return Promise.resolve({ result: [op1], result_info: { total_pages: 2, per_page: 1 }, success: true, errors: [] });
+                }
+                return Promise.resolve({ result: [op2], result_info: { total_pages: 2, per_page: 1 }, success: true, errors: [] });
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        const result = await service.listApiShieldOperations('zone-abc');
+
+        assertEquals(callCount, 2);
+        assertEquals(result.length, 2);
+        assertEquals(result[0].operation_id, op1.operation_id);
+        assertEquals(result[1].operation_id, op2.operation_id);
+    });
+
+    await t.step('should throw when API returns success: false', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            get: (_path: string, _opts: unknown) =>
+                Promise.resolve({
+                    result: [],
+                    success: false,
+                    errors: [{ code: 7003, message: 'No route for the URI' }],
+                }),
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await assertRejects(() => service.listApiShieldOperations('zone-abc'), Error, 'list operations failed');
+    });
+
+    await t.step('should propagate SDK errors', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            get: (_path: string, _opts: unknown) => Promise.reject(new Error('Network error')),
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await assertRejects(() => service.listApiShieldOperations('zone-abc'), Error, 'Network error');
+    });
+});
+
+// ─── addApiShieldOperations ───────────────────────────────────────────────────
+
+Deno.test('CloudflareApiService - addApiShieldOperations', async (t) => {
+    const createdOperation: ApiShieldOperation = {
+        operation_id: 'f174e90a-fafe-4643-bbbc-4a0ed4fc8415',
+        method: 'POST',
+        host: 'api.bloqr.dev',
+        endpoint: '/compile',
+        last_updated: '2024-01-01T00:00:00Z',
+    };
+
+    await t.step('should return empty array when no operations are provided', async () => {
+        const service = new CloudflareApiService(createMockCloudflareClient() as unknown as Cloudflare);
+        const result = await service.addApiShieldOperations('zone-abc', []);
+        assertEquals(result, []);
+    });
+
+    await t.step('should post operations and return created records', async () => {
+        let capturedPath = '';
+        let capturedBody: unknown;
+
+        const mock = {
+            ...createMockCloudflareClient(),
+            post: (path: string, opts: { body: unknown }) => {
+                capturedPath = path;
+                capturedBody = opts.body;
+                return Promise.resolve({ result: [createdOperation], success: true, errors: [] });
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        const result = await service.addApiShieldOperations('zone-xyz', [
+            { method: 'POST', host: 'api.bloqr.dev', endpoint: '/compile' },
+        ]);
+
+        assertEquals(capturedPath.includes('zone-xyz'), true);
+        assertEquals(capturedPath.includes('api_gateway/operations'), true);
+        assertEquals(Array.isArray(capturedBody), true);
+        assertEquals((capturedBody as unknown[]).length, 1);
+        assertEquals(result.length, 1);
+        assertEquals(result[0].operation_id, createdOperation.operation_id);
+    });
+
+    await t.step('should throw when API returns success: false', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            post: (_path: string, _opts: unknown) => Promise.resolve({ result: null, success: false, errors: [{ code: 7000, message: 'Invalid operation' }] }),
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await assertRejects(
+            () => service.addApiShieldOperations('zone-abc', [{ method: 'GET', host: 'api.bloqr.dev', endpoint: '/foo' }]),
+            Error,
+            'add operations failed',
+        );
+    });
+
+    await t.step('should propagate SDK errors', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            post: (_path: string, _opts: unknown) => Promise.reject(new Error('Upstream error')),
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await assertRejects(
+            () => service.addApiShieldOperations('zone-abc', [{ method: 'GET', host: 'api.bloqr.dev', endpoint: '/foo' }]),
+            Error,
+            'Upstream error',
+        );
+    });
+});
+
+// ─── setManagedLabelOperations ────────────────────────────────────────────────
+
+Deno.test('CloudflareApiService - setManagedLabelOperations', async (t) => {
+    await t.step('should PUT to the correct managed label endpoint', async () => {
+        let capturedPath = '';
+        let capturedBody: unknown;
+
+        const mock = {
+            ...createMockCloudflareClient(),
+            put: (path: string, opts: { body: unknown }) => {
+                capturedPath = path;
+                capturedBody = opts.body;
+                return Promise.resolve({});
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await service.setManagedLabelOperations('zone-abc', 'cf-log-in', ['op-id-1', 'op-id-2']);
+
+        assertEquals(capturedPath.includes('zone-abc'), true);
+        assertEquals(capturedPath.includes('labels/managed/cf-log-in/resources/operation'), true);
+        assertEquals(
+            (capturedBody as { selector: { include: { operation_ids: string[] } } }).selector.include.operation_ids,
+            ['op-id-1', 'op-id-2'],
+        );
+    });
+
+    await t.step('should URL-encode the label name', async () => {
+        let capturedPath = '';
+        const mock = {
+            ...createMockCloudflareClient(),
+            put: (path: string, _opts: unknown) => {
+                capturedPath = path;
+                return Promise.resolve({});
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await service.setManagedLabelOperations('zone-abc', 'cf-log-in', []);
+
+        assertEquals(capturedPath.includes('cf-log-in'), true);
+    });
+
+    await t.step('should accept empty operation ids (detach all)', async () => {
+        let capturedBody: unknown;
+        const mock = {
+            ...createMockCloudflareClient(),
+            put: (_path: string, opts: { body: unknown }) => {
+                capturedBody = opts.body;
+                return Promise.resolve({});
+            },
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await service.setManagedLabelOperations('zone-abc', 'cf-log-in', []);
+
+        assertEquals(
+            (capturedBody as { selector: { include: { operation_ids: string[] } } }).selector.include.operation_ids,
+            [],
+        );
+    });
+
+    await t.step('should propagate SDK errors', async () => {
+        const mock = {
+            ...createMockCloudflareClient(),
+            put: (_path: string, _opts: unknown) => Promise.reject(new Error('Label error')),
+        };
+
+        const service = new CloudflareApiService(mock as unknown as Cloudflare);
+        await assertRejects(() => service.setManagedLabelOperations('zone-abc', 'cf-log-in', ['op-1']), Error, 'Label error');
     });
 });
