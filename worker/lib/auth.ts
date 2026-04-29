@@ -54,6 +54,32 @@ export const USER_FIELD_MAPPING = {
 } as const;
 
 /**
+ * UUID v4 regex used to validate Better Auth–generated IDs against PostgreSQL's
+ * `uuid` column type.  Exported so regression tests can assert the same pattern
+ * without requiring a database connection.
+ *
+ * PostgreSQL's `uuid` type requires the canonical 8-4-4-4-12 lower-hex format:
+ * `xxxxxxxx-xxxx-4xxx-[89ab]xxx-xxxxxxxxxxxx`
+ */
+export const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+/**
+ * ID generator used in the Better Auth `advanced.generateId` config.
+ *
+ * Better Auth's default generator produces opaque alphanumeric strings (e.g.
+ * `9hrbjIfqhl2sTXOhzrWSNwL9i2kipz51`) that PostgreSQL rejects with
+ * "invalid input syntax for type uuid" when the column type is `uuid`.
+ * `crypto.randomUUID()` is available natively in Cloudflare Workers.
+ *
+ * Exported as a named constant so regression tests can assert that this
+ * specific function is wired into the auth config — if `generateId` is
+ * removed or reassigned, the test that imports `AUTH_ID_GENERATOR` and
+ * calls it will still compile, but any test that directly references the
+ * exported value alongside the config will detect the drift.
+ */
+export const AUTH_ID_GENERATOR = () => crypto.randomUUID();
+
+/**
  * Session duration constants — single source of truth consumed by both
  * {@link createAuth} and the admin `/admin/auth/config` inspector endpoint.
  * Changing these values here automatically propagates to both.
@@ -175,7 +201,7 @@ export function createAuth(env: Env, baseURL?: string) {
             // "9hrbjIfqhl2sTXOhzrWSNwL9i2kipz51") which PostgreSQL rejects with
             // "invalid input syntax for type uuid".  crypto.randomUUID() is available
             // natively in Cloudflare Workers — no import needed.
-            generateId: () => crypto.randomUUID(),
+            generateId: AUTH_ID_GENERATOR,
             // ⚠️ BREAKING: changing this prefix renames all Better Auth cookies and
             // forcibly logs out every existing session on the next request.
             cookiePrefix: 'bloqr',

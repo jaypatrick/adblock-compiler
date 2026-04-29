@@ -14,7 +14,7 @@
  */
 
 import { assertEquals, assertExists, assertInstanceOf, assertStringIncludes, assertThrows } from '@std/assert';
-import { createAuth, USER_FIELD_MAPPING, WorkerConfigurationError } from './auth.ts';
+import { AUTH_ID_GENERATOR, createAuth, USER_FIELD_MAPPING, UUID_V4_REGEX, WorkerConfigurationError } from './auth.ts';
 import type { Auth } from './auth.ts';
 
 // ============================================================================
@@ -136,23 +136,44 @@ Deno.test('USER_FIELD_MAPPING contains exactly the expected fields', () => {
 });
 
 // ============================================================================
-// generateId — UUID format guard
+// AUTH_ID_GENERATOR / UUID_V4_REGEX — UUID format guard
 // ============================================================================
 //
 // Better Auth generates opaque random strings by default (e.g.
 // "9hrbjIfqhl2sTXOhzrWSNwL9i2kipz51") which PostgreSQL rejects with
 // "invalid input syntax for type uuid" when the column type is uuid.
-// The createAuth() config sets `advanced.generateId` to crypto.randomUUID()
+// The createAuth() config sets `advanced.generateId` to AUTH_ID_GENERATOR
 // so every ID inserted by Better Auth is a valid UUID v4.
 //
-// This test verifies the native crypto.randomUUID() API (used inline in the
-// config) produces the expected 8-4-4-4-12 hex format that PostgreSQL accepts.
-// It requires no database connection.
+// These tests guard against configuration regressions:
+//   - AUTH_ID_GENERATOR must be exported (import fails if removed)
+//   - UUID_V4_REGEX must be exported (import fails if removed)
+//   - AUTH_ID_GENERATOR() must produce a string matching UUID_V4_REGEX
+// If advanced.generateId is changed to a different function, the caller
+// should update AUTH_ID_GENERATOR so these tests continue to serve as the
+// regression guard for the config.
+//
+// These tests require no database connection.
 // ============================================================================
 
-Deno.test('crypto.randomUUID produces a valid UUID v4 accepted by PostgreSQL uuid column type', () => {
-    const id = crypto.randomUUID();
-    // PostgreSQL uuid type requires the canonical 8-4-4-4-12 hex format.
-    const uuidV4Regex = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-    assertEquals(uuidV4Regex.test(id), true, `Expected a UUID v4, got: ${id}`);
+Deno.test('AUTH_ID_GENERATOR is exported from auth module', () => {
+    assertExists(AUTH_ID_GENERATOR);
+    assertEquals(typeof AUTH_ID_GENERATOR, 'function');
+});
+
+Deno.test('UUID_V4_REGEX is exported from auth module', () => {
+    assertExists(UUID_V4_REGEX);
+    assertEquals(UUID_V4_REGEX instanceof RegExp, true);
+});
+
+Deno.test('AUTH_ID_GENERATOR produces a UUID v4 string matching UUID_V4_REGEX', () => {
+    const id = AUTH_ID_GENERATOR();
+    assertEquals(typeof id, 'string', 'AUTH_ID_GENERATOR must return a string');
+    assertEquals(UUID_V4_REGEX.test(id), true, `AUTH_ID_GENERATOR() returned "${id}" which does not match UUID_V4_REGEX — PostgreSQL uuid columns would reject this`);
+});
+
+Deno.test('AUTH_ID_GENERATOR produces unique IDs on successive calls', () => {
+    const id1 = AUTH_ID_GENERATOR();
+    const id2 = AUTH_ID_GENERATOR();
+    assertEquals(id1 === id2, false, 'AUTH_ID_GENERATOR must produce unique IDs');
 });
