@@ -446,12 +446,12 @@ export function createAuth(env: Env, baseURL?: string) {
         databaseHooks: {
             user: {
                 create: {
-                    after: (user) => {
+                    after: async (user) => {
                         void contacts.syncUserCreated({ id: user.id, email: user.email, name: user.name });
                     },
                 },
                 delete: {
-                    after: (user) => {
+                    after: async (user) => {
                         void contacts.syncUserDeleted({ id: user.id, email: user.email });
                     },
                 },
