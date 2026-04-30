@@ -480,6 +480,7 @@ enable_containers = true
 # to set env-specific secrets if needed.
 # ============================================================================
 [env.dev]
+name = "adblock-compiler-dev"
 logpush = false
 
 [env.dev.vars]
