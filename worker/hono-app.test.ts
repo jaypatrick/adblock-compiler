@@ -392,3 +392,57 @@ Deno.test('GET /favicon.svg is publicly accessible (pre-auth bypass — no 401 f
     const res = await fetch('/favicon.svg');
     assertNotEquals(res.status, 401);
 });
+
+// ── CORS origin enforcement (step 4a) ─────────────────────────────────────────
+// Verifies the three-way CORS decision matrix:
+//   1. No Origin header       → allow through (non-browser API client)
+//   2. Allowed Origin         → allow through (CORS headers set)
+//   3. Disallowed Origin      → 403 CORS rejection
+
+Deno.test('CORS enforcement — request with no Origin header is allowed through', async () => {
+    // Simulates a Postman / curl request (no Origin header sent).
+    // The request is unauthenticated and hits a public endpoint so any
+    // rejection would come purely from the CORS layer, not auth.
+    const res = await fetch('/api/health');
+    // Public endpoint → not rejected by CORS enforcement, not 403
+    assertNotEquals(res.status, 403);
+});
+
+Deno.test('CORS enforcement — request from allowed origin reaches auth layer on non-public endpoint', async () => {
+    const origin = 'http://localhost:4200';
+    const res = await fetch('/api/rules', {
+        headers: { 'Origin': origin },
+    });
+    // Allowed origin on a protected route should pass CORS enforcement and then
+    // fail at authentication, proving the allowlist path was exercised.
+    assertEquals(res.status, 401);
+    assertEquals(res.headers.get('Access-Control-Allow-Origin'), origin);
+});
+
+Deno.test('CORS enforcement — request from unknown origin is rejected with 403 on non-public endpoint', async () => {
+    // /api/rules requires authentication, but the CORS rejection happens before
+    // the auth check (step 4a runs before route handlers).
+    const res = await fetch('/api/rules', {
+        headers: { 'Origin': 'https://evil.example.com' },
+    });
+    // Unknown origin → 403 CORS rejection (not 401 auth error)
+    assertEquals(res.status, 403);
+    const body = await res.json() as Record<string, unknown>;
+    assertStringIncludes(String(body['type'] ?? ''), 'cors-rejection');
+});
+
+Deno.test('CORS enforcement — public endpoints are exempt from origin enforcement', async () => {
+    // Even an unknown browser origin can access public endpoints.
+    const res = await fetch('/api/health', {
+        headers: { 'Origin': 'https://any-origin.example.com' },
+    });
+    // Public endpoint → never 403 CORS rejection
+    assertNotEquals(res.status, 403);
+});
+
+Deno.test('CORS enforcement — non-browser client hits authenticated endpoint without Origin', async () => {
+    // A Postman / SDK request without Origin should reach the auth layer (401),
+    // NOT be rejected with 403 CORS error.
+    const res = await fetch('/api/rules');
+    assertEquals(res.status, 401);
+});

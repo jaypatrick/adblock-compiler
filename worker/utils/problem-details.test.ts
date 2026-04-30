@@ -37,6 +37,7 @@ Deno.test('ProblemResponse — Content-Type is application/problem+json on all m
         ProblemResponse.serviceUnavailable('/foo'),
         ProblemResponse.turnstileRejection('/foo'),
         ProblemResponse.adblockDetected('/foo'),
+        ProblemResponse.corsRejection('/foo'),
     ];
 
     for (const res of cases) {
@@ -263,4 +264,25 @@ Deno.test('ProblemResponse — caller cannot override Content-Type away from pro
     });
     assertEquals(res.headers.get('Content-Type'), PROBLEM_CONTENT_TYPE);
     await res.text();
+});
+
+// ── corsRejection ─────────────────────────────────────────────────────────────
+
+Deno.test('ProblemResponse.corsRejection — returns 403', async () => {
+    const res = ProblemResponse.corsRejection('/api/compile');
+    assertEquals(res.status, 403);
+    const body = await parseBody(res);
+    assertEquals(body.status, 403);
+    assertEquals(body.type, PROBLEM_TYPES.corsRejection);
+    assertStringIncludes(body.type, 'cors-rejection');
+    assertEquals(body.title, 'CORS Origin Not Allowed');
+    assertEquals(body.instance, '/api/compile');
+    assertExists(body.detail);
+});
+
+Deno.test('ProblemResponse.corsRejection — accepts custom detail message', async () => {
+    const res = ProblemResponse.corsRejection('/api/rules', "Origin 'https://evil.example.com' is not permitted.");
+    assertEquals(res.status, 403);
+    const body = await parseBody(res);
+    assertStringIncludes(body.detail ?? '', 'evil.example.com');
 });

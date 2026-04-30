@@ -77,6 +77,7 @@ export const PROBLEM_TYPES = {
     payloadTooLarge: `${PROBLEM_TYPE_BASE}/payload-too-large`,
     turnstileRejection: `${PROBLEM_TYPE_BASE}/turnstile-rejection`,
     adblockDetected: `${PROBLEM_TYPE_BASE}/adblock-detected`,
+    corsRejection: `${PROBLEM_TYPE_BASE}/cors-rejection`,
 } as const satisfies Record<string, string>;
 
 // ── ProblemDetails interface ──────────────────────────────────────────────────
@@ -371,6 +372,27 @@ export const ProblemResponse = {
             title: 'Gateway Timeout',
             status: 504,
             detail: detail ?? 'An upstream dependency did not respond in time. Please try again.',
+            instance,
+        }, options);
+    },
+
+    /**
+     * 403 Forbidden — the request Origin is not in the CORS allowlist.
+     *
+     * Returned when a browser request carries an `Origin` header that is not
+     * present in `CORS_ALLOWED_ORIGINS`.  Requests with **no** `Origin` header
+     * (Postman, curl, SDKs) are never rejected by this check — they are allowed
+     * through unconditionally because CORS is a browser-only mechanism.
+     *
+     * @param instance - The request path
+     * @param detail   - Optional human-readable explanation (e.g. the disallowed origin)
+     */
+    corsRejection(instance: string, detail?: string, options: Omit<ResponseOptions, 'status'> = {}): Response {
+        return ProblemResponse.create({
+            type: PROBLEM_TYPES.corsRejection,
+            title: 'CORS Origin Not Allowed',
+            status: 403,
+            detail: detail ?? 'The request Origin is not permitted by the CORS policy.',
             instance,
         }, options);
     },
