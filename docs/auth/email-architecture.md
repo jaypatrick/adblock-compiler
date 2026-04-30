@@ -61,7 +61,7 @@ channel (cheap, but unacceptable for auth-critical mail).
 
 | Class | Provider | Implementation | Env vars required |
 |---|---|---|---|
-| Auth critical | **Resend** | `ResendEmailService` (via `ResendApiService`) | `RESEND_API_KEY` |
+| Auth critical | **Resend** | `ResendEmailService` | `RESEND_API_KEY` |
 | Transactional | **CF Email Service REST** | `CfEmailServiceRestService` | `CF_EMAIL_API_TOKEN`, `CF_ACCOUNT_ID` |
 | Durable queue | **EmailDeliveryWorkflow** | `QueuedEmailService` → Workflow | `EMAIL_QUEUE` binding |
 | Fallback | **CF Email Worker binding** | `CfEmailWorkerService` | `SEND_EMAIL` binding |
@@ -69,7 +69,7 @@ channel (cheap, but unacceptable for auth-critical mail).
 
 ### Resend API Wrapper (`ResendApiService`)
 
-`ResendApiService` (`worker/services/resend-api-service.ts`) is the single typed REST wrapper for all Resend Contacts/Audiences API operations. It mirrors the `CloudflareApiService` pattern: all Resend API calls go through this class — no raw `fetch('https://api.resend.com/...')` calls elsewhere in the codebase.
+`ResendApiService` (`worker/services/resend-api-service.ts`) is the single typed REST wrapper for all Resend **Contacts/Audiences** API operations. It mirrors the `CloudflareApiService` pattern: all `https://api.resend.com/audiences/*` calls go through this class — no raw `fetch` to audience endpoints elsewhere in the codebase. (Email sends are handled separately by `ResendEmailService` via a direct `fetch` to `/emails`.)
 
 | Method | Description |
 |---|---|

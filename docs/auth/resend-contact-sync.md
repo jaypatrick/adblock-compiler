@@ -12,16 +12,17 @@ When a user signs up or is deleted, Better Auth `databaseHooks` trigger `ResendC
 
 ## Architecture
 
-```
-User sign-up → Better Auth user.create.after hook
-                → ResendContactService.syncUserCreated()
-                  → ResendApiService.createContact(audienceId, { email, firstName, lastName })
-                    → POST https://api.resend.com/audiences/{id}/contacts
+```mermaid
+flowchart TD
+    SU["User sign-up"] --> UCA["Better Auth\nuser.create.after hook"]
+    UCA --> SYC["ResendContactService\n.syncUserCreated()"]
+    SYC --> CAP["ResendApiService\n.createContact(audienceId, { email, firstName, lastName })"]
+    CAP --> PSTC["POST https://api.resend.com\n/audiences/{id}/contacts"]
 
-User deletion → Better Auth user.delete.after hook
-                → ResendContactService.syncUserDeleted()
-                  → ResendApiService.deleteContact(audienceId, email)
-                    → DELETE https://api.resend.com/audiences/{id}/contacts/{email}
+    UD["User deletion"] --> UDA["Better Auth\nuser.delete.after hook"]
+    UDA --> SYD["ResendContactService\n.syncUserDeleted()"]
+    SYD --> DAP["ResendApiService\n.deleteContact(audienceId, email)"]
+    DAP --> DLTC["DELETE https://api.resend.com\n/audiences/{id}/contacts/{email}"]
 ```
 
 ---

@@ -11,8 +11,8 @@ flowchart TD
     Factory["createEmailService(env, opts)"] --> P1{EMAIL_QUEUE?}
     P1 -- yes --> QSvc["QueuedEmailService\n(durable, queue-backed)"]
     P1 -- no --> P2{priority=critical\n+ RESEND_API_KEY?}
-    P2 -- yes --> ResendSvc["ResendEmailService\n(Resend REST, via ResendApiService)"]
-    P2 -- no --> P3{priority=transactional\n+ CF_EMAIL_API_TOKEN?}
+    P2 -- yes --> ResendSvc["ResendEmailService\n(Resend REST — direct fetch to /emails)"]
+    P2 -- no --> P3{priority=transactional\n+ CF_EMAIL_API_TOKEN\n+ CF_ACCOUNT_ID?}
     P3 -- yes --> CFRestSvc["CfEmailServiceRestService\n(CF Email Service REST)"]
     P3 -- no --> P4{SEND_EMAIL binding?}
     P4 -- yes --> CFSvc["CfEmailWorkerService\n(adblock-email worker)"]
