@@ -581,6 +581,13 @@ export interface Env {
      * @example `"https://adblock-compiler.example.com"`
      */
     BETTER_AUTH_URL?: string;
+    /**
+     * Better Auth Dash API key for the dash.better-auth.com dashboard integration.
+     * Enables the `dash()` plugin to connect to the monitoring dashboard.
+     * Local dev:  add `BETTER_AUTH_API_KEY=<key>` to .dev.vars
+     * Production: `wrangler secret put BETTER_AUTH_API_KEY`
+     */
+    BETTER_AUTH_API_KEY?: string;
     // GitHub OAuth provider (required for social login via GitHub)
     GITHUB_CLIENT_ID?: string;
     GITHUB_CLIENT_SECRET?: string;
