@@ -7,6 +7,19 @@
  */
 
 // ============================================================================
+// Constants
+// ============================================================================
+
+/** The current API key prefix. All newly generated keys start with this. */
+export const API_KEY_PREFIX = 'blq_';
+
+/**
+ * Prefixes that were used in older key generations.
+ * Keys with these prefixes are still accepted for authentication.
+ */
+export const LEGACY_API_KEY_PREFIXES: readonly string[] = ['abc_'];
+
+// ============================================================================
 // Types
 // ============================================================================
 
@@ -24,15 +37,30 @@ export interface GeneratedApiKey {
 }
 
 // ============================================================================
+// Key Identification
+// ============================================================================
+
+/**
+ * Returns `true` if the given token looks like an API key.
+ *
+ * Accepts the current `blq_` prefix as well as any legacy prefixes
+ * (e.g. `abc_`) so that previously issued keys continue to work.
+ */
+export function isApiKey(token: string): boolean {
+    if (token.startsWith(API_KEY_PREFIX)) return true;
+    return LEGACY_API_KEY_PREFIXES.some((p) => token.startsWith(p));
+}
+
+// ============================================================================
 // Key Generation
 // ============================================================================
 
 /**
  * Generates a new API key with its hash and prefix.
  *
- * Format: `abc_` + 48 random hex characters (e.g., `abc_a1b2c3d4e5f6...`)
+ * Format: `blq_` + 48 random hex characters (e.g., `blq_a1b2c3d4e5f6...`)
  *
- * The `abc_` prefix makes keys easy to identify in logs and config files.
+ * The `blq_` prefix makes keys easy to identify in logs and config files.
  * The 48 hex chars (192 bits of entropy) provide strong security.
  *
  * @returns Generated key with raw value, hash, and prefix
@@ -53,7 +81,7 @@ export async function generateApiKey(): Promise<GeneratedApiKey> {
         .map((b) => b.toString(16).padStart(2, '0'))
         .join('');
 
-    const rawKey = `abc_${hexString}`;
+    const rawKey = `${API_KEY_PREFIX}${hexString}`;
     const keyPrefix = rawKey.substring(0, 8);
     const keyHash = await hashKey(rawKey);
 

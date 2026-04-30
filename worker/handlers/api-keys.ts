@@ -18,7 +18,7 @@
  * The `api_keys.user_id` column stores the Better Auth user UUID from the
  * `users` table.
  *
- * Keys are generated with a `abc_` prefix and stored as SHA-256 hashes —
+ * Keys are generated with a `blq_` prefix and stored as SHA-256 hashes —
  * the plaintext is returned **only once** on creation.
  *
  * All request/response bodies are Zod-validated via the schemas in
@@ -36,16 +36,16 @@ import { JsonResponse } from '../utils/response.ts';
 import { type IAuthContext } from '../types.ts';
 import { CreateApiKeyRequestSchema, UpdateApiKeyRequestSchema } from '../schemas.ts';
 import type { PrismaClientExtended } from '../lib/prisma.ts';
+import { API_KEY_PREFIX } from '../middleware/api-key-utils.ts';
 
 // ---------------------------------------------------------------------------
 // Key generation helpers
 // ---------------------------------------------------------------------------
 
-const API_KEY_PREFIX = 'abc_';
 const KEY_BYTE_LENGTH = 32;
 
 /**
- * Generate a cryptographically random API key with `abc_` prefix.
+ * Generate a cryptographically random API key with `blq_` prefix.
  * The raw bytes are base64url-encoded for URL safety.
  */
 function generateApiKey(): string {

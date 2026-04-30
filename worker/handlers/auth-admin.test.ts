@@ -281,8 +281,8 @@ Deno.test('handleCreateApiKey - creates API key for existing user', async () => 
     const keyBody = await keyRes.json() as Record<string, unknown>;
     assertEquals(keyBody.success, true);
     assertEquals(typeof keyBody.apiKey, 'string');
-    // Key should start with the 'abc_' prefix
-    assertEquals((keyBody.apiKey as string).startsWith('abc_'), true);
+    // Key should start with the 'blq_' prefix
+    assertEquals((keyBody.apiKey as string).startsWith('blq_'), true);
     assertEquals(typeof keyBody.id, 'string');
     assertEquals(keyBody.name, 'test-key');
 });

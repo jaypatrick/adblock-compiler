@@ -43,7 +43,7 @@ flowchart LR
 
     subgraph W["Cloudflare Worker — Auth Chain"]
         direction TB
-        AK["1. API key verify\nBearer abc_..."]
+        AK["1. API key verify\nBearer blq_..."]
         BA["2. Better Auth session verify\ncookie or Bearer token"]
         AN["3. Anonymous fallback"]
         TE["Tier enforcement"]
@@ -66,7 +66,7 @@ The system supports three authentication methods:
 1. **Better Auth session** — Cookie or bearer session token. Created on sign-up/sign-in.
    Supports email+password and GitHub OAuth. Active when a valid session exists in the database.
 
-2. **API key** — Long-lived programmatic access key (`abc_` prefix). Created via the API keys
+2. **API key** — Long-lived programmatic access key (`blq_` prefix). Created via the API keys
    dashboard. Verified by hashing and database lookup on every request.
 
 3. **Anonymous** — No credentials. Lowest rate limits. Access to public endpoints only.

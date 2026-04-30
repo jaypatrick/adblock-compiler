@@ -32,7 +32,7 @@ Every authenticated API request goes through a three-tier chain in
 
 ```mermaid
 flowchart TD
-    A[Incoming Request] --> B{Bearer token starts\nwith abc_?}
+    A[Incoming Request] --> B{Bearer token starts\nwith blq_ or abc_?}
     B -- Yes --> C[authenticateApiKey\nHash token → DB lookup]
     C --> D{Valid key?}
     D -- Yes --> E[authMethod = api-key\ntier from user record]
@@ -52,7 +52,7 @@ flowchart TD
 
 | `authMethod` | Trigger | Notes |
 |---|---|---|
-| `api-key` | `Authorization: Bearer abc_...` | Long-lived programmatic access keys |
+| `api-key` | `Authorization: Bearer blq_...` (or legacy `abc_...`) | Long-lived programmatic access keys |
 | `better-auth` | Session cookie or Bearer session token | Browser sessions and short-lived tokens |
 | `anonymous` | No credentials | Read-only access to public endpoints |
 

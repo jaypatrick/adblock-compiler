@@ -12,14 +12,14 @@ Technical reference for developers working on or extending the adblock-compiler 
 ### Authentication Flow
 
 The unified auth middleware runs on every protected request. Token type is determined by the
-`abc_` prefix — API keys and Better Auth session tokens are mutually exclusive.
+`blq_` prefix (or legacy `abc_` prefix) — API keys and Better Auth session tokens are mutually exclusive.
 
 ```mermaid
 flowchart TD
     A["Request arrives at Worker"] --> B["authenticateRequestUnified()\nworker/middleware/auth.ts"]
     B --> C{Has Bearer token\nor session cookie?}
     C -->|No| D["Anonymous\nauthMethod: 'anonymous'\ntier: anonymous"]
-    C -->|Yes| E{"Bearer token starts\nwith 'abc_' prefix?"}
+    C -->|Yes| E{"Bearer token starts\nwith 'blq_' or 'abc_' prefix?"}
     E -->|Yes| F["API Key path\nSHA-256 hash → PostgreSQL lookup"]
     E -->|No| G["BetterAuthProvider.verifyToken()\nauth.api.getSession() via Prisma + Neon"]
     F --> H["IAuthContext built\n{ userId, tier, role, apiKeyId, scopes,\nauthMethod: 'api-key' }"]
@@ -616,7 +616,7 @@ export enum AuthScope {
 | Auth Method | Scope Enforcement |
 |-------------|-------------------|
 | Better Auth session | Bypassed — tier determines access |
-| API key (`abc_`) | Enforced — key must include required scopes |
+| API key (`blq_`) | Enforced — key must include required scopes |
 | Anonymous | 401 returned before scope check |
 
 ---
