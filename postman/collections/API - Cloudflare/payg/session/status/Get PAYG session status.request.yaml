@@ -1,11 +1,15 @@
 $kind: http-request
-description: Returns the current status of a pay-as-you-go billing session.
-url: {{baseUrl}}/payg/session/status
+description: >
+  Returns the status of the current PAYG session — requests granted, used,
+  remaining, and expiry. Requires a valid X-Payg-Session token.
+  Use the paygSessionToken environment variable.
+url: {{baseUrl}}/api/payg/session/status
 method: GET
 headers:
   Accept: application/json
-  X-API-Key: "{{apiKey}}"
+  X-Payg-Session: "{{paygSessionToken}}"
 body:
   type: text
   content: ""
-order: 2000
+examples: ./.resources/Get PAYG session status.resources/examples
+order: 1020

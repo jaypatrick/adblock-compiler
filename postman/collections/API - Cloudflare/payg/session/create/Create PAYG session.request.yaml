@@ -1,6 +1,6 @@
 $kind: http-request
 description: Creates a pay-as-you-go billing session.
-url: {{baseUrl}}/payg/session/create
+url: {{baseUrl}}/api/payg/session/create
 method: POST
 headers:
   Content-Type: application/json
@@ -12,4 +12,5 @@ body:
     {
       "credits": 1000
     }
+examples: ./.resources/Create PAYG session.resources/examples
 order: 1000

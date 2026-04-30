@@ -1,6 +1,9 @@
 $kind: http-request
-description: Returns current pay-as-you-go usage statistics for the authenticated user.
-url: {{baseUrl}}/payg/usage
+description: >
+  Returns cumulative PAYG usage summary for the authenticated user — total requests,
+  total spend, this-month breakdown, and subscription conversion eligibility.
+  Requires API key authentication.
+url: {{baseUrl}}/api/payg/usage
 method: GET
 headers:
   Accept: application/json
@@ -8,4 +11,5 @@ headers:
 body:
   type: text
   content: ""
-order: 3000
+examples: ./.resources/Get PAYG usage.resources/examples
+order: 1010
