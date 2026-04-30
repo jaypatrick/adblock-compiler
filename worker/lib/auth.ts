@@ -34,8 +34,9 @@
  *
  *  1. CDN ESM import — `import { dash } from 'https://esm.sh/@better-auth/infra?target=deno'`
  *     ❌ Not viable: wrangler uses esbuild to bundle the Worker. esbuild does not
- *        resolve `https://` URL specifiers — only bare module names resolved from
- *        node_modules. The CDN import fails at build time with "Could not resolve".
+ *        support `https://` URL specifiers — it can resolve bare specifiers and
+ *        relative/absolute file paths, but not network URLs. The CDN import fails
+ *        at build time with "Could not resolve".
  *
  *  2. Wrangler alias config — `[build.alias] "@better-auth/infra" = "…"`
  *     ❌ Not viable: wrangler aliases map to local file paths, not CDN URLs.
