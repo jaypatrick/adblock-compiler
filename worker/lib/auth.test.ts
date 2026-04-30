@@ -194,12 +194,8 @@ Deno.test('AUTH_ID_GENERATOR produces unique IDs on successive calls', () => {
 // these on cross-site POSTs) and the custom CORS middleware (hono-app.ts step 4).
 // ============================================================================
 
-Deno.test('AUTH_DISABLE_CSRF_CHECK is exported from auth module', () => {
-    assertExists(AUTH_DISABLE_CSRF_CHECK !== undefined ? AUTH_DISABLE_CSRF_CHECK : null);
-    assertEquals(typeof AUTH_DISABLE_CSRF_CHECK, 'boolean');
-});
-
 Deno.test('AUTH_DISABLE_CSRF_CHECK is true — CSRF check must be disabled for non-browser clients', () => {
+    assertEquals(typeof AUTH_DISABLE_CSRF_CHECK, 'boolean');
     assertStrictEquals(
         AUTH_DISABLE_CSRF_CHECK,
         true,
