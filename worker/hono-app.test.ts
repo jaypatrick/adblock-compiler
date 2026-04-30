@@ -248,30 +248,41 @@ Deno.test('/api/auth/* bypasses logger middleware (no request log emitted)', asy
 // an empty string as JSON.  The handler now normalises empty POST bodies to
 // '{}' so Better Auth always receives valid JSON.
 
-Deno.test('POST /api/auth/sign-out with empty body returns 503 (not SyntaxError 400) when HYPERDRIVE absent', async () => {
-    // BETTER_AUTH_SECRET present but no HYPERDRIVE → handler short-circuits with
-    // 503 before body parsing, proving no crash for an empty-body POST.
+Deno.test('POST /api/auth/sign-out with empty body returns 503 when HYPERDRIVE absent — early short-circuit before body is read', async () => {
+    // BETTER_AUTH_SECRET present but HYPERDRIVE absent → the handler exits at the
+    // HYPERDRIVE guard (line ~282 in hono-app.ts) with 503 BEFORE any body reading
+    // or normalization takes place.  This test validates the guard itself, not the
+    // empty-body normalization fix.
     const env = makeEnv({ BETTER_AUTH_SECRET: 'test-secret' });
     const res = await fetch('/api/auth/sign-out', { method: 'POST', env });
     assertEquals(res.status, 503);
 });
 
-Deno.test('POST /api/auth/sign-out with empty body does not return 400 "Invalid JSON body"', async () => {
-    // Body normalization replaces the empty body with '{}' before calling
-    // auth.handler — prevents SyntaxError("Unexpected end of JSON input").
-    // Without the fix this path returned 400 { detail: 'Invalid JSON body' }.
-    // With the fix the response is any non-SyntaxError status (401 for no session
-    // or a DB-related error when there is no local PostgreSQL server in CI).
+Deno.test('POST /api/auth/sign-out with empty body reaches Better Auth handler without SyntaxError when HYPERDRIVE present', async () => {
+    // HYPERDRIVE present → the handler passes the guard and reaches the body
+    // normalization block.  The empty body is replaced with '{}' so that
+    // auth.handler receives valid JSON instead of an empty string.
+    //
+    // Before the fix: empty body → Better Auth calls JSON.parse('') →
+    //   SyntaxError("Unexpected end of JSON input") → 400 { detail: 'Invalid JSON body' }.
+    // After the fix:  empty body → normalized to '{}' → Better Auth processes
+    //   the request normally → 401 (no session) or a DB error, but never the
+    //   SyntaxError-originated 400 { detail: 'Invalid JSON body' }.
     const env = makeEnv({
         BETTER_AUTH_SECRET: 'test-secret',
         // deno-lint-ignore no-explicit-any
         HYPERDRIVE: { connectionString: 'postgresql://localhost:5432/test' } as any,
     });
     const res = await fetch('/api/auth/sign-out', { method: 'POST', env });
-    if (res.status === 400) {
-        const body = await res.json() as Record<string, unknown>;
-        assertNotEquals(body['detail'], 'Invalid JSON body', 'Empty body must not produce SyntaxError 400');
-    }
+    // Always read and parse the body — Better Auth always returns JSON.
+    const body = await res.json() as Record<string, unknown>;
+    // The body normalization must prevent the specific SyntaxError 400.
+    // Any other response (401, 500, etc.) is acceptable.
+    assertNotEquals(
+        body['detail'] ?? null,
+        'Invalid JSON body',
+        'Empty body must not produce SyntaxError 400 "Invalid JSON body"',
+    );
 });
 
 Deno.test('GET /api/browser/health returns 503 with ok=false when BROWSER binding is absent', async () => {
