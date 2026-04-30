@@ -132,6 +132,7 @@
   - [Clerk + Cloudflare Integration](auth/clerk-cloudflare-integration.md)
   - [Cloudflare Access](auth/cloudflare-access.md)
   - [Postman Auth Testing](auth/postman-testing.md)
+  - [Email Architecture](auth/email-architecture.md)
   - [ZTA Review Fixes](auth/zta-review-fixes.md)
 - [Admin System](admin/README.md)
   - [Subscription Plans](admin/subscription-plans.md)

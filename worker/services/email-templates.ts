@@ -194,7 +194,147 @@ export function renderCriticalErrorAlert(opts: RenderCriticalErrorAlertOpts): {
 }
 
 // ============================================================================
-// Helpers (internal)
+// Email verification
 // ============================================================================
 
-// escapeHtml imported from '../utils/escape-html.ts' above.
+export interface RenderEmailVerificationOpts {
+    readonly email: string;
+    readonly url: string;
+}
+
+export function renderEmailVerification(opts: RenderEmailVerificationOpts): {
+    subject: string;
+    html: string;
+    text: string;
+    replyTo?: string;
+} {
+    const { email, url } = opts;
+    const subject = 'Verify your email address — Bloqr';
+
+    const text = [
+        `Welcome to Bloqr!`,
+        ``,
+        `Please verify your email address by visiting the link below:`,
+        ``,
+        url,
+        ``,
+        `This link expires in 24 hours. If you did not create a Bloqr account,`,
+        `you can safely ignore this email.`,
+        ``,
+        `— The Bloqr team`,
+    ].join('\n');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Verify your email — Bloqr</title>
+</head>
+<body style="font-family:sans-serif;color:#1a1a1a;max-width:600px;margin:0 auto;padding:24px 16px;">
+  <h1 style="font-size:20px;font-weight:700;margin-bottom:4px;">Verify your email address</h1>
+  <p style="color:#555;margin-top:0;">
+    Welcome to Bloqr! Click the button below to verify <strong>${escapeHtml(email)}</strong>
+    and activate your account.
+  </p>
+
+  <p style="margin:24px 0;">
+    <a href="${escapeHtml(url)}"
+       style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;
+              padding:12px 24px;border-radius:6px;font-weight:600;">
+      Verify email address
+    </a>
+  </p>
+
+  <p style="color:#555;font-size:14px;">
+    Or copy and paste this link into your browser:<br />
+    <a href="${escapeHtml(url)}" style="color:#4f46e5;word-break:break-all;">${escapeHtml(url)}</a>
+  </p>
+
+  <p style="color:#9ca3af;font-size:13px;">
+    This link expires in 24 hours. If you did not create a Bloqr account,
+    you can safely ignore this email.
+  </p>
+
+  <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+  <p style="font-size:12px;color:#9ca3af;">
+    <a href="https://bloqr.dev" style="color:#9ca3af;">Bloqr</a> — Internet Hygiene. Automated.
+  </p>
+</body>
+</html>`;
+
+    return { subject, html, text };
+}
+
+// ============================================================================
+// Password reset
+// ============================================================================
+
+export interface RenderPasswordResetOpts {
+    readonly email: string;
+    readonly url: string;
+}
+
+export function renderPasswordReset(opts: RenderPasswordResetOpts): {
+    subject: string;
+    html: string;
+    text: string;
+    replyTo?: string;
+} {
+    const { email, url } = opts;
+    const subject = 'Reset your Bloqr password';
+
+    const text = [
+        `You requested a password reset for your Bloqr account (${email}).`,
+        ``,
+        `Click the link below to choose a new password:`,
+        ``,
+        url,
+        ``,
+        `This link expires in 1 hour. If you did not request a password reset,`,
+        `please ignore this email — your password has not been changed.`,
+        ``,
+        `— The Bloqr team`,
+    ].join('\n');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reset your password — Bloqr</title>
+</head>
+<body style="font-family:sans-serif;color:#1a1a1a;max-width:600px;margin:0 auto;padding:24px 16px;">
+  <h1 style="font-size:20px;font-weight:700;margin-bottom:4px;">Reset your password</h1>
+  <p style="color:#555;margin-top:0;">
+    We received a request to reset the password for <strong>${escapeHtml(email)}</strong>.
+    Click the button below to choose a new password.
+  </p>
+
+  <p style="margin:24px 0;">
+    <a href="${escapeHtml(url)}"
+       style="display:inline-block;background:#4f46e5;color:#fff;text-decoration:none;
+              padding:12px 24px;border-radius:6px;font-weight:600;">
+      Reset password
+    </a>
+  </p>
+
+  <p style="color:#555;font-size:14px;">
+    Or copy and paste this link into your browser:<br />
+    <a href="${escapeHtml(url)}" style="color:#4f46e5;word-break:break-all;">${escapeHtml(url)}</a>
+  </p>
+
+  <p style="color:#9ca3af;font-size:13px;">
+    This link expires in 1 hour. If you did not request a password reset,
+    you can safely ignore this email — your password has not been changed.
+  </p>
+
+  <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0;" />
+  <p style="font-size:12px;color:#9ca3af;">
+    <a href="https://bloqr.dev" style="color:#9ca3af;">Bloqr</a> — Internet Hygiene. Automated.
+  </p>
+</body>
+</html>`;
+
+    return { subject, html, text };
+}

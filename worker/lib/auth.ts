@@ -77,6 +77,8 @@ import { admin, bearer, multiSession, organization, twoFactor } from 'better-aut
 import { dash } from '@better-auth/infra';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
+import { createEmailService } from '../services/email-service.ts';
+import { renderEmailVerification, renderPasswordReset } from '../services/email-templates.ts';
 
 /**
  * Better Auth → Prisma field name mapping for the `User` model.
@@ -201,6 +203,12 @@ export function createAuth(env: Env, baseURL?: string) {
     //     };
     // }
 
+    // A viable critical-path email provider is any provider that can actually
+    // deliver the email (not just silently drop it via NullEmailService).
+    // If no such provider is configured, enabling requireEmailVerification would
+    // permanently block sign-in for newly registered users.
+    const hasViableEmailProvider = !!(env.RESEND_API_KEY || env.SEND_EMAIL);
+
     return betterAuth({
         database: prismaAdapter(prisma, { provider: 'postgresql' }),
         secret: env.BETTER_AUTH_SECRET,
@@ -211,6 +219,34 @@ export function createAuth(env: Env, baseURL?: string) {
 
         emailAndPassword: {
             enabled: true,
+            // Only block sign-in on unverified email when a provider is configured that can
+            // actually deliver the verification link. Setting this unconditionally with no
+            // provider configured would permanently lock out newly registered users.
+            requireEmailVerification: hasViableEmailProvider,
+            sendResetPassword: async ({ user, url }) => {
+                const mailer = createEmailService(env, { useQueue: false, priority: 'critical', reason: 'password_reset' });
+                await mailer.sendEmail({
+                    to: user.email,
+                    ...renderPasswordReset({ email: user.email, url }),
+                });
+            },
+        },
+
+        // ── Email verification (core option — not a plugin) ───────────────────
+        // Sends a verification link on sign-up and when explicitly requested.
+        // Routes through createEmailService so configured fallbacks
+        // (CfEmailWorkerService / NullEmailService) are honoured when
+        // RESEND_API_KEY is absent — no silent drops in non-Resend environments.
+        // Note: requireEmailVerification is set on emailAndPassword above.
+        emailVerification: {
+            sendOnSignUp: true,
+            sendVerificationEmail: async ({ user, url }) => {
+                const mailer = createEmailService(env, { useQueue: false, priority: 'critical', reason: 'email_verification' });
+                await mailer.sendEmail({
+                    to: user.email,
+                    ...renderEmailVerification({ email: user.email, url }),
+                });
+            },
         },
 
         user: {

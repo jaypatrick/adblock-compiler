@@ -3,14 +3,16 @@
  *
  * ## Providers
  *
- * Three provider implementations follow the {@link IEmailService} interface,
+ * Five provider implementations follow the {@link IEmailService} interface,
  * selected automatically by {@link createEmailService} at startup:
  *
- * | Priority | Class                        | When used                                             |
- * |----------|------------------------------|-------------------------------------------------------|
- * | 1 (best) | {@link QueuedEmailService}   | `EMAIL_QUEUE` binding present (durable, retryable)    |
- * | 2        | {@link CfEmailWorkerService} | `SEND_EMAIL` binding present (adblock-email worker)   |
- * | 3        | {@link NullEmailService}     | Neither configured — logs a warning, no sends         |
+ * | Priority | Class                           | When used                                                          |
+ * |----------|---------------------------------|--------------------------------------------------------------------|
+ * | 1 (best) | {@link QueuedEmailService}      | `EMAIL_QUEUE` binding present (durable, retryable)                 |
+ * | 2a       | {@link ResendEmailService}      | `priority=critical` + `RESEND_API_KEY` (auth critical path)        |
+ * | 2b       | {@link CfEmailServiceRestService} | `priority=transactional` + `CF_EMAIL_API_TOKEN` + `CF_ACCOUNT_ID`|
+ * | 2c       | {@link CfEmailWorkerService}    | `SEND_EMAIL` binding present (fallback, any priority)              |
+ * | 3        | {@link NullEmailService}        | Nothing configured — logs a warning, no sends                      |
  *
  * ## Integration points
  *   1. **Compilation complete** — notify Pro/Vendor/Enterprise users
@@ -40,6 +42,8 @@
 
 import { z } from 'zod';
 import { EmailMessage } from 'cloudflare:email';
+import { createCloudflareApiService } from '../../src/services/cloudflareApiService.ts';
+import type { CloudflareApiService } from '../../src/services/cloudflareApiService.ts';
 
 // ============================================================================
 // Schemas & Types
@@ -381,6 +385,140 @@ export class NullEmailService implements IEmailService {
 }
 
 // ============================================================================
+// Provider: Resend REST API (critical auth path)
+// ============================================================================
+
+/**
+ * Email provider that sends via the Resend REST API.
+ *
+ * Used exclusively for critical auth-path emails where silent delivery failure
+ * is unacceptable: email verification, password reset, security alerts.
+ *
+ * No SDK dependency — uses a single fetch() call to the Resend v1 API.
+ *
+ * @see https://resend.com/docs/api-reference/emails/send-email
+ */
+export class ResendEmailService implements IEmailService {
+    constructor(
+        private readonly apiKey: string,
+        private readonly fromAddress: string,
+        /** When `true`, delivery failures are rethrown rather than logged-and-swallowed.
+         *  Set by {@link createEmailService} when `throwOnFailure: true` is requested
+         *  (e.g. from {@link EmailDeliveryWorkflow} so step retries trigger on failure). */
+        private readonly throwOnFailure = false,
+    ) {}
+
+    async sendEmail(payload: EmailPayload): Promise<void> {
+        const parsed = EmailPayloadSchema.safeParse(payload);
+        if (!parsed.success) {
+            throw new Error('Invalid email payload');
+        }
+
+        const { to, subject, html, text, replyTo } = parsed.data;
+
+        try {
+            const res = await fetch('https://api.resend.com/emails', {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${this.apiKey}`,
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    from: this.fromAddress,
+                    to,
+                    subject,
+                    html,
+                    text,
+                    ...(replyTo ? { reply_to: replyTo } : {}),
+                }),
+            });
+
+            if (!res.ok) {
+                const msg = `[ResendEmailService] Delivery failed: HTTP ${res.status} — ${await res.text()}`;
+                if (this.throwOnFailure) {
+                    throw new Error(msg);
+                }
+                // deno-lint-ignore no-console
+                console.warn(msg);
+            }
+        } catch (err: unknown) {
+            if (this.throwOnFailure) {
+                throw err;
+            }
+            // deno-lint-ignore no-console
+            console.warn(
+                '[ResendEmailService] Network error:',
+                err instanceof Error ? err.message : String(err),
+            );
+        }
+    }
+}
+
+// ============================================================================
+// Provider: Cloudflare Email Service REST API (transactional)
+// ============================================================================
+
+/**
+ * Email provider that sends via the Cloudflare Email Service REST API.
+ *
+ * Uses the new CF Email Service (not the legacy cloudflare:email module binding).
+ * Requires a scoped CF API token with Email Send permissions and the account ID.
+ *
+ * All Cloudflare REST API calls are routed through {@link CloudflareApiService}
+ * (the project-wide typed wrapper around the official `cloudflare` SDK), rather
+ * than calling `api.cloudflare.com` directly with raw `fetch()`.
+ *
+ * Used for transactional/notification emails (compilation complete, bulk alerts, etc.)
+ * that do not require Resend's deliverability guarantees.
+ *
+ * @see https://developers.cloudflare.com/email-service/api/send-emails/
+ */
+export class CfEmailServiceRestService implements IEmailService {
+    private readonly cfApi: CloudflareApiService;
+
+    constructor(
+        apiToken: string,
+        private readonly accountId: string,
+        private readonly fromAddress: string,
+        /** When `true`, delivery failures are rethrown rather than logged-and-swallowed.
+         *  Set by {@link createEmailService} when `throwOnFailure: true` is requested
+         *  (e.g. from {@link EmailDeliveryWorkflow} so step retries trigger on failure). */
+        private readonly throwOnFailure = false,
+    ) {
+        this.cfApi = createCloudflareApiService({ apiToken });
+    }
+
+    async sendEmail(payload: EmailPayload): Promise<void> {
+        const parsed = EmailPayloadSchema.safeParse(payload);
+        if (!parsed.success) {
+            throw new Error('Invalid email payload');
+        }
+
+        const { to, subject, html, text, replyTo } = parsed.data;
+
+        try {
+            await this.cfApi.sendEmail(this.accountId, {
+                from: this.fromAddress,
+                to: [to],
+                subject,
+                html,
+                text,
+                ...(replyTo ? { reply_to: replyTo } : {}),
+            });
+        } catch (err: unknown) {
+            if (this.throwOnFailure) {
+                throw err;
+            }
+            // deno-lint-ignore no-console
+            console.warn(
+                '[CfEmailServiceRestService] Delivery failed:',
+                err instanceof Error ? err.message : String(err),
+            );
+        }
+    }
+}
+
+// ============================================================================
 // Provider: Queued (via Cloudflare Queue → EmailDeliveryWorkflow)
 // ============================================================================
 
@@ -480,13 +618,31 @@ export class QueuedEmailService implements IEmailService {
 // ============================================================================
 
 /**
+ * Default from-address for critical auth-path emails sent via Resend.
+ * Used for email verification, password reset, and security alerts.
+ */
+export const FROM_ADDRESS_CRITICAL = 'noreply@bloqr.dev';
+
+/**
+ * Default from-address for transactional/notification emails sent via
+ * CfEmailServiceRestService or CfEmailWorkerService.
+ */
+export const FROM_ADDRESS_TRANSACTIONAL = 'notifications@bloqr.dev';
+
+/**
  * Create the best available {@link IEmailService} from the Worker `Env`.
  *
  * **Provider selection order** (first match wins):
  * 1. `EMAIL_QUEUE` binding present + `useQueue !== false` →
  *    {@link QueuedEmailService} (durable, queue-backed + Workflow delivery).
- * 2. `SEND_EMAIL` binding present → {@link CfEmailWorkerService} (`adblock-email` worker).
- * 3. Neither → {@link NullEmailService} (logs a warning, no sends).
+ * 2. Direct sends — based on `priority`:
+ *    - `priority === 'critical'` AND `RESEND_API_KEY` present →
+ *      {@link ResendEmailService} (auth critical path: verification, reset, security alerts).
+ *    - `priority === 'transactional'` AND `CF_EMAIL_API_TOKEN` + `CF_ACCOUNT_ID` present →
+ *      {@link CfEmailServiceRestService} (CF Email Service REST API).
+ *    - `SEND_EMAIL` present (any priority, fallback) →
+ *      {@link CfEmailWorkerService} (`adblock-email` worker).
+ * 3. Nothing configured → {@link NullEmailService} (logs a warning, no sends).
  *
  * The `QueuedEmailService` is the preferred production choice for critical
  * notifications: it enqueues the job on `EMAIL_QUEUE`, which is consumed by
@@ -515,7 +671,9 @@ export class QueuedEmailService implements IEmailService {
  * ```
  *
  * @param env  - Worker `Env` object (or any partial that has the required bindings).
- * @param opts - Optional options: `useQueue` (default `true`) and tracing fields.
+ * @param opts - Optional options: `useQueue` (default `true`), tracing fields, `priority`,
+ *               and `throwOnFailure` (default `false`; set `true` in workflow step callbacks
+ *               so delivery errors propagate and trigger step retries).
  * @returns    An {@link IEmailService} instance appropriate for the environment.
  */
 export function createEmailService(
@@ -523,19 +681,45 @@ export function createEmailService(
         // deno-lint-ignore no-explicit-any
         EMAIL_QUEUE?: { send: (msg: any, opts?: any) => Promise<unknown> } | null;
         SEND_EMAIL?: SendEmailBinding | null;
+        RESEND_API_KEY?: string | null;
+        CF_EMAIL_API_TOKEN?: string | null;
+        CF_ACCOUNT_ID?: string | null;
     },
-    opts: { useQueue?: boolean; requestId?: string; reason?: string } = {},
+    opts: {
+        useQueue?: boolean;
+        requestId?: string;
+        reason?: string;
+        priority?: 'critical' | 'transactional';
+        /**
+         * When `true`, delivery failures in {@link ResendEmailService} and
+         * {@link CfEmailServiceRestService} are rethrown instead of being
+         * logged-and-swallowed. Use this inside Cloudflare Workflow step callbacks
+         * so step retries fire on real delivery failures.
+         *
+         * @default false
+         */
+        throwOnFailure?: boolean;
+    } = {},
 ): IEmailService {
-    const { useQueue = true, requestId, reason } = opts;
+    const { useQueue = true, requestId, reason, priority, throwOnFailure = false } = opts;
 
     // Priority 1: Durable queue-backed delivery (EMAIL_QUEUE → EmailDeliveryWorkflow)
     if (useQueue && env.EMAIL_QUEUE) {
         return new QueuedEmailService(env.EMAIL_QUEUE, { requestId, reason });
     }
 
-    // Priority 2: CF Email Workers binding (adblock-email worker)
+    // Priority 2: Direct sends — provider selected by `priority` hint.
+    if (priority === 'critical' && env.RESEND_API_KEY) {
+        return new ResendEmailService(env.RESEND_API_KEY, FROM_ADDRESS_CRITICAL, throwOnFailure);
+    }
+
+    if (priority === 'transactional' && env.CF_EMAIL_API_TOKEN && env.CF_ACCOUNT_ID) {
+        return new CfEmailServiceRestService(env.CF_EMAIL_API_TOKEN, env.CF_ACCOUNT_ID, FROM_ADDRESS_TRANSACTIONAL, throwOnFailure);
+    }
+
+    // Priority 2 fallback: CF Email Workers binding (adblock-email worker)
     if (env.SEND_EMAIL) {
-        return new CfEmailWorkerService(env.SEND_EMAIL, 'notifications@bloqr.dev');
+        return new CfEmailWorkerService(env.SEND_EMAIL, FROM_ADDRESS_TRANSACTIONAL);
     }
 
     // Priority 3: No-op fallback
