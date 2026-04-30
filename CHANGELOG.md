@@ -83,6 +83,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.91.0] - 2026-04-30
+
+### Added- **api-keys**: rename API key prefix `abc_` → `blq_` with dual-prefix backwards compatibility (#1704)
+- hybrid email architecture — Resend (auth critical path) + CF Email Service REST (transactional) (#1703)
+- **auth**: integrate Better Auth Dash plugin (`dash()`) from `@better-auth/infra` (#1700)
+
+### Fixed
+
+- resolve 4 recurring production Cloudflare Worker errors (#1701)
+- **auth**: resolve wrangler build failure — add @better-auth/infra to package.json (#1702)
+
+
 ## [0.90.0] - 2026-04-30
 
 ### Added- split Postman environment into separate local and prod files (#1682)
