@@ -6,7 +6,7 @@ url: {{baseUrl}}/admin/users/:id/sessions
 method: DELETE
 headers:
   Accept: application/json
-  X-Admin-Key: "{{adminKey}}"
+  Authorization: Bearer {{adminKey}}
 pathVariables:
   - key: id
     value: string

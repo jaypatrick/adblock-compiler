@@ -7,13 +7,13 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: application/json
-  X-Admin-Key: "{{adminKey}}"
+  Authorization: Bearer {{adminKey}}
 body:
   type: json
   content: |-
     {
       "name": "preview/my-feature",
-      "parentId": ""
+      "parent_id": ""
     }
 examples: ./.resources/Create Neon branch.resources/examples
 order: 3000

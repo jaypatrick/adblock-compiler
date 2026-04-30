@@ -7,13 +7,13 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: application/json
-  X-Admin-Key: "{{adminKey}}"
+  Authorization: Bearer {{adminKey}}
 body:
   type: json
   content: |-
     {
-      "query": "SELECT id, email, created_at FROM users ORDER BY created_at DESC LIMIT 10",
-      "branchId": ""
+      "connectionString": "{{neonConnectionString}}",
+      "sql": "SELECT id, email, created_at FROM users ORDER BY created_at DESC LIMIT 10"
     }
 examples: ./.resources/Execute Neon query.resources/examples
 order: 1000

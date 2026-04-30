@@ -1,12 +1,12 @@
 $kind: http-request
 description: >
-  Updates a user's profile fields (name, email, etc.). Requires admin authentication.
+  Updates a user's tier and/or role. Requires admin authentication.
 url: {{baseUrl}}/admin/users/:id
 method: PATCH
 headers:
   Content-Type: application/json
   Accept: application/json
-  X-Admin-Key: "{{adminKey}}"
+  Authorization: Bearer {{adminKey}}
 pathVariables:
   - key: id
     value: string
@@ -15,8 +15,8 @@ body:
   type: json
   content: |-
     {
-      "name": "Updated Name",
-      "email": "user@example.com"
+      "tier": "pro",
+      "role": "user"
     }
 examples: ./.resources/Update user.resources/examples
 order: 3000

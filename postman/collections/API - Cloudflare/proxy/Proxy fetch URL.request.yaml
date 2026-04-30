@@ -6,8 +6,8 @@ description: >
 url: {{baseUrl}}/proxy/fetch?url=https%3A%2F%2Fexample.com%2Ffilters.txt
 method: GET
 headers:
-  Accept: application/json
-  X-API-Key: "{{apiKey}}"
+  Accept: text/plain
+  Authorization: Bearer {{apiKey}}
 queryParams:
   - key: url
     value: "https://example.com/filters.txt"

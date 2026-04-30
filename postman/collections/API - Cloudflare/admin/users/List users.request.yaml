@@ -5,7 +5,7 @@ url: {{baseUrl}}/admin/users
 method: GET
 headers:
   Accept: application/json
-  X-Admin-Key: "{{adminKey}}"
+  Authorization: Bearer {{adminKey}}
 body:
   type: text
   content: ""

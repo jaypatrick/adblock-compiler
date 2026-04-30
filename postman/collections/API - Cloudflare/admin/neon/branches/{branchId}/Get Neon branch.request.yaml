@@ -5,7 +5,7 @@ url: {{baseUrl}}/admin/neon/branches/:branchId
 method: GET
 headers:
   Accept: application/json
-  X-Admin-Key: "{{adminKey}}"
+  Authorization: Bearer {{adminKey}}
 pathVariables:
   - key: branchId
     value: br_string

@@ -7,7 +7,7 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: application/json
-  X-Admin-Key: "{{adminKey}}"
+  Authorization: Bearer {{adminKey}}
 body:
   type: json
   content: |-

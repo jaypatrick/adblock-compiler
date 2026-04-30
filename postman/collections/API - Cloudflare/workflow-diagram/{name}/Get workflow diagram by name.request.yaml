@@ -6,7 +6,7 @@ url: {{baseUrl}}/workflow/diagram/:name
 method: GET
 headers:
   Accept: application/json
-  X-API-Key: "{{apiKey}}"
+  Authorization: Bearer {{apiKey}}
 pathVariables:
   - key: name
     value: compilation

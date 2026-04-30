@@ -6,7 +6,7 @@ url: {{baseUrl}}/admin/agents/sessions/:sessionId
 method: GET
 headers:
   Accept: application/json
-  X-Admin-Key: "{{adminKey}}"
+  Authorization: Bearer {{adminKey}}
 pathVariables:
   - key: sessionId
     value: string
