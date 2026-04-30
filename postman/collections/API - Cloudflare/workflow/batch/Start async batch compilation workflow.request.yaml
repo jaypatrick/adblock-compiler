@@ -5,10 +5,12 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: application/json
+  X-API-Key: "{{apiKey}}"
 body:
   type: json
   content: |-
     {
+      "turnstileToken": "{{turnstileToken}}",
       "requests": [
         {
           "id": "string",

@@ -1,14 +1,17 @@
 name: adblock-compiler
 values:
   - key: baseUrl
-    value: ''
+    value: 'https://api.bloqr.dev'
     enabled: true
   - key: apiKey
-    value: ''
+    value: 'blq_2086750daf8720ae10feb955a21cb3ecf41194d77d66876a'
     enabled: true
   - key: bearerToken
     value: ''
     enabled: true
   - key: adminKey
     value: ''
+    enabled: true
+  - key: turnstileToken
+    value: 'NEWMAN-BYPASS-TOKEN'
     enabled: true

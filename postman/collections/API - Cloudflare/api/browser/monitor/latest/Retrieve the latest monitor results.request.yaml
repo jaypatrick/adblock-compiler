@@ -11,6 +11,7 @@ url: {{baseUrl}}/api/browser/monitor/latest
 method: GET
 headers:
   Accept: application/json
+  X-API-Key: "{{apiKey}}"
 body:
   type: text
   content: ""

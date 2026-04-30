@@ -1,0 +1,18 @@
+$kind: http-request
+description: >
+  Stripe webhook handler. Receives Stripe events (payment succeeded, subscription
+  updated, etc.). This endpoint is called by Stripe directly and does not
+  require X-API-Key auth — it uses Stripe webhook signature verification.
+url: {{baseUrl}}/stripe/webhook
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "type": "payment_intent.succeeded",
+      "data": {}
+    }
+order: 1000

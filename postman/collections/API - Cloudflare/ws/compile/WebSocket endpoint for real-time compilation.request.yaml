@@ -46,6 +46,8 @@ description: >
   - Cancellation support
 url: {{baseUrl}}/ws/compile
 method: GET
+headers:
+  X-API-Key: "{{apiKey}}"
 body:
   type: text
   content: ""

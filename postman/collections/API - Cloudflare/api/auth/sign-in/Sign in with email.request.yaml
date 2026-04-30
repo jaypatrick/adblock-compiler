@@ -1,0 +1,17 @@
+$kind: http-request
+description: >
+  Sign in with email and password. Returns a session token (Bearer token) that
+  can be used for authenticated requests. No auth header required.
+url: {{baseUrl}}/api/auth/sign-in/email
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "user@example.com",
+      "password": "yourpassword"
+    }
+order: 1000

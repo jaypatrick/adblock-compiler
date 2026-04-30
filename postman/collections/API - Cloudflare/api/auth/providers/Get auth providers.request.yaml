@@ -1,0 +1,12 @@
+$kind: http-request
+description: >
+  Returns configured OAuth/social login providers. Public endpoint, no auth
+  required.
+url: {{baseUrl}}/api/auth/providers
+method: GET
+headers:
+  Accept: application/json
+body:
+  type: text
+  content: ""
+order: 5000

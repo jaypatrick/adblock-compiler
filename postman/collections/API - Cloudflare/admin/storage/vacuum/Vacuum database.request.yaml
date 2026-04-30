@@ -14,4 +14,7 @@ auth:
     value: "{{apiKey}}"
     in: header
 examples: ./.resources/Vacuum database.resources/examples
+tests:
+  - name: "CF Access blocks without service token (known limitation)"
+    script: "pm.expect(pm.response.code).to.be.oneOf([401, 403]);"
 order: 1000

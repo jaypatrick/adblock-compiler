@@ -4,6 +4,7 @@ url: {{baseUrl}}/queue/cancel/:requestId
 method: POST
 headers:
   Accept: application/json
+  X-API-Key: "{{apiKey}}"
 pathVariables:
   - key: requestId
     value: string

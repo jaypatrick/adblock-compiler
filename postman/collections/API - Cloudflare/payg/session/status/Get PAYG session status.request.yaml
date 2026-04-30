@@ -1,0 +1,11 @@
+$kind: http-request
+description: Returns the current status of a pay-as-you-go billing session.
+url: {{baseUrl}}/payg/session/status
+method: GET
+headers:
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+body:
+  type: text
+  content: ""
+order: 2000

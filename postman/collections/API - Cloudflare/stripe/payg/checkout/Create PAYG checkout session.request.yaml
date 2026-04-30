@@ -1,0 +1,17 @@
+$kind: http-request
+description: Creates a Stripe Checkout session for a pay-as-you-go payment.
+url: {{baseUrl}}/stripe/payg/checkout
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+body:
+  type: json
+  content: |-
+    {
+      "priceId": "price_xxxxx",
+      "successUrl": "https://app.bloqr.dev/success",
+      "cancelUrl": "https://app.bloqr.dev/cancel"
+    }
+order: 2000
