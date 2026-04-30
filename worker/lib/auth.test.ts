@@ -341,6 +341,36 @@ Deno.test('createKvSecondaryStorage set passes expirationTtl when ttl is provide
     assertEquals(puts[0].options, { expirationTtl: 300 });
 });
 
+Deno.test('createKvSecondaryStorage set treats ttl = 0 as no TTL (stores without expirationTtl)', async () => {
+    const puts: Array<{ key: string; value: string; options: unknown }> = [];
+    const { kv } = createMockKvNamespace();
+    (kv as unknown as Record<string, unknown>).put = (key: string, value: string, options?: unknown) => {
+        puts.push({ key, value, options });
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.set('token:xyz', 'token-value', 0);
+    assertEquals(puts.length, 1);
+    // ttl = 0 is not a valid Cloudflare KV expirationTtl; stored without expiry.
+    assertEquals(puts[0].options, undefined);
+});
+
+Deno.test('createKvSecondaryStorage set treats negative ttl as no TTL (stores without expirationTtl)', async () => {
+    const puts: Array<{ key: string; value: string; options: unknown }> = [];
+    const { kv } = createMockKvNamespace();
+    (kv as unknown as Record<string, unknown>).put = (key: string, value: string, options?: unknown) => {
+        puts.push({ key, value, options });
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.set('token:xyz', 'token-value', -300);
+    assertEquals(puts.length, 1);
+    // Negative ttl is invalid; stored without expiry as a safety net.
+    assertEquals(puts[0].options, undefined);
+});
+
 Deno.test('createKvSecondaryStorage delete delegates to kv.delete', async () => {
     const deleted: string[] = [];
     const { kv } = createMockKvNamespace();

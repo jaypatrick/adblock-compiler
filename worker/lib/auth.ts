@@ -78,7 +78,7 @@ import { admin, bearer, multiSession, organization, twoFactor } from 'better-aut
 // See the ESM/CDN compatibility notes in the module JSDoc above.
 // NOTE: auditLogs is NOT exported in @better-auth/infra@0.2.5 (the latest published version).
 // TODO(auth): import { auditLogs } from '@better-auth/infra' once the package publishes it.
-//             Track: https://github.com/better-auth/better-auth/issues
+//             Track: https://github.com/better-auth/better-auth/issues?q=is%3Aissue+auditLogs+infra
 import { dash, sentinel } from '@better-auth/infra';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
@@ -225,6 +225,10 @@ export function createKvSecondaryStorage(kv: KVNamespace): {
 } {
     return {
         get: (key: string) => kv.get(key),
+        // Cloudflare KV requires expirationTtl to be a positive integer (≥ 60 s in
+        // production; ≥ 1 s in dev). A ttl of 0 or any negative value has no valid
+        // KV representation, so we store without expiry (equivalent to "no TTL").
+        // Better Auth never passes ttl ≤ 0 in practice; this guard is a safety net.
         set: (key: string, value: string, ttl?: number) => kv.put(key, value, ttl !== undefined && ttl > 0 ? { expirationTtl: ttl } : undefined),
         delete: (key: string) => kv.delete(key),
     };
