@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Creates a new Neon branch from an optional parent branch (defaults to main).
   Used for ephemeral dev/test environments. Requires admin authentication.
-url: {{baseUrl}}/admin/neon/branches
+url: {{baseUrl}}/api/admin/neon/branches
 method: POST
 headers:
   Content-Type: application/json

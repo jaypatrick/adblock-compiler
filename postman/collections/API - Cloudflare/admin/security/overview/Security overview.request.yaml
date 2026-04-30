@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Returns a security posture summary including CSP violation counts, failed auth
   attempts, active bans, and recent anomaly detections. Requires admin authentication.
-url: {{baseUrl}}/admin/security/overview
+url: {{baseUrl}}/api/admin/security/overview
 method: GET
 headers:
   Accept: application/json

@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Permanently deletes a user and all associated data. This action is irreversible.
   Requires admin authentication.
-url: {{baseUrl}}/admin/users/:id
+url: {{baseUrl}}/api/admin/users/:id
 method: DELETE
 headers:
   Accept: application/json

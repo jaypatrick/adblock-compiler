@@ -1,7 +1,7 @@
 $kind: http-request
 description: >
   Lists all databases within a specific Neon branch. Requires admin authentication.
-url: {{baseUrl}}/admin/neon/databases/:branchId
+url: {{baseUrl}}/api/admin/neon/databases/:branchId
 method: GET
 headers:
   Accept: application/json

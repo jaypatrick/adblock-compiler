@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Executes a raw SQL query on the Neon database. Use with caution — only SELECT
   queries are permitted via this endpoint. Requires admin authentication.
-url: {{baseUrl}}/admin/neon/query
+url: {{baseUrl}}/api/admin/neon/query
 method: POST
 headers:
   Content-Type: application/json

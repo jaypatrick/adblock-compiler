@@ -1,7 +1,7 @@
 $kind: http-request
 description: >
   Returns full details for a single user by ID. Requires admin authentication.
-url: {{baseUrl}}/admin/users/:id
+url: {{baseUrl}}/api/admin/users/:id
 method: GET
 headers:
   Accept: application/json

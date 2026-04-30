@@ -1,7 +1,7 @@
 $kind: http-request
 description: >
   Lists all users in the system with optional pagination. Requires admin authentication.
-url: {{baseUrl}}/admin/users
+url: {{baseUrl}}/api/admin/users
 method: GET
 headers:
   Accept: application/json

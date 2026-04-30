@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Lists all branches in the Neon project including their state, parent, creation
   time, and endpoint details. Requires admin authentication.
-url: {{baseUrl}}/admin/neon/branches
+url: {{baseUrl}}/api/admin/neon/branches
 method: GET
 headers:
   Accept: application/json

@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Returns metadata about the Neon Postgres project (name, region, created_at,
   settings). Requires admin authentication.
-url: {{baseUrl}}/admin/neon/project
+url: {{baseUrl}}/api/admin/neon/project
 method: GET
 headers:
   Accept: application/json

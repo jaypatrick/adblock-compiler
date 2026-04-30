@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Deletes a Neon branch and all its associated endpoints. The main branch cannot
   be deleted. Requires admin authentication.
-url: {{baseUrl}}/admin/neon/branches/:branchId
+url: {{baseUrl}}/api/admin/neon/branches/:branchId
 method: DELETE
 headers:
   Accept: application/json

@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Sends a test email to the specified address to verify email service connectivity
   and template rendering. Requires admin authentication.
-url: {{baseUrl}}/admin/email/test
+url: {{baseUrl}}/api/admin/email/test
 method: POST
 headers:
   Content-Type: application/json

@@ -1,7 +1,7 @@
 $kind: http-request
 description: >
   Updates a user's tier and/or role. Requires admin authentication.
-url: {{baseUrl}}/admin/users/:id
+url: {{baseUrl}}/api/admin/users/:id
 method: PATCH
 headers:
   Content-Type: application/json

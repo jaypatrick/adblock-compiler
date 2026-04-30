@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Returns full details of a specific agent session including tool invocations,
   messages, and timing. Requires admin authentication.
-url: {{baseUrl}}/admin/agents/sessions/:sessionId
+url: {{baseUrl}}/api/admin/agents/sessions/:sessionId
 method: GET
 headers:
   Accept: application/json

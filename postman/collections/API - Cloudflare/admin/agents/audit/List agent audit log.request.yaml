@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Returns the paginated audit log of all agent actions, including tool calls,
   resource access, and permission decisions. Requires admin authentication.
-url: {{baseUrl}}/admin/agents/audit
+url: {{baseUrl}}/api/admin/agents/audit
 method: GET
 headers:
   Accept: application/json

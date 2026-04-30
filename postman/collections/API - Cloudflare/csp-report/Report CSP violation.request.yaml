@@ -3,7 +3,7 @@ description: >
   Accepts browser Content-Security-Policy violation reports and persists them to
   the D1 csp_violations table. This endpoint is called automatically by browsers
   — do not call manually. Public endpoint, no authentication required.
-url: {{baseUrl}}/csp-report
+url: {{baseUrl}}/api/csp-report
 method: POST
 headers:
   Content-Type: application/csp-report

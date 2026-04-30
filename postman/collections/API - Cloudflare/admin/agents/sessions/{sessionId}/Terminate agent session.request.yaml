@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Forcibly terminates an active agent session. Use for runaway or stuck agents.
   Requires admin authentication.
-url: {{baseUrl}}/admin/agents/sessions/:sessionId
+url: {{baseUrl}}/api/admin/agents/sessions/:sessionId
 method: DELETE
 headers:
   Accept: application/json

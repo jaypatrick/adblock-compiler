@@ -1,7 +1,7 @@
 $kind: http-request
 description: >
   Returns details for a specific Neon branch by ID. Requires admin authentication.
-url: {{baseUrl}}/admin/neon/branches/:branchId
+url: {{baseUrl}}/api/admin/neon/branches/:branchId
 method: GET
 headers:
   Accept: application/json

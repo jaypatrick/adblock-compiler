@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Returns the API usage metrics (requests, tokens, bandwidth) for a specific user.
   Requires admin authentication.
-url: {{baseUrl}}/admin/usage/:userId
+url: {{baseUrl}}/api/admin/usage/:userId
 method: GET
 headers:
   Accept: application/json

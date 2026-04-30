@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Batch proxy fetch multiple URLs in a single request. Returns a map of URL to
   fetched content (or error message per URL). SSRF protection applies to all URLs.
-url: {{baseUrl}}/proxy/fetch/batch
+url: {{baseUrl}}/api/proxy/fetch/batch
 method: POST
 headers:
   Content-Type: application/json

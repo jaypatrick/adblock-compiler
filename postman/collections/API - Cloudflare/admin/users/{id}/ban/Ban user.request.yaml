@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Bans a user, preventing them from logging in or using the API. Requires admin
   authentication.
-url: {{baseUrl}}/admin/users/:id/ban
+url: {{baseUrl}}/api/admin/users/:id/ban
 method: POST
 headers:
   Content-Type: application/json

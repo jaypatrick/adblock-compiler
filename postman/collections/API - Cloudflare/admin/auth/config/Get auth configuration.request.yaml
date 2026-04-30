@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Returns the current Better Auth configuration including enabled providers,
   session settings, and security options. Requires admin authentication.
-url: {{baseUrl}}/admin/auth/config
+url: {{baseUrl}}/api/admin/auth/config
 method: GET
 headers:
   Accept: application/json
