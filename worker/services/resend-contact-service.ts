@@ -55,7 +55,7 @@ export class ResendContactService implements IResendContactService {
             // firstName="Mary", lastName="Anne" rather than firstName="Mary Anne".
             // Whitespace-only names are treated as absent.
             const trimmed = user.name?.trim() ?? '';
-            const nameParts = trimmed ? trimmed.split(/\s+/).filter(Boolean) : [];
+            const nameParts = trimmed ? trimmed.split(/\s+/) : [];
             const firstName = nameParts[0] || undefined;
             const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
 

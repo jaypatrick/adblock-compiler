@@ -449,10 +449,11 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
                         const syncPromise = contacts.syncUserCreated({ id: user.id, email: user.email, name: user.name });
                         if (ctx) {
                             ctx.waitUntil(syncPromise);
+                        } else {
+                            // Without an ExecutionContext the promise runs fire-and-forget.
+                            // Errors are already swallowed inside syncUserCreated.
+                            void syncPromise;
                         }
-                        // If ctx is absent (e.g. BetterAuthProvider.verifyToken path),
-                        // the Promise is fire-and-forget; errors are already swallowed
-                        // inside syncUserCreated.
                     },
                 },
                 delete: {
@@ -460,6 +461,8 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
                         const syncPromise = contacts.syncUserDeleted({ id: user.id, email: user.email });
                         if (ctx) {
                             ctx.waitUntil(syncPromise);
+                        } else {
+                            void syncPromise;
                         }
                     },
                 },
