@@ -127,12 +127,7 @@ URL_API          = "https://api.bloqr.dev"
 URL_DOCS         = "https://docs.bloqr.dev"
 URL_LANDING      = "https://bloqr.dev"
 CANONICAL_DOMAIN = "bloqr.dev"
-# ─── Cloudflare Account ID (non-secret) ──────────────────────────────────────
-# Required by CfEmailServiceRestService for the CF Email Service REST API.
-# Non-secret: safe to commit. Find at https://dash.cloudflare.com → Account ID.
-# IMPORTANT: Replace this placeholder before deploying to production.
-CF_ACCOUNT_ID = "your_cloudflare_account_id"
-
+CF_ACCOUNT_ID    = "07a1f8d207654fe5d838174af4813126"
 # ─── KV Namespaces ───────────────────────────────────────────────────────────
 # `wrangler dev` binds to these live namespaces by default.
 # Use `wrangler dev --local` to run against an on-device KV store instead.
