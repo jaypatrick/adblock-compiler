@@ -50,10 +50,10 @@ export class ResendContactService implements IResendContactService {
     async syncUserCreated(user: { id: string; email: string; name?: string | null }): Promise<void> {
         try {
             // Best-effort name split: first token → firstName, remainder → lastName.
-            // e.g. "Mary Anne Smith" → firstName="Mary", lastName="Anne Smith".
-            // Multi-word first names (e.g. "Mary Anne") are not handled — a limitation
-            // of splitting on the first space.  Whitespace-only names are treated as
-            // absent so Resend does not receive empty-string fields.
+            // Multi-word last names work (e.g. "Mary Smith Jones" → lastName="Smith Jones").
+            // Multi-word first names cannot be distinguished from a first name followed by
+            // a last name (e.g. "Mary Anne" → firstName="Mary", lastName="Anne").
+            // Whitespace-only names are treated as absent.
             const trimmed = user.name?.trim() ?? '';
             const nameParts = trimmed ? trimmed.split(' ') : [];
             const firstName = nameParts[0] || undefined;
