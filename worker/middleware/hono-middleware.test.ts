@@ -149,6 +149,28 @@ Deno.test('turnstileMiddleware: returns 400 when body is not valid JSON', async 
     assertEquals(body.status, 400);
 });
 
+Deno.test('turnstileMiddleware: skips when authMethod is api-key', async () => {
+    const env = makeTestEnv({ TURNSTILE_SECRET_KEY: 'secret' });
+    const apiKeyContext: IAuthContext = {
+        ...ANONYMOUS_AUTH_CONTEXT,
+        userId: 'user_api',
+        tier: UserTier.Free,
+        authMethod: 'api-key',
+        apiKeyId: 'key_001',
+    };
+    const app = new Hono();
+    app.use('*', makeContextMiddleware({ authContext: apiKeyContext }));
+    app.post('/', turnstileMiddleware(), (c) => c.json({ success: true }));
+
+    // No turnstileToken in body — must still pass because auth is api-key
+    const req = new Request('http://test/', {
+        method: 'POST',
+        body: JSON.stringify({ data: 'payload' }),
+    });
+    const res = await app.fetch(req, env, makeCtx());
+    assertEquals(res.status, 200);
+});
+
 // ── requireAuthMiddleware ─────────────────────────────────────────────────────
 
 Deno.test('requireAuthMiddleware: passes for authenticated user', async () => {

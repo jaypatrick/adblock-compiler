@@ -174,6 +174,8 @@ export function rateLimitMiddleware(): AppMiddleware {
  * for downstream `zValidator` or the route handler.
  *
  * - If `TURNSTILE_SECRET_KEY` is not configured, the middleware is a no-op.
+ * - API key authenticated requests are skipped — Turnstile is a browser human-verification
+ *   challenge and must never apply to server-to-server API key calls.
  * - Returns **400 Bad Request** if the body cannot be parsed as JSON.
  * - Returns **403 Forbidden** if the token is missing or fails verification.
  *
@@ -189,6 +191,11 @@ export function rateLimitMiddleware(): AppMiddleware {
 export function turnstileMiddleware(): AppMiddleware {
     return async (c, next) => {
         if (!c.env.TURNSTILE_SECRET_KEY) {
+            await next();
+            return;
+        }
+        // API key requests are server-to-server — Turnstile (human verification) does not apply.
+        if (c.get('authContext')?.authMethod === 'api-key') {
             await next();
             return;
         }

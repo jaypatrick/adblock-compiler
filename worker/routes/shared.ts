@@ -83,10 +83,14 @@ export function zodValidationError(result: { success: boolean; error?: unknown }
  * `turnstileToken` field is accessed via `c.req.valid('json')`).
  *
  * Returns the error `Response` (403) on rejection, or `null` when the
- * Turnstile check passes (or when Turnstile is not configured).
+ * Turnstile check passes (or when Turnstile is not configured, or when the
+ * request is authenticated via API key — Turnstile is a browser
+ * human-verification challenge and must never apply to server-to-server calls).
  */
 export async function verifyTurnstileInline(c: AppContext, token: string): Promise<Response | null> {
     if (!c.env.TURNSTILE_SECRET_KEY) return null;
+    // API key requests are server-to-server — Turnstile does not apply.
+    if (c.get('authContext')?.authMethod === 'api-key') return null;
     const tsResult = await verifyTurnstileToken(c.env, token, c.get('ip'));
     if (!tsResult.success) {
         c.get('analytics').trackSecurityEvent({
