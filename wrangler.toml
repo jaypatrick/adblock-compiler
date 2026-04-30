@@ -108,7 +108,7 @@ destinations = [ "sentry-traces" ]
 #       All secrets use `wrangler secret put`.
 [vars]
 # Keep in sync with VERSION in src/version.ts. Run `deno task version:sync` to propagate.
-COMPILER_VERSION = "0.89.1"
+COMPILER_VERSION = "0.90.0"
 ENVIRONMENT = "production"
 # Public Turnstile site key — not a secret; safe to commit.
 # For local dev, .dev.vars overrides this with the always-pass test key (1x000...AA).

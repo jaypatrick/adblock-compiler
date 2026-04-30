@@ -82,6 +82,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.90.0] - 2026-04-30
+
+### Added- split Postman environment into separate local and prod files (#1682)
+- **docs**: distinct coal/navy/ayu dark themes + theme-aware Mermaid rendering (#1675)
+- **email**: add optional replyTo support throughout email pipeline (#1670)
+- inject stub 2xx responses into Cloudflare schema and add CI guard (#1668)
+- docs for PRs #1663/#1664 + automated schema sync pipeline (#1667)
+- add extensible EmailService to worker with CF Email Workers binding, Queues, Workflows, DB tracking, admin API, and MailChannels fallback (#1664)
+- instrument Durable Objects and Workflows with Sentry (lazy import, isolate-local init) (#1663)
+- complete Sentry sourcemaps upload + Cloudflare SDK integration (#1662)
+
+### Fixed
+
+- Postman collection generator — Better Auth endpoints, token auto-refresh, remove dead LocalAuth/Clerk endpoints + CF API Shield endpoint management (#1698)
+- replace pg-pool with Prisma in api-keys handlers and user-access ban check (#1697)
+- resolve c.req.raw body double-read and schema drift in api-keys routes (#1695)
+- add Prisma $extends UUID enforcement for Better Auth 1.5.x compatibility (#1693)
+- **auth**: force Better Auth to generate UUID IDs compatible with PostgreSQL uuid columns (#1692)
+- add concurrency guard to cloudflare-dep-update and explicit wrangler config in deploy-frontend (#1691)
+- **workflows**: eliminate all KV I/O from orchestrator context and add missing binding guards (#1689)
+- **ci**: add push trigger and fix change detection in cloudflare-dep-update.yml (#1687)
+- **tail**: add stub fetch handler to stop runtime exceptions from bots/scanners (#1690)
+- **build**: widen polyfills.server.mjs patch to handle Angular 21.2+ aliased createRequire (#1686)
+- **auth**: map Better Auth `name`/`image` fields to Prisma `displayName`/`imageUrl`, add regression tests, sync better-auth pin (#1685)
+- correct production API base URL to https://api.bloqr.dev/api and bump Cloudflare deps (#1684)
+- correct production API URL from https://bloqr.dev to https://api.bloqr.dev (#1683)
+- move workflow guards inside try/catch to stop outcome:exception on every scheduled run (#1674)
+- serve /favicon.svg and harden Swagger CSP with inline script hash (#1673)
+- guard queueSwr for anonymous users, fix signOut 415, correct queue/stats auth label (#1672)
+- **workflows**: replace (step as any).do() casts with typed stepDo helper; remove non-durable setTimeout (#1671)
+- guard undefined method/url in tail summary log for non-HTTP events
+- add --env=.env.local to schema upload tasks so Deno reads CLOUDFLARE_ZONE_ID / CLOUDFLARE_API_SHIELD_TOKEN locally
+- visual polish — logo alignment, darker theme, tab scroll indicators, tile definition, app/API consistency (#1665)
+- add CSP_LANDING variant to unblock styling on API landing page (#1661)
+- **csp**: refactor frontend/server.ts CSP — add missing directives and pre-build at module scope
+
+
 ## [0.89.1] - 2026-04-24
 
 ### Added### Fixed
