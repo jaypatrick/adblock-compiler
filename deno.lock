@@ -3828,6 +3828,7 @@
     "packageJson": {
       "dependencies": [
         "npm:@adguard/agtree@^4.0.4",
+        "npm:@better-auth/infra@~0.2.5",
         "npm:@cloudflare/containers@~0.1.1",
         "npm:@cloudflare/playwright-mcp@^0.0.5",
         "npm:@cloudflare/playwright@^1.2.0",
