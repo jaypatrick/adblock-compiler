@@ -190,7 +190,9 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
                 timeout: '30 seconds',
             }, async () => {
                 // Use direct provider (bypass queue) to avoid queue→workflow→queue recursion.
-                const mailer = createEmailService(this.env, { useQueue: false, priority: emailPriority });
+                // throwOnFailure: true ensures delivery errors propagate so this step is
+                // retried by the Workflow runtime rather than silently succeeding on failure.
+                const mailer = createEmailService(this.env, { useQueue: false, priority: emailPriority, throwOnFailure: true });
 
                 // Derive provider name from the actual instance created by the factory,
                 // guaranteeing it matches the provider that will deliver the email.

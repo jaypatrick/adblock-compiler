@@ -402,6 +402,10 @@ export class ResendEmailService implements IEmailService {
     constructor(
         private readonly apiKey: string,
         private readonly fromAddress: string,
+        /** When `true`, delivery failures are rethrown rather than logged-and-swallowed.
+         *  Set by {@link createEmailService} when `throwOnFailure: true` is requested
+         *  (e.g. from {@link EmailDeliveryWorkflow} so step retries trigger on failure). */
+        private readonly throwOnFailure = false,
     ) {}
 
     async sendEmail(payload: EmailPayload): Promise<void> {
@@ -430,12 +434,17 @@ export class ResendEmailService implements IEmailService {
             });
 
             if (!res.ok) {
+                const msg = `[ResendEmailService] Delivery failed: HTTP ${res.status} — ${await res.text()}`;
+                if (this.throwOnFailure) {
+                    throw new Error(msg);
+                }
                 // deno-lint-ignore no-console
-                console.warn(
-                    `[ResendEmailService] Delivery failed: HTTP ${res.status} — ${await res.text()}`,
-                );
+                console.warn(msg);
             }
         } catch (err: unknown) {
+            if (this.throwOnFailure) {
+                throw err;
+            }
             // deno-lint-ignore no-console
             console.warn(
                 '[ResendEmailService] Network error:',
@@ -471,6 +480,10 @@ export class CfEmailServiceRestService implements IEmailService {
         apiToken: string,
         private readonly accountId: string,
         private readonly fromAddress: string,
+        /** When `true`, delivery failures are rethrown rather than logged-and-swallowed.
+         *  Set by {@link createEmailService} when `throwOnFailure: true` is requested
+         *  (e.g. from {@link EmailDeliveryWorkflow} so step retries trigger on failure). */
+        private readonly throwOnFailure = false,
     ) {
         this.cfApi = createCloudflareApiService({ apiToken });
     }
@@ -493,6 +506,9 @@ export class CfEmailServiceRestService implements IEmailService {
                 ...(replyTo ? { reply_to: replyTo } : {}),
             });
         } catch (err: unknown) {
+            if (this.throwOnFailure) {
+                throw err;
+            }
             // deno-lint-ignore no-console
             console.warn(
                 '[CfEmailServiceRestService] Delivery failed:',
@@ -655,7 +671,9 @@ export const FROM_ADDRESS_TRANSACTIONAL = 'notifications@bloqr.dev';
  * ```
  *
  * @param env  - Worker `Env` object (or any partial that has the required bindings).
- * @param opts - Optional options: `useQueue` (default `true`), tracing fields, and `priority`.
+ * @param opts - Optional options: `useQueue` (default `true`), tracing fields, `priority`,
+ *               and `throwOnFailure` (default `false`; set `true` in workflow step callbacks
+ *               so delivery errors propagate and trigger step retries).
  * @returns    An {@link IEmailService} instance appropriate for the environment.
  */
 export function createEmailService(
@@ -667,9 +685,23 @@ export function createEmailService(
         CF_EMAIL_API_TOKEN?: string | null;
         CF_ACCOUNT_ID?: string | null;
     },
-    opts: { useQueue?: boolean; requestId?: string; reason?: string; priority?: 'critical' | 'transactional' } = {},
+    opts: {
+        useQueue?: boolean;
+        requestId?: string;
+        reason?: string;
+        priority?: 'critical' | 'transactional';
+        /**
+         * When `true`, delivery failures in {@link ResendEmailService} and
+         * {@link CfEmailServiceRestService} are rethrown instead of being
+         * logged-and-swallowed. Use this inside Cloudflare Workflow step callbacks
+         * so step retries fire on real delivery failures.
+         *
+         * @default false
+         */
+        throwOnFailure?: boolean;
+    } = {},
 ): IEmailService {
-    const { useQueue = true, requestId, reason, priority } = opts;
+    const { useQueue = true, requestId, reason, priority, throwOnFailure = false } = opts;
 
     // Priority 1: Durable queue-backed delivery (EMAIL_QUEUE → EmailDeliveryWorkflow)
     if (useQueue && env.EMAIL_QUEUE) {
@@ -678,11 +710,11 @@ export function createEmailService(
 
     // Priority 2: Direct sends — provider selected by `priority` hint.
     if (priority === 'critical' && env.RESEND_API_KEY) {
-        return new ResendEmailService(env.RESEND_API_KEY, FROM_ADDRESS_CRITICAL);
+        return new ResendEmailService(env.RESEND_API_KEY, FROM_ADDRESS_CRITICAL, throwOnFailure);
     }
 
     if (priority === 'transactional' && env.CF_EMAIL_API_TOKEN && env.CF_ACCOUNT_ID) {
-        return new CfEmailServiceRestService(env.CF_EMAIL_API_TOKEN, env.CF_ACCOUNT_ID, FROM_ADDRESS_TRANSACTIONAL);
+        return new CfEmailServiceRestService(env.CF_EMAIL_API_TOKEN, env.CF_ACCOUNT_ID, FROM_ADDRESS_TRANSACTIONAL, throwOnFailure);
     }
 
     // Priority 2 fallback: CF Email Workers binding (adblock-email worker)

@@ -203,6 +203,12 @@ export function createAuth(env: Env, baseURL?: string) {
     //     };
     // }
 
+    // A viable critical-path email provider is any provider that can actually
+    // deliver the email (not just silently drop it via NullEmailService).
+    // If no such provider is configured, enabling requireEmailVerification would
+    // permanently block sign-in for newly registered users.
+    const hasViableEmailProvider = !!(env.RESEND_API_KEY || env.SEND_EMAIL);
+
     return betterAuth({
         database: prismaAdapter(prisma, { provider: 'postgresql' }),
         secret: env.BETTER_AUTH_SECRET,
@@ -213,8 +219,10 @@ export function createAuth(env: Env, baseURL?: string) {
 
         emailAndPassword: {
             enabled: true,
-            // Block sign-in until the user has verified their email address.
-            requireEmailVerification: true,
+            // Only block sign-in on unverified email when a provider is configured that can
+            // actually deliver the verification link. Setting this unconditionally with no
+            // provider configured would permanently lock out newly registered users.
+            requireEmailVerification: hasViableEmailProvider,
             sendResetPassword: async ({ user, url }) => {
                 const mailer = createEmailService(env, { useQueue: false, priority: 'critical', reason: 'password_reset' });
                 await mailer.sendEmail({

@@ -585,12 +585,19 @@ export class CloudflareApiService {
      * still apply — no manual status or body check is needed.
      *
      * @param accountId - Cloudflare account ID.
-     * @param payload   - Email send request body (validated via {@link CfEmailSendRequestSchema}).
+     * @param payload   - Email send request body; validated at the trust boundary via
+     *                    {@link CfEmailSendRequestSchema} before the API call is made.
+     * @throws {ZodError} if `payload` does not satisfy {@link CfEmailSendRequestSchema}.
      * @throws {APIError} (from the Cloudflare SDK) if the API returns a non-2xx response.
      * @see https://developers.cloudflare.com/email-service/api/send-emails/
      */
     async sendEmail(accountId: string, payload: CfEmailSendRequest): Promise<void> {
-        this.logger.info(`[CloudflareApiService] sendEmail to=${payload.to.join(', ')}`);
+        // Validate at the trust boundary — callers such as CfEmailServiceRestService
+        // pre-validate with EmailPayloadSchema, but this ensures the CF-specific shape
+        // (e.g. `to` as an array, no CR/LF in subject) is always enforced.
+        const validated = CfEmailSendRequestSchema.parse(payload);
+
+        this.logger.info(`[CloudflareApiService] sendEmail to=${validated.to.join(', ')}`);
 
         // The SDK throws APIError for non-2xx responses, so reaching this line implies
         // delivery was accepted.  The response body (e.g. message-id) is intentionally
@@ -599,7 +606,7 @@ export class CloudflareApiService {
         // `Promise<CfEmailSendResponse>` and Zod-parse with CfEmailSendResponseSchema.
         await this.client.post<CfEmailSendRequest, unknown>(
             `/accounts/${accountId}/email/sending/send`,
-            { body: payload },
+            { body: validated },
         );
     }
 }
