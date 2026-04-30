@@ -111,6 +111,19 @@ export interface EmailDeliveryResult {
 const RECEIPT_KEY_PREFIX = 'email:receipt:';
 const RECEIPT_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
 
+/**
+ * Email reasons that require Resend's deliverability guarantees (critical auth path).
+ *
+ * When `reason` matches one of these values, `createEmailService` is called with
+ * `priority: 'critical'` to route through ResendEmailService.
+ */
+const CRITICAL_REASONS = new Set([
+    'email_verification',
+    'password_reset',
+    'security_alert',
+    'two_factor_alert',
+]);
+
 function receiptKey(idempotencyKey: string): string {
     return `${RECEIPT_KEY_PREFIX}${idempotencyKey}`;
 }
@@ -169,13 +182,6 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
 
             result.to = validatedPayload.to;
 
-            // Reasons that require Resend's deliverability guarantees (auth critical path).
-            const CRITICAL_REASONS = new Set([
-                'email_verification',
-                'password_reset',
-                'security_alert',
-                'two_factor_alert',
-            ]);
             const emailPriority: 'critical' | 'transactional' = CRITICAL_REASONS.has(reason) ? 'critical' : 'transactional';
 
             // ─── Step 2: Deliver ──────────────────────────────────────────────

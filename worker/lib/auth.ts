@@ -77,7 +77,7 @@ import { admin, bearer, multiSession, organization, twoFactor } from 'better-aut
 import { dash } from '@better-auth/infra';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
-import { ResendEmailService } from '../services/email-service.ts';
+import { FROM_ADDRESS_CRITICAL, ResendEmailService } from '../services/email-service.ts';
 import { renderEmailVerification, renderPasswordReset } from '../services/email-templates.ts';
 
 /**
@@ -221,7 +221,7 @@ export function createAuth(env: Env, baseURL?: string) {
                     console.warn('[auth] RESEND_API_KEY not set — password reset email dropped');
                     return;
                 }
-                const mailer = new ResendEmailService(env.RESEND_API_KEY, 'noreply@bloqr.dev');
+                const mailer = new ResendEmailService(env.RESEND_API_KEY, FROM_ADDRESS_CRITICAL);
                 await mailer.sendEmail({
                     to: user.email,
                     ...renderPasswordReset({ email: user.email, url }),
@@ -245,7 +245,7 @@ export function createAuth(env: Env, baseURL?: string) {
                     );
                     return;
                 }
-                const mailer = new ResendEmailService(env.RESEND_API_KEY, 'noreply@bloqr.dev');
+                const mailer = new ResendEmailService(env.RESEND_API_KEY, FROM_ADDRESS_CRITICAL);
                 await mailer.sendEmail({
                     to: user.email,
                     ...renderEmailVerification({ email: user.email, url }),

@@ -611,6 +611,18 @@ export class QueuedEmailService implements IEmailService {
 // ============================================================================
 
 /**
+ * Default from-address for critical auth-path emails sent via Resend.
+ * Used for email verification, password reset, and security alerts.
+ */
+export const FROM_ADDRESS_CRITICAL = 'noreply@bloqr.dev';
+
+/**
+ * Default from-address for transactional/notification emails sent via
+ * CfEmailServiceRestService or CfEmailWorkerService.
+ */
+export const FROM_ADDRESS_TRANSACTIONAL = 'notifications@bloqr.dev';
+
+/**
  * Create the best available {@link IEmailService} from the Worker `Env`.
  *
  * **Provider selection order** (first match wins):
@@ -675,16 +687,16 @@ export function createEmailService(
 
     // Priority 2: Direct sends — provider selected by `priority` hint.
     if (priority === 'critical' && env.RESEND_API_KEY) {
-        return new ResendEmailService(env.RESEND_API_KEY, 'noreply@bloqr.dev');
+        return new ResendEmailService(env.RESEND_API_KEY, FROM_ADDRESS_CRITICAL);
     }
 
     if (priority === 'transactional' && env.CF_EMAIL_API_TOKEN && env.CF_ACCOUNT_ID) {
-        return new CfEmailServiceRestService(env.CF_EMAIL_API_TOKEN, env.CF_ACCOUNT_ID, 'notifications@bloqr.dev');
+        return new CfEmailServiceRestService(env.CF_EMAIL_API_TOKEN, env.CF_ACCOUNT_ID, FROM_ADDRESS_TRANSACTIONAL);
     }
 
     // Priority 2 fallback: CF Email Workers binding (adblock-email worker)
     if (env.SEND_EMAIL) {
-        return new CfEmailWorkerService(env.SEND_EMAIL, 'notifications@bloqr.dev');
+        return new CfEmailWorkerService(env.SEND_EMAIL, FROM_ADDRESS_TRANSACTIONAL);
     }
 
     // Priority 3: No-op fallback
