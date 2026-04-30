@@ -1,4 +1,4 @@
-#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-env
+#!/usr/bin/env -S deno run --allow-read --allow-write --allow-net --allow-env --allow-run
 
 /**
  * @module sync-api-assets
@@ -30,7 +30,7 @@ import { existsSync } from '@std/fs';
 import { parse, stringify } from '@std/yaml';
 import { z } from 'zod';
 import { createCloudflareApiService } from '../src/services/cloudflareApiService.ts';
-import type { ApiShieldSchema } from '../src/services/cloudflareApiService.ts';
+import type { ApiShieldOperation, ApiShieldOperationInput, ApiShieldSchema } from '../src/services/cloudflareApiService.ts';
 import { findInvalid2xx, HTTP_METHODS, inject2xxStubs } from './schema-2xx-helpers.ts';
 
 // ---------------------------------------------------------------------------
@@ -39,11 +39,6 @@ import { findInvalid2xx, HTTP_METHODS, inject2xxStubs } from './schema-2xx-helpe
 
 const OPENAPI_PATH = './docs/api/openapi.yaml';
 const CLOUDFLARE_SCHEMA_PATH = './docs/api/cloudflare-schema.yaml';
-const COLLECTION_OUTPUT_PATH = './docs/postman/postman-collection.json';
-const ENVIRONMENT_LOCAL_OUTPUT_PATH = './docs/postman/postman-environment-local.json';
-const ENVIRONMENT_PROD_OUTPUT_PATH = './docs/postman/postman-environment-prod.json';
-/** Legacy alias — same content as the local environment. Keeps existing CI/Newman commands working. */
-const ENVIRONMENT_OUTPUT_PATH = './docs/postman/postman-environment.json';
 const SCHEMA_NAME = 'adblock-compiler-openapi';
 
 // ---------------------------------------------------------------------------
@@ -383,394 +378,234 @@ async function stepUploadToApiShield(dryRun: boolean, skipIfUnchanged: boolean):
 // Step 4: Regenerate Postman collection
 // ---------------------------------------------------------------------------
 
-// Postman type stubs (minimal)
-
-interface OAServer {
-    url: string;
-    description?: string;
-}
-
-interface OAMediaType {
-    // deno-lint-ignore no-explicit-any
-    schema?: Record<string, any>;
-    example?: unknown;
-    // deno-lint-ignore no-explicit-any
-    examples?: Record<string, { summary?: string; value?: unknown }>;
-}
-
-interface OAOperation {
-    tags?: string[];
-    summary?: string;
-    description?: string;
-    operationId?: string;
-    // deno-lint-ignore no-explicit-any
-    security?: Array<Record<string, any>>;
-    requestBody?: { required?: boolean; content?: Record<string, OAMediaType> };
-    parameters?: Array<{
-        name: string;
-        in: string;
-        required?: boolean;
-        // deno-lint-ignore no-explicit-any
-        schema?: Record<string, any>;
-        description?: string;
-    }>;
-    // deno-lint-ignore no-explicit-any
-    responses?: Record<string, any>;
-}
-
-interface OAPathItem {
-    get?: OAOperation;
-    post?: OAOperation;
-    put?: OAOperation;
-    patch?: OAOperation;
-    delete?: OAOperation;
-    options?: OAOperation;
-    head?: OAOperation;
-    trace?: OAOperation;
-}
-
-interface OASpec {
-    openapi: string;
-    info: { title: string; description?: string; version: string };
-    servers?: OAServer[];
-    tags?: Array<{ name: string; description?: string }>;
-    paths: Record<string, OAPathItem>;
-    components?: {
-        // deno-lint-ignore no-explicit-any
-        schemas?: Record<string, any>;
-        // deno-lint-ignore no-explicit-any
-        securitySchemes?: Record<string, any>;
-    };
-}
-
-interface PostmanUrl {
-    raw: string;
-    host: string[];
-    path: string[];
-    variable?: Array<{ key: string; value: string; description?: string }>;
-    query?: Array<{ key: string; value: string; disabled?: boolean; description?: string }>;
-}
-
-interface PostmanItem {
-    name: string;
-    description?: string;
-    event?: Array<{ listen: 'test' | 'prerequest'; script: { type: string; exec: string[] } }>;
-    request?: {
-        method: string;
-        header: Array<{ key: string; value: string; type?: string; description?: string }>;
-        url: PostmanUrl;
-        body?: { mode: string; raw?: string; options?: { raw?: { language: string } } };
-        description?: string;
-    };
-    item?: PostmanItem[];
-}
-
-const HTTP_METHODS_PM = ['get', 'post', 'put', 'patch', 'delete', 'options', 'head', 'trace'] as const;
-type HttpMethodPm = (typeof HTTP_METHODS_PM)[number];
-
-function resolveRefPM(ref: string, spec: OASpec): Record<string, unknown> | null {
-    if (!ref.startsWith('#/')) {
-        return null;
-    }
-    const parts = ref.slice(2).split('/');
-    let node: unknown = spec;
-    for (const part of parts) {
-        if (node == null || typeof node !== 'object') {
-            return null;
-        }
-        node = (node as Record<string, unknown>)[part];
-    }
-    return node != null && typeof node === 'object' ? (node as Record<string, unknown>) : null;
-}
-
-// deno-lint-ignore no-explicit-any
-function schemaToExamplePM(schema: Record<string, any> | undefined, spec: OASpec, depth = 0): unknown {
-    if (!schema || depth > 4) {
-        return {};
-    }
-    if ('$ref' in schema && typeof schema['$ref'] === 'string') {
-        const resolved = resolveRefPM(schema['$ref'] as string, spec);
-        return schemaToExamplePM(resolved as Record<string, unknown> | undefined, spec, depth + 1);
-    }
-    if ('example' in schema) {
-        return schema['example'];
-    }
-    const type = schema['type'];
-    if (type === 'object' || (type == null && schema['properties'])) {
-        const props = schema['properties'] as Record<string, unknown> | undefined;
-        if (!props) {
-            return {};
-        }
-        const result: Record<string, unknown> = {};
-        for (const [key, val] of Object.entries(props)) {
-            if (depth < 3) {
-                result[key] = schemaToExamplePM(val as Record<string, unknown>, spec, depth + 1);
-            }
-        }
-        return result;
-    }
-    if (type === 'array') {
-        return [schemaToExamplePM(schema['items'] as Record<string, unknown>, spec, depth + 1)];
-    }
-    if (type === 'string') {
-        return (schema['enum'] as string[] | undefined)?.[0] ?? 'string';
-    }
-    if (type === 'integer' || type === 'number') {
-        return 0;
-    }
-    if (type === 'boolean') {
-        return false;
-    }
-    return {};
-}
-
-function extractBodyExamplePM(mediaType: OAMediaType | undefined, spec: OASpec): unknown {
-    if (!mediaType) {
-        return undefined;
-    }
-    if (mediaType.example !== undefined) {
-        return mediaType.example;
-    }
-    if (mediaType.examples) {
-        const first = Object.values(mediaType.examples)[0];
-        if (first?.value !== undefined) {
-            return first.value;
-        }
-    }
-    if (mediaType.schema) {
-        return schemaToExamplePM(mediaType.schema, spec);
-    }
-    return undefined;
-}
-
-function buildPostmanUrlPM(
-    rawPath: string,
-    baseVarName: string,
-    queryParams: Array<{ name: string; required?: boolean; description?: string }> = [],
-): PostmanUrl {
-    const segments = rawPath.split('/').filter(Boolean);
-    const pathParts: string[] = [];
-    const variables: Array<{ key: string; value: string; description?: string }> = [];
-
-    for (const seg of segments) {
-        if (seg.startsWith('{') && seg.endsWith('}')) {
-            const paramName = seg.slice(1, -1);
-            pathParts.push(`:${paramName}`);
-            variables.push({ key: paramName, value: `{{${paramName}}}`, description: `Path parameter: ${paramName}` });
-        } else {
-            pathParts.push(seg);
-        }
-    }
-
-    const query = queryParams.map((p) => ({
-        key: p.name,
-        value: `{{${p.name}}}`,
-        ...(p.description ? { description: p.description } : {}),
-        ...(p.required ? {} : { disabled: true }),
-    }));
-
-    const requiredQueryParts = queryParams.filter((p) => p.required).map((p) => `${p.name}={{${p.name}}}`);
-    const rawQuery = requiredQueryParts.length > 0 ? `?${requiredQueryParts.join('&')}` : '';
-    const rawUrl = `{{${baseVarName}}}/${pathParts.join('/')}${rawQuery}`;
-
-    const url: PostmanUrl = { raw: rawUrl, host: [`{{${baseVarName}}}`], path: pathParts };
-    if (variables.length > 0) {
-        url.variable = variables;
-    }
-    if (query.length > 0) {
-        url.query = query;
-    }
-    return url;
-}
-
-function buildRequestItemPM(path: string, method: HttpMethodPm, operation: OAOperation, spec: OASpec): PostmanItem {
-    const name = operation.summary ?? operation.operationId ?? `${method.toUpperCase()} ${path}`;
-    const headers: Array<{ key: string; value: string; type?: string; description?: string }> = [];
-
-    const jsonMedia = operation.requestBody?.content?.['application/json'];
-    if (jsonMedia) {
-        headers.push({ key: 'Content-Type', value: 'application/json', type: 'text' });
-    }
-
-    const requiresAdmin = operation.security?.some((s) => Object.keys(s).includes('AdminKey')) ?? false;
-    if (requiresAdmin) {
-        headers.push({ key: 'X-Admin-Key', value: '{{adminKey}}', type: 'text', description: 'Admin API key' });
-    }
-
-    let body: { mode: string; raw?: string; options?: { raw?: { language: string } } } | undefined;
-    if (jsonMedia) {
-        const example = extractBodyExamplePM(jsonMedia, spec);
-        if (example !== undefined) {
-            body = { mode: 'raw', raw: JSON.stringify(example, null, 4), options: { raw: { language: 'json' } } };
-        }
-    }
-
-    const successStatus = Object.keys(operation.responses ?? {}).find((s) => s.startsWith('2')) ?? '200';
-    const statusNum = parseInt(successStatus, 10);
-    const contentTypes = Object.keys((operation.responses?.[successStatus] as { content?: Record<string, unknown> })?.content ?? {});
-    const isJson = contentTypes.some((ct) => ct.includes('json'));
-    const isSse = contentTypes.some((ct) => ct.includes('event-stream'));
-
-    const testLines: string[] = [
-        `pm.test('Status code is ${statusNum}', function () {`,
-        `    pm.response.to.have.status(${statusNum});`,
-        '});',
-    ];
-    if (isJson) {
-        testLines.push('', "pm.test('Response is JSON', function () {", '    pm.response.to.be.json;', '});');
-    }
-    if (isSse) {
-        testLines.push(
-            '',
-            "pm.test('Response is SSE stream', function () {",
-            "    pm.expect(pm.response.headers.get('Content-Type')).to.include('text/event-stream');",
-            '});',
-        );
-    }
-
-    return {
-        name,
-        description: operation.description?.split('\n')[0] ?? operation.summary,
-        event: [{ listen: 'test', script: { type: 'text/javascript', exec: testLines } }],
-        request: {
-            method: method.toUpperCase(),
-            header: headers,
-            url: buildPostmanUrlPM(
-                path,
-                'baseUrl',
-                (operation.parameters ?? []).filter((p) => p.in === 'query'),
-            ),
-            ...(body ? { body } : {}),
-            description: operation.description,
-        },
-    };
-}
-
 async function stepGeneratePostmanCollection(dryRun: boolean): Promise<void> {
     console.log('\n─── Step 4: Generate Postman collection ────────────────────\n');
 
-    if (!existsSync(OPENAPI_PATH)) {
-        throw new Error(`OpenAPI file not found: ${OPENAPI_PATH}`);
-    }
-
-    const content = await Deno.readTextFile(OPENAPI_PATH);
-    const spec = parse(content) as OASpec;
-
-    const servers = spec.servers ?? [];
-    const prodServer = servers.find((s) => !s.url.startsWith('http://localhost'));
-    const localServer = servers.find((s) => s.url.startsWith('http://localhost'));
-    const baseUrlValue = localServer?.url ?? 'http://localhost:8787/api';
-    const prodUrlValue = prodServer?.url ?? '';
-
-    const tagOrder = (spec.tags ?? []).map((t) => t.name);
-    const tagDescriptions: Record<string, string> = Object.fromEntries((spec.tags ?? []).map((t) => [t.name, t.description ?? '']));
-
-    const tagItems: Record<string, PostmanItem[]> = {};
-    for (const tagName of tagOrder) {
-        tagItems[tagName] = [];
-    }
-    const untaggedItems: PostmanItem[] = [];
-
-    let requestCount = 0;
-    for (const [path, pathItem] of Object.entries(spec.paths)) {
-        for (const method of HTTP_METHODS_PM) {
-            const operation = pathItem[method];
-            if (!operation) {
-                continue;
-            }
-            const item = buildRequestItemPM(path, method, operation, spec);
-            const tag = operation.tags?.[0];
-            if (tag) {
-                if (!tagItems[tag]) {
-                    tagItems[tag] = [];
-                }
-                tagItems[tag].push(item);
-            } else {
-                untaggedItems.push(item);
-            }
-            requestCount++;
-        }
-    }
-
-    const folderItems: PostmanItem[] = [];
-    for (const tagName of tagOrder) {
-        const items = tagItems[tagName];
-        if (!items || items.length === 0) {
-            continue;
-        }
-        folderItems.push({ name: tagName, description: tagDescriptions[tagName], item: items });
-    }
-    if (untaggedItems.length > 0) {
-        folderItems.push({ name: 'Other', item: untaggedItems });
-    }
-
-    const collection = {
-        info: {
-            name: spec.info.title,
-            description: `Auto-generated from docs/api/openapi.yaml. Run 'deno task postman:collection' to regenerate.\n\n${spec.info.description ?? ''}`.trim(),
-            schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
-            _postman_id: 'adblock-compiler-api',
-            version: spec.info.version,
-        },
-        variable: [
-            { key: 'baseUrl', value: baseUrlValue, type: 'string' },
-            { key: 'prodUrl', value: prodUrlValue, type: 'string' },
-            { key: 'requestId', value: '', type: 'string' },
-            { key: 'adminKey', value: '', type: 'string', description: 'Admin API key for protected admin endpoints (X-Admin-Key header)' },
-            { key: 'bearerToken', value: '', type: 'string', description: 'Bearer token for authenticated user requests (Better Auth JWT or API key)' },
-            { key: 'userApiKey', value: '', type: 'string', description: 'User API key with abc_ prefix for API key authentication' },
-            { key: 'userId', value: '', type: 'string', description: 'User ID captured from Create User response' },
-            { key: 'apiKeyPrefix', value: '', type: 'string', description: 'API key prefix captured from Create API Key response' },
-        ],
-        item: folderItems,
-    };
-
-    const environmentLocal = {
-        name: `${spec.info.title} - Local`,
-        values: [
-            { key: 'baseUrl', value: baseUrlValue, type: 'default', enabled: true },
-            { key: 'requestId', value: '', type: 'default', enabled: true },
-            { key: 'userId', value: '', type: 'default', enabled: true },
-            { key: 'apiKeyPrefix', value: '', type: 'default', enabled: true },
-        ],
-        _postman_variable_scope: 'environment',
-        _postman_exported_using: 'deno task postman:collection',
-    };
-
-    const envProdUrl = prodUrlValue || 'https://api.bloqr.dev/api';
-    const environmentProd = {
-        name: `${spec.info.title} - Prod`,
-        values: [
-            { key: 'baseUrl', value: envProdUrl, type: 'default', enabled: true },
-            { key: 'bearerToken', value: '', type: 'secret', enabled: true },
-            { key: 'userApiKey', value: '', type: 'secret', enabled: true },
-            { key: 'adminKey', value: '', type: 'secret', enabled: true },
-            { key: 'requestId', value: '', type: 'default', enabled: true },
-            { key: 'userId', value: '', type: 'default', enabled: true },
-            { key: 'apiKeyPrefix', value: '', type: 'default', enabled: true },
-        ],
-        _postman_variable_scope: 'environment',
-        _postman_exported_using: 'deno task postman:collection',
-    };
-
     if (dryRun) {
-        console.log(
-            `🔍 Dry-run: would write ${COLLECTION_OUTPUT_PATH} (${requestCount} requests), ${ENVIRONMENT_LOCAL_OUTPUT_PATH}, ${ENVIRONMENT_PROD_OUTPUT_PATH}, and ${ENVIRONMENT_OUTPUT_PATH}`,
-        );
+        console.log('🔍 Dry-run: would run deno task postman:collection to regenerate Postman artifacts.');
         return;
     }
 
-    await Deno.writeTextFile(COLLECTION_OUTPUT_PATH, JSON.stringify(collection, null, 2) + '\n');
-    console.log(`✅ Generated Postman collection: ${COLLECTION_OUTPUT_PATH} (${requestCount} requests)`);
+    // Delegate to the canonical generator script so that both
+    // `deno task postman:collection` and `deno task schema:sync` always
+    // produce identical Postman artifacts.
+    const cmd = new Deno.Command(Deno.execPath(), {
+        args: ['run', '--allow-read', '--allow-write', 'scripts/generate-postman-collection.ts'],
+        stdout: 'inherit',
+        stderr: 'inherit',
+    });
+    const { code } = await cmd.output();
+    if (code !== 0) {
+        throw new Error('Postman collection generation failed (see output above)');
+    }
+}
 
-    await Deno.writeTextFile(ENVIRONMENT_LOCAL_OUTPUT_PATH, JSON.stringify(environmentLocal, null, 4) + '\n');
-    console.log(`✅ Generated Postman environment (local): ${ENVIRONMENT_LOCAL_OUTPUT_PATH}`);
+// ---------------------------------------------------------------------------
+// Step 5: Sync API Shield Endpoint Management
+// ---------------------------------------------------------------------------
 
-    await Deno.writeTextFile(ENVIRONMENT_PROD_OUTPUT_PATH, JSON.stringify(environmentProd, null, 4) + '\n');
-    console.log(`✅ Generated Postman environment (prod): ${ENVIRONMENT_PROD_OUTPUT_PATH}`);
+/** HTTP methods accepted by Cloudflare Endpoint Management. */
+const CF_HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS', 'CONNECT', 'TRACE'] as const;
+type CfHttpMethod = (typeof CF_HTTP_METHODS)[number];
 
-    await Deno.writeTextFile(ENVIRONMENT_OUTPUT_PATH, JSON.stringify(environmentLocal, null, 4) + '\n');
-    console.log(`✅ Generated Postman environment (legacy alias): ${ENVIRONMENT_OUTPUT_PATH}`);
+/**
+ * Normalises an OpenAPI path parameter template so it can be compared against
+ * Cloudflare's normalized form.  Cloudflare replaces `{anyName}` left-to-right
+ * with `{var1}`, `{var2}`, … during insertion.  Applying the same transform
+ * locally lets us check whether an operation is already saved before adding it.
+ *
+ * @param path - OpenAPI path, e.g. `/keys/{keyId}/sub/{subId}`
+ * @returns Normalised path, e.g. `/keys/{var1}/sub/{var2}`
+ */
+function normalizePathParams(path: string): string {
+    let idx = 1;
+    return path.replace(/\{[^}]+\}/g, () => `{var${idx++}}`);
+}
+
+/**
+ * Derives managed label names from an endpoint's path and OpenAPI tags.
+ *
+ * Returns zero or more labels from Cloudflare's `cf-*` catalogue that are
+ * appropriate for the endpoint.  See:
+ * https://developers.cloudflare.com/api-shield/management-and-monitoring/endpoint-labels/
+ */
+function managedLabelsForOperation(path: string, tags: string[]): string[] {
+    const labels: string[] = [];
+    const p = path.toLowerCase();
+
+    if (p.includes('/sign-in') || p.includes('/login') || p.includes('/sign-out') || p.includes('/get-session')) {
+        labels.push('cf-log-in');
+    }
+    if (p.includes('/sign-up') || p.includes('/signup') || p.includes('/register')) {
+        labels.push('cf-sign-up');
+    }
+    if (p.includes('/password') || p.includes('/reset-password') || p.includes('/change-password')) {
+        labels.push('cf-password-reset');
+    }
+    if (p.includes('/account') || p.includes('/profile') || p.includes('/account-update')) {
+        labels.push('cf-account-update');
+    }
+    if (tags.some((t) => t.toLowerCase() === 'compilation') || p.includes('/compile')) {
+        labels.push('cf-content');
+    }
+
+    return [...new Set(labels)];
+}
+
+/**
+ * Syncs all OpenAPI operations to Cloudflare API Shield Endpoint Management
+ * and attaches managed labels to the relevant operations.
+ *
+ * Behaviour:
+ * - Reads the already-generated `cloudflare-schema.yaml` for the canonical source.
+ * - Extracts every `{method, path}` combination and the production host from the
+ *   first non-localhost server.
+ * - Lists saved operations in API Shield; skips operations that are already present
+ *   (after normalising path parameters to Cloudflare's `{varN}` form).
+ * - Uploads new operations in a single bulk request.
+ * - Collects all operation IDs (new + previously existing) that qualify for each
+ *   managed label and calls `setManagedLabelOperations` to attach them.
+ *
+ * @param dryRun - When `true` logs intended actions but makes no API calls.
+ * @param skipUpload - When `true` skips the step entirely (mirrors `--skip-upload`).
+ */
+async function stepSyncEndpoints(dryRun: boolean, skipUpload: boolean): Promise<void> {
+    console.log('\n─── Step 5: Sync API Shield Endpoint Management ────────────\n');
+
+    if (dryRun) {
+        console.log('🔍 Dry-run: would sync operations and labels to Cloudflare API Shield Endpoint Management.');
+        return;
+    }
+
+    if (skipUpload) {
+        console.log('⏭️  Endpoint sync skipped (--skip-upload / --skip-endpoints).');
+        return;
+    }
+
+    // Re-use the same env validation as the schema-upload step.
+    const envResult = EnvSchema.safeParse({
+        CLOUDFLARE_ZONE_ID: Deno.env.get('CLOUDFLARE_ZONE_ID'),
+        CLOUDFLARE_API_SHIELD_TOKEN: Deno.env.get('CLOUDFLARE_API_SHIELD_TOKEN'),
+    });
+    if (!envResult.success) {
+        const messages = envResult.error.issues.map((i) => i.message).join('\n  ');
+        throw new Error(`Missing env vars for endpoint sync step:\n  ${messages}`);
+    }
+    const { CLOUDFLARE_ZONE_ID: zoneId, CLOUDFLARE_API_SHIELD_TOKEN: apiToken } = envResult.data;
+
+    // Read the generated Cloudflare schema (guaranteed to exist after step 1).
+    let schemaContent: string;
+    try {
+        schemaContent = await Deno.readTextFile(CLOUDFLARE_SCHEMA_PATH);
+    } catch (err) {
+        throw new Error(`Failed to read ${CLOUDFLARE_SCHEMA_PATH}: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    const cfSpec = parse(schemaContent) as {
+        servers?: Array<{ url: string }>;
+        paths: Record<string, Record<string, { tags?: string[] }>>;
+    };
+
+    // Derive the production host from the first non-localhost server.
+    const prodServer = (cfSpec.servers ?? []).find((s) => !s.url.startsWith('http://localhost'));
+    if (!prodServer) {
+        throw new Error('No production server found in cloudflare-schema.yaml — cannot derive API host.');
+    }
+    const parsedServerUrl = new URL(prodServer.url);
+    const host = parsedServerUrl.hostname; // e.g. "api.bloqr.dev"
+    // Preserve the server base path so uploaded operations match real traffic.
+    // e.g. https://api.bloqr.dev/api  →  basePath = "/api"
+    const basePath = parsedServerUrl.pathname.replace(/\/$/, '');
+
+    // Build the desired set of operations from the spec.
+    const desired: Array<{ input: ApiShieldOperationInput; normalizedPath: string; tags: string[] }> = [];
+    for (const [rawPath, pathItem] of Object.entries(cfSpec.paths ?? {})) {
+        for (const method of CF_HTTP_METHODS) {
+            const operation = pathItem[method.toLowerCase()];
+            if (!operation) {
+                continue;
+            }
+            const fullPath = `${basePath}${rawPath}`;
+            desired.push({
+                input: { method: method as CfHttpMethod, host, endpoint: fullPath },
+                normalizedPath: normalizePathParams(fullPath),
+                tags: operation.tags ?? [],
+            });
+        }
+    }
+    console.log(`📋 Desired operations from schema: ${desired.length}`);
+
+    const service = createCloudflareApiService({ apiToken });
+
+    // Fetch already-saved operations to avoid duplicates.
+    let existing: ApiShieldOperation[];
+    try {
+        existing = await service.listApiShieldOperations(zoneId);
+        console.log(`📡 Found ${existing.length} existing saved operation(s)`);
+    } catch (err) {
+        throw new Error(`Failed to list existing operations: ${err instanceof Error ? err.message : String(err)}`);
+    }
+
+    // Build a lookup of (method, normalizedPath) → operation_id for existing operations.
+    const existingKey = (method: string, path: string) => `${method.toUpperCase()}::${normalizePathParams(path)}`;
+    const existingMap = new Map<string, string>(existing.map((op) => [existingKey(op.method, op.endpoint), op.operation_id]));
+
+    // Determine which operations need to be added.
+    const toAdd = desired.filter((d) => !existingMap.has(existingKey(d.input.method, d.normalizedPath)));
+    console.log(`➕ New operations to add: ${toAdd.length}`);
+
+    let created: ApiShieldOperation[] = [];
+    if (toAdd.length > 0) {
+        // Cloudflare recommends batches of ≤500; our spec is well under that limit.
+        try {
+            created = await service.addApiShieldOperations(zoneId, toAdd.map((d) => d.input));
+            console.log(`✅ Added ${created.length} operation(s) to API Shield Endpoint Management`);
+        } catch (err) {
+            throw new Error(`Failed to add operations: ${err instanceof Error ? err.message : String(err)}`);
+        }
+    } else {
+        console.log('✅ All operations already saved — nothing to add');
+    }
+
+    // Merge created operations into the lookup so label assignment works for both new and existing.
+    for (const op of created) {
+        existingMap.set(existingKey(op.method, op.endpoint), op.operation_id);
+    }
+
+    // Build label → operation_id mapping across all desired operations.
+    const labelToIds = new Map<string, string[]>();
+    for (const d of desired) {
+        const opId = existingMap.get(existingKey(d.input.method, d.normalizedPath));
+        if (!opId) {
+            // Not in the map means the API returned it under a normalized path we didn't match —
+            // log a warning but continue so the rest of the sync succeeds.
+            console.warn(`⚠️  Could not resolve operation_id for ${d.input.method} ${d.input.endpoint} — skipping label assignment`);
+            continue;
+        }
+        for (const label of managedLabelsForOperation(d.input.endpoint, d.tags)) {
+            if (!labelToIds.has(label)) {
+                labelToIds.set(label, []);
+            }
+            labelToIds.get(label)!.push(opId);
+        }
+    }
+
+    if (labelToIds.size === 0) {
+        console.log('ℹ️  No managed labels to assign for this spec');
+        return;
+    }
+
+    // Assign managed labels — each call fully replaces the label's operation set.
+    for (const [label, ids] of labelToIds) {
+        try {
+            await service.setManagedLabelOperations(zoneId, label, ids);
+            console.log(`🏷️  Set managed label "${label}" on ${ids.length} operation(s)`);
+        } catch (err) {
+            // Label assignment is best-effort — warn but don't fail the pipeline.
+            console.warn(
+                `⚠️  Failed to set managed label "${label}": ${err instanceof Error ? err.message : String(err)}`,
+            );
+        }
+    }
 }
 
 // ---------------------------------------------------------------------------
@@ -779,13 +614,14 @@ async function stepGeneratePostmanCollection(dryRun: boolean): Promise<void> {
 
 async function main(): Promise<void> {
     const args = parseArgs(Deno.args, {
-        boolean: ['dry-run', 'skip-upload', 'skip-if-unchanged'],
-        default: { 'dry-run': false, 'skip-upload': false, 'skip-if-unchanged': true },
+        boolean: ['dry-run', 'skip-upload', 'skip-if-unchanged', 'skip-endpoints'],
+        default: { 'dry-run': false, 'skip-upload': false, 'skip-if-unchanged': true, 'skip-endpoints': false },
     });
 
     const dryRun = args['dry-run'] as boolean;
     const skipUpload = args['skip-upload'] as boolean;
     const skipIfUnchanged = args['skip-if-unchanged'] as boolean;
+    const skipEndpoints = args['skip-endpoints'] as boolean;
 
     console.log('🚀 sync-api-assets — full API asset sync pipeline');
     if (dryRun) {
@@ -811,6 +647,9 @@ async function main(): Promise<void> {
 
     // Step 4: Regenerate Postman collection
     await stepGeneratePostmanCollection(dryRun);
+
+    // Step 5: Sync API Shield Endpoint Management + labels
+    await stepSyncEndpoints(dryRun, skipUpload || skipEndpoints);
 
     console.log('\n🎉 sync-api-assets complete!\n');
 }
