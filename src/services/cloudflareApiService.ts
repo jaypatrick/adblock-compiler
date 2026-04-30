@@ -592,7 +592,11 @@ export class CloudflareApiService {
     async sendEmail(accountId: string, payload: CfEmailSendRequest): Promise<void> {
         this.logger.info(`[CloudflareApiService] sendEmail to=${payload.to.join(', ')}`);
 
-        // The SDK throws APIError for non-2xx responses, so reaching here implies delivery success.
+        // The SDK throws APIError for non-2xx responses, so reaching this line implies
+        // delivery was accepted.  The response body (e.g. message-id) is intentionally
+        // discarded — callers only need to know whether the send succeeded or failed.
+        // If a future caller needs the message-id, change the return type to
+        // `Promise<CfEmailSendResponse>` and Zod-parse with CfEmailSendResponseSchema.
         await this.client.post<CfEmailSendRequest, unknown>(
             `/accounts/${accountId}/email/sending/send`,
             { body: payload },
