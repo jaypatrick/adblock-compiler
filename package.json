@@ -19,6 +19,7 @@
     "_syncNote": "Dependency versions here must match those pinned in deno.json's import map; keep them in sync (for example via the existing version:sync-style task).",
     "dependencies": {
         "@adguard/agtree": "^4.0.4",
+        "@better-auth/infra": "^0.2.5",
         "@hono/zod-openapi": "^1.2.2",
         "@hono/zod-validator": "^0.4.3",
         "@neondatabase/serverless": "^0.10.0",
