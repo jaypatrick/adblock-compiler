@@ -1,6 +1,5 @@
 $kind: http-request
-description: >
-  Lists all saved configurations for the authenticated user.
+description: Lists all saved configurations for the authenticated user.
 url: {{baseUrl}}/configuration/saved
 method: GET
 headers:
@@ -9,5 +8,4 @@ headers:
 body:
   type: text
   content: ""
-examples: ./.resources/List saved configurations.resources/examples
 order: 6000

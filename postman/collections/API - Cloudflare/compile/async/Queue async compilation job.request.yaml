@@ -9,6 +9,7 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: application/json
+  X-API-Key: "{{apiKey}}"
 body:
   type: json
   content: |-
@@ -64,7 +65,7 @@ body:
         "key_1": "string"
       },
       "benchmark": false,
-      "turnstileToken": "string",
+      "turnstileToken": "{{turnstileToken}}",
       "priority": "standard"
     }
 examples: ./.resources/Queue async compilation job.resources/examples

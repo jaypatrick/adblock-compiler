@@ -1,0 +1,11 @@
+$kind: http-request
+description: Returns current pay-as-you-go usage statistics for the authenticated user.
+url: {{baseUrl}}/payg/usage
+method: GET
+headers:
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+body:
+  type: text
+  content: ""
+order: 3000

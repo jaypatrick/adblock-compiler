@@ -1,0 +1,11 @@
+$kind: http-request
+description: Returns pay-as-you-go pricing tiers and rates.
+url: {{baseUrl}}/payg/pricing
+method: GET
+headers:
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+body:
+  type: text
+  content: ""
+order: 4000

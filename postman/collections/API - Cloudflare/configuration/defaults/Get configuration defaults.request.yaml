@@ -1,6 +1,5 @@
 $kind: http-request
-description: >
-  Returns default configuration values for all compilation options.
+description: Returns the default compiler configuration schema.
 url: {{baseUrl}}/configuration/defaults
 method: GET
 headers:
@@ -9,5 +8,4 @@ headers:
 body:
   type: text
   content: ""
-examples: ./.resources/Get configuration defaults.resources/examples
 order: 1000

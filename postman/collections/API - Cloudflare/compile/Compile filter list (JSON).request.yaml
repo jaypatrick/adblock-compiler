@@ -9,24 +9,21 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: application/json
+  X-API-Key: "{{apiKey}}"
 body:
   type: json
   content: |-
     {
+      "turnstileToken": "{{turnstileToken}}",
       "configuration": {
         "name": "My Filter List",
         "sources": [
           {
             "source": "https://example.com/filters.txt",
-            "transformations": [
-              "RemoveComments",
-              "Validate"
-            ]
+            "transformations": ["RemoveComments", "Validate"]
           }
         ],
-        "transformations": [
-          "Deduplicate"
-        ]
+        "transformations": ["Deduplicate"]
       }
     }
 examples: ./.resources/Compile filter list (JSON).resources/examples

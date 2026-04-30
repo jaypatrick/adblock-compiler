@@ -4,6 +4,7 @@ url: {{baseUrl}}/api/deployments?limit=50&version=string&status=string&branch=st
 method: GET
 headers:
   Accept: application/json
+  X-API-Key: "{{apiKey}}"
 queryParams:
   - key: limit
     value: "50"

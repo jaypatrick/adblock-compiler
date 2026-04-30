@@ -1,6 +1,5 @@
 $kind: http-request
-description: >
-  Downloads a stored configuration by ID. Returns the configuration as JSON.
+description: Downloads a saved configuration by ID.
 url: {{baseUrl}}/configuration/download/:id
 method: GET
 headers:
@@ -9,9 +8,8 @@ headers:
 pathVariables:
   - key: id
     value: string
-    description: Configuration ID returned from the create endpoint
+    description: ID of the saved configuration
 body:
   type: text
   content: ""
-examples: ./.resources/Download configuration.resources/examples
 order: 5000

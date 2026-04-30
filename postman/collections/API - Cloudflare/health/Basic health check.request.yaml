@@ -4,6 +4,7 @@ url: {{baseUrl}}/health
 method: GET
 headers:
   Accept: application/json
+  X-API-Key: "{{apiKey}}"
 body:
   type: text
   content: ""

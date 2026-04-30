@@ -1,7 +1,5 @@
 $kind: http-request
-description: >
-  Saves a named configuration for later reuse. Returns the saved configuration
-  with its assigned ID.
+description: Saves a compiler configuration for reuse.
 url: {{baseUrl}}/configuration/saved
 method: POST
 headers:
@@ -12,14 +10,15 @@ body:
   type: json
   content: |-
     {
-      "name": "My Filter List",
-      "sources": [
-        {
-          "source": "https://example.com/filters.txt",
-          "transformations": ["RemoveComments", "Validate"]
-        }
-      ],
-      "transformations": ["Deduplicate"]
+      "configuration": {
+        "name": "My Saved Configuration",
+        "sources": [
+          {
+            "source": "https://example.com/filters.txt",
+            "transformations": ["RemoveComments"]
+          }
+        ],
+        "transformations": ["Deduplicate"]
+      }
     }
-examples: ./.resources/Save configuration.resources/examples
 order: 7000
