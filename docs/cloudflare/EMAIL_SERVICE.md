@@ -8,33 +8,39 @@ The `EmailService` layer gives every Worker handler a single, provider-agnostic 
 
 ```mermaid
 flowchart TD
-    Factory["createEmailService(env)"] --> P1{EMAIL_QUEUE binding?}
+    Factory["createEmailService(env, opts)"] --> P1{EMAIL_QUEUE?}
     P1 -- yes --> QSvc["QueuedEmailService\n(durable, queue-backed)"]
-    P1 -- no --> P2{SEND_EMAIL binding?}
-    P2 -- yes --> CFSvc["CfEmailWorkerService\n(adblock-email worker)"]
-    P2 -- no --> NullSvc["NullEmailService\n(no-op, logs warning)"]
+    P1 -- no --> P2{priority=critical\n+ RESEND_API_KEY?}
+    P2 -- yes --> ResendSvc["ResendEmailService\n(Resend REST, via ResendApiService)"]
+    P2 -- no --> P3{priority=transactional\n+ CF_EMAIL_API_TOKEN?}
+    P3 -- yes --> CFRestSvc["CfEmailServiceRestService\n(CF Email Service REST)"]
+    P3 -- no --> P4{SEND_EMAIL binding?}
+    P4 -- yes --> CFSvc["CfEmailWorkerService\n(adblock-email worker)"]
+    P4 -- no --> NullSvc["NullEmailService\n(no-op, logs warning)"]
 
     QSvc --> Queue["EMAIL_QUEUE\n(Cloudflare Queue)"]
     Queue --> QHandler["email-queue.ts handler"]
     QHandler --> WF["EmailDeliveryWorkflow"]
-    WF --> DirectFactory["createEmailService(env, { useQueue: false })"]
-    DirectFactory --> CFSvc2["CfEmailWorkerService"]
     WF --> Receipt["Delivery receipt"]
     Receipt --> KV["KV: METRICS (7-day TTL)"]
     Receipt --> D1["D1: email_log_edge"]
 
-    Queue --> DLQ["EMAIL_DLQ\n(dead-letter queue)"]
+    style ResendSvc fill:#1565c0,stroke:#0d47a1,color:#fff
+    style QSvc fill:#1b5e20,stroke:#0a3010,color:#fff
+    style NullSvc fill:#c62828,stroke:#8e1c1c,color:#fff
 ```
 
 ---
 
 ## Provider priority
 
-| Priority | Provider | Trigger condition | Durability | Retryable |
-|----------|----------|-------------------|------------|-----------|
-| 1 (best) | `QueuedEmailService` | `EMAIL_QUEUE` binding present | Durable (queue + Workflow) | Yes — Workflow retries |
-| 2 | `CfEmailWorkerService` | `SEND_EMAIL` binding present | Best-effort | No |
-| 3 | `NullEmailService` | Neither configured | N/A | N/A |
+| Priority | Provider | Trigger condition | Durability | Notes |
+|----------|----------|-------------------|------------|-------|
+| 1 (best) | `QueuedEmailService` | `EMAIL_QUEUE` binding present | Durable (queue + Workflow) | Preferred for production |
+| 2a | `ResendEmailService` | `priority='critical'` + `RESEND_API_KEY` | Best-effort | Auth critical path only |
+| 2b | `CfEmailServiceRestService` | `priority='transactional'` + `CF_EMAIL_API_TOKEN` + `CF_ACCOUNT_ID` | Best-effort | Transactional notifications |
+| 2c | `CfEmailWorkerService` | `SEND_EMAIL` binding present | Best-effort | Fallback |
+| 3 | `NullEmailService` | Nothing configured | N/A | Logs a warning; no send |
 
 ---
 
@@ -70,7 +76,19 @@ class_name = "EmailDeliveryWorkflow"
 
 ### 2. Worker Secrets
 
-No additional Worker Secrets are required for email delivery. The `SEND_EMAIL` binding handles authentication natively via the Worker runtime.
+The following Worker Secrets are used by the email system:
+
+| Secret | Required for | Command |
+|---|---|---|
+| `RESEND_API_KEY` | Auth critical email (verification, password reset) | `wrangler secret put RESEND_API_KEY` |
+| `RESEND_AUDIENCE_ID` | User lifecycle contact sync to Resend audience | `wrangler secret put RESEND_AUDIENCE_ID` |
+| `CF_EMAIL_API_TOKEN` | Transactional notifications via CF Email Service REST | `wrangler secret put CF_EMAIL_API_TOKEN` |
+
+`SEND_EMAIL` does not require a secret — it is a native Cloudflare binding configured in `wrangler.toml`.
+
+Obtain `RESEND_API_KEY` from [resend.com/api-keys](https://resend.com/api-keys) — use Full Access or a domain-scoped key for `bloqr.dev`.
+
+Obtain `RESEND_AUDIENCE_ID` from [resend.com/audiences](https://resend.com/audiences) — create an audience named "Bloqr Users" and copy the UUID.
 
 ### 3. D1 migration (edge tracking tables)
 
@@ -159,13 +177,18 @@ Inside `EmailDeliveryWorkflow`, the Workflow instance ID is set to the idempoten
 | No emails sent, no errors logged | `NullEmailService` selected — no provider configured | Configure `SEND_EMAIL` or `EMAIL_QUEUE` bindings in `wrangler.toml` |
 | Queue backlog growing | `EmailDeliveryWorkflow` failing repeatedly | Check Workflow logs via `wrangler tail`; verify `SEND_EMAIL` binding is correctly configured |
 | `503` from `POST /admin/email/test` | No email provider available | Confirm bindings in `wrangler.toml` are deployed; check `GET /admin/email/config` for binding status |
+| `[ResendEmailService] Delivery failed: HTTP 401` | `RESEND_API_KEY` invalid or expired | `wrangler secret put RESEND_API_KEY` to rotate |
+| `[ResendContactService] syncUserCreated failed` | `RESEND_AUDIENCE_ID` missing or wrong | Verify audience UUID in Resend dashboard; `wrangler secret put RESEND_AUDIENCE_ID` |
 
 ---
 
 ## See also
 
 - [`worker/services/email-service.ts`](../../worker/services/email-service.ts) — implementation
+- [`worker/services/resend-api-service.ts`](../../worker/services/resend-api-service.ts) — typed Resend Contacts/Audiences REST API wrapper
+- [`worker/services/resend-contact-service.ts`](../../worker/services/resend-contact-service.ts) — user lifecycle contact sync
 - [`worker/workflows/EmailDeliveryWorkflow.ts`](../../worker/workflows/EmailDeliveryWorkflow.ts) — durable delivery workflow
 - [`worker/handlers/email-queue.ts`](../../worker/handlers/email-queue.ts) — queue consumer
 - [`worker/handlers/admin-email.ts`](../../worker/handlers/admin-email.ts) — admin endpoints
 - [`docs/cloudflare/EMAIL_DELIVERY_WORKFLOW.md`](EMAIL_DELIVERY_WORKFLOW.md) — step-by-step workflow documentation
+- [`docs/auth/email-architecture.md`](../auth/email-architecture.md) — full hybrid email architecture reference
