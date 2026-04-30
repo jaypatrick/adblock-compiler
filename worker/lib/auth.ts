@@ -220,7 +220,7 @@ export class WorkerConfigurationError extends Error {
  * @param baseURL - The base URL for the auth endpoints (derived from the request)
  * @returns Configured Better Auth instance
  */
-export function createAuth(env: Env, baseURL?: string) {
+export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionContext, 'waitUntil'>) {
     if (!env.HYPERDRIVE?.connectionString) {
         throw new WorkerConfigurationError(
             'HYPERDRIVE binding is not configured.\n' +
@@ -440,19 +440,27 @@ export function createAuth(env: Env, baseURL?: string) {
         // ── User lifecycle hooks — Resend audience contact sync ───────────────
         // syncUserCreated / syncUserDeleted are fire-and-forget: errors are caught
         // and logged as warnings inside ResendContactService and never propagate.
-        // The hooks fire-and-forget: void discards the returned Promise so auth
-        // flow is not blocked by Resend network latency. Errors are already
-        // swallowed inside syncUserCreated / syncUserDeleted.
+        // When an ExecutionContext is provided, Promises are registered with
+        // ctx.waitUntil() so they survive response completion in Cloudflare Workers.
         databaseHooks: {
             user: {
                 create: {
                     after: async (user) => {
-                        void contacts.syncUserCreated({ id: user.id, email: user.email, name: user.name });
+                        const syncPromise = contacts.syncUserCreated({ id: user.id, email: user.email, name: user.name });
+                        if (ctx) {
+                            ctx.waitUntil(syncPromise);
+                        }
+                        // If ctx is absent (e.g. BetterAuthProvider.verifyToken path),
+                        // the Promise is fire-and-forget; errors are already swallowed
+                        // inside syncUserCreated.
                     },
                 },
                 delete: {
                     after: async (user) => {
-                        void contacts.syncUserDeleted({ id: user.id, email: user.email });
+                        const syncPromise = contacts.syncUserDeleted({ id: user.id, email: user.email });
+                        if (ctx) {
+                            ctx.waitUntil(syncPromise);
+                        }
                     },
                 },
             },

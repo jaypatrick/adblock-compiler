@@ -55,7 +55,7 @@ export class ResendContactService implements IResendContactService {
             // firstName="Mary", lastName="Anne" rather than firstName="Mary Anne".
             // Whitespace-only names are treated as absent.
             const trimmed = user.name?.trim() ?? '';
-            const nameParts = trimmed ? trimmed.split(' ') : [];
+            const nameParts = trimmed ? trimmed.split(/\s+/).filter(Boolean) : [];
             const firstName = nameParts[0] || undefined;
             const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
 
@@ -111,7 +111,9 @@ export class NullResendContactService implements IResendContactService {
  *
  * Returns a real {@link ResendContactService} when both `RESEND_API_KEY` and
  * `RESEND_AUDIENCE_ID` are configured; otherwise returns a
- * {@link NullResendContactService} that silently no-ops.
+ * {@link NullResendContactService} (no-op) — never `null`. Using a no-op
+ * service avoids null-guard boilerplate at every call site and keeps hooks
+ * unconditional.
  *
  * @param env - Subset of Worker environment bindings.
  */

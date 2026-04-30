@@ -17,7 +17,7 @@ import { z } from 'zod';
 /** Resend contact response shape from the Contacts API. */
 export const ResendContactSchema = z.object({
     id: z.string(),
-    email: z.string(),
+    email: z.string().email(),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     unsubscribed: z.boolean(),
@@ -26,7 +26,7 @@ export const ResendContactSchema = z.object({
 
 /** Request payload for creating a Resend contact. */
 export const ResendCreateContactRequestSchema = z.object({
-    email: z.string(),
+    email: z.string().email(),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     unsubscribed: z.boolean().optional(),
@@ -55,15 +55,44 @@ export type ResendCreateContactResponse = z.infer<typeof ResendCreateContactResp
 export type ResendContactList = z.infer<typeof ResendContactListSchema>;
 
 // ============================================================================
+// ResendApiError
+// ============================================================================
+
+/**
+ * Typed error thrown by {@link ResendApiService} on non-2xx responses.
+ *
+ * Carries the HTTP status code and the structured error name/message from the
+ * Resend API response body (falls back to `statusText` when the body is not
+ * a valid Resend error shape).
+ */
+export class ResendApiError extends Error {
+    constructor(
+        /** HTTP status code returned by the Resend API (e.g. 404, 422). */
+        public readonly statusCode: number,
+        /** Resend error name from the response body (e.g. `'not_found'`). */
+        public readonly errorName: string,
+        message: string,
+    ) {
+        super(`Resend API error ${statusCode} (${errorName}): ${message}`);
+        this.name = 'ResendApiError';
+    }
+}
+
+// ============================================================================
 // ResendApiService
 // ============================================================================
 
 const BASE_URL = 'https://api.resend.com';
 
 /**
- * Wraps the Resend Contacts/Audiences REST API.
+ * Typed REST API wrapper for the Resend Contacts/Audiences endpoint.
  *
- * All methods validate responses with Zod and throw a descriptive error on
+ * Uses `fetch()` directly — the same approach as {@link ResendEmailService}
+ * in email-service.ts — so no additional npm dependency is required.
+ * This file is the single integration point for all Resend Contacts API
+ * calls; extend it here rather than calling the Resend API directly elsewhere.
+ *
+ * All methods validate responses with Zod and throw a {@link ResendApiError} on
  * non-2xx responses or schema validation failures.
  */
 export class ResendApiService {
@@ -138,17 +167,19 @@ export class ResendApiService {
         });
 
         if (!response.ok) {
+            let errorName = 'unknown_error';
             let message = response.statusText;
             try {
                 const errBody = await response.json();
                 const parsed = ResendErrorSchema.safeParse(errBody);
                 if (parsed.success) {
+                    errorName = parsed.data.name;
                     message = parsed.data.message;
                 }
             } catch {
                 // Ignore JSON parse failures; fall back to statusText.
             }
-            throw new Error(`Resend API error: ${response.status} ${message}`);
+            throw new ResendApiError(response.status, errorName, message);
         }
 
         // 204 No Content — no body to parse (e.g. DELETE).
