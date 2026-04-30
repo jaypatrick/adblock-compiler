@@ -18,7 +18,6 @@
  * ## Plugin extensibility
  * The `plugins` array ships with the following active plugins:
  *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); `BETTER_AUTH_API_KEY` is only required for Dash connectivity, and the plugin is expected to no-op when the key is unset
- *   - `auditLogs()` — **pending** `@better-auth/infra` publishing this export; records all auth events to the DB for compliance and visual audit trail in Dash (from `@better-auth/infra`)
  *   - `sentinel()` — infrastructure security: credential stuffing protection, impossible travel detection, bot blocking, suspicious IP blocking (from `@better-auth/infra`)
  *   - `bearer()` — API-first Bearer token auth
  *   - `twoFactor()` — TOTP/2FA
@@ -28,6 +27,7 @@
  *
  * Inactive (available but not wired):
  *   - `apiKey()` — built-in API key management (we use a custom implementation)
+ *   - `auditLogs()` — **pending** `@better-auth/infra` publishing this export; will record all auth events to the DB for compliance and visual audit trail in Dash
  *
  * ## @better-auth/infra import — ESM/CDN compatibility notes
  *
@@ -203,8 +203,11 @@ export function buildTrustedOriginsFn(env: Env): (_request?: Request) => string[
  *
  * Better Auth uses secondaryStorage for sessions, rate-limit counters, and
  * short-lived verification tokens — offloading these from Postgres/Prisma keeps
- * the primary DB free for business-logic queries.  Falls back gracefully
- * (returns `null`) when the KV binding is absent.
+ * the primary DB free for business-logic queries.
+ *
+ * The graceful-fallback when the KV binding is absent is handled by the caller
+ * (`createAuth`) via a conditional spread — this function always requires a
+ * bound `KVNamespace` and will throw if called with an undefined binding.
  *
  * The interface expected by Better Auth is:
  * ```typescript
@@ -222,7 +225,7 @@ export function createKvSecondaryStorage(kv: KVNamespace): {
 } {
     return {
         get: (key: string) => kv.get(key),
-        set: (key: string, value: string, ttl?: number) => kv.put(key, value, ttl ? { expirationTtl: ttl } : undefined),
+        set: (key: string, value: string, ttl?: number) => kv.put(key, value, ttl !== undefined && ttl > 0 ? { expirationTtl: ttl } : undefined),
         delete: (key: string) => kv.delete(key),
     };
 }

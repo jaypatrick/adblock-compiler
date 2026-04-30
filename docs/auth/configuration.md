@@ -13,7 +13,7 @@ adblock-compiler authentication system with Better Auth.
 |---|---|---|---|
 | `BETTER_AUTH_SECRET` | **Yes** | `openssl rand -base64 32` | HMAC signing key for session tokens. Must be ≥ 32 characters. Never reuse across environments. Changing this invalidates all active sessions. |
 | `BETTER_AUTH_URL` | **Yes** | Your Worker's public URL | Base URL for OAuth callbacks and email links. Example: `https://your-worker.workers.dev` |
-| `BETTER_AUTH_API_KEY` | Optional | `dash.better-auth.com` | API key for Better Auth Dash dashboard integration. Enables `dash()`, `auditLogs()`, and `sentinel()` connectivity. Production: `wrangler secret put BETTER_AUTH_API_KEY` |
+| `BETTER_AUTH_API_KEY` | Optional | `dash.better-auth.com` | API key for Better Auth Dash dashboard integration. Enables `dash()` and `sentinel()` connectivity. Production: `wrangler secret put BETTER_AUTH_API_KEY` |
 | `BETTER_AUTH_KV_URL` | Optional | Cloudflare KV REST API URL | REST API URL for the `BETTER_AUTH_KV` namespace. Used by `dash()` and `sentinel()` `kvUrl` option. Production: `wrangler secret put BETTER_AUTH_KV_URL` |
 
 ### Database (Required)
