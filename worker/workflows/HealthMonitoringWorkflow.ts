@@ -278,7 +278,9 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
 
                         if (response.status !== 200 && response.status !== 206) {
                             result.error = `HTTP ${response.status}: ${response.statusText}`;
-                        } else {
+                        }
+
+                        if (!result.error) {
                             const sample = await readResponseSample(response, HEALTH_THRESHOLDS.maxSampleBytes);
                             const sampleLines = sample.split('\n').filter((line) => {
                                 const trimmed = line.trim();
@@ -296,14 +298,16 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                             );
                             if (sampleLines.length < minRules) {
                                 result.error = `Source appears empty - only ${sampleLines.length} rules found in 8KB sample`;
-                            } else {
-                                // All checks passed
-                                result.healthy = true;
-                                console.log(
-                                    `[WORKFLOW:HEALTH] Source "${source.name}" healthy: ` +
-                                        `${result.ruleCount} rules, ${result.responseTimeMs}ms`,
-                                );
                             }
+                        }
+
+                        if (!result.error) {
+                            // All checks passed
+                            result.healthy = true;
+                            console.log(
+                                `[WORKFLOW:HEALTH] Source "${source.name}" healthy: ` +
+                                    `${result.ruleCount} rules, ${result.responseTimeMs}ms`,
+                            );
                         }
                     } catch (error) {
                         result.responseTimeMs = Date.now() - checkStart;

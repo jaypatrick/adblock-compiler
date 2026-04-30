@@ -59,6 +59,8 @@ export function _enforceUuidOnCreateData(data: Record<string, unknown>): void {
  */
 // Include both PascalCase and lowercase variants because Prisma 7.x may surface
 // the model name in either casing depending on the generated client configuration.
+// TwoFactor gets three variants: PascalCase, camelCase (the Prisma-generated name),
+// and all-lowercase, ensuring coverage regardless of casing normalisation applied.
 const BETTER_AUTH_MODELS = new Set([
     'User',
     'user',

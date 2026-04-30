@@ -293,17 +293,20 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c, next) => {
 
     // Normalize empty POST bodies to prevent Better Auth from throwing
     // SyntaxError("Unexpected end of JSON input") when the client sends a POST
-    // with Content-Type: application/json but an empty body (content-length: 0).
-    // This happens with curl and any client that omits the body on sign-out.
+    // with an empty body (content-length: 0 or missing). Reads the raw body
+    // rather than relying solely on the content-length header, which may be
+    // absent on some clients (e.g. curl without -H 'Content-Length: 0').
     let betterAuthRequest: Request;
-    if (c.req.method === 'POST' && parseInt(c.req.header('content-length') ?? '0', 10) === 0) {
+    if (c.req.method === 'POST') {
+        const rawBody = await c.req.text();
+        const normalizedBody = rawBody.trim().length === 0 ? '{}' : rawBody;
         const normalizedHeaders = new Headers(c.req.raw.headers);
         normalizedHeaders.set('content-type', 'application/json');
-        normalizedHeaders.set('content-length', '2');
+        normalizedHeaders.set('content-length', String(normalizedBody.length));
         betterAuthRequest = new Request(c.req.url, {
             method: c.req.method,
             headers: normalizedHeaders,
-            body: '{}',
+            body: normalizedBody,
             signal: abortController.signal,
         });
     } else {
