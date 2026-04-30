@@ -158,10 +158,13 @@ export const AUTH_SESSION_CONFIG = {
  * `skipCSRFCheck = true` in the request context, which causes `validateOrigin`
  * to return early before throwing `MISSING_OR_NULL_ORIGIN`.
  *
- * Our defence-in-depth comes from two layers that operate independently:
- *  1. `sameSite: 'lax'` — browsers do not send cookies on cross-site POSTs.
- *  2. Custom CORS middleware (worker/hono-app.ts step 4) — unknown browser
- *     origins receive a `403 corsRejection` before the response can be read.
+ * For browser flows, `sameSite: 'lax'` (set on all `bloqr.*` cookies) is the
+ * CSRF mitigation this module actually configures: browsers do not send lax
+ * cookies on typical cross-site POST requests.  The Better Auth handler is
+ * registered at step 1b in `worker/hono-app.ts` and returns a Response
+ * directly (no `next()` call), so the global CORS middleware at step 4 does
+ * not execute for `/api/auth/*` routes.  Any explicit origin enforcement for
+ * auth routes must therefore run before the Better Auth handler.
  *
  * Exported as a named constant so tests can assert this is `true` and future
  * reviewers have a clear audit trail.
@@ -173,10 +176,11 @@ export const AUTH_DISABLE_CSRF_CHECK = true;
  *
  * Better Auth uses `trustedOrigins` to validate callback URLs, redirect URLs,
  * and (when `disableCSRFCheck` is false) the `Origin` request header.  This
- * builder returns a function that reads the env-configured allowlist at
- * call-time via {@link parseAllowedOrigins}, keeping Better Auth's URL
- * validation in sync with the custom CORS middleware (single source of truth:
- * the `CORS_ALLOWED_ORIGINS` env var / `wrangler.toml [vars]`).
+ * builder parses the env-configured allowlist once and returns a closure that
+ * serves the cached array, keeping Better Auth's URL validation in sync with
+ * the custom CORS middleware (single source of truth: the
+ * `CORS_ALLOWED_ORIGINS` env var / `wrangler.toml [vars]`) without reparsing
+ * on every auth request.
  *
  * The `request` parameter is unused — the allowlist is env-based, not
  * request-dependent.  The `_request` prefix signals this intentionally.
@@ -185,7 +189,8 @@ export const AUTH_DISABLE_CSRF_CHECK = true;
  * without instantiating a full Better Auth instance.
  */
 export function buildTrustedOriginsFn(env: Env): (_request?: Request) => string[] {
-    return (_request?: Request): string[] => parseAllowedOrigins(env);
+    const trustedOrigins = parseAllowedOrigins(env);
+    return (_request?: Request): string[] => trustedOrigins;
 }
 
 /**
@@ -350,14 +355,14 @@ export function createAuth(env: Env, baseURL?: string) {
                 path: '/',
             },
             // ── Disable Better Auth's internal CSRF origin check ─────────────────
-            // Better Auth throws MISSING_OR_NULL_ORIGIN when a Cookie header is
-            // present but Origin is absent — which is true for every non-browser API
-            // client (Postman, curl, SDK) that has received a session cookie.
-            // This is a false positive: sameSite: 'lax' (above) already prevents CSRF
-            // at the cookie level (browsers don't send lax cookies on cross-site POSTs),
-            // and the custom CORS middleware (hono-app.ts step 4) blocks unknown browser
-            // origins with 403.  Disabling the redundant check here allows non-browser
-            // clients to authenticate normally without spoofing an Origin header.
+            // For browser flows, sameSite: 'lax' (above) is the CSRF mitigation
+            // this module actually configures: browsers do not send lax cookies on
+            // typical cross-site POST requests.  Disabling Better Auth's Origin
+            // requirement here avoids breaking legitimate non-browser clients that
+            // do not send an Origin header.
+            // Note: this setting does not itself enforce an origin allowlist for
+            // /api/auth/* routes; any explicit origin enforcement must run before
+            // the Better Auth handler (step 1b in worker/hono-app.ts).
             // See AUTH_DISABLE_CSRF_CHECK in this module for the full rationale.
             disableCSRFCheck: AUTH_DISABLE_CSRF_CHECK,
             // ── Cloudflare reverse proxy IP extraction ────────────────────────────

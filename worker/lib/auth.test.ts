@@ -191,7 +191,9 @@ Deno.test('AUTH_ID_GENERATOR produces unique IDs on successive calls', () => {
 // to false (which would re-enable the broken behaviour for non-browser clients).
 //
 // CSRF protection is maintained by sameSite: 'lax' cookies (browsers don't send
-// these on cross-site POSTs) and the custom CORS middleware (hono-app.ts step 4).
+// these on cross-site POSTs).  The Better Auth handler returns directly without
+// calling next(), so the global CORS middleware (step 4) does not run for
+// /api/auth/* routes.
 // ============================================================================
 
 Deno.test('AUTH_DISABLE_CSRF_CHECK is true — CSRF check must be disabled for non-browser clients', () => {
