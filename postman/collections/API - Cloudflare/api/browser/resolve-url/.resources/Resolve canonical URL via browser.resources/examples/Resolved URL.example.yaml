@@ -1,6 +1,6 @@
 $kind: http-example
 request:
-  url: {{baseUrl}}/api/browser/resolve-url
+  url: {{baseUrl}}/browser/resolve-url
   method: POST
   headers:
     Content-Type: application/json

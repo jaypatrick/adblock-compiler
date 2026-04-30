@@ -15,4 +15,9 @@ body:
       "type": "payment_intent.succeeded",
       "data": {}
     }
+tests: |-
+  // Without a valid Stripe-Signature header the endpoint returns 400
+  pm.test("Returns 400 (missing Stripe-Signature)", function () {
+    pm.expect(pm.response.code).to.equal(400);
+  });
 order: 1000

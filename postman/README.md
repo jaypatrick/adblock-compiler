@@ -39,7 +39,13 @@ postman/
 
 ## Authentication
 
-All requests use `X-API-Key` header. Turnstile is automatically bypassed for API key requests.
+The collection uses mixed authentication depending on the endpoint:
+
+- Most protected API requests use the `X-API-Key` header. Turnstile is automatically bypassed for API key requests.
+- Some user/session-scoped endpoints use `Authorization: Bearer {{bearerToken}}`, including API key management under `/keys/*`, `/api/auth/sign-out`, and `/agents/...`.
+- Some endpoints are public and do not require authentication, such as `/stripe/webhook`.
+
+Check each request or folder in the collection before running it so you use the correct auth type.
 
 Get an API key:
 
@@ -50,7 +56,7 @@ curl -s -X POST "https://api.bloqr.dev/api/auth/sign-in/email" \
   -d '{"email":"your@email.com","password":"yourpassword"}' | jq .token
 
 # 2. Create an API key using the session token
-curl -s -X POST "https://api.bloqr.dev/keys" \
+curl -s -X POST "https://api.bloqr.dev/api/keys" \
   -H "Authorization: Bearer <session-token>" \
   -H "Content-Type: application/json" \
   -d '{"name":"My Key"}' | jq .key
@@ -69,9 +75,9 @@ npm install -g newman newman-reporter-htmlextra
 ### Run against Cloudflare (production)
 
 ```bash
-newman run postman/collections/API\ -\ Cloudflare \
-  --environment postman/environments/adblock-compiler.environment.yaml \
-  --env-var "apiKey=blq_yourkey" \
+newman run docs/postman/postman-collection.json \
+  --environment docs/postman/postman-environment-prod.json \
+  --env-var "userApiKey=blq_yourkey" \
   --reporters cli,htmlextra \
   --reporter-htmlextra-export newman-report.html
 ```
@@ -82,9 +88,9 @@ newman run postman/collections/API\ -\ Cloudflare \
 # Start the worker first
 deno task wrangler:dev
 
-newman run postman/collections/API\ -\ Cloudflare \
-  --environment postman/environments/adblock-compiler-local.environment.yaml \
-  --env-var "apiKey=blq_yourkey" \
+newman run docs/postman/postman-collection.json \
+  --environment docs/postman/postman-environment-local.json \
+  --env-var "userApiKey=blq_yourkey" \
   --reporters cli
 ```
 
@@ -94,8 +100,9 @@ The [Newman workflow](../.github/workflows/newman.yml) runs the full collection 
 `workflow_dispatch` (manual trigger) or `workflow_call` (called from other workflows).
 
 Required secrets:
-- `NEWMAN_API_KEY` — A valid `blq_…` API key
-- `NEWMAN_TURNSTILE_TOKEN` — (optional) Turnstile bypass token; defaults to `NEWMAN-BYPASS-TOKEN`
+- `NEWMAN_USER_API_KEY` — A valid `blq_…` API key
+- `NEWMAN_POSTMAN_EMAIL` — Email for auto-sign-in (for session-scoped requests)
+- `NEWMAN_POSTMAN_PASSWORD` — Password for auto-sign-in
 
 ## Admin Storage Endpoints
 
@@ -108,8 +115,9 @@ expect these status codes.
 
 | Variable | Description | Example |
 |---|---|---|
-| `baseUrl` | API base URL | `https://api.bloqr.dev` |
-| `apiKey` | API key for authentication | `blq_2086750d…` |
-| `bearerToken` | Session token (for key management) | `eyJhbGc…` |
+| `baseUrl` | API base URL (includes `/api` prefix) | `https://api.bloqr.dev/api` |
+| `originUrl` | Origin URL without `/api` prefix (used for `/agents/*` routes) | `https://api.bloqr.dev` |
+| `apiKey` | API key for `X-API-Key` auth | `blq_2086750d…` |
+| `bearerToken` | Session token (for `/keys/*`, `/api/auth/sign-out`, `/agents/*`) | `eyJhbGc…` |
 | `adminKey` | Admin key (for admin endpoints) | — |
 | `turnstileToken` | Turnstile bypass token | `NEWMAN-BYPASS-TOKEN` |

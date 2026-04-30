@@ -1,6 +1,6 @@
 $kind: http-example
 request:
-  url: {{baseUrl}}/api/deployments/stats
+  url: {{baseUrl}}/deployments/stats
   method: GET
   headers:
     Accept: application/json

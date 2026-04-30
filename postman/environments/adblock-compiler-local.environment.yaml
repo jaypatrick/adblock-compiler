@@ -1,10 +1,13 @@
 name: adblock-compiler-local
 values:
   - key: baseUrl
+    value: 'http://localhost:8787/api'
+    enabled: true
+  - key: originUrl
     value: 'http://localhost:8787'
     enabled: true
   - key: apiKey
-    value: 'blq_2086750daf8720ae10feb955a21cb3ecf41194d77d66876a'
+    value: ''
     enabled: true
   - key: bearerToken
     value: ''
