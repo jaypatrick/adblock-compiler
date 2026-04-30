@@ -364,7 +364,7 @@ function buildTestScript(operation: OAOperation): string[] {
         lines.push("if (body.keyPrefix) pm.collectionVariables.set('apiKeyPrefix', body.keyPrefix);");
         lines.push("if (body.id) pm.collectionVariables.set('lastCreatedKeyId', body.id);");
         lines.push("if (body.id) pm.collectionVariables.set('keyId', body.id);");
-        lines.push("pm.test('Key starts with abc_', () => pm.expect(body.key).to.match(/^abc_/));");
+        lines.push("pm.test('Key starts with blq_ or abc_ (legacy)', () => pm.expect(body.key).to.match(/^(blq_|abc_)/));");
         lines.push("pm.test('Has id', () => pm.expect(body.id).to.be.a('string'));");
         return lines;
     }
@@ -719,7 +719,7 @@ async function generatePostmanCollection(): Promise<void> {
             { key: 'requestId', value: '', type: 'string' },
             { key: 'adminKey', value: '', type: 'string', description: 'Admin API key for protected admin endpoints (X-Admin-Key header)' },
             { key: 'bearerToken', value: '', type: 'string', description: 'Bearer token for authenticated user requests (Better Auth JWT or API key)' },
-            { key: 'userApiKey', value: '', type: 'string', description: 'User API key with abc_ prefix for API key authentication' },
+            { key: 'userApiKey', value: '', type: 'string', description: 'User API key with blq_ prefix (or legacy abc_ prefix) for API key authentication' },
             { key: 'userId', value: '', type: 'string', description: 'User ID captured from Create User response' },
             { key: 'apiKeyPrefix', value: '', type: 'string', description: 'API key prefix captured from Create API Key response' },
             { key: 'keyId', value: '', type: 'string', description: 'API key ID captured from Create API Key response; used by Update/Revoke API Key requests (auto-set)' },

@@ -39,7 +39,7 @@ For scripts, CI/CD pipelines, or third-party integrations, use an API key.
    - **Expiration**: Optional (1–365 days)
 5. **Copy the key immediately** — it's shown only once
 
-The key looks like: `abc_Xk9mP2...` (47 characters, starts with `abc_`)
+The key looks like: `blq_a1b2c3d4e5f6...` (`blq_` prefix + 48 hex characters, 52 characters total). Legacy keys with the `abc_` prefix are also still accepted.
 
 #### Using an API Key
 
@@ -47,7 +47,7 @@ Include the key in the `Authorization` header:
 
 ```bash
 curl -X POST https://adblock-compiler.jk-com.workers.dev/compile \
-  -H "Authorization: Bearer abc_Xk9mP2..." \
+  -H "Authorization: Bearer blq_Xk9mP2..." \
   -H "Content-Type: application/json" \
   -d '{
     "sources": ["https://raw.githubusercontent.com/user/list/main/filters.txt"],
@@ -224,7 +224,7 @@ When anonymous access is removed:
 
 1. **Create an account** — Sign up at the web UI
 2. **Create an API key** — For any scripts or integrations
-3. **Update your scripts** — Add `Authorization: Bearer abc_...` header
+3. **Update your scripts** — Add `Authorization: Bearer blq_...` header
 4. **Test** — Verify your integration works with authentication
 5. **Monitor rate limits** — Free tier is 60 req/min (up from 10 anonymous)
 
@@ -237,7 +237,7 @@ See [Removing Anonymous Access](removing-anonymous-access.md) for the full migra
 ```bash
 # Compile with API key
 curl -X POST https://adblock-compiler.jk-com.workers.dev/compile \
-  -H "Authorization: Bearer abc_your_api_key_here" \
+  -H "Authorization: Bearer blq_your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{"sources": ["https://example.com/filters.txt"]}'
 ```

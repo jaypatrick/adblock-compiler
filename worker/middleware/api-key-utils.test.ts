@@ -4,12 +4,13 @@
  * Covers:
  *   - generateApiKey: key format, entropy, prefix, uniqueness
  *   - hashKey: deterministic SHA-256 output, hex format, length
+ *   - isApiKey: prefix detection for current and legacy prefixes
  *
  * @see worker/middleware/api-key-utils.ts
  */
 
 import { assertEquals, assertMatch, assertNotEquals } from '@std/assert';
-import { generateApiKey, hashKey } from './api-key-utils.ts';
+import { generateApiKey, hashKey, isApiKey } from './api-key-utils.ts';
 
 // ============================================================================
 // generateApiKey
@@ -22,19 +23,19 @@ Deno.test('generateApiKey - returns object with rawKey, keyHash, keyPrefix', asy
     assertEquals(typeof key.keyPrefix, 'string');
 });
 
-Deno.test('generateApiKey - rawKey starts with "abc_" prefix', async () => {
+Deno.test('generateApiKey - rawKey starts with "blq_" prefix', async () => {
     const key = await generateApiKey();
-    assertEquals(key.rawKey.startsWith('abc_'), true);
+    assertEquals(key.rawKey.startsWith('blq_'), true);
 });
 
-Deno.test('generateApiKey - rawKey has correct total length (abc_ + 48 hex chars = 52)', async () => {
+Deno.test('generateApiKey - rawKey has correct total length (blq_ + 48 hex chars = 52)', async () => {
     const key = await generateApiKey();
     assertEquals(key.rawKey.length, 52);
 });
 
 Deno.test('generateApiKey - rawKey hex part contains only hex characters', async () => {
     const key = await generateApiKey();
-    const hexPart = key.rawKey.slice(4); // remove 'abc_'
+    const hexPart = key.rawKey.slice(4); // remove 'blq_'
     assertMatch(hexPart, /^[0-9a-f]+$/);
 });
 
@@ -43,9 +44,9 @@ Deno.test('generateApiKey - keyPrefix is first 8 characters of rawKey', async ()
     assertEquals(key.keyPrefix, key.rawKey.substring(0, 8));
 });
 
-Deno.test('generateApiKey - keyPrefix starts with "abc_"', async () => {
+Deno.test('generateApiKey - keyPrefix starts with "blq_"', async () => {
     const key = await generateApiKey();
-    assertEquals(key.keyPrefix.startsWith('abc_'), true);
+    assertEquals(key.keyPrefix.startsWith('blq_'), true);
 });
 
 Deno.test('generateApiKey - keyHash is a 64-character hex string (SHA-256)', async () => {
@@ -83,8 +84,8 @@ Deno.test('hashKey - returns a 64-character hex string', async () => {
 });
 
 Deno.test('hashKey - is deterministic (same input = same output)', async () => {
-    const hash1 = await hashKey('abc_0123456789abcdef');
-    const hash2 = await hashKey('abc_0123456789abcdef');
+    const hash1 = await hashKey('blq_0123456789abcdef');
+    const hash2 = await hashKey('blq_0123456789abcdef');
     assertEquals(hash1, hash2);
 });
 
@@ -105,4 +106,24 @@ Deno.test('hashKey - handles long string input', async () => {
     const hash = await hashKey(longKey);
     assertEquals(hash.length, 64);
     assertMatch(hash, /^[0-9a-f]{64}$/);
+});
+
+// ============================================================================
+// isApiKey
+// ============================================================================
+
+Deno.test('isApiKey - returns true for blq_ prefix', () => {
+    assertEquals(isApiKey('blq_abc123'), true);
+});
+
+Deno.test('isApiKey - returns true for legacy abc_ prefix', () => {
+    assertEquals(isApiKey('abc_abc123'), true);
+});
+
+Deno.test('isApiKey - returns false for unrecognised prefix', () => {
+    assertEquals(isApiKey('sk_abc123'), false);
+});
+
+Deno.test('isApiKey - returns false for empty string', () => {
+    assertEquals(isApiKey(''), false);
 });

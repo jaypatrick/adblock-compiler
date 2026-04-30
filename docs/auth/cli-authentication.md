@@ -12,7 +12,7 @@ When the CLI operates in **queue mode** (`--use-queue`), it submits compilation 
 
 | Flag | Type | Description |
 |------|------|-------------|
-| `--api-key <key>` | string | API key for authenticated worker API requests. Must start with `abc_` followed by key material (e.g., `abc_Xk9mP2nL...`). |
+| `--api-key <key>` | string | API key for authenticated worker API requests. Must start with `blq_` followed by key material (e.g., `blq_Xk9mP2nL...`). Legacy `abc_`-prefixed keys are also accepted. |
 | `--bearer-token <jwt>` | string | Clerk JWT bearer token for authenticated worker API requests. Typically a short-lived `eyJ...` token. |
 | `--api-url <url>` | string | Base URL of the worker API. Defaults to `https://adblock-compiler.jk-com.workers.dev`. |
 
@@ -28,7 +28,7 @@ Cannot specify both --api-key and --bearer-token; choose one authentication meth
 
 | Rule | Detail |
 |------|--------|
-| API key format | Must match `/^abc_.+$/` — the `abc_` prefix plus at least one character of key material |
+| API key format | Must match `/^(blq_|abc_).+$/` — the `blq_` prefix (or legacy `abc_`) plus at least one character of key material |
 | Bearer token format | Any non-empty string (typically a Clerk JWT starting with `eyJ`) |
 | API URL format | Must be a valid URL (`https://...` or `http://localhost:...` for local dev) |
 | Queue requirement | Auth flags are only meaningful with `--use-queue`. A warning is emitted if auth flags are used without it. |
@@ -42,7 +42,7 @@ Cannot specify both --api-key and --bearer-token; choose one authentication meth
 ```bash
 adblock-compiler -c config.json -o output.txt \
   --use-queue \
-  --api-key abc_Xk9mP2nLqR5tV8wZ...
+  --api-key blq_Xk9mP2nLqR5tV8wZ...
 ```
 
 ### Compile via Queue with a Clerk JWT
@@ -59,7 +59,7 @@ adblock-compiler -c config.json -o output.txt \
 ```bash
 adblock-compiler -c config.json -o output.txt \
   --use-queue \
-  --api-key abc_Xk9mP2nLqR5tV8wZ... \
+  --api-key blq_Xk9mP2nLqR5tV8wZ... \
   --api-url http://localhost:8787
 ```
 
@@ -70,7 +70,7 @@ adblock-compiler \
   -i https://example.org/hosts.txt \
   -o output.txt \
   --use-queue \
-  --api-key abc_Xk9mP2nLqR5tV8wZ... \
+  --api-key blq_Xk9mP2nLqR5tV8wZ... \
   --priority high \
   --verbose \
   --benchmark
@@ -130,7 +130,7 @@ Clerk JWTs are short-lived (~60 seconds) and best suited for one-off testing:
 Store the API key in an environment variable to avoid passing it on the command line:
 
 ```bash
-export ADBLOCK_API_KEY="abc_Xk9mP2nLqR5tV8wZ..."
+export ADBLOCK_API_KEY="blq_Xk9mP2nLqR5tV8wZ..."
 
 adblock-compiler -c config.json -o output.txt \
   --use-queue \
@@ -159,7 +159,7 @@ If rate-limited, the CLI receives a `429 Too Many Requests` response. The respon
 | Error | Cause | Fix |
 |-------|-------|-----|
 | `Cannot specify both --api-key and --bearer-token` | Both flags provided | Use only one authentication method |
-| `API key must start with "abc_" followed by key material` | Invalid API key format | Check key starts with `abc_` and has content after the prefix |
+| `API key must start with "blq_" (or legacy "abc_") followed by key material` | Invalid API key format | Check key starts with `blq_` (or `abc_` for legacy keys) and has content after the prefix |
 | `Warning: --api-key/--bearer-token only apply in queue mode` | Auth flags without `--use-queue` | Add `--use-queue` or remove auth flags |
 | `401 Unauthorized` from API | Expired or revoked credential | Refresh JWT or create a new API key |
 | `403 Forbidden` from API | Insufficient tier or missing scope | Upgrade tier or create key with required scopes |

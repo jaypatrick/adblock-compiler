@@ -57,7 +57,7 @@ docs/postman/postman-environment.json        ← auto-generated legacy alias →
 | `bearerTokenExpiry` | Auto-set by pre-request script | Unix timestamp (ms) when `bearerToken` expires |
 | `postmanEmail` | **Manual — Current Value only** | Email of the Postman test user |
 | `postmanPassword` | **Manual — Current Value only** | Password of the Postman test user |
-| `userApiKey` | Auto-set by Create API key | User-scoped API key (`abc_...`) |
+| `userApiKey` | Auto-set by Create API key | User-scoped API key (`blq_...` or legacy `abc_...`) |
 | `apiKeyPrefix` | Auto-set by Create API key | Prefix of the last created API key |
 | `keyId` | Auto-set by Create API key | ID of the last created API key; used by Update/Revoke API Key requests |
 | `lastCreatedKeyId` | Auto-set by Create API key | Alias for `keyId` — both are set simultaneously |

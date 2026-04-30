@@ -136,7 +136,7 @@ Deno.test('handleCreateApiKey - creates key with valid name', async () => {
     assertEquals(body.success, true);
     assertEquals(body.name, 'My API Key');
     assertEquals(typeof body.key, 'string');
-    assertEquals((body.key as string).startsWith('abc_'), true);
+    assertEquals((body.key as string).startsWith('blq_'), true);
     assertEquals(body.scopes, ['compile']); // default scopes
 });
 

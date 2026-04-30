@@ -118,7 +118,7 @@ These flags are used when submitting jobs to the remote worker API via `--use-qu
 
 | Flag | Type | Description |
 |---|---|---|
-| `--api-key <key>` | string | API key for worker API requests (starts with `abc_`) |
+| `--api-key <key>` | string | API key for worker API requests (starts with `blq_`; legacy `abc_` also accepted) |
 | `--bearer-token <jwt>` | string | Clerk JWT bearer token for worker API requests |
 | `--api-url <url>` | string | Base URL of the worker API [default: `https://adblock-compiler.jk-com.workers.dev`] |
 
@@ -231,12 +231,12 @@ adblock-compiler -i extra.txt -o output.txt --append
 # Submit to remote queue with API key authentication
 adblock-compiler -c config.json -o output.txt \
   --use-queue \
-  --api-key abc_Xk9mP2nLqR5tV8wZ...
+  --api-key blq_Xk9mP2nLqR5tV8wZ...
 
 # Use a local dev worker
 adblock-compiler -c config.json -o output.txt \
   --use-queue \
-  --api-key abc_Xk9mP2nLqR5tV8wZ... \
+  --api-key blq_Xk9mP2nLqR5tV8wZ... \
   --api-url http://localhost:8787
 ```
 

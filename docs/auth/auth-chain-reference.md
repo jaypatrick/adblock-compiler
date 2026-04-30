@@ -25,7 +25,7 @@ priority order and short-circuits on the first successful match:
 
 | Priority | Method | Token Format | Provider |
 |---|---|---|---|
-| 1 | **API Key** | `abc_...` prefix | Direct PostgreSQL lookup via Hyperdrive |
+| 1 | **API Key** | `blq_...` prefix (or legacy `abc_...`) | Direct PostgreSQL lookup via Hyperdrive |
 | 2 | **Better Auth** | Cookie or bearer session ID | `BetterAuthProvider` (primary) |
 | 3 | **Anonymous** | No credentials | Falls through to anonymous context |
 
@@ -40,8 +40,8 @@ on `IAuthMiddlewareResult`.
 flowchart TD
     REQ["Incoming Request"] --> TOKEN{"Extract Bearer<br/>token"}
 
-    TOKEN -->|"abc_ prefix"| APIKEY["API Key Path"]
-    TOKEN -->|"No token or<br/>non-abc_ token"| BA["Better Auth<br/>(Primary Provider)"]
+    TOKEN -->|"blq_/abc_ prefix"| APIKEY["API Key Path"]
+    TOKEN -->|"No token or<br/>non-API-key token"| BA["Better Auth<br/>(Primary Provider)"]
 
     APIKEY --> HASH["SHA-256 hash token"]
     HASH --> LOOKUP["Query api_keys table<br/>via Hyperdrive"]
@@ -87,11 +87,11 @@ sequenceDiagram
     participant HD as Hyperdrive
     participant DB as Neon PostgreSQL
 
-    C->>W: POST /api/compile (Bearer abc_xxx)
+    C->>W: POST /api/compile (Bearer blq_xxx)
     W->>AM: authenticate(request, env)
-    AM->>AM: extractBearerToken() → "abc_xxx"
-    AM->>AM: isApiKeyToken("abc_xxx") → true
-    AM->>AM: hashToken("abc_xxx") → SHA-256
+    AM->>AM: extractBearerToken() → "blq_xxx"
+    AM->>AM: isApiKeyToken("blq_xxx") → true
+    AM->>AM: hashToken("blq_xxx") → SHA-256
     AM->>HD: query api_keys WHERE key_hash = $1
     HD->>DB: SQL query
     DB-->>HD: row { id, user_id, scopes }
@@ -124,15 +124,16 @@ The auth middleware determines the token type by pattern matching:
 ```typescript
 // worker/middleware/auth.ts
 
-/** API keys always start with the "abc_" prefix */
+/** API keys start with the "blq_" prefix (current) or "abc_" prefix (legacy) */
 function isApiKeyToken(token: string): boolean {
-    return token.startsWith('abc_');
+    return isApiKey(token); // delegates to api-key-utils.ts
 }
 ```
 
 | Token | Pattern | Route |
 |---|---|---|
-| `abc_sk_live_xxxx...` | Starts with `abc_` | → API Key path |
+| `blq_sk_live_xxxx...` | Starts with `blq_` | → API Key path |
+| `abc_sk_live_xxxx...` | Starts with `abc_` (legacy) | → API Key path |
 | `sess_abc123xyz` | Better Auth session token | → Better Auth (via cookie or bearer plugin) |
 | *(none)* | No Authorization header | → Better Auth (checks cookies) → Anonymous |
 
@@ -267,7 +268,7 @@ When this message stops appearing, it's safe to proceed to Phase 3.
 
 | Scenario | Provider | Why |
 |---|---|---|
-| **New API integration** | API Key (`abc_` prefix) | Scoped, revocable, rate-limited per key |
+| **New API integration** | API Key (`blq_` prefix) | Scoped, revocable, rate-limited per key |
 | **Browser app** | Better Auth (cookie) | Server-side sessions, no JWTs in localStorage |
 | **Programmatic API calls** | Better Auth (bearer plugin) | Session-based auth without cookies |
 | **Public/unauthenticated** | Anonymous | 10 req/min rate limit, basic features only |
@@ -290,7 +291,7 @@ fetch('/api/compile', {
 // Or use an API key for server-to-server
 fetch('/api/compile', {
     headers: {
-        'Authorization': `Bearer abc_sk_live_...`,
+        'Authorization': `Bearer blq_sk_live_...`,
     },
 });
 ```
