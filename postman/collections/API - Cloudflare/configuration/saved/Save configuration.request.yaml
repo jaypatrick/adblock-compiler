@@ -1,0 +1,25 @@
+$kind: http-request
+description: >
+  Saves a named configuration for later reuse. Returns the saved configuration
+  with its assigned ID.
+url: {{baseUrl}}/configuration/saved
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+body:
+  type: json
+  content: |-
+    {
+      "name": "My Filter List",
+      "sources": [
+        {
+          "source": "https://example.com/filters.txt",
+          "transformations": ["RemoveComments", "Validate"]
+        }
+      ],
+      "transformations": ["Deduplicate"]
+    }
+examples: ./.resources/Save configuration.resources/examples
+order: 7000

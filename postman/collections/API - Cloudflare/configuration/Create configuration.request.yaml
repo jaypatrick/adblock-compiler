@@ -1,0 +1,25 @@
+$kind: http-request
+description: >
+  Creates and stores a named configuration for later reuse. Returns a
+  configuration ID that can be used with the download endpoint.
+url: {{baseUrl}}/configuration/create
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+body:
+  type: json
+  content: |-
+    {
+      "name": "My Filter List",
+      "sources": [
+        {
+          "source": "https://example.com/filters.txt",
+          "transformations": ["RemoveComments", "Validate"]
+        }
+      ],
+      "transformations": ["Deduplicate"]
+    }
+examples: ./.resources/Create configuration.resources/examples
+order: 4000

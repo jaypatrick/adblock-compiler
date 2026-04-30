@@ -1,0 +1,14 @@
+$kind: http-request
+description: >
+  Returns all compute endpoints (read/write and read-replica) in the Neon project
+  with their connection strings and current state. Requires admin authentication.
+url: {{baseUrl}}/admin/neon/endpoints
+method: GET
+headers:
+  Accept: application/json
+  X-Admin-Key: "{{adminKey}}"
+body:
+  type: text
+  content: ""
+examples: ./.resources/List Neon endpoints.resources/examples
+order: 1000

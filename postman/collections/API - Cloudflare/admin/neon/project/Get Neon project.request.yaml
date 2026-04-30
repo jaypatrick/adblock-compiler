@@ -1,0 +1,14 @@
+$kind: http-request
+description: >
+  Returns metadata about the Neon Postgres project (name, region, created_at,
+  settings). Requires admin authentication.
+url: {{baseUrl}}/admin/neon/project
+method: GET
+headers:
+  Accept: application/json
+  X-Admin-Key: "{{adminKey}}"
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get Neon project.resources/examples
+order: 1000

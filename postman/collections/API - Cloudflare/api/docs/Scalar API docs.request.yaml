@@ -1,0 +1,13 @@
+$kind: http-request
+description: >
+  Serves the Scalar interactive API documentation UI with Bloqr dark theme.
+  Public endpoint — no authentication required.
+url: {{baseUrl}}/api/docs
+method: GET
+headers:
+  Accept: text/html
+body:
+  type: text
+  content: ""
+examples: ./.resources/Scalar API docs.resources/examples
+order: 1000

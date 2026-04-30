@@ -1,0 +1,13 @@
+$kind: http-request
+description: >
+  Returns default configuration values for all compilation options.
+url: {{baseUrl}}/configuration/defaults
+method: GET
+headers:
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get configuration defaults.resources/examples
+order: 1000

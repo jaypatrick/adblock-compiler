@@ -1,0 +1,12 @@
+$kind: http-request
+description: >
+  Returns current PAYG pricing and limits. Public endpoint — no authentication required.
+url: {{baseUrl}}/payg/pricing
+method: GET
+headers:
+  Accept: application/json
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get PAYG pricing.resources/examples
+order: 4000

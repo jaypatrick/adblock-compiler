@@ -1,0 +1,18 @@
+$kind: http-request
+description: >
+  Deletes a Neon branch and all its associated endpoints. The main branch cannot
+  be deleted. Requires admin authentication.
+url: {{baseUrl}}/admin/neon/branches/:branchId
+method: DELETE
+headers:
+  Accept: application/json
+  X-Admin-Key: "{{adminKey}}"
+pathVariables:
+  - key: branchId
+    value: br_string
+    description: Neon branch ID (e.g. br_morning_forest_123456)
+body:
+  type: text
+  content: ""
+examples: ./.resources/Delete Neon branch.resources/examples
+order: 5000

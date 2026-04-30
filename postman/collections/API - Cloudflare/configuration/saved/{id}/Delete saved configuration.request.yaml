@@ -1,0 +1,17 @@
+$kind: http-request
+description: >
+  Deletes a saved configuration by ID.
+url: {{baseUrl}}/configuration/saved/:id
+method: DELETE
+headers:
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+pathVariables:
+  - key: id
+    value: string
+    description: Configuration ID to delete
+body:
+  type: text
+  content: ""
+examples: ./.resources/Delete saved configuration.resources/examples
+order: 8000

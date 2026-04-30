@@ -1,0 +1,18 @@
+$kind: http-request
+description: >
+  Returns the API usage metrics (requests, tokens, bandwidth) for a specific user.
+  Requires admin authentication.
+url: {{baseUrl}}/admin/usage/:userId
+method: GET
+headers:
+  Accept: application/json
+  X-Admin-Key: "{{adminKey}}"
+pathVariables:
+  - key: userId
+    value: string
+    description: User ID (UUID)
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get user usage.resources/examples
+order: 1000

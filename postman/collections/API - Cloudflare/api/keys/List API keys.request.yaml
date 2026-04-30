@@ -1,0 +1,13 @@
+$kind: http-request
+description: >
+  Lists all API keys for the authenticated user, without exposing key hashes.
+url: {{baseUrl}}/keys
+method: GET
+headers:
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+body:
+  type: text
+  content: ""
+examples: ./.resources/List API keys.resources/examples
+order: 2000

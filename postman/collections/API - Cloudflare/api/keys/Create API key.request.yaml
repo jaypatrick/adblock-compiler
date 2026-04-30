@@ -1,0 +1,21 @@
+$kind: http-request
+description: >
+  Creates a new API key for the authenticated user. The raw key value is only
+  returned once — store it securely.
+url: {{baseUrl}}/keys
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+body:
+  type: json
+  content: |-
+    {
+      "name": "My API Key",
+      "scopes": ["compile", "rules"],
+      "rateLimitPerMinute": 60,
+      "expiresAt": null
+    }
+examples: ./.resources/Create API key.resources/examples
+order: 1000

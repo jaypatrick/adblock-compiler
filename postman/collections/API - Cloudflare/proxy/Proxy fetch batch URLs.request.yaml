@@ -1,0 +1,21 @@
+$kind: http-request
+description: >
+  Batch proxy fetch multiple URLs in a single request. Returns a map of URL to
+  fetched content (or error message per URL). SSRF protection applies to all URLs.
+url: {{baseUrl}}/proxy/fetch/batch
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+body:
+  type: json
+  content: |-
+    {
+      "urls": [
+        "https://example.com/filters1.txt",
+        "https://example.com/filters2.txt"
+      ]
+    }
+examples: ./.resources/Proxy fetch batch URLs.resources/examples
+order: 2000

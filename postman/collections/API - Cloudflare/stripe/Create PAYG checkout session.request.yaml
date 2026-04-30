@@ -1,0 +1,20 @@
+$kind: http-request
+description: >
+  Creates a Stripe Checkout Session for Pay-As-You-Go API credits. Returns a
+  checkout URL to redirect the customer to complete payment.
+url: {{baseUrl}}/stripe/payg/checkout
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+body:
+  type: json
+  content: |-
+    {
+      "creditPackage": "100",
+      "successUrl": "https://app.example.com/success",
+      "cancelUrl": "https://app.example.com/cancel"
+    }
+examples: ./.resources/Create PAYG checkout session.resources/examples
+order: 2000

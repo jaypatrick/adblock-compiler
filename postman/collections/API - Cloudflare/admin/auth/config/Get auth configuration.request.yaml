@@ -1,0 +1,14 @@
+$kind: http-request
+description: >
+  Returns the current Better Auth configuration including enabled providers,
+  session settings, and security options. Requires admin authentication.
+url: {{baseUrl}}/admin/auth/config
+method: GET
+headers:
+  Accept: application/json
+  X-Admin-Key: "{{adminKey}}"
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get auth configuration.resources/examples
+order: 1000

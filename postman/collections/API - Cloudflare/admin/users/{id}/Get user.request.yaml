@@ -1,0 +1,17 @@
+$kind: http-request
+description: >
+  Returns full details for a single user by ID. Requires admin authentication.
+url: {{baseUrl}}/admin/users/:id
+method: GET
+headers:
+  Accept: application/json
+  X-Admin-Key: "{{adminKey}}"
+pathVariables:
+  - key: id
+    value: string
+    description: User ID (UUID)
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get user.resources/examples
+order: 2000

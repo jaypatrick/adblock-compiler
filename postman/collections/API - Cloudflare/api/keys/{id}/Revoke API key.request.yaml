@@ -1,0 +1,17 @@
+$kind: http-request
+description: >
+  Revokes an API key by ID, permanently preventing it from being used.
+url: {{baseUrl}}/keys/:id
+method: DELETE
+headers:
+  Accept: application/json
+  X-API-Key: "{{apiKey}}"
+pathVariables:
+  - key: id
+    value: string
+    description: API key ID to revoke
+body:
+  type: text
+  content: ""
+examples: ./.resources/Revoke API key.resources/examples
+order: 3000
