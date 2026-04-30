@@ -49,7 +49,11 @@ export class ResendContactService implements IResendContactService {
     /** @inheritdoc */
     async syncUserCreated(user: { id: string; email: string; name?: string | null }): Promise<void> {
         try {
-            // Guard against whitespace-only names before splitting.
+            // Best-effort name split: first token → firstName, remainder → lastName.
+            // e.g. "Mary Anne Smith" → firstName="Mary", lastName="Anne Smith".
+            // Multi-word first names (e.g. "Mary Anne") are not handled — a limitation
+            // of splitting on the first space.  Whitespace-only names are treated as
+            // absent so Resend does not receive empty-string fields.
             const trimmed = user.name?.trim() ?? '';
             const nameParts = trimmed ? trimmed.split(' ') : [];
             const firstName = nameParts[0] || undefined;

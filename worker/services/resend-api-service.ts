@@ -152,6 +152,7 @@ export class ResendApiService {
         }
 
         // 204 No Content — no body to parse (e.g. DELETE).
+        // Callers use T=void for these endpoints, so undefined as T is safe.
         if (response.status === 204) {
             return undefined as T;
         }

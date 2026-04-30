@@ -440,8 +440,9 @@ export function createAuth(env: Env, baseURL?: string) {
         // ── User lifecycle hooks — Resend audience contact sync ───────────────
         // syncUserCreated / syncUserDeleted are fire-and-forget: errors are caught
         // and logged as warnings inside ResendContactService and never propagate.
-        // The hooks are intentionally synchronous (void, no await) so that auth
-        // flow is not blocked by Resend network latency.
+        // The hooks fire-and-forget: void discards the returned Promise so auth
+        // flow is not blocked by Resend network latency.  Errors are already
+        // swallowed inside syncUserCreated / syncUserDeleted.
         databaseHooks: {
             user: {
                 create: {
