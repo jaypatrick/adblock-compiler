@@ -13,8 +13,8 @@
  * @see worker/lib/auth.ts
  */
 
-import { assertEquals, assertExists, assertInstanceOf, assertStringIncludes, assertThrows } from '@std/assert';
-import { AUTH_ID_GENERATOR, createAuth, USER_FIELD_MAPPING, UUID_V4_REGEX, WorkerConfigurationError } from './auth.ts';
+import { assertEquals, assertExists, assertInstanceOf, assertStrictEquals, assertStringIncludes, assertThrows } from '@std/assert';
+import { AUTH_DISABLE_CSRF_CHECK, AUTH_ID_GENERATOR, buildTrustedOriginsFn, createAuth, USER_FIELD_MAPPING, UUID_V4_REGEX, WorkerConfigurationError } from './auth.ts';
 import type { Auth } from './auth.ts';
 
 // ============================================================================
@@ -176,4 +176,80 @@ Deno.test('AUTH_ID_GENERATOR produces unique IDs on successive calls', () => {
     const id1 = AUTH_ID_GENERATOR();
     const id2 = AUTH_ID_GENERATOR();
     assertEquals(id1 === id2, false, 'AUTH_ID_GENERATOR must produce unique IDs');
+});
+
+// ============================================================================
+// AUTH_DISABLE_CSRF_CHECK — CSRF bypass guard
+// ============================================================================
+//
+// Better Auth 1.5.x throws MISSING_OR_NULL_ORIGIN when a Cookie header is
+// present but no Origin header is present — every non-browser API client
+// (Postman, curl, SDK) that received a session cookie triggers this.
+//
+// The fix is advanced.disableCSRFCheck: true, exported as AUTH_DISABLE_CSRF_CHECK.
+// These tests guard against a regression where the constant is accidentally set
+// to false (which would re-enable the broken behaviour for non-browser clients).
+//
+// CSRF protection is maintained by sameSite: 'lax' cookies (browsers don't send
+// these on cross-site POSTs) and the custom CORS middleware (hono-app.ts step 4).
+// ============================================================================
+
+Deno.test('AUTH_DISABLE_CSRF_CHECK is exported from auth module', () => {
+    assertExists(AUTH_DISABLE_CSRF_CHECK !== undefined ? AUTH_DISABLE_CSRF_CHECK : null);
+    assertEquals(typeof AUTH_DISABLE_CSRF_CHECK, 'boolean');
+});
+
+Deno.test('AUTH_DISABLE_CSRF_CHECK is true — CSRF check must be disabled for non-browser clients', () => {
+    assertStrictEquals(
+        AUTH_DISABLE_CSRF_CHECK,
+        true,
+        'AUTH_DISABLE_CSRF_CHECK must be true; setting it to false will break Postman/curl/SDK auth by causing MISSING_OR_NULL_ORIGIN errors',
+    );
+});
+
+// ============================================================================
+// buildTrustedOriginsFn — trusted origins builder
+// ============================================================================
+//
+// buildTrustedOriginsFn(env) returns a function that Better Auth calls to
+// obtain the list of trusted origins for URL validation (callbackURL,
+// redirectTo, etc.).  It reads from parseAllowedOrigins(env) so the list
+// stays in sync with the CORS middleware allowlist.
+// ============================================================================
+
+Deno.test('buildTrustedOriginsFn is exported as a function', () => {
+    assertEquals(typeof buildTrustedOriginsFn, 'function');
+});
+
+Deno.test('buildTrustedOriginsFn returns a function', () => {
+    const fakeEnv = {} as import('../types.ts').Env;
+    const fn = buildTrustedOriginsFn(fakeEnv);
+    assertEquals(typeof fn, 'function');
+});
+
+Deno.test('buildTrustedOriginsFn returns default origins when CORS_ALLOWED_ORIGINS is not set', () => {
+    const fakeEnv = {} as import('../types.ts').Env;
+    const fn = buildTrustedOriginsFn(fakeEnv);
+    const origins = fn();
+    assertEquals(Array.isArray(origins), true);
+    // Default origins include localhost dev servers
+    assertEquals(origins.includes('http://localhost:4200'), true, 'Default origins must include Angular dev server');
+    assertEquals(origins.includes('http://localhost:8787'), true, 'Default origins must include Wrangler dev server');
+});
+
+Deno.test('buildTrustedOriginsFn reflects CORS_ALLOWED_ORIGINS from env', () => {
+    const fakeEnv = { CORS_ALLOWED_ORIGINS: 'https://app.bloqr.dev,https://api.bloqr.dev' } as unknown as import('../types.ts').Env;
+    const fn = buildTrustedOriginsFn(fakeEnv);
+    const origins = fn();
+    assertEquals(origins, ['https://app.bloqr.dev', 'https://api.bloqr.dev']);
+});
+
+Deno.test('buildTrustedOriginsFn ignores the request argument (env-based allowlist)', () => {
+    const fakeEnv = { CORS_ALLOWED_ORIGINS: 'https://app.bloqr.dev' } as unknown as import('../types.ts').Env;
+    const fn = buildTrustedOriginsFn(fakeEnv);
+    // With request
+    const withReq = fn(new Request('https://api.bloqr.dev/api/auth/sign-in/email'));
+    // Without request
+    const withoutReq = fn();
+    assertEquals(withReq, withoutReq, 'The origin list must not depend on the request object');
 });

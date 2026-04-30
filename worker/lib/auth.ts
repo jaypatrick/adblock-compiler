@@ -79,6 +79,7 @@ import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 import { createEmailService } from '../services/email-service.ts';
 import { renderEmailVerification, renderPasswordReset } from '../services/email-templates.ts';
+import { parseAllowedOrigins } from '../utils/cors.ts';
 
 /**
  * Better Auth → Prisma field name mapping for the `User` model.
@@ -140,6 +141,52 @@ export const AUTH_SESSION_CONFIG = {
     /** Cookie-level session cache duration in seconds (5 minutes). */
     cookieCacheMaxAge: 60 * 5,
 } as const;
+
+/**
+ * Whether Better Auth's internal CSRF origin check is disabled.
+ *
+ * Better Auth 1.5.x throws `MISSING_OR_NULL_ORIGIN` when a request carries a
+ * Cookie header but no Origin header — i.e. every non-browser API client
+ * (Postman, curl, SDK) that has received a session cookie from a previous
+ * request.  This is a false positive: CSRF attacks require the victim's
+ * browser to silently send cookies cross-site, which is already prevented by
+ * `sameSite: 'lax'` on all `bloqr.*` cookies.  CSRF cannot originate from
+ * non-browser clients because those clients don't participate in the same-site
+ * cookie model.
+ *
+ * Setting `advanced.disableCSRFCheck: true` in the Better Auth config sets
+ * `skipCSRFCheck = true` in the request context, which causes `validateOrigin`
+ * to return early before throwing `MISSING_OR_NULL_ORIGIN`.
+ *
+ * Our defence-in-depth comes from two layers that operate independently:
+ *  1. `sameSite: 'lax'` — browsers do not send cookies on cross-site POSTs.
+ *  2. Custom CORS middleware (worker/hono-app.ts step 4) — unknown browser
+ *     origins receive a `403 corsRejection` before the response can be read.
+ *
+ * Exported as a named constant so tests can assert this is `true` and future
+ * reviewers have a clear audit trail.
+ */
+export const AUTH_DISABLE_CSRF_CHECK = true;
+
+/**
+ * Builds the `trustedOrigins` function for Better Auth.
+ *
+ * Better Auth uses `trustedOrigins` to validate callback URLs, redirect URLs,
+ * and (when `disableCSRFCheck` is false) the `Origin` request header.  This
+ * builder returns a function that reads the env-configured allowlist at
+ * call-time via {@link parseAllowedOrigins}, keeping Better Auth's URL
+ * validation in sync with the custom CORS middleware (single source of truth:
+ * the `CORS_ALLOWED_ORIGINS` env var / `wrangler.toml [vars]`).
+ *
+ * The `request` parameter is unused — the allowlist is env-based, not
+ * request-dependent.  The `_request` prefix signals this intentionally.
+ *
+ * Exported for testability: callers can call the returned function directly
+ * without instantiating a full Better Auth instance.
+ */
+export function buildTrustedOriginsFn(env: Env): (_request?: Request) => string[] {
+    return (_request?: Request): string[] => parseAllowedOrigins(env);
+}
 
 /**
  * Thrown when a required Worker binding or secret is absent at startup.
@@ -214,6 +261,15 @@ export function createAuth(env: Env, baseURL?: string) {
         secret: env.BETTER_AUTH_SECRET,
         basePath: '/api/auth',
         baseURL: env.BETTER_AUTH_URL || baseURL,
+
+        // ── Trusted origins — keeps Better Auth's URL validation in sync with ──
+        // the custom CORS middleware (single source of truth: CORS_ALLOWED_ORIGINS
+        // env var / wrangler.toml [vars]).  Used to validate callbackURL, redirectTo,
+        // errorCallbackURL, and newUserCallbackURL on every auth request.
+        // NOTE: CSRF protection for browser clients is handled by sameSite: 'lax'
+        // cookies and the custom CORS middleware, NOT by Better Auth's origin check
+        // (which is disabled via advanced.disableCSRFCheck below).
+        trustedOrigins: buildTrustedOriginsFn(env),
 
         socialProviders,
 
@@ -293,6 +349,17 @@ export function createAuth(env: Env, baseURL?: string) {
                 sameSite: 'lax', // 'lax' allows OAuth redirects; 'strict' blocks them
                 path: '/',
             },
+            // ── Disable Better Auth's internal CSRF origin check ─────────────────
+            // Better Auth throws MISSING_OR_NULL_ORIGIN when a Cookie header is
+            // present but Origin is absent — which is true for every non-browser API
+            // client (Postman, curl, SDK) that has received a session cookie.
+            // This is a false positive: sameSite: 'lax' (above) already prevents CSRF
+            // at the cookie level (browsers don't send lax cookies on cross-site POSTs),
+            // and the custom CORS middleware (hono-app.ts step 4) blocks unknown browser
+            // origins with 403.  Disabling the redundant check here allows non-browser
+            // clients to authenticate normally without spoofing an Origin header.
+            // See AUTH_DISABLE_CSRF_CHECK in this module for the full rationale.
+            disableCSRFCheck: AUTH_DISABLE_CSRF_CHECK,
             // ── Cloudflare reverse proxy IP extraction ────────────────────────────
             // Without this, Better Auth cannot determine the real client IP and its
             // built-in rate limiter (brute-force protection on /sign-in, /sign-up,
