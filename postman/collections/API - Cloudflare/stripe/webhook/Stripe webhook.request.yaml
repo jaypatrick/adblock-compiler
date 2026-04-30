@@ -12,8 +12,14 @@ body:
   type: json
   content: |-
     {
+      "id": "evt_test_000000000000",
+      "object": "event",
       "type": "payment_intent.succeeded",
-      "data": {}
+      "data": {
+        "object": {}
+      },
+      "created": 1700000000,
+      "livemode": false
     }
 tests: |-
   // Without a valid Stripe-Signature header the endpoint returns 400

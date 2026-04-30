@@ -4,7 +4,7 @@ method: PUT
 headers:
   Content-Type: application/json
   Accept: application/json
-  X-API-Key: "{{apiKey}}"
+  Authorization: Bearer {{apiKey}}
 pathVariables:
   - key: id
     value: 809331b7-026e-18ca-da21-74e840eada1a

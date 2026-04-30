@@ -39,13 +39,11 @@ postman/
 
 ## Authentication
 
-The collection uses mixed authentication depending on the endpoint:
+The collection uses `Authorization: Bearer {{apiKey}}` for all protected endpoints.
 
-- Most protected API requests use the `X-API-Key` header. Turnstile is automatically bypassed for API key requests.
-- Some user/session-scoped endpoints use `Authorization: Bearer {{bearerToken}}`, including API key management under `/keys/*`, `/api/auth/sign-out`, and `/agents/...`.
-- Some endpoints are public and do not require authentication, such as `/stripe/webhook`.
-
-Check each request or folder in the collection before running it so you use the correct auth type.
+- Most protected API requests use `Authorization: Bearer {{bearerToken}}`. Turnstile verification is automatically skipped for API-key (`blq_…`) requests.
+- Public endpoints (e.g. `/stripe/webhook`, `/api/auth/sign-in`, `/api/auth/sign-up`) have no auth header.
+- The `/api/auth/sign-out` and `/keys/*` endpoints also use `Authorization: Bearer {{bearerToken}}` (session-scoped).
 
 Get an API key:
 
@@ -117,7 +115,8 @@ expect these status codes.
 |---|---|---|
 | `baseUrl` | API base URL (includes `/api` prefix) | `https://api.bloqr.dev/api` |
 | `originUrl` | Origin URL without `/api` prefix (used for `/agents/*` routes) | `https://api.bloqr.dev` |
-| `apiKey` | API key for `X-API-Key` auth | `blq_2086750d…` |
-| `bearerToken` | Session token (for `/keys/*`, `/api/auth/sign-out`, `/agents/*`) | `eyJhbGc…` |
+| `apiKey` | API key for `Authorization: Bearer` auth | `blq_2086750d…` |
+| `bearerToken` | Session token (for `/keys/*`, `/api/auth/sign-out`) | `eyJhbGc…` |
 | `adminKey` | Admin key (for admin endpoints) | — |
 | `turnstileToken` | Turnstile bypass token | `NEWMAN-BYPASS-TOKEN` |
+| `paygSession` | PAYG session token from `POST /payg/session/create` | — |

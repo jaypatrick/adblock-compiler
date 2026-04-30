@@ -10,7 +10,7 @@ url: {{originUrl}}/agents/:slug/:instanceId/
 method: GET
 headers:
   Accept: application/json
-  X-API-Key: {{apiKey}}
+  Authorization: Bearer {{apiKey}}
 pathVariables:
   - key: slug
     value: mcp-agent

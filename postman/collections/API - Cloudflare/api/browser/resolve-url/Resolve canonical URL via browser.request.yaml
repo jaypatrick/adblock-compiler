@@ -15,7 +15,7 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: application/json
-  X-API-Key: "{{apiKey}}"
+  Authorization: Bearer {{apiKey}}
 body:
   type: json
   content: |-
