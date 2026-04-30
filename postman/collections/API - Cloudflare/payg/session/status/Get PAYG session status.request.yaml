@@ -11,5 +11,4 @@ headers:
 body:
   type: text
   content: ""
-examples: ./.resources/Get PAYG session status.resources/examples
 order: 1020

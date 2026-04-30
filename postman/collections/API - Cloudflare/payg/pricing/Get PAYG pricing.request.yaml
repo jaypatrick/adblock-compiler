@@ -9,5 +9,4 @@ headers:
 body:
   type: text
   content: ""
-examples: ./.resources/Get PAYG pricing.resources/examples
 order: 1000

@@ -10,7 +10,6 @@ body:
   type: json
   content: |-
     {
-      "credits": 1000
+      "requestsToPurchase": 1000
     }
-examples: ./.resources/Create PAYG session.resources/examples
 order: 1000

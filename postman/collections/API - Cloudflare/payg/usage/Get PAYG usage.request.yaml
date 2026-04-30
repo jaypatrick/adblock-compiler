@@ -11,5 +11,4 @@ headers:
 body:
   type: text
   content: ""
-examples: ./.resources/Get PAYG usage.resources/examples
 order: 1010
