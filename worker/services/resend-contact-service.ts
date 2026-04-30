@@ -51,8 +51,8 @@ export class ResendContactService implements IResendContactService {
         try {
             // Best-effort name split: first token → firstName, remainder → lastName.
             // Multi-word last names work (e.g. "Mary Smith Jones" → lastName="Smith Jones").
-            // Multi-word first names cannot be distinguished from a first name followed by
-            // a last name (e.g. "Mary Anne" → firstName="Mary", lastName="Anne").
+            // Multi-word first names cannot be preserved as such — "Mary Anne" becomes
+            // firstName="Mary", lastName="Anne" rather than firstName="Mary Anne".
             // Whitespace-only names are treated as absent.
             const trimmed = user.name?.trim() ?? '';
             const nameParts = trimmed ? trimmed.split(' ') : [];
