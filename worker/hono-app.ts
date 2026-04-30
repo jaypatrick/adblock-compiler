@@ -483,6 +483,60 @@ app.use(
     }),
 );
 
+// ── 4a. CORS origin enforcement ───────────────────────────────────────────────
+// Rejects browser requests that carry an Origin header not in the allowlist.
+// Non-browser API clients (Postman, Newman, curl, SDKs) do NOT send an Origin
+// header and are ALWAYS allowed through — CORS is a browser-only mechanism.
+//
+// Decision matrix:
+//   - No Origin header                  → allow (non-browser client)
+//   - Origin in allowlist               → allow (CORS headers already set by step 4)
+//   - Origin present, not in allowlist  → 403 CORS rejection + security event
+//
+// NOTE: public endpoints (health, metrics, docs, etc.) are exempt — the
+// step-4 CORS middleware already returns '*' for those paths.
+app.use('*', async (c, next) => {
+    const origin = c.req.header('Origin');
+
+    // No Origin header → non-browser API client → allow through unconditionally.
+    if (!origin) {
+        await next();
+        return;
+    }
+
+    const pathname = c.req.path;
+
+    // Public endpoints allow any origin (wildcard * is already returned by step 4).
+    if (isPublicEndpoint(pathname)) {
+        await next();
+        return;
+    }
+
+    // Better Auth paths (/api/auth/*) bypass this middleware because the route
+    // handler at step 1b short-circuits before step 4 runs.  This guard is kept
+    // for defence-in-depth in case that ordering ever changes.
+    if (pathname.startsWith('/api/auth/')) {
+        await next();
+        return;
+    }
+
+    const allowed = matchOrigin(origin, c.env as Env);
+    if (!allowed) {
+        const analytics = c.get('analytics');
+        analytics?.trackSecurityEvent({
+            eventType: 'cors_rejection',
+            path: pathname,
+            method: c.req.method,
+            clientIpHash: AnalyticsService.hashIp(c.get('ip') ?? 'unknown'),
+            tier: c.get('authContext')?.tier,
+            reason: 'origin_not_allowed',
+        });
+        return ProblemResponse.corsRejection(pathname, `Origin '${origin}' is not permitted by the CORS policy.`);
+    }
+
+    await next();
+});
+
 // ── 5. Secure headers ─────────────────────────────────────────────────────────
 app.use('*', secureHeaders());
 
