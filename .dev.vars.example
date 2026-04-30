@@ -127,3 +127,15 @@ URL_DOCS=https://docs.bloqr.jaysonknight.com
 # Scoped CF API token with Zone.Page Shield read permissions.
 # wrangler secret put CF_PAGE_SHIELD_API_TOKEN
 # CF_PAGE_SHIELD_API_TOKEN=your_page_shield_api_token_here
+
+# ─── Email (Resend — critical auth path: verification, reset, security alerts) ─
+# Get a test API key from https://resend.com/api-keys
+# Production: `wrangler secret put RESEND_API_KEY`
+RESEND_API_KEY=re_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# ─── Email (Cloudflare Email Service REST — transactional notifications) ────────
+# Scoped CF API token with Email Send permissions.
+# Production: `wrangler secret put CF_EMAIL_API_TOKEN`
+CF_EMAIL_API_TOKEN=your_cf_email_api_token_here
+# Your Cloudflare account ID (non-secret — find in Cloudflare dashboard)
+CF_ACCOUNT_ID=your_cloudflare_account_id_here

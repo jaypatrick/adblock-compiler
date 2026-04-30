@@ -31,6 +31,8 @@
 #   wrangler secret put ANALYTICS_ACCOUNT_ID
 #   wrangler secret put ANALYTICS_API_TOKEN
 #   wrangler secret put OTEL_EXPORTER_OTLP_ENDPOINT
+#   wrangler secret put RESEND_API_KEY
+#   wrangler secret put CF_EMAIL_API_TOKEN
 # ============================================================================
 
 name = "adblock-compiler"
@@ -125,6 +127,11 @@ URL_API          = "https://api.bloqr.dev"
 URL_DOCS         = "https://docs.bloqr.dev"
 URL_LANDING      = "https://bloqr.dev"
 CANONICAL_DOMAIN = "bloqr.dev"
+# ─── Cloudflare Account ID (non-secret) ──────────────────────────────────────
+# Required by CfEmailServiceRestService for the CF Email Service REST API.
+# Non-secret: safe to commit. Find at https://dash.cloudflare.com → Account ID.
+# IMPORTANT: Replace this placeholder before deploying to production.
+CF_ACCOUNT_ID = "your_cloudflare_account_id"
 
 # ─── KV Namespaces ───────────────────────────────────────────────────────────
 # `wrangler dev` binds to these live namespaces by default.

@@ -93,7 +93,7 @@ export interface EmailDeliveryResult {
     /** Workflow-level idempotency key (mirrors `params.idempotencyKey`). */
     idempotencyKey: string;
     /** Active provider name used for the send. */
-    provider: 'cf_email_worker' | 'none';
+    provider: 'cf_email_worker' | 'cf_email_rest' | 'resend' | 'none';
     /** Recipient address (from the validated payload). */
     to: string;
     /** ISO 8601 timestamp when delivery was attempted. */
@@ -169,19 +169,36 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
 
             result.to = validatedPayload.to;
 
+            // Reasons that require Resend's deliverability guarantees (auth critical path).
+            const CRITICAL_REASONS = new Set([
+                'email_verification',
+                'password_reset',
+                'security_alert',
+                'two_factor_alert',
+            ]);
+            const emailPriority: 'critical' | 'transactional' = CRITICAL_REASONS.has(reason) ? 'critical' : 'transactional';
+
             // ─── Step 2: Deliver ──────────────────────────────────────────────
             const deliveryResult = await step.do('deliver', {
                 retries: { limit: 3, delay: '10 seconds', backoff: 'exponential' },
                 timeout: '30 seconds',
             }, async () => {
-                // Guard first — fail fast before any logging/instantiation when unconfigured.
-                if (!this.env.SEND_EMAIL) {
-                    throw new Error('No email provider configured for workflow delivery (SEND_EMAIL absent).');
+                // Use direct provider (bypass queue) to avoid queue→workflow→queue recursion.
+                const mailer = createEmailService(this.env, { useQueue: false, priority: emailPriority });
+
+                // Determine provider name for the receipt log.
+                let providerName: EmailDeliveryResult['provider'] = 'none';
+                if (emailPriority === 'critical' && this.env.RESEND_API_KEY) {
+                    providerName = 'resend';
+                } else if (this.env.CF_EMAIL_API_TOKEN && this.env.CF_ACCOUNT_ID) {
+                    providerName = 'cf_email_rest';
+                } else if (this.env.SEND_EMAIL) {
+                    providerName = 'cf_email_worker';
                 }
 
-                // Use direct provider (bypass queue) to avoid queue→workflow→queue recursion.
-                const mailer = createEmailService(this.env, { useQueue: false });
-                const providerName = 'cf_email_worker' as const;
+                if (providerName === 'none') {
+                    throw new Error('No email provider configured for workflow delivery.');
+                }
 
                 await mailer.sendEmail(validatedPayload);
                 // deno-lint-ignore no-console

@@ -77,6 +77,8 @@ import { admin, bearer, multiSession, organization, twoFactor } from 'better-aut
 import { dash } from '@better-auth/infra';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
+import { ResendEmailService } from '../services/email-service.ts';
+import { renderEmailVerification, renderPasswordReset } from '../services/email-templates.ts';
 
 /**
  * Better Auth → Prisma field name mapping for the `User` model.
@@ -211,6 +213,44 @@ export function createAuth(env: Env, baseURL?: string) {
 
         emailAndPassword: {
             enabled: true,
+            // Block sign-in until the user has verified their email address.
+            requireEmailVerification: true,
+            sendResetPassword: async ({ user, url }) => {
+                if (!env.RESEND_API_KEY) {
+                    // deno-lint-ignore no-console
+                    console.warn('[auth] RESEND_API_KEY not set — password reset email dropped');
+                    return;
+                }
+                const mailer = new ResendEmailService(env.RESEND_API_KEY, 'noreply@bloqr.dev');
+                await mailer.sendEmail({
+                    to: user.email,
+                    ...renderPasswordReset({ email: user.email, url }),
+                });
+            },
+        },
+
+        // ── Email verification (core option — not a plugin) ───────────────────
+        // Sends a verification link on sign-up and when explicitly requested.
+        // If RESEND_API_KEY is absent (local dev without credentials), the send is
+        // skipped with a warning — auth still works, verification is best-effort.
+        // Note: requireEmailVerification is set on emailAndPassword above.
+        emailVerification: {
+            sendOnSignUp: true,
+            sendVerificationEmail: async ({ user, url }) => {
+                if (!env.RESEND_API_KEY) {
+                    // deno-lint-ignore no-console
+                    console.warn(
+                        '[auth] RESEND_API_KEY not set — email verification send skipped. ' +
+                            'Set RESEND_API_KEY in .dev.vars (local) or wrangler secret put RESEND_API_KEY (production).',
+                    );
+                    return;
+                }
+                const mailer = new ResendEmailService(env.RESEND_API_KEY, 'noreply@bloqr.dev');
+                await mailer.sendEmail({
+                    to: user.email,
+                    ...renderEmailVerification({ email: user.email, url }),
+                });
+            },
         },
 
         user: {

@@ -3,6 +3,7 @@
  *
  * All tests are self-contained — no real CF Email Worker sends are made.
  * The `SEND_EMAIL` binding is mocked for CF Email Worker tests.
+ * fetch() is mocked globally for ResendEmailService and CfEmailServiceRestService tests.
  *
  * Covers:
  *
@@ -33,6 +34,19 @@
  * NullEmailService:
  *   - sendEmail() resolves immediately without calling fetch or a binding
  *
+ * ResendEmailService:
+ *   - Valid payload → fetch() called once with correct Resend API shape
+ *   - Invalid payload → throws 'Invalid email payload'
+ *   - Non-2xx HTTP response → resolves (warns, doesn't throw)
+ *   - fetch() throws → resolves (warns, doesn't throw)
+ *   - replyTo set → reply_to included in request body
+ *
+ * CfEmailServiceRestService:
+ *   - Valid payload → fetch() called once with correct CF API shape (to as array)
+ *   - Invalid payload → throws 'Invalid email payload'
+ *   - Non-2xx HTTP response → resolves (warns, doesn't throw)
+ *   - replyTo set → reply_to included in request body
+ *
  * QueuedEmailService:
  *   - Valid payload → queue.send() called once with correct message shape
  *   - Invalid payload → throws 'Invalid email payload'
@@ -44,13 +58,25 @@
  * createEmailService() factory:
  *   - EMAIL_QUEUE binding present (useQueue=true default) → returns QueuedEmailService
  *   - EMAIL_QUEUE present but useQueue=false → skips queue, uses SEND_EMAIL binding
- *   - SEND_EMAIL binding present, no EMAIL_QUEUE → returns CfEmailWorkerService
+ *   - priority=critical + RESEND_API_KEY → returns ResendEmailService
+ *   - priority=transactional + CF_EMAIL_API_TOKEN + CF_ACCOUNT_ID → returns CfEmailServiceRestService
+ *   - SEND_EMAIL binding present, no EMAIL_QUEUE → returns CfEmailWorkerService (fallback)
  *   - Neither configured → returns NullEmailService (priority 3 fallback)
  *   - Returned CF Email Worker service calls binding.send()
  */
 
 import { assertEquals, assertRejects, assertStringIncludes } from '@std/assert';
-import { buildRawMimeMessage, CfEmailWorkerService, createEmailService, encodeSubjectRfc2047, NullEmailService, parseEmailAddress, QueuedEmailService } from './email-service.ts';
+import {
+    buildRawMimeMessage,
+    CfEmailServiceRestService,
+    CfEmailWorkerService,
+    createEmailService,
+    encodeSubjectRfc2047,
+    NullEmailService,
+    parseEmailAddress,
+    QueuedEmailService,
+    ResendEmailService,
+} from './email-service.ts';
 import type { EmailPayload } from './email-service.ts';
 
 // ============================================================================
@@ -447,4 +473,173 @@ Deno.test('QueuedEmailService.sendEmail() — replyTo included in enqueued paylo
     await svc.sendEmail(makePayload({ replyTo: 'Bloqr Support <support@bloqr.dev>' }));
     const msg = messages[0] as Record<string, unknown>;
     assertEquals((msg['payload'] as Record<string, unknown>)['replyTo'], 'Bloqr Support <support@bloqr.dev>');
+});
+
+// ============================================================================
+// ResendEmailService
+// ============================================================================
+
+/** Creates a stubbed globalThis.fetch that resolves with the given status. */
+function stubFetch(status: number, body = ''): { calls: { url: string; init: RequestInit }[]; restore: () => void } {
+    const calls: { url: string; init: RequestInit }[] = [];
+    const original = globalThis.fetch;
+    // deno-lint-ignore no-explicit-any
+    (globalThis as any).fetch = async (url: string | URL | Request, init?: RequestInit): Promise<Response> => {
+        calls.push({ url: url.toString(), init: init ?? {} });
+        return new Response(body, { status });
+    };
+    return {
+        calls,
+        restore: () => {
+            globalThis.fetch = original;
+        },
+    };
+}
+
+Deno.test('ResendEmailService.sendEmail() — valid payload calls Resend API with correct shape', async () => {
+    const { calls, restore } = stubFetch(200);
+    try {
+        const svc = new ResendEmailService('re_test_key', 'noreply@bloqr.dev');
+        await svc.sendEmail(makePayload());
+        assertEquals(calls.length, 1);
+        assertEquals(calls[0].url, 'https://api.resend.com/emails');
+        assertEquals((calls[0].init.headers as Record<string, string>)['Authorization'], 'Bearer re_test_key');
+        const body = JSON.parse(calls[0].init.body as string) as Record<string, unknown>;
+        assertEquals(body['from'], 'noreply@bloqr.dev');
+        assertEquals(body['to'], 'user@example.com');
+        assertEquals(body['subject'], 'Test subject');
+    } finally {
+        restore();
+    }
+});
+
+Deno.test("ResendEmailService.sendEmail() — throws 'Invalid email payload' on invalid payload", async () => {
+    const svc = new ResendEmailService('re_test_key', 'noreply@bloqr.dev');
+    const bad = { to: '', subject: 'x', html: '<p>x</p>', text: 'x' } as EmailPayload;
+    await assertRejects(
+        () => svc.sendEmail(bad),
+        Error,
+        'Invalid email payload',
+    );
+});
+
+Deno.test('ResendEmailService.sendEmail() — non-2xx response resolves without throwing', async () => {
+    const { restore } = stubFetch(422, 'unprocessable');
+    try {
+        const svc = new ResendEmailService('re_test_key', 'noreply@bloqr.dev');
+        // Should resolve (fire-and-forget — logs a warning, never throws)
+        await svc.sendEmail(makePayload());
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('ResendEmailService.sendEmail() — fetch() throws resolves without rethrowing', async () => {
+    const original = globalThis.fetch;
+    // deno-lint-ignore no-explicit-any
+    (globalThis as any).fetch = async () => {
+        throw new Error('network error');
+    };
+    try {
+        const svc = new ResendEmailService('re_test_key', 'noreply@bloqr.dev');
+        await svc.sendEmail(makePayload());
+    } finally {
+        globalThis.fetch = original;
+    }
+});
+
+Deno.test('ResendEmailService.sendEmail() — replyTo present → reply_to included in request body', async () => {
+    const { calls, restore } = stubFetch(200);
+    try {
+        const svc = new ResendEmailService('re_test_key', 'noreply@bloqr.dev');
+        await svc.sendEmail(makePayload({ replyTo: 'support@bloqr.dev' }));
+        const body = JSON.parse(calls[0].init.body as string) as Record<string, unknown>;
+        assertEquals(body['reply_to'], 'support@bloqr.dev');
+    } finally {
+        restore();
+    }
+});
+
+// ============================================================================
+// CfEmailServiceRestService
+// ============================================================================
+
+Deno.test('CfEmailServiceRestService.sendEmail() — valid payload calls CF Email API with correct shape (to as array)', async () => {
+    const { calls, restore } = stubFetch(200);
+    try {
+        const svc = new CfEmailServiceRestService('cf_token', 'acct_123', 'notifications@bloqr.dev');
+        await svc.sendEmail(makePayload());
+        assertEquals(calls.length, 1);
+        assertStringIncludes(calls[0].url, '/accounts/acct_123/email/sending/send');
+        assertEquals((calls[0].init.headers as Record<string, string>)['Authorization'], 'Bearer cf_token');
+        const body = JSON.parse(calls[0].init.body as string) as Record<string, unknown>;
+        assertEquals(body['from'], 'notifications@bloqr.dev');
+        // CF API expects `to` as an array
+        assertEquals(Array.isArray(body['to']), true);
+        assertEquals((body['to'] as string[])[0], 'user@example.com');
+        assertEquals(body['subject'], 'Test subject');
+    } finally {
+        restore();
+    }
+});
+
+Deno.test("CfEmailServiceRestService.sendEmail() — throws 'Invalid email payload' on invalid payload", async () => {
+    const svc = new CfEmailServiceRestService('cf_token', 'acct_123', 'notifications@bloqr.dev');
+    const bad = { to: '', subject: 'x', html: '<p>x</p>', text: 'x' } as EmailPayload;
+    await assertRejects(
+        () => svc.sendEmail(bad),
+        Error,
+        'Invalid email payload',
+    );
+});
+
+Deno.test('CfEmailServiceRestService.sendEmail() — non-2xx response resolves without throwing', async () => {
+    const { restore } = stubFetch(500, 'internal error');
+    try {
+        const svc = new CfEmailServiceRestService('cf_token', 'acct_123', 'notifications@bloqr.dev');
+        await svc.sendEmail(makePayload());
+    } finally {
+        restore();
+    }
+});
+
+Deno.test('CfEmailServiceRestService.sendEmail() — replyTo present → reply_to included in request body', async () => {
+    const { calls, restore } = stubFetch(200);
+    try {
+        const svc = new CfEmailServiceRestService('cf_token', 'acct_123', 'notifications@bloqr.dev');
+        await svc.sendEmail(makePayload({ replyTo: 'support@bloqr.dev' }));
+        const body = JSON.parse(calls[0].init.body as string) as Record<string, unknown>;
+        assertEquals(body['reply_to'], 'support@bloqr.dev');
+    } finally {
+        restore();
+    }
+});
+
+// ============================================================================
+// createEmailService() factory — new priority options
+// ============================================================================
+
+Deno.test('createEmailService() — priority=critical + RESEND_API_KEY → returns ResendEmailService', () => {
+    const svc = createEmailService({ RESEND_API_KEY: 're_test_key' }, { useQueue: false, priority: 'critical' });
+    assertEquals(svc instanceof ResendEmailService, true);
+});
+
+Deno.test('createEmailService() — priority=transactional + CF_EMAIL_API_TOKEN + CF_ACCOUNT_ID → returns CfEmailServiceRestService', () => {
+    const svc = createEmailService(
+        { CF_EMAIL_API_TOKEN: 'token', CF_ACCOUNT_ID: 'acct' },
+        { useQueue: false, priority: 'transactional' },
+    );
+    assertEquals(svc instanceof CfEmailServiceRestService, true);
+});
+
+Deno.test('createEmailService() — priority=critical but RESEND_API_KEY absent → falls back to CfEmailWorkerService', () => {
+    const { binding } = makeMockSendEmailBinding();
+    const svc = createEmailService({ SEND_EMAIL: binding }, { useQueue: false, priority: 'critical' });
+    assertEquals(svc instanceof CfEmailWorkerService, true);
+});
+
+Deno.test('createEmailService() — EMAIL_QUEUE takes priority over RESEND_API_KEY (priority 1 wins)', () => {
+    const { queue } = makeMockQueue();
+    const svc = createEmailService({ EMAIL_QUEUE: queue, RESEND_API_KEY: 're_test_key' }, { priority: 'critical' });
+    assertEquals(svc instanceof QueuedEmailService, true);
 });
