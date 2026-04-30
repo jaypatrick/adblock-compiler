@@ -408,12 +408,15 @@ Deno.test('CORS enforcement — request with no Origin header is allowed through
     assertNotEquals(res.status, 403);
 });
 
-Deno.test('CORS enforcement — request from allowed origin is not rejected', async () => {
-    const res = await fetch('/api/health', {
-        headers: { 'Origin': 'http://localhost:4200' },
+Deno.test('CORS enforcement — request from allowed origin reaches auth layer on non-public endpoint', async () => {
+    const origin = 'http://localhost:4200';
+    const res = await fetch('/api/rules', {
+        headers: { 'Origin': origin },
     });
-    // Allowed origin → not 403
-    assertNotEquals(res.status, 403);
+    // Allowed origin on a protected route should pass CORS enforcement and then
+    // fail at authentication, proving the allowlist path was exercised.
+    assertEquals(res.status, 401);
+    assertEquals(res.headers.get('Access-Control-Allow-Origin'), origin);
 });
 
 Deno.test('CORS enforcement — request from unknown origin is rejected with 403 on non-public endpoint', async () => {

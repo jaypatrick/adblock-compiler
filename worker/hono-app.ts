@@ -512,14 +512,6 @@ app.use('*', async (c, next) => {
         return;
     }
 
-    // Better Auth paths (/api/auth/*) bypass this middleware because the route
-    // handler at step 1b short-circuits before step 4 runs.  This guard is kept
-    // for defence-in-depth in case that ordering ever changes.
-    if (pathname.startsWith('/api/auth/')) {
-        await next();
-        return;
-    }
-
     const allowed = matchOrigin(origin, c.env as Env);
     if (!allowed) {
         const analytics = c.get('analytics');
