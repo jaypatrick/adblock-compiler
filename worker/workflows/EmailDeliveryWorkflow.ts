@@ -48,7 +48,7 @@
 import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 import { z } from 'zod';
 import type { Env } from '../worker.ts';
-import { createEmailService, EmailPayloadSchema } from '../services/email-service.ts';
+import { CfEmailServiceRestService, CfEmailWorkerService, createEmailService, EmailPayloadSchema, ResendEmailService } from '../services/email-service.ts';
 import { captureExceptionInIsolate } from '../services/sentry-isolate-init.ts';
 
 // ============================================================================
@@ -93,7 +93,7 @@ export interface EmailDeliveryResult {
     /** Workflow-level idempotency key (mirrors `params.idempotencyKey`). */
     idempotencyKey: string;
     /** Active provider name used for the send. */
-    provider: 'cf_email_worker' | 'none';
+    provider: 'cf_email_worker' | 'cf_email_rest' | 'resend' | 'none';
     /** Recipient address (from the validated payload). */
     to: string;
     /** ISO 8601 timestamp when delivery was attempted. */
@@ -110,6 +110,19 @@ export interface EmailDeliveryResult {
 
 const RECEIPT_KEY_PREFIX = 'email:receipt:';
 const RECEIPT_TTL_SECONDS = 60 * 60 * 24 * 7; // 7 days
+
+/**
+ * Email reasons that require Resend's deliverability guarantees (critical auth path).
+ *
+ * When `reason` matches one of these values, `createEmailService` is called with
+ * `priority: 'critical'` to route through ResendEmailService.
+ */
+const CRITICAL_REASONS = new Set([
+    'email_verification',
+    'password_reset',
+    'security_alert',
+    'two_factor_alert',
+]);
 
 function receiptKey(idempotencyKey: string): string {
     return `${RECEIPT_KEY_PREFIX}${idempotencyKey}`;
@@ -169,19 +182,31 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
 
             result.to = validatedPayload.to;
 
+            const emailPriority: 'critical' | 'transactional' = CRITICAL_REASONS.has(reason) ? 'critical' : 'transactional';
+
             // ─── Step 2: Deliver ──────────────────────────────────────────────
             const deliveryResult = await step.do('deliver', {
                 retries: { limit: 3, delay: '10 seconds', backoff: 'exponential' },
                 timeout: '30 seconds',
             }, async () => {
-                // Guard first — fail fast before any logging/instantiation when unconfigured.
-                if (!this.env.SEND_EMAIL) {
-                    throw new Error('No email provider configured for workflow delivery (SEND_EMAIL absent).');
-                }
-
                 // Use direct provider (bypass queue) to avoid queue→workflow→queue recursion.
-                const mailer = createEmailService(this.env, { useQueue: false });
-                const providerName = 'cf_email_worker' as const;
+                // throwOnFailure: true ensures delivery errors propagate so this step is
+                // retried by the Workflow runtime rather than silently succeeding on failure.
+                const mailer = createEmailService(this.env, { useQueue: false, priority: emailPriority, throwOnFailure: true });
+
+                // Derive provider name from the actual instance created by the factory,
+                // guaranteeing it matches the provider that will deliver the email.
+                let providerName: EmailDeliveryResult['provider'];
+                if (mailer instanceof ResendEmailService) {
+                    providerName = 'resend';
+                } else if (mailer instanceof CfEmailServiceRestService) {
+                    providerName = 'cf_email_rest';
+                } else if (mailer instanceof CfEmailWorkerService) {
+                    providerName = 'cf_email_worker';
+                } else {
+                    // NullEmailService — no provider configured; abort rather than silently drop.
+                    throw new Error('No email provider configured for workflow delivery.');
+                }
 
                 await mailer.sendEmail(validatedPayload);
                 // deno-lint-ignore no-console

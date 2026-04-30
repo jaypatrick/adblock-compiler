@@ -7,6 +7,40 @@ import type { IBasicLogger } from '../types/index.ts';
 import { silentLogger } from '../utils/logger.ts';
 import { z } from 'zod';
 
+// ─── Email Service Zod schemas ────────────────────────────────────────────────
+
+/**
+ * Zod schema for the CF Email Service send request body.
+ *
+ * Matches the shape expected by
+ * `POST /accounts/{accountId}/email/sending/send`.
+ */
+export const CfEmailSendRequestSchema = z.object({
+    from: z.string(),
+    to: z.array(z.string()),
+    subject: z.string(),
+    html: z.string().optional(),
+    text: z.string().optional(),
+    reply_to: z.string().optional(),
+});
+/** Inferred type from {@link CfEmailSendRequestSchema}. */
+export type CfEmailSendRequest = z.infer<typeof CfEmailSendRequestSchema>;
+
+/**
+ * Zod schema for the CF Email Service send response envelope.
+ *
+ * Follows the standard Cloudflare v4 API envelope shape.
+ * `result` is intentionally typed as `unknown` — callers only care about
+ * whether the send succeeded, not the message-id.
+ */
+export const CfEmailSendResponseSchema = z.object({
+    success: z.boolean(),
+    errors: z.array(z.object({ code: z.number(), message: z.string() })).optional(),
+    result: z.unknown().optional(),
+});
+/** Inferred type from {@link CfEmailSendResponseSchema}. */
+export type CfEmailSendResponse = z.infer<typeof CfEmailSendResponseSchema>;
+
 // ─── Page Shield Zod schemas ─────────────────────────────────────────────────
 
 /**
@@ -538,6 +572,42 @@ export class CloudflareApiService {
         }
 
         return parsed.result ?? [];
+    }
+
+    // ── Email Service ─────────────────────────────────────────────────────────
+
+    /**
+     * Sends a transactional email via the Cloudflare Email Service REST API.
+     *
+     * The CF Email Service endpoint is not yet a typed resource in the
+     * `cloudflare@5.x` SDK, so the generic `post()` method is used here.
+     * All SDK features (auth headers, retries, and non-2xx `APIError` throws)
+     * still apply — no manual status or body check is needed.
+     *
+     * @param accountId - Cloudflare account ID.
+     * @param payload   - Email send request body; validated at the trust boundary via
+     *                    {@link CfEmailSendRequestSchema} before the API call is made.
+     * @throws {ZodError} if `payload` does not satisfy {@link CfEmailSendRequestSchema}.
+     * @throws {APIError} (from the Cloudflare SDK) if the API returns a non-2xx response.
+     * @see https://developers.cloudflare.com/email-service/api/send-emails/
+     */
+    async sendEmail(accountId: string, payload: CfEmailSendRequest): Promise<void> {
+        // Validate at the trust boundary — callers such as CfEmailServiceRestService
+        // pre-validate with EmailPayloadSchema, but this ensures the CF-specific shape
+        // (e.g. `to` as an array, no CR/LF in subject) is always enforced.
+        const validated = CfEmailSendRequestSchema.parse(payload);
+
+        this.logger.info(`[CloudflareApiService] sendEmail to=${validated.to.join(', ')}`);
+
+        // The SDK throws APIError for non-2xx responses, so reaching this line implies
+        // delivery was accepted.  The response body (e.g. message-id) is intentionally
+        // discarded — callers only need to know whether the send succeeded or failed.
+        // If a future caller needs the message-id, change the return type to
+        // `Promise<CfEmailSendResponse>` and Zod-parse with CfEmailSendResponseSchema.
+        await this.client.post<CfEmailSendRequest, unknown>(
+            `/accounts/${accountId}/email/sending/send`,
+            { body: validated },
+        );
     }
 }
 

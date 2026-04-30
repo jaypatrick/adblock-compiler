@@ -31,6 +31,8 @@
 #   wrangler secret put ANALYTICS_ACCOUNT_ID
 #   wrangler secret put ANALYTICS_API_TOKEN
 #   wrangler secret put OTEL_EXPORTER_OTLP_ENDPOINT
+#   wrangler secret put RESEND_API_KEY
+#   wrangler secret put CF_EMAIL_API_TOKEN
 # ============================================================================
 
 name = "adblock-compiler"

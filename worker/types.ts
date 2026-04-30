@@ -675,6 +675,46 @@ export interface Env {
      * @see https://developers.cloudflare.com/email-routing/email-workers/send-email-workers/
      */
     SEND_EMAIL?: SendEmail;
+
+    // ─── Email (Resend — critical auth path) ─────────────────────────────────
+    /**
+     * Resend API key for critical auth-path email delivery.
+     *
+     * Used exclusively by ResendEmailService for email verification,
+     * password reset, and security alerts where silent delivery failure
+     * is unacceptable.
+     *
+     * Local dev:  add `RESEND_API_KEY=re_test_...` to .dev.vars
+     * Production: `wrangler secret put RESEND_API_KEY`
+     *
+     * @see worker/services/email-service.ts — ResendEmailService
+     * @see https://resend.com/api-keys
+     */
+    RESEND_API_KEY?: string;
+
+    // ─── Email (Cloudflare Email Service REST — transactional) ───────────────
+    /**
+     * Cloudflare API token scoped to Email Send permissions.
+     *
+     * Used by CfEmailServiceRestService for transactional notification emails
+     * (compilation complete, bulk alerts, etc.).
+     *
+     * Endpoint: POST /accounts/{CF_ACCOUNT_ID}/email/sending/send
+     *
+     * Local dev:  add `CF_EMAIL_API_TOKEN=...` to .dev.vars
+     * Production: `wrangler secret put CF_EMAIL_API_TOKEN`
+     *
+     * @see https://developers.cloudflare.com/email-service/api/send-emails/
+     */
+    CF_EMAIL_API_TOKEN?: string;
+
+    /**
+     * Cloudflare account ID — required for CfEmailServiceRestService.
+     *
+     * Non-secret: safe to store in wrangler.toml [vars] or .dev.vars.
+     * Find at: https://dash.cloudflare.com → account overview → Account ID.
+     */
+    CF_ACCOUNT_ID?: string;
 }
 
 /**
