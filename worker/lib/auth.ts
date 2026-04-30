@@ -16,11 +16,12 @@
  * request, passing the live `env.HYPERDRIVE` binding.
  *
  * ## Plugin extensibility
- * The `plugins` array is ready for future additions:
+ * The `plugins` array ships with the following active plugins:
+ *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`)
+ *   - `bearer()` — API-first Bearer token auth
  *   - `twoFactor()` — TOTP/2FA
- *   - `admin()` — built-in admin plugin
- *   - `apiKey()` — API key management
  *   - `multiSession()` — multiple active sessions
+ *   - `admin()` — built-in admin plugin
  *   - `organization()` — multi-tenancy
  *
  * @see https://better-auth.com/docs/concepts/database
@@ -32,6 +33,7 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { admin, bearer, multiSession, organization, twoFactor } from 'better-auth/plugins';
+import { dash } from '@better-auth/infra';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 
@@ -115,7 +117,7 @@ export class WorkerConfigurationError extends Error {
  * A fresh PrismaClient is created per request using the Hyperdrive
  * connection string — this is safe because Hyperdrive proxies locally.
  *
- * @param env - Cloudflare Worker environment bindings (must include HYPERDRIVE and BETTER_AUTH_SECRET)
+ * @param env - Cloudflare Worker environment bindings (must include HYPERDRIVE, BETTER_AUTH_SECRET, and BETTER_AUTH_API_KEY)
  * @param baseURL - The base URL for the auth endpoints (derived from the request)
  * @returns Configured Better Auth instance
  */
@@ -223,6 +225,11 @@ export function createAuth(env: Env, baseURL?: string) {
         },
 
         plugins: [
+            // Dash plugin — integrates with the dash.better-auth.com dashboard.
+            // Reads BETTER_AUTH_API_KEY from env automatically. Set the key via:
+            //   Local dev:  BETTER_AUTH_API_KEY=<key> in .dev.vars
+            //   Production: wrangler secret put BETTER_AUTH_API_KEY
+            dash(),
             // Bearer token plugin — allows API authentication via Authorization: Bearer <token>
             // instead of browser cookies. Critical for this project's API-first architecture.
             bearer(),
