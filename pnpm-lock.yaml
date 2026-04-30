@@ -69,6 +69,9 @@ importers:
       jose:
         specifier: 6.2.2
         version: 6.2.2
+      pg:
+        specifier: ^8.20.0
+        version: 8.20.0
       svix:
         specifier: ^1.89.0
         version: 1.89.0
