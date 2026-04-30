@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Returns the Mermaid diagram for a single workflow by name. Valid workflow names:
   compilation, batch-compilation, cache-warming, health-monitoring.
-url: {{baseUrl}}/workflow-diagram/:name
+url: {{baseUrl}}/workflow/diagram/:name
 method: GET
 headers:
   Accept: application/json
