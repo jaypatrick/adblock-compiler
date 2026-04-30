@@ -27,6 +27,41 @@
  * Inactive (available but not wired):
  *   - `apiKey()` — built-in API key management (we use a custom implementation)
  *
+ * ## @better-auth/infra import — ESM/CDN compatibility notes
+ *
+ * The `dash()` plugin ships in `@better-auth/infra` (npm). The following
+ * approaches were evaluated for Deno/Cloudflare Workers compatibility:
+ *
+ *  1. CDN ESM import — `import { dash } from 'https://esm.sh/@better-auth/infra?target=deno'`
+ *     ❌ Not viable: wrangler uses esbuild to bundle the Worker. esbuild does not
+ *        support `https://` URL specifiers — it can resolve bare specifiers and
+ *        relative/absolute file paths, but not network URLs. The CDN import fails
+ *        at build time with "Could not resolve".
+ *
+ *  2. Wrangler alias config — `[build.alias] "@better-auth/infra" = "…"`
+ *     ❌ Not viable: wrangler aliases map to local file paths, not CDN URLs.
+ *        A local vendor file would still import `better-auth`, `@better-fetch/fetch`,
+ *        etc. via bare specifiers, requiring those to be resolved from node_modules too.
+ *
+ *  3. Vendor the full package locally — copy dist/index.mjs into worker/vendor/
+ *     ❌ Not viable: `@better-auth/infra@0.2.5/dist/index.mjs` is ~7,900 lines with
+ *        transitive bare-specifier imports (`@better-fetch/fetch`, `libphonenumber-js`,
+ *        `better-auth/api`, `@better-auth/core/context`, `jose`, `zod`). A full vendor
+ *        would require vendoring all transitive dependencies — effectively a sub-registry.
+ *
+ *  4. Add to package.json + pnpm install (chosen approach) ✅
+ *     The package is already declared in `deno.json` imports as
+ *     `"@better-auth/infra": "npm:@better-auth/infra@^0.2.5"`. Adding it to
+ *     `package.json` as well is required so wrangler's esbuild bundler can resolve
+ *     the bare specifier via `node_modules` (managed by pnpm). Both entry points
+ *     (Deno and wrangler) then see the same package version.
+ *     No secret or auth logic changes — `BETTER_AUTH_API_KEY` stays a Worker Secret.
+ *
+ * Recommendations for future improvement:
+ *   - File an issue with @better-auth requesting a Deno/Cloudflare Workers ESM-only
+ *     publish target compatible with URL imports (deno.land/x or jsr.io).
+ *   - Track: https://github.com/better-auth/better-auth/issues
+ *
  * @see https://better-auth.com/docs/concepts/database
  * @see https://better-auth.com/docs/adapters/prisma
  * @see https://better-auth.com/docs/integrations/hono
@@ -36,6 +71,9 @@
 import { betterAuth } from 'better-auth';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { admin, bearer, multiSession, organization, twoFactor } from 'better-auth/plugins';
+// @better-auth/infra is declared in deno.json imports as "npm:@better-auth/infra@^0.2.5"
+// and added to package.json so wrangler/esbuild can resolve it from node_modules.
+// See the ESM/CDN compatibility notes in the module JSDoc above.
 import { dash } from '@better-auth/infra';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
