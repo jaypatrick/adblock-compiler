@@ -17,12 +17,15 @@
  *
  * ## Plugin extensibility
  * The `plugins` array ships with the following active plugins:
- *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`)
+ *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); requires `BETTER_AUTH_API_KEY`
  *   - `bearer()` — API-first Bearer token auth
  *   - `twoFactor()` — TOTP/2FA
  *   - `multiSession()` — multiple active sessions
  *   - `admin()` — built-in admin plugin
  *   - `organization()` — multi-tenancy
+ *
+ * Inactive (available but not wired):
+ *   - `apiKey()` — built-in API key management (we use a custom implementation)
  *
  * @see https://better-auth.com/docs/concepts/database
  * @see https://better-auth.com/docs/adapters/prisma
@@ -117,7 +120,7 @@ export class WorkerConfigurationError extends Error {
  * A fresh PrismaClient is created per request using the Hyperdrive
  * connection string — this is safe because Hyperdrive proxies locally.
  *
- * @param env - Cloudflare Worker environment bindings (must include HYPERDRIVE, BETTER_AUTH_SECRET, and BETTER_AUTH_API_KEY)
+ * @param env - Cloudflare Worker environment bindings (must include HYPERDRIVE and BETTER_AUTH_SECRET; BETTER_AUTH_API_KEY is optional but required for the Dash dashboard)
  * @param baseURL - The base URL for the auth endpoints (derived from the request)
  * @returns Configured Better Auth instance
  */
