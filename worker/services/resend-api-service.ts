@@ -152,7 +152,8 @@ export class ResendApiService {
         }
 
         // 204 No Content — no body to parse (e.g. DELETE).
-        // Callers use T=void for these endpoints, so undefined as T is safe.
+        // DELETE endpoints pass z.unknown() as the schema, which accepts undefined,
+        // so returning undefined as T is safe for that call-site.
         if (response.status === 204) {
             return undefined as T;
         }
