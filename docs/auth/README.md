@@ -22,6 +22,7 @@ the Prisma ORM. No third-party auth service is required at runtime.
 | [Admin Access](admin-access.md) | Operators | Admin endpoint protection and dashboard access |
 | [Cloudflare Access](cloudflare-access.md) | Operators / DevOps | Cloudflare Zero Trust Access for admin routes |
 | [CLI Authentication](cli-authentication.md) | CLI Users / DevOps | CLI authentication with queue endpoints |
+| [Email Architecture](email-architecture.md) | Developers / Operators | Hybrid email delivery: Resend (auth critical) + CF Email Service REST (transactional), provider selector, flows, env setup |
 | [ZTA Review Fixes](zta-review-fixes.md) | Developers | ZTA hardening: telemetry, rate-limit, schema, admin fixes |
 | [Removing Anonymous Access](removing-anonymous-access.md) | All | Migration plan for mandatory authentication |
 
