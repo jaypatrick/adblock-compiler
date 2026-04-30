@@ -33,8 +33,8 @@ async function withFetch<T>(
 
 Deno.test('ResendApiService', async (t) => {
     // ── createContact ──────────────────────────────────────────────────────
-    await t.step('createContact — success returns { id }', () =>
-        withFetch(
+    await t.step('createContact — success returns { id }', async () =>
+        await withFetch(
             (_url, _init) =>
                 new Response(JSON.stringify({ id: FAKE_CONTACT_ID }), {
                     status: 200,
@@ -47,10 +47,10 @@ Deno.test('ResendApiService', async (t) => {
             },
         ));
 
-    await t.step('createContact — sends Authorization header and JSON body', () => {
+    await t.step('createContact — sends Authorization header and JSON body', async () => {
         let capturedUrl = '';
         let capturedInit: RequestInit | undefined;
-        return withFetch(
+        await withFetch(
             (url, init) => {
                 capturedUrl = typeof url === 'string' ? url : url.toString();
                 capturedInit = init;
@@ -76,8 +76,8 @@ Deno.test('ResendApiService', async (t) => {
         );
     });
 
-    await t.step('createContact — throws ResendApiError on non-2xx response', () =>
-        withFetch(
+    await t.step('createContact — throws ResendApiError on non-2xx response', async () =>
+        await withFetch(
             (_url, _init) =>
                 new Response(
                     JSON.stringify({ name: 'not_found', message: 'Audience not found', statusCode: 404 }),
@@ -94,7 +94,7 @@ Deno.test('ResendApiService', async (t) => {
         ));
 
     // ── getContact ─────────────────────────────────────────────────────────
-    await t.step('getContact — success parses contact', () => {
+    await t.step('getContact — success parses contact', async () => {
         const contactPayload = {
             id: FAKE_CONTACT_ID,
             email: 'alice@example.com',
@@ -102,7 +102,7 @@ Deno.test('ResendApiService', async (t) => {
             unsubscribed: false,
             createdAt: '2024-01-01T00:00:00.000Z',
         };
-        return withFetch(
+        await withFetch(
             (_url, _init) =>
                 new Response(JSON.stringify(contactPayload), {
                     status: 200,
@@ -119,7 +119,7 @@ Deno.test('ResendApiService', async (t) => {
     });
 
     // ── listContacts ───────────────────────────────────────────────────────
-    await t.step('listContacts — success returns data array', () => {
+    await t.step('listContacts — success returns data array', async () => {
         const listPayload = {
             data: [
                 {
@@ -130,7 +130,7 @@ Deno.test('ResendApiService', async (t) => {
                 },
             ],
         };
-        return withFetch(
+        await withFetch(
             (_url, _init) =>
                 new Response(JSON.stringify(listPayload), {
                     status: 200,
@@ -146,10 +146,10 @@ Deno.test('ResendApiService', async (t) => {
     });
 
     // ── deleteContact ──────────────────────────────────────────────────────
-    await t.step('deleteContact — encodes email in path and sends DELETE', () => {
+    await t.step('deleteContact — encodes email in path and sends DELETE', async () => {
         let capturedUrl = '';
         let capturedMethod = '';
-        return withFetch(
+        await withFetch(
             (url, init) => {
                 capturedUrl = typeof url === 'string' ? url : url.toString();
                 capturedMethod = init?.method ?? '';
@@ -164,8 +164,8 @@ Deno.test('ResendApiService', async (t) => {
         );
     });
 
-    await t.step('deleteContact — throws ResendApiError on non-2xx response', () =>
-        withFetch(
+    await t.step('deleteContact — throws ResendApiError on non-2xx response', async () =>
+        await withFetch(
             (_url, _init) =>
                 new Response(
                     JSON.stringify({ name: 'not_found', message: 'Contact not found', statusCode: 404 }),
