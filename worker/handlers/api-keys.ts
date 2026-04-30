@@ -36,39 +36,7 @@ import { JsonResponse } from '../utils/response.ts';
 import { type IAuthContext } from '../types.ts';
 import { CreateApiKeyRequestSchema, UpdateApiKeyRequestSchema } from '../schemas.ts';
 import type { PrismaClientExtended } from '../lib/prisma.ts';
-import { API_KEY_PREFIX } from '../middleware/api-key-utils.ts';
-
-// ---------------------------------------------------------------------------
-// Key generation helpers
-// ---------------------------------------------------------------------------
-
-const KEY_BYTE_LENGTH = 32;
-
-/**
- * Generate a cryptographically random API key with `blq_` prefix.
- * The raw bytes are base64url-encoded for URL safety.
- */
-function generateApiKey(): string {
-    const bytes = new Uint8Array(KEY_BYTE_LENGTH);
-    crypto.getRandomValues(bytes);
-    // base64url encoding (no padding)
-    const base64 = btoa(String.fromCharCode(...bytes))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-    return `${API_KEY_PREFIX}${base64}`;
-}
-
-/**
- * Hash an API key using SHA-256 (Web Crypto API).
- */
-async function hashKey(key: string): Promise<string> {
-    const data = new TextEncoder().encode(key);
-    const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-    return Array.from(new Uint8Array(hashBuffer))
-        .map((b) => b.toString(16).padStart(2, '0'))
-        .join('');
-}
+import { generateApiKey } from '../middleware/api-key-utils.ts';
 
 // ---------------------------------------------------------------------------
 // Validation
@@ -134,10 +102,8 @@ export async function handleCreateApiKey(
         return JsonResponse.badRequest(`Maximum of ${MAX_KEYS_PER_USER} active API keys per user`);
     }
 
-    // Generate key + hash
-    const plaintext = generateApiKey();
-    const keyHash = await hashKey(plaintext);
-    const keyPrefix = plaintext.substring(0, API_KEY_PREFIX.length + 4); // "abc_XXXX"
+    // Generate key + hash via the shared utility (blq_ + 48 hex chars)
+    const { rawKey, keyHash, keyPrefix } = await generateApiKey();
 
     const row = await prisma.apiKey.create({
         data: {
@@ -165,7 +131,7 @@ export async function handleCreateApiKey(
 
     return JsonResponse.success({
         id: row.id,
-        key: plaintext, // Plaintext returned only on creation
+        key: rawKey, // Plaintext returned only on creation
         keyPrefix: row.keyPrefix,
         name: row.name,
         scopes: row.scopes,

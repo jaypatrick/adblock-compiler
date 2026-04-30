@@ -39,7 +39,7 @@ For scripts, CI/CD pipelines, or third-party integrations, use an API key.
    - **Expiration**: Optional (1–365 days)
 5. **Copy the key immediately** — it's shown only once
 
-The key looks like: `blq_Xk9mP2...` (52 characters, starts with `blq_`)
+The key looks like: `blq_a1b2c3d4e5f6...` (`blq_` prefix + 48 hex characters, 52 characters total). Legacy keys with the `abc_` prefix are also still accepted.
 
 #### Using an API Key
 
