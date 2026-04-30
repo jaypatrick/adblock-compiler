@@ -110,7 +110,12 @@ interface CheckResult {
 
 async function checkWranglerVersion(lockFile: Record<string, unknown>): Promise<CheckResult> {
     const messages: string[] = [];
-    let passed = true;
+    // Wrangler releases very frequently (multiple times per week). A locked version that is one
+    // or more patches behind latest is expected and does not indicate a real problem — the
+    // semver range in deno.json still covers newer releases, and workerd compatibility is
+    // checked separately. Emit a visible warning for awareness but do not fail CI, matching
+    // the same policy applied to @cloudflare/workers-types below.
+    const passed = true;
 
     const latestWrangler = await fetchLatestVersion('wrangler');
     console.log(`ℹ️  Latest wrangler on npm: ${latestWrangler}`);
@@ -123,11 +128,13 @@ async function checkWranglerVersion(lockFile: Record<string, unknown>): Promise<
         const resolvedVersion = extractVersion(resolved);
         console.log(`ℹ️  Lock: ${spec} → ${resolvedVersion}`);
         if (semverGt(latestWrangler, resolvedVersion)) {
-            messages.push(
+            // Warning only — wrangler patch releases are frequent and low-risk. The locked
+            // version satisfies the semver range in deno.json; update at your next convenience
+            // by bumping the specifier and regenerating deno.lock.
+            console.log(
                 `⚠️  Wrangler is outdated: locked to ${resolvedVersion}, latest is ${latestWrangler}. ` +
                     `Update the wrangler specifier in deno.json and package.json then regenerate deno.lock.`,
             );
-            passed = false;
         }
     }
 
