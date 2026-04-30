@@ -79,6 +79,7 @@ import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 import { createEmailService } from '../services/email-service.ts';
 import { renderEmailVerification, renderPasswordReset } from '../services/email-templates.ts';
+import { createResendContactService } from '../services/resend-contact-service.ts';
 import { parseAllowedOrigins } from '../utils/cors.ts';
 
 /**
@@ -219,7 +220,7 @@ export class WorkerConfigurationError extends Error {
  * @param baseURL - The base URL for the auth endpoints (derived from the request)
  * @returns Configured Better Auth instance
  */
-export function createAuth(env: Env, baseURL?: string) {
+export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionContext, 'waitUntil'>) {
     if (!env.HYPERDRIVE?.connectionString) {
         throw new WorkerConfigurationError(
             'HYPERDRIVE binding is not configured.\n' +
@@ -237,6 +238,10 @@ export function createAuth(env: Env, baseURL?: string) {
     }
 
     const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
+
+    // Resend audience contact sync — fire-and-forget user lifecycle hooks.
+    // Falls back to NullResendContactService when RESEND_API_KEY or RESEND_AUDIENCE_ID is absent.
+    const contacts = createResendContactService(env);
 
     // Build social providers object — only include providers whose credentials are configured.
     const socialProviders: Parameters<typeof betterAuth>[0]['socialProviders'] = {};
@@ -431,6 +436,38 @@ export function createAuth(env: Env, baseURL?: string) {
             // Future plugins (uncomment when needed):
             // apiKey(),       — Built-in API key management (we use custom impl)
         ],
+
+        // ── User lifecycle hooks — Resend audience contact sync ───────────────
+        // syncUserCreated / syncUserDeleted are fire-and-forget: errors are caught
+        // and logged as warnings inside ResendContactService and never propagate.
+        // When an ExecutionContext is provided, Promises are registered with
+        // ctx.waitUntil() so they survive response completion in Cloudflare Workers.
+        databaseHooks: {
+            user: {
+                create: {
+                    after: async (user) => {
+                        const syncPromise = contacts.syncUserCreated({ id: user.id, email: user.email, name: user.name });
+                        if (ctx) {
+                            ctx.waitUntil(syncPromise);
+                        } else {
+                            // Without an ExecutionContext the promise runs fire-and-forget.
+                            // Errors are already swallowed inside syncUserCreated.
+                            void syncPromise;
+                        }
+                    },
+                },
+                delete: {
+                    after: async (user) => {
+                        const syncPromise = contacts.syncUserDeleted({ id: user.id, email: user.email });
+                        if (ctx) {
+                            ctx.waitUntil(syncPromise);
+                        } else {
+                            void syncPromise;
+                        }
+                    },
+                },
+            },
+        },
     });
 }
 

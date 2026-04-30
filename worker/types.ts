@@ -692,6 +692,22 @@ export interface Env {
      */
     RESEND_API_KEY?: string;
 
+    // ─── Resend Audience (contact/audience sync) ──────────────────────────────
+    /**
+     * Resend audience ID for user lifecycle contact sync.
+     *
+     * When set alongside `RESEND_API_KEY`, users are automatically added to the
+     * named Resend audience on sign-up and removed on account deletion via
+     * Better Auth `databaseHooks`.
+     *
+     * Local dev:  add `RESEND_AUDIENCE_ID=<uuid>` to .dev.vars
+     * Production: `wrangler secret put RESEND_AUDIENCE_ID`
+     *
+     * @see worker/services/resend-contact-service.ts — ResendContactService
+     * @see https://resend.com/docs/api-reference/audiences/create-audience
+     */
+    RESEND_AUDIENCE_ID?: string;
+
     // ─── Email (Cloudflare Email Service REST — transactional) ───────────────
     /**
      * Cloudflare API token scoped to Email Send permissions.
