@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Creates a new API key for the authenticated user. The raw key value is only
   returned once — store it securely.
-url: {{baseUrl}}/keys
+url: {{baseUrl}}/api/keys
 method: POST
 headers:
   Content-Type: application/json

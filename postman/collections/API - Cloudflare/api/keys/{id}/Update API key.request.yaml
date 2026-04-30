@@ -1,7 +1,7 @@
 $kind: http-request
 description: >
   Updates an existing API key's name, scopes, or rate limit.
-url: {{baseUrl}}/keys/:id
+url: {{baseUrl}}/api/keys/:id
 method: PATCH
 headers:
   Content-Type: application/json

@@ -1,7 +1,7 @@
 $kind: http-request
 description: >
   Revokes an API key by ID, permanently preventing it from being used.
-url: {{baseUrl}}/keys/:id
+url: {{baseUrl}}/api/keys/:id
 method: DELETE
 headers:
   Accept: application/json

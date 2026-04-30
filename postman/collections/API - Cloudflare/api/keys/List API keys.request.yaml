@@ -1,7 +1,7 @@
 $kind: http-request
 description: >
   Lists all API keys for the authenticated user, without exposing key hashes.
-url: {{baseUrl}}/keys
+url: {{baseUrl}}/api/keys
 method: GET
 headers:
   Accept: application/json
