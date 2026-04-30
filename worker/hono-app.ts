@@ -290,7 +290,27 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c, next) => {
 
     const abortController = new AbortController();
     let timeoutId: ReturnType<typeof setTimeout> | undefined;
-    const betterAuthRequest = new Request(c.req.raw, { signal: abortController.signal });
+
+    // Normalize empty POST bodies to prevent Better Auth from throwing
+    // SyntaxError("Unexpected end of JSON input") when the client sends a POST
+    // with an empty body (content-length: 0 or missing). Reads the raw body
+    // rather than relying solely on the content-length header, which may be
+    // absent on some clients (e.g. curl without -H 'Content-Length: 0').
+    let betterAuthRequest: Request;
+    if (c.req.method === 'POST') {
+        const rawBody = await c.req.text();
+        const normalizedBody = rawBody.trim().length === 0 ? '{}' : rawBody;
+        const normalizedHeaders = new Headers(c.req.raw.headers);
+        normalizedHeaders.set('content-type', 'application/json');
+        betterAuthRequest = new Request(c.req.url, {
+            method: c.req.method,
+            headers: normalizedHeaders,
+            body: normalizedBody,
+            signal: abortController.signal,
+        });
+    } else {
+        betterAuthRequest = new Request(c.req.raw, { signal: abortController.signal });
+    }
 
     try {
         const response = await Promise.race([

@@ -242,8 +242,48 @@ Deno.test('/api/auth/* bypasses logger middleware (no request log emitted)', asy
     }
 });
 
-// ── Browser health endpoint (#1521) ──────────────────────────────────────────
-// GET /api/browser/health is Anonymous-tier and pre-auth bypassed.
+// ── Better Auth empty-body POST normalization ─────────────────────────────────
+// Before the fix, POST /api/auth/* with an empty body caused Better Auth to
+// throw SyntaxError("Unexpected end of JSON input") because it tried to parse
+// an empty string as JSON.  The handler now normalises empty POST bodies to
+// '{}' so Better Auth always receives valid JSON.
+
+Deno.test('POST /api/auth/sign-out with empty body returns 503 when HYPERDRIVE absent — early short-circuit before body is read', async () => {
+    // BETTER_AUTH_SECRET present but HYPERDRIVE absent → the handler exits at the
+    // HYPERDRIVE guard (line ~282 in hono-app.ts) with 503 BEFORE any body reading
+    // or normalization takes place.  This test validates the guard itself, not the
+    // empty-body normalization fix.
+    const env = makeEnv({ BETTER_AUTH_SECRET: 'test-secret' });
+    const res = await fetch('/api/auth/sign-out', { method: 'POST', env });
+    assertEquals(res.status, 503);
+});
+
+Deno.test('POST /api/auth/sign-out with empty body reaches Better Auth handler without SyntaxError when HYPERDRIVE present', async () => {
+    // HYPERDRIVE present → the handler passes the guard and reaches the body
+    // normalization block.  The empty body is replaced with '{}' so that
+    // auth.handler receives valid JSON instead of an empty string.
+    //
+    // Before the fix: empty body → Better Auth calls JSON.parse('') →
+    //   SyntaxError("Unexpected end of JSON input") → 400 { detail: 'Invalid JSON body' }.
+    // After the fix:  empty body → normalized to '{}' → Better Auth processes
+    //   the request normally → 401 (no session) or a DB error, but never the
+    //   SyntaxError-originated 400 { detail: 'Invalid JSON body' }.
+    const env = makeEnv({
+        BETTER_AUTH_SECRET: 'test-secret',
+        // deno-lint-ignore no-explicit-any
+        HYPERDRIVE: { connectionString: 'postgresql://localhost:5432/test' } as any,
+    });
+    const res = await fetch('/api/auth/sign-out', { method: 'POST', env });
+    // Always read and parse the body — Better Auth always returns JSON.
+    const body = await res.json() as Record<string, unknown>;
+    // The body normalization must prevent the specific SyntaxError 400.
+    // Any other response (401, 500, etc.) is acceptable.
+    assertNotEquals(
+        body['detail'] ?? null,
+        'Invalid JSON body',
+        'Empty body must not produce SyntaxError 400 "Invalid JSON body"',
+    );
+});
 
 Deno.test('GET /api/browser/health returns 503 with ok=false when BROWSER binding is absent', async () => {
     // Default makeEnv() has no BROWSER binding, so the endpoint should report it absent.

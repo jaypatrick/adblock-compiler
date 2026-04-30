@@ -112,9 +112,6 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
             scheduled = false,
         } = event.payload;
 
-        // Initialize event emitter for real-time progress tracking
-        const events = new WorkflowEvents(this.env.METRICS, runId, 'cache-warming');
-
         // Initialize analytics service
         const analytics = new AnalyticsService(this.env.ANALYTICS_ENGINE);
 
@@ -129,8 +126,23 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
         const details: CacheWarmingResult['details'] = [];
         let warmedConfigurations = 0;
         let failedConfigurations = 0;
+        // Declared outside try so the catch block can reference it for failure
+        // event emission; definite assignment assertion — assigned only after
+        // both KV binding guards pass inside try.
+        let events!: WorkflowEvents;
 
         try {
+            // Fail fast if required KV bindings are absent — inside try so the error is
+            // captured by captureExceptionInIsolate and analytics.trackWorkflowFailed the
+            // same way as other workflow failures.
+            if (!this.env.COMPILATION_CACHE) {
+                throw new Error('[WORKFLOW:CACHE-WARM] COMPILATION_CACHE KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
+            }
+            if (!this.env.METRICS) {
+                throw new Error('[WORKFLOW:CACHE-WARM] METRICS KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
+            }
+            // Construct WorkflowEvents after the guards so both KV bindings are guaranteed non-null.
+            events = new WorkflowEvents(this.env.METRICS, runId, 'cache-warming');
             // Track workflow started via Analytics Engine — inside try so any
             // Analytics/KV I/O failure is caught and reported via captureExceptionInIsolate.
             analytics.trackWorkflowStarted({
@@ -139,15 +151,6 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 workflowType: 'cache-warming',
                 itemCount: configsToWarm.length,
             });
-
-            // Fail fast if required KV bindings are absent — inside try so the catch
-            // handler can call captureExceptionInIsolate and re-throw with context.
-            if (!this.env.COMPILATION_CACHE) {
-                throw new Error('[WORKFLOW:CACHE-WARM] COMPILATION_CACHE KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
-            }
-            if (!this.env.METRICS) {
-                throw new Error('[WORKFLOW:CACHE-WARM] METRICS KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
-            }
 
             // Emit workflow started event inside a step so KV I/O runs in step context,
             // not in orchestrator context where it can hang indefinitely and produce
@@ -430,13 +433,12 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 error: errorMessage,
             });
 
-            // Emit workflow failed event — only when METRICS is available. If the
-            // binding guard above threw because METRICS is absent, calling
-            // events.emitWorkflowFailed()/flush() would raise a secondary TypeError
-            // that masks the original descriptive error. Wrapped in stepDo so the KV
-            // flush runs in step context, not orchestrator context. The explicit flush()
-            // is removed — emitWorkflowFailed already flushes.
-            if (this.env.METRICS) {
+            // Emit workflow failed event — only when both COMPILATION_CACHE and METRICS
+            // bindings were present (both guards inside try pass before events is
+            // assigned). Wrapped in stepDo so the KV flush runs in step context, not
+            // orchestrator context. The explicit flush() is removed — emitWorkflowFailed
+            // already flushes.
+            if (this.env.METRICS && this.env.COMPILATION_CACHE) {
                 await stepDo<void>(step, 'emit-workflow-failed', {
                     retries: { limit: 2, delay: '1 second' },
                     timeout: '30 seconds',

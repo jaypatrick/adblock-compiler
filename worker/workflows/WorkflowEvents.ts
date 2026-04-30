@@ -124,6 +124,11 @@ export class WorkflowEvents {
             });
             this.pendingEvents.splice(0, this.pendingEvents.length);
         } catch (error) {
+            // Clear the buffer even on error to prevent unbounded growth across
+            // step boundaries.  CF Workflows serialises all in-memory state
+            // between steps; an ever-growing pendingEvents array can cause the
+            // serialisation to fail with a generic "workflow" exception label.
+            this.pendingEvents.splice(0, this.pendingEvents.length);
             console.error(
                 `[WORKFLOW:EVENT] Failed to flush events for ${this.workflowType}/${this.workflowId}: ${error instanceof Error ? error.message : String(error)}`,
             );
@@ -172,6 +177,13 @@ export class WorkflowEvents {
 
     /**
      * Emit step started event
+     *
+     * This intentionally buffers the event in memory and does not flush
+     * immediately. Some workflows emit "step started" from orchestrator context
+     * before entering a `step.do`/`stepDo` callback, and performing KV I/O
+     * there can cause Cloudflare Workflows hangs or generic "workflow" exceptions.
+     * Callers running inside step context should flush via a subsequent
+     * completion/failure emission or an explicit `flush()` when appropriate.
      */
     async emitStepStarted(stepName: string, data?: Record<string, unknown>): Promise<void> {
         await this.emit('workflow:step:started', data, {
