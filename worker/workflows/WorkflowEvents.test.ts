@@ -31,21 +31,23 @@ class MockKvNamespace {
     }
 }
 
-Deno.test('WorkflowEvents emitStepStarted flushes immediately; emitSourceFetchStarted buffers until flush', async () => {
+Deno.test('WorkflowEvents emitStepStarted buffers only; explicit flush persists the event', async () => {
     const kv = new MockKvNamespace();
     const events = new WorkflowEvents(kv as unknown as KVNamespace, 'wf-1', 'compilation');
 
-    // emitStepStarted now calls flush() internally — the event is persisted immediately.
+    // emitStepStarted buffers in memory only — no KV write until flush.
+    // Callers outside step.do()/stepDo() must not trigger KV I/O to avoid
+    // Cloudflare Workflows orchestrator-context hangs.
     await events.emitStepStarted('validate');
-    assertEquals(kv.putCalls, 1);
+    assertEquals(kv.putCalls, 0);
 
-    // emitSourceFetchStarted still only buffers — no additional KV write yet.
+    // emitSourceFetchStarted also only buffers — no KV write yet.
     await events.emitSourceFetchStarted('EasyList', 'https://example.com/easylist.txt');
-    assertEquals(kv.putCalls, 1);
+    assertEquals(kv.putCalls, 0);
 
-    // Explicit flush persists the buffered source-fetch event.
+    // Explicit flush persists both buffered events in a single KV write.
     await events.flush();
-    assertEquals(kv.putCalls, 2);
+    assertEquals(kv.putCalls, 1);
     assertEquals(kv.lastPutOptions?.expirationTtl, 3600);
 
     const eventLog = await events.getEvents();
@@ -65,12 +67,15 @@ Deno.test('WorkflowEvents flushes milestone events immediately for polling visib
     await events.emitProgress(10, 'running');
     assertEquals(kv.putCalls, 2);
 
-    // emitStepStarted now flushes immediately, same as emitStepCompleted.
+    // emitStepStarted buffers in memory only — no KV flush here.  KV I/O must
+    // stay inside step.do()/stepDo() to avoid orchestrator-context CF Workflows hangs.
     await events.emitStepStarted('load-health-history');
-    assertEquals(kv.putCalls, 3);
+    assertEquals(kv.putCalls, 2);
 
+    // emitStepCompleted flushes — persists the buffered started event plus this
+    // completed event in a single KV write.
     await events.emitStepCompleted('load-health-history');
-    assertEquals(kv.putCalls, 4);
+    assertEquals(kv.putCalls, 3);
 });
 
 Deno.test('WorkflowEvents flush stores completion timestamp from final terminal event', async () => {
@@ -135,8 +140,9 @@ Deno.test('WorkflowEvents flush clears pending events on KV error to prevent unb
     const kv = new MockKvNamespace();
     const events = new WorkflowEvents(kv as unknown as KVNamespace, 'wf-7', 'health-monitoring');
 
-    // emitStepStarted flushes immediately and succeeds.
+    // Buffer a step-started event, then flush successfully to establish a baseline in KV.
     await events.emitStepStarted('first-step');
+    await events.flush(); // succeeds — persists first-step event
     assertEquals(kv.putCalls, 1);
 
     // Buffer another event, then simulate a KV get error on the next flush.

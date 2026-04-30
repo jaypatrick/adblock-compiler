@@ -302,7 +302,6 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c, next) => {
         const normalizedBody = rawBody.trim().length === 0 ? '{}' : rawBody;
         const normalizedHeaders = new Headers(c.req.raw.headers);
         normalizedHeaders.set('content-type', 'application/json');
-        normalizedHeaders.set('content-length', String(normalizedBody.length));
         betterAuthRequest = new Request(c.req.url, {
             method: c.req.method,
             headers: normalizedHeaders,

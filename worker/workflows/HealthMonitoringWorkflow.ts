@@ -179,15 +179,6 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             alertOnFailure = false,
         } = event.payload;
 
-        // Fail fast if METRICS KV binding is absent — before constructing WorkflowEvents
-        // so no KV operation is attempted with a null binding.
-        if (!this.env.METRICS) {
-            throw new Error('[WORKFLOW:HEALTH] METRICS KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
-        }
-
-        // Construct WorkflowEvents after the guard so the KV binding is guaranteed non-null.
-        const events = new WorkflowEvents(this.env.METRICS, runId, 'health-monitoring');
-
         // Use provided sources or defaults
         const sourcesToCheck = sources.length > 0 ? sources : DEFAULT_SOURCES;
 
@@ -200,8 +191,20 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
         let healthySources = 0;
         let unhealthySources = 0;
         let alertsSent = false;
+        // Declared outside try so the catch block can reference it for failure
+        // event emission; definite assignment assertion — assigned only after
+        // the METRICS guard passes inside try.
+        let events!: WorkflowEvents;
 
         try {
+            // Fail fast if METRICS KV binding is absent — inside try so the error is
+            // captured by captureExceptionInIsolate the same way as other failures.
+            if (!this.env.METRICS) {
+                throw new Error('[WORKFLOW:HEALTH] METRICS KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
+            }
+            // Construct WorkflowEvents after the guard so the KV binding is guaranteed non-null.
+            events = new WorkflowEvents(this.env.METRICS, runId, 'health-monitoring');
+
             // Emit workflow started event inside a step so KV I/O runs in step context,
             // not in orchestrator context where it can hang indefinitely and produce
             // outcome: exception with no structured error reporting.
@@ -550,9 +553,9 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             await captureExceptionInIsolate(this.env, error);
             console.error(`[WORKFLOW:HEALTH] Health monitoring failed (runId: ${runId}): ${errorMessage}`);
 
-            // Only emit failure events when METRICS is available. Since the guard
-            // above already throws when METRICS is absent, if we reach here METRICS
-            // is guaranteed present and events is non-null.
+            // Only emit failure events when METRICS is available. The guard
+            // inside the try block throws when METRICS is absent, so if we
+            // reach here with this.env.METRICS truthy, events was assigned.
             // Wrapped in stepDo so the KV flush runs in step context, not orchestrator
             // context. The explicit flush() is removed — emitWorkflowFailed already flushes.
             if (this.env.METRICS) {

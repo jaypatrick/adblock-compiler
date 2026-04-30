@@ -178,18 +178,18 @@ export class WorkflowEvents {
     /**
      * Emit step started event
      *
-     * Flushes immediately (same as emitStepCompleted) so that pending events do
-     * not accumulate in the in-memory buffer across CF Workflow step boundaries.
-     * CF Workflows serialises all instance state between steps; a large
-     * pendingEvents buffer can cause serialisation failures producing the
-     * generic "workflow" exception label in the Cloudflare dashboard.
+     * This intentionally buffers the event in memory and does not flush
+     * immediately. Some workflows emit "step started" from orchestrator context
+     * before entering a `step.do`/`stepDo` callback, and performing KV I/O
+     * there can cause Cloudflare Workflows hangs or generic "workflow" exceptions.
+     * Callers running inside step context should flush via a subsequent
+     * completion/failure emission or an explicit `flush()` when appropriate.
      */
     async emitStepStarted(stepName: string, data?: Record<string, unknown>): Promise<void> {
         await this.emit('workflow:step:started', data, {
             step: stepName,
             message: `Starting step: ${stepName}`,
         });
-        await this.flush();
     }
 
     /**

@@ -242,8 +242,39 @@ Deno.test('/api/auth/* bypasses logger middleware (no request log emitted)', asy
     }
 });
 
-// ── Browser health endpoint (#1521) ──────────────────────────────────────────
-// GET /api/browser/health is Anonymous-tier and pre-auth bypassed.
+// ── Better Auth empty-body POST normalization ─────────────────────────────────
+// Before the fix, POST /api/auth/* with an empty body caused Better Auth to
+// throw SyntaxError("Unexpected end of JSON input") because it tried to parse
+// an empty string as JSON.  The handler now normalises empty POST bodies to
+// '{}' so Better Auth always receives valid JSON.
+
+Deno.test('POST /api/auth/sign-out with empty body returns 503 (not SyntaxError 400) when HYPERDRIVE absent', async () => {
+    // BETTER_AUTH_SECRET present but no HYPERDRIVE → handler short-circuits with
+    // 503 before body parsing, proving no crash for an empty-body POST.
+    const env = makeEnv({ BETTER_AUTH_SECRET: 'test-secret' });
+    const res = await fetch('/api/auth/sign-out', { method: 'POST', env });
+    assertEquals(res.status, 503);
+});
+
+Deno.test('POST /api/auth/sign-out with empty body does not return 400 "Invalid JSON body"', async () => {
+    // Body normalization replaces the empty body with '{}' before calling
+    // auth.handler — prevents SyntaxError("Unexpected end of JSON input").
+    // Without the fix this path returned 400 { detail: 'Invalid JSON body' }.
+    // With the fix the response is any non-SyntaxError status (401 for no session
+    // or a DB-related error when there is no local PostgreSQL server in CI).
+    const env = makeEnv({
+        BETTER_AUTH_SECRET: 'test-secret',
+        // deno-lint-ignore no-explicit-any
+        HYPERDRIVE: { connectionString: 'postgresql://localhost:5432/test' } as any,
+    });
+    const res = await fetch('/api/auth/sign-out', { method: 'POST', env });
+    if (res.status === 400) {
+        const body = await res.json() as Record<string, unknown>;
+        assertNotEquals(body['detail'], 'Invalid JSON body', 'Empty body must not produce SyntaxError 400');
+    }
+});
+
+
 
 Deno.test('GET /api/browser/health returns 503 with ok=false when BROWSER binding is absent', async () => {
     // Default makeEnv() has no BROWSER binding, so the endpoint should report it absent.
