@@ -15,3 +15,6 @@ values:
   - key: turnstileToken
     value: 'NEWMAN-BYPASS-TOKEN'
     enabled: true
+  - key: paygSessionToken
+    value: ''
+    enabled: true
