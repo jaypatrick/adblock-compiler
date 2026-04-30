@@ -82,7 +82,11 @@ export const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-
  * calls it will still compile, but any test that directly references the
  * exported value alongside the config will detect the drift.
  */
-export const AUTH_ID_GENERATOR = () => crypto.randomUUID();
+// Better Auth 1.5+ passes `{ model }` as an argument to generateId.
+// Accepting an optional parameter ensures compatibility with both the legacy
+// no-arg calling convention and the newer object-parameter form, making this
+// future-proof without breaking existing callers.
+export const AUTH_ID_GENERATOR = (_params?: { model?: string }) => crypto.randomUUID();
 
 /**
  * Session duration constants — single source of truth consumed by both

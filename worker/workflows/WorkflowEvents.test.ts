@@ -31,18 +31,21 @@ class MockKvNamespace {
     }
 }
 
-Deno.test('WorkflowEvents buffers events in memory until flush is called', async () => {
+Deno.test('WorkflowEvents emitStepStarted flushes immediately; emitSourceFetchStarted buffers until flush', async () => {
     const kv = new MockKvNamespace();
     const events = new WorkflowEvents(kv as unknown as KVNamespace, 'wf-1', 'compilation');
 
+    // emitStepStarted now calls flush() internally — the event is persisted immediately.
     await events.emitStepStarted('validate');
-    await events.emitSourceFetchStarted('EasyList', 'https://example.com/easylist.txt');
-
-    assertEquals(kv.putCalls, 0);
-
-    await events.flush();
-
     assertEquals(kv.putCalls, 1);
+
+    // emitSourceFetchStarted still only buffers — no additional KV write yet.
+    await events.emitSourceFetchStarted('EasyList', 'https://example.com/easylist.txt');
+    assertEquals(kv.putCalls, 1);
+
+    // Explicit flush persists the buffered source-fetch event.
+    await events.flush();
+    assertEquals(kv.putCalls, 2);
     assertEquals(kv.lastPutOptions?.expirationTtl, 3600);
 
     const eventLog = await events.getEvents();
@@ -62,8 +65,12 @@ Deno.test('WorkflowEvents flushes milestone events immediately for polling visib
     await events.emitProgress(10, 'running');
     assertEquals(kv.putCalls, 2);
 
-    await events.emitStepCompleted('load-health-history');
+    // emitStepStarted now flushes immediately, same as emitStepCompleted.
+    await events.emitStepStarted('load-health-history');
     assertEquals(kv.putCalls, 3);
+
+    await events.emitStepCompleted('load-health-history');
+    assertEquals(kv.putCalls, 4);
 });
 
 Deno.test('WorkflowEvents flush stores completion timestamp from final terminal event', async () => {
@@ -124,20 +131,31 @@ Deno.test('WorkflowEvents flush trims persisted events to the configured maximum
     assertEquals(typedEventLog.events[99].message, 'Progress 104');
 });
 
-Deno.test('WorkflowEvents flush swallows KV get errors and retries successfully on next flush', async () => {
+Deno.test('WorkflowEvents flush clears pending events on KV error to prevent unbounded buffer growth', async () => {
     const kv = new MockKvNamespace();
     const events = new WorkflowEvents(kv as unknown as KVNamespace, 'wf-7', 'health-monitoring');
 
+    // emitStepStarted flushes immediately and succeeds.
     await events.emitStepStarted('first-step');
-    kv.throwOnGet = true;
-    await events.flush();
-    assertEquals(kv.putCalls, 0);
-
-    kv.throwOnGet = false;
-    await events.flush();
     assertEquals(kv.putCalls, 1);
 
+    // Buffer another event, then simulate a KV get error on the next flush.
+    await events.emitSourceFetchStarted('EasyList', 'https://example.com/list.txt');
+    assertEquals(kv.putCalls, 1); // still only buffered
+
+    kv.throwOnGet = true;
+    await events.flush(); // fails — pendingEvents is cleared to prevent unbounded growth
+    assertEquals(kv.putCalls, 1); // no new KV write on error
+
+    // Buffer is now empty; a second flush with KV restored is a no-op.
+    kv.throwOnGet = false;
+    await events.flush();
+    assertEquals(kv.putCalls, 1); // no additional writes — buffer was cleared on error
+
+    // The event from the first successful flush is still in KV.
     const eventLog = await events.getEvents();
     assertExists(eventLog);
     assertEquals(eventLog.events.some((event) => event.step === 'first-step'), true);
+    // The source-fetch event buffered during the failing flush was dropped.
+    assertEquals(eventLog.events.some((event) => event.type === 'source:fetch:started'), false);
 });

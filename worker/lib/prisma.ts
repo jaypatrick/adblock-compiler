@@ -12,6 +12,7 @@
  */
 
 import { PrismaClient } from '../../prisma/generated/client.ts';
+import { Pool } from 'pg';
 import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClientConfigSchema } from './prisma-config.ts';
 
@@ -56,7 +57,25 @@ export function _enforceUuidOnCreateData(data: Record<string, unknown>): void {
  * All other models generate their own IDs (UUID or cuid) via Prisma's
  * `@default()` expression and are not affected by the UUID enforcement extension.
  */
-const BETTER_AUTH_MODELS = new Set(['User', 'Session', 'Account', 'Verification', 'TwoFactor', 'Organization', 'Member']);
+// Include both PascalCase and lowercase variants because Prisma 7.x may surface
+// the model name in either casing depending on the generated client configuration.
+const BETTER_AUTH_MODELS = new Set([
+    'User',
+    'user',
+    'Session',
+    'session',
+    'Account',
+    'account',
+    'Verification',
+    'verification',
+    'TwoFactor',
+    'twoFactor',
+    'twofactor',
+    'Organization',
+    'organization',
+    'Member',
+    'member',
+]);
 
 /**
  * Builds the `$extends` query extension that enforces UUID ids on Better Auth
@@ -135,7 +154,14 @@ export type PrismaClientExtended = ReturnType<typeof _buildUuidExtension>;
 export function createPrismaClient(hyperdriveConnectionString: string): PrismaClientExtended {
     PrismaClientConfigSchema.parse({ connectionString: hyperdriveConnectionString });
 
-    const adapter = new PrismaPg({ connectionString: hyperdriveConnectionString });
+    // Explicitly construct a `pg` Pool so wrangler bundles the `pg` module at
+    // deploy time.  Passing a plain config object to PrismaPg causes
+    // `@prisma/adapter-pg` to require('pg') lazily at query time, which fails
+    // in Cloudflare Workers with "No such module 'pg'" because dynamically
+    // required packages are not available at runtime.
+    // max: 1 is required for Cloudflare Workers (stateless, short-lived isolates).
+    const pool = new Pool({ connectionString: hyperdriveConnectionString, max: 1 });
+    const adapter = new PrismaPg(pool);
     const prisma = new PrismaClient({ adapter });
     return _buildUuidExtension(prisma);
 }

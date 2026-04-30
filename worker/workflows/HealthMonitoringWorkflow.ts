@@ -179,8 +179,13 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             alertOnFailure = false,
         } = event.payload;
 
-        // Initialize event emitter for real-time progress tracking
-        // Constructor only assigns fields — safe to call even if METRICS is absent.
+        // Fail fast if METRICS KV binding is absent — before constructing WorkflowEvents
+        // so no KV operation is attempted with a null binding.
+        if (!this.env.METRICS) {
+            throw new Error('[WORKFLOW:HEALTH] METRICS KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
+        }
+
+        // Construct WorkflowEvents after the guard so the KV binding is guaranteed non-null.
         const events = new WorkflowEvents(this.env.METRICS, runId, 'health-monitoring');
 
         // Use provided sources or defaults
@@ -197,12 +202,6 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
         let alertsSent = false;
 
         try {
-            // Fail fast if METRICS KV binding is absent — inside try so the catch
-            // handler can call captureExceptionInIsolate and re-throw with context.
-            if (!this.env.METRICS) {
-                throw new Error('[WORKFLOW:HEALTH] METRICS KV binding is not configured in the Workflow isolate — check wrangler.toml [[workflows]] bindings');
-            }
-
             // Emit workflow started event inside a step so KV I/O runs in step context,
             // not in orchestrator context where it can hang indefinitely and produce
             // outcome: exception with no structured error reporting.
@@ -242,13 +241,16 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 const source = sourcesToCheck[i];
                 const sourceNumber = i + 1;
 
-                await events.emitHealthCheckStarted(source.name, source.url);
                 const healthResult = await step.do(`check-source-${sourceNumber}`, {
                     retries: { limit: 2, delay: '5 seconds' },
                     // Applied per attempt by the Workflows runtime; retries may
                     // extend total per-source wall time.
                     timeout: SOURCE_CHECK_STEP_TIMEOUT_DURATION,
                 }, async () => {
+                    // Emit health check started inside the step so KV I/O runs in step
+                    // context and events flush before the next step boundary.
+                    await events.emitHealthCheckStarted(source.name, source.url);
+
                     console.log(
                         `[WORKFLOW:HEALTH] Checking source ${sourceNumber}/${sourcesToCheck.length}: ${source.name}`,
                     );
@@ -276,35 +278,33 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
 
                         if (response.status !== 200 && response.status !== 206) {
                             result.error = `HTTP ${response.status}: ${response.statusText}`;
-                            return result;
+                        } else {
+                            const sample = await readResponseSample(response, HEALTH_THRESHOLDS.maxSampleBytes);
+                            const sampleLines = sample.split('\n').filter((line) => {
+                                const trimmed = line.trim();
+                                return trimmed && !trimmed.startsWith('!') && !trimmed.startsWith('#');
+                            });
+
+                            result.ruleCount = sampleLines.length;
+
+                            // For an 8KB sample probe, cap the minimum to a small
+                            // threshold so large-list expected counts do not reject
+                            // otherwise healthy partial responses.
+                            const minRules = Math.min(
+                                source.expectedMinRules || HEALTH_THRESHOLDS.defaultMinRules,
+                                HEALTH_THRESHOLDS.minRulesInSample,
+                            );
+                            if (sampleLines.length < minRules) {
+                                result.error = `Source appears empty - only ${sampleLines.length} rules found in 8KB sample`;
+                            } else {
+                                // All checks passed
+                                result.healthy = true;
+                                console.log(
+                                    `[WORKFLOW:HEALTH] Source "${source.name}" healthy: ` +
+                                        `${result.ruleCount} rules, ${result.responseTimeMs}ms`,
+                                );
+                            }
                         }
-
-                        const sample = await readResponseSample(response, HEALTH_THRESHOLDS.maxSampleBytes);
-                        const sampleLines = sample.split('\n').filter((line) => {
-                            const trimmed = line.trim();
-                            return trimmed && !trimmed.startsWith('!') && !trimmed.startsWith('#');
-                        });
-
-                        result.ruleCount = sampleLines.length;
-
-                        // For an 8KB sample probe, cap the minimum to a small
-                        // threshold so large-list expected counts do not reject
-                        // otherwise healthy partial responses.
-                        const minRules = Math.min(
-                            source.expectedMinRules || HEALTH_THRESHOLDS.defaultMinRules,
-                            HEALTH_THRESHOLDS.minRulesInSample,
-                        );
-                        if (sampleLines.length < minRules) {
-                            result.error = `Source appears empty - only ${sampleLines.length} rules found in 8KB sample`;
-                            return result;
-                        }
-
-                        // All checks passed
-                        result.healthy = true;
-                        console.log(
-                            `[WORKFLOW:HEALTH] Source "${source.name}" healthy: ` +
-                                `${result.ruleCount} rules, ${result.responseTimeMs}ms`,
-                        );
                     } catch (error) {
                         result.responseTimeMs = Date.now() - checkStart;
                         result.error = formatHealthCheckStepError(error);
@@ -314,6 +314,11 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                         );
                     }
 
+                    // Emit completed + progress inside the step so both are flushed
+                    // to KV before the next step boundary.  Accumulating events in
+                    // orchestrator context across 5 source iterations caused CF
+                    // Workflows serialisation failures (outcome: exception "workflow").
+                    await events.emitHealthCheckCompleted(source.name, result.healthy, result.responseTimeMs, result.ruleCount);
                     const checkProgress = 10 + Math.round(((i + 1) / sourcesToCheck.length) * 60);
                     await events.emitProgress(checkProgress, `Checked ${sourceNumber}/${sourcesToCheck.length} sources`);
                     return result;
@@ -325,13 +330,6 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 } else {
                     unhealthySources++;
                 }
-
-                await events.emitHealthCheckCompleted(
-                    source.name,
-                    healthResult.healthy,
-                    healthResult.responseTimeMs,
-                    healthResult.ruleCount,
-                );
 
                 // Small delay between checks to avoid rate limiting
                 if (i < sourcesToCheck.length - 1) {
@@ -548,10 +546,9 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             await captureExceptionInIsolate(this.env, error);
             console.error(`[WORKFLOW:HEALTH] Health monitoring failed (runId: ${runId}): ${errorMessage}`);
 
-            // Only emit failure events when METRICS is available. If the guard threw
-            // because METRICS is absent, calling events.flush() would trigger a secondary
-            // KV error with a misleading log line. captureExceptionInIsolate above already
-            // sends the real error to Sentry.
+            // Only emit failure events when METRICS is available. Since the guard
+            // above already throws when METRICS is absent, if we reach here METRICS
+            // is guaranteed present and events is non-null.
             // Wrapped in stepDo so the KV flush runs in step context, not orchestrator
             // context. The explicit flush() is removed — emitWorkflowFailed already flushes.
             if (this.env.METRICS) {

@@ -124,6 +124,11 @@ export class WorkflowEvents {
             });
             this.pendingEvents.splice(0, this.pendingEvents.length);
         } catch (error) {
+            // Clear the buffer even on error to prevent unbounded growth across
+            // step boundaries.  CF Workflows serialises all in-memory state
+            // between steps; an ever-growing pendingEvents array can cause the
+            // serialisation to fail with a generic "workflow" exception label.
+            this.pendingEvents.splice(0, this.pendingEvents.length);
             console.error(
                 `[WORKFLOW:EVENT] Failed to flush events for ${this.workflowType}/${this.workflowId}: ${error instanceof Error ? error.message : String(error)}`,
             );
@@ -172,12 +177,19 @@ export class WorkflowEvents {
 
     /**
      * Emit step started event
+     *
+     * Flushes immediately (same as emitStepCompleted) so that pending events do
+     * not accumulate in the in-memory buffer across CF Workflow step boundaries.
+     * CF Workflows serialises all instance state between steps; a large
+     * pendingEvents buffer can cause serialisation failures producing the
+     * generic "workflow" exception label in the Cloudflare dashboard.
      */
     async emitStepStarted(stepName: string, data?: Record<string, unknown>): Promise<void> {
         await this.emit('workflow:step:started', data, {
             step: stepName,
             message: `Starting step: ${stepName}`,
         });
+        await this.flush();
     }
 
     /**
