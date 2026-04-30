@@ -274,8 +274,6 @@ Deno.test('POST /api/auth/sign-out with empty body does not return 400 "Invalid 
     }
 });
 
-
-
 Deno.test('GET /api/browser/health returns 503 with ok=false when BROWSER binding is absent', async () => {
     // Default makeEnv() has no BROWSER binding, so the endpoint should report it absent.
     const res = await fetch('/api/browser/health');
