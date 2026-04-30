@@ -48,7 +48,7 @@
 import { WorkflowEntrypoint, WorkflowEvent, WorkflowStep } from 'cloudflare:workers';
 import { z } from 'zod';
 import type { Env } from '../worker.ts';
-import { createEmailService, EmailPayloadSchema } from '../services/email-service.ts';
+import { CfEmailServiceRestService, CfEmailWorkerService, createEmailService, EmailPayloadSchema, ResendEmailService } from '../services/email-service.ts';
 import { captureExceptionInIsolate } from '../services/sentry-isolate-init.ts';
 
 // ============================================================================
@@ -192,17 +192,17 @@ export class EmailDeliveryWorkflow extends WorkflowEntrypoint<Env, EmailDelivery
                 // Use direct provider (bypass queue) to avoid queue→workflow→queue recursion.
                 const mailer = createEmailService(this.env, { useQueue: false, priority: emailPriority });
 
-                // Determine provider name for the receipt log.
-                let providerName: EmailDeliveryResult['provider'] = 'none';
-                if (emailPriority === 'critical' && this.env.RESEND_API_KEY) {
+                // Derive provider name from the actual instance created by the factory,
+                // guaranteeing it matches the provider that will deliver the email.
+                let providerName: EmailDeliveryResult['provider'];
+                if (mailer instanceof ResendEmailService) {
                     providerName = 'resend';
-                } else if (this.env.CF_EMAIL_API_TOKEN && this.env.CF_ACCOUNT_ID) {
+                } else if (mailer instanceof CfEmailServiceRestService) {
                     providerName = 'cf_email_rest';
-                } else if (this.env.SEND_EMAIL) {
+                } else if (mailer instanceof CfEmailWorkerService) {
                     providerName = 'cf_email_worker';
-                }
-
-                if (providerName === 'none') {
+                } else {
+                    // NullEmailService — no provider configured; abort rather than silently drop.
                     throw new Error('No email provider configured for workflow delivery.');
                 }
 

@@ -571,7 +571,8 @@ Deno.test('CfEmailServiceRestService.sendEmail() — valid payload calls CF Emai
         await svc.sendEmail(makePayload());
         assertEquals(calls.length, 1);
         assertStringIncludes(calls[0].url, '/accounts/acct_123/email/sending/send');
-        assertEquals((calls[0].init.headers as Record<string, string>)['Authorization'], 'Bearer cf_token');
+        // The Cloudflare SDK normalises header names to lowercase.
+        assertEquals((calls[0].init.headers as Record<string, string>)['authorization'], 'Bearer cf_token');
         const body = JSON.parse(calls[0].init.body as string) as Record<string, unknown>;
         assertEquals(body['from'], 'notifications@bloqr.dev');
         // CF API expects `to` as an array

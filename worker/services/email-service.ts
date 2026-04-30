@@ -42,6 +42,8 @@
 
 import { z } from 'zod';
 import { EmailMessage } from 'cloudflare:email';
+import { createCloudflareApiService } from '../../src/services/cloudflareApiService.ts';
+import type { CloudflareApiService } from '../../src/services/cloudflareApiService.ts';
 
 // ============================================================================
 // Schemas & Types
@@ -453,19 +455,25 @@ export class ResendEmailService implements IEmailService {
  * Uses the new CF Email Service (not the legacy cloudflare:email module binding).
  * Requires a scoped CF API token with Email Send permissions and the account ID.
  *
+ * All Cloudflare REST API calls are routed through {@link CloudflareApiService}
+ * (the project-wide typed wrapper around the official `cloudflare` SDK), rather
+ * than calling `api.cloudflare.com` directly with raw `fetch()`.
+ *
  * Used for transactional/notification emails (compilation complete, bulk alerts, etc.)
  * that do not require Resend's deliverability guarantees.
- *
- * Endpoint: POST /accounts/{accountId}/email/sending/send
  *
  * @see https://developers.cloudflare.com/email-service/api/send-emails/
  */
 export class CfEmailServiceRestService implements IEmailService {
+    private readonly cfApi: CloudflareApiService;
+
     constructor(
-        private readonly apiToken: string,
+        apiToken: string,
         private readonly accountId: string,
         private readonly fromAddress: string,
-    ) {}
+    ) {
+        this.cfApi = createCloudflareApiService({ apiToken });
+    }
 
     async sendEmail(payload: EmailPayload): Promise<void> {
         const parsed = EmailPayloadSchema.safeParse(payload);
@@ -476,35 +484,18 @@ export class CfEmailServiceRestService implements IEmailService {
         const { to, subject, html, text, replyTo } = parsed.data;
 
         try {
-            const res = await fetch(
-                `https://api.cloudflare.com/client/v4/accounts/${this.accountId}/email/sending/send`,
-                {
-                    method: 'POST',
-                    headers: {
-                        Authorization: `Bearer ${this.apiToken}`,
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({
-                        from: this.fromAddress,
-                        to: [to],
-                        subject,
-                        html,
-                        text,
-                        ...(replyTo ? { reply_to: replyTo } : {}),
-                    }),
-                },
-            );
-
-            if (!res.ok) {
-                // deno-lint-ignore no-console
-                console.warn(
-                    `[CfEmailServiceRestService] Delivery failed: HTTP ${res.status} — ${await res.text()}`,
-                );
-            }
+            await this.cfApi.sendEmail(this.accountId, {
+                from: this.fromAddress,
+                to: [to],
+                subject,
+                html,
+                text,
+                ...(replyTo ? { reply_to: replyTo } : {}),
+            });
         } catch (err: unknown) {
             // deno-lint-ignore no-console
             console.warn(
-                '[CfEmailServiceRestService] Network error:',
+                '[CfEmailServiceRestService] Delivery failed:',
                 err instanceof Error ? err.message : String(err),
             );
         }
