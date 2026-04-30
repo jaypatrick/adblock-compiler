@@ -151,9 +151,9 @@ export class ResendApiService {
             throw new Error(`Resend API error: ${response.status} ${message}`);
         }
 
-        // DELETE responses may return an empty body (204 No Content).
-        if (method === 'DELETE') {
-            return responseSchema.parse(undefined);
+        // 204 No Content — no body to parse (e.g. DELETE).
+        if (response.status === 204) {
+            return undefined as T;
         }
 
         const json = await response.json();

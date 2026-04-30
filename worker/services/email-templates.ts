@@ -53,7 +53,7 @@ function wrapLayout(title: string, bodyContent: string): string {
   <meta charset="UTF-8" />
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>${escapeHtml(title)}</title>
+  <title>${escapeHtml(title)}</title><!-- escapeHtml is correct here; browsers decode &lt; etc. in title bars -->
 </head>
 <body style="margin:0;padding:0;background-color:${T.bodyBg};font-family:${T.sans};">
   <table width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:${T.bodyBg};">

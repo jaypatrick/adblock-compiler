@@ -49,9 +49,11 @@ export class ResendContactService implements IResendContactService {
     /** @inheritdoc */
     async syncUserCreated(user: { id: string; email: string; name?: string | null }): Promise<void> {
         try {
-            const nameParts = user.name?.trim().split(' ');
-            const firstName = nameParts?.[0] || undefined;
-            const lastName = nameParts && nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
+            // Guard against whitespace-only names before splitting.
+            const trimmed = user.name?.trim() ?? '';
+            const nameParts = trimmed ? trimmed.split(' ') : [];
+            const firstName = nameParts[0] || undefined;
+            const lastName = nameParts.length > 1 ? nameParts.slice(1).join(' ') : undefined;
 
             await this.apiService.createContact(this.audienceId, {
                 email: user.email,

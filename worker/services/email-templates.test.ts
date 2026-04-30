@@ -197,13 +197,13 @@ Deno.test('renderEmailVerification', async (t) => {
         assertEquals(result.replyTo, undefined);
     });
 
-    await t.step('html escapes special chars in email', () => {
-        // Email address with a + sign should survive escapeHtml unchanged
+    await t.step('html escapes HTML special chars in email to prevent XSS', () => {
+        // Characters like < and > must be escaped so they cannot inject markup.
         const r2 = renderEmailVerification({
-            email: 'user+tag@example.com',
+            email: 'user<script>@example.com',
             url: 'https://bloqr.dev/verify?t=x',
         });
-        assertStringIncludes(r2.html, 'user+tag@example.com');
+        assertStringIncludes(r2.html, 'user&lt;script&gt;@example.com');
     });
 });
 
