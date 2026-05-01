@@ -17,6 +17,8 @@ import { assertEquals, assertExists, assertInstanceOf, assertStrictEquals, asser
 import {
     AUTH_DISABLE_CSRF_CHECK,
     AUTH_ID_GENERATOR,
+    buildDashOptions,
+    buildSentinelOptions,
     buildTrustedOriginsFn,
     createAuth,
     createKvSecondaryStorage,
@@ -411,4 +413,128 @@ Deno.test('createAuth throws WorkerConfigurationError for missing HYPERDRIVE reg
     const err = assertThrows(() => createAuth(fakeEnv), WorkerConfigurationError);
     // The error must be about HYPERDRIVE, not about KV
     assertStringIncludes(err.message, 'HYPERDRIVE');
+});
+
+// ============================================================================
+// buildDashOptions / buildSentinelOptions — infra plugin option builders
+// ============================================================================
+//
+// These helpers build the options objects for the Better Auth dash() and
+// sentinel() plugins. The critical contract: both must pass apiKey from
+// env.BETTER_AUTH_API_KEY explicitly, because Worker Secrets are not exposed
+// on process.env in Cloudflare Workers. Both env vars are optional so the
+// plugins gracefully no-op in local dev without secrets configured.
+//
+// Tests run without any database connection because the helpers are pure
+// functions that only inspect the env object they receive.
+// ============================================================================
+
+Deno.test('buildDashOptions is exported as a function', () => {
+    assertEquals(typeof buildDashOptions, 'function');
+});
+
+Deno.test('buildDashOptions includes apiKey when BETTER_AUTH_API_KEY is set', () => {
+    const env = { BETTER_AUTH_API_KEY: 'test-api-key-value' } as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals(opts.apiKey, 'test-api-key-value');
+});
+
+Deno.test('buildDashOptions omits apiKey when BETTER_AUTH_API_KEY is absent', () => {
+    const env = {} as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals('apiKey' in opts, false, 'apiKey must not be present when BETTER_AUTH_API_KEY is unset');
+});
+
+Deno.test('buildDashOptions omits apiKey when BETTER_AUTH_API_KEY is undefined', () => {
+    const env = { BETTER_AUTH_API_KEY: undefined } as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals('apiKey' in opts, false, 'apiKey must not be present when BETTER_AUTH_API_KEY is explicitly undefined');
+});
+
+Deno.test('buildDashOptions includes kvUrl when BETTER_AUTH_KV_URL is set', () => {
+    const env = { BETTER_AUTH_KV_URL: 'https://kv.example.com/ns' } as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals(opts.kvUrl, 'https://kv.example.com/ns');
+});
+
+Deno.test('buildDashOptions omits kvUrl when BETTER_AUTH_KV_URL is absent', () => {
+    const env = {} as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals('kvUrl' in opts, false, 'kvUrl must not be present when BETTER_AUTH_KV_URL is unset');
+});
+
+Deno.test('buildDashOptions includes both apiKey and kvUrl when both env vars are set', () => {
+    const env = { BETTER_AUTH_API_KEY: 'my-key', BETTER_AUTH_KV_URL: 'https://kv.example.com/ns' } as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals(opts.apiKey, 'my-key');
+    assertEquals(opts.kvUrl, 'https://kv.example.com/ns');
+});
+
+Deno.test('buildDashOptions returns empty object when neither env var is set', () => {
+    const env = {} as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals(Object.keys(opts).length, 0);
+});
+
+Deno.test('buildSentinelOptions is exported as a function', () => {
+    assertEquals(typeof buildSentinelOptions, 'function');
+});
+
+Deno.test('buildSentinelOptions includes apiKey when BETTER_AUTH_API_KEY is set', () => {
+    const env = { BETTER_AUTH_API_KEY: 'test-api-key-value' } as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals(opts.apiKey, 'test-api-key-value');
+});
+
+Deno.test('buildSentinelOptions omits apiKey when BETTER_AUTH_API_KEY is absent', () => {
+    const env = {} as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals('apiKey' in opts, false, 'apiKey must not be present when BETTER_AUTH_API_KEY is unset');
+});
+
+Deno.test('buildSentinelOptions omits apiKey when BETTER_AUTH_API_KEY is undefined', () => {
+    const env = { BETTER_AUTH_API_KEY: undefined } as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals('apiKey' in opts, false, 'apiKey must not be present when BETTER_AUTH_API_KEY is explicitly undefined');
+});
+
+Deno.test('buildSentinelOptions includes kvUrl when BETTER_AUTH_KV_URL is set', () => {
+    const env = { BETTER_AUTH_KV_URL: 'https://kv.example.com/ns' } as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals(opts.kvUrl, 'https://kv.example.com/ns');
+});
+
+Deno.test('buildSentinelOptions omits kvUrl when BETTER_AUTH_KV_URL is absent', () => {
+    const env = {} as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals('kvUrl' in opts, false, 'kvUrl must not be present when BETTER_AUTH_KV_URL is unset');
+});
+
+Deno.test('buildSentinelOptions includes both apiKey and kvUrl when both env vars are set', () => {
+    const env = { BETTER_AUTH_API_KEY: 'my-key', BETTER_AUTH_KV_URL: 'https://kv.example.com/ns' } as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals(opts.apiKey, 'my-key');
+    assertEquals(opts.kvUrl, 'https://kv.example.com/ns');
+});
+
+Deno.test('buildSentinelOptions always includes the security config regardless of env vars', () => {
+    const envEmpty = {} as import('../types.ts').Env;
+    const envFull = { BETTER_AUTH_API_KEY: 'k', BETTER_AUTH_KV_URL: 'https://kv.example.com' } as import('../types.ts').Env;
+    assertExists(buildSentinelOptions(envEmpty).security, 'security must be present when env vars are absent');
+    assertExists(buildSentinelOptions(envFull).security, 'security must be present when env vars are set');
+});
+
+Deno.test('buildSentinelOptions security config includes credentialStuffing with expected thresholds', () => {
+    const env = {} as import('../types.ts').Env;
+    const { security } = buildSentinelOptions(env);
+    assertEquals(security.credentialStuffing.enabled, true);
+    assertEquals(security.credentialStuffing.thresholds.challenge, 3);
+    assertEquals(security.credentialStuffing.thresholds.block, 5);
+});
+
+Deno.test('buildSentinelOptions security config includes botBlocking and suspiciousIpBlocking', () => {
+    const env = {} as import('../types.ts').Env;
+    const { security } = buildSentinelOptions(env);
+    assertEquals(security.botBlocking, true);
+    assertEquals(security.suspiciousIpBlocking, true);
 });

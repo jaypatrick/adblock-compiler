@@ -236,6 +236,79 @@ export function createKvSecondaryStorage(kv: KVNamespace): {
 }
 
 /**
+ * Builds the options object for the {@link dash} plugin.
+ *
+ * Both `apiKey` and `kvUrl` are conditionally spread so the plugin gracefully
+ * no-ops when either variable is absent (local dev without secrets configured).
+ *
+ * **Why explicit passthrough?** Worker Secrets set via `wrangler secret put` are
+ * only accessible through the `env` binding — they are never exposed on
+ * `process.env`, even with `nodejs_compat` enabled.  `@better-auth/infra`
+ * internally reads `process.env.BETTER_AUTH_API_KEY`, which is always `undefined`
+ * in a Cloudflare Worker, so the key must be injected here.
+ *
+ * Exported as a pure helper so tests can assert `apiKey` / `kvUrl` presence and
+ * absence without requiring a live Hyperdrive / PostgreSQL connection.
+ */
+export function buildDashOptions(env: Pick<Env, 'BETTER_AUTH_API_KEY' | 'BETTER_AUTH_KV_URL'>): { apiKey?: string; kvUrl?: string } {
+    return {
+        ...(env.BETTER_AUTH_API_KEY ? { apiKey: env.BETTER_AUTH_API_KEY } : {}),
+        ...(env.BETTER_AUTH_KV_URL ? { kvUrl: env.BETTER_AUTH_KV_URL } : {}),
+    };
+}
+
+/**
+ * Builds the options object for the {@link sentinel} plugin.
+ *
+ * `apiKey` and `kvUrl` use the same conditional-spread pattern as
+ * {@link buildDashOptions} (same Worker-Secret passthrough requirement).
+ * The `security` block is always present — it is static configuration that
+ * does not depend on runtime env values.
+ *
+ * Exported as a pure helper so tests can assert `apiKey` / `kvUrl` presence
+ * and absence, and confirm the `security` block is always included, without
+ * requiring a live Hyperdrive / PostgreSQL connection.
+ */
+export function buildSentinelOptions(env: Pick<Env, 'BETTER_AUTH_API_KEY' | 'BETTER_AUTH_KV_URL'>): {
+    apiKey?: string;
+    kvUrl?: string;
+    security: {
+        credentialStuffing: { enabled: boolean; thresholds: { challenge: number; block: number }; windowSeconds: number; cooldownSeconds: number };
+        impossibleTravel: { enabled: boolean; maxSpeedKmh: number; action: 'challenge' | 'block' };
+        unknownDeviceNotification: boolean;
+        botBlocking: boolean;
+        suspiciousIpBlocking: boolean;
+    };
+} {
+    return {
+        ...(env.BETTER_AUTH_API_KEY ? { apiKey: env.BETTER_AUTH_API_KEY } : {}),
+        ...(env.BETTER_AUTH_KV_URL ? { kvUrl: env.BETTER_AUTH_KV_URL } : {}),
+        security: {
+            // Credential stuffing / brute-force protection.
+            // Challenge after 3 failures; block after 5 within 1 hour.
+            credentialStuffing: {
+                enabled: true,
+                thresholds: { challenge: 3, block: 5 },
+                windowSeconds: 3600,
+                cooldownSeconds: 900,
+            },
+            // Flag logins that are geographically impossible given the previous session.
+            impossibleTravel: {
+                enabled: true,
+                maxSpeedKmh: 1200,
+                action: 'challenge',
+            },
+            // Notify users when a sign-in occurs from an unrecognised device.
+            unknownDeviceNotification: true,
+            // Block known bot user-agents and headless browser signatures.
+            botBlocking: true,
+            // Block IPs flagged in the Better Auth threat intelligence feed.
+            suspiciousIpBlocking: true,
+        },
+    };
+}
+
+/**
  * Thrown when a required Worker binding or secret is absent at startup.
  *
  * Using a named subclass ensures `error.name === 'WorkerConfigurationError'`
@@ -432,17 +505,11 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
 
         plugins: [
             // Dash plugin — integrates with the dash.better-auth.com dashboard.
-            // apiKey: Cloudflare Workers do NOT expose Worker Secrets via process.env, so
-            //   BETTER_AUTH_API_KEY must be passed explicitly via env.BETTER_AUTH_API_KEY.
-            //   Set the key via:
-            //     Local dev:  BETTER_AUTH_API_KEY=<key> in .dev.vars
-            //     Production: wrangler secret put BETTER_AUTH_API_KEY
-            // kvUrl (optional): REST API URL for the BETTER_AUTH_KV namespace —
-            //   used by Dash for high-performance rate-limit counter storage at the edge.
-            dash({
-                ...(env.BETTER_AUTH_API_KEY ? { apiKey: env.BETTER_AUTH_API_KEY } : {}),
-                ...(env.BETTER_AUTH_KV_URL ? { kvUrl: env.BETTER_AUTH_KV_URL } : {}),
-            }),
+            // Options are built by buildDashOptions(): apiKey and kvUrl are conditionally
+            // spread so the plugin gracefully no-ops when secrets are absent in local dev.
+            // See buildDashOptions() for the full rationale on why explicit passthrough
+            // is required (Worker Secrets are not exposed on process.env).
+            dash(buildDashOptions(env)),
             // Audit logs — records all auth events (sign-in, sign-up, token refresh,
             // role changes, bans, etc.) to the database for compliance and debugging.
             // Integrates with the Dash dashboard for visual audit trail browsing.
@@ -451,37 +518,11 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
             //             Uncomment once the package publishes the export:
             //   auditLogs({ retention: 90 }),
             // Sentinel — infrastructure-level security plugin.
-            // Provides: credential stuffing protection, impossible travel detection,
-            // bot blocking, suspicious IP blocking, and unknown device notifications.
-            // apiKey: same explicit passthrough required as dash() — Worker Secrets are NOT
-            //   accessible via process.env in Cloudflare Workers.
-            // kvUrl is used for high-performance rate-limit counter storage at the edge.
-            sentinel({
-                ...(env.BETTER_AUTH_API_KEY ? { apiKey: env.BETTER_AUTH_API_KEY } : {}),
-                ...(env.BETTER_AUTH_KV_URL ? { kvUrl: env.BETTER_AUTH_KV_URL } : {}),
-                security: {
-                    // Credential stuffing / brute-force protection.
-                    // Challenge after 3 failures; block after 5 within 1 hour.
-                    credentialStuffing: {
-                        enabled: true,
-                        thresholds: { challenge: 3, block: 5 },
-                        windowSeconds: 3600,
-                        cooldownSeconds: 900,
-                    },
-                    // Flag logins that are geographically impossible given the previous session.
-                    impossibleTravel: {
-                        enabled: true,
-                        maxSpeedKmh: 1200,
-                        action: 'challenge',
-                    },
-                    // Notify users when a sign-in occurs from an unrecognised device.
-                    unknownDeviceNotification: true,
-                    // Block known bot user-agents and headless browser signatures.
-                    botBlocking: true,
-                    // Block IPs flagged in the Better Auth threat intelligence feed.
-                    suspiciousIpBlocking: true,
-                },
-            }),
+            // Options are built by buildSentinelOptions(): apiKey/kvUrl are conditionally
+            // spread (same Worker-Secret passthrough requirement as dash()), and the static
+            // security block (credential stuffing, impossible travel, bot/IP blocking, etc.)
+            // is always included. See buildSentinelOptions() for details.
+            sentinel(buildSentinelOptions(env)),
             // Bearer token plugin — allows API authentication via Authorization: Bearer <token>
             // instead of browser cookies. Critical for this project's API-first architecture.
             bearer(),
