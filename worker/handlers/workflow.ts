@@ -10,7 +10,6 @@
 import type { BatchCompilationParams, CacheWarmingParams, CompilationParams, HealthMonitoringParams } from '../workflows/index.ts';
 import { generateWorkflowId } from '../utils/index.ts';
 import type { Env, IAuthContext, Workflow } from '../types.ts';
-import type { IConfiguration } from '../../src/types/index.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import { checkRateLimitTiered } from '../middleware/index.ts';
 import { requireAuth } from '../middleware/auth.ts';
@@ -81,7 +80,7 @@ export async function handleWorkflowCompile(
 
         const params: CompilationParams = {
             requestId: generateWorkflowId('wf-compile'),
-            configuration: configuration as unknown as IConfiguration,
+            configuration,
             preFetchedContent,
             benchmark,
             priority: toWorkflowPriority(priority),
@@ -141,10 +140,7 @@ export async function handleWorkflowBatchCompile(
         const batchId = generateWorkflowId('wf-batch');
         const params: BatchCompilationParams = {
             batchId,
-            requests: requests.map((r) => ({
-                ...r,
-                configuration: r.configuration as unknown as IConfiguration,
-            })),
+            requests,
             priority: toWorkflowPriority(priority),
             queuedAt: Date.now(),
         };
@@ -191,7 +187,7 @@ export async function handleWorkflowCacheWarm(
     }
 
     try {
-        const configurations = (body.configurations ?? []) as unknown as IConfiguration[];
+        const configurations = body.configurations ?? [];
 
         const runId = generateWorkflowId('wf-cache-warm');
         const params: CacheWarmingParams = {

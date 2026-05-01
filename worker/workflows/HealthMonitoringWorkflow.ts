@@ -565,23 +565,15 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            const sentryReportingTimeoutMs = 3000;
-            let sentryReportingTimeout: ReturnType<typeof setTimeout> | undefined;
-            try {
-                await Promise.race([
-                    captureExceptionInIsolate(this.env, error),
-                    new Promise<never>((_, reject) => {
-                        sentryReportingTimeout = setTimeout(() => {
-                            reject(new Error(`Sentry reporting timed out after ${sentryReportingTimeoutMs}ms`));
-                        }, sentryReportingTimeoutMs);
-                    }),
-                ]);
-            } catch (sentryError) {
-                // Prevent Sentry errors or timeouts from masking the original workflow failure.
+
+            // Best-effort only: do not await Sentry reporting here. The previous
+            // Promise.race timeout did not cancel the underlying transport, so it
+            // could still leave in-flight work while adding complexity to the
+            // failure path. Logging remains asynchronous and must never mask or
+            // delay the original workflow failure handling.
+            void captureExceptionInIsolate(this.env, error).catch((sentryError) => {
                 console.warn('[WORKFLOW:HEALTH] Sentry error reporting failed:', sentryError);
-            } finally {
-                clearTimeout(sentryReportingTimeout);
-            }
+            });
             console.error(`[WORKFLOW:HEALTH] Health monitoring failed (runId: ${runId}): ${errorMessage}`);
 
             // Only emit failure events when METRICS is available. The guard

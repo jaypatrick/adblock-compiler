@@ -12,12 +12,17 @@
  * Uses z from @hono/zod-openapi (which re-exports zod with OpenAPI extensions)
  * so the schemas are usable in both Hono OpenAPI route definitions and plain
  * Zod safeParse calls.
+ *
+ * `configuration` fields use the strict `ConfigurationSchema` from src/ so that
+ * the inferred types are `IConfiguration` rather than `Record<string, unknown>`,
+ * removing the need for unsafe `as unknown as IConfiguration` casts in handlers.
  */
 
 import { z } from '@hono/zod-openapi';
+import { ConfigurationSchema } from '../../src/configuration/schemas.ts';
 
 export const compileRequestSchema = z.object({
-    configuration: z.record(z.string(), z.unknown()).describe('Compilation configuration object'),
+    configuration: ConfigurationSchema.describe('Compilation configuration object'),
     preFetchedContent: z.record(z.string(), z.string()).optional().describe('Optional pre-fetched filter list content'),
     benchmark: z.boolean().optional().describe('Whether to include benchmark metrics'),
     priority: z.enum(['high', 'normal', 'low']).optional().describe('Workflow priority'),
@@ -26,7 +31,7 @@ export const compileRequestSchema = z.object({
 export const batchCompileRequestSchema = z.object({
     requests: z.array(z.object({
         id: z.string().describe('Unique identifier for this batch item'),
-        configuration: z.record(z.string(), z.unknown()).describe('Compilation configuration'),
+        configuration: ConfigurationSchema.describe('Compilation configuration'),
         preFetchedContent: z.record(z.string(), z.string()).optional().describe('Optional pre-fetched content'),
         benchmark: z.boolean().optional().describe('Whether to include benchmarks'),
     })).min(1).describe('Array of compilation requests to process in batch'),
@@ -34,7 +39,7 @@ export const batchCompileRequestSchema = z.object({
 });
 
 export const cacheWarmRequestSchema = z.object({
-    configurations: z.array(z.record(z.string(), z.unknown())).optional().describe('Optional configurations to warm. Uses defaults if omitted.'),
+    configurations: z.array(ConfigurationSchema).optional().describe('Optional configurations to warm. Uses defaults if omitted.'),
 });
 
 export const healthCheckRequestSchema = z.object({

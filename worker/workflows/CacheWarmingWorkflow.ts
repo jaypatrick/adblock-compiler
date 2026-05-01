@@ -426,23 +426,14 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            const sentryReportingTimeoutMs = 3000;
-            let sentryReportingTimeout: ReturnType<typeof setTimeout> | undefined;
-            try {
-                await Promise.race([
-                    captureExceptionInIsolate(this.env, error),
-                    new Promise<never>((_, reject) => {
-                        sentryReportingTimeout = setTimeout(() => {
-                            reject(new Error(`Sentry reporting timed out after ${sentryReportingTimeoutMs}ms`));
-                        }, sentryReportingTimeoutMs);
-                    }),
-                ]);
-            } catch (sentryError) {
-                // Prevent Sentry errors or timeouts from masking the original workflow failure.
+
+            // Best-effort, non-blocking Sentry reporting. Do not await here: a
+            // Promise.race timeout would not cancel any underlying transport work, and
+            // waiting on reporting must never extend workflow failure handling.
+            void captureExceptionInIsolate(this.env, error).catch((sentryError) => {
+                // Prevent Sentry errors from masking the original workflow failure.
                 console.warn('[WORKFLOW:CACHE-WARM] Sentry error reporting failed:', sentryError);
-            } finally {
-                clearTimeout(sentryReportingTimeout);
-            }
+            });
             console.error(`[WORKFLOW:CACHE-WARM] Cache warming workflow failed (runId: ${runId}):`, errorMessage);
 
             // Track workflow failed via Analytics Engine
