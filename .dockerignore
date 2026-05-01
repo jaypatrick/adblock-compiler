@@ -1,80 +1,138 @@
-# Git
+# Version Control
 .git
 .gitignore
 .gitattributes
+.github/
 
-# Environment files (secrets should be passed via docker-compose or -e flag)
+# Secrets & Environment (never copy to image; pass via -e or --env-file)
+.env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 .envrc
 
-# Node
-node_modules
-npm-debug.log
-yarn-error.log
+# Package Manager
+node_modules/
+npm-debug.log*
+yarn-error.log*
+pnpm-error.log*
+.npmrc
+frontend/.npmrc
 
 # Deno
 .deno/
+deno.lock.bak
 
-# Build artifacts
+# Build & Dist Artifacts (rebuilt in Docker)
 dist/
+build/
+*.tsbuildinfo
+.tsconfig.tsbuildinfo
+
+# Frontend Framework Cache
+frontend/.angular/
+frontend/dist/
+frontend/node_modules/
+frontend/.wrangler/
+frontend/.next/
+frontend/out/
+frontend/.vuepress/dist/
+
+# Testing
+test-results/
+playwright-report/
+coverage/
+cov_profile/
+coverage.lcov
+*.lcov
+.nyc_output/
+
+# Database & Persistent Data (Docker should use volumes)
 *.db
 *.db-journal
 *.db-wal
 *.db-shm
 data/
+*.sqlite
+*.sqlite3
 
-# IDE
-.vscode
-.idea
+# IDE & Editor
+.vscode/
+.idea/
 *.swp
 *.swo
+*.iml
+.project
+.classpath
+.c9/
+*.launch
+.settings/
+*.sublime-workspace
 
 # OS
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
 Thumbs.db
+ehthumbs.db
+Desktop.ini
 
-# Test coverage
-coverage/
-cov_profile/
-coverage.lcov
-cov_profile/
-
-# pnpm configuration — no credentials but kept out of the image because it is
-# only needed at build time and its settings are not relevant inside the container
-frontend/.npmrc
-
-# Wrangler
+# Wrangler & Cloudflare
 .wrangler/
 worker-configuration.d.ts
 .deployment-version.json
-
-# Angular frontend build cache (rebuilt in Docker)
-frontend/.angular/
-frontend/dist/
-frontend/node_modules/
-frontend/.wrangler/
-frontend/e2e/
-
-# Playwright
-test-results/
-playwright-report/
-
-# Documentation
-*.md
-!README.md
-
-# CI/CD
-.github/
-
-# Cloudflare container Dockerfile — not needed in the main Dockerfile build context
-Dockerfile.container
-
-# Examples
-examples/
-
-# Output
-output/
+.dev.vars
 
 # Logs
 *.log
+*.log.*
+logs/
+
+# Temporary Files
+tmp/
+temp/
+*.tmp
+*.bak
+*.orig
+
+# Documentation (keep README for reference)
+*.md
+!README.md
+
+# Examples & POC
+examples/
+poc/
+ideas/
+issues/
+pull_requests/
+
+# Output & Artifacts (not needed in image)
+output/
+artifacts/
+dist/
+build/
+
+# CI/CD & Deployment
+.github/
+.gitlab-ci.yml
+.circleci/
+jenkins/
+.travis.yml
+
+# Cloudflare-specific
+Dockerfile.container
+wrangler.*.toml
+!wrangler.toml
+
+# Memory & Debugging
+.remember/
+.claude/
+
+# Misc
+.pre-commit-config.yaml
+.trivyignore
+book.toml
+pnpm-workspace.yaml.bak
