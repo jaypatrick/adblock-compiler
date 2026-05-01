@@ -162,20 +162,26 @@ id = "532484fdfff448bbb6efc7847bf41700"
 # Then uncomment and set the id below, and set the REST API URL secret:
 #   wrangler secret put BETTER_AUTH_KV_URL
 #
-# [[kv_namespaces]]
-# binding = "BETTER_AUTH_KV"
-# id = "<replace-with-output-of-wrangler-kv-namespace-create-BETTER_AUTH_KV>"
+[[kv_namespaces]]
+binding = "BETTER_AUTH_KV"
+id = "343029e0851240ad8f5799bac38b31bf"
 
 # RULES_KV: optional dedicated rule-set storage. Worker falls back to
 # COMPILATION_CACHE when absent. Create with:
 #   wrangler kv:namespace create RULES_KV
 # then add a [[kv_namespaces]] entry here.
+[[kv_namespaces]]
+binding = "RULES_KV"
+id = "b815efdcf2314b398bf0527e45452500"
 
 # CONFIG_STORE: optional dedicated KV namespace for user-created configuration
 # files (POST /api/configuration/create). Isolates 24h config entries from the
 # short-lived compilation cache. Falls back to COMPILATION_CACHE when absent.
 # Create with: wrangler kv:namespace create CONFIG_STORE
 # then add a [[kv_namespaces]] entry here.
+[[kv_namespaces]]
+binding = "CONFIG_STORE"
+id = "fb5879d1237f4ac1b225458aef7bd6c9"
 
 # ─── R2 Bucket ───────────────────────────────────────────────────────────────
 [[r2_buckets]]
