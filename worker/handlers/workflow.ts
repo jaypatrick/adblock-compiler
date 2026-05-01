@@ -470,8 +470,7 @@ export async function routeWorkflow(
 
     // Parse the request body once for POST routes so handlers never need to
     // consume the stream themselves (prevents "Body has already been used" errors).
-    // deno-lint-ignore no-explicit-any
-    let parsedBody: any = {};
+    let parsedBody: unknown = {};
     if (request.method === 'POST') {
         try {
             parsedBody = await request.json();
@@ -481,19 +480,28 @@ export async function routeWorkflow(
     }
 
     if (routePath === '/workflow/compile' && request.method === 'POST') {
-        return handleWorkflowCompile(parsedBody, env);
+        return handleWorkflowCompile(parsedBody as CompileRequest, env);
     }
 
     if (routePath === '/workflow/batch' && request.method === 'POST') {
-        return handleWorkflowBatchCompile(parsedBody, env);
+        return handleWorkflowBatchCompile(
+            parsedBody as Parameters<typeof handleWorkflowBatchCompile>[0],
+            env,
+        );
     }
 
     if (routePath === '/workflow/cache-warm' && request.method === 'POST') {
-        return handleWorkflowCacheWarm(parsedBody, env);
+        return handleWorkflowCacheWarm(
+            parsedBody as Parameters<typeof handleWorkflowCacheWarm>[0],
+            env,
+        );
     }
 
     if (routePath === '/workflow/health-check' && request.method === 'POST') {
-        return handleWorkflowHealthCheck(parsedBody, env);
+        return handleWorkflowHealthCheck(
+            parsedBody as Parameters<typeof handleWorkflowHealthCheck>[0],
+            env,
+        );
     }
 
     if (routePath.startsWith('/workflow/status/') && request.method === 'GET') {
