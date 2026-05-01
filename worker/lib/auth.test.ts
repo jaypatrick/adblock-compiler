@@ -399,11 +399,10 @@ Deno.test('createAuth throws WorkerConfigurationError when HYPERDRIVE is absent 
     assertThrows(() => createAuth(fakeEnvWithKv), WorkerConfigurationError, 'HYPERDRIVE binding is not configured');
 });
 
-Deno.test('createAuth does not throw when BETTER_AUTH_KV is absent', () => {
-    // createAuth can still be configured without BETTER_AUTH_KV — secondaryStorage
-    // falls back to Postgres.  The only bindings it fails hard on are
-    // HYPERDRIVE and BETTER_AUTH_SECRET.
-    // We expect WorkerConfigurationError for missing HYPERDRIVE, not for missing KV.
+Deno.test('createAuth throws WorkerConfigurationError for missing HYPERDRIVE regardless of BETTER_AUTH_KV state', () => {
+    // createAuth fails hard on missing HYPERDRIVE regardless of whether BETTER_AUTH_KV is
+    // present.  The error must be about HYPERDRIVE — not about the absent KV binding —
+    // confirming that KV absence alone does not cause a startup failure.
     const fakeEnv = {
         HYPERDRIVE: undefined,
         BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',

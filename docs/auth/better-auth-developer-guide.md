@@ -15,7 +15,7 @@ processing. Plugins are registered in `worker/lib/auth.ts`.
 | Plugin | Package | Route Prefix | What It Adds |
 |--------|---------|-------------|--------------|
 | `dash()` | `@better-auth/infra` | — | Better Auth Dash dashboard integration; requires `BETTER_AUTH_API_KEY` |
-| `sentinel({ kvUrl, security })` | `@better-auth/infra` | — | Credential stuffing protection, impossible travel detection, bot/IP blocking, device notifications |
+| `sentinel({ kvUrl, security })` | `@better-auth/infra` | — | Credential stuffing protection, impossible travel detection, bot/IP blocking, device notifications; reads `BETTER_AUTH_API_KEY` automatically (same as `dash()`) |
 | `bearer()` | `better-auth/plugins` | — | `Authorization: Bearer <token>` header auth (session tokens + API keys) |
 | `twoFactor({ issuer })` | `better-auth/plugins` | `/api/auth/two-factor/*` | TOTP-based 2FA; `twoFactor` DB table |
 | `multiSession()` | `better-auth/plugins` | `/api/auth/list-sessions`, `/revoke-session`, `/revoke-other-sessions` | Concurrent sessions per user |

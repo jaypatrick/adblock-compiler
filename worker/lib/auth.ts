@@ -17,8 +17,8 @@
  *
  * ## Plugin extensibility
  * The `plugins` array ships with the following active plugins:
- *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); `BETTER_AUTH_API_KEY` is only required for Dash connectivity, and the plugin is expected to no-op when the key is unset
- *   - `sentinel()` — infrastructure security: credential stuffing protection, impossible travel detection, bot blocking, suspicious IP blocking (from `@better-auth/infra`)
+ *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); reads `BETTER_AUTH_API_KEY` automatically; the plugin no-ops when the key is unset
+ *   - `sentinel()` — infrastructure security: credential stuffing protection, impossible travel detection, bot blocking, suspicious IP blocking (from `@better-auth/infra`); also reads `BETTER_AUTH_API_KEY` automatically
  *   - `bearer()` — API-first Bearer token auth
  *   - `twoFactor()` — TOTP/2FA
  *   - `multiSession()` — multiple active sessions

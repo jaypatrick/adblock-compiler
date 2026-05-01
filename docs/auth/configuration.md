@@ -185,7 +185,7 @@ TURNSTILE_SITE_KEY = "0x4AAA..."   # public site key — not a secret
 # Better Auth — required
 wrangler secret put BETTER_AUTH_SECRET
 
-# Better Auth Dash / sentinel / auditLogs — optional
+# Better Auth Dash / sentinel — optional (auditLogs pending upstream)
 wrangler secret put BETTER_AUTH_API_KEY
 wrangler secret put BETTER_AUTH_KV_URL
 
