@@ -18,7 +18,7 @@
  * ## Plugin extensibility
  * The `plugins` array ships with the following active plugins:
  *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); requires `env.BETTER_AUTH_API_KEY` passed explicitly — Cloudflare Workers do not expose Worker Secrets via `process.env`; the plugin no-ops when the key is absent
- *   - `sentinel()` — infrastructure security: credential stuffing protection, impossible travel detection, bot blocking, suspicious IP blocking (from `@better-auth/infra`); also requires `env.BETTER_AUTH_API_KEY` passed explicitly (same reason as `dash()`)
+ *   - `sentinel()` — infrastructure security: credential stuffing protection, impossible travel detection, bot blocking, suspicious IP blocking (from `@better-auth/infra`); also requires `env.BETTER_AUTH_API_KEY` passed explicitly (same reason as `dash()`); **conditionally loaded** — only when `BETTER_AUTH_SENTINEL_ENABLED=true` (requires Better Auth Pro tier)
  *   - `bearer()` — API-first Bearer token auth
  *   - `twoFactor()` — TOTP/2FA
  *   - `multiSession()` — multiple active sessions
@@ -309,6 +309,25 @@ export function buildSentinelOptions(env: Pick<Env, 'BETTER_AUTH_API_KEY' | 'BET
 }
 
 /**
+ * Returns `true` when the Sentinel plugin should be loaded.
+ *
+ * Sentinel is a **Better Auth Pro tier** feature.  Loading it on the free tier
+ * causes sign-in requests to hang with no response returned.  Gate it behind
+ * this helper so it can be safely enabled in production by setting
+ * `BETTER_AUTH_SENTINEL_ENABLED=true` in `wrangler.toml [vars]` — no code change
+ * required when upgrading to Pro.
+ *
+ * Only the exact string `"true"` enables the plugin; any other value (including
+ * `"1"`, `"false"`, or absent) leaves it disabled.
+ *
+ * Exported so it can be tested and used in future admin/config inspection
+ * endpoints.
+ */
+export function isSentinelEnabled(env: Pick<Env, 'BETTER_AUTH_SENTINEL_ENABLED'>): boolean {
+    return env.BETTER_AUTH_SENTINEL_ENABLED === 'true';
+}
+
+/**
  * Thrown when a required Worker binding or secret is absent at startup.
  *
  * Using a named subclass ensures `error.name === 'WorkerConfigurationError'`
@@ -517,12 +536,13 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
             //             auditLogs is NOT in @better-auth/infra@0.2.5 (latest as of 2026-04).
             //             Uncomment once the package publishes the export:
             //   auditLogs({ retention: 90 }),
-            // Sentinel — infrastructure-level security plugin.
-            // Options are built by buildSentinelOptions(): apiKey/kvUrl are conditionally
-            // spread (same Worker-Secret passthrough requirement as dash()), and the static
-            // security block (credential stuffing, impossible travel, bot/IP blocking, etc.)
-            // is always included. See buildSentinelOptions() for details.
-            sentinel(buildSentinelOptions(env)),
+            // Sentinel — infrastructure-level security plugin (Better Auth Pro tier only).
+            // Guarded by isSentinelEnabled(env): only loaded when
+            // BETTER_AUTH_SENTINEL_ENABLED=true. Without the flag, the plugin is
+            // omitted entirely — loading it on the free/pilot tier causes sign-in
+            // requests to hang with no response. Set the flag in wrangler.toml [vars]
+            // when upgrading to Better Auth Pro; no code change required at that point.
+            ...(isSentinelEnabled(env) ? [sentinel(buildSentinelOptions(env))] : []),
             // Bearer token plugin — allows API authentication via Authorization: Bearer <token>
             // instead of browser cookies. Critical for this project's API-first architecture.
             bearer(),

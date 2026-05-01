@@ -22,6 +22,7 @@ import {
     buildTrustedOriginsFn,
     createAuth,
     createKvSecondaryStorage,
+    isSentinelEnabled,
     USER_FIELD_MAPPING,
     UUID_V4_REGEX,
     WorkerConfigurationError,
@@ -537,4 +538,42 @@ Deno.test('buildSentinelOptions security config includes botBlocking and suspici
     const { security } = buildSentinelOptions(env);
     assertEquals(security.botBlocking, true);
     assertEquals(security.suspiciousIpBlocking, true);
+});
+
+// isSentinelEnabled — BETTER_AUTH_SENTINEL_ENABLED gate helper
+// ============================================================================
+//
+// isSentinelEnabled() is a pure helper that returns true only when
+// BETTER_AUTH_SENTINEL_ENABLED is exactly "true". All other values (absent,
+// undefined, "false", "1", etc.) return false — ensuring the Sentinel plugin
+// is never loaded on the free/pilot tier without an explicit opt-in.
+// ============================================================================
+
+Deno.test('isSentinelEnabled is exported as a function', () => {
+    assertEquals(typeof isSentinelEnabled, 'function');
+});
+
+Deno.test('isSentinelEnabled returns true when BETTER_AUTH_SENTINEL_ENABLED is "true"', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: 'true' } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), true);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is absent', () => {
+    const env = {} as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is undefined', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: undefined } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is "false"', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: 'false' } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is "1"', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: '1' } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
 });
