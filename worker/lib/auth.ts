@@ -178,6 +178,37 @@ export const AUTH_SESSION_CONFIG = {
 export const AUTH_DISABLE_CSRF_CHECK = true;
 
 /**
+ * Whether sessions are persisted to the primary database (Prisma/Neon) even when
+ * Cloudflare KV secondary storage is configured via `BETTER_AUTH_KV`.
+ *
+ * Better Auth 1.6.x changed `getAuthTables()` to exclude the `session` model from
+ * its internal DB schema whenever `secondaryStorage` is provided, on the assumption
+ * that KV is the authoritative session store.  The condition in Better Auth source is:
+ *
+ * ```ts
+ * ...!options.secondaryStorage || options.session?.storeSessionInDatabase ? sessionTable : {},
+ * ```
+ *
+ * When `BETTER_AUTH_KV` is bound and `secondaryStorage` is wired (see `createAuth`),
+ * `!secondaryStorage` evaluates to `false`.  Without `storeSessionInDatabase: true`,
+ * the session table is omitted from the schema, causing every sign-in attempt to fail
+ * with:
+ *
+ *   ```
+ *   BetterAuthError: Model "session" not found in schema
+ *   ```
+ *
+ * Setting `storeSessionInDatabase: true` forces the session table back into the
+ * schema so the Prisma adapter creates, reads, and deletes sessions in Neon as usual.
+ * KV then acts as a fast edge cache (secondaryStorage) rather than the sole store.
+ *
+ * Exported as a named constant so regression tests can assert this is `true` and
+ * future reviewers have a clear audit trail — if this is ever changed to `false` while
+ * `BETTER_AUTH_KV` is bound, sign-in will break again.
+ */
+export const AUTH_SESSION_STORE_IN_DATABASE = true;
+
+/**
  * Builds the `trustedOrigins` function for Better Auth.
  *
  * Better Auth uses `trustedOrigins` to validate callback URLs, redirect URLs,
@@ -475,6 +506,13 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
         },
 
         session: {
+            // ── Persist sessions in the primary database even when KV secondary ──
+            // storage is configured.  Better Auth 1.6.x excludes the session model
+            // from its internal DB schema when `secondaryStorage` is present, unless
+            // this flag is set.  Without it, sign-in fails with:
+            //   BetterAuthError: Model "session" not found in schema
+            // See AUTH_SESSION_STORE_IN_DATABASE for the full rationale.
+            storeSessionInDatabase: AUTH_SESSION_STORE_IN_DATABASE,
             // 7-day session expiry
             expiresIn: AUTH_SESSION_CONFIG.expiresIn,
             // Refresh session if it expires within 1 day

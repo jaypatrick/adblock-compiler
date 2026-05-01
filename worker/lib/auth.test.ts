@@ -17,6 +17,7 @@ import { assertEquals, assertExists, assertInstanceOf, assertStrictEquals, asser
 import {
     AUTH_DISABLE_CSRF_CHECK,
     AUTH_ID_GENERATOR,
+    AUTH_SESSION_STORE_IN_DATABASE,
     buildDashOptions,
     buildSentinelOptions,
     buildTrustedOriginsFn,
@@ -218,8 +219,42 @@ Deno.test('AUTH_DISABLE_CSRF_CHECK is true — CSRF check must be disabled for n
 });
 
 // ============================================================================
-// buildTrustedOriginsFn — trusted origins builder
+// AUTH_SESSION_STORE_IN_DATABASE — session persistence guard
 // ============================================================================
+//
+// Better Auth 1.6.x changed getAuthTables() to exclude the session model from
+// its internal DB schema whenever secondaryStorage is configured, unless
+// session.storeSessionInDatabase is explicitly set to true.  The condition is:
+//
+//   ...!options.secondaryStorage || options.session?.storeSessionInDatabase ? sessionTable : {},
+//
+// When BETTER_AUTH_KV is bound (env.BETTER_AUTH_KV present), createAuth() sets
+// secondaryStorage via createKvSecondaryStorage().  Without storeSessionInDatabase: true,
+// the session table is omitted from the Better Auth schema — causing every sign-in to
+// fail with:
+//
+//   BetterAuthError: Model "session" not found in schema
+//
+// These tests guard against the regression being reintroduced:
+//   - AUTH_SESSION_STORE_IN_DATABASE must be exported (import fails if removed)
+//   - AUTH_SESSION_STORE_IN_DATABASE must be true (false re-breaks sign-in when KV is bound)
+//
+// These tests require no database connection.
+// ============================================================================
+
+Deno.test('AUTH_SESSION_STORE_IN_DATABASE is exported from auth module', () => {
+    assertExists(AUTH_SESSION_STORE_IN_DATABASE);
+});
+
+Deno.test('AUTH_SESSION_STORE_IN_DATABASE is true — sessions must persist to DB even when KV secondary storage is configured', () => {
+    assertEquals(typeof AUTH_SESSION_STORE_IN_DATABASE, 'boolean');
+    assertStrictEquals(
+        AUTH_SESSION_STORE_IN_DATABASE,
+        true,
+        'AUTH_SESSION_STORE_IN_DATABASE must be true; setting it to false while BETTER_AUTH_KV is bound will cause BetterAuthError: Model "session" not found in schema on every sign-in',
+    );
+});
+
 //
 // buildTrustedOriginsFn(env) returns a function that Better Auth calls to
 // obtain the list of trusted origins for URL validation (callbackURL,
