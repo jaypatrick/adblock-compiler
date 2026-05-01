@@ -146,3 +146,36 @@ Deno.test('Auth flow: POST /api/keys with API key auth is rejected (session requ
         `POST /api/keys with API key auth must be rejected (got ${res.status})`,
     );
 });
+
+Deno.test('Auth flow: POST /api/auth/sign-in/email with missing credentials returns 4xx', async () => {
+    // Better Auth validates required fields (email, password) and returns a
+    // structured error — not a 5xx crash — when they are absent.
+    const res = await fetchRoute('/api/auth/sign-in/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+    });
+    assertEquals(
+        res.status >= 400 && res.status < 500,
+        true,
+        `POST /api/auth/sign-in/email with empty body must return 4xx; got ${res.status}`,
+    );
+});
+
+Deno.test('Auth flow: POST /api/auth/sign-in/email with invalid session token returns 4xx', async () => {
+    // A non-blq_ bearer token sent to the sign-in endpoint is not a valid
+    // credential — Better Auth must reject it with a 4xx error, not crash.
+    const res = await fetchRoute('/api/auth/sign-in/email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: 'Bearer invalid_session_token_xxxxx',
+        },
+        body: JSON.stringify({ email: 'test@example.com', password: 'wrong' }),
+    });
+    assertEquals(
+        res.status >= 400 && res.status < 500,
+        true,
+        `POST /api/auth/sign-in/email with invalid token must return 4xx; got ${res.status}`,
+    );
+});

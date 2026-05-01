@@ -1013,14 +1013,14 @@ export type UserTierRow = z.infer<typeof UserTierRowSchema>;
 /**
  * Raw D1 row shape for Better Auth's `user` table (admin queries only).
  *
- * Column alias note: Better Auth maps the application-facing `displayName`
- * field to the database column `name`. When reading rows directly from D1
- * the column will therefore appear as `name`, not `displayName`.
+ * Column alias note: in this repo, Better Auth's logical `name` value is
+ * stored in the database column `display_name`. When reading rows directly
+ * from D1, select `display_name AS name` so the result matches this schema.
  */
 export const BetterAuthUserRowSchema = z.object({
     id: z.string(),
     email: z.string(),
-    /** Database column is `name`; application alias is `displayName`. */
+    /** Backing database column is `display_name`; alias it to `name` for this raw row schema. */
     name: z.string().nullable(),
     emailVerified: z.union([z.boolean(), z.number()]).transform((v) => Boolean(v)),
     image: z.string().nullable().optional(),

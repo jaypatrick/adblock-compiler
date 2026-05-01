@@ -201,7 +201,7 @@ export const AUTH_DISABLE_CSRF_CHECK = true;
  *     confirm the expected provider and any custom mappings are intact.
  *
  * Current model/field mapping:
- *  - `user.name`       → display name (stored as `name` in DB; app-level alias `displayName`)
+ *  - `user.name`       → display name (Better Auth logical field; DB column `display_name`; app-level alias `displayName`)
  *  - `user.image`      → avatar URL (stored as `image` in DB; app-level alias `imageUrl`)
  *  - All other field names match Better Auth's default schema exactly.
  */

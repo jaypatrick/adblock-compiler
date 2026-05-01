@@ -2926,6 +2926,13 @@ adminRoutes.openapi(adminEmailTestRoute, async (c) => {
 /**
  * Admin session revocation handler — revoke all sessions for a specific user.
  *
+ * Implementation note: Better Auth's admin plugin does not expose a typed
+ * `auth.api.admin.revokeUserSessions()` method callable without a full HTTP
+ * request context. Instead this handler constructs an internal Request and
+ * dispatches it through `auth.handler()` to invoke the
+ * `POST /api/auth/admin/revoke-user-sessions` endpoint. This ensures Better
+ * Auth's session cache and KV secondary storage are both properly invalidated.
+ *
  * ZTA compliance:
  *  - Requires admin role
  *  - Verifies Cloudflare Access JWT (defense-in-depth)
