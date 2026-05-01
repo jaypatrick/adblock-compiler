@@ -37,6 +37,10 @@ BETTER_AUTH_API_KEY=
 #   Formula: https://api.cloudflare.com/client/v4/accounts/<CF_ACCOUNT_ID>/storage/kv/namespaces/<BETTER_AUTH_KV_ID>
 # Production: `wrangler secret put BETTER_AUTH_KV_URL`
 BETTER_AUTH_KV_URL=
+# Sentinel plugin (Better Auth Pro tier only — https://better-auth.com/pricing)
+# Set to "true" only after upgrading to Better Auth Pro. Leave unset on free tier.
+# Production (when on Pro): add BETTER_AUTH_SENTINEL_ENABLED=true to wrangler.toml [vars]
+# BETTER_AUTH_SENTINEL_ENABLED=true
 
 # ─── Cloudflare Turnstile ────────────────────────────────────────────────────
 # Site key (non-secret — production value lives in wrangler.toml [vars])

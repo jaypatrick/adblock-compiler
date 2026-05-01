@@ -603,6 +603,21 @@ export interface Env {
      * Production: `wrangler secret put BETTER_AUTH_KV_URL`
      */
     BETTER_AUTH_KV_URL?: string;
+    /**
+     * Opt-in flag for the `sentinel()` Better Auth plugin (credential stuffing
+     * protection, impossible travel detection, bot/IP blocking).
+     *
+     * `sentinel()` is a **Better Auth Pro tier** feature.  It must NOT be loaded
+     * on the free/pilot tier — doing so causes the Worker to hang on sign-in
+     * requests with no response returned.
+     *
+     * Set to `"true"` only after upgrading to Better Auth Pro.
+     * When absent or any other value, the plugin is not loaded.
+     *
+     * Non-secret — set in `wrangler.toml [vars]` when on Pro tier (no code change
+     * required at that point).
+     */
+    BETTER_AUTH_SENTINEL_ENABLED?: string;
     // GitHub OAuth provider (required for social login via GitHub)
     GITHUB_CLIENT_ID?: string;
     GITHUB_CLIENT_SECRET?: string;
