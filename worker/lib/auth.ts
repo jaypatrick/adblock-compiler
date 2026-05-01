@@ -230,7 +230,7 @@ export function createKvSecondaryStorage(kv: KVNamespace): {
         // production; ≥ 1 s in dev). A ttl of 0 or any negative value has no valid
         // KV representation, so we store without expiry (equivalent to "no TTL").
         // Better Auth never passes ttl ≤ 0 in practice; this guard is a safety net.
-        set: (key: string, value: string, ttl?: number) => kv.put(key, value, ttl !== undefined && ttl > 0 ? { expirationTtl: ttl } : undefined),
+        set: (key: string, value: string, ttl?: number) => kv.put(key, value, ttl !== undefined && ttl > 0 ? { expirationTtl: Math.max(60, ttl) } : undefined),
         delete: (key: string) => kv.delete(key),
     };
 }
