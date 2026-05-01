@@ -588,6 +588,21 @@ export interface Env {
      * Production: `wrangler secret put BETTER_AUTH_API_KEY`
      */
     BETTER_AUTH_API_KEY?: string;
+    /**
+     * KV namespace used as Better Auth secondary storage (sessions, rate-limit counters,
+     * verification tokens).  Offloads short-lived data from Postgres/Neon to the edge.
+     * Create with: `wrangler kv:namespace create BETTER_AUTH_KV`
+     * Then add the resulting binding entry to `wrangler.toml [[kv_namespaces]]`.
+     */
+    BETTER_AUTH_KV?: KVNamespace;
+    /**
+     * REST API URL for the BETTER_AUTH_KV namespace.
+     * Used by `dash()` and `sentinel()` `kvUrl` option for high-performance
+     * rate-limit counter storage at the edge.
+     * Local dev:  add `BETTER_AUTH_KV_URL=<url>` to .dev.vars
+     * Production: `wrangler secret put BETTER_AUTH_KV_URL`
+     */
+    BETTER_AUTH_KV_URL?: string;
     // GitHub OAuth provider (required for social login via GitHub)
     GITHUB_CLIENT_ID?: string;
     GITHUB_CLIENT_SECRET?: string;

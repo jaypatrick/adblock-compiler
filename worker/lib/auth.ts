@@ -17,7 +17,8 @@
  *
  * ## Plugin extensibility
  * The `plugins` array ships with the following active plugins:
- *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); `BETTER_AUTH_API_KEY` is only required for Dash connectivity, and the plugin is expected to no-op when the key is unset
+ *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); reads `BETTER_AUTH_API_KEY` automatically; the plugin no-ops when the key is unset
+ *   - `sentinel()` — infrastructure security: credential stuffing protection, impossible travel detection, bot blocking, suspicious IP blocking (from `@better-auth/infra`); also reads `BETTER_AUTH_API_KEY` automatically
  *   - `bearer()` — API-first Bearer token auth
  *   - `twoFactor()` — TOTP/2FA
  *   - `multiSession()` — multiple active sessions
@@ -26,6 +27,7 @@
  *
  * Inactive (available but not wired):
  *   - `apiKey()` — built-in API key management (we use a custom implementation)
+ *   - `auditLogs()` — **pending** `@better-auth/infra` publishing this export; will record all auth events to the DB for compliance and visual audit trail in Dash
  *
  * ## @better-auth/infra import — ESM/CDN compatibility notes
  *
@@ -74,7 +76,10 @@ import { admin, bearer, multiSession, organization, twoFactor } from 'better-aut
 // @better-auth/infra is declared in deno.json imports as "npm:@better-auth/infra@^0.2.5"
 // and added to package.json so wrangler/esbuild can resolve it from node_modules.
 // See the ESM/CDN compatibility notes in the module JSDoc above.
-import { dash } from '@better-auth/infra';
+// NOTE: auditLogs is NOT exported in @better-auth/infra@0.2.5 (the latest published version).
+// TODO(auth): import { auditLogs } from '@better-auth/infra' once the package publishes it.
+//             Track: https://github.com/better-auth/better-auth/issues?q=is%3Aissue+auditLogs+infra
+import { dash, sentinel } from '@better-auth/infra';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 import { createEmailService } from '../services/email-service.ts';
@@ -195,6 +200,42 @@ export function buildTrustedOriginsFn(env: Env): (_request?: Request) => string[
 }
 
 /**
+ * Adapts a Cloudflare KVNamespace to Better Auth's secondaryStorage interface.
+ *
+ * Better Auth uses secondaryStorage for sessions, rate-limit counters, and
+ * short-lived verification tokens — offloading these from Postgres/Prisma keeps
+ * the primary DB free for business-logic queries.
+ *
+ * The graceful-fallback when the KV binding is absent is handled by the caller
+ * (`createAuth`) via a conditional spread — this function always requires a
+ * bound `KVNamespace` and will throw if called with an undefined binding.
+ *
+ * The interface expected by Better Auth is:
+ * ```typescript
+ * { get(key): Promise<string|null>; set(key, value, ttl?): Promise<void>; delete(key): Promise<void>; }
+ * ```
+ *
+ * Exported for unit testing without requiring a real Hyperdrive connection.
+ *
+ * @param kv - Cloudflare KVNamespace binding (e.g. `env.BETTER_AUTH_KV`)
+ */
+export function createKvSecondaryStorage(kv: KVNamespace): {
+    get(key: string): Promise<string | null>;
+    set(key: string, value: string, ttl?: number): Promise<void>;
+    delete(key: string): Promise<void>;
+} {
+    return {
+        get: (key: string) => kv.get(key),
+        // Cloudflare KV requires expirationTtl to be a positive integer (≥ 60 s in
+        // production; ≥ 1 s in dev). A ttl of 0 or any negative value has no valid
+        // KV representation, so we store without expiry (equivalent to "no TTL").
+        // Better Auth never passes ttl ≤ 0 in practice; this guard is a safety net.
+        set: (key: string, value: string, ttl?: number) => kv.put(key, value, ttl !== undefined && ttl > 0 ? { expirationTtl: ttl } : undefined),
+        delete: (key: string) => kv.delete(key),
+    };
+}
+
+/**
  * Thrown when a required Worker binding or secret is absent at startup.
  *
  * Using a named subclass ensures `error.name === 'WorkerConfigurationError'`
@@ -282,6 +323,14 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
         trustedOrigins: buildTrustedOriginsFn(env),
 
         socialProviders,
+
+        // ── Secondary storage (Cloudflare KV) ────────────────────────────────
+        // When BETTER_AUTH_KV is bound, Better Auth offloads sessions,
+        // rate-limit counters, and short-lived verification tokens to KV.
+        // This keeps Prisma/Neon free for business-logic queries.
+        // Omitted entirely when the binding is absent — Better Auth falls back
+        // to Postgres for all storage.
+        ...(env.BETTER_AUTH_KV ? { secondaryStorage: createKvSecondaryStorage(env.BETTER_AUTH_KV) } : {}),
 
         emailAndPassword: {
             enabled: true,
@@ -386,7 +435,48 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
             // Reads BETTER_AUTH_API_KEY from env automatically. Set the key via:
             //   Local dev:  BETTER_AUTH_API_KEY=<key> in .dev.vars
             //   Production: wrangler secret put BETTER_AUTH_API_KEY
-            dash(),
+            // kvUrl (optional): REST API URL for the BETTER_AUTH_KV namespace —
+            //   used by Dash for high-performance rate-limit counter storage at the edge.
+            dash({
+                ...(env.BETTER_AUTH_KV_URL ? { kvUrl: env.BETTER_AUTH_KV_URL } : {}),
+            }),
+            // Audit logs — records all auth events (sign-in, sign-up, token refresh,
+            // role changes, bans, etc.) to the database for compliance and debugging.
+            // Integrates with the Dash dashboard for visual audit trail browsing.
+            // TODO(auth): enable auditLogs() once @better-auth/infra exports it.
+            //             auditLogs is NOT in @better-auth/infra@0.2.5 (latest as of 2026-04).
+            //             Uncomment once the package publishes the export:
+            //   auditLogs({ retention: 90 }),
+            // Sentinel — infrastructure-level security plugin.
+            // Provides: credential stuffing protection, impossible travel detection,
+            // bot blocking, suspicious IP blocking, and unknown device notifications.
+            // Reads BETTER_AUTH_API_KEY from env automatically.
+            // kvUrl is used for high-performance rate-limit counter storage at the edge.
+            sentinel({
+                ...(env.BETTER_AUTH_KV_URL ? { kvUrl: env.BETTER_AUTH_KV_URL } : {}),
+                security: {
+                    // Credential stuffing / brute-force protection.
+                    // Challenge after 3 failures; block after 5 within 1 hour.
+                    credentialStuffing: {
+                        enabled: true,
+                        thresholds: { challenge: 3, block: 5 },
+                        windowSeconds: 3600,
+                        cooldownSeconds: 900,
+                    },
+                    // Flag logins that are geographically impossible given the previous session.
+                    impossibleTravel: {
+                        enabled: true,
+                        maxSpeedKmh: 1200,
+                        action: 'challenge',
+                    },
+                    // Notify users when a sign-in occurs from an unrecognised device.
+                    unknownDeviceNotification: true,
+                    // Block known bot user-agents and headless browser signatures.
+                    botBlocking: true,
+                    // Block IPs flagged in the Better Auth threat intelligence feed.
+                    suspiciousIpBlocking: true,
+                },
+            }),
             // Bearer token plugin — allows API authentication via Authorization: Bearer <token>
             // instead of browser cookies. Critical for this project's API-first architecture.
             bearer(),

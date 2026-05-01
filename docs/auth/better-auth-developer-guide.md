@@ -12,12 +12,23 @@ processing. Plugins are registered in `worker/lib/auth.ts`.
 
 ### Active Plugins
 
-| Plugin | Route Prefix | What It Adds |
-|--------|-------------|--------------|
-| `bearer()` | — | `Authorization: Bearer <token>` header auth (session tokens + API keys) |
-| `twoFactor({ issuer })` | `/api/auth/two-factor/*` | TOTP-based 2FA; `twoFactor` DB table |
-| `multiSession()` | `/api/auth/list-sessions`, `/revoke-session`, `/revoke-other-sessions` | Concurrent sessions per user |
-| `admin()` | `/api/auth/admin/*` | User management endpoints; `banned`, `role` fields on `user` |
+| Plugin | Package | Route Prefix | What It Adds |
+|--------|---------|-------------|--------------|
+| `dash()` | `@better-auth/infra` | — | Better Auth Dash dashboard integration; requires `BETTER_AUTH_API_KEY` |
+| `sentinel({ kvUrl, security })` | `@better-auth/infra` | — | Credential stuffing protection, impossible travel detection, bot/IP blocking, device notifications; reads `BETTER_AUTH_API_KEY` automatically (same as `dash()`) |
+| `bearer()` | `better-auth/plugins` | — | `Authorization: Bearer <token>` header auth (session tokens + API keys) |
+| `twoFactor({ issuer })` | `better-auth/plugins` | `/api/auth/two-factor/*` | TOTP-based 2FA; `twoFactor` DB table |
+| `multiSession()` | `better-auth/plugins` | `/api/auth/list-sessions`, `/revoke-session`, `/revoke-other-sessions` | Concurrent sessions per user |
+| `admin()` | `better-auth/plugins` | `/api/auth/admin/*` | User management endpoints; `banned`, `role` fields on `user` |
+| `organization()` | `better-auth/plugins` | `/api/auth/organization/*` | Multi-tenant organizations, members, roles |
+
+### Pending Plugins
+
+These plugins are not currently wired at runtime. Enable them once the prerequisite is met.
+
+| Plugin | Package | Prerequisite | What It Adds |
+|--------|---------|-------------|--------------|
+| `auditLogs({ retention })` | `@better-auth/infra` | `@better-auth/infra` must publish this export (not available in `0.2.5`). Track: [`github.com/better-auth/better-auth/issues?q=auditLogs+infra`](https://github.com/better-auth/better-auth/issues?q=is%3Aissue+auditLogs+infra) | Records all auth events to DB; visual audit trail in Dash; 90-day retention |
 
 ### How to Add a Plugin
 
@@ -68,7 +79,6 @@ activate any of them.
 | Plugin | Package | What It Adds |
 |--------|---------|--------------|
 | `apiKey()` | `better-auth/plugins` | Long-lived API keys with scopes and expiry |
-| `organization()` | `better-auth/plugins` | Multi-tenant organizations, members, roles |
 | `passkey()` | `better-auth/plugins` | WebAuthn / passkey authentication |
 | `magicLink()` | `better-auth/plugins` | Passwordless sign-in via email link |
 | `phoneNumber()` | `better-auth/plugins` | Phone number sign-up/sign-in + OTP |

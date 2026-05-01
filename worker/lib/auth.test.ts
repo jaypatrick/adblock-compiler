@@ -14,7 +14,16 @@
  */
 
 import { assertEquals, assertExists, assertInstanceOf, assertStrictEquals, assertStringIncludes, assertThrows } from '@std/assert';
-import { AUTH_DISABLE_CSRF_CHECK, AUTH_ID_GENERATOR, buildTrustedOriginsFn, createAuth, USER_FIELD_MAPPING, UUID_V4_REGEX, WorkerConfigurationError } from './auth.ts';
+import {
+    AUTH_DISABLE_CSRF_CHECK,
+    AUTH_ID_GENERATOR,
+    buildTrustedOriginsFn,
+    createAuth,
+    createKvSecondaryStorage,
+    USER_FIELD_MAPPING,
+    UUID_V4_REGEX,
+    WorkerConfigurationError,
+} from './auth.ts';
 import type { Auth } from './auth.ts';
 
 // ============================================================================
@@ -250,4 +259,156 @@ Deno.test('buildTrustedOriginsFn ignores the request argument (env-based allowli
     // Without request
     const withoutReq = fn();
     assertEquals(withReq, withoutReq, 'The origin list must not depend on the request object');
+});
+
+// ============================================================================
+// createKvSecondaryStorage — KV adapter for Better Auth secondaryStorage
+// ============================================================================
+//
+// createKvSecondaryStorage() wraps a Cloudflare KVNamespace in the interface
+// that Better Auth expects for secondaryStorage.  These tests use a minimal
+// in-memory mock so no real KV binding is needed.
+// ============================================================================
+
+/**
+ * Creates an in-memory mock KVNamespace for createKvSecondaryStorage tests.
+ * Returns { kv, store } so tests can inspect stored values directly.
+ */
+function createMockKvNamespace(): { kv: KVNamespace; store: Map<string, string> } {
+    const store = new Map<string, string>();
+    const kv = {
+        get: (key: string) => Promise.resolve(store.get(key) ?? null),
+        put: (key: string, value: string) => {
+            store.set(key, value);
+            return Promise.resolve();
+        },
+        delete: (key: string) => {
+            store.delete(key);
+            return Promise.resolve();
+        },
+    } as unknown as KVNamespace;
+    return { kv, store };
+}
+
+Deno.test('createKvSecondaryStorage is exported as a function', () => {
+    assertEquals(typeof createKvSecondaryStorage, 'function');
+});
+
+Deno.test('createKvSecondaryStorage get delegates to kv.get', async () => {
+    const { kv, store } = createMockKvNamespace();
+    const adapter = createKvSecondaryStorage(kv);
+    store.set('session:abc', 'session-data');
+    const value = await adapter.get('session:abc');
+    assertEquals(value, 'session-data');
+});
+
+Deno.test('createKvSecondaryStorage get returns null for missing keys', async () => {
+    const { kv } = createMockKvNamespace();
+    const adapter = createKvSecondaryStorage(kv);
+    const value = await adapter.get('not-a-real-key');
+    assertEquals(value, null);
+});
+
+Deno.test('createKvSecondaryStorage set delegates to kv.put without TTL', async () => {
+    const puts: Array<{ key: string; value: string; options: unknown }> = [];
+    const { kv } = createMockKvNamespace();
+    // Override put to capture call arguments for assertion
+    (kv as unknown as Record<string, unknown>).put = (key: string, value: string, options?: unknown) => {
+        puts.push({ key, value, options });
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.set('token:xyz', 'token-value');
+    assertEquals(puts.length, 1);
+    assertEquals(puts[0].key, 'token:xyz');
+    assertEquals(puts[0].value, 'token-value');
+    assertEquals(puts[0].options, undefined);
+});
+
+Deno.test('createKvSecondaryStorage set passes expirationTtl when ttl is provided', async () => {
+    const puts: Array<{ key: string; value: string; options: unknown }> = [];
+    const { kv } = createMockKvNamespace();
+    // Override put to capture call arguments for assertion
+    (kv as unknown as Record<string, unknown>).put = (key: string, value: string, options?: unknown) => {
+        puts.push({ key, value, options });
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.set('token:xyz', 'token-value', 300);
+    assertEquals(puts.length, 1);
+    assertEquals(puts[0].options, { expirationTtl: 300 });
+});
+
+Deno.test('createKvSecondaryStorage set treats ttl = 0 as no TTL (stores without expirationTtl)', async () => {
+    const puts: Array<{ key: string; value: string; options: unknown }> = [];
+    const { kv } = createMockKvNamespace();
+    (kv as unknown as Record<string, unknown>).put = (key: string, value: string, options?: unknown) => {
+        puts.push({ key, value, options });
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.set('token:xyz', 'token-value', 0);
+    assertEquals(puts.length, 1);
+    // ttl = 0 is not a valid Cloudflare KV expirationTtl; stored without expiry.
+    assertEquals(puts[0].options, undefined);
+});
+
+Deno.test('createKvSecondaryStorage set treats negative ttl as no TTL (stores without expirationTtl)', async () => {
+    const puts: Array<{ key: string; value: string; options: unknown }> = [];
+    const { kv } = createMockKvNamespace();
+    (kv as unknown as Record<string, unknown>).put = (key: string, value: string, options?: unknown) => {
+        puts.push({ key, value, options });
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.set('token:xyz', 'token-value', -300);
+    assertEquals(puts.length, 1);
+    // Negative ttl is invalid; stored without expiry as a safety net.
+    assertEquals(puts[0].options, undefined);
+});
+
+Deno.test('createKvSecondaryStorage delete delegates to kv.delete', async () => {
+    const deleted: string[] = [];
+    const { kv } = createMockKvNamespace();
+    // Override delete to capture call arguments for assertion
+    (kv as unknown as Record<string, unknown>).delete = (key: string) => {
+        deleted.push(key);
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.delete('session:abc');
+    assertEquals(deleted, ['session:abc']);
+});
+
+// ============================================================================
+// createAuth secondaryStorage — wired from BETTER_AUTH_KV binding
+// ============================================================================
+
+Deno.test('createAuth throws WorkerConfigurationError when HYPERDRIVE is absent (regardless of BETTER_AUTH_KV)', () => {
+    const { kv } = createMockKvNamespace();
+    const fakeEnvWithKv = {
+        HYPERDRIVE: undefined,
+        BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
+        BETTER_AUTH_KV: kv,
+    } as unknown as import('../types.ts').Env;
+    assertThrows(() => createAuth(fakeEnvWithKv), WorkerConfigurationError, 'HYPERDRIVE binding is not configured');
+});
+
+Deno.test('createAuth throws WorkerConfigurationError for missing HYPERDRIVE regardless of BETTER_AUTH_KV state', () => {
+    // createAuth fails hard on missing HYPERDRIVE regardless of whether BETTER_AUTH_KV is
+    // present.  The error must be about HYPERDRIVE — not about the absent KV binding —
+    // confirming that KV absence alone does not cause a startup failure.
+    const fakeEnv = {
+        HYPERDRIVE: undefined,
+        BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
+        BETTER_AUTH_KV: undefined,
+    } as unknown as import('../types.ts').Env;
+    const err = assertThrows(() => createAuth(fakeEnv), WorkerConfigurationError);
+    // The error must be about HYPERDRIVE, not about KV
+    assertStringIncludes(err.message, 'HYPERDRIVE');
 });
