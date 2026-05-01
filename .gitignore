@@ -95,3 +95,10 @@ lhci-results/
 # Prisma D1 local placeholder database (generated during schema build, not committed)
 prisma/d1-dev.db
 .dev.vars
+
+# Python tooling
+tools/.venv/
+tools/__pycache__/
+tools/*.pyc
+auth-healthcheck-*.json
+wrangler-tail.log
