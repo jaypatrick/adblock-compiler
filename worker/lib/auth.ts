@@ -178,6 +178,27 @@ export const AUTH_SESSION_CONFIG = {
 export const AUTH_DISABLE_CSRF_CHECK = true;
 
 /**
+ * Prisma adapter configuration for Better Auth.
+ *
+ * Passed directly to `prismaAdapter()` inside `createAuth()`.  This constant
+ * configures the database provider so the adapter knows which Postgres dialect
+ * to use.  It does **not** contain field or model name mappings — those live in
+ * `USER_FIELD_MAPPING` (the `name`→`displayName` / `image`→`imageUrl` aliases
+ * under the `user.fields` key of the `betterAuth()` call).
+ *
+ * **Extending for new integrations**
+ * If a future integration requires a different model or field name convention
+ * (e.g. snake_case, PascalCase, pluralised, or dash-separated names), add the
+ * field alias to `USER_FIELD_MAPPING` or a `modelName` override on the relevant
+ * model in the `betterAuth()` config — not here.  Any change to `provider` will
+ * break the Prisma adapter; update `worker/lib/auth.test.ts` to confirm.
+ */
+export const PRISMA_SCHEMA_CONFIG = {
+    /** Database provider.  Changing this value breaks the Prisma adapter — update tests too. */
+    provider: 'postgresql',
+} as const;
+
+/**
  * Whether sessions are persisted to the primary database (Prisma/Neon) even when
  * Cloudflare KV secondary storage is configured via `BETTER_AUTH_KV`.
  *
@@ -206,7 +227,7 @@ export const AUTH_DISABLE_CSRF_CHECK = true;
  * future reviewers have a clear audit trail — if this is ever changed to `false` while
  * `BETTER_AUTH_KV` is bound, sign-in will break again.
  */
-export const AUTH_SESSION_STORE_IN_DATABASE = true;
+export const AUTH_SESSION_STORE_IN_DATABASE = true as const;
 
 /**
  * Builds the `trustedOrigins` function for Better Auth.
@@ -431,7 +452,7 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
     const hasViableEmailProvider = !!(env.RESEND_API_KEY || env.SEND_EMAIL);
 
     return betterAuth({
-        database: prismaAdapter(prisma, { provider: 'postgresql' }),
+        database: prismaAdapter(prisma, PRISMA_SCHEMA_CONFIG),
         secret: env.BETTER_AUTH_SECRET,
         basePath: '/api/auth',
         baseURL: env.BETTER_AUTH_URL || baseURL,
@@ -514,9 +535,6 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
             // See AUTH_SESSION_STORE_IN_DATABASE for the full rationale.
             storeSessionInDatabase: AUTH_SESSION_STORE_IN_DATABASE,
             // 7-day session expiry
-            expiresIn: AUTH_SESSION_CONFIG.expiresIn,
-            // Refresh session if it expires within 1 day
-            updateAge: AUTH_SESSION_CONFIG.updateAge,
             cookieCache: {
                 enabled: true,
                 maxAge: AUTH_SESSION_CONFIG.cookieCacheMaxAge,

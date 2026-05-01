@@ -24,6 +24,7 @@ import {
     createAuth,
     createKvSecondaryStorage,
     isSentinelEnabled,
+    PRISMA_SCHEMA_CONFIG,
     USER_FIELD_MAPPING,
     UUID_V4_REGEX,
     WorkerConfigurationError,
@@ -575,6 +576,44 @@ Deno.test('buildSentinelOptions security config includes botBlocking and suspici
     assertEquals(security.suspiciousIpBlocking, true);
 });
 
+// ============================================================================
+// PRISMA_SCHEMA_CONFIG — PostgreSQL provider declaration
+// ============================================================================
+//
+// PRISMA_SCHEMA_CONFIG is passed to prismaAdapter() inside createAuth(). It
+// declares the database provider and is extracted as a named constant so that:
+//   1. The provider is declared in one place only (no copy-paste drift).
+//   2. This test acts as a regression guard — if the provider is accidentally
+//      changed to 'sqlite' or another value, the test fails immediately.
+// ============================================================================
+
+Deno.test('PRISMA_SCHEMA_CONFIG.provider is "postgresql"', () => {
+    assertStrictEquals(
+        PRISMA_SCHEMA_CONFIG.provider,
+        'postgresql',
+        'PRISMA_SCHEMA_CONFIG.provider must be "postgresql"; changing it will break Prisma adapter initialisation',
+    );
+});
+
+// ============================================================================
+// AUTH_SESSION_STORE_IN_DATABASE — session persistence guard
+// ============================================================================
+//
+// Better Auth stores sessions in the database by default. AUTH_SESSION_STORE_IN_DATABASE
+// makes that behaviour explicit and this test guards against accidental changes
+// that might silently disable database session persistence.
+// ============================================================================
+
+Deno.test('AUTH_SESSION_STORE_IN_DATABASE is true — sessions must be persisted to the database', () => {
+    assertEquals(typeof AUTH_SESSION_STORE_IN_DATABASE, 'boolean');
+    assertStrictEquals(
+        AUTH_SESSION_STORE_IN_DATABASE,
+        true,
+        'AUTH_SESSION_STORE_IN_DATABASE must be true; setting it to false would disable database session persistence',
+    );
+});
+
+// ============================================================================
 // isSentinelEnabled — BETTER_AUTH_SENTINEL_ENABLED gate helper
 // ============================================================================
 //
