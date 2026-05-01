@@ -428,8 +428,9 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
             const errorMessage = error instanceof Error ? error.message : String(error);
             try {
                 await captureExceptionInIsolate(this.env, error);
-            } catch {
+            } catch (sentryError) {
                 // Prevent Sentry errors from masking the original workflow failure.
+                console.warn('[WORKFLOW:CACHE-WARM] Sentry error reporting failed:', sentryError);
             }
             console.error(`[WORKFLOW:CACHE-WARM] Cache warming workflow failed (runId: ${runId}):`, errorMessage);
 

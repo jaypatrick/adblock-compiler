@@ -398,6 +398,10 @@ workflowRoutes.use('/workflow/health-check', requireAuthMiddleware());
 workflowRoutes.use('/workflow/health-check', rateLimitMiddleware());
 workflowRoutes.openapi(workflowHealthCheckRoute, async (c) => {
     const { handleWorkflowHealthCheck } = await import('../handlers/workflow.ts');
+    // No parameter cast needed: the Zod schema for HealthCheckRequest uses optional
+    // primitives (string[], boolean) whose inferred type is structurally compatible
+    // with the handler's parameter type, unlike the compile/batch schemas that infer
+    // Record<string, unknown> for 'configuration', which requires a double-cast.
     // deno-lint-ignore no-explicit-any
     return handleWorkflowHealthCheck(c.req.valid('json'), c.env) as any;
 });

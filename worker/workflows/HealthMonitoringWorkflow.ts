@@ -567,8 +567,9 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             const errorMessage = error instanceof Error ? error.message : String(error);
             try {
                 await captureExceptionInIsolate(this.env, error);
-            } catch {
+            } catch (sentryError) {
                 // Prevent Sentry errors from masking the original workflow failure.
+                console.warn('[WORKFLOW:HEALTH] Sentry error reporting failed:', sentryError);
             }
             console.error(`[WORKFLOW:HEALTH] Health monitoring failed (runId: ${runId}): ${errorMessage}`);
 
