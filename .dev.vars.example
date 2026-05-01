@@ -137,6 +137,9 @@ URL_DOCS=https://docs.bloqr.jaysonknight.com
 # Get a test API key from https://resend.com/api-keys
 # Production: `wrangler secret put RESEND_API_KEY`
 RESEND_API_KEY=re_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Resend audience ID for user lifecycle contact sync (add/remove on sign-up/delete).
+# Production: `wrangler secret put RESEND_AUDIENCE_ID`
+RESEND_AUDIENCE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 # ─── Email (Cloudflare Email Service REST — transactional notifications) ────────
 # Scoped CF API token with Email Send permissions.
