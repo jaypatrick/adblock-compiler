@@ -1011,11 +1011,11 @@ export type UserTierRow = z.infer<typeof UserTierRowSchema>;
 // ============================================================================
 
 /**
- * Raw D1 row shape for Better Auth's `user` table (admin queries only).
+ * Raw Postgres/Neon row shape for Better Auth's `user` table (admin queries only).
  *
  * Column alias note: in this repo, Better Auth's logical `name` value is
  * stored in the database column `display_name`. When reading rows directly
- * from D1, select `display_name AS name` so the result matches this schema.
+ * from Postgres/Neon, select `display_name AS name` so the result matches this schema.
  */
 export const BetterAuthUserRowSchema = z.object({
     id: z.string(),
