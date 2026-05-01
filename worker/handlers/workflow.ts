@@ -470,7 +470,7 @@ export async function routeWorkflow(
 
     // Parse the request body once for POST routes so handlers never need to
     // consume the stream themselves (prevents "Body has already been used" errors).
-    let parsedBody: unknown = {};
+    let parsedBody: unknown;
     if (request.method === 'POST') {
         try {
             parsedBody = await request.json();
