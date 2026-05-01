@@ -2987,9 +2987,17 @@ export async function handleAdminRevokeUserSessions(
             const text = await response.text().catch(() => '');
             let errorMsg = 'Failed to revoke sessions';
             try {
-                errorMsg = (JSON.parse(text) as { message?: string }).message ?? errorMsg;
-            } catch { /* Better Auth error responses are not always JSON — fall back to the generic message */ }
-            return c.json({ success: false, error: errorMsg }, 500);
+                const parsed = JSON.parse(text) as { message?: unknown; error?: unknown };
+                if (typeof parsed.message === 'string' && parsed.message.trim().length > 0) {
+                    errorMsg = parsed.message;
+                } else if (typeof parsed.error === 'string' && parsed.error.trim().length > 0) {
+                    errorMsg = parsed.error;
+                }
+            } catch {
+                /* Better Auth error responses are not always JSON — fall back to the generic message */
+            }
+            const status = response.status >= 400 && response.status <= 599 ? response.status : 502;
+            return c.json({ success: false, error: errorMsg }, status);
         }
         return c.json({ success: true, message: `Sessions revoked for user ${userId}` });
     } catch (error) {
