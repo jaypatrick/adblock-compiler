@@ -17,8 +17,8 @@
  *
  * ## Plugin extensibility
  * The `plugins` array ships with the following active plugins:
- *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); reads `BETTER_AUTH_API_KEY` automatically; the plugin no-ops when the key is unset
- *   - `sentinel()` — infrastructure security: credential stuffing protection, impossible travel detection, bot blocking, suspicious IP blocking (from `@better-auth/infra`); also reads `BETTER_AUTH_API_KEY` automatically
+ *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); requires `env.BETTER_AUTH_API_KEY` passed explicitly — Cloudflare Workers do not expose Worker Secrets via `process.env`; the plugin no-ops when the key is absent
+ *   - `sentinel()` — infrastructure security: credential stuffing protection, impossible travel detection, bot blocking, suspicious IP blocking (from `@better-auth/infra`); also requires `env.BETTER_AUTH_API_KEY` passed explicitly (same reason as `dash()`)
  *   - `bearer()` — API-first Bearer token auth
  *   - `twoFactor()` — TOTP/2FA
  *   - `multiSession()` — multiple active sessions
@@ -432,12 +432,15 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
 
         plugins: [
             // Dash plugin — integrates with the dash.better-auth.com dashboard.
-            // Reads BETTER_AUTH_API_KEY from env automatically. Set the key via:
-            //   Local dev:  BETTER_AUTH_API_KEY=<key> in .dev.vars
-            //   Production: wrangler secret put BETTER_AUTH_API_KEY
+            // apiKey: Cloudflare Workers do NOT expose Worker Secrets via process.env, so
+            //   BETTER_AUTH_API_KEY must be passed explicitly via env.BETTER_AUTH_API_KEY.
+            //   Set the key via:
+            //     Local dev:  BETTER_AUTH_API_KEY=<key> in .dev.vars
+            //     Production: wrangler secret put BETTER_AUTH_API_KEY
             // kvUrl (optional): REST API URL for the BETTER_AUTH_KV namespace —
             //   used by Dash for high-performance rate-limit counter storage at the edge.
             dash({
+                ...(env.BETTER_AUTH_API_KEY ? { apiKey: env.BETTER_AUTH_API_KEY } : {}),
                 ...(env.BETTER_AUTH_KV_URL ? { kvUrl: env.BETTER_AUTH_KV_URL } : {}),
             }),
             // Audit logs — records all auth events (sign-in, sign-up, token refresh,
@@ -450,9 +453,11 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
             // Sentinel — infrastructure-level security plugin.
             // Provides: credential stuffing protection, impossible travel detection,
             // bot blocking, suspicious IP blocking, and unknown device notifications.
-            // Reads BETTER_AUTH_API_KEY from env automatically.
+            // apiKey: same explicit passthrough required as dash() — Worker Secrets are NOT
+            //   accessible via process.env in Cloudflare Workers.
             // kvUrl is used for high-performance rate-limit counter storage at the edge.
             sentinel({
+                ...(env.BETTER_AUTH_API_KEY ? { apiKey: env.BETTER_AUTH_API_KEY } : {}),
                 ...(env.BETTER_AUTH_KV_URL ? { kvUrl: env.BETTER_AUTH_KV_URL } : {}),
                 security: {
                     // Credential stuffing / brute-force protection.

@@ -162,6 +162,10 @@ id = "532484fdfff448bbb6efc7847bf41700"
 # Then uncomment and set the id below, and set the REST API URL secret:
 #   wrangler secret put BETTER_AUTH_KV_URL
 #
+# BETTER_AUTH_KV_URL formula (use these values from this file):
+#   Account ID:   CF_ACCOUNT_ID = 07a1f8d207654fe5d838174af4813126  (wrangler.toml [vars])
+#   Namespace ID: id = 343029e0851240ad8f5799bac38b31bf             (this [[kv_namespaces]] entry)
+#   URL: https://api.cloudflare.com/client/v4/accounts/07a1f8d207654fe5d838174af4813126/storage/kv/namespaces/343029e0851240ad8f5799bac38b31bf
 [[kv_namespaces]]
 binding = "BETTER_AUTH_KV"
 id = "343029e0851240ad8f5799bac38b31bf"

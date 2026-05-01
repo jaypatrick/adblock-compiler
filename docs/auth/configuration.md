@@ -20,8 +20,8 @@ adblock-compiler authentication system with Better Auth.
 
 | Variable | Required | Source | Description |
 |---|---|---|---|
-| `BETTER_AUTH_API_KEY` | Optional | `dash.better-auth.com` | API key for Better Auth Dash dashboard integration. Enables `dash()` and `sentinel()` connectivity. Production: `wrangler secret put BETTER_AUTH_API_KEY` |
-| `BETTER_AUTH_KV_URL` | Optional | Cloudflare KV REST API URL | REST API URL for the `BETTER_AUTH_KV` namespace. Used by `dash()` and `sentinel()` `kvUrl` option. Production: `wrangler secret put BETTER_AUTH_KV_URL` |
+| `BETTER_AUTH_API_KEY` | Optional | `dash.better-auth.com` | API key for Better Auth Dash dashboard integration. Enables `dash()` and `sentinel()` connectivity. **Must be passed explicitly** via `apiKey: env.BETTER_AUTH_API_KEY` — Cloudflare Workers do not expose Worker Secrets via `process.env`. Production: `wrangler secret put BETTER_AUTH_API_KEY` |
+| `BETTER_AUTH_KV_URL` | Optional | Cloudflare KV REST API URL | REST API URL for the `BETTER_AUTH_KV` namespace. Used by `dash()` and `sentinel()` `kvUrl` option. Construct from: `https://api.cloudflare.com/client/v4/accounts/<CF_ACCOUNT_ID>/storage/kv/namespaces/<BETTER_AUTH_KV_ID>`. Production: `wrangler secret put BETTER_AUTH_KV_URL` |
 
 ### Database (Required)
 
@@ -304,6 +304,7 @@ All auth routes are under `/api/auth/*` (configured by `basePath: '/api/auth'` i
 6. [ ] Deploy Worker: `wrangler deploy`
 7. [ ] Create first admin user (via Prisma Studio — set `role = admin`, `tier = admin`)
 8. [ ] Verify auth flow end-to-end
+9. [ ] (Optional) Enable Better Auth Dash: set `BETTER_AUTH_API_KEY` via `wrangler secret put BETTER_AUTH_API_KEY` — the key is passed explicitly to `dash()` and `sentinel()` via `apiKey: env.BETTER_AUTH_API_KEY`; there is no automatic `process.env` pickup in Cloudflare Workers
 
 ### Adding GitHub OAuth
 
