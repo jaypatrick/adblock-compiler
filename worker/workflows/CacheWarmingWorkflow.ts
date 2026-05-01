@@ -336,7 +336,7 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                 console.log(`[WORKFLOW:CACHE-WARM] Updating cache warming metrics`);
 
                 const metricsKey = 'workflow:cache-warm:metrics';
-                const existingMetrics = await this.env.METRICS.get(metricsKey, 'json') as {
+                let existingMetrics: {
                     totalRuns: number;
                     scheduledRuns: number;
                     manualRuns: number;
@@ -344,7 +344,12 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
                     totalConfigsFailed: number;
                     lastRunAt: string;
                     avgDurationMs: number;
-                } | null;
+                } | null = null;
+                try {
+                    existingMetrics = await this.env.METRICS.get(metricsKey, 'json') as typeof existingMetrics;
+                } catch (kvError) {
+                    console.warn(`[WORKFLOW:CACHE-WARM] KV read failed for ${metricsKey}, using fresh metrics:`, kvError);
+                }
 
                 const metrics = existingMetrics || {
                     totalRuns: 0,
@@ -421,7 +426,11 @@ export class CacheWarmingWorkflow extends WorkflowEntrypoint<Env, CacheWarmingPa
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            await captureExceptionInIsolate(this.env, error);
+            try {
+                await captureExceptionInIsolate(this.env, error);
+            } catch {
+                // Prevent Sentry errors from masking the original workflow failure.
+            }
             console.error(`[WORKFLOW:CACHE-WARM] Cache warming workflow failed (runId: ${runId}):`, errorMessage);
 
             // Track workflow failed via Analytics Engine

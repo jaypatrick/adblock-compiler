@@ -35,7 +35,7 @@ export const WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR = 'Workflow bindings are not 
  * POST /api/workflow/compile
  */
 export async function handleWorkflowCompile(
-    request: Request,
+    body: CompileRequest,
     env: Env,
 ): Promise<Response> {
     if (!env.COMPILATION_WORKFLOW) {
@@ -46,7 +46,6 @@ export async function handleWorkflowCompile(
     }
 
     try {
-        const body = await request.json() as CompileRequest;
         const { configuration, preFetchedContent, benchmark, priority } = body;
 
         const params: CompilationParams = {
@@ -88,7 +87,15 @@ export async function handleWorkflowCompile(
  * POST /api/workflow/batch
  */
 export async function handleWorkflowBatchCompile(
-    request: Request,
+    body: {
+        requests: Array<{
+            id: string;
+            configuration: IConfiguration;
+            preFetchedContent?: Record<string, string>;
+            benchmark?: boolean;
+        }>;
+        priority?: Priority;
+    },
     env: Env,
 ): Promise<Response> {
     if (!env.BATCH_COMPILATION_WORKFLOW) {
@@ -99,17 +106,6 @@ export async function handleWorkflowBatchCompile(
     }
 
     try {
-        interface BatchRequest {
-            requests: Array<{
-                id: string;
-                configuration: IConfiguration;
-                preFetchedContent?: Record<string, string>;
-                benchmark?: boolean;
-            }>;
-            priority?: Priority;
-        }
-
-        const body = await request.json() as BatchRequest;
         const { requests, priority } = body;
 
         if (!requests || !Array.isArray(requests) || requests.length === 0) {
@@ -158,7 +154,7 @@ export async function handleWorkflowBatchCompile(
  * POST /api/workflow/cache-warm
  */
 export async function handleWorkflowCacheWarm(
-    request: Request,
+    body: { configurations?: IConfiguration[] },
     env: Env,
 ): Promise<Response> {
     if (!env.CACHE_WARMING_WORKFLOW) {
@@ -169,7 +165,6 @@ export async function handleWorkflowCacheWarm(
     }
 
     try {
-        const body = await request.json() as { configurations?: IConfiguration[] };
         const configurations = body.configurations || [];
 
         const runId = generateWorkflowId('wf-cache-warm');
@@ -210,7 +205,10 @@ export async function handleWorkflowCacheWarm(
  * POST /api/workflow/health-check
  */
 export async function handleWorkflowHealthCheck(
-    request: Request,
+    body: {
+        sources?: Array<{ name: string; url: string; expectedMinRules?: number }>;
+        alertOnFailure?: boolean;
+    },
     env: Env,
 ): Promise<Response> {
     if (!env.HEALTH_MONITORING_WORKFLOW) {
@@ -221,11 +219,6 @@ export async function handleWorkflowHealthCheck(
     }
 
     try {
-        const body = await request.json() as {
-            sources?: Array<{ name: string; url: string; expectedMinRules?: number }>;
-            alertOnFailure?: boolean;
-        };
-
         const runId = generateWorkflowId('wf-health');
         const params: HealthMonitoringParams = {
             runId,
@@ -475,20 +468,32 @@ export async function routeWorkflow(
         );
     }
 
+    // Parse the request body once for POST routes so handlers never need to
+    // consume the stream themselves (prevents "Body has already been used" errors).
+    // deno-lint-ignore no-explicit-any
+    let parsedBody: any = {};
+    if (request.method === 'POST') {
+        try {
+            parsedBody = await request.json();
+        } catch {
+            return Response.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
+        }
+    }
+
     if (routePath === '/workflow/compile' && request.method === 'POST') {
-        return handleWorkflowCompile(request, env);
+        return handleWorkflowCompile(parsedBody, env);
     }
 
     if (routePath === '/workflow/batch' && request.method === 'POST') {
-        return handleWorkflowBatchCompile(request, env);
+        return handleWorkflowBatchCompile(parsedBody, env);
     }
 
     if (routePath === '/workflow/cache-warm' && request.method === 'POST') {
-        return handleWorkflowCacheWarm(request, env);
+        return handleWorkflowCacheWarm(parsedBody, env);
     }
 
     if (routePath === '/workflow/health-check' && request.method === 'POST') {
-        return handleWorkflowHealthCheck(request, env);
+        return handleWorkflowHealthCheck(parsedBody, env);
     }
 
     if (routePath.startsWith('/workflow/status/') && request.method === 'GET') {

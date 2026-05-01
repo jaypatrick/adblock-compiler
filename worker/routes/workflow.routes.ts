@@ -178,7 +178,7 @@ workflowRoutes.use('/workflow/compile', rateLimitMiddleware());
 workflowRoutes.openapi(workflowCompileRoute, async (c) => {
     const { handleWorkflowCompile } = await import('../handlers/workflow.ts');
     // deno-lint-ignore no-explicit-any
-    return handleWorkflowCompile(c.req.raw, c.env) as any;
+    return handleWorkflowCompile(c.req.valid('json') as any, c.env) as any;
 });
 
 const workflowBatchRoute = createRoute({
@@ -259,7 +259,7 @@ workflowRoutes.use('/workflow/batch', rateLimitMiddleware());
 workflowRoutes.openapi(workflowBatchRoute, async (c) => {
     const { handleWorkflowBatchCompile } = await import('../handlers/workflow.ts');
     // deno-lint-ignore no-explicit-any
-    return handleWorkflowBatchCompile(c.req.raw, c.env) as any;
+    return handleWorkflowBatchCompile(c.req.valid('json') as any, c.env) as any;
 });
 
 const workflowCacheWarmRoute = createRoute({
@@ -329,7 +329,7 @@ workflowRoutes.use('/workflow/cache-warm', rateLimitMiddleware());
 workflowRoutes.openapi(workflowCacheWarmRoute, async (c) => {
     const { handleWorkflowCacheWarm } = await import('../handlers/workflow.ts');
     // deno-lint-ignore no-explicit-any
-    return handleWorkflowCacheWarm(c.req.raw, c.env) as any;
+    return handleWorkflowCacheWarm(c.req.valid('json') as any, c.env) as any;
 });
 
 const workflowHealthCheckRoute = createRoute({
@@ -399,7 +399,7 @@ workflowRoutes.use('/workflow/health-check', rateLimitMiddleware());
 workflowRoutes.openapi(workflowHealthCheckRoute, async (c) => {
     const { handleWorkflowHealthCheck } = await import('../handlers/workflow.ts');
     // deno-lint-ignore no-explicit-any
-    return handleWorkflowHealthCheck(c.req.raw, c.env) as any;
+    return handleWorkflowHealthCheck(c.req.valid('json'), c.env) as any;
 });
 
 const workflowStatusRoute = createRoute({
