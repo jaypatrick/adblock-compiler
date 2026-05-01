@@ -57,8 +57,21 @@ const adminPaginationQuerySchema = z.object({
 const adminUsageDaysQuerySchema = z.object({
     days: z.coerce.number().int().default(30).describe('Number of days to look back for usage stats'),
 });
-
-const adminUpdateUserSchema = z.object({
+/**
+ * OpenAPI route-level schema for PATCH /admin/users/:id.
+ *
+ * This schema uses the OpenAPI-extended `z` from `@hono/zod-openapi` so it can
+ * be passed to `createRoute()`. It mirrors the authoritative `AdminUpdateUserSchema`
+ * in `worker/schemas.ts` — if you change validation constraints, update both.
+ * The handler (`worker/handlers/admin-users.ts`) re-validates the body using
+ * `AdminUpdateUserSchema` directly, so the handler is the real enforcement layer.
+ *
+ * NOTE: `AdminUpdateUserSchema` from `worker/schemas.ts` cannot be used here directly
+ * because it is built with plain `zod` and lacks the `.openapi()` extension method
+ * required by `@hono/zod-openapi`'s `createRoute()`. The two schemas must stay in sync
+ * manually until the project standardises on a single zod distribution.
+ */
+const adminUpdateUserRouteSchema = z.object({
     tier: z.nativeEnum(UserTier).optional().describe('Updated user tier'),
     role: z.string().min(1).max(64).optional().describe('Updated user role'),
 }).refine(
@@ -328,7 +341,7 @@ const adminListUsersRoute = createRoute({
     description: 'Returns all Better Auth users, paginated and optionally filtered by tier, role, or search query. Admin tier and admin role required.',
     request: {
         query: adminPaginationQuerySchema.extend({
-            tier: z.string().optional().describe('Filter by user tier'),
+            tier: z.nativeEnum(UserTier).optional().describe('Filter by user tier'),
             role: z.string().optional().describe('Filter by user role'),
             search: z.string().optional().describe('Search by email or name (substring match)'),
         }),
@@ -512,7 +525,7 @@ const adminUpdateUserRoute = createRoute({
         body: {
             content: {
                 'application/json': {
-                    schema: adminUpdateUserSchema,
+                    schema: adminUpdateUserRouteSchema,
                 },
             },
         },
@@ -2928,7 +2941,7 @@ export async function handleAdminRevokeUserSessions(
 ): Promise<Response> {
     const { verifyCfAccessJwt } = await import('../middleware/cf-access.ts');
     const { AnalyticsService } = await import('../../src/services/AnalyticsService.ts');
-    const { createPrismaClient } = await import('../lib/prisma.ts');
+    const { createAuth } = await import('../lib/auth.ts');
 
     const authContext = c.get('authContext') as { role?: string };
     if (authContext.role !== 'admin') {
@@ -2954,12 +2967,24 @@ export async function handleAdminRevokeUserSessions(
         if (!c.env.HYPERDRIVE) {
             return c.json({ success: false, error: 'Database not configured' }, 503);
         }
-        const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
-        const result = await prisma.session.deleteMany({ where: { userId } });
-        return c.json({
-            success: true,
-            message: `Revoked ${result.count} session(s) for user ${userId}`,
-        });
+        const baseURL = new URL(c.req.raw.url).origin;
+        const auth = createAuth(c.env, baseURL);
+        const adminHeaders = new Headers(c.req.raw.headers);
+        adminHeaders.set('content-type', 'application/json');
+        const adminRequest = new Request(
+            `${baseURL}/api/auth/admin/revoke-user-sessions`,
+            { method: 'POST', headers: adminHeaders, body: JSON.stringify({ userId }) },
+        );
+        const response = await auth.handler(adminRequest);
+        if (!response.ok) {
+            const text = await response.text().catch(() => '');
+            let errorMsg = 'Failed to revoke sessions';
+            try {
+                errorMsg = (JSON.parse(text) as { message?: string }).message ?? errorMsg;
+            } catch { /* Better Auth error responses are not always JSON — fall back to the generic message */ }
+            return c.json({ success: false, error: errorMsg }, 500);
+        }
+        return c.json({ success: true, message: `Sessions revoked for user ${userId}` });
     } catch (error) {
         // deno-lint-ignore no-console
         console.error('[admin] Session revocation error:', error instanceof Error ? error.message : 'unknown');

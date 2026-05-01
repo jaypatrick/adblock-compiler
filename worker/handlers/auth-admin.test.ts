@@ -1,4 +1,7 @@
 // Tests for auth admin handlers and the full API key lifecycle.
+// NOTE: These handlers are UNROUTED dead code — no router maps any path to them.
+// Tests are kept to prevent accidental regressions while the module awaits removal.
+// See worker/handlers/auth-admin.ts for migration guidance.
 
 import { assertEquals } from '@std/assert';
 import { handleCreateApiKey, handleCreateUser, handleListApiKeys, handleRevokeApiKey, handleValidateApiKey } from './auth-admin.ts';

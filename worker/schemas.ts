@@ -990,10 +990,14 @@ export const ApiKeyRowSchema = z.object({
 export type ApiKeyRow = z.infer<typeof ApiKeyRowSchema>;
 
 /**
- * A single row from `users` when resolving an API key owner's tier.
+ * A single row from `users` when resolving an API key owner's info (tier and role).
+ *
+ * `role` is nullish because older rows may pre-date the role column migration;
+ * callers should default to `'user'` when it is absent (`null` or `undefined`).
  */
 export const UserTierRowSchema = z.object({
     tier: z.nativeEnum(UserTier),
+    role: z.string().nullish(),
 });
 
 export type UserTierRow = z.infer<typeof UserTierRowSchema>;
@@ -1006,15 +1010,22 @@ export type UserTierRow = z.infer<typeof UserTierRowSchema>;
 // Plus custom additionalFields: tier, role, banned, banReason, banExpires
 // ============================================================================
 
-/** Raw D1 row shape for Better Auth's `user` table (admin queries only). */
+/**
+ * Raw D1 row shape for Better Auth's `user` table (admin queries only).
+ *
+ * Column alias note: Better Auth maps the application-facing `displayName`
+ * field to the database column `name`. When reading rows directly from D1
+ * the column will therefore appear as `name`, not `displayName`.
+ */
 export const BetterAuthUserRowSchema = z.object({
     id: z.string(),
     email: z.string(),
+    /** Database column is `name`; application alias is `displayName`. */
     name: z.string().nullable(),
     emailVerified: z.union([z.boolean(), z.number()]).transform((v) => Boolean(v)),
     image: z.string().nullable().optional(),
-    tier: z.string().nullable().optional(),
-    role: z.string().nullable().optional(),
+    tier: z.nativeEnum(UserTier).nullish(),
+    role: z.string().min(1).max(64).nullish(),
     banned: z.union([z.boolean(), z.number()]).transform((v) => Boolean(v)).optional(),
     banReason: z.string().nullable().optional(),
     banExpires: z.string().nullable().optional(),
@@ -1030,8 +1041,8 @@ export type BetterAuthUserPublic = z.infer<typeof BetterAuthUserPublicSchema>;
 
 /** Request body for PATCH /admin/users/:id — update tier and/or role. */
 export const AdminUpdateUserSchema = z.object({
-    tier: z.nativeEnum(UserTier).optional(),
-    role: z.string().min(1).max(64).optional(),
+    tier: z.nativeEnum(UserTier).optional().describe('Updated user tier'),
+    role: z.string().min(1).max(64).optional().describe('Updated user role'),
 }).refine(
     (d) => d.tier !== undefined || d.role !== undefined,
     { message: 'At least one of tier or role is required' },
@@ -1541,8 +1552,8 @@ export const BetterAuthUserSchema = z.object({
     createdAt: z.coerce.date(),
     updatedAt: z.coerce.date(),
     // Project-specific additional fields (see auth.ts → user.additionalFields)
-    tier: z.string().default('free'),
-    role: z.string().default('user'),
+    tier: z.nativeEnum(UserTier).default(UserTier.Free),
+    role: z.string().min(1).max(64).default('user'),
 });
 export type BetterAuthUser = z.infer<typeof BetterAuthUserSchema>;
 

@@ -178,6 +178,48 @@ export const AUTH_SESSION_CONFIG = {
 export const AUTH_DISABLE_CSRF_CHECK = true;
 
 /**
+ * Prisma adapter configuration for Better Auth.
+ *
+ * Centralises all Better Auth ↔ Prisma model/field name mappings so that
+ * future integrations requiring a different naming convention (e.g. snake_case,
+ * PascalCase, pluralised, or dash-separated table names) can be added here
+ * without hunting through the betterAuth() call or the adapter internals.
+ *
+ * **Naming-convention strategy**
+ * Better Auth's Prisma adapter resolves models by Prisma model name (the name
+ * used in `prisma.modelName`, i.e. the camelCase singular of the `model Foo`
+ * declaration).  Field names follow Prisma's camelCase convention.  Database
+ * column names are a Prisma concern only (handled via `@map` / `@@map` in
+ * `prisma/schema.prisma`) and are invisible to the adapter.
+ *
+ * When adding a new integration:
+ *  1. If the integration expects snake_case Prisma field names, add a `fields`
+ *     mapping here under the relevant model key.
+ *  2. If the integration expects a different model name (e.g. `Sessions`
+ *     plural), add a `modelName` override.
+ *  3. Export the updated constant; a test in `worker/lib/auth.test.ts` will
+ *     confirm the expected provider and any custom mappings are intact.
+ *
+ * Current model/field mapping:
+ *  - `user.name`       → display name (stored as `name` in DB; app-level alias `displayName`)
+ *  - `user.image`      → avatar URL (stored as `image` in DB; app-level alias `imageUrl`)
+ *  - All other field names match Better Auth's default schema exactly.
+ */
+export const PRISMA_SCHEMA_CONFIG = {
+    /** Database provider.  Changing this value breaks the Prisma adapter — update tests too. */
+    provider: 'postgresql',
+} as const;
+
+/**
+ * Whether Better Auth sessions are persisted to the database.
+ *
+ * Better Auth stores sessions in the database by default; this constant makes
+ * that behaviour explicit and provides a regression-guard: a test can assert
+ * this is `true` so that any accidental change is caught before it ships.
+ */
+export const AUTH_SESSION_STORE_IN_DATABASE = true as const;
+
+/**
  * Builds the `trustedOrigins` function for Better Auth.
  *
  * Better Auth uses `trustedOrigins` to validate callback URLs, redirect URLs,
@@ -381,7 +423,7 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
     const hasViableEmailProvider = !!(env.RESEND_API_KEY || env.SEND_EMAIL);
 
     return betterAuth({
-        database: prismaAdapter(prisma, { provider: 'postgresql' }),
+        database: prismaAdapter(prisma, PRISMA_SCHEMA_CONFIG),
         secret: env.BETTER_AUTH_SECRET,
         basePath: '/api/auth',
         baseURL: env.BETTER_AUTH_URL || baseURL,
@@ -460,6 +502,9 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
             expiresIn: AUTH_SESSION_CONFIG.expiresIn,
             // Refresh session if it expires within 1 day
             updateAge: AUTH_SESSION_CONFIG.updateAge,
+            // Explicitly persist sessions to the database (Better Auth 1.6.x default).
+            // Exported as AUTH_SESSION_STORE_IN_DATABASE for testability and audit trail.
+            storeSessionInDatabase: AUTH_SESSION_STORE_IN_DATABASE,
             cookieCache: {
                 enabled: true,
                 maxAge: AUTH_SESSION_CONFIG.cookieCacheMaxAge,
