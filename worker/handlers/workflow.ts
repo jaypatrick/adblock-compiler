@@ -9,12 +9,20 @@
 
 import type { BatchCompilationParams, CacheWarmingParams, CompilationParams, HealthMonitoringParams } from '../workflows/index.ts';
 import { generateWorkflowId } from '../utils/index.ts';
-import type { Env, IAuthContext, Priority, Workflow } from '../types.ts';
-import type { IConfiguration } from '../../src/types/index.ts';
-import type { CompileRequest } from '../types.ts';
+import type { Env, IAuthContext, Workflow } from '../types.ts';
 import { AnalyticsService } from '../../src/services/AnalyticsService.ts';
 import { checkRateLimitTiered } from '../middleware/index.ts';
 import { requireAuth } from '../middleware/auth.ts';
+import {
+    type BatchCompileInput,
+    batchCompileRequestSchema,
+    type CacheWarmInput,
+    cacheWarmRequestSchema,
+    type CompileInput,
+    compileRequestSchema,
+    type HealthCheckInput,
+    healthCheckRequestSchema,
+} from '../routes/workflow.schemas.ts';
 
 // ============================================================================
 // Constants
@@ -27,6 +35,28 @@ export const WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR = 'Workflow bindings are not 
     'Workflows must be configured in wrangler.toml. See the Cloudflare Workflows documentation for setup instructions.';
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+/**
+ * Maps the API-facing priority enum (`'high' | 'normal' | 'low'`) to the
+ * internal workflow priority type (`'standard' | 'high'`).
+ *
+ * The API deliberately exposes three levels for forward-compatibility while
+ * the current workflow implementation only distinguishes two tiers.
+ * `'normal'` and `'low'` both map to `'standard'`.
+ */
+function toWorkflowPriority(priority: 'high' | 'normal' | 'low' | undefined): CompilationParams['priority'] {
+    if (priority === 'high') {
+        return 'high';
+    }
+    if (priority === undefined) {
+        return undefined;
+    }
+    return 'standard'; // 'normal' and 'low' both map to 'standard'
+}
+
+// ============================================================================
 // Workflow Handlers
 // ============================================================================
 
@@ -35,7 +65,7 @@ export const WORKFLOW_BINDINGS_NOT_AVAILABLE_ERROR = 'Workflow bindings are not 
  * POST /api/workflow/compile
  */
 export async function handleWorkflowCompile(
-    request: Request,
+    body: CompileInput,
     env: Env,
 ): Promise<Response> {
     if (!env.COMPILATION_WORKFLOW) {
@@ -46,7 +76,6 @@ export async function handleWorkflowCompile(
     }
 
     try {
-        const body = await request.json() as CompileRequest;
         const { configuration, preFetchedContent, benchmark, priority } = body;
 
         const params: CompilationParams = {
@@ -54,7 +83,7 @@ export async function handleWorkflowCompile(
             configuration,
             preFetchedContent,
             benchmark,
-            priority,
+            priority: toWorkflowPriority(priority),
             queuedAt: Date.now(),
         };
 
@@ -88,7 +117,7 @@ export async function handleWorkflowCompile(
  * POST /api/workflow/batch
  */
 export async function handleWorkflowBatchCompile(
-    request: Request,
+    body: BatchCompileInput,
     env: Env,
 ): Promise<Response> {
     if (!env.BATCH_COMPILATION_WORKFLOW) {
@@ -99,17 +128,6 @@ export async function handleWorkflowBatchCompile(
     }
 
     try {
-        interface BatchRequest {
-            requests: Array<{
-                id: string;
-                configuration: IConfiguration;
-                preFetchedContent?: Record<string, string>;
-                benchmark?: boolean;
-            }>;
-            priority?: Priority;
-        }
-
-        const body = await request.json() as BatchRequest;
         const { requests, priority } = body;
 
         if (!requests || !Array.isArray(requests) || requests.length === 0) {
@@ -123,7 +141,7 @@ export async function handleWorkflowBatchCompile(
         const params: BatchCompilationParams = {
             batchId,
             requests,
-            priority,
+            priority: toWorkflowPriority(priority),
             queuedAt: Date.now(),
         };
 
@@ -158,7 +176,7 @@ export async function handleWorkflowBatchCompile(
  * POST /api/workflow/cache-warm
  */
 export async function handleWorkflowCacheWarm(
-    request: Request,
+    body: CacheWarmInput,
     env: Env,
 ): Promise<Response> {
     if (!env.CACHE_WARMING_WORKFLOW) {
@@ -169,8 +187,7 @@ export async function handleWorkflowCacheWarm(
     }
 
     try {
-        const body = await request.json() as { configurations?: IConfiguration[] };
-        const configurations = body.configurations || [];
+        const configurations = body.configurations ?? [];
 
         const runId = generateWorkflowId('wf-cache-warm');
         const params: CacheWarmingParams = {
@@ -210,7 +227,7 @@ export async function handleWorkflowCacheWarm(
  * POST /api/workflow/health-check
  */
 export async function handleWorkflowHealthCheck(
-    request: Request,
+    body: HealthCheckInput,
     env: Env,
 ): Promise<Response> {
     if (!env.HEALTH_MONITORING_WORKFLOW) {
@@ -221,11 +238,6 @@ export async function handleWorkflowHealthCheck(
     }
 
     try {
-        const body = await request.json() as {
-            sources?: Array<{ name: string; url: string; expectedMinRules?: number }>;
-            alertOnFailure?: boolean;
-        };
-
         const runId = generateWorkflowId('wf-health');
         const params: HealthMonitoringParams = {
             runId,
@@ -475,20 +487,49 @@ export async function routeWorkflow(
         );
     }
 
+    // Parse the request body once for POST routes so handlers never need to
+    // consume the stream themselves (prevents "Body has already been used" errors).
+    // parsedBody is only accessed in branches that also check request.method === 'POST',
+    // so it is always assigned before use (the try block above assigns it, or we return 400).
+    let parsedBody: unknown;
+    if (request.method === 'POST') {
+        try {
+            parsedBody = await request.json();
+        } catch {
+            return Response.json({ success: false, error: 'Invalid JSON body' }, { status: 400 });
+        }
+    }
+
     if (routePath === '/workflow/compile' && request.method === 'POST') {
-        return handleWorkflowCompile(request, env);
+        const result = compileRequestSchema.safeParse(parsedBody);
+        if (!result.success) {
+            return Response.json({ success: false, error: result.error.message }, { status: 400 });
+        }
+        return handleWorkflowCompile(result.data, env);
     }
 
     if (routePath === '/workflow/batch' && request.method === 'POST') {
-        return handleWorkflowBatchCompile(request, env);
+        const result = batchCompileRequestSchema.safeParse(parsedBody);
+        if (!result.success) {
+            return Response.json({ success: false, error: result.error.message }, { status: 400 });
+        }
+        return handleWorkflowBatchCompile(result.data, env);
     }
 
     if (routePath === '/workflow/cache-warm' && request.method === 'POST') {
-        return handleWorkflowCacheWarm(request, env);
+        const result = cacheWarmRequestSchema.safeParse(parsedBody);
+        if (!result.success) {
+            return Response.json({ success: false, error: result.error.message }, { status: 400 });
+        }
+        return handleWorkflowCacheWarm(result.data, env);
     }
 
     if (routePath === '/workflow/health-check' && request.method === 'POST') {
-        return handleWorkflowHealthCheck(request, env);
+        const result = healthCheckRequestSchema.safeParse(parsedBody);
+        if (!result.success) {
+            return Response.json({ success: false, error: result.error.message }, { status: 400 });
+        }
+        return handleWorkflowHealthCheck(result.data, env);
     }
 
     if (routePath.startsWith('/workflow/status/') && request.method === 'GET') {
