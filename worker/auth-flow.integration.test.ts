@@ -15,6 +15,29 @@ import { assertEquals } from '@std/assert';
 import { makeEnv } from './test-helpers.ts';
 import { app } from './hono-app.ts';
 
+// ── Test constants ────────────────────────────────────────────────────────────
+
+/**
+ * Minimal Better Auth secret used for integration tests.
+ * Must be at least 32 characters to satisfy Better Auth's length requirement.
+ * Extracted as a named constant to keep the two Better-Auth-aware tests
+ * in sync and match the pattern used across other test files in this repo
+ * (e.g. `'test-secret-at-least-32-characters-long!!'` in admin-neon.test.ts).
+ */
+const TEST_BETTER_AUTH_SECRET = 'test-secret-for-integration-tests-xxxxx' as const;
+
+/**
+ * Stub Hyperdrive binding used for tests that need to reach Better Auth's
+ * handler without making a real Postgres connection.
+ *
+ * The connectionString only needs to be non-empty so that `createAuth()`
+ * does not throw `WorkerConfigurationError`; no actual network call is made
+ * in the code paths exercised by the Better-Auth-aware tests below.
+ */
+const TEST_HYPERDRIVE = {
+    connectionString: 'postgresql://test:test@localhost:5432/testdb',
+} as unknown as Hyperdrive;
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /** Build a minimal ExecutionContext stub. */
@@ -158,10 +181,8 @@ Deno.test('Auth flow: POST /api/auth/sign-in/email with missing credentials retu
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({}),
         env: makeEnv({
-            BETTER_AUTH_SECRET: 'test-secret-for-integration-tests-xxxxx',
-            HYPERDRIVE: {
-                connectionString: 'postgresql://test:test@localhost:5432/testdb',
-            } as unknown as Hyperdrive,
+            BETTER_AUTH_SECRET: TEST_BETTER_AUTH_SECRET,
+            HYPERDRIVE: TEST_HYPERDRIVE,
         }),
     });
     assertEquals(
@@ -187,10 +208,8 @@ Deno.test('Auth flow: GET /api/auth/get-session with no credentials reaches Bett
     const res = await fetchRoute('/api/auth/get-session', {
         method: 'GET',
         env: makeEnv({
-            BETTER_AUTH_SECRET: 'test-secret-for-integration-tests-xxxxx',
-            HYPERDRIVE: {
-                connectionString: 'postgresql://test:test@localhost:5432/testdb',
-            } as unknown as Hyperdrive,
+            BETTER_AUTH_SECRET: TEST_BETTER_AUTH_SECRET,
+            HYPERDRIVE: TEST_HYPERDRIVE,
         }),
     });
     // Better Auth returns 200 with { session: null, user: null } when there
