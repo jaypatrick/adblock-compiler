@@ -2978,11 +2978,25 @@ export async function handleAdminRevokeUserSessions(
         const auth = createAuth(c.env, baseURL);
         const adminHeaders = new Headers(c.req.raw.headers);
         adminHeaders.set('content-type', 'application/json');
+        const abortController = new AbortController();
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
         const adminRequest = new Request(
             `${baseURL}/api/auth/admin/revoke-user-sessions`,
-            { method: 'POST', headers: adminHeaders, body: JSON.stringify({ userId }) },
+            { method: 'POST', headers: adminHeaders, body: JSON.stringify({ userId }), signal: abortController.signal },
         );
-        const response = await auth.handler(adminRequest);
+        const response = await Promise.race([
+            auth.handler(adminRequest),
+            new Promise<never>((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    abortController.abort();
+                    reject(new DOMException('Session revocation exceeded 10s timeout', 'TimeoutError'));
+                }, 10_000);
+            }),
+        ]).finally(() => {
+            if (timeoutId !== undefined) {
+                clearTimeout(timeoutId);
+            }
+        });
         if (!response.ok) {
             const text = await response.text().catch(() => '');
             let errorMsg = 'Failed to revoke sessions';
@@ -3001,6 +3015,14 @@ export async function handleAdminRevokeUserSessions(
         }
         return c.json({ success: true, message: `Sessions revoked for user ${userId}` });
     } catch (error) {
+        if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+            // 'TimeoutError' is thrown by the Promise.race timeout above.
+            // 'AbortError' is emitted by abortController.abort() if the underlying
+            // fetch detects the signal cancellation before the explicit reject fires.
+            // deno-lint-ignore no-console
+            console.error('[admin] Session revocation timed out for user:', userId);
+            return c.json({ success: false, error: 'Session revocation timed out' }, 504);
+        }
         // deno-lint-ignore no-console
         console.error('[admin] Session revocation error:', error instanceof Error ? error.message : 'unknown');
         return c.json({ success: false, error: 'Failed to revoke sessions' }, 500);

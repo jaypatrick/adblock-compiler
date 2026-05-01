@@ -180,30 +180,18 @@ export const AUTH_DISABLE_CSRF_CHECK = true;
 /**
  * Prisma adapter configuration for Better Auth.
  *
- * Centralises all Better Auth ↔ Prisma model/field name mappings so that
- * future integrations requiring a different naming convention (e.g. snake_case,
- * PascalCase, pluralised, or dash-separated table names) can be added here
- * without hunting through the betterAuth() call or the adapter internals.
+ * Passed directly to `prismaAdapter()` inside `createAuth()`.  This constant
+ * configures the database provider so the adapter knows which Postgres dialect
+ * to use.  It does **not** contain field or model name mappings — those live in
+ * `USER_FIELD_MAPPING` (the `name`→`displayName` / `image`→`imageUrl` aliases
+ * under the `user.fields` key of the `betterAuth()` call).
  *
- * **Naming-convention strategy**
- * Better Auth's Prisma adapter resolves models by Prisma model name (the name
- * used in `prisma.modelName`, i.e. the camelCase singular of the `model Foo`
- * declaration).  Field names follow Prisma's camelCase convention.  Database
- * column names are a Prisma concern only (handled via `@map` / `@@map` in
- * `prisma/schema.prisma`) and are invisible to the adapter.
- *
- * When adding a new integration:
- *  1. If the integration expects snake_case Prisma field names, add a `fields`
- *     mapping here under the relevant model key.
- *  2. If the integration expects a different model name (e.g. `Sessions`
- *     plural), add a `modelName` override.
- *  3. Export the updated constant; a test in `worker/lib/auth.test.ts` will
- *     confirm the expected provider and any custom mappings are intact.
- *
- * Current model/field mapping:
- *  - `user.name`       → display name (Better Auth logical field; DB column `display_name`; app-level alias `displayName`)
- *  - `user.image`      → avatar URL (stored as `image` in DB; app-level alias `imageUrl`)
- *  - All other field names match Better Auth's default schema exactly.
+ * **Extending for new integrations**
+ * If a future integration requires a different model or field name convention
+ * (e.g. snake_case, PascalCase, pluralised, or dash-separated names), add the
+ * field alias to `USER_FIELD_MAPPING` or a `modelName` override on the relevant
+ * model in the `betterAuth()` config — not here.  Any change to `provider` will
+ * break the Prisma adapter; update `worker/lib/auth.test.ts` to confirm.
  */
 export const PRISMA_SCHEMA_CONFIG = {
     /** Database provider.  Changing this value breaks the Prisma adapter — update tests too. */
