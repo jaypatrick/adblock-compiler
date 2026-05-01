@@ -1,6 +1,7 @@
 # Multi-stage build for adblock-compiler with Cloudflare Worker support
-# This Dockerfile creates a container that can run both the compiler CLI and the web UI
-# Builds the Angular 21 frontend dist artifacts needed by wrangler dev.
+# This Dockerfile creates a container that runs the Wrangler dev server and serves the
+# Angular 21 frontend dist artifacts. The compiler CLI is NOT included in the runtime image;
+# for CLI usage, build the executable outside Docker and mount it as a volume.
 # In production the frontend runs as a separate Cloudflare Worker
 # (adblock-frontend) connected to the backend via a service binding.
 # Version: 0.9.1
@@ -34,7 +35,8 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     wget \
     unzip \
     ca-certificates \
-    --no-install-recommends
+    --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/*
 
 # Download and install Deno
 # Note: Using --no-check-certificate as a workaround for Docker build environment SSL issues
@@ -126,6 +128,7 @@ WORKDIR /app
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
     apt-get update && apt-get install -y curl --no-install-recommends && \
+    rm -rf /var/lib/apt/lists/* && \
     corepack enable
 
 # Copy node_modules from builder (for Wrangler)
