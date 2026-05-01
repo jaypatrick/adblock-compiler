@@ -19,45 +19,16 @@ import type { Env } from '../types.ts';
 import type { Variables } from './shared.ts';
 
 import { rateLimitMiddleware, requireAuthMiddleware } from '../middleware/hono-middleware.ts';
+import { batchCompileRequestSchema, cacheWarmRequestSchema, compileRequestSchema, healthCheckRequestSchema } from './workflow.schemas.ts';
 
 export const workflowRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
-// Inline OpenAPI-compatible schemas for workflow operations
+// Response and auxiliary schemas for OpenAPI
 const workflowStartResponseSchema = z.object({
     success: z.boolean(),
     message: z.string().describe('Human-readable message'),
     workflowId: z.string().describe('Unique workflow instance identifier'),
     workflowType: z.enum(['compilation', 'batch-compilation', 'cache-warming', 'health-monitoring']).describe('Type of workflow'),
-});
-
-const compileRequestSchema = z.object({
-    configuration: z.record(z.string(), z.unknown()).describe('Compilation configuration object'),
-    preFetchedContent: z.record(z.string(), z.string()).optional().describe('Optional pre-fetched filter list content'),
-    benchmark: z.boolean().optional().describe('Whether to include benchmark metrics'),
-    priority: z.enum(['high', 'normal', 'low']).optional().describe('Workflow priority'),
-});
-
-const batchCompileRequestSchema = z.object({
-    requests: z.array(z.object({
-        id: z.string().describe('Unique identifier for this batch item'),
-        configuration: z.record(z.string(), z.unknown()).describe('Compilation configuration'),
-        preFetchedContent: z.record(z.string(), z.string()).optional().describe('Optional pre-fetched content'),
-        benchmark: z.boolean().optional().describe('Whether to include benchmarks'),
-    })).min(1).describe('Array of compilation requests to process in batch'),
-    priority: z.enum(['high', 'normal', 'low']).optional().describe('Batch priority'),
-});
-
-const cacheWarmRequestSchema = z.object({
-    configurations: z.array(z.record(z.string(), z.unknown())).optional().describe('Optional configurations to warm. Uses defaults if omitted.'),
-});
-
-const healthCheckRequestSchema = z.object({
-    sources: z.array(z.object({
-        name: z.string().describe('Human-readable source name'),
-        url: z.string().url().describe('Source URL to check'),
-        expectedMinRules: z.number().int().nonnegative().optional().describe('Minimum expected rule count'),
-    })).optional().describe('Optional sources to check. Uses defaults if omitted.'),
-    alertOnFailure: z.boolean().optional().describe('Whether to send alerts on health check failure'),
 });
 
 const workflowStatusResponseSchema = z.object({
@@ -178,7 +149,7 @@ workflowRoutes.use('/workflow/compile', rateLimitMiddleware());
 workflowRoutes.openapi(workflowCompileRoute, async (c) => {
     const { handleWorkflowCompile } = await import('../handlers/workflow.ts');
     // deno-lint-ignore no-explicit-any
-    return handleWorkflowCompile(c.req.valid('json') as unknown as Parameters<typeof handleWorkflowCompile>[0], c.env) as any;
+    return handleWorkflowCompile(c.req.valid('json'), c.env) as any;
 });
 
 const workflowBatchRoute = createRoute({
@@ -259,7 +230,7 @@ workflowRoutes.use('/workflow/batch', rateLimitMiddleware());
 workflowRoutes.openapi(workflowBatchRoute, async (c) => {
     const { handleWorkflowBatchCompile } = await import('../handlers/workflow.ts');
     // deno-lint-ignore no-explicit-any
-    return handleWorkflowBatchCompile(c.req.valid('json') as unknown as Parameters<typeof handleWorkflowBatchCompile>[0], c.env) as any;
+    return handleWorkflowBatchCompile(c.req.valid('json'), c.env) as any;
 });
 
 const workflowCacheWarmRoute = createRoute({
@@ -329,7 +300,7 @@ workflowRoutes.use('/workflow/cache-warm', rateLimitMiddleware());
 workflowRoutes.openapi(workflowCacheWarmRoute, async (c) => {
     const { handleWorkflowCacheWarm } = await import('../handlers/workflow.ts');
     // deno-lint-ignore no-explicit-any
-    return handleWorkflowCacheWarm(c.req.valid('json') as unknown as Parameters<typeof handleWorkflowCacheWarm>[0], c.env) as any;
+    return handleWorkflowCacheWarm(c.req.valid('json'), c.env) as any;
 });
 
 const workflowHealthCheckRoute = createRoute({
@@ -398,10 +369,6 @@ workflowRoutes.use('/workflow/health-check', requireAuthMiddleware());
 workflowRoutes.use('/workflow/health-check', rateLimitMiddleware());
 workflowRoutes.openapi(workflowHealthCheckRoute, async (c) => {
     const { handleWorkflowHealthCheck } = await import('../handlers/workflow.ts');
-    // No parameter cast needed: the Zod schema for HealthCheckRequest uses optional
-    // primitives (string[], boolean) whose inferred type is structurally compatible
-    // with the handler's parameter type, unlike the compile/batch schemas that infer
-    // Record<string, unknown> for 'configuration', which requires a double-cast.
     // deno-lint-ignore no-explicit-any
     return handleWorkflowHealthCheck(c.req.valid('json'), c.env) as any;
 });
