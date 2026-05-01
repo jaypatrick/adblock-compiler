@@ -547,12 +547,6 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
             // See AUTH_SESSION_STORE_IN_DATABASE for the full rationale.
             storeSessionInDatabase: AUTH_SESSION_STORE_IN_DATABASE,
             // 7-day session expiry
-            expiresIn: AUTH_SESSION_CONFIG.expiresIn,
-            // Refresh session if it expires within 1 day
-            updateAge: AUTH_SESSION_CONFIG.updateAge,
-            // Explicitly persist sessions to the database (Better Auth 1.6.x default).
-            // Exported as AUTH_SESSION_STORE_IN_DATABASE for testability and audit trail.
-            storeSessionInDatabase: AUTH_SESSION_STORE_IN_DATABASE,
             cookieCache: {
                 enabled: true,
                 maxAge: AUTH_SESSION_CONFIG.cookieCacheMaxAge,
