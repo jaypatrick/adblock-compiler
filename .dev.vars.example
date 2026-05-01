@@ -32,10 +32,9 @@ BETTER_AUTH_URL=http://localhost:8787
 BETTER_AUTH_API_KEY=
 # REST API URL for the BETTER_AUTH_KV namespace (used by dash() and sentinel() kvUrl)
 # Construct from values already in wrangler.toml:
-#   Account ID:   CF_ACCOUNT_ID (wrangler.toml [vars]) = 07a1f8d207654fe5d838174af4813126
-#   Namespace ID: BETTER_AUTH_KV id ([[kv_namespaces]])  = 343029e0851240ad8f5799bac38b31bf
+#   Account ID:   CF_ACCOUNT_ID (wrangler.toml [vars])
+#   Namespace ID: BETTER_AUTH_KV id ([[kv_namespaces]])
 #   Formula: https://api.cloudflare.com/client/v4/accounts/<CF_ACCOUNT_ID>/storage/kv/namespaces/<BETTER_AUTH_KV_ID>
-#   Value:   https://api.cloudflare.com/client/v4/accounts/07a1f8d207654fe5d838174af4813126/storage/kv/namespaces/343029e0851240ad8f5799bac38b31bf
 # Production: `wrangler secret put BETTER_AUTH_KV_URL`
 BETTER_AUTH_KV_URL=
 
