@@ -71,7 +71,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY frontend/package.json ./frontend/
 
 # Install only the frontend workspace dependencies using the shared lockfile
-RUN --mount=type=cache,target=/root/.pnpm-store pnpm install --frozen-lockfile --filter adblock-frontend
+RUN --mount=type=cache,target=/root/.pnpm-store,sharing=locked pnpm install --frozen-lockfile --filter adblock-frontend
 
 # Copy frontend source (node_modules excluded via .dockerignore)
 COPY frontend/ ./frontend/
@@ -96,7 +96,7 @@ COPY package.json pnpm-lock.yaml ./
 # node_modules layout (like npm) so that the directory copies cleanly into the
 # runtime stage and `npx wrangler` resolves correctly without pnpm's symlink
 # virtual store.
-RUN --mount=type=cache,target=/root/.pnpm-store pnpm install --frozen-lockfile --ignore-workspace --shamefully-hoist
+RUN --mount=type=cache,target=/root/.pnpm-store,sharing=locked pnpm install --frozen-lockfile --ignore-workspace --shamefully-hoist
 
 # Copy Deno configuration
 COPY deno.json deno.lock ./
@@ -122,10 +122,11 @@ FROM node:24-bookworm-slim AS runtime
 
 WORKDIR /app
 
-# Install only curl for healthchecks (minimal runtime dependencies)
+# Install only curl for healthchecks and enable corepack so the pnpm shim is on PATH
 RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     --mount=type=cache,target=/var/lib/apt,sharing=locked \
-    apt-get update && apt-get install -y curl --no-install-recommends
+    apt-get update && apt-get install -y curl --no-install-recommends && \
+    corepack enable
 
 # Copy node_modules from builder (for Wrangler)
 COPY --from=builder /app/node_modules ./node_modules

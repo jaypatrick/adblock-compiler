@@ -5,6 +5,9 @@
 .github/
 
 # Secrets & Environment (never copy to image; pass via -e or --env-file)
+.env
+.env.*
+!.env.example
 .env.local
 .env.*.local
 .envrc
