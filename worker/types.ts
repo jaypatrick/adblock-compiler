@@ -684,10 +684,17 @@ export interface Env {
      * password reset, and security alerts where silent delivery failure
      * is unacceptable.
      *
+     * **Format:** Must start with `re_` followed by at least 8 alphanumeric or
+     * underscore characters (e.g. `re_test_xxxxxxxx` or `re_live_xxxxxxxx`).
+     * `ResendApiService` validates this format at construction time and throws
+     * a non-revealing error if the key does not match — do not store the raw
+     * key value in application logs or error messages.
+     *
      * Local dev:  add `RESEND_API_KEY=re_test_...` to .dev.vars
      * Production: `wrangler secret put RESEND_API_KEY`
      *
      * @see worker/services/email-service.ts — ResendEmailService
+     * @see worker/services/resend-api-service.ts — ResendApiService (format guard)
      * @see https://resend.com/api-keys
      */
     RESEND_API_KEY?: string;
