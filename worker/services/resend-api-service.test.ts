@@ -321,6 +321,27 @@ Deno.test('ResendApiService', async (t) => {
         );
     });
 
+    await t.step('updateTemplate — rejects payload with only undefined values (cannot bypass refine with { field: undefined })', async () => {
+        let fetchCalled = false;
+        await withFetch(
+            () => {
+                fetchCalled = true;
+                return new Response(null, { status: 200 });
+            },
+            async () => {
+                const svc = createResendApiService(FAKE_API_KEY);
+                // { alias: undefined } has one key but no defined values; JSON.stringify would
+                // drop it and produce `{}`. The refine guard must catch this before fetch.
+                await assertRejects(
+                    () => svc.updateTemplate(FAKE_TEMPLATE_ID, { alias: undefined } as never),
+                    Error,
+                    'Request validation failed',
+                );
+                assertEquals(fetchCalled, false, 'fetch must not be called for all-undefined input');
+            },
+        );
+    });
+
     // ── updateTemplate ─────────────────────────────────────────────────────
     await t.step('updateTemplate — sends PATCH to /templates/{id} with Authorization header and partial body', async () => {
         let capturedUrl = '';

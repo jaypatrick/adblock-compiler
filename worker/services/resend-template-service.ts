@@ -90,9 +90,10 @@ export interface IResendTemplateService {
  * Manages Bloqr email templates in the Resend dashboard.
  *
  * All public methods validate inputs with Zod at the service boundary before
- * forwarding to {@link ResendApiService}. Errors propagate as typed
- * `ResendApiError` or `ZodError` instances — API keys are never included in
- * error messages.
+ * forwarding to {@link ResendApiService}. Input validation failures throw a
+ * generic {@link Error}; downstream errors from {@link ResendApiService}
+ * propagate as `ResendApiError` (non-2xx) or `ZodError` (response parse) —
+ * API keys are never included in error messages.
  */
 export class ResendTemplateService implements IResendTemplateService {
     constructor(private readonly apiService: ResendApiService) {}
@@ -146,6 +147,10 @@ export class ResendTemplateService implements IResendTemplateService {
      * Find an existing template by alias (linear scan of listTemplates()).
      * Returns `undefined` if not found or if the list call fails.
      *
+     * **Idempotency is best-effort**: if the list call fails, `upsertTemplate`
+     * will proceed with a create, which may produce duplicate templates during
+     * transient outages. A warning is logged (without secrets) when this occurs.
+     *
      * @param alias - The template alias to search for.
      * @returns The matching template or `undefined`.
      */
@@ -153,8 +158,15 @@ export class ResendTemplateService implements IResendTemplateService {
         try {
             const list = await this.apiService.listTemplates();
             return list.data.find((t) => t.alias === alias);
-        } catch {
-            // If listing fails (e.g. network error), proceed with create — do not block upsert.
+        } catch (err) {
+            // Listing failed (e.g. network error or Resend API outage).
+            // Log a warning so operators can detect unexpected duplication during outages,
+            // but do not block the upsert — idempotency via alias is best-effort only.
+            // deno-lint-ignore no-console
+            console.warn(
+                '[ResendTemplateService] _findByAlias: listTemplates() failed; proceeding with create (idempotency best-effort).',
+                err instanceof Error ? err.message : String(err),
+            );
             return undefined;
         }
     }

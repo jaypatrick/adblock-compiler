@@ -126,6 +126,19 @@ Deno.test('ResendTemplateService', async (t) => {
         assertEquals(api.calls.length, 0);
     });
 
+    await t.step('upsertTemplate — when list fails, logs warning and falls back to createTemplate', async () => {
+        const api = makeTemplateApiStub({ failList: true });
+        const svc = new ResendTemplateService(api as never);
+
+        // Should not throw — best-effort fallback to create.
+        const result = await svc.upsertTemplate({ name: FAKE_TEMPLATE_NAME, html: FAKE_TEMPLATE_HTML, alias: 'welcome-email' });
+
+        assertEquals(api.calls.filter((c) => c.method === 'listTemplates').length, 1);
+        assertEquals(api.calls.filter((c) => c.method === 'createTemplate').length, 1);
+        assertEquals(api.calls.filter((c) => c.method === 'updateTemplate').length, 0);
+        assertEquals(result.id, FAKE_TEMPLATE_ID);
+    });
+
     await t.step('upsertTemplate — rejects alias with invalid characters', async () => {
         const api = makeTemplateApiStub();
         const svc = new ResendTemplateService(api as never);

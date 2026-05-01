@@ -89,7 +89,10 @@ export const ResendCreateTemplateRequestSchema = z.object({
 
 /** Request payload for updating a Resend template. */
 export const ResendUpdateTemplateRequestSchema = ResendCreateTemplateRequestSchema.partial().refine(
-    (data) => Object.keys(data).length > 0,
+    // Use Object.values to check for at least one defined value. Object.keys alone can be
+    // bypassed by passing e.g. `{ alias: undefined }` — JSON.stringify silently drops those
+    // keys, producing an empty `{}` request body despite the key-count check passing.
+    (data) => Object.values(data).some((v) => v !== undefined),
     { message: 'At least one field must be provided for update' },
 );
 
@@ -149,8 +152,10 @@ const BASE_URL = 'https://api.resend.com';
  * This file is the single integration point for all Resend API calls;
  * extend it here rather than calling the Resend API directly elsewhere.
  *
- * All methods validate requests and responses with Zod and throw a
- * {@link ResendApiError} on non-2xx responses or schema validation failures.
+ * All methods validate requests and responses with Zod. Non-2xx responses
+ * throw a {@link ResendApiError}. Request validation failures throw a generic
+ * {@link Error} before any network call is made. Response validation failures
+ * throw a `ZodError` (from `responseSchema.parse(json)`).
  */
 export class ResendApiService {
     // Resend API keys always start with `re_` followed by alphanumeric chars.
