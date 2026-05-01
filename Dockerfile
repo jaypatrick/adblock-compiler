@@ -3,8 +3,8 @@
 # Builds the Angular 21 frontend dist artifacts needed by wrangler dev.
 # In production the frontend runs as a separate Cloudflare Worker
 # (adblock-frontend) connected to the backend via a service binding.
-# Docker is used for local development convenience only.
-# Version: 0.8.9
+# Version: 0.9.1
+# Optimization: Multi-stage caching, minimal runtime, non-root user, healthcheck
 
 # Build argument for Deno version
 ARG DENO_VERSION=2.7.7
@@ -27,22 +27,18 @@ ARG DENO_VERSION
 # as it conflicts with BuildKit's multi-platform build detection
 ARG TARGETARCH
 
-# Install required packages
-RUN apt-get update && apt-get install -y \
+# Install required packages (build-only tools)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y \
     wget \
     unzip \
     ca-certificates \
-    dnsutils \
-    direnv \
-    --no-install-recommends && \
-    update-ca-certificates && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    --no-install-recommends
 
 # Download and install Deno
 # Note: Using --no-check-certificate as a workaround for Docker build environment SSL issues
-# In production, certificates should be properly configured
-RUN case ${TARGETARCH} in \
+RUN --mount=type=cache,target=/tmp,sharing=locked case ${TARGETARCH} in \
         amd64) DENO_ARCH="x86_64-unknown-linux-gnu" ;; \
         arm64) DENO_ARCH="aarch64-unknown-linux-gnu" ;; \
         *) echo "Unsupported architecture: ${TARGETARCH}" >&2; exit 1 ;; \
@@ -75,7 +71,7 @@ COPY pnpm-workspace.yaml package.json pnpm-lock.yaml ./
 COPY frontend/package.json ./frontend/
 
 # Install only the frontend workspace dependencies using the shared lockfile
-RUN pnpm install --frozen-lockfile --filter adblock-frontend
+RUN --mount=type=cache,target=/root/.pnpm-store pnpm install --frozen-lockfile --filter adblock-frontend
 
 # Copy frontend source (node_modules excluded via .dockerignore)
 COPY frontend/ ./frontend/
@@ -100,7 +96,7 @@ COPY package.json pnpm-lock.yaml ./
 # node_modules layout (like npm) so that the directory copies cleanly into the
 # runtime stage and `npx wrangler` resolves correctly without pnpm's symlink
 # virtual store.
-RUN pnpm install --frozen-lockfile --ignore-workspace --shamefully-hoist
+RUN --mount=type=cache,target=/root/.pnpm-store pnpm install --frozen-lockfile --ignore-workspace --shamefully-hoist
 
 # Copy Deno configuration
 COPY deno.json deno.lock ./
@@ -122,11 +118,14 @@ COPY --from=frontend-builder /app/frontend/dist ./frontend/dist
 # For CLI usage, build the executable outside Docker and mount it as a volume
 
 # Stage 4: Production runtime
-FROM node-base AS runtime
+FROM node:24-bookworm-slim AS runtime
 
-# Install curl and direnv for healthchecks and environment management
-RUN apt-get update && apt-get install -y curl direnv --no-install-recommends && \
-    apt-get clean && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+
+# Install only curl for healthchecks (minimal runtime dependencies)
+RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
+    --mount=type=cache,target=/var/lib/apt,sharing=locked \
+    apt-get update && apt-get install -y curl --no-install-recommends
 
 # Copy node_modules from builder (for Wrangler)
 COPY --from=builder /app/node_modules ./node_modules
@@ -142,11 +141,8 @@ COPY --from=builder /app/package.json ./
 # Copy built Angular frontend (SSR server + browser assets)
 COPY --from=builder /app/frontend/dist ./frontend/dist
 
-# Note: CLI executable not included in this image due to JSR access limitations during build
-# Use Wrangler dev server for the web UI and API
-
-# Create a non-root user
-RUN useradd -m -u 1001 appuser && \
+# Create a non-root user with minimal shell
+RUN useradd -m -u 1001 -s /sbin/nologin appuser && \
     chown -R appuser:appuser /app
 
 USER appuser
