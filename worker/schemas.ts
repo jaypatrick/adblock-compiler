@@ -994,10 +994,11 @@ export type ApiKeyRow = z.infer<typeof ApiKeyRowSchema>;
  *
  * `role` is nullish because older rows may pre-date the role column migration;
  * callers should default to `'user'` when it is absent (`null` or `undefined`).
+ * When present, it must still satisfy the same role constraints used elsewhere.
  */
 export const UserTierRowSchema = z.object({
     tier: z.nativeEnum(UserTier),
-    role: z.string().nullish(),
+    role: z.string().min(1).max(64).nullish(),
 });
 
 export type UserTierRow = z.infer<typeof UserTierRowSchema>;
