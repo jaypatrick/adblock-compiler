@@ -23,6 +23,7 @@ import {
     buildTrustedOriginsFn,
     createAuth,
     createKvSecondaryStorage,
+    isSentinelEnabled,
     PRISMA_SCHEMA_CONFIG,
     USER_FIELD_MAPPING,
     UUID_V4_REGEX,
@@ -219,8 +220,42 @@ Deno.test('AUTH_DISABLE_CSRF_CHECK is true — CSRF check must be disabled for n
 });
 
 // ============================================================================
-// buildTrustedOriginsFn — trusted origins builder
+// AUTH_SESSION_STORE_IN_DATABASE — session persistence guard
 // ============================================================================
+//
+// Better Auth 1.6.x changed getAuthTables() to exclude the session model from
+// its internal DB schema whenever secondaryStorage is configured, unless
+// session.storeSessionInDatabase is explicitly set to true.  The condition is:
+//
+//   ...!options.secondaryStorage || options.session?.storeSessionInDatabase ? sessionTable : {},
+//
+// When BETTER_AUTH_KV is bound (env.BETTER_AUTH_KV present), createAuth() sets
+// secondaryStorage via createKvSecondaryStorage().  Without storeSessionInDatabase: true,
+// the session table is omitted from the Better Auth schema — causing every sign-in to
+// fail with:
+//
+//   BetterAuthError: Model "session" not found in schema
+//
+// These tests guard against the regression being reintroduced:
+//   - AUTH_SESSION_STORE_IN_DATABASE must be exported (import fails if removed)
+//   - AUTH_SESSION_STORE_IN_DATABASE must be true (false re-breaks sign-in when KV is bound)
+//
+// These tests require no database connection.
+// ============================================================================
+
+Deno.test('AUTH_SESSION_STORE_IN_DATABASE is exported from auth module', () => {
+    assertExists(AUTH_SESSION_STORE_IN_DATABASE);
+});
+
+Deno.test('AUTH_SESSION_STORE_IN_DATABASE is true — sessions must persist to DB even when KV secondary storage is configured', () => {
+    assertEquals(typeof AUTH_SESSION_STORE_IN_DATABASE, 'boolean');
+    assertStrictEquals(
+        AUTH_SESSION_STORE_IN_DATABASE,
+        true,
+        'AUTH_SESSION_STORE_IN_DATABASE must be true; setting it to false while BETTER_AUTH_KV is bound will cause BetterAuthError: Model "session" not found in schema on every sign-in',
+    );
+});
+
 //
 // buildTrustedOriginsFn(env) returns a function that Better Auth calls to
 // obtain the list of trusted origins for URL validation (callbackURL,
@@ -576,4 +611,43 @@ Deno.test('AUTH_SESSION_STORE_IN_DATABASE is true — sessions must be persisted
         true,
         'AUTH_SESSION_STORE_IN_DATABASE must be true; setting it to false would disable database session persistence',
     );
+});
+
+// ============================================================================
+// isSentinelEnabled — BETTER_AUTH_SENTINEL_ENABLED gate helper
+// ============================================================================
+//
+// isSentinelEnabled() is a pure helper that returns true only when
+// BETTER_AUTH_SENTINEL_ENABLED is exactly "true". All other values (absent,
+// undefined, "false", "1", etc.) return false — ensuring the Sentinel plugin
+// is never loaded on the free/pilot tier without an explicit opt-in.
+// ============================================================================
+
+Deno.test('isSentinelEnabled is exported as a function', () => {
+    assertEquals(typeof isSentinelEnabled, 'function');
+});
+
+Deno.test('isSentinelEnabled returns true when BETTER_AUTH_SENTINEL_ENABLED is "true"', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: 'true' } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), true);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is absent', () => {
+    const env = {} as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is undefined', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: undefined } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is "false"', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: 'false' } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is "1"', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: '1' } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
 });

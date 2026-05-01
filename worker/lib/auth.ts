@@ -18,7 +18,7 @@
  * ## Plugin extensibility
  * The `plugins` array ships with the following active plugins:
  *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); requires `env.BETTER_AUTH_API_KEY` passed explicitly — Cloudflare Workers do not expose Worker Secrets via `process.env`; the plugin no-ops when the key is absent
- *   - `sentinel()` — infrastructure security: credential stuffing protection, impossible travel detection, bot blocking, suspicious IP blocking (from `@better-auth/infra`); also requires `env.BETTER_AUTH_API_KEY` passed explicitly (same reason as `dash()`)
+ *   - `sentinel()` — infrastructure security: credential stuffing protection, impossible travel detection, bot blocking, suspicious IP blocking (from `@better-auth/infra`); also requires `env.BETTER_AUTH_API_KEY` passed explicitly (same reason as `dash()`); **conditionally loaded** — only when `BETTER_AUTH_SENTINEL_ENABLED=true` (requires Better Auth Pro tier)
  *   - `bearer()` — API-first Bearer token auth
  *   - `twoFactor()` — TOTP/2FA
  *   - `multiSession()` — multiple active sessions
@@ -211,11 +211,33 @@ export const PRISMA_SCHEMA_CONFIG = {
 } as const;
 
 /**
- * Whether Better Auth sessions are persisted to the database.
+ * Whether sessions are persisted to the primary database (Prisma/Neon) even when
+ * Cloudflare KV secondary storage is configured via `BETTER_AUTH_KV`.
  *
- * Better Auth stores sessions in the database by default; this constant makes
- * that behaviour explicit and provides a regression-guard: a test can assert
- * this is `true` so that any accidental change is caught before it ships.
+ * Better Auth 1.6.x changed `getAuthTables()` to exclude the `session` model from
+ * its internal DB schema whenever `secondaryStorage` is provided, on the assumption
+ * that KV is the authoritative session store.  The condition in Better Auth source is:
+ *
+ * ```ts
+ * ...!options.secondaryStorage || options.session?.storeSessionInDatabase ? sessionTable : {},
+ * ```
+ *
+ * When `BETTER_AUTH_KV` is bound and `secondaryStorage` is wired (see `createAuth`),
+ * `!secondaryStorage` evaluates to `false`.  Without `storeSessionInDatabase: true`,
+ * the session table is omitted from the schema, causing every sign-in attempt to fail
+ * with:
+ *
+ *   ```
+ *   BetterAuthError: Model "session" not found in schema
+ *   ```
+ *
+ * Setting `storeSessionInDatabase: true` forces the session table back into the
+ * schema so the Prisma adapter creates, reads, and deletes sessions in Neon as usual.
+ * KV then acts as a fast edge cache (secondaryStorage) rather than the sole store.
+ *
+ * Exported as a named constant so regression tests can assert this is `true` and
+ * future reviewers have a clear audit trail — if this is ever changed to `false` while
+ * `BETTER_AUTH_KV` is bound, sign-in will break again.
  */
 export const AUTH_SESSION_STORE_IN_DATABASE = true as const;
 
@@ -348,6 +370,25 @@ export function buildSentinelOptions(env: Pick<Env, 'BETTER_AUTH_API_KEY' | 'BET
             suspiciousIpBlocking: true,
         },
     };
+}
+
+/**
+ * Returns `true` when the Sentinel plugin should be loaded.
+ *
+ * Sentinel is a **Better Auth Pro tier** feature.  Loading it on the free tier
+ * causes sign-in requests to hang with no response returned.  Gate it behind
+ * this helper so it can be safely enabled in production by setting
+ * `BETTER_AUTH_SENTINEL_ENABLED=true` in `wrangler.toml [vars]` — no code change
+ * required when upgrading to Pro.
+ *
+ * Only the exact string `"true"` enables the plugin; any other value (including
+ * `"1"`, `"false"`, or absent) leaves it disabled.
+ *
+ * Exported so it can be tested and used in future admin/config inspection
+ * endpoints.
+ */
+export function isSentinelEnabled(env: Pick<Env, 'BETTER_AUTH_SENTINEL_ENABLED'>): boolean {
+    return env.BETTER_AUTH_SENTINEL_ENABLED === 'true';
 }
 
 /**
@@ -498,6 +539,13 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
         },
 
         session: {
+            // ── Persist sessions in the primary database even when KV secondary ──
+            // storage is configured.  Better Auth 1.6.x excludes the session model
+            // from its internal DB schema when `secondaryStorage` is present, unless
+            // this flag is set.  Without it, sign-in fails with:
+            //   BetterAuthError: Model "session" not found in schema
+            // See AUTH_SESSION_STORE_IN_DATABASE for the full rationale.
+            storeSessionInDatabase: AUTH_SESSION_STORE_IN_DATABASE,
             // 7-day session expiry
             expiresIn: AUTH_SESSION_CONFIG.expiresIn,
             // Refresh session if it expires within 1 day
@@ -562,12 +610,13 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
             //             auditLogs is NOT in @better-auth/infra@0.2.5 (latest as of 2026-04).
             //             Uncomment once the package publishes the export:
             //   auditLogs({ retention: 90 }),
-            // Sentinel — infrastructure-level security plugin.
-            // Options are built by buildSentinelOptions(): apiKey/kvUrl are conditionally
-            // spread (same Worker-Secret passthrough requirement as dash()), and the static
-            // security block (credential stuffing, impossible travel, bot/IP blocking, etc.)
-            // is always included. See buildSentinelOptions() for details.
-            sentinel(buildSentinelOptions(env)),
+            // Sentinel — infrastructure-level security plugin (Better Auth Pro tier only).
+            // Guarded by isSentinelEnabled(env): only loaded when
+            // BETTER_AUTH_SENTINEL_ENABLED=true. Without the flag, the plugin is
+            // omitted entirely — loading it on the free/pilot tier causes sign-in
+            // requests to hang with no response. Set the flag in wrangler.toml [vars]
+            // when upgrading to Better Auth Pro; no code change required at that point.
+            ...(isSentinelEnabled(env) ? [sentinel(buildSentinelOptions(env))] : []),
             // Bearer token plugin — allows API authentication via Authorization: Bearer <token>
             // instead of browser cookies. Critical for this project's API-first architecture.
             bearer(),
