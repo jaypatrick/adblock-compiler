@@ -17,10 +17,8 @@ import json
 import os
 import subprocess
 import sys
-from datetime import datetime
 from pathlib import Path
 from typing import Any
-
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -36,6 +34,7 @@ LOG_FILE_TIMESTAMP_FORMAT = "%Y%m%d-%H%M%S"
 # ---------------------------------------------------------------------------
 # Path resolution
 # ---------------------------------------------------------------------------
+
 
 def _repo_root() -> Path:
     """Return the repository root (parent of the tools/ directory)."""
@@ -59,6 +58,7 @@ def runbooks_dir() -> Path:
 # ---------------------------------------------------------------------------
 # Environment helpers
 # ---------------------------------------------------------------------------
+
 
 def load_env_file(tool_name: str) -> dict[str, str]:
     """Load a tools/<tool_name>.env file and return a dict of variables."""
@@ -86,7 +86,7 @@ def check_env_var(name: str, required: bool = True) -> tuple[bool, str]:
         return True, f"✅ `{name}` = `{masked}`"
     if required:
         return False, f"❌ `{name}` is **not set** (required)"
-    return True, f"ℹ️ `{name}` is not set (optional)"
+    return True, f"ℹ️ `{name}` is not set (optional)"  # noqa: RUF001
 
 
 def check_command(cmd: str) -> tuple[bool, str]:
@@ -107,16 +107,20 @@ def check_python_package(package: str, pip_name: str | None = None) -> tuple[boo
 
     Args:
         package: The import name of the package (e.g. ``"psycopg2"``).
-        pip_name: The ``pip install`` name if it differs from the import name
-            (e.g. ``"psycopg2-binary"``). Defaults to *package*.
+        pip_name: The package specifier name in ``pyproject.toml`` if it differs
+            from the import name (e.g. ``"psycopg2-binary"``). Defaults to *package*.
     """
     install_name = pip_name or package
     try:
         import importlib
+
         importlib.import_module(package.replace("-", "_"))
         return True, f"✅ `{package}` is installed"
     except ImportError:
-        return False, f"❌ `{package}` is not installed — run: pip install {install_name}"
+        return (
+            False,
+            f"❌ `{install_name}` is not installed — run: `uv sync --directory tools` to install all project dependencies",
+        )
 
 
 def prerequisites_summary(
@@ -133,11 +137,11 @@ def prerequisites_summary(
         env_vars: (name, required) tuples to check
     """
     results: list[tuple[bool, str]] = []
-    for cmd in (commands or []):
+    for cmd in commands or []:
         results.append(check_command(cmd))
-    for pkg in (packages or []):
+    for pkg in packages or []:
         results.append(check_python_package(pkg))
-    for name, required in (env_vars or []):
+    for name, required in env_vars or []:
         results.append(check_env_var(name, required))
     return results
 
@@ -145,6 +149,7 @@ def prerequisites_summary(
 # ---------------------------------------------------------------------------
 # Log file helpers
 # ---------------------------------------------------------------------------
+
 
 def list_log_files(tool_name: str, extension: str = ".json") -> list[Path]:
     """Return a sorted list of log files for a tool (newest first)."""
@@ -195,6 +200,7 @@ def read_log_file(path: Path, max_lines: int = 500) -> str:
 # (These return marimo objects and require `import marimo as mo` to be available)
 # ---------------------------------------------------------------------------
 
+
 def render_status_badge(status: str) -> str:
     """Return an HTML badge string for a status value."""
     colours = {
@@ -202,7 +208,7 @@ def render_status_badge(status: str) -> str:
         "FAIL": ("❌", "#fee2e2", "#991b1b"),
         "WARN": ("⚠️", "#fef3c7", "#92400e"),
         "SKIP": ("⏭️", "#f3f4f6", "#374151"),
-        "RUN":  ("🔄", "#e0e7ff", "#3730a3"),
+        "RUN": ("🔄", "#e0e7ff", "#3730a3"),
     }
     emoji, bg, fg = colours.get(status.upper(), ("❓", "#f9fafb", "#111827"))
     safe_status = html.escape(status, quote=True)
@@ -257,15 +263,14 @@ def render_report_results_html(results: dict[str, dict]) -> str:
         "<th style='padding:6px 12px;text-align:left'>Check</th>"
         "<th style='padding:6px 12px;text-align:left'>Status</th>"
         "<th style='padding:6px 12px;text-align:left'>Detail</th>"
-        "</tr>"
-        + "".join(rows)
-        + "</table>"
+        "</tr>" + "".join(rows) + "</table>"
     )
 
 
 # ---------------------------------------------------------------------------
 # Tool execution
 # ---------------------------------------------------------------------------
+
 
 def run_tool(
     script_path: Path,

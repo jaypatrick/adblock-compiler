@@ -124,7 +124,7 @@ def _header(mo):
 def _prerequisites(mo, check_command, check_python_package):
     mo.md("## 1 · Prerequisites")
 
-    checks = [
+    _checks = [
         check_command("wrangler"),
         check_command("python3"),
         check_python_package("requests"),
@@ -133,30 +133,36 @@ def _prerequisites(mo, check_command, check_python_package):
         check_python_package("marimo"),
     ]
 
-    all_ok = all(ok for ok, _ in checks)
-    items = [msg for _, msg in checks]
+    _all_ok = all(ok for ok, _ in _checks)
+    _items = [msg for _, msg in _checks]
 
-    status_line = (
+    _status_line = (
         mo.callout(mo.md("✅ All prerequisites satisfied"), kind="success")
-        if all_ok
+        if _all_ok
         else mo.callout(
             mo.md(
                 "⚠️ Some prerequisites are missing. Install them with:\n\n"
                 "```bash\n"
-                "python3 -m venv tools/.venv\n"
-                "source tools/.venv/bin/activate\n"
-                "pip install -r tools/runbooks/requirements.txt\n"
-                "```"
+                "# From the repo root — uv manages the venv automatically:\n"
+                "uv sync --directory tools\n"
+                "\n"
+                "# Or run this runbook directly via uv (zero-setup):\n"
+                "uv run --directory tools marimo run runbooks/auth-healthcheck.py\n"
+                "```\n"
+                "\n"
+                "> **Never use pip or venv manually.** This project uses [uv](https://docs.astral.sh/uv/) exclusively."
             ),
             kind="warn",
         )
     )
 
     return (
-        mo.vstack([
-            status_line,
-            mo.md("\n".join(f"- {item}" for item in items)),
-        ]),
+        mo.vstack(
+            [
+                _status_line,
+                mo.md("\n".join(f"- {item}" for item in _items)),
+            ]
+        ),
     )
 
 
@@ -164,43 +170,45 @@ def _prerequisites(mo, check_command, check_python_package):
 @app.cell(hide_code=True)
 def _config_loader(mo, load_env_file):
     mo.md("## 2 · Configuration")
-    _env = load_env_file("auth-healthcheck")
-    return (_env,)
+    # env is a cross-cell output — no _ prefix
+    env = load_env_file("auth-healthcheck")
+    return (env,)
 
 
 @app.cell(hide_code=True)
-def _config_form(mo, _env):
-    _api_base = mo.ui.text(
+def _config_form(mo, env):
+    # All of these are cross-cell outputs consumed by _execute — no _ prefix
+    api_base = mo.ui.text(
         label="API Base URL",
-        value=_env.get("API_BASE", "https://api.bloqr.dev/api"),
+        value=env.get("API_BASE", "https://api.bloqr.dev/api"),
         placeholder="https://api.bloqr.dev/api",
         full_width=True,
     )
-    _test_email = mo.ui.text(
+    test_email = mo.ui.text(
         label="Test email (leave blank to auto-generate)",
-        value=_env.get("TEST_EMAIL", ""),
+        value=env.get("TEST_EMAIL", ""),
         placeholder="auto-generated if blank",
         full_width=True,
     )
-    _neon_url = mo.ui.text(
+    neon_url = mo.ui.text(
         label="NEON_URL (PostgreSQL connection string)",
-        value=_env.get("NEON_URL", ""),
+        value=env.get("NEON_URL", ""),
         placeholder="postgresql://user:pass@host.neon.tech/db?sslmode=require",
         full_width=True,
     )
-    _api_key = mo.ui.text(
+    api_key = mo.ui.text(
         label="BETTER_AUTH_API_KEY (optional — enables admin API check)",
-        value=_env.get("BETTER_AUTH_API_KEY", ""),
+        value=env.get("BETTER_AUTH_API_KEY", ""),
         placeholder="Optional",
         full_width=True,
     )
-    _enable_tail = mo.ui.checkbox(
+    enable_tail = mo.ui.checkbox(
         label="Enable wrangler tail (background log capture)",
-        value=_env.get("ENABLE_TAIL", "true").lower() == "true",
+        value=env.get("ENABLE_TAIL", "true").lower() == "true",
     )
-    _wrangler_env = mo.ui.text(
+    wrangler_env = mo.ui.text(
         label="Wrangler environment (leave blank for production default)",
-        value=_env.get("WRANGLER_ENV", ""),
+        value=env.get("WRANGLER_ENV", ""),
         placeholder="e.g. dev, staging",
         full_width=True,
     )
@@ -215,18 +223,20 @@ def _config_form(mo, _env):
     )
 
     return (
-        mo.vstack([
-            mo.hstack([_api_base, _wrangler_env], gap="1rem"),
-            mo.hstack([_test_email, _api_key], gap="1rem"),
-            _neon_url,
-            _enable_tail,
-        ]),
-        _api_base,
-        _test_email,
-        _neon_url,
-        _api_key,
-        _enable_tail,
-        _wrangler_env,
+        mo.vstack(
+            [
+                mo.hstack([api_base, wrangler_env], gap="1rem"),
+                mo.hstack([test_email, api_key], gap="1rem"),
+                neon_url,
+                enable_tail,
+            ]
+        ),
+        api_base,
+        test_email,
+        neon_url,
+        api_key,
+        enable_tail,
+        wrangler_env,
     )
 
 
@@ -235,7 +245,8 @@ def _config_form(mo, _env):
 def _run_mode(mo):
     mo.md("## 3 · Run Mode")
 
-    _mode = mo.ui.dropdown(
+    # mode and dry_run are cross-cell outputs — no _ prefix
+    mode = mo.ui.dropdown(
         label="Run mode",
         options={
             "checks": "🔍 Checks only — run all checks, leave test data in place",
@@ -244,7 +255,7 @@ def _run_mode(mo):
         },
         value="checks",
     )
-    _dry_run = mo.ui.checkbox(
+    dry_run = mo.ui.checkbox(
         label="Dry run — print configuration and exit without making any requests",
         value=False,
     )
@@ -260,13 +271,13 @@ def _run_mode(mo):
     )
 
     return (
-        mo.vstack([_mode, _dry_run]),
-        _mode,
-        _dry_run,
+        mo.vstack([mode, dry_run]),
+        mode,
+        dry_run,
     )
 
 
-# ── Cell 5: Execute ─────────────────────────────────────────────────────────
+# ── Cell 5: Execute ──────────────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _execute_section(mo):
     mo.md("## 4 · Execute")
@@ -275,22 +286,23 @@ def _execute_section(mo):
 
 @app.cell
 def _run_button(mo):
-    _run = mo.ui.run_button(label="▶ Run auth-healthcheck")
-    return (_run,)
+    # run_button is a cross-cell output — no _ prefix
+    run_button = mo.ui.run_button(label="▶ Run auth-healthcheck")
+    return (run_button,)
 
 
 @app.cell
 def _execute(
     mo,
-    _run,
-    _mode,
-    _dry_run,
-    _api_base,
-    _test_email,
-    _neon_url,
-    _api_key,
-    _enable_tail,
-    _wrangler_env,
+    run_button,
+    mode,
+    dry_run,
+    api_base,
+    test_email,
+    neon_url,
+    api_key,
+    enable_tail,
+    wrangler_env,
     Path,
     run_tool,
     tools_dir,
@@ -299,49 +311,55 @@ def _execute(
     json,
     os,
 ):
-    if not _run.value:
+    if not run_button.value:
         mo.stop(True, mo.md("_Click **▶ Run auth-healthcheck** to execute._"))
 
-    script = tools_dir() / "auth-healthcheck.py"
-    if not script.exists():
-        mo.stop(True, mo.callout(mo.md(f"❌ Script not found: `{script}`"), kind="danger"))
+    _script = tools_dir() / "auth-healthcheck.py"
+    if not _script.exists():
+        mo.stop(True, mo.callout(mo.md(f"❌ Script not found: `{_script}`"), kind="danger"))
 
-    env_overrides: dict[str, str] = {}
-    if _api_base.value:
-        env_overrides["API_BASE"] = _api_base.value
-    if _test_email.value:
-        env_overrides["TEST_EMAIL"] = _test_email.value
-    if _neon_url.value:
-        env_overrides["NEON_URL"] = _neon_url.value
-    if _api_key.value:
-        env_overrides["BETTER_AUTH_API_KEY"] = _api_key.value
-    env_overrides["ENABLE_TAIL"] = "true" if _enable_tail.value else "false"
-    if _wrangler_env.value:
-        env_overrides["WRANGLER_ENV"] = _wrangler_env.value
+    _env_overrides: dict[str, str] = {}
+    if api_base.value:
+        _env_overrides["API_BASE"] = api_base.value
+    if test_email.value:
+        _env_overrides["TEST_EMAIL"] = test_email.value
+    if neon_url.value:
+        _env_overrides["NEON_URL"] = neon_url.value
+    if api_key.value:
+        _env_overrides["BETTER_AUTH_API_KEY"] = api_key.value
+    _env_overrides["ENABLE_TAIL"] = "true" if enable_tail.value else "false"
+    if wrangler_env.value:
+        _env_overrides["WRANGLER_ENV"] = wrangler_env.value
 
     with mo.status.spinner(title="Running auth-healthcheck…"):
-        returncode, stdout, stderr = run_tool(
-            script_path=script,
-            mode=_mode.value,
-            dry_run=_dry_run.value,
-            env_overrides=env_overrides,
+        _rc, _stdout, _stderr = run_tool(
+            script_path=_script,
+            mode=mode.value,
+            dry_run=dry_run.value,
+            env_overrides=_env_overrides,
         )
 
-    output_combined = stdout + ("\n\nSTDERR:\n" + stderr if stderr.strip() else "")
+    _output_combined = _stdout + ("\n\nSTDERR:\n" + _stderr if _stderr.strip() else "")
 
-    status_badge = "✅ PASSED" if returncode == 0 else "❌ FAILED"
-    callout_kind = "success" if returncode == 0 else "danger"
-    result_callout = mo.callout(
-        mo.md(f"**Exit code {returncode}** — {status_badge}"),
-        kind=callout_kind,
+    _status_badge = "✅ PASSED" if _rc == 0 else "❌ FAILED"
+    _callout_kind = "success" if _rc == 0 else "danger"
+    _result_callout = mo.callout(
+        mo.md(f"**Exit code {_rc}** — {_status_badge}"),
+        kind=_callout_kind,
     )
 
+    # returncode and output_combined are cross-cell outputs — no _ prefix
+    returncode = _rc
+    output_combined = _output_combined
+
     return (
-        mo.vstack([
-            result_callout,
-            mo.md("### Output"),
-            mo.code(output_combined, language="text"),
-        ]),
+        mo.vstack(
+            [
+                _result_callout,
+                mo.md("### Output"),
+                mo.code(_output_combined, language="text"),
+            ]
+        ),
         returncode,
         output_combined,
     )
@@ -371,54 +389,60 @@ def _results(
     if returncode is None:
         mo.stop(True, None)
 
-    json_files = list_log_files("auth-healthcheck", ".json")
-    if not json_files:
+    _json_files = list_log_files("auth-healthcheck", ".json")
+    if not _json_files:
         mo.stop(
             True,
             mo.callout(
-                mo.md("No JSON report found in `tools/logs/auth-healthcheck/`. "
-                      "The script may have exited before writing the report."),
+                mo.md(
+                    "No JSON report found in `tools/logs/auth-healthcheck/`. "
+                    "The script may have exited before writing the report."
+                ),
                 kind="warn",
             ),
         )
 
-    latest = json_files[0]
-    report = load_report(latest)
-    if report is None:
+    _latest = _json_files[0]
+    _report = load_report(_latest)
+    if _report is None:
         mo.stop(
             True,
-            mo.callout(mo.md(f"Could not parse `{latest}`"), kind="danger"),
+            mo.callout(mo.md(f"Could not parse `{_latest}`"), kind="danger"),
         )
 
-    summary = report.get("summary", {})
-    results = report.get("results", {})
-    errors = report.get("errors", [])
-    ts = report.get("timestamp", "?")
+    _summary = _report.get("summary", {})
+    _results_data = _report.get("results", {})
+    _errors = _report.get("errors", [])
+    _ts = _report.get("timestamp", "?")
 
-    summary_html = render_summary_table_html(summary)
-    results_html = render_report_results_html(results)
+    _summary_html = render_summary_table_html(_summary)
+    _results_html = render_report_results_html(_results_data)
 
-    errors_section = ""
-    if errors:
-        error_items = "\n".join(
+    _errors_section = ""
+    if _errors:
+        _error_items = "\n".join(
             f"- `{html.escape(str(e.get('check', '?')), quote=True)}`: {html.escape(str(e.get('detail', '')), quote=True)}"
-            for e in errors
+            for e in _errors
         )
-        errors_section = f"\n### Errors\n\n{error_items}"
+        _errors_section = f"\n### Errors\n\n{_error_items}"
 
-    raw_json = json.dumps(report, indent=2)
+    _raw_json = json.dumps(_report, indent=2)
 
     return (
-        mo.vstack([
-            mo.md(f"**Report:** `{latest.name}` · **Ran at:** {ts}"),
-            mo.Html(summary_html),
-            mo.md("### Check Details"),
-            mo.Html(results_html),
-            mo.md(errors_section) if errors_section else mo.md(""),
-            mo.accordion({
-                "📋 Raw JSON report (click to expand)": mo.code(raw_json, language="json"),
-            }),
-        ]),
+        mo.vstack(
+            [
+                mo.md(f"**Report:** `{_latest.name}` · **Ran at:** {_ts}"),
+                mo.Html(_summary_html),
+                mo.md("### Check Details"),
+                mo.Html(_results_html),
+                mo.md(_errors_section) if _errors_section else mo.md(""),
+                mo.accordion(
+                    {
+                        "📋 Raw JSON report (click to expand)": mo.code(_raw_json, language="json"),
+                    }
+                ),
+            ]
+        ),
     )
 
 
@@ -440,10 +464,11 @@ def _log_browser_header(mo):
 @app.cell(hide_code=True)
 def _log_browser(mo, list_log_files, Path):
     _json_files = list_log_files("auth-healthcheck", ".json")
-    _log_files = list_log_files("auth-healthcheck", ".log")
-    _all_files = _json_files + _log_files
+    _log_files_list = list_log_files("auth-healthcheck", ".log")
+    # all_log_files and log_file_selector are cross-cell outputs — no _ prefix
+    all_log_files = _json_files + _log_files_list
 
-    if not _all_files:
+    if not all_log_files:
         mo.stop(
             True,
             mo.callout(
@@ -453,43 +478,43 @@ def _log_browser(mo, list_log_files, Path):
         )
 
     # Keys are full paths (returned by .value); display values are filenames.
-    # Marimo dropdowns return the dict KEY as .value, so use absolute path as key
-    # to avoid Path(_file_selector.value) resolving a bare filename as a relative path.
-    _file_options = {str(f): f.name for f in _all_files}
+    _file_options = {str(f): f.name for f in all_log_files}
 
-    _file_selector = mo.ui.dropdown(
+    log_file_selector = mo.ui.dropdown(
         label="Select log file",
         options=_file_options,
-        value=list(_file_options.keys())[0] if _file_options else None,
+        value=next(iter(_file_options.keys())) if _file_options else None,
     )
-    return (_file_selector, _all_files, _file_options)
+    return (log_file_selector, all_log_files)
 
 
 @app.cell(hide_code=True)
-def _log_viewer(mo, _file_selector, _all_files, read_log_file, Path):
-    if not _all_files:
+def _log_viewer(mo, log_file_selector, all_log_files, read_log_file, Path):
+    if not all_log_files:
         mo.stop(True, None)
 
-    selected_path = Path(_file_selector.value) if _file_selector.value else None
-    if selected_path is None or not selected_path.exists():
+    _selected_path = Path(log_file_selector.value) if log_file_selector.value else None
+    if _selected_path is None or not _selected_path.exists():
         mo.stop(True, mo.md("_Select a file above to view its contents._"))
 
-    contents = read_log_file(selected_path)
-    lang = "json" if selected_path.suffix == ".json" else "text"
+    _contents = read_log_file(_selected_path)
+    _lang = "json" if _selected_path.suffix == ".json" else "text"
 
     return (
-        mo.vstack([
-            mo.md(f"**File:** `{selected_path}`"),
-            mo.callout(
-                mo.md(
-                    f"📁 **To share with an AI assistant:** Copy the file path below "
-                    f"and paste it into your chat, or drag the file from your file manager.\n\n"
-                    f"```\n{selected_path}\n```"
+        mo.vstack(
+            [
+                mo.md(f"**File:** `{_selected_path}`"),
+                mo.callout(
+                    mo.md(
+                        f"📁 **To share with an AI assistant:** Copy the file path below "
+                        f"and paste it into your chat, or drag the file from your file manager.\n\n"
+                        f"```\n{_selected_path}\n```"
+                    ),
+                    kind="info",
                 ),
-                kind="info",
-            ),
-            mo.code(contents, language=lang),
-        ]),
+                mo.code(_contents, language=_lang),
+            ]
+        ),
     )
 
 

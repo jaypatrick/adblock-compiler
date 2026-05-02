@@ -1,4 +1,10 @@
+# pnpm workspace packages
+# Add new TypeScript/Node packages here when they are created.
+# Python packages (tools/runbooks, etc.) are managed via uv — not listed here.
 packages:
     - 'frontend'
     - 'examples/cloudflare-worker'
     - 'docs-starlight'
+    # Future packages: uncomment and add paths as new sub-projects are created
+    # - 'packages/admin-panel'
+    # - 'packages/admin'

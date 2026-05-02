@@ -10,7 +10,6 @@ from pathlib import Path
 
 import pytest
 
-
 # Make the runbooks/shared package importable from tests
 _runbooks_dir = Path(__file__).resolve().parent.parent / "runbooks"
 if str(_runbooks_dir) not in sys.path:
