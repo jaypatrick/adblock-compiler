@@ -319,7 +319,10 @@ def _pipeline_execute(
                 )
             )
             break
-    return (pipeline_results,)
+    return (
+        mo.vstack(_output_sections),
+        pipeline_results,
+    )
 
 
 @app.cell(hide_code=True)
@@ -375,7 +378,15 @@ def _aggregate_results(
             if _rpt:
                 _rhtml = render_report_results_html(_rpt.get("results", {}))
                 _report_accordions.append(mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)}))
-    return
+    return (
+        mo.vstack(
+            [
+                mo.md(f"**Overall:** {_overall_badge} — {_npassed}/{_total} tools passed"),
+                mo.Html(_summary_html),
+                *_report_accordions,
+            ],
+        ),
+    )
 
 
 @app.cell(hide_code=True)
@@ -430,7 +441,22 @@ def _log_viewer(
 
     _contents = read_log_file(_selected)
     _lang = "json" if _selected.suffix == ".json" else "text"
-    return
+    return (
+        mo.vstack(
+            [
+                mo.md(f"**File:** `{_selected}`"),
+                mo.callout(
+                    mo.md(
+                        f"📁 **To share with an AI assistant:** Copy the file path below "
+                        f"and paste it into your chat, or drag the file from your file manager.\n\n"
+                        f"```\n{_selected}\n```"
+                    ),
+                    kind="info",
+                ),
+                mo.code(_contents, language=_lang),
+            ],
+        ),
+    )
 
 
 @app.cell(hide_code=True)
@@ -499,7 +525,7 @@ def _quick_reference(mo):
 
     | Problem | Fix |
     |---|---|
-    | `ImportError: No module named 'marimo'` | `pip install marimo` |
+    | `ImportError: No module named 'marimo'` | `uv sync --directory tools` (from repo root) |
     | `ImportError: No module named 'shared'` | Run from repo root: `marimo run tools/runbooks/pipeline.py` |
     | Cells show `None` | A dependency cell stopped early — check the cell above it |
     | Dashboard shows all `NEVER_RUN` | No tool has been run yet — run at least one tool first |
