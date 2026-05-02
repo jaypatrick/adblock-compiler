@@ -29,7 +29,12 @@ const INTERACTIVE_AUTH_METHODS = new Set(['better-auth']);
 
 export const apiKeysRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
-// OpenAPI-compatible request schemas aligned with the shared schemas in worker/schemas.ts
+// OpenAPI-compatible request schemas.
+// createApiKeyRequestSchema is intentionally kept in sync with CreateApiKeyRequestSchema
+// in worker/schemas.ts (same fields, same constraints). The duplicate exists because
+// OpenAPI tooling (hono/zod-openapi) requires schemas registered at route-definition
+// time, while schemas.ts holds the canonical Zod definitions used outside of Hono.
+// If you update one, update the other.
 const createApiKeyRequestSchema = z.object({
     name: z.string().trim().min(1).max(100).describe('Human-readable name for the API key'),
     scopes: z.array(z.nativeEnum(AuthScope)).optional().default([AuthScope.Compile]).describe('Permission scopes for the key (defaults to [compile])'),

@@ -53,6 +53,15 @@ mindmap
 - [Observability & Audit](admin/observability.md) - Audit trail, metrics dashboards, and structured logging
 - [Operator Guide](admin/operator-guide.md) - Deploy, configure, and maintain the admin system
 
+### Ops Tools & Runbooks
+
+Interactive diagnostic tooling for production systems. Run from your laptop; no server required.
+
+- [Tools Overview](tools/README.md) — All tools, Marimo runbook setup, and pipeline chaining guide
+- [Auth Healthcheck](../tools/docs/auth-healthcheck/README.md) — End-to-end Better Auth diagnostic
+- [Master Pipeline Runbook](../tools/runbooks/pipeline.py) — Launch with `deno task runbook:pipeline`
+- [KB Articles](troubleshooting/README.md) — Production incident knowledge base (KB-001 … KB-007)
+
 ### Getting Started
 
 - [Quick Start Guide](guides/quick-start.md) - Get up and running with Docker in minutes

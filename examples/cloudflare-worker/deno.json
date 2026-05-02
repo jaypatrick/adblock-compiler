@@ -1,4 +1,6 @@
 {
+    "name": "@jk-com/adblock-compiler-worker-example",
+    "exports": "./worker-bundle.ts",
     "compilerOptions": {
         "lib": ["deno.worker"],
         "types": ["@cloudflare/workers-types"],

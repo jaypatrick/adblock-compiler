@@ -226,15 +226,25 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                 console.log(`[WORKFLOW:HEALTH] Loading health history`);
 
                 const historyKey = 'health:history';
-                const history = await this.env.METRICS.get(historyKey, 'json') as {
+                let history: {
                     checks: Array<{
                         timestamp: string;
                         results: Record<string, { healthy: boolean; responseTimeMs?: number }>;
                     }>;
-                } | null;
+                } | null = null;
+                try {
+                    history = await this.env.METRICS.get(historyKey, 'json') as typeof history;
+                } catch (kvError) {
+                    console.warn(`[WORKFLOW:HEALTH] KV read failed for ${historyKey}, proceeding with empty history:`, kvError);
+                }
 
                 await events.emitProgress(10, 'Health history loaded');
-                const resolvedHistory = history || { checks: [] };
+                const resolvedHistory: {
+                    checks: Array<{
+                        timestamp: string;
+                        results: Record<string, { healthy: boolean; responseTimeMs?: number }>;
+                    }>;
+                } = history || { checks: [] };
                 await events.emitStepCompleted('load-health-history', { checkCount: resolvedHistory.checks.length });
                 return resolvedHistory;
             });
@@ -473,7 +483,7 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
 
                 // Update aggregate metrics
                 const metricsKey = 'workflow:health:metrics';
-                const existingMetrics = await this.env.METRICS.get(metricsKey, 'json') as {
+                let existingMetrics: {
                     totalChecks: number;
                     totalSourcesChecked: number;
                     totalHealthy: number;
@@ -481,7 +491,12 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
                     alertsTriggered: number;
                     lastCheckAt: string;
                     avgCheckDurationMs: number;
-                } | null;
+                } | null = null;
+                try {
+                    existingMetrics = await this.env.METRICS.get(metricsKey, 'json') as typeof existingMetrics;
+                } catch (kvError) {
+                    console.warn(`[WORKFLOW:HEALTH] KV read failed for ${metricsKey}, using fresh metrics:`, kvError);
+                }
 
                 const metrics = existingMetrics || {
                     totalChecks: 0,
@@ -550,7 +565,15 @@ export class HealthMonitoringWorkflow extends WorkflowEntrypoint<Env, HealthMoni
             };
         } catch (error) {
             const errorMessage = error instanceof Error ? error.message : String(error);
-            await captureExceptionInIsolate(this.env, error);
+
+            // Best-effort only: do not await Sentry reporting here. The previous
+            // Promise.race timeout did not cancel the underlying transport, so it
+            // could still leave in-flight work while adding complexity to the
+            // failure path. Logging remains asynchronous and must never mask or
+            // delay the original workflow failure handling.
+            void captureExceptionInIsolate(this.env, error).catch((sentryError) => {
+                console.warn('[WORKFLOW:HEALTH] Sentry error reporting failed:', sentryError);
+            });
             console.error(`[WORKFLOW:HEALTH] Health monitoring failed (runId: ${runId}): ${errorMessage}`);
 
             // Only emit failure events when METRICS is available. The guard

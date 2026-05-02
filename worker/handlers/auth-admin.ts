@@ -1,14 +1,21 @@
 /**
- * Auth Admin Handlers
+ * Auth Admin Handlers — LEGACY / DEAD CODE
  *
- * Admin endpoints for managing users and API keys via Hyperdrive.
- * All endpoints require admin authentication (ADMIN_KEY or admin-scoped API key).
+ * @deprecated All five handlers in this module are UNROUTED — none of them are
+ *   registered in any Hono router or invoked by any live code path. They were
+ *   written against a raw pg pool (Hyperdrive) before the project migrated to
+ *   Prisma + the Better Auth admin plugin.
  *
- * Endpoints:
- *   POST /admin/auth/users       — Create a user
- *   POST /admin/auth/api-keys    — Create an API key for a user
- *   POST /admin/auth/api-keys/revoke — Revoke an API key
- *   GET  /admin/auth/api-keys    — List API keys for a user
+ *   Do NOT add new routes pointing to these handlers. Use the following instead:
+ *   - User management  → `auth.api.admin.*` (Better Auth admin plugin)
+ *   - API key CRUD     → `worker/routes/api-keys.routes.ts` (Prisma-backed)
+ *
+ * Original (non-functional) endpoint list for historical reference:
+ *   POST /admin/auth/users             — Create a user
+ *   POST /admin/auth/api-keys          — Create an API key for a user
+ *   POST /admin/auth/api-keys/revoke   — Revoke an API key
+ *   GET  /admin/auth/api-keys          — List API keys for a user
+ *   POST /admin/auth/api-keys/validate — Validate an API key (admin only)
  */
 
 import type { HyperdriveBinding } from '../types.ts';
@@ -37,7 +44,9 @@ type PgPoolFactory = (connectionString: string) => PgPool;
  * Request body: { email: string, displayName?: string, role?: 'admin' | 'user' | 'readonly' }
  * Response: { id: string, email: string, role: string }
  *
- * @deprecated Use Better Auth admin API instead. This handler uses a raw pg pool and will be removed.
+ * @deprecated UNROUTED — no router currently maps a path to this handler.
+ *   Use `auth.api.admin.createUser()` (Better Auth admin plugin) instead.
+ *   This handler uses a raw pg pool and will be removed in a future cleanup.
  */
 export async function handleCreateUser(
     request: Request,
@@ -91,7 +100,9 @@ export async function handleCreateUser(
  *
  * IMPORTANT: The raw API key is only returned once. Store it securely.
  *
- * @deprecated Use the user-facing api-keys handlers with Prisma instead. This handler uses a raw pg pool and will be removed.
+ * @deprecated UNROUTED — no router currently maps a path to this handler.
+ *   Use the user-facing api-keys handlers with Prisma instead.
+ *   This handler uses a raw pg pool and will be removed in a future cleanup.
  */
 export async function handleCreateApiKey(
     request: Request,
@@ -160,7 +171,9 @@ export async function handleCreateApiKey(
  *
  * Request body: { apiKeyId: string } or { keyPrefix: string }
  *
- * @deprecated Use the user-facing api-keys handlers with Prisma instead. This handler uses a raw pg pool and will be removed.
+ * @deprecated UNROUTED — no router currently maps a path to this handler.
+ *   Use the user-facing api-keys handlers with Prisma instead.
+ *   This handler uses a raw pg pool and will be removed in a future cleanup.
  */
 export async function handleRevokeApiKey(
     request: Request,
@@ -212,7 +225,9 @@ export async function handleRevokeApiKey(
  *
  * Query param: ?userId=<uuid>
  *
- * @deprecated Use the user-facing api-keys handlers with Prisma instead. This handler uses a raw pg pool and will be removed.
+ * @deprecated UNROUTED — no router currently maps a path to this handler.
+ *   Use the user-facing api-keys handlers with Prisma instead.
+ *   This handler uses a raw pg pool and will be removed in a future cleanup.
  */
 export async function handleListApiKeys(
     request: Request,
@@ -275,7 +290,9 @@ export async function handleListApiKeys(
  *
  * Request body: { apiKey: string }
  *
- * @deprecated Use the user-facing api-keys handlers with Prisma instead. This handler uses a raw pg pool and will be removed.
+ * @deprecated UNROUTED — no router currently maps a path to this handler.
+ *   Use the user-facing api-keys handlers with Prisma instead.
+ *   This handler uses a raw pg pool and will be removed in a future cleanup.
  */
 export async function handleValidateApiKey(
     request: Request,

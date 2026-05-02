@@ -62,3 +62,24 @@ All diagrams use Mermaid fenced code blocks (flowchart, sequenceDiagram, erDiagr
 ## CI
 
 Every Copilot PR must be CI-green before declaring done. Preflight: `deno task preflight:full`. Done = green CI + fmt-clean files + accurate PR description.
+
+## Python Tooling (tools/)
+
+All Python in this repo uses the Astral stack:
+- **uv** for package management and virtual environments (`uv sync --directory tools`)
+- **ruff** for linting and formatting (`uv run --directory tools ruff check/format`)
+- **ty** for type checking (`uv run --directory tools ty check`)
+- **marimo** for interactive runbooks
+
+Never use `pip install` directly. Always use `uv sync` or `uv run`.
+Never use `black`, `flake8`, `isort`, or `mypy` — ruff and ty replace all of them.
+
+## Monorepo Structure
+
+See `MONOREPO.md` for the full workspace layout, toolchain per package, and instructions for adding new packages.
+
+When adding a new package:
+1. TypeScript/Node → add to `pnpm-workspace.yaml`
+2. Deno → add to `deno.json` `workspace` array
+3. Python → add under `tools/` with uv
+4. Always add CI path filters and update `MONOREPO.md`

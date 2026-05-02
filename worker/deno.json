@@ -1,0 +1,4 @@
+{
+    "name": "@jk-com/adblock-compiler-worker",
+    "exports": "./worker.ts"
+}

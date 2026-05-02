@@ -124,7 +124,18 @@
         "ci:cloudflare-check": "deno run --allow-net --allow-read scripts/ci/cloudflare-upgrade-check.ts",
         "ci:cloudflare-update": "deno run --allow-net --allow-read --allow-write scripts/ci/cloudflare-dep-update.ts",
         "ci:cloudflare-allowscripts-sync": "deno run --allow-read --allow-write scripts/ci/cloudflare-allowscripts-sync.ts",
-        "pageshield:sync": "deno run --allow-net --allow-env --allow-write scripts/sync-pageshield-allowlist.ts"
+        "pageshield:sync": "deno run --allow-net --allow-env --allow-write scripts/sync-pageshield-allowlist.ts",
+        "runbook:setup": "uv sync --directory tools",
+        "runbook:pipeline": "uv run --directory tools marimo run runbooks/pipeline.py",
+        "runbook:auth-healthcheck": "uv run --directory tools marimo run runbooks/auth-healthcheck.py",
+        "runbook:test": "uv run --directory tools pytest tests/ -v",
+        "runbook:lint": "uv run --directory tools ruff check .",
+        "runbook:fmt": "uv run --directory tools ruff format .",
+        "runbook:typecheck": "uv run --directory tools ty check auth-healthcheck.py runbooks/",
+        "runbook:edit:pipeline": "uv run --directory tools marimo edit runbooks/pipeline.py",
+        "runbook:edit:auth-healthcheck": "uv run --directory tools marimo edit runbooks/auth-healthcheck.py",
+        "runbook:server": "uv run --directory tools marimo run runbooks/pipeline.py --host 127.0.0.1 --port 2718",
+        "runbook:convert": "uv run --directory tools marimo convert"
     },
     "imports": {
         "@/": "./src/",
@@ -279,5 +290,9 @@
         "npm:sharp@0.34.5",
         "npm:workerd@1.20260409.1",
         "npm:workerd@1.20260426.1"
+    ],
+    "workspace": [
+        "./worker",
+        "./examples/cloudflare-worker"
     ]
 }

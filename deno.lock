@@ -21,6 +21,7 @@
     "npm:@adguard/agtree@^4.0.4": "4.0.4",
     "npm:@better-auth/infra@~0.2.5": "0.2.5_better-auth@1.6.9__@prisma+client@7.7.0___prisma@7.8.0____typescript@6.0.2____@types+react@19.2.14____react@19.2.5____react-dom@19.2.5_____react@19.2.5___@types+react@19.2.14___react@19.2.5___react-dom@19.2.5____react@19.2.5__pg@8.20.0__prisma@7.8.0___typescript@6.0.2___@types+react@19.2.14___react@19.2.5___react-dom@19.2.5____react@19.2.5__vitest@4.1.4___@opentelemetry+api@1.9.1___vite@8.0.8____@types+node@22.15.15____esbuild@0.27.3____yaml@2.8.3___esbuild@0.27.3___yaml@2.8.3___@types+node@22.15.15_zod@4.3.6_pg@8.20.0",
     "npm:@cloudflare/containers@~0.1.1": "0.1.1",
+    "npm:@cloudflare/kv-asset-handler@~0.4.2": "0.4.2",
     "npm:@cloudflare/playwright-mcp@^0.0.5": "0.0.5_@cloudflare+workers-types@4.20260426.1",
     "npm:@cloudflare/playwright@^1.2.0": "1.2.0",
     "npm:@cloudflare/vitest-pool-workers@~0.14.2": "0.14.3_vitest@4.1.4__@opentelemetry+api@1.9.1__vite@8.0.8___@types+node@22.15.15___esbuild@0.27.3___yaml@2.8.3__esbuild@0.27.3__yaml@2.8.3__@types+node@22.15.15_@cloudflare+workers-types@4.20260426.1",
@@ -32,7 +33,7 @@
     "npm:@opentelemetry/api@^1.9.1": "1.9.1",
     "npm:@prisma/adapter-d1@^7.5.0": "7.7.0",
     "npm:@prisma/adapter-pg@^7.5.0": "7.7.0",
-    "npm:@prisma/client@^7.5.0": "7.7.0_prisma@7.8.0__typescript@6.0.2__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5",
+    "npm:@prisma/client@^7.5.0": "7.7.0_prisma@7.8.0__typescript@6.0.2__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_typescript@6.0.2",
     "npm:@scalar/hono-api-reference@~0.10.6": "0.10.7_hono@4.12.12",
     "npm:@sentry/cli@^2.58.5": "2.58.5",
     "npm:@sentry/cloudflare@10.43.0": "10.43.0_@cloudflare+workers-types@4.20260426.1",
@@ -51,6 +52,7 @@
     "npm:prisma@^7.5.0": "7.8.0_typescript@6.0.2_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5",
     "npm:svix@^1.62.0": "1.90.0",
     "npm:svix@^1.89.0": "1.90.0",
+    "npm:typescript@^6.0.2": "6.0.2",
     "npm:vitest@^4.1.0": "4.1.4_@opentelemetry+api@1.9.1_vite@8.0.8__@types+node@22.15.15__esbuild@0.27.3__yaml@2.8.3_esbuild@0.27.3_yaml@2.8.3_@types+node@22.15.15",
     "npm:wrangler@^4.86.0": "4.86.0_@cloudflare+workers-types@4.20260426.1",
     "npm:yaml@^2.7.0": "2.8.3",
@@ -488,11 +490,11 @@
       "dependencies": [
         "@better-auth/core",
         "@better-auth/utils",
-        "@prisma/client",
+        "@prisma/client@7.7.0_prisma@7.8.0__typescript@6.0.2__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5",
         "prisma"
       ],
       "optionalPeers": [
-        "@prisma/client",
+        "@prisma/client@7.7.0_prisma@7.8.0__typescript@6.0.2__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5",
         "prisma"
       ]
     },
@@ -1165,6 +1167,18 @@
       "integrity": "sha512-BLyd0UpFYOtyJFTHm7jS9vesHW7P83abibodQMiIofqjBKzDHQ1VAsQkdfvXyYDkPlONPfOTz7/rv3x/+CQqvQ=="
     },
     "@prisma/client@7.7.0_prisma@7.8.0__typescript@6.0.2__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5": {
+      "integrity": "sha512-5Ar4OsZpJ54s21sy5oDNNW9gQtd4NuxCaiM7+JDTOU07D6VvlpLjYzAVCMB1+JzokN+08dAVomlx+b7bhJd3ww==",
+      "dependencies": [
+        "@prisma/client-runtime-utils",
+        "prisma",
+        "typescript"
+      ],
+      "optionalPeers": [
+        "prisma",
+        "typescript"
+      ]
+    },
+    "@prisma/client@7.7.0_prisma@7.8.0__typescript@6.0.2__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_typescript@6.0.2": {
       "integrity": "sha512-5Ar4OsZpJ54s21sy5oDNNW9gQtd4NuxCaiM7+JDTOU07D6VvlpLjYzAVCMB1+JzokN+08dAVomlx+b7bhJd3ww==",
       "dependencies": [
         "@prisma/client-runtime-utils",
@@ -1873,7 +1887,7 @@
         "@better-fetch/fetch",
         "@noble/ciphers",
         "@noble/hashes",
-        "@prisma/client",
+        "@prisma/client@7.7.0_prisma@7.8.0__typescript@6.0.2__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5",
         "better-call",
         "defu",
         "jose",
@@ -1887,7 +1901,7 @@
         "zod@4.3.6"
       ],
       "optionalPeers": [
-        "@prisma/client",
+        "@prisma/client@7.7.0_prisma@7.8.0__typescript@6.0.2__@types+react@19.2.14__react@19.2.5__react-dom@19.2.5___react@19.2.5_@types+react@19.2.14_react@19.2.5_react-dom@19.2.5__react@19.2.5",
         "pg",
         "prisma",
         "react",
@@ -3520,12 +3534,10 @@
     },
     "uuid@10.0.0": {
       "integrity": "sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==",
-      "deprecated": true,
       "bin": true
     },
     "uuid@8.3.2": {
       "integrity": "sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==",
-      "deprecated": true,
       "bin": true
     },
     "valibot@1.2.0_typescript@6.0.2": {
@@ -3861,6 +3873,27 @@
         "npm:wrangler@^4.86.0",
         "npm:zod@^4.3.6"
       ]
+    },
+    "members": {
+      "examples/cloudflare-worker": {
+        "dependencies": [
+          "jsr:@luca/cases@1",
+          "jsr:@std/assert@^1.0.19",
+          "jsr:@std/async@^1.2.0",
+          "jsr:@std/fs@^1.0.23",
+          "jsr:@std/path@^1.1.4",
+          "jsr:@std/testing@^1.0.17",
+          "npm:@cloudflare/workers-types@^4.20260426.1"
+        ],
+        "packageJson": {
+          "dependencies": [
+            "npm:@cloudflare/kv-asset-handler@~0.4.2",
+            "npm:@cloudflare/workers-types@^4.20260426.1",
+            "npm:typescript@^6.0.2",
+            "npm:wrangler@^4.86.0"
+          ]
+        }
+      }
     }
   }
 }

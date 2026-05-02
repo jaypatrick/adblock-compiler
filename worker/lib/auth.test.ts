@@ -14,7 +14,21 @@
  */
 
 import { assertEquals, assertExists, assertInstanceOf, assertStrictEquals, assertStringIncludes, assertThrows } from '@std/assert';
-import { AUTH_DISABLE_CSRF_CHECK, AUTH_ID_GENERATOR, buildTrustedOriginsFn, createAuth, USER_FIELD_MAPPING, UUID_V4_REGEX, WorkerConfigurationError } from './auth.ts';
+import {
+    AUTH_DISABLE_CSRF_CHECK,
+    AUTH_ID_GENERATOR,
+    AUTH_SESSION_STORE_IN_DATABASE,
+    buildDashOptions,
+    buildSentinelOptions,
+    buildTrustedOriginsFn,
+    createAuth,
+    createKvSecondaryStorage,
+    isSentinelEnabled,
+    PRISMA_SCHEMA_CONFIG,
+    USER_FIELD_MAPPING,
+    UUID_V4_REGEX,
+    WorkerConfigurationError,
+} from './auth.ts';
 import type { Auth } from './auth.ts';
 
 // ============================================================================
@@ -206,8 +220,42 @@ Deno.test('AUTH_DISABLE_CSRF_CHECK is true — CSRF check must be disabled for n
 });
 
 // ============================================================================
-// buildTrustedOriginsFn — trusted origins builder
+// AUTH_SESSION_STORE_IN_DATABASE — session persistence guard
 // ============================================================================
+//
+// Better Auth 1.6.x changed getAuthTables() to exclude the session model from
+// its internal DB schema whenever secondaryStorage is configured, unless
+// session.storeSessionInDatabase is explicitly set to true.  The condition is:
+//
+//   ...!options.secondaryStorage || options.session?.storeSessionInDatabase ? sessionTable : {},
+//
+// When BETTER_AUTH_KV is bound (env.BETTER_AUTH_KV present), createAuth() sets
+// secondaryStorage via createKvSecondaryStorage().  Without storeSessionInDatabase: true,
+// the session table is omitted from the Better Auth schema — causing every sign-in to
+// fail with:
+//
+//   BetterAuthError: Model "session" not found in schema
+//
+// These tests guard against the regression being reintroduced:
+//   - AUTH_SESSION_STORE_IN_DATABASE must be exported (import fails if removed)
+//   - AUTH_SESSION_STORE_IN_DATABASE must be true (false re-breaks sign-in when KV is bound)
+//
+// These tests require no database connection.
+// ============================================================================
+
+Deno.test('AUTH_SESSION_STORE_IN_DATABASE is exported from auth module', () => {
+    assertExists(AUTH_SESSION_STORE_IN_DATABASE);
+});
+
+Deno.test('AUTH_SESSION_STORE_IN_DATABASE is true — sessions must persist to DB even when KV secondary storage is configured', () => {
+    assertEquals(typeof AUTH_SESSION_STORE_IN_DATABASE, 'boolean');
+    assertStrictEquals(
+        AUTH_SESSION_STORE_IN_DATABASE,
+        true,
+        'AUTH_SESSION_STORE_IN_DATABASE must be true; setting it to false while BETTER_AUTH_KV is bound will cause BetterAuthError: Model "session" not found in schema on every sign-in',
+    );
+});
+
 //
 // buildTrustedOriginsFn(env) returns a function that Better Auth calls to
 // obtain the list of trusted origins for URL validation (callbackURL,
@@ -250,4 +298,356 @@ Deno.test('buildTrustedOriginsFn ignores the request argument (env-based allowli
     // Without request
     const withoutReq = fn();
     assertEquals(withReq, withoutReq, 'The origin list must not depend on the request object');
+});
+
+// ============================================================================
+// createKvSecondaryStorage — KV adapter for Better Auth secondaryStorage
+// ============================================================================
+//
+// createKvSecondaryStorage() wraps a Cloudflare KVNamespace in the interface
+// that Better Auth expects for secondaryStorage.  These tests use a minimal
+// in-memory mock so no real KV binding is needed.
+// ============================================================================
+
+/**
+ * Creates an in-memory mock KVNamespace for createKvSecondaryStorage tests.
+ * Returns { kv, store } so tests can inspect stored values directly.
+ */
+function createMockKvNamespace(): { kv: KVNamespace; store: Map<string, string> } {
+    const store = new Map<string, string>();
+    const kv = {
+        get: (key: string) => Promise.resolve(store.get(key) ?? null),
+        put: (key: string, value: string) => {
+            store.set(key, value);
+            return Promise.resolve();
+        },
+        delete: (key: string) => {
+            store.delete(key);
+            return Promise.resolve();
+        },
+    } as unknown as KVNamespace;
+    return { kv, store };
+}
+
+Deno.test('createKvSecondaryStorage is exported as a function', () => {
+    assertEquals(typeof createKvSecondaryStorage, 'function');
+});
+
+Deno.test('createKvSecondaryStorage get delegates to kv.get', async () => {
+    const { kv, store } = createMockKvNamespace();
+    const adapter = createKvSecondaryStorage(kv);
+    store.set('session:abc', 'session-data');
+    const value = await adapter.get('session:abc');
+    assertEquals(value, 'session-data');
+});
+
+Deno.test('createKvSecondaryStorage get returns null for missing keys', async () => {
+    const { kv } = createMockKvNamespace();
+    const adapter = createKvSecondaryStorage(kv);
+    const value = await adapter.get('not-a-real-key');
+    assertEquals(value, null);
+});
+
+Deno.test('createKvSecondaryStorage set delegates to kv.put without TTL', async () => {
+    const puts: Array<{ key: string; value: string; options: unknown }> = [];
+    const { kv } = createMockKvNamespace();
+    // Override put to capture call arguments for assertion
+    (kv as unknown as Record<string, unknown>).put = (key: string, value: string, options?: unknown) => {
+        puts.push({ key, value, options });
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.set('token:xyz', 'token-value');
+    assertEquals(puts.length, 1);
+    assertEquals(puts[0].key, 'token:xyz');
+    assertEquals(puts[0].value, 'token-value');
+    assertEquals(puts[0].options, undefined);
+});
+
+Deno.test('createKvSecondaryStorage set passes expirationTtl when ttl is provided', async () => {
+    const puts: Array<{ key: string; value: string; options: unknown }> = [];
+    const { kv } = createMockKvNamespace();
+    // Override put to capture call arguments for assertion
+    (kv as unknown as Record<string, unknown>).put = (key: string, value: string, options?: unknown) => {
+        puts.push({ key, value, options });
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.set('token:xyz', 'token-value', 300);
+    assertEquals(puts.length, 1);
+    assertEquals(puts[0].options, { expirationTtl: 300 });
+});
+
+Deno.test('createKvSecondaryStorage set treats ttl = 0 as no TTL (stores without expirationTtl)', async () => {
+    const puts: Array<{ key: string; value: string; options: unknown }> = [];
+    const { kv } = createMockKvNamespace();
+    (kv as unknown as Record<string, unknown>).put = (key: string, value: string, options?: unknown) => {
+        puts.push({ key, value, options });
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.set('token:xyz', 'token-value', 0);
+    assertEquals(puts.length, 1);
+    // ttl = 0 is not a valid Cloudflare KV expirationTtl; stored without expiry.
+    assertEquals(puts[0].options, undefined);
+});
+
+Deno.test('createKvSecondaryStorage set treats negative ttl as no TTL (stores without expirationTtl)', async () => {
+    const puts: Array<{ key: string; value: string; options: unknown }> = [];
+    const { kv } = createMockKvNamespace();
+    (kv as unknown as Record<string, unknown>).put = (key: string, value: string, options?: unknown) => {
+        puts.push({ key, value, options });
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.set('token:xyz', 'token-value', -300);
+    assertEquals(puts.length, 1);
+    // Negative ttl is invalid; stored without expiry as a safety net.
+    assertEquals(puts[0].options, undefined);
+});
+
+Deno.test('createKvSecondaryStorage delete delegates to kv.delete', async () => {
+    const deleted: string[] = [];
+    const { kv } = createMockKvNamespace();
+    // Override delete to capture call arguments for assertion
+    (kv as unknown as Record<string, unknown>).delete = (key: string) => {
+        deleted.push(key);
+        return Promise.resolve();
+    };
+
+    const adapter = createKvSecondaryStorage(kv);
+    await adapter.delete('session:abc');
+    assertEquals(deleted, ['session:abc']);
+});
+
+// ============================================================================
+// createAuth secondaryStorage — wired from BETTER_AUTH_KV binding
+// ============================================================================
+
+Deno.test('createAuth throws WorkerConfigurationError when HYPERDRIVE is absent (regardless of BETTER_AUTH_KV)', () => {
+    const { kv } = createMockKvNamespace();
+    const fakeEnvWithKv = {
+        HYPERDRIVE: undefined,
+        BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
+        BETTER_AUTH_KV: kv,
+    } as unknown as import('../types.ts').Env;
+    assertThrows(() => createAuth(fakeEnvWithKv), WorkerConfigurationError, 'HYPERDRIVE binding is not configured');
+});
+
+Deno.test('createAuth throws WorkerConfigurationError for missing HYPERDRIVE regardless of BETTER_AUTH_KV state', () => {
+    // createAuth fails hard on missing HYPERDRIVE regardless of whether BETTER_AUTH_KV is
+    // present.  The error must be about HYPERDRIVE — not about the absent KV binding —
+    // confirming that KV absence alone does not cause a startup failure.
+    const fakeEnv = {
+        HYPERDRIVE: undefined,
+        BETTER_AUTH_SECRET: 'test-secret-at-least-32-characters-long!!',
+        BETTER_AUTH_KV: undefined,
+    } as unknown as import('../types.ts').Env;
+    const err = assertThrows(() => createAuth(fakeEnv), WorkerConfigurationError);
+    // The error must be about HYPERDRIVE, not about KV
+    assertStringIncludes(err.message, 'HYPERDRIVE');
+});
+
+// ============================================================================
+// buildDashOptions / buildSentinelOptions — infra plugin option builders
+// ============================================================================
+//
+// These helpers build the options objects for the Better Auth dash() and
+// sentinel() plugins. The critical contract: both must pass apiKey from
+// env.BETTER_AUTH_API_KEY explicitly, because Worker Secrets are not exposed
+// on process.env in Cloudflare Workers. Both env vars are optional so the
+// plugins gracefully no-op in local dev without secrets configured.
+//
+// Tests run without any database connection because the helpers are pure
+// functions that only inspect the env object they receive.
+// ============================================================================
+
+Deno.test('buildDashOptions is exported as a function', () => {
+    assertEquals(typeof buildDashOptions, 'function');
+});
+
+Deno.test('buildDashOptions includes apiKey when BETTER_AUTH_API_KEY is set', () => {
+    const env = { BETTER_AUTH_API_KEY: 'test-api-key-value' } as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals(opts.apiKey, 'test-api-key-value');
+});
+
+Deno.test('buildDashOptions omits apiKey when BETTER_AUTH_API_KEY is absent', () => {
+    const env = {} as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals('apiKey' in opts, false, 'apiKey must not be present when BETTER_AUTH_API_KEY is unset');
+});
+
+Deno.test('buildDashOptions omits apiKey when BETTER_AUTH_API_KEY is undefined', () => {
+    const env = { BETTER_AUTH_API_KEY: undefined } as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals('apiKey' in opts, false, 'apiKey must not be present when BETTER_AUTH_API_KEY is explicitly undefined');
+});
+
+Deno.test('buildDashOptions includes kvUrl when BETTER_AUTH_KV_URL is set', () => {
+    const env = { BETTER_AUTH_KV_URL: 'https://kv.example.com/ns' } as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals(opts.kvUrl, 'https://kv.example.com/ns');
+});
+
+Deno.test('buildDashOptions omits kvUrl when BETTER_AUTH_KV_URL is absent', () => {
+    const env = {} as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals('kvUrl' in opts, false, 'kvUrl must not be present when BETTER_AUTH_KV_URL is unset');
+});
+
+Deno.test('buildDashOptions includes both apiKey and kvUrl when both env vars are set', () => {
+    const env = { BETTER_AUTH_API_KEY: 'my-key', BETTER_AUTH_KV_URL: 'https://kv.example.com/ns' } as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals(opts.apiKey, 'my-key');
+    assertEquals(opts.kvUrl, 'https://kv.example.com/ns');
+});
+
+Deno.test('buildDashOptions returns empty object when neither env var is set', () => {
+    const env = {} as import('../types.ts').Env;
+    const opts = buildDashOptions(env);
+    assertEquals(Object.keys(opts).length, 0);
+});
+
+Deno.test('buildSentinelOptions is exported as a function', () => {
+    assertEquals(typeof buildSentinelOptions, 'function');
+});
+
+Deno.test('buildSentinelOptions includes apiKey when BETTER_AUTH_API_KEY is set', () => {
+    const env = { BETTER_AUTH_API_KEY: 'test-api-key-value' } as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals(opts.apiKey, 'test-api-key-value');
+});
+
+Deno.test('buildSentinelOptions omits apiKey when BETTER_AUTH_API_KEY is absent', () => {
+    const env = {} as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals('apiKey' in opts, false, 'apiKey must not be present when BETTER_AUTH_API_KEY is unset');
+});
+
+Deno.test('buildSentinelOptions omits apiKey when BETTER_AUTH_API_KEY is undefined', () => {
+    const env = { BETTER_AUTH_API_KEY: undefined } as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals('apiKey' in opts, false, 'apiKey must not be present when BETTER_AUTH_API_KEY is explicitly undefined');
+});
+
+Deno.test('buildSentinelOptions includes kvUrl when BETTER_AUTH_KV_URL is set', () => {
+    const env = { BETTER_AUTH_KV_URL: 'https://kv.example.com/ns' } as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals(opts.kvUrl, 'https://kv.example.com/ns');
+});
+
+Deno.test('buildSentinelOptions omits kvUrl when BETTER_AUTH_KV_URL is absent', () => {
+    const env = {} as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals('kvUrl' in opts, false, 'kvUrl must not be present when BETTER_AUTH_KV_URL is unset');
+});
+
+Deno.test('buildSentinelOptions includes both apiKey and kvUrl when both env vars are set', () => {
+    const env = { BETTER_AUTH_API_KEY: 'my-key', BETTER_AUTH_KV_URL: 'https://kv.example.com/ns' } as import('../types.ts').Env;
+    const opts = buildSentinelOptions(env);
+    assertEquals(opts.apiKey, 'my-key');
+    assertEquals(opts.kvUrl, 'https://kv.example.com/ns');
+});
+
+Deno.test('buildSentinelOptions always includes the security config regardless of env vars', () => {
+    const envEmpty = {} as import('../types.ts').Env;
+    const envFull = { BETTER_AUTH_API_KEY: 'k', BETTER_AUTH_KV_URL: 'https://kv.example.com' } as import('../types.ts').Env;
+    assertExists(buildSentinelOptions(envEmpty).security, 'security must be present when env vars are absent');
+    assertExists(buildSentinelOptions(envFull).security, 'security must be present when env vars are set');
+});
+
+Deno.test('buildSentinelOptions security config includes credentialStuffing with expected thresholds', () => {
+    const env = {} as import('../types.ts').Env;
+    const { security } = buildSentinelOptions(env);
+    assertEquals(security.credentialStuffing.enabled, true);
+    assertEquals(security.credentialStuffing.thresholds.challenge, 3);
+    assertEquals(security.credentialStuffing.thresholds.block, 5);
+});
+
+Deno.test('buildSentinelOptions security config includes botBlocking and suspiciousIpBlocking', () => {
+    const env = {} as import('../types.ts').Env;
+    const { security } = buildSentinelOptions(env);
+    assertEquals(security.botBlocking, true);
+    assertEquals(security.suspiciousIpBlocking, true);
+});
+
+// ============================================================================
+// PRISMA_SCHEMA_CONFIG — PostgreSQL provider declaration
+// ============================================================================
+//
+// PRISMA_SCHEMA_CONFIG is passed to prismaAdapter() inside createAuth(). It
+// declares the database provider and is extracted as a named constant so that:
+//   1. The provider is declared in one place only (no copy-paste drift).
+//   2. This test acts as a regression guard — if the provider is accidentally
+//      changed to 'sqlite' or another value, the test fails immediately.
+// ============================================================================
+
+Deno.test('PRISMA_SCHEMA_CONFIG.provider is "postgresql"', () => {
+    assertStrictEquals(
+        PRISMA_SCHEMA_CONFIG.provider,
+        'postgresql',
+        'PRISMA_SCHEMA_CONFIG.provider must be "postgresql"; changing it will break Prisma adapter initialisation',
+    );
+});
+
+// ============================================================================
+// AUTH_SESSION_STORE_IN_DATABASE — session persistence guard
+// ============================================================================
+//
+// Better Auth stores sessions in the database by default. AUTH_SESSION_STORE_IN_DATABASE
+// makes that behaviour explicit and this test guards against accidental changes
+// that might silently disable database session persistence.
+// ============================================================================
+
+Deno.test('AUTH_SESSION_STORE_IN_DATABASE is true — sessions must be persisted to the database', () => {
+    assertEquals(typeof AUTH_SESSION_STORE_IN_DATABASE, 'boolean');
+    assertStrictEquals(
+        AUTH_SESSION_STORE_IN_DATABASE,
+        true,
+        'AUTH_SESSION_STORE_IN_DATABASE must be true; setting it to false would disable database session persistence',
+    );
+});
+
+// ============================================================================
+// isSentinelEnabled — BETTER_AUTH_SENTINEL_ENABLED gate helper
+// ============================================================================
+//
+// isSentinelEnabled() is a pure helper that returns true only when
+// BETTER_AUTH_SENTINEL_ENABLED is exactly "true". All other values (absent,
+// undefined, "false", "1", etc.) return false — ensuring the Sentinel plugin
+// is never loaded on the free/pilot tier without an explicit opt-in.
+// ============================================================================
+
+Deno.test('isSentinelEnabled is exported as a function', () => {
+    assertEquals(typeof isSentinelEnabled, 'function');
+});
+
+Deno.test('isSentinelEnabled returns true when BETTER_AUTH_SENTINEL_ENABLED is "true"', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: 'true' } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), true);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is absent', () => {
+    const env = {} as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is undefined', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: undefined } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is "false"', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: 'false' } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
+});
+
+Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is "1"', () => {
+    const env = { BETTER_AUTH_SENTINEL_ENABLED: '1' } as import('../types.ts').Env;
+    assertEquals(isSentinelEnabled(env), false);
 });

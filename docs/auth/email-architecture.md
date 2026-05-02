@@ -67,6 +67,30 @@ channel (cheap, but unacceptable for auth-critical mail).
 | Fallback | **CF Email Worker binding** | `CfEmailWorkerService` | `SEND_EMAIL` binding |
 | No-op | Null | `NullEmailService` | *(none — last resort)* |
 
+### Resend API Wrapper (`ResendApiService`)
+
+`ResendApiService` (`worker/services/resend-api-service.ts`) is the single typed REST wrapper for all Resend **Contacts/Audiences** API operations. It mirrors the `CloudflareApiService` pattern: all `https://api.resend.com/audiences/*` calls go through this class — no raw `fetch` to audience endpoints elsewhere in the codebase. (Email sends are handled separately by `ResendEmailService` via a direct `fetch` to `/emails`.)
+
+| Method | Description |
+|---|---|
+| `createContact(audienceId, data)` | Add a contact to a Resend audience |
+| `deleteContact(audienceId, contactIdOrEmail)` | Remove a contact by ID or email |
+| `getContact(audienceId, contactIdOrEmail)` | Retrieve a single contact |
+| `listContacts(audienceId)` | List all contacts in an audience |
+
+All methods validate responses with Zod schemas and throw a typed `ResendApiError` (carrying `statusCode`, `errorName`, and `message`) on non-2xx responses.
+
+```typescript
+import { createResendApiService } from '../services/resend-api-service.ts';
+
+const resend = createResendApiService(env.RESEND_API_KEY);
+const contact = await resend.createContact(env.RESEND_AUDIENCE_ID, {
+    email: 'user@example.com',
+    firstName: 'Alice',
+    unsubscribed: false,
+});
+```
+
 All providers implement the `IEmailService` interface:
 
 ```typescript
@@ -322,6 +346,24 @@ Templates live in `worker/services/email-templates.ts`. Each function returns
 | `renderEmailVerification(opts)` | Sign-up email verification link | `auth.ts` `emailVerification.sendVerificationEmail` |
 | `renderPasswordReset(opts)` | Password reset link | `auth.ts` `emailAndPassword.sendResetPassword` |
 
+### Bloqr Dark Theme (PR #1714)
+
+All four templates were rebuilt with the Bloqr dark design language in PR #1714. The previous templates used a light white design (`color:#1a1a1a`, purple `#4f46e5` CTA buttons) which was off-brand. The current design uses:
+
+| Token | Value | Usage |
+|---|---|---|
+| Body background | `#070B14` | Outer email body |
+| Card background | `#0E1829` | Content card |
+| Card border | `#1D2E4A` | Card outline |
+| Primary text | `#F0F4FF` | Headings |
+| Secondary text | `#D0D9F0` | Body copy |
+| Muted text | `#7A8BAA` | Fallback links, footer |
+| Orange accent | `#FF5500` | CTA buttons |
+| Cyan links | `#00D4FF` | Inline links, fallback URLs |
+| Error red | `#FF4444` | Critical alert heading |
+
+All HTML uses **inline styles only** and a **table-based layout** (no flexbox, no grid) for maximum email client compatibility (Gmail, Outlook, Apple Mail). The shared `wrapLayout()` helper function applies the outer card structure consistently across all templates.
+
 **Adding a new template:**
 
 ```typescript
@@ -346,6 +388,124 @@ All user-supplied values that are interpolated into HTML **must** be passed thro
 
 ---
 
+## Resend Audience Contact Sync
+
+`ResendContactService` (`worker/services/resend-contact-service.ts`) syncs user lifecycle events from Better Auth `databaseHooks` to a Resend audience. It uses `ResendApiService` internally.
+
+### Interface
+
+```typescript
+interface IResendContactService {
+    syncUserCreated(user: { id: string; email: string; name?: string | null }): Promise<void>;
+    syncUserDeleted(user: { id: string; email: string }): Promise<void>;
+}
+```
+
+Both methods are **fire-and-forget**: errors are caught, logged as warnings, and never rethrown. This prevents audience-sync failures from affecting the primary auth/user creation path.
+
+### Factory
+
+```typescript
+import { createResendContactService } from '../services/resend-contact-service.ts';
+
+// Returns ResendContactService when both secrets are present;
+// returns NullResendContactService (no-op) otherwise — never null.
+const contacts = createResendContactService(env);
+```
+
+`createResendContactService` returns a `NullResendContactService` when either `RESEND_API_KEY` or `RESEND_AUDIENCE_ID` is absent. This avoids null-guard boilerplate at every call site — hooks are unconditional.
+
+### Better Auth Integration
+
+The sync is wired into `createAuth()` (`worker/lib/auth.ts`) via Better Auth `databaseHooks`. The `ExecutionContext` is now forwarded to `createAuth()` so that sync promises are registered with `ctx.waitUntil()` and survive response completion:
+
+```typescript
+// worker/hono-app.ts
+const auth = createAuth(c.env, url.origin, c.executionCtx);
+```
+
+```typescript
+// worker/lib/auth.ts — databaseHooks (simplified)
+databaseHooks: {
+    user: {
+        create: {
+            after: async (user) => {
+                const syncPromise = contacts.syncUserCreated({ id: user.id, email: user.email, name: user.name });
+                if (ctx) {
+                    ctx.waitUntil(syncPromise);
+                } else {
+                    void syncPromise;
+                }
+            },
+        },
+        delete: {
+            after: async (user) => {
+                ctx?.waitUntil(contacts.syncUserDeleted({ id: user.id, email: user.email }));
+            },
+        },
+    },
+},
+```
+
+### Contact Sync Flow
+
+```mermaid
+sequenceDiagram
+    participant U as User browser
+    participant W as Worker (Better Auth)
+    participant DB as Neon (via Prisma)
+    participant H as databaseHooks
+    participant RS as ResendContactService
+    participant RA as ResendApiService
+    participant R as Resend Audiences API
+
+    U->>W: POST /api/auth/sign-up
+    W->>DB: INSERT user row
+    W->>H: user.create.after(user)
+    H->>RS: syncUserCreated({ id, email, name })
+    Note over H: ctx.waitUntil() — non-blocking
+    RS->>RA: createContact(audienceId, { email, firstName, lastName, unsubscribed: false })
+    RA->>R: POST /audiences/{id}/contacts
+    R-->>RA: 200 { id: "contact-uuid" }
+    W-->>U: 200 OK (sign-up accepted, contact sync in background)
+```
+
+### Name Splitting
+
+`syncUserCreated` splits the `name` field on whitespace to derive `firstName` / `lastName` for Resend:
+
+| `name` input | `firstName` | `lastName` |
+|---|---|---|
+| `"Alice Smith"` | `"Alice"` | `"Smith"` |
+| `"Mary Smith Jones"` | `"Mary"` | `"Smith Jones"` |
+| `"Bob"` | `"Bob"` | *(absent)* |
+| `null` / `""` | *(absent)* | *(absent)* |
+
+Multi-word last names are preserved; multi-word first names cannot be: `"Mary Anne Smith"` → `firstName="Mary"`, `lastName="Anne Smith"`.
+
+### Required env vars
+
+| Var | Where | Description |
+|---|---|---|
+| `RESEND_API_KEY` | Worker Secret | Resend API key (already required for auth email sends) |
+| `RESEND_AUDIENCE_ID` | Worker Secret | UUID of the Resend audience to sync contacts into |
+
+```bash
+wrangler secret put RESEND_AUDIENCE_ID
+# Value: the UUID shown in the Resend dashboard under Audiences
+```
+
+### Troubleshooting contact sync
+
+| Symptom | Likely cause | Fix |
+|---|---|---|
+| Users not appearing in Resend audience | `RESEND_AUDIENCE_ID` not set | `wrangler secret put RESEND_AUDIENCE_ID` |
+| `[ResendContactService] syncUserCreated failed: ResendApiError 404` | Audience ID does not exist in Resend | Create the audience in the Resend dashboard; update the secret |
+| `[ResendContactService] syncUserCreated failed: ResendApiError 422` | Email address already in audience | Normal for re-registrations — Resend rejects duplicate contacts; this is non-fatal |
+| Contact sync not firing at all | `RESEND_API_KEY` absent | Without both secrets, `NullResendContactService` is used — no API calls made |
+
+---
+
 ## Environment Configuration
 
 ### Secrets (`wrangler secret put`)
@@ -355,6 +515,11 @@ All user-supplied values that are interpolated into HTML **must** be passed thro
 wrangler secret put RESEND_API_KEY
 # Obtain from: https://resend.com/api-keys
 # Required scope: Full access (or Sending access on verified domain)
+
+# Resend audience (contact sync)
+wrangler secret put RESEND_AUDIENCE_ID
+# Obtain from: https://resend.com/audiences → copy the audience UUID
+# Required for: ResendContactService user lifecycle sync
 
 # Cloudflare Email Service REST (transactional)
 wrangler secret put CF_EMAIL_API_TOKEN
@@ -388,6 +553,9 @@ name = "SEND_EMAIL"
 # Get from https://resend.com/api-keys → use a test API key locally
 RESEND_API_KEY=re_test_...
 
+# ─── Resend (contact sync) ───────────────────────────────────────────────────
+RESEND_AUDIENCE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+
 # ─── Cloudflare Email Service REST (transactional) ──────────────────────────
 # Get from https://dash.cloudflare.com/profile/api-tokens
 CF_EMAIL_API_TOKEN=...
@@ -400,7 +568,8 @@ CF_ACCOUNT_ID=...
 |---|---|
 | Email verification + password reset work | `RESEND_API_KEY` |
 | Transactional notifications work | `CF_EMAIL_API_TOKEN` + `CF_ACCOUNT_ID` **or** `SEND_EMAIL` binding |
-| Full production parity | All three |
+| Audience contact sync works | `RESEND_API_KEY` + `RESEND_AUDIENCE_ID` |
+| Full production parity | All of the above |
 
 ---
 
@@ -460,6 +629,8 @@ This ensures the `EmailDeliveryWorkflow` routes the new reason through `ResendEm
 | Workflow throws `No email provider configured for workflow delivery.` | Workflow environment has neither `RESEND_API_KEY`, CF REST vars, nor `SEND_EMAIL` | Configure at least one direct provider in the Worker environment |
 | `providerName` in delivery receipt is wrong | Old code computing providerName from env vars directly | Upgrade to latest `EmailDeliveryWorkflow` — `instanceof` checks are authoritative |
 | Email delivered but `provider` field in KV receipt shows `none` | Workflow completed the send before step 3 wrote the receipt | Check `record-send` step logs; `METRICS` KV binding may be missing |
+| `[ResendContactService] syncUserCreated failed` in logs | `RESEND_AUDIENCE_ID` misconfigured or audience deleted | Verify audience exists in Resend dashboard; update secret |
+| Contact sync runs but `NullResendContactService` is used | One or both of `RESEND_API_KEY`/`RESEND_AUDIENCE_ID` absent | Set both secrets; check `GET /admin/email/config` for presence confirmation |
 
 ---
 
@@ -469,6 +640,8 @@ This ensures the `EmailDeliveryWorkflow` routes the new reason through `ResendEm
 - [Better Auth Developer Guide](./better-auth-developer-guide.md) — `createAuth()` internals
 - [`worker/services/email-service.ts`](../../worker/services/email-service.ts) — provider implementations and factory
 - [`worker/services/email-templates.ts`](../../worker/services/email-templates.ts) — template renderers
+- [`worker/services/resend-api-service.ts`](../../worker/services/resend-api-service.ts) — typed Resend Contacts/Audiences REST wrapper
+- [`worker/services/resend-contact-service.ts`](../../worker/services/resend-contact-service.ts) — user lifecycle contact sync service
 - [`worker/workflows/EmailDeliveryWorkflow.ts`](../../worker/workflows/EmailDeliveryWorkflow.ts) — durable delivery workflow
 - [`src/services/cloudflareApiService.ts`](../../src/services/cloudflareApiService.ts) — Cloudflare SDK wrapper (`sendEmail` method)
 - [Resend API reference](https://resend.com/docs/api-reference/emails/send-email)

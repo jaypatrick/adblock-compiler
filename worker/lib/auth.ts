@@ -17,7 +17,8 @@
  *
  * ## Plugin extensibility
  * The `plugins` array ships with the following active plugins:
- *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); `BETTER_AUTH_API_KEY` is only required for Dash connectivity, and the plugin is expected to no-op when the key is unset
+ *   - `dash()` — Better Auth Dash dashboard integration (from `@better-auth/infra`); requires `env.BETTER_AUTH_API_KEY` passed explicitly — Cloudflare Workers do not expose Worker Secrets via `process.env`; the plugin no-ops when the key is absent
+ *   - `sentinel()` — infrastructure security: credential stuffing protection, impossible travel detection, bot blocking, suspicious IP blocking (from `@better-auth/infra`); also requires `env.BETTER_AUTH_API_KEY` passed explicitly (same reason as `dash()`); **conditionally loaded** — only when `BETTER_AUTH_SENTINEL_ENABLED=true` (requires Better Auth Pro tier)
  *   - `bearer()` — API-first Bearer token auth
  *   - `twoFactor()` — TOTP/2FA
  *   - `multiSession()` — multiple active sessions
@@ -26,6 +27,7 @@
  *
  * Inactive (available but not wired):
  *   - `apiKey()` — built-in API key management (we use a custom implementation)
+ *   - `auditLogs()` — **pending** `@better-auth/infra` publishing this export; will record all auth events to the DB for compliance and visual audit trail in Dash
  *
  * ## @better-auth/infra import — ESM/CDN compatibility notes
  *
@@ -74,11 +76,15 @@ import { admin, bearer, multiSession, organization, twoFactor } from 'better-aut
 // @better-auth/infra is declared in deno.json imports as "npm:@better-auth/infra@^0.2.5"
 // and added to package.json so wrangler/esbuild can resolve it from node_modules.
 // See the ESM/CDN compatibility notes in the module JSDoc above.
-import { dash } from '@better-auth/infra';
+// NOTE: auditLogs is NOT exported in @better-auth/infra@0.2.5 (the latest published version).
+// TODO(auth): import { auditLogs } from '@better-auth/infra' once the package publishes it.
+//             Track: https://github.com/better-auth/better-auth/issues?q=is%3Aissue+auditLogs+infra
+import { dash, sentinel } from '@better-auth/infra';
 import type { Env } from '../types.ts';
 import { createPrismaClient } from './prisma.ts';
 import { createEmailService } from '../services/email-service.ts';
 import { renderEmailVerification, renderPasswordReset } from '../services/email-templates.ts';
+import { createResendContactService } from '../services/resend-contact-service.ts';
 import { parseAllowedOrigins } from '../utils/cors.ts';
 
 /**
@@ -172,6 +178,58 @@ export const AUTH_SESSION_CONFIG = {
 export const AUTH_DISABLE_CSRF_CHECK = true;
 
 /**
+ * Prisma adapter configuration for Better Auth.
+ *
+ * Passed directly to `prismaAdapter()` inside `createAuth()`.  This constant
+ * configures the database provider so the adapter knows which Postgres dialect
+ * to use.  It does **not** contain field or model name mappings — those live in
+ * `USER_FIELD_MAPPING` (the `name`→`displayName` / `image`→`imageUrl` aliases
+ * under the `user.fields` key of the `betterAuth()` call).
+ *
+ * **Extending for new integrations**
+ * If a future integration requires a different model or field name convention
+ * (e.g. snake_case, PascalCase, pluralised, or dash-separated names), add the
+ * field alias to `USER_FIELD_MAPPING` or a `modelName` override on the relevant
+ * model in the `betterAuth()` config — not here.  Any change to `provider` will
+ * break the Prisma adapter; update `worker/lib/auth.test.ts` to confirm.
+ */
+export const PRISMA_SCHEMA_CONFIG = {
+    /** Database provider.  Changing this value breaks the Prisma adapter — update tests too. */
+    provider: 'postgresql',
+} as const;
+
+/**
+ * Whether sessions are persisted to the primary database (Prisma/Neon) even when
+ * Cloudflare KV secondary storage is configured via `BETTER_AUTH_KV`.
+ *
+ * Better Auth 1.6.x changed `getAuthTables()` to exclude the `session` model from
+ * its internal DB schema whenever `secondaryStorage` is provided, on the assumption
+ * that KV is the authoritative session store.  The condition in Better Auth source is:
+ *
+ * ```ts
+ * ...!options.secondaryStorage || options.session?.storeSessionInDatabase ? sessionTable : {},
+ * ```
+ *
+ * When `BETTER_AUTH_KV` is bound and `secondaryStorage` is wired (see `createAuth`),
+ * `!secondaryStorage` evaluates to `false`.  Without `storeSessionInDatabase: true`,
+ * the session table is omitted from the schema, causing every sign-in attempt to fail
+ * with:
+ *
+ *   ```
+ *   BetterAuthError: Model "session" not found in schema
+ *   ```
+ *
+ * Setting `storeSessionInDatabase: true` forces the session table back into the
+ * schema so the Prisma adapter creates, reads, and deletes sessions in Neon as usual.
+ * KV then acts as a fast edge cache (secondaryStorage) rather than the sole store.
+ *
+ * Exported as a named constant so regression tests can assert this is `true` and
+ * future reviewers have a clear audit trail — if this is ever changed to `false` while
+ * `BETTER_AUTH_KV` is bound, sign-in will break again.
+ */
+export const AUTH_SESSION_STORE_IN_DATABASE = true as const;
+
+/**
  * Builds the `trustedOrigins` function for Better Auth.
  *
  * Better Auth uses `trustedOrigins` to validate callback URLs, redirect URLs,
@@ -191,6 +249,134 @@ export const AUTH_DISABLE_CSRF_CHECK = true;
 export function buildTrustedOriginsFn(env: Env): (_request?: Request) => string[] {
     const trustedOrigins = parseAllowedOrigins(env);
     return (_request?: Request): string[] => trustedOrigins;
+}
+
+/**
+ * Adapts a Cloudflare KVNamespace to Better Auth's secondaryStorage interface.
+ *
+ * Better Auth uses secondaryStorage for sessions, rate-limit counters, and
+ * short-lived verification tokens — offloading these from Postgres/Prisma keeps
+ * the primary DB free for business-logic queries.
+ *
+ * The graceful-fallback when the KV binding is absent is handled by the caller
+ * (`createAuth`) via a conditional spread — this function always requires a
+ * bound `KVNamespace` and will throw if called with an undefined binding.
+ *
+ * The interface expected by Better Auth is:
+ * ```typescript
+ * { get(key): Promise<string|null>; set(key, value, ttl?): Promise<void>; delete(key): Promise<void>; }
+ * ```
+ *
+ * Exported for unit testing without requiring a real Hyperdrive connection.
+ *
+ * @param kv - Cloudflare KVNamespace binding (e.g. `env.BETTER_AUTH_KV`)
+ */
+export function createKvSecondaryStorage(kv: KVNamespace): {
+    get(key: string): Promise<string | null>;
+    set(key: string, value: string, ttl?: number): Promise<void>;
+    delete(key: string): Promise<void>;
+} {
+    return {
+        get: (key: string) => kv.get(key),
+        // Cloudflare KV requires expirationTtl to be a positive integer (≥ 60 s in
+        // production; ≥ 1 s in dev). A ttl of 0 or any negative value has no valid
+        // KV representation, so we store without expiry (equivalent to "no TTL").
+        // Better Auth never passes ttl ≤ 0 in practice; this guard is a safety net.
+        set: (key: string, value: string, ttl?: number) => kv.put(key, value, ttl !== undefined && ttl > 0 ? { expirationTtl: Math.max(60, ttl) } : undefined),
+        delete: (key: string) => kv.delete(key),
+    };
+}
+
+/**
+ * Builds the options object for the {@link dash} plugin.
+ *
+ * Both `apiKey` and `kvUrl` are conditionally spread so the plugin gracefully
+ * no-ops when either variable is absent (local dev without secrets configured).
+ *
+ * **Why explicit passthrough?** Worker Secrets set via `wrangler secret put` are
+ * only accessible through the `env` binding — they are never exposed on
+ * `process.env`, even with `nodejs_compat` enabled.  `@better-auth/infra`
+ * internally reads `process.env.BETTER_AUTH_API_KEY`, which is always `undefined`
+ * in a Cloudflare Worker, so the key must be injected here.
+ *
+ * Exported as a pure helper so tests can assert `apiKey` / `kvUrl` presence and
+ * absence without requiring a live Hyperdrive / PostgreSQL connection.
+ */
+export function buildDashOptions(env: Pick<Env, 'BETTER_AUTH_API_KEY' | 'BETTER_AUTH_KV_URL'>): { apiKey?: string; kvUrl?: string } {
+    return {
+        ...(env.BETTER_AUTH_API_KEY ? { apiKey: env.BETTER_AUTH_API_KEY } : {}),
+        ...(env.BETTER_AUTH_KV_URL ? { kvUrl: env.BETTER_AUTH_KV_URL } : {}),
+    };
+}
+
+/**
+ * Builds the options object for the {@link sentinel} plugin.
+ *
+ * `apiKey` and `kvUrl` use the same conditional-spread pattern as
+ * {@link buildDashOptions} (same Worker-Secret passthrough requirement).
+ * The `security` block is always present — it is static configuration that
+ * does not depend on runtime env values.
+ *
+ * Exported as a pure helper so tests can assert `apiKey` / `kvUrl` presence
+ * and absence, and confirm the `security` block is always included, without
+ * requiring a live Hyperdrive / PostgreSQL connection.
+ */
+export function buildSentinelOptions(env: Pick<Env, 'BETTER_AUTH_API_KEY' | 'BETTER_AUTH_KV_URL'>): {
+    apiKey?: string;
+    kvUrl?: string;
+    security: {
+        credentialStuffing: { enabled: boolean; thresholds: { challenge: number; block: number }; windowSeconds: number; cooldownSeconds: number };
+        impossibleTravel: { enabled: boolean; maxSpeedKmh: number; action: 'challenge' | 'block' };
+        unknownDeviceNotification: boolean;
+        botBlocking: boolean;
+        suspiciousIpBlocking: boolean;
+    };
+} {
+    return {
+        ...(env.BETTER_AUTH_API_KEY ? { apiKey: env.BETTER_AUTH_API_KEY } : {}),
+        ...(env.BETTER_AUTH_KV_URL ? { kvUrl: env.BETTER_AUTH_KV_URL } : {}),
+        security: {
+            // Credential stuffing / brute-force protection.
+            // Challenge after 3 failures; block after 5 within 1 hour.
+            credentialStuffing: {
+                enabled: true,
+                thresholds: { challenge: 3, block: 5 },
+                windowSeconds: 3600,
+                cooldownSeconds: 900,
+            },
+            // Flag logins that are geographically impossible given the previous session.
+            impossibleTravel: {
+                enabled: true,
+                maxSpeedKmh: 1200,
+                action: 'challenge',
+            },
+            // Notify users when a sign-in occurs from an unrecognised device.
+            unknownDeviceNotification: true,
+            // Block known bot user-agents and headless browser signatures.
+            botBlocking: true,
+            // Block IPs flagged in the Better Auth threat intelligence feed.
+            suspiciousIpBlocking: true,
+        },
+    };
+}
+
+/**
+ * Returns `true` when the Sentinel plugin should be loaded.
+ *
+ * Sentinel is a **Better Auth Pro tier** feature.  Loading it on the free tier
+ * causes sign-in requests to hang with no response returned.  Gate it behind
+ * this helper so it can be safely enabled in production by setting
+ * `BETTER_AUTH_SENTINEL_ENABLED=true` in `wrangler.toml [vars]` — no code change
+ * required when upgrading to Pro.
+ *
+ * Only the exact string `"true"` enables the plugin; any other value (including
+ * `"1"`, `"false"`, or absent) leaves it disabled.
+ *
+ * Exported so it can be tested and used in future admin/config inspection
+ * endpoints.
+ */
+export function isSentinelEnabled(env: Pick<Env, 'BETTER_AUTH_SENTINEL_ENABLED'>): boolean {
+    return env.BETTER_AUTH_SENTINEL_ENABLED === 'true';
 }
 
 /**
@@ -219,7 +405,7 @@ export class WorkerConfigurationError extends Error {
  * @param baseURL - The base URL for the auth endpoints (derived from the request)
  * @returns Configured Better Auth instance
  */
-export function createAuth(env: Env, baseURL?: string) {
+export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionContext, 'waitUntil'>) {
     if (!env.HYPERDRIVE?.connectionString) {
         throw new WorkerConfigurationError(
             'HYPERDRIVE binding is not configured.\n' +
@@ -237,6 +423,10 @@ export function createAuth(env: Env, baseURL?: string) {
     }
 
     const prisma = createPrismaClient(env.HYPERDRIVE.connectionString);
+
+    // Resend audience contact sync — fire-and-forget user lifecycle hooks.
+    // Falls back to NullResendContactService when RESEND_API_KEY or RESEND_AUDIENCE_ID is absent.
+    const contacts = createResendContactService(env);
 
     // Build social providers object — only include providers whose credentials are configured.
     const socialProviders: Parameters<typeof betterAuth>[0]['socialProviders'] = {};
@@ -262,7 +452,7 @@ export function createAuth(env: Env, baseURL?: string) {
     const hasViableEmailProvider = !!(env.RESEND_API_KEY || env.SEND_EMAIL);
 
     return betterAuth({
-        database: prismaAdapter(prisma, { provider: 'postgresql' }),
+        database: prismaAdapter(prisma, PRISMA_SCHEMA_CONFIG),
         secret: env.BETTER_AUTH_SECRET,
         basePath: '/api/auth',
         baseURL: env.BETTER_AUTH_URL || baseURL,
@@ -277,6 +467,14 @@ export function createAuth(env: Env, baseURL?: string) {
         trustedOrigins: buildTrustedOriginsFn(env),
 
         socialProviders,
+
+        // ── Secondary storage (Cloudflare KV) ────────────────────────────────
+        // When BETTER_AUTH_KV is bound, Better Auth offloads sessions,
+        // rate-limit counters, and short-lived verification tokens to KV.
+        // This keeps Prisma/Neon free for business-logic queries.
+        // Omitted entirely when the binding is absent — Better Auth falls back
+        // to Postgres for all storage.
+        ...(env.BETTER_AUTH_KV ? { secondaryStorage: createKvSecondaryStorage(env.BETTER_AUTH_KV) } : {}),
 
         emailAndPassword: {
             enabled: true,
@@ -329,10 +527,14 @@ export function createAuth(env: Env, baseURL?: string) {
         },
 
         session: {
+            // ── Persist sessions in the primary database even when KV secondary ──
+            // storage is configured.  Better Auth 1.6.x excludes the session model
+            // from its internal DB schema when `secondaryStorage` is present, unless
+            // this flag is set.  Without it, sign-in fails with:
+            //   BetterAuthError: Model "session" not found in schema
+            // See AUTH_SESSION_STORE_IN_DATABASE for the full rationale.
+            storeSessionInDatabase: AUTH_SESSION_STORE_IN_DATABASE,
             // 7-day session expiry
-            expiresIn: AUTH_SESSION_CONFIG.expiresIn,
-            // Refresh session if it expires within 1 day
-            updateAge: AUTH_SESSION_CONFIG.updateAge,
             cookieCache: {
                 enabled: true,
                 maxAge: AUTH_SESSION_CONFIG.cookieCacheMaxAge,
@@ -378,10 +580,25 @@ export function createAuth(env: Env, baseURL?: string) {
 
         plugins: [
             // Dash plugin — integrates with the dash.better-auth.com dashboard.
-            // Reads BETTER_AUTH_API_KEY from env automatically. Set the key via:
-            //   Local dev:  BETTER_AUTH_API_KEY=<key> in .dev.vars
-            //   Production: wrangler secret put BETTER_AUTH_API_KEY
-            dash(),
+            // Options are built by buildDashOptions(): apiKey and kvUrl are conditionally
+            // spread so the plugin gracefully no-ops when secrets are absent in local dev.
+            // See buildDashOptions() for the full rationale on why explicit passthrough
+            // is required (Worker Secrets are not exposed on process.env).
+            dash(buildDashOptions(env)),
+            // Audit logs — records all auth events (sign-in, sign-up, token refresh,
+            // role changes, bans, etc.) to the database for compliance and debugging.
+            // Integrates with the Dash dashboard for visual audit trail browsing.
+            // TODO(auth): enable auditLogs() once @better-auth/infra exports it.
+            //             auditLogs is NOT in @better-auth/infra@0.2.5 (latest as of 2026-04).
+            //             Uncomment once the package publishes the export:
+            //   auditLogs({ retention: 90 }),
+            // Sentinel — infrastructure-level security plugin (Better Auth Pro tier only).
+            // Guarded by isSentinelEnabled(env): only loaded when
+            // BETTER_AUTH_SENTINEL_ENABLED=true. Without the flag, the plugin is
+            // omitted entirely — loading it on the free/pilot tier causes sign-in
+            // requests to hang with no response. Set the flag in wrangler.toml [vars]
+            // when upgrading to Better Auth Pro; no code change required at that point.
+            ...(isSentinelEnabled(env) ? [sentinel(buildSentinelOptions(env))] : []),
             // Bearer token plugin — allows API authentication via Authorization: Bearer <token>
             // instead of browser cookies. Critical for this project's API-first architecture.
             bearer(),
@@ -431,6 +648,38 @@ export function createAuth(env: Env, baseURL?: string) {
             // Future plugins (uncomment when needed):
             // apiKey(),       — Built-in API key management (we use custom impl)
         ],
+
+        // ── User lifecycle hooks — Resend audience contact sync ───────────────
+        // syncUserCreated / syncUserDeleted are fire-and-forget: errors are caught
+        // and logged as warnings inside ResendContactService and never propagate.
+        // When an ExecutionContext is provided, Promises are registered with
+        // ctx.waitUntil() so they survive response completion in Cloudflare Workers.
+        databaseHooks: {
+            user: {
+                create: {
+                    after: async (user) => {
+                        const syncPromise = contacts.syncUserCreated({ id: user.id, email: user.email, name: user.name });
+                        if (ctx) {
+                            ctx.waitUntil(syncPromise);
+                        } else {
+                            // Without an ExecutionContext the promise runs fire-and-forget.
+                            // Errors are already swallowed inside syncUserCreated.
+                            void syncPromise;
+                        }
+                    },
+                },
+                delete: {
+                    after: async (user) => {
+                        const syncPromise = contacts.syncUserDeleted({ id: user.id, email: user.email });
+                        if (ctx) {
+                            ctx.waitUntil(syncPromise);
+                        } else {
+                            void syncPromise;
+                        }
+                    },
+                },
+            },
+        },
     });
 }
 
