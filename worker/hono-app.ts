@@ -241,10 +241,6 @@ app.onError(async (err, c) => {
                 stack: err instanceof Error ? err.stack : undefined,
                 url: c.req.url,
                 context: { requestId, path: c.req.path, method: c.req.method },
-            }).catch((logErr) => {
-                // Non-fatal: D1 logging failure must never surface as a secondary error.
-                // deno-lint-ignore no-console
-                console.warn('[error-handler] D1 error logging failed:', logErr instanceof Error ? logErr.message : String(logErr));
             }),
         );
     }

@@ -20,7 +20,7 @@
  *
  * ## Security
  * - Tokens are crypto.randomUUID() — 122 bits of entropy
- * - TTL defaults to 30 s (enough for a redirect round-trip)
+ * - TTL defaults to 60 s (enough for a redirect round-trip, even on slow connections)
  * - Message is deleted on first read (no replay)
  * - FLASH_STORE is optional — callers must guard against absence
  */
@@ -41,14 +41,14 @@ export interface FlashMessage {
  * @param kv        The FLASH_STORE KV namespace binding.
  * @param message   Human-readable message text.
  * @param type      Severity level — defaults to 'info'.
- * @param ttlSeconds TTL in seconds — defaults to 30.
+ * @param ttlSeconds TTL in seconds — defaults to 60.
  * @returns The opaque token the client should pass to GET /api/flash/:token.
  */
 export async function setFlash(
     kv: KVNamespace,
     message: string,
     type: FlashType = 'info',
-    ttlSeconds = 30,
+    ttlSeconds = 60,
 ): Promise<string> {
     const token = crypto.randomUUID();
     const payload: FlashMessage = {
@@ -71,7 +71,7 @@ export async function setFlash(
  * `ExecutionContext` via `executionCtx` to use `waitUntil()` — this registers
  * the delete with the runtime so it completes even after the response is sent,
  * reducing (though not eliminating) the race window.  Without `executionCtx`
- * the delete is fire-and-forget; the 30-second TTL remains the safety net.
+ * the delete is fire-and-forget; the 60-second TTL remains the safety net.
  *
  * @param kv           The FLASH_STORE KV namespace binding.
  * @param token        Opaque token returned by {@link setFlash}.

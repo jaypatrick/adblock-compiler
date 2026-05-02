@@ -57,9 +57,7 @@ export async function logErrorToD1(db: D1Database, event: ErrorEvent): Promise<v
     try {
         // Only JSON.stringify context when it is not already a string to avoid
         // double-encoding (e.g. "\"route\"" instead of "route").
-        const contextStr = event.context != null
-            ? (typeof event.context === 'string' ? event.context : JSON.stringify(event.context))
-            : null;
+        const contextStr = event.context != null ? (typeof event.context === 'string' ? event.context : JSON.stringify(event.context)) : null;
 
         await db.prepare(
             `INSERT INTO error_events

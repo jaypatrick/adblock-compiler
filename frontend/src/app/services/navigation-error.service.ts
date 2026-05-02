@@ -9,9 +9,8 @@
  * hydration boundaries.
  *
  * Solution: attach the error to the Router navigation extras `state` object.
- * The target component reads the state from `router.lastSuccessfulNavigation`
- * or the `NavigationStart` event. State is ephemeral — it is never persisted
- * and is cleared on the next navigation.
+ * The target component reads the state from `router.lastSuccessfulNavigation`.
+ * State is ephemeral — it is never persisted and is cleared on the next navigation.
  *
  * Angular 21 patterns: inject(), signal(), NavigationExtras
  */

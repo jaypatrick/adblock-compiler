@@ -49,11 +49,13 @@ export class GlobalErrorHandler extends ErrorHandler {
 
     override handleError(error: unknown): void {
         const appError = this.normalizeError(error);
-        this.lastError.set(appError);
 
-        // Navigate to /fatal-error for errors that cannot be gracefully recovered.
         if (appError.isFatal) {
+            // Fatal errors navigate to /fatal-error — do not set lastError so
+            // ErrorBoundaryComponent overlay does not render over the fatal page.
             void this.router.navigate(['/fatal-error'], { state: { error: appError } });
+        } else {
+            this.lastError.set(appError);
         }
 
         // Maintain history (last 10)
