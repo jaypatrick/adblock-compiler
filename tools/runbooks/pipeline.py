@@ -28,10 +28,7 @@ app = marimo.App(width="full", app_title="Bloqr Ops — Master Pipeline Runbook"
 @app.cell(hide_code=True)
 def _imports():
     import html
-    import json
-    import os
     import sys
-    import time
     from datetime import datetime
     from pathlib import Path
 
@@ -46,23 +43,19 @@ def _imports():
         TIMESTAMP_FORMAT,
         _repo_root,
         all_tools_health_snapshot,
-        get_tool_last_status,
         list_log_files,
-        load_latest_report,
         load_report,
-        logs_dir,
         read_log_file,
         render_report_results_html,
         render_status_badge,
-        render_summary_table_html,
         run_tool,
-        tools_dir,
     )
 
     return (
         KNOWN_TOOLS,
         Path,
         TIMESTAMP_FORMAT,
+        _repo_root,
         all_tools_health_snapshot,
         datetime,
         html,
@@ -238,6 +231,7 @@ def _pipeline_run_button(mo):
 @app.cell
 def _pipeline_execute(
     KNOWN_TOOLS,
+    _repo_root,
     dry_run_flag,
     mo,
     run_button,
@@ -424,7 +418,7 @@ def _log_browser(KNOWN_TOOLS, Path, list_log_files, mo):
 @app.cell(hide_code=True)
 def _log_viewer(
     Path,
-    all_log_files: "dict[str, Path]",
+    all_log_files,
     log_file_selector,
     mo,
     read_log_file,
