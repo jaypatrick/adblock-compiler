@@ -67,16 +67,16 @@ CI auto-deploys on push to `main` when files under `docs/**` or
 
 ## Key Advantages Over mdBook
 
-| Feature                | mdBook                    | Starlight                              |
-| ---------------------- | ------------------------- | -------------------------------------- |
-| **Search**             | Basic (in-memory)         | Pagefind — offline, edge-ready         |
+| Feature                | mdBook                    | Starlight                                |
+| ---------------------- | ------------------------- | ---------------------------------------- |
+| **Search**             | Basic (in-memory)         | Pagefind — offline, edge-ready           |
 | **Cloudflare adapter** | Worker-based static serve | Static Worker Assets (`wrangler deploy`) |
-| **Mermaid**            | `mdbook-mermaid` binary   | `@beoe/rehype-mermaid` rehype plugin   |
-| **OpenAPI**            | Manual static HTML        | `starlight-openapi` live playground    |
-| **MDX**                | ❌                        | ✅ (embed Angular/React components)    |
-| **i18n**               | ❌                        | ✅ built-in                            |
-| **Framework**          | Rust binary               | TypeScript/Node (matches repo stack)   |
-| **Customisation**      | CSS + `book.toml`         | Full Astro — islands, components, etc. |
+| **Mermaid**            | `mdbook-mermaid` binary   | `@beoe/rehype-mermaid` rehype plugin     |
+| **OpenAPI**            | Manual static HTML        | `starlight-openapi` live playground      |
+| **MDX**                | ❌                        | ✅ (embed Angular/React components)      |
+| **i18n**               | ❌                        | ✅ built-in                              |
+| **Framework**          | Rust binary               | TypeScript/Node (matches repo stack)     |
+| **Customisation**      | CSS + `book.toml`         | Full Astro — islands, components, etc.   |
 
 ---
 
