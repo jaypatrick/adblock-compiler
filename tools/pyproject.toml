@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Operational tooling and runbooks for adblock-compiler"
 requires-python = ">=3.11"
 dependencies = [
-    "marimo>=0.8.0",
+    "marimo>=0.13.0",
     "requests>=2.31.0",
     "rich>=13.0.0",
     "psycopg2-binary>=2.9.9",
@@ -14,8 +14,14 @@ dependencies = [
 
 [tool.uv]
 dev-dependencies = [
+    # Astral toolchain
     "ruff>=0.9.0",
     "ty>=0.0.1a0",
+    # pylsp — powers marimo's inline language server
+    # https://docs.marimo.io/guides/editor_features/language_server/
+    "python-lsp-server[websockets]>=1.12.0",
+    # pylsp-ruff — replaces pycodestyle/pyflakes with ruff inside pylsp
+    "python-lsp-ruff>=2.2.0",
 ]
 
 [tool.ruff]
@@ -31,7 +37,7 @@ quote-style = "double"
 indent-style = "space"
 
 [tool.ty]
-# Type checking configuration for ty (Astral)
+# Astral type checker — https://github.com/astral-sh/ty
 python-version = "3.11"
 
 [tool.pytest.ini_options]

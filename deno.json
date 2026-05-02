@@ -131,7 +131,11 @@
         "runbook:test": "uv run --directory tools pytest tests/ -v",
         "runbook:lint": "uv run --directory tools ruff check .",
         "runbook:fmt": "uv run --directory tools ruff format .",
-        "runbook:typecheck": "uv run --directory tools ty check runbooks/"
+        "runbook:typecheck": "uv run --directory tools ty check runbooks/",
+        "runbook:edit:pipeline": "uv run --directory tools marimo edit runbooks/pipeline.py",
+        "runbook:edit:auth-healthcheck": "uv run --directory tools marimo edit runbooks/auth-healthcheck.py",
+        "runbook:server": "uv run --directory tools marimo run runbooks/pipeline.py --host 127.0.0.1 --port 2718",
+        "runbook:convert": "uv run --directory tools marimo convert"
     },
     "imports": {
         "@/": "./src/",

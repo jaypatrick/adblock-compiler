@@ -1,0 +1,56 @@
+# Marimo project configuration for adblock-compiler tools
+# https://docs.marimo.io/guides/configuration/
+#
+# This file lives at tools/.marimo.toml so marimo picks it up automatically
+# when any runbook in tools/ is opened with `marimo run` or `marimo edit`.
+
+[package_management]
+# Use uv as the package manager. This means:
+#   - The "Add package" button in the marimo editor calls `uv add` instead of pip
+#   - `marimo run --sandbox` / `uv run marimo run` both use uv-managed envs
+#   - PEP 723 inline script headers in notebooks are honoured by uv automatically
+# https://docs.marimo.io/guides/package_management/using_uv/
+manager = "uv"
+
+[formatting]
+# Must match ruff line-length in pyproject.toml
+line_length = 120
+
+[save]
+autosave = "after_delay"
+autosave_delay = 1000
+format_on_save = true
+
+[completion]
+activate_on_typing = true
+copilot = false
+
+[runtime]
+# "lazy" avoids re-running expensive cells on every import change.
+# Flip to "autorun" if you prefer fully reactive notebooks.
+auto_instantiate = true
+auto_reload = "lazy"
+
+[keymap]
+preset = "default"
+
+# ---------------------------------------------------------------------------
+# Language server — pylsp + ty + ruff
+# ---------------------------------------------------------------------------
+# marimo embeds a Python language server that powers inline type errors,
+# completions, and hover docs in the notebook editor.
+#
+# Install deps (already in tools/pyproject.toml dev-dependencies):
+#   uv sync --directory tools
+#
+# pylsp-ruff   → ruff replaces pycodestyle/pyflakes inside pylsp
+# ty (Astral)  → next-gen type checker; used as the type inference backend
+#               via `ty server` (ty's own LSP mode, invoked by marimo when
+#               language_servers.ty.enabled = true)
+#
+# https://docs.marimo.io/guides/editor_features/language_server/
+[language_servers.pylsp]
+enabled = true
+
+[language_servers.ty]
+enabled = true
