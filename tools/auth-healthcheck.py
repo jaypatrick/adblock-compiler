@@ -14,6 +14,12 @@ Checks:
   9.  Better Auth admin API (optional)
   10. Wrangler tail log summary (background process)
 
+Modes (--mode flag or interactive menu when stdin is a TTY):
+  all             Run all checks  (default in pipelines / CI)
+  checks          Run checks only — do not clean up test data
+  cleanup         Delete test data only — skip checks
+  checks-cleanup  Run checks then delete test data
+
 Config:
   cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
   # Set NEON_URL at minimum
@@ -24,11 +30,16 @@ Requirements:
   python3 -m venv tools/.venv
   source tools/.venv/bin/activate
   pip install requests rich psycopg2-binary
+
+Exit codes (for pipeline chaining):
+  0   All checks passed (or cleanup-only with no errors)
+  1   One or more checks FAILED
 """
 
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -693,15 +704,214 @@ def write_report() -> None:
 
 
 # ============================================================================
+# Cleanup
+# ============================================================================
+
+def cleanup_test_user_admin_api() -> bool:
+    """Delete the test user via the Better Auth admin API. Returns True if deleted."""
+    section("Cleanup \u00b7 Better Auth admin API")
+    api_key = CONFIG["better_auth_api_key"]
+    if not api_key:
+        warn("Admin delete-user (cleanup)", "BETTER_AUTH_API_KEY not set \u2014 skipping")
+        return False
+
+    # 1. Locate the user by email
+    try:
+        r = requests.get(
+            f"{CONFIG['api_base']}/auth/admin/list-users",
+            headers={"x-api-key": api_key},
+            params={"searchField": "email", "searchValue": CONFIG["test_email"]},
+            timeout=10,
+        )
+        if not r.ok:
+            warn("Admin find-user (cleanup)", f"HTTP {r.status_code}: {r.text[:200]}")
+            return False
+        d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
+        users = d.get("users", [])
+        user_id = next((u["id"] for u in users if u.get("email") == CONFIG["test_email"]), None)
+        if not user_id:
+            warn("Admin find-user (cleanup)", f"{CONFIG['test_email']} not found \u2014 already deleted?")
+            return False
+    except Exception as e:
+        fail("Admin find-user (cleanup)", str(e))
+        return False
+
+    # 2. Delete
+    try:
+        r = requests.post(
+            f"{CONFIG['api_base']}/auth/admin/remove-user",
+            headers={"x-api-key": api_key, "Content-Type": "application/json"},
+            json={"userId": user_id},
+            timeout=10,
+        )
+        if r.ok:
+            ok("Admin delete-user (cleanup)", f"Deleted user_id={user_id}")
+            return True
+        fail("Admin delete-user (cleanup)", f"HTTP {r.status_code}: {r.text[:200]}")
+        return False
+    except Exception as e:
+        fail("Admin delete-user (cleanup)", str(e))
+        return False
+
+
+def cleanup_test_user_neon() -> bool:
+    """Delete the test user row from Neon PostgreSQL. Returns True if a row was removed."""
+    section("Cleanup \u00b7 Neon PostgreSQL")
+    neon_url = CONFIG["neon_url"]
+    if not neon_url:
+        warn("Neon delete-user (cleanup)", "NEON_URL not set \u2014 skipping")
+        return False
+    try:
+        conn = psycopg2.connect(neon_url, connect_timeout=10)
+        conn.autocommit = True
+        cur = conn.cursor()
+    except Exception as e:
+        fail("Neon connect (cleanup)", str(e))
+        return False
+
+    deleted = False
+    try:
+        tbl_map = _discover_neon_tables(cur)
+        user_tbl = tbl_map.get("user")
+        if not user_tbl:
+            warn("Neon delete-user (cleanup)", f"No user table found \u2014 tables: {list(tbl_map.values())}")
+        else:
+            # Validate table name before interpolating into the f-string (email uses %s)
+            if not re.match(r'^[A-Za-z0-9_-]+$', user_tbl):
+                fail("Neon delete-user (cleanup)", f"Unsafe table name from discovery: {user_tbl!r}")
+            else:
+                cur.execute(f'DELETE FROM "{user_tbl}" WHERE email = %s', (CONFIG["test_email"],))
+            if cur.rowcount:
+                ok("Neon delete-user (cleanup)", f"Deleted {cur.rowcount} row(s) from \"{user_tbl}\"")
+                deleted = True
+            else:
+                warn("Neon delete-user (cleanup)", f"{CONFIG['test_email']} not found in \"{user_tbl}\"")
+    except Exception as e:
+        fail("Neon delete-user (cleanup)", str(e))
+    finally:
+        cur.close()
+        conn.close()
+    return deleted
+
+
+def cleanup_test_user_d1(binding: str, label: str) -> bool:
+    """
+    Delete the test user row from a D1 database via ``wrangler d1 execute --remote``.
+    Returns True if the command ran without error (row may or may not have existed).
+
+    Security note: ``wrangler d1 execute --command`` does not support parameterised
+    queries, so the email is validated against a strict format and then embedded as a
+    SQL string literal with single-quote escaping.  The ``user`` table name is
+    Better Auth's fixed schema name and is not derived from user input.
+    """
+    section(f"Cleanup \u00b7 D1 \u2014 {label}  (binding={binding})")
+    email = CONFIG["test_email"]
+    # Validate the email to a safe subset before constructing the SQL literal.
+    if not re.match(r'^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$', email):
+        fail(f"D1 {label} delete-user (cleanup)", f"TEST_EMAIL contains unexpected characters: {email!r}")
+        return False
+    # Single-quote escaping is the only defence available here; the regex above
+    # already excludes backslashes and other shell-relevant characters.
+    escaped_email = email.replace("'", "''")
+    success, stdout, stderr = wrangler(
+        "d1", "execute", binding, "--remote", "--json",
+        # "user" is Better Auth's fixed table name, not derived from user input.
+        "--command", f"DELETE FROM user WHERE email = '{escaped_email}';",
+        timeout=60,
+    )
+    if success:
+        ok(f"D1 {label} delete-user (cleanup)", f"Executed DELETE for {CONFIG['test_email']}")
+        return True
+    fail(f"D1 {label} delete-user (cleanup)", (stderr or stdout)[:300])
+    return False
+
+
+def run_cleanup() -> None:
+    """Orchestrate all cleanup tasks: remove the test user from every data store."""
+    console.print()
+    console.print(Panel(
+        f"[bold yellow]\u26a0\ufe0f  Deleting test data[/bold yellow]\n\n"
+        f"   Email : [cyan]{CONFIG['test_email']}[/cyan]\n\n"
+        f"   Targets:\n"
+        f"     \u00b7 Better Auth admin API  (POST /auth/admin/remove-user)\n"
+        f"     \u00b7 Neon PostgreSQL        (DELETE FROM user WHERE email = \u2026)\n"
+        f"     \u00b7 D1 [cyan]{CONFIG['d1_binding']}[/cyan]       (DELETE FROM user WHERE email = \u2026)\n"
+        f"     \u00b7 D1 [cyan]{CONFIG['d1_admin_binding']}[/cyan]  (DELETE FROM user WHERE email = \u2026)",
+        title="[bold]Cleanup[/bold]",
+    ))
+    cleanup_test_user_admin_api()
+    cleanup_test_user_neon()
+    cleanup_test_user_d1(CONFIG["d1_binding"],     "adblock-compiler-d1-database")
+    cleanup_test_user_d1(CONFIG["d1_admin_binding"], "adblock-compiler-admin-d1")
+
+
+# ============================================================================
+# Interactive menu
+# ============================================================================
+
+def _show_menu() -> tuple[str, bool]:
+    """
+    Render an interactive action menu when stdin is a TTY.
+    Returns ``(mode, dry_run)`` where mode is one of:
+      ``"checks"`` | ``"checks-cleanup"`` | ``"cleanup"`` | ``"quit"``
+    and ``dry_run`` is True when the user chose the read-only option.
+    """
+    from rich.prompt import Prompt
+
+    console.print()
+    console.print(Panel(
+        "  [bold]1[/bold]  Run all checks  (no cleanup)\n"
+        "  [bold]2[/bold]  Run all checks, then clean up test data\n"
+        "  [bold]3[/bold]  Dry-run  (read-only checks \u2014 no sign-up / sign-in, no cleanup)\n"
+        "  [bold]4[/bold]  Clean up test data only\n"
+        "  [bold]q[/bold]  Quit",
+        title="[bold cyan]adblock-compiler \u00b7 Auth Healthcheck[/bold cyan]",
+        subtitle="Select an action",
+    ))
+    choice = Prompt.ask("Action", choices=["1", "2", "3", "4", "q"], default="1")
+    return {
+        "1": ("checks",          False),
+        "2": ("checks-cleanup",  False),
+        "3": ("checks",          True),   # dry-run
+        "4": ("cleanup",         False),
+        "q": ("quit",            False),
+    }[choice]
+
+
+# ============================================================================
 # Entry point
 # ============================================================================
 
 def main() -> None:
     global CONFIG
-    parser = argparse.ArgumentParser(description="Better Auth production healthcheck")
+    parser = argparse.ArgumentParser(
+        description="Better Auth production healthcheck",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=(
+            "Modes\n"
+            "  all             Run all checks  (default in pipelines / CI)\n"
+            "  checks          Run checks only \u2014 do not clean up test data\n"
+            "  cleanup         Delete test data only \u2014 skip checks\n"
+            "  checks-cleanup  Run checks then delete test data\n\n"
+            "When stdin is a TTY and --mode is not given, an interactive menu is shown.\n\n"
+            "Exit codes\n"
+            "  0   All checks passed (or cleanup-only with no errors)\n"
+            "  1   One or more checks FAILED\n"
+        ),
+    )
     parser.add_argument(
         "--dry-run", action="store_true",
-        help="Skip all write operations (sign-up, sign-in) and only perform read checks",
+        help="Skip all write operations (sign-up, sign-in); read-only checks only (also suppresses cleanup)",
+    )
+    parser.add_argument(
+        "--mode",
+        choices=["all", "checks", "cleanup", "checks-cleanup"],
+        default=None,
+        help="Action to perform; omit to show an interactive menu when stdin is a TTY, else 'all'",
+    )
+    parser.add_argument(
+        "--cleanup", action="store_true",
+        help="Shorthand for --mode checks-cleanup: run checks then clean up test data",
     )
     args = parser.parse_args()
 
@@ -720,35 +930,62 @@ def main() -> None:
         title="adblock-compiler \u00b7 bloqr.dev",
     ))
 
+    # ── Determine mode ───────────────────────────────────────────────────────
+    if args.cleanup and not args.mode:
+        mode = "checks-cleanup"
+    elif args.mode:
+        mode = args.mode
+    elif sys.stdin.isatty():
+        mode, dry_run_override = _show_menu()
+        if mode == "quit":
+            sys.exit(0)
+        if dry_run_override:
+            CONFIG["dry_run"] = True
+    else:
+        mode = "all"   # pipeline / CI default
+
+    # dry-run always suppresses cleanup to avoid accidental deletes
+    do_checks = mode in ("all", "checks", "checks-cleanup")
+    do_cleanup = mode in ("all", "cleanup", "checks-cleanup") and not CONFIG["dry_run"]
+
+    # ── Run ──────────────────────────────────────────────────────────────────
     start_tail()
     time.sleep(1)
 
+    signin_data: dict | None = None
     try:
-        check_api()
-        signup_result = check_signup()
-        signin_data = check_signin(signup_result)
+        if do_checks:
+            check_api()
+            signup_result = check_signup()
+            signin_data = check_signin(signup_result)
 
-        if signin_data:
-            check_session_validation(signin_data)
-            check_email_verification(signin_data)
-        else:
-            warn("Session + email checks", "Skipped \u2014 sign-in failed")
+            if signin_data:
+                check_session_validation(signin_data)
+                check_email_verification(signin_data)
+            else:
+                warn("Session + email checks", "Skipped \u2014 sign-in failed")
 
-        check_kv()
-        check_d1(CONFIG["d1_binding"],       "adblock-compiler-d1-database")
-        check_d1(CONFIG["d1_admin_binding"],  "adblock-compiler-admin-d1")
-        check_neon(signin_data)
-        check_admin_api()
+            check_kv()
+            check_d1(CONFIG["d1_binding"],      "adblock-compiler-d1-database")
+            check_d1(CONFIG["d1_admin_binding"], "adblock-compiler-admin-d1")
+            check_neon(signin_data)
+            check_admin_api()
 
-        if CONFIG["enable_tail"]:
-            console.print(f"\n[dim]Waiting {CONFIG['tail_wait_sec']}s for tail to flush\u2026[/dim]")
-            time.sleep(CONFIG["tail_wait_sec"])
+            if CONFIG["enable_tail"]:
+                console.print(f"\n[dim]Waiting {CONFIG['tail_wait_sec']}s for tail to flush\u2026[/dim]")
+                time.sleep(CONFIG["tail_wait_sec"])
 
-        summarise_tail()
+            summarise_tail()
+
+        if do_cleanup:
+            run_cleanup()
 
     finally:
         stop_tail()
         write_report()
+
+    if report["summary"]["failed"] > 0:
+        sys.exit(1)
 
 
 if __name__ == "__main__":
