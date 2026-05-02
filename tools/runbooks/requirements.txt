@@ -1,0 +1,14 @@
+# Runbook Python requirements
+# Install with: pip install -r tools/runbooks/requirements.txt
+
+# Interactive runbook platform
+marimo>=0.8.0
+
+# Auth healthcheck script dependencies (already in tools/requirements if set up via venv)
+requests>=2.31.0
+rich>=13.0.0
+psycopg2-binary>=2.9.9
+
+# Testing
+pytest>=8.0.0
+pytest-timeout>=2.3.0

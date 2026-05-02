@@ -1,12 +1,41 @@
 # tools/
 
-Standalone operational diagnostic scripts for the adblock-compiler / Bloqr stack.
+Standalone operational diagnostic scripts for the adblock-compiler / Bloqr stack, with interactive [Marimo](https://marimo.io) runbooks that run in your browser.
 
-| Script                | Purpose                                                            |
-| --------------------- | ------------------------------------------------------------------ |
-| `auth-healthcheck.py` | End-to-end Better Auth diagnostic — sign-up, sign-in, KV, D1, Neon |
+| Script | Purpose | Runbook |
+|---|---|---|
+| `auth-healthcheck.py` | End-to-end Better Auth diagnostic — sign-up, sign-in, KV, D1, Neon | `deno task runbook:auth-healthcheck` |
 
-## Setup (one time)
+## Quick Start (Interactive Runbooks)
+
+```bash
+# One-time setup
+python3 -m venv tools/.venv
+source tools/.venv/bin/activate
+pip install -r tools/runbooks/requirements.txt
+
+# Launch the master pipeline runbook (recommended admin entry point)
+deno task runbook:pipeline
+# — or —
+marimo run tools/runbooks/pipeline.py
+```
+
+The master runbook opens in your browser at `http://localhost:2718` and includes:
+- Health dashboard (last run status for every tool)
+- Pipeline executor (run any combination of tools in sequence)
+- Log browser (view and copy log files for AI assistants)
+
+For a specific tool:
+
+```bash
+deno task runbook:auth-healthcheck
+# — or —
+marimo run tools/runbooks/auth-healthcheck.py
+```
+
+## Setup (CLI Mode)
+
+If you prefer to run scripts from the terminal:
 
 ```bash
 python3 -m venv tools/.venv
@@ -23,17 +52,32 @@ cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
 # Fill in NEON_URL and optionally BETTER_AUTH_API_KEY
 ```
 
-## Run
+## CLI Usage
 
 ```bash
 source tools/.venv/bin/activate
+
+# Interactive mode (menu)
 python tools/auth-healthcheck.py
+
+# Non-interactive
+python tools/auth-healthcheck.py --mode all
+python tools/auth-healthcheck.py --mode checks
+python tools/auth-healthcheck.py --dry-run
 ```
 
-Or use the shell alias (add to `~/.zshrc`):
+## Tests
 
 ```bash
-alias auth-check='cd /path/to/adblock-compiler && source tools/.venv/bin/activate && python tools/auth-healthcheck.py'
+# From repo root
+deno task runbook:test
+# — or —
+cd tools && python3 -m pytest tests/ -v
 ```
 
-See [`docs/tools/`](../docs/tools/README.md) for full documentation.
+## Documentation
+
+- [`docs/tools/README.md`](../docs/tools/README.md) — All tools, Marimo setup, pipeline chaining guide
+- [`tools/docs/auth-healthcheck/README.md`](docs/auth-healthcheck/README.md) — In-depth auth-healthcheck reference
+- [`tools/runbooks/README.md`](runbooks/README.md) — Runbook quick start
+
