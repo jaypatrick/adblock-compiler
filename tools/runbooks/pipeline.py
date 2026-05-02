@@ -159,18 +159,18 @@ def _health_dashboard(mo, html, all_tools_health_snapshot, render_status_badge, 
         "<th style='padding:8px 14px;text-align:left'>Fail</th>"
         "<th style='padding:8px 14px;text-align:left'>Warn</th>"
         "<th style='padding:8px 14px;text-align:left'>Description</th>"
-        "</tr>"
-        + "".join(rows)
-        + "</table>"
+        "</tr>" + "".join(rows) + "</table>"
     )
 
     refresh_note = mo.md(f"_Dashboard as of: {datetime.now().strftime(TIMESTAMP_FORMAT)}_")
 
     return (
-        mo.vstack([
-            mo.Html(table_html),
-            refresh_note,
-        ]),
+        mo.vstack(
+            [
+                mo.Html(table_html),
+                refresh_note,
+            ]
+        ),
     )
 
 
@@ -212,27 +212,30 @@ def _tool_selector(mo, KNOWN_TOOLS):
     }
 
     _dry_run = mo.ui.checkbox(label="🧪 Dry run — print config, make no real requests", value=False)
-    _stop_on_failure = mo.ui.checkbox(
-        label="🛑 Stop pipeline on first tool failure", value=False
-    )
+    _stop_on_failure = mo.ui.checkbox(label="🛑 Stop pipeline on first tool failure", value=False)
 
     composer_rows = []
     for tool in KNOWN_TOOLS:
         name = tool["name"]
         composer_rows.append(
-            mo.hstack([
-                _checkboxes[name],
-                _mode_selectors[name],
-            ], gap="2rem")
+            mo.hstack(
+                [
+                    _checkboxes[name],
+                    _mode_selectors[name],
+                ],
+                gap="2rem",
+            )
         )
 
     return (
-        mo.vstack([
-            mo.md("### Tools to run"),
-            *composer_rows,
-            mo.md("### Pipeline options"),
-            mo.hstack([_dry_run, _stop_on_failure], gap="2rem"),
-        ]),
+        mo.vstack(
+            [
+                mo.md("### Tools to run"),
+                *composer_rows,
+                mo.md("### Pipeline options"),
+                mo.hstack([_dry_run, _stop_on_failure], gap="2rem"),
+            ]
+        ),
         _checkboxes,
         _mode_selectors,
         _dry_run,
@@ -287,17 +290,17 @@ def _pipeline_execute(
         mode = _mode_selectors[name].value
 
         if not script.exists():
-            pipeline_results.append({
-                "name": name,
-                "label": label,
-                "returncode": -1,
-                "status": "FAIL",
-                "stdout": "",
-                "stderr": f"Script not found: {script}",
-            })
-            output_sections.append(
-                mo.callout(mo.md(f"❌ `{name}` — script not found: `{script}`"), kind="danger")
+            pipeline_results.append(
+                {
+                    "name": name,
+                    "label": label,
+                    "returncode": -1,
+                    "status": "FAIL",
+                    "stdout": "",
+                    "stderr": f"Script not found: {script}",
+                }
             )
+            output_sections.append(mo.callout(mo.md(f"❌ `{name}` — script not found: `{script}`"), kind="danger"))
             if _stop_on_failure.value:
                 break
             continue
@@ -310,25 +313,31 @@ def _pipeline_execute(
             )
 
         status = "PASS" if returncode == 0 else "FAIL"
-        pipeline_results.append({
-            "name": name,
-            "label": label,
-            "returncode": returncode,
-            "status": status,
-            "stdout": stdout,
-            "stderr": stderr,
-        })
+        pipeline_results.append(
+            {
+                "name": name,
+                "label": label,
+                "returncode": returncode,
+                "status": status,
+                "stdout": stdout,
+                "stderr": stderr,
+            }
+        )
 
         combined = stdout + ("\n\nSTDERR:\n" + stderr if stderr.strip() else "")
         callout_kind = "success" if returncode == 0 else "danger"
         badge = "✅ PASSED" if returncode == 0 else "❌ FAILED"
         output_sections.append(
-            mo.accordion({
-                f"{badge} · {label} (click to expand output)": mo.vstack([
-                    mo.callout(mo.md(f"Exit code: `{returncode}`"), kind=callout_kind),
-                    mo.code(combined, language="text"),
-                ])
-            })
+            mo.accordion(
+                {
+                    f"{badge} · {label} (click to expand output)": mo.vstack(
+                        [
+                            mo.callout(mo.md(f"Exit code: `{returncode}`"), kind=callout_kind),
+                            mo.code(combined, language="text"),
+                        ]
+                    )
+                }
+            )
         )
 
         if _stop_on_failure.value and returncode != 0:
@@ -356,7 +365,9 @@ def _aggregate_header(mo, pipeline_results):
 
 
 @app.cell(hide_code=True)
-def _aggregate_results(mo, pipeline_results, render_status_badge, list_log_files, load_report, render_report_results_html):
+def _aggregate_results(
+    mo, pipeline_results, render_status_badge, list_log_files, load_report, render_report_results_html
+):
     if not pipeline_results:
         mo.stop(True, None)
 
@@ -377,9 +388,7 @@ def _aggregate_results(mo, pipeline_results, render_status_badge, list_log_files
         "<th style='padding:8px 14px;text-align:left'>Tool</th>"
         "<th style='padding:8px 14px;text-align:left'>Status</th>"
         "<th style='padding:8px 14px;text-align:left'>Exit Code</th>"
-        "</tr>"
-        + "".join(rows)
-        + "</table>"
+        "</tr>" + "".join(rows) + "</table>"
     )
 
     total = len(pipeline_results)
@@ -395,17 +404,17 @@ def _aggregate_results(mo, pipeline_results, render_status_badge, list_log_files
             if report:
                 results_html = render_report_results_html(report.get("results", {}))
                 report_accordions.append(
-                    mo.accordion({
-                        f"📋 {result['label']} — detailed checks": mo.Html(results_html)
-                    })
+                    mo.accordion({f"📋 {result['label']} — detailed checks": mo.Html(results_html)})
                 )
 
     return (
-        mo.vstack([
-            mo.md(f"**Pipeline complete.** {overall_badge} — {passed}/{total} tools passed"),
-            mo.Html(summary_html),
-            *report_accordions,
-        ]),
+        mo.vstack(
+            [
+                mo.md(f"**Pipeline complete.** {overall_badge} — {passed}/{total} tools passed"),
+                mo.Html(summary_html),
+                *report_accordions,
+            ]
+        ),
     )
 
 
@@ -459,15 +468,15 @@ def _log_viewer(mo, _file_selector, _all_files, read_log_file, Path):
     lang = "json" if selected.suffix == ".json" else "text"
 
     return (
-        mo.vstack([
-            mo.callout(
-                mo.md(
-                    f"📁 **File path for AI sharing:**\n```\n{selected}\n```"
+        mo.vstack(
+            [
+                mo.callout(
+                    mo.md(f"📁 **File path for AI sharing:**\n```\n{selected}\n```"),
+                    kind="info",
                 ),
-                kind="info",
-            ),
-            mo.code(contents, language=lang),
-        ]),
+                mo.code(contents, language=lang),
+            ]
+        ),
     )
 
 

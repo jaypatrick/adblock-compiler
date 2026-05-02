@@ -153,10 +153,12 @@ def _prerequisites(mo, check_command, check_python_package):
     )
 
     return (
-        mo.vstack([
-            status_line,
-            mo.md("\n".join(f"- {item}" for item in items)),
-        ]),
+        mo.vstack(
+            [
+                status_line,
+                mo.md("\n".join(f"- {item}" for item in items)),
+            ]
+        ),
     )
 
 
@@ -215,12 +217,14 @@ def _config_form(mo, _env):
     )
 
     return (
-        mo.vstack([
-            mo.hstack([_api_base, _wrangler_env], gap="1rem"),
-            mo.hstack([_test_email, _api_key], gap="1rem"),
-            _neon_url,
-            _enable_tail,
-        ]),
+        mo.vstack(
+            [
+                mo.hstack([_api_base, _wrangler_env], gap="1rem"),
+                mo.hstack([_test_email, _api_key], gap="1rem"),
+                _neon_url,
+                _enable_tail,
+            ]
+        ),
         _api_base,
         _test_email,
         _neon_url,
@@ -337,11 +341,13 @@ def _execute(
     )
 
     return (
-        mo.vstack([
-            result_callout,
-            mo.md("### Output"),
-            mo.code(output_combined, language="text"),
-        ]),
+        mo.vstack(
+            [
+                result_callout,
+                mo.md("### Output"),
+                mo.code(output_combined, language="text"),
+            ]
+        ),
         returncode,
         output_combined,
     )
@@ -376,8 +382,10 @@ def _results(
         mo.stop(
             True,
             mo.callout(
-                mo.md("No JSON report found in `tools/logs/auth-healthcheck/`. "
-                      "The script may have exited before writing the report."),
+                mo.md(
+                    "No JSON report found in `tools/logs/auth-healthcheck/`. "
+                    "The script may have exited before writing the report."
+                ),
                 kind="warn",
             ),
         )
@@ -409,16 +417,20 @@ def _results(
     raw_json = json.dumps(report, indent=2)
 
     return (
-        mo.vstack([
-            mo.md(f"**Report:** `{latest.name}` · **Ran at:** {ts}"),
-            mo.Html(summary_html),
-            mo.md("### Check Details"),
-            mo.Html(results_html),
-            mo.md(errors_section) if errors_section else mo.md(""),
-            mo.accordion({
-                "📋 Raw JSON report (click to expand)": mo.code(raw_json, language="json"),
-            }),
-        ]),
+        mo.vstack(
+            [
+                mo.md(f"**Report:** `{latest.name}` · **Ran at:** {ts}"),
+                mo.Html(summary_html),
+                mo.md("### Check Details"),
+                mo.Html(results_html),
+                mo.md(errors_section) if errors_section else mo.md(""),
+                mo.accordion(
+                    {
+                        "📋 Raw JSON report (click to expand)": mo.code(raw_json, language="json"),
+                    }
+                ),
+            ]
+        ),
     )
 
 
@@ -460,7 +472,7 @@ def _log_browser(mo, list_log_files, Path):
     _file_selector = mo.ui.dropdown(
         label="Select log file",
         options=_file_options,
-        value=list(_file_options.keys())[0] if _file_options else None,
+        value=next(iter(_file_options.keys())) if _file_options else None,
     )
     return (_file_selector, _all_files, _file_options)
 
@@ -478,18 +490,20 @@ def _log_viewer(mo, _file_selector, _all_files, read_log_file, Path):
     lang = "json" if selected_path.suffix == ".json" else "text"
 
     return (
-        mo.vstack([
-            mo.md(f"**File:** `{selected_path}`"),
-            mo.callout(
-                mo.md(
-                    f"📁 **To share with an AI assistant:** Copy the file path below "
-                    f"and paste it into your chat, or drag the file from your file manager.\n\n"
-                    f"```\n{selected_path}\n```"
+        mo.vstack(
+            [
+                mo.md(f"**File:** `{selected_path}`"),
+                mo.callout(
+                    mo.md(
+                        f"📁 **To share with an AI assistant:** Copy the file path below "
+                        f"and paste it into your chat, or drag the file from your file manager.\n\n"
+                        f"```\n{selected_path}\n```"
+                    ),
+                    kind="info",
                 ),
-                kind="info",
-            ),
-            mo.code(contents, language=lang),
-        ]),
+                mo.code(contents, language=lang),
+            ]
+        ),
     )
 
 

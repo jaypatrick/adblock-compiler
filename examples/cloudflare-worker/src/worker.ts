@@ -5,7 +5,6 @@
 import {
     type ICompilerEvents,
     type IConfiguration,
-    type WorkerCompilationResult,
     WorkerCompiler,
 } from '../../../src/index.ts';
 
