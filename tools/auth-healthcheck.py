@@ -213,6 +213,8 @@ report: dict = {
 _tail_proc: subprocess.Popen | None = None
 _tail_file: IO[str] | None = None  # file handle for wrangler tail stdout
 _neon_table_cache: dict | None = None
+# Regex for safe (no SQL-injection risk) PostgreSQL table names from discovery.
+_SAFE_TABLE_NAME_RE = re.compile(r'^[A-Za-z0-9_]+$')
 
 
 # ============================================================================
@@ -458,6 +460,8 @@ def check_signup() -> dict | None:
                 CONFIG["_created_user_id"] = uid
                 CONFIG["email_verified_via_neon"] = _verify_email_in_neon(uid)
                 _auto_verify_email(CONFIG["test_email"])
+                # Brief pause so the emailVerified write propagates to Neon's
+                # read replicas before check_signin() immediately queries them.
                 time.sleep(1)
             return d
         elif r.status_code == 422 and "already" in r.text.lower():
@@ -914,7 +918,7 @@ def cleanup_test_user_neon() -> bool:
             warn("Neon delete-user (cleanup)", f"No user table found \u2014 tables: {list(tbl_map.values())}")
         else:
             # Validate table name before interpolating into the f-string
-            if not re.match(r'^[A-Za-z0-9_]+$', user_tbl):
+            if not re.match(_SAFE_TABLE_NAME_RE, user_tbl):
                 warn("Neon delete-user (cleanup)", f"Unsafe table name from discovery: {user_tbl!r}")
             else:
                 user_id = CONFIG.get("_created_user_id")
@@ -1006,7 +1010,7 @@ def cleanup_all_healthcheck_data() -> None:
                 if not user_tbl:
                     console.print(f"[yellow]\u26a0\ufe0f  No user table found \u2014 tables: {list(tbl_map.values())}[/yellow]")
                 else:
-                    if not re.match(r'^[A-Za-z0-9_]+$', user_tbl):
+                    if not re.match(_SAFE_TABLE_NAME_RE, user_tbl):
                         console.print(f"[yellow]\u26a0\ufe0f  Unsafe user table name: {user_tbl!r}[/yellow]")
                     else:
                         # Collect healthcheck user IDs before deleting so we can
@@ -1024,7 +1028,7 @@ def cleanup_all_healthcheck_data() -> None:
                             orphan_tbl = tbl_map.get(orphan_concept)
                             if not orphan_tbl:
                                 continue
-                            if not re.match(r'^[A-Za-z0-9_]+$', orphan_tbl):
+                            if not re.match(_SAFE_TABLE_NAME_RE, orphan_tbl):
                                 console.print(
                                     f"[yellow]\u26a0\ufe0f  Unsafe {orphan_concept} table name: {orphan_tbl!r}[/yellow]"
                                 )
@@ -1052,7 +1056,7 @@ def cleanup_all_healthcheck_data() -> None:
                         # Verification table: delete rows by identifier pattern.
                         verif_tbl = tbl_map.get("verification")
                         if verif_tbl:
-                            if not re.match(r'^[A-Za-z0-9_]+$', verif_tbl):
+                            if not re.match(_SAFE_TABLE_NAME_RE, verif_tbl):
                                 console.print(
                                     f"[yellow]\u26a0\ufe0f  Unsafe verification table name: {verif_tbl!r}[/yellow]"
                                 )
