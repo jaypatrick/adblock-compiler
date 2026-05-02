@@ -5,7 +5,7 @@
 # when any runbook in tools/ is opened with `marimo run` or `marimo edit`.
 
 [package_management]
-# Use uv as the package manager.  This means:
+# Use uv as the package manager. This means:
 #   - The "Add package" button in the marimo editor calls `uv add` instead of pip
 #   - `marimo run --sandbox` / `uv run marimo run` both use uv-managed envs
 #   - PEP 723 inline script headers in notebooks are honoured by uv automatically
