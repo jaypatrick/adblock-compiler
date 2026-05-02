@@ -9,6 +9,7 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: text/event-stream
+  Authorization: Bearer {{apiKey}}
 body:
   type: json
   content: |-
@@ -64,7 +65,7 @@ body:
         "key_1": "string"
       },
       "benchmark": false,
-      "turnstileToken": "string",
+      "turnstileToken": "{{turnstileToken}}",
       "priority": "standard"
     }
 examples: ./.resources/Compile with real-time progress (SSE).resources/examples

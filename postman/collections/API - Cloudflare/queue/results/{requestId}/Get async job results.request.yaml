@@ -4,6 +4,7 @@ url: {{baseUrl}}/queue/results/:requestId
 method: GET
 headers:
   Accept: application/json
+  Authorization: Bearer {{apiKey}}
 pathVariables:
   - key: requestId
     value: string

@@ -1,0 +1,14 @@
+$kind: http-request
+description: >
+  Returns cumulative PAYG usage summary for the authenticated user — total requests,
+  total spend, this-month breakdown, and subscription conversion eligibility.
+  Requires API key authentication.
+url: {{baseUrl}}/payg/usage
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{apiKey}}
+body:
+  type: text
+  content: ""
+order: 1010

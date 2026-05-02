@@ -1,0 +1,13 @@
+$kind: http-request
+description: >
+  Serves the ReDoc API documentation UI in classic layout with Bloqr dark theme.
+  Public endpoint — no authentication required.
+url: {{baseUrl}}/api/redoc
+method: GET
+headers:
+  Accept: text/html
+body:
+  type: text
+  content: ""
+examples: ./.resources/ReDoc UI.resources/examples
+order: 3000

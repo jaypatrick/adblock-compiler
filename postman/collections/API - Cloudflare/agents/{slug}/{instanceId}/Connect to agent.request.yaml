@@ -1,0 +1,24 @@
+$kind: http-request
+description: >
+  Connects to an AI agent via WebSocket (GET) or sends an MCP protocol message
+  (POST). The slug identifies the agent type and instanceId is the Durable
+  Object instance identifier.
+
+  Requires a valid Bearer token or API key. See /agents documentation for
+  available agent slugs.
+url: {{originUrl}}/agents/:slug/:instanceId/
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{apiKey}}
+pathVariables:
+  - key: slug
+    value: mcp-agent
+    description: Agent type slug (e.g. mcp-agent)
+  - key: instanceId
+    value: default
+    description: Durable Object instance ID
+body:
+  type: text
+  content: ""
+order: 1000

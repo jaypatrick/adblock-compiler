@@ -1,0 +1,15 @@
+$kind: http-request
+description: Revokes (deletes) an API key by ID.
+url: {{baseUrl}}/keys/:id
+method: DELETE
+headers:
+  Accept: application/json
+  Authorization: Bearer {{bearerToken}}
+pathVariables:
+  - key: id
+    value: string
+    description: ID of the API key to revoke
+body:
+  type: text
+  content: ""
+order: 3000

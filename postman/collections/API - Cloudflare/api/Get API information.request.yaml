@@ -1,9 +1,10 @@
 $kind: http-request
 description: Returns API version, available endpoints, and usage examples
-url: {{baseUrl}}/api
+url: {{baseUrl}}
 method: GET
 headers:
   Accept: application/json
+  Authorization: Bearer {{apiKey}}
 body:
   type: text
   content: ""

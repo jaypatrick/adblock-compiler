@@ -4,6 +4,7 @@ url: {{baseUrl}}/health/latest
 method: GET
 headers:
   Accept: application/json
+  Authorization: Bearer {{apiKey}}
 body:
   type: text
   content: ""

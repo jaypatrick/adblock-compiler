@@ -1,0 +1,25 @@
+$kind: http-request
+description: Saves a compiler configuration for reuse.
+url: {{baseUrl}}/configuration/saved
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{bearerToken}}
+body:
+  type: json
+  content: |-
+    {
+      "name": "My Saved Configuration",
+      "description": "A saved filter list configuration",
+      "config": {
+        "sources": [
+          {
+            "source": "https://example.com/filters.txt",
+            "transformations": ["RemoveComments"]
+          }
+        ],
+        "transformations": ["Deduplicate"]
+      }
+    }
+order: 7000
