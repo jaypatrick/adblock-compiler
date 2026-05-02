@@ -1,6 +1,6 @@
 $kind: http-request
 description: Creates a pay-as-you-go billing session.
-url: {{baseUrl}}/api/payg/session/create
+url: {{baseUrl}}/payg/session/create
 method: POST
 headers:
   Content-Type: application/json

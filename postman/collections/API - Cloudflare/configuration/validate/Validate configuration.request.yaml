@@ -11,7 +11,7 @@ body:
   content: |-
     {
       "turnstileToken": "{{turnstileToken}}",
-      "configuration": {
+      "config": {
         "name": "My Filter List",
         "sources": [
           {

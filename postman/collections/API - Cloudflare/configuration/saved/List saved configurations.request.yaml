@@ -4,7 +4,7 @@ url: {{baseUrl}}/configuration/saved
 method: GET
 headers:
   Accept: application/json
-  Authorization: Bearer {{apiKey}}
+  Authorization: Bearer {{bearerToken}}
 body:
   type: text
   content: ""

@@ -4,7 +4,7 @@ url: {{baseUrl}}/configuration/saved/:id
 method: DELETE
 headers:
   Accept: application/json
-  Authorization: Bearer {{apiKey}}
+  Authorization: Bearer {{bearerToken}}
 pathVariables:
   - key: id
     value: string

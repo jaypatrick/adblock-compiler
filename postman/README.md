@@ -42,7 +42,7 @@ postman/
 The collection uses `Authorization: Bearer <token>` for all protected endpoints.
 
 - Most protected API requests use `Authorization: Bearer {{apiKey}}` — pass a `blq_…` API key. Turnstile verification is automatically skipped for API-key (`blq_…`) requests.
-- Session-scoped management endpoints (`/keys/*`, `/api/auth/sign-out`) use `Authorization: Bearer {{bearerToken}}` (session token obtained after sign-in, not an API key).
+- Session-scoped management endpoints (`/keys/*`, `/api/auth/sign-out`, `/configuration/saved/*`) use `Authorization: Bearer {{bearerToken}}` (session token obtained after sign-in, not an API key) because they require an interactive Better Auth user session.
 - Public endpoints (e.g. `/stripe/webhook`, `/api/auth/sign-in`, `/api/auth/sign-up`) have no auth header.
 
 Get an API key:

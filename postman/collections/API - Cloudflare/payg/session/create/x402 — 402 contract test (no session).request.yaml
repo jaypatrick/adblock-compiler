@@ -6,7 +6,7 @@ description: >
 
   NOTE: This test intentionally expects a 402 response. It is NOT a failure.
   Stripe integration is not yet wired — this tests the protocol contract only.
-url: {{baseUrl}}/api/payg/session/create
+url: {{baseUrl}}/payg/session/create
 method: POST
 headers:
   Content-Type: application/json

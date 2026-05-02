@@ -5,13 +5,14 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: application/json
-  Authorization: Bearer {{apiKey}}
+  Authorization: Bearer {{bearerToken}}
 body:
   type: json
   content: |-
     {
-      "configuration": {
-        "name": "My Saved Configuration",
+      "name": "My Saved Configuration",
+      "description": "A saved filter list configuration",
+      "config": {
         "sources": [
           {
             "source": "https://example.com/filters.txt",
