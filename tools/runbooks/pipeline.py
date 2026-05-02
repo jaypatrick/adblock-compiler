@@ -374,9 +374,7 @@ def _aggregate_results(
             _rpt = load_report(_jfiles[0])
             if _rpt:
                 _rhtml = render_report_results_html(_rpt.get("results", {}))
-                _report_accordions.append(
-                    mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)})
-                )
+                _report_accordions.append(mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)}))
     return
 
 
