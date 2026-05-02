@@ -127,29 +127,29 @@ def _dashboard_header(mo):
 
 @app.cell(hide_code=True)
 def _health_dashboard(mo, html, all_tools_health_snapshot, render_status_badge, datetime, TIMESTAMP_FORMAT):
-    snapshot = all_tools_health_snapshot()
+    _snapshot = all_tools_health_snapshot()
 
-    rows = []
-    for tool in snapshot:
-        status = tool.get("status", "NEVER_RUN")
-        badge = render_status_badge(status if status != "NEVER_RUN" else "SKIP")
-        ran_at = tool.get("ran_at") or "—"
-        passed = tool.get("passed", 0)
-        failed = tool.get("failed", 0)
-        warnings = tool.get("warnings", 0)
-        rows.append(
+    _rows = []
+    for _tool in _snapshot:
+        _status = _tool.get("status", "NEVER_RUN")
+        _badge = render_status_badge(_status if _status != "NEVER_RUN" else "SKIP")
+        _ran_at = _tool.get("ran_at") or "—"
+        _passed = _tool.get("passed", 0)
+        _failed = _tool.get("failed", 0)
+        _warnings = _tool.get("warnings", 0)
+        _rows.append(
             f"<tr>"
-            f"<td style='padding:8px 14px;font-weight:600'>{html.escape(tool['label'], quote=True)}</td>"
-            f"<td style='padding:8px 14px'>{badge}</td>"
-            f"<td style='padding:8px 14px;color:#6b7280;font-size:0.85em'>{html.escape(str(ran_at), quote=True)}</td>"
-            f"<td style='padding:8px 14px;color:#065f46'>{passed}</td>"
-            f"<td style='padding:8px 14px;color:#991b1b'>{failed}</td>"
-            f"<td style='padding:8px 14px;color:#92400e'>{warnings}</td>"
-            f"<td style='padding:8px 14px;color:#4b5563;font-size:0.82em'>{html.escape(tool.get('description', ''), quote=True)}</td>"
+            f"<td style='padding:8px 14px;font-weight:600'>{html.escape(_tool['label'], quote=True)}</td>"
+            f"<td style='padding:8px 14px'>{_badge}</td>"
+            f"<td style='padding:8px 14px;color:#6b7280;font-size:0.85em'>{html.escape(str(_ran_at), quote=True)}</td>"
+            f"<td style='padding:8px 14px;color:#065f46'>{_passed}</td>"
+            f"<td style='padding:8px 14px;color:#991b1b'>{_failed}</td>"
+            f"<td style='padding:8px 14px;color:#92400e'>{_warnings}</td>"
+            f"<td style='padding:8px 14px;color:#4b5563;font-size:0.82em'>{html.escape(_tool.get('description', ''), quote=True)}</td>"
             f"</tr>"
         )
 
-    table_html = (
+    _table_html = (
         "<table style='border-collapse:collapse;width:100%'>"
         "<tr style='background:#f9fafb;font-weight:600'>"
         "<th style='padding:8px 14px;text-align:left'>Tool</th>"
@@ -159,16 +159,16 @@ def _health_dashboard(mo, html, all_tools_health_snapshot, render_status_badge, 
         "<th style='padding:8px 14px;text-align:left'>Fail</th>"
         "<th style='padding:8px 14px;text-align:left'>Warn</th>"
         "<th style='padding:8px 14px;text-align:left'>Description</th>"
-        "</tr>" + "".join(rows) + "</table>"
+        "</tr>" + "".join(_rows) + "</table>"
     )
 
-    refresh_note = mo.md(f"_Dashboard as of: {datetime.now().strftime(TIMESTAMP_FORMAT)}_")
+    _refresh_note = mo.md(f"_Dashboard as of: {datetime.now().strftime(TIMESTAMP_FORMAT)}_")
 
     return (
         mo.vstack(
             [
-                mo.Html(table_html),
-                refresh_note,
+                mo.Html(_table_html),
+                _refresh_note,
             ]
         ),
     )
@@ -214,14 +214,14 @@ def _tool_selector(mo, KNOWN_TOOLS):
     _dry_run = mo.ui.checkbox(label="🧪 Dry run — print config, make no real requests", value=False)
     _stop_on_failure = mo.ui.checkbox(label="🛑 Stop pipeline on first tool failure", value=False)
 
-    composer_rows = []
-    for tool in KNOWN_TOOLS:
-        name = tool["name"]
-        composer_rows.append(
+    _composer_rows = []
+    for _tool in KNOWN_TOOLS:
+        _name = _tool["name"]
+        _composer_rows.append(
             mo.hstack(
                 [
-                    _checkboxes[name],
-                    _mode_selectors[name],
+                    _checkboxes[_name],
+                    _mode_selectors[_name],
                 ],
                 gap="2rem",
             )
@@ -231,7 +231,7 @@ def _tool_selector(mo, KNOWN_TOOLS):
         mo.vstack(
             [
                 mo.md("### Tools to run"),
-                *composer_rows,
+                *_composer_rows,
                 mo.md("### Pipeline options"),
                 mo.hstack([_dry_run, _stop_on_failure], gap="2rem"),
             ]
@@ -273,84 +273,84 @@ def _pipeline_execute(
     if not _run.value:
         mo.stop(True, mo.md("_Click **▶ Run Selected Tools** to execute the pipeline._"))
 
-    selected_tools = [t for t in KNOWN_TOOLS if _checkboxes[t["name"]].value]
-    if not selected_tools:
+    _selected_tools = [t for t in KNOWN_TOOLS if _checkboxes[t["name"]].value]
+    if not _selected_tools:
         mo.stop(
             True,
             mo.callout(mo.md("No tools selected. Check at least one tool in the Pipeline Composer."), kind="warn"),
         )
 
     pipeline_results: list[dict] = []
-    output_sections = []
+    _output_sections = []
 
-    for tool in selected_tools:
-        name = tool["name"]
-        label = tool["label"]
-        script = _repo_root() / tool["script"]
-        mode = _mode_selectors[name].value
+    for _tool in _selected_tools:
+        _name = _tool["name"]
+        _label = _tool["label"]
+        _script = _repo_root() / _tool["script"]
+        _mode = _mode_selectors[_name].value
 
-        if not script.exists():
+        if not _script.exists():
             pipeline_results.append(
                 {
-                    "name": name,
-                    "label": label,
+                    "name": _name,
+                    "label": _label,
                     "returncode": -1,
                     "status": "FAIL",
                     "stdout": "",
-                    "stderr": f"Script not found: {script}",
+                    "stderr": f"Script not found: {_script}",
                 }
             )
-            output_sections.append(mo.callout(mo.md(f"❌ `{name}` — script not found: `{script}`"), kind="danger"))
+            _output_sections.append(mo.callout(mo.md(f"❌ `{_name}` — script not found: `{_script}`"), kind="danger"))
             if _stop_on_failure.value:
                 break
             continue
 
-        with mo.status.spinner(title=f"Running {label}…"):
-            returncode, stdout, stderr = run_tool(
-                script_path=script,
-                mode=mode,
+        with mo.status.spinner(title=f"Running {_label}…"):
+            _returncode, _stdout, _stderr = run_tool(
+                script_path=_script,
+                mode=_mode,
                 dry_run=_dry_run.value,
             )
 
-        status = "PASS" if returncode == 0 else "FAIL"
+        _status = "PASS" if _returncode == 0 else "FAIL"
         pipeline_results.append(
             {
-                "name": name,
-                "label": label,
-                "returncode": returncode,
-                "status": status,
-                "stdout": stdout,
-                "stderr": stderr,
+                "name": _name,
+                "label": _label,
+                "returncode": _returncode,
+                "status": _status,
+                "stdout": _stdout,
+                "stderr": _stderr,
             }
         )
 
-        combined = stdout + ("\n\nSTDERR:\n" + stderr if stderr.strip() else "")
-        callout_kind = "success" if returncode == 0 else "danger"
-        badge = "✅ PASSED" if returncode == 0 else "❌ FAILED"
-        output_sections.append(
+        _combined = _stdout + ("\n\nSTDERR:\n" + _stderr if _stderr.strip() else "")
+        _callout_kind = "success" if _returncode == 0 else "danger"
+        _badge = "✅ PASSED" if _returncode == 0 else "❌ FAILED"
+        _output_sections.append(
             mo.accordion(
                 {
-                    f"{badge} · {label} (click to expand output)": mo.vstack(
+                    f"{_badge} · {_label} (click to expand output)": mo.vstack(
                         [
-                            mo.callout(mo.md(f"Exit code: `{returncode}`"), kind=callout_kind),
-                            mo.code(combined, language="text"),
+                            mo.callout(mo.md(f"Exit code: `{_returncode}`"), kind=_callout_kind),
+                            mo.code(_combined, language="text"),
                         ]
                     )
                 }
             )
         )
 
-        if _stop_on_failure.value and returncode != 0:
-            output_sections.append(
+        if _stop_on_failure.value and _returncode != 0:
+            _output_sections.append(
                 mo.callout(
-                    mo.md(f"🛑 Pipeline stopped after **{label}** failed (stop-on-failure is enabled)."),
+                    mo.md(f"🛑 Pipeline stopped after **{_label}** failed (stop-on-failure is enabled)."),
                     kind="warn",
                 )
             )
             break
 
     return (
-        mo.vstack(output_sections),
+        mo.vstack(_output_sections),
         pipeline_results,
     )
 
@@ -371,48 +371,48 @@ def _aggregate_results(
     if not pipeline_results:
         mo.stop(True, None)
 
-    rows = []
-    for result in pipeline_results:
-        badge = render_status_badge(result["status"])
-        rows.append(
+    _rows = []
+    for _result in pipeline_results:
+        _badge = render_status_badge(_result["status"])
+        _rows.append(
             f"<tr>"
-            f"<td style='padding:8px 14px;font-weight:600'>{result['label']}</td>"
-            f"<td style='padding:8px 14px'>{badge}</td>"
-            f"<td style='padding:8px 14px;font-family:monospace;color:#6b7280'>{result['returncode']}</td>"
+            f"<td style='padding:8px 14px;font-weight:600'>{_result['label']}</td>"
+            f"<td style='padding:8px 14px'>{_badge}</td>"
+            f"<td style='padding:8px 14px;font-family:monospace;color:#6b7280'>{_result['returncode']}</td>"
             f"</tr>"
         )
 
-    summary_html = (
+    _summary_html = (
         "<table style='border-collapse:collapse;width:100%'>"
         "<tr style='background:#f9fafb;font-weight:600'>"
         "<th style='padding:8px 14px;text-align:left'>Tool</th>"
         "<th style='padding:8px 14px;text-align:left'>Status</th>"
         "<th style='padding:8px 14px;text-align:left'>Exit Code</th>"
-        "</tr>" + "".join(rows) + "</table>"
+        "</tr>" + "".join(_rows) + "</table>"
     )
 
-    total = len(pipeline_results)
-    passed = sum(1 for r in pipeline_results if r["status"] == "PASS")
-    failed = total - passed
-    overall_badge = render_status_badge("PASS" if failed == 0 else "FAIL")
+    _total = len(pipeline_results)
+    _passed = sum(1 for r in pipeline_results if r["status"] == "PASS")
+    _failed = _total - _passed
+    _overall_badge = render_status_badge("PASS" if _failed == 0 else "FAIL")
 
-    report_accordions = []
-    for result in pipeline_results:
-        json_files = list_log_files(result["name"], ".json")
-        if json_files:
-            report = load_report(json_files[0])
-            if report:
-                results_html = render_report_results_html(report.get("results", {}))
-                report_accordions.append(
-                    mo.accordion({f"📋 {result['label']} — detailed checks": mo.Html(results_html)})
+    _report_accordions = []
+    for _result in pipeline_results:
+        _json_files = list_log_files(_result["name"], ".json")
+        if _json_files:
+            _report = load_report(_json_files[0])
+            if _report:
+                _results_html = render_report_results_html(_report.get("results", {}))
+                _report_accordions.append(
+                    mo.accordion({f"📋 {_result['label']} — detailed checks": mo.Html(_results_html)})
                 )
 
     return (
         mo.vstack(
             [
-                mo.md(f"**Pipeline complete.** {overall_badge} — {passed}/{total} tools passed"),
-                mo.Html(summary_html),
-                *report_accordions,
+                mo.md(f"**Pipeline complete.** {_overall_badge} — {_passed}/{_total} tools passed"),
+                mo.Html(_summary_html),
+                *_report_accordions,
             ]
         ),
     )
