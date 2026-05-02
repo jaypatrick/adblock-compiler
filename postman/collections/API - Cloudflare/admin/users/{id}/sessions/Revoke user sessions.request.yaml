@@ -1,0 +1,18 @@
+$kind: http-request
+description: >
+  Revokes all active sessions for a user, forcing them to log in again. Requires
+  admin authentication.
+url: {{baseUrl}}/api/admin/users/:id/sessions
+method: DELETE
+headers:
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+pathVariables:
+  - key: id
+    value: string
+    description: User ID (UUID)
+body:
+  type: text
+  content: ""
+examples: ./.resources/Revoke user sessions.resources/examples
+order: 7000

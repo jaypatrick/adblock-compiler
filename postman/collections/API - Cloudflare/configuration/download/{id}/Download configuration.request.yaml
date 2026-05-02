@@ -1,0 +1,15 @@
+$kind: http-request
+description: Downloads a saved configuration by ID.
+url: {{baseUrl}}/configuration/download/:id
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{apiKey}}
+pathVariables:
+  - key: id
+    value: string
+    description: ID of the saved configuration
+body:
+  type: text
+  content: ""
+order: 5000

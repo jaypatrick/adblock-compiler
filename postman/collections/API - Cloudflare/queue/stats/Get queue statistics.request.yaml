@@ -4,6 +4,7 @@ url: {{baseUrl}}/queue/stats
 method: GET
 headers:
   Accept: application/json
+  Authorization: Bearer {{apiKey}}
 body:
   type: text
   content: ""

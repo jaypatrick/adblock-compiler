@@ -1,0 +1,19 @@
+$kind: http-request
+description: >
+  Executes a raw SQL query on the Neon database. Use with caution — only SELECT
+  queries are permitted via this endpoint. Requires admin authentication.
+url: {{baseUrl}}/api/admin/neon/query
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+body:
+  type: json
+  content: |-
+    {
+      "connectionString": "{{neonConnectionString}}",
+      "sql": "SELECT id, email, created_at FROM users ORDER BY created_at DESC LIMIT 10"
+    }
+examples: ./.resources/Execute Neon query.resources/examples
+order: 1000

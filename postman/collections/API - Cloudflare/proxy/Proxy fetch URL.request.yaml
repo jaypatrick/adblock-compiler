@@ -1,0 +1,19 @@
+$kind: http-request
+description: >
+  Proxies a single URL fetch server-side, bypassing browser CORS restrictions.
+  Blocked for RFC 1918 addresses, localhost, and metadata endpoints (SSRF protection).
+  Supports optional caching.
+url: {{baseUrl}}/api/proxy/fetch?url=https%3A%2F%2Fexample.com%2Ffilters.txt
+method: GET
+headers:
+  Accept: text/plain
+  Authorization: Bearer {{apiKey}}
+queryParams:
+  - key: url
+    value: "https://example.com/filters.txt"
+    description: URL to proxy fetch (must be a public URL)
+body:
+  type: text
+  content: ""
+examples: ./.resources/Proxy fetch URL.resources/examples
+order: 1000
