@@ -27,9 +27,9 @@ Config:
 Logs / reports are written to tools/logs/
 
 Requirements:
-  python3 -m venv tools/.venv
-  source tools/.venv/bin/activate
-  pip install requests rich psycopg2-binary
+  uv sync --directory tools
+  # or run directly:
+  uv run --directory tools python auth-healthcheck.py
 
 Exit codes (for pipeline chaining):
   0   All checks passed (or cleanup-only with no errors)
@@ -57,7 +57,8 @@ for pkg in ("requests", "rich", "psycopg2"):
         missing.append(pkg if pkg != "psycopg2" else "psycopg2-binary")
 if missing:
     print(f"Missing packages: {', '.join(missing)}")
-    print(f"Run: pip install {' '.join(missing)}")
+    print("Run: uv sync --directory tools   (from the repo root)")
+    print("     # or: uv run --directory tools python auth-healthcheck.py   (from the repo root)")
     sys.exit(1)
 
 import psycopg2  # noqa: E402
