@@ -75,10 +75,10 @@ export class FlashService {
      * Must be called in a browser context (uses `window.location.search`).
      * Called during `provideAppInitializer` before first render.
      */
-    readFromUrl(): void {
+    readFromUrl(search = window.location.search): void {
         // Guard against accidental server-side calls (window is not available in SSR).
         if (!isPlatformBrowser(this.platformId)) return;
-        const params = new URLSearchParams(window.location.search);
+        const params = new URLSearchParams(search);
         const token = params.get('flash');
         if (token) this.consume(token);
     }

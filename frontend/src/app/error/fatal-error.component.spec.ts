@@ -35,10 +35,10 @@ describe('FatalErrorComponent', () => {
 
     it('should display AppError message from Router state', () => {
         const router = TestBed.inject(Router);
-        // Simulate navigation state
-        vi.spyOn(router, 'lastSuccessfulNavigation', 'get').mockReturnValue({
-            extras: { state: { error: { message: 'DB connection lost', isFatal: true, timestamp: new Date() } } },
-        } as any);
+        // Simulate navigation state — wrap in signal() since lastSuccessfulNavigation is Signal<Navigation | null>
+        vi.spyOn(router, 'lastSuccessfulNavigation', 'get').mockReturnValue(
+            signal({ extras: { state: { error: { message: 'DB connection lost', isFatal: true, timestamp: new Date() } } } }) as any,
+        );
 
         const fixture = TestBed.createComponent(FatalErrorComponent);
         fixture.detectChanges();
@@ -53,19 +53,21 @@ describe('FatalErrorComponent', () => {
 
     it('should show admin details panel when isAdmin is true', () => {
         const router = TestBed.inject(Router);
-        vi.spyOn(router, 'lastSuccessfulNavigation', 'get').mockReturnValue({
-            extras: {
-                state: {
-                    error: {
-                        message: 'DB down',
-                        isFatal: true,
-                        code: 'SERVICE_UNAVAILABLE',
-                        severity: 'fatal',
-                        timestamp: new Date(),
+        vi.spyOn(router, 'lastSuccessfulNavigation', 'get').mockReturnValue(
+            signal({
+                extras: {
+                    state: {
+                        error: {
+                            message: 'DB down',
+                            isFatal: true,
+                            code: 'SERVICE_UNAVAILABLE',
+                            severity: 'fatal',
+                            timestamp: new Date(),
+                        },
                     },
                 },
-            },
-        } as any);
+            }) as any,
+        );
 
         mockAuth.isAdmin.set(true);
         const fixture = TestBed.createComponent(FatalErrorComponent);

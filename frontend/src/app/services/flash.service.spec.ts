@@ -117,22 +117,14 @@ describe('FlashService', () => {
 
     describe('readFromUrl()', () => {
         it('should call consume() when ?flash= param is present', () => {
-            const consumeSpy = vi.spyOn(service, 'consume');
-            Object.defineProperty(window, 'location', {
-                value: { search: '?flash=tok123' },
-                writable: true,
-            });
-            service.readFromUrl();
+            const consumeSpy = vi.spyOn(service, 'consume').mockImplementation(() => {});
+            service.readFromUrl('?flash=tok123');
             expect(consumeSpy).toHaveBeenCalledWith('tok123');
         });
 
         it('should NOT call consume() when ?flash= param is absent', () => {
-            const consumeSpy = vi.spyOn(service, 'consume');
-            Object.defineProperty(window, 'location', {
-                value: { search: '?other=value' },
-                writable: true,
-            });
-            service.readFromUrl();
+            const consumeSpy = vi.spyOn(service, 'consume').mockImplementation(() => {});
+            service.readFromUrl('?other=value');
             expect(consumeSpy).not.toHaveBeenCalled();
         });
     });
