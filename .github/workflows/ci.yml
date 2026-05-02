@@ -38,6 +38,7 @@ jobs:
       frontend: ${{ steps.filter.outputs.frontend }}
       migrations: ${{ steps.filter.outputs.migrations }}
       worker: ${{ steps.filter.outputs.worker }}
+      tools: ${{ steps.filter.outputs.tools }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -63,6 +64,8 @@ jobs:
                 - 'worker/**'
                 - 'src/**'
                 - 'wrangler.toml'
+            tools:
+                - 'tools/**'
 
   lint-format:
     name: Lint & Format Check
@@ -411,6 +414,39 @@ jobs:
           }
           echo "✅ pnpm-lock.yaml is in sync with package.json"
 
+  runbooks-test:
+    name: Runbooks (lint, test)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [changes]
+    if: needs.changes.outputs.tools == 'true'
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          version: "latest"
+
+      - name: Install Python dependencies
+        run: uv sync --directory tools
+
+      - name: Lint (ruff)
+        run: uv run --directory tools ruff check tools/
+
+      - name: Format check (ruff)
+        run: uv run --directory tools ruff format --check tools/
+
+      - name: Type check (ty)
+        continue-on-error: true  # ty is early-stage; don't block CI yet
+        run: uv run --directory tools ty check tools/runbooks/
+
+      - name: Run tests
+        run: uv run --directory tools pytest tests/ -v
+        working-directory: tools
+
   ci-gate:
     name: CI Gate
     runs-on: ubuntu-latest
@@ -435,6 +471,7 @@ jobs:
       # the gate's Python logic treats 'skipped' as passing, so this is safe to include.
       - zta-lint
       - lockfile-check
+      - runbooks-test
     if: ${{ always() && !cancelled() }}
     steps:
       - name: Check all jobs passed

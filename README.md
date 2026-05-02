@@ -243,6 +243,7 @@ Examples:
 | **Observability**  | [Sentry](https://sentry.io), [Prometheus](https://prometheus.io), [Cloudflare Observatory](https://developers.cloudflare.com/speed/observatory/) | Prometheus, Sentry, and Cloudflare Observatory log pushing   |
 | **DevOps**         | [Github](https://github.com), [CodeQL](https://codeql.github.com), [Lighthouse](https://developers.google.com/web/tools/lighthouse/) | DevOps hosted on Github with CodeQL and Lighthouse integration |
 | **Architecture**   | [Edge First](https://www.cloudflare.com/learning/serverless/glossary/what-is-edge-computing/), [Workers Modules](https://workers.cloudflare.com/), [Cloud Native](https://www.cncf.io/), ZTA, Microservices | Cloudlfare-native microservices hosted in Workers, ZTA at every boundary |
+| **Python Tooling** | [uv](https://docs.astral.sh/uv/), [ruff](https://docs.astral.sh/ruff/), [ty](https://github.com/astral-sh/ty) (Astral stack) | Package management, linting, type checking for ops tools (`tools/`) |
 
 ## 🔧 Development
 
@@ -345,8 +346,8 @@ The `public/` directory contains the original vanilla HTML frontend. It will be 
 
 ```mermaid
 mindmap
-  root((Project structure))
-    src["src/"]
+  root((Monorepo))
+    src["src/ — Core compiler library (Deno, JSR: @jk-com/adblock-compiler)"]
       cli["cli/ — Command-line interface (with *.test.ts files)"]
       compiler["compiler/ — Core compilation logic (with *.test.ts files)"]
       configuration["configuration/ — Configuration validation (with *.test.ts files)"]
@@ -357,16 +358,19 @@ mindmap
       utils["utils/ — Utility functions (with *.test.ts files)"]
       indexTs["index.ts — Main library exports"]
       modTs["mod.ts — Deno module exports"]
-    worker["worker/ — Cloudflare Worker implementation (production-ready)"]
+    worker["worker/ — Cloudflare Worker API (Deno workspace member)"]
       workerTs["worker.ts — Main worker with API endpoints"]
       htmlTs["html.ts — Fallback HTML templates"]
-    frontend["frontend/ — Angular 21 SPA (replaces public/)"]
+    frontend["frontend/ — Angular 21 SPA (pnpm workspace package)"]
       app["src/app/ — Components, services, guards, interceptors"]
       indexHtml["src/index.html — Root HTML with Cloudflare analytics"]
       angularJson["angular.json — Build configuration (SSR + browser)"]
-    public["public/ — Legacy static web UI (to be removed)"]
-    examples["examples/"]
-      cloudflareWorker["cloudflare-worker/ — Legacy deployment reference"]
+    tools["tools/ — Operational tooling (Python, uv-managed)"]
+      runbooks["runbooks/ — Marimo interactive runbooks (pipeline, auth-healthcheck)"]
+      tests["tests/ — pytest test suite for tools"]
+    examples["examples/ (Deno workspace member)"]
+      cloudflareWorker["cloudflare-worker/ — Cloudflare Worker deployment example"]
+    prisma["prisma/ — Database schema and migrations"]
 ```
 
 ### Publishing to JSR
