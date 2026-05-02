@@ -104,7 +104,10 @@ temp/
 
 # Examples & POC
 examples/
-# Allow only the workspace member config needed by `deno cache` in Dockerfile.container
+# Allow the cloudflare-worker workspace member directory so `deno cache` can resolve
+# both member configs. Both the directory and the specific file must be unignored.
+!examples/cloudflare-worker/
+examples/cloudflare-worker/*
 !examples/cloudflare-worker/deno.json
 poc/
 ideas/

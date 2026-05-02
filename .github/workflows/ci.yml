@@ -441,7 +441,7 @@ jobs:
 
       - name: Type check (ty)
         continue-on-error: true  # ty is early-stage; don't block CI yet
-        run: uv run --directory tools ty check runbooks/
+        run: uv run --directory tools ty check auth-healthcheck.py runbooks/
 
       - name: Run tests
         run: uv run --directory tools pytest tests/ -v

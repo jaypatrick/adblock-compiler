@@ -29,7 +29,7 @@ For a specific tool:
 ```bash
 deno task runbook:auth-healthcheck
 # — or —
-marimo run tools/runbooks/auth-healthcheck.py
+uv run --directory tools marimo run runbooks/auth-healthcheck.py
 ```
 
 ## Setup (CLI Mode)
@@ -55,9 +55,9 @@ cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
 uv run --directory tools python auth-healthcheck.py
 
 # Non-interactive
-python tools/auth-healthcheck.py --mode all
-python tools/auth-healthcheck.py --mode checks
-python tools/auth-healthcheck.py --dry-run
+uv run --directory tools python auth-healthcheck.py --mode all
+uv run --directory tools python auth-healthcheck.py --mode checks
+uv run --directory tools python auth-healthcheck.py --dry-run
 ```
 
 ## Tests
