@@ -6,3 +6,12 @@ repos:
       hooks:
           - id: actionlint
             stages: [pre-push]
+
+    - repo: https://github.com/astral-sh/ruff-pre-commit
+      rev: v0.9.0
+      hooks:
+          - id: ruff
+            args: [--fix]
+            files: ^tools/.*\.py$
+          - id: ruff-format
+            files: ^tools/.*\.py$

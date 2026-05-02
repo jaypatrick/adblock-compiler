@@ -8,6 +8,18 @@
 
 -
 
+## Affected Packages
+
+<!-- Check all packages modified by this PR -->
+
+- [ ] `src/` — Core compiler library
+- [ ] `worker/` — Cloudflare Worker API
+- [ ] `frontend/` — Angular 21 SPA
+- [ ] `tools/` — Python operational tooling
+- [ ] `examples/` — Usage examples
+- [ ] `prisma/` — Database schema/migrations
+- [ ] Root config — `deno.json`, `pnpm-workspace.yaml`, `MONOREPO.md`, CI workflows
+
 ## Testing
 
 <!-- How were these changes tested? -->

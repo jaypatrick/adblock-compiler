@@ -6,15 +6,13 @@ Interactive runbooks powered by [Marimo](https://marimo.io) for diagnosing and o
 
 ```bash
 # One-time setup (from repo root)
-python3 -m venv tools/.venv
-source tools/.venv/bin/activate
-pip install -r tools/runbooks/requirements.txt
+uv sync --directory tools
 
 # Launch the master pipeline runbook (recommended starting point)
-marimo run tools/runbooks/pipeline.py
+uv run --directory tools marimo run runbooks/pipeline.py
 
 # Or launch a specific tool runbook
-marimo run tools/runbooks/auth-healthcheck.py
+uv run --directory tools marimo run runbooks/auth-healthcheck.py
 ```
 
 Deno shortcut tasks are also available:
@@ -30,7 +28,7 @@ deno task runbook:auth-healthcheck  # Open auth-healthcheck runbook
 [Marimo](https://marimo.io) is a reactive Python notebook that runs in your browser.
 Each runbook is a single `.py` file — plain Python, no JSON, clean git diffs.
 
-- Run `marimo run <file.py>` → browser opens at `http://localhost:2718`
+- Run `uv run --directory tools marimo run <file.py>` → browser opens at `http://localhost:2718`
 - Cells are reactive — changing an input updates all downstream cells automatically
 - No Jupyter knowledge required — just run the command and interact
 
@@ -87,9 +85,7 @@ Every runbook is self-contained and follows this layout:
 ## Testing Runbooks
 
 ```bash
-cd tools
-source .venv/bin/activate
-pytest tests/ -v
+uv run --directory tools pytest tests/ -v
 ```
 
 Tests are in `tools/tests/` and cover:

@@ -1,4 +1,5 @@
 {
+    "name": "@jk-com/adblock-compiler-worker-example",
     "compilerOptions": {
         "lib": ["deno.worker"],
         "types": ["@cloudflare/workers-types"],

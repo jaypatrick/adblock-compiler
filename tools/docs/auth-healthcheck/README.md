@@ -57,10 +57,8 @@ sequenceDiagram
 ## Prerequisites
 
 ```bash
-# One-time venv setup (from repo root)
-python3 -m venv tools/.venv
-source tools/.venv/bin/activate
-pip install -r tools/runbooks/requirements.txt
+# One-time setup (from repo root)
+uv sync --directory tools
 ```
 
 > `psycopg2-binary` is a self-contained PostgreSQL client — no Homebrew Postgres required.
@@ -103,8 +101,7 @@ cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
 ### Interactive mode (TTY)
 
 ```bash
-source tools/.venv/bin/activate
-python tools/auth-healthcheck.py
+uv run --directory tools python auth-healthcheck.py
 ```
 
 An interactive menu appears:
@@ -124,16 +121,16 @@ An interactive menu appears:
 
 ```bash
 # Run all checks
-python tools/auth-healthcheck.py --mode all
+uv run --directory tools python auth-healthcheck.py --mode all
 
 # Run checks only (no cleanup)
-python tools/auth-healthcheck.py --mode checks
+uv run --directory tools python auth-healthcheck.py --mode checks
 
 # Clean up test data only
-python tools/auth-healthcheck.py --mode cleanup
+uv run --directory tools python auth-healthcheck.py --mode cleanup
 
 # Dry run — prints config, makes no requests
-python tools/auth-healthcheck.py --mode checks --dry-run
+uv run --directory tools python auth-healthcheck.py --mode checks --dry-run
 ```
 
 ### Deno shortcut
@@ -156,11 +153,11 @@ The Marimo runbook is the recommended interface for admins. It provides:
 - File picker to copy logs to AI assistants
 
 ```bash
-# Install Marimo (one-time)
-pip install marimo
+# Marimo is already included in tools/pyproject.toml — just sync
+uv sync --directory tools
 
 # Launch the runbook
-marimo run tools/runbooks/auth-healthcheck.py
+uv run --directory tools marimo run runbooks/auth-healthcheck.py
 
 # Or use the deno task shortcut
 deno task runbook:auth-healthcheck

@@ -1,17 +1,17 @@
 {
-  "name": "adblock-compiler-worker-example",
-  "version": "0.8.7",
-  "description": "Cloudflare Worker for compiling adblock filter lists",
-  "type": "module",
-  "scripts": {
-    "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
-    "tail": "wrangler tail"
-  },
-  "devDependencies": {
-    "@cloudflare/kv-asset-handler": "^0.4.2",
-    "@cloudflare/workers-types": "^4.20260426.1",
-    "typescript": "^6.0.2",
-    "wrangler": "^4.86.0"
-  }
+    "name": "adblock-compiler-worker-example",
+    "version": "0.8.7",
+    "description": "Cloudflare Worker for compiling adblock filter lists",
+    "type": "module",
+    "scripts": {
+        "dev": "wrangler dev",
+        "deploy": "wrangler deploy",
+        "tail": "wrangler tail"
+    },
+    "devDependencies": {
+        "@cloudflare/kv-asset-handler": "^0.4.2",
+        "@cloudflare/workers-types": "^4.20260426.1",
+        "typescript": "^6.0.2",
+        "wrangler": "^4.86.0"
+    }
 }
