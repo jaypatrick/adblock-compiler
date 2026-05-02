@@ -25,7 +25,7 @@ displayed_models = ["anthropic/claude-sonnet-4-6", "anthropic/claude-haiku-4-5",
 api_key = "YOUR_GITHUB_TOKEN_HERE"
 
 [ai.anthropic]
-model = "claude-sonnet-4-5"
+model = "claude-sonnet-4-6"
 api_key = "YOUR_ANTHROPIC_API_KEY_HERE"
 
 [diagnostics]
@@ -41,7 +41,7 @@ manager = "uv"
 enabled = true
 
 [language_servers.pylsp]
-enable_mypy = true
+enable_mypy = false
 enabled = true
 enable_flake8 = false
 enable_pylint = false
