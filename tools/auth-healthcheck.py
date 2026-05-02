@@ -302,7 +302,7 @@ def start_tail() -> None:
     if not CONFIG["enable_tail"]:
         return
     try:
-        _tail_file = open(CONFIG["tail_log_file"], "w")
+        _tail_file = open(CONFIG["tail_log_file"], "w", encoding="utf-8")
         try:
             _tail_proc = subprocess.Popen(
                 ["wrangler", "tail", "--format", "json"],
@@ -334,6 +334,10 @@ def stop_tail() -> None:
             _tail_proc.wait(timeout=3)
         except subprocess.TimeoutExpired:
             _tail_proc.kill()
+            try:
+                _tail_proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                pass
         _tail_proc = None
     if _tail_file:
         try:
@@ -1045,6 +1049,7 @@ def cleanup_all_healthcheck_data() -> None:
                                     ),
                                     (hc_user_ids,),
                                 )
+                                neon_rows += cur.rowcount
                                 console.print(
                                     f"[dim]  \u00b7 Deleted {cur.rowcount} orphan row(s) from \"{orphan_tbl}\"[/dim]"
                                 )
@@ -1070,6 +1075,7 @@ def cleanup_all_healthcheck_data() -> None:
                                             psycopg2.sql.Identifier("identifier"),
                                         )
                                     )
+                                    neon_rows += cur.rowcount
                                     console.print(
                                         f"[dim]  \u00b7 Deleted {cur.rowcount} row(s) from \"{verif_tbl}\"[/dim]"
                                     )
@@ -1084,9 +1090,9 @@ def cleanup_all_healthcheck_data() -> None:
                                 "DELETE FROM {} WHERE email LIKE 'healthcheck-%'"
                             ).format(psycopg2.sql.Identifier(user_tbl))
                         )
-                        neon_rows = cur.rowcount
+                        neon_rows += cur.rowcount
                         console.print(
-                            f"[dim]  \u00b7 Deleted {neon_rows} user row(s) from \"{user_tbl}\"[/dim]"
+                            f"[dim]  \u00b7 Deleted {cur.rowcount} user row(s) from \"{user_tbl}\"[/dim]"
                         )
             finally:
                 cur.close()
@@ -1110,7 +1116,8 @@ def cleanup_all_healthcheck_data() -> None:
                     data = json.loads(raw)
                     if isinstance(data, list):
                         for entry in data:
-                            d1_db_rows += entry.get("meta", {}).get("changes", 0)
+                            if isinstance(entry, dict):
+                                d1_db_rows += entry.get("meta", {}).get("changes", 0)
                 except json.JSONDecodeError as e_json:
                     console.print(
                         f"[yellow]\u26a0\ufe0f  D1 {binding}: could not parse result JSON: {e_json}[/yellow]"
@@ -1141,7 +1148,8 @@ def cleanup_all_healthcheck_data() -> None:
                     data = json.loads(raw)
                     if isinstance(data, list):
                         for entry in data:
-                            d1_admin_rows += entry.get("meta", {}).get("changes", 0)
+                            if isinstance(entry, dict):
+                                d1_admin_rows += entry.get("meta", {}).get("changes", 0)
                 except json.JSONDecodeError as e_json:
                     console.print(
                         f"[yellow]\u26a0\ufe0f  D1 {binding}: could not parse result JSON: {e_json}[/yellow]"
