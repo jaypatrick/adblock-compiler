@@ -379,7 +379,6 @@ def _aggregate_results(
             if _rpt:
                 _rhtml = render_report_results_html(_rpt.get("results", {}))
                 _report_accordions.append(mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)}))
-
     _totals_panel = mo.callout(
         mo.md(f"{_overall_badge} &nbsp; **{_npassed}/{_total} passed** &nbsp;·&nbsp; {_nfailed} failed"),
         kind="success" if _nfailed == 0 else "danger",
@@ -438,8 +437,20 @@ def _log_viewer(
 
     _contents = read_log_file(_selected)
     _lang = "json" if _selected.suffix == ".json" else "text"
-    _path_display = mo.callout(mo.md(f"**Path:** `{_selected}`"), kind="neutral")
-    return mo.vstack([_path_display, mo.code(_contents, language=_lang)])
+    return mo.vstack(
+        [
+            mo.md(f"**File:** `{_selected}`"),
+            mo.callout(
+                mo.md(
+                    f"📁 **To share with an AI assistant:** Copy the file path below "
+                    f"and paste it into your chat, or drag the file from your file manager.\n\n"
+                    f"```\n{_selected}\n```"
+                ),
+                kind="info",
+            ),
+            mo.code(_contents, language=_lang),
+        ],
+    )
 
 
 @app.cell(hide_code=True)
@@ -508,7 +519,7 @@ def _quick_reference(mo):
 
     | Problem | Fix |
     |---|---|
-    | `ImportError: No module named 'marimo'` | `uv sync --directory tools` (run from repo root) |
+    | `ImportError: No module named 'marimo'` | `uv sync --directory tools` (from repo root) |
     | `ImportError: No module named 'shared'` | Run from repo root: `marimo run tools/runbooks/pipeline.py` |
     | Cells show `None` | A dependency cell stopped early — check the cell above it |
     | Dashboard shows all `NEVER_RUN` | No tool has been run yet — run at least one tool first |
