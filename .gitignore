@@ -100,5 +100,6 @@ prisma/d1-dev.db
 tools/.venv/
 tools/__pycache__/
 tools/*.pyc
+tools/auth-healthcheck.env
 auth-healthcheck-*.json
 wrangler-tail.log
