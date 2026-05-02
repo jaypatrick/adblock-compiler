@@ -261,6 +261,7 @@ def _pipeline_execute(
     _stop_on_failure,
     KNOWN_TOOLS,
     run_tool,
+    _repo_root,
     tools_dir,
     datetime,
 ):
@@ -280,7 +281,7 @@ def _pipeline_execute(
     for tool in selected_tools:
         name = tool["name"]
         label = tool["label"]
-        script = tools_dir() / f"{name}.py"
+        script = _repo_root() / tool["script"]
         mode = _mode_selectors[name].value
 
         if not script.exists():
@@ -448,7 +449,7 @@ def _log_viewer(mo, _file_selector, _all_files, read_log_file, Path):
     if not _all_files:
         mo.stop(True, None)
 
-    selected = Path(_file_selector.value) if _file_selector.value else None
+    selected = _all_files.get(_file_selector.value) if _file_selector.value else None
     if selected is None or not selected.exists():
         mo.stop(True, mo.md("_Select a file above to view it._"))
 

@@ -11,6 +11,7 @@ These helpers provide:
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import subprocess
@@ -191,10 +192,11 @@ def render_status_badge(status: str) -> str:
         "RUN":  ("🔄", "#e0e7ff", "#3730a3"),
     }
     emoji, bg, fg = colours.get(status.upper(), ("❓", "#f9fafb", "#111827"))
+    safe_status = html.escape(status, quote=True)
     return (
         f'<span style="background:{bg};color:{fg};padding:2px 8px;'
         f'border-radius:4px;font-weight:600;font-size:0.85em">'
-        f"{emoji} {status}</span>"
+        f"{emoji} {safe_status}</span>"
     )
 
 
@@ -227,11 +229,13 @@ def render_report_results_html(results: dict[str, dict]) -> str:
         status = info.get("status", "?")
         detail = info.get("detail", "")
         badge = render_status_badge(status)
+        safe_check = html.escape(str(check), quote=True)
+        safe_detail = html.escape(str(detail), quote=True)
         rows.append(
             f"<tr>"
-            f"<td style='padding:6px 12px;font-family:monospace;font-size:0.85em'>{check}</td>"
+            f"<td style='padding:6px 12px;font-family:monospace;font-size:0.85em'>{safe_check}</td>"
             f"<td style='padding:6px 12px'>{badge}</td>"
-            f"<td style='padding:6px 12px;color:#6b7280;font-size:0.85em'>{detail}</td>"
+            f"<td style='padding:6px 12px;color:#6b7280;font-size:0.85em'>{safe_detail}</td>"
             "</tr>"
         )
     return (

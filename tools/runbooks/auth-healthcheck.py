@@ -448,7 +448,10 @@ def _log_browser(mo, list_log_files, Path):
             ),
         )
 
-    _file_options = {str(f.name): str(f) for f in _all_files}
+    # Keys are full paths (returned by .value); display values are filenames.
+    # Marimo dropdowns return the dict KEY as .value, so use absolute path as key
+    # to avoid Path(_file_selector.value) resolving a bare filename as a relative path.
+    _file_options = {str(f): f.name for f in _all_files}
 
     _file_selector = mo.ui.dropdown(
         label="Select log file",
