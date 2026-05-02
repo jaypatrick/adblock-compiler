@@ -104,3 +104,6 @@ tools/**/*.pyo
 tools/auth-healthcheck.env
 tools/logs/*
 !tools/logs/.gitkeep
+!tools/logs/auth-healthcheck/
+tools/logs/auth-healthcheck/*
+!tools/logs/auth-healthcheck/.gitkeep

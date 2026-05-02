@@ -105,6 +105,7 @@ uv run --directory tools python tools/auth-healthcheck.py
 ```
 
 An interactive menu appears:
+
 ```
   adblock-compiler · Auth Healthcheck
   Select an action
