@@ -38,7 +38,6 @@ indent-style = "space"
 
 [tool.ty]
 # Astral type checker — https://github.com/astral-sh/ty
-python-version = "3.11"
 
 [tool.pytest.ini_options]
 testpaths = ["runbooks/tests", "tests"]
