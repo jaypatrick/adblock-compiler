@@ -1,0 +1,15 @@
+# Docusaurus build artifacts
+.docusaurus/
+build/
+
+# Node dependencies
+node_modules/
+
+# Wrangler artifacts
+.wrangler/
+
+# OpenAPI plugin generated MDX (outputDir: '../docs/api/openapi')
+# These files are generated at build time — gitignored at the repo root as docs/api/openapi/
+
+# macOS
+.DS_Store

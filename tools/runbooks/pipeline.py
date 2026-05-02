@@ -28,10 +28,7 @@ app = marimo.App(width="full", app_title="Bloqr Ops — Master Pipeline Runbook"
 @app.cell(hide_code=True)
 def _imports():
     import html
-    import json
-    import os
     import sys
-    import time
     from datetime import datetime
     from pathlib import Path
 
@@ -46,23 +43,19 @@ def _imports():
         TIMESTAMP_FORMAT,
         _repo_root,
         all_tools_health_snapshot,
-        get_tool_last_status,
         list_log_files,
-        load_latest_report,
         load_report,
-        logs_dir,
         read_log_file,
         render_report_results_html,
         render_status_badge,
-        render_summary_table_html,
         run_tool,
-        tools_dir,
     )
 
     return (
         KNOWN_TOOLS,
         Path,
         TIMESTAMP_FORMAT,
+        _repo_root,
         all_tools_health_snapshot,
         datetime,
         html,
@@ -238,6 +231,7 @@ def _pipeline_run_button(mo):
 @app.cell
 def _pipeline_execute(
     KNOWN_TOOLS,
+    _repo_root,
     dry_run_flag,
     mo,
     run_button,
@@ -325,7 +319,10 @@ def _pipeline_execute(
                 )
             )
             break
-    return (pipeline_results,)
+    return (
+        mo.vstack(_output_sections),
+        pipeline_results,
+    )
 
 
 @app.cell(hide_code=True)
@@ -380,10 +377,16 @@ def _aggregate_results(
             _rpt = load_report(_jfiles[0])
             if _rpt:
                 _rhtml = render_report_results_html(_rpt.get("results", {}))
-                _report_accordions.append(
-                    mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)})
-                )
-    return
+                _report_accordions.append(mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)}))
+    return (
+        mo.vstack(
+            [
+                mo.md(f"**Overall:** {_overall_badge} — {_npassed}/{_total} tools passed"),
+                mo.Html(_summary_html),
+                *_report_accordions,
+            ],
+        ),
+    )
 
 
 @app.cell(hide_code=True)
@@ -424,7 +427,7 @@ def _log_browser(KNOWN_TOOLS, Path, list_log_files, mo):
 @app.cell(hide_code=True)
 def _log_viewer(
     Path,
-    all_log_files: "dict[str, Path]",
+    all_log_files,
     log_file_selector,
     mo,
     read_log_file,
@@ -438,7 +441,22 @@ def _log_viewer(
 
     _contents = read_log_file(_selected)
     _lang = "json" if _selected.suffix == ".json" else "text"
-    return
+    return (
+        mo.vstack(
+            [
+                mo.md(f"**File:** `{_selected}`"),
+                mo.callout(
+                    mo.md(
+                        f"📁 **To share with an AI assistant:** Copy the file path below "
+                        f"and paste it into your chat, or drag the file from your file manager.\n\n"
+                        f"```\n{_selected}\n```"
+                    ),
+                    kind="info",
+                ),
+                mo.code(_contents, language=_lang),
+            ],
+        ),
+    )
 
 
 @app.cell(hide_code=True)
@@ -507,7 +525,7 @@ def _quick_reference(mo):
 
     | Problem | Fix |
     |---|---|
-    | `ImportError: No module named 'marimo'` | `pip install marimo` |
+    | `ImportError: No module named 'marimo'` | `uv sync --directory tools` (from repo root) |
     | `ImportError: No module named 'shared'` | Run from repo root: `marimo run tools/runbooks/pipeline.py` |
     | Cells show `None` | A dependency cell stopped early — check the cell above it |
     | Dashboard shows all `NEVER_RUN` | No tool has been run yet — run at least one tool first |
