@@ -127,25 +127,26 @@ def _dashboard_header(mo):
 
 @app.cell(hide_code=True)
 def _health_dashboard(mo, html, all_tools_health_snapshot, render_status_badge, datetime, TIMESTAMP_FORMAT):
+    # All variables here are cell-private (_-prefixed) — none are consumed by other cells.
     _snapshot = all_tools_health_snapshot()
 
     _rows = []
-    for _tool in _snapshot:
-        _status = _tool.get("status", "NEVER_RUN")
-        _badge = render_status_badge(_status if _status != "NEVER_RUN" else "SKIP")
-        _ran_at = _tool.get("ran_at") or "—"
-        _passed = _tool.get("passed", 0)
-        _failed = _tool.get("failed", 0)
-        _warnings = _tool.get("warnings", 0)
+    for _t in _snapshot:
+        _st = _t.get("status", "NEVER_RUN")
+        _bdg = render_status_badge(_st if _st != "NEVER_RUN" else "SKIP")
+        _ran_at = _t.get("ran_at") or "—"
+        _passed = _t.get("passed", 0)
+        _failed = _t.get("failed", 0)
+        _warnings = _t.get("warnings", 0)
         _rows.append(
             f"<tr>"
-            f"<td style='padding:8px 14px;font-weight:600'>{html.escape(_tool['label'], quote=True)}</td>"
-            f"<td style='padding:8px 14px'>{_badge}</td>"
+            f"<td style='padding:8px 14px;font-weight:600'>{html.escape(_t['label'], quote=True)}</td>"
+            f"<td style='padding:8px 14px'>{_bdg}</td>"
             f"<td style='padding:8px 14px;color:#6b7280;font-size:0.85em'>{html.escape(str(_ran_at), quote=True)}</td>"
             f"<td style='padding:8px 14px;color:#065f46'>{_passed}</td>"
             f"<td style='padding:8px 14px;color:#991b1b'>{_failed}</td>"
             f"<td style='padding:8px 14px;color:#92400e'>{_warnings}</td>"
-            f"<td style='padding:8px 14px;color:#4b5563;font-size:0.82em'>{html.escape(_tool.get('description', ''), quote=True)}</td>"
+            f"<td style='padding:8px 14px;color:#4b5563;font-size:0.82em'>{html.escape(_t.get('description', ''), quote=True)}</td>"
             f"</tr>"
         )
 
@@ -190,17 +191,19 @@ def _composer_header(mo):
 
 @app.cell(hide_code=True)
 def _tool_selector(mo, KNOWN_TOOLS):
-    _checkboxes = {
-        tool["name"]: mo.ui.checkbox(
-            label=f"**{tool['label']}** — {tool['description']}",
+    # Cross-cell outputs: tool_checkboxes, tool_mode_selectors, dry_run_flag, stop_on_failure_flag
+    # (no _ prefix — these are consumed by _pipeline_execute)
+    tool_checkboxes = {
+        t["name"]: mo.ui.checkbox(
+            label=f"**{t['label']}** — {t['description']}",
             value=True,
         )
-        for tool in KNOWN_TOOLS
+        for t in KNOWN_TOOLS
     }
 
-    _mode_selectors = {
-        tool["name"]: mo.ui.dropdown(
-            label=f"{tool['label']} mode",
+    tool_mode_selectors = {
+        t["name"]: mo.ui.dropdown(
+            label=f"{t['label']} mode",
             options={
                 "checks": "🔍 Checks only",
                 "all": "🔍🧹 All (checks + cleanup)",
@@ -208,20 +211,21 @@ def _tool_selector(mo, KNOWN_TOOLS):
             },
             value="checks",
         )
-        for tool in KNOWN_TOOLS
+        for t in KNOWN_TOOLS
     }
 
-    _dry_run = mo.ui.checkbox(label="🧪 Dry run — print config, make no real requests", value=False)
-    _stop_on_failure = mo.ui.checkbox(label="🛑 Stop pipeline on first tool failure", value=False)
+    dry_run_flag = mo.ui.checkbox(label="🧪 Dry run — print config, make no real requests", value=False)
+    stop_on_failure_flag = mo.ui.checkbox(label="🛑 Stop pipeline on first tool failure", value=False)
 
+    # _composer_rows is local-only — not returned — so _ prefix is correct.
     _composer_rows = []
-    for _tool in KNOWN_TOOLS:
-        _name = _tool["name"]
+    for _ct in KNOWN_TOOLS:
+        _cn = _ct["name"]
         _composer_rows.append(
             mo.hstack(
                 [
-                    _checkboxes[_name],
-                    _mode_selectors[_name],
+                    tool_checkboxes[_cn],
+                    tool_mode_selectors[_cn],
                 ],
                 gap="2rem",
             )
@@ -233,13 +237,13 @@ def _tool_selector(mo, KNOWN_TOOLS):
                 mo.md("### Tools to run"),
                 *_composer_rows,
                 mo.md("### Pipeline options"),
-                mo.hstack([_dry_run, _stop_on_failure], gap="2rem"),
+                mo.hstack([dry_run_flag, stop_on_failure_flag], gap="2rem"),
             ]
         ),
-        _checkboxes,
-        _mode_selectors,
-        _dry_run,
-        _stop_on_failure,
+        tool_checkboxes,
+        tool_mode_selectors,
+        dry_run_flag,
+        stop_on_failure_flag,
     )
 
 
@@ -252,87 +256,89 @@ def _execute_header(mo):
 
 @app.cell
 def _pipeline_run_button(mo):
-    _run = mo.ui.run_button(label="▶ Run Selected Tools")
-    return (_run,)
+    # run_button is a cross-cell output — no _ prefix.
+    run_button = mo.ui.run_button(label="▶ Run Selected Tools")
+    return (run_button,)
 
 
 @app.cell
 def _pipeline_execute(
     mo,
-    _run,
-    _checkboxes,
-    _mode_selectors,
-    _dry_run,
-    _stop_on_failure,
+    run_button,
+    tool_checkboxes,
+    tool_mode_selectors,
+    dry_run_flag,
+    stop_on_failure_flag,
     KNOWN_TOOLS,
     run_tool,
     _repo_root,
     tools_dir,
     datetime,
 ):
-    if not _run.value:
+    if not run_button.value:
         mo.stop(True, mo.md("_Click **▶ Run Selected Tools** to execute the pipeline._"))
 
-    _selected_tools = [t for t in KNOWN_TOOLS if _checkboxes[t["name"]].value]
+    _selected_tools = [t for t in KNOWN_TOOLS if tool_checkboxes[t["name"]].value]
     if not _selected_tools:
         mo.stop(
             True,
             mo.callout(mo.md("No tools selected. Check at least one tool in the Pipeline Composer."), kind="warn"),
         )
 
+    # pipeline_results is a cross-cell output — no _ prefix.
     pipeline_results: list[dict] = []
     _output_sections = []
 
-    for _tool in _selected_tools:
-        _name = _tool["name"]
-        _label = _tool["label"]
-        _script = _repo_root() / _tool["script"]
-        _mode = _mode_selectors[_name].value
+    for _pt in _selected_tools:
+        _pn = _pt["name"]
+        _pl = _pt["label"]
+        _ps = _repo_root() / _pt["script"]
+        _pm = tool_mode_selectors[_pn].value
 
-        if not _script.exists():
+        if not _ps.exists():
             pipeline_results.append(
                 {
-                    "name": _name,
-                    "label": _label,
+                    "name": _pn,
+                    "label": _pl,
                     "returncode": -1,
                     "status": "FAIL",
                     "stdout": "",
-                    "stderr": f"Script not found: {_script}",
+                    "stderr": f"Script not found: {_ps}",
                 }
             )
-            _output_sections.append(mo.callout(mo.md(f"❌ `{_name}` — script not found: `{_script}`"), kind="danger"))
-            if _stop_on_failure.value:
+            _output_sections.append(mo.callout(mo.md(f"❌ `{_pn}` — script not found: `{_ps}`"), kind="danger"))
+            if stop_on_failure_flag.value:
                 break
             continue
 
-        with mo.status.spinner(title=f"Running {_label}…"):
-            _returncode, _stdout, _stderr = run_tool(
-                script_path=_script,
-                mode=_mode,
-                dry_run=_dry_run.value,
+        with mo.status.spinner(title=f"Running {_pl}…"):
+            _prc, _pout, _perr = run_tool(
+                script_path=_ps,
+                mode=_pm,
+                dry_run=dry_run_flag.value,
             )
 
-        _status = "PASS" if _returncode == 0 else "FAIL"
+        _pst = "PASS" if _prc == 0 else "FAIL"
         pipeline_results.append(
             {
-                "name": _name,
-                "label": _label,
-                "returncode": _returncode,
-                "status": _status,
-                "stdout": _stdout,
-                "stderr": _stderr,
+                "name": _pn,
+                "label": _pl,
+                "returncode": _prc,
+                "status": _pst,
+                "stdout": _pout,
+                "stderr": _perr,
             }
         )
 
-        _combined = _stdout + ("\n\nSTDERR:\n" + _stderr if _stderr.strip() else "")
-        _callout_kind = "success" if _returncode == 0 else "danger"
-        _badge = "✅ PASSED" if _returncode == 0 else "❌ FAILED"
+        _combined = _pout + ("\n\nSTDERR:\n" + _perr if _perr.strip() else "")
+        _ck = "success" if _prc == 0 else "danger"
+        _pbdg = "✅ PASSED" if _prc == 0 else "❌ FAILED"
         _output_sections.append(
             mo.accordion(
                 {
-                    f"{_badge} · {_label} (click to expand output)": mo.vstack(
+                    f"{_pbdg} · {_pl} (click to expand output)": mo.vstack(
                         [
-                            mo.callout(mo.md(f"Exit code: `{_returncode}`"), kind=_callout_kind),
+                            mo.callout(mo.md(f"Exit code: `{_prc}`"), kind=_ck),
                             mo.code(_combined, language="text"),
                         ]
                     )
@@ -340,10 +346,10 @@ def _pipeline_execute(
             )
         )
 
-        if _stop_on_failure.value and _returncode != 0:
+        if stop_on_failure_flag.value and _prc != 0:
             _output_sections.append(
                 mo.callout(
-                    mo.md(f"🛑 Pipeline stopped after **{_label}** failed (stop-on-failure is enabled)."),
+                    mo.md(f"🛑 Pipeline stopped after **{_pl}** failed (stop-on-failure is enabled)."),
                     kind="warn",
                 )
             )
@@ -372,13 +378,13 @@ def _aggregate_results(
         mo.stop(True, None)
 
     _rows = []
-    for _result in pipeline_results:
-        _badge = render_status_badge(_result["status"])
+    for _ar in pipeline_results:
+        _abdg = render_status_badge(_ar["status"])
         _rows.append(
             f"<tr>"
-            f"<td style='padding:8px 14px;font-weight:600'>{_result['label']}</td>"
-            f"<td style='padding:8px 14px'>{_badge}</td>"
-            f"<td style='padding:8px 14px;font-family:monospace;color:#6b7280'>{_result['returncode']}</td>"
+            f"<td style='padding:8px 14px;font-weight:600'>{_ar['label']}</td>"
+            f"<td style='padding:8px 14px'>{_abdg}</td>"
+            f"<td style='padding:8px 14px;font-family:monospace;color:#6b7280'>{_ar['returncode']}</td>"
             f"</tr>"
         )
 
@@ -392,25 +398,25 @@ def _aggregate_results(
     )
 
     _total = len(pipeline_results)
-    _passed = sum(1 for r in pipeline_results if r["status"] == "PASS")
-    _failed = _total - _passed
-    _overall_badge = render_status_badge("PASS" if _failed == 0 else "FAIL")
+    _npassed = sum(1 for r in pipeline_results if r["status"] == "PASS")
+    _nfailed = _total - _npassed
+    _overall_badge = render_status_badge("PASS" if _nfailed == 0 else "FAIL")
 
     _report_accordions = []
-    for _result in pipeline_results:
-        _json_files = list_log_files(_result["name"], ".json")
-        if _json_files:
-            _report = load_report(_json_files[0])
-            if _report:
-                _results_html = render_report_results_html(_report.get("results", {}))
+    for _ar2 in pipeline_results:
+        _jfiles = list_log_files(_ar2["name"], ".json")
+        if _jfiles:
+            _rpt = load_report(_jfiles[0])
+            if _rpt:
+                _rhtml = render_report_results_html(_rpt.get("results", {}))
                 _report_accordions.append(
-                    mo.accordion({f"📋 {_result['label']} — detailed checks": mo.Html(_results_html)})
+                    mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)})
                 )
 
     return (
         mo.vstack(
             [
-                mo.md(f"**Pipeline complete.** {_overall_badge} — {_passed}/{_total} tools passed"),
+                mo.md(f"**Pipeline complete.** {_overall_badge} — {_npassed}/{_total} tools passed"),
                 mo.Html(_summary_html),
                 *_report_accordions,
             ]
@@ -434,47 +440,48 @@ def _log_browser_header(mo):
 
 @app.cell(hide_code=True)
 def _log_browser(mo, KNOWN_TOOLS, list_log_files, Path):
-    _all_files: dict[str, Path] = {}
-    for _tool in KNOWN_TOOLS:
-        for _f in list_log_files(_tool["name"], ".json"):
-            _all_files[f"{_tool['label']} · {_f.name}"] = _f
-        for _f in list_log_files(_tool["name"], ".log"):
-            _all_files[f"{_tool['label']} · {_f.name}"] = _f
+    # Cross-cell outputs: log_file_selector, all_log_files (no _ prefix)
+    all_log_files: dict[str, Path] = {}
+    for _lbt in KNOWN_TOOLS:
+        for _lbf in list_log_files(_lbt["name"], ".json"):
+            all_log_files[f"{_lbt['label']} · {_lbf.name}"] = _lbf
+        for _lbf in list_log_files(_lbt["name"], ".log"):
+            all_log_files[f"{_lbt['label']} · {_lbf.name}"] = _lbf
 
-    if not _all_files:
+    if not all_log_files:
         mo.stop(
             True,
             mo.callout(mo.md("No log files found yet. Run the pipeline first."), kind="neutral"),
         )
 
-    _file_selector = mo.ui.dropdown(
+    log_file_selector = mo.ui.dropdown(
         label="Select log file",
-        options={str(v): k for k, v in _all_files.items()},
-        value=str(next(iter(_all_files.values()))) if _all_files else None,
+        options={str(v): k for k, v in all_log_files.items()},
+        value=str(next(iter(all_log_files.values()))) if all_log_files else None,
     )
-    return (_file_selector, _all_files)
+    return (log_file_selector, all_log_files)
 
 
 @app.cell(hide_code=True)
-def _log_viewer(mo, _file_selector, _all_files, read_log_file, Path):
-    if not _all_files:
+def _log_viewer(mo, log_file_selector, all_log_files, read_log_file, Path):
+    if not all_log_files:
         mo.stop(True, None)
 
-    selected = Path(_file_selector.value) if _file_selector.value else None
-    if selected is None or not selected.exists():
+    _selected = Path(log_file_selector.value) if log_file_selector.value else None
+    if _selected is None or not _selected.exists():
         mo.stop(True, mo.md("_Select a file above to view it._"))
 
-    contents = read_log_file(selected)
-    lang = "json" if selected.suffix == ".json" else "text"
+    _contents = read_log_file(_selected)
+    _lang = "json" if _selected.suffix == ".json" else "text"
 
     return (
         mo.vstack(
             [
                 mo.callout(
-                    mo.md(f"📁 **File path for AI sharing:**\n```\n{selected}\n```"),
+                    mo.md(f"📁 **File path for AI sharing:**\n```\n{_selected}\n```"),
                     kind="info",
                 ),
-                mo.code(contents, language=lang),
+                mo.code(_contents, language=_lang),
             ]
         ),
     )
