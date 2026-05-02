@@ -129,10 +129,15 @@ def _load_config() -> dict:
         ("TAIL_WAIT_SEC",       "optional", "4"),
     ]
     _sensitive_keys = {"TEST_PASSWORD", "BETTER_AUTH_API_KEY", "NEON_URL"}
+    _SENSITIVE_PREFIX_LEN = 6
+    _MAX_DISPLAY_LEN = 80
     for key, requiredness, default in _important_keys:
         val = file_env.get(key, "") or os.environ.get(key, "")
         if val and "<" not in val:
-            display = (val[:6] + "\u2026") if key in _sensitive_keys else (val[:80] + "\u2026" if len(val) > 80 else val)
+            if key in _sensitive_keys:
+                display = val[:_SENSITIVE_PREFIX_LEN] + "\u2026"
+            else:
+                display = val[:_MAX_DISPLAY_LEN] + "\u2026" if len(val) > _MAX_DISPLAY_LEN else val
             console.print(f"[dim]  \u2713 {key} = {display}[/dim]")
         elif default:
             console.print(f"[dim]  \u00b7 {key} = {default} (default)[/dim]")
@@ -350,7 +355,7 @@ def check_signin(signup_result: dict | None) -> dict | None:
                 body_lower = r.text.lower()
                 is_email_verification_error = (
                     "verif" in body_lower
-                    or "EMAIL_NOT_VERIFIED" in r.text
+                    or "email_not_verified" in body_lower
                     or (d.get("code") or "").upper() == "EMAIL_NOT_VERIFIED"
                 )
                 if is_email_verification_error or signup_result is not None:
