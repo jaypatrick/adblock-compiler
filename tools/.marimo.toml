@@ -35,6 +35,27 @@ auto_reload = "lazy"
 preset = "default"
 
 # ---------------------------------------------------------------------------
+# AI — Anthropic Claude
+# ---------------------------------------------------------------------------
+# Marimo supports multiple AI providers. This project uses Anthropic.
+# Set your API key in the environment before running marimo:
+#
+#   export ANTHROPIC_API_KEY="sk-ant-..."
+#
+# Or add it to tools/auth-healthcheck.env (it will be loaded automatically
+# by the runbooks via load_env_file()).
+#
+# Model options (as of 2026):
+#   claude-opus-4-5      — most capable, best for complex reasoning
+#   claude-sonnet-4-5    — balanced speed/capability (recommended default)
+#   claude-haiku-3-5     — fastest, cheapest, good for completions
+#
+# https://docs.marimo.io/guides/configuration/llm_providers/#anthropic
+[ai.anthropic]
+model = "claude-sonnet-4-5"
+# api_key = ""  # Set via ANTHROPIC_API_KEY env var instead
+
+# ---------------------------------------------------------------------------
 # Language server — pylsp + ty + ruff
 # ---------------------------------------------------------------------------
 # marimo embeds a Python language server that powers inline type errors,
