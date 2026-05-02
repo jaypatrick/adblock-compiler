@@ -41,7 +41,7 @@ manager = "uv"
 enabled = true
 
 [language_servers.pylsp]
-enable_mypy = true
+enable_mypy = false
 enabled = true
 enable_flake8 = false
 enable_pylint = false

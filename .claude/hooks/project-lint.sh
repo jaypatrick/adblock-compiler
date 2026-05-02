@@ -22,15 +22,17 @@ fi
 # Get file extension
 FILE_EXT="${FILE_PATH##*.}"
 
-# TypeScript/JavaScript files in src/ or worker/
-if [[ "$FILE_PATH" == "src/"* ]] || [[ "$FILE_PATH" == "worker/"* ]]; then
+# Resolve repo root so we can match absolute paths correctly
+REPO_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || pwd)
+
+# TypeScript/JavaScript files in src/ or worker/ (match absolute paths)
+if [[ "$FILE_PATH" == "$REPO_ROOT/src/"* ]] || [[ "$FILE_PATH" == "$REPO_ROOT/worker/"* ]]; then
     if [[ "$FILE_EXT" == "ts" ]] || [[ "$FILE_EXT" == "tsx" ]]; then
         echo "🔍 Checking TypeScript formatting for $FILE_PATH..."
         
-        # Run deno fmt check (non-blocking, just informative)
+        # Run deno fmt check (non-blocking, informative only — do NOT auto-rewrite)
         if ! deno fmt --check "$FILE_PATH" 2>/dev/null; then
-            echo "⚠️  File needs formatting. Running: deno task fmt" >&2
-            deno fmt "$FILE_PATH" 2>/dev/null
+            echo "⚠️  File needs formatting. Run: deno task fmt" >&2
         fi
         
         # Run deno lint (informative only)
@@ -40,8 +42,8 @@ if [[ "$FILE_PATH" == "src/"* ]] || [[ "$FILE_PATH" == "worker/"* ]]; then
     fi
 fi
 
-# Python files in tools/
-if [[ "$FILE_PATH" == "tools/"* ]]; then
+# Python files in tools/ (match absolute paths)
+if [[ "$FILE_PATH" == "$REPO_ROOT/tools/"* ]]; then
     if [[ "$FILE_EXT" == "py" ]]; then
         echo "🔍 Checking Python code for $FILE_PATH..."
         

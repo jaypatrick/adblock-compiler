@@ -56,7 +56,7 @@ timeout = 60
 
 [tool.marimo.language_servers.pylsp]
 enabled = true               # Enable/disable pylsp
-enable_mypy = true           # Type checking with mypy (enabled by default, if installed)
+enable_mypy = false          # Use ty (Astral) for type checking instead of mypy
 enable_ruff = true           # Linting with ruff (enabled by default, if installed)
 enable_flake8 = false        # Linting with flake8
 enable_pydocstyle = false    # Check docstring style

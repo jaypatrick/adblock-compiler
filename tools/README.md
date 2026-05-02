@@ -65,7 +65,7 @@ api_key = "YOUR_ANTHROPIC_API_KEY_HERE"
 - **GitHub**: Create a personal access token at https://github.com/settings/personal-access-tokens/new (requires `gist` scope for model access)
 - **Anthropic**: Get your API key from https://console.anthropic.com/account/keys
 
-⚠️ **Security**: `.marimo.toml` is NOT tracked by git (added to `.gitignore`). Never commit real credentials. The template (`.marimo.toml.example`) is safe to commit with placeholder values.
+⚠️ **Security**: `.marimo.toml` is intentionally untracked by git. The local copy you create from the template will never be committed, so credentials stay on your machine. Never add real keys to `.marimo.toml.example` (the committed template). Use environment variables (`ANTHROPIC_API_KEY`, `GITHUB_TOKEN`) for credentials whenever possible; the file exists only as a convenience for local dev.
 
 ### Script Configuration
 

@@ -26,8 +26,8 @@ fi
 if grep -q "import marimo" "$FILE_PATH" 2>/dev/null && grep -q "@app.cell" "$FILE_PATH" 2>/dev/null; then
     echo "🔍 Running marimo check on $FILE_PATH..."
 
-    # Run uvx marimo check and capture output
-    CHECK_OUTPUT=$(uvx marimo check "$FILE_PATH" 2>&1)
+    # Run marimo check via the repo's locked tools environment (matches uv.lock)
+    CHECK_OUTPUT=$(uv run --directory "$(git rev-parse --show-toplevel)/tools" marimo check "$FILE_PATH" 2>&1)
     CHECK_EXIT=$?
 
     # Show output
