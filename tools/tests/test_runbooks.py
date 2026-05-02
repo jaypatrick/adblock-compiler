@@ -231,9 +231,7 @@ class TestRunbookStructure:
                 if not isinstance(func.value, ast.Name):
                     continue
                 if func.value.id == "mo" and func.attr in _MO_DISPLAY_ATTRS:
-                    violations.append(
-                        f"  Cell `{node.name}` line {stmt.lineno}: mo.{func.attr}(...) result discarded"
-                    )
+                    violations.append(f"  Cell `{node.name}` line {stmt.lineno}: mo.{func.attr}(...) result discarded")
 
         assert not violations, (
             "auth-healthcheck.py has discarded mo.* display expression statements (B018-style bug):\n"
