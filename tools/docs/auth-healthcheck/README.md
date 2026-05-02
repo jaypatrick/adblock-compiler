@@ -11,18 +11,18 @@ End-to-end production auth diagnostic for the Better Auth / Bloqr stack. Validat
 
 ## What It Checks
 
-| Step | Check | What it verifies |
-|---|---|---|
-| 1 | API health | `GET /api/version` responds, `/api/auth/providers` lists providers |
-| 2 | Sign-up | `POST /api/auth/sign-up/email` creates a new test user |
-| 3 | Sign-in + token | `POST /api/auth/sign-in/email` returns `session.token`, `session.id`, `user` object |
-| 4 | Session validation | `GET /api/auth/get-session` with Bearer token returns the correct user |
-| 5 | Email verification | `user.emailVerified` flag checked; warns if false |
-| 6 | Better Auth KV | `wrangler kv key list` — verifies KV is accessible and shows key prefix distribution |
-| 7 | D1 databases | Both `DB` (adblock-compiler-d1-database) and `ADMIN_DB` (adblock-compiler-admin-d1) — table list + row counts |
-| 8 | Neon / PostgreSQL | Direct connection via `psycopg2` — table row counts, test user row, session row |
-| 9 | Admin API | `GET /api/auth/admin/list-users` with API key (optional) |
-| 10 | Tail log summary | Worker exceptions and auth-related log events captured during the run |
+| Step | Check              | What it verifies                                                                                              |
+| ---- | ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| 1    | API health         | `GET /api/version` responds, `/api/auth/providers` lists providers                                            |
+| 2    | Sign-up            | `POST /api/auth/sign-up/email` creates a new test user                                                        |
+| 3    | Sign-in + token    | `POST /api/auth/sign-in/email` returns `session.token`, `session.id`, `user` object                           |
+| 4    | Session validation | `GET /api/auth/get-session` with Bearer token returns the correct user                                        |
+| 5    | Email verification | `user.emailVerified` flag checked; warns if false                                                             |
+| 6    | Better Auth KV     | `wrangler kv key list` — verifies KV is accessible and shows key prefix distribution                          |
+| 7    | D1 databases       | Both `DB` (adblock-compiler-d1-database) and `ADMIN_DB` (adblock-compiler-admin-d1) — table list + row counts |
+| 8    | Neon / PostgreSQL  | Direct connection via `psycopg2` — table row counts, test user row, session row                               |
+| 9    | Admin API          | `GET /api/auth/admin/list-users` with API key (optional)                                                      |
+| 10   | Tail log summary   | Worker exceptions and auth-related log events captured during the run                                         |
 
 ---
 
@@ -81,20 +81,20 @@ cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
 
 ### Key Variables
 
-| Variable | Required | Default | Description |
-|---|---|---|---|
-| `NEON_URL` | ✅ | — | Direct Neon connection string from Neon Console → Branch → "Direct connection" |
-| `BETTER_AUTH_API_KEY` | Optional | — | Enables admin API check (`list-users`) |
-| `TEST_EMAIL` | Optional | auto-generated | Fixed test email; leave blank to generate unique email each run |
-| `TEST_PASSWORD` | Optional | `HealthCheck1234!!@@` | Password for test user |
-| `API_BASE` | Optional | `https://api.bloqr.dev/api` | Target API base URL |
-| `KV_BINDING` | Optional | `BETTER_AUTH_KV` | Wrangler KV binding name |
-| `D1_BINDING` | Optional | `DB` | Wrangler D1 primary binding name |
-| `D1_ADMIN_BINDING` | Optional | `ADMIN_DB` | Wrangler D1 admin binding name |
-| `ENABLE_TAIL` | Optional | `true` | Set `false` to skip wrangler tail |
-| `TAIL_WAIT_SEC` | Optional | `4` | Seconds to wait for tail to flush |
-| `WRANGLER_ENV` | Optional | — | Wrangler environment (`dev`, `staging`, etc.) |
-| `LOG_DIR` | Optional | `tools/logs/auth-healthcheck` | Directory for log and report output |
+| Variable              | Required | Default                       | Description                                                                    |
+| --------------------- | -------- | ----------------------------- | ------------------------------------------------------------------------------ |
+| `NEON_URL`            | ✅       | —                             | Direct Neon connection string from Neon Console → Branch → "Direct connection" |
+| `BETTER_AUTH_API_KEY` | Optional | —                             | Enables admin API check (`list-users`)                                         |
+| `TEST_EMAIL`          | Optional | auto-generated                | Fixed test email; leave blank to generate unique email each run                |
+| `TEST_PASSWORD`       | Optional | `HealthCheck1234!!@@`         | Password for test user                                                         |
+| `API_BASE`            | Optional | `https://api.bloqr.dev/api`   | Target API base URL                                                            |
+| `KV_BINDING`          | Optional | `BETTER_AUTH_KV`              | Wrangler KV binding name                                                       |
+| `D1_BINDING`          | Optional | `DB`                          | Wrangler D1 primary binding name                                               |
+| `D1_ADMIN_BINDING`    | Optional | `ADMIN_DB`                    | Wrangler D1 admin binding name                                                 |
+| `ENABLE_TAIL`         | Optional | `true`                        | Set `false` to skip wrangler tail                                              |
+| `TAIL_WAIT_SEC`       | Optional | `4`                           | Seconds to wait for tail to flush                                              |
+| `WRANGLER_ENV`        | Optional | —                             | Wrangler environment (`dev`, `staging`, etc.)                                  |
+| `LOG_DIR`             | Optional | `tools/logs/auth-healthcheck` | Directory for log and report output                                            |
 
 ---
 
@@ -172,12 +172,12 @@ Open the browser at `http://localhost:2718` (default port). Everything is self-c
 
 ## Run Modes
 
-| Mode | What happens |
-|---|---|
-| `all` | Runs all checks, then deletes test user and session (default for CI/pipeline) |
-| `checks` | Runs all checks, leaves test data in place |
-| `cleanup` | Deletes test data only — skips all checks |
-| `checks-cleanup` | Runs all checks then cleans up (alias for `all`) |
+| Mode             | What happens                                                                  |
+| ---------------- | ----------------------------------------------------------------------------- |
+| `all`            | Runs all checks, then deletes test user and session (default for CI/pipeline) |
+| `checks`         | Runs all checks, leaves test data in place                                    |
+| `cleanup`        | Deletes test data only — skips all checks                                     |
+| `checks-cleanup` | Runs all checks then cleans up (alias for `all`)                              |
 
 ---
 
@@ -186,6 +186,7 @@ Open the browser at `http://localhost:2718` (default port). Everything is self-c
 ### Terminal output (rich)
 
 The script uses the `rich` library to print:
+
 - A live progress indicator per check
 - A final summary table with PASS / FAIL / WARN per step
 - Tail log excerpts
@@ -196,23 +197,23 @@ Written to `tools/logs/auth-healthcheck/auth-healthcheck-YYYYMMDD-HHMMSS.json`:
 
 ```json
 {
-  "timestamp": "2026-05-02T10:00:00",
-  "api_base": "https://api.bloqr.dev/api",
-  "results": {
-    "POST /auth/sign-in/email": {
-      "status": "PASS",
-      "detail": "HTTP 200 OK",
-      "data": {}
+    "timestamp": "2026-05-02T10:00:00",
+    "api_base": "https://api.bloqr.dev/api",
+    "results": {
+        "POST /auth/sign-in/email": {
+            "status": "PASS",
+            "detail": "HTTP 200 OK",
+            "data": {}
+        }
+    },
+    "errors": [
+        { "check": "session.token present", "detail": "missing — response keys: ['user']" }
+    ],
+    "summary": {
+        "passed": 14,
+        "failed": 1,
+        "warnings": 2
     }
-  },
-  "errors": [
-    { "check": "session.token present", "detail": "missing — response keys: ['user']" }
-  ],
-  "summary": {
-    "passed": 14,
-    "failed": 1,
-    "warnings": 2
-  }
 }
 ```
 
@@ -253,6 +254,7 @@ Wrangler binding is not resolving. Check `wrangler.toml` binding names match the
 ### `GET /api/version` ❌
 
 The API is unreachable. Check:
+
 1. `API_BASE` is set correctly
 2. The worker is deployed / `wrangler dev` is running
 3. Firewall / VPN is not blocking the request
@@ -296,11 +298,11 @@ See [`docs/tools/README.md`](../../../docs/tools/README.md) for full pipeline ch
 
 Test data created by the script:
 
-| Store | What was created | How to clean up |
-|---|---|---|
-| Better Auth / API | Test user account | `--mode cleanup` or mode 4 in interactive menu |
-| Neon PostgreSQL | User row, session row (if `storeSessionInDatabase=true`) | Deleted by cleanup mode |
-| Cloudflare KV | Session key | Deleted by cleanup mode |
+| Store             | What was created                                         | How to clean up                                |
+| ----------------- | -------------------------------------------------------- | ---------------------------------------------- |
+| Better Auth / API | Test user account                                        | `--mode cleanup` or mode 4 in interactive menu |
+| Neon PostgreSQL   | User row, session row (if `storeSessionInDatabase=true`) | Deleted by cleanup mode                        |
+| Cloudflare KV     | Session key                                              | Deleted by cleanup mode                        |
 
 ---
 

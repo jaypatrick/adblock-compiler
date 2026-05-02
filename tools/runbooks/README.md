@@ -36,10 +36,10 @@ Each runbook is a single `.py` file — plain Python, no JSON, clean git diffs.
 
 ## Available Runbooks
 
-| Runbook | File | Purpose |
-|---|---|---|
-| **Master Pipeline** | `pipeline.py` | Health dashboard + run any combination of tools |
-| **Auth Healthcheck** | `auth-healthcheck.py` | End-to-end Better Auth diagnostic |
+| Runbook              | File                  | Purpose                                         |
+| -------------------- | --------------------- | ----------------------------------------------- |
+| **Master Pipeline**  | `pipeline.py`         | Health dashboard + run any combination of tools |
+| **Auth Healthcheck** | `auth-healthcheck.py` | End-to-end Better Auth diagnostic               |
 
 More runbooks will be added as new tools are created.
 
@@ -60,17 +60,17 @@ Every runbook is self-contained and follows this layout:
 
 `shared/__init__.py` provides common helpers used by all runbooks:
 
-| Helper | Purpose |
-|---|---|
-| `load_env_file(tool)` | Load `tools/<tool>.env` into a dict |
-| `check_command(cmd)` | Verify a CLI command is in PATH |
-| `check_python_package(pkg)` | Verify a Python package is importable |
-| `run_tool(script, mode, ...)` | Execute a tool script, capture output |
-| `list_log_files(tool, ext)` | List log files for a tool (newest first) |
-| `load_latest_report(tool)` | Load the most recent JSON report |
-| `render_status_badge(status)` | HTML badge for PASS/FAIL/WARN |
-| `all_tools_health_snapshot()` | Last-run status for all registered tools |
-| `KNOWN_TOOLS` | Registry of all tools (name, label, paths, description) |
+| Helper                        | Purpose                                                 |
+| ----------------------------- | ------------------------------------------------------- |
+| `load_env_file(tool)`         | Load `tools/<tool>.env` into a dict                     |
+| `check_command(cmd)`          | Verify a CLI command is in PATH                         |
+| `check_python_package(pkg)`   | Verify a Python package is importable                   |
+| `run_tool(script, mode, ...)` | Execute a tool script, capture output                   |
+| `list_log_files(tool, ext)`   | List log files for a tool (newest first)                |
+| `load_latest_report(tool)`    | Load the most recent JSON report                        |
+| `render_status_badge(status)` | HTML badge for PASS/FAIL/WARN                           |
+| `all_tools_health_snapshot()` | Last-run status for all registered tools                |
+| `KNOWN_TOOLS`                 | Registry of all tools (name, label, paths, description) |
 
 ## Adding a New Runbook
 
@@ -93,6 +93,7 @@ pytest tests/ -v
 ```
 
 Tests are in `tools/tests/` and cover:
+
 - Shared helper functions
 - Runbook Python syntax and importability
 - KNOWN_TOOLS registry completeness
