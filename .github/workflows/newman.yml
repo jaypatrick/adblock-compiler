@@ -54,7 +54,7 @@ jobs:
         run: |
           newman run docs/postman/postman-collection.json \
             --environment ${{ steps.env_file.outputs.file }} \
-            --env-var "userApiKey=${NEWMAN_USER_API_KEY}" \
+            --env-var "bearerToken=${NEWMAN_USER_API_KEY}" \
             --env-var "postmanEmail=${NEWMAN_POSTMAN_EMAIL}" \
             --env-var "postmanPassword=${NEWMAN_POSTMAN_PASSWORD}" \
             --reporters cli,htmlextra,json \
