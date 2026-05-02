@@ -1,0 +1,12 @@
+# Docusaurus build artifacts
+.docusaurus/
+build/
+
+# Node dependencies
+node_modules/
+
+# Wrangler artifacts
+.wrangler/
+
+# macOS
+.DS_Store

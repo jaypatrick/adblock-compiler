@@ -13,7 +13,8 @@
         "tail": "wrangler tail adblock-compiler --format=pretty",
         "tail:worker": "wrangler tail adblock-compiler --format=pretty",
         "tail:tail": "wrangler tail adblock-tail --format=pretty",
-        "test:worker:vitest": "vitest --config vitest.worker.config.ts"
+        "test:worker:vitest": "vitest --config vitest.worker.config.ts",
+        "docs:docusaurus:build": "pnpm --filter @bloqr/docs-docusaurus run build"
     },
     "packageManager": "pnpm@10.31.0",
     "_syncNote": "Dependency versions here must match those pinned in deno.json's import map; keep them in sync (for example via the existing version:sync-style task).",
