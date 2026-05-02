@@ -114,12 +114,36 @@ class TestRunbookSyntax:
 # Display cells in auth-healthcheck.py that must never discard their rendered output.
 _AUTH_HEALTHCHECK_DISPLAY_CELLS = [
     "_header",
+    "_prerequisites",
+    "_config_loader",
+    "_config_form",
+    "_run_mode",
     "_execute_section",
     "_results_section",
     "_log_browser_header",
     "_ai_guide",
     "_log_viewer",
 ]
+
+
+def _has_real_return(func_node: ast.FunctionDef) -> bool:
+    """Return True iff the function has at least one return with a real non-None value.
+
+    Distinguishes between:
+      - bare ``return``         → Return(value=None)      — no value
+      - ``return None``         → Return(value=Constant(None)) — explicit None
+      - ``return mo.vstack(…)`` → Return(value=Call(…))   — real value  ← we want this
+    """
+    for stmt in ast.walk(func_node):
+        if not isinstance(stmt, ast.Return):
+            continue
+        v = stmt.value
+        if v is None:
+            continue  # bare return
+        if isinstance(v, ast.Constant) and v.value is None:
+            continue  # return None
+        return True
+    return False
 
 
 class TestRunbookStructure:
@@ -153,7 +177,19 @@ class TestRunbookStructure:
 
     @pytest.mark.parametrize(
         "cell_name",
-        ["_health_dashboard", "_aggregate_results", "_log_viewer"],
+        [
+            "_header",
+            "_dashboard_header",
+            "_health_dashboard",
+            "_composer_header",
+            "_execute_header",
+            "_aggregate_header",
+            "_aggregate_results",
+            "_log_browser_header",
+            "_log_viewer",
+            "_pipeline_output_display",
+            "_quick_reference",
+        ],
     )
     def test_display_cells_must_not_use_bare_return(self, cell_name: str):
         """Key display cells must not contain a bare `return` — that silently discards computed UI objects."""
@@ -177,26 +213,34 @@ class TestRunbookStructure:
 
     @pytest.mark.parametrize(
         "cell_name",
-        ["_pipeline_output_display", "_aggregate_results", "_log_viewer"],
+        [
+            "_header",
+            "_dashboard_header",
+            "_health_dashboard",
+            "_composer_header",
+            "_execute_header",
+            "_aggregate_header",
+            "_aggregate_results",
+            "_log_browser_header",
+            "_log_viewer",
+            "_pipeline_output_display",
+            "_quick_reference",
+        ],
     )
     def test_display_cells_must_return_non_none_value(self, cell_name: str):
-        """Key display cells must have at least one return statement with a non-None value."""
+        """Key display cells must have at least one return statement with a real non-None value."""
         src = (self.runbooks_dir / "pipeline.py").read_text()
         tree = ast.parse(src)
 
         found = False
-        has_value_return = False
         for node in ast.walk(tree):
             if not isinstance(node, ast.FunctionDef) or node.name != cell_name:
                 continue
             found = True
-            for stmt in ast.walk(node):
-                if isinstance(stmt, ast.Return) and stmt.value is not None:
-                    has_value_return = True
-                    break
+            break
 
         assert found, f"Cell `{cell_name}` not found in pipeline.py — was it renamed or removed?"
-        assert has_value_return, (
+        assert _has_real_return(node), (
             f"Cell `{cell_name}` in pipeline.py never returns a display object. "
             "Add `return mo.vstack([...])` or similar to ensure the UI renders."
         )
@@ -207,6 +251,7 @@ class TestRunbookStructure:
         Calling mo.md(...), mo.callout(...), etc. without capturing and returning the result is a
         semantic bug (B018-style): the display object is computed but never shown to the user.
         Fix: assign to a variable and include it in the return value, or return directly.
+        Nested discards (inside `if`, `for`, `try`, etc.) are also detected.
         """
         src = (self.runbooks_dir / "auth-healthcheck.py").read_text()
         tree = ast.parse(src)
@@ -219,7 +264,8 @@ class TestRunbookStructure:
         for node in ast.walk(tree):
             if not isinstance(node, ast.FunctionDef):
                 continue
-            for stmt in node.body:
+            # Use ast.walk to catch discards nested inside if/for/try/with blocks.
+            for stmt in ast.walk(node):
                 if not isinstance(stmt, ast.Expr):
                     continue
                 call = stmt.value
@@ -265,23 +311,19 @@ class TestRunbookStructure:
 
     @pytest.mark.parametrize("cell_name", _AUTH_HEALTHCHECK_DISPLAY_CELLS)
     def test_auth_healthcheck_display_cells_must_return_non_none_value(self, cell_name: str):
-        """Key display cells in auth-healthcheck.py must have at least one return with a non-None value."""
+        """Key display cells in auth-healthcheck.py must have at least one return with a real non-None value."""
         src = (self.runbooks_dir / "auth-healthcheck.py").read_text()
         tree = ast.parse(src)
 
         found = False
-        has_value_return = False
         for node in ast.walk(tree):
             if not isinstance(node, ast.FunctionDef) or node.name != cell_name:
                 continue
             found = True
-            for stmt in ast.walk(node):
-                if isinstance(stmt, ast.Return) and stmt.value is not None:
-                    has_value_return = True
-                    break
+            break
 
         assert found, f"Cell `{cell_name}` not found in auth-healthcheck.py — was it renamed or removed?"
-        assert has_value_return, (
+        assert _has_real_return(node), (
             f"Cell `{cell_name}` in auth-healthcheck.py never returns a display object. "
             "Add `return mo.md(...)` or `return mo.vstack([...])` to ensure the UI renders."
         )

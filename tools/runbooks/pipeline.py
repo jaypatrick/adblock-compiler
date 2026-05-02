@@ -231,6 +231,7 @@ def _pipeline_execute(
     KNOWN_TOOLS,
     _repo_root,
     dry_run_flag,
+    list_log_files,
     mo,
     run_button,
     run_tool,
@@ -267,6 +268,7 @@ def _pipeline_execute(
                     "status": "FAIL",
                     "stdout": "",
                     "stderr": f"Script not found: {_ps}",
+                    "report_file": None,
                 }
             )
             output_sections.append(mo.callout(mo.md(f"❌ `{_pn}` — script not found: `{_ps}`"), kind="danger"))
@@ -274,12 +276,21 @@ def _pipeline_execute(
                 break
             continue
 
+        # Snapshot existing JSON reports before the run so we can identify the
+        # one written by this specific execution (not a stale file from a prior run).
+        _pre_json = set(list_log_files(_pn, ".json"))
+
         with mo.status.spinner(title=f"Running {_pl}…"):
             _prc, _pout, _perr = run_tool(
                 script_path=_ps,
                 mode=_pm,
                 dry_run=dry_run_flag.value,
             )
+
+        # Identify the new report file (if any) written during this run.
+        _post_json = set(list_log_files(_pn, ".json"))
+        _new_jsons = sorted(_post_json - _pre_json, reverse=True)
+        _new_report = _new_jsons[0] if _new_jsons else None
 
         _pst = "PASS" if _prc == 0 else "FAIL"
         pipeline_results.append(
@@ -290,6 +301,7 @@ def _pipeline_execute(
                 "status": _pst,
                 "stdout": _pout,
                 "stderr": _perr,
+                "report_file": _new_report,
             }
         )
 
@@ -336,7 +348,6 @@ def _aggregate_header(mo, pipeline_results: list[dict]):
 
 @app.cell(hide_code=True)
 def _aggregate_results(
-    list_log_files,
     load_report,
     mo,
     pipeline_results: list[dict],
@@ -373,9 +384,11 @@ def _aggregate_results(
 
     _report_accordions = []
     for _ar2 in pipeline_results:
-        _jfiles = list_log_files(_ar2["name"], ".json")
-        if _jfiles:
-            _rpt = load_report(_jfiles[0])
+        # Use the report file captured during this specific run — never load the
+        # newest file on disk, which may be stale if the tool failed before writing.
+        _rf = _ar2.get("report_file")
+        if _rf is not None:
+            _rpt = load_report(_rf)
             if _rpt:
                 _rhtml = render_report_results_html(_rpt.get("results", {}))
                 _report_accordions.append(mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)}))
