@@ -215,13 +215,9 @@ export class UrlErrorBannerComponent implements OnInit {
         // Priority 1: NavigationErrorService (guards attach code + definition)
         const navErr = this.navError.currentError();
         if (navErr) {
-            const severity = navErr.definition.severity;
-            const type: FlashType = severity === 'info' ? 'info'
-                : severity === 'warning' ? 'warn'
-                : 'error';
             return {
                 message: navErr.message ?? navErr.definition.userMessage,
-                type,
+                type: this.severityToFlashType(navErr.definition.severity),
                 code: navErr.code,
                 definition: navErr.definition,
                 isAdmin: this.isAdmin(),
@@ -272,16 +268,14 @@ export class UrlErrorBannerComponent implements OnInit {
         if (!code) return;
 
         const definition = resolveErrorCode(code);
-        const severity = definition.severity;
-        const type: FlashType = severity === 'info' ? 'info'
-            : severity === 'warning' ? 'warn'
-            : 'error';
 
         // Store code/definition so activeBanner can surface the admin chip and CTA
         this.urlErrorCtx.set({ code, definition });
-        this.flash.set(definition.userMessage, type);
+        this.flash.set(definition.userMessage, this.severityToFlashType(definition.severity));
 
-        // Report the URL-surfaced error to the backend for observability
+        // window.location.href is safe here — the isPlatformBrowser guard above ensures
+        // this branch is only reached inside a real browser environment.
+        // Report the URL-surfaced error to the backend for observability.
         try {
             const payload = { message: definition.userMessage, url: window.location.href };
             this.http.post(`${this.apiBase}/log/frontend-error`, payload).subscribe({ error: () => {} });
@@ -299,6 +293,13 @@ export class UrlErrorBannerComponent implements OnInit {
             queryParamsHandling: 'merge',
             replaceUrl: true,
         });
+    }
+
+    /** Map an ErrorCodeDefinition severity to the FlashType used by the banner. */
+    private severityToFlashType(severity: 'info' | 'warning' | 'error' | 'fatal'): FlashType {
+        if (severity === 'info') return 'info';
+        if (severity === 'warning') return 'warn';
+        return 'error';
     }
 
     protected severityClass(severity: string): string {
