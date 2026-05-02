@@ -2,8 +2,8 @@
 
 Standalone operational diagnostic scripts for the adblock-compiler / Bloqr stack.
 
-| Script | Purpose |
-|---|---|
+| Script                | Purpose                                                            |
+| --------------------- | ------------------------------------------------------------------ |
 | `auth-healthcheck.py` | End-to-end Better Auth diagnostic — sign-up, sign-in, KV, D1, Neon |
 
 ## Setup (one time)
