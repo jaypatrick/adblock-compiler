@@ -7,7 +7,7 @@
         "start": "docusaurus start",
         "build": "docusaurus build",
         "serve": "docusaurus serve",
-        "deploy": "wrangler pages deploy build --project-name=bloqr-docs-docusaurus",
+        "deploy": "wrangler deploy --config wrangler.docs-docusaurus.toml",
         "clear": "docusaurus clear",
         "write-translations": "docusaurus write-translations",
         "write-heading-ids": "docusaurus write-heading-ids"
@@ -27,7 +27,8 @@
         "@docusaurus/module-type-aliases": "^3.8.1",
         "@docusaurus/tsconfig": "^3.8.1",
         "@docusaurus/types": "^3.8.1",
-        "typescript": "^5.8.3"
+        "typescript": "^5.8.3",
+        "wrangler": "^4.83.0"
     },
     "engines": {
         "node": ">=20.0"

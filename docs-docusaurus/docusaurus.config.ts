@@ -6,10 +6,9 @@ import type * as OpenApiPlugin from 'docusaurus-plugin-openapi-docs';
 const config: Config = {
     title: 'Bloqr',
     tagline: 'Adblock/AdGuard Hostlist & Rules Compiler',
-    // TODO(@jaypatrick): add static/img/favicon.ico to docs-docusaurus/ before deploying
-    favicon: 'img/favicon.ico',
+    favicon: 'img/logo.svg',
 
-    url: 'https://docs.bloqr.dev',
+    url: 'https://docs-v2.bloqr.dev',
     baseUrl: '/',
 
     organizationName: 'jaypatrick',
@@ -39,7 +38,10 @@ const config: Config = {
                 config: {
                     bloqrApi: {
                         specPath: '../docs/api/openapi.yaml',
-                        outputDir: 'docs/api/openapi',
+                        // Output dir points to docs/api/openapi/ inside the docs content root (path: '../docs').
+                        // The classic docs plugin picks up generated MDX from this path.
+                        // docs/api/openapi/ is gitignored at the repo root — never commit generated artifacts.
+                        outputDir: '../docs/api/openapi',
                         sidebarOptions: {
                             groupPathsBy: 'tag',
                             categoryLinkSource: 'tag',
@@ -82,8 +84,8 @@ const config: Config = {
     ],
 
     themeConfig: {
-        // Open Graph / social card
-        image: 'img/bloqr-social-card.png',
+        // Open Graph / social card — using logo as placeholder until a proper social card is created
+        image: 'img/logo.svg',
 
         colorMode: {
             defaultMode: 'dark',

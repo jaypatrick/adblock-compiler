@@ -32,7 +32,7 @@ jobs:
               with:
                   node-version: '20'
                   cache: 'pnpm'
-                  cache-dependency-path: 'docs-docusaurus/package.json'
+                  cache-dependency-path: 'pnpm-lock.yaml'
 
             - name: Install Docusaurus dependencies
               run: pnpm --filter @bloqr/docs-docusaurus install --frozen-lockfile
