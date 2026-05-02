@@ -55,7 +55,7 @@ const getFlashRoute = createRoute({
     tags: ['Meta'],
     summary: 'Consume a flash message',
     description: 'Reads and deletes a one-time flash message from the FLASH_STORE KV namespace. ' +
-        'Returns the message payload if the token is valid and has not expired (30 s TTL). ' +
+        'Returns {message, type, createdAt} if the token is valid and has not expired (30 s TTL). ' +
         'Returns 404 if the token is unknown, already consumed, or expired. ' +
         'No authentication required — must be accessible on the sign-in page before the user is authenticated.',
     request: {

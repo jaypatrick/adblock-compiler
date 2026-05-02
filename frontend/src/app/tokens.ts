@@ -36,7 +36,7 @@ export const ADMIN_BASE_URL = new InjectionToken<string>('ADMIN_BASE_URL', {
  */
 export const LOG_ENDPOINT = new InjectionToken<string>('LOG_ENDPOINT', {
     providedIn: 'root',
-    factory: () => '/api/log',
+    factory: () => '/api/log/frontend-error',
 });
 
 /**

@@ -36,10 +36,11 @@ import { logErrorToD1 } from '../utils/error-logger.ts';
 
 export const logRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
-// Cap payload size so the rate limiter only fires on valid-size requests.
+// Cap payload size to prevent large stack traces from flooding the handler.
 // Note: /api/log/frontend-error is already rate-limited by the global pre-auth
-// middleware in hono-app.ts (checkRateLimitTiered) — do not add rateLimitMiddleware()
-// here as it would double-increment counters.
+// middleware in hono-app.ts (checkRateLimitTiered), which runs before this
+// route-level middleware — do not add rateLimitMiddleware() here as it would
+// double-increment counters.
 logRoutes.use('/api/log/frontend-error', bodySizeMiddleware());
 
 // ── Zod schema ────────────────────────────────────────────────────────────────

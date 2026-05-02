@@ -85,6 +85,17 @@ export class FlashService {
         if (!isPlatformBrowser(this.platformId)) return;
         const params = new URLSearchParams(search ?? window.location.search);
         const token = params.get('flash');
-        if (token) this.consume(token);
+        if (!token) return;
+
+        this.consume(token);
+
+        // Remove the ?flash= token from the address bar immediately so it does
+        // not appear in browser history or leak via the Referer header on
+        // subsequent navigations.  history.replaceState is safe here because
+        // isPlatformBrowser is already confirmed above.
+        params.delete('flash');
+        const newSearch = params.toString();
+        const newUrl = location.pathname + (newSearch ? `?${newSearch}` : '') + location.hash;
+        history.replaceState(history.state, '', newUrl);
     }
 }

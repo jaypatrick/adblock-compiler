@@ -50,14 +50,6 @@ const FLASH_ICONS: Record<FlashType, string> = {
     success: 'check_circle',
 };
 
-/** Maps severity to CSS class modifier. */
-const SEVERITY_CLASS: Record<string, string> = {
-    info:    'info',
-    warning: 'warn',
-    error:   'error',
-    fatal:   'error',
-};
-
 interface ActiveBanner {
     message: string;
     type: FlashType;
@@ -300,10 +292,6 @@ export class UrlErrorBannerComponent implements OnInit {
         if (severity === 'info') return 'info';
         if (severity === 'warning') return 'warn';
         return 'error';
-    }
-
-    protected severityClass(severity: string): string {
-        return SEVERITY_CLASS[severity] ?? 'info';
     }
 }
 

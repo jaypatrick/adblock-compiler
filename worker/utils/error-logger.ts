@@ -21,6 +21,9 @@
 /** Source of the error event. */
 export type ErrorSource = 'worker' | 'frontend';
 
+/** Severity of the error event. */
+export type ErrorSeverity = 'info' | 'warning' | 'error' | 'fatal';
+
 /** Structured payload for an error event. */
 export interface ErrorEvent {
     /** Human-readable error message. */
@@ -37,6 +40,8 @@ export interface ErrorEvent {
     readonly sessionId?: string;
     /** Error source — 'worker' | 'frontend'. Defaults to 'worker'. */
     readonly source?: ErrorSource;
+    /** Error severity level. */
+    readonly severity?: ErrorSeverity;
 }
 
 /**
@@ -50,11 +55,15 @@ export interface ErrorEvent {
  */
 export async function logErrorToD1(db: D1Database, event: ErrorEvent): Promise<void> {
     try {
-        const contextStr = event.context != null ? JSON.stringify(event.context) : null;
+        // Only JSON.stringify context when it is not already a string to avoid
+        // double-encoding (e.g. "\"route\"" instead of "route").
+        const contextStr = event.context != null
+            ? (typeof event.context === 'string' ? event.context : JSON.stringify(event.context))
+            : null;
 
         await db.prepare(
             `INSERT INTO error_events
-               (id, source, message, stack, context, url, user_agent, session_id, created_at)
+               (id, source, message, stack, context, url, user_agent, session_id, severity)
              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         )
             .bind(
@@ -66,7 +75,7 @@ export async function logErrorToD1(db: D1Database, event: ErrorEvent): Promise<v
                 event.url ?? null,
                 event.userAgent ?? null,
                 event.sessionId ?? null,
-                new Date().toISOString(),
+                event.severity ?? null,
             )
             .run();
     } catch (err) {
