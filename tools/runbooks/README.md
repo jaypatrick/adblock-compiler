@@ -6,9 +6,7 @@ Interactive runbooks powered by [Marimo](https://marimo.io) for diagnosing and o
 
 ```bash
 # One-time setup (from repo root)
-python3 -m venv tools/.venv
-source tools/.venv/bin/activate
-pip install -r tools/runbooks/requirements.txt
+uv sync --directory tools
 
 # Launch the master pipeline runbook (recommended starting point)
 marimo run tools/runbooks/pipeline.py
@@ -87,9 +85,7 @@ Every runbook is self-contained and follows this layout:
 ## Testing Runbooks
 
 ```bash
-cd tools
-source .venv/bin/activate
-pytest tests/ -v
+uv run --directory tools pytest tests/ -v
 ```
 
 Tests are in `tools/tests/` and cover:

@@ -10,9 +10,7 @@ This chapter documents the operational tooling suite for adblock-compiler / Bloq
 
 ```bash
 # One-time setup (from repo root)
-python3 -m venv tools/.venv
-source tools/.venv/bin/activate
-pip install -r tools/runbooks/requirements.txt
+uv sync --directory tools
 
 # Launch the master pipeline runbook — the recommended admin entry point
 deno task runbook:pipeline
@@ -39,7 +37,7 @@ The master pipeline runbook opens at `http://localhost:2718` and shows:
 | Git-friendly | Plain Python diffs cleanly — no notebook JSON merge conflicts |
 | No learning curve | Run one command, get a browser UI |
 | Reactive | Changing an input cell automatically updates all downstream cells |
-| Free & local-first | `pip install marimo` — nothing else required |
+| Free & local-first | `uv sync --directory tools` — nothing else required |
 | CI/headless mode | `marimo run <file.py> --no-token` for scripted pipelines |
 
 **Runbooks are entirely self-contained.** All documentation, environment configuration, execution, log viewing, and AI log-sharing are embedded inside the `.py` file. No markdown files are required at runtime.
@@ -68,12 +66,11 @@ graph TD
     A["tools/"] --> B["auth-healthcheck.py — script"]
     A --> C["auth-healthcheck.env — local config (gitignored)"]
     A --> D["auth-healthcheck.env.example — committed template"]
-    A --> E[".venv/ — shared Python virtual env (gitignored)"]
     A --> F["runbooks/"]
     F --> G["pipeline.py — master runbook (admin entry point)"]
     F --> H["auth-healthcheck.py — per-tool runbook"]
     F --> I["shared/__init__.py — shared helper library"]
-    F --> J["requirements.txt — pip dependencies"]
+    A --> J["pyproject.toml — uv-managed dependencies"]
     A --> K["docs/"]
     K --> L["auth-healthcheck/README.md — in-depth reference"]
     A --> M["logs/"]
@@ -93,7 +90,7 @@ Every tool follows these conventions for consistency and CI-pipeline compatibili
 |---|---|
 | Config file | `tools/<tool>.env` (gitignored — copy from `.env.example`) |
 | Config template | `tools/<tool>.env.example` (committed — safe to share) |
-| Virtual env | `tools/.venv/` (gitignored — shared across all tools) |
+| Dependencies | `tools/pyproject.toml` (uv-managed — `uv sync --directory tools` to install) |
 | JSON report | `tools/logs/<tool>/<tool>-YYYYMMDD-HHMMSS.json` |
 | Text log | `tools/logs/<tool>/<tool>-YYYYMMDD-HHMMSS.log` |
 | Run modes | `--mode all` (checks + cleanup), `--mode checks`, `--mode cleanup`, `--dry-run` |
@@ -106,22 +103,18 @@ Every tool follows these conventions for consistency and CI-pipeline compatibili
 
 ```bash
 # From repo root
-python3 -m venv tools/.venv
-source tools/.venv/bin/activate
-
-# Install all tool dependencies + Marimo
-pip install -r tools/runbooks/requirements.txt
+uv sync --directory tools
 
 # Verify (should print marimo version)
-marimo --version
+uv run --directory tools marimo --version
 ```
 
 Add a shell alias for convenience:
 
 ```bash
 # Add to ~/.zshrc or ~/.bashrc
-alias bloqr-tools='cd /path/to/adblock-compiler && source tools/.venv/bin/activate'
-alias bloqr-runbooks='cd /path/to/adblock-compiler && marimo run tools/runbooks/pipeline.py'
+alias bloqr-tools='cd /path/to/adblock-compiler && uv sync --directory tools'
+alias bloqr-runbooks='cd /path/to/adblock-compiler && uv run --directory tools marimo run tools/runbooks/pipeline.py'
 ```
 
 ---
@@ -145,8 +138,7 @@ Tools can be chained together in a bash pipeline by using `--mode all` and readi
 
 ```bash
 # Step 1: Run auth healthcheck
-source tools/.venv/bin/activate
-python tools/auth-healthcheck.py --mode all
+uv run --directory tools python tools/auth-healthcheck.py --mode all
 
 # Step 2: Grab the JSON report
 AUTH_REPORT=$(ls -t tools/logs/auth-healthcheck/*.json | head -1)
@@ -212,9 +204,7 @@ cat $(ls -t tools/logs/auth-healthcheck/*.json | head -1)
 Runbook tests live in `tools/tests/` and are run with pytest. They do **not** require network access and do not start Marimo:
 
 ```bash
-cd tools
-source .venv/bin/activate
-pytest tests/ -v
+uv run --directory tools pytest tests/ -v
 # or
 deno task runbook:test
 ```
@@ -224,7 +214,7 @@ Tests validate:
 - Marimo `App` declaration and `@app.cell` structure are present
 - `KNOWN_TOOLS` registry is complete and correctly keyed
 - Shared helper library (`shared/__init__.py`) functions behave correctly
-- Directory structure is correct (logs, docs, requirements.txt)
+- Directory structure is correct (logs, docs, pyproject.toml)
 - PR template exists
 
 ---
@@ -266,9 +256,9 @@ This can be exposed securely via:
 
 | Symptom | Fix |
 |---|---|
-| `marimo: command not found` | `pip install marimo` or run `deno task runbook:setup` |
-| `ModuleNotFoundError: No module named 'shared'` | Run from repo root: `cd /path/to/adblock-compiler && marimo run tools/runbooks/auth-healthcheck.py` |
-| `psycopg2 not found` | `pip install psycopg2-binary` |
+| `marimo: command not found` | Run `uv sync --directory tools` or `deno task runbook:setup` |
+| `ModuleNotFoundError: No module named 'shared'` | Run from repo root: `cd /path/to/adblock-compiler && uv run --directory tools marimo run tools/runbooks/auth-healthcheck.py` |
+| `psycopg2 not found` | Run `uv sync --directory tools` to install all dependencies |
 | `wrangler: command not found` | `npm install -g wrangler` or use `deno run -A npm:wrangler` |
 | Browser doesn't open | Navigate to `http://localhost:2718` manually |
 | Port 2718 in use | `marimo run tools/runbooks/pipeline.py --port 2719` |
