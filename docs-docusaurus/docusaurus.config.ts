@@ -6,7 +6,7 @@ import type * as OpenApiPlugin from 'docusaurus-plugin-openapi-docs';
 const config: Config = {
     title: 'Bloqr',
     tagline: 'Adblock/AdGuard Hostlist & Rules Compiler',
-    // TODO: add static/img/favicon.ico to docs-docusaurus/ before deploying
+    // TODO(@jaypatrick): add static/img/favicon.ico to docs-docusaurus/ before deploying
     favicon: 'img/favicon.ico',
 
     url: 'https://docs.bloqr.dev',
