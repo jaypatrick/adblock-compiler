@@ -1,5 +1,5 @@
 ---
-description: "MANDATORY style and formatting reference for all AI-generated code in this repository. Read this file before writing any TypeScript, Angular, or CSS code.\n\nThis document encodes exactly what `deno lint`, `deno fmt --check`, `deno task check`, and `pnpm --filter adblock-frontend run lint` will enforce during CI. Code that violates these rules WILL fail the CI gate and block the PR."
+description: "MANDATORY style and formatting reference for all AI-generated code in this repository. Read this file before writing any TypeScript, Angular, or CSS code.\n\nThis document encodes exact rules derived from the repo's deno.json, ESLint config, and tsconfig files. These rules are CI-enforced — violations will fail the build."
 name: coding-style
 ---
 
@@ -69,7 +69,7 @@ Additional flags in `frontend/tsconfig.json`:
 - One module per directory with `index.ts` barrel
 - Tests co-located as `*.test.ts`
 - No deep nesting
-- Imports: external deps first, then internal `@/` aliases; use `@/` path alias for `src/` imports (e.g. `import { Foo } from '@/foo/foo.ts'`); use mapped specifiers from `deno.json` `"imports"` (e.g. `'zod'`, `'hono'`, `'@std/assert'`) — never raw npm/jsr URLs
+- Imports: external deps first, then internal `@/` aliases; use `@/` path alias for `src/` imports (e.g. `import { Foo } from '@/foo/foo.ts'`); use mapped specifiers from `deno.json` `"imports"` block
 - Comments: single-line `// comment` with one space after `//`; inline comments on their own line above the code; `FIXME`/`HACK`/`NOTE` acceptable without tags
 
 ## Top-10 Recurring CI Failures
@@ -109,3 +109,25 @@ deno task fmt:check && deno task lint && deno task check \
 ## Generated Artifacts
 
 If `src/` schemas or API definitions change, run `deno task schema:generate` and commit the diff in `docs/api/cloudflare-schema.yaml`, `docs/postman/postman-collection.json`, `docs/postman/postman-environment.json`.
+
+## Cloudflare Deployment — HARD RULE ⛔ No Cloudflare Pages
+
+> **Cloudflare Pages is deprecated and must never be used in this project.**
+> This applies to every app type: APIs, SPAs, Angular frontends, documentation sites, preview environments — everything.
+
+**Approved targets (use one of):**
+
+| Need | Use |
+|---|---|
+| Full-stack / API Worker | Cloudflare Worker (`wrangler.toml`, `main` entry) |
+| Worker + static frontend | Cloudflare Workers + [Static Assets](https://developers.cloudflare.com/workers/static-assets/) (`assets = { directory = "dist/" }` in `wrangler.toml`) |
+| CI/CD deploy pipeline | [Cloudflare Workers Builds](https://developers.cloudflare.com/workers/ci-cd/builds/) (Git-connected, replaces Pages CI) |
+
+**Banned:**
+- `pages.dev` subdomains
+- `wrangler pages` CLI commands
+- `@cloudflare/pages-*` packages
+- Any `_routes.json` / `_headers` / `_redirects` Pages-only config files
+- `[site]` bucket deployments without a Worker entry point
+
+See `.github/agents/cloudflare-deployment.agent.md` for the full rule, `wrangler.toml` reference template, migration guide, and PR checklist.
