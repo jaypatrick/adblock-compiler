@@ -107,7 +107,7 @@ def check_python_package(package: str, pip_name: str | None = None) -> tuple[boo
 
     Args:
         package: The import name of the package (e.g. ``"psycopg2"``).
-        pip_name: The ``pip install`` name if it differs from the import name
+        pip_name: The ``uv add`` name if it differs from the import name
             (e.g. ``"psycopg2-binary"``). Defaults to *package*.
     """
     install_name = pip_name or package
@@ -117,7 +117,7 @@ def check_python_package(package: str, pip_name: str | None = None) -> tuple[boo
         importlib.import_module(package.replace("-", "_"))
         return True, f"✅ `{package}` is installed"
     except ImportError:
-        return False, f"❌ `{package}` is not installed — run: `uv add {install_name}` in the tools/ directory"
+        return False, f"❌ `{package}` is not installed — run: `uv sync --directory tools` to install all project dependencies"
 
 
 def prerequisites_summary(

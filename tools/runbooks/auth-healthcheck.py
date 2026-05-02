@@ -147,7 +147,7 @@ def _prerequisites(mo, check_command, check_python_package):
                 "uv sync --directory tools\n"
                 "\n"
                 "# Or run this runbook directly via uv (zero-setup):\n"
-                "uv run --directory tools marimo run tools/runbooks/auth-healthcheck.py\n"
+                "uv run --directory tools marimo run runbooks/auth-healthcheck.py\n"
                 "```\n"
                 "\n"
                 "> **Never use pip or venv manually.** This project uses [uv](https://docs.astral.sh/uv/) exclusively."
