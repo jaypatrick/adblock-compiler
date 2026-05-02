@@ -119,7 +119,7 @@ expect these status codes.
 | `baseUrl` | API base URL (includes `/api` prefix) | `https://api.bloqr.dev/api` |
 | `originUrl` | Origin URL without `/api` prefix (used for `/agents/*` routes) | `https://api.bloqr.dev` |
 | `apiKey` | API key for `Authorization: Bearer` auth | `blq_2086750d…` |
-| `bearerToken` | Session token (for `/keys/*`, `/api/auth/sign-out`) | `eyJhbGc…` |
+| `bearerToken` | Session token (for `/keys/*`, `/api/auth/sign-out`, `/configuration/saved/*`) | `eyJhbGc…` |
 | `adminKey` | Admin key (for admin endpoints) | — |
 | `turnstileToken` | Turnstile bypass token | `NEWMAN-BYPASS-TOKEN` |
 | `paygSession` | PAYG session token from `POST /payg/session/create` | — |
