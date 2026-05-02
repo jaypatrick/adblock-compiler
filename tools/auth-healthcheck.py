@@ -58,7 +58,7 @@ for pkg in ("requests", "rich", "psycopg2"):
 if missing:
     print(f"Missing packages: {', '.join(missing)}")
     print("Run: uv sync --directory tools   (from the repo root)")
-    print(f"     # or add missing packages: uv add --directory tools {' '.join(missing)}")
+    print("     # or: uv run --directory tools python auth-healthcheck.py")
     sys.exit(1)
 
 import psycopg2  # noqa: E402
