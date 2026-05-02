@@ -295,7 +295,8 @@ def _extract_json(text: str) -> str:
 # ============================================================================
 
 def start_tail() -> None:
-    global _tail_proc, _tail_file
+    global _tail_proc
+    global _tail_file
     if not CONFIG["enable_tail"]:
         return
     try:
@@ -320,7 +321,8 @@ def start_tail() -> None:
 
 def stop_tail() -> None:
     """Terminate tail process and close the log file handle."""
-    global _tail_proc, _tail_file
+    global _tail_proc
+    global _tail_file
     if _tail_proc:
         try:
             _tail_proc.terminate()
@@ -799,6 +801,8 @@ def summarise_tail(lines: list[str]) -> None:
             entry = json.loads(raw)
         except json.JSONDecodeError:
             continue
+        if not isinstance(entry, dict):
+            continue
         for exc in entry.get("exceptions", []):
             exceptions.append(exc.get("message", str(exc)))
         for log in entry.get("logs", []):
@@ -910,7 +914,7 @@ def cleanup_test_user_neon() -> bool:
             warn("Neon delete-user (cleanup)", f"No user table found \u2014 tables: {list(tbl_map.values())}")
         else:
             # Validate table name before interpolating into the f-string
-            if not re.match(r'^[A-Za-z0-9_-]+$', user_tbl):
+            if not re.match(r'^[A-Za-z0-9_]+$', user_tbl):
                 warn("Neon delete-user (cleanup)", f"Unsafe table name from discovery: {user_tbl!r}")
             else:
                 user_id = CONFIG.get("_created_user_id")
@@ -1020,7 +1024,7 @@ def cleanup_all_healthcheck_data() -> None:
                             orphan_tbl = tbl_map.get(orphan_concept)
                             if not orphan_tbl:
                                 continue
-                            if not re.match(r'^[A-Za-z0-9_-]+$', orphan_tbl):
+                            if not re.match(r'^[A-Za-z0-9_]+$', orphan_tbl):
                                 console.print(
                                     f"[yellow]\u26a0\ufe0f  Unsafe {orphan_concept} table name: {orphan_tbl!r}[/yellow]"
                                 )
@@ -1048,7 +1052,7 @@ def cleanup_all_healthcheck_data() -> None:
                         # Verification table: delete rows by identifier pattern.
                         verif_tbl = tbl_map.get("verification")
                         if verif_tbl:
-                            if not re.match(r'^[A-Za-z0-9_-]+$', verif_tbl):
+                            if not re.match(r'^[A-Za-z0-9_]+$', verif_tbl):
                                 console.print(
                                     f"[yellow]\u26a0\ufe0f  Unsafe verification table name: {verif_tbl!r}[/yellow]"
                                 )
