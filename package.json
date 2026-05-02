@@ -14,6 +14,7 @@
         "tail:worker": "wrangler tail adblock-compiler --format=pretty",
         "tail:tail": "wrangler tail adblock-tail --format=pretty",
         "test:worker:vitest": "vitest --config vitest.worker.config.ts",
+        "docs:docusaurus:build": "pnpm --filter @bloqr/docs-docusaurus run build",
         "docs:starlight:build": "pnpm --filter @bloqr/docs-starlight run build"
     },
     "packageManager": "pnpm@10.31.0",
