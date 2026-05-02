@@ -13,7 +13,7 @@ Both sites coexist independently. The existing mdBook pipeline (`book.toml`,
 | Property           | Value                                                 |
 | ------------------ | ----------------------------------------------------- |
 | **Framework**      | [Starlight](https://starlight.astro.build) (Astro v5) |
-| **Deploy target**  | Cloudflare Pages → `docs-v3.bloqr.dev`                |
+| **Deploy target**  | Cloudflare Worker → `docs-v3.bloqr.dev`               |
 | **Content source** | `../docs/` (shared with mdBook via `srcDir`)          |
 | **Search**         | Pagefind (built-in, offline-capable)                  |
 | **Mermaid**        | `@beoe/rehype-mermaid` (remark plugin)                |
@@ -54,7 +54,7 @@ pnpm docs:starlight:build
 ## Deploy
 
 ```bash
-pnpm deploy         # Runs: wrangler pages deploy dist --project-name=bloqr-docs-starlight
+pnpm deploy         # Runs: wrangler deploy --config wrangler.docs-starlight.toml
 ```
 
 Requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` to be set.
@@ -70,7 +70,7 @@ CI auto-deploys on push to `main` when files under `docs/**` or
 | Feature                | mdBook                    | Starlight                              |
 | ---------------------- | ------------------------- | -------------------------------------- |
 | **Search**             | Basic (in-memory)         | Pagefind — offline, edge-ready         |
-| **Cloudflare adapter** | Worker-based static serve | First-class `@astrojs/cloudflare`      |
+| **Cloudflare adapter** | Worker-based static serve | Static Worker Assets (`wrangler deploy`) |
 | **Mermaid**            | `mdbook-mermaid` binary   | `@beoe/rehype-mermaid` remark plugin   |
 | **OpenAPI**            | Manual static HTML        | `starlight-openapi` live playground    |
 | **MDX**                | ❌                        | ✅ (embed Angular/React components)    |
@@ -102,7 +102,7 @@ docs-starlight/
 ├── astro.config.ts              # Full Starlight config + 174-entry sidebar
 ├── package.json                 # @bloqr/docs-starlight
 ├── tsconfig.json                # Astro strict tsconfig
-├── wrangler.docs-starlight.toml # Cloudflare Pages deploy config
+├── wrangler.docs-starlight.toml # Cloudflare Worker deploy config
 ├── .gitignore
 ├── README.md                    # This file
 └── src/

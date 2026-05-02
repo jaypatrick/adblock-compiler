@@ -1,11 +1,9 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import cloudflare from "@astrojs/cloudflare";
 
 // https://astro.build/config
 export default defineConfig({
-  output: "server",
-  adapter: cloudflare(),
+  output: "static",
   site: "https://docs-v3.bloqr.dev",
 
   // Read Markdown content directly from the existing docs/ directory.

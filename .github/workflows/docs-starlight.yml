@@ -38,9 +38,6 @@ jobs:
               working-directory: docs-starlight
               run: pnpm run build
 
-            - name: Deploy to Cloudflare Pages
+            - name: Deploy to Cloudflare Worker
               working-directory: docs-starlight
-              run: |
-                  npx wrangler@4 pages deploy dist \
-                    --project-name=bloqr-docs-starlight \
-                    --commit-hash=${{ github.sha }}
+              run: npx wrangler@4 deploy --config wrangler.docs-starlight.toml

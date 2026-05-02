@@ -1,5 +1,10 @@
+# wrangler.docs-starlight.toml — Starlight Documentation Worker (Cloudflare)
+# Serves Astro Starlight static output (./dist/) as a Cloudflare Worker with static assets.
+# Deploy: wrangler deploy --config wrangler.docs-starlight.toml
+
 name = "bloqr-docs-starlight"
 compatibility_date = "2026-01-01"
+workers_dev = false
 
 [[routes]]
 pattern = "docs-v3.bloqr.dev"

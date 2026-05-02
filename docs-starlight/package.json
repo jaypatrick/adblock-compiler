@@ -8,11 +8,10 @@
     "start": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "deploy": "wrangler pages deploy dist --project-name=bloqr-docs-starlight",
+    "deploy": "wrangler deploy --config wrangler.docs-starlight.toml",
     "astro": "astro"
   },
   "dependencies": {
-    "@astrojs/cloudflare": "^12.5.0",
     "@astrojs/starlight": "^0.34.0",
     "astro": "^5.7.0",
     "sharp": "^0.33.5",
