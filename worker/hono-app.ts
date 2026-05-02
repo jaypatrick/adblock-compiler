@@ -286,7 +286,7 @@ app.on(['POST', 'GET'], '/api/auth/*', async (c, next) => {
         );
     }
     const url = new URL(c.req.url);
-    const auth = createAuth(c.env, url.origin);
+    const auth = createAuth(c.env, url.origin, c.executionCtx);
 
     const abortController = new AbortController();
     let timeoutId: ReturnType<typeof setTimeout> | undefined;

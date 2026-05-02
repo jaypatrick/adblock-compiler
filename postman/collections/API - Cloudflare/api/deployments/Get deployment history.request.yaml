@@ -1,10 +1,10 @@
 $kind: http-request
 description: Returns deployment history records
-url: {{baseUrl}}/api/deployments?limit=50&version=string&status=string&branch=string
+url: {{baseUrl}}/deployments?limit=50&version=string&status=string&branch=string
 method: GET
 headers:
   Accept: application/json
-  X-API-Key: "{{apiKey}}"
+  Authorization: Bearer {{apiKey}}
 queryParams:
   - key: limit
     value: "50"

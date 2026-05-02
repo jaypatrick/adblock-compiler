@@ -9,7 +9,7 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: text/event-stream
-  X-API-Key: "{{apiKey}}"
+  Authorization: Bearer {{apiKey}}
 body:
   type: json
   content: |-

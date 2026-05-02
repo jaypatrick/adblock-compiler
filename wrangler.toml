@@ -25,6 +25,8 @@
 #           and .dev.vars for local dev:
 #   wrangler secret put TURNSTILE_SECRET_KEY
 #   wrangler secret put BETTER_AUTH_SECRET
+#   wrangler secret put BETTER_AUTH_API_KEY
+#   wrangler secret put BETTER_AUTH_KV_URL
 #   wrangler secret put CF_ACCESS_AUD
 #   wrangler secret put CORS_ALLOWED_ORIGINS
 #   wrangler secret put SENTRY_DSN
@@ -152,16 +154,38 @@ id = "025c3f10527c46c0be559f299bdba994"
 binding = "FEATURE_FLAGS"
 id = "532484fdfff448bbb6efc7847bf41700"
 
+# BETTER_AUTH_KV — secondary storage for Better Auth (sessions, rate-limit counters,
+# verification tokens).  Offloads short-lived data from Postgres/Neon to the edge,
+# keeping Prisma/Neon free for business-logic queries.
+# Not yet provisioned — create and fill in the real id before deploying:
+#   wrangler kv:namespace create BETTER_AUTH_KV
+# Then uncomment and set the id below, and set the REST API URL secret:
+#   wrangler secret put BETTER_AUTH_KV_URL
+#
+# BETTER_AUTH_KV_URL formula:
+#   Account ID:   CF_ACCOUNT_ID (wrangler.toml [vars])
+#   Namespace ID: id field in this [[kv_namespaces]] entry
+#   URL template: https://api.cloudflare.com/client/v4/accounts/<CF_ACCOUNT_ID>/storage/kv/namespaces/<BETTER_AUTH_KV_ID>
+[[kv_namespaces]]
+binding = "BETTER_AUTH_KV"
+id = "343029e0851240ad8f5799bac38b31bf"
+
 # RULES_KV: optional dedicated rule-set storage. Worker falls back to
 # COMPILATION_CACHE when absent. Create with:
 #   wrangler kv:namespace create RULES_KV
 # then add a [[kv_namespaces]] entry here.
+[[kv_namespaces]]
+binding = "RULES_KV"
+id = "b815efdcf2314b398bf0527e45452500"
 
 # CONFIG_STORE: optional dedicated KV namespace for user-created configuration
 # files (POST /api/configuration/create). Isolates 24h config entries from the
 # short-lived compilation cache. Falls back to COMPILATION_CACHE when absent.
 # Create with: wrangler kv:namespace create CONFIG_STORE
 # then add a [[kv_namespaces]] entry here.
+[[kv_namespaces]]
+binding = "CONFIG_STORE"
+id = "fb5879d1237f4ac1b225458aef7bd6c9"
 
 # ─── R2 Bucket ───────────────────────────────────────────────────────────────
 [[r2_buckets]]

@@ -47,7 +47,7 @@ description: >
 url: {{baseUrl}}/ws/compile
 method: GET
 headers:
-  X-API-Key: "{{apiKey}}"
+  Authorization: Bearer {{apiKey}}
 body:
   type: text
   content: ""

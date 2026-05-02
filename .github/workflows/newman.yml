@@ -30,7 +30,7 @@ jobs:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6.4.0
         with:
           node-version: "20"
 
@@ -41,20 +41,22 @@ jobs:
         id: env_file
         run: |
           if [ "${{ inputs.environment || 'cloudflare' }}" = "local" ]; then
-            echo "file=postman/environments/adblock-compiler-local.environment.yaml" >> "$GITHUB_OUTPUT"
+            echo "file=docs/postman/postman-environment-local.json" >> "$GITHUB_OUTPUT"
           else
-            echo "file=postman/environments/adblock-compiler.environment.yaml" >> "$GITHUB_OUTPUT"
+            echo "file=docs/postman/postman-environment-prod.json" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Run Newman tests
         env:
-          NEWMAN_API_KEY: ${{ secrets.NEWMAN_API_KEY }}
-          NEWMAN_TURNSTILE_TOKEN: ${{ secrets.NEWMAN_TURNSTILE_TOKEN }}
+          NEWMAN_USER_API_KEY: ${{ secrets.NEWMAN_USER_API_KEY }}
+          NEWMAN_POSTMAN_EMAIL: ${{ secrets.NEWMAN_POSTMAN_EMAIL }}
+          NEWMAN_POSTMAN_PASSWORD: ${{ secrets.NEWMAN_POSTMAN_PASSWORD }}
         run: |
-          newman run postman/collections/API\ -\ Cloudflare \
+          newman run docs/postman/postman-collection.json \
             --environment ${{ steps.env_file.outputs.file }} \
-            --env-var "apiKey=${NEWMAN_API_KEY}" \
-            --env-var "turnstileToken=${NEWMAN_TURNSTILE_TOKEN:-NEWMAN-BYPASS-TOKEN}" \
+            --env-var "bearerToken=${NEWMAN_USER_API_KEY}" \
+            --env-var "postmanEmail=${NEWMAN_POSTMAN_EMAIL}" \
+            --env-var "postmanPassword=${NEWMAN_POSTMAN_PASSWORD}" \
             --reporters cli,htmlextra,json \
             --reporter-htmlextra-export newman-report.html \
             --reporter-json-export newman-results.json \

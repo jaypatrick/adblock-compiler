@@ -26,7 +26,6 @@ export async function handleAdminAuthConfig(c: AppContext): Promise<Response> {
     const denied = checkRoutePermission('/admin/auth/config', c.get('authContext'));
     if (denied) return denied;
 
-    // Always Better Auth — Clerk has been removed
     const provider = 'better-auth';
 
     // Serialize TIER_REGISTRY

@@ -7,7 +7,7 @@ url: {{baseUrl}}/api/payg/usage
 method: GET
 headers:
   Accept: application/json
-  X-API-Key: "{{apiKey}}"
+  Authorization: Bearer {{apiKey}}
 body:
   type: text
   content: ""

@@ -2,7 +2,7 @@ $kind: http-request
 description: >
   Returns the current session information for the authenticated user.
   Requires a valid Bearer token.
-url: {{baseUrl}}/api/auth/get-session
+url: {{baseUrl}}/auth/get-session
 method: GET
 headers:
   Accept: application/json

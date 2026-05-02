@@ -588,6 +588,36 @@ export interface Env {
      * Production: `wrangler secret put BETTER_AUTH_API_KEY`
      */
     BETTER_AUTH_API_KEY?: string;
+    /**
+     * KV namespace used as Better Auth secondary storage (sessions, rate-limit counters,
+     * verification tokens).  Offloads short-lived data from Postgres/Neon to the edge.
+     * Create with: `wrangler kv:namespace create BETTER_AUTH_KV`
+     * Then add the resulting binding entry to `wrangler.toml [[kv_namespaces]]`.
+     */
+    BETTER_AUTH_KV?: KVNamespace;
+    /**
+     * REST API URL for the BETTER_AUTH_KV namespace.
+     * Used by `dash()` and `sentinel()` `kvUrl` option for high-performance
+     * rate-limit counter storage at the edge.
+     * Local dev:  add `BETTER_AUTH_KV_URL=<url>` to .dev.vars
+     * Production: `wrangler secret put BETTER_AUTH_KV_URL`
+     */
+    BETTER_AUTH_KV_URL?: string;
+    /**
+     * Opt-in flag for the `sentinel()` Better Auth plugin (credential stuffing
+     * protection, impossible travel detection, bot/IP blocking).
+     *
+     * `sentinel()` is a **Better Auth Pro tier** feature.  It must NOT be loaded
+     * on the free/pilot tier — doing so causes the Worker to hang on sign-in
+     * requests with no response returned.
+     *
+     * Set to `"true"` only after upgrading to Better Auth Pro.
+     * When absent or any other value, the plugin is not loaded.
+     *
+     * Non-secret — set in `wrangler.toml [vars]` when on Pro tier (no code change
+     * required at that point).
+     */
+    BETTER_AUTH_SENTINEL_ENABLED?: string;
     // GitHub OAuth provider (required for social login via GitHub)
     GITHUB_CLIENT_ID?: string;
     GITHUB_CLIENT_SECRET?: string;
@@ -684,13 +714,36 @@ export interface Env {
      * password reset, and security alerts where silent delivery failure
      * is unacceptable.
      *
+     * **Format:** Must start with `re_` followed by at least 8 alphanumeric or
+     * underscore characters (e.g. `re_test_xxxxxxxx` or `re_live_xxxxxxxx`).
+     * `ResendApiService` validates this format at construction time and throws
+     * a non-revealing error if the key does not match — do not store the raw
+     * key value in application logs or error messages.
+     *
      * Local dev:  add `RESEND_API_KEY=re_test_...` to .dev.vars
      * Production: `wrangler secret put RESEND_API_KEY`
      *
      * @see worker/services/email-service.ts — ResendEmailService
+     * @see worker/services/resend-api-service.ts — ResendApiService (format guard)
      * @see https://resend.com/api-keys
      */
     RESEND_API_KEY?: string;
+
+    // ─── Resend Audience (contact/audience sync) ──────────────────────────────
+    /**
+     * Resend audience ID for user lifecycle contact sync.
+     *
+     * When set alongside `RESEND_API_KEY`, users are automatically added to the
+     * named Resend audience on sign-up and removed on account deletion via
+     * Better Auth `databaseHooks`.
+     *
+     * Local dev:  add `RESEND_AUDIENCE_ID=<uuid>` to .dev.vars
+     * Production: `wrangler secret put RESEND_AUDIENCE_ID`
+     *
+     * @see worker/services/resend-contact-service.ts — ResendContactService
+     * @see https://resend.com/docs/api-reference/audiences/create-audience
+     */
+    RESEND_AUDIENCE_ID?: string;
 
     // ─── Email (Cloudflare Email Service REST — transactional) ───────────────
     /**

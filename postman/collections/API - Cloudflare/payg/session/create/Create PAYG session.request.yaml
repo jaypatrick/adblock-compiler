@@ -5,11 +5,11 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: application/json
-  X-API-Key: "{{apiKey}}"
+  Authorization: Bearer {{apiKey}}
 body:
   type: json
   content: |-
     {
-      "requestsToPurchase": 1000
+      "requestsToPurchase": 10
     }
 order: 1000
