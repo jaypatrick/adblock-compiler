@@ -14,9 +14,9 @@ Both sites coexist independently. The existing mdBook pipeline (`book.toml`,
 | ------------------ | ----------------------------------------------------- |
 | **Framework**      | [Starlight](https://starlight.astro.build) (Astro v5) |
 | **Deploy target**  | Cloudflare Worker → `docs-v3.bloqr.dev`               |
-| **Content source** | `../docs/` (shared with mdBook via `srcDir`)          |
+| **Content source** | `../docs/` (shared with mdBook via `glob()` loader)   |
 | **Search**         | Pagefind (built-in, offline-capable)                  |
-| **Mermaid**        | `@beoe/rehype-mermaid` (remark plugin)                |
+| **Mermaid**        | `@beoe/rehype-mermaid` (rehype plugin)                |
 | **OpenAPI**        | `starlight-openapi` plugin                            |
 
 ---
@@ -71,7 +71,7 @@ CI auto-deploys on push to `main` when files under `docs/**` or
 | ---------------------- | ------------------------- | -------------------------------------- |
 | **Search**             | Basic (in-memory)         | Pagefind — offline, edge-ready         |
 | **Cloudflare adapter** | Worker-based static serve | Static Worker Assets (`wrangler deploy`) |
-| **Mermaid**            | `mdbook-mermaid` binary   | `@beoe/rehype-mermaid` remark plugin   |
+| **Mermaid**            | `mdbook-mermaid` binary   | `@beoe/rehype-mermaid` rehype plugin   |
 | **OpenAPI**            | Manual static HTML        | `starlight-openapi` live playground    |
 | **MDX**                | ❌                        | ✅ (embed Angular/React components)    |
 | **i18n**               | ❌                        | ✅ built-in                            |
@@ -80,9 +80,9 @@ CI auto-deploys on push to `main` when files under `docs/**` or
 
 ---
 
-## Key Differences from the Docusaurus Scaffold
+## Key Differences from Docusaurus
 
-See `docs-docusaurus/` for the parallel Docusaurus v3 scaffold.
+`docs-docusaurus/` is not yet scaffolded. This section is a forward-looking comparison for planning purposes.
 
 |                 | Starlight (this)                  | Docusaurus                       |
 | --------------- | --------------------------------- | -------------------------------- |
@@ -122,22 +122,11 @@ Content is read directly from `../docs/` via the `srcDir: '../docs'` setting in
 
 ## Migration Notes — What Still Needs Manual Attention
 
-### 1. Mermaid final wiring
+### 1. Mermaid
 
-`@beoe/rehype-mermaid` is listed as a dev dependency. To activate it, add it to
-the `rehypePlugins` array in `astro.config.ts`:
-
-```ts
-import rehypeMermaid from '@beoe/rehype-mermaid';
-
-// inside defineConfig:
-markdown: {
-    rehypePlugins: [rehypeMermaid],
-},
-```
-
-Some Mermaid fences in the existing docs use `mermaid` as the language
-identifier — verify they render correctly after wiring.
+`@beoe/rehype-mermaid` is wired in `astro.config.ts` via `markdown.rehypePlugins`.
+Some Mermaid fences in the existing docs use `mermaid` as the language identifier — verify
+they render correctly by running a local build.
 
 ### 2. OpenAPI plugin config
 
@@ -168,12 +157,12 @@ official Bloqr SVG logo.
 
 ### 4. Fonts
 
-`custom.css` loads Inter and JetBrains Mono from Google Fonts CDN. For fully
-offline/privacy-respecting builds, replace with `@fontsource/inter` and
-`@fontsource/jetbrains-mono` npm packages and import them in `custom.css`.
+`custom.css` loads Inter and JetBrains Mono from `@fontsource` packages (self-hosted,
+no CDN). The packages are declared in `package.json` — no further action needed.
 
-### 5. `srcDir` and frontmatter
+### 5. Content collections and frontmatter
 
-Starlight expects frontmatter in Markdown files. Existing `docs/**/*.md` files
-without frontmatter will still render, but pages with `title:` in frontmatter
-will override the sidebar label. Add frontmatter gradually as needed.
+Docs content is loaded from `../docs/` via `src/content/config.ts` using Astro 5's
+`glob()` loader. Starlight expects frontmatter in Markdown files. Existing
+`docs/**/*.md` files without frontmatter will still render, but pages with `title:`
+in frontmatter will override the sidebar label. Add frontmatter gradually as needed.

@@ -1,14 +1,16 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
+import rehypeMermaid from "@beoe/rehype-mermaid";
 
 // https://astro.build/config
 export default defineConfig({
   output: "static",
   site: "https://docs-v3.bloqr.dev",
 
-  // Read Markdown content directly from the existing docs/ directory.
-  // No file copying needed — Starlight serves them in place.
-  srcDir: "../docs",
+  // Markdown: wire @beoe/rehype-mermaid so ```mermaid fences render as SVG diagrams.
+  markdown: {
+    rehypePlugins: [rehypeMermaid],
+  },
 
   integrations: [
     starlight({
@@ -89,7 +91,7 @@ export default defineConfig({
               link: "/cloudflare/CLOUDFLARE_SERVICES",
             },
             { label: "Admin Dashboard", link: "/cloudflare/ADMIN_DASHBOARD" },
-            { label: "Agents SDK", link: "/cloudflare/AGENTS" },
+            { label: "Agents SDK", link: "/cloudflare/CLOUDFLARE_AGENTS" },
             { label: "Analytics", link: "/cloudflare/CLOUDFLARE_ANALYTICS" },
             {
               label: "Browser Rendering",

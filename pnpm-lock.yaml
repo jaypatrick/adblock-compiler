@@ -118,6 +118,15 @@ importers:
       '@astrojs/starlight':
         specifier: ^0.34.0
         version: 0.34.8(astro@5.18.1(@types/node@25.5.0)(jiti@2.6.1)(less@4.4.2)(lightningcss@1.32.0)(rollup@4.59.0)(sass@1.97.3)(terser@5.46.1)(typescript@6.0.2)(yaml@2.8.3))
+      '@beoe/rehype-mermaid':
+        specifier: ^0.4.0
+        version: 0.4.2(playwright@1.58.2)
+      '@fontsource/inter':
+        specifier: ^5.2.8
+        version: 5.2.8
+      '@fontsource/jetbrains-mono':
+        specifier: ^5.2.8
+        version: 5.2.8
       astro:
         specifier: ^5.7.0
         version: 5.18.1(@types/node@25.5.0)(jiti@2.6.1)(less@4.4.2)(lightningcss@1.32.0)(rollup@4.59.0)(sass@1.97.3)(terser@5.46.1)(typescript@6.0.2)(yaml@2.8.3)
@@ -128,9 +137,6 @@ importers:
         specifier: ^0.12.0
         version: 0.12.1(@astrojs/markdown-remark@6.3.11)(@astrojs/starlight@0.34.8(astro@5.18.1(@types/node@25.5.0)(jiti@2.6.1)(less@4.4.2)(lightningcss@1.32.0)(rollup@4.59.0)(sass@1.97.3)(terser@5.46.1)(typescript@6.0.2)(yaml@2.8.3)))(astro@5.18.1(@types/node@25.5.0)(jiti@2.6.1)(less@4.4.2)(lightningcss@1.32.0)(rollup@4.59.0)(sass@1.97.3)(terser@5.46.1)(typescript@6.0.2)(yaml@2.8.3))(openapi-types@12.1.3)
     devDependencies:
-      '@beoe/rehype-mermaid':
-        specifier: ^0.4.0
-        version: 0.4.2(playwright@1.58.2)
       wrangler:
         specifier: ^4.0.0
         version: 4.86.0(@cloudflare/workers-types@4.20260426.1)(bufferutil@4.1.0)(utf-8-validate@6.0.6)
@@ -8669,6 +8675,7 @@ packages:
 
   uuid@10.0.0:
     resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
+    deprecated: uuid@10 and below is no longer supported.  For ESM codebases, update to uuid@latest.  For CommonJS codebases, use uuid@11 (but be aware this version will likely be deprecated in 2028).
     hasBin: true
 
   uuid@11.1.1:

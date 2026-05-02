@@ -6,6 +6,8 @@ on:
         paths:
             - 'docs/**'
             - 'docs-starlight/**'
+            - 'pnpm-lock.yaml'
+            - 'package.json'
             - '.github/workflows/docs-starlight.yml'
     workflow_dispatch:
 
