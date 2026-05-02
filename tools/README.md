@@ -2,8 +2,8 @@
 
 Standalone operational diagnostic scripts for the adblock-compiler / Bloqr stack, with interactive [Marimo](https://marimo.io) runbooks that run in your browser.
 
-| Script | Purpose | Runbook |
-|---|---|---|
+| Script                | Purpose                                                            | Runbook                              |
+| --------------------- | ------------------------------------------------------------------ | ------------------------------------ |
 | `auth-healthcheck.py` | End-to-end Better Auth diagnostic — sign-up, sign-in, KV, D1, Neon | `deno task runbook:auth-healthcheck` |
 
 ## Quick Start (Interactive Runbooks)
@@ -21,6 +21,7 @@ marimo run tools/runbooks/pipeline.py
 ```
 
 The master runbook opens in your browser at `http://localhost:2718` and includes:
+
 - Health dashboard (last run status for every tool)
 - Pipeline executor (run any combination of tools in sequence)
 - Log browser (view and copy log files for AI assistants)
@@ -80,4 +81,3 @@ cd tools && python3 -m pytest tests/ -v
 - [`docs/tools/README.md`](../docs/tools/README.md) — All tools, Marimo setup, pipeline chaining guide
 - [`tools/docs/auth-healthcheck/README.md`](docs/auth-healthcheck/README.md) — In-depth auth-healthcheck reference
 - [`tools/runbooks/README.md`](runbooks/README.md) — Runbook quick start
-
