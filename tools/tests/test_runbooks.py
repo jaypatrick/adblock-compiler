@@ -140,6 +140,56 @@ class TestRunbookStructure:
         src = (self.runbooks_dir / runbook).read_text()
         assert "from shared import" in src, f"{runbook} must import from the shared helper library"
 
+    @pytest.mark.parametrize(
+        "cell_name",
+        ["_health_dashboard", "_aggregate_results", "_log_viewer"],
+    )
+    def test_display_cells_no_bare_return(self, cell_name: str):
+        """Key display cells must not contain a bare `return` — that silently discards computed UI objects."""
+        src = (self.runbooks_dir / "pipeline.py").read_text()
+        tree = ast.parse(src)
+
+        found = False
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef) or node.name != cell_name:
+                continue
+            found = True
+            for stmt in ast.walk(node):
+                if isinstance(stmt, ast.Return) and stmt.value is None:
+                    pytest.fail(
+                        f"Cell `{cell_name}` in pipeline.py has a bare `return` — "
+                        "computed display objects would be silently discarded. "
+                        "Include them in the return value (e.g. `return mo.vstack([...])`)."
+                    )
+
+        assert found, f"Cell `{cell_name}` not found in pipeline.py — was it renamed or removed?"
+
+    @pytest.mark.parametrize(
+        "cell_name",
+        ["_pipeline_output_display", "_aggregate_results", "_log_viewer"],
+    )
+    def test_display_cells_return_value(self, cell_name: str):
+        """Key display cells must have at least one return statement with a non-None value."""
+        src = (self.runbooks_dir / "pipeline.py").read_text()
+        tree = ast.parse(src)
+
+        found = False
+        has_value_return = False
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef) or node.name != cell_name:
+                continue
+            found = True
+            for stmt in ast.walk(node):
+                if isinstance(stmt, ast.Return) and stmt.value is not None:
+                    has_value_return = True
+                    break
+
+        assert found, f"Cell `{cell_name}` not found in pipeline.py — was it renamed or removed?"
+        assert has_value_return, (
+            f"Cell `{cell_name}` in pipeline.py never returns a display object. "
+            "Add `return mo.vstack([...])` or similar to ensure the UI renders."
+        )
+
 
 # ── Shared library tests ──────────────────────────────────────────────────────
 

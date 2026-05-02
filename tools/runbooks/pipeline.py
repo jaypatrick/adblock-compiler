@@ -248,9 +248,9 @@ def _pipeline_execute(
             mo.callout(mo.md("No tools selected. Check at least one tool in the Pipeline Composer."), kind="warn"),
         )
 
-    # pipeline_results is a cross-cell output — no _ prefix.
+    # pipeline_results and output_sections are cross-cell outputs — no _ prefix.
     pipeline_results: list[dict] = []
-    _output_sections = []
+    output_sections = []
 
     for _pt in _selected_tools:
         _pn = _pt["name"]
@@ -269,7 +269,7 @@ def _pipeline_execute(
                     "stderr": f"Script not found: {_ps}",
                 }
             )
-            _output_sections.append(mo.callout(mo.md(f"❌ `{_pn}` — script not found: `{_ps}`"), kind="danger"))
+            output_sections.append(mo.callout(mo.md(f"❌ `{_pn}` — script not found: `{_ps}`"), kind="danger"))
             if stop_on_failure_flag.value:
                 break
             continue
@@ -296,7 +296,7 @@ def _pipeline_execute(
         _combined = _pout + ("\n\nSTDERR:\n" + _perr if _perr.strip() else "")
         _ck = "success" if _prc == 0 else "danger"
         _pbdg = "✅ PASSED" if _prc == 0 else "❌ FAILED"
-        _output_sections.append(
+        output_sections.append(
             mo.accordion(
                 {
                     f"{_pbdg} · {_pl} (click to expand output)": mo.vstack(
@@ -310,14 +310,21 @@ def _pipeline_execute(
         )
 
         if stop_on_failure_flag.value and _prc != 0:
-            _output_sections.append(
+            output_sections.append(
                 mo.callout(
                     mo.md(f"🛑 Pipeline stopped after **{_pl}** failed (stop-on-failure is enabled)."),
                     kind="warn",
                 )
             )
             break
-    return (pipeline_results,)
+    return pipeline_results, output_sections
+
+
+@app.cell(hide_code=True)
+def _pipeline_output_display(mo, output_sections):
+    if not output_sections:
+        return
+    return mo.vstack(output_sections)
 
 
 @app.cell(hide_code=True)
@@ -385,8 +392,8 @@ def _log_browser_header(mo):
     return mo.md("""
     ## 📂 Log Browser
 
-    Browse and view log files from any tool. Copy the file path to share with
-    an AI assistant — no copy-pasting of log contents required.
+    Browse and view log files from any tool. The selected file path is shown
+    below the dropdown so you can copy it and share it with an AI assistant.
     """)
 
 
@@ -431,7 +438,8 @@ def _log_viewer(
 
     _contents = read_log_file(_selected)
     _lang = "json" if _selected.suffix == ".json" else "text"
-    return mo.code(_contents, language=_lang)
+    _path_display = mo.callout(mo.md(f"**Path:** `{_selected}`"), kind="neutral")
+    return mo.vstack([_path_display, mo.code(_contents, language=_lang)])
 
 
 @app.cell(hide_code=True)
@@ -500,7 +508,7 @@ def _quick_reference(mo):
 
     | Problem | Fix |
     |---|---|
-    | `ImportError: No module named 'marimo'` | `pip install marimo` |
+    | `ImportError: No module named 'marimo'` | `uv sync --directory tools` (run from repo root) |
     | `ImportError: No module named 'shared'` | Run from repo root: `marimo run tools/runbooks/pipeline.py` |
     | Cells show `None` | A dependency cell stopped early — check the cell above it |
     | Dashboard shows all `NEVER_RUN` | No tool has been run yet — run at least one tool first |

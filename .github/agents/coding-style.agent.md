@@ -172,6 +172,12 @@ uv run --directory tools ty check auth-healthcheck.py runbooks/
 4. **UP — use modern Python syntax** (`UP006`, `UP007`, `UP035`, etc.)
    - Use `list[str]` not `List[str]`, `X | None` not `Optional[X]`, `dict[str, int]` not `Dict[str, int]`
 
+5. **F821 — undefined name in annotation (marimo cell parameters)**
+   - Marimo cell parameter annotations are evaluated at import time; a parameter name is not in scope when the function signature is parsed, so annotating one parameter with another parameter's type causes F821
+   - Example that fails: `def _cell(Path, all_log_files: dict[str, Path])` — `Path` is another parameter, not a module-level name
+   - Fix: use an inline comment instead — `all_log_files,  # dict[str, Path]`
+   - Add `from __future__ import annotations` at the **top of the file** to defer module-level annotations (class/function return types). This does **not** fix parameter-referencing-parameter annotations — those still need the comment workaround
+
 ### Marimo cell rules (MANDATORY)
 
 Every marimo `@app.cell` function MUST follow these rules:
