@@ -19,6 +19,8 @@ This runbook is the single entry point for admins. It provides:
 No external markdown or documentation is needed — everything is self-contained.
 """
 
+from __future__ import annotations
+
 import marimo
 
 __generated_with = "0.23.4"
@@ -319,7 +321,7 @@ def _pipeline_execute(
 
 
 @app.cell(hide_code=True)
-def _aggregate_header(mo, pipeline_results):
+def _aggregate_header(mo, pipeline_results: list[dict]):
     if not pipeline_results:
         mo.stop(True, mo.md("_Run the pipeline first (step 4) to see aggregate results._"))
     return mo.md("## 📊 Aggregate Results")
@@ -330,7 +332,7 @@ def _aggregate_results(
     list_log_files,
     load_report,
     mo,
-    pipeline_results,
+    pipeline_results: list[dict],
     render_report_results_html,
     render_status_badge,
 ):
