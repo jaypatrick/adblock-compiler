@@ -61,15 +61,13 @@
 
 ```bash
 # Run all runbook tests
-cd tools
-source .venv/bin/activate   # or: pip install -r runbooks/requirements.txt
-pytest tests/ -v
+uv run --directory tools pytest tests/ -v
 
 # Smoke-test the runbook locally (opens browser)
-marimo run tools/runbooks/<tool>.py
+uv run --directory tools marimo run tools/runbooks/<tool>.py
 
 # Smoke-test the master pipeline runbook
-marimo run tools/runbooks/pipeline.py
+uv run --directory tools marimo run tools/runbooks/pipeline.py
 ```
 
 ---

@@ -431,7 +431,7 @@ jobs:
           version: "latest"
 
       - name: Install Python dependencies
-        run: uv sync --directory tools
+        run: uv sync --frozen --directory tools
 
       - name: Lint (ruff)
         run: uv run --directory tools ruff check .

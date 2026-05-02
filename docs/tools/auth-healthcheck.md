@@ -28,10 +28,8 @@ End-to-end production auth diagnostic for the Better Auth / Bloqr stack. Validat
 ## Prerequisites
 
 ```bash
-# One-time venv setup (from repo root)
-python3 -m venv tools/.venv
-source tools/.venv/bin/activate
-pip install requests rich psycopg2-binary
+# One-time setup (from repo root)
+uv sync --directory tools
 ```
 
 > `psycopg2-binary` is a self-contained PostgreSQL client — no Homebrew Postgres install required.
@@ -67,8 +65,7 @@ cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
 auth-check
 
 # Or directly
-source tools/.venv/bin/activate
-python tools/auth-healthcheck.py
+uv run --directory tools python tools/auth-healthcheck.py
 ```
 
 The script will:

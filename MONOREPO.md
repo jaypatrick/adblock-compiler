@@ -4,17 +4,18 @@ This repository is a monorepo containing multiple packages managed by a dual Den
 
 ## Workspace Layout
 
-```
-adblock-compiler/
-├── src/              → Core compiler library (Deno, published to JSR as @jk-com/adblock-compiler)
-├── worker/           → Cloudflare Worker API (Deno + Hono + tRPC, Deno workspace member)
-├── frontend/         → Angular 21 SPA (pnpm workspace package: adblock-frontend)
-├── tools/            → Operational tooling (Python, uv-managed)
-│   ├── runbooks/     → Marimo interactive runbooks (pipeline, auth-healthcheck)
-│   └── tests/        → pytest test suite for tools
-├── examples/         → Usage examples
-│   └── cloudflare-worker/ → Cloudflare Worker example (Deno workspace member)
-└── prisma/           → Database schema and migrations
+```mermaid
+graph TD
+    root["adblock-compiler/ (monorepo root)"]
+    root --> src["src/ — Core compiler library (Deno, JSR @jk-com/adblock-compiler)"]
+    root --> worker["worker/ — Cloudflare Worker API (Deno + Hono + tRPC, workspace member)"]
+    root --> frontend["frontend/ — Angular 21 SPA (pnpm workspace: adblock-frontend)"]
+    root --> tools["tools/ — Operational tooling (Python, uv-managed)"]
+    tools --> runbooks["tools/runbooks/ — Marimo interactive runbooks (pipeline, auth-healthcheck)"]
+    tools --> tests["tools/tests/ — pytest test suite"]
+    root --> examples["examples/ — Usage examples"]
+    examples --> cfworker["examples/cloudflare-worker/ — Cloudflare Worker example (workspace member)"]
+    root --> prisma["prisma/ — Database schema and migrations"]
 ```
 
 ## Toolchain by Package

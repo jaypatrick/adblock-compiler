@@ -4,8 +4,8 @@ Tests for the Bloqr Ops Marimo runbooks.
 
 Run:
     cd tools
-    source .venv/bin/activate   # or: pip install -r runbooks/requirements.txt
-    pytest tests/ -v
+    uv sync
+    uv run pytest tests/ -v
 
 These tests do NOT start Marimo or make network requests.
 They validate:
@@ -19,10 +19,7 @@ They validate:
 from __future__ import annotations
 
 import ast
-import importlib
 import json
-import os
-import sys
 from pathlib import Path
 
 import pytest
@@ -33,24 +30,19 @@ try:
     from shared import (
         KNOWN_TOOLS,
         TIMESTAMP_FORMAT,
-        _repo_root,
         all_tools_health_snapshot,
-        check_command,
         check_env_var,
-        check_python_package,
         get_tool_last_status,
         list_log_files,
         load_env_file,
         load_latest_report,
         load_report,
-        logs_dir,
         read_log_file,
         render_report_results_html,
         render_status_badge,
         render_summary_table_html,
-        run_tool,
-        tools_dir,
     )
+
     _shared_available = True
 except ImportError:
     _shared_available = False
@@ -72,10 +64,7 @@ class TestRunbookSyntax:
         self.runbooks_dir = runbooks_dir
 
     def _runbook_files(self) -> list[Path]:
-        return [
-            f for f in self.runbooks_dir.rglob("*.py")
-            if "__pycache__" not in str(f)
-        ]
+        return [f for f in self.runbooks_dir.rglob("*.py") if "__pycache__" not in str(f)]
 
     def test_runbook_files_exist(self):
         files = self._runbook_files()
@@ -90,9 +79,7 @@ class TestRunbookSyntax:
         ],
     )
     def test_expected_runbooks_exist(self, runbook: Path):
-        assert (self.runbooks_dir / runbook).exists(), (
-            f"Expected runbook {runbook} not found in {self.runbooks_dir}"
-        )
+        assert (self.runbooks_dir / runbook).exists(), f"Expected runbook {runbook} not found in {self.runbooks_dir}"
 
     def test_auth_healthcheck_valid_python(self):
         src = (self.runbooks_dir / "auth-healthcheck.py").read_text()
@@ -151,9 +138,7 @@ class TestRunbookStructure:
     @pytest.mark.parametrize("runbook", ["auth-healthcheck.py", "pipeline.py"])
     def test_imports_shared(self, runbook: str):
         src = (self.runbooks_dir / runbook).read_text()
-        assert "from shared import" in src, (
-            f"{runbook} must import from the shared helper library"
-        )
+        assert "from shared import" in src, f"{runbook} must import from the shared helper library"
 
 
 # ── Shared library tests ──────────────────────────────────────────────────────
@@ -211,6 +196,7 @@ class TestSharedRenderHelpers:
     def test_timestamp_format_constant(self):
         """TIMESTAMP_FORMAT must be a strftime pattern that produces YYYY-MM-DD HH:MM:SS output."""
         from datetime import datetime
+
         ts = datetime(2026, 1, 2, 15, 4, 5).strftime(TIMESTAMP_FORMAT)
         assert ts == "2026-01-02 15:04:05"
 
@@ -252,6 +238,7 @@ class TestSharedEnvHelpers:
 
     def test_load_env_file_nonexistent_returns_empty(self, tmp_path, monkeypatch):
         import shared as _shared
+
         original = _shared.tools_dir
         _shared.tools_dir = lambda: tmp_path
         try:
@@ -263,11 +250,10 @@ class TestSharedEnvHelpers:
 
     def test_load_env_file_parses_values(self, tmp_path, monkeypatch):
         env_file = tmp_path / "mytool.env"
-        env_file.write_text(
-            "# comment\nAPI_BASE=https://example.com\nTEST_EMAIL=\nFOO=bar baz\n"
-        )
+        env_file.write_text("# comment\nAPI_BASE=https://example.com\nTEST_EMAIL=\nFOO=bar baz\n")
         # Patch tools_dir to use tmp_path
         import shared as _shared
+
         original = _shared.tools_dir
         _shared.tools_dir = lambda: tmp_path
         try:
@@ -285,6 +271,7 @@ class TestSharedLogHelpers:
 
     def test_list_log_files_empty_dir(self, tmp_log_dir: Path, monkeypatch):
         import shared as _shared
+
         original = _shared.logs_dir
         _shared.logs_dir = lambda name: tmp_log_dir
         try:
@@ -300,6 +287,7 @@ class TestSharedLogHelpers:
         (tmp_log_dir / "report-003.json").write_text('{"a": 3}')
 
         import shared as _shared
+
         original = _shared.logs_dir
         _shared.logs_dir = lambda name: tmp_log_dir
         try:
@@ -327,6 +315,7 @@ class TestSharedLogHelpers:
 
     def test_load_latest_report_no_files(self, monkeypatch):
         import shared as _shared
+
         original = _shared.logs_dir
         _shared.logs_dir = lambda name: Path("/nonexistent/path/xyzzy")
         try:
@@ -364,9 +353,7 @@ class TestKnownTools:
     @pytest.mark.parametrize("required_key", ["name", "label", "script", "description", "runbook", "docs"])
     def test_each_tool_has_required_keys(self, required_key: str):
         for tool in KNOWN_TOOLS:
-            assert required_key in tool, (
-                f"KNOWN_TOOLS entry '{tool.get('name', '?')}' is missing key '{required_key}'"
-            )
+            assert required_key in tool, f"KNOWN_TOOLS entry '{tool.get('name', '?')}' is missing key '{required_key}'"
 
     def test_auth_healthcheck_registered(self):
         names = [t["name"] for t in KNOWN_TOOLS]
@@ -374,14 +361,14 @@ class TestKnownTools:
 
     def test_tool_names_are_kebab_case(self):
         import re
+
         pattern = re.compile(r"^[a-z][a-z0-9-]*$")
         for tool in KNOWN_TOOLS:
-            assert pattern.match(tool["name"]), (
-                f"Tool name '{tool['name']}' must be kebab-case (e.g. auth-healthcheck)"
-            )
+            assert pattern.match(tool["name"]), f"Tool name '{tool['name']}' must be kebab-case (e.g. auth-healthcheck)"
 
     def test_get_tool_last_status_never_run(self, monkeypatch):
         import shared as _shared
+
         original = _shared.logs_dir
         _shared.logs_dir = lambda name: Path("/nonexistent/path/xyzzy")
         try:
@@ -401,6 +388,7 @@ class TestKnownTools:
         (log_dir / "report-001.json").write_text(json.dumps(report))
 
         import shared as _shared
+
         original = _shared.logs_dir
         _shared.logs_dir = lambda name: log_dir
         try:
@@ -422,6 +410,7 @@ class TestKnownTools:
         (log_dir / "report-001.json").write_text(json.dumps(report))
 
         import shared as _shared
+
         original = _shared.logs_dir
         _shared.logs_dir = lambda name: log_dir
         try:
@@ -433,6 +422,7 @@ class TestKnownTools:
 
     def test_all_tools_health_snapshot_returns_list(self, monkeypatch):
         import shared as _shared
+
         original = _shared.logs_dir
         _shared.logs_dir = lambda name: Path("/nonexistent/path/xyzzy")
         try:
@@ -450,14 +440,14 @@ class TestDirectoryStructure:
     """Validate that required directories and files exist."""
 
     def test_tools_runbooks_dir_exists(self, runbooks_dir: Path):
-        assert runbooks_dir.exists(), f"tools/runbooks/ directory must exist"
+        assert runbooks_dir.exists(), "tools/runbooks/ directory must exist"
 
     def test_tools_runbooks_shared_exists(self, runbooks_dir: Path):
         assert (runbooks_dir / "shared").exists()
         assert (runbooks_dir / "shared/__init__.py").exists()
 
-    def test_tools_runbooks_requirements_exists(self, runbooks_dir: Path):
-        assert (runbooks_dir / "requirements.txt").exists()
+    def test_tools_pyproject_toml_exists(self, tools_dir: Path):
+        assert (tools_dir / "pyproject.toml").exists(), "tools/pyproject.toml must exist (uv-managed Python toolchain)"
 
     def test_tools_logs_gitkeep(self, logs_dir: Path):
         assert (logs_dir / "auth-healthcheck/.gitkeep").exists(), (
@@ -470,9 +460,7 @@ class TestDirectoryStructure:
         )
 
     def test_docs_tools_readme_exists(self, repo_root: Path):
-        assert (repo_root / "docs/tools/README.md").exists(), (
-            "docs/tools/README.md must exist"
-        )
+        assert (repo_root / "docs/tools/README.md").exists(), "docs/tools/README.md must exist"
 
     def test_pr_template_tools_runbooks(self, repo_root: Path):
         assert (repo_root / ".github/PULL_REQUEST_TEMPLATE/tools-runbooks.md").exists(), (
