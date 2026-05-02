@@ -435,7 +435,7 @@ jobs:
         run: uv sync --frozen --directory tools
 
       - name: Lint (ruff)
-        run: uv run --directory tools ruff check .
+        run: uv run --directory tools ruff check --output-format=github .
 
       - name: Format check (ruff)
         run: uv run --directory tools ruff format --check .

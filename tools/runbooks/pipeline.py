@@ -28,10 +28,7 @@ app = marimo.App(width="full", app_title="Bloqr Ops — Master Pipeline Runbook"
 @app.cell(hide_code=True)
 def _imports():
     import html
-    import json
-    import os
     import sys
-    import time
     from datetime import datetime
     from pathlib import Path
 
@@ -46,23 +43,19 @@ def _imports():
         TIMESTAMP_FORMAT,
         _repo_root,
         all_tools_health_snapshot,
-        get_tool_last_status,
         list_log_files,
-        load_latest_report,
         load_report,
-        logs_dir,
         read_log_file,
         render_report_results_html,
         render_status_badge,
-        render_summary_table_html,
         run_tool,
-        tools_dir,
     )
 
     return (
         KNOWN_TOOLS,
         Path,
         TIMESTAMP_FORMAT,
+        _repo_root,
         all_tools_health_snapshot,
         datetime,
         html,
@@ -78,7 +71,7 @@ def _imports():
 
 @app.cell(hide_code=True)
 def _header(mo):
-    mo.md("""
+    return mo.md("""
     # 🚀 Bloqr Ops — Master Pipeline Runbook
 
     **Purpose:** System-wide health dashboard and pipeline composer.
@@ -98,17 +91,15 @@ def _header(mo):
     > **Self-contained:** Everything you need is in this runbook.
     > To run: `marimo run tools/runbooks/pipeline.py`
     """)
-    return
 
 
 @app.cell(hide_code=True)
 def _dashboard_header(mo):
-    mo.md("""
+    return mo.md("""
     ## 🏥 System Health Dashboard
 
     _Last-run status for every registered tool._
     """)
-    return
 
 
 @app.cell(hide_code=True)
@@ -157,18 +148,17 @@ def _health_dashboard(
     )
 
     _refresh_note = mo.md(f"_Dashboard as of: {datetime.now().strftime(TIMESTAMP_FORMAT)}_")
-    return
+    return mo.vstack([mo.Html(_table_html), _refresh_note])
 
 
 @app.cell(hide_code=True)
 def _composer_header(mo):
-    mo.md("""
+    return mo.md("""
     ## 🔧 Pipeline Composer
 
     Select the tools you want to run and configure options for each.
     Tools run in order (top to bottom). A tool failure does **not** stop subsequent tools by default.
     """)
-    return
 
 
 @app.cell(hide_code=True)
@@ -222,10 +212,9 @@ def _tool_selector(KNOWN_TOOLS, mo):
 
 @app.cell(hide_code=True)
 def _execute_header(mo):
-    mo.md("""
+    return mo.md("""
     ## ▶ Execute Pipeline
     """)
-    return
 
 
 @app.cell
@@ -238,6 +227,7 @@ def _pipeline_run_button(mo):
 @app.cell
 def _pipeline_execute(
     KNOWN_TOOLS,
+    _repo_root,
     dry_run_flag,
     mo,
     run_button,
@@ -329,11 +319,10 @@ def _pipeline_execute(
 
 
 @app.cell(hide_code=True)
-def _aggregate_header(mo, pipeline_results: list[dict]):
+def _aggregate_header(mo, pipeline_results):
     if not pipeline_results:
         mo.stop(True, mo.md("_Run the pipeline first (step 4) to see aggregate results._"))
-    mo.md("## 📊 Aggregate Results")
-    return
+    return mo.md("## 📊 Aggregate Results")
 
 
 @app.cell(hide_code=True)
@@ -341,7 +330,7 @@ def _aggregate_results(
     list_log_files,
     load_report,
     mo,
-    pipeline_results: list[dict],
+    pipeline_results,
     render_report_results_html,
     render_status_badge,
 ):
@@ -380,21 +369,23 @@ def _aggregate_results(
             _rpt = load_report(_jfiles[0])
             if _rpt:
                 _rhtml = render_report_results_html(_rpt.get("results", {}))
-                _report_accordions.append(
-                    mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)})
-                )
-    return
+                _report_accordions.append(mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)}))
+
+    _totals_panel = mo.callout(
+        mo.md(f"{_overall_badge} &nbsp; **{_npassed}/{_total} passed** &nbsp;·&nbsp; {_nfailed} failed"),
+        kind="success" if _nfailed == 0 else "danger",
+    )
+    return mo.vstack([mo.Html(_summary_html), _totals_panel, *_report_accordions])
 
 
 @app.cell(hide_code=True)
 def _log_browser_header(mo):
-    mo.md("""
+    return mo.md("""
     ## 📂 Log Browser
 
     Browse and view log files from any tool. Copy the file path to share with
     an AI assistant — no copy-pasting of log contents required.
     """)
-    return
 
 
 @app.cell(hide_code=True)
@@ -424,7 +415,7 @@ def _log_browser(KNOWN_TOOLS, Path, list_log_files, mo):
 @app.cell(hide_code=True)
 def _log_viewer(
     Path,
-    all_log_files: "dict[str, Path]",
+    all_log_files,
     log_file_selector,
     mo,
     read_log_file,
@@ -438,12 +429,12 @@ def _log_viewer(
 
     _contents = read_log_file(_selected)
     _lang = "json" if _selected.suffix == ".json" else "text"
-    return
+    return (mo.code(_contents, language=_lang),)
 
 
 @app.cell(hide_code=True)
 def _quick_reference(mo):
-    mo.md("""
+    return mo.md("""
     ## 📖 Quick Reference
 
     ### Pipeline chaining (CLI)
@@ -513,7 +504,6 @@ def _quick_reference(mo):
     | Dashboard shows all `NEVER_RUN` | No tool has been run yet — run at least one tool first |
     | Script not found | Check that `tools/<tool-name>.py` exists |
     """)
-    return
 
 
 if __name__ == "__main__":
