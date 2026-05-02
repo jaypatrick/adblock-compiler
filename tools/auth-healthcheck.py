@@ -9,14 +9,16 @@ Checks:
   4.  Session validation via Bearer token
   5.  Email verification state
   6.  Better Auth KV (wrangler kv key list)
-  7.  D1 databases (wrangler d1 execute)
+  7.  D1 databases (wrangler d1 execute --remote)
   8.  Neon / PostgreSQL table row counts + user/session presence
   9.  Better Auth admin API (optional)
   10. Wrangler tail log summary (background process)
 
-Config (no exports needed):
+Config:
   cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
-  # Fill in NEON_URL at minimum
+  # Set NEON_URL at minimum
+
+Logs / reports are written to tools/logs/
 
 Requirements:
   python3 -m venv tools/.venv
@@ -33,7 +35,7 @@ import uuid
 from datetime import datetime
 from pathlib import Path
 
-# ── dependency check ────────────────────────────────────────────────────────
+# ── dependency check ───────────────────────────────────────────────
 missing = []
 for pkg in ("requests", "rich", "psycopg2"):
     try:
@@ -58,37 +60,31 @@ console = Console()
 # ============================================================================
 
 def _find_repo_root() -> Path:
-    """Walk up from this script's directory until wrangler.toml is found."""
     here = Path(__file__).resolve().parent
     for candidate in [here, *here.parents]:
         if (candidate / "wrangler.toml").exists():
             return candidate
-    # Fallback: use CWD-based search
     cwd = Path.cwd()
     for candidate in [cwd, *cwd.parents]:
         if (candidate / "wrangler.toml").exists():
             return candidate
-    return here  # last resort
+    return here
 
 
 def _load_env_file(path: Path) -> dict[str, str]:
-    """Parse KEY=VALUE env file; skip blanks and # comments."""
     result: dict[str, str] = {}
     if not path.exists():
         return result
     with open(path) as f:
-        for raw_line in f:
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
+        for raw in f:
+            line = raw.strip()
+            if not line or line.startswith("#") or "=" not in line:
                 continue
-            if "=" in line:
-                key, _, val = line.partition("=")
-                key = key.strip()
-                val = val.strip()
-                # Strip optional surrounding quotes (single or double)
-                if len(val) >= 2 and val[0] in ('"', "'") and val[-1] == val[0]:
-                    val = val[1:-1]
-                result[key] = val
+            key, _, val = line.partition("=")
+            val = val.strip()
+            if len(val) >= 2 and val[0] in ('"', "'") and val[-1] == val[0]:
+                val = val[1:-1]
+            result[key.strip()] = val
     return result
 
 
@@ -97,50 +93,45 @@ def _load_config() -> dict:
     env_file  = repo_root / "tools" / "auth-healthcheck.env"
     file_env  = _load_env_file(env_file)
 
+    # Ensure logs directory exists
+    logs_dir = repo_root / "tools" / "logs"
+    logs_dir.mkdir(parents=True, exist_ok=True)
+
     if env_file.exists():
-        loaded_keys = [k for k, v in file_env.items() if v and "<" not in v]
-        console.print(f"[dim]📄 Config: {env_file}  ({len(loaded_keys)} key(s) set)[/dim]")
+        loaded = [k for k, v in file_env.items() if v and "<" not in v]
+        console.print(f"[dim]\U0001f4c4 Config : {env_file}  ({len(loaded)} key(s) set)[/dim]")
     else:
         console.print(
-            f"[yellow]⚠️  Config file not found: {env_file}[/yellow]\n"
-            f"   Run: cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env"
+            f"[yellow]\u26a0\ufe0f  Config file not found: {env_file}[/yellow]\n"
+            "   Run: cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env"
         )
 
     def get(key: str, default: str = "") -> str:
-        """
-        Priority order:
-          1. tools/auth-healthcheck.env  (file_env)
-          2. Shell environment           (os.environ)
-          3. Hardcoded default
-        Values containing placeholder brackets like <user> are treated as unset.
-        """
-        for source in (file_env.get(key, ""), os.environ.get(key, "")):
-            if source and "<" not in source:
-                return source
+        for src in (file_env.get(key, ""), os.environ.get(key, "")):
+            if src and "<" not in src:
+                return src
         return default
 
     raw_email  = get("TEST_EMAIL", "")
-    test_email = raw_email if raw_email else f"healthcheck-{uuid.uuid4().hex[:8]}@bloqr.dev"
+    test_email = raw_email or f"healthcheck-{uuid.uuid4().hex[:8]}@bloqr.dev"
+    neon_url   = get("NEON_URL", "")
 
-    neon_url = get("NEON_URL", "")
-
-    # Debug: show what NEON_URL resolved to (masked)
     if neon_url:
-        masked = neon_url[:30] + "..." if len(neon_url) > 30 else neon_url
-        console.print(f"[dim]🔗 NEON_URL: {masked}[/dim]")
+        masked = neon_url[:35] + "..." if len(neon_url) > 35 else neon_url
+        console.print(f"[dim]\U0001f517 NEON_URL: {masked}[/dim]")
     else:
-        # Surface exactly why it's missing
-        raw_file = file_env.get("NEON_URL", "")
-        raw_env  = os.environ.get("NEON_URL", "")
-        if raw_file and "<" in raw_file:
-            console.print("[yellow]⚠️  NEON_URL in env file still contains placeholder — replace <user>/<pass>/<host>/<db>[/yellow]")
-        elif raw_env and "<" in raw_env:
-            console.print("[yellow]⚠️  NEON_URL shell var contains placeholder text[/yellow]")
-        elif not raw_file and not raw_env:
-            console.print("[yellow]⚠️  NEON_URL not found in env file or shell environment[/yellow]")
+        rf, re_ = file_env.get("NEON_URL", ""), os.environ.get("NEON_URL", "")
+        if rf and "<" in rf:
+            console.print("[yellow]\u26a0\ufe0f  NEON_URL in env file still has placeholder text[/yellow]")
+        elif re_ and "<" in re_:
+            console.print("[yellow]\u26a0\ufe0f  NEON_URL shell var has placeholder text[/yellow]")
+        else:
+            console.print("[yellow]\u26a0\ufe0f  NEON_URL not found in env file or shell env[/yellow]")
 
+    ts = datetime.now().strftime("%Y%m%d-%H%M%S")
     return {
         "repo_root":           repo_root,
+        "logs_dir":            logs_dir,
         "api_base":            get("API_BASE",            "https://api.bloqr.dev/api"),
         "test_email":          test_email,
         "test_password":       get("TEST_PASSWORD",       "HealthCheck1234!!@@"),
@@ -153,13 +144,13 @@ def _load_config() -> dict:
         "wrangler_env":        get("WRANGLER_ENV",        ""),
         "enable_tail":         get("ENABLE_TAIL",         "true").lower() == "true",
         "tail_wait_sec":       int(get("TAIL_WAIT_SEC",   "4")),
-        "tail_log_file":       str(repo_root / "wrangler-tail.log"),
-        "report_file":         str(repo_root / f"auth-healthcheck-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"),
+        "tail_log_file":       str(logs_dir / f"wrangler-tail-{ts}.log"),
+        "report_file":         str(logs_dir / f"auth-healthcheck-{ts}.json"),
     }
 
 
 # ============================================================================
-# State (populated in main)
+# State
 # ============================================================================
 
 CONFIG: dict = {}
@@ -177,9 +168,10 @@ _tail_proc: subprocess.Popen | None = None
 # ============================================================================
 
 def _record(name: str, status: str, detail: str, data: dict | None = None) -> None:
-    icons  = {"PASS": "✅", "FAIL": "❌", "WARN": "⚠️ "}
-    colors = {"PASS": "green", "FAIL": "red", "WARN": "yellow"}
-    console.print(f"  {icons.get(status,'•')} [{colors.get(status,'white')}]{name}[/{colors.get(status,'white')}]: {detail}")
+    icons  = {"PASS": "\u2705", "FAIL": "\u274c", "WARN": "\u26a0\ufe0f "}
+    colors = {"PASS": "green",  "FAIL": "red",   "WARN": "yellow"}
+    c = colors.get(status, "white")
+    console.print(f"  {icons.get(status, '\u2022')} [{c}]{name}[/{c}]: {detail}")
     report["results"][name] = {"status": status, "detail": detail, "data": data or {}}
     report["summary"][{"PASS": "passed", "FAIL": "failed", "WARN": "warnings"}[status]] += 1
 
@@ -196,7 +188,12 @@ def section(title: str) -> None:
     console.rule(f"[bold cyan]{title}[/bold cyan]")
 
 
-def wrangler(*args: str, timeout: int = 30) -> tuple[bool, str]:
+def wrangler(*args: str, timeout: int = 30) -> tuple[bool, str, str]:
+    """
+    Run a wrangler command.
+    Returns (success, stdout, stderr)  — kept separate so callers can
+    parse JSON from stdout without warnings from stderr polluting it.
+    """
     cmd = ["wrangler", *args]
     if CONFIG.get("wrangler_env"):
         cmd += ["--env", CONFIG["wrangler_env"]]
@@ -205,11 +202,25 @@ def wrangler(*args: str, timeout: int = 30) -> tuple[bool, str]:
             cmd, capture_output=True, text=True,
             timeout=timeout, cwd=str(CONFIG["repo_root"]),
         )
-        return r.returncode == 0, (r.stdout + r.stderr).strip()
+        return r.returncode == 0, r.stdout.strip(), r.stderr.strip()
     except subprocess.TimeoutExpired:
-        return False, f"timeout after {timeout}s"
+        return False, "", f"timeout after {timeout}s"
     except FileNotFoundError:
-        return False, "wrangler not found — is it installed and on PATH?"
+        return False, "", "wrangler not found — is it installed and on PATH?"
+
+
+def _extract_json(text: str) -> str:
+    """Find the first line that looks like a JSON array or object."""
+    for line in text.splitlines():
+        s = line.strip()
+        if s.startswith("[") or s.startswith("{"):
+            return s
+    # Fall back: find '[' or '{' anywhere in text
+    for ch in ("[", "{"):
+        idx = text.find(ch)
+        if idx >= 0:
+            return text[idx:]
+    return ""
 
 
 # ============================================================================
@@ -224,12 +235,12 @@ def start_tail() -> None:
         _tail_proc = subprocess.Popen(
             ["wrangler", "tail", "--format", "json"],
             stdout=open(CONFIG["tail_log_file"], "w"),
-            stderr=subprocess.STDOUT,
+            stderr=subprocess.DEVNULL,  # suppress wrangler startup noise
             cwd=str(CONFIG["repo_root"]),
         )
-        console.print(f"[dim]📡 wrangler tail → {CONFIG['tail_log_file']}  (PID {_tail_proc.pid})[/dim]")
+        console.print(f"[dim]\U0001f4e1 wrangler tail \u2192 {CONFIG['tail_log_file']}  (PID {_tail_proc.pid})[/dim]")
     except Exception as e:
-        console.print(f"[yellow]⚠️  Could not start wrangler tail: {e}[/yellow]")
+        console.print(f"[yellow]\u26a0\ufe0f  Could not start wrangler tail: {e}[/yellow]")
 
 
 def stop_tail() -> None:
@@ -244,13 +255,10 @@ def stop_tail() -> None:
 # ============================================================================
 
 def check_api() -> None:
-    section("1 · API Health")
-    for method, path, label in [
-        ("GET", "/version",        "GET /version"),
-        ("GET", "/auth/providers", "GET /auth/providers"),
-    ]:
+    section("1 \u00b7 API Health")
+    for path, label in [("/version", "GET /version"), ("/auth/providers", "GET /auth/providers")]:
         try:
-            r = requests.request(method, f"{CONFIG['api_base']}{path}", timeout=10)
+            r = requests.get(f"{CONFIG['api_base']}{path}", timeout=10)
             d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
             if r.ok:
                 extra = f"version={d.get('version','?')}" if "version" in d else f"HTTP {r.status_code}"
@@ -262,7 +270,7 @@ def check_api() -> None:
 
 
 def check_signup() -> dict | None:
-    section("2 · Sign-Up")
+    section("2 \u00b7 Sign-Up")
     try:
         r = requests.post(
             f"{CONFIG['api_base']}/auth/sign-up/email",
@@ -271,10 +279,11 @@ def check_signup() -> dict | None:
         )
         d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
         if r.status_code in (200, 201):
-            ok("POST /auth/sign-up/email", f"HTTP {r.status_code} — user_id={(d.get('user') or {}).get('id','?')}", d)
+            uid = (d.get("user") or {}).get("id", "?")
+            ok("POST /auth/sign-up/email", f"HTTP {r.status_code} \u2014 user_id={uid}", d)
             return d
         elif r.status_code == 422 and "already" in r.text.lower():
-            warn("POST /auth/sign-up/email", "User already exists — attempting sign-in")
+            warn("POST /auth/sign-up/email", "User already exists \u2014 will attempt sign-in")
             return None
         else:
             fail("POST /auth/sign-up/email", f"HTTP {r.status_code}: {r.text[:300]}", d)
@@ -285,7 +294,9 @@ def check_signup() -> dict | None:
 
 
 def check_signin() -> dict | None:
-    section("3 · Sign-In + Token")
+    section("3 \u00b7 Sign-In + Token")
+    # Small delay so the sign-up write propagates before we sign in
+    time.sleep(2)
     try:
         r = requests.post(
             f"{CONFIG['api_base']}/auth/sign-in/email",
@@ -294,7 +305,10 @@ def check_signin() -> dict | None:
         )
         d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
         if r.status_code != 200:
-            fail("POST /auth/sign-in/email", f"HTTP {r.status_code}: {r.text[:400]}", d)
+            hint = ""
+            if r.status_code == 401:
+                hint = " (if user was just created, email verification may be required)"
+            fail("POST /auth/sign-in/email", f"HTTP {r.status_code}: {r.text[:400]}{hint}", d)
             return None
 
         ok("POST /auth/sign-in/email", "HTTP 200 OK")
@@ -302,12 +316,12 @@ def check_signin() -> dict | None:
         session = d.get("session") or {}
         user    = d.get("user")    or {}
 
-        (ok if token   else fail)("session.token present",
-            f"{token[:24]}…" if token else f"missing — keys: {list(d.keys())}", d)
+        (ok if token else fail)("session.token present",
+            f"{token[:24]}\u2026" if token else f"missing \u2014 keys: {list(d.keys())}", d)
         (ok if user.get("id") else fail)("user object",
-            f"id={user.get('id')}  email={user.get('email')}  tier={user.get('tier','?')}  role={user.get('role','?')}" if user.get("id") else f"no user.id — keys: {list(user.keys())}", d)
+            f"id={user.get('id')}  email={user.get('email')}  tier={user.get('tier','?')}  role={user.get('role','?')}" if user.get("id") else f"no user.id \u2014 keys: {list(user.keys())}", d)
         (ok if session.get("id") else fail)("session object",
-            f"id={str(session.get('id',''))[:20]}…  expires={session.get('expiresAt','?')}" if session.get("id") else f"no session.id — keys: {list(session.keys())}", d)
+            f"id={str(session.get('id',''))[:20]}\u2026  expires={session.get('expiresAt','?')}" if session.get("id") else f"no session.id \u2014 keys: {list(session.keys())}", d)
         return d
     except Exception as e:
         fail("POST /auth/sign-in/email", str(e))
@@ -315,10 +329,10 @@ def check_signin() -> dict | None:
 
 
 def check_session_validation(signin_data: dict) -> None:
-    section("4 · Session Validation (Bearer token)")
+    section("4 \u00b7 Session Validation (Bearer token)")
     token = (signin_data.get("session") or {}).get("token")
     if not token:
-        warn("GET /auth/get-session", "Skipped — no token from sign-in")
+        warn("GET /auth/get-session", "Skipped \u2014 no token from sign-in")
         return
     try:
         r = requests.get(
@@ -328,7 +342,7 @@ def check_session_validation(signin_data: dict) -> None:
         )
         d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
         if r.ok and d.get("user"):
-            ok("GET /auth/get-session", f"valid — email={d['user'].get('email')}", d)
+            ok("GET /auth/get-session", f"valid \u2014 email={d['user'].get('email')}", d)
         else:
             fail("GET /auth/get-session", f"HTTP {r.status_code}: {r.text[:200]}", d)
     except Exception as e:
@@ -336,33 +350,38 @@ def check_session_validation(signin_data: dict) -> None:
 
 
 def check_email_verification(signin_data: dict) -> None:
-    section("5 · Email Verification")
+    section("5 \u00b7 Email Verification")
     verified = (signin_data.get("user") or {}).get("emailVerified")
     if verified:
         ok("emailVerified", str(verified))
     else:
-        warn("emailVerified", "false — blocked if requireEmailVerification=true. Check Resend or verify manually in DB.")
+        warn("emailVerified", "false \u2014 blocked if requireEmailVerification=true")
 
 
 def check_kv() -> None:
-    section("6 · Better Auth KV")
-    success, out = wrangler("kv", "key", "list", "--binding", CONFIG["kv_binding"])
+    section("6 \u00b7 Better Auth KV")
+    success, stdout, stderr = wrangler("kv", "key", "list", "--binding", CONFIG["kv_binding"])
     if not success:
-        fail("KV list", out[:300])
+        fail("KV list", (stderr or stdout)[:300])
         return
-    lines = [l for l in out.splitlines() if l.strip()]
-    raw   = lines[-1] if lines else "[]"
+
+    # JSON is on stdout; stderr has wrangler warnings (ignored)
+    raw = _extract_json(stdout)
+    if not raw:
+        warn("KV list", f"No JSON found in stdout: {stdout[:200]}")
+        return
     try:
         keys = json.loads(raw)
-    except json.JSONDecodeError:
-        warn("KV list", f"Could not parse output — raw: {raw[:200]}")
+    except json.JSONDecodeError as e:
+        warn("KV list", f"JSON parse error: {e} \u2014 raw: {raw[:200]}")
         return
     if not isinstance(keys, list):
-        warn("KV list", f"Unexpected type: {type(keys)}")
+        warn("KV list", f"Unexpected type {type(keys)}")
         return
+
     ok("KV accessible", f"{len(keys)} key(s)")
     if not keys:
-        warn("KV key distribution", "0 keys — normal on fresh deploy")
+        warn("KV key distribution", "0 keys \u2014 normal on fresh deploy")
         return
     prefixes: dict[str, int] = {}
     for k in keys:
@@ -373,39 +392,85 @@ def check_kv() -> None:
 
 
 def check_d1(binding: str, label: str) -> None:
-    section(f"7 · D1 — {label}  (binding={binding})")
-    success, out = wrangler("d1", "execute", binding, "--command",
-                            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;")
+    section(f"7 \u00b7 D1 \u2014 {label}  (binding={binding})")
+
+    success, stdout, stderr = wrangler(
+        "d1", "execute", binding, "--remote", "--json",
+        "--command", "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;",
+        timeout=60,
+    )
     if not success:
-        fail(f"D1 {label} execute", out[:300])
+        fail(f"D1 {label} execute", (stderr or stdout)[:300])
         return
-    ok(f"D1 {label} accessible", "query succeeded")
-    tables = []
-    for line in out.splitlines():
-        if "│" in line:
-            parts = [p.strip() for p in line.split("│") if p.strip()]
-            if parts and parts[0] not in ("name", ""):
-                tables.append(parts[0])
+    ok(f"D1 {label} accessible", "remote query succeeded")
+
+    # Parse JSON output: [{"results": [{"name": "..."}]}]
+    tables: list[str] = []
+    try:
+        raw = _extract_json(stdout)
+        if raw:
+            data = json.loads(raw)
+            for batch in (data if isinstance(data, list) else [data]):
+                for row in batch.get("results", []):
+                    if "name" in row:
+                        tables.append(row["name"])
+    except Exception as e:
+        warn(f"D1 {label} tables", f"JSON parse error: {e}\n{stdout[:300]}")
+        return
+
     if tables:
         ok(f"D1 {label} tables", f"{len(tables)}: {', '.join(tables)}", {"tables": tables})
     else:
-        warn(f"D1 {label} tables", f"None parsed — raw:\n{out[:400]}")
+        warn(f"D1 {label} tables", f"No tables parsed. stdout:\n{stdout[:400]}")
+        return
+
+    # Row counts for known auth tables
     for tbl in [t for t in ["user", "session", "api_key", "verification", "account"] if t in tables]:
-        s2, o2 = wrangler("d1", "execute", binding, "--command", f"SELECT COUNT(*) as c FROM {tbl};")
+        s2, out2, _ = wrangler(
+            "d1", "execute", binding, "--remote", "--json",
+            "--command", f"SELECT COUNT(*) as c FROM {tbl};",
+            timeout=60,
+        )
         if s2:
-            for ln in o2.splitlines():
-                if "│" in ln:
-                    ps = [p.strip() for p in ln.split("│") if p.strip()]
-                    if ps and ps[0].isdigit():
-                        ok(f"D1 {label} · {tbl} rows", ps[0])
-                        break
+            try:
+                raw2 = _extract_json(out2)
+                d2 = json.loads(raw2)
+                count = (d2[0] if isinstance(d2, list) else d2)["results"][0].get("c", "?")
+                ok(f"D1 {label} \u00b7 {tbl} rows", str(count))
+            except Exception:
+                pass
+
+
+def _discover_neon_tables(cur) -> dict[str, str]:
+    """
+    Query information_schema to find actual table names in the public schema.
+    Returns a mapping of logical concept -> actual table name, e.g.:
+      {"user": "User", "session": "session", "account": "account", ...}
+    """
+    cur.execute("""
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
+        ORDER BY table_name
+    """)
+    actual = [row[0] for row in cur.fetchall()]
+    console.print(f"[dim]  Neon public tables: {actual}[/dim]")
+
+    lower_map = {t.lower(): t for t in actual}  # lowercase -> actual
+    result: dict[str, str] = {}
+    for concept in ["user", "session", "account", "verification"]:
+        for candidate in [concept, concept + "s", concept.capitalize(), concept.capitalize() + "s"]:
+            if candidate.lower() in lower_map:
+                result[concept] = lower_map[candidate.lower()]
+                break
+    return result
 
 
 def check_neon(signin_data: dict | None) -> None:
-    section("8 · Neon / PostgreSQL")
+    section("8 \u00b7 Neon / PostgreSQL")
     neon_url = CONFIG["neon_url"]
     if not neon_url:
-        warn("Neon connection", "NEON_URL not configured — set it in tools/auth-healthcheck.env")
+        warn("Neon connection", "NEON_URL not configured \u2014 set it in tools/auth-healthcheck.env")
         return
     try:
         conn = psycopg2.connect(neon_url, connect_timeout=10)
@@ -416,50 +481,76 @@ def check_neon(signin_data: dict | None) -> None:
         fail("Neon TCP connection", str(e))
         return
 
-    counts: dict[str, int | str] = {}
-    for tbl in ["user", "session", "account", "verification"]:
-        try:
-            cur.execute(f'SELECT COUNT(*) FROM "{tbl}"')
-            counts[tbl] = cur.fetchone()[0]  # type: ignore[index]
-        except Exception as e:
-            counts[tbl] = f"ERROR: {e}"
-    has_err = any(str(v).startswith("ERROR") for v in counts.values())
-    (fail if has_err else ok)("Neon table counts", "  ".join(f"{t}={c}" for t, c in counts.items()), counts)
-
+    # Discover actual table names before querying
     try:
-        cur.execute(
-            'SELECT id, email, "displayName", "emailVerified", tier FROM "user" WHERE email = %s',
-            (CONFIG["test_email"],),
-        )
-        row = cur.fetchone()
-        if row:
-            ok("Test user in Neon", f"id={row[0]}  displayName={row[2]}  tier={row[4]}  verified={row[3]}")
-        else:
-            fail("Test user in Neon", f"{CONFIG['test_email']} not found")
+        tbl_map = _discover_neon_tables(cur)
     except Exception as e:
-        fail("Test user in Neon", str(e))
+        fail("Neon table discovery", str(e))
+        cur.close(); conn.close()
+        return
 
-    if signin_data:
+    # Row counts
+    counts: dict[str, int | str] = {}
+    for concept, actual in tbl_map.items():
+        try:
+            cur.execute(f'SELECT COUNT(*) FROM "{actual}"')
+            counts[f"{concept} ({actual})"] = cur.fetchone()[0]  # type: ignore[index]
+        except Exception as e:
+            counts[f"{concept} ({actual})"] = f"ERROR: {e}"
+
+    has_err = any(str(v).startswith("ERROR") for v in counts.values())
+    summary = "  ".join(f"{t}={c}" for t, c in counts.items())
+    (fail if has_err else ok)("Neon table counts", summary, counts)
+
+    # Test user row
+    user_tbl = tbl_map.get("user")
+    if user_tbl:
+        try:
+            # Try common column name variants
+            for name_col in ("displayName", "name"):
+                try:
+                    cur.execute(
+                        f'SELECT id, email, "{name_col}", "emailVerified" FROM "{user_tbl}" WHERE email = %s',
+                        (CONFIG["test_email"],),
+                    )
+                    row = cur.fetchone()
+                    if row:
+                        ok("Test user in Neon", f"id={row[0]}  {name_col}={row[2]}  verified={row[3]}")
+                    else:
+                        fail("Test user in Neon", f"{CONFIG['test_email']} not found in \"{user_tbl}\"")
+                    break
+                except psycopg2.errors.UndefinedColumn:  # type: ignore[attr-defined]
+                    conn.rollback()
+                    continue
+        except Exception as e:
+            fail("Test user in Neon", str(e))
+    else:
+        warn("Test user in Neon", f"No 'user' table found \u2014 discovered: {list(tbl_map.values())}")
+
+    # Session row
+    session_tbl = tbl_map.get("session")
+    if signin_data and session_tbl:
         session_id = (signin_data.get("session") or {}).get("id")
         if session_id:
             try:
-                cur.execute('SELECT id, "userId", "expiresAt" FROM session WHERE id = %s', (session_id,))
+                cur.execute(f'SELECT id FROM "{session_tbl}" WHERE id = %s', (session_id,))
                 sess = cur.fetchone()
                 if sess:
-                    ok("Session in Neon", f"id={str(sess[0])[:20]}…  expires={sess[2]}")
+                    ok("Session in Neon", f"id={str(sess[0])[:20]}\u2026")
                 else:
-                    warn("Session in Neon", "Not in Postgres — stored in KV only (expected when KV is bound).")
+                    warn("Session in Neon", "Not in Postgres \u2014 likely stored in KV only (expected when KV is bound).")
             except Exception as e:
                 fail("Session in Neon", str(e))
+
     cur.close()
     conn.close()
 
 
 def check_admin_api() -> None:
-    section("9 · Better Auth Admin API (optional)")
+    section("9 \u00b7 Better Auth Admin API (optional)")
     api_key = CONFIG["better_auth_api_key"]
     if not api_key:
-        warn("Admin API", "BETTER_AUTH_API_KEY not set — skipping")
+        warn("Admin API", "BETTER_AUTH_API_KEY not set \u2014 skipping")
         return
     try:
         r = requests.get(
@@ -467,23 +558,29 @@ def check_admin_api() -> None:
             headers={"x-api-key": api_key},
             timeout=10,
         )
-        d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
+        ct = r.headers.get("content-type", "")
+        if not r.content:
+            fail("Admin list-users", f"HTTP {r.status_code} \u2014 empty response body")
+            return
+        d = r.json() if "application/json" in ct else {}
         if r.ok:
-            ok("Admin list-users", f"HTTP {r.status_code} — {len(d.get('users',[]))} user(s)", d)
+            ok("Admin list-users", f"HTTP {r.status_code} \u2014 {len(d.get('users', []))} user(s)", d)
         else:
             fail("Admin list-users", f"HTTP {r.status_code}: {r.text[:200]}", d)
+    except requests.exceptions.JSONDecodeError as e:
+        fail("Admin list-users", f"JSON decode error: {e} \u2014 body: {r.text[:200]}")
     except Exception as e:
         fail("Admin list-users", str(e))
 
 
 def summarise_tail() -> None:
-    section("10 · Wrangler Tail Summary")
+    section("10 \u00b7 Wrangler Tail Summary")
     if not CONFIG["enable_tail"]:
         warn("Tail logs", "disabled (ENABLE_TAIL=false)")
         return
     log_path = Path(CONFIG["tail_log_file"])
     if not log_path.exists() or log_path.stat().st_size == 0:
-        warn("Tail log", f"{log_path} is empty")
+        warn("Tail log", f"{log_path.name} is empty")
         return
     exceptions, error_logs, auth_logs = [], [], []
     with open(log_path) as f:
@@ -498,9 +595,9 @@ def summarise_tail() -> None:
             for exc in entry.get("exceptions", []):
                 exceptions.append(exc.get("message", str(exc)))
             for log in entry.get("logs", []):
-                msg = " ".join(str(p) for p in log.get("parts", []))
+                msg = " ".join(str(p) for p in log.get("parts", []) + log.get("message", []))
                 lower = msg.lower()
-                if "error" in lower or "500" in lower or "exception" in lower:
+                if any(kw in lower for kw in ("error", "500", "exception")):
                     error_logs.append(msg)
                 if any(kw in lower for kw in ("auth", "sign-in", "sign-up", "session", "prisma", "better-auth")):
                     auth_logs.append(msg)
@@ -519,17 +616,17 @@ def write_report() -> None:
     s = report["summary"]
     console.print()
     console.print(Panel(
-        f"[green]✅ Passed:   {s['passed']}[/green]\n"
-        f"[yellow]⚠️  Warnings: {s['warnings']}[/yellow]\n"
-        f"[red]❌ Failed:   {s['failed']}[/red]\n"
+        f"[green]\u2705 Passed:   {s['passed']}[/green]\n"
+        f"[yellow]\u26a0\ufe0f  Warnings: {s['warnings']}[/yellow]\n"
+        f"[red]\u274c Failed:   {s['failed']}[/red]\n"
         f"   Total:    {s['passed'] + s['failed'] + s['warnings']}\n\n"
-        f"Report → [bold]{path}[/bold]",
+        f"Report \u2192 [bold]{path}[/bold]",
         title="[bold]Auth Healthcheck Complete[/bold]",
     ))
     if report["errors"]:
         console.print("\n[bold red]Failed checks:[/bold red]")
         for e in report["errors"]:
-            console.print(f"  ❌ {e['check']}: {e['detail']}")
+            console.print(f"  \u274c {e['check']}: {e['detail']}")
 
 
 # ============================================================================
@@ -546,8 +643,9 @@ def main() -> None:
         f"API base : {CONFIG['api_base']}\n"
         f"Test user: {CONFIG['test_email']}\n"
         f"Repo root: {CONFIG['repo_root']}\n"
+        f"Logs dir : {CONFIG['logs_dir']}\n"
         f"Time     : {datetime.now().isoformat()}",
-        title="adblock-compiler · bloqr.dev",
+        title="adblock-compiler \u00b7 bloqr.dev",
     ))
 
     start_tail()
@@ -562,7 +660,7 @@ def main() -> None:
             check_session_validation(signin_data)
             check_email_verification(signin_data)
         else:
-            warn("Session + email checks", "Skipped — sign-in failed")
+            warn("Session + email checks", "Skipped \u2014 sign-in failed")
 
         check_kv()
         check_d1(CONFIG["d1_binding"],       "adblock-compiler-d1-database")
@@ -571,7 +669,7 @@ def main() -> None:
         check_admin_api()
 
         if CONFIG["enable_tail"]:
-            console.print(f"\n[dim]Waiting {CONFIG['tail_wait_sec']}s for tail to flush…[/dim]")
+            console.print(f"\n[dim]Waiting {CONFIG['tail_wait_sec']}s for tail to flush\u2026[/dim]")
             time.sleep(CONFIG["tail_wait_sec"])
 
         summarise_tail()
