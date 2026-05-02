@@ -1,0 +1,68 @@
+/* Bloqr brand overrides for Starlight
+ * Purple accent, Inter UI font, JetBrains Mono code font, dark-first theme.
+ */
+
+/* ── Fonts ─────────────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+
+/* ── Light theme (minimal override — Bloqr is dark-first) ─────────────────── */
+:root {
+    --sl-font: 'Inter', system-ui, -apple-system, sans-serif;
+    --sl-font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+
+    --sl-color-accent-low: #3b0764;
+    --sl-color-accent: #7c3aed;
+    --sl-color-accent-high: #a78bfa;
+
+    --sl-color-white: #f8fafc;
+    --sl-color-gray-1: #e2e8f0;
+    --sl-color-gray-2: #94a3b8;
+    --sl-color-gray-3: #64748b;
+    --sl-color-gray-4: #334155;
+    --sl-color-gray-5: #1e293b;
+    --sl-color-gray-6: #0f172a;
+    --sl-color-black: #070b14;
+}
+
+/* ── Dark theme (default for Bloqr) ───────────────────────────────────────── */
+:root[data-theme='dark'],
+@media (prefers-color-scheme: dark) {
+    :root {
+        --sl-color-accent-low: #3b0764;
+        --sl-color-accent: #a78bfa;
+        --sl-color-accent-high: #c4b5fd;
+
+        --sl-color-bg: #070b14;
+        --sl-color-bg-nav: #0d1117;
+        --sl-color-bg-sidebar: #0d1117;
+        --sl-color-bg-inline-code: #1e293b;
+
+        --sl-color-text: #e2e8f0;
+        --sl-color-text-accent: #a78bfa;
+
+        --sl-color-hairline-light: #1e293b;
+        --sl-color-hairline-shade: #0f172a;
+    }
+}
+
+/* ── Code blocks ──────────────────────────────────────────────────────────── */
+code,
+kbd,
+samp,
+pre {
+    font-family: var(--sl-font-mono);
+    font-size: 0.875em;
+}
+
+/* ── Sidebar nav active link ──────────────────────────────────────────────── */
+[data-current-page] {
+    border-inline-start-color: var(--sl-color-accent) !important;
+    color: var(--sl-color-accent-high) !important;
+}
+
+/* ── Hero section ─────────────────────────────────────────────────────────── */
+.hero h1 {
+    font-size: clamp(1.75rem, 5vw, 3rem);
+    font-weight: 700;
+    letter-spacing: -0.02em;
+}
