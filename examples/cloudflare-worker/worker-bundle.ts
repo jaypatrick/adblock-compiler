@@ -5,7 +5,6 @@ import {
     WorkerCompiler,
     type IConfiguration,
     type ICompilerEvents,
-    type WorkerCompilationResult,
 } from '../../src/index.ts';
 
 export interface Env {
@@ -62,7 +61,7 @@ function createStreamingEvents(
 
 async function handleCompileStream(
     request: Request,
-    env: Env,
+    _env: Env,
 ): Promise<Response> {
     const body = await request.json() as CompileRequest;
     const { configuration, preFetchedContent, benchmark } = body;
@@ -116,7 +115,7 @@ async function handleCompileStream(
 
 async function handleCompileJson(
     request: Request,
-    env: Env,
+    _env: Env,
 ): Promise<Response> {
     const body = await request.json() as CompileRequest;
     const { configuration, preFetchedContent, benchmark } = body;

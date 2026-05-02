@@ -29,6 +29,7 @@ WORKDIR /app
 
 # Copy Deno configuration and lock file
 COPY deno.json deno.lock ./
+COPY worker/deno.json ./worker/deno.json
 
 # Copy source code (compiler library and container server)
 COPY src ./src
