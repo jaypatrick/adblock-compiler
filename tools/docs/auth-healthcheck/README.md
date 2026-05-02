@@ -101,7 +101,7 @@ cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
 ### Interactive mode (TTY)
 
 ```bash
-uv run --directory tools python tools/auth-healthcheck.py
+uv run --directory tools python auth-healthcheck.py
 ```
 
 An interactive menu appears:
@@ -121,16 +121,16 @@ An interactive menu appears:
 
 ```bash
 # Run all checks
-uv run --directory tools python tools/auth-healthcheck.py --mode all
+uv run --directory tools python auth-healthcheck.py --mode all
 
 # Run checks only (no cleanup)
-uv run --directory tools python tools/auth-healthcheck.py --mode checks
+uv run --directory tools python auth-healthcheck.py --mode checks
 
 # Clean up test data only
-uv run --directory tools python tools/auth-healthcheck.py --mode cleanup
+uv run --directory tools python auth-healthcheck.py --mode cleanup
 
 # Dry run — prints config, makes no requests
-uv run --directory tools python tools/auth-healthcheck.py --mode checks --dry-run
+uv run --directory tools python auth-healthcheck.py --mode checks --dry-run
 ```
 
 ### Deno shortcut
@@ -157,7 +157,7 @@ The Marimo runbook is the recommended interface for admins. It provides:
 uv sync --directory tools
 
 # Launch the runbook
-uv run --directory tools marimo run tools/runbooks/auth-healthcheck.py
+uv run --directory tools marimo run runbooks/auth-healthcheck.py
 
 # Or use the deno task shortcut
 deno task runbook:auth-healthcheck

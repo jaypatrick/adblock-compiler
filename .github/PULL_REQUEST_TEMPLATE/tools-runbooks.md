@@ -64,10 +64,10 @@
 uv run --directory tools pytest tests/ -v
 
 # Smoke-test the runbook locally (opens browser)
-uv run --directory tools marimo run tools/runbooks/<tool>.py
+uv run --directory tools marimo run runbooks/<tool>.py
 
 # Smoke-test the master pipeline runbook
-uv run --directory tools marimo run tools/runbooks/pipeline.py
+uv run --directory tools marimo run runbooks/pipeline.py
 ```
 
 ---

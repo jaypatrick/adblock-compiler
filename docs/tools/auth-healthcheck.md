@@ -65,7 +65,7 @@ cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
 auth-check
 
 # Or directly
-uv run --directory tools python tools/auth-healthcheck.py
+uv run --directory tools python auth-healthcheck.py
 ```
 
 The script will:

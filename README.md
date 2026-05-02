@@ -368,8 +368,8 @@ mindmap
     tools["tools/ — Operational tooling (Python, uv-managed)"]
       runbooks["runbooks/ — Marimo interactive runbooks (pipeline, auth-healthcheck)"]
       tests["tests/ — pytest test suite for tools"]
-    examples["examples/ (Deno workspace member)"]
-      cloudflareWorker["cloudflare-worker/ — Cloudflare Worker deployment example"]
+    examples["examples/"]
+      cloudflareWorker["cloudflare-worker/ (Deno workspace member)"]
     prisma["prisma/ — Database schema and migrations"]
 ```
 

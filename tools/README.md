@@ -15,7 +15,7 @@ uv sync --directory tools
 # Launch the master pipeline runbook (recommended admin entry point)
 deno task runbook:pipeline
 # — or —
-uv run --directory tools marimo run tools/runbooks/pipeline.py
+uv run --directory tools marimo run runbooks/pipeline.py
 ```
 
 The master runbook opens in your browser at `http://localhost:2718` and includes:
@@ -52,7 +52,7 @@ cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
 ## CLI Usage
 
 ```bash
-uv run --directory tools python tools/auth-healthcheck.py
+uv run --directory tools python auth-healthcheck.py
 
 # Non-interactive
 python tools/auth-healthcheck.py --mode all

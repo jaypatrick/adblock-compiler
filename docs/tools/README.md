@@ -114,7 +114,7 @@ Add a shell alias for convenience:
 ```bash
 # Add to ~/.zshrc or ~/.bashrc
 alias bloqr-tools='cd /path/to/adblock-compiler && uv sync --directory tools'
-alias bloqr-runbooks='cd /path/to/adblock-compiler && uv run --directory tools marimo run tools/runbooks/pipeline.py'
+alias bloqr-runbooks='cd /path/to/adblock-compiler && uv run --directory tools marimo run runbooks/pipeline.py'
 ```
 
 ---
@@ -138,7 +138,7 @@ Tools can be chained together in a bash pipeline by using `--mode all` and readi
 
 ```bash
 # Step 1: Run auth healthcheck
-uv run --directory tools python tools/auth-healthcheck.py --mode all
+uv run --directory tools python auth-healthcheck.py --mode all
 
 # Step 2: Grab the JSON report
 AUTH_REPORT=$(ls -t tools/logs/auth-healthcheck/*.json | head -1)
@@ -257,7 +257,7 @@ This can be exposed securely via:
 | Symptom | Fix |
 |---|---|
 | `marimo: command not found` | Run `uv sync --directory tools` or `deno task runbook:setup` |
-| `ModuleNotFoundError: No module named 'shared'` | Run from repo root: `cd /path/to/adblock-compiler && uv run --directory tools marimo run tools/runbooks/auth-healthcheck.py` |
+| `ModuleNotFoundError: No module named 'shared'` | Run from repo root: `cd /path/to/adblock-compiler && uv run --directory tools marimo run runbooks/auth-healthcheck.py` |
 | `psycopg2 not found` | Run `uv sync --directory tools` to install all dependencies |
 | `wrangler: command not found` | `npm install -g wrangler` or use `deno run -A npm:wrangler` |
 | Browser doesn't open | Navigate to `http://localhost:2718` manually |
