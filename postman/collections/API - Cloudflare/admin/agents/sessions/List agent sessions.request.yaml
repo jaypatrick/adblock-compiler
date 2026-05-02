@@ -1,0 +1,14 @@
+$kind: http-request
+description: >
+  Lists all active and historical AI agent sessions with their status, tools used,
+  and duration. Requires admin authentication.
+url: {{baseUrl}}/api/admin/agents/sessions
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+body:
+  type: text
+  content: ""
+examples: ./.resources/List agent sessions.resources/examples
+order: 1000

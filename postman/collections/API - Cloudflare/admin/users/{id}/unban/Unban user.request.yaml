@@ -1,0 +1,20 @@
+$kind: http-request
+description: >
+  Removes a ban from a user, restoring their access to the API. Requires admin
+  authentication.
+url: {{baseUrl}}/api/admin/users/:id/unban
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+pathVariables:
+  - key: id
+    value: string
+    description: User ID (UUID)
+body:
+  type: json
+  content: |-
+    {}
+examples: ./.resources/Unban user.resources/examples
+order: 6000
