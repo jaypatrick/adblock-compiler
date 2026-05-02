@@ -20,13 +20,13 @@ graph TD
 
 ## Toolchain by Package
 
-| Package | Runtime | Package Manager | Key Config |
-|---|---|---|---|
-| `src/` | Deno | deno.json | `deno.json` (root) |
-| `worker/` | Deno | deno.json | `deno.json` (root workspace member) |
-| `frontend/` | Node.js | pnpm | `frontend/package.json`, `pnpm-workspace.yaml` |
-| `tools/` | Python 3.11+ | uv | `tools/pyproject.toml` |
-| `examples/cloudflare-worker/` | Deno | deno.json | `examples/cloudflare-worker/deno.json` |
+| Package                       | Runtime      | Package Manager | Key Config                                     |
+| ----------------------------- | ------------ | --------------- | ---------------------------------------------- |
+| `src/`                        | Deno         | deno.json       | `deno.json` (root)                             |
+| `worker/`                     | Deno         | deno.json       | `deno.json` (root workspace member)            |
+| `frontend/`                   | Node.js      | pnpm            | `frontend/package.json`, `pnpm-workspace.yaml` |
+| `tools/`                      | Python 3.11+ | uv              | `tools/pyproject.toml`                         |
+| `examples/cloudflare-worker/` | Deno         | deno.json       | `examples/cloudflare-worker/deno.json`         |
 
 ## Adding a New Package
 
