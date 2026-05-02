@@ -116,7 +116,21 @@ export const routes: Routes = [
         canActivate: [adminGuard],
     },
     {
+        path: 'not-found',
+        loadComponent: () => import('./error/not-found.component').then(m => m.NotFoundComponent),
+        title: 'Page Not Found',
+        data: { description: '404 — Page not found', metaDescription: 'The page you are looking for could not be found.' },
+    },
+    {
+        path: 'fatal-error',
+        loadComponent: () => import('./error/fatal-error.component').then(m => m.FatalErrorComponent),
+        title: 'Error',
+        data: { description: 'Critical error', metaDescription: 'A critical error occurred.' },
+    },
+    // Wildcard: unknown paths show the 404 page (lazy-loaded, not a redirect so the URL stays intact)
+    {
         path: '**',
-        redirectTo: '',
+        loadComponent: () => import('./error/not-found.component').then(m => m.NotFoundComponent),
+        title: 'Page Not Found',
     },
 ];

@@ -16,6 +16,8 @@ import { inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthFacadeService } from '../services/auth-facade.service';
+import { FlashService } from '../services/flash.service';
+import { ErrorCode, ERROR_MESSAGES } from '../error/error-codes';
 
 export const authGuard: CanActivateFn = async (_route, state) => {
     // Capture all inject() calls before the first await (injection context
@@ -23,10 +25,14 @@ export const authGuard: CanActivateFn = async (_route, state) => {
     const platformId = inject(PLATFORM_ID);
     const auth = inject(AuthFacadeService);
     const router = inject(Router);
+    const flashService = inject(FlashService);
 
     // On the server (SSR or build-time prerender), auth never initialises,
     // so waiting would stall for the full 10 s timeout. Return an
     // immediate redirect; the client will re-evaluate the guard after hydration.
+    // Do NOT set a flash message here — signal state is not transferred from
+    // server to client, so it would be silently lost. The client-side guard
+    // execution after hydration will set the flash if auth fails.
     if (!isPlatformBrowser(platformId)) {
         return router.createUrlTree(['/sign-in'], {
             queryParams: { returnUrl: state.url },
@@ -37,6 +43,7 @@ export const authGuard: CanActivateFn = async (_route, state) => {
 
     if (auth.isSignedIn()) return true;
 
+    flashService.set(ERROR_MESSAGES[ErrorCode.UNAUTHORIZED], 'warn');
     return router.createUrlTree(['/sign-in'], {
         queryParams: { returnUrl: state.url },
     });

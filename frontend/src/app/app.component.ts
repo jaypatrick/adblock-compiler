@@ -29,6 +29,7 @@ import { ThemeService } from './services/theme.service';
 import { ErrorBoundaryComponent } from './error/error-boundary.component';
 import { NotificationContainerComponent } from './notification/notification-container.component';
 import { UserButtonComponent } from './auth/user-button/user-button.component';
+import { UrlErrorBannerComponent } from './error/url-error-banner.component';
 
 /** Navigation item interface */
 interface NavItem {
@@ -58,6 +59,7 @@ interface NavItem {
         ErrorBoundaryComponent,
         NotificationContainerComponent,
         UserButtonComponent,
+        UrlErrorBannerComponent,
     ],
     template: `
     <a href="#main-content" class="skip-link">Skip to main content</a>
@@ -188,6 +190,7 @@ interface NavItem {
     </mat-sidenav-container>
     <app-error-boundary />
     <app-notification-container />
+    <app-url-error-banner />
   `,
     styles: [`
     .app-sidenav-container {

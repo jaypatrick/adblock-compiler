@@ -91,6 +91,9 @@ import { webhookRoutes } from './routes/webhook.routes.ts';
 import { workflowRoutes } from './routes/workflow.routes.ts';
 import { workflowDiagramRoutes } from './routes/workflow-diagram.routes.ts';
 import { cspReportRoutes } from './routes/csp-report.routes.ts';
+import { flashRoutes } from './routes/flash.routes.ts';
+import { logRoutes } from './routes/log.routes.ts';
+import { logErrorToD1 } from './utils/error-logger.ts';
 import { contentSecurityPolicyMiddleware } from './security-headers.ts';
 
 // Prisma middleware
@@ -223,6 +226,25 @@ app.onError(async (err, c) => {
                     `[${requestId}] Failed to enqueue error to ERROR_QUEUE:`,
                     queueErr instanceof Error ? queueErr.message : String(queueErr),
                 );
+            }),
+        );
+    }
+
+    // Persist error event to D1 for offline analysis (complements ERROR_QUEUE).
+    // Non-blocking: waitUntil so HTTP response is not delayed.
+    // logErrorToD1 never throws — all errors are caught internally.
+    if (c.env.DB) {
+        c.executionCtx.waitUntil(
+            logErrorToD1(c.env.DB, {
+                source: 'worker',
+                message: err instanceof Error ? err.message : String(err),
+                stack: err instanceof Error ? err.stack : undefined,
+                url: c.req.url,
+                context: { requestId, path: c.req.path, method: c.req.method },
+            }).catch((logErr) => {
+                // Non-fatal: D1 logging failure must never surface as a secondary error.
+                // deno-lint-ignore no-console
+                console.warn('[error-handler] D1 error logging failed:', logErr instanceof Error ? logErr.message : String(logErr));
             }),
         );
     }
@@ -408,14 +430,22 @@ app.use('*', async (c, next) => {
         return;
     }
 
-    const isPreAuth = c.req.method === 'GET' && (
+    const isPreAuth = (c.req.method === 'GET' && (
         PRE_AUTH_PATHS.includes(pathname as typeof PRE_AUTH_PATHS[number]) ||
         pathname.startsWith('/api/deployments') ||
         pathname.startsWith('/api/docs/') ||
         pathname.startsWith('/api/swagger/') ||
         pathname.startsWith('/api/redoc/') ||
+        // Flash tokens use dynamic path segments — exact-match via includes() would
+        // never fire, so we prefix-match instead. Only GET is served; other methods
+        // get a 405 from the route handler itself.
+        pathname.startsWith('/api/flash/') ||
         MONITORING_BARE_PATHS.has(pathname)
-    );
+    )) ||
+    // Frontend error logging must be accessible before the user is authenticated
+    // (e.g. sign-in page crash, SSR hydration failure). Applies to all HTTP methods
+    // because POST is the only defined method and no extra bypass surface is added.
+    pathname === '/api/log/frontend-error';
     if (isPreAuth) {
         const rl = await checkRateLimitTiered(c.env, ip, ANONYMOUS_AUTH_CONTEXT);
         if (!rl.allowed) {
@@ -717,6 +747,13 @@ routes.route('/', proxyRoutes);
 // ── Mount meta routes (API discovery, version info, config) ──────────────────
 // Routes in metaRoutes use full paths (e.g. /api/version) so mount at '/', not '/api'.
 app.route('/', metaRoutes);
+
+// ── Flash + log routes — public, bypass the authenticated `routes` sub-app ───
+// Mounted directly on app (same pattern as metaRoutes) so they are reachable
+// before and after authentication. The unified auth middleware bypasses these
+// paths via the isPreAuth / pathname checks above.
+app.route('/', flashRoutes);
+app.route('/', logRoutes);
 
 // ── Documentation routes — mounted directly on app so they bypass the
 //    authenticated `routes` sub-app and are always publicly accessible.

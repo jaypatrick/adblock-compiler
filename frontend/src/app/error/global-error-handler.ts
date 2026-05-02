@@ -10,19 +10,24 @@
  */
 
 import { ErrorHandler, Injectable, signal, computed, inject } from '@angular/core';
+import { Router } from '@angular/router';
 import { LogService } from '../services/log.service';
 import { Sentry } from '../sentry';
+import { ErrorCode, ERROR_MESSAGES } from './error-codes';
 
 export interface AppError {
     readonly message: string;
     readonly stack?: string;
     readonly timestamp: Date;
     readonly context?: string;
+    /** When true the error handler navigates to /fatal-error instead of showing the inline banner. */
+    readonly isFatal?: boolean;
 }
 
 @Injectable()
 export class GlobalErrorHandler extends ErrorHandler {
     private readonly log = inject(LogService);
+    private readonly router = inject(Router);
 
     /** The most recent unhandled error */
     readonly lastError = signal<AppError | null>(null);
@@ -37,6 +42,11 @@ export class GlobalErrorHandler extends ErrorHandler {
     override handleError(error: unknown): void {
         const appError = this.normalizeError(error);
         this.lastError.set(appError);
+
+        // Navigate to /fatal-error for errors that cannot be gracefully recovered.
+        if (appError.isFatal) {
+            void this.router.navigate(['/fatal-error']);
+        }
 
         // Maintain history (last 10)
         this._errorHistory.update(history => {
@@ -94,7 +104,7 @@ export class GlobalErrorHandler extends ErrorHandler {
         }
 
         return {
-            message: 'An unexpected error occurred',
+            message: ERROR_MESSAGES[ErrorCode.UNKNOWN],
             timestamp: new Date(),
             context: JSON.stringify(error),
         };
