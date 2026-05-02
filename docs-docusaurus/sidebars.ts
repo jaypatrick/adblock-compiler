@@ -4,9 +4,9 @@ import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
  * Docusaurus sidebar configuration generated from docs/SUMMARY.md.
  *
  * All 174 entries from the mdBook SUMMARY.md are represented here.
- * File paths use the `../docs/` prefix because the Docusaurus `docs` plugin
- * is configured with `path: '../docs'` — the source Markdown files remain
- * in the root `docs/` directory.
+ * Sidebar `id` values are relative to the Docusaurus docs content root
+ * (configured as `path: '../docs'`) — they do NOT include a `../docs/` prefix.
+ * For example, `api/README` resolves to `docs/api/README.md` on disk.
  *
  * Note: `.md` extensions are intentionally omitted per Docusaurus convention.
  */

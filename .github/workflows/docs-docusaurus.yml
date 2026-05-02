@@ -44,5 +44,5 @@ jobs:
               run: |
                   set -euo pipefail
                   echo "Deploying Docusaurus docs to Cloudflare Workers..."
-                  npx wrangler@4.83.0 deploy --config docs-docusaurus/wrangler.docs-docusaurus.toml
+                  pnpm --filter @bloqr/docs-docusaurus run deploy
                   echo "✅ Docusaurus docs deployed successfully"

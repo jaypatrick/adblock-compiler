@@ -45,7 +45,7 @@ pnpm run docs:docusaurus:build
 # Output goes to docs-docusaurus/build/
 ```
 
-## Deploy to Cloudflare Pages
+## Deploy to Cloudflare Workers
 
 CI deploys automatically on push to `main` when `docs/**` or
 `docs-docusaurus/**` changes.
@@ -55,7 +55,7 @@ Manual deploy:
 ```bash
 cd docs-docusaurus
 pnpm run deploy
-# runs: wrangler pages deploy build --project-name=bloqr-docs-docusaurus
+# runs: wrangler deploy --config wrangler.docs-docusaurus.toml
 ```
 
 ---
@@ -96,7 +96,7 @@ flowchart LR
     end
 
     subgraph Deploy
-        CF["Cloudflare Pages\ndocs-v2.bloqr.dev"]
+        CF["Cloudflare Worker\ndocs-v2.bloqr.dev"]
     end
 
     MD --> Config
@@ -115,7 +115,7 @@ docs-docusaurus/
 ├── docusaurus.config.ts        # Main site configuration
 ├── sidebars.ts                 # Sidebar nav (mirrors docs/SUMMARY.md)
 ├── package.json                # @bloqr/docs-docusaurus
-├── wrangler.docs-docusaurus.toml  # Cloudflare Pages deploy config
+├── wrangler.docs-docusaurus.toml  # Cloudflare Worker deploy config
 ├── src/
 │   └── css/
 │       └── custom.css          # Bloqr brand CSS variables
@@ -146,8 +146,9 @@ The Markdown source files remain in `docs/` — this scaffold only reads them.
    ls ../docs/api/openapi.yaml
    ```
 
-3. **Logo & favicon** — Add `static/img/logo.svg` and `static/img/favicon.ico`
-   to this directory.
+3. **Favicon & social card** — Replace the placeholder `static/img/logo.svg`
+   with the real brand SVG, and add `static/img/favicon.ico` and
+   `static/img/bloqr-social-card.png` to this directory.
 
 ### Nice to have
 
