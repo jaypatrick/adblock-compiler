@@ -111,6 +111,17 @@ class TestRunbookSyntax:
                 pytest.fail(f"{f.name} has a syntax error: {exc}")
 
 
+# Display cells in auth-healthcheck.py that must never discard their rendered output.
+_AUTH_HEALTHCHECK_DISPLAY_CELLS = [
+    "_header",
+    "_execute_section",
+    "_results_section",
+    "_log_browser_header",
+    "_ai_guide",
+    "_log_viewer",
+]
+
+
 class TestRunbookStructure:
     """Marimo runbooks must declare `app = marimo.App(...)` and have `@app.cell` cells."""
 
@@ -188,6 +199,93 @@ class TestRunbookStructure:
         assert has_value_return, (
             f"Cell `{cell_name}` in pipeline.py never returns a display object. "
             "Add `return mo.vstack([...])` or similar to ensure the UI renders."
+        )
+
+    def test_auth_healthcheck_no_discarded_mo_display_expressions(self):
+        """No @app.cell in auth-healthcheck.py may call mo.md/callout/vstack/etc. as a bare expression.
+
+        Calling mo.md(...), mo.callout(...), etc. without capturing and returning the result is a
+        semantic bug (B018-style): the display object is computed but never shown to the user.
+        Fix: assign to a variable and include it in the return value, or return directly.
+        """
+        src = (self.runbooks_dir / "auth-healthcheck.py").read_text()
+        tree = ast.parse(src)
+
+        # These mo.* attrs produce display objects that must be returned, not discarded.
+        # mo.stop() is intentionally excluded — it is a side-effectful control-flow call.
+        _MO_DISPLAY_ATTRS = {"md", "callout", "vstack", "hstack", "stat", "accordion", "table", "code"}
+
+        violations = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            for stmt in node.body:
+                if not isinstance(stmt, ast.Expr):
+                    continue
+                call = stmt.value
+                if not isinstance(call, ast.Call):
+                    continue
+                func = call.func
+                if not isinstance(func, ast.Attribute):
+                    continue
+                if not isinstance(func.value, ast.Name):
+                    continue
+                if func.value.id == "mo" and func.attr in _MO_DISPLAY_ATTRS:
+                    violations.append(
+                        f"  Cell `{node.name}` line {stmt.lineno}: mo.{func.attr}(...) result discarded"
+                    )
+
+        assert not violations, (
+            "auth-healthcheck.py has discarded mo.* display expression statements (B018-style bug):\n"
+            + "\n".join(violations)
+            + "\nFix: assign to a variable and return it, or return the call directly."
+        )
+
+    @pytest.mark.parametrize("cell_name", _AUTH_HEALTHCHECK_DISPLAY_CELLS)
+    def test_auth_healthcheck_display_cells_must_not_use_bare_return(self, cell_name: str):
+        """Key display cells in auth-healthcheck.py must not contain a bare `return`.
+
+        A bare `return` in a cell that computed display objects silently discards them.
+        """
+        src = (self.runbooks_dir / "auth-healthcheck.py").read_text()
+        tree = ast.parse(src)
+
+        found = False
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef) or node.name != cell_name:
+                continue
+            found = True
+            for stmt in ast.walk(node):
+                if isinstance(stmt, ast.Return) and stmt.value is None:
+                    pytest.fail(
+                        f"Cell `{cell_name}` in auth-healthcheck.py has a bare `return` — "
+                        "computed display objects would be silently discarded. "
+                        "Include them in the return value (e.g. `return mo.md(...)`)."
+                    )
+
+        assert found, f"Cell `{cell_name}` not found in auth-healthcheck.py — was it renamed or removed?"
+
+    @pytest.mark.parametrize("cell_name", _AUTH_HEALTHCHECK_DISPLAY_CELLS)
+    def test_auth_healthcheck_display_cells_must_return_non_none_value(self, cell_name: str):
+        """Key display cells in auth-healthcheck.py must have at least one return with a non-None value."""
+        src = (self.runbooks_dir / "auth-healthcheck.py").read_text()
+        tree = ast.parse(src)
+
+        found = False
+        has_value_return = False
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef) or node.name != cell_name:
+                continue
+            found = True
+            for stmt in ast.walk(node):
+                if isinstance(stmt, ast.Return) and stmt.value is not None:
+                    has_value_return = True
+                    break
+
+        assert found, f"Cell `{cell_name}` not found in auth-healthcheck.py — was it renamed or removed?"
+        assert has_value_return, (
+            f"Cell `{cell_name}` in auth-healthcheck.py never returns a display object. "
+            "Add `return mo.md(...)` or `return mo.vstack([...])` to ensure the UI renders."
         )
 
 

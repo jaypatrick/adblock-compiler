@@ -142,8 +142,14 @@ See `.github/agents/cloudflare-deployment.agent.md` for the full rule, `wrangler
 - **Type checker**: `ty` (`uv run --directory tools ty check`)
 - **Never use**: `black`, `flake8`, `isort`, `mypy`, `pip`, `python -m venv`
 
-### Preflight (run before every commit touching `tools/`)
+### Preflight (run from the **repository root** before every commit touching `tools/`)
+
+> **Working directory:** All commands below must be run from the **repository root** (the directory
+> containing `deno.json`). Running from inside `tools/` will cause `--directory tools` to resolve to
+> a non-existent nested path and fail.
+
 ```sh
+# From repo root:
 uv run --directory tools ruff check .
 uv run --directory tools ruff format --check .
 uv run --directory tools ty check auth-healthcheck.py runbooks/
