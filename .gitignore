@@ -101,5 +101,5 @@ tools/.venv/
 tools/__pycache__/
 tools/*.pyc
 tools/auth-healthcheck.env
-auth-healthcheck-*.json
-wrangler-tail.log
+tools/logs/*
+!tools/logs/.gitkeep
