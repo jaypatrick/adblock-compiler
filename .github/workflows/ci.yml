@@ -66,6 +66,7 @@ jobs:
                 - 'wrangler.toml'
             tools:
                 - 'tools/**'
+                - 'deno.json'
 
   lint-format:
     name: Lint & Format Check

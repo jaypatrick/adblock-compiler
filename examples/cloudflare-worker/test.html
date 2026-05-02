@@ -193,9 +193,9 @@
 
                 try {
                     const config = JSON.parse(document.getElementById('config').value);
-                    addLog(`📤 Sending POST request to ${WORKER_URL}/compile`, 'info');
+                    addLog(`📤 Sending POST request to ${WORKER_URL}/api/compile`, 'info');
 
-                    const response = await fetch(`${WORKER_URL}/compile`, {
+                    const response = await fetch(`${WORKER_URL}/api/compile`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(config),
@@ -232,9 +232,9 @@
 
                 try {
                     const config = JSON.parse(document.getElementById('config').value);
-                    addLog(`📤 Opening SSE connection to ${WORKER_URL}/compile/stream`, 'info');
+                    addLog(`📤 Opening SSE connection to ${WORKER_URL}/api/compile/stream`, 'info');
 
-                    const response = await fetch(`${WORKER_URL}/compile/stream`, {
+                    const response = await fetch(`${WORKER_URL}/api/compile/stream`, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(config),
