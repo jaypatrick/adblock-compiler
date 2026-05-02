@@ -21,6 +21,17 @@ from typing import Any
 
 
 # ---------------------------------------------------------------------------
+# Constants
+# ---------------------------------------------------------------------------
+
+#: Timestamp format used in log file names and dashboard display.
+TIMESTAMP_FORMAT = "%Y-%m-%d %H:%M:%S"
+
+#: Timestamp format used in log file names (compact, no spaces).
+LOG_FILE_TIMESTAMP_FORMAT = "%Y%m%d-%H%M%S"
+
+
+# ---------------------------------------------------------------------------
 # Path resolution
 # ---------------------------------------------------------------------------
 
@@ -67,8 +78,9 @@ def check_env_var(name: str, required: bool = True) -> tuple[bool, str]:
     """Check whether an env var is set. Returns (is_ok, message)."""
     val = os.environ.get(name, "").strip()
     if val:
-        # Mask secrets: show only first 4 and last 4 chars
-        masked = val[:4] + "…" + val[-4:] if len(val) > 12 else "***"
+        # Mask secrets: always show at most first 2 + last 2 chars to avoid
+        # over-exposing short secrets (≤8 chars show only ***)
+        masked = val[:2] + "…" + val[-2:] if len(val) > 8 else "***"
         return True, f"✅ `{name}` = `{masked}`"
     if required:
         return False, f"❌ `{name}` is **not set** (required)"

@@ -32,6 +32,7 @@ import pytest
 try:
     from shared import (
         KNOWN_TOOLS,
+        TIMESTAMP_FORMAT,
         _repo_root,
         all_tools_health_snapshot,
         check_command,
@@ -207,6 +208,12 @@ class TestSharedRenderHelpers:
         assert "HTTP 200" in html
         assert "missing" in html
 
+    def test_timestamp_format_constant(self):
+        """TIMESTAMP_FORMAT must be a strftime pattern that produces YYYY-MM-DD HH:MM:SS output."""
+        from datetime import datetime
+        ts = datetime(2026, 1, 2, 15, 4, 5).strftime(TIMESTAMP_FORMAT)
+        assert ts == "2026-01-02 15:04:05"
+
 
 @shared_required
 class TestSharedEnvHelpers:
@@ -219,6 +226,16 @@ class TestSharedEnvHelpers:
         assert "✅" in msg
         # Should not leak full value
         assert "SomeSecretValue1234" not in msg
+        # Long values show at most 2+2 chars (So…34)
+        assert "So…34" in msg
+
+    def test_check_env_var_set_short_value_fully_masked(self, monkeypatch):
+        """Values of 8 chars or fewer must show *** only (never any characters)."""
+        monkeypatch.setenv("TEST_SHORT_SECRET_BLOQR", "abc123")
+        ok, msg = check_env_var("TEST_SHORT_SECRET_BLOQR", required=True)
+        assert ok is True
+        assert "***" in msg
+        assert "abc123" not in msg
 
     def test_check_env_var_missing_required(self, monkeypatch):
         monkeypatch.delenv("MISSING_ENV_VAR_BLOQR_TEST", raising=False)

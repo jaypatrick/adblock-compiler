@@ -46,6 +46,7 @@ def _imports():
 
     from shared import (
         KNOWN_TOOLS,
+        TIMESTAMP_FORMAT,
         _repo_root,
         all_tools_health_snapshot,
         get_tool_last_status,
@@ -70,6 +71,7 @@ def _imports():
         sys,
         time,
         KNOWN_TOOLS,
+        TIMESTAMP_FORMAT,
         _repo_root,
         all_tools_health_snapshot,
         get_tool_last_status,
@@ -122,7 +124,7 @@ def _dashboard_header(mo):
 
 
 @app.cell(hide_code=True)
-def _health_dashboard(mo, all_tools_health_snapshot, render_status_badge, datetime):
+def _health_dashboard(mo, all_tools_health_snapshot, render_status_badge, datetime, TIMESTAMP_FORMAT):
     snapshot = all_tools_health_snapshot()
 
     rows = []
@@ -160,7 +162,7 @@ def _health_dashboard(mo, all_tools_health_snapshot, render_status_badge, dateti
         + "</table>"
     )
 
-    refresh_note = mo.md(f"_Dashboard as of: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}_")
+    refresh_note = mo.md(f"_Dashboard as of: {datetime.now().strftime(TIMESTAMP_FORMAT)}_")
 
     return (
         mo.vstack([
