@@ -251,9 +251,13 @@ class TestSharedEnvHelpers:
         assert "optional" in msg.lower()
 
     def test_load_env_file_nonexistent_returns_empty(self, tmp_path, monkeypatch):
-        # Point tools_dir to tmp_path so the env file doesn't exist
-        # We just test the function handles missing files gracefully
-        result = load_env_file("nonexistent-tool-xyzzy")
+        import shared as _shared
+        original = _shared.tools_dir
+        _shared.tools_dir = lambda: tmp_path
+        try:
+            result = load_env_file("nonexistent-tool-xyzzy")
+        finally:
+            _shared.tools_dir = original
         assert isinstance(result, dict)
         assert len(result) == 0
 

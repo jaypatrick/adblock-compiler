@@ -12,6 +12,7 @@ These helpers provide:
 from __future__ import annotations
 
 import html
+import itertools
 import json
 import os
 import subprocess
@@ -101,14 +102,21 @@ def check_command(cmd: str) -> tuple[bool, str]:
     return False, f"❌ `{cmd}` not found — check your PATH or installation"
 
 
-def check_python_package(package: str) -> tuple[bool, str]:
-    """Check whether a Python package is importable. Returns (is_ok, message)."""
+def check_python_package(package: str, pip_name: str | None = None) -> tuple[bool, str]:
+    """Check whether a Python package is importable. Returns (is_ok, message).
+
+    Args:
+        package: The import name of the package (e.g. ``"psycopg2"``).
+        pip_name: The ``pip install`` name if it differs from the import name
+            (e.g. ``"psycopg2-binary"``). Defaults to *package*.
+    """
+    install_name = pip_name or package
     try:
         import importlib
         importlib.import_module(package.replace("-", "_"))
         return True, f"✅ `{package}` is installed"
     except ImportError:
-        return False, f"❌ `{package}` is not installed — run: pip install {package}"
+        return False, f"❌ `{package}` is not installed — run: pip install {install_name}"
 
 
 def prerequisites_summary(
@@ -167,12 +175,17 @@ def load_report(path: Path) -> dict[str, Any] | None:
 
 
 def read_log_file(path: Path, max_lines: int = 500) -> str:
-    """Read a log file and return its contents (truncated to max_lines)."""
+    """Read a log file and return its contents (truncated to max_lines).
+
+    Streams the file line by line so large files are not fully loaded into
+    memory before truncation.
+    """
     try:
-        lines = path.read_text().splitlines()
-        if len(lines) > max_lines:
-            return "\n".join(lines[:max_lines]) + f"\n\n… (truncated — {len(lines) - max_lines} more lines)"
-        return "\n".join(lines)
+        with path.open(encoding="utf-8", errors="replace") as fh:
+            head = list(itertools.islice(fh, max_lines + 1))
+        if len(head) > max_lines:
+            return "".join(head[:max_lines]).rstrip("\n") + f"\n\n… (truncated — showing first {max_lines} lines)"
+        return "".join(head).rstrip("\n")
     except Exception as exc:
         return f"[error reading file: {exc}]"
 

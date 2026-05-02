@@ -31,6 +31,7 @@ app = marimo.App(
 # ── Cell 0: imports (hidden) ────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _imports():
+    import html
     import json
     import os
     import sys
@@ -65,6 +66,7 @@ def _imports():
     return (
         Path,
         datetime,
+        html,
         json,
         mo,
         os,
@@ -124,7 +126,7 @@ def _dashboard_header(mo):
 
 
 @app.cell(hide_code=True)
-def _health_dashboard(mo, all_tools_health_snapshot, render_status_badge, datetime, TIMESTAMP_FORMAT):
+def _health_dashboard(mo, html, all_tools_health_snapshot, render_status_badge, datetime, TIMESTAMP_FORMAT):
     snapshot = all_tools_health_snapshot()
 
     rows = []
@@ -137,13 +139,13 @@ def _health_dashboard(mo, all_tools_health_snapshot, render_status_badge, dateti
         warnings = tool.get("warnings", 0)
         rows.append(
             f"<tr>"
-            f"<td style='padding:8px 14px;font-weight:600'>{tool['label']}</td>"
+            f"<td style='padding:8px 14px;font-weight:600'>{html.escape(tool['label'], quote=True)}</td>"
             f"<td style='padding:8px 14px'>{badge}</td>"
-            f"<td style='padding:8px 14px;color:#6b7280;font-size:0.85em'>{ran_at}</td>"
+            f"<td style='padding:8px 14px;color:#6b7280;font-size:0.85em'>{html.escape(str(ran_at), quote=True)}</td>"
             f"<td style='padding:8px 14px;color:#065f46'>{passed}</td>"
             f"<td style='padding:8px 14px;color:#991b1b'>{failed}</td>"
             f"<td style='padding:8px 14px;color:#92400e'>{warnings}</td>"
-            f"<td style='padding:8px 14px;color:#4b5563;font-size:0.82em'>{tool.get('description','')}</td>"
+            f"<td style='padding:8px 14px;color:#4b5563;font-size:0.82em'>{html.escape(tool.get('description', ''), quote=True)}</td>"
             f"</tr>"
         )
 
@@ -438,8 +440,8 @@ def _log_browser(mo, KNOWN_TOOLS, list_log_files, Path):
 
     _file_selector = mo.ui.dropdown(
         label="Select log file",
-        options={k: str(v) for k, v in _all_files.items()},
-        value=list(_all_files.keys())[0],
+        options={str(v): k for k, v in _all_files.items()},
+        value=str(next(iter(_all_files.values()))) if _all_files else None,
     )
     return (_file_selector, _all_files)
 
@@ -449,7 +451,7 @@ def _log_viewer(mo, _file_selector, _all_files, read_log_file, Path):
     if not _all_files:
         mo.stop(True, None)
 
-    selected = _all_files.get(_file_selector.value) if _file_selector.value else None
+    selected = Path(_file_selector.value) if _file_selector.value else None
     if selected is None or not selected.exists():
         mo.stop(True, mo.md("_Select a file above to view it._"))
 

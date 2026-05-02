@@ -24,6 +24,7 @@ app = marimo.App(
 # ── Cell 0: imports (hidden utility cell) ──────────────────────────────────
 @app.cell(hide_code=True)
 def _imports():
+    import html
     import json
     import os
     import subprocess
@@ -61,6 +62,7 @@ def _imports():
     return (
         Path,
         datetime,
+        html,
         json,
         mo,
         os,
@@ -127,7 +129,7 @@ def _prerequisites(mo, check_command, check_python_package):
         check_command("python3"),
         check_python_package("requests"),
         check_python_package("rich"),
-        check_python_package("psycopg2"),
+        check_python_package("psycopg2", pip_name="psycopg2-binary"),
         check_python_package("marimo"),
     ]
 
@@ -358,6 +360,7 @@ def _results_section(mo, returncode):
 @app.cell(hide_code=True)
 def _results(
     mo,
+    html,
     returncode,
     list_log_files,
     load_report,
@@ -398,7 +401,8 @@ def _results(
     errors_section = ""
     if errors:
         error_items = "\n".join(
-            f"- **{e.get('check', '?')}**: {e.get('detail', '')}" for e in errors
+            f"- `{html.escape(str(e.get('check', '?')), quote=True)}`: {html.escape(str(e.get('detail', '')), quote=True)}"
+            for e in errors
         )
         errors_section = f"\n### Errors\n\n{error_items}"
 
