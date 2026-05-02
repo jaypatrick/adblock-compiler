@@ -161,6 +161,8 @@
   - [KB-003: Database Down After Deploy — Live Session](troubleshooting/KB-003-neon-hyperdrive-live-session-2026-03-25.md)
   - [KB-004: Prisma WASM Error on Cloudflare Workers](troubleshooting/KB-004-prisma-wasm-cloudflare.md)
   - [Neon Troubleshooting](troubleshooting/neon-troubleshooting.md)
+- [Ops Tools](tools/README.md)
+  - [auth-healthcheck](tools/auth-healthcheck.md)
 - [Workflows](workflows/README.md)
   - [Workflows Reference](workflows/WORKFLOWS.md)
   - [Workflow Linting (actionlint)](workflows/ACTIONLINT.md)
