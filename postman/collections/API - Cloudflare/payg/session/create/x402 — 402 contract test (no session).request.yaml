@@ -1,0 +1,20 @@
+$kind: http-request
+description: >
+  Verifies the x402 payment contract. Hits a PAYG-gated endpoint without a session
+  and asserts the server returns 402 Payment Required with a valid X-Payment-Required
+  header containing the machine-readable payment specification.
+
+  NOTE: This test intentionally expects a 402 response. It is NOT a failure.
+  Stripe integration is not yet wired — this tests the protocol contract only.
+url: {{baseUrl}}/payg/session/create
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "requestsToPurchase": 10
+    }
+order: 1030

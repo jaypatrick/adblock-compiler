@@ -1,0 +1,13 @@
+$kind: http-request
+description: >
+  Serves the Swagger UI for interactive API exploration. Public endpoint —
+  no authentication required.
+url: {{baseUrl}}/api/swagger
+method: GET
+headers:
+  Accept: text/html
+body:
+  type: text
+  content: ""
+examples: ./.resources/Swagger UI.resources/examples
+order: 2000

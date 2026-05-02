@@ -1,0 +1,14 @@
+$kind: http-request
+description: >
+  Lists all branches in the Neon project including their state, parent, creation
+  time, and endpoint details. Requires admin authentication.
+url: {{baseUrl}}/api/admin/neon/branches
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+body:
+  type: text
+  content: ""
+examples: ./.resources/List Neon branches.resources/examples
+order: 2000

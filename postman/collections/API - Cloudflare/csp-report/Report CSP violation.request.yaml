@@ -1,0 +1,23 @@
+$kind: http-request
+description: >
+  Accepts browser Content-Security-Policy violation reports and persists them to
+  the D1 csp_violations table. This endpoint is called automatically by browsers
+  — do not call manually. Public endpoint, no authentication required.
+url: {{baseUrl}}/api/csp-report
+method: POST
+headers:
+  Content-Type: application/csp-report
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "csp-report": {
+        "document-uri": "https://app.example.com/page",
+        "violated-directive": "script-src",
+        "blocked-uri": "https://evil.example.com/script.js",
+        "original-policy": "script-src 'self'; report-uri /csp-report"
+      }
+    }
+examples: ./.resources/Report CSP violation.resources/examples
+order: 1000

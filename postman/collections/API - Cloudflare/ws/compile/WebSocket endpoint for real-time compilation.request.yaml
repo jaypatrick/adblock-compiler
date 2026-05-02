@@ -44,8 +44,10 @@ description: >
   - Session-based compilation tracking
 
   - Cancellation support
-url: {{baseUrl}}/ws/compile
+url: {{baseUrl}}/ws/compile?turnstileToken={{turnstileToken}}
 method: GET
+headers:
+  Authorization: Bearer {{apiKey}}
 body:
   type: text
   content: ""

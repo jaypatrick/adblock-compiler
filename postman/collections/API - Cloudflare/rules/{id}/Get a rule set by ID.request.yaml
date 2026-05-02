@@ -3,6 +3,7 @@ url: {{baseUrl}}/rules/:id
 method: GET
 headers:
   Accept: application/json
+  Authorization: Bearer {{apiKey}}
 pathVariables:
   - key: id
     value: 809331b7-026e-18ca-da21-74e840eada1a

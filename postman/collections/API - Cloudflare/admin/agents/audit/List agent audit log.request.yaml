@@ -1,0 +1,14 @@
+$kind: http-request
+description: >
+  Returns the paginated audit log of all agent actions, including tool calls,
+  resource access, and permission decisions. Requires admin authentication.
+url: {{baseUrl}}/api/admin/agents/audit
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+body:
+  type: text
+  content: ""
+examples: ./.resources/List agent audit log.resources/examples
+order: 1000

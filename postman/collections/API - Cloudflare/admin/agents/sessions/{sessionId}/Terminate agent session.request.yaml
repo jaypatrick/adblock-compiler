@@ -1,0 +1,18 @@
+$kind: http-request
+description: >
+  Forcibly terminates an active agent session. Use for runaway or stuck agents.
+  Requires admin authentication.
+url: {{baseUrl}}/api/admin/agents/sessions/:sessionId
+method: DELETE
+headers:
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+pathVariables:
+  - key: sessionId
+    value: string
+    description: Agent session ID (UUID)
+body:
+  type: text
+  content: ""
+examples: ./.resources/Terminate agent session.resources/examples
+order: 3000

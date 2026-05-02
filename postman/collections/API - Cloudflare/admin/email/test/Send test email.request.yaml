@@ -1,0 +1,19 @@
+$kind: http-request
+description: >
+  Sends a test email to the specified address to verify email service connectivity
+  and template rendering. Requires admin authentication.
+url: {{baseUrl}}/api/admin/email/test
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+body:
+  type: json
+  content: |-
+    {
+      "to": "admin@example.com",
+      "subject": "Test email from Bloqr API"
+    }
+examples: ./.resources/Send test email.resources/examples
+order: 1000

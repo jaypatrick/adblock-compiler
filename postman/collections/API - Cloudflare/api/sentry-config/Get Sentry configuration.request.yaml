@@ -1,0 +1,13 @@
+$kind: http-request
+description: >
+  Returns public Sentry DSN and environment for frontend error tracking.
+  Public endpoint — no authentication required.
+url: {{baseUrl}}/api/sentry-config
+method: GET
+headers:
+  Accept: application/json
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get Sentry configuration.resources/examples
+order: 1000
