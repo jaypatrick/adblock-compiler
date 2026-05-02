@@ -4,7 +4,8 @@
  * Provider-aware via AuthFacadeService:
  * Waits for the active auth provider to finish loading
  *   - If signed in → allows navigation
- *   - If not signed in → redirects to /sign-in with a returnUrl query param
+ *   - If not signed in → navigates to /sign-in with TOKEN_EXPIRED error via
+ *     NavigationErrorService (browser) or returns a synchronous UrlTree (SSR)
  *
  * SSR/prerender: auth is browser-only and never initialises on the server,
  * so waitForAuth() would stall for the full timeout. On a non-browser platform
@@ -16,8 +17,7 @@ import { inject, PLATFORM_ID } from '@angular/core';
 import { isPlatformBrowser } from '@angular/common';
 import { CanActivateFn, Router } from '@angular/router';
 import { AuthFacadeService } from '../services/auth-facade.service';
-import { FlashService } from '../services/flash.service';
-import { ErrorCode, ERROR_MESSAGES } from '../error/error-codes';
+import { NavigationErrorService } from '../services/navigation-error.service';
 
 export const authGuard: CanActivateFn = async (_route, state) => {
     // Capture all inject() calls before the first await (injection context
@@ -25,14 +25,11 @@ export const authGuard: CanActivateFn = async (_route, state) => {
     const platformId = inject(PLATFORM_ID);
     const auth = inject(AuthFacadeService);
     const router = inject(Router);
-    const flashService = inject(FlashService);
+    const navError = inject(NavigationErrorService);
 
     // On the server (SSR or build-time prerender), auth never initialises,
-    // so waiting would stall for the full 10 s timeout. Return an
-    // immediate redirect; the client will re-evaluate the guard after hydration.
-    // Do NOT set a flash message here — signal state is not transferred from
-    // server to client, so it would be silently lost. The client-side guard
-    // execution after hydration will set the flash if auth fails.
+    // so waiting would stall for the full 10 s timeout. Return a synchronous
+    // UrlTree; the client will re-evaluate the guard after hydration.
     if (!isPlatformBrowser(platformId)) {
         return router.createUrlTree(['/sign-in'], {
             queryParams: { returnUrl: state.url },
@@ -43,10 +40,11 @@ export const authGuard: CanActivateFn = async (_route, state) => {
 
     if (auth.isSignedIn()) return true;
 
-    flashService.set(ERROR_MESSAGES[ErrorCode.UNAUTHORIZED], 'warn');
-    return router.createUrlTree(['/sign-in'], {
-        queryParams: { returnUrl: state.url },
+    const returnUrl = state.url;
+    await navError.navigateWithError(['/sign-in'], 'TOKEN_EXPIRED', {
+        queryParams: { returnUrl },
     });
+    return false;
 };
 
 function waitForAuth(auth: AuthFacadeService, timeoutMs: number): Promise<void> {
@@ -64,3 +62,4 @@ function waitForAuth(auth: AuthFacadeService, timeoutMs: number): Promise<void> 
         }, 50);
     });
 }
+

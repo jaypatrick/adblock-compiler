@@ -22,6 +22,14 @@ export interface AppError {
     readonly context?: string;
     /** When true the error handler navigates to /fatal-error instead of showing the inline banner. */
     readonly isFatal?: boolean;
+    /** Structured error code from ErrorCode enum or ERROR_CODES registry (e.g. 'TOKEN_EXPIRED'). */
+    readonly code?: string;
+    /** Triage severity — used by error UI to choose colour/icon. */
+    readonly severity?: 'info' | 'warning' | 'error' | 'fatal';
+    /** Override user-facing copy; falls back to ERROR_CODES[code].userMessage. */
+    readonly userMessage?: string;
+    /** Correlation ID from the backend response (X-Request-Id / CF-Ray). */
+    readonly requestId?: string;
 }
 
 @Injectable()
@@ -45,7 +53,7 @@ export class GlobalErrorHandler extends ErrorHandler {
 
         // Navigate to /fatal-error for errors that cannot be gracefully recovered.
         if (appError.isFatal) {
-            void this.router.navigate(['/fatal-error']);
+            void this.router.navigate(['/fatal-error'], { state: { error: appError } });
         }
 
         // Maintain history (last 10)
@@ -91,11 +99,24 @@ export class GlobalErrorHandler extends ErrorHandler {
 
     private normalizeError(error: unknown): AppError {
         if (error instanceof Error) {
+            const appErr = error as Error & {
+                ngDebugContext?: string;
+                code?: string;
+                severity?: AppError['severity'];
+                userMessage?: string;
+                requestId?: string;
+                isFatal?: boolean;
+            };
             return {
-                message: error.message,
-                stack: error.stack,
+                message: appErr.message,
+                stack: appErr.stack,
                 timestamp: new Date(),
-                context: (error as { ngDebugContext?: string }).ngDebugContext,
+                context: appErr.ngDebugContext,
+                code: appErr.code,
+                severity: appErr.severity,
+                userMessage: appErr.userMessage,
+                requestId: appErr.requestId,
+                isFatal: appErr.isFatal,
             };
         }
 
