@@ -129,8 +129,8 @@
         "runbook:pipeline": "uv run --directory tools marimo run runbooks/pipeline.py",
         "runbook:auth-healthcheck": "uv run --directory tools marimo run runbooks/auth-healthcheck.py",
         "runbook:test": "uv run --directory tools pytest tests/ -v",
-        "runbook:lint": "uv run --directory tools ruff check runbooks/",
-        "runbook:fmt": "uv run --directory tools ruff format runbooks/",
+        "runbook:lint": "uv run --directory tools ruff check .",
+        "runbook:fmt": "uv run --directory tools ruff format .",
         "runbook:typecheck": "uv run --directory tools ty check runbooks/"
     },
     "imports": {

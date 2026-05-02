@@ -434,18 +434,17 @@ jobs:
         run: uv sync --directory tools
 
       - name: Lint (ruff)
-        run: uv run --directory tools ruff check tools/
+        run: uv run --directory tools ruff check .
 
       - name: Format check (ruff)
-        run: uv run --directory tools ruff format --check tools/
+        run: uv run --directory tools ruff format --check .
 
       - name: Type check (ty)
         continue-on-error: true  # ty is early-stage; don't block CI yet
-        run: uv run --directory tools ty check tools/runbooks/
+        run: uv run --directory tools ty check runbooks/
 
       - name: Run tests
         run: uv run --directory tools pytest tests/ -v
-        working-directory: tools
 
   ci-gate:
     name: CI Gate
