@@ -162,8 +162,10 @@ export const ROUTE_PERMISSION_REGISTRY = new Map<string, IRoutePermission>([
     ['/admin/usage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Per-user API usage statistics' }],
     ['/admin/storage', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin panel' }],
     ['/admin/storage/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Storage admin operations' }],
-    ['/admin/auth/api-keys', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key management' }],
-    ['/admin/auth/api-keys/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Admin API key operations' }],
+    // NOTE: /admin/auth/api-keys and /admin/auth/api-keys/* were removed — those routes
+    //   were never registered in any Hono router (handlers lived in the unrouted
+    //   auth-admin.ts dead-code module). The catch-all /admin/* entry above still
+    //   protects any future routes under that prefix.
     ['/admin/neon/project', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Neon project overview' }],
     ['/admin/neon/branches', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'List Neon branches' }],
     ['/admin/neon/branches/*', { minTier: UserTier.Admin, requiredRole: 'admin', description: 'Neon branch operations (get/create/delete)' }],

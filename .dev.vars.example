@@ -30,6 +30,17 @@ BETTER_AUTH_URL=http://localhost:8787
 # Better Auth Dash API key — only required for dash.better-auth.com dashboard integration
 # Production: `wrangler secret put BETTER_AUTH_API_KEY`
 BETTER_AUTH_API_KEY=
+# REST API URL for the BETTER_AUTH_KV namespace (used by dash() and sentinel() kvUrl)
+# Construct from values already in wrangler.toml:
+#   Account ID:   CF_ACCOUNT_ID (wrangler.toml [vars])
+#   Namespace ID: BETTER_AUTH_KV id ([[kv_namespaces]])
+#   Formula: https://api.cloudflare.com/client/v4/accounts/<CF_ACCOUNT_ID>/storage/kv/namespaces/<BETTER_AUTH_KV_ID>
+# Production: `wrangler secret put BETTER_AUTH_KV_URL`
+BETTER_AUTH_KV_URL=
+# Sentinel plugin (Better Auth Pro tier only — https://better-auth.com/pricing)
+# Set to "true" only after upgrading to Better Auth Pro. Leave unset on free tier.
+# Production (when on Pro): add BETTER_AUTH_SENTINEL_ENABLED=true to wrangler.toml [vars]
+# BETTER_AUTH_SENTINEL_ENABLED=true
 
 # ─── Cloudflare Turnstile ────────────────────────────────────────────────────
 # Site key (non-secret — production value lives in wrangler.toml [vars])
@@ -132,6 +143,9 @@ URL_DOCS=https://docs.bloqr.jaysonknight.com
 # Get a test API key from https://resend.com/api-keys
 # Production: `wrangler secret put RESEND_API_KEY`
 RESEND_API_KEY=re_test_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+# Resend audience ID for user lifecycle contact sync (add/remove on sign-up/delete).
+# Production: `wrangler secret put RESEND_AUDIENCE_ID`
+RESEND_AUDIENCE_ID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 
 # ─── Email (Cloudflare Email Service REST — transactional notifications) ────────
 # Scoped CF API token with Email Send permissions.

@@ -210,8 +210,8 @@ export async function authenticateRequestUnified(
 
         const result = await authenticateApiKey(request, env.HYPERDRIVE);
         if (result.authenticated) {
-            // Resolve the key owner's actual tier from the database
-            const ownerTier = await resolveApiKeyOwnerTier(
+            // Resolve the key owner's actual tier and role from the database
+            const { tier: ownerTier, role: ownerRole } = await resolveApiKeyOwnerInfo(
                 result.userId,
                 env.HYPERDRIVE,
             );
@@ -219,7 +219,7 @@ export async function authenticateRequestUnified(
             const context: IAuthContext = {
                 userId: result.userId ?? null,
                 tier: ownerTier,
-                role: 'user',
+                role: ownerRole,
                 apiKeyId: result.apiKeyId ?? null,
                 sessionId: null,
                 scopes: result.scopes ?? [],
@@ -344,14 +344,14 @@ export async function authenticateRequestUnified(
 // ---------------------------------------------------------------------------
 
 /**
- * Look up the actual tier of an API key's owner from the `users` table.
- * Falls back to {@link UserTier.Free} if the user cannot be found or on error.
+ * Look up the actual tier and role of an API key's owner from the `users` table.
+ * Falls back to {@link UserTier.Free} / `'user'` if the user cannot be found or on error.
  */
-async function resolveApiKeyOwnerTier(
+async function resolveApiKeyOwnerInfo(
     userId: string | undefined,
     hyperdrive: HyperdriveBinding,
-): Promise<UserTier> {
-    if (!userId) return UserTier.Free;
+): Promise<{ tier: UserTier; role: string }> {
+    if (!userId) return { tier: UserTier.Free, role: 'user' };
 
     try {
         // See note in authenticateApiKey: PrismaClient creation per request is
@@ -359,22 +359,27 @@ async function resolveApiKeyOwnerTier(
         const prisma = createPrismaClient(hyperdrive.connectionString);
         const row = await prisma.user.findUnique({
             where: { id: userId },
-            select: { tier: true },
+            select: { tier: true, role: true },
         });
 
         if (row) {
             const rowParse = UserTierRowSchema.safeParse(row);
-            if (rowParse.success) {
-                return rowParse.data.tier;
+            if (!rowParse.success) {
+                // Unknown/invalid tier value — fall back to Free
+                // deno-lint-ignore no-console
+                console.warn('[auth] Unrecognised tier value in DB row, defaulting to Free');
+                return { tier: UserTier.Free, role: 'user' };
             }
-            // Unknown/invalid tier value — fall back to Free
-            // deno-lint-ignore no-console
-            console.warn('[auth] Unrecognised tier value in DB row, defaulting to Free');
+            const tier = rowParse.data.tier;
+            // .nullish() on the schema means the role can be null or undefined;
+            // fall back to 'user' via ?? (nullish coalescing).
+            const role = rowParse.data.role ?? 'user';
+            return { tier, role };
         }
-        return UserTier.Free;
+        return { tier: UserTier.Free, role: 'user' };
     } catch {
         // Non-critical: fall back to Free tier on DB errors
-        return UserTier.Free;
+        return { tier: UserTier.Free, role: 'user' };
     }
 }
 

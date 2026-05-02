@@ -29,7 +29,6 @@
 #
 # API Worker dependency:
 #   The Angular app fetches runtime config at boot from the co-deployed API Worker:
-#     GET /api/clerk-config   → returns { publishableKey }
 #     GET /api/sentry-config  → returns { dsn, release }
 #   The SSR API base URL is derived automatically from the incoming request
 #   origin via ssrApiBaseUrlFactory in app.config.server.ts — no manual

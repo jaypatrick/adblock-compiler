@@ -57,8 +57,21 @@ const adminPaginationQuerySchema = z.object({
 const adminUsageDaysQuerySchema = z.object({
     days: z.coerce.number().int().default(30).describe('Number of days to look back for usage stats'),
 });
-
-const adminUpdateUserSchema = z.object({
+/**
+ * OpenAPI route-level schema for PATCH /admin/users/:id.
+ *
+ * This schema uses the OpenAPI-extended `z` from `@hono/zod-openapi` so it can
+ * be passed to `createRoute()`. It mirrors the authoritative `AdminUpdateUserSchema`
+ * in `worker/schemas.ts` — if you change validation constraints, update both.
+ * The handler (`worker/handlers/admin-users.ts`) re-validates the body using
+ * `AdminUpdateUserSchema` directly, so the handler is the real enforcement layer.
+ *
+ * NOTE: `AdminUpdateUserSchema` from `worker/schemas.ts` cannot be used here directly
+ * because it is built with plain `zod` and lacks the `.openapi()` extension method
+ * required by `@hono/zod-openapi`'s `createRoute()`. The two schemas must stay in sync
+ * manually until the project standardises on a single zod distribution.
+ */
+const adminUpdateUserRouteSchema = z.object({
     tier: z.nativeEnum(UserTier).optional().describe('Updated user tier'),
     role: z.string().min(1).max(64).optional().describe('Updated user role'),
 }).refine(
@@ -328,7 +341,7 @@ const adminListUsersRoute = createRoute({
     description: 'Returns all Better Auth users, paginated and optionally filtered by tier, role, or search query. Admin tier and admin role required.',
     request: {
         query: adminPaginationQuerySchema.extend({
-            tier: z.string().optional().describe('Filter by user tier'),
+            tier: z.nativeEnum(UserTier).optional().describe('Filter by user tier'),
             role: z.string().optional().describe('Filter by user role'),
             search: z.string().optional().describe('Search by email or name (substring match)'),
         }),
@@ -512,7 +525,7 @@ const adminUpdateUserRoute = createRoute({
         body: {
             content: {
                 'application/json': {
-                    schema: adminUpdateUserSchema,
+                    schema: adminUpdateUserRouteSchema,
                 },
             },
         },
@@ -2913,6 +2926,13 @@ adminRoutes.openapi(adminEmailTestRoute, async (c) => {
 /**
  * Admin session revocation handler — revoke all sessions for a specific user.
  *
+ * Implementation note: Better Auth's admin plugin does not expose a typed
+ * `auth.api.admin.revokeUserSessions()` method callable without a full HTTP
+ * request context. Instead this handler constructs an internal Request and
+ * dispatches it through `auth.handler()` to invoke the
+ * `POST /api/auth/admin/revoke-user-sessions` endpoint. This ensures Better
+ * Auth's session cache and KV secondary storage are both properly invalidated.
+ *
  * ZTA compliance:
  *  - Requires admin role
  *  - Verifies Cloudflare Access JWT (defense-in-depth)
@@ -2928,7 +2948,7 @@ export async function handleAdminRevokeUserSessions(
 ): Promise<Response> {
     const { verifyCfAccessJwt } = await import('../middleware/cf-access.ts');
     const { AnalyticsService } = await import('../../src/services/AnalyticsService.ts');
-    const { createPrismaClient } = await import('../lib/prisma.ts');
+    const { createAuth } = await import('../lib/auth.ts');
 
     const authContext = c.get('authContext') as { role?: string };
     if (authContext.role !== 'admin') {
@@ -2954,13 +2974,55 @@ export async function handleAdminRevokeUserSessions(
         if (!c.env.HYPERDRIVE) {
             return c.json({ success: false, error: 'Database not configured' }, 503);
         }
-        const prisma = createPrismaClient(c.env.HYPERDRIVE.connectionString);
-        const result = await prisma.session.deleteMany({ where: { userId } });
-        return c.json({
-            success: true,
-            message: `Revoked ${result.count} session(s) for user ${userId}`,
+        const baseURL = new URL(c.req.raw.url).origin;
+        const auth = createAuth(c.env, baseURL);
+        const adminHeaders = new Headers(c.req.raw.headers);
+        adminHeaders.set('content-type', 'application/json');
+        const abortController = new AbortController();
+        let timeoutId: ReturnType<typeof setTimeout> | undefined;
+        const adminRequest = new Request(
+            `${baseURL}/api/auth/admin/revoke-user-sessions`,
+            { method: 'POST', headers: adminHeaders, body: JSON.stringify({ userId }), signal: abortController.signal },
+        );
+        const response = await Promise.race([
+            auth.handler(adminRequest),
+            new Promise<never>((_, reject) => {
+                timeoutId = setTimeout(() => {
+                    abortController.abort();
+                    reject(new DOMException('Session revocation exceeded 10s timeout', 'TimeoutError'));
+                }, 10_000);
+            }),
+        ]).finally(() => {
+            if (timeoutId !== undefined) {
+                clearTimeout(timeoutId);
+            }
         });
+        if (!response.ok) {
+            const text = await response.text().catch(() => '');
+            let errorMsg = 'Failed to revoke sessions';
+            try {
+                const parsed = JSON.parse(text) as { message?: unknown; error?: unknown };
+                if (typeof parsed.message === 'string' && parsed.message.trim().length > 0) {
+                    errorMsg = parsed.message;
+                } else if (typeof parsed.error === 'string' && parsed.error.trim().length > 0) {
+                    errorMsg = parsed.error;
+                }
+            } catch {
+                /* Better Auth error responses are not always JSON — fall back to the generic message */
+            }
+            const status = response.status >= 400 && response.status <= 599 ? response.status : 502;
+            return c.json({ success: false, error: errorMsg }, status);
+        }
+        return c.json({ success: true, message: `Sessions revoked for user ${userId}` });
     } catch (error) {
+        if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+            // 'TimeoutError' is thrown by the Promise.race timeout above.
+            // 'AbortError' is emitted by abortController.abort() if the underlying
+            // fetch detects the signal cancellation before the explicit reject fires.
+            // deno-lint-ignore no-console
+            console.error('[admin] Session revocation timed out for user:', userId);
+            return c.json({ success: false, error: 'Session revocation timed out' }, 504);
+        }
         // deno-lint-ignore no-console
         console.error('[admin] Session revocation error:', error instanceof Error ? error.message : 'unknown');
         return c.json({ success: false, error: 'Failed to revoke sessions' }, 500);

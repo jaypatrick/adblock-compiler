@@ -43,3 +43,18 @@ updates:
     # A separate /frontend entry would update frontend/package.json without
     # touching the root pnpm-lock.yaml, causing `pnpm install --frozen-lockfile`
     # to fail in CI.
+
+    # Python tools (runbooks, diagnostics) — managed via uv
+    - package-ecosystem: uv
+      directory: /tools
+      schedule:
+          interval: weekly
+          day: monday
+          time: '09:00'
+          timezone: America/New_York
+      open-pull-requests-limit: 3
+      commit-message:
+          prefix: 'chore(tools)'
+      labels:
+          - dependencies
+          - python

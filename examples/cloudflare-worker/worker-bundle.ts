@@ -1,12 +1,7 @@
 // Cloudflare Worker for compiling hostlists (bundled version — imports directly from source).
 // Legacy example: production code lives in /worker/worker.ts.
 
-import {
-    WorkerCompiler,
-    type IConfiguration,
-    type ICompilerEvents,
-    type WorkerCompilationResult,
-} from '../../src/index.ts';
+import { type ICompilerEvents, type IConfiguration, WorkerCompiler } from '../../src/index.ts';
 
 export interface Env {
     COMPILER_VERSION: string;
@@ -45,16 +40,18 @@ function createStreamingEvents(
     return {
         onSourceStart: (event) => sendEvent('source:start', event),
         onSourceComplete: (event) => sendEvent('source:complete', event),
-        onSourceError: (event) => sendEvent('source:error', {
-            ...event,
-            error: event.error.message,
-        }),
+        onSourceError: (event) =>
+            sendEvent('source:error', {
+                ...event,
+                error: event.error.message,
+            }),
         onTransformationStart: (event) => sendEvent('transformation:start', event),
         onTransformationComplete: (event) => sendEvent('transformation:complete', event),
-        onTransformationError: (event) => sendEvent('transformation:error', {
-            ...event,
-            error: event.error.message,
-        }),
+        onTransformationError: (event) =>
+            sendEvent('transformation:error', {
+                ...event,
+                error: event.error.message,
+            }),
         onProgress: (event) => sendEvent('progress', event),
         onCompilationComplete: (event) => sendEvent('compilation:complete', event),
     };
@@ -62,7 +59,7 @@ function createStreamingEvents(
 
 async function handleCompileStream(
     request: Request,
-    env: Env,
+    _env: Env,
 ): Promise<Response> {
     const body = await request.json() as CompileRequest;
     const { configuration, preFetchedContent, benchmark } = body;
@@ -116,7 +113,7 @@ async function handleCompileStream(
 
 async function handleCompileJson(
     request: Request,
-    env: Env,
+    _env: Env,
 ): Promise<Response> {
     const body = await request.json() as CompileRequest;
     const { configuration, preFetchedContent, benchmark } = body;
