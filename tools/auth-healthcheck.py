@@ -270,19 +270,20 @@ def wrangler(*args: str, timeout: int = 30) -> tuple[bool, str, str]:
 
 
 def _extract_json(text: str) -> str:
-    """Strip ANSI codes, then find the first JSON array or object in the text."""
+    """Strip ANSI codes, then return the full substring starting at the first JSON bracket.
+
+    Returning only the first line would break multi-line pretty-printed arrays/objects
+    (e.g. wrangler outputs ``[\n  {\n    "name": ...``).  We always slice from the first
+    ``[`` or ``{`` to the end of the cleaned string so that ``json.loads()`` receives the
+    complete value regardless of indentation.
+    """
     clean = re.sub(r'\x1b\[[0-9;]*[mK]', '', text)
-    # Try line-by-line first
-    for line in clean.splitlines():
-        s = line.strip()
-        if s.startswith('[') or s.startswith('{'):
-            return s
-    # Fallback: slice from first bracket
+    best_idx = -1
     for ch in ('[', '{'):
         idx = clean.find(ch)
-        if idx >= 0:
-            return clean[idx:]
-    return ''
+        if idx >= 0 and (best_idx < 0 or idx < best_idx):
+            best_idx = idx
+    return clean[best_idx:] if best_idx >= 0 else ''
 
 
 # ============================================================================
@@ -311,7 +312,13 @@ def stop_tail() -> list[str]:
     global _tail_proc
     if not _tail_proc:
         return []
-    _tail_proc.terminate()
+    # The process may have already exited (e.g. wrangler tail startup failure);
+    # terminate() raises ProcessLookupError on POSIX in that case, which would
+    # abort the finally block and skip write_report().
+    try:
+        _tail_proc.terminate()
+    except (ProcessLookupError, OSError):
+        pass  # already dead — communicate() will still drain stdout
     try:
         stdout_data, _ = _tail_proc.communicate(timeout=5)
     except subprocess.TimeoutExpired:
@@ -859,11 +866,14 @@ def cleanup_test_user_neon() -> bool:
                     cur.execute(f'DELETE FROM "{user_tbl}" WHERE id = %s', (user_id,))
                 else:
                     cur.execute(f'DELETE FROM "{user_tbl}" WHERE email = %s', (CONFIG["test_email"],))
-            if cur.rowcount:
-                ok("Neon delete-user (cleanup)", f"Deleted {cur.rowcount} row(s) from \"{user_tbl}\"")
-                deleted = True
-            else:
-                warn("Neon delete-user (cleanup)", f"User not found in \"{user_tbl}\" \u2014 already deleted?")
+                # Only check rowcount when a DELETE was actually executed; cur.rowcount
+                # after the table-discovery SELECT may be non-zero and would produce a
+                # spurious "Deleted … row(s)" report if we checked it unconditionally.
+                if cur.rowcount:
+                    ok("Neon delete-user (cleanup)", f"Deleted {cur.rowcount} row(s) from \"{user_tbl}\"")
+                    deleted = True
+                else:
+                    warn("Neon delete-user (cleanup)", f"User not found in \"{user_tbl}\" \u2014 already deleted?")
     except Exception as e:
         warn("Neon delete-user (cleanup)", str(e))
     finally:
