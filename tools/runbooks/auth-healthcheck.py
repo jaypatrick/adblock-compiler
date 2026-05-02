@@ -143,10 +143,14 @@ def _prerequisites(mo, check_command, check_python_package):
             mo.md(
                 "⚠️ Some prerequisites are missing. Install them with:\n\n"
                 "```bash\n"
-                "python3 -m venv tools/.venv\n"
-                "source tools/.venv/bin/activate\n"
-                "pip install -r tools/runbooks/requirements.txt\n"
-                "```"
+                "# From the repo root — uv manages the venv automatically:\n"
+                "uv sync --directory tools\n"
+                "\n"
+                "# Or run this runbook directly via uv (zero-setup):\n"
+                "uv run --directory tools marimo run tools/runbooks/auth-healthcheck.py\n"
+                "```\n"
+                "\n"
+                "> **Never use pip or venv manually.** This project uses [uv](https://docs.astral.sh/uv/) exclusively."
             ),
             kind="warn",
         )
