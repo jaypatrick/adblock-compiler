@@ -3,30 +3,31 @@
 auth-healthcheck.py — Better Auth / adblock-compiler production auth diagnostic
 
 Checks:
-  1. API reachability + version
-  2. Better Auth sign-up
-  3. Better Auth sign-in + token extraction
-  4. Session validation via Bearer token
-  5. Email verification state
-  6. Better Auth KV (wrangler kv key list)
-  7. D1 databases (wrangler d1 execute)
-  8. Neon / PostgreSQL table row counts + user/session presence
-  9. Wrangler tail log summary (background thread)
+  1.  API reachability + version
+  2.  Better Auth sign-up
+  3.  Better Auth sign-in + token extraction
+  4.  Session validation via Bearer token
+  5.  Email verification state
+  6.  Better Auth KV (wrangler kv key list)
+  7.  D1 databases (wrangler d1 execute)
+  8.  Neon / PostgreSQL table row counts + user/session presence
+  9.  Better Auth admin API (optional)
+  10. Wrangler tail log summary (background process)
 
-Usage:
-    export NEON_URL="postgresql://user:pass@host.neon.tech/dbname?sslmode=require"
-    export BETTER_AUTH_API_KEY="your-key"   # optional
-    python tools/auth-healthcheck.py
+Config (no exports needed):
+  cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
+  # Fill in NEON_URL at minimum
 
 Requirements:
-    pip install requests rich psycopg2-binary
+  python3 -m venv tools/.venv
+  source tools/.venv/bin/activate
+  pip install requests rich psycopg2-binary
 """
 
 import json
 import os
 import subprocess
 import sys
-import threading
 import time
 import uuid
 from datetime import datetime
@@ -48,53 +49,122 @@ import requests
 import psycopg2
 from rich.console import Console
 from rich.panel import Panel
-from rich.table import Table
-
-# ============================================================================
-# CONFIG — edit these values before running
-# ============================================================================
-
-CONFIG = {
-    # Production API
-    "api_base": "https://api.bloqr.dev/api",
-
-    # Test user — a unique email is generated each run so we never collide
-    # with an existing account. Change to a fixed email to reuse across runs.
-    "test_email": f"healthcheck-{uuid.uuid4().hex[:8]}@bloqr.dev",
-    "test_password": "HealthCheck1234!!@@",
-    "test_name": "Auth Healthcheck Bot",
-
-    # Wrangler binding names (must match wrangler.toml binding = "..." entries)
-    "kv_binding":        "BETTER_AUTH_KV",
-    "d1_binding":        "DB",           # adblock-compiler-d1-database
-    "d1_admin_binding":  "ADMIN_DB",     # adblock-compiler-admin-d1
-
-    # Neon connection string — set via env var (see usage above)
-    "neon_url": os.environ.get("NEON_URL", ""),
-
-    # Better Auth admin API key (optional — enables /api/admin/* checks)
-    "better_auth_api_key": os.environ.get("BETTER_AUTH_API_KEY", ""),
-
-    # Wrangler environment name — leave empty for production default
-    "wrangler_env": "",
-
-    # Tail log settings
-    "enable_tail":   True,
-    "tail_log_file": "wrangler-tail.log",
-    "tail_wait_sec": 4,   # seconds to wait after checks for tail to flush
-
-    # Output report file
-    "report_file": f"auth-healthcheck-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json",
-}
-
-# ============================================================================
-# State
-# ============================================================================
 
 console = Console()
+
+
+# ============================================================================
+# Config loader
+# ============================================================================
+
+def _find_repo_root() -> Path:
+    """Walk up from this script's directory until wrangler.toml is found."""
+    here = Path(__file__).resolve().parent
+    for candidate in [here, *here.parents]:
+        if (candidate / "wrangler.toml").exists():
+            return candidate
+    # Fallback: use CWD-based search
+    cwd = Path.cwd()
+    for candidate in [cwd, *cwd.parents]:
+        if (candidate / "wrangler.toml").exists():
+            return candidate
+    return here  # last resort
+
+
+def _load_env_file(path: Path) -> dict[str, str]:
+    """Parse KEY=VALUE env file; skip blanks and # comments."""
+    result: dict[str, str] = {}
+    if not path.exists():
+        return result
+    with open(path) as f:
+        for raw_line in f:
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if "=" in line:
+                key, _, val = line.partition("=")
+                key = key.strip()
+                val = val.strip()
+                # Strip optional surrounding quotes (single or double)
+                if len(val) >= 2 and val[0] in ('"', "'") and val[-1] == val[0]:
+                    val = val[1:-1]
+                result[key] = val
+    return result
+
+
+def _load_config() -> dict:
+    repo_root = _find_repo_root()
+    env_file  = repo_root / "tools" / "auth-healthcheck.env"
+    file_env  = _load_env_file(env_file)
+
+    if env_file.exists():
+        loaded_keys = [k for k, v in file_env.items() if v and "<" not in v]
+        console.print(f"[dim]📄 Config: {env_file}  ({len(loaded_keys)} key(s) set)[/dim]")
+    else:
+        console.print(
+            f"[yellow]⚠️  Config file not found: {env_file}[/yellow]\n"
+            f"   Run: cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env"
+        )
+
+    def get(key: str, default: str = "") -> str:
+        """
+        Priority order:
+          1. tools/auth-healthcheck.env  (file_env)
+          2. Shell environment           (os.environ)
+          3. Hardcoded default
+        Values containing placeholder brackets like <user> are treated as unset.
+        """
+        for source in (file_env.get(key, ""), os.environ.get(key, "")):
+            if source and "<" not in source:
+                return source
+        return default
+
+    raw_email  = get("TEST_EMAIL", "")
+    test_email = raw_email if raw_email else f"healthcheck-{uuid.uuid4().hex[:8]}@bloqr.dev"
+
+    neon_url = get("NEON_URL", "")
+
+    # Debug: show what NEON_URL resolved to (masked)
+    if neon_url:
+        masked = neon_url[:30] + "..." if len(neon_url) > 30 else neon_url
+        console.print(f"[dim]🔗 NEON_URL: {masked}[/dim]")
+    else:
+        # Surface exactly why it's missing
+        raw_file = file_env.get("NEON_URL", "")
+        raw_env  = os.environ.get("NEON_URL", "")
+        if raw_file and "<" in raw_file:
+            console.print("[yellow]⚠️  NEON_URL in env file still contains placeholder — replace <user>/<pass>/<host>/<db>[/yellow]")
+        elif raw_env and "<" in raw_env:
+            console.print("[yellow]⚠️  NEON_URL shell var contains placeholder text[/yellow]")
+        elif not raw_file and not raw_env:
+            console.print("[yellow]⚠️  NEON_URL not found in env file or shell environment[/yellow]")
+
+    return {
+        "repo_root":           repo_root,
+        "api_base":            get("API_BASE",            "https://api.bloqr.dev/api"),
+        "test_email":          test_email,
+        "test_password":       get("TEST_PASSWORD",       "HealthCheck1234!!@@"),
+        "test_name":           get("TEST_NAME",           "Auth Healthcheck Bot"),
+        "neon_url":            neon_url,
+        "better_auth_api_key": get("BETTER_AUTH_API_KEY", ""),
+        "kv_binding":          get("KV_BINDING",          "BETTER_AUTH_KV"),
+        "d1_binding":          get("D1_BINDING",          "DB"),
+        "d1_admin_binding":    get("D1_ADMIN_BINDING",    "ADMIN_DB"),
+        "wrangler_env":        get("WRANGLER_ENV",        ""),
+        "enable_tail":         get("ENABLE_TAIL",         "true").lower() == "true",
+        "tail_wait_sec":       int(get("TAIL_WAIT_SEC",   "4")),
+        "tail_log_file":       str(repo_root / "wrangler-tail.log"),
+        "report_file":         str(repo_root / f"auth-healthcheck-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"),
+    }
+
+
+# ============================================================================
+# State (populated in main)
+# ============================================================================
+
+CONFIG: dict = {}
 report: dict = {
     "timestamp": datetime.now().isoformat(),
-    "api_base":  CONFIG["api_base"],
     "results":   {},
     "errors":    [],
     "summary":   {"passed": 0, "failed": 0, "warnings": 0},
@@ -107,28 +177,18 @@ _tail_proc: subprocess.Popen | None = None
 # ============================================================================
 
 def _record(name: str, status: str, detail: str, data: dict | None = None) -> None:
-    """Record a check result and print it."""
-    icons = {"PASS": "✅", "FAIL": "❌", "WARN": "⚠️ "}
+    icons  = {"PASS": "✅", "FAIL": "❌", "WARN": "⚠️ "}
     colors = {"PASS": "green", "FAIL": "red", "WARN": "yellow"}
-    icon  = icons.get(status, "•")
-    color = colors.get(status, "white")
-    console.print(f"  {icon} [{color}]{name}[/{color}]: {detail}")
+    console.print(f"  {icons.get(status,'•')} [{colors.get(status,'white')}]{name}[/{colors.get(status,'white')}]: {detail}")
     report["results"][name] = {"status": status, "detail": detail, "data": data or {}}
-    key = {"PASS": "passed", "FAIL": "failed", "WARN": "warnings"}[status]
-    report["summary"][key] += 1
+    report["summary"][{"PASS": "passed", "FAIL": "failed", "WARN": "warnings"}[status]] += 1
 
 
-def ok(name: str, detail: str = "", data: dict | None = None) -> None:
-    _record(name, "PASS", detail, data)
-
-
+def ok(name: str, detail: str = "", data: dict | None = None)   -> None: _record(name, "PASS", detail, data)
 def fail(name: str, detail: str = "", data: dict | None = None) -> None:
     _record(name, "FAIL", detail, data)
     report["errors"].append({"check": name, "detail": detail})
-
-
-def warn(name: str, detail: str = "", data: dict | None = None) -> None:
-    _record(name, "WARN", detail, data)
+def warn(name: str, detail: str = "", data: dict | None = None) -> None: _record(name, "WARN", detail, data)
 
 
 def section(title: str) -> None:
@@ -137,21 +197,23 @@ def section(title: str) -> None:
 
 
 def wrangler(*args: str, timeout: int = 30) -> tuple[bool, str]:
-    """Run a wrangler command; returns (success, combined_output)."""
     cmd = ["wrangler", *args]
-    if CONFIG["wrangler_env"]:
+    if CONFIG.get("wrangler_env"):
         cmd += ["--env", CONFIG["wrangler_env"]]
     try:
-        r = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        r = subprocess.run(
+            cmd, capture_output=True, text=True,
+            timeout=timeout, cwd=str(CONFIG["repo_root"]),
+        )
         return r.returncode == 0, (r.stdout + r.stderr).strip()
     except subprocess.TimeoutExpired:
         return False, f"timeout after {timeout}s"
     except FileNotFoundError:
-        return False, "wrangler not found — is it installed?"
+        return False, "wrangler not found — is it installed and on PATH?"
 
 
 # ============================================================================
-# Tail log (background)
+# Tail log
 # ============================================================================
 
 def start_tail() -> None:
@@ -163,6 +225,7 @@ def start_tail() -> None:
             ["wrangler", "tail", "--format", "json"],
             stdout=open(CONFIG["tail_log_file"], "w"),
             stderr=subprocess.STDOUT,
+            cwd=str(CONFIG["repo_root"]),
         )
         console.print(f"[dim]📡 wrangler tail → {CONFIG['tail_log_file']}  (PID {_tail_proc.pid})[/dim]")
     except Exception as e:
@@ -182,24 +245,20 @@ def stop_tail() -> None:
 
 def check_api() -> None:
     section("1 · API Health")
-    try:
-        r = requests.get(f"{CONFIG['api_base']}/version", timeout=10)
-        if r.ok:
-            d = r.json()
-            ok("API /version", f"HTTP {r.status_code} — version={d.get('version','?')}", d)
-        else:
-            fail("API /version", f"HTTP {r.status_code}: {r.text[:120]}")
-    except Exception as e:
-        fail("API /version", str(e))
-
-    try:
-        r = requests.get(f"{CONFIG['api_base']}/auth/providers", timeout=10)
-        if r.ok:
-            ok("GET /auth/providers", f"HTTP {r.status_code}", r.json())
-        else:
-            fail("GET /auth/providers", f"HTTP {r.status_code}: {r.text[:120]}")
-    except Exception as e:
-        fail("GET /auth/providers", str(e))
+    for method, path, label in [
+        ("GET", "/version",        "GET /version"),
+        ("GET", "/auth/providers", "GET /auth/providers"),
+    ]:
+        try:
+            r = requests.request(method, f"{CONFIG['api_base']}{path}", timeout=10)
+            d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
+            if r.ok:
+                extra = f"version={d.get('version','?')}" if "version" in d else f"HTTP {r.status_code}"
+                ok(label, extra, d)
+            else:
+                fail(label, f"HTTP {r.status_code}: {r.text[:120]}")
+        except Exception as e:
+            fail(label, str(e))
 
 
 def check_signup() -> dict | None:
@@ -207,20 +266,15 @@ def check_signup() -> dict | None:
     try:
         r = requests.post(
             f"{CONFIG['api_base']}/auth/sign-up/email",
-            json={
-                "name":     CONFIG["test_name"],
-                "email":    CONFIG["test_email"],
-                "password": CONFIG["test_password"],
-            },
+            json={"name": CONFIG["test_name"], "email": CONFIG["test_email"], "password": CONFIG["test_password"]},
             timeout=20,
         )
         d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
         if r.status_code in (200, 201):
-            uid = (d.get("user") or {}).get("id", "?")
-            ok("POST /auth/sign-up/email", f"HTTP {r.status_code} — user_id={uid}", d)
+            ok("POST /auth/sign-up/email", f"HTTP {r.status_code} — user_id={(d.get('user') or {}).get('id','?')}", d)
             return d
         elif r.status_code == 422 and "already" in r.text.lower():
-            warn("POST /auth/sign-up/email", "User already exists — will attempt sign-in anyway")
+            warn("POST /auth/sign-up/email", "User already exists — attempting sign-in")
             return None
         else:
             fail("POST /auth/sign-up/email", f"HTTP {r.status_code}: {r.text[:300]}", d)
@@ -239,34 +293,22 @@ def check_signin() -> dict | None:
             timeout=20,
         )
         d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
-
         if r.status_code != 200:
             fail("POST /auth/sign-in/email", f"HTTP {r.status_code}: {r.text[:400]}", d)
             return None
 
         ok("POST /auth/sign-in/email", "HTTP 200 OK")
-
         token   = (d.get("session") or {}).get("token") or d.get("token")
         session = d.get("session") or {}
         user    = d.get("user")    or {}
 
-        if token:
-            ok("session.token present", f"{token[:24]}…")
-        else:
-            fail("session.token present", f"missing — response keys: {list(d.keys())}", d)
-
-        if user.get("id"):
-            ok("user object", f"id={user['id']}  email={user.get('email')}  tier={user.get('tier','?')}  role={user.get('role','?')}")
-        else:
-            fail("user object", f"no user.id — keys: {list(user.keys())}", d)
-
-        if session.get("id"):
-            ok("session object", f"id={session['id'][:20]}…  expires={session.get('expiresAt','?')}")
-        else:
-            fail("session object", f"no session.id — keys: {list(session.keys())}", d)
-
+        (ok if token   else fail)("session.token present",
+            f"{token[:24]}…" if token else f"missing — keys: {list(d.keys())}", d)
+        (ok if user.get("id") else fail)("user object",
+            f"id={user.get('id')}  email={user.get('email')}  tier={user.get('tier','?')}  role={user.get('role','?')}" if user.get("id") else f"no user.id — keys: {list(user.keys())}", d)
+        (ok if session.get("id") else fail)("session object",
+            f"id={str(session.get('id',''))[:20]}…  expires={session.get('expiresAt','?')}" if session.get("id") else f"no session.id — keys: {list(session.keys())}", d)
         return d
-
     except Exception as e:
         fail("POST /auth/sign-in/email", str(e))
         return None
@@ -295,16 +337,11 @@ def check_session_validation(signin_data: dict) -> None:
 
 def check_email_verification(signin_data: dict) -> None:
     section("5 · Email Verification")
-    user = signin_data.get("user") or {}
-    verified = user.get("emailVerified")
+    verified = (signin_data.get("user") or {}).get("emailVerified")
     if verified:
         ok("emailVerified", str(verified))
     else:
-        warn(
-            "emailVerified",
-            "false — sign-in will be blocked if requireEmailVerification=true. "
-            "Check Resend delivery (RESEND_API_KEY) or manually verify in DB.",
-        )
+        warn("emailVerified", "false — blocked if requireEmailVerification=true. Check Resend or verify manually in DB.")
 
 
 def check_kv() -> None:
@@ -313,71 +350,54 @@ def check_kv() -> None:
     if not success:
         fail("KV list", out[:300])
         return
-
-    # wrangler outputs JSON on the last non-empty line
     lines = [l for l in out.splitlines() if l.strip()]
-    raw = lines[-1] if lines else "[]"
+    raw   = lines[-1] if lines else "[]"
     try:
         keys = json.loads(raw)
     except json.JSONDecodeError:
         warn("KV list", f"Could not parse output — raw: {raw[:200]}")
         return
-
     if not isinstance(keys, list):
-        warn("KV list", f"Unexpected type: {type(keys)} — {raw[:200]}")
+        warn("KV list", f"Unexpected type: {type(keys)}")
         return
-
-    ok("KV accessible", f"{len(keys)} key(s) found")
-
+    ok("KV accessible", f"{len(keys)} key(s)")
     if not keys:
-        warn("KV key distribution", "0 keys — normal on fresh deploy; expect session keys after sign-in")
+        warn("KV key distribution", "0 keys — normal on fresh deploy")
         return
-
     prefixes: dict[str, int] = {}
     for k in keys:
-        name   = k.get("name", "") if isinstance(k, dict) else str(k)
-        prefix = name.split(":")[0] if ":" in name else "other"
-        prefixes[prefix] = prefixes.get(prefix, 0) + 1
-
+        name = k.get("name", "") if isinstance(k, dict) else str(k)
+        p = name.split(":")[0] if ":" in name else "other"
+        prefixes[p] = prefixes.get(p, 0) + 1
     ok("KV key distribution", "  ".join(f"{p}={c}" for p, c in sorted(prefixes.items())), prefixes)
 
 
 def check_d1(binding: str, label: str) -> None:
-    section(f"7 · D1 — {label} (binding={binding})")
-
-    # ── table list ──────────────────────────────────────────────────────────
-    success, out = wrangler(
-        "d1", "execute", binding,
-        "--command", "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;",
-    )
+    section(f"7 · D1 — {label}  (binding={binding})")
+    success, out = wrangler("d1", "execute", binding, "--command",
+                            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name;")
     if not success:
         fail(f"D1 {label} execute", out[:300])
         return
     ok(f"D1 {label} accessible", "query succeeded")
-
-    # Parse table names from wrangler table output
     tables = []
     for line in out.splitlines():
         if "│" in line:
             parts = [p.strip() for p in line.split("│") if p.strip()]
             if parts and parts[0] not in ("name", ""):
                 tables.append(parts[0])
-
     if tables:
         ok(f"D1 {label} tables", f"{len(tables)}: {', '.join(tables)}", {"tables": tables})
     else:
-        warn(f"D1 {label} tables", f"No tables parsed — raw output below:\n{out[:400]}")
-
-    # ── row counts for known tables ─────────────────────────────────────────
-    known = ["user", "session", "api_key", "verification", "account"]
-    for tbl in [t for t in known if t in tables]:
+        warn(f"D1 {label} tables", f"None parsed — raw:\n{out[:400]}")
+    for tbl in [t for t in ["user", "session", "api_key", "verification", "account"] if t in tables]:
         s2, o2 = wrangler("d1", "execute", binding, "--command", f"SELECT COUNT(*) as c FROM {tbl};")
         if s2:
             for ln in o2.splitlines():
                 if "│" in ln:
                     ps = [p.strip() for p in ln.split("│") if p.strip()]
                     if ps and ps[0].isdigit():
-                        ok(f"D1 {label} {tbl} rows", ps[0])
+                        ok(f"D1 {label} · {tbl} rows", ps[0])
                         break
 
 
@@ -385,12 +405,8 @@ def check_neon(signin_data: dict | None) -> None:
     section("8 · Neon / PostgreSQL")
     neon_url = CONFIG["neon_url"]
     if not neon_url:
-        warn(
-            "Neon connection",
-            "NEON_URL not set — export NEON_URL='postgresql://...' to enable this check",
-        )
+        warn("Neon connection", "NEON_URL not configured — set it in tools/auth-healthcheck.env")
         return
-
     try:
         conn = psycopg2.connect(neon_url, connect_timeout=10)
         conn.autocommit = True
@@ -400,35 +416,29 @@ def check_neon(signin_data: dict | None) -> None:
         fail("Neon TCP connection", str(e))
         return
 
-    # Table counts
-    ba_tables = ["user", "session", "account", "verification"]
     counts: dict[str, int | str] = {}
-    for tbl in ba_tables:
+    for tbl in ["user", "session", "account", "verification"]:
         try:
             cur.execute(f'SELECT COUNT(*) FROM "{tbl}"')
             counts[tbl] = cur.fetchone()[0]  # type: ignore[index]
         except Exception as e:
             counts[tbl] = f"ERROR: {e}"
-
     has_err = any(str(v).startswith("ERROR") for v in counts.values())
-    summary = "  ".join(f"{t}={c}" for t, c in counts.items())
-    (fail if has_err else ok)("Neon Better Auth table counts", summary, counts)
+    (fail if has_err else ok)("Neon table counts", "  ".join(f"{t}={c}" for t, c in counts.items()), counts)
 
-    # Test user row
     try:
         cur.execute(
-            'SELECT id, email, "displayName", "emailVerified", tier, "createdAt" FROM "user" WHERE email = %s',
+            'SELECT id, email, "displayName", "emailVerified", tier FROM "user" WHERE email = %s',
             (CONFIG["test_email"],),
         )
         row = cur.fetchone()
         if row:
             ok("Test user in Neon", f"id={row[0]}  displayName={row[2]}  tier={row[4]}  verified={row[3]}")
         else:
-            fail("Test user in Neon", f"{CONFIG['test_email']} not found — sign-up may have failed")
+            fail("Test user in Neon", f"{CONFIG['test_email']} not found")
     except Exception as e:
         fail("Test user in Neon", str(e))
 
-    # Session row
     if signin_data:
         session_id = (signin_data.get("session") or {}).get("id")
         if session_id:
@@ -438,14 +448,9 @@ def check_neon(signin_data: dict | None) -> None:
                 if sess:
                     ok("Session in Neon", f"id={str(sess[0])[:20]}…  expires={sess[2]}")
                 else:
-                    warn(
-                        "Session in Neon",
-                        f"Session {session_id[:20]}… not in Postgres — stored in KV only. "
-                        "Expected when storeSessionInDatabase=false (default with KV bound).",
-                    )
+                    warn("Session in Neon", "Not in Postgres — stored in KV only (expected when KV is bound).")
             except Exception as e:
                 fail("Session in Neon", str(e))
-
     cur.close()
     conn.close()
 
@@ -454,40 +459,33 @@ def check_admin_api() -> None:
     section("9 · Better Auth Admin API (optional)")
     api_key = CONFIG["better_auth_api_key"]
     if not api_key:
-        warn("Admin API", "BETTER_AUTH_API_KEY not set — skipping admin API checks")
+        warn("Admin API", "BETTER_AUTH_API_KEY not set — skipping")
         return
-
-    headers = {"x-api-key": api_key}
-    endpoints = [
-        ("GET", "/auth/admin/list-users?limit=1", "list-users"),
-    ]
-    for method, path, label in endpoints:
-        try:
-            r = requests.request(method, f"{CONFIG['api_base']}{path}", headers=headers, timeout=10)
-            d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
-            if r.ok:
-                ok(f"Admin API {label}", f"HTTP {r.status_code}", d)
-            else:
-                fail(f"Admin API {label}", f"HTTP {r.status_code}: {r.text[:200]}", d)
-        except Exception as e:
-            fail(f"Admin API {label}", str(e))
+    try:
+        r = requests.get(
+            f"{CONFIG['api_base']}/auth/admin/list-users?limit=5",
+            headers={"x-api-key": api_key},
+            timeout=10,
+        )
+        d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
+        if r.ok:
+            ok("Admin list-users", f"HTTP {r.status_code} — {len(d.get('users',[]))} user(s)", d)
+        else:
+            fail("Admin list-users", f"HTTP {r.status_code}: {r.text[:200]}", d)
+    except Exception as e:
+        fail("Admin list-users", str(e))
 
 
 def summarise_tail() -> None:
-    section("10 · Wrangler Tail Log Summary")
+    section("10 · Wrangler Tail Summary")
     if not CONFIG["enable_tail"]:
-        warn("Tail logs", "disabled in CONFIG")
+        warn("Tail logs", "disabled (ENABLE_TAIL=false)")
         return
-
     log_path = Path(CONFIG["tail_log_file"])
     if not log_path.exists() or log_path.stat().st_size == 0:
-        warn("Tail log file", f"{log_path} is empty or missing")
+        warn("Tail log", f"{log_path} is empty")
         return
-
-    exceptions: list[str] = []
-    error_logs: list[str] = []
-    auth_logs:  list[str] = []
-
+    exceptions, error_logs, auth_logs = [], [], []
     with open(log_path) as f:
         for raw in f:
             raw = raw.strip()
@@ -497,10 +495,8 @@ def summarise_tail() -> None:
                 entry = json.loads(raw)
             except json.JSONDecodeError:
                 continue
-
             for exc in entry.get("exceptions", []):
                 exceptions.append(exc.get("message", str(exc)))
-
             for log in entry.get("logs", []):
                 msg = " ".join(str(p) for p in log.get("parts", []))
                 lower = msg.lower()
@@ -508,40 +504,28 @@ def summarise_tail() -> None:
                     error_logs.append(msg)
                 if any(kw in lower for kw in ("auth", "sign-in", "sign-up", "session", "prisma", "better-auth")):
                     auth_logs.append(msg)
-
-    (ok if not exceptions else fail)(
-        "Worker exceptions",
-        f"{len(exceptions)} exception(s)" if exceptions else "none",
-        {"exceptions": exceptions[:10]},
-    )
-    (ok if not error_logs else warn)(
-        "Worker error logs",
-        f"{len(error_logs)} error log line(s)" if error_logs else "none",
-        {"errors": error_logs[:10]},
-    )
-    if auth_logs:
-        ok("Auth-related log events", f"{len(auth_logs)} line(s)", {"events": auth_logs[:20]})
-    else:
-        warn("Auth-related log events", "none captured — tail may not have caught the requests")
+    (ok if not exceptions else fail)("Worker exceptions",
+        f"{len(exceptions)} exception(s)" if exceptions else "none", {"exceptions": exceptions[:10]})
+    (ok if not error_logs else warn)("Worker error logs",
+        f"{len(error_logs)} line(s)" if error_logs else "none", {"errors": error_logs[:10]})
+    (ok if auth_logs else warn)("Auth log events",
+        f"{len(auth_logs)} line(s)" if auth_logs else "none captured", {"events": auth_logs[:20]})
 
 
 def write_report() -> None:
     path = Path(CONFIG["report_file"])
     with open(path, "w") as f:
         json.dump(report, f, indent=2, default=str)
-
     s = report["summary"]
-    total = s["passed"] + s["failed"] + s["warnings"]
     console.print()
     console.print(Panel(
         f"[green]✅ Passed:   {s['passed']}[/green]\n"
         f"[yellow]⚠️  Warnings: {s['warnings']}[/yellow]\n"
         f"[red]❌ Failed:   {s['failed']}[/red]\n"
-        f"   Total:    {total}\n\n"
+        f"   Total:    {s['passed'] + s['failed'] + s['warnings']}\n\n"
         f"Report → [bold]{path}[/bold]",
         title="[bold]Auth Healthcheck Complete[/bold]",
     ))
-
     if report["errors"]:
         console.print("\n[bold red]Failed checks:[/bold red]")
         for e in report["errors"]:
@@ -553,26 +537,25 @@ def write_report() -> None:
 # ============================================================================
 
 def main() -> None:
+    global CONFIG
+    CONFIG = _load_config()
+    report["api_base"] = CONFIG["api_base"]
+
     console.print(Panel(
         f"[bold cyan]Better Auth Production Healthcheck[/bold cyan]\n"
         f"API base : {CONFIG['api_base']}\n"
         f"Test user: {CONFIG['test_email']}\n"
+        f"Repo root: {CONFIG['repo_root']}\n"
         f"Time     : {datetime.now().isoformat()}",
         title="adblock-compiler · bloqr.dev",
     ))
 
-    if not CONFIG["neon_url"]:
-        console.print(
-            "\n[yellow]⚠️  NEON_URL not set. Neon checks will be skipped.[/yellow]\n"
-            "   export NEON_URL='postgresql://user:pass@host.neon.tech/db?sslmode=require'\n"
-        )
-
     start_tail()
-    time.sleep(1)  # give tail a moment to attach
+    time.sleep(1)
 
     try:
         check_api()
-        signup_data = check_signup()
+        check_signup()
         signin_data = check_signin()
 
         if signin_data:
