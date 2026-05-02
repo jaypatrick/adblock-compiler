@@ -1,7 +1,7 @@
 $kind: http-request
 description: >
   Sign out the current user session. Requires a valid Bearer token.
-url: {{baseUrl}}/api/auth/sign-out
+url: {{baseUrl}}/auth/sign-out
 method: POST
 headers:
   Accept: application/json

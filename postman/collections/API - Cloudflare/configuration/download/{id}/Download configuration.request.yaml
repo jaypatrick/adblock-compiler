@@ -4,7 +4,7 @@ url: {{baseUrl}}/configuration/download/:id
 method: GET
 headers:
   Accept: application/json
-  X-API-Key: "{{apiKey}}"
+  Authorization: Bearer {{apiKey}}
 pathVariables:
   - key: id
     value: string

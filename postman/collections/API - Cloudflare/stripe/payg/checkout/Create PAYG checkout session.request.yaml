@@ -5,12 +5,12 @@ method: POST
 headers:
   Content-Type: application/json
   Accept: application/json
-  X-API-Key: "{{apiKey}}"
+  Authorization: Bearer {{apiKey}}
 body:
   type: json
   content: |-
     {
-      "priceId": "price_xxxxx",
+      "requestsToPurchase": 10,
       "successUrl": "https://app.bloqr.dev/success",
       "cancelUrl": "https://app.bloqr.dev/cancel"
     }

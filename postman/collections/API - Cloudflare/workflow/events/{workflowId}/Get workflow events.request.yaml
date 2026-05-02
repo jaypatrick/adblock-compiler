@@ -4,7 +4,7 @@ url: {{baseUrl}}/workflow/events/:workflowId?since=1957-11-17T10:24:39.571Z
 method: GET
 headers:
   Accept: application/json
-  X-API-Key: "{{apiKey}}"
+  Authorization: Bearer {{apiKey}}
 queryParams:
   - key: since
     value: 1957-11-17T10:24:39.571Z

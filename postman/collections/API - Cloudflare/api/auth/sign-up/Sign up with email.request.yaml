@@ -1,7 +1,7 @@
 $kind: http-request
 description: >
   Create a new user account with email and password. No auth header required.
-url: {{baseUrl}}/api/auth/sign-up/email
+url: {{baseUrl}}/auth/sign-up/email
 method: POST
 headers:
   Content-Type: application/json

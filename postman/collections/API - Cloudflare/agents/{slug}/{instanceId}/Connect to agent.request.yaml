@@ -6,11 +6,11 @@ description: >
 
   Requires a valid Bearer token or API key. See /agents documentation for
   available agent slugs.
-url: {{baseUrl}}/agents/:slug/:instanceId/
+url: {{originUrl}}/agents/:slug/:instanceId/
 method: GET
 headers:
   Accept: application/json
-  Authorization: Bearer {{bearerToken}}
+  Authorization: Bearer {{apiKey}}
 pathVariables:
   - key: slug
     value: mcp-agent
