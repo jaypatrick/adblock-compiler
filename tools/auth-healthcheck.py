@@ -46,6 +46,7 @@ import time
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import IO
 
 # ── dependency check ───────────────────────────────────────────────
 missing = []
@@ -61,6 +62,7 @@ if missing:
 
 import requests
 import psycopg2
+import psycopg2.sql
 from rich.console import Console
 from rich.panel import Panel
 
@@ -209,6 +211,8 @@ report: dict = {
     "summary":   {"passed": 0, "failed": 0, "warnings": 0},
 }
 _tail_proc: subprocess.Popen | None = None
+_tail_file: IO[str] | None = None  # file handle for wrangler tail stdout
+_neon_table_cache: dict | None = None
 
 
 # ============================================================================
@@ -291,49 +295,49 @@ def _extract_json(text: str) -> str:
 # ============================================================================
 
 def start_tail() -> None:
-    global _tail_proc
+    global _tail_proc, _tail_file
     if not CONFIG["enable_tail"]:
         return
     try:
-        _tail_proc = subprocess.Popen(
-            ["wrangler", "tail", "--format", "json"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-            cwd=str(CONFIG["repo_root"]),
-            text=True,
-        )
+        _tail_file = open(CONFIG["tail_log_file"], "w")
+        try:
+            _tail_proc = subprocess.Popen(
+                ["wrangler", "tail", "--format", "json"],
+                stdout=_tail_file,
+                stderr=subprocess.DEVNULL,
+                cwd=str(CONFIG["repo_root"]),
+            )
+        except Exception:
+            _tail_file.close()
+            _tail_file = None
+            raise
+        tail_log_abs = Path(CONFIG["tail_log_file"]).resolve()
         console.print(f"[dim]\U0001f4e1 wrangler tail started (PID {_tail_proc.pid})[/dim]")
+        console.print(f"[dim]\U0001f4dd Tail log \u2192 {tail_log_abs}[/dim]")
     except Exception as e:
         console.print(f"[yellow]\u26a0\ufe0f  Could not start wrangler tail: {e}[/yellow]")
 
 
-def stop_tail() -> list[str]:
-    """Terminate tail process, collect stdout, write log file. Returns lines."""
-    global _tail_proc
-    if not _tail_proc:
-        return []
-    # The process may have already exited (e.g. wrangler tail startup failure);
-    # terminate() raises ProcessLookupError on POSIX in that case, which would
-    # abort the finally block and skip write_report().
-    try:
-        _tail_proc.terminate()
-    except (ProcessLookupError, OSError):
-        pass  # already dead — communicate() will still drain stdout
-    try:
-        stdout_data, _ = _tail_proc.communicate(timeout=5)
-    except subprocess.TimeoutExpired:
-        _tail_proc.kill()
-        stdout_data, _ = _tail_proc.communicate()
-    _tail_proc = None
-    lines = [l for l in (stdout_data or "").splitlines() if l.strip()]
-    log_path = Path(CONFIG.get("tail_log_file", ""))
-    if log_path.name:
+def stop_tail() -> None:
+    """Terminate tail process and close the log file handle."""
+    global _tail_proc, _tail_file
+    if _tail_proc:
         try:
-            log_path.write_text(stdout_data or "")
-            console.print(f"[dim]\U0001f4dd Tail log \u2192 {log_path.name}[/dim]")
-        except Exception as e:
-            console.print(f"[yellow]\u26a0\ufe0f  Could not write tail log: {e}[/yellow]")
-    return lines
+            _tail_proc.terminate()
+        except (ProcessLookupError, OSError):
+            pass
+        try:
+            _tail_proc.wait(timeout=3)
+        except subprocess.TimeoutExpired:
+            _tail_proc.kill()
+        _tail_proc = None
+    if _tail_file:
+        try:
+            _tail_file.flush()
+            _tail_file.close()
+        except Exception:
+            pass
+        _tail_file = None
 
 
 # ============================================================================
@@ -395,6 +399,44 @@ def _verify_email_in_neon(user_id: str) -> bool:
         return False
 
 
+def _auto_verify_email(email: str) -> None:
+    """Directly mark the test user's email as verified in Neon by email address.
+
+    Tries ``"emailVerified"`` (camelCase, Better Auth ≥1.x) then
+    ``"email_verified"`` (snake_case, older schemas) so it works regardless
+    of column naming convention. Called immediately after a successful sign-up.
+    """
+    neon_url = CONFIG.get("neon_url")
+    if not neon_url:
+        return
+    try:
+        conn = psycopg2.connect(neon_url, connect_timeout=10)
+        conn.autocommit = True
+        cur = conn.cursor()
+        tbl_map = _discover_neon_tables(cur)
+        user_tbl = tbl_map.get("user", "users")
+        for col in ("emailVerified", "email_verified"):
+            try:
+                cur.execute(
+                    psycopg2.sql.SQL("UPDATE {} SET {} = NOW() WHERE email = %s").format(
+                        psycopg2.sql.Identifier(user_tbl),
+                        psycopg2.sql.Identifier(col),
+                    ),
+                    (email,),
+                )
+                if not conn.autocommit:
+                    conn.commit()
+                if cur.rowcount > 0:
+                    console.print(f"[dim]  \u2713 emailVerified set for {email}[/dim]")
+                    break
+            except psycopg2.errors.UndefinedColumn:  # type: ignore[attr-defined]
+                conn.rollback()
+        cur.close()
+        conn.close()
+    except Exception as e:
+        console.print(f"[yellow]\u26a0\ufe0f  auto-verify email failed: {e}[/yellow]")
+
+
 def check_signup() -> dict | None:
     section("2 \u00b7 Sign-Up")
     if CONFIG.get("dry_run"):
@@ -413,6 +455,8 @@ def check_signup() -> dict | None:
             if uid and uid != "?":
                 CONFIG["_created_user_id"] = uid
                 CONFIG["email_verified_via_neon"] = _verify_email_in_neon(uid)
+                _auto_verify_email(CONFIG["test_email"])
+                time.sleep(1)
             return d
         elif r.status_code == 422 and "already" in r.text.lower():
             warn("POST /auth/sign-up/email", "User already exists \u2014 will attempt sign-in")
@@ -425,7 +469,7 @@ def check_signup() -> dict | None:
         return None
 
 
-def check_signin(signup_result: dict | None) -> dict | None:
+def check_signin(signup_result: dict | None, signup_succeeded: bool = False) -> dict | None:
     section("3 \u00b7 Sign-In + Token")
     if CONFIG.get("dry_run"):
         warn("POST /auth/sign-in/email", "Skipped \u2014 dry-run mode")
@@ -450,8 +494,8 @@ def check_signin(signup_result: dict | None) -> dict | None:
                     or "email_not_verified" in body_lower
                     or (d.get("code") or "").upper() == "EMAIL_NOT_VERIFIED"
                 )
-                if is_email_verification_error or signup_result is not None:
-                    if signup_result is not None:
+                if is_email_verification_error or signup_succeeded:
+                    if signup_succeeded:
                         hint = "User was just created in this run \u2014 likely awaiting email verification."
                     else:
                         hint = "Response indicates email verification is required."
@@ -601,7 +645,14 @@ def _discover_neon_tables(cur) -> dict[str, str]:
     Query information_schema to find actual table names in the public schema.
     Returns a mapping of logical concept -> actual table name, e.g.:
       {"user": "User", "session": "session", "account": "account", ...}
+
+    Results are cached in ``_neon_table_cache`` so that repeated calls within
+    a single healthcheck run do not issue redundant queries.
     """
+    global _neon_table_cache
+    if _neon_table_cache is not None:
+        return _neon_table_cache
+
     cur.execute("""
         SELECT table_name
         FROM information_schema.tables
@@ -609,7 +660,7 @@ def _discover_neon_tables(cur) -> dict[str, str]:
         ORDER BY table_name
     """)
     actual = [row[0] for row in cur.fetchall()]
-    console.print(f"[dim]  Neon public tables: {actual}[/dim]")
+    console.print(f"[dim]  Neon tables ({len(actual)}): {', '.join(actual)}[/dim]")
 
     lower_map = {t.lower(): t for t in actual}  # lowercase -> actual
     result: dict[str, str] = {}
@@ -618,6 +669,7 @@ def _discover_neon_tables(cur) -> dict[str, str]:
             if candidate.lower() in lower_map:
                 result[concept] = lower_map[candidate.lower()]
                 break
+    _neon_table_cache = result
     return result
 
 
@@ -721,7 +773,7 @@ def check_admin_api() -> None:
         if r.ok:
             ok("Admin list-users", f"HTTP {r.status_code} \u2014 {len(d.get('users', []))} user(s)", d)
         elif r.status_code == 401:
-            warn("Admin list-users", f"HTTP 401 \u2014 API key wrong or not configured (optional check)", d)
+            warn("Admin list-users", "HTTP 401 \u2014 check BETTER_AUTH_API_KEY has admin scope (wrangler secret)", d)
         else:
             fail("Admin list-users", f"HTTP {r.status_code}: {r.text[:200]}", d)
     except requests.exceptions.JSONDecodeError as e:
@@ -775,7 +827,7 @@ def write_report() -> None:
         f"[yellow]\u26a0\ufe0f  Warnings: {s['warnings']}[/yellow]\n"
         f"[red]\u274c Failed:   {s['failed']}[/red]\n"
         f"   Total:    {s['passed'] + s['failed'] + s['warnings']}\n\n"
-        f"Report \u2192 [bold]{path}[/bold]",
+        f"Report \u2192 [bold]{path.resolve()}[/bold]",
         title="[bold]Auth Healthcheck Complete[/bold]",
     ))
     if report["errors"]:
@@ -914,6 +966,270 @@ def cleanup_test_user_d1(binding: str, label: str) -> bool:
     return False
 
 
+def cleanup_all_healthcheck_data() -> None:
+    """Delete ALL healthcheck-* test data across every data store."""
+    console.print()
+    console.print(Panel(
+        f"[bold yellow]\u26a0\ufe0f  Universal cleanup \u2014 deleting ALL healthcheck-* test data[/bold yellow]\n\n"
+        f"   Pattern: email LIKE 'healthcheck-%'\n\n"
+        f"   Targets:\n"
+        f"     \u00b7 Neon PostgreSQL\n"
+        f"     \u00b7 D1 [cyan]{CONFIG['d1_binding']}[/cyan] + D1 [cyan]{CONFIG['d1_admin_binding']}[/cyan]\n"
+        f"     \u00b7 Better Auth KV  ([cyan]{CONFIG['kv_binding']}[/cyan])\n"
+        f"     \u00b7 Better Auth admin API",
+        title="[bold]Universal Cleanup[/bold]",
+    ))
+
+    neon_rows: int = 0
+    d1_db_rows: int = 0
+    d1_admin_rows: int = 0
+    kv_keys: int = 0
+    api_users: int = 0
+
+    # ── Neon ─────────────────────────────────────────────────────────────────
+    section("Universal Cleanup \u00b7 Neon")
+    try:
+        neon_url = CONFIG.get("neon_url", "")
+        if not neon_url:
+            console.print("[yellow]\u26a0\ufe0f  NEON_URL not set \u2014 skipping Neon cleanup[/yellow]")
+        else:
+            conn = psycopg2.connect(neon_url, connect_timeout=10)
+            conn.autocommit = True
+            cur = conn.cursor()
+            try:
+                tbl_map = _discover_neon_tables(cur)
+                user_tbl = tbl_map.get("user")
+                if not user_tbl:
+                    console.print(f"[yellow]\u26a0\ufe0f  No user table found \u2014 tables: {list(tbl_map.values())}[/yellow]")
+                else:
+                    if not re.match(r'^[A-Za-z0-9_]+$', user_tbl):
+                        console.print(f"[yellow]\u26a0\ufe0f  Unsafe user table name: {user_tbl!r}[/yellow]")
+                    else:
+                        # Collect healthcheck user IDs before deleting so we can
+                        # cascade-delete related orphan rows in session / account.
+                        cur.execute(
+                            psycopg2.sql.SQL(
+                                "SELECT id FROM {} WHERE email LIKE 'healthcheck-%'"
+                            ).format(psycopg2.sql.Identifier(user_tbl))
+                        )
+                        hc_user_ids = [row[0] for row in cur.fetchall()]
+
+                        # Orphan cleanup: session and account rows whose userId
+                        # belongs to a healthcheck user.
+                        for orphan_concept in ("session", "account"):
+                            orphan_tbl = tbl_map.get(orphan_concept)
+                            if not orphan_tbl:
+                                continue
+                            if not re.match(r'^[A-Za-z0-9_-]+$', orphan_tbl):
+                                console.print(
+                                    f"[yellow]\u26a0\ufe0f  Unsafe {orphan_concept} table name: {orphan_tbl!r}[/yellow]"
+                                )
+                                continue
+                            if not hc_user_ids:
+                                continue
+                            try:
+                                cur.execute(
+                                    psycopg2.sql.SQL(
+                                        "DELETE FROM {} WHERE {} = ANY(%s)"
+                                    ).format(
+                                        psycopg2.sql.Identifier(orphan_tbl),
+                                        psycopg2.sql.Identifier("userId"),
+                                    ),
+                                    (hc_user_ids,),
+                                )
+                                console.print(
+                                    f"[dim]  \u00b7 Deleted {cur.rowcount} orphan row(s) from \"{orphan_tbl}\"[/dim]"
+                                )
+                            except Exception as e_orphan:
+                                console.print(
+                                    f"[yellow]\u26a0\ufe0f  Orphan cleanup failed for \"{orphan_tbl}\": {e_orphan}[/yellow]"
+                                )
+
+                        # Verification table: delete rows by identifier pattern.
+                        verif_tbl = tbl_map.get("verification")
+                        if verif_tbl:
+                            if not re.match(r'^[A-Za-z0-9_-]+$', verif_tbl):
+                                console.print(
+                                    f"[yellow]\u26a0\ufe0f  Unsafe verification table name: {verif_tbl!r}[/yellow]"
+                                )
+                            else:
+                                try:
+                                    cur.execute(
+                                        psycopg2.sql.SQL(
+                                            "DELETE FROM {} WHERE {} LIKE 'healthcheck-%'"
+                                        ).format(
+                                            psycopg2.sql.Identifier(verif_tbl),
+                                            psycopg2.sql.Identifier("identifier"),
+                                        )
+                                    )
+                                    console.print(
+                                        f"[dim]  \u00b7 Deleted {cur.rowcount} row(s) from \"{verif_tbl}\"[/dim]"
+                                    )
+                                except Exception as e_verif:
+                                    console.print(
+                                        f"[yellow]\u26a0\ufe0f  Verification cleanup failed: {e_verif}[/yellow]"
+                                    )
+
+                        # Delete the healthcheck user rows themselves.
+                        cur.execute(
+                            psycopg2.sql.SQL(
+                                "DELETE FROM {} WHERE email LIKE 'healthcheck-%'"
+                            ).format(psycopg2.sql.Identifier(user_tbl))
+                        )
+                        neon_rows = cur.rowcount
+                        console.print(
+                            f"[dim]  \u00b7 Deleted {neon_rows} user row(s) from \"{user_tbl}\"[/dim]"
+                        )
+            finally:
+                cur.close()
+                conn.close()
+    except Exception as e:
+        console.print(f"[yellow]\u26a0\ufe0f  Neon cleanup failed: {e}[/yellow]")
+
+    # ── D1 DB ────────────────────────────────────────────────────────────────
+    section("Universal Cleanup \u00b7 D1 DB")
+    try:
+        binding = CONFIG["d1_binding"]
+        success, stdout, stderr = wrangler(
+            "d1", "execute", binding, "--remote", "--json",
+            "--command", "DELETE FROM user WHERE email LIKE 'healthcheck-%';",
+            timeout=60,
+        )
+        if success:
+            raw = _extract_json(stdout)
+            if raw:
+                try:
+                    data = json.loads(raw)
+                    if isinstance(data, list):
+                        for entry in data:
+                            d1_db_rows += entry.get("meta", {}).get("changes", 0)
+                except json.JSONDecodeError as e_json:
+                    console.print(
+                        f"[yellow]\u26a0\ufe0f  D1 {binding}: could not parse result JSON: {e_json}[/yellow]"
+                    )
+            else:
+                console.print(f"[yellow]\u26a0\ufe0f  D1 {binding}: no JSON in wrangler output[/yellow]")
+            console.print(f"[dim]  \u00b7 D1 {binding}: {d1_db_rows} row(s) deleted[/dim]")
+        else:
+            console.print(
+                f"[yellow]\u26a0\ufe0f  D1 {binding} cleanup failed: {(stderr or stdout)[:300]}[/yellow]"
+            )
+    except Exception as e:
+        console.print(f"[yellow]\u26a0\ufe0f  D1 DB cleanup failed: {e}[/yellow]")
+
+    # ── D1 ADMIN_DB ──────────────────────────────────────────────────────────
+    section("Universal Cleanup \u00b7 D1 ADMIN_DB")
+    try:
+        binding = CONFIG["d1_admin_binding"]
+        success, stdout, stderr = wrangler(
+            "d1", "execute", binding, "--remote", "--json",
+            "--command", "DELETE FROM user WHERE email LIKE 'healthcheck-%';",
+            timeout=60,
+        )
+        if success:
+            raw = _extract_json(stdout)
+            if raw:
+                try:
+                    data = json.loads(raw)
+                    if isinstance(data, list):
+                        for entry in data:
+                            d1_admin_rows += entry.get("meta", {}).get("changes", 0)
+                except json.JSONDecodeError as e_json:
+                    console.print(
+                        f"[yellow]\u26a0\ufe0f  D1 {binding}: could not parse result JSON: {e_json}[/yellow]"
+                    )
+            else:
+                console.print(f"[yellow]\u26a0\ufe0f  D1 {binding}: no JSON in wrangler output[/yellow]")
+            console.print(f"[dim]  \u00b7 D1 {binding}: {d1_admin_rows} row(s) deleted[/dim]")
+        else:
+            console.print(
+                f"[yellow]\u26a0\ufe0f  D1 {binding} cleanup failed: {(stderr or stdout)[:300]}[/yellow]"
+            )
+    except Exception as e:
+        console.print(f"[yellow]\u26a0\ufe0f  D1 ADMIN_DB cleanup failed: {e}[/yellow]")
+
+    # ── KV ───────────────────────────────────────────────────────────────────
+    section("Universal Cleanup \u00b7 KV")
+    try:
+        kv_binding = CONFIG["kv_binding"]
+        success, stdout, stderr = wrangler("kv", "key", "list", "--binding", kv_binding)
+        if not success:
+            console.print(
+                f"[yellow]\u26a0\ufe0f  KV list failed: {(stderr or stdout)[:300]}[/yellow]"
+            )
+        else:
+            raw = _extract_json(stdout)
+            if raw:
+                keys = json.loads(raw)
+                if isinstance(keys, list):
+                    hc_key_names = [
+                        k.get("name", "")
+                        for k in keys
+                        if isinstance(k, dict) and "healthcheck-" in k.get("name", "")
+                    ]
+                    for key_name in hc_key_names:
+                        del_ok, _, _ = wrangler(
+                            "kv", "key", "delete", "--binding", kv_binding, key_name
+                        )
+                        if del_ok:
+                            kv_keys += 1
+                    console.print(f"[dim]  \u00b7 KV: deleted {kv_keys} key(s)[/dim]")
+    except Exception as e:
+        console.print(f"[yellow]\u26a0\ufe0f  KV cleanup failed: {e}[/yellow]")
+
+    # ── Admin API ────────────────────────────────────────────────────────────
+    section("Universal Cleanup \u00b7 Admin API")
+    try:
+        api_key = CONFIG.get("better_auth_api_key", "")
+        if not api_key:
+            console.print(
+                "[yellow]\u26a0\ufe0f  BETTER_AUTH_API_KEY not set \u2014 skipping Admin API cleanup[/yellow]"
+            )
+        else:
+            r = requests.get(
+                f"{CONFIG['api_base']}/auth/admin/list-users",
+                params={"searchField": "email", "searchValue": "healthcheck-"},
+                headers={"x-api-key": api_key},
+                timeout=10,
+            )
+            if r.ok:
+                d = r.json() if "application/json" in r.headers.get("content-type", "") else {}
+                users = d.get("users", [])
+                # Client-side filter as a defense-in-depth guard: the API
+                # searchValue parameter performs a substring match that may
+                # return partial results; re-filter to ensure only genuine
+                # healthcheck accounts are deleted.
+                hc_users = [u for u in users if "healthcheck-" in u.get("email", "")]
+                for u in hc_users:
+                    try:
+                        del_r = requests.post(
+                            f"{CONFIG['api_base']}/auth/admin/remove-user",
+                            headers={"x-api-key": api_key, "Content-Type": "application/json"},
+                            json={"userId": u["id"]},
+                            timeout=10,
+                        )
+                        if del_r.ok:
+                            api_users += 1
+                    except Exception as e_del:
+                        console.print(
+                            f"[yellow]\u26a0\ufe0f  Admin API delete user {u.get('id')} failed: {e_del}[/yellow]"
+                        )
+                console.print(f"[dim]  \u00b7 Admin API: deleted {api_users} user(s)[/dim]")
+            else:
+                console.print(
+                    f"[yellow]\u26a0\ufe0f  Admin API list-users failed: HTTP {r.status_code}[/yellow]"
+                )
+    except Exception as e:
+        console.print(f"[yellow]\u26a0\ufe0f  Admin API cleanup failed: {e}[/yellow]")
+
+    # ── Summary ───────────────────────────────────────────────────────────────
+    console.print(
+        f"\n[bold]Cleanup summary:[/bold] Cleaned {neon_rows} Neon rows, "
+        f"{d1_db_rows} D1-DB rows, {d1_admin_rows} D1-ADMIN rows, "
+        f"{kv_keys} KV keys, {api_users} admin API users"
+    )
+
+
 def run_cleanup() -> None:
     """Orchestrate all cleanup tasks: remove the test user from every data store."""
     console.print()
@@ -951,7 +1267,7 @@ def _show_menu() -> tuple[str, bool]:
         "  [bold]1[/bold]  Run all checks  (no cleanup)\n"
         "  [bold]2[/bold]  Run all checks, then clean up test data\n"
         "  [bold]3[/bold]  Dry-run  (read-only checks \u2014 no sign-up / sign-in, no cleanup)\n"
-        "  [bold]4[/bold]  Clean up test data only\n"
+        "  [bold]4[/bold]  Clean up ALL healthcheck test data (any run)\n"
         "  [bold]q[/bold]  Quit",
         title="[bold cyan]adblock-compiler \u00b7 Auth Healthcheck[/bold cyan]",
         subtitle="Select an action",
@@ -1032,9 +1348,10 @@ def main() -> None:
     else:
         mode = "all"   # pipeline / CI default
 
-    # dry-run always suppresses cleanup to avoid accidental deletes
+    # dry-run always suppresses per-run cleanup to avoid accidental deletes
     do_checks = mode in ("all", "checks", "checks-cleanup")
-    do_cleanup = mode in ("all", "cleanup", "checks-cleanup") and not CONFIG["dry_run"]
+    do_per_run_cleanup = mode in ("all", "checks-cleanup") and not CONFIG["dry_run"]
+    do_universal_cleanup = mode == "cleanup" and not CONFIG["dry_run"]
 
     # ── Run ──────────────────────────────────────────────────────────────────
     start_tail()
@@ -1045,7 +1362,7 @@ def main() -> None:
         if do_checks:
             check_api()
             signup_result = check_signup()
-            signin_data = check_signin(signup_result)
+            signin_data = check_signin(signup_result, signup_succeeded=signup_result is not None)
 
             if signin_data:
                 check_session_validation(signin_data)
@@ -1063,12 +1380,23 @@ def main() -> None:
                 console.print(f"\n[dim]Waiting {CONFIG['tail_wait_sec']}s for tail to flush\u2026[/dim]")
                 time.sleep(CONFIG["tail_wait_sec"])
 
-        if do_cleanup:
+        if do_per_run_cleanup:
             run_cleanup()
+        elif do_universal_cleanup:
+            cleanup_all_healthcheck_data()
 
     finally:
-        tail_lines = stop_tail()
-        summarise_tail(tail_lines)
+        stop_tail()
+        try:
+            tail_log = Path(CONFIG["tail_log_file"])
+            tail_lines = tail_log.read_text(encoding="utf-8").splitlines() if tail_log.exists() else []
+        except Exception as exc:
+            console.print(f"[yellow]⚠️  Could not read tail log: {exc}[/yellow]")
+            tail_lines = []
+        try:
+            summarise_tail(tail_lines)
+        except Exception as e:
+            console.print(f"[yellow]⚠️  summarise_tail error: {e}[/yellow]")
         write_report()
 
     if report["summary"]["failed"] > 0:
