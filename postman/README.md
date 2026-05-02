@@ -39,11 +39,11 @@ postman/
 
 ## Authentication
 
-The collection uses `Authorization: Bearer {{apiKey}}` for all protected endpoints.
+The collection uses `Authorization: Bearer <token>` for all protected endpoints.
 
-- Most protected API requests use `Authorization: Bearer {{bearerToken}}`. Turnstile verification is automatically skipped for API-key (`blq_…`) requests.
+- Most protected API requests use `Authorization: Bearer {{apiKey}}` — pass a `blq_…` API key. Turnstile verification is automatically skipped for API-key (`blq_…`) requests.
+- Session-scoped management endpoints (`/keys/*`, `/api/auth/sign-out`) use `Authorization: Bearer {{bearerToken}}` (session token obtained after sign-in, not an API key).
 - Public endpoints (e.g. `/stripe/webhook`, `/api/auth/sign-in`, `/api/auth/sign-up`) have no auth header.
-- The `/api/auth/sign-out` and `/keys/*` endpoints also use `Authorization: Bearer {{bearerToken}}` (session-scoped).
 
 Get an API key:
 
@@ -60,7 +60,10 @@ curl -s -X POST "https://api.bloqr.dev/api/keys" \
   -d '{"name":"My Key"}' | jq .key
 ```
 
-Set the `apiKey` environment variable to the returned `blq_…` key.
+Set the API key in the appropriate variable depending on how you run the collection:
+
+- **Postman desktop (YAML collection in `postman/collections/`):** Set `apiKey` to the returned `blq_…` key.
+- **Newman CLI (generated JSON collection in `docs/postman/`):** Inject the key as `--env-var "bearerToken=blq_..."` — the generated JSON collection uses collection-level bearer auth with `{{bearerToken}}`.
 
 ## Running Tests with Newman
 
@@ -75,7 +78,7 @@ npm install -g newman newman-reporter-htmlextra
 ```bash
 newman run docs/postman/postman-collection.json \
   --environment docs/postman/postman-environment-prod.json \
-  --env-var "userApiKey=blq_yourkey" \
+  --env-var "bearerToken=blq_yourkey" \
   --reporters cli,htmlextra \
   --reporter-htmlextra-export newman-report.html
 ```
@@ -88,7 +91,7 @@ deno task wrangler:dev
 
 newman run docs/postman/postman-collection.json \
   --environment docs/postman/postman-environment-local.json \
-  --env-var "userApiKey=blq_yourkey" \
+  --env-var "bearerToken=blq_yourkey" \
   --reporters cli
 ```
 
