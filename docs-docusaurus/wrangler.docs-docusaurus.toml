@@ -1,9 +1,10 @@
-# wrangler.docs-docusaurus.toml — Docusaurus documentation site (Cloudflare Pages)
-# Serves the Docusaurus v3 static build as a Cloudflare Pages site.
+# wrangler.docs-docusaurus.toml — Docusaurus documentation site (Cloudflare Worker)
+# Serves the Docusaurus v3 static build as a Cloudflare Worker with static assets.
 # Parallel to the existing mdBook site at docs.bloqr.dev.
 
 name = "bloqr-docs-docusaurus"
 compatibility_date = "2026-01-01"
+workers_dev = true
 
 [[routes]]
 pattern = "docs-v2.bloqr.dev"
@@ -13,3 +14,7 @@ custom_domain = true
 directory = "./build"
 html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
+
+[vars]
+ENVIRONMENT = "production"
+URL_DOCS = "https://docs-v2.bloqr.dev"

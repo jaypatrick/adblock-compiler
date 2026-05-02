@@ -40,11 +40,9 @@ jobs:
             - name: Build Docusaurus site
               run: pnpm --filter @bloqr/docs-docusaurus run build
 
-            - name: Deploy to Cloudflare Pages
+            - name: Deploy to Cloudflare Workers
               run: |
                   set -euo pipefail
-                  echo "Deploying Docusaurus docs to Cloudflare Pages..."
-                  npx wrangler@4.83.0 pages deploy docs-docusaurus/build \
-                    --project-name=bloqr-docs-docusaurus \
-                    --commit-dirty=true
+                  echo "Deploying Docusaurus docs to Cloudflare Workers..."
+                  npx wrangler@4.83.0 deploy --config docs-docusaurus/wrangler.docs-docusaurus.toml
                   echo "✅ Docusaurus docs deployed successfully"
