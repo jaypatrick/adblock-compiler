@@ -25,6 +25,7 @@ import {
     Component,
     inject,
     computed,
+    signal,
     OnInit,
     ChangeDetectionStrategy,
     PLATFORM_ID,
@@ -36,6 +37,7 @@ import { MatButtonModule } from '@angular/material/button';
 import { FlashService } from '../services/flash.service';
 import type { FlashType } from '../services/flash.service';
 import { AuthFacadeService } from '../services/auth-facade.service';
+import { NavigationErrorService } from '../services/navigation-error.service';
 import { resolveErrorCode, ErrorCodeDefinition } from './error-codes';
 import { HttpClient } from '@angular/common/http';
 import { API_BASE_URL } from '../tokens';
@@ -190,6 +192,7 @@ interface ActiveBanner {
 export class UrlErrorBannerComponent implements OnInit {
     readonly flash = inject(FlashService);
     private readonly authFacade = inject(AuthFacadeService);
+    private readonly navError = inject(NavigationErrorService);
     private readonly router = inject(Router);
     private readonly platformId = inject(PLATFORM_ID);
     private readonly http = inject(HttpClient);
@@ -197,16 +200,47 @@ export class UrlErrorBannerComponent implements OnInit {
 
     private readonly isAdmin = computed(() => this.authFacade.isAdmin());
 
-    /** Resolved banner from flash signal or URL ?error= param. */
+    /**
+     * Stores code + definition when a ?error= URL param is resolved so that
+     * activeBanner can include them for the admin chip and CTA.
+     */
+    private readonly urlErrorCtx = signal<{ code: string; definition: ErrorCodeDefinition } | null>(null);
+
+    /**
+     * Resolved banner from three sources in priority order:
+     *   1. NavigationErrorService — errors set by guards (includes code + definition)
+     *   2. FlashService — in-process signal (may be accompanied by urlErrorCtx)
+     */
     readonly activeBanner = computed<ActiveBanner | null>(() => {
-        const flash = this.flash.currentFlash();
-        if (flash) {
+        // Priority 1: NavigationErrorService (guards attach code + definition)
+        const navErr = this.navError.currentError();
+        if (navErr) {
+            const severity = navErr.definition.severity;
+            const type: FlashType = severity === 'info' ? 'info'
+                : severity === 'warning' ? 'warn'
+                : 'error';
             return {
-                message: flash.message,
-                type: flash.type,
+                message: navErr.message ?? navErr.definition.userMessage,
+                type,
+                code: navErr.code,
+                definition: navErr.definition,
                 isAdmin: this.isAdmin(),
             };
         }
+
+        // Priority 2: FlashService — plain flash or URL ?error= param
+        const flash = this.flash.currentFlash();
+        if (flash) {
+            const ctx = this.urlErrorCtx();
+            return {
+                message: flash.message,
+                type: flash.type,
+                code: ctx?.code,
+                definition: ctx?.definition,
+                isAdmin: this.isAdmin(),
+            };
+        }
+
         return null;
     });
 
@@ -220,6 +254,8 @@ export class UrlErrorBannerComponent implements OnInit {
 
     dismiss(): void {
         this.flash.clear();
+        this.navError.clear();
+        this.urlErrorCtx.set(null);
         this.clearUrlParams();
     }
 
@@ -241,12 +277,14 @@ export class UrlErrorBannerComponent implements OnInit {
             : severity === 'warning' ? 'warn'
             : 'error';
 
+        // Store code/definition so activeBanner can surface the admin chip and CTA
+        this.urlErrorCtx.set({ code, definition });
         this.flash.set(definition.userMessage, type);
 
         // Report the URL-surfaced error to the backend for observability
         try {
-            const payload = { code, source: 'url-param', url: window.location.href };
-            this.http.post(`${this.apiBase}/log`, payload).subscribe({ error: () => {} });
+            const payload = { message: definition.userMessage, url: window.location.href };
+            this.http.post(`${this.apiBase}/log/frontend-error`, payload).subscribe({ error: () => {} });
         } catch {
             // Best-effort; never disrupt the UI
         }

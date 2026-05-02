@@ -30,14 +30,17 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 
 import type { Env } from '../types.ts';
-import { bodySizeMiddleware, rateLimitMiddleware } from '../middleware/hono-middleware.ts';
+import { bodySizeMiddleware } from '../middleware/hono-middleware.ts';
 import type { Variables } from './shared.ts';
 import { logErrorToD1 } from '../utils/error-logger.ts';
 
 export const logRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
-// Cap payload size then rate-limit (body first so rate limiter only fires on valid-size requests)
-logRoutes.use('/api/log/frontend-error', bodySizeMiddleware(), rateLimitMiddleware());
+// Cap payload size so the rate limiter only fires on valid-size requests.
+// Note: /api/log/frontend-error is already rate-limited by the global pre-auth
+// middleware in hono-app.ts (checkRateLimitTiered) — do not add rateLimitMiddleware()
+// here as it would double-increment counters.
+logRoutes.use('/api/log/frontend-error', bodySizeMiddleware());
 
 // ── Zod schema ────────────────────────────────────────────────────────────────
 
@@ -107,22 +110,9 @@ logRoutes.openapi(logFrontendErrorRoute, async (c) => {
         return c.json({ success: false, error: 'Database unavailable' }, 503);
     }
 
-    let body: z.infer<typeof FrontendErrorBodySchema>;
-
-    try {
-        const raw = await c.req.text();
-        if (!raw.trim()) {
-            return c.json({ success: false, error: 'Empty request body' }, 400);
-        }
-        const parsed = JSON.parse(raw) as unknown;
-        const validation = FrontendErrorBodySchema.safeParse(parsed);
-        if (!validation.success) {
-            return c.json({ success: false, error: 'Invalid request body' }, 400);
-        }
-        body = validation.data;
-    } catch {
-        return c.json({ success: false, error: 'Invalid JSON body' }, 400);
-    }
+    // Validation is handled by Hono's OpenAPI middleware via the createRoute schema;
+    // c.req.valid('json') returns the already-parsed and Zod-validated body.
+    const body = c.req.valid('json');
 
     // Parse the context string as JSON if possible so it is stored as a
     // structured object (error-logger.ts calls JSON.stringify internally).

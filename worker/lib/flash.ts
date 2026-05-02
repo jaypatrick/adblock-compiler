@@ -6,7 +6,7 @@
  * A flash message is a short-lived, one-time-read notification (e.g. "You must
  * be signed in") stored in KV under a random token. The client exchanges the
  * token for the message via GET /api/flash/:token. Reading the message deletes
- * it atomically (consume semantics).
+ * it on first use (consume semantics — see race-condition note in getFlash).
  *
  * ## Usage (server side)
  * ```ts

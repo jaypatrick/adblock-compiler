@@ -74,11 +74,16 @@ export class FlashService {
      *
      * Must be called in a browser context (uses `window.location.search`).
      * Called during `provideAppInitializer` before first render.
+     *
+     * @param search Optional query string override — pass a value from tests
+     *               instead of reading `window.location` directly.  When
+     *               omitted the value is read inside the browser guard so
+     *               SSR / non-browser environments never touch `window`.
      */
-    readFromUrl(search = window.location.search): void {
+    readFromUrl(search?: string): void {
         // Guard against accidental server-side calls (window is not available in SSR).
         if (!isPlatformBrowser(this.platformId)) return;
-        const params = new URLSearchParams(search);
+        const params = new URLSearchParams(search ?? window.location.search);
         const token = params.get('flash');
         if (token) this.consume(token);
     }

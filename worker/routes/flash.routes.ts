@@ -30,14 +30,14 @@
 import { createRoute, OpenAPIHono, z } from '@hono/zod-openapi';
 
 import type { Env } from '../types.ts';
-import { rateLimitMiddleware } from '../middleware/hono-middleware.ts';
 import type { Variables } from './shared.ts';
 import { getFlash } from '../lib/flash.ts';
 
 export const flashRoutes = new OpenAPIHono<{ Bindings: Env; Variables: Variables }>();
 
-// Rate-limit: prevent token enumeration attacks
-flashRoutes.use('/api/flash/:token', rateLimitMiddleware());
+// Note: /api/flash/* is already rate-limited by the global pre-auth middleware
+// in hono-app.ts (checkRateLimitTiered). Adding rateLimitMiddleware() here would
+// double-increment counters — do not add it again.
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
