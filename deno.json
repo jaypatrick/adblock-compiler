@@ -124,7 +124,11 @@
         "ci:cloudflare-check": "deno run --allow-net --allow-read scripts/ci/cloudflare-upgrade-check.ts",
         "ci:cloudflare-update": "deno run --allow-net --allow-read --allow-write scripts/ci/cloudflare-dep-update.ts",
         "ci:cloudflare-allowscripts-sync": "deno run --allow-read --allow-write scripts/ci/cloudflare-allowscripts-sync.ts",
-        "pageshield:sync": "deno run --allow-net --allow-env --allow-write scripts/sync-pageshield-allowlist.ts"
+        "pageshield:sync": "deno run --allow-net --allow-env --allow-write scripts/sync-pageshield-allowlist.ts",
+        "runbook:setup": "pip install -r tools/runbooks/requirements.txt",
+        "runbook:pipeline": "marimo run tools/runbooks/pipeline.py",
+        "runbook:auth-healthcheck": "marimo run tools/runbooks/auth-healthcheck.py",
+        "runbook:test": "cd tools && python3 -m pytest tests/ -v"
     },
     "imports": {
         "@/": "./src/",
