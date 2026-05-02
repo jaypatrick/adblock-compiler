@@ -50,9 +50,7 @@ export interface ErrorEvent {
  */
 export async function logErrorToD1(db: D1Database, event: ErrorEvent): Promise<void> {
     try {
-        const contextStr = event.context != null
-            ? JSON.stringify(event.context)
-            : null;
+        const contextStr = event.context != null ? JSON.stringify(event.context) : null;
 
         await db.prepare(
             `INSERT INTO error_events

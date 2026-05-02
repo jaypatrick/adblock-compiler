@@ -311,7 +311,7 @@ export class FatalErrorComponent implements OnInit {
 
     private loadErrorFromState(): void {
         try {
-            const nav = this.router.lastSuccessfulNavigation?.();
+            const nav = this.router.lastSuccessfulNavigation;
             const state = nav?.extras?.state as Record<string, unknown> | undefined;
             const error = state?.['error'] as AppError | undefined;
             if (error) {

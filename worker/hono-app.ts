@@ -442,10 +442,10 @@ app.use('*', async (c, next) => {
         pathname.startsWith('/api/flash/') ||
         MONITORING_BARE_PATHS.has(pathname)
     )) ||
-    // Frontend error logging must be accessible before the user is authenticated
-    // (e.g. sign-in page crash, SSR hydration failure). Applies to all HTTP methods
-    // because POST is the only defined method and no extra bypass surface is added.
-    pathname === '/api/log/frontend-error';
+        // Frontend error logging must be accessible before the user is authenticated
+        // (e.g. sign-in page crash, SSR hydration failure). Applies to all HTTP methods
+        // because POST is the only defined method and no extra bypass surface is added.
+        pathname === '/api/log/frontend-error';
     if (isPreAuth) {
         const rl = await checkRateLimitTiered(c.env, ip, ANONYMOUS_AUTH_CONTEXT);
         if (!rl.allowed) {

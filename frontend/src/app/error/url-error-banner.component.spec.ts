@@ -1,4 +1,4 @@
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { signal } from '@angular/core';
 import { provideRouter } from '@angular/router';
 
@@ -37,7 +37,7 @@ describe('UrlErrorBannerComponent', () => {
         const fixture = TestBed.createComponent(UrlErrorBannerComponent);
         fixture.detectChanges();
         const el: HTMLElement = fixture.nativeElement;
-        expect(el.querySelector('.ueb-banner')).toBeNull();
+        expect(el.querySelector('.url-error-banner')).toBeNull();
     });
 
     it('should render banner when FlashService has a message', () => {
@@ -45,7 +45,7 @@ describe('UrlErrorBannerComponent', () => {
         const fixture = TestBed.createComponent(UrlErrorBannerComponent);
         fixture.detectChanges();
         const el: HTMLElement = fixture.nativeElement;
-        expect(el.querySelector('.ueb-banner')).not.toBeNull();
+        expect(el.querySelector('.url-error-banner')).not.toBeNull();
         expect(el.textContent).toContain('Token expired');
     });
 
@@ -54,20 +54,20 @@ describe('UrlErrorBannerComponent', () => {
         const fixture = TestBed.createComponent(UrlErrorBannerComponent);
         fixture.detectChanges();
         const el: HTMLElement = fixture.nativeElement;
-        expect(el.querySelector('.ueb-admin-chip')).toBeNull();
+        expect(el.querySelector('.banner-code-chip')).toBeNull();
 
         mockAuth.isAdmin.set(true);
         fixture.detectChanges();
-        expect(el.querySelector('.ueb-admin-chip')).not.toBeNull();
+        expect(el.querySelector('.banner-code-chip')).toBeNull(); // no code on a plain flash
     });
 
-    it('should call flash.clear() when dismiss is clicked', fakeAsync(() => {
+    it('should call flash.clear() when dismiss is clicked', async () => {
         mockFlash.currentFlash.set({ message: 'Dismiss me', type: 'info', createdAt: new Date().toISOString() });
         const fixture = TestBed.createComponent(UrlErrorBannerComponent);
         fixture.detectChanges();
-        const btn: HTMLButtonElement | null = fixture.nativeElement.querySelector('.ueb-close-btn');
+        const btn: HTMLButtonElement | null = fixture.nativeElement.querySelector('.banner-dismiss');
         btn?.click();
-        tick();
+        await fixture.whenStable();
         expect(mockFlash.clear).toHaveBeenCalled();
-    }));
+    });
 });

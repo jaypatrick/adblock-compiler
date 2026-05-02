@@ -10,7 +10,7 @@
  *  - readFromUrl() is a no-op on the server platform
  */
 
-import { TestBed, fakeAsync, tick } from '@angular/core/testing';
+import { TestBed } from '@angular/core/testing';
 import { HttpTestingController } from '@angular/common/http/testing';
 import { FlashService, FlashMessage } from './flash.service';
 import { FLASH_ENDPOINT } from '../tokens';
@@ -83,38 +83,34 @@ describe('FlashService', () => {
             createdAt: new Date().toISOString(),
         };
 
-        it('should make a GET request to the flash endpoint with the token', fakeAsync(() => {
+        it('should make a GET request to the flash endpoint with the token', () => {
             service.consume('abc123');
             const req = httpMock.expectOne(`${BASE_FLASH_URL}/abc123`);
             expect(req.request.method).toBe('GET');
             req.flush(mockFlash);
-            tick();
-        }));
+        });
 
-        it('should update currentFlash on a successful response', fakeAsync(() => {
+        it('should update currentFlash on a successful response', () => {
             service.consume('abc123');
             httpMock.expectOne(`${BASE_FLASH_URL}/abc123`).flush(mockFlash);
-            tick();
             expect(service.currentFlash()).toEqual(mockFlash);
-        }));
+        });
 
-        it('should silently ignore a 404 error', fakeAsync(() => {
+        it('should silently ignore a 404 error', () => {
             service.consume('bad-token');
             httpMock.expectOne(`${BASE_FLASH_URL}/bad-token`).flush(
                 { message: 'Not found' },
                 { status: 404, statusText: 'Not Found' },
             );
-            tick();
             expect(service.currentFlash()).toBeNull();
-        }));
+        });
 
-        it('should silently ignore a network error', fakeAsync(() => {
+        it('should silently ignore a network error', () => {
             service.consume('tok');
             const req = httpMock.expectOne(`${BASE_FLASH_URL}/tok`);
             req.error(new ProgressEvent('error'));
-            tick();
             expect(service.currentFlash()).toBeNull();
-        }));
+        });
     });
 
     // ── readFromUrl() ──────────────────────────────────────────────────────
