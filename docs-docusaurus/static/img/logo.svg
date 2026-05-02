@@ -1,4 +1,17 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120">
-  <circle cx="60" cy="60" r="55" fill="#7c3aed"/>
-  <text x="60" y="80" font-size="56" font-weight="bold" text-anchor="middle" fill="#ffffff" font-family="Arial,Helvetica,sans-serif">B</text>
+<svg
+    xmlns="http://www.w3.org/2000/svg"
+    viewBox="0 0 120 120"
+    width="120"
+    height="120"
+>
+    <circle cx="60" cy="60" r="55" fill="#7c3aed" />
+    <text
+        x="60"
+        y="80"
+        font-size="56"
+        font-weight="bold"
+        text-anchor="middle"
+        fill="#ffffff"
+        font-family="Arial,Helvetica,sans-serif"
+    >B</text>
 </svg>
