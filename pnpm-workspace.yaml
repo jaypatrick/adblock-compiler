@@ -5,6 +5,7 @@ packages:
     - 'frontend'
     - 'examples/cloudflare-worker'
     - 'docs-docusaurus'
+    - 'docs-starlight'
     # Future packages: uncomment and add paths as new sub-projects are created
     # - 'packages/admin-panel'
     # - 'packages/admin'

@@ -104,8 +104,9 @@ tools/**/*.pyo
 tools/auth-healthcheck.env
 tools/logs/*
 !tools/logs/.gitkeep
-# Docusaurus OpenAPI plugin generated MDX (docs-docusaurus/)
-docs/api/openapi/
 !tools/logs/auth-healthcheck/
 tools/logs/auth-healthcheck/*
 !tools/logs/auth-healthcheck/.gitkeep
+
+# Docusaurus OpenAPI plugin generated MDX (docs-docusaurus/)
+docs/api/openapi/
