@@ -98,6 +98,7 @@ prisma/d1-dev.db
 
 # Python tooling
 tools/.venv/
+tools/.marimo.toml
 tools/**/__pycache__/
 tools/**/*.pyc
 tools/**/*.pyo

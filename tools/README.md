@@ -42,6 +42,33 @@ uv sync --directory tools
 
 ## Config
 
+### marimo Configuration
+
+The marimo environment requires API keys for AI features. A template is provided:
+
+```bash
+cp tools/.marimo.toml.example tools/.marimo.toml
+```
+
+Edit `tools/.marimo.toml` and populate your credentials:
+
+```toml
+[ai.github]
+api_key = "YOUR_GITHUB_TOKEN_HERE"
+
+[ai.anthropic]
+api_key = "YOUR_ANTHROPIC_API_KEY_HERE"
+```
+
+**Where to get credentials:**
+
+- **GitHub**: Create a personal access token at https://github.com/settings/personal-access-tokens/new (requires `gist` scope for model access)
+- **Anthropic**: Get your API key from https://console.anthropic.com/account/keys
+
+⚠️ **Security**: `.marimo.toml` is NOT tracked by git (added to `.gitignore`). Never commit real credentials. The template (`.marimo.toml.example`) is safe to commit with placeholder values.
+
+### Script Configuration
+
 Each script has a corresponding `.env` file:
 
 ```bash

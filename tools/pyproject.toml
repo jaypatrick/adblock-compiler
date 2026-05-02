@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     # 0.17.0 is the minimum version that introduced MCP server support
     # https://github.com/marimo-team/marimo/releases/tag/0.17.0
-    "marimo[mcp]>=0.17.0",
+    "marimo[lsp,mcp]>=0.17.0",
     "requests>=2.31.0",
     "rich>=13.0.0",
     "psycopg2-binary>=2.9.9",
@@ -53,3 +53,18 @@ indent-style = "space"
 [tool.pytest.ini_options]
 testpaths = ["runbooks/tests", "tests"]
 timeout = 60
+
+[tool.marimo.language_servers.pylsp]
+enabled = true               # Enable/disable pylsp
+enable_mypy = true           # Type checking with mypy (enabled by default, if installed)
+enable_ruff = true           # Linting with ruff (enabled by default, if installed)
+enable_flake8 = false        # Linting with flake8
+enable_pydocstyle = false    # Check docstring style
+enable_pylint = false        # Linting with pylint
+enable_pyflakes = false      # Syntax checking with pyflakes
+
+[tool.marimo.language_servers.ty]
+enabled = true
+
+[tool.marimo.completion]
+copilot = "github"
