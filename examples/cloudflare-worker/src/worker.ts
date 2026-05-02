@@ -2,12 +2,7 @@
 // Legacy example demonstrating the @jk-com/adblock-compiler package in a Workers environment.
 // Production code lives in /worker/worker.ts.
 
-import {
-    type ICompilerEvents,
-    type IConfiguration,
-    type WorkerCompilationResult,
-    WorkerCompiler,
-} from '../../../src/index.ts';
+import { type ICompilerEvents, type IConfiguration, WorkerCompiler } from '../../../src/index.ts';
 
 export interface Env {
     COMPILER_VERSION: string;

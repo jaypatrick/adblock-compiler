@@ -9,15 +9,13 @@ Standalone operational diagnostic scripts for the adblock-compiler / Bloqr stack
 ## Quick Start (Interactive Runbooks)
 
 ```bash
-# One-time setup
-python3 -m venv tools/.venv
-source tools/.venv/bin/activate
-pip install -r tools/runbooks/requirements.txt
+# One-time setup (from repo root)
+uv sync --directory tools
 
 # Launch the master pipeline runbook (recommended admin entry point)
 deno task runbook:pipeline
 # — or —
-marimo run tools/runbooks/pipeline.py
+uv run --directory tools marimo run runbooks/pipeline.py
 ```
 
 The master runbook opens in your browser at `http://localhost:2718` and includes:
@@ -31,17 +29,15 @@ For a specific tool:
 ```bash
 deno task runbook:auth-healthcheck
 # — or —
-marimo run tools/runbooks/auth-healthcheck.py
+uv run --directory tools marimo run runbooks/auth-healthcheck.py
 ```
 
 ## Setup (CLI Mode)
 
-If you prefer to run scripts from the terminal:
+If you prefer to run scripts from the terminal, all dependencies are already managed via `uv`:
 
 ```bash
-python3 -m venv tools/.venv
-source tools/.venv/bin/activate
-pip install requests rich psycopg2-binary
+uv sync --directory tools
 ```
 
 ## Config
@@ -56,24 +52,21 @@ cp tools/auth-healthcheck.env.example tools/auth-healthcheck.env
 ## CLI Usage
 
 ```bash
-source tools/.venv/bin/activate
-
-# Interactive mode (menu)
-python tools/auth-healthcheck.py
+uv run --directory tools python auth-healthcheck.py
 
 # Non-interactive
-python tools/auth-healthcheck.py --mode all
-python tools/auth-healthcheck.py --mode checks
-python tools/auth-healthcheck.py --dry-run
+uv run --directory tools python auth-healthcheck.py --mode all
+uv run --directory tools python auth-healthcheck.py --mode checks
+uv run --directory tools python auth-healthcheck.py --dry-run
 ```
 
 ## Tests
 
 ```bash
 # From repo root
-deno task runbook:test
+uv run --directory tools pytest tests/ -v
 # — or —
-cd tools && python3 -m pytest tests/ -v
+deno task runbook:test
 ```
 
 ## Documentation
