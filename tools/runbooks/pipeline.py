@@ -417,7 +417,7 @@ def _log_browser(KNOWN_TOOLS, Path, list_log_files, mo):
 @app.cell(hide_code=True)
 def _log_viewer(
     Path,
-    all_log_files,
+    all_log_files,  # dict[str, Path] — annotating with Path (another param) causes F821
     log_file_selector,
     mo,
     read_log_file,
@@ -431,7 +431,7 @@ def _log_viewer(
 
     _contents = read_log_file(_selected)
     _lang = "json" if _selected.suffix == ".json" else "text"
-    return (mo.code(_contents, language=_lang),)
+    return mo.code(_contents, language=_lang)
 
 
 @app.cell(hide_code=True)
