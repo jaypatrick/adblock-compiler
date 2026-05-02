@@ -21,14 +21,10 @@ No external markdown or documentation is needed — everything is self-contained
 
 import marimo
 
-__generated_with = "0.8.0"
-app = marimo.App(
-    width="full",
-    app_title="Bloqr Ops — Master Pipeline Runbook",
-)
+__generated_with = "0.23.4"
+app = marimo.App(width="full", app_title="Bloqr Ops — Master Pipeline Runbook")
 
 
-# ── Cell 0: imports (hidden) ────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _imports():
     import html
@@ -64,69 +60,66 @@ def _imports():
     )
 
     return (
+        KNOWN_TOOLS,
         Path,
+        TIMESTAMP_FORMAT,
+        all_tools_health_snapshot,
         datetime,
         html,
-        json,
-        mo,
-        os,
-        sys,
-        time,
-        KNOWN_TOOLS,
-        TIMESTAMP_FORMAT,
-        _repo_root,
-        all_tools_health_snapshot,
-        get_tool_last_status,
         list_log_files,
-        load_latest_report,
         load_report,
-        logs_dir,
+        mo,
         read_log_file,
         render_report_results_html,
         render_status_badge,
-        render_summary_table_html,
         run_tool,
-        tools_dir,
     )
 
 
-# ── Cell 1: Header ──────────────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _header(mo):
-    mo.md(
-        """
-        # 🚀 Bloqr Ops — Master Pipeline Runbook
+    mo.md("""
+    # 🚀 Bloqr Ops — Master Pipeline Runbook
 
-        **Purpose:** System-wide health dashboard and pipeline composer.
-        Run any combination of diagnostic tools in sequence and review aggregate results.
+    **Purpose:** System-wide health dashboard and pipeline composer.
+    Run any combination of diagnostic tools in sequence and review aggregate results.
 
-        ---
+    ---
 
-        | Section | What it does |
-        |---|---|
-        | **Health Dashboard** | Last run status for every tool at a glance |
-        | **Pipeline Composer** | Select tools and configure flags |
-        | **Execute Pipeline** | Run selected tools in sequence with progress |
-        | **Results** | Per-tool results + aggregate summary |
-        | **Log Browser** | Browse and share log files for any tool |
-        | **Quick Reference** | Pipeline chaining guide, common switches, tips |
+    | Section | What it does |
+    |---|---|
+    | **Health Dashboard** | Last run status for every tool at a glance |
+    | **Pipeline Composer** | Select tools and configure flags |
+    | **Execute Pipeline** | Run selected tools in sequence with progress |
+    | **Results** | Per-tool results + aggregate summary |
+    | **Log Browser** | Browse and share log files for any tool |
+    | **Quick Reference** | Pipeline chaining guide, common switches, tips |
 
-        > **Self-contained:** Everything you need is in this runbook.
-        > To run: `marimo run tools/runbooks/pipeline.py`
-        """
-    )
+    > **Self-contained:** Everything you need is in this runbook.
+    > To run: `marimo run tools/runbooks/pipeline.py`
+    """)
     return
 
 
-# ── Cell 2: Health dashboard ────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _dashboard_header(mo):
-    mo.md("## 🏥 System Health Dashboard\n\n_Last-run status for every registered tool._")
+    mo.md("""
+    ## 🏥 System Health Dashboard
+
+    _Last-run status for every registered tool._
+    """)
     return
 
 
 @app.cell(hide_code=True)
-def _health_dashboard(mo, html, all_tools_health_snapshot, render_status_badge, datetime, TIMESTAMP_FORMAT):
+def _health_dashboard(
+    TIMESTAMP_FORMAT,
+    all_tools_health_snapshot,
+    datetime,
+    html,
+    mo,
+    render_status_badge,
+):
     # All variables here are cell-private (_-prefixed) — none are consumed by other cells.
     _snapshot = all_tools_health_snapshot()
 
@@ -164,33 +157,22 @@ def _health_dashboard(mo, html, all_tools_health_snapshot, render_status_badge, 
     )
 
     _refresh_note = mo.md(f"_Dashboard as of: {datetime.now().strftime(TIMESTAMP_FORMAT)}_")
-
-    return (
-        mo.vstack(
-            [
-                mo.Html(_table_html),
-                _refresh_note,
-            ]
-        ),
-    )
-
-
-# ── Cell 3: Pipeline composer ───────────────────────────────────────────────
-@app.cell(hide_code=True)
-def _composer_header(mo):
-    mo.md(
-        """
-        ## 🔧 Pipeline Composer
-
-        Select the tools you want to run and configure options for each.
-        Tools run in order (top to bottom). A tool failure does **not** stop subsequent tools by default.
-        """
-    )
     return
 
 
 @app.cell(hide_code=True)
-def _tool_selector(mo, KNOWN_TOOLS):
+def _composer_header(mo):
+    mo.md("""
+    ## 🔧 Pipeline Composer
+
+    Select the tools you want to run and configure options for each.
+    Tools run in order (top to bottom). A tool failure does **not** stop subsequent tools by default.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _tool_selector(KNOWN_TOOLS, mo):
     # Cross-cell outputs: tool_checkboxes, tool_mode_selectors, dry_run_flag, stop_on_failure_flag
     # (no _ prefix — these are consumed by _pipeline_execute)
     tool_checkboxes = {
@@ -230,27 +212,19 @@ def _tool_selector(mo, KNOWN_TOOLS):
                 gap="2rem",
             )
         )
-
     return (
-        mo.vstack(
-            [
-                mo.md("### Tools to run"),
-                *_composer_rows,
-                mo.md("### Pipeline options"),
-                mo.hstack([dry_run_flag, stop_on_failure_flag], gap="2rem"),
-            ]
-        ),
-        tool_checkboxes,
-        tool_mode_selectors,
         dry_run_flag,
         stop_on_failure_flag,
+        tool_checkboxes,
+        tool_mode_selectors,
     )
 
 
-# ── Cell 4: Execute pipeline ─────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _execute_header(mo):
-    mo.md("## ▶ Execute Pipeline")
+    mo.md("""
+    ## ▶ Execute Pipeline
+    """)
     return
 
 
@@ -263,17 +237,14 @@ def _pipeline_run_button(mo):
 
 @app.cell
 def _pipeline_execute(
+    KNOWN_TOOLS,
+    dry_run_flag,
     mo,
     run_button,
+    run_tool,
+    stop_on_failure_flag,
     tool_checkboxes,
     tool_mode_selectors,
-    dry_run_flag,
-    stop_on_failure_flag,
-    KNOWN_TOOLS,
-    run_tool,
-    _repo_root,
-    tools_dir,
-    datetime,
 ):
     if not run_button.value:
         mo.stop(True, mo.md("_Click **▶ Run Selected Tools** to execute the pipeline._"))
@@ -354,16 +325,11 @@ def _pipeline_execute(
                 )
             )
             break
-
-    return (
-        mo.vstack(_output_sections),
-        pipeline_results,
-    )
+    return (pipeline_results,)
 
 
-# ── Cell 5: Aggregate results ────────────────────────────────────────────────
 @app.cell(hide_code=True)
-def _aggregate_header(mo, pipeline_results):
+def _aggregate_header(mo, pipeline_results: list[dict]):
     if not pipeline_results:
         mo.stop(True, mo.md("_Run the pipeline first (step 4) to see aggregate results._"))
     mo.md("## 📊 Aggregate Results")
@@ -372,7 +338,12 @@ def _aggregate_header(mo, pipeline_results):
 
 @app.cell(hide_code=True)
 def _aggregate_results(
-    mo, pipeline_results, render_status_badge, list_log_files, load_report, render_report_results_html
+    list_log_files,
+    load_report,
+    mo,
+    pipeline_results: list[dict],
+    render_report_results_html,
+    render_status_badge,
 ):
     if not pipeline_results:
         mo.stop(True, None)
@@ -412,34 +383,22 @@ def _aggregate_results(
                 _report_accordions.append(
                     mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)})
                 )
-
-    return (
-        mo.vstack(
-            [
-                mo.md(f"**Pipeline complete.** {_overall_badge} — {_npassed}/{_total} tools passed"),
-                mo.Html(_summary_html),
-                *_report_accordions,
-            ]
-        ),
-    )
-
-
-# ── Cell 6: Cross-tool log browser ──────────────────────────────────────────
-@app.cell(hide_code=True)
-def _log_browser_header(mo):
-    mo.md(
-        """
-        ## 📂 Log Browser
-
-        Browse and view log files from any tool. Copy the file path to share with
-        an AI assistant — no copy-pasting of log contents required.
-        """
-    )
     return
 
 
 @app.cell(hide_code=True)
-def _log_browser(mo, KNOWN_TOOLS, list_log_files, Path):
+def _log_browser_header(mo):
+    mo.md("""
+    ## 📂 Log Browser
+
+    Browse and view log files from any tool. Copy the file path to share with
+    an AI assistant — no copy-pasting of log contents required.
+    """)
+    return
+
+
+@app.cell(hide_code=True)
+def _log_browser(KNOWN_TOOLS, Path, list_log_files, mo):
     # Cross-cell outputs: log_file_selector, all_log_files (no _ prefix)
     all_log_files: dict[str, Path] = {}
     for _lbt in KNOWN_TOOLS:
@@ -459,11 +418,17 @@ def _log_browser(mo, KNOWN_TOOLS, list_log_files, Path):
         options={str(v): k for k, v in all_log_files.items()},
         value=str(next(iter(all_log_files.values()))) if all_log_files else None,
     )
-    return (log_file_selector, all_log_files)
+    return all_log_files, log_file_selector
 
 
 @app.cell(hide_code=True)
-def _log_viewer(mo, log_file_selector, all_log_files, read_log_file, Path):
+def _log_viewer(
+    Path,
+    all_log_files: "dict[str, Path]",
+    log_file_selector,
+    mo,
+    read_log_file,
+):
     if not all_log_files:
         mo.stop(True, None)
 
@@ -473,95 +438,81 @@ def _log_viewer(mo, log_file_selector, all_log_files, read_log_file, Path):
 
     _contents = read_log_file(_selected)
     _lang = "json" if _selected.suffix == ".json" else "text"
-
-    return (
-        mo.vstack(
-            [
-                mo.callout(
-                    mo.md(f"📁 **File path for AI sharing:**\n```\n{_selected}\n```"),
-                    kind="info",
-                ),
-                mo.code(_contents, language=_lang),
-            ]
-        ),
-    )
+    return
 
 
-# ── Cell 7: Quick reference ──────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _quick_reference(mo):
-    mo.md(
-        """
-        ## 📖 Quick Reference
+    mo.md("""
+    ## 📖 Quick Reference
 
-        ### Pipeline chaining (CLI)
+    ### Pipeline chaining (CLI)
 
-        ```bash
-        # Run all tools in sequence — collect exit codes
-        python tools/auth-healthcheck.py --mode all
-        # ... future: python tools/db-healthcheck.py --mode all
-        # ... future: python tools/queue-healthcheck.py --mode all
+    ```bash
+    # Run all tools in sequence — collect exit codes
+    python tools/auth-healthcheck.py --mode all
+    # ... future: python tools/db-healthcheck.py --mode all
+    # ... future: python tools/queue-healthcheck.py --mode all
 
-        # Inspect the latest report for each tool
-        jq '.summary' "$(ls -t tools/logs/auth-healthcheck/*.json | head -1)"
-        ```
+    # Inspect the latest report for each tool
+    jq '.summary' "$(ls -t tools/logs/auth-healthcheck/*.json | head -1)"
+    ```
 
-        ### deno task shortcuts
+    ### deno task shortcuts
 
-        ```bash
-        deno task runbook:auth-healthcheck   # Open auth-healthcheck runbook
-        deno task runbook:pipeline           # Open this master pipeline runbook
-        deno task runbook:setup              # Install Marimo and runbook dependencies
-        ```
+    ```bash
+    deno task runbook:auth-healthcheck   # Open auth-healthcheck runbook
+    deno task runbook:pipeline           # Open this master pipeline runbook
+    deno task runbook:setup              # Install Marimo and runbook dependencies
+    ```
 
-        ### Common `--mode` flags
+    ### Common `--mode` flags
 
-        | Mode | Description |
-        |---|---|
-        | `checks` | Run all checks, leave test data in place |
-        | `all` | Run all checks then clean up (recommended for CI) |
-        | `cleanup` | Delete test data only — skip checks |
+    | Mode | Description |
+    |---|---|
+    | `checks` | Run all checks, leave test data in place |
+    | `all` | Run all checks then clean up (recommended for CI) |
+    | `cleanup` | Delete test data only — skip checks |
 
-        ### Adding a new tool to the pipeline
+    ### Adding a new tool to the pipeline
 
-        1. Create the tool script at `tools/<tool-name>.py`
-        2. Create per-tool docs at `tools/docs/<tool-name>/README.md`
-        3. Create the Marimo runbook at `tools/runbooks/<tool-name>.py`
-        4. Add the tool entry to `KNOWN_TOOLS` in `tools/runbooks/shared/__init__.py`
-        5. Create the log directory `tools/logs/<tool-name>/` (add `.gitkeep`)
-        6. Add `runbook:<tool-name>` task to `deno.json`
-        7. Update `docs/tools/README.md` with the new tool
-        8. Open a PR using the `.github/PULL_REQUEST_TEMPLATE/tools-runbooks.md` template
+    1. Create the tool script at `tools/<tool-name>.py`
+    2. Create per-tool docs at `tools/docs/<tool-name>/README.md`
+    3. Create the Marimo runbook at `tools/runbooks/<tool-name>.py`
+    4. Add the tool entry to `KNOWN_TOOLS` in `tools/runbooks/shared/__init__.py`
+    5. Create the log directory `tools/logs/<tool-name>/` (add `.gitkeep`)
+    6. Add `runbook:<tool-name>` task to `deno.json`
+    7. Update `docs/tools/README.md` with the new tool
+    8. Open a PR using the `.github/PULL_REQUEST_TEMPLATE/tools-runbooks.md` template
 
-        ### Cloudflare web access (future)
+    ### Cloudflare web access (future)
 
-        To expose runbooks over the web:
+    To expose runbooks over the web:
 
-        ```bash
-        # Marimo can serve runbooks at a URL
-        # Option A: Marimo's built-in HTTPS server (requires auth setup)
-        marimo run tools/runbooks/pipeline.py --host 0.0.0.0 --port 8080
+    ```bash
+    # Marimo can serve runbooks at a URL
+    # Option A: Marimo's built-in HTTPS server (requires auth setup)
+    marimo run tools/runbooks/pipeline.py --host 0.0.0.0 --port 8080
 
-        # Option B: Expose via Cloudflare Tunnel (zero-config)
-        cloudflared tunnel --url http://localhost:8080
+    # Option B: Expose via Cloudflare Tunnel (zero-config)
+    cloudflared tunnel --url http://localhost:8080
 
-        # Recommended: Gate access with Cloudflare Access policy
-        # (tools.bloqr.dev → CF Access → Marimo server)
-        ```
+    # Recommended: Gate access with Cloudflare Access policy
+    # (tools.bloqr.dev → CF Access → Marimo server)
+    ```
 
-        See `docs/tools/README.md` for the full web deployment guide.
+    See `docs/tools/README.md` for the full web deployment guide.
 
-        ### Troubleshooting this runbook
+    ### Troubleshooting this runbook
 
-        | Problem | Fix |
-        |---|---|
-        | `ImportError: No module named 'marimo'` | `pip install marimo` |
-        | `ImportError: No module named 'shared'` | Run from repo root: `marimo run tools/runbooks/pipeline.py` |
-        | Cells show `None` | A dependency cell stopped early — check the cell above it |
-        | Dashboard shows all `NEVER_RUN` | No tool has been run yet — run at least one tool first |
-        | Script not found | Check that `tools/<tool-name>.py` exists |
-        """
-    )
+    | Problem | Fix |
+    |---|---|
+    | `ImportError: No module named 'marimo'` | `pip install marimo` |
+    | `ImportError: No module named 'shared'` | Run from repo root: `marimo run tools/runbooks/pipeline.py` |
+    | Cells show `None` | A dependency cell stopped early — check the cell above it |
+    | Dashboard shows all `NEVER_RUN` | No tool has been run yet — run at least one tool first |
+    | Script not found | Check that `tools/<tool-name>.py` exists |
+    """)
     return
 
 
