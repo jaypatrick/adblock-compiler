@@ -15,7 +15,7 @@ auth:
   type: apikey
   credentials:
     key: X-Admin-Key
-    value: "{{apiKey}}"
+    value: "{{adminKey}}"
     in: header
 examples: ./.resources/Execute read-only SQL query.resources/examples
 tests:
