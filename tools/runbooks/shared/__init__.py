@@ -117,7 +117,10 @@ def check_python_package(package: str, pip_name: str | None = None) -> tuple[boo
         importlib.import_module(package.replace("-", "_"))
         return True, f"✅ `{package}` is installed"
     except ImportError:
-        return False, f"❌ `{package}` is not installed — run: `uv sync --directory tools` to install all project dependencies"
+        return (
+            False,
+            f"❌ `{install_name}` is not installed — run: `uv sync --directory tools` to install all project dependencies",
+        )
 
 
 def prerequisites_summary(
