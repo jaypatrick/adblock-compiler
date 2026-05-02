@@ -323,7 +323,7 @@ def _pipeline_execute(
 @app.cell(hide_code=True)
 def _pipeline_output_display(mo, output_sections):
     if not output_sections:
-        return
+        return None
     return mo.vstack(output_sections)
 
 

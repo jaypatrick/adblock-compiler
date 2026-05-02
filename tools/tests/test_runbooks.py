@@ -144,7 +144,7 @@ class TestRunbookStructure:
         "cell_name",
         ["_health_dashboard", "_aggregate_results", "_log_viewer"],
     )
-    def test_display_cells_no_bare_return(self, cell_name: str):
+    def test_display_cells_must_not_use_bare_return(self, cell_name: str):
         """Key display cells must not contain a bare `return` — that silently discards computed UI objects."""
         src = (self.runbooks_dir / "pipeline.py").read_text()
         tree = ast.parse(src)
@@ -168,7 +168,7 @@ class TestRunbookStructure:
         "cell_name",
         ["_pipeline_output_display", "_aggregate_results", "_log_viewer"],
     )
-    def test_display_cells_return_value(self, cell_name: str):
+    def test_display_cells_must_return_non_none_value(self, cell_name: str):
         """Key display cells must have at least one return statement with a non-None value."""
         src = (self.runbooks_dir / "pipeline.py").read_text()
         tree = ast.parse(src)
