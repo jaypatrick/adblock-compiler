@@ -18,7 +18,7 @@ runs:
       run: |
         echo "Running D1 migrations..."
         for i in 1 2 3; do
-            if output=$(deno task wrangler d1 migrations apply adblock-compiler-d1-database --remote 2>&1); then
+            if output=$(deno task wrangler d1 migrations apply bloqr-backend-d1-database --remote 2>&1); then
                 echo "$output"
                 echo "✅ All migrations applied"
                 break
@@ -118,13 +118,13 @@ runs:
             exit 1
         }
 
-        create_or_confirm_queue "adblock-compiler-worker-queue"
-        create_or_confirm_queue "adblock-compiler-worker-queue-high-priority"
-        create_or_confirm_queue "adblock-compiler-dlq"
-        create_or_confirm_queue "adblock-compiler-error-queue"
-        create_or_confirm_queue "adblock-compiler-email-queue"
-        create_or_confirm_queue "adblock-compiler-email-dlq"
-        create_or_confirm_r2_bucket "adblock-compiler-r2-storage"
+        create_or_confirm_queue "bloqr-backend-worker-queue"
+        create_or_confirm_queue "bloqr-backend-worker-queue-high-priority"
+        create_or_confirm_queue "bloqr-backend-dlq"
+        create_or_confirm_queue "bloqr-backend-error-queue"
+        create_or_confirm_queue "bloqr-backend-email-queue"
+        create_or_confirm_queue "bloqr-backend-email-dlq"
+        create_or_confirm_r2_bucket "bloqr-backend-r2-storage"
 
     - name: Authenticate Docker with Cloudflare Container Registry
       if: env.CLOUDFLARE_API_TOKEN != ''

@@ -1607,8 +1607,8 @@ Quick reference for the three queue message types:
 
 | Priority | Queue | max_batch_size | max_batch_timeout | Use Case |
 |----------|-------|----------------|-------------------|----------|
-| **standard** | `adblock-compiler-worker-queue` | 10 | 5s | Batch operations, scheduled jobs |
-| **high** | `adblock-compiler-worker-queue-high-priority` | 5 | 2s | Premium users, urgent requests |
+| **standard** | `bloqr-backend-worker-queue` | 10 | 5s | Batch operations, scheduled jobs |
+| **high** | `bloqr-backend-worker-queue-high-priority` | 5 | 2s | Premium users, urgent requests |
 
 ---
 

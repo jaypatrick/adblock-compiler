@@ -402,7 +402,7 @@ ORDER BY created_at DESC;
 Run via Wrangler:
 
 ```bash
-deno task wrangler d1 execute adblock-compiler-d1-database \
+deno task wrangler d1 execute bloqr-backend-d1-database \
   --command "SELECT source, severity, COUNT(*) as cnt FROM error_events GROUP BY source, severity"
 ```
 
@@ -462,10 +462,10 @@ Reads `FlashService.currentFlash()` as a signal and renders the banner when the 
 
 ```bash
 # Local (Miniflare / wrangler dev)
-deno task wrangler d1 migrations apply adblock-compiler-d1-database --local
+deno task wrangler d1 migrations apply bloqr-backend-d1-database --local
 
 # Production
-deno task wrangler d1 migrations apply adblock-compiler-d1-database
+deno task wrangler d1 migrations apply bloqr-backend-d1-database
 ```
 
 ### Configuring FLASH_STORE

@@ -78,7 +78,7 @@ The bloqr-backend currently deploys as a sophisticated Cloudflare Worker with:
 - **KV:** `COMPILATION_CACHE`, `RATE_LIMIT`, `METRICS`, `RULES_KV`  
 - **D1:** `DB` (Prisma/Neon via Hyperdrive), `ADMIN_DB`  
 - **R2:** `FILTER_STORAGE`  
-- **Queues:** `ADBLOCK_COMPILER_QUEUE`, `ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY`  
+- **Queues:** `BLOQR_BACKEND_QUEUE`, `BLOQR_BACKEND_QUEUE_HIGH_PRIORITY`  
 - **Analytics Engine:** `ANALYTICS_ENGINE`  
 - **Workflows:** `COMPILATION_WORKFLOW`, `BATCH_COMPILATION_WORKFLOW`, `CACHE_WARMING_WORKFLOW`, `HEALTH_MONITORING_WORKFLOW`  
 - **Durable Objects:** `AdblockCompiler` (Container), `MCP_AGENT` (PlaywrightMcpAgent)  

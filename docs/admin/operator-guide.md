@@ -17,7 +17,7 @@ The admin system uses a dedicated D1 database separate from the application data
 
 ```bash
 # Create the database
-wrangler d1 create adblock-compiler-admin-d1
+wrangler d1 create bloqr-backend-admin-d1
 ```
 
 This outputs a `database_id` UUID. Copy it — you'll need it in the next step.
@@ -29,7 +29,7 @@ The ADMIN_DB binding is pre-configured but **commented out** in `wrangler.toml`.
 ```toml
 [[d1_databases]]
 binding = "ADMIN_DB"
-database_name = "adblock-compiler-admin-d1"
+database_name = "bloqr-backend-admin-d1"
 database_id = "<paste-your-database-id-here>"
 migrations_dir = "admin-migrations"
 ```
@@ -43,7 +43,7 @@ The schema is defined in `admin-migrations/0001_admin_schema.sql` and creates 8 
 ### Local Development
 
 ```bash
-wrangler d1 migrations apply adblock-compiler-admin-d1 --local
+wrangler d1 migrations apply bloqr-backend-admin-d1 --local
 ```
 
 This creates a local SQLite file that simulates D1 for development.
@@ -51,7 +51,7 @@ This creates a local SQLite file that simulates D1 for development.
 ### Production
 
 ```bash
-wrangler d1 migrations apply adblock-compiler-admin-d1 --remote
+wrangler d1 migrations apply bloqr-backend-admin-d1 --remote
 ```
 
 ### Verify
@@ -60,11 +60,11 @@ Check that the tables were created and seeded:
 
 ```bash
 # Local
-wrangler d1 execute adblock-compiler-admin-d1 --local \
+wrangler d1 execute bloqr-backend-admin-d1 --local \
   --command "SELECT role_name, display_name FROM admin_roles;"
 
 # Remote
-wrangler d1 execute adblock-compiler-admin-d1 --remote \
+wrangler d1 execute bloqr-backend-admin-d1 --remote \
   --command "SELECT role_name, display_name FROM admin_roles;"
 ```
 
@@ -117,7 +117,7 @@ Since there are no existing admin role assignments at bootstrap, the first super
 
 ```bash
 # Using Wrangler to execute a D1 query directly
-wrangler d1 execute adblock-compiler-admin-d1 --command \
+wrangler d1 execute bloqr-backend-admin-d1 --command \
   "INSERT INTO admin_role_assignments (clerk_user_id, role_name, assigned_by)
    VALUES ('user_2yourClerkId', 'super-admin', 'bootstrap')"
 ```
@@ -125,7 +125,7 @@ wrangler d1 execute adblock-compiler-admin-d1 --command \
 Or, if you prefer the Wrangler D1 interactive shell:
 
 ```bash
-wrangler d1 execute adblock-compiler-admin-d1 --interactive
+wrangler d1 execute bloqr-backend-admin-d1 --interactive
 ```
 
 ```sql
@@ -216,7 +216,7 @@ The admin system requires these bindings in `wrangler.toml`:
 # Admin D1 database (uncomment after creating)
 [[d1_databases]]
 binding = "ADMIN_DB"
-database_name = "adblock-compiler-admin-d1"
+database_name = "bloqr-backend-admin-d1"
 database_id = "<your-database-id>"
 migrations_dir = "admin-migrations"
 
@@ -292,11 +292,11 @@ D1 is managed by Cloudflare, but you can run maintenance commands:
 
 ```bash
 # Check table sizes
-wrangler d1 execute adblock-compiler-admin-d1 --remote \
+wrangler d1 execute bloqr-backend-admin-d1 --remote \
   --command "SELECT name, (SELECT COUNT(*) FROM admin_audit_logs) as audit_count FROM sqlite_master WHERE type='table' LIMIT 1;"
 
 # Backup (export)
-wrangler d1 export adblock-compiler-admin-d1 --remote --output admin-backup.sql
+wrangler d1 export bloqr-backend-admin-d1 --remote --output admin-backup.sql
 ```
 
 ## Troubleshooting

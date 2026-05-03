@@ -58,15 +58,15 @@ name = "SEND_EMAIL"
 # destination_address = "notifications@bloqr.dev"
 
 [[queues.producers]]
-queue = "adblock-compiler-email-queue"
+queue = "bloqr-backend-email-queue"
 binding = "EMAIL_QUEUE"
 
 [[queues.consumers]]
-queue = "adblock-compiler-email-queue"
+queue = "bloqr-backend-email-queue"
 max_batch_size = 5
 max_batch_timeout = 5  # seconds
 max_retries = 3
-dead_letter_queue = "adblock-compiler-email-dlq"
+dead_letter_queue = "bloqr-backend-email-dlq"
 
 [[workflows]]
 name = "email-delivery-workflow"
