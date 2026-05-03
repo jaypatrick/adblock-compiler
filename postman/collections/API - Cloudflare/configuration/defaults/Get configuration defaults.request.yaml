@@ -1,0 +1,11 @@
+$kind: http-request
+description: Returns the default compiler configuration schema.
+url: {{baseUrl}}/configuration/defaults
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{apiKey}}
+body:
+  type: text
+  content: ""
+order: 1000

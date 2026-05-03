@@ -1,0 +1,15 @@
+$kind: http-request
+description: >
+  Returns Mermaid diagram metadata for all registered workflows (compilation,
+  batch-compilation, cache-warming, health-monitoring). Read-only metadata endpoint
+  for observability tooling and developer exploration.
+url: {{baseUrl}}/api/workflow/diagram
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{apiKey}}
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get all workflow diagrams.resources/examples
+order: 1000

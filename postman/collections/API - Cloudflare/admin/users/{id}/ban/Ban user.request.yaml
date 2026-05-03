@@ -1,0 +1,22 @@
+$kind: http-request
+description: >
+  Bans a user, preventing them from logging in or using the API. Requires admin
+  authentication.
+url: {{baseUrl}}/api/admin/users/:id/ban
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+pathVariables:
+  - key: id
+    value: string
+    description: User ID (UUID)
+body:
+  type: json
+  content: |-
+    {
+      "reason": "Violation of terms of service"
+    }
+examples: ./.resources/Ban user.resources/examples
+order: 5000

@@ -1,0 +1,19 @@
+$kind: http-request
+description: Updates the name or expiry of an API key.
+url: {{baseUrl}}/keys/:id
+method: PATCH
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{bearerToken}}
+pathVariables:
+  - key: id
+    value: string
+    description: ID of the API key to update
+body:
+  type: json
+  content: |-
+    {
+      "name": "Updated Key Name"
+    }
+order: 4000

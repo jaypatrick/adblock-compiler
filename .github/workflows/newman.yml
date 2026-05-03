@@ -1,0 +1,111 @@
+name: Newman API Tests
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "cloudflare"
+        type: choice
+        options:
+          - cloudflare
+          - local
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: false
+        default: "cloudflare"
+        type: string
+
+jobs:
+  newman:
+    name: Newman — ${{ inputs.environment || 'cloudflare' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: Setup Node.js
+        uses: ./.github/actions/setup-pnpm-node
+
+      - name: Install Newman
+        run: npm install -g newman@6.2.2 newman-reporter-htmlextra@1.23.1
+
+      - name: Select environment file
+        id: env_file
+        run: |
+          if [ "${{ inputs.environment || 'cloudflare' }}" = "local" ]; then
+            echo "file=docs/postman/postman-environment-local.json" >> "$GITHUB_OUTPUT"
+          else
+            echo "file=docs/postman/postman-environment-prod.json" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Run Newman tests
+        env:
+          NEWMAN_USER_API_KEY: ${{ secrets.NEWMAN_USER_API_KEY }}
+          NEWMAN_POSTMAN_EMAIL: ${{ secrets.NEWMAN_POSTMAN_EMAIL }}
+          NEWMAN_POSTMAN_PASSWORD: ${{ secrets.NEWMAN_POSTMAN_PASSWORD }}
+        run: |
+          newman run docs/postman/postman-collection.json \
+            --environment ${{ steps.env_file.outputs.file }} \
+            --env-var "bearerToken=${NEWMAN_USER_API_KEY}" \
+            --env-var "postmanEmail=${NEWMAN_POSTMAN_EMAIL}" \
+            --env-var "postmanPassword=${NEWMAN_POSTMAN_PASSWORD}" \
+            --reporters cli,htmlextra,json \
+            --reporter-htmlextra-export newman-report.html \
+            --reporter-json-export newman-results.json \
+            --color on \
+            --bail
+
+      - name: Upload Newman report
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: newman-report-${{ inputs.environment || 'cloudflare' }}
+          path: |
+            newman-report.html
+            newman-results.json
+          retention-days: 30
+
+      - name: Newman summary
+        if: always()
+        run: |
+          if [ -f newman-results.json ]; then
+            python3 - <<'PY'
+          import json, os
+          with open('newman-results.json') as f:
+              data = json.load(f)
+          stats = data.get('run', {}).get('stats', {})
+          assertions = stats.get('assertions', {})
+          requests = stats.get('requests', {})
+          total = assertions.get('total', 0)
+          failed = assertions.get('failed', 0)
+          passed = total - failed
+          lines = [
+              "## 🧪 Newman API Test Results",
+              "",
+              f"**Environment:** ${{ inputs.environment || 'cloudflare' }}",
+              "",
+              "| Metric | Value |",
+              "|---|---|",
+              f"| Requests | {requests.get('total', 0)} |",
+              f"| Assertions | {total} |",
+              f"| Passed | ✅ {passed} |",
+              f"| Failed | {'❌' if failed > 0 else '✅'} {failed} |",
+          ]
+          failures = data.get('run', {}).get('failures', [])
+          if failures:
+              lines += ["", "### ❌ Failures", ""]
+              for f in failures[:20]:
+                  src = f.get('source', {}).get('name', 'unknown')
+                  err = f.get('error', {}).get('message', 'unknown error')
+                  lines.append(f"- **{src}**: {err}")
+          print('\n'.join(lines))
+          with open(os.environ['GITHUB_STEP_SUMMARY'], 'a') as out:
+              out.write('\n'.join(lines) + '\n')
+          PY
+          fi

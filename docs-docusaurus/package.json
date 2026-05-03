@@ -1,0 +1,48 @@
+{
+    "name": "@bloqr/docs-docusaurus",
+    "version": "1.0.0",
+    "private": true,
+    "description": "Bloqr documentation site — Docusaurus v3 scaffold (parallel to mdBook)",
+    "scripts": {
+        "start": "docusaurus start",
+        "build": "docusaurus build",
+        "serve": "docusaurus serve",
+        "deploy": "wrangler deploy --config wrangler.docs-docusaurus.toml",
+        "clear": "docusaurus clear",
+        "write-translations": "docusaurus write-translations",
+        "write-heading-ids": "docusaurus write-heading-ids"
+    },
+    "dependencies": {
+        "@docusaurus/core": "^3.8.1",
+        "@docusaurus/preset-classic": "^3.8.1",
+        "@docusaurus/theme-mermaid": "^3.8.1",
+        "clsx": "^2.1.1",
+        "docusaurus-plugin-openapi-docs": "^4.4.0",
+        "docusaurus-theme-openapi-docs": "^4.4.0",
+        "prism-react-renderer": "^2.4.1",
+        "react": "^19.1.0",
+        "react-dom": "^19.1.0"
+    },
+    "devDependencies": {
+        "@docusaurus/module-type-aliases": "^3.8.1",
+        "@docusaurus/tsconfig": "^3.8.1",
+        "@docusaurus/types": "^3.8.1",
+        "typescript": "^5.8.3",
+        "wrangler": "^4.83.0"
+    },
+    "engines": {
+        "node": ">=20.0"
+    },
+    "browserslist": {
+        "production": [
+            ">0.5%",
+            "not dead",
+            "not op_mini all"
+        ],
+        "development": [
+            "last 3 chrome version",
+            "last 3 firefox version",
+            "last 5 safari version"
+        ]
+    }
+}

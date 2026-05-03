@@ -1,0 +1,13 @@
+$kind: http-request
+description: >
+  Returns all Zod validation schemas used by the API for request and response
+  validation. Useful for client-side validation and documentation.
+url: {{baseUrl}}/api/schemas
+method: GET
+headers:
+  Accept: application/json
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get validation schemas.resources/examples
+order: 1000

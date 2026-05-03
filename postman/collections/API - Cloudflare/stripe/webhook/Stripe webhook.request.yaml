@@ -1,0 +1,29 @@
+$kind: http-request
+description: >
+  Stripe webhook handler. Receives Stripe events (payment succeeded, subscription
+  updated, etc.). This endpoint is called by Stripe directly and does not
+  require X-API-Key auth — it uses Stripe webhook signature verification.
+url: {{baseUrl}}/stripe/webhook
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "id": "evt_test_000000000000",
+      "object": "event",
+      "type": "payment_intent.succeeded",
+      "data": {
+        "object": {}
+      },
+      "created": 1700000000,
+      "livemode": false
+    }
+tests: |-
+  // Without a valid Stripe-Signature header the endpoint returns 400
+  pm.test("Returns 400 (missing Stripe-Signature)", function () {
+    pm.expect(pm.response.code).to.equal(400);
+  });
+order: 1000

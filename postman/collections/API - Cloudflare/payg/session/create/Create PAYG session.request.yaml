@@ -1,0 +1,15 @@
+$kind: http-request
+description: Creates a pay-as-you-go billing session.
+url: {{baseUrl}}/payg/session/create
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{apiKey}}
+body:
+  type: json
+  content: |-
+    {
+      "requestsToPurchase": 10
+    }
+order: 1000

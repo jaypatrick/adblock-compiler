@@ -187,6 +187,23 @@ id = "b815efdcf2314b398bf0527e45452500"
 binding = "CONFIG_STORE"
 id = "fb5879d1237f4ac1b225458aef7bd6c9"
 
+# FLASH_STORE: one-time-read flash message KV namespace.
+# Stores short-lived (60 s TTL) notification tokens set in-process by Worker
+# routes and consumed by the Angular frontend via GET /api/flash/:token.
+# TODO(deploy): run `wrangler kv:namespace create FLASH_STORE`, replace the
+#               placeholder ID below with the real namespace ID, then uncomment.
+# [[kv_namespaces]]
+# binding = "FLASH_STORE"
+# id = "REPLACE_ME_FLASH_STORE_NAMESPACE_ID"
+
+# ERROR_LOG_KV: reserved edge-local error buffer namespace (not yet active).
+# Intended for future KV-backed error buffering before D1 batch writes.
+# TODO(deploy): run `wrangler kv:namespace create ERROR_LOG_KV`, replace the
+#               placeholder ID below with the real namespace ID, then uncomment.
+# [[kv_namespaces]]
+# binding = "ERROR_LOG_KV"
+# id = "REPLACE_ME_ERROR_LOG_KV_NAMESPACE_ID"
+
 # ─── R2 Bucket ───────────────────────────────────────────────────────────────
 [[r2_buckets]]
 binding = "FILTER_STORAGE"

@@ -50,7 +50,7 @@ describe('GlobalErrorHandler', () => {
         navigator.sendBeacon = vi.fn().mockReturnValue(true);
         handler.handleError({ code: 500 });
 
-        expect(handler.lastError()?.message).toBe('An unexpected error occurred');
+        expect(handler.lastError()?.message).toBe('An unexpected error occurred.');
         consoleSpy.mockRestore();
     });
 

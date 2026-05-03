@@ -36,6 +36,7 @@ import { ThemeService } from './services/theme.service';
 import { GlobalErrorHandler } from './error/global-error-handler';
 import { TurnstileService } from './services/turnstile.service';
 import { API_BASE_URL } from './tokens';
+import { FlashService } from './services/flash.service';
 import { initSentry, SentryConfigResponseSchema } from './sentry';
 
 export const appConfig: ApplicationConfig = {
@@ -115,6 +116,12 @@ export const appConfig: ApplicationConfig = {
             const http = inject(HttpClient);
             const turnstileService = inject(TurnstileService);
             const apiBaseUrl = inject(API_BASE_URL);
+            const flashService = inject(FlashService);
+
+            // Read any flash message encoded in the URL (e.g. ?flash=<token>)
+            // Must be called synchronously before the first await so any flash
+            // state is available to the first rendered route.
+            flashService.readFromUrl();
 
             try {
                 const config = await firstValueFrom(

@@ -1,0 +1,53 @@
+name: x402 End-to-End Tests
+
+# NOT YET IMPLEMENTED — requires Stripe test keys (see backlog)
+#
+# This workflow is a stub. It is manually triggered only and will not run
+# until Stripe is configured and the following secrets are added:
+#   - STRIPE_TEST_SECRET_KEY
+#   - STRIPE_TEST_WEBHOOK_SECRET
+#   - NEWMAN_API_KEY
+#
+# When Stripe is ready, implement the following steps:
+#   1. Start stripe CLI listener forwarding to the API
+#   2. Trigger `stripe trigger checkout.session.completed`
+#   3. Capture the issued X-Payg-Session token from the webhook response
+#   4. Run Newman with the session token to verify end-to-end PAYG flow:
+#      - Compile with session → expect 200 + X-Payg-Session-Remaining header
+#      - Exhaust session → expect 402
+#      - Verify session status endpoint reflects used count
+#
+# See: docs/billing/payg.md, docs/billing/stripe-setup.md
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "cloudflare"
+        type: choice
+        options:
+          - cloudflare
+          - local
+
+jobs:
+  x402-e2e:
+    name: x402 E2E — ${{ inputs.environment }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: NOT YET IMPLEMENTED
+        run: |
+          echo "❌ x402 end-to-end tests are not yet implemented."
+          echo ""
+          echo "Stripe integration is in the backlog."
+          echo "See .github/workflows/x402-e2e.yml for implementation notes."
+          echo ""
+          echo "✅ x402 contract tests (402 response shape) run in the Newman workflow."
+          echo "   Trigger: Actions → Newman API Tests"
+          exit 0

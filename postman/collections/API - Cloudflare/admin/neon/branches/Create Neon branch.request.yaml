@@ -1,0 +1,19 @@
+$kind: http-request
+description: >
+  Creates a new Neon branch from an optional parent branch (defaults to main).
+  Used for ephemeral dev/test environments. Requires admin authentication.
+url: {{baseUrl}}/api/admin/neon/branches
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+body:
+  type: json
+  content: |-
+    {
+      "name": "preview/my-feature",
+      "parent_id": ""
+    }
+examples: ./.resources/Create Neon branch.resources/examples
+order: 3000

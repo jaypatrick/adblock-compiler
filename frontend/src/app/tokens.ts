@@ -36,7 +36,7 @@ export const ADMIN_BASE_URL = new InjectionToken<string>('ADMIN_BASE_URL', {
  */
 export const LOG_ENDPOINT = new InjectionToken<string>('LOG_ENDPOINT', {
     providedIn: 'root',
-    factory: () => '/api/log',
+    factory: () => '/api/log/frontend-error',
 });
 
 /**
@@ -48,4 +48,14 @@ export const LOG_ENDPOINT = new InjectionToken<string>('LOG_ENDPOINT', {
 export const TURNSTILE_SITE_KEY = new InjectionToken<string>('TURNSTILE_SITE_KEY', {
     providedIn: 'root',
     factory: () => '',
+});
+
+/**
+ * Base URL for the flash-message API.
+ * FlashService calls `GET {FLASH_ENDPOINT}/{token}` to consume one-time tokens.
+ * Matches the Worker route: GET /api/flash/:token
+ */
+export const FLASH_ENDPOINT = new InjectionToken<string>('FLASH_ENDPOINT', {
+    providedIn: 'root',
+    factory: () => '/api/flash',
 });

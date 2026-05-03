@@ -1,0 +1,25 @@
+$kind: http-request
+description: Validates a compiler configuration object without running the compilation.
+url: {{baseUrl}}/configuration/validate
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{apiKey}}
+body:
+  type: json
+  content: |-
+    {
+      "turnstileToken": "{{turnstileToken}}",
+      "config": {
+        "name": "My Filter List",
+        "sources": [
+          {
+            "source": "https://example.com/filters.txt",
+            "transformations": ["RemoveComments"]
+          }
+        ],
+        "transformations": ["Deduplicate"]
+      }
+    }
+order: 2000

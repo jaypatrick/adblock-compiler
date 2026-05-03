@@ -1,0 +1,17 @@
+$kind: http-request
+description: >
+  Create a new user account with email and password. No auth header required.
+url: {{baseUrl}}/auth/sign-up/email
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+body:
+  type: json
+  content: |-
+    {
+      "email": "user@example.com",
+      "password": "yourpassword",
+      "name": "Your Name"
+    }
+order: 2000

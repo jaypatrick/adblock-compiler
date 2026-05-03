@@ -1,0 +1,15 @@
+$kind: http-request
+description: Deletes a saved configuration by ID.
+url: {{baseUrl}}/configuration/saved/:id
+method: DELETE
+headers:
+  Accept: application/json
+  Authorization: Bearer {{bearerToken}}
+pathVariables:
+  - key: id
+    value: string
+    description: ID of the saved configuration to delete
+body:
+  type: text
+  content: ""
+order: 8000
