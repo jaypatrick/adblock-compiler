@@ -193,21 +193,21 @@ wrangler kv namespace create "RULES_KV" --preview
 
 ```bash
 # Create
-curl -X POST https://adblock-compiler.jk-com.workers.dev/api/rules \
+curl -X POST https://bloqr-backend.jk-com.workers.dev/api/rules \
   -H "Content-Type: application/json" \
   -d '{"name":"Test Rules","rules":["||ads.example.com^"]}'
 
 # List
-curl https://adblock-compiler.jk-com.workers.dev/api/rules
+curl https://bloqr-backend.jk-com.workers.dev/api/rules
 
 # Retrieve
-curl https://adblock-compiler.jk-com.workers.dev/api/rules/$RULE_SET_ID
+curl https://bloqr-backend.jk-com.workers.dev/api/rules/$RULE_SET_ID
 
 # Update
-curl -X PUT https://adblock-compiler.jk-com.workers.dev/api/rules/$RULE_SET_ID \
+curl -X PUT https://bloqr-backend.jk-com.workers.dev/api/rules/$RULE_SET_ID \
   -H "Content-Type: application/json" \
   -d '{"name":"Updated Name"}'
 
 # Delete
-curl -X DELETE https://adblock-compiler.jk-com.workers.dev/api/rules/$RULE_SET_ID
+curl -X DELETE https://bloqr-backend.jk-com.workers.dev/api/rules/$RULE_SET_ID
 ```

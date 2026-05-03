@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Project-specific linting hook for adblock-compiler
+# Project-specific linting hook for bloqr-backend
 # Validates TypeScript, Python, and formatting
 
 # Require jq — fail loudly so developers know to install it rather than silently skipping validation

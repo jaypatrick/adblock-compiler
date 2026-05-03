@@ -1,6 +1,6 @@
 # Streaming API Documentation
 
-The adblock-compiler now provides comprehensive real-time event streaming capabilities through Server-Sent Events (SSE) and WebSocket connections, with enhanced diagnostic, cache, network, and performance metric events.
+The bloqr-backend now provides comprehensive real-time event streaming capabilities through Server-Sent Events (SSE) and WebSocket connections, with enhanced diagnostic, cache, network, and performance metric events.
 
 ## Overview
 

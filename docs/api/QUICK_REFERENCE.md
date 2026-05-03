@@ -92,15 +92,15 @@ deno test --filter "Queue" worker/openapi-contract.test.ts --allow-read --allow-
 In `wrangler.toml`:
 ```toml
 [[queues.producers]]
-queue = "adblock-compiler-queue"
+queue = "bloqr-backend-queue"
 binding = "ADBLOCK_COMPILER_QUEUE"
 
 [[queues.producers]]
-queue = "adblock-compiler-queue-high-priority"
+queue = "bloqr-backend-queue-high-priority"
 binding = "ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY"
 
 [[queues.consumers]]
-queue = "adblock-compiler-queue"
+queue = "bloqr-backend-queue"
 max_batch_size = 10
 max_batch_timeout = 30
 ```

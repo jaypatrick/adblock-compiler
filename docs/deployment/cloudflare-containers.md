@@ -36,7 +36,7 @@ HTTP Request
                 → WorkerCompiler (AGTree AST parsing, filter compilation)
 ```
 
-The Durable Object is the "brain" — it has a 1:1 relationship with the Container instance and manages when it starts and stops. The Angular frontend and the SSR Worker (`adblock-frontend`) never interact with the container directly.
+The Durable Object is the "brain" — it has a 1:1 relationship with the Container instance and manages when it starts and stops. The Angular frontend and the SSR Worker (`bloqr-frontend`) never interact with the container directly.
 
 ---
 
@@ -234,7 +234,7 @@ This shows all containers in your account and their deployment status.
 1. **Use WSL** (Windows Subsystem for Linux)
    ```powershell
    wsl
-   cd /mnt/d/source/adblock-compiler
+   cd /mnt/d/source/bloqr-backend
    deno task wrangler:dev
    ```
 
@@ -268,7 +268,7 @@ Use the `container:health` script to quickly verify that a running container ser
 deno task container:health
 
 # Check a deployed container with the compile smoke-test
-deno task container:health -- --url https://adblock-compiler.jk-com.workers.dev --secret my-secret
+deno task container:health -- --url https://bloqr-backend.jk-com.workers.dev --secret my-secret
 
 # Override the request timeout
 deno task container:health -- --url http://localhost:8787 --timeout 30
@@ -365,8 +365,8 @@ The route applies the same middleware stack as other compile routes:
 
 2. **Test Docker image** (optional)
    ```bash
-   docker build -f Dockerfile.container -t adblock-compiler-container:test .
-   docker run -p 8787:8787 adblock-compiler-container:test
+   docker build -f Dockerfile.container -t bloqr-backend-container:test .
+   docker run -p 8787:8787 bloqr-backend-container:test
    curl http://localhost:8787/health
    ```
 

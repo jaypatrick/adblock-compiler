@@ -6,10 +6,10 @@ This repository is a monorepo containing multiple packages managed by a dual Den
 
 ```mermaid
 graph TD
-    root["adblock-compiler/ (monorepo root)"]
+    root["bloqr-backend/ (monorepo root)"]
     root --> src["src/ — Core compiler library (Deno, JSR @jk-com/adblock-compiler)"]
     root --> worker["worker/ — Cloudflare Worker API (Deno + Hono + tRPC, workspace member)"]
-    root --> frontend["frontend/ — Angular 21 SPA (pnpm workspace: adblock-frontend)"]
+    root --> frontend["frontend/ — Angular 21 SPA (pnpm workspace: bloqr-frontend)"]
     root --> tools["tools/ — Operational tooling (Python, uv-managed)"]
     tools --> runbooks["tools/runbooks/ — Marimo interactive runbooks (pipeline, auth-healthcheck)"]
     tools --> tests["tools/tests/ — pytest test suite"]
@@ -60,8 +60,8 @@ graph TD
 deno task preflight:full
 
 # Frontend (Angular)
-pnpm --filter adblock-frontend run lint
-pnpm --filter adblock-frontend run test
+pnpm --filter bloqr-frontend run lint
+pnpm --filter bloqr-frontend run test
 
 # Python tools
 deno task runbook:lint
@@ -70,7 +70,7 @@ deno task runbook:typecheck
 deno task runbook:test
 
 # All together
-deno task preflight:full && pnpm --filter adblock-frontend run test && deno task runbook:test
+deno task preflight:full && pnpm --filter bloqr-frontend run test && deno task runbook:test
 ```
 
 ## Version Management

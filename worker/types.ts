@@ -37,7 +37,7 @@ export type WorkflowInstance = globalThis.WorkflowInstance;
  * CF Email Workers binding type.
  *
  * Bound to `env.SEND_EMAIL` via `[[send_email]]` in `wrangler.toml`.
- * The `adblock-email` email worker handles routing.
+ * The `bloqr-email` email worker handles routing.
  *
  * At runtime the Cloudflare Workers runtime provides the concrete `SendEmail`
  * global. We define the interface locally so `types.ts` compiles in Deno
@@ -69,7 +69,7 @@ export type HyperdriveBinding = globalThis.Hyperdrive;
  * Requires wrangler.toml:
  *   [[dynamic_dispatch_namespaces]]
  *   binding = "LOADER"
- *   namespace = "adblock-compiler-dynamic"
+ *   namespace = "bloqr-backend-dynamic"
  *
  * @see https://developers.cloudflare.com/dynamic-workers/
  */
@@ -542,7 +542,7 @@ export interface Env {
     // @see docs/architecture/durable-objects.md
     WS_HIBERNATION_DO?: DurableObjectNamespace;
     // Dynamic Dispatch Namespace binding (optional — add to wrangler.toml to enable)
-    // [[dynamic_dispatch_namespaces]], binding = "LOADER", namespace = "adblock-compiler-dynamic"
+    // [[dynamic_dispatch_namespaces]], binding = "LOADER", namespace = "bloqr-backend-dynamic"
     // @see https://developers.cloudflare.com/dynamic-workers/
     // @see https://github.com/jaypatrick/adblock-compiler/issues/1386
     LOADER?: DynamicDispatchNamespace;
@@ -578,7 +578,7 @@ export interface Env {
      * Public base URL for Better Auth callbacks and redirects.
      * Defaults to the request origin if not set.
      *
-     * @example `"https://adblock-compiler.example.com"`
+     * @example `"https://bloqr-backend.example.com"`
      */
     BETTER_AUTH_URL?: string;
     /**
@@ -701,11 +701,11 @@ export interface Env {
      * Set in wrangler.toml [vars].
      */
     STRIPE_PAYG_PRICE_ID?: string;
-    // ─── Email (CF Email Workers binding — adblock-email) ────────────────────
+    // ─── Email (CF Email Workers binding — bloqr-email) ────────────────────
     /**
      * Cloudflare Email Workers outbound send binding.
      *
-     * Configured via `[[send_email]]` in `wrangler.toml` with the `adblock-email`
+     * Configured via `[[send_email]]` in `wrangler.toml` with the `bloqr-email`
      * email worker. When present, {@link createEmailService} uses this binding
      * directly as the priority-2 provider.
      *

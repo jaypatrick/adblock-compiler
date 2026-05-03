@@ -1,6 +1,6 @@
 # Cloudflare D1 Integration Guide
 
-Complete guide for using Prisma with Cloudflare D1 in the adblock-compiler project.
+Complete guide for using Prisma with Cloudflare D1 in the bloqr-backend project.
 
 ## Overview
 
@@ -44,7 +44,7 @@ wrangler d1 create adblock-storage
 Create or update `wrangler.toml` in your project root:
 
 ```toml
-name = "adblock-compiler"
+name = "bloqr-backend"
 main = "src/worker.ts"
 compatibility_date = "2024-01-01"
 

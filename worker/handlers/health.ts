@@ -95,7 +95,7 @@ export async function handleHealth(env: Env): Promise<Response> {
             const dbName = rows[0]?.db_name ?? 'unknown';
             const latency_ms = Date.now() - t0;
             // Fail-fast guard: warn if connected to wrong database
-            if (dbName !== 'adblock-compiler') {
+            if (dbName !== 'bloqr-backend') {
                 return {
                     status: 'degraded',
                     latency_ms,

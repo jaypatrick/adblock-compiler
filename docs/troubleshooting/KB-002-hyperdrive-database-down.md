@@ -22,7 +22,7 @@ This section captures the live troubleshooting session that led to the discovery
 
 ```bash
 # Step 1: Inspect the full health response
-curl -s https://adblock-frontend.jk-com.workers.dev/api/health | jq .services.database
+curl -s https://bloqr-frontend.jk-com.workers.dev/api/health | jq .services.database
 # Result:
 # {
 #   "status": "down",
@@ -35,7 +35,7 @@ wrangler hyperdrive get 800f7e2edc86488ab24e8621982e9ad7
 # Result showed "scheme": "postgres" — Hyperdrive uses postgres://, not postgresql://
 
 # Step 3: Check deployed version
-curl -s https://adblock-frontend.jk-com.workers.dev/api/health | jq .version
+curl -s https://bloqr-frontend.jk-com.workers.dev/api/health | jq .version
 # "0.76.0" — schema fix was deployed
 
 # Step 4: Tail live worker logs
@@ -76,7 +76,7 @@ The hardening work in this PR added:
 After deploying, run:
 
 ```bash
-curl -s https://adblock-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
+curl -s https://bloqr-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
 ```
 
 Expected healthy output:
@@ -84,7 +84,7 @@ Expected healthy output:
 ```json
 {
   "ok": true,
-  "db_name": "adblock-compiler",
+  "db_name": "bloqr-backend",
   "pg_version": "PostgreSQL 16.x ...",
   "server_time": "2026-03-25T21:59:15.917Z",
   "table_count": 17,
@@ -99,7 +99,7 @@ If it returns `ok: false`, the `error` field will now contain a redacted error m
 
 ## Symptom
 
-The live site at `https://adblock-frontend.jk-com.workers.dev/` displays two error banners:
+The live site at `https://bloqr-frontend.jk-com.workers.dev/` displays two error banners:
 
 - **"Degraded performance — v0.75.0"**
 - **"Data may be stale"**
@@ -295,4 +295,4 @@ Confirm that `db_name` matches the expected Neon database name. If it returns a 
 
 ## Feedback & Contribution
 
-If you discovered a new failure mode while using this article, please open an issue tagged `troubleshooting` and `documentation` in `jaypatrick/adblock-compiler` with the details so it can be captured in a follow-up KB entry.
+If you discovered a new failure mode while using this article, please open an issue tagged `troubleshooting` and `documentation` in `jaypatrick/bloqr-backend` with the details so it can be captured in a follow-up KB entry.

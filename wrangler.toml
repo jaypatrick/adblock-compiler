@@ -37,7 +37,7 @@
 #   wrangler secret put CF_EMAIL_API_TOKEN
 # ============================================================================
 
-name = "bloqr-compiler"
+name = "bloqr-backend"
 main = "worker/worker.ts"
 compatibility_date = "2026-01-01"
 
@@ -521,7 +521,7 @@ enable_containers = true
 # to set env-specific secrets if needed.
 # ============================================================================
 [env.dev]
-name = "bloqr-compiler-dev"
+name = "bloqr-backend-dev"
 logpush = false
 
 [env.dev.vars]

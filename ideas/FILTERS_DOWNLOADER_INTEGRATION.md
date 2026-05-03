@@ -1,6 +1,6 @@
 # AdGuard Filters Downloader Integration Ideas
 
-Integration ideas for [`AdguardTeam/FiltersDownloader`](https://github.com/AdguardTeam/FiltersDownloader) and `adblock-compiler`.
+Integration ideas for [`AdguardTeam/FiltersDownloader`](https://github.com/AdguardTeam/FiltersDownloader) and `bloqr-backend`.
 
 ---
 
@@ -179,8 +179,8 @@ for (const rule of filterList.children) {
 
 - [`AdguardTeam/FiltersDownloader` README](https://github.com/AdguardTeam/FiltersDownloader/blob/master/README.md)
 - [`@adguard/filters-downloader` on npm](https://www.npmjs.com/package/@adguard/filters-downloader)
-- [adblock-compiler AGTree Integration](../docs/api/AGTREE_INTEGRATION.md)
-- [adblock-compiler Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
-- [adblock-compiler Streaming API](../docs/api/STREAMING_API.md)
-- [adblock-compiler Platform Support](../docs/api/PLATFORM_SUPPORT.md)
-- [adblock-compiler OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
+- [bloqr-backend AGTree Integration](../docs/api/AGTREE_INTEGRATION.md)
+- [bloqr-backend Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
+- [bloqr-backend Streaming API](../docs/api/STREAMING_API.md)
+- [bloqr-backend Platform Support](../docs/api/PLATFORM_SUPPORT.md)
+- [bloqr-backend OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)

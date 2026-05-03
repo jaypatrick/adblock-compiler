@@ -250,7 +250,7 @@ flowchart TD
 
 ## Integration with Compiler
 
-To integrate with the adblock-compiler:
+To integrate with the bloqr-backend:
 
 ```javascript
 // In your compilation workflow
@@ -318,4 +318,4 @@ When adding new error types:
 
 ## License
 
-Part of the adblock-compiler project. See main project LICENSE.
+Part of the bloqr-backend project. See main project LICENSE.

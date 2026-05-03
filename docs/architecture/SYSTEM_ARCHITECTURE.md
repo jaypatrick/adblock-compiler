@@ -1,6 +1,6 @@
 # System Architecture
 
-This document describes the current (monolithic) architecture of the adblock-compiler service and the target architecture after the monolith is decomposed into discrete, independently deployable packages and services.
+This document describes the current (monolithic) architecture of the bloqr-backend service and the target architecture after the monolith is decomposed into discrete, independently deployable packages and services.
 
 ---
 
@@ -18,18 +18,18 @@ flowchart TD
     CFAccess["Cloudflare Access\n(Zero Trust / WAF)"]
     CFTurnstile["Cloudflare Turnstile\n(Human Verification)"]
 
-    %% ── Angular Frontend (separate SSR Worker — adblock-frontend) ──────
-    subgraph FrontendWorker["adblock-frontend  (separate SSR Worker)"]
+    %% ── Angular Frontend (separate SSR Worker — bloqr-frontend) ──────
+    subgraph FrontendWorker["bloqr-frontend  (separate SSR Worker)"]
         Frontend["Angular 21 SSR SPA\n(AngularAppEngine)"]
         FrontendAssets["ASSETS binding\n(JS/CSS/fonts — CDN)"]
         FrontendAPI["[[services]] API binding\n(wired in server.ts — routes /api/* internally)"]
     end
 
-    %% ── Tail Worker (separate deployed service — adblock-tail) ──────
-    TailWorker["adblock-tail\n(Tail Worker / Log Sink)"]
+    %% ── Tail Worker (separate deployed service — bloqr-tail) ──────
+    TailWorker["bloqr-tail\n(Tail Worker / Log Sink)"]
 
     %% ── Monolithic Worker ────────────────────────────────────────────────────
-    subgraph MonolithWorker["adblock-compiler Worker  (worker/worker.ts)"]
+    subgraph MonolithWorker["bloqr-backend Worker  (worker/worker.ts)"]
         WorkerEntry["worker.ts\n(fetch · queue · scheduled · tail)"]
         HonoApp["hono-app.ts\n(Hono Router)"]
         Handlers["handlers/\ncompile · admin · auth · metrics\nqueue · websocket · proxy"]
@@ -154,7 +154,7 @@ flowchart TD
 
 ### Summary
 
-The current system is a **monolith**: every concern — compilation, transformation, storage, queuing, diagnostics, plugins, and formatters — lives inside a single Cloudflare Worker alongside its Hono router and request handlers. The Angular SSR frontend is deployed as its **own separate Worker** (`adblock-frontend`) using `AngularAppEngine`; the `[[services]]` binding to the backend is wired in `server.ts`, routing SSR-time `/api/*` calls to the backend over the internal Cloudflare network with a `CF-Worker-Source: ssr` header. Cloudflare Access and Turnstile form the Zero Trust perimeter before any request reaches either Worker. External services (Sentry, OpenTelemetry, PostgreSQL, and filter-list sources) are consumed directly from within the single backend process. Authentication is handled by Better Auth, which runs entirely within the Worker backed by Neon PostgreSQL via Cloudflare Hyperdrive. A dedicated `adblock-tail` Worker (configured via `[[tail_consumers]]`) acts as the log sink, forwarding structured logs to Sentry and OTel. This coupling makes it difficult to evolve, version, or deploy individual capabilities independently.
+The current system is a **monolith**: every concern — compilation, transformation, storage, queuing, diagnostics, plugins, and formatters — lives inside a single Cloudflare Worker alongside its Hono router and request handlers. The Angular SSR frontend is deployed as its **own separate Worker** (`bloqr-frontend`) using `AngularAppEngine`; the `[[services]]` binding to the backend is wired in `server.ts`, routing SSR-time `/api/*` calls to the backend over the internal Cloudflare network with a `CF-Worker-Source: ssr` header. Cloudflare Access and Turnstile form the Zero Trust perimeter before any request reaches either Worker. External services (Sentry, OpenTelemetry, PostgreSQL, and filter-list sources) are consumed directly from within the single backend process. Authentication is handled by Better Auth, which runs entirely within the Worker backed by Neon PostgreSQL via Cloudflare Hyperdrive. A dedicated `bloqr-tail` Worker (configured via `[[tail_consumers]]`) acts as the log sink, forwarding structured logs to Sentry and OTel. This coupling makes it difficult to evolve, version, or deploy individual capabilities independently.
 
 ---
 
@@ -173,28 +173,28 @@ flowchart TD
     CFTurnstile["Cloudflare Turnstile\n(Human Verification)"]
 
     %% ── Angular Frontend (served via API Worker STATIC_ASSETS binding) ─────────────
-    subgraph FrontendApp["adblock-frontend  (Worker STATIC_ASSETS binding)"]
+    subgraph FrontendApp["bloqr-frontend  (Worker STATIC_ASSETS binding)"]
         AngularSSR["Angular 21 SSR SPA"]
         HonoRPC["Hono RPC Client\nhc&lt;AppType&gt;()"]
         AngularSSR --> HonoRPC
     end
 
     %% ── Standalone CLI ───────────────────────────────────────────────────────
-    DenoCliPkg["adblock-compiler-cli\n(Standalone Deno binary)"]
+    DenoCliPkg["bloqr-backend-cli\n(Standalone Deno binary)"]
 
     %% ── Thin API Worker ──────────────────────────────────────────────────────
-    subgraph APIWorker["adblock-compiler-api  (Cloudflare Worker — thin routing layer)"]
+    subgraph APIWorker["bloqr-backend-api  (Cloudflare Worker — thin routing layer)"]
         HonoRouter["hono-app.ts\n(OpenAPIHono Router)"]
         APIHandlers["handlers/\ncompile · admin · auth\nmetrics · queue · websocket"]
         BetterAuth["Better Auth\n(in-Worker · Neon / Hyperdrive)"]
     end
 
     %% ── Worker Service Bindings ──────────────────────────────────────────────
-    subgraph WorkflowsWorker["adblock-compiler-workflows\n(Cloudflare Worker — service binding)"]
+    subgraph WorkflowsWorker["bloqr-backend-workflows\n(Cloudflare Worker — service binding)"]
         DurableWorkflows["Durable Workflows\nCompilation · Batch\nCacheWarming · HealthMonitoring"]
     end
 
-    subgraph MCPWorker["adblock-compiler-mcp\n(Cloudflare Worker — service binding)"]
+    subgraph MCPWorker["bloqr-backend-mcp\n(Cloudflare Worker — service binding)"]
         PlaywrightMCP["Playwright MCP Agent\n(CF Browser Rendering)"]
     end
 

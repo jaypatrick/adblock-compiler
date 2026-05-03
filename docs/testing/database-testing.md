@@ -1,7 +1,7 @@
 # Database Testing Guide
 
 > **Practical guide** for testing Prisma-based code, storage adapters, Neon API
-> services, and the D1 cache sync layer in the adblock-compiler.
+> services, and the D1 cache sync layer in the bloqr-backend.
 
 ---
 
@@ -551,7 +551,7 @@ Deno.test({
 const FIXTURES = {
     project: {
         id: 'twilight-river-73901472',
-        name: 'adblock-compiler',
+        name: 'bloqr-backend',
         region_id: 'azure-eastus2',
         pg_version: 17,
     },

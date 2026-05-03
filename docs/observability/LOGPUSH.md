@@ -1,6 +1,6 @@
 # Cloudflare Logpush → R2 Setup Guide
 
-Long-term log retention for `adblock-compiler` via Cloudflare Logpush to R2.
+Long-term log retention for `bloqr-backend` via Cloudflare Logpush to R2.
 
 ---
 

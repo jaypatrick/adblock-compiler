@@ -2,7 +2,7 @@
 # Usage: docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 
 services:
-    adblock-compiler:
+    bloqr-backend:
         image: jaysonknight/adblock-compiler:latest
         # Override environment to use production configuration
         env_file:

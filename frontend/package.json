@@ -1,5 +1,5 @@
 {
-    "name": "adblock-frontend",
+    "name": "bloqr-frontend",
     "version": "1.1.0",
     "description": "Angular 21 frontend for Adblock Compiler with Material Design, Zoneless Change Detection, and Cloudflare Workers SSR",
     "private": true,

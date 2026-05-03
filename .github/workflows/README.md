@@ -1,6 +1,6 @@
 # CI/CD Workflow Documentation
 
-This directory contains the GitHub Actions workflows for the adblock-compiler project.
+This directory contains the GitHub Actions workflows for the bloqr-backend project.
 
 ## Workflows Overview
 

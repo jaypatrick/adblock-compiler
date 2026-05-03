@@ -54,7 +54,7 @@ async function deliverSentry(dsn: string, payload: WebhookNotifyRequest): Promis
         const sentryPayload = {
             message: payload.message,
             level,
-            logger: payload.source ?? 'adblock-compiler',
+            logger: payload.source ?? 'bloqr-backend',
             extra: payload.metadata ?? {},
             tags: { event: payload.event },
             timestamp: payload.timestamp ?? new Date().toISOString(),
@@ -80,7 +80,7 @@ async function deliverDatadog(apiKey: string, payload: WebhookNotifyRequest): Pr
             title: payload.event,
             text: payload.message,
             alert_type: payload.level === 'error' ? 'error' : payload.level === 'warn' ? 'warning' : 'info',
-            source_type_name: payload.source ?? 'adblock-compiler',
+            source_type_name: payload.source ?? 'bloqr-backend',
             tags: Object.entries(payload.metadata ?? {}).map(([k, v]) => `${k}:${String(v)}`),
             date_happened: payload.timestamp ? Math.floor(new Date(payload.timestamp).getTime() / 1000) : undefined,
         };

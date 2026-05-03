@@ -36,7 +36,7 @@ import { makeEnv, makeFailingKv, makeKv } from '../test-helpers.ts';
 /** Build a minimal mock Prisma client that returns healthy DB rows. */
 function makeHealthyPrisma() {
     return {
-        $queryRaw: async () => [{ db_name: 'adblock-compiler' }],
+        $queryRaw: async () => [{ db_name: 'bloqr-backend' }],
         $disconnect: async () => {},
     };
 }
@@ -184,7 +184,7 @@ Deno.test('handleHealth - database response includes db_name when healthy', asyn
         const res = await handleHealth(env);
         const body = await res.json() as { services: { database: { status: string; db_name: string } } };
         assertEquals(body.services.database.status, 'healthy');
-        assertEquals(body.services.database.db_name, 'adblock-compiler');
+        assertEquals(body.services.database.db_name, 'bloqr-backend');
     } finally {
         s.restore();
     }
@@ -236,7 +236,7 @@ Deno.test('handleHealth - database error includes error_code and error_message w
 });
 
 Deno.test('handleHealth - error_message does not contain postgres:// credentials', async () => {
-    const err = new Error('connect ECONNREFUSED postgres://neondb_owner:super-secret@ep-example.neon.tech/adblock-compiler');
+    const err = new Error('connect ECONNREFUSED postgres://neondb_owner:super-secret@ep-example.neon.tech/bloqr-backend');
     const s = stub(_internals, 'createPrismaClient', () => makeFailingPrisma(err) as unknown as ReturnType<typeof _internals.createPrismaClient>);
     try {
         const env = makeEnv({
@@ -329,7 +329,7 @@ Deno.test('handleDbSmoke - happy path: returns ok:true with diagnostic fields', 
             // Return different results based on which query is being called
             const sql = strings.join('');
             if (sql.includes('current_database')) {
-                return [{ db_name: 'adblock-compiler', pg_version: 'PostgreSQL 16.2', server_time: serverTime }];
+                return [{ db_name: 'bloqr-backend', pg_version: 'PostgreSQL 16.2', server_time: serverTime }];
             }
             if (sql.includes('information_schema')) {
                 return [{ table_count: BigInt(17) }];
@@ -355,7 +355,7 @@ Deno.test('handleDbSmoke - happy path: returns ok:true with diagnostic fields', 
             hyperdrive_host: string;
         };
         assertEquals(body.ok, true);
-        assertEquals(body.db_name, 'adblock-compiler');
+        assertEquals(body.db_name, 'bloqr-backend');
         assertEquals(body.pg_version, 'PostgreSQL 16.2');
         assertEquals(body.table_count, 17);
         assertEquals(body.hyperdrive_host, 'ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech');

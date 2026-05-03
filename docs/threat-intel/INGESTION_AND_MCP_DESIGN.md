@@ -26,7 +26,7 @@
 
 ## 1. Vision and Goals
 
-Build a **real-time threat/nuisance/ad domain intelligence platform** on top of the existing adblock-compiler infrastructure, exposed via an MCP (Model Context Protocol) server so that:
+Build a **real-time threat/nuisance/ad domain intelligence platform** on top of the existing bloqr-backend infrastructure, exposed via an MCP (Model Context Protocol) server so that:
 
 1. **AI agents and tools** can query live threat/tracker/ad domain data via structured MCP tools.
 2. **DNS blocking providers** (AdGuard, NextDNS, Pi-hole, ControlD, etc.) can subscribe to or pull real-time lists in their native formats.
@@ -465,10 +465,10 @@ export interface IThreatIntelQueueMessage {
 ```toml
 [[queues.producers]]
 binding = "THREAT_INTEL_QUEUE"
-queue   = "adblock-compiler-threat-intel"
+queue   = "bloqr-backend-threat-intel"
 
 [[queues.consumers]]
-queue             = "adblock-compiler-threat-intel"
+queue             = "bloqr-backend-threat-intel"
 max_batch_size    = 50
 max_batch_timeout = 60
 ```

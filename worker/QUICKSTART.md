@@ -6,7 +6,7 @@ This guide will help you get the Cloudflare Tail Worker up and running in 5 minu
 
 - Cloudflare account
 - Wrangler CLI installed (`pnpm install`)
-- Main adblock-compiler worker already deployed
+- Main bloqr-backend worker already deployed
 
 ## Step 1: Deploy the Tail Worker
 
@@ -14,7 +14,7 @@ This guide will help you get the Cloudflare Tail Worker up and running in 5 minu
 deno task wrangler:tail:deploy
 ```
 
-This deploys the tail worker to Cloudflare as `adblock-tail`.
+This deploys the tail worker to Cloudflare as `bloqr-tail`.
 
 ## Step 2: Enable Tail Consumer (Optional)
 
@@ -22,7 +22,7 @@ If you want the main worker to automatically send logs to the tail worker, edit 
 
 ```toml
 tail_consumers = [
-    { service = "adblock-tail" }
+    { service = "bloqr-tail" }
 ]
 ```
 
@@ -105,7 +105,7 @@ Now you'll get Slack notifications when errors occur!
 
 **Tail worker not receiving events?**
 
-- Make sure it's deployed: `wrangler deployments list --name adblock-tail`
+- Make sure it's deployed: `wrangler deployments list --name bloqr-tail`
 - Check `tail_consumers` is uncommented in `wrangler.toml`
 - Redeploy the main worker after adding tail consumers
 

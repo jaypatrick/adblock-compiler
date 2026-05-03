@@ -223,10 +223,10 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Lint frontend
-        run: pnpm --filter adblock-frontend run lint
+        run: pnpm --filter bloqr-frontend run lint
 
       - name: Test frontend
-        run: pnpm --filter adblock-frontend run test
+        run: pnpm --filter bloqr-frontend run test
 
   frontend-build:
     name: Frontend (build)
@@ -251,7 +251,7 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build Angular frontend
-        run: pnpm --filter adblock-frontend run build
+        run: pnpm --filter bloqr-frontend run build
 
       - name: Upload frontend build artifact
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
@@ -779,7 +779,7 @@ jobs:
         if: env.CLOUDFLARE_API_TOKEN != ''
         working-directory: frontend
         run: |
-          echo "Deploying adblock-frontend..."
+          echo "Deploying bloqr-frontend..."
           # --config is explicit even though working-directory already points here;
           # this ensures no_bundle = true in wrangler.toml is never bypassed by
           # a stray --bundle flag or a different config resolution path.
@@ -806,7 +806,7 @@ jobs:
           CURL_EXIT=0
           set +e
           HTTP=$(curl -sS -o /tmp/health.json -w "%{http_code}" \
-            https://adblock-compiler.jk-com.workers.dev/api/health)
+            https://bloqr-backend.jk-com.workers.dev/api/health)
           CURL_EXIT=$?
           set -e
           if [ "$CURL_EXIT" -ne 0 ]; then
@@ -836,7 +836,7 @@ jobs:
           CURL_EXIT=0
           set +e
           HTTP=$(curl -sS -o /tmp/version.json -w "%{http_code}" \
-            https://adblock-compiler.jk-com.workers.dev/api/version)
+            https://bloqr-backend.jk-com.workers.dev/api/version)
           CURL_EXIT=$?
           set -e
           if [ "$CURL_EXIT" -ne 0 ]; then
@@ -859,7 +859,7 @@ jobs:
           CURL_EXIT=0
           set +e
           HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
-            https://adblock-compiler.jk-com.workers.dev/api/auth/providers)
+            https://bloqr-backend.jk-com.workers.dev/api/auth/providers)
           CURL_EXIT=$?
           set -e
           if [ "$CURL_EXIT" -ne 0 ]; then
@@ -911,7 +911,7 @@ jobs:
           CURL_EXIT=0
           set +e
           HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
-            https://adblock-frontend.jk-com.workers.dev/)
+            https://bloqr-frontend.jk-com.workers.dev/)
           CURL_EXIT=$?
           set -e
           if [ "$CURL_EXIT" -ne 0 ]; then
@@ -934,7 +934,7 @@ jobs:
           CURL_EXIT=0
           set +e
           HTTP=$(curl -sS -o /dev/null -w "%{http_code}" \
-            https://adblock-frontend.jk-com.workers.dev/api/auth/providers)
+            https://bloqr-frontend.jk-com.workers.dev/api/auth/providers)
           CURL_EXIT=$?
           set -e
           if [ "$CURL_EXIT" -ne 0 ]; then
@@ -957,7 +957,7 @@ jobs:
           CURL_EXIT=0
           set +e
           HTTP=$(curl -sS -o /tmp/fe-health.json -w "%{http_code}" \
-            https://adblock-frontend.jk-com.workers.dev/api/health)
+            https://bloqr-frontend.jk-com.workers.dev/api/health)
           CURL_EXIT=$?
           set -e
           if [ "$CURL_EXIT" -ne 0 ]; then
@@ -1019,6 +1019,6 @@ jobs:
 
           | Component | Status | URL |
           |---|---|---|
-          | Backend Worker | $(backend_icon "$BACKEND") | https://adblock-compiler.jk-com.workers.dev |
-          | Frontend Worker | $(frontend_icon "$FRONTEND") | https://adblock-frontend.jk-com.workers.dev |
+          | Backend Worker | $(backend_icon "$BACKEND") | https://bloqr-backend.jk-com.workers.dev |
+          | Frontend Worker | $(frontend_icon "$FRONTEND") | https://bloqr-frontend.jk-com.workers.dev |
           EOF

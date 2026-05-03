@@ -1,6 +1,6 @@
 # Full Diagnostics Tool (`diag-full`)
 
-Comprehensive, standalone health-check harness for the adblock-compiler stack. Runs without `wrangler dev`, the Angular frontend, or any Cloudflare Worker binding — it is pure `deno run` against any live URL. Produces a structured JSON bundle that can be pasted directly into a Copilot chat for automated root-cause analysis.
+Comprehensive, standalone health-check harness for the bloqr-backend stack. Runs without `wrangler dev`, the Angular frontend, or any Cloudflare Worker binding — it is pure `deno run` against any live URL. Produces a structured JSON bundle that can be pasted directly into a Copilot chat for automated root-cause analysis.
 
 ---
 
@@ -81,7 +81,7 @@ All tasks are defined in `deno.json` and require no additional setup.
 |------|-------------|
 | `deno task diag:full` | Run all probes against the production URL. Prints a summary table to stdout. |
 | `deno task diag:full:ci` | CI mode — runs all probes, exits `0` (all pass) or `1` (any failure). Suitable for GitHub Actions steps. |
-| `deno task diag:full:prod` | Explicit `--url https://adblock-frontend.jk-com.workers.dev`. Identical to `diag:full` but self-documenting in scripts. |
+| `deno task diag:full:prod` | Explicit `--url https://bloqr-frontend.jk-com.workers.dev`. Identical to `diag:full` but self-documenting in scripts. |
 | `deno task diag:full:output` | Run all probes and write the full JSON bundle to `diag-report-<timestamp>.json` in the current directory. |
 | `deno task diag:report` | Re-render a saved bundle. Accepts `--file <path>` or reads from stdin. |
 
@@ -98,7 +98,7 @@ All tasks are defined in `deno.json` and require no additional setup.
 
 | Flag | Type | Default | Description |
 |------|------|---------|-------------|
-| `--url` | string | `https://adblock-frontend.jk-com.workers.dev` | Base URL to probe. Must include protocol (`http://` or `https://`). |
+| `--url` | string | `https://bloqr-frontend.jk-com.workers.dev` | Base URL to probe. Must include protocol (`http://` or `https://`). |
 | `--timeout` | number (ms) | `15000` | Per-probe fetch timeout. The DNS and WebSocket probes use shorter internal timeouts regardless. |
 | `--ci` | boolean | `false` | Non-interactive CI mode: prints the summary table, then exits `0` if all probes pass or `1` if any fail. |
 | `--output` | boolean | `false` | Write the JSON bundle to `diag-report-<timestamp>.json` in the current directory and print the filename. |
@@ -159,7 +159,7 @@ Re-runs the 6 standard probes that the basic `deno task diag` harness uses. Thes
 ### 5. `cors` — CORS preflight check
 
 Sends an `OPTIONS` preflight to `<baseUrl>/api/compile` with:
-- `Origin: https://adblock-frontend.jk-com.workers.dev`
+- `Origin: https://bloqr-frontend.jk-com.workers.dev`
 - `Access-Control-Request-Method: POST`
 - `Access-Control-Request-Headers: Content-Type, Authorization`
 
@@ -169,7 +169,7 @@ Sends an `OPTIONS` preflight to `<baseUrl>/api/compile` with:
 | `access-control-allow-origin` | Not `*` AND is in the known allowlist |
 
 The known allowlist (`CORS_ALLOWED_ORIGINS`) contains:
-- `https://adblock-frontend.jk-com.workers.dev`
+- `https://bloqr-frontend.jk-com.workers.dev`
 - `http://localhost:4200`
 - `http://localhost:8787`
 
@@ -307,7 +307,7 @@ When `--output` is set (or `buildBundle()` is called programmatically), the tool
 ```typescript
 interface DiagBundle {
     meta: {
-        tool: 'adblock-compiler-diag-full'; // always this literal
+        tool: 'bloqr-backend-diag-full'; // always this literal
         version: string;                     // read from deno.json "version" field
         timestamp: string;                   // ISO 8601 (e.g. "2026-04-08T12:00:00.000Z")
         baseUrl: string;                     // the --url value used
@@ -347,14 +347,14 @@ interface DiagProbeResult {
 ```json
 {
   "meta": {
-    "tool": "adblock-compiler-diag-full",
+    "tool": "bloqr-backend-diag-full",
     "version": "0.79.4",
     "timestamp": "2026-04-08T12:30:00.000Z",
-    "baseUrl": "https://adblock-frontend.jk-com.workers.dev",
+    "baseUrl": "https://bloqr-frontend.jk-com.workers.dev",
     "timeoutMs": 15000,
     "deno": { "deno": "2.3.1", "v8": "13.1.201.16", "typescript": "5.6.2" },
     "os": { "os": "linux", "arch": "x86_64" },
-    "cwd": "/home/user/adblock-compiler"
+    "cwd": "/home/user/bloqr-backend"
   },
   "summary": {
     "total": 16,
@@ -368,7 +368,7 @@ interface DiagProbeResult {
       "label": "environment",
       "ok": true,
       "detail": "deno=2.3.1 os=linux arch=x86_64",
-      "raw": { "deno": { "deno": "2.3.1" }, "os": "linux", "arch": "x86_64", "cwd": "/home/user/adblock-compiler" }
+      "raw": { "deno": { "deno": "2.3.1" }, "os": "linux", "arch": "x86_64", "cwd": "/home/user/bloqr-backend" }
     },
     {
       "category": "cors",
@@ -445,7 +445,7 @@ deno task diag:report -- --file diag-report-2026-04-08T12-30-00.000Z.json
 
 # 3. Copy the "Copilot Analysis Block" JSON from the report output,
 #    open a GitHub Copilot chat, and paste it with a message like:
-#    "Here is a diagnostic bundle from adblock-compiler. What is failing and why?"
+#    "Here is a diagnostic bundle from bloqr-backend. What is failing and why?"
 ```
 
 The bundle includes all response headers, latency data, and raw payloads — giving Copilot the full context it needs to pinpoint the root cause.
@@ -539,7 +539,7 @@ flowchart TD
 ### `error: Requires net access`
 
 ```
-error: Requires net access to "adblock-frontend.jk-com.workers.dev"
+error: Requires net access to "bloqr-frontend.jk-com.workers.dev"
 ```
 
 Use `deno task diag:full` instead of running `diag-full.ts` directly with bare `deno run`. The task entry includes all required flags (`--allow-net --allow-env --allow-read --allow-write`). If running directly, add all four flags:
@@ -609,7 +609,7 @@ deno task diag:full -- --timeout 30000
 | Report formatter | `deno task diag:report` | Renders a saved bundle from `diag:full:output`. |
 
 See also:
-- [Troubleshooting Guide](../guides/TROUBLESHOOTING.md) — general debugging for the adblock-compiler stack
+- [Troubleshooting Guide](../guides/TROUBLESHOOTING.md) — general debugging for the bloqr-backend stack
 - [KB-001: API Not Available](../troubleshooting/KB-001-api-not-available.md) — common production incident
 - [Diagnostics & Tracing System](./DIAGNOSTICS.md) — the internal compiler diagnostics (different from this tool)
 - [Worker E2E Tests](../cloudflare/WORKER_E2E_TESTS.md) — automated Cloudflare Worker tests

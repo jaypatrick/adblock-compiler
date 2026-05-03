@@ -6,25 +6,25 @@
 # See docs/database-setup/local-dev.md for the current Neon branching workflow.
 #
 # This file is retained in case it is needed for other tooling (CI image builds,
-# the adblock-compiler container service, etc.). The `postgres` service within it
+# the bloqr-backend container service, etc.). The `postgres` service within it
 # should be considered deprecated and will be removed in a future cleanup PR.
 # ─────────────────────────────────────────────────────────────────────────────
 services:
-    # Main adblock-compiler backend Worker service (wrangler dev).
+    # Main bloqr-backend backend Worker service (wrangler dev).
     # NOTE: The frontend is NOT a separate container here. In production the
-    # frontend runs as a separate Cloudflare Worker (adblock-frontend)
+    # frontend runs as a separate Cloudflare Worker (bloqr-frontend)
     # connected to this backend via a Cloudflare service binding. Locally,
     # `wrangler dev` emulates that service binding transparently, so no
     # separate frontend container is needed for everyday development.
     # To simulate the exact split-worker production topology locally, use the
     # optional overlay: docker compose -f docker-compose.yml -f docker-compose.frontend.yml up
-    adblock-compiler:
+    bloqr-backend:
         image: jaysonknight/adblock-compiler:latest
         build:
             context: .
             dockerfile: Dockerfile
             target: runtime
-        container_name: adblock-compiler
+        container_name: bloqr-backend
         ports:
             - '${PORT:-8787}:8787'
         env_file:
@@ -47,7 +47,7 @@ services:
             retries: 3
             start_period: 5s
         networks:
-            - adblock-network
+            - bloqr-network
 
     postgres:
         image: postgres:16-alpine
@@ -66,7 +66,7 @@ services:
             timeout: 5s
             retries: 5
         networks:
-            - adblock-network
+            - bloqr-network
 
     # One-shot migration runner — exits 0 after migrations succeed.
     # Usage: docker compose up postgres db-migrate
@@ -85,14 +85,14 @@ services:
                 condition: service_healthy
         entrypoint: ['deno', 'run', '-A', '--env=.env.local', 'npm:prisma', 'migrate', 'deploy']
         networks:
-            - adblock-network
+            - bloqr-network
 
 volumes:
     deno-cache:
-        name: adblock-compiler-deno-cache
+        name: bloqr-backend-deno-cache
     pgdata:
 
 networks:
-    adblock-network:
-        name: adblock-compiler-network
+    bloqr-network:
+        name: bloqr-backend-network
         driver: bridge

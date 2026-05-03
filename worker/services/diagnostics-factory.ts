@@ -121,7 +121,7 @@ registerDiagnosticsProvider((env) => {
 // registerDiagnosticsProvider((env) => {
 //     if (!env.OTEL_EXPORTER_OTLP_ENDPOINT) return null;
 //     return new OpenTelemetryDiagnosticsProvider({
-//         serviceName: 'adblock-compiler',
+//         serviceName: 'bloqr-backend',
 //         serviceVersion: env.COMPILER_VERSION,
 //     });
 // });

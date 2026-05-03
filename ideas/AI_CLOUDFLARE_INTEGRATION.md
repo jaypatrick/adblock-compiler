@@ -1,6 +1,6 @@
 # AI Integration Ideas with Cloudflare Services
 
-This document outlines ideas for integrating AI capabilities into the `adblock-compiler` project, leveraging Cloudflare's suite of services for deployment, inference, storage, and traffic management.
+This document outlines ideas for integrating AI capabilities into the `bloqr-backend` project, leveraging Cloudflare's suite of services for deployment, inference, storage, and traffic management.
 
 ---
 

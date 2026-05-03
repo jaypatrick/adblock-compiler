@@ -12,7 +12,7 @@ const config: Config = {
     baseUrl: '/',
 
     organizationName: 'jaypatrick',
-    projectName: 'adblock-compiler',
+    projectName: 'bloqr-backend',
 
     onBrokenLinks: 'warn',
     onBrokenMarkdownLinks: 'warn',

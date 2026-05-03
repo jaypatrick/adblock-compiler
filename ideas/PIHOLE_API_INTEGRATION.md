@@ -1,6 +1,6 @@
 # Pi-hole API Integration Ideas
 
-Integration ideas for the Pi-hole v6 API (https://docs.pi-hole.net/api/) and adblock-compiler.
+Integration ideas for the Pi-hole v6 API (https://docs.pi-hole.net/api/) and bloqr-backend.
 
 Base URL: http://<your-pihole>/api (self-hosted)
 Interactive Docs: http://pi.hole/api/docs (on your own installation)
@@ -133,7 +133,7 @@ await Promise.all(
         fetch(`${piholeBaseUrl}/api/domains/deny`, {
             method: 'POST',
             headers: { 'X-FTL-SID': sid, 'Content-Type': 'application/json' },
-            body: JSON.stringify({ domain, comment: 'adblock-compiler' }),
+            body: JSON.stringify({ domain, comment: 'bloqr-backend' }),
         })
     )
 );
@@ -181,7 +181,7 @@ await Promise.all(
 
 Host compiled output as a public URL and add it as a Pi-hole adlist subscription:
 
-const compiledUrl = `https://adblock-compiler.jk-com.workers.dev/lists/${listId}`;
+const compiledUrl = `https://bloqr-backend.jk-com.workers.dev/lists/${listId}`;
 
 await fetch(`${piholeBaseUrl}/api/lists`, {
     method: 'POST',
@@ -189,7 +189,7 @@ await fetch(`${piholeBaseUrl}/api/lists`, {
     body: JSON.stringify({
         address: compiledUrl,
         enabled: true,
-        comment: 'adblock-compiler managed list',
+        comment: 'bloqr-backend managed list',
     }),
 });
 
@@ -263,7 +263,7 @@ This lets you compile once and sync to any supported DNS provider.
 
 ## 9. Full Pipeline
 
-adblock-compiler POST /compile
+bloqr-backend POST /compile
     FiltersDownloader: resolve !#if / !#include
     AGTree: parse to AST
     Transformations: Deduplicate, Validate, RemoveComments, InvertAllow
@@ -289,9 +289,9 @@ Monitoring
 - Pi-hole Authentication: https://docs.pi-hole.net/api/auth/
 - Pi-hole Domain Database: https://docs.pi-hole.net/database/domain-database/
 - Pi-hole Group Management: https://docs.pi-hole.net/group_management/example/
-- adblock-compiler API README: ../docs/api/README.md
-- adblock-compiler Streaming API: ../docs/api/STREAMING_API.md
-- adblock-compiler Batch API Guide: ../docs/api/BATCH_API_GUIDE.md
-- adblock-compiler Zod Validation: ../docs/api/ZOD_VALIDATION.md
+- bloqr-backend API README: ../docs/api/README.md
+- bloqr-backend Streaming API: ../docs/api/STREAMING_API.md
+- bloqr-backend Batch API Guide: ../docs/api/BATCH_API_GUIDE.md
+- bloqr-backend Zod Validation: ../docs/api/ZOD_VALIDATION.md
 - AdGuard DNS API Integration: ./ADGUARD_DNS_API_INTEGRATION.md
 - NextDNS API Integration: ./NEXTDNS_API_INTEGRATION.md

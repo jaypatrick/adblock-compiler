@@ -25,7 +25,7 @@ transformation in the compilation pipeline.
 
 ## Overview
 
-The `adblock-compiler` has two complementary observability layers:
+The `bloqr-backend` has two complementary observability layers:
 
 | Layer | What it covers | Async? | Error hooks? |
 |---|---|---|---|

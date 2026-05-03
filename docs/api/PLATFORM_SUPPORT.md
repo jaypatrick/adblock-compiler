@@ -2,7 +2,7 @@
 
 ← [Back to README](../../README.md)
 
-The adblock-compiler includes a **platform abstraction layer** that enables running in any JavaScript runtime, including:
+The bloqr-backend includes a **platform abstraction layer** that enables running in any JavaScript runtime, including:
 
 - **Deno** (default)
 - **Node.js** (via npm compatibility)

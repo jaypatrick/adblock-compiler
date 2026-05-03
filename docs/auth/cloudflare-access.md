@@ -94,7 +94,7 @@ flowchart TD
 |-------|-------|-------|
 | **Application name** | `Adblock Compiler Admin` | Display name |
 | **Session Duration** | `24h` | How long before re-auth |
-| **Application domain** | `adblock-compiler.jk-com.workers.dev` | Your Worker domain |
+| **Application domain** | `bloqr-backend.jk-com.workers.dev` | Your Worker domain |
 | **Path** | `/admin/*` | Restrict to admin routes only |
 
 > **Important:** Set the path to `/admin/*` so that only admin endpoints are behind Access. Regular API and frontend routes should NOT go through Access.
@@ -182,7 +182,7 @@ Cloudflare Access supports [Service Tokens](https://developers.cloudflare.com/cl
 
 ```bash
 # GitHub Actions example
-curl -X POST "https://adblock-compiler.jk-com.workers.dev/admin/storage/stats" \
+curl -X POST "https://bloqr-backend.jk-com.workers.dev/admin/storage/stats" \
   -H "X-Admin-Key: ${{ secrets.ADMIN_KEY }}" \
   -H "CF-Access-Client-Id: ${{ secrets.CF_ACCESS_CLIENT_ID }}" \
   -H "CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_CLIENT_SECRET }}"

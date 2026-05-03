@@ -2335,7 +2335,7 @@ paths:
                                         description: >
                                             Active email provider.
                                             queued = EMAIL_QUEUE → EmailDeliveryWorkflow (durable, retryable);
-                                            cf_email_worker = direct SEND_EMAIL binding (adblock-email worker);
+                                            cf_email_worker = direct SEND_EMAIL binding (bloqr-email worker);
                                             mailchannels = MailChannels HTTP API;
                                             none = no provider configured.
                                         example: queued

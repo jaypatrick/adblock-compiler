@@ -2,7 +2,7 @@
  * Type definitions for Cloudflare Workflows implementation.
  *
  * This module defines the parameter types and return types for all
- * workflow implementations in the adblock-compiler.
+ * workflow implementations in the bloqr-backend.
  */
 
 import type { IConfiguration } from '../../src/index.ts';

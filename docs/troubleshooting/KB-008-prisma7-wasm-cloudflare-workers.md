@@ -121,7 +121,7 @@ curl -s https://<your-worker>.workers.dev/api/health | jq .services.database
 # {
 #   "status": "healthy",
 #   "latency_ms": 42,
-#   "db_name": "adblock-compiler",
+#   "db_name": "bloqr-backend",
 #   "hyperdrive_host": "..."
 # }
 ```

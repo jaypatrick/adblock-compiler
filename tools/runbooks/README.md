@@ -1,6 +1,6 @@
 # Bloqr Ops — Interactive Runbooks
 
-Interactive runbooks powered by [Marimo](https://marimo.io) for diagnosing and operating the Bloqr / adblock-compiler stack.
+Interactive runbooks powered by [Marimo](https://marimo.io) for diagnosing and operating the Bloqr / bloqr-backend stack.
 
 ## Quick Start
 

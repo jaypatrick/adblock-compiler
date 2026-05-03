@@ -1,6 +1,6 @@
 # Developer Onboarding Guide
 
-> **Audience**: New contributors to the adblock-compiler project.
+> **Audience**: New contributors to the bloqr-backend project.
 > **Goal**: Get you from zero to a running local dev environment in under 10 minutes.
 
 ---

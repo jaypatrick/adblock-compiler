@@ -8,7 +8,7 @@ Thank you for your interest in contributing to the Adblock Compiler project! Thi
 >
 > | Scope                    | Tool                 | Example                                    |
 > | ------------------------ | -------------------- | ------------------------------------------ |
-> | Angular frontend         | `pnpm`               | `pnpm --filter adblock-frontend run build` |
+> | Angular frontend         | `pnpm`               | `pnpm --filter bloqr-frontend run build` |
 > | Worker / backend         | `deno`               | `deno task dev`                            |
 > | Wrangler (Worker deploy) | `deno task wrangler` | `deno task wrangler deploy`                |
 >
@@ -35,7 +35,7 @@ Thank you for your interest in contributing to the Adblock Compiler project! Thi
 3. **Run Tests**
    ```bash
    deno task test                                       # Backend tests (Deno)
-   pnpm --filter adblock-frontend run test     # Frontend tests (Vitest)
+   pnpm --filter bloqr-frontend run test     # Frontend tests (Vitest)
    ```
 
 ## Database Setup
@@ -176,9 +176,9 @@ update code                # Too vague, missing type
    deno task schema:generate    # Regenerates cloudflare-schema.yaml and postman-collection.json
 
    # Frontend (Angular)
-   pnpm --filter adblock-frontend run test     # Vitest unit tests
-   pnpm --filter adblock-frontend run lint     # ESLint
-   pnpm --filter adblock-frontend run build    # Production build
+   pnpm --filter bloqr-frontend run test     # Vitest unit tests
+   pnpm --filter bloqr-frontend run lint     # ESLint
+   pnpm --filter bloqr-frontend run build    # Production build
    ```
 
    > **Tip:** After running `deno task setup:hooks`, the pre-push hook will automatically
@@ -231,7 +231,7 @@ Run `deno task fmt` to automatically format your code.
   deno task test:coverage     # With coverage
 
   # Frontend
-  pnpm --filter adblock-frontend run test
+  pnpm --filter bloqr-frontend run test
   ```
 
 ### Mandatory checklist before opening a PR
@@ -305,7 +305,7 @@ The frontend is an Angular 21 app in `frontend/` using:
 ### Running Locally
 
 ```bash
-pnpm --filter adblock-frontend run start    # Angular dev server (http://localhost:4200)
+pnpm --filter bloqr-frontend run start    # Angular dev server (http://localhost:4200)
 deno task wrangler:dev                               # Worker API (http://localhost:8787)
 ```
 
@@ -316,17 +316,17 @@ The Angular dev server proxies `/api` requests to the Worker.
 The stack consists of two separate Cloudflare Workers. Both must be deployed when making changes that affect the full stack:
 
 ```bash
-# Deploy the backend API Worker (adblock-compiler)
+# Deploy the backend API Worker (bloqr-backend)
 deno task wrangler:deploy
 
-# Deploy the frontend SSR Worker (adblock-frontend)
+# Deploy the frontend SSR Worker (bloqr-frontend)
 # Run from the repo root — the script handles the build, analytics injection, and deploy:
 sh scripts/deploy-frontend.sh
 
 # Or manually (from the repo root, using pnpm workspace filter):
-pnpm --filter adblock-frontend run build
+pnpm --filter bloqr-frontend run build
 sh scripts/build-worker.sh  # injects/removes {{CF_WEB_ANALYTICS_TOKEN}} in index.html
-pnpm --filter adblock-frontend run deploy
+pnpm --filter bloqr-frontend run deploy
 ```
 
 CI (`ci.yml`) deploys both Workers automatically on every push to `main`.

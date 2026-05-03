@@ -214,7 +214,7 @@ logger.info('Processing started');
 
 ## OpenTelemetry Integration
 
-The adblock-compiler supports **OpenTelemetry** for distributed tracing, enabling integration with major observability platforms like Datadog, Honeycomb, Jaeger, and others.
+The bloqr-backend supports **OpenTelemetry** for distributed tracing, enabling integration with major observability platforms like Datadog, Honeycomb, Jaeger, and others.
 
 ### Features
 
@@ -230,7 +230,7 @@ import { createOpenTelemetryExporter, SourceCompiler } from '@jk-com/adblock-com
 
 // Create an OpenTelemetry diagnostics collector
 const diagnostics = createOpenTelemetryExporter({
-    serviceName: 'adblock-compiler',
+    serviceName: 'bloqr-backend',
     enableConsoleLogging: false, // Optional: log to console for debugging
 });
 
@@ -297,7 +297,7 @@ await tracer.startActiveSpan('compile-filters', async (span) => {
 
 ```typescript
 interface OpenTelemetryExporterOptions {
-    /** Service name for telemetry (default: 'adblock-compiler') */
+    /** Service name for telemetry (default: 'bloqr-backend') */
     serviceName?: string;
 
     /** Service version (default: package version) */

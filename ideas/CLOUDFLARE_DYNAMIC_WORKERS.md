@@ -13,9 +13,9 @@
 On 24 March 2026, Cloudflare announced **Dynamic Workers** — a primitive that lets any Worker
 spin up isolated V8 sandboxes at runtime from source-code strings with ~1 ms cold-start, no
 pre-deployment, and full Zero Trust sandboxing. This changes the foundational architecture of
-the adblock-compiler project and represents a pivotal competitive opportunity.
+the bloqr-backend project and represents a pivotal competitive opportunity.
 
-The adblock-compiler is a **day-1 adopter**. We are scaffolding Dynamic Workers support
+The bloqr-backend is a **day-1 adopter**. We are scaffolding Dynamic Workers support
 immediately, starting with the `/api/ast/parse` endpoint as a pilot and building toward a
 Compiler-as-a-Platform model where every compilation job, validation run, and AI agent task
 runs in its own isolated ephemeral Worker.
@@ -73,7 +73,7 @@ This is the missing piece for safe multi-tenant compilation.
 
 ### 2. LLM-Driven Codegen → Safe Execution
 
-The long-term vision for the adblock-compiler is **Compiler-as-a-Platform**: users describe
+The long-term vision for the bloqr-backend is **Compiler-as-a-Platform**: users describe
 the transform they want in natural language, an LLM generates the transformation code, and the
 Worker executes it. Dynamic Workers make this safe:
 
@@ -87,7 +87,7 @@ privilege escalation possible.
 
 ### 3. Competitive Moat
 
-The adblock-compiler is one of the first projects to scaffold Dynamic Workers support on the
+The bloqr-backend is one of the first projects to scaffold Dynamic Workers support on the
 day of GA announcement. Early adoption means:
 
 - API stability feedback directly to Cloudflare (partner relationship opportunity)

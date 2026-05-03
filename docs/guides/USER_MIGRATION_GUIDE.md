@@ -2,7 +2,7 @@
 
 > **Last updated:** June 2025
 >
-> This guide is for **end users** of adblock-compiler. If you're a developer or
+> This guide is for **end users** of bloqr-backend. If you're a developer or
 > contributor, see the [technical migration docs](../architecture/) for
 > implementation details.
 
@@ -27,7 +27,7 @@
 
 ## What Changed
 
-We've made two behind-the-scenes upgrades to adblock-compiler:
+We've made two behind-the-scenes upgrades to bloqr-backend:
 
 1. **Authentication system** — We moved from Clerk to **Better Auth**, an
    open-source authentication library. This gives us tighter control over how
@@ -65,7 +65,7 @@ Google). Here's what the process looks like:
 
 ```mermaid
 flowchart TD
-    A[Visit adblock-compiler] --> B{Already logged in?}
+    A[Visit bloqr-backend] --> B{Already logged in?}
     B -- Yes --> C[Dashboard]
     B -- No --> D[Sign-In Page]
     D --> E{Choose method}
@@ -85,7 +85,7 @@ flowchart TD
 
 ### Signing In (Existing Users)
 
-1. Go to the adblock-compiler sign-in page.
+1. Go to the bloqr-backend sign-in page.
 2. Choose your preferred sign-in method:
    - **Email & password** — enter the email address associated with your
      existing account and your password.
@@ -98,7 +98,7 @@ flowchart TD
 
 ### Creating a New Account
 
-If you're new to adblock-compiler:
+If you're new to bloqr-backend:
 
 1. Click **Sign Up** on the sign-in page.
 2. Choose email/password or a social provider (GitHub, Google).
@@ -161,7 +161,7 @@ If you do experience any issues with an API key, see the
 
 Filter list compilation endpoints remain at the same URLs with the same
 behavior. If your browser extension fetches compiled filter lists from
-adblock-compiler, it will continue to work without any updates.
+bloqr-backend, it will continue to work without any updates.
 
 ---
 
@@ -195,7 +195,7 @@ configurations, and dashboard settings are exactly where you left them.
 ### "Can I still use GitHub/Google to sign in?"
 
 **Yes!** Better Auth fully supports GitHub and Google social sign-in. If your
-social account's email matches your existing adblock-compiler account, it will
+social account's email matches your existing bloqr-backend account, it will
 link automatically. You can also add or remove social providers from your
 account settings at any time.
 
@@ -235,7 +235,7 @@ If you run into any problems related to the migration:
 1. **Check this guide first** — most common questions are answered in the
    [FAQ](#frequently-asked-questions) above.
 2. **Open a GitHub Issue** — go to
-   [github.com/nicholasgriffintn/adblock-compiler/issues](https://github.com/nicholasgriffintn/adblock-compiler/issues)
+   [github.com/nicholasgriffintn/bloqr-backend/issues](https://github.com/nicholasgriffintn/bloqr-backend/issues)
    and create a new issue. Please use the **`migration-issue`** label so we
    can triage migration-related problems quickly.
 3. **Include helpful details** when filing an issue:
@@ -281,6 +281,6 @@ gantt
 
 ---
 
-*Thank you for using adblock-compiler. If you have feedback on this migration
+*Thank you for using bloqr-backend. If you have feedback on this migration
 or this guide, we'd love to hear it — open an issue or drop a comment on the
 migration tracking issue.*

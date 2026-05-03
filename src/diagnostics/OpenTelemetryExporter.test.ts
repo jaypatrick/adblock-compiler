@@ -122,7 +122,7 @@ Deno.test('OpenTelemetryExporter - operationStart creates span with attributes',
 
     const span = mockTracer.spans[0];
     assertEquals(span.attributes['operation.name'], 'testOperation');
-    assertEquals(span.attributes['service.name'], 'adblock-compiler');
+    assertEquals(span.attributes['service.name'], 'bloqr-backend');
     assertEquals(span.attributes['input.param1'], 'value1');
     assertEquals(span.attributes['input.param2'], 42);
     assertEquals(span.ended, false);

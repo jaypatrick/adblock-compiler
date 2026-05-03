@@ -94,7 +94,7 @@ Cloudflare Workers support WASM, but only when the WASM module is bundled static
 ### Step 1 — Confirm the WASM error
 
 ```bash
-curl -s https://adblock-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
+curl -s https://bloqr-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
 ```
 
 If you see `"error": "WebAssembly.Module(): Wasm code generation disallowed by embedder"`, this KB applies.
@@ -175,10 +175,10 @@ wrangler deploy
 
 ```bash
 # Full health check
-curl -s https://adblock-frontend.jk-com.workers.dev/api/health | jq .services.database
+curl -s https://bloqr-frontend.jk-com.workers.dev/api/health | jq .services.database
 
 # Smoke test
-curl -s https://adblock-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
+curl -s https://bloqr-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
 ```
 
 Expected healthy responses:
@@ -187,7 +187,7 @@ Expected healthy responses:
 {
   "status": "healthy",
   "latency_ms": 42,
-  "db_name": "adblock-compiler",
+  "db_name": "bloqr-backend",
   "hyperdrive_host": "bf3d96a03bcd4b96a83645fdd07c5a0d.hyperdrive.local"
 }
 ```
@@ -195,7 +195,7 @@ Expected healthy responses:
 ```json
 {
   "ok": true,
-  "db_name": "adblock-compiler",
+  "db_name": "bloqr-backend",
   "pg_version": "PostgreSQL 16.x ...",
   "server_time": "2026-03-26T...",
   "table_count": 17,

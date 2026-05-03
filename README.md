@@ -15,12 +15,12 @@
 
 <!-- Live Services & Deployment -->
 
-[![Web UI](https://img.shields.io/badge/Web%20UI-Live-brightgreen?logo=cloudflare)](https://adblock-compiler.jk-com.workers.dev/)
-[![API](https://img.shields.io/badge/API-Live-blue?logo=cloudflare)](https://adblock-compiler.jk-com.workers.dev/api)
-[![Deployed on Cloudflare Workers](https://img.shields.io/badge/Deployed%20on-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white)](https://adblock-compiler.jk-com.workers.dev/)
+[![Web UI](https://img.shields.io/badge/Web%20UI-Live-brightgreen?logo=cloudflare)](https://bloqr-backend.jk-com.workers.dev/)
+[![API](https://img.shields.io/badge/API-Live-blue?logo=cloudflare)](https://bloqr-backend.jk-com.workers.dev/api)
+[![Deployed on Cloudflare Workers](https://img.shields.io/badge/Deployed%20on-Cloudflare%20Workers-F38020?logo=cloudflare&logoColor=white)](https://bloqr-backend.jk-com.workers.dev/)
 [![Docker Image](https://img.shields.io/badge/ghcr.io-adblock--compiler-2496ED?logo=docker&logoColor=white)](https://github.com/jaypatrick/adblock-compiler/pkgs/container/adblock-compiler)
 [![OpenAPI](https://img.shields.io/badge/OpenAPI-3.0.3-6BA539?logo=openapiinitiative&logoColor=white)](docs/api/openapi.yaml)
-[![mdBook Docs](https://img.shields.io/badge/docs-mdBook-blue?logo=mdBook)](https://adblock-compiler.jk-com.workers.dev/docs)
+[![mdBook Docs](https://img.shields.io/badge/docs-mdBook-blue?logo=mdBook)](https://bloqr-backend.jk-com.workers.dev/docs)
 
 <!-- Technology -->
 
@@ -44,7 +44,7 @@
 
 **Compiler-as-a-Service** for adblock filter lists. Transform, optimize, and combine filter lists from multiple sources with real-time progress tracking.
 
-🌐 **[Try the Admin Dashboard](https://adblock-compiler.jk-com.workers.dev/)** | 🔧 **[Compiler UI](https://adblock-frontend.jk-com.workers.dev/)** | 🚀 **[API Endpoint](https://adblock-compiler.jk-com.workers.dev/api)** | 📚 **[Documentation | WIP](https://docs.bloqr.dev/)**
+🌐 **[Try the Admin Dashboard](https://bloqr-backend.jk-com.workers.dev/)** | 🔧 **[Compiler UI](https://bloqr-frontend.jk-com.workers.dev/)** | 🚀 **[API Endpoint](https://bloqr-backend.jk-com.workers.dev/api)** | 📚 **[Documentation | WIP](https://docs.bloqr.dev/)**
 
 ## ✨ Features
 
@@ -313,20 +313,20 @@ The primary frontend is an Angular 21 SPA in `frontend/`. It uses:
 
 ```bash
 # Development server (http://localhost:4200)
-pnpm --filter adblock-frontend run start
+pnpm --filter bloqr-frontend run start
 
 # Production build
-pnpm --filter adblock-frontend run build
+pnpm --filter bloqr-frontend run build
 
 # Run tests
-pnpm --filter adblock-frontend run test
+pnpm --filter bloqr-frontend run test
 ```
 
 For full-stack local development:
 
 ```bash
 deno task wrangler:dev        # Worker on :8787
-pnpm --filter adblock-frontend run start  # Angular on :4200 → proxies /api to :8787
+pnpm --filter bloqr-frontend run start  # Angular on :4200 → proxies /api to :8787
 ```
 
 **Pages:**

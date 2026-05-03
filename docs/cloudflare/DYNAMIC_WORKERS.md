@@ -23,7 +23,7 @@ sandboxes at runtime** from source code strings. Key properties:
 
 ## Why This Project Adopted Dynamic Workers
 
-The adblock-compiler processes millions of filter-list rules in short-lived, stateless bursts.
+The bloqr-backend processes millions of filter-list rules in short-lived, stateless bursts.
 The workload profile matches Dynamic Workers almost perfectly:
 
 | Workload | Suitable for Dynamic Workers? |
@@ -65,7 +65,7 @@ The newer `DynamicDispatchNamespace` binding. Provides two operations:
 ```toml
 [[dynamic_dispatch_namespaces]]
 binding = "LOADER"
-namespace = "adblock-compiler-dynamic"
+namespace = "bloqr-backend-dynamic"
 ```
 
 ---
@@ -177,7 +177,7 @@ are required.
 ```toml
 [[dynamic_dispatch_namespaces]]
 binding = "LOADER"
-namespace = "adblock-compiler-dynamic"
+namespace = "bloqr-backend-dynamic"
 ```
 
 #### 2. Deploy

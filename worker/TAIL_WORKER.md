@@ -1,6 +1,6 @@
 # Cloudflare Tail Worker for Adblock Compiler
 
-This directory contains a Cloudflare Tail Worker implementation for the adblock-compiler project. The tail worker provides real-time observability by consuming logs, exceptions, and events from the main worker.
+This directory contains a Cloudflare Tail Worker implementation for the bloqr-backend project. The tail worker provides real-time observability by consuming logs, exceptions, and events from the main worker.
 
 ## What is a Tail Worker?
 
@@ -13,7 +13,7 @@ A Cloudflare Tail Worker is a special type of Worker that automatically receives
 
 ## Features
 
-The adblock-compiler tail worker provides:
+The bloqr-backend tail worker provides:
 
 - **Log Persistence**: Store logs in Cloudflare KV for later analysis
 - **Error Forwarding**: Send critical errors to external webhooks (Slack, Discord, PagerDuty, etc.)
@@ -31,7 +31,7 @@ First, deploy the tail worker to Cloudflare:
 deno task wrangler:tail:deploy
 ```
 
-This deploys the tail worker as a separate worker named `adblock-tail`.
+This deploys the tail worker as a separate worker named `bloqr-tail`.
 
 ### 2. (Optional) Create KV Namespace for Log Storage
 
@@ -52,7 +52,7 @@ After the tail worker is deployed, enable it as a consumer of the main worker by
 ```toml
 # Uncomment these lines:
 tail_consumers = [
-    { service = "adblock-tail" }
+    { service = "bloqr-tail" }
 ]
 ```
 
@@ -62,7 +62,7 @@ Then redeploy the main worker:
 deno task wrangler:deploy
 ```
 
-> **Multiple producers, one consumer:** Cloudflare supports multiple producer Workers feeding a single tail consumer. The `adblock-frontend` Worker is also wired to this same tail worker — add `tail_consumers = [{ service = "adblock-tail" }]` to `frontend/wrangler.toml` and redeploy the frontend Worker. No extra infrastructure needed; `adblock-tail` must be deployed before any producer Worker that references it.
+> **Multiple producers, one consumer:** Cloudflare supports multiple producer Workers feeding a single tail consumer. The `bloqr-frontend` Worker is also wired to this same tail worker — add `tail_consumers = [{ service = "bloqr-tail" }]` to `frontend/wrangler.toml` and redeploy the frontend Worker. No extra infrastructure needed; `bloqr-tail` must be deployed before any producer Worker that references it.
 
 ### 4. (Optional) Configure Error Webhook
 
@@ -145,7 +145,7 @@ The webhook receives POST requests with this JSON structure:
 ```json
 {
     "timestamp": "2024-01-11T00:00:00.000Z",
-    "scriptName": "adblock-compiler",
+    "scriptName": "bloqr-backend",
     "outcome": "exception",
     "url": "https://example.com/compile",
     "method": "POST",
@@ -206,7 +206,7 @@ flowchart TD
 
 ### Tail worker not receiving events
 
-1. Ensure the tail worker is deployed: `wrangler deployments list --name adblock-tail`
+1. Ensure the tail worker is deployed: `wrangler deployments list --name bloqr-tail`
 2. Check that `tail_consumers` is configured in the main worker's `wrangler.toml`
 3. Redeploy the main worker after adding tail consumers
 4. Check both workers are in the same Cloudflare account

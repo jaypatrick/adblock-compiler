@@ -98,7 +98,7 @@ Exactly **one** of `rules` or `text` must be provided. Supplying both returns `4
 **Walk a list and collect all modifiers:**
 
 ```bash
-curl -X POST https://adblock-compiler.jk-com.workers.dev/api/ast/walk \
+curl -X POST https://bloqr-backend.jk-com.workers.dev/api/ast/walk \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{
@@ -113,7 +113,7 @@ curl -X POST https://adblock-compiler.jk-com.workers.dev/api/ast/walk \
 **Walk with full context, capped at depth 3:**
 
 ```bash
-curl -X POST https://adblock-compiler.jk-com.workers.dev/api/ast/walk \
+curl -X POST https://bloqr-backend.jk-com.workers.dev/api/ast/walk \
   -H "Authorization: Bearer <token>" \
   -H "Content-Type: application/json" \
   -d '{

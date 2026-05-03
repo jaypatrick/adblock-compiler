@@ -1,6 +1,6 @@
 # CLAUDE.md - AI Assistant Guide
 
-This document provides essential context for AI assistants working with the adblock-compiler codebase.
+This document provides essential context for AI assistants working with the bloqr-backend codebase.
 
 ## Project Overview
 

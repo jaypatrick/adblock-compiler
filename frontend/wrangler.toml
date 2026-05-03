@@ -3,7 +3,7 @@
 # ============================================================================
 #
 # Build output layout (produced by `npm run build` / `ng build`):
-#   dist/adblock-compiler/
+#   dist/bloqr-backend/
 #   ├── browser/          ← Static assets (JS bundles, CSS, fonts, pre-rendered HTML)
 #   └── server/
 #       └── server.mjs    ← Workers entry point (compiled from server.ts)
@@ -36,7 +36,7 @@
 #
 # SERVICE BINDING:
 #   The [[services]] block below binds this Worker to the backend API Worker
-#   (bloqr-compiler) on the internal Cloudflare network. SSR-time /api/*
+#   (bloqr-backend) on the internal Cloudflare network. SSR-time /api/*
 #   requests are forwarded via env.API.fetch() in server.ts — no public
 #   round-trip, no CORS negotiation.
 #
@@ -58,7 +58,7 @@ workers_dev = true
 logpush = true
 
 # Compiled server entry point output by `ng build` when ssr.entry = "server.ts"
-main = "dist/adblock-compiler/server/server.mjs"
+main = "dist/bloqr-backend/server/server.mjs"
 
 # Do NOT re-bundle the Angular SSR output. `ng build` already produces a valid
 # ES-module server bundle. If wrangler re-bundles it with esbuild, imports get
@@ -109,7 +109,7 @@ globs = ["**/*.mjs"]
 # handler is invoked, so Angular's SSR handler only receives HTML document
 # requests (not JS/CSS/font fetches).
 [assets]
-directory = "dist/adblock-compiler/browser"
+directory = "dist/bloqr-backend/browser"
 binding = "ASSETS"
 # Ensures /route and /route/ resolve to the same prerendered index.html.
 html_handling = "auto-trailing-slash"
@@ -161,7 +161,7 @@ head_sampling_rate = 1
 # (no public network hop, no CORS negotiation).
 [[services]]
 binding = "API"
-service = "bloqr-compiler"
+service = "bloqr-backend"
 
 # ============================================================================
 # [env.dev] — Dev environment (workers.dev, debug Angular build)
@@ -176,9 +176,9 @@ service = "bloqr-compiler"
 #   optimization: false — readable, non-minified code; no tree-shaking
 #
 # All bindings (ASSETS, [[services]] API, etc.) are inherited from the
-# top-level config. The API service binding still points to `bloqr-compiler`
+# top-level config. The API service binding still points to `bloqr-backend`
 # (production backend). Override [[env.dev.services]] here if you deploy a
-# separate dev API worker (`bloqr-compiler-dev`).
+# separate dev API worker (`bloqr-backend-dev`).
 #
 # Routes: NOT inherited. This env is only accessible via *.workers.dev.
 # ============================================================================

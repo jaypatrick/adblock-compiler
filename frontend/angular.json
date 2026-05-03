@@ -3,7 +3,7 @@
     "version": 1,
     "newProjectRoot": "projects",
     "projects": {
-        "adblock-compiler": {
+        "bloqr-backend": {
             "projectType": "application",
             "schematics": {
                 "@schematics/angular:component": {
@@ -17,7 +17,7 @@
                 "build": {
                     "builder": "@angular-devkit/build-angular:application",
                     "options": {
-                        "outputPath": "dist/adblock-compiler",
+                        "outputPath": "dist/bloqr-backend",
                         "index": "src/index.html",
                         "browser": "src/main.ts",
                         "server": "src/main.server.ts",
@@ -77,10 +77,10 @@
                     "builder": "@angular-devkit/build-angular:dev-server",
                     "configurations": {
                         "production": {
-                            "buildTarget": "adblock-compiler:build:production"
+                            "buildTarget": "bloqr-backend:build:production"
                         },
                         "development": {
-                            "buildTarget": "adblock-compiler:build:development"
+                            "buildTarget": "bloqr-backend:build:development"
                         }
                     },
                     "defaultConfiguration": "development"
@@ -88,7 +88,7 @@
                 "extract-i18n": {
                     "builder": "@angular-devkit/build-angular:extract-i18n",
                     "options": {
-                        "buildTarget": "adblock-compiler:build"
+                        "buildTarget": "bloqr-backend:build"
                     }
                 },
                 "lint": {

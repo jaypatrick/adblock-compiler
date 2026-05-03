@@ -1,7 +1,7 @@
 # Sentry Best Practices
 
 This document covers recommended configuration and operational practices for
-using Sentry with `adblock-compiler`. It is intended for the team member who
+using Sentry with `bloqr-backend`. It is intended for the team member who
 owns the Sentry project on `jkcom.sentry.io` as well as any developer
 troubleshooting issues.
 
@@ -30,21 +30,21 @@ Use **two separate Sentry projects** under the `jkcom` organisation:
 
 | Project slug | Platform | What it captures |
 |-------------|----------|------------------|
-| `adblock-compiler` | Cloudflare Workers | Main Worker errors, scheduled jobs, queue handlers, tail worker exceptions |
-| `adblock-frontend` | JavaScript/Browser | Angular RUM errors, browser traces, session replay |
+| `bloqr-backend` | Cloudflare Workers | Main Worker errors, scheduled jobs, queue handlers, tail worker exceptions |
+| `bloqr-frontend` | JavaScript/Browser | Angular RUM errors, browser traces, session replay |
 
 Using separate projects allows independent quotas, alert routing, and source
 map management. Both share the same `SENTRY_DSN` secret if you choose one project,
 or you can set two distinct DSNs (one per `SENTRY_DSN` secret scope).
 
-> **Current setup (single project):** `adblock-compiler` — both Worker and
+> **Current setup (single project):** `bloqr-backend` — both Worker and
 > Angular frontend use the same DSN via `/api/sentry-config`.
 
 ### Project settings checklist
 
 - **Security & Privacy → Data Scrubbing**: Enable `Scrub IP Addresses` and
   `Scrub Defaults` (removes PII like emails, credit cards) in
-  *Settings → Projects → adblock-compiler → Security & Privacy*.
+  *Settings → Projects → bloqr-backend → Security & Privacy*.
 - **Inbound Filters → Browser Extensions**: Enable to suppress noisy extension
   errors from session replay users.
 - **Inbound Filters → Localhost**: Enable to block events from local dev
@@ -105,7 +105,7 @@ minified code causes grouping to degrade — this is solved by **source maps**
 ### Custom fingerprinting (when needed)
 
 If errors are over-grouped (many distinct errors merged into one), add a
-fingerprinting rule in *Settings → Projects → adblock-compiler → Issue Grouping
+fingerprinting rule in *Settings → Projects → bloqr-backend → Issue Grouping
 → Fingerprint Rules*:
 
 ```
@@ -263,7 +263,7 @@ on every push to `main`. This enables readable stack traces in Sentry Issues.
 |------|------|-----------------|
 | `SENTRY_AUTH_TOKEN` | Secret | *Sentry → Settings → Account → API → Auth Tokens* — create with `project:releases` + `org:read` scopes |
 | `SENTRY_ORG` | Variable | Your org slug: `jkcom` |
-| `SENTRY_PROJECT` | Variable | `adblock-compiler` |
+| `SENTRY_PROJECT` | Variable | `bloqr-backend` |
 
 ### Validating source map uploads
 
@@ -303,7 +303,7 @@ Elevate to `Admin` only for team members who manage alert rules or integrations.
 
 The `SENTRY_AUTH_TOKEN` used in CI should be a **machine account token**, not
 a personal token. Create it at *Settings → Account → API → Auth Tokens*. Name
-it `adblock-compiler-ci` and restrict to the minimum required scopes:
+it `bloqr-backend-ci` and restrict to the minimum required scopes:
 `project:releases`, `org:read`.
 
 ---

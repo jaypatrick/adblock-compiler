@@ -25,7 +25,7 @@ import type { Span as OtelSpan, Tracer } from '@opentelemetry/api';
 import type { DiagnosticsBreadcrumb, DiagnosticsLevel, DiagnosticsUser, IDiagnosticsProvider, ISpan } from './IDiagnosticsProvider.ts';
 
 export interface OpenTelemetryDiagnosticsProviderOptions {
-    /** Service name reported in traces. Default: 'adblock-compiler' */
+    /** Service name reported in traces. Default: 'bloqr-backend' */
     serviceName?: string;
     /** Service version. Recommend passing env.COMPILER_VERSION. */
     serviceVersion?: string;
@@ -81,7 +81,7 @@ export class OpenTelemetryDiagnosticsProvider implements IDiagnosticsProvider {
     constructor(options: OpenTelemetryDiagnosticsProviderOptions = {}) {
         this.tracer = options.tracer ??
             trace.getTracer(
-                options.serviceName ?? 'adblock-compiler',
+                options.serviceName ?? 'bloqr-backend',
                 options.serviceVersion ?? '0.0.0',
             );
     }

@@ -1,6 +1,6 @@
 # Adblock Compiler — Operations & Troubleshooting KB
 
-This directory contains the Knowledge Base (KB) troubleshooting series for the `adblock-compiler` Cloudflare Worker and its supporting services.
+This directory contains the Knowledge Base (KB) troubleshooting series for the `bloqr-backend` Cloudflare Worker and its supporting services.
 
 Each article follows a consistent structure: symptom, diagnostic commands, root cause decision tree, and resolution summary.
 

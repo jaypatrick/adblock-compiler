@@ -212,7 +212,7 @@ return betterAuth({
 
     plugins: [
         bearer(),
-        twoFactor({ issuer: 'adblock-compiler' }),
+        twoFactor({ issuer: 'bloqr-backend' }),
         multiSession(),
         admin(),
     ],
@@ -301,4 +301,4 @@ When integrating Better Auth with Cloudflare Workers, verify all of the followin
 
 ## Feedback & Contribution
 
-If you encountered a variant of this issue or discovered a new failure mode, please open an issue tagged `troubleshooting` and `documentation` in `jaypatrick/adblock-compiler` with the details so it can be captured in a follow-up KB entry.
+If you encountered a variant of this issue or discovered a new failure mode, please open an issue tagged `troubleshooting` and `documentation` in `jaypatrick/bloqr-backend` with the details so it can be captured in a follow-up KB entry.

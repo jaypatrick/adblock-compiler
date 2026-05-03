@@ -43,7 +43,7 @@ import type { TrpcTypedClient } from './types';
  * Creates a typed tRPC HTTP batch client pointed at the Worker's `/api/trpc` endpoint.
  *
  * @param baseUrl  Worker origin (no `/api` suffix — the factory appends `/api/trpc`).
- *                 Examples: `''` (same-origin, browser), `'https://adblock-compiler.<account>.workers.dev'` (SSR/CLI).
+ *                 Examples: `''` (same-origin, browser), `'https://bloqr-backend.<account>.workers.dev'` (SSR/CLI).
  * @param getToken Optional async getter that returns a Bearer token string or `null`.
  *                 Called on every request. Never cached by this factory.
  * @returns        `TrpcTypedClient` — typed proxy over `createTRPCClient<any>`.

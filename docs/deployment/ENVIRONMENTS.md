@@ -20,7 +20,7 @@ flowchart LR
 | | Local | Dev | Production |
 |---|---|---|---|
 | **Deploy command (API)** | `deno task wrangler:dev` | `deno task wrangler:deploy:dev` | `deno task wrangler:deploy` |
-| **Deploy command (frontend)** | `pnpm --filter adblock-frontend run start` | `deno task ui:deploy:ng:dev` | `sh scripts/deploy-frontend.sh` |
+| **Deploy command (frontend)** | `pnpm --filter bloqr-frontend run start` | `deno task ui:deploy:ng:dev` | `sh scripts/deploy-frontend.sh` |
 | **URL** | `http://localhost:8787` | `https://<worker-name>.workers.dev` | custom domain via `[[routes]]` |
 | **Angular build** | dev server (HMR) | `ng build --configuration development` | `ng build` (production config) |
 | **Angular DevTools** | ✅ (dev server always unoptimised) | ✅ (sourceMap, no optimisation) | ❌ (minified, tree-shaken) |
@@ -38,10 +38,10 @@ No Cloudflare deployment is involved. Both workers run locally.
 deno task wrangler:dev
 
 # Angular dev server  →  http://localhost:4200  (hot module reload)
-pnpm --filter adblock-frontend run start
+pnpm --filter bloqr-frontend run start
 
 # Angular Workers preview  →  http://localhost:4200  (mirrors production SSR)
-pnpm --filter adblock-frontend run preview
+pnpm --filter bloqr-frontend run preview
 ```
 
 Secrets and local URL overrides live in `.dev.vars` (gitignored — copy from `.dev.vars.example`).
@@ -68,18 +68,18 @@ deno task wrangler:deploy:dev
 
 ```bash
 deno task ui:deploy:ng:dev
-# equivalent: pnpm --filter adblock-frontend run build:dev
-#           + pnpm --filter adblock-frontend run deploy:dev
+# equivalent: pnpm --filter bloqr-frontend run build:dev
+#           + pnpm --filter bloqr-frontend run deploy:dev
 ```
 
 Or step by step:
 
 ```bash
 # Build with development configuration (sourceMap=true, optimization=false)
-pnpm --filter adblock-frontend run build:dev   # ng build --configuration development
+pnpm --filter bloqr-frontend run build:dev   # ng build --configuration development
 
 # Deploy to *.workers.dev (--env dev skips the [[routes]] custom domain block)
-pnpm --filter adblock-frontend run deploy:dev  # wrangler deploy --env dev
+pnpm --filter bloqr-frontend run deploy:dev  # wrangler deploy --env dev
 ```
 
 ### What `[env.dev]` does
