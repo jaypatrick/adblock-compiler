@@ -35,7 +35,10 @@ on:
 # already in progress, the older run is cancelled cleanly rather than racing
 # to commit — preventing the "cancelled = failure" noise on the Actions page.
 concurrency:
-    group: cloudflare-dep-update
+    # Scope by ref so that a feature-branch run doesn't cancel an in-progress
+    # main run.  The job-level `if` guard further ensures only main-branch runs
+    # actually execute any work.
+    group: cloudflare-dep-update-${{ github.ref }}
     cancel-in-progress: true
 
 env:
@@ -46,6 +49,7 @@ permissions:
     contents: write
     workflows: write
     pull-requests: write
+    issues: write
 
 jobs:
     update:
@@ -132,7 +136,7 @@ jobs:
                   gh label create "dependencies" \
                     --color "0075ca" \
                     --description "Dependency updates" \
-                    --force || true
+                    --force
 
             - name: Create pull request
               if: steps.changes.outputs.has_changes == 'true'
