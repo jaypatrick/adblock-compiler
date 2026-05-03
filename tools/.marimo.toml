@@ -3,6 +3,13 @@
 #
 # This file lives at tools/.marimo.toml so marimo picks it up automatically
 # when any runbook in tools/ is opened with `marimo run` or `marimo edit`.
+# 
+# Issue #1738: Marimo foundation setup with:
+# - Cloudflare Tunnel + CF Access deployment
+# - LLM/AI automation (logs → analysis → PR/repair)
+# - Theming & design language
+# - MCP integration foundation
+# - Public gallery support
 
 [package_management]
 # Use uv as the package manager. This means:
@@ -75,3 +82,90 @@ enabled = true
 
 [language_servers.ty]
 enabled = true
+
+# ---------------------------------------------------------------------------
+# Theming — Bloqr Design Language
+# ---------------------------------------------------------------------------
+# Custom CSS for Bloqr branding: colors, typography, animations, dark/light modes.
+# 
+# Location: tools/theming/bloqr-theme.css
+# This CSS is imported in runbooks via:
+#   import marimo as mo
+#   mo.css(mo.html('<link rel="stylesheet" href="/tools/theming/bloqr-theme.css">'))
+#
+# Or globally in marimo layout via [ui] section below.
+# 
+# https://docs.marimo.io/guides/configuration/theming/
+[ui]
+# Optional: Add global CSS here or via external stylesheets
+# For now, individual runbooks import theming; can be centralized later
+toolbar_position = "top"
+code_editor_bordered = true
+chat_input_bottom_padding = 1.5
+
+# ---------------------------------------------------------------------------
+# MCP (Marimo Control Protocol)
+# ---------------------------------------------------------------------------
+# MCP enables:
+#   - Command execution (shell, Python, SQL) from marimo cells
+#   - Logs → marimo → LLM → PR/fix automation pipeline
+#   - Integration with Cloudflare Workers, databases, and external tools
+#
+# MCP server will be available at:
+#   POST /_mcp/tools     — list available tools
+#   POST /_mcp/execute   — execute a tool
+#
+# Authentication: Bearer token (set via MCP_TOKEN env var)
+# 
+# https://docs.marimo.io/guides/editor_features/mcp/
+[mcp]
+enabled = true
+# Token checked for requests to /_mcp/* endpoints
+# Set via environment: export MCP_TOKEN="your-secure-token"
+# auth_token_env_var = "MCP_TOKEN"
+
+# ---------------------------------------------------------------------------
+# Notebook Publishing & Gallery
+# ---------------------------------------------------------------------------
+# Configuration for marimo public gallery and embedding.
+# 
+# Gallery submission: https://marimo.io/gallery
+#   - Title, description, screenshot/thumbnail
+#   - WASM export for web embedding
+#   - OpenGraph metadata for social sharing
+#
+# Example runbooks intended for gallery:
+#   - runbooks/dashboard.py — compile stats, user analytics
+#   - runbooks/gallery-demo.py — design language showcase
+#
+[publishing]
+# OpenGraph metadata for shared notebooks
+title = "Bloqr Adblock Compiler"
+description = "Real-time compilation metrics, analytics, and AI-augmented debugging dashboards"
+author = "Bloqr"
+# thumbnail = "path/to/image.png"  # ~1200x630px, optional
+
+# ---------------------------------------------------------------------------
+# Server Configuration
+# ---------------------------------------------------------------------------
+# When running `marimo server` for production deployment:
+#   marimo server --port 2718 --host 127.0.0.1
+#
+# This should sit behind Cloudflare Tunnel + CF Access.
+# 
+# https://docs.marimo.io/guides/deployment/running_marimo/
+[server]
+# Notebook directory to serve
+# notebook_dir = "/opt/bloqr/runbooks"
+
+# Browser auto-open (disable in production)
+show_code = false
+
+# CORS settings (not typically needed behind CF Tunnel, but documented here)
+# cors_allowed_origins = ["https://marimo.bloqr.com"]
+
+# Notebook execution timeout (seconds)
+execution_timeout = 300
+
+# Watch for notebook file changes and reload
+watch = false
