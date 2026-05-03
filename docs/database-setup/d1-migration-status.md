@@ -8,7 +8,7 @@
 The project has intentionally designed Cloudflare D1 as an **L1 edge cache** in front of
 Neon PostgreSQL (L2 source of truth). However, the migration from D1-as-primary-store to
 Neon-as-primary-store is still incomplete. Several worker handlers still read/write
-directly to `env.DB` (D1 / `adblock-compiler-d1-database`) rather than going through the
+directly to `env.DB` (D1 / `bloqr-backend-d1-database`) rather than going through the
 Hyperdrive/Prisma path.
 
 This document tracks each remaining item. The `DB` D1 binding and the `migrations/`

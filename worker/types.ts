@@ -420,8 +420,8 @@ export interface Env {
     // Static assets (optional — absent when the API worker is deployed without an [assets] binding)
     ASSETS?: Fetcher;
     // Queue bindings (optional - queues must be created in Cloudflare dashboard first)
-    ADBLOCK_COMPILER_QUEUE?: Queue<QueueMessage>;
-    ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY?: Queue<QueueMessage>;
+    BLOQR_BACKEND_QUEUE?: Queue<QueueMessage>;
+    BLOQR_BACKEND_QUEUE_HIGH_PRIORITY?: Queue<QueueMessage>;
     // Dedicated error dead-letter queue — isolated from compile queues.
     // Receives error events from app.onError and persists them to ERROR_BUCKET.
     ERROR_QUEUE?: Queue<ErrorQueueMessage>;
@@ -487,7 +487,7 @@ export interface Env {
      * wrangler.toml:
      * ```toml
      * [[queues.producers]]
-     * queue   = "adblock-compiler-email-queue"
+     * queue   = "bloqr-backend-email-queue"
      * binding = "EMAIL_QUEUE"
      * ```
      *
@@ -933,7 +933,7 @@ export interface CacheWarmQueueMessage extends QueueMessage {
 }
 
 /**
- * Message placed on `adblock-compiler-email-queue` by {@link QueuedEmailService}.
+ * Message placed on `bloqr-backend-email-queue` by {@link QueuedEmailService}.
  *
  * The queue consumer (`handleEmailQueue`) reads these messages and creates an
  * `EmailDeliveryWorkflow` instance for each one, providing durable, retryable

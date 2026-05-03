@@ -523,7 +523,7 @@ export class CfEmailServiceRestService implements IEmailService {
 // ============================================================================
 
 /**
- * Email provider that enqueues delivery jobs on the `adblock-compiler-email-queue`
+ * Email provider that enqueues delivery jobs on the `bloqr-backend-email-queue`
  * Cloudflare Queue, which is consumed by `handleEmailQueue` and dispatched to
  * `EmailDeliveryWorkflow` for durable, step-checkpointed delivery.
  *

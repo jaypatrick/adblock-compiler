@@ -236,7 +236,7 @@ MCP agent entry update:
     // ... existing fields ...
     meshPolicy: {
         allowedBindings: ['BROWSER', 'COMPILATION_CACHE', 'METRICS'],
-        deniedBindings: ['DB', 'ADMIN_DB', 'FILTER_STORAGE', 'ADBLOCK_COMPILER_QUEUE'],
+        deniedBindings: ['DB', 'ADMIN_DB', 'FILTER_STORAGE', 'BLOQR_BACKEND_QUEUE'],
         autoEnroll: false, // flip to true when SDK is ready
     },
 }
@@ -292,7 +292,7 @@ Audit all `/admin/*` routes in `worker/routes/admin.routes.ts` and tag each with
 
 #### 2.3 — Staging/Production Isolation by Policy
 
-- Define a Mesh access policy that structurally prevents any staging-enrolled agent from reaching production bindings (`DB`, `FILTER_STORAGE`, `ADBLOCK_COMPILER_QUEUE`)
+- Define a Mesh access policy that structurally prevents any staging-enrolled agent from reaching production bindings (`DB`, `FILTER_STORAGE`, `BLOQR_BACKEND_QUEUE`)
 - This replaces the current environment-separation strategy (separate `wrangler.toml` environments) with network-enforced isolation
 
 ---

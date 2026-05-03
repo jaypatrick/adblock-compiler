@@ -13,12 +13,50 @@ inputs:
 runs:
   using: composite
   steps:
+    - name: Verify D1 database exists
+      shell: bash
+      run: |
+        DB_NAME="bloqr-backend-d1-database"
+        echo "Preflight: verifying D1 database '${DB_NAME}' exists..."
+        if output=$(deno task wrangler d1 info "${DB_NAME}" 2>&1); then
+            echo "$output"
+            echo "✅ D1 database '${DB_NAME}' confirmed"
+        else
+            echo "$output"
+            # 7403 = Account > D1:Edit permission missing; 10000 = token invalid / authentication error
+            if echo "$output" | grep -qiE 'not authorized|Authentication error|7403|10000'; then
+                echo ""
+                echo "🔐 Could not verify the D1 database — API token lacks D1 read permission."
+                echo "   Ensure CLOUDFLARE_API_TOKEN has Account > D1:Edit permission and retry."
+                exit 1
+            fi
+            echo ""
+            echo "❌ D1 database '${DB_NAME}' was not found on Cloudflare."
+            echo ""
+            echo "   The Cloudflare-side resource may not yet have been created or renamed."
+            echo "   Migrations cannot run without a matching remote D1 database."
+            echo ""
+            echo "   Option A — Create a new D1 database:"
+            echo "     deno task wrangler d1 create ${DB_NAME}"
+            echo "     Then copy the returned 'database_id' and update all matching"
+            echo "     'database_id' fields in wrangler.toml."
+            echo ""
+            echo "   Option B — Rename an existing database (Cloudflare dashboard):"
+            echo "     1. Go to https://dash.cloudflare.com → Workers & Pages → D1"
+            echo "     2. Find and rename your existing D1 database to '${DB_NAME}'"
+            echo "     3. Confirm the 'database_id' values in wrangler.toml still match"
+            echo "        the renamed database's UUID."
+            echo ""
+            echo "   After creating or renaming the database, re-run this workflow."
+            exit 1
+        fi
+
     - name: Run database migrations
       shell: bash
       run: |
         echo "Running D1 migrations..."
         for i in 1 2 3; do
-            if output=$(deno task wrangler d1 migrations apply adblock-compiler-d1-database --remote 2>&1); then
+            if output=$(deno task wrangler d1 migrations apply bloqr-backend-d1-database --remote 2>&1); then
                 echo "$output"
                 echo "✅ All migrations applied"
                 break
@@ -118,13 +156,13 @@ runs:
             exit 1
         }
 
-        create_or_confirm_queue "adblock-compiler-worker-queue"
-        create_or_confirm_queue "adblock-compiler-worker-queue-high-priority"
-        create_or_confirm_queue "adblock-compiler-dlq"
-        create_or_confirm_queue "adblock-compiler-error-queue"
-        create_or_confirm_queue "adblock-compiler-email-queue"
-        create_or_confirm_queue "adblock-compiler-email-dlq"
-        create_or_confirm_r2_bucket "adblock-compiler-r2-storage"
+        create_or_confirm_queue "bloqr-backend-worker-queue"
+        create_or_confirm_queue "bloqr-backend-worker-queue-high-priority"
+        create_or_confirm_queue "bloqr-backend-dlq"
+        create_or_confirm_queue "bloqr-backend-error-queue"
+        create_or_confirm_queue "bloqr-backend-email-queue"
+        create_or_confirm_queue "bloqr-backend-email-dlq"
+        create_or_confirm_r2_bucket "bloqr-backend-r2-storage"
 
     - name: Authenticate Docker with Cloudflare Container Registry
       if: env.CLOUDFLARE_API_TOKEN != ''

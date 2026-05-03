@@ -539,7 +539,7 @@ CF_ACCOUNT_ID = "your-cloudflare-account-id"
 # Queue-backed delivery (preferred for production)
 [[queues.producers]]
 binding = "EMAIL_QUEUE"
-queue   = "adblock-compiler-email-queue"
+queue   = "bloqr-backend-email-queue"
 
 # Legacy CF Email Worker fallback
 [[send_email]]

@@ -37,6 +37,7 @@ on:
     types: [opened, reopened, synchronize]
     paths:
       - 'prisma/**'
+      - '!prisma/generated-d1/**'
       - 'prisma.config.ts'
       - 'worker/lib/auth.ts'
       - 'worker/lib/prisma.ts'
@@ -175,10 +176,10 @@ jobs:
           branch_name: ${{ steps.context.outputs.branch_name }}
           # Fork from the staging branch so PR branches have staging-parity
           # schema and data (staging is the parent of all PR branches).
-          parent: staging
+          parent_branch: staging
           api_key: ${{ secrets.NEON_API_KEY }}
           # Database name and role are derived from NEON_DATABASE_URL above.
-          username: ${{ steps.db-config.outputs.db_role }}
+          role: ${{ steps.db-config.outputs.db_role }}
           database: ${{ steps.db-config.outputs.db_name }}
 
       # ── 4. Set up pnpm + Node.js for Prisma CLI ─────────────────────────

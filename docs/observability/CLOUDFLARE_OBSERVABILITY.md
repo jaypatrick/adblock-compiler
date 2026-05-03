@@ -240,15 +240,15 @@ curl -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_
   -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
   -H "Content-Type: application/json" \
   -d '{
-    "name": "adblock-compiler-logs",
-    "destination_conf": "r2://adblock-compiler-r2-storage/logs/{DATE}?account-id=$CLOUDFLARE_ACCOUNT_ID",
+    "name": "bloqr-backend-logs",
+    "destination_conf": "r2://bloqr-backend-r2-storage/logs/{DATE}?account-id=$CLOUDFLARE_ACCOUNT_ID",
     "dataset": "workers_trace_events",
     "filter": "{\"where\":{\"and\":[{\"key\":\"ScriptName\",\"operator\":\"eq\",\"value\":\"bloqr-backend\"}]}}",
     "enabled": true
   }'
 ```
 
-Logs land in the `adblock-compiler-r2-storage` R2 bucket under `logs/YYYY-MM-DD/`.
+Logs land in the `bloqr-backend-r2-storage` R2 bucket under `logs/YYYY-MM-DD/`.
 
 ---
 

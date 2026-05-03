@@ -145,8 +145,8 @@ jobs:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
               run: |
-                  echo "=== Pending migrations for adblock-compiler-d1-database ==="
-                  OUTPUT=$(deno task wrangler d1 migrations list adblock-compiler-d1-database --remote 2>&1) || true
+                  echo "=== Pending migrations for bloqr-backend-d1-database ==="
+                  OUTPUT=$(deno task wrangler d1 migrations list bloqr-backend-d1-database --remote 2>&1) || true
                   echo "$OUTPUT"
                   # Store multi-line output for PR comment (escape newlines)
                   {
@@ -162,8 +162,8 @@ jobs:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
               run: |
-                  echo "=== Pending migrations for adblock-compiler-admin-d1 ==="
-                  OUTPUT=$(deno task wrangler d1 migrations list adblock-compiler-admin-d1 --remote 2>&1) || true
+                  echo "=== Pending migrations for bloqr-backend-admin-d1 ==="
+                  OUTPUT=$(deno task wrangler d1 migrations list bloqr-backend-admin-d1 --remote 2>&1) || true
                   echo "$OUTPUT"
                   {
                     echo "d1_admin_pending<<DELIM"
@@ -249,10 +249,10 @@ jobs:
                       if (hasCloudflare) {
                         body += '### ☁️ Cloudflare D1\n\n';
                         if (d1Main) {
-                          body += '<details><summary>Main Database (<code>adblock-compiler-d1-database</code>)</summary>\n\n```\n' + d1Main + '\n```\n\n</details>\n\n';
+                          body += '<details><summary>Main Database (<code>bloqr-backend-d1-database</code>)</summary>\n\n```\n' + d1Main + '\n```\n\n</details>\n\n';
                         }
                         if (d1Admin) {
-                          body += '<details><summary>Admin Database (<code>adblock-compiler-admin-d1</code>)</summary>\n\n```\n' + d1Admin + '\n```\n\n</details>\n\n';
+                          body += '<details><summary>Admin Database (<code>bloqr-backend-admin-d1</code>)</summary>\n\n```\n' + d1Admin + '\n```\n\n</details>\n\n';
                         }
                       } else {
                         body += '### ☁️ Cloudflare D1\n\n_Skipped — `CLOUDFLARE_API_TOKEN` secret not available in this context._\n\n';
@@ -321,12 +321,12 @@ jobs:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
               run: |
-                  echo "Applying D1 migrations for adblock-compiler-d1-database..."
+                  echo "Applying D1 migrations for bloqr-backend-d1-database..."
                   # Retry up to 3 times to handle transient Cloudflare API errors.
                   # `wrangler d1 migrations apply` is idempotent (skips already-applied
                   # migrations) so retrying is safe.
                   for i in 1 2 3; do
-                    if OUTPUT=$(deno task wrangler d1 migrations apply adblock-compiler-d1-database --remote 2>&1); then
+                    if OUTPUT=$(deno task wrangler d1 migrations apply bloqr-backend-d1-database --remote 2>&1); then
                       echo "$OUTPUT"
                       echo "✅ Main DB migrations applied"
                       echo "result=success" >> "$GITHUB_OUTPUT"
@@ -359,9 +359,9 @@ jobs:
                   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
                   CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
               run: |
-                  echo "Applying D1 migrations for adblock-compiler-admin-d1..."
+                  echo "Applying D1 migrations for bloqr-backend-admin-d1..."
                   for i in 1 2 3; do
-                    if OUTPUT=$(deno task wrangler d1 migrations apply adblock-compiler-admin-d1 --remote 2>&1); then
+                    if OUTPUT=$(deno task wrangler d1 migrations apply bloqr-backend-admin-d1 --remote 2>&1); then
                       echo "$OUTPUT"
                       echo "✅ Admin DB migrations applied"
                       echo "result=success" >> "$GITHUB_OUTPUT"

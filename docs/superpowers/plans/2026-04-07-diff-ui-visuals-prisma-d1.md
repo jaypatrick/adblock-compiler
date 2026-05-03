@@ -1743,7 +1743,7 @@ try {
     console.log(`\n✅ Created ${outPath}`);
     console.log(`\nNext steps:`);
     console.log(`  1. Review the generated SQL: cat ${outPath}`);
-    console.log(`  2. Apply locally:  deno task wrangler d1 migrations apply adblock-compiler-d1-database --local`);
+    console.log(`  2. Apply locally:  deno task wrangler d1 migrations apply bloqr-backend-d1-database --local`);
     console.log(`  3. Apply remotely: deno task db:migrate:d1:deploy`);
     console.log(`  4. Commit:         git add ${outPath} && git commit -m "chore(db): add migration ${outFilename}"`);
 
@@ -1758,7 +1758,7 @@ In the `"tasks"` section of `deno.json`, add after the existing `db:` tasks:
 
 ```json
 "db:migrate:d1":        "deno run --allow-read --allow-write --allow-run scripts/generate-d1-migration.ts",
-"db:migrate:d1:deploy": "deno task wrangler d1 migrations apply adblock-compiler-d1-database --remote",
+"db:migrate:d1:deploy": "deno task wrangler d1 migrations apply bloqr-backend-d1-database --remote",
 "db:check:d1":          "deno run --allow-read --allow-write --allow-run scripts/generate-d1-migration.ts __drift-check__ && echo '✅ D1 schema in sync'",
 ```
 

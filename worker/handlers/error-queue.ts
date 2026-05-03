@@ -239,9 +239,9 @@ async function updateErrorIndex(
 // ============================================================================
 
 /**
- * Queue consumer for `adblock-compiler-error-queue`.
+ * Queue consumer for `bloqr-backend-error-queue`.
  *
- * Called by the Worker `queue()` hook when the queue name is `adblock-compiler-error-queue`.
+ * Called by the Worker `queue()` hook when the queue name is `bloqr-backend-error-queue`.
  * Acks every message (errors are logged, not retried) and persists the full
  * batch as a single NDJSON object in ERROR_BUCKET under the timestamped key.
  * If ERROR_BUCKET is unavailable the batch is still acked (console-only fallback).

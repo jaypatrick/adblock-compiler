@@ -939,7 +939,7 @@ async function queueCompileJob(
     benchmark?: boolean,
     priority: Priority = 'standard',
 ): Promise<string> {
-    if (!env.ADBLOCK_COMPILER_QUEUE || !env.ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY) {
+    if (!env.BLOQR_BACKEND_QUEUE || !env.BLOQR_BACKEND_QUEUE_HIGH_PRIORITY) {
         throw new Error(QUEUE_BINDINGS_NOT_AVAILABLE_ERROR);
     }
 
@@ -955,7 +955,7 @@ async function queueCompileJob(
         priority,
     };
 
-    const queue = priority === 'high' ? env.ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY : env.ADBLOCK_COMPILER_QUEUE;
+    const queue = priority === 'high' ? env.BLOQR_BACKEND_QUEUE_HIGH_PRIORITY : env.BLOQR_BACKEND_QUEUE;
 
     await queue.send(message);
     await updateQueueStats(env, 'enqueued');
@@ -971,7 +971,7 @@ async function queueBatchCompileJob(
     requests: BatchRequest['requests'],
     priority: Priority = 'standard',
 ): Promise<string> {
-    if (!env.ADBLOCK_COMPILER_QUEUE || !env.ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY) {
+    if (!env.BLOQR_BACKEND_QUEUE || !env.BLOQR_BACKEND_QUEUE_HIGH_PRIORITY) {
         throw new Error(QUEUE_BINDINGS_NOT_AVAILABLE_ERROR);
     }
 
@@ -985,7 +985,7 @@ async function queueBatchCompileJob(
         priority,
     };
 
-    const queue = priority === 'high' ? env.ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY : env.ADBLOCK_COMPILER_QUEUE;
+    const queue = priority === 'high' ? env.BLOQR_BACKEND_QUEUE_HIGH_PRIORITY : env.BLOQR_BACKEND_QUEUE;
 
     await queue.send(message);
     await updateQueueStats(env, 'enqueued', undefined, requests.length);

@@ -12,7 +12,7 @@ This document describes all Cloudflare services integrated into the bloqr-backen
 | **R2 Storage** | ✅ Active | `FILTER_STORAGE` | Filter list storage and artifact persistence |
 | **Browser Rendering** | ✅ Active | `BROWSER` | Headless browser fetching for JS-rendered filter sources (see [Browser Rendering](BROWSER_RENDERING.md)) |
 | **D1 Database** | ✅ Active | `DB` | Compilation history, deployment records |
-| **Queues** | ✅ Active | `ADBLOCK_COMPILER_QUEUE`, `ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY` | Async compilation, batch processing |
+| **Queues** | ✅ Active | `BLOQR_BACKEND_QUEUE`, `BLOQR_BACKEND_QUEUE_HIGH_PRIORITY` | Async compilation, batch processing |
 | **Analytics Engine** | ✅ Active | `ANALYTICS_ENGINE` | Request metrics, cache analytics, workflow tracking |
 | **Workflows** | ✅ Active | `COMPILATION_WORKFLOW`, `BATCH_COMPILATION_WORKFLOW`, `CACHE_WARMING_WORKFLOW`, `HEALTH_MONITORING_WORKFLOW` | Durable async execution |
 | **Hyperdrive** | ✅ Active | `HYPERDRIVE` | Accelerated PostgreSQL (PlanetScale) connectivity |
@@ -41,7 +41,7 @@ Pipelines provide scalable, batched HTTP event ingestion — ideal for routing m
 ```bash
 # Create the pipeline (routes to R2)
 wrangler pipelines create bloqr-backend-metrics-pipeline \
-  --r2-bucket adblock-compiler-r2-storage \
+  --r2-bucket bloqr-backend-r2-storage \
   --batch-max-mb 10 \
   --batch-timeout-secs 30
 ```
@@ -195,8 +195,8 @@ D1 stores compilation history and deployment records, enabling the admin dashboa
 
 Migrations are in `migrations/`. Apply with:
 ```bash
-wrangler d1 execute adblock-compiler-d1-database --file=migrations/0001_init.sql --remote
-wrangler d1 execute adblock-compiler-d1-database --file=migrations/0002_deployment_history.sql --remote
+wrangler d1 execute bloqr-backend-d1-database --file=migrations/0001_init.sql --remote
+wrangler d1 execute bloqr-backend-d1-database --file=migrations/0002_deployment_history.sql --remote
 ```
 
 ---
