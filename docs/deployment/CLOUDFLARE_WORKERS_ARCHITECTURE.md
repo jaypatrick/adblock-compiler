@@ -89,7 +89,7 @@ mindmap
 | Binding | Type | Purpose |
 |---|---|---|
 | `ASSETS` | Static Assets | JS bundles, CSS, fonts — served from CDN before the Worker is invoked |
-| `API` | Service Binding | Reserved — bound to `adblock-compiler` backend on the internal Cloudflare network. Not yet consumed by `server.ts`; declared for future SSR→API internal routing without public network hops. |
+| `API` | Service Binding | Active — routes all SSR-time `/api/*` requests to `adblock-compiler` on the internal Cloudflare network. No public round-trip, no CORS. Sets `CF-Worker-Source: ssr` header to identify internal calls. |
 
 ### SSR Architecture
 
@@ -100,6 +100,18 @@ const angularApp = new AngularAppEngine();
 
 export default {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+        // Route SSR-time /api/* requests to the backend on the internal Cloudflare network.
+        // This avoids a public round-trip and bypasses CORS negotiation entirely.
+        if (new URL(request.url).pathname.startsWith('/api/')) {
+            try {
+                const internalReq = new Request(request, {
+                    headers: { ...Object.fromEntries(request.headers), 'CF-Worker-Source': 'ssr' },
+                });
+                return await env.API.fetch(internalReq);
+            } catch (err) {
+                return new Response('API unavailable', { status: 502 });
+            }
+        }
         const response = await angularApp.handle(request);
         return response ?? new Response('Not found', { status: 404 });
     },
@@ -121,18 +133,10 @@ flowchart TD
 
     subgraph EDGE["Cloudflare Edge Network"]
         direction TB
-        FRONTEND["adblock-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding\n• API service binding declared (reserved — not yet wired)"]
-        FRONTEND -->|"API calls (public network — service\nbinding not yet wired in server.ts)"| BACKEND
+        FRONTEND["adblock-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding\n• SSR /api/* calls routed via env.API.fetch() — internal network"]
+        FRONTEND -->|"SSR /api/* calls via env.API.fetch()\n— internal Cloudflare network"| BACKEND
         BACKEND["adblock-compiler\n(TypeScript REST API Worker)\n\n• POST /compile\n• POST /compile/stream (SSE)\n• POST /compile/batch\n• GET /metrics  •  GET /health\n• KV, R2, D1, Durable Objects, Queues, Workflows, Hyperdrive"]
     end
-
-    subgraph SVC["Service Binding (reserved / future)"]
-        direction LR
-        API_BINDING["[[services]]\nbinding = API\nservice = adblock-compiler\n\nWhen server.ts is updated to\nread env.API, SSR→API calls\nwill travel on the internal\nCloudflare network without\na public round-trip."]
-    end
-
-    FRONTEND -.->|"future internal route\nvia env.API.fetch()"| SVC
-    SVC -.->|"internal Cloudflare\nnetwork (no CORS)"| BACKEND
 ```
 
 ### Two Deployment Modes

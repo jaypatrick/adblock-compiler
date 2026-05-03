@@ -192,3 +192,11 @@ URL_FRONTEND = "https://app.bloqr.dev"
 URL_API      = "https://api.bloqr.dev"
 URL_DOCS     = "https://docs.bloqr.dev"
 URL_LANDING  = "https://bloqr.dev"
+
+# ─── Dev: service binding override ───────────────────────────────────────────
+# Explicitly point dev at the same production backend until a separate
+# `adblock-compiler-dev` worker is deployed. Override this entry to isolate
+# dev traffic from production if/when a dev backend is available.
+[[env.dev.services]]
+binding = "API"
+service = "adblock-compiler"
