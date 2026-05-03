@@ -15,7 +15,7 @@ flowchart TD
     P2 -- no --> P3{priority=transactional\n+ CF_EMAIL_API_TOKEN\n+ CF_ACCOUNT_ID?}
     P3 -- yes --> CFRestSvc["CfEmailServiceRestService\n(CF Email Service REST)"]
     P3 -- no --> P4{SEND_EMAIL binding?}
-    P4 -- yes --> CFSvc["CfEmailWorkerService\n(adblock-email worker)"]
+    P4 -- yes --> CFSvc["CfEmailWorkerService\n(bloqr-email worker)"]
     P4 -- no --> NullSvc["NullEmailService\n(no-op, logs warning)"]
 
     QSvc --> Queue["EMAIL_QUEUE\n(Cloudflare Queue)"]

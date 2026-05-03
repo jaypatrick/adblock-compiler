@@ -1,10 +1,10 @@
 # VSCode Adblock Syntax Integration Ideas
 
-Integration ideas for [`AdguardTeam/VscodeAdblockSyntax`](https://github.com/AdguardTeam/VscodeAdblockSyntax) and `adblock-compiler`.
+Integration ideas for [`AdguardTeam/VscodeAdblockSyntax`](https://github.com/AdguardTeam/VscodeAdblockSyntax) and `bloqr-backend`.
 
 > **Note:** This is primarily a developer experience (DX) integration — the VSCode extension and its underlying
 > [AGLint](https://github.com/AdguardTeam/AGLint) engine improve the development workflow for contributors
-> working on `adblock-compiler` filter files rather than being a runtime dependency.
+> working on `bloqr-backend` filter files rather than being a runtime dependency.
 
 ---
 
@@ -36,7 +36,7 @@ Integrate AGLint directly into your CI pipeline as a **pre-compilation validatio
 This creates a clean separation of concerns:
 - **AGLint** — "Is this valid adblock syntax?"
 - **AGTree + Zod** — "Does this compile correctly for your target platform?"
-- **adblock-compiler** — "Is the output optimized and deduplicated?"
+- **bloqr-backend** — "Is the output optimized and deduplicated?"
 
 ---
 
@@ -78,7 +78,7 @@ Add agent comment headers to `.txt` filter files in your repo for highlighted di
 ```adblock
 [AdGuard]
 ! Title: My Test Filter
-! Description: Example filter for adblock-compiler tests
+! Description: Example filter for bloqr-backend tests
 ! Version: 1.0.0
 ! Expires: 1 day
 ```
@@ -102,13 +102,13 @@ interface RuleValidationError {
 
 ---
 
-## 7. 🔗 AGLint + adblock-compiler Two-Stage Validation Pipeline
+## 7. 🔗 AGLint + bloqr-backend Two-Stage Validation Pipeline
 
 ```mermaid
 flowchart TD
     Dev["Developer edits filter file in VSCode\nVscodeAdblockSyntax: real-time AGLint linting + syntax highlighting"]
     CI["CI: npx aglint\nValidates syntax across all supported platforms"]
-    AC["adblock-compiler POST /compile\nAGTree parse → Zod validate → Transform → Emit"]
+    AC["bloqr-backend POST /compile\nAGTree parse → Zod validate → Transform → Emit"]
 
     Dev --> CI
     CI --> AC
@@ -118,7 +118,7 @@ flowchart TD
 
 ## AdGuard DNS Private API — Key Reference
 
-Since `adblock-compiler` will integrate heavily with the **AdGuard DNS Private API** (`https://api.adguard-dns.io`):
+Since `bloqr-backend` will integrate heavily with the **AdGuard DNS Private API** (`https://api.adguard-dns.io`):
 
 ### Authentication
 
@@ -183,7 +183,7 @@ https://api.adguard-dns.io/swagger/openapi.json
 - [AdGuard DNS Private API Changelog](https://adguard-dns.io/kb/private-dns/api/changelog/)
 - [AdGuard DNS API Swagger](https://api.adguard-dns.io/swagger/openapi.json)
 - [DNS Filtering Rule Syntax](https://adguard-dns.io/kb/general/dns-filtering-syntax/)
-- [adblock-compiler AGTree Integration](../docs/api/AGTREE_INTEGRATION.md)
-- [adblock-compiler Zod Validation](../docs/api/ZOD_VALIDATION.md)
-- [adblock-compiler API README](../docs/api/README.md)
-- [adblock-compiler OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
+- [bloqr-backend AGTree Integration](../docs/api/AGTREE_INTEGRATION.md)
+- [bloqr-backend Zod Validation](../docs/api/ZOD_VALIDATION.md)
+- [bloqr-backend API README](../docs/api/README.md)
+- [bloqr-backend OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)

@@ -8,20 +8,20 @@ This document describes the two Cloudflare Workers deployments that make up the 
 
 The Adblock Compiler is deployed as **two separate Cloudflare Workers** from a single GitHub repository. Each has a distinct role:
 
-| | `adblock-compiler` | `adblock-frontend` |
+| | `bloqr-backend` | `bloqr-frontend` |
 |---|---|---|
 | **Wrangler config** | [`wrangler.toml`](../../wrangler.toml) | [`frontend/wrangler.toml`](../../frontend/wrangler.toml) |
-| **Entry point** | `worker/worker.ts` | `dist/adblock-compiler/server/server.mjs` |
+| **Entry point** | `worker/worker.ts` | `dist/bloqr-backend/server/server.mjs` |
 | **Role** | REST API + compilation engine; also serves the Angular SPA as bundled static assets (CSR only) | Angular 21 SSR UI — **canonical home URL for the app** |
 | **Source path** | `worker/` + `src/` | `frontend/` |
 | **Deploy command** | `deno task wrangler:deploy` | `sh scripts/deploy-frontend.sh` (repo root) |
 | **CI deploy trigger** | `deploy` job in `ci.yml` (main push, when `worker/**` or `src/**` changed) | `deploy-frontend` job in `ci.yml` (main push when `frontend/**`, `worker/**`, `src/**`, `wrangler.toml`, `src/version.ts`, or compiler config changes such as `deno.json` / `deno.lock` changed; or `workflow_dispatch` with `force_deploy_frontend: true`) |
 | **Release deploy trigger** | `build-binaries` job in `release.yml` | `deploy-frontend` job in `release.yml` (tag push) |
-| **Local dev port** | `8787` | `8787` (via `pnpm --filter adblock-frontend run preview`) |
+| **Local dev port** | `8787` | `8787` (via `pnpm --filter bloqr-frontend run preview`) |
 
 ---
 
-## `adblock-compiler` — The API Worker
+## `bloqr-backend` — The API Worker
 
 ### What It Does
 
@@ -39,11 +39,11 @@ The backend worker is the **compilation engine**. It:
 
 ```mermaid
 mindmap
-  root((adblock-compiler))
+  root((bloqr-backend))
     worker["worker/"]
       workerTs["worker.ts — Cloudflare Workers fetch handler"]
     src["src/ — core compilation logic"]
-    wrangler["wrangler.toml — deployment configuration (name = adblock-compiler)"]
+    wrangler["wrangler.toml — deployment configuration (name = bloqr-backend)"]
 ```
 
 ### Key Bindings
@@ -62,7 +62,7 @@ mindmap
 
 ---
 
-## `adblock-frontend` — The UI Worker
+## `bloqr-frontend` — The UI Worker
 
 ### What It Does
 
@@ -71,17 +71,17 @@ The frontend worker is the **Angular 21 SSR application**. It:
 - Server-side renders the Angular application at the Cloudflare edge using `AngularAppEngine`
 - Serves the home page as a prerendered static page (SSG); all other routes are SSR per-request
 - Serves JS/CSS/font bundles directly from Cloudflare's CDN via the `ASSETS` binding (the Worker never handles these requests)
-- Calls the `adblock-compiler` backend Worker's REST API for all compilation operations
+- Calls the `bloqr-backend` backend Worker's REST API for all compilation operations
 
 ### Source
 
 ```mermaid
 mindmap
-  root((adblock-frontend))
+  root((bloqr-frontend))
     frontend["frontend/"]
       src["src/ — Angular 21 application source"]
       server["server.ts — Cloudflare Workers fetch handler (AngularAppEngine)"]
-      wrangler["wrangler.toml — deployment configuration (name = adblock-frontend)"]
+      wrangler["wrangler.toml — deployment configuration (name = bloqr-frontend)"]
 ```
 
 ### Key Bindings
@@ -89,7 +89,7 @@ mindmap
 | Binding | Type | Purpose |
 |---|---|---|
 | `ASSETS` | Static Assets | JS bundles, CSS, fonts — served from CDN before the Worker is invoked |
-| `API` | Service Binding | Active — forwards all `/api/*` requests (browser-originated and SSR-initiated) from `adblock-frontend` to `adblock-compiler` via the internal Cloudflare network. The browser→frontend leg is a normal public request; the frontend→backend leg bypasses the public network and CORS entirely. Sets `CF-Worker-Source: ssr` on every forwarded request. |
+| `API` | Service Binding | Active — forwards all `/api/*` requests (browser-originated and SSR-initiated) from `bloqr-frontend` to `bloqr-backend` via the internal Cloudflare network. The browser→frontend leg is a normal public request; the frontend→backend leg bypasses the public network and CORS entirely. Sets `CF-Worker-Source: ssr` on every forwarded request. |
 
 ### SSR Architecture
 
@@ -153,13 +153,13 @@ This means:
 flowchart TD
     BROWSER["Browser Request"]
 
-    FRONTEND["adblock-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding\n• All /api/* requests forwarded to adblock-compiler via service binding"]
+    FRONTEND["bloqr-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding\n• All /api/* requests forwarded to bloqr-backend via service binding"]
 
     BROWSER -->|"Public network"| FRONTEND
 
     subgraph INTERNAL["Cloudflare Internal Network (service binding)"]
         direction TB
-        BACKEND["adblock-compiler\n(TypeScript REST API Worker)\n\n• POST /compile\n• POST /compile/stream (SSE)\n• POST /compile/batch\n• GET /metrics  •  GET /health\n• KV, R2, D1, Durable Objects, Queues, Workflows, Hyperdrive"]
+        BACKEND["bloqr-backend\n(TypeScript REST API Worker)\n\n• POST /compile\n• POST /compile/stream (SSE)\n• POST /compile/batch\n• GET /metrics  •  GET /health\n• KV, R2, D1, Durable Objects, Queues, Workflows, Hyperdrive"]
     end
 
     FRONTEND -->|"All /api/* calls via env.API.fetch()\n— no public hop, no CORS"| BACKEND
@@ -174,18 +174,18 @@ The root `wrangler.toml` includes an `[assets]` block pointing to the Angular bu
 
 ```toml
 [assets]
-directory = "./frontend/dist/adblock-compiler/browser"
+directory = "./frontend/dist/bloqr-backend/browser"
 binding = "ASSETS"
 ```
 
 This means a single `wrangler deploy` from the repo root deploys **both** the API and the Angular frontend as one unit. The Worker serves API requests; static assets are served by Cloudflare CDN via the binding.
 
 #### 2. Independent SSR Mode (two separate workers)
-`frontend/wrangler.toml` deploys the Angular application as its **own Worker** with full SSR (`AngularAppEngine`). This is the `adblock-frontend` worker. It runs server-side rendering at the edge and calls the backend API for data.
+`frontend/wrangler.toml` deploys the Angular application as its **own Worker** with full SSR (`AngularAppEngine`). This is the `bloqr-frontend` worker. It runs server-side rendering at the edge and calls the backend API for data.
 
 | | Bundled Mode | Independent SSR Mode |
 |---|---|---|
-| **Workers deployed** | 1 (`adblock-compiler`) | 2 (backend + frontend) |
+| **Workers deployed** | 1 (`bloqr-backend`) | 2 (backend + frontend) |
 | **Frontend serving** | Static assets via CDN binding | `AngularAppEngine` SSR + CDN for assets |
 | **SSR support** | No (SPA only) | Yes (prerender + server rendering) |
 | **Deploy command** | `deno task wrangler:deploy` (root) | `deno task wrangler:deploy` (root) + `sh scripts/deploy-frontend.sh` |
@@ -219,9 +219,9 @@ sh scripts/deploy-frontend.sh
 deno task ui:deploy:ng:dev
 
 # Production step by step (from repo root):
-pnpm --filter adblock-frontend run build
+pnpm --filter bloqr-frontend run build
 sh scripts/build-worker.sh      # injects/removes {{CF_WEB_ANALYTICS_TOKEN}} in index.html
-pnpm --filter adblock-frontend run deploy
+pnpm --filter bloqr-frontend run deploy
 ```
 
 > **Important:** Always run `scripts/build-worker.sh` after `ng build` and before `wrangler deploy`. It rewrites the `{{CF_WEB_ANALYTICS_TOKEN}}` placeholder in `dist/.../browser/index.html` (or removes the analytics `<script>` tag if `CF_WEB_ANALYTICS_TOKEN` is not set). Skipping this step leaves the placeholder in the deployed HTML.
@@ -233,9 +233,9 @@ Both Workers are deployed automatically by GitHub Actions:
 ```mermaid
 flowchart LR
     push["Push to main"] --> ci_gate["ci-gate\n(all checks pass)"]
-    ci_gate --> deploy_backend["deploy job\n(adblock-compiler)"]
+    ci_gate --> deploy_backend["deploy job\n(bloqr-backend)"]
     ci_gate --> frontend_build["frontend-build\n(artifact upload)"]
-    frontend_build --> deploy_frontend["deploy-frontend job\n(adblock-frontend)\nfrontend/** OR worker/** OR src/**\nOR wrangler.toml OR src/version.ts"]
+    frontend_build --> deploy_frontend["deploy-frontend job\n(bloqr-frontend)\nfrontend/** OR worker/** OR src/**\nOR wrangler.toml OR src/version.ts"]
     deploy_frontend --> inject["Inject CF Web\nAnalytics token\n(build-worker.sh)"]
     inject --> wrangler_deploy["pnpm run deploy\n(wrangler deploy)"]
     deploy_backend --> smoke_backend["smoke-test-backend\n/api/health\n/api/version\n/api/auth/providers"]
@@ -262,7 +262,7 @@ flowchart LR
 
 ### Manual Force-Redeploy
 
-If the frontend worker shows **"Assets have not yet been deployed"** or **"Unable to reach API"**, the `adblock-frontend` Worker may be running a stale version. This typically happens when:
+If the frontend worker shows **"Assets have not yet been deployed"** or **"Unable to reach API"**, the `bloqr-frontend` Worker may be running a stale version. This typically happens when:
 
 - The `deploy-frontend` CI job was skipped because no monitored files changed.
 - The worker was first registered before the build artifact was available.
@@ -285,17 +285,17 @@ After every successful backend or frontend deploy to `main`, CI automatically ru
 
 | Check | URL | Pass condition |
 |---|---|---|
-| `/api/health` | `https://adblock-compiler.jk-com.workers.dev/api/health` | HTTP 200 + `status` is `"healthy"` or `"degraded"` |
-| `/api/version` | `https://adblock-compiler.jk-com.workers.dev/api/version` | HTTP 200 |
-| `/api/auth/providers` | `https://adblock-compiler.jk-com.workers.dev/api/auth/providers` | HTTP 200 |
+| `/api/health` | `https://bloqr-backend.jk-com.workers.dev/api/health` | HTTP 200 + `status` is `"healthy"` or `"degraded"` |
+| `/api/version` | `https://bloqr-backend.jk-com.workers.dev/api/version` | HTTP 200 |
+| `/api/auth/providers` | `https://bloqr-backend.jk-com.workers.dev/api/auth/providers` | HTTP 200 |
 
 #### `smoke-test-frontend` (needs `deploy-frontend`)
 
 | Check | URL | Pass condition |
 |---|---|---|
-| Homepage | `https://adblock-frontend.jk-com.workers.dev/` | HTTP 200 |
-| SSR API proxy | `https://adblock-frontend.jk-com.workers.dev/api/auth/providers` | HTTP 200 (confirms the SSR Worker proxies to the backend correctly) |
-| Health via proxy | `https://adblock-frontend.jk-com.workers.dev/api/health` | HTTP 200 + `status` is `"healthy"` or `"degraded"` |
+| Homepage | `https://bloqr-frontend.jk-com.workers.dev/` | HTTP 200 |
+| SSR API proxy | `https://bloqr-frontend.jk-com.workers.dev/api/auth/providers` | HTTP 200 (confirms the SSR Worker proxies to the backend correctly) |
+| Health via proxy | `https://bloqr-frontend.jk-com.workers.dev/api/health` | HTTP 200 + `status` is `"healthy"` or `"degraded"` |
 
 Both smoke tests:
 
@@ -318,10 +318,10 @@ Both smoke tests:
 deno task wrangler:dev                                         # → http://localhost:8787
 
 # Frontend (Angular dev server, CSR)
-pnpm --filter adblock-frontend run start             # → http://localhost:4200
+pnpm --filter bloqr-frontend run start             # → http://localhost:4200
 
 # Frontend (Cloudflare Workers preview, mirrors production SSR)
-pnpm --filter adblock-frontend run preview           # → http://localhost:8787
+pnpm --filter bloqr-frontend run preview           # → http://localhost:8787
 ```
 
 ---
@@ -332,11 +332,11 @@ pnpm --filter adblock-frontend run preview           # → http://localhost:8787
 >
 > | Old name | Interim name (2026-03-07) | Current name | Date |
 > |---|---|---|---|
-> | `adblock-compiler` | `adblock-compiler-backend` | `adblock-compiler` | 2026-03-07 |
-> | `adblock-compiler-angular-poc` | `adblock-frontend` | `adblock-frontend` | 2026-03-07 |
-> | `adblock-compiler-frontend` | `adblock-frontend` | `adblock-frontend` | 2026-03-23 |
+> | `bloqr-backend` | `bloqr-backend-backend` | `bloqr-backend` | 2026-03-07 |
+> | `bloqr-backend-angular-poc` | `bloqr-frontend` | `bloqr-frontend` | 2026-03-07 |
+> | `bloqr-backend-frontend` | `bloqr-frontend` | `bloqr-frontend` | 2026-03-23 |
 >
-> The backend was renamed back to `adblock-compiler` for brevity. If you have workers under old names in your Cloudflare dashboard, they continue to run until manually deleted. The next `wrangler deploy` creates workers under the current names.
+> The backend was renamed back to `bloqr-backend` for brevity. If you have workers under old names in your Cloudflare dashboard, they continue to run until manually deleted. The next `wrangler deploy` creates workers under the current names.
 
 ---
 

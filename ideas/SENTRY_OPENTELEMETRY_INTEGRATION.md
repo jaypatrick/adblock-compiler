@@ -3,7 +3,7 @@
 > Originally created: 2026-03-10
 > Last updated: 2026-03-15
 
-This document captures the full observability strategy for the adblock-compiler Cloudflare Worker — combining the original Sentry/OTel ideas with a gap analysis of the current stack and a phased implementation roadmap.
+This document captures the full observability strategy for the bloqr-backend Cloudflare Worker — combining the original Sentry/OTel ideas with a gap analysis of the current stack and a phased implementation roadmap.
 
 ---
 
@@ -149,7 +149,7 @@ async function forwardAlert(event: TailEvent, env: TailEnv): Promise<void> {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-            text: `🚨 *adblock-compiler*: ${event.exceptions?.[0]?.message ?? 'Worker error'}`,
+            text: `🚨 *bloqr-backend*: ${event.exceptions?.[0]?.message ?? 'Worker error'}`,
             outcome: event.outcome,
             timestamp: new Date(event.eventTimestamp).toISOString(),
             url: event.event?.request?.url,
@@ -172,7 +172,7 @@ The `createOpenTelemetryExporter` exists in `src/diagnostics/` but is only used 
 - Export via `OTEL_EXPORTER_OTLP_ENDPOINT` env var to Grafana Tempo
 
 ```typescript
-const tracer = trace.getTracer('adblock-compiler');
+const tracer = trace.getTracer('bloqr-backend');
 const span = tracer.startSpan('transform.deduplicate');
 // ... run transformation
 span.end();
@@ -251,7 +251,7 @@ Upload source maps to Sentry as part of the deployment pipeline so stack traces 
 # In CI/CD (e.g., GitHub Actions)
 npx @sentry/cli sourcemaps upload \
   --org your-org \
-  --project adblock-compiler \
+  --project bloqr-backend \
   ./dist
 ```
 

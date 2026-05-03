@@ -33,7 +33,7 @@ import { createCloudflareApiService } from '../src/services/cloudflareApiService
 import type { ApiShieldSchema } from '../src/services/cloudflareApiService.ts';
 
 const SCHEMA_PATH = './docs/api/cloudflare-schema.yaml';
-const SCHEMA_NAME = 'adblock-compiler-openapi';
+const SCHEMA_NAME = 'bloqr-backend-openapi';
 
 /**
  * Compute a hex-encoded SHA-256 digest of a UTF-8 string.

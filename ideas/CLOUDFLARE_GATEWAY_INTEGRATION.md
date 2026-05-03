@@ -8,7 +8,7 @@ Integration with [Cloudflare Gateway](https://developers.cloudflare.com/cloudfla
 
 ## Why This Is Significant
 
-Cloudflare Gateway is a enterprise-grade DNS filtering service used by teams and individuals via Cloudflare Zero Trust. It supports custom blocklists but uses its own list/policy format — distinct from AdGuard, uBlock Origin, and ABP syntaxes. Bridging this gap would make adblock-compiler a first-class citizen in the Cloudflare ecosystem.
+Cloudflare Gateway is a enterprise-grade DNS filtering service used by teams and individuals via Cloudflare Zero Trust. It supports custom blocklists but uses its own list/policy format — distinct from AdGuard, uBlock Origin, and ABP syntaxes. Bridging this gap would make bloqr-backend a first-class citizen in the Cloudflare ecosystem.
 
 ---
 

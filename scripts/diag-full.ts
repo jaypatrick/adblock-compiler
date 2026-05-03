@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --allow-net --allow-env --allow-read --allow-write
 
 /**
- * Full diagnostic suite for adblock-compiler Worker.
+ * Full diagnostic suite for bloqr-backend Worker.
  * Runs 12 probe categories and emits a structured JSON bundle.
  *
  * Usage:
@@ -10,7 +10,7 @@
  *   deno run --allow-net --allow-env --allow-write scripts/diag-full.ts --help
  *
  * Flags:
- *   --url       Base URL (default: https://adblock-frontend.jk-com.workers.dev)
+ *   --url       Base URL (default: https://bloqr-frontend.jk-com.workers.dev)
  *   --timeout   Per-probe timeout in ms (default: 15000)
  *   --ci        Non-interactive CI mode: run all probes, exit 0/1
  *   --output    Write JSON bundle to diag-report-<timestamp>.json
@@ -37,7 +37,7 @@ const DiagProbeResultSchema = z.object({
 });
 
 const DiagBundleMetaSchema = z.object({
-    tool: z.literal('adblock-compiler-diag-full'),
+    tool: z.literal('bloqr-backend-diag-full'),
     version: z.string(),
     timestamp: z.string(),
     baseUrl: z.string(),
@@ -102,16 +102,16 @@ async function readProjectVersion(): Promise<string> {
         return 'unknown';
     }
 }
-const DEFAULT_BASE_URL = 'https://adblock-frontend.jk-com.workers.dev';
+const DEFAULT_BASE_URL = 'https://bloqr-frontend.jk-com.workers.dev';
 const DEFAULT_TIMEOUT_MS = 15_000;
 
 /**
- * Known-good CORS origins for the adblock-compiler Worker.
+ * Known-good CORS origins for the bloqr-backend Worker.
  * The CORS preflight probe verifies that `access-control-allow-origin` is
  * one of these — not a wildcard (`*`) and not an unexpected third party.
  */
 const CORS_ALLOWED_ORIGINS = new Set([
-    'https://adblock-frontend.jk-com.workers.dev',
+    'https://bloqr-frontend.jk-com.workers.dev',
     'http://localhost:4200',
     'http://localhost:8787',
 ]);
@@ -245,7 +245,7 @@ async function runExistingProbes(baseUrl: string, timeoutMs: number): Promise<Di
 async function probeCors(baseUrl: string, timeoutMs: number): Promise<DiagProbeResult> {
     const url = `${baseUrl}/api/compile`;
     // Use an expected origin from the allowlist so the preflight returns the actual allowed value
-    const probeOrigin = 'https://adblock-frontend.jk-com.workers.dev';
+    const probeOrigin = 'https://bloqr-frontend.jk-com.workers.dev';
     const result = await safeFetch(
         url,
         {
@@ -658,7 +658,7 @@ async function probeConfigEndpoints(baseUrl: string, timeoutMs: number): Promise
 export async function buildMeta(baseUrl: string, timeoutMs: number): Promise<DiagBundleMeta> {
     const version = await readProjectVersion();
     return {
-        tool: 'adblock-compiler-diag-full',
+        tool: 'bloqr-backend-diag-full',
         version,
         timestamp: new Date().toISOString(),
         baseUrl,
@@ -734,7 +734,7 @@ export async function buildBundle(baseUrl: string, timeoutMs: number): Promise<D
 // ─── CLI helpers ──────────────────────────────────────────────────────────────
 
 function printHelp(): void {
-    console.log(`adblock-compiler full diagnostic suite
+    console.log(`bloqr-backend full diagnostic suite
 
 Usage:
   deno run --allow-net --allow-env --allow-write scripts/diag-full.ts [flags]
@@ -815,7 +815,7 @@ if (import.meta.main) {
     const rawTimeout = parseInt(args['timeout'] as string, 10);
     const timeoutMs = isNaN(rawTimeout) || rawTimeout <= 0 ? DEFAULT_TIMEOUT_MS : rawTimeout;
 
-    console.log('\n🔍 adblock-compiler full diagnostic suite');
+    console.log('\n🔍 bloqr-backend full diagnostic suite');
     console.log(`   URL     : ${baseUrl}`);
     console.log(`   Timeout : ${timeoutMs}ms\n`);
 

@@ -21,7 +21,7 @@ validation, size limits, and rate limiting.
     "event": "compilation.failed",       // required — machine-readable event name
     "message": "Worker timed out",       // required — human-readable description
     "level": "error",                    // optional — info | warn | error | debug  (default: "info")
-    "source": "adblock-compiler",        // optional — originating service/component
+    "source": "bloqr-backend",        // optional — originating service/component
     "timestamp": "2026-03-10T12:00:00Z", // optional — ISO 8601 (defaults to now)
     "metadata": {                        // optional — arbitrary key/value pairs
         "requestId": "req-abc123",
@@ -159,13 +159,13 @@ The event is submitted to the Datadog Events v1 API (`/api/v1/events`):
 ### cURL
 
 ```bash
-curl -X POST https://adblock-compiler.jk-com.workers.dev/api/notify \
+curl -X POST https://bloqr-backend.jk-com.workers.dev/api/notify \
   -H "Content-Type: application/json" \
   -d '{
     "event": "compilation.completed",
     "message": "Compiled 12,500 rules from 5 sources",
     "level": "info",
-    "source": "adblock-compiler",
+    "source": "bloqr-backend",
     "metadata": { "ruleCount": 12500, "sourceCount": 5, "durationMs": 1240 }
   }'
 ```

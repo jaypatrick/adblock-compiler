@@ -1,6 +1,6 @@
 # Prometheus Metrics
 
-`adblock-compiler` exposes a **Prometheus text exposition** endpoint at
+`bloqr-backend` exposes a **Prometheus text exposition** endpoint at
 `GET /metrics/prometheus` that is protected by `X-Admin-Key`.
 
 Grafana (or any Prometheus-compatible scraper) can point at this endpoint to
@@ -107,7 +107,7 @@ Add a new Prometheus data source in Grafana:
 
 | Field | Value |
 |-------|-------|
-| URL | `https://adblock-compiler.your-domain.workers.dev/metrics/prometheus` |
+| URL | `https://bloqr-backend.your-domain.workers.dev/metrics/prometheus` |
 | Authentication | Custom HTTP Header |
 | Header name | `X-Admin-Key` |
 | Header value | *(your `ADMIN_KEY` secret)* |

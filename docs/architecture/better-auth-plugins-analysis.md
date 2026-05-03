@@ -2,7 +2,7 @@
 
 ## Executive Summary
 
-This document provides a comprehensive analysis of Better Auth plugins for the adblock-compiler project, evaluating their implementation status, benefits, and recommendations for adoption.
+This document provides a comprehensive analysis of Better Auth plugins for the bloqr-backend project, evaluating their implementation status, benefits, and recommendations for adoption.
 
 **Status at a Glance:**
 - ✅ **4 plugins already active:** `bearer`, `twoFactor`, `multiSession`, `admin`
@@ -45,7 +45,7 @@ This document provides a comprehensive analysis of Better Auth plugins for the a
 **Configuration:**
 ```typescript
 twoFactor({
-    issuer: 'adblock-compiler'
+    issuer: 'bloqr-backend'
 })
 ```
 

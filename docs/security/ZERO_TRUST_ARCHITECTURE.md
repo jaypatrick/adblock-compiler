@@ -1,6 +1,6 @@
 # Zero Trust Architecture
 
-The adblock-compiler implements Zero Trust Architecture (ZTA) across every layer of the stack — from the Cloudflare edge to the Angular frontend. This document describes the threat model, architecture, and implementation details.
+The bloqr-backend implements Zero Trust Architecture (ZTA) across every layer of the stack — from the Cloudflare edge to the Angular frontend. This document describes the threat model, architecture, and implementation details.
 
 ## Core Principle
 

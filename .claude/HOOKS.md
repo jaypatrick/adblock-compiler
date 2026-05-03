@@ -1,6 +1,6 @@
 # Marimo Claude Code Hooks
 
-This directory contains hooks for integrating Claude Code with Marimo notebooks in the adblock-compiler project. Hooks automatically run after Claude Code performs `Edit` or `Write` operations to validate and lint code.
+This directory contains hooks for integrating Claude Code with Marimo notebooks in the bloqr-backend project. Hooks automatically run after Claude Code performs `Edit` or `Write` operations to validate and lint code.
 
 ## Configuration
 

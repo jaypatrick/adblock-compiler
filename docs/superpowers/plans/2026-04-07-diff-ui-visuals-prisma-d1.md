@@ -1120,7 +1120,7 @@ Create `docs/assets/diagrams/system-architecture.svg`:
   <!-- Tail Worker -->
   <rect x="620" y="380" width="150" height="60" rx="8" fill="#fff7ed" stroke="#fb923c" stroke-width="1.5"/>
   <text x="695" y="407" text-anchor="middle" font-size="12" font-weight="600" fill="#c2410c">Tail Worker</text>
-  <text x="695" y="424" text-anchor="middle" font-size="11" fill="#fb923c">adblock-tail · Logs</text>
+  <text x="695" y="424" text-anchor="middle" font-size="11" fill="#fb923c">bloqr-tail · Logs</text>
 
   <!-- Arrows -->
   <!-- Client → Worker -->

@@ -157,7 +157,7 @@ runs:
       env:
         WRANGLER_LOG: debug
       run: |
-        echo "Deploying tail worker (adblock-tail)..."
+        echo "Deploying tail worker (bloqr-tail)..."
         TAIL_DEPLOYED=false
         for i in 1 2 3; do
             if deno task wrangler deploy --config wrangler.tail.toml --var SENTRY_RELEASE:${{ inputs.github-sha }}; then
@@ -170,7 +170,7 @@ runs:
             fi
         done
         if [ "$TAIL_DEPLOYED" = "false" ]; then
-            echo "::warning::Tail worker (adblock-tail) failed to deploy after 3 attempts. Main worker deployment will continue."
+            echo "::warning::Tail worker (bloqr-tail) failed to deploy after 3 attempts. Main worker deployment will continue."
             echo "Tail worker deploy failed — continuing with main worker deployment."
         fi
 
@@ -185,7 +185,7 @@ runs:
         # (which has Account > Containers:Edit). Then update wrangler.toml to
         # reference the pre-built registry URI so wrangler deploy does NOT
         # attempt a container push (avoids needing Containers:Edit on main token).
-        IMAGE_NAME="adblock-compiler-adblockcompiler"
+        IMAGE_NAME="bloqr-backend-adblockcompiler"
         IMAGE_TAG="${{ inputs.github-sha }}"
         IMAGE_TAG_SHORT="${IMAGE_TAG:0:8}"
         REGISTRY_URI="registry.cloudflare.com/${CLOUDFLARE_ACCOUNT_ID}/${IMAGE_NAME}:${IMAGE_TAG_SHORT}"

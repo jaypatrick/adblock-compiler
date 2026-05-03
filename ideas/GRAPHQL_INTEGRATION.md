@@ -1,7 +1,7 @@
 # GraphQL Integration — Feasibility & Ideas
 
 > Generated: 2026-03-06
-> Context: Analysis of whether GraphQL makes sense anywhere in `jaypatrick/adblock-compiler`
+> Context: Analysis of whether GraphQL makes sense anywhere in `jaypatrick/bloqr-backend`
 
 ---
 

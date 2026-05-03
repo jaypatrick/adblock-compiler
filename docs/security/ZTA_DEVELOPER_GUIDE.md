@@ -1,6 +1,6 @@
 # ZTA Developer Guide
 
-Practical guide for contributors working on the adblock-compiler. Follow these patterns to maintain Zero Trust Architecture compliance.
+Practical guide for contributors working on the bloqr-backend. Follow these patterns to maintain Zero Trust Architecture compliance.
 
 ## Adding a New Worker Endpoint
 

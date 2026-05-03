@@ -1,6 +1,6 @@
 # Browser Rendering Integration
 
-This document describes the Cloudflare Browser Rendering integration in adblock-compiler.
+This document describes the Cloudflare Browser Rendering integration in bloqr-backend.
 Browser Rendering allows the worker to spin up a full Chromium instance to fetch filter-list
 sources that require JavaScript execution, navigate redirect chains, or run behind bot-detection
 walls that defeat a plain `fetch()`.

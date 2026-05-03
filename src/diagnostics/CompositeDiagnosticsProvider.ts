@@ -11,7 +11,7 @@
  *
  * const composite = new CompositeDiagnosticsProvider([
  *     new SentryDiagnosticsProvider({ dsn: env.SENTRY_DSN }),
- *     new OpenTelemetryDiagnosticsProvider({ serviceName: 'adblock-compiler' }),
+ *     new OpenTelemetryDiagnosticsProvider({ serviceName: 'bloqr-backend' }),
  * ]);
  *
  * composite.captureError(new Error('oops'));

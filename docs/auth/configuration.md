@@ -1,7 +1,7 @@
 # Authentication Configuration Guide
 
 Complete reference for all environment variables and configuration needed to run the
-adblock-compiler authentication system with Better Auth.
+bloqr-backend authentication system with Better Auth.
 
 ---
 
@@ -68,7 +68,7 @@ adblock-compiler authentication system with Better Auth.
 
 ```bash
 # 1. Create a personal dev branch in the Neon Console (one-time)
-#    https://console.neon.tech → adblock-compiler project → Branches → New Branch
+#    https://console.neon.tech → bloqr-backend project → Branches → New Branch
 
 # 2. Copy the example file
 cp .dev.vars.example .dev.vars

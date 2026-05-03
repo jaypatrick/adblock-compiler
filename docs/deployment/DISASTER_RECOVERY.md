@@ -1,6 +1,6 @@
 # Disaster Recovery & Incident Response Guide
 
-**Project**: adblock-compiler
+**Project**: bloqr-backend
 **Stack**: Cloudflare Workers · Neon PostgreSQL · Better Auth
 **Last Updated**: 2025-07-15
 
@@ -27,7 +27,7 @@
 
 ## 1. Architecture Overview
 
-The adblock-compiler production deployment runs on Cloudflare's edge network with Neon PostgreSQL as the primary data store. All authentication flows use Better Auth, with sessions and user data persisted to Neon via Prisma.
+The bloqr-backend production deployment runs on Cloudflare's edge network with Neon PostgreSQL as the primary data store. All authentication flows use Better Auth, with sessions and user data persisted to Neon via Prisma.
 
 | Component | Role |
 |-----------|------|
@@ -408,7 +408,7 @@ BACKUP_DIR="./backups/$(date +%Y-%m-%d)"
 mkdir -p "$BACKUP_DIR"
 
 # Export D1
-wrangler d1 export adblock-compiler-db --output "$BACKUP_DIR/d1-export.sql"
+wrangler d1 export bloqr-backend-db --output "$BACKUP_DIR/d1-export.sql"
 
 # Export KV (requires namespace ID from wrangler.toml)
 wrangler kv key list --namespace-id "$KV_NAMESPACE_ID" \
@@ -517,7 +517,7 @@ Complete this template within 48 hours of incident resolution.
 
 ```bash
 # Check Worker health
-curl -s https://adblock-compiler.workers.dev/health | jq .
+curl -s https://bloqr-backend.workers.dev/health | jq .
 
 # Tail Worker logs
 wrangler tail
@@ -532,7 +532,7 @@ wrangler secret put SECRET_NAME
 wrangler deploy
 
 # Check D1 database status
-wrangler d1 info adblock-compiler-db
+wrangler d1 info bloqr-backend-db
 
 # Check KV namespace
 wrangler kv namespace list

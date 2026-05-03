@@ -67,7 +67,7 @@ function createTestService(): NeonApiService {
 const FIXTURES = {
     project: {
         id: 'twilight-river-73901472',
-        name: 'adblock-compiler',
+        name: 'bloqr-backend',
         region_id: 'azure-eastus2',
         created_at: '2025-01-15T10:00:00Z',
         updated_at: '2025-01-20T12:00:00Z',
@@ -243,7 +243,7 @@ Deno.test('NeonApiService', async (t) => {
                 const svc = createTestService();
                 const proj = await svc.getProject('twilight-river-73901472');
                 assertEquals(proj.id, 'twilight-river-73901472');
-                assertEquals(proj.name, 'adblock-compiler');
+                assertEquals(proj.name, 'bloqr-backend');
                 assertEquals(proj.pg_version, 17);
             } finally {
                 cleanup();

@@ -1,6 +1,6 @@
 # Authentication & Authorization
 
-The adblock-compiler uses **Better Auth** as its sole authentication provider. Better Auth runs
+The bloqr-backend uses **Better Auth** as its sole authentication provider. Better Auth runs
 entirely within the Cloudflare Worker, backed by Neon PostgreSQL via Cloudflare Hyperdrive and
 the Prisma ORM. No third-party auth service is required at runtime.
 

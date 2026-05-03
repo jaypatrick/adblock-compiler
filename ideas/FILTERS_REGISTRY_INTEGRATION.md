@@ -1,13 +1,13 @@
 # AdGuard FiltersRegistry — Integration Ideas
 
 > Generated: 2026-03-10
-> Context: Analysis of [`AdguardTeam/FiltersRegistry`](https://github.com/AdguardTeam/FiltersRegistry) and its relevance to `jaypatrick/adblock-compiler`
+> Context: Analysis of [`AdguardTeam/FiltersRegistry`](https://github.com/AdguardTeam/FiltersRegistry) and its relevance to `jaypatrick/bloqr-backend`
 
 ---
 
 ## Summary
 
-**FiltersRegistry is the browser content-blocker counterpart to HostlistsRegistry**, and contains some concepts that are more advanced than its DNS sibling — notably a three-tier `trustLevel` system (`low` / `high` / `full`), per-platform compilation targeting, `exclude.txt` exclusion patterns, and an optimization pipeline based on real-world usage statistics. Several of these are directly actionable additions to `adblock-compiler`.
+**FiltersRegistry is the browser content-blocker counterpart to HostlistsRegistry**, and contains some concepts that are more advanced than its DNS sibling — notably a three-tier `trustLevel` system (`low` / `high` / `full`), per-platform compilation targeting, `exclude.txt` exclusion patterns, and an optimization pipeline based on real-world usage statistics. Several of these are directly actionable additions to `bloqr-backend`.
 
 ---
 
@@ -24,7 +24,7 @@
 | **Trust levels** | `low` / `high` / `full` (3-tier) | `trusted: boolean` (2-tier) |
 | **Platform targeting** | `platformsIncluded` / `platformsExcluded` per-filter | `environment: dev \| prod` |
 | **Build tool** | `@adguard/filters-compiler` | [HostlistCompiler](https://github.com/AdguardTeam/HostlistCompiler) |
-| **`adblock-compiler` relevance** | ✅ Conceptual alignment + richer metadata model | ✅ **Direct** — same DNS compilation domain |
+| **`bloqr-backend` relevance** | ✅ Conceptual alignment + richer metadata model | ✅ **Direct** — same DNS compilation domain |
 
 ---
 
@@ -38,7 +38,7 @@ FiltersRegistry defines a richer trust model than HostlistsRegistry's boolean `t
 - **`high`** — trusted third-party lists; some higher-risk rules permitted
 - **`full`** — all rule types allowed; only AdGuard's own filters have this level
 
-This maps directly onto `adblock-compiler`'s existing `ValidateTransformation` and is more expressive than the binary `trusted: boolean` identified in the HostlistsRegistry analysis.
+This maps directly onto `bloqr-backend`'s existing `ValidateTransformation` and is more expressive than the binary `trusted: boolean` identified in the HostlistsRegistry analysis.
 
 ### 2. Per-Platform Compilation: `platformsIncluded` / `platformsExcluded`
 
@@ -51,17 +51,17 @@ Each filter can declare which platforms it should be compiled for:
 }
 ```
 
-This is a significant gap in `adblock-compiler` today — there is no concept of platform-targeted output.
+This is a significant gap in `bloqr-backend` today — there is no concept of platform-targeted output.
 
 ### 3. `exclude.txt` — Regex-Based Rule Exclusions per Source
 
-Each filter in FiltersRegistry has an `exclude.txt` — a list of regular expressions. Rules matching any of these are stripped from the compiled output. This is more powerful than `adblock-compiler`'s current `exclusions` (which are domain/pattern-based), as it operates at the rule level via regex.
+Each filter in FiltersRegistry has an `exclude.txt` — a list of regular expressions. Rules matching any of these are stripped from the compiled output. This is more powerful than `bloqr-backend`'s current `exclusions` (which are domain/pattern-based), as it operates at the rule level via regex.
 
 ### 4. Optimization Pipeline — Usage-Frequency-Based Rule Pruning
 
 FiltersRegistry compiles two versions of every filter: **full** and **optimized**. The optimized version strips rules that are never or rarely matched, based on real-world usage statistics collected from opted-in AdGuard users.
 
-`adblock-compiler`'s existing `RuleOptimizerTransformation` is conceptually aligned but lacks the data-driven frequency signal.
+`bloqr-backend`'s existing `RuleOptimizerTransformation` is conceptually aligned but lacks the data-driven frequency signal.
 
 ### 5. `diff.txt` + `trusted-rules.txt` Build Artifacts
 
@@ -69,11 +69,11 @@ FiltersRegistry generates two additional build artifacts beyond `filter.txt`:
 - **`diff.txt`** — build log of excluded and converted rules with explanations
 - **`trusted-rules.txt`** — rules removed due to `trustLevel` constraints
 
-`adblock-compiler`'s `DiffGenerator` covers the first partially, but there is no equivalent for trust-level exclusion logging.
+`bloqr-backend`'s `DiffGenerator` covers the first partially, but there is no equivalent for trust-level exclusion logging.
 
 ### 6. `groupId` — Filter Groups
 
-Every filter belongs to a group (e.g. "Ads", "Privacy", "Social Media"). `adblock-compiler` has no grouping concept.
+Every filter belongs to a group (e.g. "Ads", "Privacy", "Social Media"). `bloqr-backend` has no grouping concept.
 
 ---
 
@@ -185,7 +185,7 @@ Usage:
 
 ### 4. 🔍 Regex-Based Rule Exclusions (`exclude.txt` equivalent)
 
-Currently, `adblock-compiler`'s `exclusions` work at the domain/pattern level. A `regexExclusions` field on `ISource` would enable FiltersRegistry-style rule-level stripping:
+Currently, `bloqr-backend`'s `exclusions` work at the domain/pattern level. A `regexExclusions` field on `ISource` would enable FiltersRegistry-style rule-level stripping:
 
 ```typescript
 interface ISource {
@@ -215,7 +215,7 @@ Example — strip all `$app` and `$replace` rules from a low-trust source:
 
 ### 5. 📊 Trust-Level Exclusion Log (`trusted-rules.txt` equivalent)
 
-Extend `adblock-compiler`'s `DiffGenerator` / compilation output to include a separate log of rules that were excluded due to `trustLevel` constraints. This mirrors FiltersRegistry's `trusted-rules.txt`.
+Extend `bloqr-backend`'s `DiffGenerator` / compilation output to include a separate log of rules that were excluded due to `trustLevel` constraints. This mirrors FiltersRegistry's `trusted-rules.txt`.
 
 ```typescript
 interface CompilationResult {
@@ -232,7 +232,7 @@ interface CompilationResult {
 
 ### 6. 🏷️ `group` — Filter Grouping
 
-Add an optional `group` field to `IConfiguration` for organizational purposes, mirroring FiltersRegistry's `groupId`. Useful when `adblock-compiler` is used as a registry-style pipeline managing many filter lists.
+Add an optional `group` field to `IConfiguration` for organizational purposes, mirroring FiltersRegistry's `groupId`. Useful when `bloqr-backend` is used as a registry-style pipeline managing many filter lists.
 
 ```typescript
 interface IConfiguration {

@@ -1,4 +1,4 @@
-# Troubleshooting Manual — adblock-compiler Worker
+# Troubleshooting Manual — bloqr-backend Worker
 
 > Quick-reference for support engineers. Commands are ready to copy-paste.
 
@@ -10,13 +10,13 @@ Run these one-liners to verify the Worker is up:
 
 ```bash
 # Basic health check
-curl -s https://adblock-frontend.jk-com.workers.dev/api/health | jq .
+curl -s https://bloqr-frontend.jk-com.workers.dev/api/health | jq .
 
 # Database smoke test
-curl -s https://adblock-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
+curl -s https://bloqr-frontend.jk-com.workers.dev/api/health/db-smoke | jq .
 
 # Auth providers (verifies auth stack is reachable)
-curl -s https://adblock-frontend.jk-com.workers.dev/api/auth/providers | jq .
+curl -s https://bloqr-frontend.jk-com.workers.dev/api/auth/providers | jq .
 
 # Run all diagnostic probes at once
 deno task diag:ci
@@ -27,12 +27,12 @@ deno task diag:prod
 
 **Expected outputs:**
 
-| Command                | Expected result                                      |
-| ---------------------- | ---------------------------------------------------- |
-| `/api/health`          | `{ "status": "healthy", ... }`                       |
-| `/api/health/db-smoke` | `{ "ok": true, "db_name": "adblock-compiler", ... }` |
-| `/api/auth/providers`  | JSON array of provider names                         |
-| `deno task diag:ci`    | All ✅, exit code 0                                  |
+| Command                | Expected result                                   |
+| ---------------------- | ------------------------------------------------- |
+| `/api/health`          | `{ "status": "healthy", ... }`                    |
+| `/api/health/db-smoke` | `{ "ok": true, "db_name": "bloqr-backend", ... }` |
+| `/api/auth/providers`  | JSON array of provider names                      |
+| `deno task diag:ci`    | All ✅, exit code 0                               |
 
 ---
 
@@ -95,7 +95,7 @@ deno run --allow-net --allow-env scripts/diag-cli.ts \
 ┌───────────────────────────┬──────────┬────────────┬───────────────────────────────────────────────┐
 │ Probe                     │ Status   │ Latency    │ Detail                                        │
 ├───────────────────────────┼──────────┼────────────┼───────────────────────────────────────────────┤
-│ probeHealth               │  ✅      │  342ms     │ status=healthy db=adblock-compiler            │
+│ probeHealth               │  ✅      │  342ms     │ status=healthy db=bloqr-backend            │
 │ probeResponseEncoding     │  ❌      │  198ms     │ GZIP corruption detected!                     │
 └───────────────────────────┴──────────┴────────────┴───────────────────────────────────────────────┘
 ```
@@ -150,7 +150,7 @@ deno task wrangler:tail
 ### What `probeDbSmoke` checks
 
 - Sends `GET /api/health/db-smoke`
-- Expects `{ ok: true, db_name: "adblock-compiler", latency_ms: N }`
+- Expects `{ ok: true, db_name: "bloqr-backend", latency_ms: N }`
 - Fails if: empty response, non-200, `ok !== true`, `db_name` mismatch, or timeout
 
 ### Common DB issues
@@ -170,7 +170,7 @@ deno task wrangler:tail
 
 ```bash
 # Check auth providers endpoint
-curl -v https://adblock-frontend.jk-com.workers.dev/api/auth/providers
+curl -v https://bloqr-frontend.jk-com.workers.dev/api/auth/providers
 
 # Check tail logs for better_auth_timeout
 deno task wrangler:tail

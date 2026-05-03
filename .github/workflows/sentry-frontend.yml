@@ -69,12 +69,12 @@ jobs:
             - name: Build Angular frontend (production, source maps enabled)
               # --source-map=true is required: the Angular production config does not enable
               # sourceMap by default, so we must pass it explicitly to emit .map files.
-              run: pnpm --filter adblock-frontend run build -- --source-map=true
+              run: pnpm --filter bloqr-frontend run build -- --source-map=true
               env:
                   NODE_ENV: production
 
             - name: Inject Sentry debug IDs into browser bundle
-              run: pnpm exec sentry-cli sourcemaps inject frontend/dist/adblock-compiler/browser
+              run: pnpm exec sentry-cli sourcemaps inject frontend/dist/bloqr-backend/browser
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}
@@ -87,7 +87,7 @@ jobs:
                     --project "${{ vars.SENTRY_PROJECT }}" \
                     --release "${{ github.sha }}" \
                     --url-prefix "~/" \
-                    frontend/dist/adblock-compiler/browser
+                    frontend/dist/bloqr-backend/browser
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}
@@ -123,13 +123,13 @@ jobs:
             - name: Build Angular frontend SSR bundle (with source maps)
               # --source-map is required: the Angular production config does not enable
               # sourceMap by default, so we must pass it explicitly to emit .map files.
-              run: pnpm --filter adblock-frontend run build -- --source-map
+              run: pnpm --filter bloqr-frontend run build -- --source-map
               env:
                   NODE_ENV: production
                   CF_WEB_ANALYTICS_TOKEN: ''
 
             - name: Inject Sentry debug IDs into SSR bundle
-              run: pnpm exec sentry-cli sourcemaps inject frontend/dist/adblock-compiler/server
+              run: pnpm exec sentry-cli sourcemaps inject frontend/dist/bloqr-backend/server
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}
@@ -141,7 +141,7 @@ jobs:
                     --org "${{ vars.SENTRY_ORG }}" \
                     --project "${{ vars.SENTRY_FRONTEND_PROJECT != '' && vars.SENTRY_FRONTEND_PROJECT || vars.SENTRY_PROJECT }}" \
                     --release "${{ github.sha }}" \
-                    frontend/dist/adblock-compiler/server
+                    frontend/dist/bloqr-backend/server
               env:
                   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
                   SENTRY_ORG: ${{ vars.SENTRY_ORG }}

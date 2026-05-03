@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --allow-read --allow-write
 
 /**
- * Diagnostic report formatter for adblock-compiler.
+ * Diagnostic report formatter for bloqr-backend.
  * Reads a JSON bundle (from --file or stdin) and renders a human-readable report.
  *
  * Usage:
@@ -151,7 +151,7 @@ if (import.meta.main) {
     });
 
     if (args['help']) {
-        console.log(`adblock-compiler diagnostic report formatter
+        console.log(`bloqr-backend diagnostic report formatter
 
 Usage:
   cat diag-report-....json | deno run --allow-read scripts/diag-report.ts

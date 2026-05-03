@@ -2,7 +2,7 @@
 
 > Date: 2026-03-10
 
-This document captures potential integration points for [AGLint](https://github.com/AdguardTeam/AGLint) (`@adguard/aglint`) into the adblock-compiler project.
+This document captures potential integration points for [AGLint](https://github.com/AdguardTeam/AGLint) (`@adguard/aglint`) into the bloqr-backend project.
 
 ---
 

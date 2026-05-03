@@ -1,10 +1,10 @@
 # Zod Validation Integration
 
-This document describes the Zod schema validation system integrated into the adblock-compiler project.
+This document describes the Zod schema validation system integrated into the bloqr-backend project.
 
 ## Overview
 
-The adblock-compiler uses [Zod](https://zod.dev/) for runtime validation of configuration objects, API requests, and internal data structures. Zod provides:
+The bloqr-backend uses [Zod](https://zod.dev/) for runtime validation of configuration objects, API requests, and internal data structures. Zod provides:
 
 - **Type-safe validation**: Runtime validation with automatic TypeScript type inference
 - **Composable schemas**: Build complex schemas from simple building blocks

@@ -229,7 +229,7 @@ export type AnalyticsEventData =
  * Analytics Service for tracking metrics via Cloudflare Analytics Engine.
  *
  * This service provides a high-level API for tracking various events
- * in the adblock-compiler system. It automatically handles:
+ * in the bloqr-backend system. It automatically handles:
  * - Timestamp generation
  * - Data point formatting
  * - Graceful degradation when Analytics Engine is not available

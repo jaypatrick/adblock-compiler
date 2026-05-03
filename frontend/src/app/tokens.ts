@@ -3,7 +3,7 @@
  *
  * API_BASE_URL is provided differently per environment:
  *   - Browser (app.config.ts):        '/api'  (relative, same origin)
- *   - SSR     (app.config.server.ts):  absolute Worker URL (e.g. 'https://adblock-compiler.<account>.workers.dev/api')
+ *   - SSR     (app.config.server.ts):  absolute Worker URL (e.g. 'https://bloqr-backend.<account>.workers.dev/api')
  *
  * This prevents SSR from attempting fetches against a relative origin
  * that doesn't exist server-side.

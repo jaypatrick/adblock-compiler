@@ -32,7 +32,7 @@ describe('ApiDocsComponent', () => {
             // then flush it so no pending requests leak into tests or afterEach verify.
             fixture.detectChanges();
             httpTesting.match('/api/version').forEach(req => req.flush({
-                name: 'adblock-compiler', version: '0.0.0',
+                name: 'bloqr-backend', version: '0.0.0',
             }));
         });
 

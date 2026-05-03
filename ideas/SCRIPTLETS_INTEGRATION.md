@@ -1,6 +1,6 @@
 # AdGuard Scriptlets Integration Ideas
 
-Integration ideas for [`AdguardTeam/Scriptlets`](https://github.com/AdguardTeam/Scriptlets) and `adblock-compiler`.
+Integration ideas for [`AdguardTeam/Scriptlets`](https://github.com/AdguardTeam/Scriptlets) and `bloqr-backend`.
 
 ---
 
@@ -72,7 +72,7 @@ Your existing `@adguard/agtree` integration can be extended since `@adguard/scri
 
 1. **AGTree** parses raw filter rules into an AST
 2. **Scriptlets** validates and resolves scriptlet/redirect names
-3. **adblock-compiler** emits the final output per platform
+3. **bloqr-backend** emits the final output per platform
 
 ---
 
@@ -107,9 +107,9 @@ Since trusted scriptlets require restricted sources, enforce this at build time:
 
 - [`AdguardTeam/Scriptlets` README](https://github.com/AdguardTeam/Scriptlets/blob/master/README.md)
 - [`@adguard/scriptlets` on npm](https://www.npmjs.com/package/@adguard/scriptlets)
-- [adblock-compiler AGTree Integration](../docs/api/AGTREE_INTEGRATION.md)
-- [adblock-compiler Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
-- [adblock-compiler Zod Validation](../docs/api/ZOD_VALIDATION.md)
-- [adblock-compiler Platform Support](../docs/api/PLATFORM_SUPPORT.md)
-- [adblock-compiler OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
-- [adblock-compiler Streaming API](../docs/api/STREAMING_API.md)
+- [bloqr-backend AGTree Integration](../docs/api/AGTREE_INTEGRATION.md)
+- [bloqr-backend Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
+- [bloqr-backend Zod Validation](../docs/api/ZOD_VALIDATION.md)
+- [bloqr-backend Platform Support](../docs/api/PLATFORM_SUPPORT.md)
+- [bloqr-backend OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
+- [bloqr-backend Streaming API](../docs/api/STREAMING_API.md)

@@ -232,7 +232,7 @@ deno run -A npm:wrangler tail --format json \
 Because `persist = true` is set in `wrangler.toml`, logs are retained beyond the
 live-tail window. Query them in the Cloudflare dashboard:
 
-- **Workers & Pages → adblock-compiler → Logs**
+- **Workers & Pages → bloqr-backend → Logs**
 - Filter by time range, outcome, and log level
 
 See [Cloudflare Native Observability](../observability/CLOUDFLARE_OBSERVABILITY.md)
@@ -303,7 +303,7 @@ invocation_logs = true   # include duration, status, exception data per invocati
 | **Queue consumers** | All versions share the same queue consumer configuration. |
 | **Compatibility flags** | All versions in a deployment share the same `compatibility_date` and `compatibility_flags`. |
 | **Percentage is per-colo** | A `--percentage 10` deploy may result in slightly more or less than 10 % of *global* traffic depending on colo sizes. |
-| **Tail consumers** | The `adblock-tail` log sink receives events from all active versions. |
+| **Tail consumers** | The `bloqr-tail` log sink receives events from all active versions. |
 
 ---
 

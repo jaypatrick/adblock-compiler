@@ -15,8 +15,8 @@ new URLs without env overrides, also updating the fallback constants in
 
 | Variable       | Description                              | Default (*.workers.dev)                                   |
 |----------------|------------------------------------------|-----------------------------------------------------------|
-| `URL_FRONTEND` | Angular frontend worker                  | `https://adblock-frontend.jk-com.workers.dev`      |
-| `URL_API`      | Backend / API worker                     | `https://adblock-compiler.jk-com.workers.dev`      |
+| `URL_FRONTEND` | Angular frontend worker                  | `https://bloqr-frontend.jk-com.workers.dev`      |
+| `URL_API`      | Backend / API worker                     | `https://bloqr-backend.jk-com.workers.dev`      |
 | `URL_DOCS`     | mdBook documentation (Cloudflare Pages)  | `https://docs.bloqr.dev`                     |
 
 ## Changing the domain
@@ -30,7 +30,7 @@ new URLs without env overrides, also updating the fallback constants in
    Resolution order: (1) `URL_FRONTEND` env var, (2) `URL_FRONTEND` from `wrangler.toml` `[vars]`
    (automatic fallback used by CI dry-run), (3) hard failure if neither is available and the
    placeholder is still present.
-6. Run `wrangler deploy` (backend) and `pnpm --filter adblock-frontend run deploy` (frontend).
+6. Run `wrangler deploy` (backend) and `pnpm --filter bloqr-frontend run deploy` (frontend).
 
 ## Local dev overrides
 

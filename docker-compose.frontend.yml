@@ -1,7 +1,7 @@
 # Optional Docker Compose overlay: split-worker local development simulation
 #
 # This overlay adds a second wrangler dev service for the frontend Worker
-# (adblock-frontend), mirroring the production split-worker topology
+# (bloqr-frontend), mirroring the production split-worker topology
 # where the frontend is a separate Cloudflare Worker connected to the backend
 # via a Cloudflare service binding.
 #
@@ -18,7 +18,7 @@
 # (port 4200 matches the [dev].port configured in frontend/wrangler.toml)
 
 services:
-    adblock-frontend:
+    bloqr-frontend:
         image: jaysonknight/adblock-frontend:latest
         build:
             context: .
@@ -28,7 +28,7 @@ services:
             # artifacts. The frontend-builder stage only produces the dist output
             # and does not include wrangler.
             target: runtime
-        container_name: adblock-frontend
+        container_name: bloqr-frontend
         ports:
             - '${FRONTEND_PORT:-4200}:4200'
         env_file:
@@ -70,12 +70,12 @@ services:
             retries: 3
             start_period: 10s
         depends_on:
-            adblock-compiler:
+            bloqr-backend:
                 condition: service_healthy
         networks:
-            - adblock-network
+            - bloqr-network
 
 networks:
-    adblock-network:
-        name: adblock-compiler-network
+    bloqr-network:
+        name: bloqr-backend-network
         driver: bridge

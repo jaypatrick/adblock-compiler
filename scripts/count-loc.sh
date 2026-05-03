@@ -1,6 +1,6 @@
 #!/usr/bin/env zsh
 # =============================================================================
-# count-loc.sh — Lines of Code counter for adblock-compiler
+# count-loc.sh — Lines of Code counter for bloqr-backend
 #
 # Usage:
 #   ./scripts/count-loc.sh              # count all source files

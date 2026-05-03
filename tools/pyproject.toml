@@ -1,7 +1,7 @@
 [project]
-name = "adblock-compiler-tools"
+name = "bloqr-backend-tools"
 version = "0.1.0"
-description = "Operational tooling and runbooks for adblock-compiler"
+description = "Operational tooling and runbooks for bloqr-backend"
 requires-python = ">=3.11"
 dependencies = [
     # 0.17.0 is the minimum version that introduced MCP server support

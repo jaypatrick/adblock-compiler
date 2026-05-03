@@ -283,7 +283,7 @@ proxyRoutes.openapi(proxyFetchRoute, async (c) => {
             headers: {
                 'Content-Type': 'text/plain; charset=utf-8',
                 'Cache-Control': `public, max-age=${PROXY_CACHE_TTL_SECONDS}`,
-                'X-Proxy-Source': 'adblock-compiler-proxy',
+                'X-Proxy-Source': 'bloqr-backend-proxy',
             },
         }) as any;
     } catch (err) {
