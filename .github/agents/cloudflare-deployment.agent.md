@@ -79,7 +79,7 @@ main = "worker/src/index.ts"
 compatibility_date = "2025-01-01"
 
 [assets]
-directory = "frontend/dist/bloqr-frontend/browser"
+directory = "dist/bloqr-backend/browser"
 not_found_handling = "single-page-application"
 
 [build]
