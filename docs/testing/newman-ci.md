@@ -39,7 +39,7 @@ on:
         required: true
 ```
 
-`workflow_dispatch` accepts an optional `environment` input (`cloudflare` or `local`, defaulting to `cloudflare`) that selects which Postman environment file is loaded. `workflow_call` is used by the deployment pipeline and always targets the environment that was just deployed.
+`workflow_dispatch` accepts an optional `environment` input (`cloudflare` or `local`, defaulting to `cloudflare`) that selects which Postman environment file is loaded. `workflow_call` is used by the deployment pipeline; the calling workflow passes the target environment as the `environment` input, so Newman always runs against the environment that was just deployed rather than a hard-coded default.
 
 ---
 
@@ -292,7 +292,7 @@ To rotate or create a new service token:
 
 ## x402 E2E Stub and Roadmap
 
-`.github/workflows/x402-e2e.yml` is a stub for a future full end-to-end x402 payment test. It is **not currently active** and will not run automatically. The file exists as a placeholder and to document what is needed to complete the implementation.
+`.github/workflows/x402-e2e.yml` exists in the repository as a stub for a future full end-to-end x402 payment test. It is **not currently active** — the workflow has no trigger that fires automatically and will not run until the prerequisites below are satisfied. It serves as a placeholder and to document what is needed to complete the implementation.
 
 ### What the x402 e2e workflow would test (when fully implemented)
 
