@@ -3,6 +3,13 @@
 # Project-specific linting hook for adblock-compiler
 # Validates TypeScript, Python, and formatting
 
+# Require jq — fail loudly so developers know to install it rather than silently skipping validation
+if ! command -v jq &> /dev/null; then
+    echo "✗ project-lint.sh requires jq (https://jqlang.org) but it is not installed." >&2
+    echo "  Install it and re-run, or this hook will never validate files." >&2
+    exit 1
+fi
+
 # Read stdin (contains JSON with tool result)
 INPUT=$(cat)
 
@@ -48,7 +55,10 @@ if [[ "$FILE_PATH" == "$REPO_ROOT/tools/"* ]]; then
         echo "🔍 Checking Python code for $FILE_PATH..."
         
         # Run ruff check (non-blocking)
-        if command -v uv &> /dev/null; then
+        if ! command -v uv &> /dev/null; then
+            echo "⚠️  uv is not installed — Python validation skipped for $FILE_PATH" >&2
+            echo "   Install uv (https://docs.astral.sh/uv/getting-started/installation/) and run: uv sync --directory tools" >&2
+        else
             if ! uv run --directory tools ruff check "$FILE_PATH" 2>/dev/null; then
                 echo "⚠️  Ruff issues found. Run: uv run --directory tools ruff check $FILE_PATH" >&2
             fi

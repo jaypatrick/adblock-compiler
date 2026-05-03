@@ -4,6 +4,13 @@
 # Reads JSON from stdin containing tool result information
 # Runs marimo check and reports issues to Claude
 
+# Require jq — fail loudly so developers know to install it rather than silently skipping validation
+if ! command -v jq &> /dev/null; then
+    echo "✗ marimo-check.sh requires jq (https://jqlang.org) but it is not installed." >&2
+    echo "  Install it and re-run, or this hook will never validate notebooks." >&2
+    exit 1
+fi
+
 # Read stdin (contains JSON with tool result)
 INPUT=$(cat)
 

@@ -38,7 +38,7 @@ The configuration file defines hooks that execute after Claude Code operations:
 
 **Behavior:**
 - Detects if a file is a Marimo notebook (looks for `import marimo` and `@app.cell`)
-- Runs `marimo check` via `uvx` to validate notebook structure
+- Runs `marimo check` via the repo's locked `tools/` environment (`uv run --directory tools marimo check`) to validate notebook structure
 - **Blocks execution** (exit code 2) if check fails — informs Claude to fix issues
 - **Reports success** (exit code 0) if check passes
 
@@ -60,8 +60,7 @@ Please fix the marimo notebook issues shown above.
 **Behavior:**
 - **TypeScript files** (`src/`, `worker/`): Runs `deno fmt` and `deno lint`
 - **Python files** (`tools/`): Runs `ruff check` and `ruff format`
-- Provides **informative warnings** (non-blocking) for style issues
-- Auto-fixes some formatting issues with `deno fmt`
+- Provides **informative warnings** (non-blocking) for style issues — issues are reported but never auto-fixed
 
 **Files Checked:**
 - TypeScript: `src/**/*.ts(x)` and `worker/**/*.ts(x)`
@@ -89,11 +88,11 @@ Please fix the marimo notebook issues shown above.
 Run hooks manually for testing:
 
 ```bash
-# Test marimo-check on a notebook
-./.claude/hooks/marimo-check.sh <<< '{"tool_response": {"filePath": "tools/my_notebook.py"}}'
+# Test marimo-check on a notebook (use the absolute path to an actual file)
+./.claude/hooks/marimo-check.sh <<< "{\"tool_response\": {\"filePath\": \"$(pwd)/tools/runbooks/auth-healthcheck.py\"}}"
 
-# Test project-lint on a file
-./.claude/hooks/project-lint.sh <<< '{"tool_response": {"filePath": "src/index.ts"}}'
+# Test project-lint on a TypeScript file (use the absolute path to an actual file)
+./.claude/hooks/project-lint.sh <<< "{\"tool_response\": {\"filePath\": \"$(pwd)/src/index.ts\"}}"
 ```
 
 ## Hook Input Format
@@ -120,14 +119,15 @@ Only exit code **2** is blocking and will inform Claude to fix the issues.
 ## Requirements
 
 ### Marimo Hook
-- `uvx` (Uv toolchain) installed
-- `marimo` available via `uvx marimo`
 - `jq` for JSON parsing
+- `uv` installed (`uv sync --directory tools` must have been run)
+- `marimo` available in the `tools/` locked environment
 
 ### Project Lint Hook
+- `jq` for JSON parsing
 - `deno` for TypeScript linting/formatting
 - `uv` for Python linting (in `tools/` directory)
-- `ruff` for Python checking
+- `ruff` available via `uv run --directory tools ruff` (installed by `uv sync --directory tools`)
 
 ## Extending the Hooks
 
