@@ -51,7 +51,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 export GITHUB_TOKEN="github_pat_..."
 ```
 
-If you want a reference showing all AI provider config sections and available options, see [`.marimo.toml.example`](.marimo.toml.example) — it contains placeholder values and is safe to commit.
+If you want a reference showing all available configuration sections and recommended defaults, see [`.marimo.toml.example`](.marimo.toml.example) — no credentials or api_key fields are included.
 
 **Where to get credentials:**
 
