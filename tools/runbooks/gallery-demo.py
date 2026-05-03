@@ -88,7 +88,7 @@ def _header_showcase():
         <p>Real-time filter list compilation with AI-powered debugging</p>
     </div>
     """
-    
+
     return mo.html(html)
 
 
@@ -102,7 +102,7 @@ def _color_palette():
         "Warning": "#f59e0b",
         "Danger": "#ef4444",
     }
-    
+
     html = f"""
     <style>
         .bloqr-palette {{
@@ -130,25 +130,31 @@ def _color_palette():
     </style>
     
     <div class="bloqr-palette">
-        {''.join([
-            f'<div class="bloqr-color-box" style="background: {hex_code}">{name}</div>'
-            for name, hex_code in colors.items()
-        ])}
+        {
+        "".join(
+            [
+                f'<div class="bloqr-color-box" style="background: {hex_code}">{name}</div>'
+                for name, hex_code in colors.items()
+            ]
+        )
+    }
     </div>
     """
-    
-    return mo.vstack([
-        mo.md("## 🎨 Brand Colors"),
-        mo.html(html),
-        mo.md("*Hover to see hover effect animation*"),
-    ])
+
+    return mo.vstack(
+        [
+            mo.md("## 🎨 Brand Colors"),
+            mo.html(html),
+            mo.md("*Hover to see hover effect animation*"),
+        ]
+    )
 
 
 @app.cell
 def _stat_cards_demo():
     """Animated stat cards."""
     stats = get_compile_stats()
-    
+
     html = f"""
     <style>
         .stat-card-grid {{
@@ -189,46 +195,50 @@ def _stat_cards_demo():
     
     <div class="stat-card-grid">
         <div class="stat-card">
-            <div class="stat-value">{stats['total']:,}</div>
+            <div class="stat-value">{stats["total"]:,}</div>
             <div class="stat-label">Compilations Today</div>
         </div>
         <div class="stat-card" style="background: linear-gradient(135deg, #10b981, #34d399);">
-            <div class="stat-value">{stats['success_rate']}%</div>
+            <div class="stat-value">{stats["success_rate"]}%</div>
             <div class="stat-label">Success Rate</div>
         </div>
         <div class="stat-card" style="background: linear-gradient(135deg, #7c3aed, #a78bfa);">
-            <div class="stat-value">{stats['avg_time_ms']}ms</div>
+            <div class="stat-value">{stats["avg_time_ms"]}ms</div>
             <div class="stat-label">Avg Compile Time</div>
         </div>
     </div>
     """
-    
-    return mo.vstack([
-        mo.md("## 📊 Interactive Stats (Auto-updating)"),
-        mo.html(html),
-        mo.md("*Stats update every refresh*"),
-    ])
+
+    return mo.vstack(
+        [
+            mo.md("## 📊 Interactive Stats (Auto-updating)"),
+            mo.html(html),
+            mo.md("*Stats update every refresh*"),
+        ]
+    )
 
 
 @app.cell
 def _interactive_slider():
     """Interactive component example."""
     import marimo as mo
-    
+
     hours = mo.ui.slider(label="Last N Hours", min=1, max=168, value=24, step=1)
     filter_type = mo.ui.select(
         options={"all": "All", "success": "Success Only", "errors": "Errors Only"},
         value="all",
     )
-    
-    return mo.vstack([
-        mo.md("## 🎛️ Interactive Controls"),
-        hours,
-        filter_type,
-        mo.md(f"""
+
+    return mo.vstack(
+        [
+            mo.md("## 🎛️ Interactive Controls"),
+            hours,
+            filter_type,
+            mo.md(f"""
         **Selected:** Last {hours.value} hours, showing {filter_type.value} compilations
         """),
-    ])
+        ]
+    )
 
 
 @app.cell
@@ -314,11 +324,13 @@ def _button_showcase():
         <button class="bloqr-btn bloqr-btn-success">Success</button>
     </div>
     """
-    
-    return mo.vstack([
-        mo.md("## 🔘 Button Variants"),
-        mo.html(html),
-    ])
+
+    return mo.vstack(
+        [
+            mo.md("## 🔘 Button Variants"),
+            mo.html(html),
+        ]
+    )
 
 
 @app.cell
@@ -356,11 +368,13 @@ def _responsive_grid():
     💡 <strong>Resize your browser</strong> to see the responsive grid adapt from 3 columns to fewer columns on smaller screens.
     </p>
     """
-    
-    return mo.vstack([
-        mo.md("## 📱 Responsive Grid"),
-        mo.html(html),
-    ])
+
+    return mo.vstack(
+        [
+            mo.md("## 📱 Responsive Grid"),
+            mo.html(html),
+        ]
+    )
 
 
 @app.cell
@@ -460,7 +474,7 @@ def _footer_gallery():
         </div>
     </div>
     """
-    
+
     return mo.html(html)
 
 

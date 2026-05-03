@@ -126,7 +126,12 @@ body {
     background-color: var(--bloqr-bg-primary);
 }
 
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
     font-weight: var(--bloqr-font-weight-semibold);
     margin-bottom: var(--bloqr-spacing-md);
     line-height: 1.2;
@@ -146,7 +151,8 @@ h3 {
     font-size: var(--bloqr-font-size-xl);
 }
 
-code, pre {
+code,
+pre {
     font-family: var(--bloqr-font-mono);
     background-color: var(--bloqr-bg-tertiary);
     border-radius: var(--bloqr-radius-md);
@@ -201,7 +207,11 @@ a:hover {
     justify-content: center;
     padding: var(--bloqr-spacing-xl);
     border-radius: var(--bloqr-radius-lg);
-    background: linear-gradient(135deg, var(--bloqr-primary), var(--bloqr-accent));
+    background: linear-gradient(
+        135deg,
+        var(--bloqr-primary),
+        var(--bloqr-accent)
+    );
     color: white;
     text-align: center;
     box-shadow: var(--bloqr-shadow-lg);
@@ -334,7 +344,8 @@ a:hover {
 }
 
 @keyframes bloqr-pulse {
-    0%, 100% {
+    0%,
+    100% {
         opacity: 1;
     }
     50% {

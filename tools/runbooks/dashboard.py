@@ -45,10 +45,7 @@ def load_compile_stats():
             {"name": "Custom (User)", "count": 5112},
             {"name": "pi-hole", "count": 3432},
         ],
-        "by_hour": [
-            {"hour": i, "compilations": random.randint(400, 800)}
-            for i in range(24)
-        ],
+        "by_hour": [{"hour": i, "compilations": random.randint(400, 800)} for i in range(24)],
     }
 
 
@@ -77,14 +74,14 @@ app = mo.App(
 def _header():
     """Header with key metrics."""
     import marimo as mo
-    
+
     stats = load_compile_stats()
     users = load_user_analytics()
-    
+
     return mo.md(f"""
     # 📊 Bloqr Compile Stats Dashboard
     
-    **Last updated:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S UTC')}
+    **Last updated:** {datetime.now().strftime("%Y-%m-%d %H:%M:%S UTC")}
     
     [Deployment Guide](../DEPLOYMENT.md) | [GitHub Issue #1738](https://github.com/jaypatrick/adblock-compiler/issues/1738) | [Marimo Docs](https://docs.marimo.io)
     """)
@@ -94,10 +91,10 @@ def _header():
 def _kpi_cards():
     """Key performance indicators in an attractive card layout."""
     import marimo as mo
-    
+
     stats = load_compile_stats()
     users = load_user_analytics()
-    
+
     # Use marimo HTML + CSS for Bloqr theme styling
     html_content = f"""
     <style>
@@ -150,37 +147,37 @@ def _kpi_cards():
     
     <div class="bloqr-kpi-grid">
         <div class="bloqr-kpi-card bloqr-success">
-            <div class="bloqr-kpi-value">{stats['total_compilations']:,}</div>
+            <div class="bloqr-kpi-value">{stats["total_compilations"]:,}</div>
             <div class="bloqr-kpi-label">Total Compilations</div>
         </div>
         
         <div class="bloqr-kpi-card bloqr-success">
-            <div class="bloqr-kpi-value">{stats['success_rate']:.1f}%</div>
+            <div class="bloqr-kpi-value">{stats["success_rate"]:.1f}%</div>
             <div class="bloqr-kpi-label">Success Rate</div>
         </div>
         
         <div class="bloqr-kpi-card">
-            <div class="bloqr-kpi-value">{stats['avg_time_ms']}ms</div>
+            <div class="bloqr-kpi-value">{stats["avg_time_ms"]}ms</div>
             <div class="bloqr-kpi-label">Avg Compile Time</div>
         </div>
         
         <div class="bloqr-kpi-card bloqr-warning">
-            <div class="bloqr-kpi-value">{stats['failed']}</div>
+            <div class="bloqr-kpi-value">{stats["failed"]}</div>
             <div class="bloqr-kpi-label">Failures (24h)</div>
         </div>
         
         <div class="bloqr-kpi-card">
-            <div class="bloqr-kpi-value">{users['active_24h']:,}</div>
+            <div class="bloqr-kpi-value">{users["active_24h"]:,}</div>
             <div class="bloqr-kpi-label">Active Users (24h)</div>
         </div>
         
         <div class="bloqr-kpi-card bloqr-success">
-            <div class="bloqr-kpi-value">{users['new_today']}</div>
+            <div class="bloqr-kpi-value">{users["new_today"]}</div>
             <div class="bloqr-kpi-label">New Users Today</div>
         </div>
     </div>
     """
-    
+
     return mo.html(html_content)
 
 
@@ -188,10 +185,10 @@ def _kpi_cards():
 def _error_analysis():
     """Error types and trends (with LLM analysis hook)."""
     import marimo as mo
-    
+
     stats = load_compile_stats()
     errors = stats["last_24h_errors"]
-    
+
     table_html = f"""
     <table style="width: 100%; border-collapse: collapse; margin: 2rem 0;">
         <thead>
@@ -202,18 +199,22 @@ def _error_analysis():
             </tr>
         </thead>
         <tbody>
-            {''.join([
+            {
+        "".join(
+            [
                 f'''<tr style="border-bottom: 1px solid #e5e7eb;">
                     <td style="padding: 1rem;">{e['time']}</td>
                     <td style="padding: 1rem;"><code style="background: #f3f4f6; padding: 0.25rem 0.5rem; border-radius: 0.375rem;">{e['type']}</code></td>
                     <td style="padding: 1rem; text-align: center; font-weight: 600;">{e['count']}</td>
                 </tr>'''
                 for e in errors
-            ])}
+            ]
+        )
+    }
         </tbody>
     </table>
     """
-    
+
     return mo.md(f"""
     ## 🚨 Error Trends (Last 24h)
     
@@ -229,35 +230,37 @@ def _error_analysis():
 def _llm_analysis_button():
     """Button to trigger LLM error analysis."""
     import marimo as mo
-    
+
     analyze_button = mo.ui.button(label="🤖 Analyze Errors with Claude")
-    
-    return mo.vstack([
-        analyze_button,
-        mo.md("""
+
+    return mo.vstack(
+        [
+            analyze_button,
+            mo.md("""
         *This will:*
         1. *Fetch error logs from the last 24h*
         2. *Send to Claude Sonnet for anomaly detection*
         3. *Suggest root causes and fixes*
         4. *Generate a PR if you approve*
         """),
-    ])
+        ]
+    )
 
 
 @app.cell
 def _rule_sources():
     """Top rule sources and breakdown."""
     import marimo as mo
-    
+
     stats = load_compile_stats()
     sources = stats["top_rule_sources"]
-    
+
     return mo.md(f"""
     ## 📋 Top Rule Sources
     
     | Source | Count |
     |--------|-------|
-    {''.join([f"| {s['name']} | {s['count']:,} |" for s in sources])}
+    {"".join([f"| {s['name']} | {s['count']:,} |" for s in sources])}
     """)
 
 
@@ -265,7 +268,7 @@ def _rule_sources():
 def _interactive_controls():
     """Interactive filters and time range selector."""
     import marimo as mo
-    
+
     time_range = mo.ui.select(
         options={
             "1h": "Last 1 Hour",
@@ -276,7 +279,7 @@ def _interactive_controls():
         label="Time Range",
         value="24h",
     )
-    
+
     filter_type = mo.ui.select(
         options={
             "all": "All",
@@ -286,35 +289,39 @@ def _interactive_controls():
         label="Filter",
         value="all",
     )
-    
+
     auto_refresh = mo.ui.checkbox(label="Auto-refresh every 5 min", value=False)
-    
-    return mo.vstack([
-        mo.md("## ⚙️ Filter Options"),
-        mo.hstack([time_range, filter_type]),
-        auto_refresh,
-    ])
+
+    return mo.vstack(
+        [
+            mo.md("## ⚙️ Filter Options"),
+            mo.hstack([time_range, filter_type]),
+            auto_refresh,
+        ]
+    )
 
 
 @app.cell
 def _mcp_tools():
     """MCP tools for triggering recompilation and admin actions."""
     import marimo as mo
-    
+
     trigger_button = mo.ui.button(label="🔄 Trigger Full Recompilation")
     clear_cache_button = mo.ui.button(label="🗑️ Clear Cache")
     export_stats_button = mo.ui.button(label="📥 Export Stats (JSON)")
-    
-    return mo.vstack([
-        mo.md("## 🛠️ Admin Actions (via MCP)"),
-        mo.hstack([trigger_button, clear_cache_button, export_stats_button]),
-        mo.md("""
+
+    return mo.vstack(
+        [
+            mo.md("## 🛠️ Admin Actions (via MCP)"),
+            mo.hstack([trigger_button, clear_cache_button, export_stats_button]),
+            mo.md("""
         *These buttons execute MCP tools:*
         - **Trigger Recompilation** → calls `/api/compile/trigger` via MCP
         - **Clear Cache** → calls `/api/cache/clear` via MCP
         - **Export Stats** → downloads JSON snapshot for Tableau/BI tools
         """),
-    ])
+        ]
+    )
 
 
 @app.cell

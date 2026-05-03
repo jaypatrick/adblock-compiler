@@ -95,9 +95,9 @@ def _header():
 def _error_log_viewer():
     """Display recent errors with filtering."""
     import marimo as mo
-    
+
     errors = load_error_logs(hours=24)
-    
+
     # Separate by level for visual hierarchy
     error_list = ""
     for err in errors:
@@ -106,7 +106,7 @@ def _error_log_viewer():
             "WARN": "#f59e0b",
             "INFO": "#3b82f6",
         }.get(err["level"], "#6b7280")
-        
+
         error_list += f"""
         <div style="
             border-left: 4px solid {level_color};
@@ -116,16 +116,16 @@ def _error_log_viewer():
             border-radius: 0.375rem;
         ">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <strong style="color: {level_color}">[{err['level']}]</strong>
-                <span style="font-size: 0.875rem; color: #6b7280;">{err['timestamp']}</span>
+                <strong style="color: {level_color}">[{err["level"]}]</strong>
+                <span style="font-size: 0.875rem; color: #6b7280;">{err["timestamp"]}</span>
             </div>
-            <div style="font-weight: 600; margin-bottom: 0.5rem;">{err['service']}</div>
+            <div style="font-weight: 600; margin-bottom: 0.5rem;">{err["service"]}</div>
             <div style="color: #374151; font-family: monospace; font-size: 0.875rem;">
-                {err['message']}
+                {err["message"]}
             </div>
         </div>
         """
-    
+
     return mo.md(f"""
     ## 📋 Recent Errors (Last 24h)
     
@@ -139,9 +139,9 @@ def _error_log_viewer():
 def _analyze_button_and_prompt():
     """Button to trigger Claude analysis."""
     import marimo as mo
-    
+
     analyze_button = mo.ui.button(label="🤖 Analyze with Claude", actions={"click": ["analyze"]})
-    
+
     prompt_template = mo.ui.textarea(
         label="Custom Analysis Prompt (optional)",
         value="""Analyze these error logs and provide:
@@ -153,20 +153,22 @@ def _analyze_button_and_prompt():
 Format as markdown with code examples where relevant.""",
         rows=10,
     )
-    
-    return mo.vstack([
-        mo.md("## 🚀 AI Analysis"),
-        analyze_button,
-        mo.md("### Customize the analysis prompt"),
-        prompt_template,
-    ])
+
+    return mo.vstack(
+        [
+            mo.md("## 🚀 AI Analysis"),
+            analyze_button,
+            mo.md("### Customize the analysis prompt"),
+            prompt_template,
+        ]
+    )
 
 
 @app.cell
 def _llm_integration():
     """
     Integrate with Claude for error analysis.
-    
+
     NOTE: In a real runbook, this cell would:
     1. Call Claude API with error logs
     2. Stream results back
@@ -175,14 +177,14 @@ def _llm_integration():
     """
     import marimo as mo
     import os
-    
+
     # This is a mock implementation; replace with actual Claude API call
     # In production: from anthropic import Anthropic
-    
+
     def analyze_errors_with_claude(errors: list, custom_prompt: str = None) -> dict:
         """
         Call Claude Sonnet to analyze errors.
-        
+
         Returns: {
             "root_causes": ["..."],
             "impact": "High/Medium/Low",
@@ -223,21 +225,21 @@ Users with large custom filter lists experience timeout errors during compilatio
 - #1728 - Timeout errors on large rulesets
 """,
         }
-    
+
     # For demo: Show what Claude would return
     errors = load_error_logs()
     analysis = analyze_errors_with_claude(errors)
-    
+
     return mo.md(f"""
     ## 📊 Claude Analysis Results
     
     ### Root Causes
-    {chr(10).join([f"- {cause}" for cause in analysis['root_causes']])}
+    {chr(10).join([f"- {cause}" for cause in analysis["root_causes"]])}
     
-    ### Impact: {analysis['impact']}
+    ### Impact: {analysis["impact"]}
     
     ### Recommended Fixes
-    {chr(10).join([f"- {fix}" for fix in analysis['fixes']])}
+    {chr(10).join([f"- {fix}" for fix in analysis["fixes"]])}
     """)
 
 
@@ -245,7 +247,7 @@ Users with large custom filter lists experience timeout errors during compilatio
 def _pr_preview():
     """Show a preview of the PR that would be created."""
     import marimo as mo
-    
+
     analysis = {
         "issue_title": "Implement streaming compilation for large rulesets (>50k rules)",
         "issue_body": """## Problem
@@ -265,15 +267,15 @@ Users with large custom filter lists experience timeout errors during compilatio
 - #1728 - Timeout errors on large rulesets
 """,
     }
-    
+
     return mo.md(f"""
     ## 📝 Suggested GitHub Issue
     
-    **Title:** {analysis['issue_title']}
+    **Title:** {analysis["issue_title"]}
     
     ---
     
-    {analysis['issue_body']}
+    {analysis["issue_body"]}
     
     ---
     
@@ -289,23 +291,24 @@ Users with large custom filter lists experience timeout errors during compilatio
 def _create_pr_option():
     """Option to create a PR with the suggested fix."""
     import marimo as mo
-    
+
     github_token = mo.ui.text(
         label="GitHub Token (for PR creation)",
         kind="password",
         placeholder="ghp_...",
         full_width=True,
     )
-    
+
     create_issue_button = mo.ui.button(label="📌 Create GitHub Issue")
     create_pr_button = mo.ui.button(label="🔧 Create Draft PR")
-    
-    return mo.vstack([
-        mo.md("## 🚀 Create GitHub Issue & PR"),
-        mo.md("*Requires GitHub token with repo write access*"),
-        github_token,
-        mo.hstack([create_issue_button, create_pr_button]),
-        mo.md("""
+
+    return mo.vstack(
+        [
+            mo.md("## 🚀 Create GitHub Issue & PR"),
+            mo.md("*Requires GitHub token with repo write access*"),
+            github_token,
+            mo.hstack([create_issue_button, create_pr_button]),
+            mo.md("""
         This will:
         1. Create a new GitHub issue with root cause analysis
         2. (Optional) Generate a draft PR with fix skeleton code
@@ -316,7 +319,8 @@ def _create_pr_option():
         - Review PR with standard CI checks
         - Merge when ready
         """),
-    ])
+        ]
+    )
 
 
 @app.cell
