@@ -84,6 +84,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 
 
+
+## [0.92.0] - 2026-05-03
+
+### Added- **#1738**: Marimo foundation setup with Cloudflare deployment and AI automation (#1765)
+- **auth**: Better Auth performance optimizations (#1759)
+- secure error-passing architecture — KV flash store, Bloqr-styled error UX, D1 audit log (#1748)
+- **postman**: Complete Newman/Postman overhaul + CI integration (#1711)
+- scaffold Docusaurus v3 docs site (docs-docusaurus/) (#1739)
+- scaffold Starlight (Astro) documentation site in docs-starlight/ (#1740)
+- **tools**: install marimo[mcp] extra
+- **tools**: add Marimo optional deps and configure Anthropic AI in .marimo.toml
+- **monorepo**: formally declare monorepo with Deno/pnpm workspaces + Astral Python toolchain (#1735)
+- **tools**: Marimo runbooks, per-tool docs, PR template, and pipeline infrastructure (#1732)
+- **tools**: complete debug pass on auth-healthcheck.py — cleanup, interactive menu, and pipeline mode (#1728)
+- **resend**: Zod hardening, ZTA API-key guard, and Templates API service (#1719)
+
+### Fixed
+
+- correct stale service binding docs and add explicit dev services override (#1764)
+- remove explicit pnpm version to use packageManager from package.json
+- correct pnpm/action-setup SHA pin for v4.0.0
+- **docker**: recover from stale APT index in Dockerfile.container (#1761)
+- **ci**: unblock cloudflare-dep-update workflow push by removing workflow file modifications (#1757)
+- **ci**: remove invalid `workflows: write` permission from cloudflare-dep-update workflow (#1756)
+- **ci**: stop cloudflare-dep-update from failing on feature-branch pushes and missing label (#1755)
+- **runbooks**: fix all ruff CI failures in marimo runbooks + add Python/marimo lint guidance (#1751)
+- **tools**: bump marimo to >=0.17.0 for MCP support
+- **runbooks**: correctly scope cross-cell vs cell-private variables in auth-healthcheck.py
+- **deno**: add missing exports field to worker deno.json configs
+- **runbooks**: correctly scope cross-cell vs cell-private variables in pipeline.py
+- **runbooks**: prefix all conflicting cell-local variables with _ in pipeline.py
+- **tools**: migrate tool.uv.dev-dependencies to dependency-groups.dev
+- **tools**: auth-healthcheck — 5 bug fixes, email auto-verify, universal cleanup, KV/D1/Neon caching (#1734)
+- **tools**: rewrite auth-healthcheck.py — fix all 6 runtime bugs + 3 review-identified correctness fixes (#1733)
+- **tools**: Neon table discovery, D1 --remote, KV stdout split, logs → tools/logs/
+- **tools**: repair NEON_URL env loading + add tools/README.md
+- **auth**: implement Better Auth system audit findings (#1726) — 13 issues (#1727)
+- storeSessionInDatabase=true prevents BetterAuthError when KV secondary storage is bound (#1725)
+- **auth**: gate sentinel() behind BETTER_AUTH_SENTINEL_ENABLED flag (#1724)
+- **auth**: pass BETTER_AUTH_API_KEY explicitly to dash() and sentinel() plugins (#1722)
+- **auth**: remove unavailable auditLogs import, complete Better Auth dash integration (#1715)
+- **worker**: eliminate "body already used" crash on POST /api/workflow/*, KV-unguarded step failures, and unsafe configuration type casts in scheduled workflows (#1720)
+- **ci**: demote wrangler version lag to warning, not CI failure
+- skip Turnstile verification for API key authenticated requests (#1709)
+- CORS middleware — allow no-Origin requests through; reject unknown origins with 403 (#1707)
+- Better Auth MISSING_OR_NULL_ORIGIN for non-browser clients (Postman/curl/SDK) (#1708)
+
+
 ## [0.91.0] - 2026-04-30
 
 ### Added- **api-keys**: rename API key prefix `abc_` → `blq_` with dual-prefix backwards compatibility (#1704)
