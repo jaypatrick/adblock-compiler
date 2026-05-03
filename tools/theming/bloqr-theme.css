@@ -1,0 +1,477 @@
+/* Bloqr Theme for Marimo Notebooks
+ * 
+ * This CSS defines the Bloqr design language with:
+ * - Custom color palette (primary, accent, success, warning, danger)
+ * - Typography and spacing
+ * - Animated components
+ * - Dark/light mode support
+ * 
+ * Usage in notebook:
+ *   import marimo as mo
+ *   mo.css(mo.html("<link rel='stylesheet' href='/path/to/bloqr-theme.css'>"))
+ */
+
+:root {
+    /* Brand Colors */
+    --bloqr-primary: #2563eb; /* Blue */
+    --bloqr-primary-dark: #1e40af;
+    --bloqr-primary-light: #3b82f6;
+
+    --bloqr-accent: #7c3aed; /* Purple */
+    --bloqr-accent-dark: #6d28d9;
+    --bloqr-accent-light: #a78bfa;
+
+    /* Status Colors */
+    --bloqr-success: #10b981; /* Green */
+    --bloqr-success-dark: #059669;
+    --bloqr-success-light: #34d399;
+
+    --bloqr-warning: #f59e0b; /* Amber */
+    --bloqr-warning-dark: #d97706;
+    --bloqr-warning-light: #fbbf24;
+
+    --bloqr-danger: #ef4444; /* Red */
+    --bloqr-danger-dark: #dc2626;
+    --bloqr-danger-light: #f87171;
+
+    /* Neutral Palette */
+    --bloqr-gray-50: #f9fafb;
+    --bloqr-gray-100: #f3f4f6;
+    --bloqr-gray-200: #e5e7eb;
+    --bloqr-gray-300: #d1d5db;
+    --bloqr-gray-400: #9ca3af;
+    --bloqr-gray-500: #6b7280;
+    --bloqr-gray-600: #4b5563;
+    --bloqr-gray-700: #374151;
+    --bloqr-gray-800: #1f2937;
+    --bloqr-gray-900: #111827;
+
+    /* Typography */
+    --bloqr-font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --bloqr-font-mono: 'Fira Code', 'Courier New', monospace;
+
+    --bloqr-font-size-xs: 0.75rem; /* 12px */
+    --bloqr-font-size-sm: 0.875rem; /* 14px */
+    --bloqr-font-size-base: 1rem; /* 16px */
+    --bloqr-font-size-lg: 1.125rem; /* 18px */
+    --bloqr-font-size-xl: 1.25rem; /* 20px */
+    --bloqr-font-size-2xl: 1.5rem; /* 24px */
+    --bloqr-font-size-3xl: 1.875rem; /* 30px */
+
+    --bloqr-font-weight-regular: 400;
+    --bloqr-font-weight-medium: 500;
+    --bloqr-font-weight-semibold: 600;
+    --bloqr-font-weight-bold: 700;
+
+    /* Spacing */
+    --bloqr-spacing-xs: 0.25rem; /* 4px */
+    --bloqr-spacing-sm: 0.5rem; /* 8px */
+    --bloqr-spacing-md: 1rem; /* 16px */
+    --bloqr-spacing-lg: 1.5rem; /* 24px */
+    --bloqr-spacing-xl: 2rem; /* 32px */
+    --bloqr-spacing-2xl: 3rem; /* 48px */
+
+    /* Shadows */
+    --bloqr-shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+    --bloqr-shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+    --bloqr-shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1);
+    --bloqr-shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1);
+
+    /* Transitions */
+    --bloqr-transition-fast: 150ms ease-in-out;
+    --bloqr-transition-base: 250ms ease-in-out;
+    --bloqr-transition-slow: 350ms ease-in-out;
+
+    /* Border Radius */
+    --bloqr-radius-sm: 0.375rem; /* 6px */
+    --bloqr-radius-md: 0.5rem; /* 8px */
+    --bloqr-radius-lg: 0.75rem; /* 12px */
+    --bloqr-radius-xl: 1rem; /* 16px */
+    --bloqr-radius-full: 9999px;
+}
+
+/* Dark Mode */
+@media (prefers-color-scheme: dark) {
+    :root {
+        --bloqr-bg-primary: var(--bloqr-gray-900);
+        --bloqr-bg-secondary: var(--bloqr-gray-800);
+        --bloqr-bg-tertiary: var(--bloqr-gray-700);
+        --bloqr-text-primary: var(--bloqr-gray-50);
+        --bloqr-text-secondary: var(--bloqr-gray-400);
+        --bloqr-border: var(--bloqr-gray-700);
+    }
+}
+
+/* Light Mode (default) */
+@media (prefers-color-scheme: light) {
+    :root {
+        --bloqr-bg-primary: var(--bloqr-gray-50);
+        --bloqr-bg-secondary: white;
+        --bloqr-bg-tertiary: var(--bloqr-gray-100);
+        --bloqr-text-primary: var(--bloqr-gray-900);
+        --bloqr-text-secondary: var(--bloqr-gray-600);
+        --bloqr-border: var(--bloqr-gray-200);
+    }
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Core Elements */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+body {
+    font-family: var(--bloqr-font-family);
+    font-size: var(--bloqr-font-size-base);
+    line-height: 1.6;
+    color: var(--bloqr-text-primary);
+    background-color: var(--bloqr-bg-primary);
+}
+
+h1, h2, h3, h4, h5, h6 {
+    font-weight: var(--bloqr-font-weight-semibold);
+    margin-bottom: var(--bloqr-spacing-md);
+    line-height: 1.2;
+}
+
+h1 {
+    font-size: var(--bloqr-font-size-3xl);
+    color: var(--bloqr-primary);
+}
+
+h2 {
+    font-size: var(--bloqr-font-size-2xl);
+    margin-top: var(--bloqr-spacing-lg);
+}
+
+h3 {
+    font-size: var(--bloqr-font-size-xl);
+}
+
+code, pre {
+    font-family: var(--bloqr-font-mono);
+    background-color: var(--bloqr-bg-tertiary);
+    border-radius: var(--bloqr-radius-md);
+}
+
+code {
+    padding: var(--bloqr-spacing-xs) var(--bloqr-spacing-sm);
+    font-size: 0.9em;
+    color: var(--bloqr-accent);
+}
+
+pre {
+    padding: var(--bloqr-spacing-md);
+    overflow-x: auto;
+    margin: var(--bloqr-spacing-md) 0;
+    border: 1px solid var(--bloqr-border);
+}
+
+a {
+    color: var(--bloqr-primary);
+    text-decoration: none;
+    transition: color var(--bloqr-transition-fast);
+}
+
+a:hover {
+    color: var(--bloqr-primary-dark);
+    text-decoration: underline;
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Cards & Containers */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+.bloqr-card {
+    background-color: var(--bloqr-bg-secondary);
+    border: 1px solid var(--bloqr-border);
+    border-radius: var(--bloqr-radius-lg);
+    padding: var(--bloqr-spacing-lg);
+    box-shadow: var(--bloqr-shadow-sm);
+    transition: box-shadow var(--bloqr-transition-base), transform var(--bloqr-transition-base);
+}
+
+.bloqr-card:hover {
+    box-shadow: var(--bloqr-shadow-md);
+    transform: translateY(-2px);
+}
+
+.bloqr-stat-card {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: var(--bloqr-spacing-xl);
+    border-radius: var(--bloqr-radius-lg);
+    background: linear-gradient(135deg, var(--bloqr-primary), var(--bloqr-accent));
+    color: white;
+    text-align: center;
+    box-shadow: var(--bloqr-shadow-lg);
+}
+
+.bloqr-stat-card-value {
+    font-size: var(--bloqr-font-size-3xl);
+    font-weight: var(--bloqr-font-weight-bold);
+    margin-bottom: var(--bloqr-spacing-sm);
+}
+
+.bloqr-stat-card-label {
+    font-size: var(--bloqr-font-size-sm);
+    opacity: 0.9;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Buttons */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+.bloqr-button {
+    padding: var(--bloqr-spacing-sm) var(--bloqr-spacing-md);
+    border-radius: var(--bloqr-radius-md);
+    font-weight: var(--bloqr-font-weight-semibold);
+    border: none;
+    cursor: pointer;
+    transition: background-color var(--bloqr-transition-fast), transform var(--bloqr-transition-fast);
+    font-size: var(--bloqr-font-size-base);
+}
+
+.bloqr-button:hover {
+    transform: scale(1.02);
+}
+
+.bloqr-button-primary {
+    background-color: var(--bloqr-primary);
+    color: white;
+}
+
+.bloqr-button-primary:hover {
+    background-color: var(--bloqr-primary-dark);
+}
+
+.bloqr-button-secondary {
+    background-color: var(--bloqr-bg-tertiary);
+    color: var(--bloqr-text-primary);
+    border: 1px solid var(--bloqr-border);
+}
+
+.bloqr-button-secondary:hover {
+    background-color: var(--bloqr-border);
+}
+
+.bloqr-button-success {
+    background-color: var(--bloqr-success);
+    color: white;
+}
+
+.bloqr-button-success:hover {
+    background-color: var(--bloqr-success-dark);
+}
+
+.bloqr-button-danger {
+    background-color: var(--bloqr-danger);
+    color: white;
+}
+
+.bloqr-button-danger:hover {
+    background-color: var(--bloqr-danger-dark);
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Status Badges */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+.bloqr-badge {
+    display: inline-block;
+    padding: var(--bloqr-spacing-xs) var(--bloqr-spacing-sm);
+    border-radius: var(--bloqr-radius-full);
+    font-size: var(--bloqr-font-size-xs);
+    font-weight: var(--bloqr-font-weight-semibold);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.bloqr-badge-success {
+    background-color: var(--bloqr-success);
+    color: white;
+}
+
+.bloqr-badge-warning {
+    background-color: var(--bloqr-warning);
+    color: white;
+}
+
+.bloqr-badge-danger {
+    background-color: var(--bloqr-danger);
+    color: white;
+}
+
+.bloqr-badge-primary {
+    background-color: var(--bloqr-primary);
+    color: white;
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Animations */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+@keyframes bloqr-fade-in {
+    from {
+        opacity: 0;
+    }
+    to {
+        opacity: 1;
+    }
+}
+
+@keyframes bloqr-slide-in-up {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes bloqr-pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@keyframes bloqr-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+.bloqr-animate-fade-in {
+    animation: bloqr-fade-in var(--bloqr-transition-base);
+}
+
+.bloqr-animate-slide-in-up {
+    animation: bloqr-slide-in-up var(--bloqr-transition-base);
+}
+
+.bloqr-animate-pulse {
+    animation: bloqr-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.bloqr-animate-spin {
+    animation: bloqr-spin 1s linear infinite;
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Tables */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: var(--bloqr-spacing-lg) 0;
+}
+
+th {
+    background-color: var(--bloqr-primary);
+    color: white;
+    padding: var(--bloqr-spacing-md);
+    text-align: left;
+    font-weight: var(--bloqr-font-weight-semibold);
+}
+
+td {
+    padding: var(--bloqr-spacing-md);
+    border-bottom: 1px solid var(--bloqr-border);
+}
+
+tr:hover {
+    background-color: var(--bloqr-bg-tertiary);
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Forms */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='number'],
+textarea,
+select {
+    width: 100%;
+    padding: var(--bloqr-spacing-sm) var(--bloqr-spacing-md);
+    border: 1px solid var(--bloqr-border);
+    border-radius: var(--bloqr-radius-md);
+    font-family: var(--bloqr-font-family);
+    font-size: var(--bloqr-font-size-base);
+    transition: border-color var(--bloqr-transition-fast);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+    outline: none;
+    border-color: var(--bloqr-primary);
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Grid & Layout */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+.bloqr-grid {
+    display: grid;
+    gap: var(--bloqr-spacing-lg);
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+}
+
+.bloqr-grid-2 {
+    grid-template-columns: repeat(2, 1fr);
+}
+
+.bloqr-grid-3 {
+    grid-template-columns: repeat(3, 1fr);
+}
+
+.bloqr-flex {
+    display: flex;
+    gap: var(--bloqr-spacing-md);
+    align-items: center;
+}
+
+.bloqr-flex-col {
+    flex-direction: column;
+}
+
+.bloqr-flex-center {
+    justify-content: center;
+}
+
+.bloqr-flex-between {
+    justify-content: space-between;
+}
+
+/* ─────────────────────────────────────────────────────────────────────── */
+/* Responsive */
+/* ─────────────────────────────────────────────────────────────────────── */
+
+@media (max-width: 768px) {
+    h1 {
+        font-size: var(--bloqr-font-size-2xl);
+    }
+
+    h2 {
+        font-size: var(--bloqr-font-size-xl);
+    }
+
+    .bloqr-grid-2,
+    .bloqr-grid-3 {
+        grid-template-columns: 1fr;
+    }
+}
