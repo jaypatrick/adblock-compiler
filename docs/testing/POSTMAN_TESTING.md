@@ -361,9 +361,10 @@ pnpm add -g newman newman-reporter-htmlextra
 
 # Run against local Wrangler dev server
 newman run docs/postman/postman-collection.json \
-  --environment docs/postman/postman-environment.json \
-  --env-var baseUrl=http://127.0.0.1:8787 \
-  --env-var apiKey=$NEWMAN_USER_API_KEY \
+  --environment docs/postman/postman-environment-local.json \
+  --env-var bearerToken=$NEWMAN_USER_API_KEY \
+  --env-var postmanEmail=$NEWMAN_POSTMAN_EMAIL \
+  --env-var postmanPassword=$NEWMAN_POSTMAN_PASSWORD \
   --reporters cli,htmlextra \
   --reporter-htmlextra-export newman-report.html \
   --bail

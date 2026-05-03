@@ -2,7 +2,7 @@
 
 ← [Back to README](../../README.md) | [Error Reporting](../development/ERROR_REPORTING.md)
 
-PR #1748 introduced a layered, secure error-passing architecture that covers two distinct scenarios: server-initiated errors surfaced during redirects, and Angular SPA-internal navigation errors. Both flows write to a shared D1 audit table, giving operators a single queryable store for all unhandled errors.
+PR #1748 introduced a layered, secure error-passing architecture that covers two distinct scenarios: server-initiated errors surfaced during redirects, and Angular SPA-internal navigation errors. Errors that are explicitly reported (via `LogService.reportError()` or the frontend `/api/log/frontend-error` endpoint) are persisted to a shared D1 audit table; the flash-token and router-state flows themselves do not automatically write to D1.
 
 ---
 
@@ -156,10 +156,10 @@ export async function getFlash(
 
 ## Flow 2: Angular Router State (SPA-internal)
 
-Angular's `NavigationErrorService` captures errors thrown by route guards and resolvers via `Router.events`. Unlike Flow 1, no network request is involved — the error is passed directly into a signal that `UrlErrorBannerComponent` reads.
+`NavigationErrorService` provides a `navigateWithError(commands, code, extras)` helper that attaches a structured `AppError` to the Angular Router navigation's `extras.state`. Unlike Flow 1, no network request is involved — the error travels entirely inside the Router state and is read by `UrlErrorBannerComponent` via the `currentError()` signal.
 
 This flow handles cases such as:
-- An auth guard redirecting to `/sign-in` before the user is authenticated (calls `FlashService.set()` directly)
+- An auth guard redirecting to `/sign-in` (calls `NavigationErrorService.navigateWithError(['/sign-in'], 'TOKEN_EXPIRED', ...)`)
 - Route resolver failures
 - Lazy-loaded chunk load errors
 
@@ -495,11 +495,15 @@ curl https://api.bloqr.dev/api/flash/<uuid>
 
 ### Monitoring error_events
 
-Use the Wrangler D1 console or the admin endpoint `POST /api/admin/storage/query` (admin key required) to run read-only SQL against the live D1 database:
+Use the Wrangler D1 console or the admin endpoint `POST /api/admin/storage/query` (admin key required) to run read-only SQL against the live D1 database.
+
+> **Note:** In production, `/api/admin/storage/query` is additionally gated by Cloudflare Access. A request supplying only `X-Admin-Key` will be rejected unless it also presents a valid CF Access service-token (`CF-Access-Client-Id` / `CF-Access-Client-Secret` headers) or a valid CF Access JWT cookie.
 
 ```bash
 curl -X POST https://api.bloqr.dev/api/admin/storage/query \
   -H "X-Admin-Key: $ADMIN_KEY" \
+  -H "CF-Access-Client-Id: $CF_ACCESS_CLIENT_ID" \
+  -H "CF-Access-Client-Secret: $CF_ACCESS_CLIENT_SECRET" \
   -H "Content-Type: application/json" \
   -d '{"query": "SELECT source, COUNT(*) as cnt FROM error_events GROUP BY source"}'
 ```

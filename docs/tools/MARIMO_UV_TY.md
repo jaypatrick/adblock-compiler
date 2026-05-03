@@ -87,14 +87,13 @@ deno task runbook:setup
 ```
 tools/
 ├── pyproject.toml          ← Project metadata, deps, ruff/ty/pytest config
-├── .marimo.toml            ← marimo editor/runtime configuration
+├── .marimo.toml            ← marimo editor/runtime configuration (git-ignored; copy from .marimo.toml.example)
 ├── uv.lock                 ← Reproducible lock file (commit this)
 ├── .venv/                  ← Virtual environment (git-ignored)
 ├── runbooks/
 │   ├── pipeline.py         ← Compilation pipeline runbook
-│   ├── auth-healthcheck.py ← Auth health-check runbook
-│   └── tests/              ← pytest tests for runbook logic
-└── tests/                  ← General pytest tests
+│   └── auth-healthcheck.py ← Auth health-check runbook
+└── tests/                  ← pytest suite (conftest.py + test_runbooks.py)
 ```
 
 ---
@@ -279,7 +278,7 @@ export ANTHROPIC_API_KEY="sk-ant-..."
 deno task runbook:edit:pipeline
 ```
 
-Alternatively, add the key to `tools/auth-healthcheck.env` — the runbooks load this file automatically via `load_env_file()`.
+The key must be exported in the shell before launching marimo — `load_env_file()` only returns a parsed dict used internally by the runbook cells and does **not** export variables into the process environment.
 
 Available models (as of 2026):
 - `claude-opus-4-5` — most capable; best for complex reasoning

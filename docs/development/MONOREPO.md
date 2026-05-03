@@ -50,11 +50,11 @@ adblock-compiler/
 
 | Path | Manager | Package name |
 |---|---|---|
-| `worker/` | Deno | `@jk-com/worker` (Deno sub-workspace) |
-| `examples/cloudflare-worker/` | Deno + pnpm | Deno sub-workspace; pnpm package |
+| `worker/` | Deno | `@jk-com/adblock-compiler-worker` (Deno sub-workspace) |
+| `examples/cloudflare-worker/` | Deno + pnpm | `adblock-compiler-worker-example` |
 | `frontend/` | pnpm | `adblock-frontend` |
-| `docs-docusaurus/` | pnpm | `adblock-docs-docusaurus` |
-| `docs-starlight/` | pnpm | `adblock-docs-starlight` |
+| `docs-docusaurus/` | pnpm | `@bloqr/docs-docusaurus` |
+| `docs-starlight/` | pnpm | `@bloqr/docs-starlight` |
 | `tools/` | uv | `adblock-compiler-tools` |
 
 > **Note:** `tools/` is intentionally excluded from the pnpm workspace. It has its own `uv.lock` and is managed entirely by uv. Do not add it to `pnpm-workspace.yaml`.
