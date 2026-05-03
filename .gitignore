@@ -108,3 +108,6 @@ tools/logs/*
 !tools/logs/auth-healthcheck/
 tools/logs/auth-healthcheck/*
 !tools/logs/auth-healthcheck/.gitkeep
+
+# Docusaurus OpenAPI plugin generated MDX (docs-docusaurus/)
+docs/api/openapi/

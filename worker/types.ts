@@ -596,6 +596,19 @@ export interface Env {
      */
     BETTER_AUTH_KV?: KVNamespace;
     /**
+     * Flash message KV namespace.
+     * Stores short-lived (60 s TTL) one-time-read notification tokens.
+     * Used by `setFlash()` (worker) and `GET /api/flash/:token` (route).
+     * Create with: `wrangler kv:namespace create FLASH_STORE`
+     */
+    FLASH_STORE?: KVNamespace;
+    /**
+     * Error log KV namespace (reserved — not yet used in production).
+     * Intended for future edge-local error buffering before D1 batch inserts.
+     * Create with: `wrangler kv:namespace create ERROR_LOG_KV`
+     */
+    ERROR_LOG_KV?: KVNamespace;
+    /**
      * REST API URL for the BETTER_AUTH_KV namespace.
      * Used by `dash()` and `sentinel()` `kvUrl` option for high-performance
      * rate-limit counter storage at the edge.

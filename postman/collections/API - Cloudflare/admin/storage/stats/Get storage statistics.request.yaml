@@ -11,7 +11,10 @@ auth:
   type: apikey
   credentials:
     key: X-Admin-Key
-    value: "{{apiKey}}"
+    value: "{{adminKey}}"
     in: header
 examples: ./.resources/Get storage statistics.resources/examples
+tests:
+  - name: "CF Access blocks without service token (known limitation)"
+    script: "pm.expect(pm.response.code).to.be.oneOf([401, 403]);"
 order: 1000

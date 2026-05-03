@@ -76,6 +76,9 @@ export class LogService {
      * Uses `navigator.sendBeacon()` for reliable delivery even during
      * page unload or navigation. Falls back to fetch() if sendBeacon
      * is unavailable.
+     *
+     * Payload shape matches the Worker's `FrontendErrorBodySchema`:
+     *   `{ message, stack?, context?, url?, userAgent?, sessionId? }`
      */
     reportError(error: {
         message: string;
@@ -84,22 +87,32 @@ export class LogService {
     }): void {
         if (!isPlatformBrowser(this.platformId) || !this.logEndpoint) return;
 
-        const entry: LogEntry = {
-            level: 'error',
+        const payload = JSON.stringify({
             message: error.message,
-            category: 'unhandled-error',
-            traceId: this.generateId(),
-            sessionId: this.sessionId,
-            timestamp: new Date().toISOString(),
+            stack: error.stack,
+            context: error.context,
             url: this.safeUrl(),
             userAgent: this.safeUserAgent(),
-            data: {
-                stack: error.stack,
-                context: error.context,
-            },
-        };
+            sessionId: this.sessionId,
+        });
 
-        this.send(entry);
+        try {
+            // sendBeacon is fire-and-forget — survives page unload
+            if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+                const blob = new Blob([payload], { type: 'application/json' });
+                navigator.sendBeacon(this.logEndpoint, blob);
+            } else {
+                // Fallback to fetch (no await — fire and forget)
+                fetch(this.logEndpoint, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: payload,
+                    keepalive: true,
+                }).catch(() => { /* swallow — logging should never throw */ });
+            }
+        } catch {
+            // Logging must never throw — silently ignore
+        }
     }
 
     /** Get recent log entries (for diagnostic UI or export) */

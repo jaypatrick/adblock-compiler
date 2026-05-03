@@ -1,7 +1,10 @@
 name: adblock-compiler
 values:
   - key: baseUrl
-    value: ''
+    value: 'https://api.bloqr.dev/api'
+    enabled: true
+  - key: originUrl
+    value: 'https://api.bloqr.dev'
     enabled: true
   - key: apiKey
     value: ''
@@ -10,5 +13,11 @@ values:
     value: ''
     enabled: true
   - key: adminKey
+    value: ''
+    enabled: true
+  - key: turnstileToken
+    value: 'NEWMAN-BYPASS-TOKEN'
+    enabled: true
+  - key: paygSession
     value: ''
     enabled: true

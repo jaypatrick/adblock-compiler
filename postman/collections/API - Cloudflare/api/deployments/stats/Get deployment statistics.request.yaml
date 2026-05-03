@@ -1,9 +1,10 @@
 $kind: http-request
 description: Returns aggregated deployment statistics
-url: {{baseUrl}}/api/deployments/stats
+url: {{baseUrl}}/deployments/stats
 method: GET
 headers:
   Accept: application/json
+  Authorization: Bearer {{apiKey}}
 body:
   type: text
   content: ""

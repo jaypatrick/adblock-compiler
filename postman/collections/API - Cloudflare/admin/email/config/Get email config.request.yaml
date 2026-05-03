@@ -1,0 +1,14 @@
+$kind: http-request
+description: >
+  Returns the current email service configuration (provider, from address, reply-to,
+  enabled transactional templates). Requires admin authentication.
+url: {{baseUrl}}/api/admin/email/config
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get email config.resources/examples
+order: 1000

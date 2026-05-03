@@ -1,9 +1,10 @@
 $kind: http-request
 description: Returns the current version from deployment history
-url: {{baseUrl}}/api/version
+url: {{baseUrl}}/version
 method: GET
 headers:
   Accept: application/json
+  Authorization: Bearer {{apiKey}}
 body:
   type: text
   content: ""

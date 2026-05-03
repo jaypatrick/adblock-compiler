@@ -1,0 +1,24 @@
+$kind: http-request
+description: Creates and saves a new compiler configuration for later use.
+url: {{baseUrl}}/configuration/create
+method: POST
+headers:
+  Content-Type: application/json
+  Accept: application/json
+  Authorization: Bearer {{apiKey}}
+body:
+  type: json
+  content: |-
+    {
+      "config": {
+        "name": "My Saved Filter List",
+        "sources": [
+          {
+            "source": "https://example.com/filters.txt",
+            "transformations": ["RemoveComments"]
+          }
+        ],
+        "transformations": ["Deduplicate"]
+      }
+    }
+order: 4000
