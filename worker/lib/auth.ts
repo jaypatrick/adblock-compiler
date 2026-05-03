@@ -70,7 +70,7 @@
  * @see worker/middleware/better-auth-provider.ts — IAuthProvider implementation
  */
 
-import { betterAuth } from 'better-auth';
+import { betterAuth } from 'better-auth/minimal';
 import { prismaAdapter } from 'better-auth/adapters/prisma';
 import { admin, bearer, multiSession, organization, twoFactor } from 'better-auth/plugins';
 // @better-auth/infra is declared in deno.json imports as "npm:@better-auth/infra@^0.2.5"
@@ -547,6 +547,13 @@ export function createAuth(env: Env, baseURL?: string, ctx?: Pick<ExecutionConte
             // create operation and replaces non-UUID ids at the Prisma layer.
             // This generateId covers code paths where Better Auth calls it directly.
             generateId: AUTH_ID_GENERATOR,
+            // ── Background tasks (Cloudflare Workers) ───────────────────────────
+            // Defers non-critical internal work (session cleanup, rate-limit counter
+            // decay, analytics) to run after the response is flushed.  Uses
+            // ctx.waitUntil() so promises survive response completion in Workers.
+            // Omitted when ctx is absent (unit tests, offline dev without an
+            // ExecutionContext).
+            ...(ctx && { backgroundTasks: { handler: (p: Promise<unknown>) => ctx.waitUntil(p) } }),
             // ⚠️ BREAKING: changing this prefix renames all Better Auth cookies and
             // forcibly logs out every existing session on the next request.
             cookiePrefix: 'bloqr',
