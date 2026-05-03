@@ -52,6 +52,10 @@ jobs:
         name: Update Cloudflare Dependencies
         runs-on: ubuntu-latest
         timeout-minutes: 15
+        # Skip on non-main branches (e.g. Copilot feature branches that touch
+        # this file) so that those runs are green/skipped rather than being
+        # cancelled by the concurrency group and marked as failures.
+        if: github.ref == 'refs/heads/main'
 
         steps:
             - name: Checkout
@@ -119,6 +123,16 @@ jobs:
                       echo "📋  Files changed:"
                       git status --short
                   fi
+
+            - name: Ensure 'dependencies' label exists
+              if: steps.changes.outputs.has_changes == 'true'
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh label create "dependencies" \
+                    --color "0075ca" \
+                    --description "Dependency updates" \
+                    --force || true
 
             - name: Create pull request
               if: steps.changes.outputs.has_changes == 'true'
