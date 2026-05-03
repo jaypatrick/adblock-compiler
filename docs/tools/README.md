@@ -219,6 +219,98 @@ Tests validate:
 
 ---
 
+## Marimo Configuration
+
+Marimo behaviour for this project is controlled by `tools/.marimo.toml`. The file is committed to the repository — all contributors share the same configuration.
+
+### `.marimo.toml` — Section Reference
+
+#### `[runtime]`
+
+```toml
+[runtime]
+auto_instantiate = true       # Run all cells on notebook load (recommended)
+watcher_type    = "watchdog"  # File-system watcher backend
+```
+
+`auto_instantiate = true` is required for CI/headless mode — without it, cells wait for user interaction before executing.
+
+#### `[package_management]`
+
+```toml
+[package_management]
+manager = "uv"                # Use uv for inline package management
+```
+
+Marimo uses `uv` to install missing packages declared via `import` when the notebook is run in an environment where they are absent. This is consistent with the project-wide uv toolchain.
+
+#### `[server]`
+
+```toml
+[server]
+browser = "default"           # Open system default browser on run
+host    = "127.0.0.1"         # Bind to localhost only (not 0.0.0.0)
+port    = 2718                # Default port — change to avoid conflicts
+```
+
+Set `host = "0.0.0.0"` only when using Cloudflare Tunnel for remote access.
+
+#### `[language_servers]`
+
+```toml
+[language_servers.ty]
+enabled  = true               # Enable Astral ty type checker in the notebook editor
+
+[language_servers.pylsp]
+enabled  = true               # Enable Python Language Server (completions, hover, diagnostics)
+```
+
+Both LSPs run in the Marimo browser editor. `ty` provides fast type inference (same as CI); `pylsp` provides hover docs and symbol search. Copilot (`[language_servers.copilot]`) is explicitly disabled to prevent AI completions from auto-running in notebook cells.
+
+### Python Version Pinning
+
+`tools/.python-version` pins the exact Python version used by uv for this project:
+
+```
+3.12.9
+```
+
+This file is read by uv when creating or syncing the virtual environment. It ensures all contributors and CI use the same interpreter, regardless of which Python versions are installed system-wide.
+
+To check the active version:
+
+```bash
+uv run --project tools python --version
+# Python 3.12.9
+```
+
+### `runbook:edit:*` Tasks (PR #1736)
+
+New Deno tasks were added for interactive editing of runbooks (as opposed to running them in view-only mode):
+
+```bash
+# Edit mode — live-editable notebook (developer workflow)
+deno task runbook:edit:pipeline
+deno task runbook:edit:auth-healthcheck
+
+# Server mode — all runbooks accessible at once via a runbook index page
+deno task runbook:server
+
+# Convert a runbook .py to a static HTML snapshot (for sharing / archiving)
+deno task runbook:convert runbooks/pipeline.py
+```
+
+The distinction between `runbook:<name>` (view/run mode) and `runbook:edit:<name>` (edit mode) is important:
+
+| Mode | Command | Use when |
+|------|---------|----------|
+| Run | `marimo run <file>` | Production use — cells execute immediately, no code visible |
+| Edit | `marimo edit <file>` | Development — code is editable, reactive, hot-reload on save |
+| Server | `marimo server runbooks/` | Dev/admin — browse all runbooks in a single browser tab |
+| Convert | `marimo export html <file>` | Create a shareable static snapshot |
+
+---
+
 ## Adding a New Tool
 
 1. Create `tools/<tool>.py` — the script

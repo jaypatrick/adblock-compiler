@@ -123,7 +123,7 @@ app.post('/api/rules', async (c) => {
 
 **Cause:** A middleware or earlier handler called `await c.req.json()` (or `.text()`, `.arrayBuffer()`) before the route handler.
 
-**Fix:** Use the body-parser middleware pattern above. The body is parsed once, stored on the Hono context, and read by all downstream consumers via `c.get('body')`. **Never** call `c.req.clone()` to work around this — cloning the request creates a new `Request` object but the underlying body stream is still shared in the Cloudflare Workers runtime.
+**Fix:** Use the body-parser middleware pattern above. The body is parsed once, stored on the Hono context, and read by all downstream consumers via `c.get('body')`. **Never** call `c.req.clone()` to work around this — although `Request.clone()` is defined in the Fetch API spec, the Cloudflare Workers runtime does not re-open the body stream for a cloned request once the original has been consumed; both the clone and the original share the same underlying stream in this runtime.
 
 ---
 

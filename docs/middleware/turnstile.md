@@ -140,7 +140,7 @@ pm.request.headers.upsert({
 });
 ```
 
-With the `blq_` API key set, all `POST`/`PUT`/`PATCH`/`DELETE` requests bypass the Turnstile check. The `CF-Turnstile-Token` header should be omitted (or set to an empty string) in the Postman collection — do not set it to a dummy value, as the middleware reads it before the bypass check on newer builds.
+With the `blq_` API key set, all `POST`/`PUT`/`PATCH`/`DELETE` requests bypass the Turnstile check. The `CF-Turnstile-Token` header should be omitted from the Postman collection — the middleware checks the `Authorization` header for the `blq_` prefix before it reads the Turnstile token, so the bypass fires regardless of whether the token header is present.
 
 ---
 

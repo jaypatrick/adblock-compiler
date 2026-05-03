@@ -187,7 +187,7 @@ const FrontendErrorBodySchema = z.object({
 
 ## `error_events` D1 Table Schema
 
-Schema introduced in `migrations/0012_error_events.sql`:
+Schema introduced in `migrations/0012_error_events.sql` (repo root `migrations/` directory, co-located with `wrangler.toml`):
 
 ```sql
 CREATE TABLE IF NOT EXISTS error_events (
