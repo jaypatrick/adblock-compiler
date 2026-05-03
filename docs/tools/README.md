@@ -225,16 +225,6 @@ Marimo behaviour for this project is controlled by `tools/.marimo.toml`. The fil
 
 ### `.marimo.toml` — Section Reference
 
-#### `[runtime]`
-
-```toml
-[runtime]
-auto_instantiate = true       # Run all cells on notebook load (recommended)
-watcher_type    = "watchdog"  # File-system watcher backend
-```
-
-`auto_instantiate = true` is required for CI/headless mode — without it, cells wait for user interaction before executing.
-
 #### `[package_management]`
 
 ```toml
@@ -244,35 +234,75 @@ manager = "uv"                # Use uv for inline package management
 
 Marimo uses `uv` to install missing packages declared via `import` when the notebook is run in an environment where they are absent. This is consistent with the project-wide uv toolchain.
 
-#### `[server]`
+#### `[formatting]`
 
 ```toml
-[server]
-browser = "default"           # Open system default browser on run
-host    = "127.0.0.1"         # Bind to localhost only (not 0.0.0.0)
-port    = 2718                # Default port — change to avoid conflicts
+[formatting]
+line_length = 120             # Must match ruff line-length in pyproject.toml
 ```
 
-Set `host = "0.0.0.0"` only when using Cloudflare Tunnel for remote access.
+Formatting is applied automatically on save (see `[save]` below).
+
+#### `[save]`
+
+```toml
+[save]
+autosave       = "after_delay"
+autosave_delay = 1000
+format_on_save = true
+```
+
+Notebooks are auto-formatted with ruff on every save, keeping cell code consistent with `pyproject.toml` lint rules.
+
+#### `[completion]`
+
+```toml
+[completion]
+activate_on_typing = true
+copilot            = false    # Copilot completions are disabled to prevent
+                              # AI-generated code from auto-running in cells
+```
+
+Copilot completions are disabled at the `[completion]` level to prevent AI-generated suggestions from executing automatically in reactive notebook cells.
+
+#### `[runtime]`
+
+```toml
+[runtime]
+auto_instantiate = true       # Run all cells on notebook load
+auto_reload      = "lazy"     # Avoid re-running expensive cells on every import change
+```
+
+`auto_instantiate = true` is required for CI/headless mode — without it, cells wait for user interaction before executing. Set `auto_reload = "autorun"` if you prefer fully reactive notebooks.
 
 #### `[language_servers]`
 
 ```toml
-[language_servers.ty]
-enabled  = true               # Enable Astral ty type checker in the notebook editor
-
 [language_servers.pylsp]
-enabled  = true               # Enable Python Language Server (completions, hover, diagnostics)
+enabled = true                # Python Language Server (completions, hover, diagnostics)
+
+[language_servers.ty]
+enabled = true                # Astral ty type checker in the notebook editor
 ```
 
-Both LSPs run in the Marimo browser editor. `ty` provides fast type inference (same as CI); `pylsp` provides hover docs and symbol search. Copilot (`[language_servers.copilot]`) is explicitly disabled to prevent AI completions from auto-running in notebook cells.
+Both LSPs run in the Marimo browser editor. `ty` provides fast type inference (same as CI); `pylsp` provides hover docs and symbol search.
+
+#### `[ai.anthropic]`
+
+```toml
+[ai.anthropic]
+model = "claude-sonnet-4-5"
+# api_key = ""  # Set via ANTHROPIC_API_KEY env var instead
+```
+
+Set the API key in your shell before running marimo (`export ANTHROPIC_API_KEY="sk-ant-..."`), or add it to `tools/auth-healthcheck.env`.
 
 ### Python Version Pinning
 
 `tools/.python-version` pins the exact Python version used by uv for this project:
 
 ```
-3.12.9
+3.11
 ```
 
 This file is read by uv when creating or syncing the virtual environment. It ensures all contributors and CI use the same interpreter, regardless of which Python versions are installed system-wide.
@@ -280,8 +310,8 @@ This file is read by uv when creating or syncing the virtual environment. It ens
 To check the active version:
 
 ```bash
-uv run --project tools python --version
-# Python 3.12.9
+uv run --directory tools python --version
+# Python 3.11.x
 ```
 
 ### `runbook:edit:*` Tasks (PR #1736)

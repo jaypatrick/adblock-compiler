@@ -9,7 +9,7 @@ This document describes the Cross-Origin Resource Sharing (CORS) policy enforced
 All HTTP responses from the Worker include CORS headers computed at request time. The policy is strict by default:
 
 - Only origins listed in `CORS_ALLOWED_ORIGINS` (a Worker environment binding) receive a permissive `Access-Control-Allow-Origin` header.
-- Requests from unlisted origins receive no `Access-Control-Allow-Origin` header — browsers will block the response.
+- Requests from unlisted origins are actively rejected with a **`403 ProblemDetails` (`corsRejection`)** — the Worker does not silently omit the header.
 - Requests with no `Origin` header (direct server-to-server, CLI, or Postman) are allowed through unconditionally.
 - Preflight `OPTIONS` requests return the full policy headers and `204 No Content`.
 
@@ -23,9 +23,8 @@ flowchart TD
     B -- No --> C[Allow: direct / server-to-server]
     B -- Yes --> D{Origin in\nCORS_ALLOWED_ORIGINS?}
     D -- Yes --> E[Set Access-Control-Allow-Origin\n= request Origin]
-    D -- No --> F[Omit Access-Control-Allow-Origin]
+    D -- No --> F[Return 403 ProblemDetails\ncorsRejection]
     E --> G{Method = OPTIONS?}
-    F --> H[Continue to route handler\nbrowser will block response]
     G -- Yes --> I[Return 204 with\npreflight headers]
     G -- No --> J[Continue to route handler\nwith CORS headers set]
 ```
@@ -53,56 +52,66 @@ CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:4201"
 
 ## Middleware Implementation
 
+CORS is implemented in two steps inside `worker/hono-app.ts`:
+
+**Step 4 — Hono `cors()` middleware** computes and attaches CORS response headers. For public endpoints (health, metrics, docs) it returns `'*'`; for all other endpoints it echoes the request `Origin` only when it matches the allowlist.
+
+**Step 4a — Origin enforcement middleware** rejects disallowed origins with a `403 ProblemDetails` response. Requests without an `Origin` header pass through unconditionally; public-endpoint requests also pass through.
+
 ```typescript
-// worker/middleware/cors.ts
-import type { Context, Next } from 'hono';
-import type { Env }            from '../types/env.ts';
+// worker/hono-app.ts — Step 4: Hono cors() middleware
+app.use(
+    '*',
+    cors({
+        origin: (origin, c) => {
+            const pathname = new URL(c.req.url).pathname;
+            if (isPublicEndpoint(pathname)) return '*';
+            return matchOrigin(origin, c.env as Env) ?? undefined;
+        },
+        allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+        allowHeaders: [
+            'Content-Type',
+            'Authorization',
+            'X-Turnstile-Token',
+            'X-Payg-Session',
+            'X-Payment-Response',
+            'X-Stripe-Customer-Id',
+        ],
+        exposeHeaders: ['X-Payg-Session-Remaining', 'X-Payment-Required', 'X-Request-Id'],
+        maxAge: 86400,
+        credentials: true,
+    }),
+);
 
-const CORS_HEADERS: Record<string, string> = {
-    'Access-Control-Allow-Methods':  'GET, POST, PUT, DELETE, PATCH, OPTIONS',
-    'Access-Control-Allow-Headers':  'Content-Type, Authorization, CF-Turnstile-Token',
-    'Access-Control-Allow-Credentials': 'true',
-    'Access-Control-Max-Age':        '86400',
-};
+// worker/hono-app.ts — Step 4a: explicit origin enforcement
+app.use('*', async (c, next) => {
+    const origin = c.req.header('Origin');
 
-export function corsMiddleware() {
-    return async (c: Context<{ Bindings: Env }>, next: Next): Promise<Response> => {
-        const origin  = c.req.header('Origin');
-        const allowed = parseAllowedOrigins(c.env.CORS_ALLOWED_ORIGINS);
-
-        // No Origin header — direct call, allow through
-        if (!origin) {
-            return next();
-        }
-
-        const isAllowed = allowed.includes(origin);
-
-        // Preflight
-        if (c.req.method === 'OPTIONS') {
-            const headers = new Headers(CORS_HEADERS);
-            if (isAllowed) {
-                headers.set('Access-Control-Allow-Origin', origin);
-                headers.set('Vary', 'Origin');
-            }
-            return new Response(null, { status: 204, headers });
-        }
-
-        // Standard request
+    // No Origin header → non-browser client → allow through unconditionally.
+    if (!origin) {
         await next();
-        if (isAllowed) {
-            c.res.headers.set('Access-Control-Allow-Origin', origin);
-            c.res.headers.set('Vary', 'Origin');
-            Object.entries(CORS_HEADERS).forEach(([k, v]) => c.res.headers.set(k, v));
-        }
-        return c.res;
-    };
-}
+        return;
+    }
 
-function parseAllowedOrigins(raw: string | undefined): string[] {
-    if (!raw) return [];
-    return raw.split(',').map(o => o.trim()).filter(Boolean);
-}
+    const pathname = c.req.path;
+
+    // Public endpoints allow any origin (wildcard * returned by step 4).
+    if (isPublicEndpoint(pathname)) {
+        await next();
+        return;
+    }
+
+    const allowed = matchOrigin(origin, c.env as Env);
+    if (!allowed) {
+        analytics?.trackSecurityEvent({ eventType: 'cors_rejection', ... });
+        return ProblemResponse.corsRejection(pathname, `Origin '${origin}' is not permitted.`);
+    }
+
+    await next();
+});
 ```
+
+The `matchOrigin` helper (in `worker/utils/cors.ts`) checks the request `Origin` against the comma-delimited `CORS_ALLOWED_ORIGINS` Worker binding.
 
 ---
 
@@ -113,14 +122,15 @@ A complete preflight response for an allowed origin:
 ```http
 HTTP/1.1 204 No Content
 Access-Control-Allow-Origin: https://app.bloqr.app
-Access-Control-Allow-Methods: GET, POST, PUT, DELETE, PATCH, OPTIONS
-Access-Control-Allow-Headers: Content-Type, Authorization, CF-Turnstile-Token
+Access-Control-Allow-Methods: GET, POST, PUT, PATCH, DELETE, OPTIONS
+Access-Control-Allow-Headers: Content-Type, Authorization, X-Turnstile-Token, X-Payg-Session, X-Payment-Response, X-Stripe-Customer-Id
+Access-Control-Expose-Headers: X-Payg-Session-Remaining, X-Payment-Required, X-Request-Id
 Access-Control-Allow-Credentials: true
 Access-Control-Max-Age: 86400
 Vary: Origin
 ```
 
-`CF-Turnstile-Token` is included in `Access-Control-Allow-Headers` so that the Angular frontend can set the Turnstile token on cross-origin requests to the Worker. See [Turnstile Middleware](./turnstile.md) for details.
+`X-Turnstile-Token` is included in `Access-Control-Allow-Headers` so that the Angular frontend can set the Turnstile token on cross-origin requests to the Worker. See [Turnstile Middleware](./turnstile.md) for details.
 
 ---
 
@@ -140,9 +150,9 @@ Requests without an `Origin` header — typically from:
 
 ## Error Responses
 
-When a request from a disallowed origin completes, the Worker returns a normal HTTP response **without** an `Access-Control-Allow-Origin` header. The browser enforces the block — the Worker does not return a `4xx` for CORS reasons alone.
+When a request arrives from a disallowed origin (i.e., the `Origin` header is present but not in `CORS_ALLOWED_ORIGINS`), the Worker returns a **`403 Forbidden`** response with a ProblemDetails JSON body (`ProblemResponse.corsRejection`). The request is terminated — it does not proceed to the route handler.
 
-For preflight (`OPTIONS`) requests from disallowed origins, the Worker returns `204` with no `Access-Control-Allow-Origin` header. The browser will not proceed with the actual request.
+For preflight (`OPTIONS`) requests from disallowed origins, the Worker likewise returns a `403` with no `Access-Control-Allow-Origin` header. The browser will not proceed with the actual request.
 
 ---
 
@@ -167,6 +177,6 @@ For preflight (`OPTIONS`) requests from disallowed origins, the Worker returns `
 
 ## Related Documentation
 
-- [Turnstile Middleware](./turnstile.md) — adds `CF-Turnstile-Token` to the `Authorization` surface checked by CORS
+- [Turnstile Middleware](./turnstile.md) — adds `X-Turnstile-Token` to the `Authorization` surface checked by CORS
 - [Better Auth Security Audit, AUDIT-11](../auth/better-auth-audit-2026-05.md#audit-11----trustedorigins-included-wildcard-development-entries) — `trustedOrigins` wildcard finding
-- [Worker Request Lifecycle](../architecture/worker-request-lifecycle.md) — where `corsMiddleware()` sits in the pipeline
+- [Worker Request Lifecycle](../architecture/worker-request-lifecycle.md) — where CORS middleware fits in the pipeline

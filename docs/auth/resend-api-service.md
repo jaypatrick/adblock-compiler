@@ -1,215 +1,177 @@
-# ResendApiService — Email and Contacts
+# ResendApiService — Contacts, Audiences & Templates
 
-The `ResendApiService` is the Worker's single integration point with the [Resend](https://resend.com) email and contacts platform. It manages transactional email delivery, contacts / audience synchronisation, and template lifecycle from one cohesive service class.
+`ResendApiService` (`worker/services/resend-api-service.ts`) is the Worker's typed REST wrapper for the [Resend](https://resend.com) **Contacts/Audiences** and **Templates** APIs. It handles contact synchronisation and template lifecycle management only.
 
+> **Email sending is a separate concern** — handled by `worker/services/email-service.ts`.  
 > **Changes introduced in:** PRs #1714, #1717, #1718, #1719  
-> **See also:** [Email Architecture](./email-architecture.md) — full system design  
-> **See also:** [ZTA Developer Guide](../security/ZTA_DEVELOPER_GUIDE.md) — API key guard pattern used to protect all routes
+> **See also:** [ZTA Developer Guide](../security/ZTA_DEVELOPER_GUIDE.md)
 
 ---
 
 ## Overview
 
-`ResendApiService` lives in `worker/services/resend-api-service.ts` and is instantiated once per Worker request lifetime (scoped to the Hono context). All Resend operations — email sending, contact synchronisation, template upsert, and MCP pass-through — route through this class.
+`ResendApiService` uses `fetch()` directly (no additional npm dependency) and validates every request and response with Zod. It is instantiated via `createResendApiService(apiKey)` wherever contact or template management is needed in the Worker.
+
+### Scope
+
+| Concern | Handled by |
+|---------|-----------|
+| Contact/audience synchronisation | **`ResendApiService`** (this doc) |
+| Template CRUD (create/update/get/list/delete) | **`ResendApiService`** (this doc) |
+| Transactional email sending | `email-service.ts` → `EmailService` |
 
 ### Design principles
 
-- **API-key-first auth**: every operation requires a valid Resend API key. The key is sourced from `env.RESEND_API_KEY` and checked lazily on first use via a private `ensureApiKey()` guard.
-- **Schema validation at the boundary**: all inbound request bodies are parsed with Zod before any Resend SDK call is made. Validation errors produce a `400` with field-level details; Resend SDK errors are mapped to their HTTP status codes.
-- **Template aliases, not IDs**: template references use stable string aliases (e.g., `welcome`, `email-verification`) rather than opaque UUIDs. This makes the code readable and ensures templates survive recreation.
-- **Upsert semantics**: `ensureTemplate()` creates or updates a template in one idempotent call, safe to run in migrations or tests.
+- **Constructor-time key validation**: the API key is validated against `/^re_[A-Za-z0-9_]{8,}$/` in the constructor, failing fast before any network call is attempted.
+- **`fetch()`-based, no SDK dependency**: the service calls the Resend REST API directly, keeping the Worker bundle lean.
+- **Zod at every trust boundary**: request bodies are validated before sending; response bodies are validated before returning.
+- **Stable `ResendApiError`**: non-2xx responses throw `ResendApiError(status, name, message)` — callers can branch on the HTTP status code without parsing error strings.
 
 ---
 
-## Architecture — Request Flow
-
-The following sequence diagram shows how an email send request travels from the HTTP boundary through the service to Resend and back.
+## Architecture — Contact Sync Flow
 
 ```mermaid
 sequenceDiagram
-    participant C as Client
-    participant H as Hono Router
-    participant G as API Key Guard
+    participant H as Auth Hook / Route Handler
     participant S as ResendApiService
     participant Z as Zod Schema
-    participant R as Resend SDK
+    participant R as Resend Contacts API
 
-    C->>H: POST /api/resend/send
-    H->>G: ZTA guard (validateApiKey)
-    G-->>H: 401 if key invalid
-    H->>S: resendService.sendEmail(body)
-    S->>S: ensureApiKey()
-    S->>Z: SendEmailRequestSchema.parse(body)
-    Z-->>S: 400 if invalid
-    S->>R: resend.emails.send(payload)
-    R-->>S: { id } or ResendError
-    S-->>H: 200 { emailId } or mapped error
-    H-->>C: JSON response
+    H->>S: createResendApiService(env.RESEND_API_KEY)
+    Note over S: Constructor validates key format (re_xxxx)
+    H->>S: createContact(audienceId, data)
+    S->>Z: ResendCreateContactRequestSchema.parse(data)
+    Z-->>S: throws Error if invalid
+    S->>R: POST /audiences/:id/contacts
+    R-->>S: 200 { id } or non-2xx
+    S->>Z: ResendCreateContactResponseSchema.parse(json)
+    S-->>H: ResendCreateContactResponse or ResendApiError
 ```
 
 ---
 
-## `ensureApiKey()` — Private Initialization Guard
+## Constructor — API Key Validation
 
-Before any Resend SDK call, `ensureApiKey()` is called to lazily initialize the Resend client. This avoids throwing at construction time if `RESEND_API_KEY` is missing from the environment (which would crash the Worker before it could return a helpful error).
+The service validates the API key format at construction time (fail-fast pattern). This avoids silently sending requests with a misconfigured key.
 
 ```typescript
 // worker/services/resend-api-service.ts (simplified)
-private ensureApiKey(): void {
-  if (!this.client) {
-    const apiKey = this.env.RESEND_API_KEY;
-    if (!apiKey) {
-      throw new ServiceError(
-        'RESEND_API_KEY is not configured',
-        503,
-        'RESEND_NOT_CONFIGURED',
-      );
+export class ResendApiService {
+    private static readonly API_KEY_PATTERN = /^re_[A-Za-z0-9_]{8,}$/;
+
+    constructor(private readonly apiKey: string) {
+        if (!ResendApiService.API_KEY_PATTERN.test(apiKey)) {
+            throw new Error(
+                '[ResendApiService] RESEND_API_KEY does not match the expected format (re_xxxxx). ' +
+                'Verify the secret is set correctly.',
+            );
+        }
     }
-    this.client = new Resend(apiKey);
-  }
+    // ...
+}
+
+/** Factory — create an instance from the Worker env. */
+export function createResendApiService(apiKey: string): ResendApiService {
+    return new ResendApiService(apiKey);
 }
 ```
 
-`ServiceError` is the project-standard error class — see [Error Passing Architecture](../architecture/error-passing.md). The `503` status code signals to callers (and the API client) that the service is temporarily unavailable rather than the request being malformed.
+The pattern `/^re_[A-Za-z0-9_]{8,}$/` catches obvious misconfiguration (e.g. swapped env var, empty string) without revealing the key value in any error message.
 
 ---
 
-## Input Validation — `SendEmailRequestSchema`
+## Input Validation — Zod Schemas
 
-All inbound email send requests are validated against this Zod schema before any SDK call:
-
-```typescript
-// worker/schemas/resend.ts
-export const SendEmailRequestSchema = z.object({
-  to:       z.string().email(),
-  subject:  z.string().min(1).max(998),
-  template: z.enum(['welcome', 'email-verification', 'password-reset', 'subscription-update']),
-  variables: z.record(z.string(), z.string()).optional(),
-});
-
-export type SendEmailRequest = z.infer<typeof SendEmailRequestSchema>;
-```
-
-Validation runs in the service before the SDK call:
-
-```typescript
-const parsed = SendEmailRequestSchema.safeParse(body);
-if (!parsed.success) {
-  throw new ValidationError(parsed.error.flatten());  // → 400
-}
-```
-
-`ValidationError` produces a structured `{ errors: ZodFlattenedError }` response body, giving API clients field-level detail on why the request was rejected.
-
----
-
-## Email Templates
-
-Templates are managed as Resend templates with stable string aliases. The `ensureTemplate()` method creates or updates each template idempotently; this is run as part of the Worker migration step or on first deploy.
-
-| Template alias | Subject | Use case |
-|----------------|---------|----------|
-| `welcome` | Welcome to Bloqr | Sent on first successful account creation |
-| `email-verification` | Verify your email address | Sent when a user registers or changes their email |
-| `password-reset` | Reset your Bloqr password | Sent on forgot-password flow |
-| `subscription-update` | Your subscription has changed | Sent on plan upgrade, downgrade, or cancellation |
-
-### Template upsert via alias
+All requests are validated with Zod before any network call. The key schemas are:
 
 ```typescript
 // worker/services/resend-api-service.ts
-async ensureTemplate(alias: string, html: string, subject: string): Promise<void> {
-  this.ensureApiKey();
+export const ResendCreateContactRequestSchema = z.object({
+    email:        z.string().email(),
+    firstName:    z.string().optional(),
+    lastName:     z.string().optional(),
+    unsubscribed: z.boolean().optional(),
+});
 
-  const existing = await this.client!.templates.get(alias).catch(() => null);
-
-  if (existing) {
-    await this.client!.templates.update(existing.id, { html, subject });
-  } else {
-    await this.client!.templates.create({ name: alias, alias, html, subject });
-  }
-}
+export const ResendCreateTemplateRequestSchema = z.object({
+    name:     z.string().min(1).max(255),
+    alias:    z.string().max(255).regex(/^[a-z0-9-]+$/).optional(),
+    subject:  z.string().max(998).optional(),
+    html:     z.string().min(1),
+    text:     z.string().optional(),
+    from:     z.string().optional(),
+    replyTo:  z.string().optional(),
+});
 ```
 
-Templates are referenced by alias throughout the codebase (never by ID), so a template can be recreated without updating callers.
+Validation failures throw an `Error` before the `fetch()` call. Response bodies are also validated before being returned, providing a double trust-boundary check.
+
+---
+
+## Templates API
+
+`ResendApiService` exposes full CRUD for Resend templates:
+
+| Method | Description |
+|--------|-------------|
+| `createTemplate(data)` | Create a new template |
+| `updateTemplate(id, data)` | Partial update of an existing template |
+| `getTemplate(id)` | Get a template by ID |
+| `listTemplates()` | List all templates in the account |
+| `deleteTemplate(id)` | Delete a template by ID |
+
+Templates are referenced by the stable `alias` field wherever possible (never by opaque ID), so templates can be recreated without updating callers.
 
 ---
 
 ## Contacts and Audiences API
 
-`ResendApiService` wraps the Resend Contacts API to synchronise users with the Resend audience. Contact synchronisation happens:
+`ResendApiService` wraps the Resend Contacts API to synchronise users with the Resend audience. The service exposes these methods:
 
-- **On user registration** — `syncContact()` is called from the Better Auth `onUserCreated` hook.
-- **On user deletion** — `removeContact()` is called from the account deletion flow.
-- **On email change** — `updateContact()` is called from the email-change flow after verification.
+| Method | Description |
+|--------|-------------|
+| `createContact(audienceId, data)` | Create or upsert a contact in the audience |
+| `deleteContact(audienceId, contactIdOrEmail)` | Delete a contact by ID or email |
+| `getContact(audienceId, contactIdOrEmail)` | Get a contact by ID or email |
+| `listContacts(audienceId)` | List all contacts in the audience |
 
-### `syncContact()` usage
+Contact synchronisation typically happens at lifecycle events:
+
+- **On user registration** — `createContact()` called (with `upsert: true` semantics) from the Better Auth `onUserCreated` hook.
+- **On user deletion** — `deleteContact()` called from the account deletion flow.
+
+### Contact creation usage
 
 ```typescript
 // worker/hooks/auth-hooks.ts
 onUserCreated: async (user) => {
-  await resendService.syncContact({
-    email:     user.email,
-    firstName: user.name?.split(' ')[0],
-    lastName:  user.name?.split(' ').slice(1).join(' '),
-    unsubscribed: false,
-  });
+    const resendService = createResendApiService(env.RESEND_API_KEY);
+    await resendService.createContact(env.RESEND_AUDIENCE_ID, {
+        email:        user.email,
+        firstName:    user.name?.split(' ')[0],
+        lastName:     user.name?.split(' ').slice(1).join(' '),
+        unsubscribed: false,
+    });
 },
 ```
-
-`syncContact()` uses Resend's `contacts.create()` with `upsert: true` so repeated calls (e.g., from retried webhook deliveries) are idempotent.
-
----
-
-## Worker Routes
-
-The following routes are exposed by the Worker and handled by `ResendApiService`. All routes require a valid `blq_` API key in the `X-API-Key` header unless otherwise noted.
-
-| Method | Route | Description | Auth |
-|--------|-------|-------------|------|
-| `POST` | `/api/resend/send` | Send a transactional email via a named template | `blq_` key |
-| `POST` | `/api/resend/contacts` | Create or upsert a contact in the Resend audience | `blq_` key |
-| `GET` | `/api/resend/contacts/:email` | Look up a contact by email address | `blq_` key |
-| `DELETE` | `/api/resend/contacts/:email` | Remove a contact from the audience | `blq_` key |
-| `POST` | `/api/resend/mcp` | Pass-through to the Resend MCP endpoint for template management | `blq_admin_` key |
-
-### Route handler example
-
-```typescript
-// worker/routes/resend.ts
-resendRouter.post('/send', apiKeyGuard(), async (c) => {
-  const body = await c.req.json();
-  const result = await c.var.resendService.sendEmail(body);
-  return c.json({ emailId: result.id }, 200);
-});
-```
-
-The `apiKeyGuard()` middleware is the ZTA guard — see [ZTA Developer Guide](../security/ZTA_DEVELOPER_GUIDE.md) for the full implementation.
-
----
-
-## MCP Integration
-
-`ResendApiService` exposes a pass-through handler at `POST /api/resend/mcp` that forwards requests to the [Resend MCP server](https://resend.com/docs/mcp). This allows admin tooling and AI assistants to manage Resend resources (templates, contacts, API keys) through the Worker's ZTA-protected API surface rather than directly against the Resend API.
-
-The MCP route requires an admin key (`blq_admin_` prefix) rather than a user key, limiting its use to operations tooling.
 
 ---
 
 ## Error Handling
 
-Errors from the Resend SDK are mapped to HTTP status codes before being returned to the caller:
+Non-2xx responses from the Resend API throw `ResendApiError(status, name, message)`. Callers can catch and branch on the HTTP status code:
 
-| Resend error type | HTTP status | Response body |
-|-------------------|-------------|---------------|
-| `validation_error` | `400` | `{ error: "RESEND_VALIDATION", detail: ... }` |
-| `missing_required_field` | `400` | `{ error: "RESEND_MISSING_FIELD", detail: ... }` |
-| `not_found` | `404` | `{ error: "RESEND_NOT_FOUND" }` |
-| `rate_limit_exceeded` | `429` | `{ error: "RESEND_RATE_LIMITED" }` |
-| `internal_server_error` | `502` | `{ error: "RESEND_UPSTREAM_ERROR" }` |
-| SDK unreachable / timeout | `503` | `{ error: "RESEND_UNAVAILABLE" }` |
+| Resend API status | `ResendApiError.status` | Typical `name` |
+|-------------------|-------------------------|----------------|
+| `400` | `400` | `validation_error` |
+| `401` | `401` | `missing_api_key` |
+| `403` | `403` | `restricted_api_key` |
+| `404` | `404` | `not_found` |
+| `429` | `429` | `rate_limit_exceeded` |
+| `500` | `500` | `internal_server_error` |
 
-All error responses include a stable machine-readable `error` field so API clients can branch on error type without parsing the human-readable `detail`.
+Request or response validation failures throw a standard `Error` / `ZodError` before any network call is made.
 
 ---
 
@@ -217,15 +179,11 @@ All error responses include a stable machine-readable `error` field so API clien
 
 | Environment variable | Binding type | Required | Description |
 |----------------------|--------------|----------|-------------|
-| `RESEND_API_KEY` | `[vars]` / secret | Yes | Resend API key. Use a restricted key scoped to `Send emails` only for production. |
-| `RESEND_FROM_ADDRESS` | `[vars]` | Yes | Default from-address used for all outbound emails, e.g. `Bloqr <noreply@mail.bloqr.dev>`. |
-| `RESEND_AUDIENCE_ID` | `[vars]` | No | Resend audience ID for the contacts list. If absent, contact sync is disabled. |
-
-Set these in `wrangler.toml` (non-secret vars) or via `wrangler secret put` / GitHub Actions secrets (secret var):
+| `RESEND_API_KEY` | Worker Secret | Yes | Resend API key (format: `re_xxxxx`). Must be set via `wrangler secret put`. |
+| `RESEND_AUDIENCE_ID` | `[vars]` | No | Resend audience ID for contact synchronisation. If absent, contact sync is disabled. |
 
 ```bash
 wrangler secret put RESEND_API_KEY
-wrangler secret put RESEND_FROM_ADDRESS
 ```
 
 ---

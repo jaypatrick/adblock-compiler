@@ -6,51 +6,28 @@ This document describes the full lifecycle of an HTTP request through the Bloqr 
 
 ## Pipeline Overview
 
+```mermaid
+flowchart TD
+    A[Incoming Request] --> B[Rate Limit Check\ncheckRateLimitTiered]
+    B --> C{Pre-auth path?\n/api/flash/:token\n/api/log/frontend-error\netc.}
+    C -- Yes --> D[Allow anonymous\nauthContext = ANONYMOUS]
+    C -- No --> E[Unified Auth\nauthenticateRequestUnified\nClerk JWT / API key / session]
+    D --> F[CORS step 4\nHono cors — set headers]
+    E --> F
+    F --> G[CORS step 4a\nOrigin enforcement\n403 if disallowed Origin]
+    G --> H[Secure headers + CSP]
+    H --> I[Route handler\nc.req.valid json\nbusiness logic]
+    I --> J[Response egress\nServer-Timing headers]
 ```
-Incoming Request
-      │
-      ▼
-┌─────────────────────────────────────────────────────────────┐
-│  app.use('*')  corsMiddleware()                              │
-│  ─ reads Origin header                                       │
-│  ─ checks CORS_ALLOWED_ORIGINS                               │
-│  ─ returns 204 on OPTIONS (preflight)                        │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  app.use('*')  turnstileMiddleware()                         │
-│  ─ skips GET / HEAD / OPTIONS                                │
-│  ─ bypasses if Authorization: Bearer blq_*                  │
-│  ─ reads CF-Turnstile-Token header or ?turnstileToken        │
-│  ─ calls siteverify; returns 403 on failure                  │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  app.use('*')  authMiddleware()                              │
-│  ─ calls auth.api.getSession({ headers })                    │
-│  ─ validates API key if Authorization: Bearer blq_*         │
-│  ─ stores authContext on c                                   │
-│  ─ returns 401 if no valid session and route requires auth   │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Route handler (e.g. POST /api/rules)                        │
-│  ─ reads parsed body from c.get('body')                      │
-│  ─ performs business logic                                   │
-│  ─ writes to D1 / KV / R2 / Durable Objects                 │
-│  ─ returns JSON response                                     │
-└──────────────────────┬──────────────────────────────────────┘
-                       │
-                       ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Hono response egress                                        │
-│  ─ CORS headers applied (after await next())                 │
-│  ─ error handler catches any uncaught errors                 │
-└─────────────────────────────────────────────────────────────┘
-```
+
+The real middleware order in `worker/hono-app.ts` (abbreviated):
+
+1. **Server-Timing, Request ID, IP detection** — `timing()`, `generateRequestId()`, IP extraction
+2. **Rate limiting + pre-auth** — anonymous `checkRateLimitTiered` for `/poc/*` and pre-auth paths; pre-auth paths (`/api/flash/:token`, `/api/log/frontend-error`, etc.) bypass authentication
+3. **Unified auth** — `authenticateRequestUnified()` for all other paths; stores `authContext` on `c`
+4. **CORS** — Hono `cors()` sets `Access-Control-*` headers; origin enforcement step returns `403 ProblemDetails` for disallowed browser origins
+5. **Secure headers + CSP** — `secureHeaders()`, `contentSecurityPolicyMiddleware()`
+6. **Route handler** — parses and validates request body via `c.req.valid('json')` (from `@hono/zod-openapi`), performs business logic, returns response
 
 ---
 
@@ -58,62 +35,38 @@ Incoming Request
 
 The `Request` body is a **single-use readable stream**. Consuming it once (e.g., `await req.json()`) marks it as "used". Any subsequent call to `req.json()`, `req.text()`, or `req.arrayBuffer()` returns an error or empty value.
 
-```
-Request arrives at Worker
-          │
-          ▼
-  Body stream: UNCONSUMED
-          │
-          │   bodyParserMiddleware calls await c.req.json()
-          ▼
-  Body stream: CONSUMED ──────────────────────────────────┐
-          │                                               │
-          │   Route handler calls await c.req.json()     │
-          ▼                                               │
-  ❌  "Body already used" crash                          │
-                                                         │
-       CORRECT PATTERN:                                  │
-  bodyParserMiddleware stores result → c.set('body', …)  │
-          │                                              │
-          ▼                                              │
-  Route handler reads c.get('body')  ──────────────────►┘
-  ✅  Body consumed exactly once
-```
-
-**Body parser middleware (correct pattern):**
-
-```typescript
-// worker/middleware/body-parser.ts
-export function bodyParserMiddleware() {
-    return async (c: Context, next: Next): Promise<void> => {
-        const contentType = c.req.header('Content-Type') ?? '';
-        if (contentType.includes('application/json')) {
-            try {
-                const parsed = await c.req.json();
-                c.set('body', parsed);
-            } catch {
-                // Invalid JSON — leave c.get('body') as undefined
-                // Route handler is responsible for returning 400
-            }
-        }
-        await next();
-    };
-}
-```
-
-**Route handler (correct pattern):**
+In this Worker, route handlers avoid double-consuming the body by relying on **`@hono/zod-openapi` validation**. Each route declares a Zod schema, and Hono parses and validates the body once, storing the result on the context. Handlers read the validated body via `c.req.valid('json')`:
 
 ```typescript
 // worker/routes/rules.routes.ts
-app.post('/api/rules', async (c) => {
-    const body = c.get('body');          // ✅ already parsed, stream not re-consumed
-    const parsed = CreateRuleSchema.safeParse(body);
-    if (!parsed.success) {
-        return c.json({ error: { code: 'VALIDATION_ERROR', issues: parsed.error.issues } }, 400);
-    }
-    // ...
+import { createRoute, z } from '@hono/zod-openapi';
+
+const CreateRuleRoute = createRoute({
+    method: 'post',
+    path: '/api/rules',
+    request: {
+        body: {
+            content: {
+                'application/json': {
+                    schema: CreateRuleSchema,
+                },
+            },
+        },
+    },
+    responses: { /* ... */ },
+});
+
+routes.openapi(CreateRuleRoute, async (c) => {
+    const body = c.req.valid('json');   // ✅ parsed once by Hono; stream not re-consumed
+    // body is fully typed as CreateRuleSchema output
+    await createRule(c.env.DB, body);
+    return c.json({ success: true }, 201);
 });
 ```
+
+Where a route needs to clone the raw request (e.g., when calling Turnstile on the WebSocket upgrade path), it calls `c.req.raw.clone()` **before** the body has been consumed — not after.
+
+> **Important:** Never call `c.req.json()` directly in a handler that also runs after a middleware that called `c.req.json()`. Use `c.req.valid('json')` for OpenAPI-registered routes, or ensure the body is only read once and stored on the Hono context.
 
 ---
 
@@ -123,7 +76,7 @@ app.post('/api/rules', async (c) => {
 
 **Cause:** A middleware or earlier handler called `await c.req.json()` (or `.text()`, `.arrayBuffer()`) before the route handler.
 
-**Fix:** Use the body-parser middleware pattern above. The body is parsed once, stored on the Hono context, and read by all downstream consumers via `c.get('body')`. **Never** call `c.req.clone()` to work around this — although `Request.clone()` is defined in the Fetch API spec, the Cloudflare Workers runtime does not re-open the body stream for a cloned request once the original has been consumed; both the clone and the original share the same underlying stream in this runtime.
+**Fix:** Use `c.req.valid('json')` for OpenAPI-registered routes. For custom middleware that must inspect the body, clone the raw request **before** any consumption: `const cloned = c.req.raw.clone(); const body = await cloned.json();` and store the result on the Hono context via `c.set(...)`. Downstream handlers then read from the context, not from the request stream.
 
 ---
 
@@ -252,38 +205,58 @@ Never use `process.env.SOME_KEY` — it will be `undefined` at runtime. Always r
 
 ## Middleware Registration Order
 
-Middleware is registered in this order in `worker/index.ts`:
+Middleware is registered in this order in `worker/hono-app.ts`:
 
 ```typescript
-// worker/index.ts
-const app = new Hono<{ Bindings: Env }>();
+// worker/hono-app.ts (abbreviated)
+const app = new OpenAPIHono<{ Bindings: Env }>();
 
-app.use('*', corsMiddleware());
-app.use('*', bodyParserMiddleware());
-app.use('*', turnstileMiddleware());
-app.use('*', authMiddleware());
+// 1. Instrumentation: Server-Timing, request ID, IP detection
+app.use('*', timing());
+app.use('*', async (c, next) => { c.set('requestId', generateRequestId()); /* ... */ await next(); });
 
-// Routes
-app.route('/api/auth',   authRoutes);
-app.route('/api/rules',  rulesRoutes);
-app.route('/api/flash',  flashRoutes);
-app.route('/api/log',    logRoutes);
-app.route('/api/dash',   dashRoutes);
-
-// Error handler
-app.onError((err, c) => {
-    console.error('Unhandled Worker error', err);
-    return c.json({ error: { code: 'INTERNAL_ERROR' } }, 500);
+// 2. Rate limiting + pre-auth paths (anonymous tier)
+app.use('*', async (c, next) => {
+    // /poc/* — anonymous rate limit only
+    // pre-auth paths (/api/flash/:token, /api/log/frontend-error, etc.) — rate limit then allow through
+    // all other paths — full unified auth (step 3)
+    // ...
+    await next();
 });
 
-export default app;
+// 3. Unified auth (for non-pre-auth paths)
+// (inline in the same middleware as step 2 — see worker/hono-app.ts)
+
+// 4. CORS — Hono cors() sets Access-Control-* headers
+app.use('*', cors({ /* ... */ }));
+
+// 4a. CORS origin enforcement — 403 ProblemDetails for disallowed browser Origins
+app.use('*', async (c, next) => { /* ... */ await next(); });
+
+// 5. Secure headers
+app.use('*', secureHeaders());
+
+// 5a. Content Security Policy
+app.use('*', contentSecurityPolicyMiddleware());
+
+// Routes (via sub-app)
+const routes = new OpenAPIHono<{ Bindings: Env }>();
+routes.route('/api/auth',     authRoutes);
+routes.route('/api/keys',     apiKeysRoutes);
+routes.route('/api/compile',  compileRoutes);
+routes.route('/api/flash',    flashRoutes);
+routes.route('/api/log',      logRoutes);
+// ... (see worker/hono-app.ts for full list)
+
+app.route('/', routes);
 ```
 
 Order is significant:
-1. `corsMiddleware` must run first so preflight `OPTIONS` requests return before auth middleware rejects them.
-2. `bodyParserMiddleware` must run before `turnstileMiddleware` and `authMiddleware` if those middlewares need access to the parsed body — but in Bloqr's design, both read from headers/query only, so this is mainly for route handlers.
-3. `turnstileMiddleware` must run before `authMiddleware` so that bot-submitted requests are rejected before a D1 session lookup is performed.
-4. `authMiddleware` runs last in the global stack before routes.
+1. **Rate limiting** runs first (even before auth) so bot floods are rejected cheaply.
+2. **Pre-auth paths** skip authentication to allow anonymous access for flash token redemption and frontend error logging.
+3. **Auth** runs before CORS so that `authContext` is available to CORS helpers that may inspect it.
+4. **CORS** runs after auth so preflight `OPTIONS` responses carry CORS headers; the enforcement step rejects disallowed origins before they reach route handlers.
+5. **Route handlers** parse and validate bodies via `c.req.valid('json')` — Hono/Zod-OpenAPI consumes the request stream exactly once.
 
 ---
 

@@ -90,16 +90,16 @@ pnpm --filter adblock-frontend run build
 
 ```bash
 # Install Python deps and sync the venv
-uv sync --project tools
+uv sync --directory tools
 
 # Lint Python runbooks
-uv run --project tools ruff check tools/
+uv run --directory tools ruff check tools/
 
 # Type-check Python runbooks
-uv run --project tools ty check tools/
+uv run --directory tools ty check tools/
 
 # Run a specific runbook
-uv run --project tools python tools/runbooks/resend_sync.py
+uv run --directory tools python tools/runbooks/resend_sync.py
 ```
 
 ---
@@ -146,7 +146,7 @@ uv run --project tools python tools/runbooks/resend_sync.py
 
 1. Create a directory under `tools/` (e.g., `tools/my-runbook/`).
 2. Add the package to `tools/pyproject.toml` under `[tool.uv.sources]` if it has local dependencies.
-3. Run `uv sync --project tools` to update the lockfile.
+3. Run `uv sync --directory tools` to update the lockfile.
 4. Add CI path filters and update `MONOREPO.md`.
 
 > **Note:** Python packages live under `tools/` by convention. Do not create top-level Python directories — this confuses the Deno and pnpm workspace glob patterns.
@@ -186,7 +186,7 @@ When you add a new package, add a corresponding `paths:` filter to the CI job th
 ### Python (uv)
 
 - All dependencies are declared in `tools/pyproject.toml` under `[project.dependencies]`.
-- Run `uv add --project tools <package>` to add a new dependency; this updates both `pyproject.toml` and `uv.lock`.
+- Run `uv add --directory tools <package>` to add a new dependency; this updates both `pyproject.toml` and `uv.lock`.
 - The lockfile (`tools/uv.lock`) is committed.
 
 ---
@@ -213,9 +213,9 @@ See [Developer Onboarding](./DEVELOPER_ONBOARDING.md) for the complete environme
 | Deno format (check only) | `deno fmt --check` |
 | Deno lint | `deno lint` |
 | Angular lint (ESLint) | `pnpm --filter adblock-frontend run lint` |
-| Python lint (Ruff) | `uv run --project tools ruff check tools/` |
-| Python format (Ruff) | `uv run --project tools ruff format tools/` |
-| Python types | `uv run --project tools ty check tools/` |
+| Python lint (Ruff) | `uv run --directory tools ruff check tools/` |
+| Python format (Ruff) | `uv run --directory tools ruff format tools/` |
+| Python types | `uv run --directory tools ty check tools/` |
 
 Run `deno task preflight` before every commit — it chains `fmt --check`, `lint`, `check`, and OpenAPI validation in a single command.
 

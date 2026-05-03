@@ -62,42 +62,36 @@ The banner and overlay components consume Bloqr design tokens for background col
 ### Pattern 1 — Guard redirecting with NavigationErrorService (same-session)
 
 ```typescript
-// frontend/src/app/auth/guards/session.guard.ts
-@Injectable({ providedIn: 'root' })
-export class SessionGuard implements CanActivateFn {
-    constructor(
-        private readonly authFacade:   AuthFacadeService,
-        private readonly navError:     NavigationErrorService,
-        private readonly router:       Router,
-    ) {}
+// frontend/src/app/guards/auth.guard.ts
+export const authGuard: CanActivateFn = async (_route, state) => {
+    const auth     = inject(AuthFacadeService);
+    const navError = inject(NavigationErrorService);
 
-    canActivate(): boolean | UrlTree {
-        if (!this.authFacade.isAuthenticated()) {
-            this.navError.setError(ErrorCode.TOKEN_EXPIRED);
-            return this.router.parseUrl('/login');
-        }
-        return true;
-    }
-}
+    await waitForAuth(auth, 10_000);
+
+    if (auth.isSignedIn()) return true;
+
+    const returnUrl = state.url;
+    await navError.navigateWithError(['/sign-in'], 'TOKEN_EXPIRED', {
+        queryParams: { returnUrl },
+    });
+    return false;
+};
 ```
 
-**Result:** `UrlErrorBannerComponent` reads the error from `NavigationErrorService` on the next `NavigationEnd` event. No network round-trip, no URL pollution.
+**Result:** `navigateWithError()` attaches the error to Router navigation state (never the URL) and triggers the redirect. The target component calls `navError.readError()` to hydrate the banner. No network round-trip, no URL pollution.
 
 ### Pattern 2 — Worker-originated redirect with KV flash token
 
 ```typescript
 // worker/routes/auth.routes.ts (server-side, runs in Worker)
 if (!session) {
-    const token = await setFlash(c.env.FLASH_STORE, {
-        code:     'TOKEN_EXPIRED',
-        message:  'Your session has expired.',
-        severity: 'medium',
-    });
+    const token = await setFlash(c.env.FLASH_STORE, 'Your session has expired.', 'warn');
     return c.redirect(`/login?flash=${token}`, 302);
 }
 ```
 
-**Result:** Angular bootstraps, `readFromUrl()` is called in the app initializer, the token is exchanged for the `ErrorCodeDefinition`, and the flash token is removed from the URL via `history.replaceState`.
+**Result:** Angular bootstraps, `readFromUrl()` is called in the app initializer, the token is exchanged for the `FlashMessage` via `GET /api/flash/:token`, and the flash token is removed from the URL via `history.replaceState`.
 
 ### Pattern 3 — Programmatic set within a service (in-process, no navigation)
 
@@ -108,9 +102,9 @@ async loadDashboardData(): Promise<DashboardData> {
         return await this.api.get<DashboardData>('/api/dashboard');
     } catch (err) {
         if (isHttpError(err, 429)) {
-            this.flashService.set(ErrorCode.RATE_LIMITED);
+            this.flashService.set('Too many requests. Please try again later.', 'warn');
         } else {
-            this.flashService.set(ErrorCode.SERVICE_UNAVAILABLE);
+            this.flashService.set('Service temporarily unavailable.', 'error');
         }
         throw err;
     }

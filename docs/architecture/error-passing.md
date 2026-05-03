@@ -74,21 +74,28 @@ The flash store is a lightweight Cloudflare KV wrapper that enforces **consume-o
 - The token is deleted from KV on the first successful read. Subsequent reads return `null`.
 - The 60-second TTL ensures the token cannot be replayed after the immediate redirect window.
 
-### `setFlash(kvStore, message)`
+### `setFlash(kv, message, type?, ttlSeconds?)`
 
-Generates a UUID v4 token, serialises the `message` payload as JSON, and stores it in KV under the key `flash:<uuid>` with a 60-second TTL. Returns the token string.
+Generates a UUID v4 token, serialises the `FlashMessage` payload as JSON, and stores it in KV under the key `flash:<uuid>` with an optional TTL (default 60 seconds). Returns the token string.
 
 ```typescript
 // worker/lib/flash.ts
 export async function setFlash(
-    kvStore: KVNamespace,
-    message: FlashMessage,
+    kv: KVNamespace,
+    message: string,
+    type: FlashType = 'info',
+    ttlSeconds = 60,
 ): Promise<string> {
     const token = crypto.randomUUID();           // 122-bit entropy, non-guessable
-    await kvStore.put(
+    const payload: FlashMessage = {
+        message,
+        type,
+        createdAt: new Date().toISOString(),
+    };
+    await kv.put(
         `flash:${token}`,
-        JSON.stringify(message),
-        { expirationTtl: 60 },                  // 60-second TTL
+        JSON.stringify(payload),
+        { expirationTtl: ttlSeconds },          // server-side TTL safety net
     );
     return token;
 }
@@ -99,24 +106,35 @@ export async function setFlash(
 - 60 seconds is short enough that a captured token URL cannot be replayed hours later.
 - The `flash:` prefix namespaces the key to prevent collisions with other KV usage.
 
-### `getFlash(kvStore, token)`
+### `getFlash(kv, token, executionCtx?)`
 
 Reads and **immediately deletes** the flash entry (consume semantics). Returns the parsed `FlashMessage` on success, or `null` if the token is not found, already consumed, or expired.
+
+When an `ExecutionContext` is passed, the KV delete is registered via `waitUntil()` so the Worker runtime completes the delete even after the response has been flushed.
 
 ```typescript
 // worker/lib/flash.ts
 export async function getFlash(
-    kvStore: KVNamespace,
+    kv: KVNamespace,
     token: string,
+    executionCtx?: ExecutionContext,
 ): Promise<FlashMessage | null> {
     const key  = `flash:${token}`;
-    const raw  = await kvStore.get(key);
+    const raw  = await kv.get(key, 'text');
 
     if (!raw) return null;
 
     // Delete immediately — consume semantics
-    // Non-blocking: we don't await the delete to avoid adding latency
-    kvStore.delete(key);                        // fire-and-forget delete
+    const deletePromise = kv.delete(key).catch((err) => {
+        // Non-fatal: KV delete failure degrades to TTL-based expiry
+        console.warn('[flash] Failed to delete consumed flash key:', err);
+    });
+
+    // Register the delete with the Worker runtime when available, so it
+    // completes even after the response is sent (reduces the race window).
+    if (executionCtx) {
+        executionCtx.waitUntil(deletePromise);
+    }
 
     try {
         return JSON.parse(raw) as FlashMessage;
@@ -125,8 +143,6 @@ export async function getFlash(
     }
 }
 ```
-
-**Race condition note:** KV read and delete are not atomic operations. If two requests arrive simultaneously carrying the same token, one will receive the payload and the other will receive `null` (the token will already be deleted or the TTL will have expired by the time it retries). This is the correct behaviour — flash messages are intended for exactly one display. The window for this race is extremely small given the 60-second TTL and single-user redirect pattern.
 
 ---
 

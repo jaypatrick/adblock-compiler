@@ -6,91 +6,59 @@ The Bloqr Worker validates Cloudflare Turnstile tokens on all mutating endpoints
 
 ## Token Sources
 
-The middleware reads the Turnstile token from two locations, in priority order:
-
-1. **`CF-Turnstile-Token` request header** (preferred for Angular `HttpClient` calls and Playwright tests).
-2. **`turnstileToken` query parameter** (fallback for form-action POSTs and legacy callers).
-
-The middleware does **not** read the token from the JSON request body. Reading from the body would require consuming the body stream before the route handler sees it, creating the "body already used" crash documented in [Worker Request Lifecycle](../architecture/worker-request-lifecycle.md).
+The middleware reads the Turnstile token from the **JSON request body** as the `turnstileToken` field. The body is read via `Request.clone()` to leave the original stream intact for downstream route handlers and validators.
 
 ```typescript
-// worker/middleware/turnstile.ts
-function extractToken(c: Context): string | null {
-    return (
-        c.req.header('CF-Turnstile-Token') ??
-        c.req.query('turnstileToken') ??
-        null
-    );
-}
+// worker/middleware/hono-middleware.ts (simplified)
+const body = await c.req.raw.clone().json() as { turnstileToken?: string };
+const token = body.turnstileToken ?? '';
 ```
+
+> **WebSocket exception:** `/ws/compile` and `/ws/compile/v2` do not carry a JSON body during the HTTP upgrade handshake. For these routes only, the Turnstile token arrives as the `?turnstileToken=` query parameter and is verified inline (not through this middleware).
 
 ---
 
 ## Middleware Implementation
 
 ```typescript
-// worker/middleware/turnstile.ts
-import type { Context, Next } from 'hono';
-import type { Env }            from '../types/env.ts';
-
-const SITEVERIFY_URL = 'https://challenges.cloudflare.com/turnstile/v0/siteverify';
-
-export function turnstileMiddleware() {
-    return async (c: Context<{ Bindings: Env }>, next: Next): Promise<Response> => {
-        // 1. Skip safe methods
-        if (['GET', 'HEAD', 'OPTIONS'].includes(c.req.method)) {
-            return next();
+// worker/middleware/hono-middleware.ts (simplified)
+export function turnstileMiddleware(): AppMiddleware {
+    return async (c, next) => {
+        // 1. No-op if TURNSTILE_SECRET_KEY is not configured
+        if (!c.env.TURNSTILE_SECRET_KEY) {
+            await next();
+            return;
         }
 
-        // 2. Bypass for API key callers
-        const authHeader = c.req.header('Authorization') ?? '';
-        if (authHeader.startsWith('Bearer blq_')) {
-            return next();
+        // 2. Bypass for API key callers (server-to-server)
+        if (c.get('authContext')?.authMethod === 'api-key') {
+            await next();
+            return;
         }
 
-        // 3. Extract token
-        const token = extractToken(c);
-        if (!token) {
-            return c.json(
-                { error: { code: 'TURNSTILE_MISSING', message: 'Turnstile token is required.' } },
-                400,
+        // 3. Extract token from JSON body (stream is cloned, original intact)
+        let token = '';
+        try {
+            const body = await c.req.raw.clone().json() as { turnstileToken?: string };
+            token = body.turnstileToken ?? '';
+        } catch {
+            return ProblemResponse.badRequest(
+                c.req.path,
+                'Invalid request body — could not extract Turnstile token',
             );
         }
 
         // 4. Verify with Cloudflare
-        const outcome = await verifyToken(token, c.env.TURNSTILE_SECRET_KEY);
-        if (!outcome.success) {
-            return c.json(
-                {
-                    error: {
-                        code:    'TURNSTILE_INVALID',
-                        message: 'Turnstile verification failed.',
-                        detail:  outcome['error-codes'],
-                    },
-                },
-                403,
+        const result = await verifyTurnstileToken(c.env, token, c.get('ip'));
+        if (!result.success) {
+            return ProblemResponse.turnstileRejection(
+                c.req.path,
+                result.error ?? 'Turnstile verification failed',
             );
         }
 
-        return next();
+        await next();
     };
-}
-
-async function verifyToken(
-    token:     string,
-    secretKey: string,
-): Promise<{ success: boolean; 'error-codes'?: string[] }> {
-    const body = new URLSearchParams({ secret: secretKey, response: token });
-    const res  = await fetch(SITEVERIFY_URL, { method: 'POST', body });
-    return res.json<{ success: boolean; 'error-codes'?: string[] }>();
-}
-
-function extractToken(c: Context): string | null {
-    return (
-        c.req.header('CF-Turnstile-Token') ??
-        c.req.query('turnstileToken') ??
-        null
-    );
 }
 ```
 
@@ -98,55 +66,55 @@ function extractToken(c: Context): string | null {
 
 ## API Key Bypass
 
-Callers that present a Bloqr API key (`Authorization: Bearer blq_<key>`) skip Turnstile verification. This applies to:
+Callers authenticated via a Bloqr API key skip Turnstile verification. The bypass is enforced through the **auth context** set by the unified auth middleware, not by inspecting the `Authorization` header directly. This is important: the Turnstile middleware runs after auth, so `c.get('authContext')` is already populated.
+
+```typescript
+// API key requests are server-to-server — Turnstile (human verification) does not apply.
+if (c.get('authContext')?.authMethod === 'api-key') {
+    await next();
+    return;
+}
+```
+
+Callers that use this bypass:
 
 - The Bloqr CLI (`blq` tool)
 - CI pipelines using machine-to-machine API keys
 - Newman (Postman) integration test collections
 - Any server-side Worker-to-Worker call that passes an API key
 
-**Bypass condition:**
-
-```typescript
-const authHeader = c.req.header('Authorization') ?? '';
-if (authHeader.startsWith('Bearer blq_')) {
-    return next();
-}
-```
-
-The check uses the `blq_` prefix that distinguishes Bloqr API keys from user session JWTs (`Bearer eyJ...`). No further inspection of the key value is done at this middleware stage — full API key validation occurs in the authentication middleware that runs later in the pipeline.
-
-> **Security note:** Never bypass Turnstile based on the presence of any `Authorization` header. The bypass is conditional on the `blq_` prefix specifically — a browser-issued session JWT must still pass Turnstile verification.
+> **Security note (ZTA):** The bypass fires only after the unified auth middleware has validated the API key and recorded `authMethod: 'api-key'` in the auth context. An unauthenticated request with a `blq_` prefix in the `Authorization` header will fail auth before it reaches the Turnstile check and will never receive the bypass.
 
 ---
 
 ## Newman / Postman Bypass
 
-When running Newman integration tests against the deployed Worker, set the `Authorization` header to a valid API key:
+When running Newman integration tests against the deployed Worker, authenticate using a valid API key. The Turnstile middleware checks `authContext.authMethod === 'api-key'` (set by the auth middleware after validating the key), so no Turnstile token is needed.
 
 ```bash
-newman run postman/bloqr-api.json \
-    --env-var "api_key=blq_ci_test_key_abc123" \
-    --global-var "base_url=https://api.bloqr.app"
+newman run docs/postman/postman-collection.json \
+    --environment docs/postman/postman-environment-prod.json \
+    --env-var "bearerToken=${NEWMAN_USER_API_KEY}" \
+    --color on
 ```
 
-In the Postman collection, configure the pre-request script:
+In the Postman collection, configure the pre-request script at the collection level:
 
 ```javascript
 // Pre-request script (Collection level)
 pm.request.headers.upsert({
     key:   'Authorization',
-    value: `Bearer ${pm.environment.get('api_key')}`,
+    value: `Bearer ${pm.environment.get('bearerToken')}`,
 });
 ```
 
-With the `blq_` API key set, all `POST`/`PUT`/`PATCH`/`DELETE` requests bypass the Turnstile check. The `CF-Turnstile-Token` header should be omitted from the Postman collection — the middleware checks the `Authorization` header for the `blq_` prefix before it reads the Turnstile token, so the bypass fires regardless of whether the token header is present.
+With a valid API key, all `POST`/`PUT`/`PATCH`/`DELETE` requests bypass the Turnstile check. Do **not** add `turnstileToken` to the request body in Newman tests — it is unnecessary and adds noise to test payloads.
 
 ---
 
 ## Angular Frontend Integration
 
-The Angular `HttpClient` interceptor injects the Turnstile token as a header for all mutating requests:
+The Angular `HttpClient` interceptor injects the Turnstile token into the request body for all mutating requests. Since the middleware reads `turnstileToken` from the JSON body, the interceptor adds it to the body before the request is sent rather than as a header.
 
 ```typescript
 // frontend/src/app/interceptors/turnstile.interceptor.ts
@@ -162,9 +130,8 @@ export class TurnstileInterceptor implements HttpInterceptor {
 
         return from(this.turnstile.getToken()).pipe(
             switchMap(token => {
-                const withToken = req.clone({
-                    setHeaders: { 'CF-Turnstile-Token': token },
-                });
+                const body = { ...(req.body as Record<string, unknown>), turnstileToken: token };
+                const withToken = req.clone({ body });
                 return next.handle(withToken);
             }),
         );
@@ -180,15 +147,16 @@ export class TurnstileInterceptor implements HttpInterceptor {
 
 | Condition | HTTP Status | Error code |
 |-----------|-------------|------------|
-| Token missing (no header, no query param) | `400` | `TURNSTILE_MISSING` |
-| Token present but siteverify returns `success: false` | `403` | `TURNSTILE_INVALID` |
-| Siteverify fetch fails (network error) | `502` | `TURNSTILE_UPSTREAM_ERROR` |
-| API key bypass (`Bearer blq_*`) | — | (no error, passes through) |
+| Body cannot be parsed as JSON | `400` | `BAD_REQUEST` |
+| Token missing (`turnstileToken` absent or empty string) | `403` | `TURNSTILE_REJECTION` |
+| Token present but siteverify returns `success: false` | `403` | `TURNSTILE_REJECTION` |
+| Siteverify fetch fails (network error) | `502` | `UPSTREAM_ERROR` |
+| API key authenticated caller (`authMethod === 'api-key'`) | — | (no error, passes through) |
 
 ---
 
 ## Related Documentation
 
-- [CORS Policy](./cors.md) — `CF-Turnstile-Token` is listed in `Access-Control-Allow-Headers`
-- [Worker Request Lifecycle](../architecture/worker-request-lifecycle.md) — pipeline order: CORS → Turnstile → Auth → Route handler
-- [Better Auth Security Audit](../auth/better-auth-audit-2026-05.md) — API key authentication and the `blq_` prefix convention
+- [CORS Policy](./cors.md) — `X-Turnstile-Token` is listed in `Access-Control-Allow-Headers` for cross-origin preflight
+- [Worker Request Lifecycle](../architecture/worker-request-lifecycle.md) — pipeline order: Auth + Rate Limit → CORS → Turnstile → Route handler
+- [Better Auth Security Audit](../auth/better-auth-audit-2026-05.md) — API key authentication and the auth context

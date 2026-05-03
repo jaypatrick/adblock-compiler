@@ -29,54 +29,54 @@ The workflow responds to two triggers:
 ```yaml
 on:
   workflow_dispatch:          # Manual trigger from the Actions UI
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        default: "cloudflare"
+        type: choice
+        options:
+          - cloudflare
+          - local
   workflow_call:              # Called by the deployment pipeline after a successful deploy
-    secrets:
-      NEWMAN_USER_API_KEY:
-        required: true
-      NEWMAN_POSTMAN_EMAIL:
-        required: true
-      NEWMAN_POSTMAN_PASSWORD:
-        required: true
+    inputs:
+      environment:
+        description: "Target environment"
+        required: false
+        default: "cloudflare"
+        type: string
 ```
 
-`workflow_dispatch` accepts an optional `environment` input (`cloudflare` or `local`, defaulting to `cloudflare`) that selects which Postman environment file is loaded. `workflow_call` is used by the deployment pipeline. The calling workflow passes the target environment as the `environment` input, so Newman always runs against the environment that was just deployed rather than a hard-coded default.
+`workflow_dispatch` accepts an `environment` input (`cloudflare` or `local`, defaulting to `cloudflare`) that selects which Postman environment file is loaded. `workflow_call` is used by the deployment pipeline with the same `environment` input so Newman always runs against the environment that was just deployed rather than a hard-coded default.
 
 ---
 
 ## Required Secrets
 
-The following secrets must be configured in **Settings → Secrets and variables → Actions** before the workflow can authenticate with either the API under test or the Resend Postman API export endpoint.
+The following secrets must be configured in **Settings → Secrets and variables → Actions** before the workflow can authenticate with the API under test.
 
-| Secret | Stored in | Description |
-|--------|-----------|-------------|
-| `NEWMAN_USER_API_KEY` | GitHub Actions secrets | A `blq_` API key for a test user; used to authenticate compile/queue endpoints |
-| `NEWMAN_POSTMAN_EMAIL` | GitHub Actions secrets | Email address of the Postman account that owns the synced collection |
-| `NEWMAN_POSTMAN_PASSWORD` | GitHub Actions secrets | Password for the Postman account (used to export collection via API) |
-| `NEWMAN_ADMIN_KEY` | GitHub Actions secrets | Admin-scoped `blq_admin_` key for admin route tests |
-| `CF_ACCESS_CLIENT_ID` | GitHub Actions secrets | CF Access service token client ID (admin route tests) |
-| `CF_ACCESS_CLIENT_SECRET` | GitHub Actions secrets | CF Access service token client secret (admin route tests) |
+| Secret | Injected as | Description |
+|--------|-------------|-------------|
+| `NEWMAN_USER_API_KEY` | `bearerToken` | A valid API key for a test user; used to authenticate compile/queue endpoints |
+| `NEWMAN_POSTMAN_EMAIL` | `postmanEmail` | Email address of the Postman account that owns the synced collection |
+| `NEWMAN_POSTMAN_PASSWORD` | `postmanPassword` | Password for the Postman account (used to export collection via API) |
 
 > **Note:** The API key in `NEWMAN_USER_API_KEY` must be pre-created. It is **not** provisioned by the workflow itself. Create it via the dashboard or with a session-authenticated request:
 >
 > ```bash
-> curl -X POST https://api.bloqr.dev/api/apikeys \
+> curl -X POST https://api.bloqr.dev/api/keys \
 >   -H "Cookie: better_auth.session_token=<your-session>" \
 >   -H "Content-Type: application/json" \
->   -d '{"name": "newman-ci", "prefix": "blq_"}'
+>   -d '{"name": "newman-ci"}'
 > ```
 
 To set secrets from the CLI:
 
 ```bash
-gh secret set NEWMAN_USER_API_KEY      --body "blq_xxxxxxxxxxxxxxxxxxxx"
-gh secret set NEWMAN_POSTMAN_EMAIL     --body "newman@test.bloqr.io"
-gh secret set NEWMAN_POSTMAN_PASSWORD  --body "<password>"
-gh secret set NEWMAN_ADMIN_KEY         --body "blq_admin_xxxxxxxxxxxx"
-gh secret set CF_ACCESS_CLIENT_ID      --body "<cf-access-client-id>"
-gh secret set CF_ACCESS_CLIENT_SECRET  --body "<cf-access-client-secret>"
+gh secret set NEWMAN_USER_API_KEY     --body "blq_xxxxxxxxxxxxxxxxxxxx"
+gh secret set NEWMAN_POSTMAN_EMAIL    --body "newman@test.bloqr.io"
+gh secret set NEWMAN_POSTMAN_PASSWORD --body "<password>"
 ```
-
-`CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` are **optional** — if absent, admin route tests fail with 403 but all other collection folders run normally.
 
 ---
 
@@ -97,12 +97,11 @@ The workflow performs the following steps in order:
 4. **Run Newman** — executes the full collection against the target environment, injecting secrets as `--env-var` overrides:
 
    ```bash
-   newman run postman-collection.json \
+   newman run docs/postman/postman-collection.json \
      -e docs/postman/postman-environment-prod.json \
-     --env-var "apiKey=$NEWMAN_USER_API_KEY" \
-     --env-var "adminKey=$NEWMAN_ADMIN_KEY" \
-     --env-var "cfAccessClientId=$CF_ACCESS_CLIENT_ID" \
-     --env-var "cfAccessClientSecret=$CF_ACCESS_CLIENT_SECRET" \
+     --env-var "bearerToken=$NEWMAN_USER_API_KEY" \
+     --env-var "postmanEmail=$NEWMAN_POSTMAN_EMAIL" \
+     --env-var "postmanPassword=$NEWMAN_POSTMAN_PASSWORD" \
      --reporters cli,htmlextra,json \
      --reporter-htmlextra-export newman-report.html \
      --reporter-json-export newman-results.json
@@ -220,7 +219,7 @@ Start the Worker first (`deno task worker:dev` or `wrangler dev`), then:
 ```bash
 newman run docs/postman/postman-collection.json \
   -e docs/postman/postman-environment-local.json \
-  --env-var "apiKey=$NEWMAN_USER_API_KEY" \
+  --env-var "bearerToken=$NEWMAN_USER_API_KEY" \
   --reporters cli,htmlextra \
   --reporter-htmlextra-export /tmp/newman-report.html
 ```
@@ -232,7 +231,7 @@ Open `/tmp/newman-report.html` in a browser to inspect results.
 ```bash
 newman run docs/postman/postman-collection.json \
   -e docs/postman/postman-environment-prod.json \
-  --env-var "apiKey=$NEWMAN_USER_API_KEY" \
+  --env-var "bearerToken=$NEWMAN_USER_API_KEY" \
   --reporters cli,htmlextra \
   --reporter-htmlextra-export /tmp/newman-report-prod.html
 ```
@@ -244,17 +243,7 @@ newman run docs/postman/postman-collection.json \
 newman run docs/postman/postman-collection.json \
   -e docs/postman/postman-environment-local.json \
   --folder "x402 Contract Tests" \
-  --env-var "apiKey=$NEWMAN_USER_API_KEY"
-```
-
-```bash
-# Admin routes only (requires adminKey + CF Access service token)
-newman run docs/postman/postman-collection.json \
-  -e docs/postman/postman-environment-prod.json \
-  --folder "admin/users" \
-  --env-var "adminKey=$NEWMAN_ADMIN_KEY" \
-  --env-var "cfAccessClientId=$CF_ACCESS_CLIENT_ID" \
-  --env-var "cfAccessClientSecret=$CF_ACCESS_CLIENT_SECRET"
+  --env-var "bearerToken=$NEWMAN_USER_API_KEY"
 ```
 
 ### Run with JSON output for scripting
@@ -262,7 +251,7 @@ newman run docs/postman/postman-collection.json \
 ```bash
 newman run docs/postman/postman-collection.json \
   -e docs/postman/postman-environment-local.json \
-  --env-var "apiKey=$NEWMAN_USER_API_KEY" \
+  --env-var "bearerToken=$NEWMAN_USER_API_KEY" \
   --reporters json \
   --reporter-json-export /tmp/newman-results.json
 
