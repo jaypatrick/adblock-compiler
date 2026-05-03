@@ -47,7 +47,6 @@ env:
 
 permissions:
     contents: write
-    workflows: write
     pull-requests: write
     issues: write
 
