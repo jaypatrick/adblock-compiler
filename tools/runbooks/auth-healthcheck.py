@@ -14,7 +14,7 @@ No external markdown files are needed.
 
 import marimo
 
-__generated_with = "0.8.0"
+__generated_with = "0.23.4"
 app = marimo.App(
     width="full",
     app_title="Auth Healthcheck — Bloqr Ops Runbook",
