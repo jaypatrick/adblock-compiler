@@ -89,19 +89,38 @@ mindmap
 | Binding | Type | Purpose |
 |---|---|---|
 | `ASSETS` | Static Assets | JS bundles, CSS, fonts — served from CDN before the Worker is invoked |
-| `API` | Service Binding | Active — routes all SSR-time `/api/*` requests to `adblock-compiler` on the internal Cloudflare network. No public round-trip, no CORS. Sets `CF-Worker-Source: ssr` header to identify internal calls. |
+| `API` | Service Binding | Active — routes all `/api/*` requests (both browser-originated and SSR-initiated) to `adblock-compiler` on the internal Cloudflare network. No public round-trip, no CORS. Sets `CF-Worker-Source: ssr` header on every forwarded request. |
 
 ### SSR Architecture
 
 The `server.ts` fetch handler uses Angular 21's `AngularAppEngine` with the standard [WinterCG](https://wintercg.org/) fetch API — no Express, no Node.js HTTP server:
 
 ```typescript
-const angularApp = new AngularAppEngine();
+// Angular 21: setAngularAppEngineManifest() must be called before constructing
+// AngularAppEngine.  The manifest is a build artifact loaded at runtime via a
+// dynamic import so esbuild does not attempt to bundle it.
+import { AngularAppEngine, ɵsetAngularAppEngineManifest as setAngularAppEngineManifest } from '@angular/ssr';
 
-export default {
+// Cached at module scope — setup runs once per isolate, not once per request.
+let angularAppPromise: Promise<AngularAppEngine> | null = null;
+
+function getAngularApp(): Promise<AngularAppEngine> {
+    if (!angularAppPromise) {
+        angularAppPromise = (async () => {
+            const manifestPath = './angular-app-engine-manifest.mjs'; // variable path → not bundled
+            const { default: manifest } = await import(manifestPath);
+            setAngularAppEngineManifest(manifest);
+            return new AngularAppEngine();
+        })();
+    }
+    return angularAppPromise;
+}
+
+const handler = {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-        // Route SSR-time /api/* requests to the backend on the internal Cloudflare network.
-        // This avoids a public round-trip and bypasses CORS negotiation entirely.
+        // Forward ALL /api/* requests to the backend via the service binding.
+        // Both browser-originated and SSR-initiated calls travel this path —
+        // no public round-trip, no CORS negotiation.
         if (new URL(request.url).pathname.startsWith('/api/')) {
             try {
                 const internalReq = new Request(request, {
@@ -112,10 +131,13 @@ export default {
                 return new Response('API unavailable', { status: 502 });
             }
         }
-        const response = await angularApp.handle(request);
+        // Delegate remaining requests to AngularAppEngine for SSR.
+        const response = await (await getAngularApp()).handle(request);
         return response ?? new Response('Not found', { status: 404 });
     },
-} satisfies ExportedHandler<Env>;
+};
+
+export default handler;
 ```
 
 This means:
@@ -133,8 +155,8 @@ flowchart TD
 
     subgraph EDGE["Cloudflare Edge Network"]
         direction TB
-        FRONTEND["adblock-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding\n• SSR /api/* calls routed via env.API.fetch() — internal network"]
-        FRONTEND -->|"SSR /api/* calls via env.API.fetch()\n— internal Cloudflare network"| BACKEND
+        FRONTEND["adblock-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding\n• All /api/* calls (browser + SSR) routed via env.API.fetch() — internal network"]
+        FRONTEND -->|"All /api/* calls via env.API.fetch()\n— internal Cloudflare network"| BACKEND
         BACKEND["adblock-compiler\n(TypeScript REST API Worker)\n\n• POST /compile\n• POST /compile/stream (SSE)\n• POST /compile/batch\n• GET /metrics  •  GET /health\n• KV, R2, D1, Durable Objects, Queues, Workflows, Hyperdrive"]
     end
 ```
