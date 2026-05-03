@@ -15,9 +15,9 @@ This notebook showcases:
 - OpenGraph metadata for social sharing
 """
 
-import marimo as mo
 import random
-from datetime import datetime
+
+import marimo as mo
 
 __version__ = "1.0.0"
 
@@ -40,7 +40,7 @@ app = mo.App(
 @app.cell
 def _header_showcase():
     """Hero header with branding."""
-    html = """
+    _html = """
     <style>
         .bloqr-hero {
             background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
@@ -89,7 +89,7 @@ def _header_showcase():
     </div>
     """
 
-    return mo.html(html)
+    return mo.html(_html)
 
 
 @app.cell
@@ -244,7 +244,7 @@ def _interactive_slider():
 @app.cell
 def _typography_showcase():
     """Typography hierarchy."""
-    return mo.md(f"""
+    return mo.md("""
     ## 📝 Typography Scale
     
     # Heading 1 (3xl)
@@ -398,7 +398,7 @@ def _dark_mode_info():
 @app.cell
 def _getting_started():
     """Getting started guide."""
-    return mo.md(f"""
+    return mo.md("""
     ## 🚀 Getting Started with Bloqr
     
     ### For Users

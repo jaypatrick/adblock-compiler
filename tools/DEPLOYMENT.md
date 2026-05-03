@@ -364,14 +364,14 @@ journalctl -u cloudflared -f
 echo $ANTHROPIC_API_KEY
 
 # Test Claude API
-uv run python3 -c "from anthropic import Anthropic; print(Anthropic().messages.create(model='claude-haiku-4-5', max_tokens=100, messages=[{'role': 'user', 'content': 'Hello'}]))"
+uv run --directory tools python3 -c "from anthropic import Anthropic; print(Anthropic().messages.create(model='claude-haiku-4-5', max_tokens=100, messages=[{'role': 'user', 'content': 'Hello'}]))"
 ```
 
 ### Marimo won't load
 
 ```bash
 # Check for syntax errors in notebook
-deno run --allow-read tools/.marimo.toml
+uv run --directory tools python3 -c "import tomllib; tomllib.load(open('tools/.marimo.toml', 'rb')); print('tools/.marimo.toml is valid TOML')"
 
 # Verify uv environment
 uv sync --directory tools

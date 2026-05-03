@@ -30,6 +30,8 @@ enabled = true
 
 ```python
 import marimo as mo
+import os
+import requests
 from marimo import mcp
 
 # 1. Define MCP tools
@@ -122,7 +124,7 @@ compileRouter.post('/trigger', async (c: Context<Env>) => {
 
         // 2. If error, notify marimo MCP
         if (!result.success) {
-            await notifyMcpError({
+            await notifyMcpError(c.env, {
                 error_id: result.error_id,
                 logs: result.error_log,
                 auto_create_issue: result.severity === 'high',
@@ -132,7 +134,7 @@ compileRouter.post('/trigger', async (c: Context<Env>) => {
         return c.json(result);
     } catch (err) {
         // Notify MCP of unexpected error
-        await notifyMcpError({
+        await notifyMcpError(c.env, {
             error_id: crypto.randomUUID(),
             logs: JSON.stringify(err),
             auto_create_issue: false,
@@ -142,13 +144,16 @@ compileRouter.post('/trigger', async (c: Context<Env>) => {
     }
 });
 
-async function notifyMcpError(params: {
-    error_id: string;
-    logs: string;
-    auto_create_issue: boolean;
-}) {
-    const mcp_token = c.env.MCP_TOKEN;
-    const mcp_url = c.env.MCP_ENDPOINT || 'https://marimo.bloqr.com';
+async function notifyMcpError(
+    env: Env,
+    params: {
+        error_id: string;
+        logs: string;
+        auto_create_issue: boolean;
+    },
+) {
+    const mcp_token = env.MCP_TOKEN;
+    const mcp_url = env.MCP_ENDPOINT || 'https://marimo.bloqr.com';
 
     try {
         const resp = await fetch(`${mcp_url}/_mcp/execute`, {

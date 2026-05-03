@@ -13,10 +13,10 @@ Gallery: https://marimo.io/gallery
 Deployment: https://marimo.bloqr.com (behind Cloudflare Tunnel + CF Access)
 """
 
-import marimo as mo
-import json
-from datetime import datetime, timedelta
 import random
+from datetime import datetime
+
+import marimo as mo
 
 __version__ = "1.0.0"
 
@@ -74,9 +74,6 @@ app = mo.App(
 def _header():
     """Header with key metrics."""
     import marimo as mo
-
-    stats = load_compile_stats()
-    users = load_user_analytics()
 
     return mo.md(f"""
     # 📊 Bloqr Compile Stats Dashboard

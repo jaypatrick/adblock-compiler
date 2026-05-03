@@ -12,10 +12,9 @@ This exemplifies "zero context switching" — all debugging happens
 in marimo without leaving the notebook.
 """
 
-import marimo as mo
 from datetime import datetime, timedelta
-import json
-from typing import Any
+
+import marimo as mo
 
 __version__ = "1.0.0"
 
@@ -94,6 +93,8 @@ def _header():
 @app.cell
 def _error_log_viewer():
     """Display recent errors with filtering."""
+    from html import escape
+
     import marimo as mo
 
     errors = load_error_logs(hours=24)
@@ -116,12 +117,12 @@ def _error_log_viewer():
             border-radius: 0.375rem;
         ">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-                <strong style="color: {level_color}">[{err["level"]}]</strong>
-                <span style="font-size: 0.875rem; color: #6b7280;">{err["timestamp"]}</span>
+                <strong style="color: {level_color}">[{escape(err["level"])}]</strong>
+                <span style="font-size: 0.875rem; color: #6b7280;">{escape(err["timestamp"])}</span>
             </div>
-            <div style="font-weight: 600; margin-bottom: 0.5rem;">{err["service"]}</div>
+            <div style="font-weight: 600; margin-bottom: 0.5rem;">{escape(err["service"])}</div>
             <div style="color: #374151; font-family: monospace; font-size: 0.875rem;">
-                {err["message"]}
+                {escape(err["message"])}
             </div>
         </div>
         """
@@ -176,12 +177,11 @@ def _llm_integration():
     4. Display in marimo UI
     """
     import marimo as mo
-    import os
 
     # This is a mock implementation; replace with actual Claude API call
     # In production: from anthropic import Anthropic
 
-    def analyze_errors_with_claude(errors: list, custom_prompt: str = None) -> dict:
+    def analyze_errors_with_claude(errors: list, custom_prompt: str | None = None) -> dict:
         """
         Call Claude Sonnet to analyze errors.
 
