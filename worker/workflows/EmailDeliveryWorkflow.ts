@@ -34,7 +34,7 @@
  *
  * ## Queue-triggered (via email-queue consumer)
  * The `handleEmailQueue` consumer in `worker/handlers/email-queue.ts` reads
- * `EmailQueueMessage` items off `bloqr-backend-email-queue` and creates a
+ * `EmailQueueMessage` items off `adblock-compiler-email-queue` and creates a
  * Workflow instance for each one, providing durability and retry for
  * queue-originated sends.
  *

@@ -671,8 +671,8 @@ Long-running, crash-resistant compilation pipelines using Cloudflare Workflows:
 | `COMPILATION_CACHE` | KV | Compiled rule caching |
 | `RATE_LIMIT` | KV | Per-IP rate limit tracking |
 | `METRICS` | KV | Endpoint metrics aggregation |
-| `BLOQR_BACKEND_QUEUE` | Queue | Standard priority async jobs |
-| `BLOQR_BACKEND_QUEUE_HIGH_PRIORITY` | Queue | High priority async jobs |
+| `ADBLOCK_COMPILER_QUEUE` | Queue | Standard priority async jobs |
+| `ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY` | Queue | High priority async jobs |
 | `DB` | D1 | SQLite storage (admin, metadata) |
 | `ANALYTICS_ENGINE` | Analytics Engine | Metrics & analytics |
 | `ASSETS` | Fetcher | Static web UI assets |

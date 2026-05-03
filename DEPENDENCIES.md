@@ -219,7 +219,7 @@ Cloudflare services consumed as Worker bindings (configured in `wrangler.toml`).
 | **KV Namespaces** | `COMPILATION_CACHE`, `RATE_LIMIT`, `METRICS`, `RULES_KV` | ✅ Active | Caching, rate limiting, metrics aggregation, rule set storage |
 | **D1 Database** | `DB` | ✅ Active | Compilation history, user records, deployment records (via Prisma) |
 | **R2 Storage** | `FILTER_STORAGE` | ✅ Active | Filter list artifact persistence; pipeline sink |
-| **Queues** | `BLOQR_BACKEND_QUEUE`, `BLOQR_BACKEND_QUEUE_HIGH_PRIORITY` | ✅ Active | Async and batch compilation job processing |
+| **Queues** | `ADBLOCK_COMPILER_QUEUE`, `ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY` | ✅ Active | Async and batch compilation job processing |
 | **Analytics Engine** | `ANALYTICS_ENGINE` | ✅ Active | Request metrics, cache analytics, security event telemetry |
 | **Workflows** | `COMPILATION_WORKFLOW`, `BATCH_COMPILATION_WORKFLOW`, `CACHE_WARMING_WORKFLOW`, `HEALTH_MONITORING_WORKFLOW` | ✅ Active | Durable async execution with retry |
 | **Hyperdrive** | `HYPERDRIVE` | ✅ Active | Accelerated connection pooling to external PostgreSQL |

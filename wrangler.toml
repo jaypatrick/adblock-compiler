@@ -207,18 +207,18 @@ id = "fb5879d1237f4ac1b225458aef7bd6c9"
 # ─── R2 Bucket ───────────────────────────────────────────────────────────────
 [[r2_buckets]]
 binding = "FILTER_STORAGE"
-bucket_name = "bloqr-backend-r2-storage"
+bucket_name = "adblock-compiler-r2-storage"
 
 [[r2_buckets]]
 binding = "COMPILER_LOGS"
-bucket_name = "bloqr-backend-logs"
+bucket_name = "adblock-compiler-logs"
 
 # ERROR_BUCKET — dedicated R2 bucket for error dead-letter logs.
 # Written by handleErrorQueue() as NDJSON batches under errors/YYYY/MM/DD/HH/.
-# Create with: wrangler r2 bucket create bloqr-backend-error-logs
+# Create with: wrangler r2 bucket create adblock-compiler-error-logs
 [[r2_buckets]]
 binding = "ERROR_BUCKET"
-bucket_name = "bloqr-backend-error-logs"
+bucket_name = "adblock-compiler-error-logs"
 
 # ─── Placement ───────────────────────────────────────────────────────────────
 # Smart placement: prefer colos near Neon (Azure East US 2)
@@ -228,13 +228,13 @@ mode = "smart"
 # ─── D1 Database ─────────────────────────────────────────────────────────────
 [[d1_databases]]
 binding = "DB"
-database_name = "bloqr-backend-d1-database"
+database_name = "adblock-compiler-d1-database"
 database_id = "3e8e7dfe-3213-452a-a671-6c18e6e74ce5"
 migrations_dir = "migrations"
 
 [[d1_databases]]
 binding = "ADMIN_DB"
-database_name = "bloqr-backend-admin-d1"
+database_name = "adblock-compiler-admin-d1"
 database_id = "7d5a2704-5033-4433-911f-d8368f36dcdf"
 migrations_dir = "admin-migrations"
 
@@ -359,47 +359,47 @@ service = "bloqr-tail"
 
 # ─── Queues ──────────────────────────────────────────────────────────────────
 # Create queues before deploying:
-#   wrangler queues create bloqr-backend-worker-queue
-#   wrangler queues create bloqr-backend-worker-queue-high-priority
-#   wrangler queues create bloqr-backend-dlq
-#   wrangler queues create bloqr-backend-error-queue
+#   wrangler queues create adblock-compiler-worker-queue
+#   wrangler queues create adblock-compiler-worker-queue-high-priority
+#   wrangler queues create adblock-compiler-dlq
+#   wrangler queues create adblock-compiler-error-queue
 [[queues.producers]]
-queue = "bloqr-backend-worker-queue"
-binding = "BLOQR_BACKEND_QUEUE"
+queue = "adblock-compiler-worker-queue"
+binding = "ADBLOCK_COMPILER_QUEUE"
 
 [[queues.producers]]
-queue = "bloqr-backend-worker-queue-high-priority"
-binding = "BLOQR_BACKEND_QUEUE_HIGH_PRIORITY"
+queue = "adblock-compiler-worker-queue-high-priority"
+binding = "ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY"
 
 # ERROR_QUEUE — dedicated dead-letter queue, isolated from compile queues.
 # Receives error events from app.onError(); consumer persists batches to ERROR_BUCKET.
 [[queues.producers]]
-queue = "bloqr-backend-error-queue"
+queue = "adblock-compiler-error-queue"
 binding = "ERROR_QUEUE"
 
 # EMAIL_QUEUE — durable email delivery queue.
 # QueuedEmailService enqueues EmailQueueMessage items here.
 # Consumer (handleEmailQueue) creates an EmailDeliveryWorkflow instance per message.
-# Create with: wrangler queues create bloqr-backend-email-queue
+# Create with: wrangler queues create adblock-compiler-email-queue
 [[queues.producers]]
-queue = "bloqr-backend-email-queue"
+queue = "adblock-compiler-email-queue"
 binding = "EMAIL_QUEUE"
 
 [[queues.consumers]]
-queue = "bloqr-backend-worker-queue"
+queue = "adblock-compiler-worker-queue"
 max_batch_size = 10
 max_batch_timeout = 5
-dead_letter_queue = "bloqr-backend-dlq"
+dead_letter_queue = "adblock-compiler-dlq"
 
 [[queues.consumers]]
-queue = "bloqr-backend-worker-queue-high-priority"
+queue = "adblock-compiler-worker-queue-high-priority"
 max_batch_size = 5
 max_batch_timeout = 2
-dead_letter_queue = "bloqr-backend-dlq"
+dead_letter_queue = "adblock-compiler-dlq"
 
 # Error queue consumer — small batches, short timeout for fast R2 persistence.
 [[queues.consumers]]
-queue = "bloqr-backend-error-queue"
+queue = "adblock-compiler-error-queue"
 max_batch_size = 25
 max_batch_timeout = 10
 
@@ -407,14 +407,14 @@ max_batch_timeout = 10
 # Small batches (5) and short timeout (5s) to minimise delivery latency.
 # Dead-letter queue captures messages that exhaust retries.
 # Create queues with:
-#   wrangler queues create bloqr-backend-email-queue
-#   wrangler queues create bloqr-backend-email-dlq
+#   wrangler queues create adblock-compiler-email-queue
+#   wrangler queues create adblock-compiler-email-dlq
 [[queues.consumers]]
-queue = "bloqr-backend-email-queue"
+queue = "adblock-compiler-email-queue"
 max_batch_size = 5
 max_batch_timeout = 5
 max_retries = 3
-dead_letter_queue = "bloqr-backend-email-dlq"
+dead_letter_queue = "adblock-compiler-email-dlq"
 
 # ─── Analytics Engine ────────────────────────────────────────────────────────
 [[analytics_engine_datasets]]

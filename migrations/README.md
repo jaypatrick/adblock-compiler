@@ -1,12 +1,12 @@
 # D1 Main Database Migrations (Frozen)
 
-These migrations define the **edge cache** schema for the `bloqr-backend-d1-database` Cloudflare D1 database.
+These migrations define the **edge cache** schema for the `adblock-compiler-d1-database` Cloudflare D1 database.
 
 As of the Neon migration (2026-03), this directory is **frozen**:
 
 - No new application schema goes here
 - Neon/Prisma schema changes live in `prisma/migrations/`
-- `admin-migrations/` remains active for the separate `bloqr-backend-admin-d1` database
+- `admin-migrations/` remains active for the separate `adblock-compiler-admin-d1` database
 
 ## Cache tables (maintained)
 

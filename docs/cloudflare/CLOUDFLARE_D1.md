@@ -355,11 +355,11 @@ Migration files live in `migrations/` and are numbered sequentially (e.g., `0004
 
 ```bash
 # Local D1 (development)
-wrangler d1 execute bloqr-backend-d1-database --local \
+wrangler d1 execute adblock-compiler-d1-database --local \
   --file=migrations/0004_users_email_nullable.sql
 
 # Remote D1 (production)
-wrangler d1 execute bloqr-backend-d1-database --remote \
+wrangler d1 execute adblock-compiler-d1-database --remote \
   --file=migrations/0004_users_email_nullable.sql
 ```
 

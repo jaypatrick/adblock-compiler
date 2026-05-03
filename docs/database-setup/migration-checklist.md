@@ -52,7 +52,7 @@ Complete **every** item before running the migration script.
 ### 1. Backup D1
 
 ```bash
-wrangler d1 export bloqr-backend-d1-database --output artifacts/d1-backup-$(date +%Y%m%d).sql
+wrangler d1 export adblock-compiler-d1-database --output artifacts/d1-backup-$(date +%Y%m%d).sql
 ```
 
 ### 2. Dry Run

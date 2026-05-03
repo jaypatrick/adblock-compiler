@@ -136,13 +136,13 @@ const workerHandler: WorkerHandler = {
         // Route to appropriate handler based on queue name
         const queueName = batch.queue;
 
-        if (queueName === 'bloqr-backend-error-queue') {
+        if (queueName === 'adblock-compiler-error-queue') {
             // Error logging queue - persist errors to R2
             await handleErrorQueue(batch as MessageBatch<ErrorQueueMessage>, env);
-        } else if (queueName === 'bloqr-backend-worker-queue' || queueName === 'bloqr-backend-worker-queue-high-priority') {
+        } else if (queueName === 'adblock-compiler-worker-queue' || queueName === 'adblock-compiler-worker-queue-high-priority') {
             // Compilation queues - process compile jobs
             await handleQueue(batch as MessageBatch<QueueMessage>, env);
-        } else if (queueName === 'bloqr-backend-email-queue') {
+        } else if (queueName === 'adblock-compiler-email-queue') {
             // Email delivery queue — creates an EmailDeliveryWorkflow instance per message
             const { handleEmailQueue } = await import('./handlers/email-queue.ts');
             await handleEmailQueue(batch as MessageBatch<EmailQueueMessage>, env);

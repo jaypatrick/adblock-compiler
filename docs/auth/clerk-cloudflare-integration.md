@@ -106,7 +106,7 @@ flowchart LR
 | **Hyperdrive**       | `HYPERDRIVE`             | Connection pooling to PostgreSQL for API key storage                           |
 | **Turnstile**        | `TURNSTILE_SECRET_KEY`   | Bot protection on compilation endpoints                                        |
 | **Analytics Engine** | `ANALYTICS_ENGINE`       | Operational metrics and security events — auth failures, rate limit hits, and CF Access denials are tracked via `AnalyticsService.trackSecurityEvent()` |
-| **Queues**           | `BLOQR_BACKEND_QUEUE` | Async compilation (auth applied before queueing)                               |
+| **Queues**           | `ADBLOCK_COMPILER_QUEUE` | Async compilation (auth applied before queueing)                               |
 | **Worker Secrets**   | (runtime)                | Stores `CLERK_SECRET_KEY`, `CLERK_WEBHOOK_SECRET`, etc.                        |
 | **Worker Assets**    | `ASSETS`                 | Serves the Angular frontend (which loads Clerk JS)                             |
 
@@ -566,8 +566,8 @@ This allows the frontend to initialize Clerk without hardcoding the key. The pub
 
 **Bindings:**
 
-- `BLOQR_BACKEND_QUEUE` — standard priority
-- `BLOQR_BACKEND_QUEUE_HIGH_PRIORITY` — priority compilations
+- `ADBLOCK_COMPILER_QUEUE` — standard priority
+- `ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY` — priority compilations
 
 Queues are **not** directly integrated with Clerk auth. The auth layer operates at the HTTP request level:
 
@@ -699,10 +699,10 @@ The `users` table is stored in Cloudflare D1 and synced from Clerk webhooks via 
 
 ```bash
 # Apply the Clerk users migration to the remote D1 database
-wrangler d1 migrations apply bloqr-backend-d1-database --remote
+wrangler d1 migrations apply adblock-compiler-d1-database --remote
 
 # Verify the table was created
-wrangler d1 execute bloqr-backend-d1-database --remote \
+wrangler d1 execute adblock-compiler-d1-database --remote \
   --command="SELECT name FROM sqlite_master WHERE type='table';"
 ```
 
@@ -711,7 +711,7 @@ The D1 binding is already configured in `wrangler.toml`:
 ```toml
 [[d1_databases]]
 binding = "DB"
-database_name = "bloqr-backend-d1-database"
+database_name = "adblock-compiler-d1-database"
 database_id = "<your-d1-database-id>"
 ```
 

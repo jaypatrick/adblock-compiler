@@ -11,18 +11,18 @@ End-to-end production auth diagnostic for the Better Auth / Bloqr stack. Validat
 
 ## What It Checks
 
-| Step | Check              | What it verifies                                                                                        |
-| ---- | ------------------ | ------------------------------------------------------------------------------------------------------- |
-| 1    | API health         | `GET /api/version` responds, `/api/auth/providers` lists providers                                      |
-| 2    | Sign-up            | `POST /api/auth/sign-up/email` creates a new test user                                                  |
-| 3    | Sign-in + token    | `POST /api/auth/sign-in/email` returns `session.token`, `session.id`, `user` object                     |
-| 4    | Session validation | `GET /api/auth/get-session` with Bearer token returns the correct user                                  |
-| 5    | Email verification | `user.emailVerified` flag checked; warns if false                                                       |
-| 6    | Better Auth KV     | `wrangler kv key list` — verifies KV is accessible and shows key prefix distribution                    |
-| 7    | D1 databases       | Both `DB` (bloqr-backend-d1-database) and `ADMIN_DB` (bloqr-backend-admin-d1) — table list + row counts |
-| 8    | Neon / PostgreSQL  | Direct connection via `psycopg2` — table row counts, test user row, session row                         |
-| 9    | Admin API          | `GET /api/auth/admin/list-users` with API key (optional)                                                |
-| 10   | Tail log summary   | Worker exceptions and auth-related log events captured during the run                                   |
+| Step | Check              | What it verifies                                                                                              |
+| ---- | ------------------ | ------------------------------------------------------------------------------------------------------------- |
+| 1    | API health         | `GET /api/version` responds, `/api/auth/providers` lists providers                                            |
+| 2    | Sign-up            | `POST /api/auth/sign-up/email` creates a new test user                                                        |
+| 3    | Sign-in + token    | `POST /api/auth/sign-in/email` returns `session.token`, `session.id`, `user` object                           |
+| 4    | Session validation | `GET /api/auth/get-session` with Bearer token returns the correct user                                        |
+| 5    | Email verification | `user.emailVerified` flag checked; warns if false                                                             |
+| 6    | Better Auth KV     | `wrangler kv key list` — verifies KV is accessible and shows key prefix distribution                          |
+| 7    | D1 databases       | Both `DB` (adblock-compiler-d1-database) and `ADMIN_DB` (adblock-compiler-admin-d1) — table list + row counts |
+| 8    | Neon / PostgreSQL  | Direct connection via `psycopg2` — table row counts, test user row, session row                               |
+| 9    | Admin API          | `GET /api/auth/admin/list-users` with API key (optional)                                                      |
+| 10   | Tail log summary   | Worker exceptions and auth-related log events captured during the run                                         |
 
 ---
 

@@ -539,7 +539,7 @@ Access via: `GET /queue/stats`
 Queues may not be configured in all environments:
 
 ```typescript
-if (!env.BLOQR_BACKEND_QUEUE) {
+if (!env.ADBLOCK_COMPILER_QUEUE) {
     return Response.json({
         success: false,
         error: 'Queue not available. Use synchronous endpoints instead.'
