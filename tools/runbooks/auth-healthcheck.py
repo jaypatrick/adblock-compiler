@@ -21,6 +21,7 @@ app = marimo.App(
 )
 
 
+# ── Cell 0: imports (hidden utility cell) ──────────────────────────────────
 @app.cell(hide_code=True)
 def _imports():
     import html
@@ -60,29 +61,66 @@ def _imports():
 
     return (
         Path,
-        check_command,
-        check_python_package,
+        datetime,
         html,
         json,
+        mo,
+        os,
+        subprocess,
+        sys,
+        threading,
+        time,
+        KNOWN_TOOLS,
+        _repo_root,
+        check_command,
+        check_python_package,
         list_log_files,
         load_env_file,
+        load_latest_report,
         load_report,
-        mo,
+        logs_dir,
         read_log_file,
         render_report_results_html,
+        render_status_badge,
         render_summary_table_html,
         run_tool,
         tools_dir,
     )
 
 
+# ── Cell 1: Header ──────────────────────────────────────────────────────────
 @app.cell(hide_code=True)
-def _header():
-    return
+def _header(mo):
+    return mo.md(
+        """
+        # 🔐 Auth Healthcheck — Interactive Runbook
+
+        **Purpose:** End-to-end production auth diagnostic for the Better Auth / Bloqr stack.
+        Validates the full authentication chain from sign-up through session validation,
+        then checks every backing store (KV, D1, Neon) and captures wrangler tail logs.
+
+        ---
+
+        ## What This Runbook Does
+
+        | Step | Task |
+        |---|---|
+        | 1 | Check prerequisites (wrangler, Python packages) |
+        | 2 | Load / edit environment configuration |
+        | 3 | Select run mode |
+        | 4 | Execute `auth-healthcheck.py` with live output |
+        | 5 | Display results and JSON report inline |
+        | 6 | Browse log files and copy them for AI assistants |
+
+        > **Self-contained:** Everything you need is here. No other documentation required.
+        > To run this runbook: `marimo run tools/runbooks/auth-healthcheck.py`
+        """
+    )
 
 
+# ── Cell 2: Prerequisites check ─────────────────────────────────────────────
 @app.cell(hide_code=True)
-def _prerequisites(check_command, check_python_package, mo):
+def _prerequisites(mo, check_command, check_python_package):
     _checks = [
         check_command("wrangler"),
         check_command("python3"),
@@ -114,18 +152,28 @@ def _prerequisites(check_command, check_python_package, mo):
             kind="warn",
         )
     )
-    return
+
+    return (
+        mo.vstack(
+            [
+                mo.md("## 1 · Prerequisites"),
+                _status_line,
+                mo.md("\n".join(f"- {item}" for item in _items)),
+            ]
+        ),
+    )
 
 
+# ── Cell 3: Configuration ───────────────────────────────────────────────────
 @app.cell(hide_code=True)
-def _config_loader(load_env_file):
+def _config_loader(mo, load_env_file):
     # env is a cross-cell output — no _ prefix
     env = load_env_file("auth-healthcheck")
-    return (env,)
+    return (mo.md("## 2 · Configuration"), env)
 
 
 @app.cell(hide_code=True)
-def _config_form(env, mo):
+def _config_form(mo, env):
     # All of these are cross-cell outputs consumed by _execute — no _ prefix
     api_base = mo.ui.text(
         label="API Base URL",
@@ -170,9 +218,27 @@ def _config_form(env, mo):
         > To persist changes: edit `tools/auth-healthcheck.env` directly.
         """
     )
-    return api_base, api_key, enable_tail, neon_url, test_email, wrangler_env
+
+    return (
+        mo.vstack(
+            [
+                _edit_note,
+                mo.hstack([api_base, wrangler_env], gap="1rem"),
+                mo.hstack([test_email, api_key], gap="1rem"),
+                neon_url,
+                enable_tail,
+            ]
+        ),
+        api_base,
+        test_email,
+        neon_url,
+        api_key,
+        enable_tail,
+        wrangler_env,
+    )
 
 
+# ── Cell 4: Run mode ────────────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _run_mode(mo):
     # mode and dry_run are cross-cell outputs — no _ prefix
@@ -199,12 +265,18 @@ def _run_mode(mo):
         | **cleanup** | Deletes test data only — useful if a previous run left orphaned data |
         """
     )
-    return dry_run, mode
+
+    return (
+        mo.vstack([mo.md("## 3 · Run Mode"), mode, dry_run, _mode_table]),
+        mode,
+        dry_run,
+    )
 
 
+# ── Cell 5: Execute ──────────────────────────────────────────────────────────
 @app.cell(hide_code=True)
-def _execute_section():
-    return
+def _execute_section(mo):
+    return mo.md("## 4 · Execute")
 
 
 @app.cell
@@ -216,18 +288,23 @@ def _run_button(mo):
 
 @app.cell
 def _execute(
-    api_base,
-    api_key,
-    dry_run,
-    enable_tail,
     mo,
-    mode,
-    neon_url,
     run_button,
-    run_tool,
+    mode,
+    dry_run,
+    api_base,
     test_email,
-    tools_dir,
+    neon_url,
+    api_key,
+    enable_tail,
     wrangler_env,
+    Path,
+    run_tool,
+    tools_dir,
+    logs_dir,
+    datetime,
+    json,
+    os,
 ):
     if not run_button.value:
         mo.stop(True, mo.md("_Click **▶ Run auth-healthcheck** to execute._"))
@@ -269,26 +346,38 @@ def _execute(
     # returncode and output_combined are cross-cell outputs — no _ prefix
     returncode = _rc
     output_combined = _output_combined
-    return (returncode,)
+
+    return (
+        mo.vstack(
+            [
+                _result_callout,
+                mo.md("### Output"),
+                mo.code(_output_combined, language="text"),
+            ]
+        ),
+        returncode,
+        output_combined,
+    )
 
 
+# ── Cell 6: Results / JSON report ───────────────────────────────────────────
 @app.cell(hide_code=True)
 def _results_section(mo, returncode):
     if returncode is None:
         mo.stop(True, mo.md("_Run the tool first (step 4) to see results here._"))
-    return
+    return mo.md("## 5 · Results")
 
 
 @app.cell(hide_code=True)
 def _results(
+    mo,
     html,
-    json,
+    returncode,
     list_log_files,
     load_report,
-    mo,
     render_report_results_html,
     render_summary_table_html,
-    returncode,
+    json,
 ):
     if returncode is None:
         mo.stop(True, None)
@@ -331,16 +420,41 @@ def _results(
         _errors_section = f"\n### Errors\n\n{_error_items}"
 
     _raw_json = json.dumps(_report, indent=2)
-    return
+
+    return (
+        mo.vstack(
+            [
+                mo.md(f"**Report:** `{_latest.name}` · **Ran at:** {_ts}"),
+                mo.Html(_summary_html),
+                mo.md("### Check Details"),
+                mo.Html(_results_html),
+                mo.md(_errors_section) if _errors_section else mo.md(""),
+                mo.accordion(
+                    {
+                        "📋 Raw JSON report (click to expand)": mo.code(_raw_json, language="json"),
+                    }
+                ),
+            ]
+        ),
+    )
+
+
+# ── Cell 7: Log file browser ────────────────────────────────────────────────
+@app.cell(hide_code=True)
+def _log_browser_header(mo):
+    return mo.md(
+        """
+        ## 6 · Log Files
+
+        Browse log files below. Select a file to view its contents inline.
+        Copy the **file path** to share with an AI assistant — paste the path
+        and the AI will be able to read the full report.
+        """
+    )
 
 
 @app.cell(hide_code=True)
-def _log_browser_header():
-    return
-
-
-@app.cell(hide_code=True)
-def _log_browser(list_log_files, mo):
+def _log_browser(mo, list_log_files, Path):
     _json_files = list_log_files("auth-healthcheck", ".json")
     _log_files_list = list_log_files("auth-healthcheck", ".log")
     # all_log_files and log_file_selector are cross-cell outputs — no _ prefix
@@ -363,11 +477,11 @@ def _log_browser(list_log_files, mo):
         options=_file_options,
         value=next(iter(_file_options.keys())) if _file_options else None,
     )
-    return all_log_files, log_file_selector
+    return (log_file_selector, all_log_files)
 
 
 @app.cell(hide_code=True)
-def _log_viewer(Path, all_log_files, log_file_selector, mo, read_log_file):
+def _log_viewer(mo, log_file_selector, all_log_files, read_log_file, Path):
     if not all_log_files:
         mo.stop(True, None)
 
@@ -377,12 +491,103 @@ def _log_viewer(Path, all_log_files, log_file_selector, mo, read_log_file):
 
     _contents = read_log_file(_selected_path)
     _lang = "json" if _selected_path.suffix == ".json" else "text"
-    return
+
+    return (
+        mo.vstack(
+            [
+                mo.md(f"**File:** `{_selected_path}`"),
+                mo.callout(
+                    mo.md(
+                        f"📁 **To share with an AI assistant:** Copy the file path below "
+                        f"and paste it into your chat, or drag the file from your file manager.\n\n"
+                        f"```\n{_selected_path}\n```"
+                    ),
+                    kind="info",
+                ),
+                mo.code(_contents, language=_lang),
+            ]
+        ),
+    )
 
 
+# ── Cell 8: AI assistant guide ──────────────────────────────────────────────
 @app.cell(hide_code=True)
-def _ai_guide():
-    return
+def _ai_guide(mo):
+    return mo.md(
+        """
+        ## 7 · Sharing Logs with an AI Assistant
+
+        When auth checks fail, the fastest path to root-cause analysis is to share
+        the JSON report with a Copilot or Claude instance.
+
+        ### Option A — Copy the file path
+
+        1. Find the file path in the **Log Files** section above (step 6)
+        2. In your AI chat, type: *"Here is the auth-healthcheck report:"*
+        3. Drag and drop the `.json` file into the chat
+
+        ### Option B — Paste the JSON directly
+
+        1. Expand the **Raw JSON report** accordion in step 5
+        2. Select all (`Cmd+A` / `Ctrl+A`) and copy
+        3. Paste into your AI chat with context like:
+           *"My auth-healthcheck script produced this report, help me diagnose the failures:"*
+
+        ### Suggested prompts
+
+        - *"Diagnose the failures in this auth-healthcheck report and give me specific fix steps"*
+        - *"What does `session.token present FAIL` mean and how do I fix it?"*
+        - *"Is the KV binding error related to the D1 error, or are they independent?"*
+
+        ---
+
+        ## 8 · Troubleshooting Quick Reference
+
+        | Symptom | First thing to check |
+        |---|---|
+        | `GET /api/version` ❌ | Is the worker deployed? Is `API_BASE` correct? VPN? |
+        | `session.token present` ❌ | Check `storeSessionInDatabase` and KV binding config |
+        | `POST /auth/sign-in` HTTP 500 | See tail log — likely a Prisma or Better Auth crash |
+        | `KV accessible` ❌ | Check `KV_BINDING` matches `wrangler.toml` |
+        | `D1 execute` ❌ | Check `D1_BINDING` / `D1_ADMIN_BINDING` match `wrangler.toml` |
+        | `emailVerified` ⚠️ | Normal if `requireEmailVerification=false` — not a real failure |
+        | `Session in Neon` ⚠️ | Normal when `storeSessionInDatabase=false` — sessions in KV |
+
+        ---
+
+        ## 9 · Pipeline Usage
+
+        To chain this tool with others, use the **Master Pipeline runbook**:
+
+        ```bash
+        marimo run tools/runbooks/pipeline.py
+        # or
+        deno task runbook:pipeline
+        ```
+
+        Or run directly from CLI:
+
+        ```bash
+        python tools/auth-healthcheck.py --mode all
+        LATEST=$(ls -t tools/logs/auth-healthcheck/*.json | head -1)
+        jq '.summary' "$LATEST"
+        ```
+
+        ---
+
+        ## 10 · Re-running and Cleanup
+
+        If a previous run left orphaned test data:
+
+        1. Return to step 3 above
+        2. Select **🧹 Cleanup — delete test data only**
+        3. Click **▶ Run auth-healthcheck** again
+
+        To run a fresh check with guaranteed clean state:
+        1. Select **🔍🧹 All — run checks then clean up**
+        2. Click **▶ Run auth-healthcheck**
+        """
+    )
 
 
 if __name__ == "__main__":
