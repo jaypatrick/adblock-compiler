@@ -37,7 +37,7 @@
 #   wrangler secret put CF_EMAIL_API_TOKEN
 # ============================================================================
 
-name = "adblock-compiler"
+name = "bloqr-compiler"
 main = "worker/worker.ts"
 compatibility_date = "2026-01-01"
 
@@ -327,14 +327,14 @@ new_sqlite_classes = ["CompilationCoordinator"]
 tag = "v4"
 new_sqlite_classes = ["RateLimiterDO", "WsHibernationDO"]
 
-# ─── Email Workers (outbound — adblock-email) ────────────────────────────────
+# ─── Email Workers (outbound — bloqr-email) ──────────────────────────────────
 # Cloudflare Email Workers `[[send_email]]` binding for transactional outbound
-# email. The `adblock-email` worker handles routing and delivery via Cloudflare
+# email. The `bloqr-email` worker handles routing and delivery via Cloudflare
 # Email Routing infrastructure.
 #
 # Prerequisites:
 #   1. Cloudflare Email Routing must be enabled on your zone.
-#   2. The `adblock-email` email worker must exist in your account.
+#   2. The `bloqr-email` email worker must exist in your account.
 #   3. Allowed destination addresses must be verified in Email Routing.
 #
 # wrangler CLI setup:
@@ -355,7 +355,7 @@ name = "SEND_EMAIL"
 # Deploy wrangler.tail.toml first; the tail worker must exist in your account
 # before this binding can be registered.
 [[tail_consumers]]
-service = "adblock-tail"
+service = "bloqr-tail"
 
 # ─── Queues ──────────────────────────────────────────────────────────────────
 # Create queues before deploying:
@@ -521,7 +521,7 @@ enable_containers = true
 # to set env-specific secrets if needed.
 # ============================================================================
 [env.dev]
-name = "adblock-compiler-dev"
+name = "bloqr-compiler-dev"
 logpush = false
 
 [env.dev.vars]

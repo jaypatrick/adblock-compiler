@@ -36,7 +36,7 @@
 #
 # SERVICE BINDING:
 #   The [[services]] block below binds this Worker to the backend API Worker
-#   (adblock-compiler) on the internal Cloudflare network. SSR-time /api/*
+#   (bloqr-compiler) on the internal Cloudflare network. SSR-time /api/*
 #   requests are forwarded via env.API.fetch() in server.ts — no public
 #   round-trip, no CORS negotiation.
 #
@@ -49,7 +49,7 @@
 #   placeholder, or removes the analytics tag if the token is absent).
 # ============================================================================
 
-name = "adblock-frontend"
+name = "bloqr-frontend"
 
 # Expose the worker on the *.workers.dev subdomain after deployment.
 workers_dev = true
@@ -79,10 +79,10 @@ compatibility_date = "2026-01-01"
 compatibility_flags = ["nodejs_compat"]
 
 # ─── Tail Worker ─────────────────────────────────────────────────────────────
-# Same adblock-tail worker used by the backend. Cloudflare supports
+# Same bloqr-tail worker used by the backend. Cloudflare supports
 # multiple producers for a single tail consumer — no extra infrastructure needed.
-# IMPORTANT: adblock-tail must be deployed before this Worker.
-tail_consumers = [{ service = "adblock-tail" }]
+# IMPORTANT: bloqr-tail must be deployed before this Worker.
+tail_consumers = [{ service = "bloqr-tail" }]
 
 # ─── Custom domain route ─────────────────────────────────────────────────────
 # IMPORTANT: [[routes]] (and [[rules]]) must appear AFTER all bare top-level
@@ -161,14 +161,14 @@ head_sampling_rate = 1
 # (no public network hop, no CORS negotiation).
 [[services]]
 binding = "API"
-service = "adblock-compiler"
+service = "bloqr-compiler"
 
 # ============================================================================
 # [env.dev] — Dev environment (workers.dev, debug Angular build)
 #
 # Deploy workflow:
-#   pnpm --filter adblock-frontend run build:dev   # ng build --configuration development
-#   pnpm --filter adblock-frontend run deploy:dev  # wrangler deploy --env dev
+#   pnpm --filter bloqr-frontend run build:dev   # ng build --configuration development
+#   pnpm --filter bloqr-frontend run deploy:dev  # wrangler deploy --env dev
 #   OR combined:  deno task ui:deploy:ng:dev
 #
 # The `development` build configuration in angular.json enables:
@@ -176,9 +176,9 @@ service = "adblock-compiler"
 #   optimization: false — readable, non-minified code; no tree-shaking
 #
 # All bindings (ASSETS, [[services]] API, etc.) are inherited from the
-# top-level config. The API service binding still points to `adblock-compiler`
+# top-level config. The API service binding still points to `bloqr-compiler`
 # (production backend). Override [[env.dev.services]] here if you deploy a
-# separate dev API worker (`adblock-compiler-dev`).
+# separate dev API worker (`bloqr-compiler-dev`).
 #
 # Routes: NOT inherited. This env is only accessible via *.workers.dev.
 # ============================================================================
