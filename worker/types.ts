@@ -597,7 +597,7 @@ export interface Env {
     BETTER_AUTH_KV?: KVNamespace;
     /**
      * Flash message KV namespace.
-     * Stores short-lived (30 s TTL) one-time-read notification tokens.
+     * Stores short-lived (60 s TTL) one-time-read notification tokens.
      * Used by `setFlash()` (worker) and `GET /api/flash/:token` (route).
      * Create with: `wrangler kv:namespace create FLASH_STORE`
      */

@@ -434,7 +434,7 @@ app.use('*', async (c, next) => {
         pathname.startsWith('/api/redoc/') ||
         // Flash tokens use dynamic path segments — exact-match via includes() would
         // never fire, so we prefix-match instead. Only GET is served; other methods
-        // get a 405 from the route handler itself.
+        // fall through to the app's notFound handler (404).
         pathname.startsWith('/api/flash/') ||
         MONITORING_BARE_PATHS.has(pathname)
     )) ||

@@ -17,7 +17,7 @@
  *   consume messages before the user is authenticated.
  * - Tokens are crypto.randomUUID() — 122 bits of entropy.
  * - Each token is consumed (deleted) on first read.
- * - TTL of 30 s enforced server-side; expired tokens return 404.
+ * - TTL of 60 s enforced server-side; expired tokens return 404.
  * - Rate-limited per IP to prevent token-guessing enumeration attacks.
  *
  * ## ZTA checklist
@@ -55,7 +55,7 @@ const getFlashRoute = createRoute({
     tags: ['Meta'],
     summary: 'Consume a flash message',
     description: 'Reads and deletes a one-time flash message from the FLASH_STORE KV namespace. ' +
-        'Returns {message, type, createdAt} if the token is valid and has not expired (30 s TTL). ' +
+        'Returns {message, type, createdAt} if the token is valid and has not expired (60 s TTL). ' +
         'Returns 404 if the token is unknown, already consumed, or expired. ' +
         'No authentication required — must be accessible on the sign-in page before the user is authenticated.',
     request: {
