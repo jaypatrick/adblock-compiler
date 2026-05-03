@@ -164,6 +164,7 @@ If the `worker/types.ts` `Env` interface has the variable, it belongs in `.dev.v
 Setup: `cp .dev.vars.example .dev.vars` then `deno task setup`.
 
 <!-- stripe-projects-cli managed:agents-md:start -->
+
 ## Stripe Projects CLI
 
 This repository is initialized for the Stripe project "bloqr-stripe".
@@ -171,4 +172,5 @@ This repository is initialized for the Stripe project "bloqr-stripe".
 ## Tools used
 
 - [Stripe CLI](https://docs.stripe.com/stripe-cli) with the `projects` plugin to manage third-party services, credentials, and deployments for this project. Use the stripe-projects-cli to manage deploying and access to third party services.
+
 <!-- stripe-projects-cli managed:agents-md:end -->
