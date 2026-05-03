@@ -22,7 +22,9 @@ FROM --platform=linux/amd64 denoland/deno:${DENO_VERSION}
 # The denoland/deno base image does not ship with curl; we install it as root
 # (the image default) and then drop back down to the unprivileged "deno" user.
 USER root
-RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+RUN apt-get update --fix-missing && \
+    apt-get install -y --no-install-recommends curl && \
+    apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
