@@ -57,7 +57,6 @@ examples/whitelist/filter.txt
 .claude/worktrees/
 
 # Environment files
-.env.local
 .env.*.local
 coverage.lcov
 
@@ -110,3 +109,8 @@ tools/logs/auth-healthcheck/*
 
 # Docusaurus OpenAPI plugin generated MDX (docs-docusaurus/)
 docs/api/openapi/
+
+.projects/cache
+.projects/vault
+.env
+.env.local

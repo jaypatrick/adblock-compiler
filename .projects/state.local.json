@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "project": {
+    "merchantId": "acct_1TAzx1KWpVP55lG3",
+    "merchantDisplayName": null,
+    "projectId": "project_61UcUAJG3Hoe6udi916UKNuNCESQM5EVZ0mdVQTOqA88",
+    "projectName": "bloqr-stripe",
+    "initializedAt": "2026-05-03T20:01:43.101Z"
+  },
+  "providers": {},
+  "resources": {}
+}
