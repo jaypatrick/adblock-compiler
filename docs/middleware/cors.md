@@ -49,8 +49,6 @@ For local development, override via `.dev.vars`:
 CORS_ALLOWED_ORIGINS = "http://localhost:4200,http://localhost:4201"
 ```
 
-> **Note:** `CORS_ALLOWED_ORIGINS` is the canonical binding name throughout the codebase, including the `Env` TypeScript interface, the middleware, and all tests. Do **not** use `ALLOWED_ORIGINS` — that name was used in a prior iteration and has been removed.
-
 ---
 
 ## Middleware Implementation

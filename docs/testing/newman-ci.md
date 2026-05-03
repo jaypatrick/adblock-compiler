@@ -47,8 +47,8 @@ on:
 
 The following secrets must be configured in **Settings → Secrets and variables → Actions** before the workflow can authenticate with either the API under test or the Resend Postman API export endpoint.
 
-| Secret | Where | Description |
-|--------|-------|-------------|
+| Secret | Stored in | Description |
+|--------|-----------|-------------|
 | `NEWMAN_USER_API_KEY` | GitHub Actions secrets | A `blq_` API key for a test user; used to authenticate compile/queue endpoints |
 | `NEWMAN_POSTMAN_EMAIL` | GitHub Actions secrets | Email address of the Postman account that owns the synced collection |
 | `NEWMAN_POSTMAN_PASSWORD` | GitHub Actions secrets | Password for the Postman account (used to export collection via API) |
