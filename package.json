@@ -45,7 +45,7 @@
         "@cloudflare/playwright": "^1.2.0",
         "@cloudflare/playwright-mcp": "^0.0.5",
         "@cloudflare/vitest-pool-workers": "^0.14.2",
-        "@cloudflare/workers-types": "^4.20260426.1",
+        "@cloudflare/workers-types": "^4.20260503.1",
         "@sentry/cli": "^3.4.1",
         "agents": "^0.8.0",
         "prisma": "7.8.0",
