@@ -35,7 +35,10 @@ on:
 # already in progress, the older run is cancelled cleanly rather than racing
 # to commit — preventing the "cancelled = failure" noise on the Actions page.
 concurrency:
-    group: cloudflare-dep-update
+    # Scope by ref so that a feature-branch run doesn't cancel an in-progress
+    # main run.  The job-level `if` guard further ensures only main-branch runs
+    # actually execute any work.
+    group: cloudflare-dep-update-${{ github.ref }}
     cancel-in-progress: true
 
 env:
@@ -46,12 +49,17 @@ permissions:
     contents: write
     workflows: write
     pull-requests: write
+    issues: write
 
 jobs:
     update:
         name: Update Cloudflare Dependencies
         runs-on: ubuntu-latest
         timeout-minutes: 15
+        # Skip on non-main branches (e.g. Copilot feature branches that touch
+        # this file) so that those runs are green/skipped rather than being
+        # cancelled by the concurrency group and marked as failures.
+        if: github.ref == 'refs/heads/main'
 
         steps:
             - name: Checkout
@@ -119,6 +127,16 @@ jobs:
                       echo "📋  Files changed:"
                       git status --short
                   fi
+
+            - name: Ensure 'dependencies' label exists
+              if: steps.changes.outputs.has_changes == 'true'
+              env:
+                  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+              run: |
+                  gh label create "dependencies" \
+                    --color "0075ca" \
+                    --description "Dependency updates" \
+                    --force
 
             - name: Create pull request
               if: steps.changes.outputs.has_changes == 'true'
