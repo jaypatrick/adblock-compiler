@@ -22,11 +22,13 @@ displayed_models = ["anthropic/claude-sonnet-4-6", "anthropic/claude-haiku-4-5",
 [ai.custom_providers]
 
 [ai.github]
-api_key = "YOUR_GITHUB_TOKEN_HERE"
+# api_key = ""  # Do not store here — use the GITHUB_TOKEN environment variable:
+#                 export GITHUB_TOKEN="github_pat_..."
 
 [ai.anthropic]
-model = "claude-sonnet-4-5"
-api_key = "YOUR_ANTHROPIC_API_KEY_HERE"
+model = "claude-sonnet-4-6"
+# api_key = ""  # Do not store here — use the ANTHROPIC_API_KEY environment variable:
+#                 export ANTHROPIC_API_KEY="sk-ant-..."
 
 [diagnostics]
 sql_linter = true

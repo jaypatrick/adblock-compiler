@@ -44,28 +44,21 @@ uv sync --directory tools
 
 ### marimo Configuration
 
-The marimo environment requires API keys for AI features. A template is provided:
+`tools/.marimo.toml` is tracked by git and contains only safe defaults — **no credentials are stored in it**. AI provider API keys are passed via environment variables:
 
 ```bash
-cp tools/.marimo.toml.example tools/.marimo.toml
+export ANTHROPIC_API_KEY="sk-ant-..."
+export GITHUB_TOKEN="github_pat_..."
 ```
 
-Edit `tools/.marimo.toml` and populate your credentials:
-
-```toml
-[ai.github]
-api_key = "YOUR_GITHUB_TOKEN_HERE"
-
-[ai.anthropic]
-api_key = "YOUR_ANTHROPIC_API_KEY_HERE"
-```
+If you want a reference showing all available configuration sections and recommended defaults, see [`.marimo.toml.example`](.marimo.toml.example) — no credentials or api_key fields are included.
 
 **Where to get credentials:**
 
-- **GitHub**: Create a personal access token at https://github.com/settings/personal-access-tokens/new (requires `gist` scope for model access)
+- **GitHub**: Create a fine-grained personal access token at https://github.com/settings/personal-access-tokens/new with the `Models: Read` permission (no other scopes required)
 - **Anthropic**: Get your API key from https://console.anthropic.com/account/keys
 
-⚠️ **Security**: `.marimo.toml` is intentionally untracked by git. The local copy you create from the template will never be committed, so credentials stay on your machine. Never add real keys to `.marimo.toml.example` (the committed template). Use environment variables (`ANTHROPIC_API_KEY`, `GITHUB_TOKEN`) for credentials whenever possible; the file exists only as a convenience for local dev.
+⚠️ **Security**: Never add real API keys directly to `tools/.marimo.toml` — it is tracked by git. Use environment variables or a local `.env` file instead.
 
 ### Script Configuration
 
