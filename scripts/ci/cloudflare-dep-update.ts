@@ -90,8 +90,8 @@ interface UpdateSummary {
 
 function updateWrangler(latestVersion: string): UpdateSummary {
     // Patterns:
-    //   npm specifier (deno.json, workflow YAML):  npm:wrangler@^X.Y.Z
-    //   package.json devDep:                       "wrangler": "^X.Y.Z"
+    //   npm specifier (deno.json only):  npm:wrangler@^X.Y.Z
+    //   package.json devDep:             "wrangler": "^X.Y.Z"
     const npmPattern = /npm:wrangler@\^\d+\.\d+\.\d+/g;
     const pkgPattern = /"wrangler":\s*"\^\d+\.\d+\.\d+"/g;
 
