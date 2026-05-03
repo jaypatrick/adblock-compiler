@@ -130,6 +130,8 @@ export class TurnstileInterceptor implements HttpInterceptor {
 
         return from(this.turnstile.getToken()).pipe(
             switchMap(token => {
+                // req.body is assumed to be a plain object (JSON).
+                // FormData and other non-object body types are not mutated.
                 const body = { ...(req.body as Record<string, unknown>), turnstileToken: token };
                 const withToken = req.clone({ body });
                 return next.handle(withToken);

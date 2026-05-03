@@ -130,7 +130,7 @@ Access-Control-Max-Age: 86400
 Vary: Origin
 ```
 
-`X-Turnstile-Token` is included in `Access-Control-Allow-Headers` so that the Angular frontend can set the Turnstile token on cross-origin requests to the Worker. See [Turnstile Middleware](./turnstile.md) for details.
+`X-Turnstile-Token` is retained in `Access-Control-Allow-Headers` for backward compatibility with older callers. The Angular frontend now injects the Turnstile token into the **JSON request body** (`turnstileToken` field) rather than as a header — see [Turnstile Middleware](./turnstile.md) for the current implementation.
 
 ---
 
@@ -177,6 +177,6 @@ For preflight (`OPTIONS`) requests from disallowed origins, the Worker likewise 
 
 ## Related Documentation
 
-- [Turnstile Middleware](./turnstile.md) — adds `X-Turnstile-Token` to the `Authorization` surface checked by CORS
+- [Turnstile Middleware](./turnstile.md) — reads `turnstileToken` from the JSON request body; `X-Turnstile-Token` header retained in CORS allowlist for backward compatibility
 - [Better Auth Security Audit, AUDIT-11](../auth/better-auth-audit-2026-05.md#audit-11----trustedorigins-included-wildcard-development-entries) — `trustedOrigins` wildcard finding
 - [Worker Request Lifecycle](../architecture/worker-request-lifecycle.md) — where CORS middleware fits in the pipeline
