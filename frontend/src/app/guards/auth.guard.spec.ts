@@ -4,12 +4,16 @@ import { Router, ActivatedRouteSnapshot, RouterStateSnapshot, UrlTree } from '@a
 import { provideRouter } from '@angular/router';
 import { authGuard } from './auth.guard';
 import { AuthFacadeService } from '../services/auth-facade.service';
+import { NavigationErrorService } from '../services/navigation-error.service';
 import { provideTestBed } from '../../test-utils';
 
 describe('authGuard', () => {
     let mockAuth: {
         isLoaded: ReturnType<typeof signal<boolean>>;
         isSignedIn: ReturnType<typeof signal<boolean>>;
+    };
+    let mockNavError: {
+        navigateWithError: ReturnType<typeof vi.fn>;
     };
     let router: Router;
 
@@ -22,11 +26,16 @@ describe('authGuard', () => {
             isSignedIn: signal(false),
         };
 
+        mockNavError = {
+            navigateWithError: vi.fn().mockResolvedValue(undefined),
+        };
+
         TestBed.configureTestingModule({
             providers: [
                 provideZonelessChangeDetection(),
                 provideRouter([]),
                 { provide: AuthFacadeService, useValue: mockAuth },
+                { provide: NavigationErrorService, useValue: mockNavError },
             ],
         });
 
@@ -40,19 +49,30 @@ describe('authGuard', () => {
         expect(result).toBe(true);
     });
 
-    it('should redirect to /sign-in when not signed in', async () => {
+    it('should return false and navigate to /sign-in when not signed in', async () => {
         mockAuth.isSignedIn.set(false);
 
         const result = await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
-        expect(result).toBeInstanceOf(UrlTree);
-        expect((result as UrlTree).toString()).toContain('/sign-in');
+        expect(result).toBe(false);
     });
 
-    it('should include returnUrl in redirect query params', async () => {
+    it('should call navigateWithError with TOKEN_EXPIRED when not signed in', async () => {
         mockAuth.isSignedIn.set(false);
 
-        const result = await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
-        expect((result as UrlTree).queryParams['returnUrl']).toBe('/api-keys');
+        await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
+        expect(mockNavError.navigateWithError).toHaveBeenCalledWith(
+            ['/sign-in'],
+            'TOKEN_EXPIRED',
+            expect.objectContaining({ queryParams: { returnUrl: '/api-keys' } }),
+        );
+    });
+
+    it('should include returnUrl in navigateWithError call', async () => {
+        mockAuth.isSignedIn.set(false);
+
+        await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
+        const call = mockNavError.navigateWithError.mock.calls[0];
+        expect(call[2].queryParams.returnUrl).toBe('/api-keys');
     });
 
     it('should wait for auth to load when not yet loaded', async () => {
@@ -74,6 +94,7 @@ describe('authGuard', () => {
                     ...provideTestBed('server'),
                     provideRouter([]),
                     { provide: AuthFacadeService, useValue: mockAuth },
+                    { provide: NavigationErrorService, useValue: mockNavError },
                 ],
             });
             router = TestBed.inject(Router);
@@ -94,5 +115,13 @@ describe('authGuard', () => {
             const result = await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
             expect((result as UrlTree).queryParams['returnUrl']).toBe('/api-keys');
         });
+
+        it('should NOT call navigateWithError on the server', async () => {
+            mockAuth.isLoaded.set(false);
+
+            await TestBed.runInInjectionContext(() => authGuard(mockRoute, mockState));
+            expect(mockNavError.navigateWithError).not.toHaveBeenCalled();
+        });
     });
 });
+
