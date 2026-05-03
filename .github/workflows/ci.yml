@@ -435,10 +435,13 @@ jobs:
         run: uv sync --frozen --directory tools
 
       - name: Lint (ruff)
-        run: uv run --directory tools ruff check .
+        # Use --project (not --directory) so the process CWD stays at the repo root,
+        # which makes ruff emit repo-root-relative paths (e.g. tools/runbooks/pipeline.py)
+        # that GitHub can resolve to inline PR diff annotations.
+        run: uv run --project tools ruff check --output-format=github tools/
 
       - name: Format check (ruff)
-        run: uv run --directory tools ruff format --check .
+        run: uv run --project tools ruff format --check tools/
 
       - name: Type check (ty)
         continue-on-error: true  # ty is early-stage; don't block CI yet

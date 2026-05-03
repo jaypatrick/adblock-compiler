@@ -91,7 +91,7 @@ def _imports():
 # ── Cell 1: Header ──────────────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _header(mo):
-    mo.md(
+    return mo.md(
         """
         # 🔐 Auth Healthcheck — Interactive Runbook
 
@@ -116,14 +116,11 @@ def _header(mo):
         > To run this runbook: `marimo run tools/runbooks/auth-healthcheck.py`
         """
     )
-    return
 
 
 # ── Cell 2: Prerequisites check ─────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _prerequisites(mo, check_command, check_python_package):
-    mo.md("## 1 · Prerequisites")
-
     _checks = [
         check_command("wrangler"),
         check_command("python3"),
@@ -159,6 +156,7 @@ def _prerequisites(mo, check_command, check_python_package):
     return (
         mo.vstack(
             [
+                mo.md("## 1 · Prerequisites"),
                 _status_line,
                 mo.md("\n".join(f"- {item}" for item in _items)),
             ]
@@ -169,10 +167,9 @@ def _prerequisites(mo, check_command, check_python_package):
 # ── Cell 3: Configuration ───────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _config_loader(mo, load_env_file):
-    mo.md("## 2 · Configuration")
     # env is a cross-cell output — no _ prefix
     env = load_env_file("auth-healthcheck")
-    return (env,)
+    return (mo.md("## 2 · Configuration"), env)
 
 
 @app.cell(hide_code=True)
@@ -213,7 +210,7 @@ def _config_form(mo, env):
         full_width=True,
     )
 
-    mo.md(
+    _edit_note = mo.md(
         """
         Edit values below to override your `tools/auth-healthcheck.env` configuration.
         Changes here are **not saved** back to the file — they only apply to this run.
@@ -225,6 +222,7 @@ def _config_form(mo, env):
     return (
         mo.vstack(
             [
+                _edit_note,
                 mo.hstack([api_base, wrangler_env], gap="1rem"),
                 mo.hstack([test_email, api_key], gap="1rem"),
                 neon_url,
@@ -243,8 +241,6 @@ def _config_form(mo, env):
 # ── Cell 4: Run mode ────────────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _run_mode(mo):
-    mo.md("## 3 · Run Mode")
-
     # mode and dry_run are cross-cell outputs — no _ prefix
     mode = mo.ui.dropdown(
         label="Run mode",
@@ -260,7 +256,7 @@ def _run_mode(mo):
         value=False,
     )
 
-    mo.md(
+    _mode_table = mo.md(
         """
         | Mode | What happens |
         |---|---|
@@ -271,7 +267,7 @@ def _run_mode(mo):
     )
 
     return (
-        mo.vstack([mode, dry_run]),
+        mo.vstack([mo.md("## 3 · Run Mode"), mode, dry_run, _mode_table]),
         mode,
         dry_run,
     )
@@ -280,8 +276,7 @@ def _run_mode(mo):
 # ── Cell 5: Execute ──────────────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _execute_section(mo):
-    mo.md("## 4 · Execute")
-    return
+    return mo.md("## 4 · Execute")
 
 
 @app.cell
@@ -370,9 +365,7 @@ def _execute(
 def _results_section(mo, returncode):
     if returncode is None:
         mo.stop(True, mo.md("_Run the tool first (step 4) to see results here._"))
-
-    mo.md("## 5 · Results")
-    return
+    return mo.md("## 5 · Results")
 
 
 @app.cell(hide_code=True)
@@ -449,7 +442,7 @@ def _results(
 # ── Cell 7: Log file browser ────────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _log_browser_header(mo):
-    mo.md(
+    return mo.md(
         """
         ## 6 · Log Files
 
@@ -458,7 +451,6 @@ def _log_browser_header(mo):
         and the AI will be able to read the full report.
         """
     )
-    return
 
 
 @app.cell(hide_code=True)
@@ -521,7 +513,7 @@ def _log_viewer(mo, log_file_selector, all_log_files, read_log_file, Path):
 # ── Cell 8: AI assistant guide ──────────────────────────────────────────────
 @app.cell(hide_code=True)
 def _ai_guide(mo):
-    mo.md(
+    return mo.md(
         """
         ## 7 · Sharing Logs with an AI Assistant
 
@@ -596,7 +588,6 @@ def _ai_guide(mo):
         2. Click **▶ Run auth-healthcheck**
         """
     )
-    return
 
 
 if __name__ == "__main__":
