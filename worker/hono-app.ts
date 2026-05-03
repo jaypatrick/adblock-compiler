@@ -480,7 +480,7 @@ app.use('*', async (c, next) => {
     }
 
     startTime(c, 'auth', 'Authentication');
-    const authProvider = new BetterAuthProvider(c.env);
+    const authProvider = new BetterAuthProvider(c.env, c.executionCtx);
     const authResult = await authenticateRequestUnified(
         c.req.raw,
         c.env,

@@ -682,16 +682,24 @@ Deno.test('AUTH_SESSION_CONFIG.cookieCacheMaxAge is 300 seconds (5 minutes) — 
     );
 });
 
-Deno.test('AUTH_SESSION_CONFIG.expiresIn is a positive number', () => {
-    assertExists(AUTH_SESSION_CONFIG.expiresIn);
-    assertEquals(typeof AUTH_SESSION_CONFIG.expiresIn, 'number');
-    assertEquals(AUTH_SESSION_CONFIG.expiresIn > 0, true, 'expiresIn must be > 0');
+Deno.test('AUTH_SESSION_CONFIG.expiresIn is 604800 seconds (7 days)', () => {
+    // Must be > 0: a zero/negative value expires sessions immediately on creation.
+    // Must be 604800: aligns with the 7-day default recommended by Better Auth.
+    assertStrictEquals(
+        AUTH_SESSION_CONFIG.expiresIn,
+        604800,
+        'expiresIn must be 604800 s (7 days); update this test if the value is intentionally changed',
+    );
 });
 
-Deno.test('AUTH_SESSION_CONFIG.updateAge is a positive number', () => {
-    assertExists(AUTH_SESSION_CONFIG.updateAge);
-    assertEquals(typeof AUTH_SESSION_CONFIG.updateAge, 'number');
-    assertEquals(AUTH_SESSION_CONFIG.updateAge > 0, true, 'updateAge must be > 0');
+Deno.test('AUTH_SESSION_CONFIG.updateAge is 86400 seconds (1 day)', () => {
+    // Must be > 0: zero would refresh the session token on every single request.
+    // Must be 86400: extends the session when 1 day or less of its 7-day lifetime remains.
+    assertStrictEquals(
+        AUTH_SESSION_CONFIG.updateAge,
+        86400,
+        'updateAge must be 86400 s (1 day); update this test if the value is intentionally changed',
+    );
 });
 
 Deno.test('AUTH_SESSION_CONFIG.updateAge is less than AUTH_SESSION_CONFIG.expiresIn', () => {

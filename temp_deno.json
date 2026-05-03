@@ -1,0 +1,10 @@
+{
+    "name": "@jk-com/adblock-compiler",
+    "version": "0.91.0",
+    "exports": "./src/index.ts",
+    "nodeModulesDir": true,
+    "publish": {
+        "include": [
+            "src/**/*.ts",
+            "README.md",
+            "LICENSE"
