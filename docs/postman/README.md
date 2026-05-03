@@ -123,8 +123,111 @@ curl -s -X POST "$API_BASE/keys" \
 
 Store the returned `key` value in Postman Vault as `POSTMAN_USER_API_KEY`.
 
+## Collection Structure
+
+The collection is organised into **folders** that map to API subsystems. New folders added in PRs #1711–1713:
+
+### Standard Route Folders
+
+| Folder | Requests | Description |
+|--------|----------|-------------|
+| Authentication | 4 | Sign-up, sign-in, get-session, sign-out (Better Auth, injected manually) |
+| API Keys | 5 | Create, list, get, update, revoke API keys |
+| Compile | 4 | `POST /api/compile`, batch, validate, AST parse |
+| Queue | 3 | Queue submit, status, cancel |
+| Workflow | 3 | Workflow run, status, list |
+| Configuration | 4 | CRUD for compilation configs |
+| x402 Contract Tests | 3 | 402-response shape verification (see below) |
+
+### Admin Route Folders (PR #1712)
+
+| Folder | Auth required | Description |
+|--------|---------------|-------------|
+| admin/agents | `adminKey` + CF Access | Cloudflare Agents management |
+| admin/auth/config | `adminKey` + CF Access | Better Auth plugin configuration |
+| admin/email | `adminKey` + CF Access | Resend email ops |
+| admin/neon | `adminKey` + CF Access | Neon database management |
+| admin/security | `adminKey` + CF Access | ZTA security ops |
+| admin/users | `adminKey` + CF Access | User management |
+| admin/usage | `adminKey` + CF Access | Usage and quota ops |
+
+---
+
+## `adminKey` vs `apiKey` vs `bearerToken`
+
+PR #1711 fixed a bug where admin endpoint requests were incorrectly using `userApiKey` instead of `adminKey`. The correct usage is:
+
+| Variable | Header / mechanism | Used for |
+|----------|--------------------|----------|
+| `bearerToken` | `Authorization: Bearer <token>` | User-scoped Better Auth session requests |
+| `apiKey` (`userApiKey`) | `Authorization: Bearer blq_...` | User-scoped API key requests (compile, queue, etc.) |
+| `adminKey` | `Authorization: Bearer blq_admin_...` | Admin-only endpoints (`/api/admin/*`) |
+
+**Rule:** If the request goes to `/api/admin/*`, use `{{adminKey}}`. Never use `{{userApiKey}}` on admin endpoints — it will fail with 403.
+
+Admin keys are provisioned separately from user keys and require the `admin` scope. Store the admin key in Postman Vault as `POSTMAN_ADMIN_KEY` (see **Prod Environment & Credentials** above).
+
+---
+
+## x402 Contract Tests
+
+The **x402 Contract Tests** folder verifies that payment-required endpoints return the correct `402 Payment Required` response shape (as defined by the x402 protocol).
+
+### What is tested
+
+1. `POST /api/compile` without a PAYG session returns `402` with a valid x402 response body.
+2. The `402` response body contains `accepts`, `network`, `scheme`, `paymentInfo`, and `x402Version` fields.
+3. `POST /api/compile/batch` has the same contract.
+
+### Running x402 contract tests only
+
+```bash
+newman run docs/postman/postman-collection.json \
+  -e docs/postman/postman-environment-local.json \
+  --folder "x402 Contract Tests"
+```
+
+### x402 E2E Stub
+
+A workflow file `.github/workflows/x402-e2e.yml` is checked in as a stub for future full end-to-end payment tests. It is not yet active. See [Newman CI](../testing/newman-ci.md) for implementation requirements.
+
+---
+
+## CI / GitHub Actions Integration
+
+The Newman test suite is run automatically via `.github/workflows/newman.yml`.
+
+| Trigger | When |
+|---------|------|
+| `workflow_dispatch` | Manually from the Actions UI |
+| `workflow_call` | Called by deployment pipeline |
+
+Required CI secrets: `NEWMAN_USER_API_KEY`, `NEWMAN_POSTMAN_EMAIL`, `NEWMAN_POSTMAN_PASSWORD`. Admin tests additionally require `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET`.
+
+See [Newman CI](../testing/newman-ci.md) for the full workflow reference, artifact download instructions, and x402 e2e stub roadmap.
+
+---
+
+## Cloudflare Access and Newman (Admin Tests)
+
+Admin route tests require Cloudflare Access service token headers in addition to the `adminKey`:
+
+```bash
+newman run docs/postman/postman-collection.json \
+  -e docs/postman/postman-environment-prod.json \
+  --folder "admin/users" \
+  --env-var "adminKey=$ADMIN_KEY" \
+  --env-var "cfAccessClientId=$CF_ACCESS_CLIENT_ID" \
+  --env-var "cfAccessClientSecret=$CF_ACCESS_CLIENT_SECRET"
+```
+
+Without CF Access headers, admin route requests will return `403` regardless of the `adminKey` value.
+
+---
+
 ## Related
 
+- [Newman CI Workflow](../testing/newman-ci.md) — CI workflow, secrets, artifacts, x402 stub
 - [Postman Testing Guide](../testing/POSTMAN_TESTING.md) - Complete guide with Newman CLI, CI/CD integration, and advanced testing
 - [API Documentation](../api/README.md) - REST API reference
 - [OpenAPI Tooling](../api/OPENAPI_TOOLING.md) - API specification validation

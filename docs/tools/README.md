@@ -219,6 +219,128 @@ Tests validate:
 
 ---
 
+## Marimo Configuration
+
+Marimo behaviour for this project is controlled by `tools/.marimo.toml`. The file is committed to the repository — all contributors share the same configuration.
+
+### `.marimo.toml` — Section Reference
+
+#### `[package_management]`
+
+```toml
+[package_management]
+manager = "uv"                # Use uv for inline package management
+```
+
+Marimo uses `uv` to install missing packages declared via `import` when the notebook is run in an environment where they are absent. This is consistent with the project-wide uv toolchain.
+
+#### `[formatting]`
+
+```toml
+[formatting]
+line_length = 120             # Must match ruff line-length in pyproject.toml
+```
+
+Formatting is applied automatically on save (see `[save]` below).
+
+#### `[save]`
+
+```toml
+[save]
+autosave       = "after_delay"
+autosave_delay = 1000
+format_on_save = true
+```
+
+Notebooks are auto-formatted with ruff on every save, keeping cell code consistent with `pyproject.toml` lint rules.
+
+#### `[completion]`
+
+```toml
+[completion]
+activate_on_typing = true
+copilot            = false    # Copilot completions are disabled to prevent
+                              # AI-generated code from auto-running in cells
+```
+
+Copilot completions are disabled at the `[completion]` level to prevent AI-generated suggestions from executing automatically in reactive notebook cells.
+
+#### `[runtime]`
+
+```toml
+[runtime]
+auto_instantiate = true       # Run all cells on notebook load
+auto_reload      = "lazy"     # Avoid re-running expensive cells on every import change
+```
+
+`auto_instantiate = true` is required for CI/headless mode — without it, cells wait for user interaction before executing. Set `auto_reload = "autorun"` if you prefer fully reactive notebooks.
+
+#### `[language_servers]`
+
+```toml
+[language_servers.pylsp]
+enabled = true                # Python Language Server (completions, hover, diagnostics)
+
+[language_servers.ty]
+enabled = true                # Astral ty type checker in the notebook editor
+```
+
+Both LSPs run in the Marimo browser editor. `ty` provides fast type inference (same as CI); `pylsp` provides hover docs and symbol search.
+
+#### `[ai.anthropic]`
+
+```toml
+[ai.anthropic]
+model = "claude-sonnet-4-5"
+# api_key = ""  # Set via ANTHROPIC_API_KEY env var instead
+```
+
+Set the API key in your shell before running marimo (`export ANTHROPIC_API_KEY="sk-ant-..."`), or add it to `tools/auth-healthcheck.env`.
+
+### Python Version Pinning
+
+`tools/.python-version` pins the exact Python version used by uv for this project:
+
+```
+3.11
+```
+
+This file is read by uv when creating or syncing the virtual environment. It ensures all contributors and CI use the same interpreter, regardless of which Python versions are installed system-wide.
+
+To check the active version:
+
+```bash
+uv run --directory tools python --version
+# Python 3.11.x
+```
+
+### `runbook:edit:*` Tasks (PR #1736)
+
+New Deno tasks were added for interactive editing of runbooks (as opposed to running them in view-only mode):
+
+```bash
+# Edit mode — live-editable notebook (developer workflow)
+deno task runbook:edit:pipeline
+deno task runbook:edit:auth-healthcheck
+
+# Server mode — all runbooks accessible at once via a runbook index page
+deno task runbook:server
+
+# Convert a runbook .py to a static HTML snapshot (for sharing / archiving)
+deno task runbook:convert runbooks/pipeline.py
+```
+
+The distinction between `runbook:<name>` (view/run mode) and `runbook:edit:<name>` (edit mode) is important:
+
+| Mode | Command | Use when |
+|------|---------|----------|
+| Run | `marimo run <file>` | Production use — cells execute immediately, no code visible |
+| Edit | `marimo edit <file>` | Development — code is editable, reactive, hot-reload on save |
+| Server | `marimo server runbooks/` | Dev/admin — browse all runbooks in a single browser tab |
+| Convert | `marimo export html <file>` | Create a shareable static snapshot |
+
+---
+
 ## Adding a New Tool
 
 1. Create `tools/<tool>.py` — the script
