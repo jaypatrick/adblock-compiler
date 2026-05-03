@@ -13,8 +13,6 @@
  *   - frontend/package.json (devDependencies)
  *   - examples/cloudflare-worker/package.json  (devDependencies)
  *   - examples/cloudflare-worker/deno.json     (imports)
- *   - .github/workflows/gradual-deploy.yml     (inline wrangler invocations)
- *   - .github/workflows/sentry-worker.yml      (inline wrangler invocation)
  *
  * After this script runs you must regenerate deno.lock and sync allowScripts:
  *   deno cache src/index.ts
@@ -92,15 +90,13 @@ interface UpdateSummary {
 
 function updateWrangler(latestVersion: string): UpdateSummary {
     // Patterns:
-    //   npm specifier (deno.json, workflow YAML):  npm:wrangler@^X.Y.Z
-    //   package.json devDep:                       "wrangler": "^X.Y.Z"
+    //   npm specifier (deno.json only):  npm:wrangler@^X.Y.Z
+    //   package.json devDep:             "wrangler": "^X.Y.Z"
     const npmPattern = /npm:wrangler@\^\d+\.\d+\.\d+/g;
     const pkgPattern = /"wrangler":\s*"\^\d+\.\d+\.\d+"/g;
 
     const npmFiles = [
         'deno.json',
-        '.github/workflows/gradual-deploy.yml',
-        '.github/workflows/sentry-worker.yml',
     ];
     const pkgFiles = [
         'package.json',
