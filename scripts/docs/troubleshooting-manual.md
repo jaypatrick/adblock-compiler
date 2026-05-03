@@ -27,12 +27,12 @@ deno task diag:prod
 
 **Expected outputs:**
 
-| Command                | Expected result                                      |
-| ---------------------- | ---------------------------------------------------- |
-| `/api/health`          | `{ "status": "healthy", ... }`                       |
+| Command                | Expected result                                   |
+| ---------------------- | ------------------------------------------------- |
+| `/api/health`          | `{ "status": "healthy", ... }`                    |
 | `/api/health/db-smoke` | `{ "ok": true, "db_name": "bloqr-backend", ... }` |
-| `/api/auth/providers`  | JSON array of provider names                         |
-| `deno task diag:ci`    | All ✅, exit code 0                                  |
+| `/api/auth/providers`  | JSON array of provider names                      |
+| `deno task diag:ci`    | All ✅, exit code 0                               |
 
 ---
 
