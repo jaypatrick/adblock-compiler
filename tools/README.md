@@ -42,6 +42,26 @@ uv sync --directory tools
 
 ## Config
 
+### marimo Configuration
+
+`tools/.marimo.toml` is tracked by git and contains only safe defaults — **no credentials are stored in it**. AI provider API keys are passed via environment variables:
+
+```bash
+export ANTHROPIC_API_KEY="sk-ant-..."
+export GITHUB_TOKEN="github_pat_..."
+```
+
+If you want a reference showing all available configuration sections and recommended defaults, see [`.marimo.toml.example`](.marimo.toml.example) — no credentials or api_key fields are included.
+
+**Where to get credentials:**
+
+- **GitHub**: Create a fine-grained personal access token at https://github.com/settings/personal-access-tokens/new with the `Models: Read` permission (no other scopes required)
+- **Anthropic**: Get your API key from https://console.anthropic.com/account/keys
+
+⚠️ **Security**: Never add real API keys directly to `tools/.marimo.toml` — it is tracked by git. Use environment variables or a local `.env` file instead.
+
+### Script Configuration
+
 Each script has a corresponding `.env` file:
 
 ```bash

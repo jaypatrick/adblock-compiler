@@ -1,0 +1,94 @@
+[server]
+browser = "default"
+follow_symlink = false
+
+[experimental]
+external_agents = true
+rtc_v2 = true
+
+[snippets]
+include_default_snippets = true
+custom_paths = []
+
+[ai]
+inline_tooltip = true
+
+[ai.models]
+custom_models = []
+chat_model = "anthropic/claude-sonnet-4-6"
+edit_model = "anthropic/claude-sonnet-4-6"
+displayed_models = ["anthropic/claude-sonnet-4-6", "anthropic/claude-haiku-4-5", "github/gpt-5-mini", "github/gpt-3.5-turbo"]
+
+[ai.custom_providers]
+
+[ai.github]
+# api_key = ""  # Do not store here — use the GITHUB_TOKEN environment variable:
+#                 export GITHUB_TOKEN="github_pat_..."
+
+[ai.anthropic]
+model = "claude-sonnet-4-6"
+# api_key = ""  # Do not store here — use the ANTHROPIC_API_KEY environment variable:
+#                 export ANTHROPIC_API_KEY="sk-ant-..."
+
+[diagnostics]
+sql_linter = true
+
+[formatting]
+line_length = 120
+
+[package_management]
+manager = "uv"
+
+[language_servers.ty]
+enabled = true
+
+[language_servers.pylsp]
+enable_mypy = false
+enabled = true
+enable_flake8 = false
+enable_pylint = false
+enable_pyflakes = false
+enable_ruff = true
+enable_pydocstyle = false
+
+[display]
+default_width = "medium"
+cell_output = "below"
+code_editor_font_size = 14
+theme = "system"
+default_table_page_size = 10
+dataframes = "rich"
+reference_highlighting = true
+default_table_max_columns = 50
+
+[keymap]
+preset = "default"
+
+[keymap.overrides]
+
+[completion]
+signature_hint_on_typing = true
+activate_on_typing = true
+copilot = "github"
+
+[mcp]
+presets = ["marimo", "context7"]
+
+[mcp.mcpServers]
+
+[runtime]
+reactive_tests = true
+auto_reload = "lazy"
+on_cell_change = "autorun"
+std_stream_max_bytes = 1000000
+output_max_bytes = 8000000
+default_csv_encoding = "utf-8"
+watcher_on_save = "lazy"
+default_sql_output = "auto"
+show_tracebacks = false
+auto_instantiate = true
+
+[save]
+autosave = "after_delay"
+format_on_save = true
+autosave_delay = 1000

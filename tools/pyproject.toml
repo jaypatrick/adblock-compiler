@@ -6,7 +6,7 @@ requires-python = ">=3.11"
 dependencies = [
     # 0.17.0 is the minimum version that introduced MCP server support
     # https://github.com/marimo-team/marimo/releases/tag/0.17.0
-    "marimo[mcp]>=0.17.0",
+    "marimo[lsp,mcp]>=0.17.0",
     "requests>=2.31.0",
     "rich>=13.0.0",
     "psycopg2-binary>=2.9.9",

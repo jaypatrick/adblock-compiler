@@ -10,7 +10,7 @@ dependencies = [
     { name = "altair" },
     { name = "anthropic" },
     { name = "duckdb" },
-    { name = "marimo", extra = ["mcp"] },
+    { name = "marimo", extra = ["lsp", "mcp"] },
     { name = "nbformat" },
     { name = "polars", extra = ["pyarrow"] },
     { name = "psycopg2-binary" },
@@ -36,7 +36,7 @@ requires-dist = [
     { name = "altair", specifier = ">=5.4.0" },
     { name = "anthropic", specifier = ">=0.25.0" },
     { name = "duckdb", specifier = ">=1.0.0" },
-    { name = "marimo", extras = ["mcp"], specifier = ">=0.17.0" },
+    { name = "marimo", extras = ["lsp", "mcp"], specifier = ">=0.17.0" },
     { name = "nbformat", specifier = ">=5.7.0" },
     { name = "polars", extras = ["pyarrow"], specifier = ">=1.9.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.9" },
@@ -940,6 +940,10 @@ wheels = [
 ]
 
 [package.optional-dependencies]
+lsp = [
+    { name = "python-lsp-ruff" },
+    { name = "python-lsp-server" },
+]
 mcp = [
     { name = "mcp" },
     { name = "pydantic" },
