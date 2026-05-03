@@ -1,171 +1,320 @@
 # Newman CI Workflow
 
-This document describes the Newman-based API test workflow, the required secrets, how to trigger it, how to read the results, and the x402 end-to-end test stub.
+The Newman integration test suite runs the full Postman collection against a live or staging API using [Newman](https://github.com/postmanlabs/newman), Postman's CLI runner. This document covers the workflow definition, required secrets, how to trigger runs manually, how to interpret the HTML report, and the current state of the x402 end-to-end test stub.
 
 > **Changes introduced in:** PRs #1711, #1712, #1713  
-> **See also:** [Postman Collection README](../../docs/postman/README.md) for collection structure and variable reference.
+> **See also:** [Postman Collection README](../postman/README.md) — collection structure, variable naming, admin routes  
+> **See also:** [Postman Testing Guide](./POSTMAN_TESTING.md) — complete testing reference
 
 ---
 
 ## Overview
 
-The `.github/workflows/newman.yml` workflow runs the Postman collection against either the production Cloudflare Worker or a locally-started Worker instance. It generates an HTML report artifact and posts a GitHub Actions summary.
+The Newman integration test suite validates the Adblock Compiler Worker API end-to-end on every deployment and on demand. It runs the full Postman collection (`docs/postman/postman-collection.json`) against a live environment — either the production Cloudflare Worker or a staging instance — using [Newman](https://github.com/postmanlabs/newman), Postman's command-line collection runner.
+
+The workflow is defined in `.github/workflows/newman.yml`. It is designed to be:
+
+- **Triggered manually** from the GitHub Actions UI or the `gh` CLI.
+- **Called automatically** by the deployment pipeline after a successful deploy via `workflow_call`.
+- **Self-contained** — all credentials are injected as environment variables from GitHub Actions secrets; no Postman account is required on the local developer machine.
+
+Artifacts — an interactive HTML report and a machine-readable JSON results file — are uploaded with 30-day retention after every run.
 
 ---
 
-## Workflow File
+## Workflow Triggers
 
-**Location:** `.github/workflows/newman.yml`
+The workflow responds to two triggers:
 
-**Triggers:**
+```yaml
+on:
+  workflow_dispatch:          # Manual trigger from the Actions UI
+  workflow_call:              # Called by the deployment pipeline after a successful deploy
+    secrets:
+      NEWMAN_USER_API_KEY:
+        required: true
+      NEWMAN_POSTMAN_EMAIL:
+        required: true
+      NEWMAN_POSTMAN_PASSWORD:
+        required: true
+```
 
-| Trigger | When |
-|---------|------|
-| `workflow_dispatch` | Manually from the GitHub Actions UI |
-| `workflow_call` | Called by other workflows (e.g., a deployment pipeline) |
-
-**Inputs (for `workflow_dispatch` and `workflow_call`):**
-
-| Input | Type | Default | Description |
-|-------|------|---------|-------------|
-| `environment` | choice | `cloudflare` | `cloudflare` (production) or `local` (localhost:8787) |
+`workflow_dispatch` accepts an optional `environment` input (`cloudflare` or `local`, defaulting to `cloudflare`) that selects which Postman environment file is loaded. `workflow_call` is used by the deployment pipeline and always targets the environment that was just deployed.
 
 ---
 
 ## Required Secrets
 
-The following GitHub repository secrets must be configured before the workflow can authenticate:
+The following secrets must be configured in **Settings → Secrets and variables → Actions** before the workflow can authenticate with either the API under test or the Resend Postman API export endpoint.
 
-| Secret name | Description |
-|-------------|-------------|
-| `NEWMAN_USER_API_KEY` | A `blq_` API key for the test user. Used in the `userApiKey` Postman variable. |
-| `NEWMAN_POSTMAN_EMAIL` | Email address for Better Auth sign-in during the test run. |
-| `NEWMAN_POSTMAN_PASSWORD` | Password for Better Auth sign-in during the test run. |
+| Secret | Where | Description |
+|--------|-------|-------------|
+| `NEWMAN_USER_API_KEY` | GitHub Actions secrets | A `blq_` API key for a test user; used to authenticate compile/queue endpoints |
+| `NEWMAN_POSTMAN_EMAIL` | GitHub Actions secrets | Email address of the Postman account that owns the synced collection |
+| `NEWMAN_POSTMAN_PASSWORD` | GitHub Actions secrets | Password for the Postman account (used to export collection via API) |
+| `NEWMAN_ADMIN_KEY` | GitHub Actions secrets | Admin-scoped `blq_admin_` key for admin route tests |
+| `CF_ACCESS_CLIENT_ID` | GitHub Actions secrets | CF Access service token client ID (admin route tests) |
+| `CF_ACCESS_CLIENT_SECRET` | GitHub Actions secrets | CF Access service token client secret (admin route tests) |
 
-**Setting secrets:**
+> **Note:** The API key in `NEWMAN_USER_API_KEY` must be pre-created. It is **not** provisioned by the workflow itself. Create it via the dashboard or with a session-authenticated request:
+>
+> ```bash
+> curl -X POST https://api.bloqr.dev/api/apikeys \
+>   -H "Cookie: better_auth.session_token=<your-session>" \
+>   -H "Content-Type: application/json" \
+>   -d '{"name": "newman-ci", "prefix": "blq_"}'
+> ```
+
+To set secrets from the CLI:
 
 ```bash
-gh secret set NEWMAN_USER_API_KEY    --body "blq_test_xxxxxxxxxxxx"
-gh secret set NEWMAN_POSTMAN_EMAIL   --body "newman@test.bloqr.io"
-gh secret set NEWMAN_POSTMAN_PASSWORD --body "..."
+gh secret set NEWMAN_USER_API_KEY      --body "blq_xxxxxxxxxxxxxxxxxxxx"
+gh secret set NEWMAN_POSTMAN_EMAIL     --body "newman@test.bloqr.io"
+gh secret set NEWMAN_POSTMAN_PASSWORD  --body "<password>"
+gh secret set NEWMAN_ADMIN_KEY         --body "blq_admin_xxxxxxxxxxxx"
+gh secret set CF_ACCESS_CLIENT_ID      --body "<cf-access-client-id>"
+gh secret set CF_ACCESS_CLIENT_SECRET  --body "<cf-access-client-secret>"
 ```
+
+`CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` are **optional** — if absent, admin route tests fail with 403 but all other collection folders run normally.
 
 ---
 
-## How to Trigger
+## Workflow Steps
 
-### Manually via GitHub UI
+The workflow performs the following steps in order:
 
-1. Navigate to **Actions** → **Newman API Tests**.
-2. Click **Run workflow**.
-3. Select `environment`: `cloudflare` (production) or `local`.
-4. Click **Run workflow**.
+1. **Checkout** — checks out the repository at the deployment SHA so the collection and environment files match exactly what was deployed.
 
-### Via `gh` CLI
+2. **Install Newman** — installs the Newman runner and the `htmlextra` reporter globally:
 
-```bash
-# Run against production
-gh workflow run newman.yml -f environment=cloudflare
+   ```bash
+   npm install -g newman newman-reporter-htmlextra
+   ```
 
-# Run against local Worker (must have Worker running on :8787)
-gh workflow run newman.yml -f environment=local
-```
+3. **Export Postman collection** — downloads the latest synced collection from the Postman API using `NEWMAN_POSTMAN_EMAIL` and `NEWMAN_POSTMAN_PASSWORD`. This ensures the collection used in CI always matches the latest saved version in Postman Cloud, even if local JSON files are slightly stale.
+
+4. **Run Newman** — executes the full collection against the target environment, injecting secrets as `--env-var` overrides:
+
+   ```bash
+   newman run postman-collection.json \
+     -e docs/postman/postman-environment-prod.json \
+     --env-var "apiKey=$NEWMAN_USER_API_KEY" \
+     --env-var "adminKey=$NEWMAN_ADMIN_KEY" \
+     --env-var "cfAccessClientId=$CF_ACCESS_CLIENT_ID" \
+     --env-var "cfAccessClientSecret=$CF_ACCESS_CLIENT_SECRET" \
+     --reporters cli,htmlextra,json \
+     --reporter-htmlextra-export newman-report.html \
+     --reporter-json-export newman-results.json
+   ```
+
+5. **Upload HTML report** — saves `newman-report.html` as the `newman-report` artifact (30-day retention).
+
+6. **Upload JSON results** — saves `newman-results.json` as the `newman-results` artifact for downstream processing or dashboards.
 
 ### Calling from another workflow
 
+To call this workflow from a deployment pipeline:
+
 ```yaml
 jobs:
-  api-tests:
+  integration-tests:
     uses: ./.github/workflows/newman.yml
     with:
       environment: cloudflare
     secrets: inherit
 ```
 
----
-
-## Environment Files
-
-| `environment` input | Environment file used |
-|---------------------|-----------------------|
-| `local` | `docs/postman/postman-environment-local.json` |
-| `cloudflare` (default) | `docs/postman/postman-environment-prod.json` |
-
-The environment file sets `baseUrl`, `adminKey`, and other collection-level variables that Newman overrides with the CI secrets.
+`secrets: inherit` forwards all repository secrets automatically, satisfying the `workflow_call` secret requirements.
 
 ---
 
-## Artifacts
+## How to Trigger Manually
 
-After each run, two artifacts are uploaded with **30-day retention**:
+### From the GitHub Actions UI
 
-| Artifact name | Format | Description |
-|---------------|--------|-------------|
-| `newman-report` | HTML (htmlextra reporter) | Interactive test report with request/response details, assertion failures, and timeline |
-| `newman-results` | JSON | Machine-readable results for downstream processing |
+1. Go to **Actions → Newman Integration Tests**.
+2. Click **Run workflow** (top right of the workflow list).
+3. Select the branch (typically `main`).
+4. Set `environment` to `cloudflare` (production) or `local` (requires a locally running Worker on `:8787`).
+5. Click the green **Run workflow** button.
 
-### Reading the HTML report
+### From the CLI
 
-1. Open the **Newman API Tests** workflow run in GitHub Actions.
-2. Scroll to the **Artifacts** section.
-3. Download `newman-report`.
-4. Open `newman-report.html` in a browser.
+Using the `gh` CLI (requires `gh auth login` first):
 
-The report includes:
-- Total requests, passed/failed assertions.
-- Per-folder and per-request breakdowns.
-- Full request and response bodies for failed assertions.
-- A timeline view of the run.
+```bash
+# Run against production on the main branch
+gh workflow run newman.yml \
+  --ref main \
+  -f environment=cloudflare
 
----
+# Run against production on a feature branch
+gh workflow run newman.yml \
+  --ref feat/my-feature \
+  -f environment=cloudflare
+```
 
-## GitHub Actions Summary
+To watch the run in real time:
 
-The workflow generates a Markdown summary posted to the Actions run page via a Python script. The summary includes:
-
-- A table of test pass/fail counts per collection folder.
-- A list of failing assertion messages with request names.
-
----
-
-## x402 End-to-End Test Stub
-
-**Location:** `.github/workflows/x402-e2e.yml`
-
-This workflow is a **stub** — it is defined but not yet implemented. It is intended to run end-to-end tests for the x402 payment protocol used by `POST /api/compile` and related routes.
-
-### What the stub tests (when implemented)
-
-- A `402 Payment Required` response is returned when a PAYG session is absent or exhausted.
-- The `x402` response body conforms to the payment-required schema.
-- A valid payment intent is accepted and the request succeeds on retry.
-
-### What's needed to implement it
-
-| Requirement | Notes |
-|-------------|-------|
-| Stripe test-mode API keys | `STRIPE_TEST_SECRET_KEY`, `STRIPE_TEST_PUBLISHABLE_KEY` |
-| CLI payment listener | A local x402 CLI that can respond to payment challenges |
-| Test Postman environment | `postman-environment-x402-test.json` with payment test fixtures |
-
-Until these prerequisites are in place, the workflow file serves as documentation of intent and a placeholder for CI integration.
+```bash
+gh run watch $(gh run list --workflow newman.yml --limit 1 --json databaseId -q '.[0].databaseId')
+```
 
 ---
 
-## Cloudflare Access and Newman
+## How to Read the HTML Report
 
-Admin route tests (`/api/admin/*`) require a valid Cloudflare Access service token in addition to the admin API key. Newman passes this via the `CF-Access-Client-Id` and `CF-Access-Client-Secret` headers, sourced from CI secrets:
+The HTML report artifact is uploaded as `newman-report` after every workflow run.
 
-| Secret | Header |
-|--------|--------|
-| `CF_ACCESS_CLIENT_ID` | `CF-Access-Client-Id` |
-| `CF_ACCESS_CLIENT_SECRET` | `CF-Access-Client-Secret` |
+### Download via the CLI
 
-These secrets are optional — if absent, the admin route tests in Newman will fail with 403, but the rest of the collection will run.
+```bash
+# Replace <run-id> with the numeric run ID from `gh run list`
+gh run download <run-id> --name newman-report --dir /tmp/newman-report
+open /tmp/newman-report/newman-report.html
+```
+
+To find the latest run ID:
+
+```bash
+gh run list --workflow newman.yml --limit 5
+```
+
+### What the report shows
+
+The `htmlextra` reporter produces a self-contained HTML file with:
+
+- **Summary bar** — total requests, passed assertions, failed assertions, skipped requests, average response time.
+- **Folder-level breakdown** — collapsible sections per Postman folder (e.g., `Auth`, `Compile`, `Admin/Users`, `x402 Contract Tests`) showing pass/fail counts.
+- **Per-request detail** — for each request: HTTP method, URL, status code, response time in milliseconds, and the full list of test assertions with pass/fail status.
+- **Failed assertion detail** — for any failing assertion: the assertion script, the actual value received, and the expected value. This is the primary debugging surface when a test regresses.
+- **Request/response bodies** — expandable panels for request headers, request body, response headers, and response body. Useful for diagnosing auth failures or unexpected response shapes.
+- **Timeline** — a Gantt-style view of request execution order and duration.
+
+### Common failure patterns
+
+| Symptom | Likely cause |
+|---------|--------------|
+| All requests fail with 401 | `NEWMAN_USER_API_KEY` is expired, revoked, or incorrect |
+| Admin folder fails with 403 | `CF_ACCESS_CLIENT_ID`/`CF_ACCESS_CLIENT_SECRET` missing or expired |
+| `x402 Contract Tests` fail with 200 | The compile endpoint accepted a request that should have returned 402 |
+| Intermittent timeouts | Worker cold-start on first request; re-run the workflow |
+
+---
+
+## Running Newman Locally
+
+Running Newman locally is the fastest way to iterate on collection changes or debug a failing CI test without waiting for a full workflow run.
+
+### Prerequisites
+
+```bash
+npm install -g newman newman-reporter-htmlextra
+```
+
+### Run the full collection against the local Worker
+
+Start the Worker first (`deno task worker:dev` or `wrangler dev`), then:
+
+```bash
+newman run docs/postman/postman-collection.json \
+  -e docs/postman/postman-environment-local.json \
+  --env-var "apiKey=$NEWMAN_USER_API_KEY" \
+  --reporters cli,htmlextra \
+  --reporter-htmlextra-export /tmp/newman-report.html
+```
+
+Open `/tmp/newman-report.html` in a browser to inspect results.
+
+### Run the full collection against production
+
+```bash
+newman run docs/postman/postman-collection.json \
+  -e docs/postman/postman-environment-prod.json \
+  --env-var "apiKey=$NEWMAN_USER_API_KEY" \
+  --reporters cli,htmlextra \
+  --reporter-htmlextra-export /tmp/newman-report-prod.html
+```
+
+### Run only a specific folder
+
+```bash
+# x402 contract tests only
+newman run docs/postman/postman-collection.json \
+  -e docs/postman/postman-environment-local.json \
+  --folder "x402 Contract Tests" \
+  --env-var "apiKey=$NEWMAN_USER_API_KEY"
+```
+
+```bash
+# Admin routes only (requires adminKey + CF Access service token)
+newman run docs/postman/postman-collection.json \
+  -e docs/postman/postman-environment-prod.json \
+  --folder "admin/users" \
+  --env-var "adminKey=$NEWMAN_ADMIN_KEY" \
+  --env-var "cfAccessClientId=$CF_ACCESS_CLIENT_ID" \
+  --env-var "cfAccessClientSecret=$CF_ACCESS_CLIENT_SECRET"
+```
+
+### Run with JSON output for scripting
+
+```bash
+newman run docs/postman/postman-collection.json \
+  -e docs/postman/postman-environment-local.json \
+  --env-var "apiKey=$NEWMAN_USER_API_KEY" \
+  --reporters json \
+  --reporter-json-export /tmp/newman-results.json
+
+# Count failures
+jq '.run.stats.assertions.failed' /tmp/newman-results.json
+```
+
+---
+
+## Cloudflare Access and Admin Routes
+
+Admin route tests (`/api/admin/*`) require a valid Cloudflare Access service token. Newman injects these via custom headers sourced from CI secrets:
+
+| Secret | Newman `--env-var` | Header sent to API |
+|--------|--------------------|--------------------|
+| `CF_ACCESS_CLIENT_ID` | `cfAccessClientId` | `CF-Access-Client-Id` |
+| `CF_ACCESS_CLIENT_SECRET` | `cfAccessClientSecret` | `CF-Access-Client-Secret` |
+
+These are set in the Postman collection's pre-request script for the `admin/` folder. If the secrets are absent or the service token has expired, the admin folder fails with 403 and the rest of the collection continues unaffected.
+
+To rotate or create a new service token:
+1. Go to **Cloudflare Zero Trust → Access → Service Tokens**.
+2. Create a new token or rotate the existing `newman-ci` token.
+3. Update `CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET` in GitHub Actions secrets.
+
+---
+
+## x402 E2E Stub and Roadmap
+
+`.github/workflows/x402-e2e.yml` is a stub for a future full end-to-end x402 payment test. It is **not currently active** and will not run automatically. The file exists as a placeholder and to document what is needed to complete the implementation.
+
+### What the x402 e2e workflow would test (when fully implemented)
+
+1. **402 response shape** — `POST /api/compile` with an exhausted PAYG balance returns a `402 Payment Required` response whose body conforms exactly to the x402 payment-required schema.
+2. **Payment acceptance** — a valid `X-Payment` header constructed with a Stripe test-mode payment intent is sent on retry, and the compile proceeds to a `200 OK` response.
+3. **Idempotency** — the same payment header cannot be replayed.
+
+### What is needed before the stub can be activated
+
+1. **Stripe test mode keys** — `STRIPE_TEST_SECRET_KEY` and `STRIPE_TEST_PUBLISHABLE_KEY` added to GitHub Actions secrets.
+2. **x402 CLI payment listener** — a lightweight process that listens for payment requests on a known port, auto-pays using the Stripe test key, and outputs the resulting `X-Payment` header value.
+3. **Two-phase test structure:**
+   - Phase 1: verify 402 response shape (already covered by the **x402 Contract Tests** folder in the main Newman workflow — this is already active).
+   - Phase 2: send a valid payment header and verify the compile proceeds to 200.
+4. **Cleanup step** — cancel or void the Stripe payment intent after the test to avoid accumulating test charges.
+
+Until these prerequisites are in place, x402 contract testing (response shape validation only) is handled by the **x402 Contract Tests** folder in the main Newman workflow (`newman.yml`). This folder runs on every Newman invocation and provides meaningful signal without requiring a live payment stack.
 
 ---
 
 ## Related Documentation
 
-- [Postman Collection README](../../docs/postman/README.md) — collection structure, variable reference, admin folders
-- [Postman Testing Guide](./POSTMAN_TESTING.md) — local collection testing, assertions, credentials
+- [Postman README](../postman/README.md) — collection structure, variable naming, admin routes
+- [Postman Testing Guide](./POSTMAN_TESTING.md) — complete testing reference including local setup and assertion authoring
+- [Error Passing Architecture](../architecture/error-passing.md) — error logging endpoints tested by Newman
