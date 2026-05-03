@@ -183,8 +183,6 @@ jobs:
                   - \`frontend/package.json\` — devDependencies
                   - \`examples/cloudflare-worker/package.json\` — devDependencies
                   - \`examples/cloudflare-worker/deno.json\` — imports
-                  - \`.github/workflows/gradual-deploy.yml\` — inline wrangler invocations
-                  - \`.github/workflows/sentry-worker.yml\` — inline wrangler invocation
                   - \`deno.lock\` — regenerated with new resolutions
                   - \`deno.json allowScripts\` — synced with new workerd versions
                   - \`pnpm-lock.yaml\` — regenerated with new resolutions
