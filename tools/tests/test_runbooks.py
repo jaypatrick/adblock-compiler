@@ -111,6 +111,21 @@ class TestRunbookSyntax:
                 pytest.fail(f"{f.name} has a syntax error: {exc}")
 
 
+# Display cells in pipeline.py that must never discard their rendered output.
+_PIPELINE_DISPLAY_CELLS = [
+    "_header",
+    "_dashboard_header",
+    "_health_dashboard",
+    "_composer_header",
+    "_execute_header",
+    "_aggregate_header",
+    "_aggregate_results",
+    "_log_browser_header",
+    "_log_viewer",
+    "_pipeline_output_display",
+    "_quick_reference",
+]
+
 # Display cells in auth-healthcheck.py that must never discard their rendered output.
 _AUTH_HEALTHCHECK_DISPLAY_CELLS = [
     "_header",
@@ -120,10 +135,16 @@ _AUTH_HEALTHCHECK_DISPLAY_CELLS = [
     "_run_mode",
     "_execute_section",
     "_results_section",
+    "_results",
     "_log_browser_header",
     "_ai_guide",
     "_log_viewer",
 ]
+
+# mo.* attributes that produce display objects and must never be used as bare statement expressions.
+# mo.stop() is intentionally excluded — it is a side-effectful control-flow call, not a display object.
+# 'Html' uses PascalCase to match the marimo API (mo.Html, not mo.html).
+_MO_DISPLAY_ATTRS = {"md", "callout", "vstack", "hstack", "stat", "accordion", "table", "code", "Html"}
 
 
 def _has_real_return(func_node: ast.FunctionDef) -> bool:
@@ -175,22 +196,7 @@ class TestRunbookStructure:
         src = (self.runbooks_dir / runbook).read_text()
         assert "from shared import" in src, f"{runbook} must import from the shared helper library"
 
-    @pytest.mark.parametrize(
-        "cell_name",
-        [
-            "_header",
-            "_dashboard_header",
-            "_health_dashboard",
-            "_composer_header",
-            "_execute_header",
-            "_aggregate_header",
-            "_aggregate_results",
-            "_log_browser_header",
-            "_log_viewer",
-            "_pipeline_output_display",
-            "_quick_reference",
-        ],
-    )
+    @pytest.mark.parametrize("cell_name", _PIPELINE_DISPLAY_CELLS)
     def test_display_cells_must_not_use_bare_return(self, cell_name: str):
         """Key display cells must not contain a bare `return` — that silently discards computed UI objects."""
         src = (self.runbooks_dir / "pipeline.py").read_text()
@@ -211,22 +217,7 @@ class TestRunbookStructure:
 
         assert found, f"Cell `{cell_name}` not found in pipeline.py — was it renamed or removed?"
 
-    @pytest.mark.parametrize(
-        "cell_name",
-        [
-            "_header",
-            "_dashboard_header",
-            "_health_dashboard",
-            "_composer_header",
-            "_execute_header",
-            "_aggregate_header",
-            "_aggregate_results",
-            "_log_browser_header",
-            "_log_viewer",
-            "_pipeline_output_display",
-            "_quick_reference",
-        ],
-    )
+    @pytest.mark.parametrize("cell_name", _PIPELINE_DISPLAY_CELLS)
     def test_display_cells_must_return_non_none_value(self, cell_name: str):
         """Key display cells must have at least one return statement with a real non-None value."""
         src = (self.runbooks_dir / "pipeline.py").read_text()
@@ -245,8 +236,44 @@ class TestRunbookStructure:
             "Add `return mo.vstack([...])` or similar to ensure the UI renders."
         )
 
+    def test_pipeline_no_discarded_mo_display_expressions(self):
+        """No @app.cell in pipeline.py may call mo.md/callout/vstack/Html/etc. as a bare expression.
+
+        Calling mo.md(...), mo.callout(...), etc. without capturing and returning the result is a
+        semantic bug (B018-style): the display object is computed but never shown to the user.
+        Fix: assign to a variable and include it in the return value, or return directly.
+        Nested discards (inside `if`, `for`, `try`, etc.) are also detected.
+        """
+        src = (self.runbooks_dir / "pipeline.py").read_text()
+        tree = ast.parse(src)
+
+        violations = []
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.FunctionDef):
+                continue
+            # Use ast.walk to catch discards nested inside if/for/try/with blocks.
+            for stmt in ast.walk(node):
+                if not isinstance(stmt, ast.Expr):
+                    continue
+                call = stmt.value
+                if not isinstance(call, ast.Call):
+                    continue
+                func = call.func
+                if not isinstance(func, ast.Attribute):
+                    continue
+                if not isinstance(func.value, ast.Name):
+                    continue
+                if func.value.id == "mo" and func.attr in _MO_DISPLAY_ATTRS:
+                    violations.append(f"  Cell `{node.name}` line {stmt.lineno}: mo.{func.attr}(...) result discarded")
+
+        assert not violations, (
+            "pipeline.py has discarded mo.* display expression statements (B018-style bug):\n"
+            + "\n".join(violations)
+            + "\nFix: assign to a variable and return it, or return the call directly."
+        )
+
     def test_auth_healthcheck_no_discarded_mo_display_expressions(self):
-        """No @app.cell in auth-healthcheck.py may call mo.md/callout/vstack/etc. as a bare expression.
+        """No @app.cell in auth-healthcheck.py may call mo.md/callout/vstack/Html/etc. as a bare expression.
 
         Calling mo.md(...), mo.callout(...), etc. without capturing and returning the result is a
         semantic bug (B018-style): the display object is computed but never shown to the user.
@@ -255,10 +282,6 @@ class TestRunbookStructure:
         """
         src = (self.runbooks_dir / "auth-healthcheck.py").read_text()
         tree = ast.parse(src)
-
-        # These mo.* attrs produce display objects that must be returned, not discarded.
-        # mo.stop() is intentionally excluded — it is a side-effectful control-flow call.
-        _MO_DISPLAY_ATTRS = {"md", "callout", "vstack", "hstack", "stat", "accordion", "table", "code"}
 
         violations = []
         for node in ast.walk(tree):

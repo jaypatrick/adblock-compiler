@@ -276,9 +276,11 @@ def _pipeline_execute(
                 break
             continue
 
-        # Snapshot existing JSON reports before the run so we can identify the
-        # one written by this specific execution (not a stale file from a prior run).
-        _pre_json = set(list_log_files(_pn, ".json"))
+        # Snapshot existing JSON report mtimes before the run so we can identify the
+        # one written by this specific execution — even if the tool is rerun within the
+        # same second and overwrites the existing file (in which case the filename set
+        # difference would be empty, but the mtime will have changed).
+        _pre_mtimes = {p: p.stat().st_mtime for p in list_log_files(_pn, ".json")}
 
         with mo.status.spinner(title=f"Running {_pl}…"):
             _prc, _pout, _perr = run_tool(
@@ -287,9 +289,13 @@ def _pipeline_execute(
                 dry_run=dry_run_flag.value,
             )
 
-        # Identify the new report file (if any) written during this run.
-        _post_json = set(list_log_files(_pn, ".json"))
-        _new_jsons = sorted(_post_json - _pre_json, reverse=True)
+        # Find the report written by this run: any JSON file that is new OR whose
+        # mtime has advanced since the pre-snapshot (handles same-second overwrites).
+        _post_json = list_log_files(_pn, ".json")
+        _new_jsons = sorted(
+            [p for p in _post_json if _pre_mtimes.get(p, -1.0) < p.stat().st_mtime],
+            reverse=True,
+        )
         _new_report = _new_jsons[0] if _new_jsons else None
 
         _pst = "PASS" if _prc == 0 else "FAIL"
