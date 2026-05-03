@@ -1,4 +1,21 @@
 {
   "enabledPlugins": {
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "./.claude/hooks/marimo-check.sh"
+          },
+          {
+            "type": "command",
+            "command": "./.claude/hooks/project-lint.sh"
+          }
+        ]
+      }
+    ]
   }
 }
