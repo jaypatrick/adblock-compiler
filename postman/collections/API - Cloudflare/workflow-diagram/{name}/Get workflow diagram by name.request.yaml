@@ -1,0 +1,18 @@
+$kind: http-request
+description: >
+  Returns the Mermaid diagram for a single workflow by name. Valid workflow names:
+  compilation, batch-compilation, cache-warming, health-monitoring.
+url: {{baseUrl}}/api/workflow/diagram/:name
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{apiKey}}
+pathVariables:
+  - key: name
+    value: compilation
+    description: "Workflow name. Valid values: compilation, batch-compilation, cache-warming, health-monitoring"
+body:
+  type: text
+  content: ""
+examples: ./.resources/Get workflow diagram by name.resources/examples
+order: 2000

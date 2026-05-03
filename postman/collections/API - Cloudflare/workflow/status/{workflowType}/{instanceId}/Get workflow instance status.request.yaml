@@ -4,6 +4,7 @@ url: {{baseUrl}}/workflow/status/:workflowType/:instanceId
 method: GET
 headers:
   Accept: application/json
+  Authorization: Bearer {{apiKey}}
 pathVariables:
   - key: workflowType
     value: batch-compilation

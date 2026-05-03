@@ -1,0 +1,12 @@
+$kind: http-request
+description: >
+  Returns current PAYG pricing — price per call, requests per session, session TTL,
+  and tier limits. Public endpoint — no authentication required.
+url: {{baseUrl}}/api/payg/pricing
+method: GET
+headers:
+  Accept: application/json
+body:
+  type: text
+  content: ""
+order: 1000

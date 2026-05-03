@@ -131,3 +131,83 @@ If `src/` schemas or API definitions change, run `deno task schema:generate` and
 - `[site]` bucket deployments without a Worker entry point
 
 See `.github/agents/cloudflare-deployment.agent.md` for the full rule, `wrangler.toml` reference template, migration guide, and PR checklist.
+
+---
+
+## Python (tools/)
+
+### Toolchain
+- **Package manager**: `uv` only — never `pip install` directly; use `uv sync --directory tools` or `uv run --directory tools <cmd>`
+- **Linter + formatter**: `ruff` (config in `tools/pyproject.toml`)
+- **Type checker**: `ty` (`uv run --directory tools ty check`)
+- **Never use**: `black`, `flake8`, `isort`, `mypy`, `pip`, `python -m venv`
+
+### Preflight (run from the **repository root** before every commit touching `tools/`)
+
+> **Working directory:** All commands below must be run from the **repository root** (the directory
+> containing `deno.json`). Running from inside `tools/` will cause `--directory tools` to resolve to
+> a non-existent nested path and fail.
+
+```sh
+# From repo root:
+uv run --directory tools ruff check .
+uv run --directory tools ruff format --check .
+uv run --directory tools ty check auth-healthcheck.py runbooks/
+```
+
+### Ruff rules in effect: `E`, `F`, `I`, `UP`, `B`, `RUF`
+- Line length: 120 chars (`line-length = 120` in pyproject.toml)
+- Quotes: double (`quote-style = "double"`)
+- Indent: spaces (`indent-style = "space"`)
+- `E501` (line-too-long) is ignored
+- All other E/F/I/UP/B/RUF violations are hard CI failures
+
+### Top recurring Python CI failures
+
+1. **F841 — local variable assigned but never used**
+   - Most common in marimo cells: a variable is computed but the cell has a bare `return` instead of returning/displaying the value
+   - Fix: ensure every computed display object is included in the cell's return value
+
+2. **B018 — useless expression (discarded `mo.md(...)` result)**
+   - Calling `mo.md("...")` as a statement expression discards the result — nothing is displayed
+   - Fix: assign to a variable and include it in the cell's return (`mo.vstack`, etc.)
+
+3. **I001 — import sorting**
+   - Fix: run `uv run --directory tools ruff check --fix .`
+
+4. **UP — use modern Python syntax** (`UP006`, `UP007`, `UP035`, etc.)
+   - Use `list[str]` not `List[str]`, `X | None` not `Optional[X]`, `dict[str, int]` not `Dict[str, int]`
+
+5. **F821 — undefined name in annotation (marimo cell parameters)**
+   - Marimo cell parameter annotations are evaluated at import time; a parameter name is not in scope when the function signature is parsed, so annotating one parameter with another parameter's type causes F821
+   - Example that fails: `def _cell(Path, all_log_files: dict[str, Path])` — `Path` is another parameter, not a module-level name
+   - Fix: use an inline comment instead — `all_log_files,  # dict[str, Path]`
+   - Add `from __future__ import annotations` at the **top of the file** to defer module-level annotations (class/function return types). This does **not** fix parameter-referencing-parameter annotations — those still need the comment workaround
+
+### Marimo cell rules (MANDATORY)
+
+Every marimo `@app.cell` function MUST follow these rules:
+
+1. **Return every display object** — if you compute `x = mo.md("…")`, you MUST include `x` in the return. Bare `return` in a cell that computed display objects is always a bug.
+2. **Never discard `mo.md(...)` results** — do not call `mo.md(...)` as a statement; capture it: `_header = mo.md("…")` then return it.
+3. **`_`-prefix = cell-private** — variables NOT returned by the cell use `_` prefix. Variables that ARE returned by the cell (cross-cell outputs) must NOT use `_` prefix.
+4. **Cells that purely render (no cross-cell outputs)** should still return the display object: `return (display_obj,)` or just `return display_obj`.
+5. **Exception: cells that intentionally return nothing** (e.g. a header separator cell that only has a `mo.stop()` guard) may have a bare `return` only if they compute no display objects at all.
+
+### Marimo cell template
+
+```python
+@app.cell(hide_code=True)
+def _my_cell(mo):
+    # Good — capture and return display objects
+    _header = mo.md("## My Section")
+    _content = mo.callout(mo.md("Some content"), kind="info")
+    return mo.vstack([_header, _content])
+
+
+@app.cell(hide_code=True)
+def _my_cross_cell_output(mo):
+    # Good — cross-cell output (no _ prefix on returned variable)
+    dropdown = mo.ui.dropdown(options=["a", "b"], value="a")
+    return (dropdown,)
+```

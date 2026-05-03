@@ -1,0 +1,12 @@
+$kind: http-request
+description: >
+  Sign out the current user session. Requires a valid Bearer token.
+url: {{baseUrl}}/auth/sign-out
+method: POST
+headers:
+  Accept: application/json
+  Authorization: Bearer {{bearerToken}}
+body:
+  type: text
+  content: ""
+order: 3000

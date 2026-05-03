@@ -1,0 +1,13 @@
+$kind: http-request
+description: >
+  Lists all users in the system with optional pagination. Requires admin authentication.
+url: {{baseUrl}}/api/admin/users
+method: GET
+headers:
+  Accept: application/json
+  Authorization: Bearer {{adminKey}}
+body:
+  type: text
+  content: ""
+examples: ./.resources/List users.resources/examples
+order: 1000

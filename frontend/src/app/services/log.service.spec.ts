@@ -11,7 +11,7 @@ describe('LogService', () => {
             providers: [
                 provideZonelessChangeDetection(),
                 { provide: PLATFORM_ID, useValue: 'browser' },
-                { provide: LOG_ENDPOINT, useValue: '/api/log' },
+                { provide: LOG_ENDPOINT, useValue: '/api/log/frontend-error' },
             ],
         });
         service = TestBed.inject(LogService);
@@ -112,7 +112,7 @@ describe('LogService', () => {
         service.reportError({ message: 'crash', stack: 'Error: crash\n at ...' });
 
         expect(navigator.sendBeacon).toHaveBeenCalledWith(
-            '/api/log',
+            '/api/log/frontend-error',
             expect.any(Blob),
         );
     });
