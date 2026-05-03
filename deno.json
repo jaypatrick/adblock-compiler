@@ -4,15 +4,8 @@
     "exports": "./src/index.ts",
     "nodeModulesDir": "auto",
     "publish": {
-        "include": [
-            "src/**/*.ts",
-            "README.md",
-            "LICENSE"
-        ],
-        "exclude": [
-            "src/**/*.test.ts",
-            "**/*.deno.ts"
-        ]
+        "include": ["src/**/*.ts", "README.md", "LICENSE"],
+        "exclude": ["src/**/*.test.ts", "**/*.deno.ts"]
     },
     "tasks": {
         "dev": "deno run -A --watch --allow-read --allow-write --allow-net src/cli.ts",
@@ -158,6 +151,7 @@
         "cloudflare:workers": "./worker/cloudflare-workers-shim.ts",
         "cloudflare:email": "./worker/cloudflare-email-shim.ts",
         "@neondatabase/serverless": "npm:@neondatabase/serverless@^0.10.0",
+        "stripe": "npm:stripe@^17",
         "better-auth": "npm:better-auth@^1.5.6",
         "better-auth/minimal": "npm:better-auth@^1.5.6/minimal",
         "@better-auth/infra": "npm:@better-auth/infra@^0.2.5",
@@ -179,17 +173,9 @@
     },
     "lint": {
         "rules": {
-            "tags": [
-                "recommended"
-            ],
-            "include": [
-                "ban-untagged-todo"
-            ],
-            "exclude": [
-                "no-explicit-any",
-                "require-await",
-                "no-console"
-            ]
+            "tags": ["recommended"],
+            "include": ["ban-untagged-todo"],
+            "exclude": ["no-explicit-any", "require-await", "no-console"]
         },
         "exclude": [
             "dist/",
@@ -257,24 +243,14 @@
         ]
     },
     "test": {
-        "include": [
-            "src/**/*_test.ts",
-            "src/**/*.test.ts",
-            "worker/**/*.test.ts"
-        ],
-        "exclude": [
-            "src/**/*.bench.ts"
-        ]
+        "include": ["src/**/*_test.ts", "src/**/*.test.ts", "worker/**/*.test.ts"],
+        "exclude": ["src/**/*.bench.ts"]
     },
     "bench": {
-        "include": [
-            "src/**/*.bench.ts"
-        ]
+        "include": ["src/**/*.bench.ts"]
     },
     "compilerOptions": {
-        "lib": [
-            "deno.window"
-        ],
+        "lib": ["deno.window"],
         "strict": true,
         "noImplicitAny": true,
         "strictNullChecks": true,
@@ -292,8 +268,5 @@
         "npm:workerd@1.20260409.1",
         "npm:workerd@1.20260426.1"
     ],
-    "workspace": [
-        "./worker",
-        "./examples/cloudflare-worker"
-    ]
+    "workspace": ["./worker", "./examples/cloudflare-worker"]
 }

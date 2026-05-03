@@ -63,6 +63,7 @@ import { PlaywrightMcpAgent } from './mcp-agent.ts';
 import { CompilationCoordinator } from './compilation-coordinator.ts';
 import { RateLimiterDO } from './rate-limiter-do.ts';
 import { WsHibernationDO } from './ws-hibernation-do.ts';
+import { StripeWebhookProcessor } from './durable-objects/StripeWebhookProcessor.ts';
 
 // Re-export Env for compatibility with existing imports
 export type { Env };
@@ -184,5 +185,6 @@ export {
     HealthMonitoringWorkflow,
     PlaywrightMcpAgent,
     RateLimiterDO,
+    StripeWebhookProcessor,
     WsHibernationDO,
 };

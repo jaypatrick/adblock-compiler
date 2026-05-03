@@ -701,6 +701,44 @@ export interface Env {
      * Set in wrangler.toml [vars].
      */
     STRIPE_PAYG_PRICE_ID?: string;
+    // ─── Stripe Cloudflare Bindings ──────────────────────────────────────────
+    /**
+     * KV namespace for Stripe idempotency keys and webhook event deduplication.
+     * Provisioned as `bloqr-stripe-kv` in Cloudflare.
+     *
+     * wrangler.toml:
+     * ```toml
+     * [[kv_namespaces]]
+     * binding = "BLOQR_STRIPE_KV"
+     * id = "<namespace-id>"
+     * ```
+     */
+    BLOQR_STRIPE_KV?: KVNamespace;
+    /**
+     * Durable Object namespace for idempotent Stripe webhook processing.
+     * Each webhook is processed by the `StripeWebhookProcessor` DO which
+     * guarantees exactly-once delivery semantics.
+     *
+     * wrangler.toml:
+     * ```toml
+     * [[durable_objects.bindings]]
+     * name = "STRIPE_WEBHOOK_PROCESSOR"
+     * class_name = "StripeWebhookProcessor"
+     * ```
+     */
+    STRIPE_WEBHOOK_PROCESSOR?: DurableObjectNamespace;
+    /**
+     * Queue producer for async Stripe event processing (dead-letter queue fallback).
+     * Provisioned as `bloqr-stripe-queues` in Cloudflare.
+     *
+     * wrangler.toml:
+     * ```toml
+     * [[queues.producers]]
+     * binding = "BLOQR_STRIPE_QUEUE"
+     * queue = "bloqr-stripe-queues"
+     * ```
+     */
+    BLOQR_STRIPE_QUEUE?: Queue;
     // ─── Email (CF Email Workers binding — adblock-email) ────────────────────
     /**
      * Cloudflare Email Workers outbound send binding.

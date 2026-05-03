@@ -187,6 +187,12 @@ id = "b815efdcf2314b398bf0527e45452500"
 binding = "CONFIG_STORE"
 id = "fb5879d1237f4ac1b225458aef7bd6c9"
 
+# BLOQR_STRIPE_KV — Stripe integration KV cache (customer data, session state)
+# Created via stripe-projects-cli; namespace ID from BLOQR_STRIPE_KV_NAMESPACE_ID
+[[kv_namespaces]]
+binding = "BLOQR_STRIPE_KV"
+id = "db3c3780f9b2418ca32cdecaaf60e405"
+
 # FLASH_STORE: one-time-read flash message KV namespace.
 # Stores short-lived (60 s TTL) notification tokens set in-process by Worker
 # routes and consumed by the Angular frontend via GET /api/flash/:token.
@@ -293,6 +299,13 @@ name = "RATE_LIMITER_DO"
 class_name = "WsHibernationDO"
 name = "WS_HIBERNATION_DO"
 
+# STRIPE_WEBHOOK_PROCESSOR — durable Stripe webhook processing
+# Dispatched from /stripe/webhook handler; ensures idempotent event handling
+# @see worker/durable-objects/StripeWebhookProcessor.ts
+[[durable_objects.bindings]]
+class_name = "StripeWebhookProcessor"
+name = "STRIPE_WEBHOOK_PROCESSOR"
+
 # ─── Containers ─────────────────────────────────────────────────────────
 # Each AdblockCompiler Durable Object manages one Docker container.
 # Wrangler builds the image from Dockerfile.container on `wrangler deploy`.
@@ -326,6 +339,12 @@ new_sqlite_classes = ["CompilationCoordinator"]
 [[migrations]]
 tag = "v4"
 new_sqlite_classes = ["RateLimiterDO", "WsHibernationDO"]
+
+# StripeWebhookProcessor — processes Stripe webhook events durably
+# Idempotent: tracks processed Stripe event IDs in DO storage
+[[migrations]]
+tag = "v5"
+new_classes = ["StripeWebhookProcessor"]
 
 # ─── Email Workers (outbound — adblock-email) ────────────────────────────────
 # Cloudflare Email Workers `[[send_email]]` binding for transactional outbound
@@ -384,6 +403,12 @@ binding = "ERROR_QUEUE"
 [[queues.producers]]
 queue = "adblock-compiler-email-queue"
 binding = "EMAIL_QUEUE"
+
+# BLOQR_STRIPE_QUEUE — async Stripe event processing queue
+# Create with: wrangler queues create default-queue
+[[queues.producers]]
+queue = "default-queue"
+binding = "BLOQR_STRIPE_QUEUE"
 
 [[queues.consumers]]
 queue = "adblock-compiler-worker-queue"
