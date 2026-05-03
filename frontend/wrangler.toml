@@ -192,3 +192,10 @@ URL_FRONTEND = "https://app.bloqr.dev"
 URL_API      = "https://api.bloqr.dev"
 URL_DOCS     = "https://docs.bloqr.dev"
 URL_LANDING  = "https://bloqr.dev"
+
+# ─── Dev: service binding override ───────────────────────────────────────────
+# Points the dev frontend at bloqr-backend-dev (the backend's [env.dev]
+# deployment) so dev traffic never hits the production backend.
+[[env.dev.services]]
+binding = "API"
+service = "bloqr-backend-dev"

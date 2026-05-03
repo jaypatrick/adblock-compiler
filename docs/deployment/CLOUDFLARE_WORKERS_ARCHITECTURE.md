@@ -89,21 +89,55 @@ mindmap
 | Binding | Type | Purpose |
 |---|---|---|
 | `ASSETS` | Static Assets | JS bundles, CSS, fonts — served from CDN before the Worker is invoked |
-| `API` | Service Binding | Reserved — bound to `bloqr-backend` backend on the internal Cloudflare network. Not yet consumed by `server.ts`; declared for future SSR→API internal routing without public network hops. |
+| `API` | Service Binding | Active — forwards all `/api/*` requests (browser-originated and SSR-initiated) from `bloqr-frontend` to `bloqr-backend` via the internal Cloudflare network. The browser→frontend leg is a normal public request; the frontend→backend leg bypasses the public network and CORS entirely. Sets `CF-Worker-Source: ssr` on every forwarded request. |
 
 ### SSR Architecture
 
 The `server.ts` fetch handler uses Angular 21's `AngularAppEngine` with the standard [WinterCG](https://wintercg.org/) fetch API — no Express, no Node.js HTTP server:
 
 ```typescript
-const angularApp = new AngularAppEngine();
+// Angular 21: setAngularAppEngineManifest() must be called before constructing
+// AngularAppEngine.  The manifest is a build artifact loaded at runtime via a
+// dynamic import so esbuild does not attempt to bundle it.
+import { AngularAppEngine, ɵsetAngularAppEngineManifest as setAngularAppEngineManifest } from '@angular/ssr';
 
-export default {
+// Cached at module scope — setup runs once per isolate, not once per request.
+let angularAppPromise: Promise<AngularAppEngine> | null = null;
+
+function getAngularApp(): Promise<AngularAppEngine> {
+    if (!angularAppPromise) {
+        angularAppPromise = (async () => {
+            const manifestPath = './angular-app-engine-manifest.mjs'; // variable path → not bundled
+            const { default: manifest } = await import(manifestPath);
+            setAngularAppEngineManifest(manifest);
+            return new AngularAppEngine();
+        })();
+    }
+    return angularAppPromise;
+}
+
+const handler = {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
-        const response = await angularApp.handle(request);
+        // Forward ALL /api/* requests to the backend via the service binding.
+        // Browser requests arrive at this worker over the public network; the
+        // hop from here to the backend is internal (no public round-trip, no CORS).
+        if (new URL(request.url).pathname.startsWith('/api/')) {
+            try {
+                const internalReq = new Request(request, {
+                    headers: { ...Object.fromEntries(request.headers), 'CF-Worker-Source': 'ssr' },
+                });
+                return await env.API.fetch(internalReq);
+            } catch (err) {
+                return new Response('API unavailable', { status: 502 });
+            }
+        }
+        // Delegate remaining requests to AngularAppEngine for SSR.
+        const response = await (await getAngularApp()).handle(request);
         return response ?? new Response('Not found', { status: 404 });
     },
-} satisfies ExportedHandler<Env>;
+};
+
+export default handler;
 ```
 
 This means:
@@ -117,22 +151,18 @@ This means:
 
 ```mermaid
 flowchart TD
-    BROWSER["Browser Request"] --> EDGE
+    BROWSER["Browser Request"]
 
-    subgraph EDGE["Cloudflare Edge Network"]
+    FRONTEND["bloqr-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding\n• All /api/* requests forwarded to bloqr-backend via service binding"]
+
+    BROWSER -->|"Public network"| FRONTEND
+
+    subgraph INTERNAL["Cloudflare Internal Network (service binding)"]
         direction TB
-        FRONTEND["bloqr-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding\n• API service binding declared (reserved — not yet wired)"]
-        FRONTEND -->|"API calls (public network — service\nbinding not yet wired in server.ts)"| BACKEND
         BACKEND["bloqr-backend\n(TypeScript REST API Worker)\n\n• POST /compile\n• POST /compile/stream (SSE)\n• POST /compile/batch\n• GET /metrics  •  GET /health\n• KV, R2, D1, Durable Objects, Queues, Workflows, Hyperdrive"]
     end
 
-    subgraph SVC["Service Binding (reserved / future)"]
-        direction LR
-        API_BINDING["[[services]]\nbinding = API\nservice = bloqr-backend\n\nWhen server.ts is updated to\nread env.API, SSR→API calls\nwill travel on the internal\nCloudflare network without\na public round-trip."]
-    end
-
-    FRONTEND -.->|"future internal route\nvia env.API.fetch()"| SVC
-    SVC -.->|"internal Cloudflare\nnetwork (no CORS)"| BACKEND
+    FRONTEND -->|"All /api/* calls via env.API.fetch()\n— no public hop, no CORS"| BACKEND
 ```
 
 ### Two Deployment Modes
