@@ -53,3 +53,18 @@ indent-style = "space"
 [tool.pytest.ini_options]
 testpaths = ["runbooks/tests", "tests"]
 timeout = 60
+
+[tool.marimo.language_servers.pylsp]
+enabled = true               # Enable/disable pylsp
+enable_mypy = false          # Use ty (Astral) for type checking instead of mypy
+enable_ruff = true           # Linting with ruff (enabled by default, if installed)
+enable_flake8 = false        # Linting with flake8
+enable_pydocstyle = false    # Check docstring style
+enable_pylint = false        # Linting with pylint
+enable_pyflakes = false      # Syntax checking with pyflakes
+
+[tool.marimo.language_servers.ty]
+enabled = true
+
+[tool.marimo.completion]
+copilot = "github"
