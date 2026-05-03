@@ -89,7 +89,7 @@ mindmap
 | Binding | Type | Purpose |
 |---|---|---|
 | `ASSETS` | Static Assets | JS bundles, CSS, fonts — served from CDN before the Worker is invoked |
-| `API` | Service Binding | Active — routes all `/api/*` requests (both browser-originated and SSR-initiated) to `adblock-compiler` on the internal Cloudflare network. No public round-trip, no CORS. Sets `CF-Worker-Source: ssr` header on every forwarded request. |
+| `API` | Service Binding | Active — forwards all `/api/*` requests (browser-originated and SSR-initiated) from `adblock-frontend` to `adblock-compiler` via the internal Cloudflare network. The browser→frontend leg is a normal public request; the frontend→backend leg bypasses the public network and CORS entirely. Sets `CF-Worker-Source: ssr` on every forwarded request. |
 
 ### SSR Architecture
 
@@ -119,8 +119,8 @@ function getAngularApp(): Promise<AngularAppEngine> {
 const handler = {
     async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
         // Forward ALL /api/* requests to the backend via the service binding.
-        // Both browser-originated and SSR-initiated calls travel this path —
-        // no public round-trip, no CORS negotiation.
+        // Browser requests arrive at this worker over the public network; the
+        // hop from here to the backend is internal (no public round-trip, no CORS).
         if (new URL(request.url).pathname.startsWith('/api/')) {
             try {
                 const internalReq = new Request(request, {
@@ -151,14 +151,18 @@ This means:
 
 ```mermaid
 flowchart TD
-    BROWSER["Browser Request"] --> EDGE
+    BROWSER["Browser Request"]
 
-    subgraph EDGE["Cloudflare Edge Network"]
+    FRONTEND["adblock-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding\n• All /api/* requests forwarded to adblock-compiler via service binding"]
+
+    BROWSER -->|"Public network"| FRONTEND
+
+    subgraph INTERNAL["Cloudflare Internal Network (service binding)"]
         direction TB
-        FRONTEND["adblock-frontend\n(Angular 21 SSR Worker)\n\n• Prerendered home page (SSG)\n• SSR for /compiler, /performance, /admin, /api-docs, /validation\n• Static assets served from CDN via ASSETS binding\n• All /api/* calls (browser + SSR) routed via env.API.fetch() — internal network"]
-        FRONTEND -->|"All /api/* calls via env.API.fetch()\n— internal Cloudflare network"| BACKEND
         BACKEND["adblock-compiler\n(TypeScript REST API Worker)\n\n• POST /compile\n• POST /compile/stream (SSE)\n• POST /compile/batch\n• GET /metrics  •  GET /health\n• KV, R2, D1, Durable Objects, Queues, Workflows, Hyperdrive"]
     end
+
+    FRONTEND -->|"All /api/* calls via env.API.fetch()\n— no public hop, no CORS"| BACKEND
 ```
 
 ### Two Deployment Modes
