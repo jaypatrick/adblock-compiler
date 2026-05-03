@@ -2942,6 +2942,7 @@ export async function handleAdminRevokeUserSessions(
     c: {
         req: { raw: Request; path: string; method: string; param: (key: string) => string | undefined };
         env: Env;
+        executionCtx?: Pick<ExecutionContext, 'waitUntil'>;
         get: (key: string) => unknown;
         json: (data: unknown, status?: number) => Response;
     },
@@ -2975,7 +2976,7 @@ export async function handleAdminRevokeUserSessions(
             return c.json({ success: false, error: 'Database not configured' }, 503);
         }
         const baseURL = new URL(c.req.raw.url).origin;
-        const auth = createAuth(c.env, baseURL);
+        const auth = createAuth(c.env, baseURL, c.executionCtx);
         const adminHeaders = new Headers(c.req.raw.headers);
         adminHeaders.set('content-type', 'application/json');
         const abortController = new AbortController();

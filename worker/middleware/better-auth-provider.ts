@@ -68,7 +68,10 @@ export class BetterAuthProvider implements IAuthProvider {
     readonly name = 'better-auth';
     readonly authMethod = 'better-auth' as const;
 
-    constructor(private readonly env: Env) {}
+    constructor(
+        private readonly env: Env,
+        private readonly ctx?: Pick<ExecutionContext, 'waitUntil'>,
+    ) {}
 
     async verifyToken(request: Request): Promise<IAuthProviderResult> {
         // Guard: BETTER_AUTH_SECRET must be configured
@@ -89,7 +92,7 @@ export class BetterAuthProvider implements IAuthProvider {
 
         try {
             const url = new URL(request.url);
-            const auth = createAuth(this.env, url.origin);
+            const auth = createAuth(this.env, url.origin, this.ctx);
             const abortController = new AbortController();
             let timeoutId: ReturnType<typeof setTimeout> | undefined;
             const betterAuthRequest = new Request(url.toString(), {

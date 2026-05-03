@@ -17,6 +17,7 @@ import { assertEquals, assertExists, assertInstanceOf, assertStrictEquals, asser
 import {
     AUTH_DISABLE_CSRF_CHECK,
     AUTH_ID_GENERATOR,
+    AUTH_SESSION_CONFIG,
     AUTH_SESSION_STORE_IN_DATABASE,
     buildDashOptions,
     buildSentinelOptions,
@@ -650,4 +651,61 @@ Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is 
 Deno.test('isSentinelEnabled returns false when BETTER_AUTH_SENTINEL_ENABLED is "1"', () => {
     const env = { BETTER_AUTH_SENTINEL_ENABLED: '1' } as import('../types.ts').Env;
     assertEquals(isSentinelEnabled(env), false);
+});
+
+// ============================================================================
+// AUTH_SESSION_CONFIG — cookie cache & session duration constants
+// ============================================================================
+//
+// AUTH_SESSION_CONFIG is the single source of truth for session-related
+// timing values consumed by both createAuth() and the admin config endpoint.
+// These tests guard against accidental changes to values that would affect
+// every active user (e.g. reducing cookieCacheMaxAge to 0 disables caching;
+// setting expiresIn to 0 would expire sessions immediately).
+// ============================================================================
+
+Deno.test('AUTH_SESSION_CONFIG is exported as an object with required keys', () => {
+    assertExists(AUTH_SESSION_CONFIG);
+    assertEquals(typeof AUTH_SESSION_CONFIG, 'object');
+    assertEquals('cookieCacheMaxAge' in AUTH_SESSION_CONFIG, true, 'AUTH_SESSION_CONFIG must expose cookieCacheMaxAge');
+    assertEquals('expiresIn' in AUTH_SESSION_CONFIG, true, 'AUTH_SESSION_CONFIG must expose expiresIn');
+    assertEquals('updateAge' in AUTH_SESSION_CONFIG, true, 'AUTH_SESSION_CONFIG must expose updateAge');
+});
+
+Deno.test('AUTH_SESSION_CONFIG.cookieCacheMaxAge is 300 seconds (5 minutes) — keeps cookie cache enabled', () => {
+    // Must be > 0: setting it to 0 disables the cookie cache and forces a DB query on every getSession() call.
+    // Must be 300: aligns with the Better Auth performance guide recommendation (5 min short-lived session token).
+    assertStrictEquals(
+        AUTH_SESSION_CONFIG.cookieCacheMaxAge,
+        300,
+        'cookieCacheMaxAge must be 300 s (5 min); update this test if the value is intentionally changed',
+    );
+});
+
+Deno.test('AUTH_SESSION_CONFIG.expiresIn is 604800 seconds (7 days)', () => {
+    // Must be > 0: a zero/negative value expires sessions immediately on creation.
+    // Must be 604800: aligns with the 7-day default recommended by Better Auth.
+    assertStrictEquals(
+        AUTH_SESSION_CONFIG.expiresIn,
+        604800,
+        'expiresIn must be 604800 s (7 days); update this test if the value is intentionally changed',
+    );
+});
+
+Deno.test('AUTH_SESSION_CONFIG.updateAge is 86400 seconds (1 day)', () => {
+    // Must be > 0: zero would refresh the session token on every single request.
+    // Must be 86400: extends the session when 1 day or less of its 7-day lifetime remains.
+    assertStrictEquals(
+        AUTH_SESSION_CONFIG.updateAge,
+        86400,
+        'updateAge must be 86400 s (1 day); update this test if the value is intentionally changed',
+    );
+});
+
+Deno.test('AUTH_SESSION_CONFIG.updateAge is less than AUTH_SESSION_CONFIG.expiresIn', () => {
+    assertEquals(
+        AUTH_SESSION_CONFIG.updateAge < AUTH_SESSION_CONFIG.expiresIn,
+        true,
+        'updateAge must be less than expiresIn — otherwise sessions refresh every single request',
+    );
 });

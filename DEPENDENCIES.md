@@ -29,10 +29,12 @@ Runtime dependencies used by the Cloudflare Worker.
 | Package | Version | Registry | Purpose |
 |---|---|---|---|
 | `@adguard/agtree` | `^4.0.4` | npm | AdGuard filter list AST parsing and multi-syntax detection |
+| `@better-auth/infra` | `^0.2.5` | npm | Better Auth infrastructure utilities (Cloudflare Workers adapter) |
 | `@opentelemetry/api` | `^1.9.0` | npm | OpenTelemetry tracing and metrics API |
 | `@prisma/adapter-d1` | `^7.5.0` | npm | Prisma ORM adapter for Cloudflare D1 (SQLite) |
 | `@prisma/client` | `^7.5.0` | npm | Prisma ORM client for database access |
 | `@sentry/cloudflare` | `10.43.0` | npm | Sentry error tracking for Cloudflare Workers runtime |
+| `better-auth` | `^1.5.6` | npm | Server-side authentication framework (session management, OAuth, Prisma adapter) |
 | `jose` | `^6.2.1` | npm / JSR | JWT verification and JWKS fetching (Clerk auth) |
 | `svix` | `^1.88.0` | npm | Clerk webhook signature verification (HMAC) |
 | `zod` | `^4.3.6` | npm | Runtime schema validation at all trust boundaries |
@@ -61,6 +63,7 @@ Dependencies for the core compiler library (`src/`) and Deno runtime.
 | Package | Version | Registry | Purpose |
 |---|---|---|---|
 | `@adguard/agtree` | `^4.0.4` | npm | AdGuard filter list AST parsing (shared with worker) |
+| `@better-auth/infra` | `^0.2.5` | npm | Better Auth infrastructure utilities (Cloudflare Workers adapter) |
 | `@luca/cases` | `^1.0.0` | JSR | String case conversion utilities |
 | `@opentelemetry/api` | `^1.9.0` | npm | OpenTelemetry tracing API (shared with worker) |
 | `@prisma/adapter-d1` | `^7.5.0` | npm | Prisma D1 adapter (shared with worker) |
@@ -71,6 +74,8 @@ Dependencies for the core compiler library (`src/`) and Deno runtime.
 | `@std/fs` | `^1.0.23` | JSR | Deno standard library — file system |
 | `@std/path` | `^1.1.4` | JSR | Deno standard library — path utilities |
 | `@std/testing` | `^1.0.17` | JSR | Deno standard library — testing utilities |
+| `better-auth` | `^1.5.6` | npm | Server-side auth framework — full entry point (type imports, plugin options) |
+| `better-auth/minimal` | `^1.5.6` (subpath) | npm | Better Auth minimal build — strips Kysely (not needed with Prisma adapter); used as the runtime `betterAuth` factory to reduce Worker bundle size |
 | `jose` | `^6.2.1` | JSR (`@panva/jose`) | JWT verification — JSR version for native Deno compatibility |
 | `svix` | `^1.88.0` | npm | Webhook signature verification (shared with worker) |
 | `tldts` | (pinned in deno.json) | npm | TLD and domain parsing |
@@ -261,4 +266,4 @@ Per the project's Zero Trust Architecture policy, any new external service integ
 
 ---
 
-*Last updated: 2026-03-15 — initial creation from `package.json`, `deno.json`, `frontend/package.json`, and `docs/cloudflare/CLOUDFLARE_SERVICES.md`.*
+*Last updated: 2026-05-03 — add `better-auth` (`^1.5.6`), `better-auth/minimal` (subpath, Kysely-free bundle), and `@better-auth/infra` (`^0.2.5`) to Worker and Deno import-map sections (feat(auth): Better Auth performance optimizations).*
