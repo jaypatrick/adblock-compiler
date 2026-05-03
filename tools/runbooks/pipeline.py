@@ -19,6 +19,8 @@ This runbook is the single entry point for admins. It provides:
 No external markdown or documentation is needed — everything is self-contained.
 """
 
+from __future__ import annotations
+
 import marimo
 
 __generated_with = "0.23.4"
@@ -71,7 +73,7 @@ def _imports():
 
 @app.cell(hide_code=True)
 def _header(mo):
-    mo.md("""
+    return mo.md("""
     # 🚀 Bloqr Ops — Master Pipeline Runbook
 
     **Purpose:** System-wide health dashboard and pipeline composer.
@@ -91,17 +93,15 @@ def _header(mo):
     > **Self-contained:** Everything you need is in this runbook.
     > To run: `marimo run tools/runbooks/pipeline.py`
     """)
-    return
 
 
 @app.cell(hide_code=True)
 def _dashboard_header(mo):
-    mo.md("""
+    return mo.md("""
     ## 🏥 System Health Dashboard
 
     _Last-run status for every registered tool._
     """)
-    return
 
 
 @app.cell(hide_code=True)
@@ -150,18 +150,17 @@ def _health_dashboard(
     )
 
     _refresh_note = mo.md(f"_Dashboard as of: {datetime.now().strftime(TIMESTAMP_FORMAT)}_")
-    return
+    return mo.vstack([mo.Html(_table_html), _refresh_note])
 
 
 @app.cell(hide_code=True)
 def _composer_header(mo):
-    mo.md("""
+    return mo.md("""
     ## 🔧 Pipeline Composer
 
     Select the tools you want to run and configure options for each.
     Tools run in order (top to bottom). A tool failure does **not** stop subsequent tools by default.
     """)
-    return
 
 
 @app.cell(hide_code=True)
@@ -215,10 +214,9 @@ def _tool_selector(KNOWN_TOOLS, mo):
 
 @app.cell(hide_code=True)
 def _execute_header(mo):
-    mo.md("""
+    return mo.md("""
     ## ▶ Execute Pipeline
     """)
-    return
 
 
 @app.cell
@@ -233,6 +231,7 @@ def _pipeline_execute(
     KNOWN_TOOLS,
     _repo_root,
     dry_run_flag,
+    list_log_files,
     mo,
     run_button,
     run_tool,
@@ -250,9 +249,9 @@ def _pipeline_execute(
             mo.callout(mo.md("No tools selected. Check at least one tool in the Pipeline Composer."), kind="warn"),
         )
 
-    # pipeline_results is a cross-cell output — no _ prefix.
+    # pipeline_results and output_sections are cross-cell outputs — no _ prefix.
     pipeline_results: list[dict] = []
-    _output_sections = []
+    output_sections = []
 
     for _pt in _selected_tools:
         _pn = _pt["name"]
@@ -269,12 +268,19 @@ def _pipeline_execute(
                     "status": "FAIL",
                     "stdout": "",
                     "stderr": f"Script not found: {_ps}",
+                    "report_file": None,
                 }
             )
-            _output_sections.append(mo.callout(mo.md(f"❌ `{_pn}` — script not found: `{_ps}`"), kind="danger"))
+            output_sections.append(mo.callout(mo.md(f"❌ `{_pn}` — script not found: `{_ps}`"), kind="danger"))
             if stop_on_failure_flag.value:
                 break
             continue
+
+        # Snapshot existing JSON report mtimes before the run so we can identify the
+        # one written by this specific execution — even if the tool is rerun within the
+        # same second and overwrites the existing file (in which case the filename set
+        # difference would be empty, but the mtime will have changed).
+        _pre_mtimes = {p: p.stat().st_mtime for p in list_log_files(_pn, ".json")}
 
         with mo.status.spinner(title=f"Running {_pl}…"):
             _prc, _pout, _perr = run_tool(
@@ -282,6 +288,15 @@ def _pipeline_execute(
                 mode=_pm,
                 dry_run=dry_run_flag.value,
             )
+
+        # Find the report written by this run: any JSON file that is new OR whose
+        # mtime has advanced since the pre-snapshot (handles same-second overwrites).
+        _post_json = list_log_files(_pn, ".json")
+        _new_jsons = sorted(
+            [p for p in _post_json if _pre_mtimes.get(p, -1.0) < p.stat().st_mtime],
+            reverse=True,
+        )
+        _new_report = _new_jsons[0] if _new_jsons else None
 
         _pst = "PASS" if _prc == 0 else "FAIL"
         pipeline_results.append(
@@ -292,13 +307,14 @@ def _pipeline_execute(
                 "status": _pst,
                 "stdout": _pout,
                 "stderr": _perr,
+                "report_file": _new_report,
             }
         )
 
         _combined = _pout + ("\n\nSTDERR:\n" + _perr if _perr.strip() else "")
         _ck = "success" if _prc == 0 else "danger"
         _pbdg = "✅ PASSED" if _prc == 0 else "❌ FAILED"
-        _output_sections.append(
+        output_sections.append(
             mo.accordion(
                 {
                     f"{_pbdg} · {_pl} (click to expand output)": mo.vstack(
@@ -312,30 +328,32 @@ def _pipeline_execute(
         )
 
         if stop_on_failure_flag.value and _prc != 0:
-            _output_sections.append(
+            output_sections.append(
                 mo.callout(
                     mo.md(f"🛑 Pipeline stopped after **{_pl}** failed (stop-on-failure is enabled)."),
                     kind="warn",
                 )
             )
             break
-    return (
-        mo.vstack(_output_sections),
-        pipeline_results,
-    )
+    return pipeline_results, output_sections
+
+
+@app.cell(hide_code=True)
+def _pipeline_output_display(mo, output_sections):
+    if not output_sections:
+        return None
+    return mo.vstack(output_sections)
 
 
 @app.cell(hide_code=True)
 def _aggregate_header(mo, pipeline_results: list[dict]):
     if not pipeline_results:
         mo.stop(True, mo.md("_Run the pipeline first (step 4) to see aggregate results._"))
-    mo.md("## 📊 Aggregate Results")
-    return
+    return mo.md("## 📊 Aggregate Results")
 
 
 @app.cell(hide_code=True)
 def _aggregate_results(
-    list_log_files,
     load_report,
     mo,
     pipeline_results: list[dict],
@@ -372,32 +390,29 @@ def _aggregate_results(
 
     _report_accordions = []
     for _ar2 in pipeline_results:
-        _jfiles = list_log_files(_ar2["name"], ".json")
-        if _jfiles:
-            _rpt = load_report(_jfiles[0])
+        # Use the report file captured during this specific run — never load the
+        # newest file on disk, which may be stale if the tool failed before writing.
+        _rf = _ar2.get("report_file")
+        if _rf is not None:
+            _rpt = load_report(_rf)
             if _rpt:
                 _rhtml = render_report_results_html(_rpt.get("results", {}))
                 _report_accordions.append(mo.accordion({f"📋 {_ar2['label']} — detailed checks": mo.Html(_rhtml)}))
-    return (
-        mo.vstack(
-            [
-                mo.md(f"**Overall:** {_overall_badge} — {_npassed}/{_total} tools passed"),
-                mo.Html(_summary_html),
-                *_report_accordions,
-            ],
-        ),
+    _totals_panel = mo.callout(
+        mo.md(f"{_overall_badge} &nbsp; **{_npassed}/{_total} passed** &nbsp;·&nbsp; {_nfailed} failed"),
+        kind="success" if _nfailed == 0 else "danger",
     )
+    return mo.vstack([mo.Html(_summary_html), _totals_panel, *_report_accordions])
 
 
 @app.cell(hide_code=True)
 def _log_browser_header(mo):
-    mo.md("""
+    return mo.md("""
     ## 📂 Log Browser
 
-    Browse and view log files from any tool. Copy the file path to share with
-    an AI assistant — no copy-pasting of log contents required.
+    Browse and view log files from any tool. The selected file path is shown
+    below the dropdown so you can copy it and share it with an AI assistant.
     """)
-    return
 
 
 @app.cell(hide_code=True)
@@ -427,7 +442,7 @@ def _log_browser(KNOWN_TOOLS, Path, list_log_files, mo):
 @app.cell(hide_code=True)
 def _log_viewer(
     Path,
-    all_log_files,
+    all_log_files,  # dict[str, Path] — annotating with Path (another param) causes F821
     log_file_selector,
     mo,
     read_log_file,
@@ -441,27 +456,25 @@ def _log_viewer(
 
     _contents = read_log_file(_selected)
     _lang = "json" if _selected.suffix == ".json" else "text"
-    return (
-        mo.vstack(
-            [
-                mo.md(f"**File:** `{_selected}`"),
-                mo.callout(
-                    mo.md(
-                        f"📁 **To share with an AI assistant:** Copy the file path below "
-                        f"and paste it into your chat, or drag the file from your file manager.\n\n"
-                        f"```\n{_selected}\n```"
-                    ),
-                    kind="info",
+    return mo.vstack(
+        [
+            mo.md(f"**File:** `{_selected}`"),
+            mo.callout(
+                mo.md(
+                    f"📁 **To share with an AI assistant:** Copy the file path below "
+                    f"and paste it into your chat, or drag the file from your file manager.\n\n"
+                    f"```\n{_selected}\n```"
                 ),
-                mo.code(_contents, language=_lang),
-            ],
-        ),
+                kind="info",
+            ),
+            mo.code(_contents, language=_lang),
+        ],
     )
 
 
 @app.cell(hide_code=True)
 def _quick_reference(mo):
-    mo.md("""
+    return mo.md("""
     ## 📖 Quick Reference
 
     ### Pipeline chaining (CLI)
@@ -531,7 +544,6 @@ def _quick_reference(mo):
     | Dashboard shows all `NEVER_RUN` | No tool has been run yet — run at least one tool first |
     | Script not found | Check that `tools/<tool-name>.py` exists |
     """)
-    return
 
 
 if __name__ == "__main__":
