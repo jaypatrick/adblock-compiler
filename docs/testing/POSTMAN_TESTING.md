@@ -306,3 +306,159 @@ For issues or questions:
 - Check the [main README](../../README.md)
 - Review the [OpenAPI spec](../api/openapi.yaml)
 - Open an issue on GitHub
+
+---
+
+## Newman CI Workflow
+
+The repository ships a reusable GitHub Actions workflow at `.github/workflows/newman.yml` that runs the full Postman collection against either a live Cloudflare deployment or a local Wrangler dev server.
+
+### Triggers
+
+| Trigger | When | Inputs |
+|---|---|---|
+| `workflow_dispatch` | Manual — run from the Actions tab | `environment`: `cloudflare` or `local` |
+| `workflow_call` | Called from another workflow (e.g. release pipeline) | Same `environment` input |
+
+### Tool versions
+
+| Tool | Version |
+|---|---|
+| Newman | 6.2.2 |
+| newman-reporter-htmlextra | 1.23.1 |
+
+### Required secrets
+
+| Secret | Purpose |
+|---|---|
+| `NEWMAN_USER_API_KEY` | Bearer token used in `Authorization` header for authenticated requests |
+| `NEWMAN_POSTMAN_EMAIL` | Postman account email (for any Postman Cloud sync steps) |
+| `NEWMAN_POSTMAN_PASSWORD` | Postman account password |
+
+All three secrets must be configured in the repository or organisation settings under **Settings → Secrets and variables → Actions**.
+
+### Run behaviour
+
+- `--bail` is set — Newman stops and exits with a non-zero code on the **first test failure**, preventing noisy partial results.
+- A GitHub Step Summary is posted after each run via an inline Python script embedded in the workflow YAML. The summary shows pass/fail counts and links to the HTML report.
+
+### Artifacts
+
+Both artifacts are retained for **30 days**:
+
+| Artifact | File |
+|---|---|
+| HTML report | `newman-report.html` |
+| JSON results | `newman-results.json` |
+
+Download them from the **Actions → run → Artifacts** panel.
+
+### Running locally (equivalent command)
+
+```bash
+# Install Newman + htmlextra
+pnpm add -g newman newman-reporter-htmlextra
+
+# Run against local Wrangler dev server
+newman run docs/postman/postman-collection.json \
+  --environment docs/postman/postman-environment.json \
+  --env-var baseUrl=http://127.0.0.1:8787 \
+  --env-var apiKey=$NEWMAN_USER_API_KEY \
+  --reporters cli,htmlextra \
+  --reporter-htmlextra-export newman-report.html \
+  --bail
+```
+
+---
+
+## x402 End-to-End Workflow (Pending Implementation)
+
+The workflow file `.github/workflows/x402-e2e.yml` exists in the repository but is currently a **stub** — it exits 0 with an informational message and does not execute any tests.
+
+### Planned scope
+
+When implemented, this workflow will exercise the x402 payment protocol integration:
+
+- Stripe test-mode payment flow (using `STRIPE_TEST_SECRET_KEY`)
+- Webhook verification (using `STRIPE_TEST_WEBHOOK_SECRET`)
+- End-to-end compilation request gated behind x402 payment
+- Newman collection for x402-specific API routes (using `NEWMAN_API_KEY`)
+
+### Required secrets (when implemented)
+
+| Secret | Purpose |
+|---|---|
+| `STRIPE_TEST_SECRET_KEY` | Stripe test-mode secret for creating payment intents |
+| `STRIPE_TEST_WEBHOOK_SECRET` | Stripe test-mode webhook signing secret |
+| `NEWMAN_API_KEY` | API key for authenticated Newman requests |
+
+Until implementation is complete, x402 payment flows must be tested manually against a local Wrangler dev server with Stripe CLI webhook forwarding.
+
+---
+
+## Collection Structure
+
+The Postman collection at `docs/postman/postman-collection.json` is organised into the following top-level folders:
+
+| Folder | Description |
+|---|---|
+| **Compilation** | `POST /compile`, `POST /compile/batch`, `POST /ast/parse` |
+| **Streaming** | `POST /compile/stream` — SSE real-time progress |
+| **Queue** | Async job submission, status, history, and cancellation |
+| **Metrics** | Deployment info, performance metrics, Turnstile config |
+| **WebSocket** | `GET /ws/compile` — real-time compilation socket |
+| **Admin** | Storage, database, auth, migration, backend, email, local-user admin endpoints |
+| **Workflow** | Durable workflow submission, status, metrics, and events |
+| **Health** | `GET /health` and `GET /health/latest` |
+| **Browser Rendering** | Canonical URL resolution and filter-list source monitoring |
+| **Authentication** | Sign-up, sign-in, session, sign-out, user API-key management |
+| **Info** | `GET /schemas` — JSON schemas for all public request/response types |
+| **Configuration** | Compilation defaults, config validation, and config resolution |
+
+The collection is auto-generated from the OpenAPI spec. To regenerate after adding or modifying routes:
+
+```bash
+deno task schema:generate
+```
+
+Then commit the updated `docs/postman/postman-collection.json` and `docs/api/cloudflare-schema.yaml`.
+
+---
+
+## Admin Storage Endpoints
+
+The **Admin** folder covers a set of storage-management endpoints under `/admin/storage/` and `/admin/pg/`. These are used for operational maintenance — not compilation workflows.
+
+### D1 (SQLite) storage endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/admin/storage/stats` | Storage statistics |
+| `POST` | `/admin/storage/clear-expired` | Remove expired cache entries |
+| `POST` | `/admin/storage/clear-cache` | Clear all cache entries |
+| `GET` | `/admin/storage/export` | Export storage data |
+| `POST` | `/admin/storage/vacuum` | Run SQLite VACUUM |
+| `GET` | `/admin/storage/tables` | List all D1 tables |
+| `POST` | `/admin/storage/query` | Execute a read-only SQL query |
+
+### PostgreSQL (Neon) storage endpoints
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/admin/pg/stats` | PostgreSQL storage statistics |
+| `GET` | `/admin/pg/export` | Export PostgreSQL data |
+| `POST` | `/admin/pg/clear-expired` | Remove expired entries |
+| `POST` | `/admin/pg/clear-cache` | Clear cache entries |
+| `POST` | `/admin/pg/query` | Execute a read-only SQL query |
+
+### Testing admin endpoints with Newman
+
+Admin endpoints require an `X-Admin-Key` header. Set it as an environment variable in the Postman environment file or pass it directly:
+
+```bash
+newman run docs/postman/postman-collection.json \
+  --environment docs/postman/postman-environment.json \
+  --env-var adminKey=$ADMIN_KEY \
+  --folder Admin \
+  --bail
+```
