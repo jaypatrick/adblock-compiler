@@ -47,6 +47,20 @@ def tools_dir() -> Path:
     return _repo_root() / "tools"
 
 
+def bloqr_theme_css() -> str:
+    """Return the Bloqr CSS theme string for injection via mo.css().
+
+    Usage in a runbook cell:
+        @app.cell(hide_code=True)
+        def _theme(mo, bloqr_theme_css):
+            return mo.css(bloqr_theme_css())
+    """
+    css_path = tools_dir() / "theming" / "bloqr-theme.css"
+    if css_path.exists():
+        return css_path.read_text(encoding="utf-8")
+    return ""
+
+
 def logs_dir(tool_name: str) -> Path:
     return tools_dir() / "logs" / tool_name
 

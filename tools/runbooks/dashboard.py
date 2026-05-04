@@ -70,6 +70,16 @@ app = mo.App(
 )
 
 
+@app.cell(hide_code=True)
+def _theme():
+    from pathlib import Path
+
+    import marimo as mo
+    _css_path = Path(__file__).resolve().parent.parent / "theming" / "bloqr-theme.css"
+    _css = _css_path.read_text(encoding="utf-8") if _css_path.exists() else ""
+    return mo.css(_css)
+
+
 @app.cell
 def _header():
     """Header with key metrics."""

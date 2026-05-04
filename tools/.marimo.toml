@@ -84,6 +84,17 @@ enabled = true
 enabled = true
 
 # ---------------------------------------------------------------------------
+# Display
+# ---------------------------------------------------------------------------
+[display]
+theme = "dark"
+default_width = "full"
+cell_output = "below"
+code_editor_font_size = 14
+dataframes = "rich"
+reference_highlighting = true
+
+# ---------------------------------------------------------------------------
 # Theming — Bloqr Design Language
 # ---------------------------------------------------------------------------
 # Custom CSS for Bloqr branding: colors, typography, animations, dark/light modes.

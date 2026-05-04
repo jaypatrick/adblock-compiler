@@ -44,6 +44,7 @@ def _imports():
     from shared import (
         KNOWN_TOOLS,
         _repo_root,
+        bloqr_theme_css,
         check_command,
         check_python_package,
         list_log_files,
@@ -72,6 +73,7 @@ def _imports():
         time,
         KNOWN_TOOLS,
         _repo_root,
+        bloqr_theme_css,
         check_command,
         check_python_package,
         list_log_files,
@@ -86,6 +88,11 @@ def _imports():
         run_tool,
         tools_dir,
     )
+
+
+@app.cell(hide_code=True)
+def _theme(mo, bloqr_theme_css):
+    return mo.css(bloqr_theme_css())
 
 
 # ── Cell 1: Header ──────────────────────────────────────────────────────────
