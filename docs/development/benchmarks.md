@@ -1,6 +1,6 @@
 # Adblock Compiler Benchmarks
 
-This document describes the benchmark suite for the bloqr-backend project.
+This document describes the benchmark suite for the adblock-compiler project.
 
 ## Overview
 

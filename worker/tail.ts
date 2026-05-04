@@ -1,7 +1,7 @@
 /**
  * Cloudflare Tail Worker for logging and observability.
  *
- * This tail worker consumes logs and events from the main bloqr-backend worker,
+ * This tail worker consumes logs and events from the main adblock-compiler worker,
  * providing real-time observability for debugging, monitoring, and alerting.
  *
  * Features:
@@ -126,7 +126,7 @@ export function shouldForwardEvent(event: TailEvent): boolean {
 export function createStructuredEvent(event: TailEvent): StructuredTailEvent {
     return {
         timestamp: new Date(event.eventTimestamp).toISOString(),
-        scriptName: event.scriptName || 'bloqr-backend',
+        scriptName: event.scriptName || 'adblock-compiler',
         outcome: event.outcome,
         url: event.event?.request?.url,
         method: event.event?.request?.method,
@@ -165,7 +165,7 @@ export function formatSlackAlert(event: StructuredTailEvent): Record<string, unk
                         type: 'header',
                         text: {
                             type: 'plain_text',
-                            text: `🚨 bloqr-backend: ${event.outcome}`,
+                            text: `🚨 adblock-compiler: ${event.outcome}`,
                         },
                     },
                     {
@@ -174,7 +174,7 @@ export function formatSlackAlert(event: StructuredTailEvent): Record<string, unk
                             { type: 'mrkdwn', text: `*URL*\n${event.url ?? '_unknown_'}` },
                             { type: 'mrkdwn', text: `*Outcome*\n${event.outcome}` },
                             { type: 'mrkdwn', text: `*Timestamp*\n${event.timestamp}` },
-                            { type: 'mrkdwn', text: `*Script*\n${event.scriptName ?? 'bloqr-backend'}` },
+                            { type: 'mrkdwn', text: `*Script*\n${event.scriptName ?? 'adblock-compiler'}` },
                         ],
                     },
                     {
@@ -206,7 +206,7 @@ export async function forwardToLogSink(event: TailEvent, env: TailEnv): Promise<
 
     const payload = {
         timestamp: new Date(event.eventTimestamp).toISOString(),
-        scriptName: event.scriptName ?? 'bloqr-backend',
+        scriptName: event.scriptName ?? 'adblock-compiler',
         outcome: event.outcome,
         url: event.event?.request?.url,
         method: event.event?.request?.method,

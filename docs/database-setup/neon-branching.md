@@ -86,14 +86,14 @@ string. You can use this to connect from any PostgreSQL client:
 
 ```bash
 # Copy the connection string from the PR comment
-psql "postgresql://neondb_owner:****@ep-xyz-123.eastus2.azure.neon.tech/bloqr-backend?sslmode=require"
+psql "postgresql://neondb_owner:****@ep-xyz-123.eastus2.azure.neon.tech/adblock-compiler?sslmode=require"
 ```
 
 ### Using your local `.env`
 
 ```bash
 # Override DATABASE_URL in your local .env to point at the PR branch
-DATABASE_URL="postgresql://neondb_owner:****@ep-xyz-123.eastus2.azure.neon.tech/bloqr-backend?sslmode=require"
+DATABASE_URL="postgresql://neondb_owner:****@ep-xyz-123.eastus2.azure.neon.tech/adblock-compiler?sslmode=require"
 
 # Then run your local dev server — it will use the PR's isolated database
 pnpm run ui:dev

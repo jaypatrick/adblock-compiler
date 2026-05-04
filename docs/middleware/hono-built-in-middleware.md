@@ -1,6 +1,6 @@
 # Hono Built-in Middleware
 
-This document describes the built-in Hono middleware integrated into the bloqr-backend Worker API to improve performance, observability, and bandwidth efficiency.
+This document describes the built-in Hono middleware integrated into the adblock-compiler Worker API to improve performance, observability, and bandwidth efficiency.
 
 ## Overview
 
@@ -136,7 +136,7 @@ To filter for specific routes or status codes:
 Check Worker logs after making a request:
 ```bash
 curl https://api.example.com/api/version
-# Then check Cloudflare dashboard → Workers → bloqr-backend → Logs
+# Then check Cloudflare dashboard → Workers → adblock-compiler → Logs
 ```
 
 ---
@@ -355,7 +355,7 @@ Expected cache hit rates after warm-up:
 ### Cloudflare Analytics
 - **Bandwidth saved**: View in Cloudflare dashboard → Analytics → Performance → Bandwidth
 - **Cache hit rate**: Analytics → Caching → Cache Analytics
-- **Request logs**: Workers → bloqr-backend → Logs
+- **Request logs**: Workers → adblock-compiler → Logs
 
 ### Custom Metrics (Analytics Engine)
 The `AnalyticsService` tracks:
@@ -402,7 +402,7 @@ curl -H "Accept-Encoding: gzip" https://api.example.com/compile
 2. Log retention period expired
 
 **Fix:**
-1. Enable logs: Cloudflare dashboard → Workers → bloqr-backend → Settings → Logs
+1. Enable logs: Cloudflare dashboard → Workers → adblock-compiler → Settings → Logs
 2. Use Real-time logs (live tail) for immediate debugging
 
 ### cache middleware not caching responses

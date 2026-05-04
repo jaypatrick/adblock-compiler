@@ -107,7 +107,7 @@ uv run --directory tools python auth-healthcheck.py
 An interactive menu appears:
 
 ```
-  bloqr-backend · Auth Healthcheck
+  adblock-compiler · Auth Healthcheck
   Select an action
 
   1. Run checks only

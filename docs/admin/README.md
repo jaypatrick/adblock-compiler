@@ -1,6 +1,6 @@
 # Admin System
 
-The bloqr-backend admin system is a 10-panel Angular Material dashboard backed by a Cloudflare Worker API. It provides granular, role-based control over every runtime aspect of the platform — tiers, scopes, feature flags, endpoint overrides, announcements, and user management — without redeploying.
+The adblock-compiler admin system is a 10-panel Angular Material dashboard backed by a Cloudflare Worker API. It provides granular, role-based control over every runtime aspect of the platform — tiers, scopes, feature flags, endpoint overrides, announcements, and user management — without redeploying.
 
 ## Architecture
 

@@ -231,7 +231,7 @@ export function emitDiagnosticsToTailWorker(diagnostics: DiagnosticEvent[]): voi
     for (const event of diagnostics) {
         const logData = {
             ...event,
-            source: 'bloqr-backend',
+            source: 'adblock-compiler',
         };
 
         switch (event.severity) {

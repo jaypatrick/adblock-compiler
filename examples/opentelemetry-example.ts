@@ -1,5 +1,5 @@
 /**
- * Example: Using OpenTelemetry tracing with the bloqr-backend
+ * Example: Using OpenTelemetry tracing with the adblock-compiler
  * 
  * This example demonstrates how to integrate OpenTelemetry distributed tracing
  * into the compilation process for observability across services.
@@ -28,7 +28,7 @@ import {
 async function compileWithTracing() {
     // Create an OpenTelemetry exporter as the diagnostics collector
     const diagnostics = createOpenTelemetryExporter({
-        serviceName: 'bloqr-backend',
+        serviceName: 'adblock-compiler',
         enableConsoleLogging: true, // Enable console output for debugging
     });
 
@@ -43,7 +43,7 @@ async function compileWithTracing() {
     });
 
     // Get the global tracer for manual instrumentation
-    const tracer = trace.getTracer('bloqr-backend-example', '1.0.0');
+    const tracer = trace.getTracer('adblock-compiler-example', '1.0.0');
 
     // Create a parent span for the entire compilation
     return tracer.startActiveSpan('compile-filter-list', async (span) => {
@@ -88,7 +88,7 @@ async function compileWithTracing() {
  * Example: Using manual span creation for fine-grained tracing
  */
 async function manualSpanExample() {
-    const tracer = trace.getTracer('bloqr-backend-example', '1.0.0');
+    const tracer = trace.getTracer('adblock-compiler-example', '1.0.0');
 
     return tracer.startActiveSpan('manual-span-example', async (parentSpan) => {
         parentSpan.setAttribute('example.type', 'manual-instrumentation');

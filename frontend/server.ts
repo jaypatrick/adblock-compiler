@@ -22,7 +22,7 @@
  *   deno task wrangler:dev    (uses wrangler.toml — mirrors production)
  *
  * Deployment:
- *   deno task wrangler:deploy (after `pnpm --filter bloqr-frontend run build`)
+ *   deno task wrangler:deploy (after `pnpm --filter adblock-frontend run build`)
  */
 
 // ɵsetAngularAppEngineManifest is an Angular-internal (ɵ-prefixed) API.
@@ -242,7 +242,7 @@ export default {
 export interface Env {
     /** Static asset binding — serves JS/CSS/fonts from the CDN edge. */
     ASSETS: WorkersFetcher;
-    /** Service binding to the bloqr-backend backend Worker.
+    /** Service binding to the adblock-compiler backend Worker.
      *  Calls travel on the internal Cloudflare network — no public hop, no CORS. */
     API: WorkersFetcher;
     /** Sentry DSN for server-side SSR error capture. Set via `wrangler secret put SENTRY_DSN`. */

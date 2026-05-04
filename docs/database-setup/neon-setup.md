@@ -23,7 +23,7 @@
 
 ## Overview
 
-The bloqr-backend uses **Neon PostgreSQL** as its primary production database. Neon provides:
+The adblock-compiler uses **Neon PostgreSQL** as its primary production database. Neon provides:
 
 | Capability | What It Means |
 |---|---|
@@ -80,22 +80,22 @@ flowchart LR
 | **Project name** | `adblock-db` _(the Neon project container)_ |
 | **Project ID** | `twilight-river-73901472` |
 | **Region** | Azure East US 2 |
-| **PostgreSQL database** | `bloqr-backend` _(the database inside the project)_ |
+| **PostgreSQL database** | `adblock-compiler` _(the database inside the project)_ |
 | **Default branch** | `production` |
-| **REST API Endpoint** | `ep-winter-term-a8rxh2a9.apirest.eastus2.azure.neon.tech/bloqr-backend/rest/v1` |
+| **REST API Endpoint** | `ep-winter-term-a8rxh2a9.apirest.eastus2.azure.neon.tech/adblock-compiler/rest/v1` |
 | **Pooled Endpoint** | `ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech` |
 | **Dashboard** | [console.neon.tech](https://console.neon.tech) → org-frosty-tree-11961273 |
 
 > **Project vs Database:** In Neon, a _project_ (`adblock-db`) is the top-level container
-> that holds branches and compute. A _database_ (`bloqr-backend`) is the actual
+> that holds branches and compute. A _database_ (`adblock-compiler`) is the actual
 > PostgreSQL database inside a branch. Connection strings always end with the
 > **database name**, not the project name:
-> `postgresql://…/bloqr-backend?sslmode=require`
+> `postgresql://…/adblock-compiler?sslmode=require`
 
 ### Connection String Format
 
 ```
-postgresql://<user>:<password>@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/bloqr-backend?sslmode=require
+postgresql://<user>:<password>@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/adblock-compiler?sslmode=require
 ```
 
 - Always use the **pooler** endpoint (`-pooler` suffix) for application connections
@@ -127,7 +127,7 @@ flowchart TB
     end
 
     subgraph Neon["Neon PostgreSQL"]
-        DB["bloqr-backend<br/>Azure East US 2"]
+        DB["adblock-compiler<br/>Azure East US 2"]
     end
 
     P -->|"Connects to<br/>local socket"| LP
@@ -493,7 +493,7 @@ Do **not** use `npx prisma generate` — it skips the import path fixer that Den
 **Fix:** Use `DIRECT_DATABASE_URL` (non-pooled endpoint) for migrations:
 ```bash
 # .env.local
-DIRECT_DATABASE_URL=postgresql://<user>:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/bloqr-backend?sslmode=require
+DIRECT_DATABASE_URL=postgresql://<user>:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require
 ```
 
 Note the **non-pooler** hostname (no `-pooler` suffix). `prisma.config.ts` automatically

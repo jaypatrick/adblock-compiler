@@ -1,6 +1,6 @@
 # Plugin System
 
-The bloqr-backend plugin system provides a **unified architecture** for extending all 10 compiler subsystems through a single registration channel.
+The adblock-compiler plugin system provides a **unified architecture** for extending all 10 compiler subsystems through a single registration channel.
 
 ## Quick Start
 

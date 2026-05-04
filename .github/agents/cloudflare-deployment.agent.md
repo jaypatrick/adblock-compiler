@@ -79,11 +79,11 @@ main = "worker/src/index.ts"
 compatibility_date = "2025-01-01"
 
 [assets]
-directory = "dist/bloqr-backend/browser"
+directory = "frontend/dist/adblock-frontend/browser"
 not_found_handling = "single-page-application"
 
 [build]
-command = "pnpm --filter bloqr-frontend run build"
+command = "pnpm --filter adblock-frontend run build"
 ```
 
 > `not_found_handling = "single-page-application"` replaces the old `_redirects` hack from Pages.

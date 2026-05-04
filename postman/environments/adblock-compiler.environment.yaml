@@ -1,10 +1,10 @@
-name: bloqr-backend-local
+name: adblock-compiler
 values:
   - key: baseUrl
-    value: 'http://localhost:8787/api'
+    value: 'https://api.bloqr.dev/api'
     enabled: true
   - key: originUrl
-    value: 'http://localhost:8787'
+    value: 'https://api.bloqr.dev'
     enabled: true
   - key: apiKey
     value: ''

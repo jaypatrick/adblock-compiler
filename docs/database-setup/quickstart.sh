@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# quickstart.sh — Bootstrap local PostgreSQL for bloqr-backend development
+# quickstart.sh — Bootstrap local PostgreSQL for adblock-compiler development
 #
 # Usage: bash docs/database-setup/quickstart.sh
 #

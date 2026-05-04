@@ -169,7 +169,7 @@ Deno.test('createStructuredEvent - handles missing request data', () => {
 
     const structured = createStructuredEvent(event);
 
-    assertEquals(structured.scriptName, 'bloqr-backend'); // default value
+    assertEquals(structured.scriptName, 'adblock-compiler'); // default value
     assertEquals(structured.url, undefined);
     assertEquals(structured.method, undefined);
 });

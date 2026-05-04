@@ -101,14 +101,14 @@ describe('TrpcClientService', () => {
         });
 
         it('strips /api/ suffix (with trailing slash) from SSR base URL', async () => {
-            setup(buildAuthMock(false, null), 'https://bloqr-backend.example.workers.dev/api/');
+            setup(buildAuthMock(false, null), 'https://adblock-compiler.example.workers.dev/api/');
             const mockResult = { version: '0.79.4', apiVersion: 'v1' };
             fetchSpy.mockResolvedValueOnce(makeRes([{ result: { data: mockResult } }]));
 
             await service.client.v1.version.get.query();
 
             const [url] = fetchSpy.mock.calls[0] as [string, RequestInit];
-            expect(url).toContain('https://bloqr-backend.example.workers.dev/api/trpc');
+            expect(url).toContain('https://adblock-compiler.example.workers.dev/api/trpc');
         });
     });
 

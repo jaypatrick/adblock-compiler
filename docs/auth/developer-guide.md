@@ -1,6 +1,6 @@
 # Authentication Developer Guide
 
-Technical reference for developers working on or extending the bloqr-backend authentication system.
+Technical reference for developers working on or extending the adblock-compiler authentication system.
 
 > **See also:** [Better Auth Developer Guide](better-auth-developer-guide.md) for in-depth plugin
 > architecture, adapter swapping, and custom `IAuthProvider` creation.
@@ -201,7 +201,7 @@ Each plugin registers routes under `/api/auth/*` and may add database tables.
 // worker/lib/auth.ts
 plugins: [
     bearer(),       // Authorization: Bearer <session-token> path for API clients
-    twoFactor({ issuer: 'bloqr-backend' }), // TOTP 2FA
+    twoFactor({ issuer: 'adblock-compiler' }), // TOTP 2FA
     multiSession(), // Multiple concurrent sessions
     admin(),        // Admin user management endpoints
 ]
@@ -216,7 +216,7 @@ import { apiKey } from 'better-auth/plugins';
 
 plugins: [
     bearer(),
-    twoFactor({ issuer: 'bloqr-backend' }),
+    twoFactor({ issuer: 'adblock-compiler' }),
     multiSession(),
     admin(),
     apiKey(), // adds /api/auth/api-key/create, /list, /revoke

@@ -1,6 +1,6 @@
 # Sentry Integration
 
-`bloqr-backend` integrates [Sentry for Cloudflare Workers](https://docs.sentry.io/platforms/javascript/guides/cloudflare/) (`@sentry/cloudflare`) for automatic error capture, performance tracing, and release tracking.
+`adblock-compiler` integrates [Sentry for Cloudflare Workers](https://docs.sentry.io/platforms/javascript/guides/cloudflare/) (`@sentry/cloudflare`) for automatic error capture, performance tracing, and release tracking.
 
 The integration is **additive and opt-in**: when `SENTRY_DSN` is absent the worker
 runs identically to before — no SDK is imported and no events are captured.
@@ -53,8 +53,8 @@ All three layers use the **same `SENTRY_DSN` secret** — set once via
 
 1. Log in to [sentry.io](https://sentry.io).
 2. Create a new project: **Projects → Create Project → JavaScript → Cloudflare Workers**.
-3. Name it `bloqr-backend` (or match your `wrangler.toml` `name` field).
-4. Copy the **DSN** from *Settings → Projects → bloqr-backend → Client Keys (DSN)*.
+3. Name it `adblock-compiler` (or match your `wrangler.toml` `name` field).
+4. Copy the **DSN** from *Settings → Projects → adblock-compiler → Client Keys (DSN)*.
 
 ---
 
@@ -226,7 +226,7 @@ import { OpenTelemetryDiagnosticsProvider } from '../src/diagnostics/index.ts';
 
 const diagnostics = new CompositeDiagnosticsProvider([
     new SentryDiagnosticsProvider({ dsn: env.SENTRY_DSN }),
-    new OpenTelemetryDiagnosticsProvider({ serviceName: 'bloqr-backend' }),
+    new OpenTelemetryDiagnosticsProvider({ serviceName: 'adblock-compiler' }),
 ]);
 ```
 
@@ -269,7 +269,7 @@ try {
 
 ```bash
 # POST a deliberately malformed rule — will be caught and reported
-curl -X POST https://bloqr-backend.your-domain.workers.dev/compile \
+curl -X POST https://adblock-compiler.your-domain.workers.dev/compile \
   -H "Content-Type: application/json" \
   -d '{"__sentry_test": true}'
 ```
@@ -348,7 +348,7 @@ No rebuild is required — the same artifact works in any environment.
 # GitHub Actions secrets and variables — needed for .github/workflows/sentry-sourcemaps.yml
 gh secret set SENTRY_AUTH_TOKEN        # from Sentry → Settings → Auth Tokens
 gh variable set SENTRY_ORG --body "your-sentry-org-slug"
-gh variable set SENTRY_PROJECT --body "bloqr-backend"
+gh variable set SENTRY_PROJECT --body "adblock-compiler"
 ```
 
 The workflow runs automatically on every push to `main` and on `v*` release tags.

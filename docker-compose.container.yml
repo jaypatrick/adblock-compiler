@@ -11,13 +11,13 @@
 # emulation handles the platform translation automatically.
 
 services:
-    bloqr-backend-container:
+    adblock-compiler-container:
         image: jaysonknight/adblock-compiler-container:latest
         build:
             context: .
             dockerfile: Dockerfile.container
         platform: linux/amd64
-        container_name: bloqr-backend-container
+        container_name: adblock-compiler-container
         ports:
             - '${HOST_PORT:-8787}:8787'
         environment:

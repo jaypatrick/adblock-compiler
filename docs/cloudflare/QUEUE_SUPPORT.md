@@ -4,7 +4,7 @@ This document describes how to use the Cloudflare Queue integration for async co
 
 ## Overview
 
-The bloqr-backend worker now supports asynchronous compilation through Cloudflare Queues. This is useful for:
+The adblock-compiler worker now supports asynchronous compilation through Cloudflare Queues. This is useful for:
 
 - **Long-running compilations** - Offload CPU-intensive work to background processing
 - **Batch operations** - Process multiple compilations without blocking

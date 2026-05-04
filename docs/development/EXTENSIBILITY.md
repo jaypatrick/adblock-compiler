@@ -419,7 +419,7 @@ class StructuredLogger implements ILogger {
 }
 
 // Usage
-const logger = new StructuredLogger({ service: 'bloqr-backend', version: '2.0.0' });
+const logger = new StructuredLogger({ service: 'adblock-compiler', version: '2.0.0' });
 const compiler = new FilterCompiler({ logger });
 
 // With additional context

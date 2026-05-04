@@ -3,7 +3,7 @@ revision = 3
 requires-python = ">=3.11"
 
 [[package]]
-name = "bloqr-backend-tools"
+name = "adblock-compiler-tools"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

@@ -1,6 +1,6 @@
 # AdGuard DNS Private API Integration Ideas
 
-Integration ideas for the [AdGuard DNS Private API](https://adguard-dns.io/kb/private-dns/api/overview/) and `bloqr-backend`.
+Integration ideas for the [AdGuard DNS Private API](https://adguard-dns.io/kb/private-dns/api/overview/) and `adblock-compiler`.
 
 > **Base URL:** `https://api.adguard-dns.io`
 > **OpenAPI Spec:** [`https://api.adguard-dns.io/swagger/openapi.json`](https://api.adguard-dns.io/swagger/openapi.json)
@@ -188,7 +188,7 @@ const batchRequest = {
     })),
 };
 
-const compiled = await fetch('https://bloqr-backend.jk-com.workers.dev/compile/batch', {
+const compiled = await fetch('https://adblock-compiler.jk-com.workers.dev/compile/batch', {
     method: 'POST',
     body: JSON.stringify(batchRequest),
 });
@@ -293,7 +293,7 @@ if (compiled.ruleCount > limits.filtering_rules) {
 
 ```mermaid
 flowchart TD
-    AC["bloqr-backend POST /compile\nFiltersDownloader: fetch + resolve !#if / !#include\nAGTree: parse → AST\nTransformations: Deduplicate, Validate, RemoveComments\nDiffBuilder: generate patch vs previous output"]
+    AC["adblock-compiler POST /compile\nFiltersDownloader: fetch + resolve !#if / !#include\nAGTree: parse → AST\nTransformations: Deduplicate, Validate, RemoveComments\nDiffBuilder: generate patch vs previous output"]
     AGDNS["AdGuard DNS Private API\nGET /oapi/v1/account/limits → guard rule count\nPOST /oapi/v1/filtering_rules → push compiled rules\nGET /oapi/v1/devices → per-device sync"]
     Monitor["Monitoring\nGET /oapi/v1/query_log → feedback loop\nGET /oapi/v1/stats → usage metrics\nEmit SSE/WebSocket events: dns:sync, metric, diagnostic"]
 
@@ -311,10 +311,10 @@ flowchart TD
 - [DNS Filtering Rule Syntax](https://adguard-dns.io/kb/general/dns-filtering-syntax/)
 - [AdGuard DNS Blocklists](https://adguard-dns.io/kb/private-dns/setting-up-filtering/blocklists/)
 - [AdGuard DNS Access Settings](https://adguard-dns.io/kb/private-dns/server-and-settings/access/)
-- [bloqr-backend API README](../docs/api/README.md)
-- [bloqr-backend OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
-- [bloqr-backend Streaming API](../docs/api/STREAMING_API.md)
-- [bloqr-backend Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
-- [bloqr-backend Zod Validation](../docs/api/ZOD_VALIDATION.md)
+- [adblock-compiler API README](../docs/api/README.md)
+- [adblock-compiler OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
+- [adblock-compiler Streaming API](../docs/api/STREAMING_API.md)
+- [adblock-compiler Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
+- [adblock-compiler Zod Validation](../docs/api/ZOD_VALIDATION.md)
 - [DiffBuilder Integration Ideas](./DIFF_BUILDER_INTEGRATION.md)
 - [FiltersDownloader Integration Ideas](./FILTERS_DOWNLOADER_INTEGRATION.md)

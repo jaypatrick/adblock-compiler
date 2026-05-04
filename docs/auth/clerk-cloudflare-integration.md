@@ -471,7 +471,7 @@ The Angular 21 frontend is deployed as Cloudflare Worker static assets with serv
 ```toml
 # wrangler.toml (main worker)
 [assets]
-directory = "./frontend/dist/bloqr-backend/browser"
+directory = "./frontend/dist/adblock-compiler/browser"
 binding = "ASSETS"
 html_handling = "auto-trailing-slash"
 not_found_handling = "single-page-application"  # SPA fallback for Angular routes
@@ -723,7 +723,7 @@ Hyperdrive connects the Worker to PostgreSQL where API keys are stored. User rec
 
 ```bash
 # Create Hyperdrive configuration
-wrangler hyperdrive create bloqr-backend-db \
+wrangler hyperdrive create adblock-compiler-db \
   --connection-string="postgresql://user:pass@host:5432/dbname"
 ```
 

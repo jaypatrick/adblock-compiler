@@ -16,7 +16,7 @@ and explains what action (if any) is required for existing key holders.
 ## Background
 
 The original `abc_` prefix was a placeholder chosen during early development.
-`blq_` is the permanent, product-aligned prefix for bloqr-backend API keys.
+`blq_` is the permanent, product-aligned prefix for adblock-compiler API keys.
 
 ---
 

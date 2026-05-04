@@ -164,7 +164,7 @@ export async function sendToDiscord(event: StructuredTailEvent, webhookUrl: stri
 export async function sendToDatadog(
     event: StructuredTailEvent,
     apiKey: string,
-    service: string = 'bloqr-backend',
+    service: string = 'adblock-compiler',
 ): Promise<void> {
     const datadogLogs = event.logs.map((log: any) => ({
         ddsource: 'cloudflare-workers',
@@ -370,7 +370,7 @@ export default {
 
             const structuredEvent = {
                 timestamp: new Date(event.eventTimestamp).toISOString(),
-                scriptName: event.scriptName || 'bloqr-backend',
+                scriptName: event.scriptName || 'adblock-compiler',
                 outcome: event.outcome,
                 url: event.event?.request?.url,
                 method: event.event?.request?.method,

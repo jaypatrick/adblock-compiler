@@ -1,6 +1,6 @@
 # Bugs and Feature Requests
 
-This document tracks identified bugs and feature requests for the bloqr-backend project.
+This document tracks identified bugs and feature requests for the adblock-compiler project.
 
 Last Updated: 2026-02-11
 

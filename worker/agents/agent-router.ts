@@ -15,7 +15,7 @@
  * Cloudflare CDN.  Asset paths are matched against the `frontend/dist/` build
  * output, which contains no `/agents/*` paths — so agent routes are **never**
  * captured by the assets handler.  This is confirmed by the wrangler asset
- * binding configuration (`directory = "frontend/dist/bloqr-backend/browser"`).
+ * binding configuration (`directory = "frontend/dist/adblock-compiler/browser"`).
  *
  * @see worker/agents/agent-auth.ts — ZTA authentication middleware
  * @see worker/agents/registry.ts — AGENT_REGISTRY entries

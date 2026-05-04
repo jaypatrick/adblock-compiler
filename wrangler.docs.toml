@@ -1,7 +1,7 @@
 # wrangler.docs.toml — Documentation Worker (Cloudflare)
 # Serves mdBook static output (./book/) as a Cloudflare Worker with static assets.
 
-name = "bloqr-docs"
+name = "adblock-docs"
 compatibility_date = "2026-01-01"
 workers_dev = true
 

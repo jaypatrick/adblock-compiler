@@ -1,7 +1,7 @@
 # Better Auth Developer Guide
 
 Plugin catalogue, adapter swapping, custom provider creation, and social provider
-integration for the bloqr-backend authentication system.
+integration for the adblock-compiler authentication system.
 
 ---
 
@@ -47,7 +47,7 @@ export const createAuth = (env: Env, baseURL?: string) => {
     // ...
     plugins: [
       bearer(),
-      twoFactor({ issuer: 'bloqr-backend' }),
+      twoFactor({ issuer: 'adblock-compiler' }),
       multiSession(),
       admin(),
       apiKey(),      // ← new plugin

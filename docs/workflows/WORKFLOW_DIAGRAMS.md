@@ -1,6 +1,6 @@
 # Workflow Diagrams
 
-This document contains comprehensive workflow diagrams for the bloqr-backend system, including Cloudflare Workflows, queue-based processing, compilation pipelines, and supporting processes.
+This document contains comprehensive workflow diagrams for the adblock-compiler system, including Cloudflare Workflows, queue-based processing, compilation pipelines, and supporting processes.
 
 ## Table of Contents
 

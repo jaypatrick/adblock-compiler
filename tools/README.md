@@ -1,6 +1,6 @@
 # tools/
 
-Standalone operational diagnostic scripts for the bloqr-backend / Bloqr stack, with interactive [Marimo](https://marimo.io) runbooks that run in your browser.
+Standalone operational diagnostic scripts for the adblock-compiler / Bloqr stack, with interactive [Marimo](https://marimo.io) runbooks that run in your browser.
 
 | Script                | Purpose                                                            | Runbook                              |
 | --------------------- | ------------------------------------------------------------------ | ------------------------------------ |

@@ -20,7 +20,7 @@ Deno.test('buildMeta() returns correct shape without network', async () => {
 
     const meta = await buildMeta(baseUrl, timeoutMs);
 
-    assertEquals(meta.tool, 'bloqr-backend-diag-full');
+    assertEquals(meta.tool, 'adblock-compiler-diag-full');
     assertExists(meta.version);
     assertExists(meta.timestamp);
     assertEquals(meta.baseUrl, baseUrl);
@@ -142,5 +142,5 @@ Deno.test('DiagBundleSchema rejects wrong tool literal', async () => {
 
 Deno.test('DiagBundleSchema meta tool field matches buildMeta output', async () => {
     const meta = await buildMeta('https://example.com', 15_000);
-    assertObjectMatch(meta, { tool: 'bloqr-backend-diag-full' });
+    assertObjectMatch(meta, { tool: 'adblock-compiler-diag-full' });
 });

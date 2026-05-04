@@ -1,6 +1,6 @@
 # Edge Cache Architecture
 
-> How the bloqr-backend project uses a multi-tier storage hierarchy to
+> How the adblock-compiler project uses a multi-tier storage hierarchy to
 > serve compiled filter lists at the edge with low latency and strong
 > consistency.
 

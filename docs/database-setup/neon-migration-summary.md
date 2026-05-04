@@ -1,6 +1,6 @@
 # Neon PostgreSQL Migration — Complete Summary
 
-This document provides a comprehensive record of the migration from Cloudflare D1 (SQLite) to Neon PostgreSQL as the primary database for bloqr-backend. It covers the motivation, scope, technical decisions, implementation details, CI/CD changes, and post-migration improvements.
+This document provides a comprehensive record of the migration from Cloudflare D1 (SQLite) to Neon PostgreSQL as the primary database for adblock-compiler. It covers the motivation, scope, technical decisions, implementation details, CI/CD changes, and post-migration improvements.
 
 For topic-specific guides, see the cross-references at the end of this document.
 
@@ -141,7 +141,7 @@ Both workflows use `neondatabase/create-branch-action@v5`, which is a composite 
 | Input | Purpose | This project |
 |-------|---------|---------|
 | `username` | Database role name | Derived from `NEON_DATABASE_URL` |
-| `database` | Database name | Derived from `NEON_DATABASE_URL` (`bloqr-backend`) |
+| `database` | Database name | Derived from `NEON_DATABASE_URL` (`adblock-compiler`) |
 | `branch_name` | Name for the new branch | `pr-<number>` |
 | `parent` | Parent branch to fork from | `production` |
 

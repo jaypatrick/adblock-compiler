@@ -1,6 +1,6 @@
 # Cloudflare Native Observability
 
-`bloqr-backend` ships with Cloudflare's built-in observability suite already
+`adblock-compiler` ships with Cloudflare's built-in observability suite already
 enabled in `wrangler.toml`. This document explains what is configured, how to
 access it, and how to extend it.
 
@@ -37,7 +37,7 @@ appropriate for current traffic levels.
 
 ### Where to view
 
-- **Dashboard**: *Cloudflare Dashboard → Workers & Pages → bloqr-backend → Logs*
+- **Dashboard**: *Cloudflare Dashboard → Workers & Pages → adblock-compiler → Logs*
 - **CLI live tail** (real-time):
   ```bash
   wrangler tail --format pretty
@@ -93,7 +93,7 @@ child spans for:
 
 ### Where to view
 
-*Cloudflare Dashboard → Workers & Pages → bloqr-backend → Traces*
+*Cloudflare Dashboard → Workers & Pages → adblock-compiler → Traces*
 
 Each trace shows the full waterfall from inbound request → Worker logic →
 D1/KV/R2/external subrequests → response.
@@ -108,7 +108,7 @@ Jaeger, Honeycomb, etc.):
 import { OpenTelemetryDiagnosticsProvider } from '../src/diagnostics/index.ts';
 
 const diagnostics = new OpenTelemetryDiagnosticsProvider({
-    serviceName: 'bloqr-backend',
+    serviceName: 'adblock-compiler',
     serviceVersion: env.COMPILER_VERSION,
 });
 ```
@@ -243,7 +243,7 @@ curl -X POST "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_
     "name": "adblock-compiler-logs",
     "destination_conf": "r2://adblock-compiler-r2-storage/logs/{DATE}?account-id=$CLOUDFLARE_ACCOUNT_ID",
     "dataset": "workers_trace_events",
-    "filter": "{\"where\":{\"and\":[{\"key\":\"ScriptName\",\"operator\":\"eq\",\"value\":\"bloqr-backend\"}]}}",
+    "filter": "{\"where\":{\"and\":[{\"key\":\"ScriptName\",\"operator\":\"eq\",\"value\":\"adblock-compiler\"}]}}",
     "enabled": true
   }'
 ```
@@ -256,11 +256,11 @@ Logs land in the `adblock-compiler-r2-storage` R2 bucket under `logs/YYYY-MM-DD/
 
 | Feature | Path in Dashboard |
 |---------|------------------|
-| Live log tail | Workers & Pages → bloqr-backend → Logs |
-| Distributed traces | Workers & Pages → bloqr-backend → Traces |
+| Live log tail | Workers & Pages → adblock-compiler → Logs |
+| Distributed traces | Workers & Pages → adblock-compiler → Traces |
 | Analytics Engine SQL | Workers & Pages → Analytics Engine |
-| Durable Object metrics | Workers & Pages → bloqr-backend → Durable Objects |
-| Worker CPU/memory usage | Workers & Pages → bloqr-backend → Metrics |
+| Durable Object metrics | Workers & Pages → adblock-compiler → Durable Objects |
+| Worker CPU/memory usage | Workers & Pages → adblock-compiler → Metrics |
 | Security events (WAF, rate limit) | Security → Events |
 | Zero Trust Access logs | Zero Trust → Logs → Access |
 

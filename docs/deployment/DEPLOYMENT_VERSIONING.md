@@ -1,6 +1,6 @@
 # Deployment Versioning System
 
-The bloqr-backend project includes an automated deployment versioning system that tracks every successful worker deployment with detailed metadata.
+The adblock-compiler project includes an automated deployment versioning system that tracks every successful worker deployment with detailed metadata.
 
 ## Overview
 

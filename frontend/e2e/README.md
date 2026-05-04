@@ -23,26 +23,26 @@ Ensure you have the following installed:
 ```bash
 # Node.js and pnpm (handled by root package.json)
 # Playwright browsers
-pnpm --filter bloqr-frontend exec playwright install
+pnpm --filter adblock-frontend exec playwright install
 ```
 
 ### Running Tests Locally
 
 ```bash
 # Run all E2E tests
-pnpm --filter bloqr-frontend run test:e2e
+pnpm --filter adblock-frontend run test:e2e
 
 # Run with UI mode (interactive debugging)
-pnpm --filter bloqr-frontend exec playwright test --config=e2e/playwright.config.ts --ui
+pnpm --filter adblock-frontend exec playwright test --config=e2e/playwright.config.ts --ui
 
 # Run specific test file
-pnpm --filter bloqr-frontend exec playwright test e2e/compiler-workflow.spec.ts
+pnpm --filter adblock-frontend exec playwright test e2e/compiler-workflow.spec.ts
 
 # Run tests in headed mode (see browser)
-pnpm --filter bloqr-frontend exec playwright test --config=e2e/playwright.config.ts --headed
+pnpm --filter adblock-frontend exec playwright test --config=e2e/playwright.config.ts --headed
 
 # Run tests with debugging
-pnpm --filter bloqr-frontend exec playwright test --config=e2e/playwright.config.ts --debug
+pnpm --filter adblock-frontend exec playwright test --config=e2e/playwright.config.ts --debug
 ```
 
 ### Start Development Server
@@ -51,11 +51,11 @@ Tests require the frontend dev server to be running:
 
 ```bash
 # Terminal 1: Start frontend dev server
-pnpm --filter bloqr-frontend run start
+pnpm --filter adblock-frontend run start
 # Server runs on http://localhost:4200
 
 # Terminal 2: Run E2E tests
-pnpm --filter bloqr-frontend run test:e2e
+pnpm --filter adblock-frontend run test:e2e
 ```
 
 For full-stack testing (with backend API):
@@ -66,11 +66,11 @@ deno task wrangler:dev
 # API runs on http://localhost:8787
 
 # Terminal 2: Start frontend (proxies API)
-pnpm --filter bloqr-frontend run start
+pnpm --filter adblock-frontend run start
 # Frontend runs on http://localhost:4200, proxies /api to :8787
 
 # Terminal 3: Run E2E tests
-pnpm --filter bloqr-frontend run test:e2e
+pnpm --filter adblock-frontend run test:e2e
 ```
 
 ## 📋 Test Files
@@ -259,7 +259,7 @@ State Persistence:
 ### Interactive UI Mode (Recommended for Development)
 
 ```bash
-pnpm --filter bloqr-frontend exec playwright test --ui
+pnpm --filter adblock-frontend exec playwright test --ui
 ```
 
 Benefits:
@@ -271,7 +271,7 @@ Benefits:
 ### Headed Mode (Watch Tests Execute)
 
 ```bash
-pnpm --filter bloqr-frontend exec playwright test --headed
+pnpm --filter adblock-frontend exec playwright test --headed
 ```
 
 See the actual browser window and watch tests execute.
@@ -279,7 +279,7 @@ See the actual browser window and watch tests execute.
 ### Debug Mode
 
 ```bash
-pnpm --filter bloqr-frontend exec playwright test --debug
+pnpm --filter adblock-frontend exec playwright test --debug
 ```
 
 Opens Playwright Inspector for step-by-step debugging.
@@ -287,7 +287,7 @@ Opens Playwright Inspector for step-by-step debugging.
 ### Generate Test Code
 
 ```bash
-pnpm --filter bloqr-frontend exec playwright codegen http://localhost:4200
+pnpm --filter adblock-frontend exec playwright codegen http://localhost:4200
 ```
 
 Opens browser and records your actions as test code.
@@ -299,7 +299,7 @@ Opens browser and records your actions as test code.
 After running tests, view the HTML report:
 
 ```bash
-pnpm --filter bloqr-frontend exec playwright show-report
+pnpm --filter adblock-frontend exec playwright show-report
 ```
 
 ### Trace Viewer
@@ -307,7 +307,7 @@ pnpm --filter bloqr-frontend exec playwright show-report
 If a test fails on retry, trace is automatically captured:
 
 ```bash
-pnpm --filter bloqr-frontend exec playwright show-trace trace.zip
+pnpm --filter adblock-frontend exec playwright show-trace trace.zip
 ```
 
 ### Common Issues
@@ -409,16 +409,16 @@ Potential additions:
 
 ```bash
 # Run only compiler tests
-pnpm --filter bloqr-frontend exec playwright test e2e/compiler-workflow.spec.ts
+pnpm --filter adblock-frontend exec playwright test e2e/compiler-workflow.spec.ts
 
 # Run all workflow tests
-pnpm --filter bloqr-frontend exec playwright test e2e/*-workflow.spec.ts
+pnpm --filter adblock-frontend exec playwright test e2e/*-workflow.spec.ts
 
 # Run tests matching pattern
-pnpm --filter bloqr-frontend exec playwright test -g "navigation"
+pnpm --filter adblock-frontend exec playwright test -g "navigation"
 
 # Run only tests with specific tag
-pnpm --filter bloqr-frontend exec playwright test --grep "@smoke"
+pnpm --filter adblock-frontend exec playwright test --grep "@smoke"
 ```
 
 ## 📝 Adding New Tests

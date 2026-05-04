@@ -710,7 +710,7 @@ async function generatePostmanCollection(): Promise<void> {
             name: spec.info.title,
             description: `Auto-generated from docs/api/openapi.yaml. Run 'deno task postman:collection' to regenerate.\n\n${spec.info.description ?? ''}`.trim(),
             schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
-            _postman_id: 'bloqr-backend-api',
+            _postman_id: 'adblock-compiler-api',
             version: spec.info.version,
         },
         variable: [

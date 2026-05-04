@@ -63,14 +63,14 @@ Linux VM in GitHub Actions and cannot reach it. This is by design — not a bug.
 |---|---|---|
 | **Project** | Top-level Neon container | `adblock-db` (ID: `twilight-river-73901472`) |
 | **Branch** | Git-like copy-on-write clone of a project | `production` (Default), `main`, `pr-N` |
-| **Database** | PostgreSQL database inside a branch | `bloqr-backend` |
+| **Database** | PostgreSQL database inside a branch | `adblock-compiler` |
 | **Role** | PostgreSQL user/role | `neondb_owner` (Neon default) |
 | **Endpoint** | Compute attached to a branch | `ep-winter-term-a8rxh2a9` |
 
 ### Connection String Anatomy
 
 ```
-postgresql://neondb_owner:PASSWORD@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/bloqr-backend?sslmode=require
+postgresql://neondb_owner:PASSWORD@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/adblock-compiler?sslmode=require
 └─────────┘ └────────────────────┘ └─────────────────────────────────────────────────────┘ └──────────────┘
   scheme      role:password          host (add -pooler for app; omit for migrations/psql)    database name
 ```
@@ -117,15 +117,15 @@ DATABASE_URL="<pooler-url>" DIRECT_DATABASE_URL="<direct-url>" npx prisma migrat
 # Obtain the production direct connection string from:
 #   https://console.neon.tech → project adblock-db → branch: production
 #   → Connection Details → Direct (not pooled)
-DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/bloqr-backend?sslmode=require" \
+DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require" \
   deno task db:migrate:deploy
 ```
 
 Or using `npx prisma` directly (equivalent; useful without Deno):
 
 ```bash
-DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/bloqr-backend?sslmode=require" \
-  DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/bloqr-backend?sslmode=require" \
+DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require" \
+  DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/adblock-compiler?sslmode=require" \
   npx prisma migrate deploy
 ```
 
@@ -136,7 +136,7 @@ DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a
 Verify afterwards:
 
 ```bash
-DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/bloqr-backend?sslmode=require" \
+DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require" \
   npx prisma migrate status
 # Expected: "All migrations have been applied."
 ```
@@ -148,7 +148,7 @@ DIRECT_DATABASE_URL="<direct-neon-url>" npx prisma studio
 
 ### Connect via psql
 ```bash
-psql "postgresql://neondb_owner:PASSWORD@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/bloqr-backend?sslmode=require"
+psql "postgresql://neondb_owner:PASSWORD@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require"
 ```
 
 ### Inspect migration history
@@ -177,7 +177,7 @@ neonctl branches list --project-id twilight-river-73901472
 ```bash
 neonctl connection-string pr-1278 \
   --project-id twilight-river-73901472 \
-  --database-name bloqr-backend \
+  --database-name adblock-compiler \
   --role-name neondb_owner
 ```
 
@@ -306,7 +306,7 @@ Actions → New repository secret**:
 
 | Secret name | Value format |
 |---|---|
-| `NEON_DATABASE_URL` | `postgresql://neondb_owner:PASSWORD@ep-xxx.eastus2.azure.neon.tech/bloqr-backend?sslmode=require` |
+| `NEON_DATABASE_URL` | `postgresql://neondb_owner:PASSWORD@ep-xxx.eastus2.azure.neon.tech/adblock-compiler?sslmode=require` |
 | `NEON_API_KEY` | Neon API token from [console.neon.tech → Account → API Keys](https://console.neon.tech/app/settings/api-keys) |
 | `NEON_PROJECT_ID` | `twilight-river-73901472` |
 
@@ -322,10 +322,10 @@ Actions → New repository secret**:
 |---|---|---|
 | `NEON_API_KEY` | `neon-branch-create.yml`, `neon-branch-cleanup.yml` | Neon API token |
 | `NEON_PROJECT_ID` | both Neon workflows | `twilight-river-73901472` |
-| `NEON_DATABASE_URL` | `neon-branch-create.yml` | Direct connection string (non-pooled) pointing to `bloqr-backend` database |
+| `NEON_DATABASE_URL` | `neon-branch-create.yml` | Direct connection string (non-pooled) pointing to `adblock-compiler` database |
 | `DIRECT_DATABASE_URL` | `db-migrate.yml` | Same direct connection string — used by production migration jobs |
 
-The workflow derives the database name (`bloqr-backend`) and role (`neondb_owner`)
+The workflow derives the database name (`adblock-compiler`) and role (`neondb_owner`)
 from `NEON_DATABASE_URL` at runtime. If the database is ever renamed, update only
 that secret — nothing else needs to change.
 

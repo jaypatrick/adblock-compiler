@@ -6,7 +6,7 @@
 > This file documents the server-side composite error reporter.
 > For the KV flash-token flow, the `POST /api/log/frontend-error` endpoint, the `error_events` D1 table, and the Angular `FlashService` integration, see **[`docs/frontend/ERROR_ARCHITECTURE.md`](../frontend/ERROR_ARCHITECTURE.md)**.
 
-The bloqr-backend provides centralized error reporting for production monitoring, enabling you to track errors across all instances and integrate with services like Sentry or Cloudflare Analytics Engine.
+The adblock-compiler provides centralized error reporting for production monitoring, enabling you to track errors across all instances and integrate with services like Sentry or Cloudflare Analytics Engine.
 
 ## Features
 

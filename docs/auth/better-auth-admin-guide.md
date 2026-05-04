@@ -1,7 +1,7 @@
 # Better Auth Admin Guide
 
 Operations reference for administrators managing users, sessions, secrets, and database
-migrations in the bloqr-backend authentication system.
+migrations in the adblock-compiler authentication system.
 
 ---
 

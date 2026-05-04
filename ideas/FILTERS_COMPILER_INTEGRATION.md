@@ -1,12 +1,12 @@
 # AdGuard Filters Compiler Integration Ideas
 
-Integration ideas for [`AdguardTeam/FiltersCompiler`](https://github.com/AdguardTeam/FiltersCompiler) and `bloqr-backend`.
+Integration ideas for [`AdguardTeam/FiltersCompiler`](https://github.com/AdguardTeam/FiltersCompiler) and `adblock-compiler`.
 
 ---
 
 ## 1. 🏗️ Use FiltersCompiler as an Upstream Compilation Stage
 
-FiltersCompiler already solves the **filter registry → platform output** problem at scale. Rather than reinventing this, `bloqr-backend` could position itself as a **higher-level orchestration layer** on top of it:
+FiltersCompiler already solves the **filter registry → platform output** problem at scale. Rather than reinventing this, `adblock-compiler` could position itself as a **higher-level orchestration layer** on top of it:
 
 - Call `compiler.compile(filtersDir, logPath, reportPath, platformsPath, whitelist, blacklist, customPlatformsConfig)` as a pre-processing step
 - Feed the compiled per-platform output into your transformation pipeline for further processing (dedup, validation, streaming, etc.)
@@ -24,7 +24,7 @@ compiler.compile(
     customPlatformsConfig,
 );
 
-// Then pipe compiled output into bloqr-backend transformations
+// Then pipe compiled output into adblock-compiler transformations
 ```
 
 ---
@@ -65,7 +65,7 @@ const customPlatformsConfig = {
 
 FiltersCompiler's `@include` options map directly to discrete transformation stages in your batch pipeline ([`BATCH_API_GUIDE.md`](../docs/api/BATCH_API_GUIDE.md)):
 
-| FiltersCompiler Option | `bloqr-backend` Transformation |
+| FiltersCompiler Option | `adblock-compiler` Transformation |
 |---|---|
 | `/stripComments` | `RemoveComments` transformation |
 | `/notOptimized` | Hint injection transformation |
@@ -167,7 +167,7 @@ Combine all three AdGuard tools into one end-to-end pipeline:
 flowchart TD
     FC["FiltersCompiler\nResolves @include directives (stripComments, addModifiers, exclude, etc.)\nApplies platform config (defines, removeRulePatterns, replacements)\nOutputs per-platform compiled rule sets"]
     FD["FiltersDownloader\nResolves !#if / !#else / !#endif preprocessor conditionals\nResolves !#include sub-files\nApplies patch-based incremental updates (downloadWithRaw)"]
-    AC["bloqr-backend\nAGTree parse → AST\nValidate (Zod + AGTree modifier validation)\nDeduplicate\nStream via SSE / WebSocket\nEmit per-platform compiled output"]
+    AC["adblock-compiler\nAGTree parse → AST\nValidate (Zod + AGTree modifier validation)\nDeduplicate\nStream via SSE / WebSocket\nEmit per-platform compiled output"]
 
     FC --> FD
     FD --> AC
@@ -180,7 +180,7 @@ compiler.compile(filtersDir, logPath, reportPath, platformsPath, whitelist, blac
 // Step 2: FiltersDownloader — resolve !#if + !#include
 const resolved = await FiltersDownloader.download(sourceUrl, platformDefines);
 
-// Step 3: bloqr-backend — parse, validate, transform, emit
+// Step 3: adblock-compiler — parse, validate, transform, emit
 const filterList = AGTreeParser.parseFilterList(resolved.join('\n'));
 // ... transformations, streaming, output
 ```
@@ -191,11 +191,11 @@ const filterList = AGTreeParser.parseFilterList(resolved.join('\n'));
 
 - [`AdguardTeam/FiltersCompiler` README](https://github.com/AdguardTeam/FiltersCompiler/blob/master/README.md)
 - [`AdguardTeam/FiltersRegistry`](https://github.com/AdguardTeam/FiltersRegistry)
-- [bloqr-backend AGTree Integration](../docs/api/AGTREE_INTEGRATION.md)
-- [bloqr-backend Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
-- [bloqr-backend Streaming API](../docs/api/STREAMING_API.md)
-- [bloqr-backend Platform Support](../docs/api/PLATFORM_SUPPORT.md)
-- [bloqr-backend OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
-- [bloqr-backend Zod Validation](../docs/api/ZOD_VALIDATION.md)
+- [adblock-compiler AGTree Integration](../docs/api/AGTREE_INTEGRATION.md)
+- [adblock-compiler Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
+- [adblock-compiler Streaming API](../docs/api/STREAMING_API.md)
+- [adblock-compiler Platform Support](../docs/api/PLATFORM_SUPPORT.md)
+- [adblock-compiler OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
+- [adblock-compiler Zod Validation](../docs/api/ZOD_VALIDATION.md)
 - [FiltersDownloader Integration Ideas](./FILTERS_DOWNLOADER_INTEGRATION.md)
 - [Scriptlets Integration Ideas](./SCRIPTLETS_INTEGRATION.md)

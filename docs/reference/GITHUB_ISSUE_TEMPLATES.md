@@ -412,7 +412,7 @@ Current tracing system is custom and not compatible with standard observability 
 ```typescript
 import { SpanStatusCode, trace } from "@opentelemetry/api";
 
-const tracer = trace.getTracer('bloqr-backend', VERSION);
+const tracer = trace.getTracer('adblock-compiler', VERSION);
 
 async function compileWithTracing(config: IConfiguration): Promise<string> {
     return tracer.startActiveSpan('compile', async (span) => {

@@ -1,6 +1,6 @@
 # Removing Anonymous Access
 
-Plan for migrating the bloqr-backend from open anonymous access to mandatory authenticated access.
+Plan for migrating the adblock-compiler from open anonymous access to mandatory authenticated access.
 
 ## Overview
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --allow-net --allow-env
 
 /**
- * Diagnostic probe library for the bloqr-backend Worker.
+ * Diagnostic probe library for the adblock-compiler Worker.
  *
  * Exports individual probe functions that each return a DiagResult.
  * This module has NO TTY dependencies — it is safe to import in CI.
@@ -167,7 +167,7 @@ export async function probeHealth(
 
 /**
  * GET /api/health/db-smoke
- * Checks HTTP 200, valid JSON `{ ok: true }`, db_name === 'bloqr-backend'.
+ * Checks HTTP 200, valid JSON `{ ok: true }`, db_name === 'adblock-compiler'.
  */
 export async function probeDbSmoke(
     baseUrl: string,
@@ -217,12 +217,12 @@ export async function probeDbSmoke(
         };
     }
 
-    if (dbNameValue !== 'bloqr-backend') {
+    if (dbNameValue !== 'adblock-compiler') {
         return {
             ok: false,
             label,
             latency_ms,
-            detail: `db_name mismatch: expected 'bloqr-backend', got '${dbNameValue}'`,
+            detail: `db_name mismatch: expected 'adblock-compiler', got '${dbNameValue}'`,
             raw: body,
         };
     }

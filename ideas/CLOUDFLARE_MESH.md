@@ -1,4 +1,4 @@
-# Cloudflare Mesh: Private Agent Networking for bloqr-backend
+# Cloudflare Mesh: Private Agent Networking for adblock-compiler
 
 **Date:** 2026-04-15 00:11:51
 **Status:** Strategic Evaluation — Awaiting SDK Maturity
@@ -10,7 +10,7 @@
 
 On April 14, 2026, Cloudflare launched [Cloudflare Mesh](https://blog.cloudflare.com/mesh/) — a private networking layer purpose-built for connecting users, services, and AI agents into a unified, identity-driven network fabric. Unlike a VPN, Mesh assigns each agent, node, and user a distinct cryptographic identity, enabling fine-grained access policies enforced at the network level — not the application level.
 
-This document evaluates Mesh's fit within the bloqr-backend platform across **two distinct scopes**:
+This document evaluates Mesh's fit within the adblock-compiler platform across **two distinct scopes**:
 
 1. **Infrastructure ZTA** — Mesh as a structural enforcement layer on top of the existing Cloudflare agent stack (Agents SDK, Durable Objects, AGENT_REGISTRY, MCP agent).
 2. **User-facing product feature (Bloqr Mesh)** — Mesh as a consumer/prosumer private network feature, competitive with NordVPN Meshnet, bundled natively with adblocking.
@@ -82,7 +82,7 @@ NordVPN Meshnet is a **consumer feature bolted onto a VPN product**. Bloqr can o
 
 ### Current Architecture: What Mesh Augments
 
-The bloqr-backend already has a deep Cloudflare ZTA stack. Mesh is not a replacement — it is a structural enforcement layer on top of what exists.
+The adblock-compiler already has a deep Cloudflare ZTA stack. Mesh is not a replacement — it is a structural enforcement layer on top of what exists.
 
 #### Existing ZTA Middleware Chain
 
@@ -510,4 +510,4 @@ flowchart LR
 
 ---
 
-*Document authored with GitHub Copilot on 2026-04-15. Based on live analysis of the bloqr-backend codebase, the Cloudflare Mesh launch, and competitive analysis of NordVPN Meshnet.*
+*Document authored with GitHub Copilot on 2026-04-15. Based on live analysis of the adblock-compiler codebase, the Cloudflare Mesh launch, and competitive analysis of NordVPN Meshnet.*

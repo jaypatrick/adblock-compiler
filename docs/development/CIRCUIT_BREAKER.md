@@ -1,6 +1,6 @@
 # Circuit Breaker
 
-The bloqr-backend includes a circuit breaker pattern for fault-tolerant filter list downloads. When a source URL fails repeatedly, the circuit breaker temporarily blocks requests to that URL, preventing cascading failures and wasted retries.
+The adblock-compiler includes a circuit breaker pattern for fault-tolerant filter list downloads. When a source URL fails repeatedly, the circuit breaker temporarily blocks requests to that URL, preventing cascading failures and wasted retries.
 
 ## Overview
 

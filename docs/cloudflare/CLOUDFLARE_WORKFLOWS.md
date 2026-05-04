@@ -1,6 +1,6 @@
 # Cloudflare Workflows
 
-This document describes the Cloudflare Workflows implementation in the bloqr-backend, providing durable execution for compilation, batch processing, cache warming, and health monitoring.
+This document describes the Cloudflare Workflows implementation in the adblock-compiler, providing durable execution for compilation, batch processing, cache warming, and health monitoring.
 
 ## Table of Contents
 

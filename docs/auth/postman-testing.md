@@ -1,6 +1,6 @@
 # Testing with Postman
 
-This guide explains how to configure Postman to authenticate against the bloqr-backend API using either a **Clerk JWT** or an **API key**. It covers environment setup, obtaining tokens, pre-request scripts for automatic token refresh, and ready-to-use request examples for every major endpoint.
+This guide explains how to configure Postman to authenticate against the adblock-compiler API using either a **Clerk JWT** or an **API key**. It covers environment setup, obtaining tokens, pre-request scripts for automatic token refresh, and ready-to-use request examples for every major endpoint.
 
 ---
 
@@ -28,9 +28,9 @@ This guide explains how to configure Postman to authenticate against the bloqr-b
 ## Prerequisites
 
 - [Postman](https://www.postman.com/downloads/) desktop app (v10+) or Postman Web
-- An account registered at the bloqr-backend web UI (`https://bloqr-backend.jk-com.workers.dev/`)  
+- An account registered at the adblock-compiler web UI (`https://adblock-compiler.jk-com.workers.dev/`)  
   _or_ a locally running worker (`http://localhost:8787`)
-- (Optional) Clerk account access for your bloqr-backend application — see [Clerk Dashboard Setup](clerk-setup.md)
+- (Optional) Clerk account access for your adblock-compiler application — see [Clerk Dashboard Setup](clerk-setup.md)
 
 ---
 
@@ -41,19 +41,19 @@ Create a dedicated Postman environment to avoid hard-coding values into requests
 ### Step 1: Create the Environment
 
 1. Open Postman → **Environments** (left sidebar) → **+**
-2. Name it `bloqr-backend` (or `bloqr-backend-local` for local dev)
+2. Name it `adblock-compiler` (or `adblock-compiler-local` for local dev)
 3. Add the following variables:
 
 | Variable | Type | Initial / Current Value | Notes |
 |----------|------|------------------------|-------|
-| `baseUrl` | default | `https://bloqr-backend.jk-com.workers.dev` | Change to `http://localhost:8787` for local dev |
+| `baseUrl` | default | `https://adblock-compiler.jk-com.workers.dev` | Change to `http://localhost:8787` for local dev |
 | `apiKey` | secret | _(your `abc_...` key)_ | Obtained from Settings → API Keys in the web UI |
 | `clerkJwt` | secret | _(leave blank — populated automatically)_ | Set by pre-request script or manually |
 | `clerkPublishableKey` | default | `pk_test_...` or `pk_live_...` | From Clerk Dashboard → API Keys |
 | `adminKey` | secret | _(your admin key)_ | Only needed for `/admin/*` endpoints — see [Admin Access](admin-access.md) |
 
 4. Click **Save**
-5. Select `bloqr-backend` as the **Active Environment** (top-right dropdown)
+5. Select `adblock-compiler` as the **Active Environment** (top-right dropdown)
 
 ### Step 2: Activate the Environment
 
@@ -63,7 +63,7 @@ Ensure the environment is selected in the top-right **Environment** dropdown bef
 
 ## Authentication Methods
 
-The bloqr-backend supports three authentication methods. For Postman testing, **API Key** is the simplest option. Use **Clerk JWT** when you need to test tier-specific behaviour or user-scoped endpoints.
+The adblock-compiler supports three authentication methods. For Postman testing, **API Key** is the simplest option. Use **Clerk JWT** when you need to test tier-specific behaviour or user-scoped endpoints.
 
 ### Method 1: API Key (Recommended for Testing)
 
@@ -149,8 +149,8 @@ See [Pre-Request Script for Automatic JWT Refresh](#pre-request-script-for-autom
 ### Creating the Collection
 
 1. In Postman, click **Collections** (left sidebar) → **+** → **Blank Collection**
-2. Name it `bloqr-backend`
-3. Add a description: `Testing collection for the bloqr-backend API`
+2. Name it `adblock-compiler`
+3. Add a description: `Testing collection for the adblock-compiler API`
 
 ### Collection-Level Authorization
 
@@ -257,7 +257,7 @@ pm.sendRequest(
 
 ## Request Examples
 
-Import the examples below by creating new requests in the `bloqr-backend` collection. All examples assume the `bloqr-backend` environment is active.
+Import the examples below by creating new requests in the `adblock-compiler` collection. All examples assume the `adblock-compiler` environment is active.
 
 ---
 

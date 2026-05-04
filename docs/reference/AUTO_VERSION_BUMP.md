@@ -1,6 +1,6 @@
 # Automatic Version Bumping
 
-This document explains how automatic version bumping works in the bloqr-backend project using Conventional Commits.
+This document explains how automatic version bumping works in the adblock-compiler project using Conventional Commits.
 
 ## Overview
 

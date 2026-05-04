@@ -9,14 +9,14 @@ without affecting the production database.
 ## Prerequisites
 
 - [Deno](https://deno.land/) ≥ 2.x (for running Prisma tasks)
-- A Neon account with access to the `bloqr-backend` project
+- A Neon account with access to the `adblock-compiler` project
 - [direnv](https://direnv.net/) (optional, for automatic env loading)
 
 ## Quick Start
 
 ```bash
 # 1. Create a personal dev branch in the Neon Console (one-time)
-#    https://console.neon.tech → bloqr-backend project → Branches → New Branch
+#    https://console.neon.tech → adblock-compiler project → Branches → New Branch
 #    Base the branch on: main
 
 # 2. Copy the example env files
@@ -66,7 +66,7 @@ passthrough to whatever Postgres URL you provide. For local dev that URL is your
 
 ### Creating Your Dev Branch (One-Time Setup)
 
-1. Go to [console.neon.tech](https://console.neon.tech) and open the `bloqr-backend` project.
+1. Go to [console.neon.tech](https://console.neon.tech) and open the `adblock-compiler` project.
 2. Click **Branches** → **New Branch**.
 3. Set the **Branch name** to something like `dev/<your-name>` (e.g. `dev/alice`).
 4. Leave **Branch from** set to `main` (or the latest production branch).

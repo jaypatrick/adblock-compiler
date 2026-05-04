@@ -49,7 +49,7 @@ The design conclusion:
 
 - **Cloudflare Email Worker binding** (`SEND_EMAIL`) is the legacy binding-based path. It stays as
   the universal fallback at every tier so that any environment without either of the two primary
-  providers can still send email through the `bloqr-email` Email Worker.
+  providers can still send email through the `adblock-email` Email Worker.
 
 This avoids the common anti-pattern of routing _everything_ through a premium deliverability
 provider (expensive, overkill for notifications) or routing _everything_ through a commodity
@@ -131,7 +131,7 @@ flowchart TD
     Q6 -->|Yes| CFREST["CfEmailServiceRestService\n(CF Email Service REST)"]
     Q6 -->|No| Q5
 
-    Q5 -->|Yes| CFWORKER["CfEmailWorkerService\n(bloqr-email binding)"]
+    Q5 -->|Yes| CFWORKER["CfEmailWorkerService\n(adblock-email binding)"]
     Q5 -->|No| NULL["NullEmailService\n(warning, no send)"]
 
     style QUEUED fill:#1b5e20,stroke:#0a3010,color:#fff
@@ -326,7 +326,7 @@ else throw new Error('No email provider configured for workflow delivery.');
 The `CfEmailWorkerService` is selected when neither `RESEND_API_KEY` (for critical) nor
 `CF_EMAIL_API_TOKEN`+`CF_ACCOUNT_ID` (for transactional) is configured, but the `SEND_EMAIL`
 binding is present. It builds an RFC 5322 `multipart/alternative` MIME message and dispatches it
-through the `bloqr-email` Email Worker via the Cloudflare Email Routing infrastructure.
+through the `adblock-email` Email Worker via the Cloudflare Email Routing infrastructure.
 
 This tier requires no third-party API keys, only:
 1. Cloudflare Email Routing enabled on the zone

@@ -32,7 +32,7 @@ on:
                 description: |
                     Cloudflare Worker version ID to deploy.
                     Get available versions: deno task wrangler:versions:list
-                    or from the Cloudflare dashboard → Workers & Pages → bloqr-backend → Deployments.
+                    or from the Cloudflare dashboard → Workers & Pages → adblock-compiler → Deployments.
                 required: true
                 type: string
             percentage:
@@ -147,7 +147,7 @@ jobs:
             - name: List available versions
               shell: bash
               run: |
-                  echo "Available versions for bloqr-backend:"
+                  echo "Available versions for adblock-compiler:"
                   deno run -A npm:wrangler@^4.86.0 versions list || true
 
             - name: Deploy version at ${{ inputs.percentage }}%

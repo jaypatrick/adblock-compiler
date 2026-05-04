@@ -1,7 +1,7 @@
 #!/usr/bin/env -S deno run --allow-net --allow-env
 
 /**
- * Interactive diagnostic CLI for the bloqr-backend Worker.
+ * Interactive diagnostic CLI for the adblock-compiler Worker.
  *
  * Usage:
  *   deno task diag                         # interactive menu
@@ -10,7 +10,7 @@
  *   deno run --allow-net --allow-env scripts/diag-cli.ts --help
  *
  * Flags:
- *   --url      Base URL to probe (default: https://bloqr-frontend.jk-com.workers.dev)
+ *   --url      Base URL to probe (default: https://adblock-frontend.jk-com.workers.dev)
  *   --probe    Comma-separated probe names, or "all" (default: all)
  *   --timeout  Per-probe timeout in ms (default: 15000)
  *   --ci       Non-interactive CI mode: run all probes, print table, exit 0/1
@@ -29,7 +29,7 @@ const args = parseArgs(Deno.args, {
     string: ['url', 'probe', 'timeout'],
     boolean: ['ci', 'help'],
     default: {
-        url: 'https://bloqr-frontend.jk-com.workers.dev',
+        url: 'https://adblock-frontend.jk-com.workers.dev',
         probe: 'all',
         timeout: '15000',
         ci: false,
@@ -39,13 +39,13 @@ const args = parseArgs(Deno.args, {
 
 if (args['help']) {
     console.log(`
-bloqr-backend diagnostic CLI
+adblock-compiler diagnostic CLI
 
 Usage:
   deno run --allow-net --allow-env scripts/diag-cli.ts [flags]
 
 Flags:
-  --url       Base URL to probe (default: https://bloqr-frontend.jk-com.workers.dev)
+  --url       Base URL to probe (default: https://adblock-frontend.jk-com.workers.dev)
   --probe     Comma-separated probe names, or "all" (default: all)
   --timeout   Per-probe timeout in ms (default: 15000)
   --ci        Non-interactive CI mode: run all probes, print table, exit 0/1
@@ -148,7 +148,7 @@ function printResults(results: DiagResult[]): void {
 
 async function runCiMode(): Promise<void> {
     const probeNames = resolveProbes(args['probe'] as string);
-    console.log('\n🔍 bloqr-backend diagnostic CLI — CI mode');
+    console.log('\n🔍 adblock-compiler diagnostic CLI — CI mode');
     console.log(`   URL     : ${BASE_URL}`);
     console.log(`   Timeout : ${TIMEOUT_MS}ms`);
     console.log(`   Probes  : ${probeNames.join(', ')}\n`);
@@ -173,7 +173,7 @@ async function runCiMode(): Promise<void> {
 // ─── Interactive mode ─────────────────────────────────────────────────────────
 
 function printMenu(probeNames: ProbeName[]): void {
-    console.log('\n📋 bloqr-backend diagnostic CLI');
+    console.log('\n📋 adblock-compiler diagnostic CLI');
     console.log(`   URL: ${BASE_URL}\n`);
     console.log('Select a probe to run:');
     probeNames.forEach((name, i) => {

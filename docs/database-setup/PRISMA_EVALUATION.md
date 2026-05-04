@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document evaluates the storage backend options for the bloqr-backend project. Prisma ORM with SQLite is now the default storage backend.
+This document evaluates the storage backend options for the adblock-compiler project. Prisma ORM with SQLite is now the default storage backend.
 
 ## Prisma Supported Databases
 

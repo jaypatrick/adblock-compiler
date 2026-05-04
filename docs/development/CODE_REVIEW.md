@@ -8,7 +8,7 @@
 
 ## Executive Summary
 
-The bloqr-backend is a well-architected Deno-native project with solid fundamentals. The codebase demonstrates excellent separation of concerns, comprehensive type definitions, and multi-platform support. This review has verified code quality, addressed critical issues, and confirmed the codebase is well-organized with consistent patterns throughout.
+The adblock-compiler is a well-architected Deno-native project with solid fundamentals. The codebase demonstrates excellent separation of concerns, comprehensive type definitions, and multi-platform support. This review has verified code quality, addressed critical issues, and confirmed the codebase is well-organized with consistent patterns throughout.
 
 **Overall Assessment: EXCELLENT** ✅
 
@@ -393,7 +393,7 @@ The following are recommendations from the original CODE_REVIEW.md that could ad
 
 ### Current Status: PRODUCTION-READY ✅
 
-The bloqr-backend codebase is:
+The adblock-compiler codebase is:
 
 ✅ **Well-Architected** - Clean separation of concerns with logical module boundaries\
 ✅ **Well-Documented** - Comprehensive markdown docs and JSDoc coverage\

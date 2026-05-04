@@ -145,10 +145,10 @@ Host the `docs/api/openapi.yaml` file and point Swagger UI to it.
 
 ```bash
 # Test against production
-curl https://bloqr-backend.jk-com.workers.dev/api
+curl https://adblock-compiler.jk-com.workers.dev/api
 
 # Get API information
-curl -X POST https://bloqr-backend.jk-com.workers.dev/compile \
+curl -X POST https://adblock-compiler.jk-com.workers.dev/compile \
   -H "Content-Type: application/json" \
   -d @request.json
 ```
@@ -187,8 +187,8 @@ deno task test:contract
 
 ## Live Resources
 
-- **Production API:** https://bloqr-backend.jk-com.workers.dev/api
-- **Web UI:** https://bloqr-backend.jk-com.workers.dev/
+- **Production API:** https://adblock-compiler.jk-com.workers.dev/api
+- **Web UI:** https://adblock-compiler.jk-com.workers.dev/
 - **OpenAPI Spec:** [openapi.yaml](openapi.yaml)
 - **Generated Docs:** [index.html](index.html)
 

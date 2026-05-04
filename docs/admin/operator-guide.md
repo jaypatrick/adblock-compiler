@@ -9,7 +9,7 @@ Step-by-step instructions for deploying, configuring, and maintaining the admin 
 | **Clerk account** | [clerk.com](https://clerk.com) — provides identity and JWT authentication |
 | **Cloudflare account** | Workers Paid plan (required for D1, KV, Analytics Engine) |
 | **Wrangler CLI** | `npm i -g wrangler` (v3+) — used for D1 management and deployments |
-| **Git access** | Clone of the `bloqr-backend` repository |
+| **Git access** | Clone of the `adblock-compiler` repository |
 
 ## 1. Create the ADMIN_DB Database
 

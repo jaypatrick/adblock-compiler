@@ -7,10 +7,10 @@ import { defineConfig, devices } from '@playwright/test';
  * Tests run against local dev server (http://localhost:4200) by default.
  *
  * Usage:
- *   pnpm --filter bloqr-frontend run test:e2e           # Run all tests
- *   pnpm --filter bloqr-frontend run test:e2e:headed    # Run with visible browser
- *   pnpm --filter bloqr-frontend run test:e2e:ui        # Run with interactive UI
- *   pnpm --filter bloqr-frontend run test:e2e:debug     # Run with debugger
+ *   pnpm --filter adblock-frontend run test:e2e           # Run all tests
+ *   pnpm --filter adblock-frontend run test:e2e:headed    # Run with visible browser
+ *   pnpm --filter adblock-frontend run test:e2e:ui        # Run with interactive UI
+ *   pnpm --filter adblock-frontend run test:e2e:debug     # Run with debugger
  */
 export default defineConfig({
     testDir: '.',

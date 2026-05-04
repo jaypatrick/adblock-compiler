@@ -1,13 +1,13 @@
 # AdGuard HostlistsRegistry — Integration Ideas
 
 > Generated: 2026-03-10
-> Context: Analysis of [`AdguardTeam/HostlistsRegistry`](https://github.com/AdguardTeam/HostlistsRegistry) and its relevance to `jaypatrick/bloqr-backend`
+> Context: Analysis of [`AdguardTeam/HostlistsRegistry`](https://github.com/AdguardTeam/HostlistsRegistry) and its relevance to `jaypatrick/adblock-compiler`
 
 ---
 
 ## Summary
 
-**`HostlistsRegistry` is the most directly relevant AdGuard ecosystem repository to `bloqr-backend`.** It is the canonical registry of DNS-level hostslist blocklists for AdGuard DNS, AdGuard Home, and related products — and `bloqr-backend` targets the same DNS-level filter compilation domain.
+**`HostlistsRegistry` is the most directly relevant AdGuard ecosystem repository to `adblock-compiler`.** It is the canonical registry of DNS-level hostslist blocklists for AdGuard DNS, AdGuard Home, and related products — and `adblock-compiler` targets the same DNS-level filter compilation domain.
 
 ---
 
@@ -26,20 +26,20 @@ It is the DNS counterpart to [`FiltersRegistry`](https://github.com/AdguardTeam/
 | **Target** | DNS blockers (AdGuard Home, Pi-hole) | Browser content blockers (extensions) |
 | **Rule formats** | Hosts, adblock-style DNS rules, `$dnsrewrite` | Full adblock syntax, scriptlets, CSS injection |
 | **Build tool** | [HostlistCompiler](https://github.com/AdguardTeam/HostlistCompiler) | `@adguard/filters-compiler` |
-| **`bloqr-backend` relevance** | ✅ **Direct** — same DNS compilation domain | ✅ Conceptual alignment |
+| **`adblock-compiler` relevance** | ✅ **Direct** — same DNS compilation domain | ✅ Conceptual alignment |
 
 ---
 
 ## Pipeline Position
 
-`bloqr-backend` sits squarely in the middle of this ecosystem:
+`adblock-compiler` sits squarely in the middle of this ecosystem:
 
 ```mermaid
 flowchart LR
     HLR["HostlistsRegistry sources"]
     FLR["FiltersRegistry sources"]
     TPS["Third-party sources"]
-    AC["bloqr-backend"]
+    AC["adblock-compiler"]
     Output["compiled .txt"]
     Consumers["AdGuard Home / Pi-hole / AdGuard DNS"]
 
@@ -65,7 +65,7 @@ These are the most actionable integration point. A `HostlistRegistryFetcher` cou
 { "source": "hostlist-registry://adguard_dns_filter" }
 ```
 
-...by fetching `filters.json`, looking up the `filterKey`, and resolving to the `downloadURL` at compile time. This fits perfectly into `bloqr-backend`'s existing pluggable `IContentFetcher` architecture.
+...by fetching `filters.json`, looking up the `filterKey`, and resolving to the `downloadURL` at compile time. This fits perfectly into `adblock-compiler`'s existing pluggable `IContentFetcher` architecture.
 
 ---
 
@@ -77,7 +77,7 @@ HostlistsRegistry defines a `trusted` flag on `metadata.json`:
 
 > *"a flag that allows using `$dnsrewrite` rules for this filter. If the filter is not trusted, `$dnsrewrite` rules will be removed from the compiled filter."*
 
-This maps directly onto `bloqr-backend`'s `ValidateTransformation`. Adding `trusted: boolean` to `ISource` would gate whether `$dnsrewrite` rules survive compilation — critical for DNS safety when aggregating third-party sources.
+This maps directly onto `adblock-compiler`'s `ValidateTransformation`. Adding `trusted: boolean` to `ISource` would gate whether `$dnsrewrite` rules survive compilation — critical for DNS safety when aggregating third-party sources.
 
 ```typescript
 // Proposed addition to ISource
@@ -100,7 +100,7 @@ HostlistsRegistry uses an `environment` field to control which lists are availab
 { "environment": "prod" }
 ```
 
-`bloqr-backend` has no equivalent concept today. This would be a lightweight but useful addition for users managing staging vs. production filter pipelines, e.g. to skip dev-only sources during a production build.
+`adblock-compiler` has no equivalent concept today. This would be a lightweight but useful addition for users managing staging vs. production filter pipelines, e.g. to skip dev-only sources during a production build.
 
 **Effort:** Low | **Value:** Medium
 
@@ -108,7 +108,7 @@ HostlistsRegistry uses an `environment` field to control which lists are availab
 
 ### 3. 🏷️ Add `filterKey` (Human-Readable Slug) to `IConfiguration`
 
-HostlistsRegistry uses **both** a slug-style `filterKey` (e.g. `"adguard_dns_filter"`) and a numeric `filterId`. `bloqr-backend`'s `IConfiguration` only has `name`. Adding a `filterKey` concept would:
+HostlistsRegistry uses **both** a slug-style `filterKey` (e.g. `"adguard_dns_filter"`) and a numeric `filterId`. `adblock-compiler`'s `IConfiguration` only has `name`. Adding a `filterKey` concept would:
 
 - Enable stable, human-readable identifiers for compiled lists
 - Power the `HostlistRegistryFetcher` idea (resolve by slug)
@@ -188,7 +188,7 @@ HostlistsRegistry publishes dedicated safe search filters:
 - `https://adguardteam.github.io/HostlistsRegistry/assets/engines_safe_search.txt` — enforces Safe Search on Bing, DuckDuckGo, Google, Pixabay, Yandex
 - `https://adguardteam.github.io/HostlistsRegistry/assets/youtube_safe_search.txt` — enforces Safe Search and hides comments on YouTube
 
-These are well-maintained, reliable source URLs that should be documented in `bloqr-backend`'s example configurations.
+These are well-maintained, reliable source URLs that should be documented in `adblock-compiler`'s example configurations.
 
 **Effort:** ✅ Trivial | **Value:** Medium
 

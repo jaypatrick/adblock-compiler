@@ -1,6 +1,6 @@
 # Observability
 
-This section covers the full observability stack for `bloqr-backend`, from
+This section covers the full observability stack for `adblock-compiler`, from
 edge-level Cloudflare native tools to application-level error tracking with Sentry.
 
 ## Contents

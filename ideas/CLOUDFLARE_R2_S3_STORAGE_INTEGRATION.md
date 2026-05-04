@@ -46,7 +46,7 @@ S3_BUCKET_NAME=adblock-lists
 Configure the R2 bucket with a custom domain or Cloudflare's `r2.dev` subdomain to serve compiled lists as publicly accessible URLs:
 
 ```
-https://lists.example.com/bloqr-backend/my-list.txt
+https://lists.example.com/adblock-compiler/my-list.txt
 ```
 
 These URLs can then be used directly in AdGuard Home, Pi-hole, or uBlock Origin subscription settings.

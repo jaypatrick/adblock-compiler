@@ -1,7 +1,7 @@
 # Neon PostgreSQL Troubleshooting
 
 > **Quick Reference** — Diagnosis and resolution for common Neon PostgreSQL,
-> Hyperdrive, Prisma, and Better Auth issues in the bloqr-backend stack.
+> Hyperdrive, Prisma, and Better Auth issues in the adblock-compiler stack.
 
 ---
 

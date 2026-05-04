@@ -39,7 +39,7 @@ import { findInvalid2xx, HTTP_METHODS, inject2xxStubs } from './schema-2xx-helpe
 
 const OPENAPI_PATH = './docs/api/openapi.yaml';
 const CLOUDFLARE_SCHEMA_PATH = './docs/api/cloudflare-schema.yaml';
-const SCHEMA_NAME = 'bloqr-backend-openapi';
+const SCHEMA_NAME = 'adblock-compiler-openapi';
 
 // ---------------------------------------------------------------------------
 // Env schema (upload step only)

@@ -1,6 +1,6 @@
 # AdGuard Diff Builder Integration Ideas
 
-Integration ideas for [``AdguardTeam/DiffBuilder``](https://github.com/AdguardTeam/DiffBuilder) and ``bloqr-backend``.
+Integration ideas for [``AdguardTeam/DiffBuilder``](https://github.com/AdguardTeam/DiffBuilder) and ``adblock-compiler``.
 
 ---
 
@@ -141,7 +141,7 @@ Extend the full AdGuard tool chain with DiffBuilder as the **final publishing st
 flowchart TD
     FC["FiltersCompiler\nResolves @include + platform config"]
     FD["FiltersDownloader\nResolves !#if / !#include preprocessor directives"]
-    AC["bloqr-backend\nAGTree parse → validate → deduplicate → transform"]
+    AC["adblock-compiler\nAGTree parse → validate → deduplicate → transform"]
     DB["DiffBuilder\nbuildDiff() → generate RCS patch\nPatch stored in KV with TTL\nClients call applyPatch() for incremental updates\nFull recompile on patch failure"]
 
     FC --> FD
@@ -174,10 +174,10 @@ await kv.put(`filter:${filterId}:previous`, newOutput);
 
 - [``AdguardTeam/DiffBuilder`` README](https://github.com/AdguardTeam/DiffBuilder/blob/master/README.md)
 - [``@adguard/diff-builder`` on npm](https://www.npmjs.com/package/@adguard/diff-builder)
-- [bloqr-backend Streaming API](../docs/api/STREAMING_API.md)
-- [bloqr-backend OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
-- [bloqr-backend Zod Validation](../docs/api/ZOD_VALIDATION.md)
-- [bloqr-backend Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
+- [adblock-compiler Streaming API](../docs/api/STREAMING_API.md)
+- [adblock-compiler OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
+- [adblock-compiler Zod Validation](../docs/api/ZOD_VALIDATION.md)
+- [adblock-compiler Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
 - [FiltersDownloader Integration Ideas](./FILTERS_DOWNLOADER_INTEGRATION.md)
 - [FiltersCompiler Integration Ideas](./FILTERS_COMPILER_INTEGRATION.md)
 - [Scriptlets Integration Ideas](./SCRIPTLETS_INTEGRATION.md)

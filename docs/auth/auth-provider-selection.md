@@ -1,6 +1,6 @@
 # Auth Provider Selection
 
-The bloqr-backend uses **Better Auth exclusively** as its authentication provider. There is
+The adblock-compiler uses **Better Auth exclusively** as its authentication provider. There is
 no runtime provider switching — authentication is handled by the `BetterAuthProvider` class in
 `worker/middleware/better-auth-provider.ts`.
 

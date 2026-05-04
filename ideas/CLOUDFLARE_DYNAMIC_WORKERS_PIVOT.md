@@ -1,4 +1,4 @@
-# Cloudflare Dynamic Workers: A Strategic Pivot for bloqr-backend
+# Cloudflare Dynamic Workers: A Strategic Pivot for adblock-compiler
 
 **Date:** 2026-03-24 22:13:20  
 **Status:** Strategic Decision — Active Evaluation  
@@ -8,9 +8,9 @@
 
 ## Executive Summary
 
-On March 24, 2026, Cloudflare announced [Dynamic Workers](https://blog.cloudflare.com/dynamic-workers/) — now in open beta. This document memorializes the strategic analysis of how this new primitive applies to the bloqr-backend project, both in the immediate term (issue #1377 / Cloudflare Agents SDK integration) and as a long-term architectural pivot that fundamentally changes the ceiling of what this platform can become.
+On March 24, 2026, Cloudflare announced [Dynamic Workers](https://blog.cloudflare.com/dynamic-workers/) — now in open beta. This document memorializes the strategic analysis of how this new primitive applies to the adblock-compiler project, both in the immediate term (issue #1377 / Cloudflare Agents SDK integration) and as a long-term architectural pivot that fundamentally changes the ceiling of what this platform can become.
 
-This is not an incremental improvement. Dynamic Workers, combined with the existing Cloudflare Agents SDK work in #1377, positions bloqr-backend to be one of the first production deployments of this new technology on the Cloudflare edge. Given that the project is pre-beta and several weeks from its first public release, the timing is ideal to integrate this from the ground up rather than retrofit it later.
+This is not an incremental improvement. Dynamic Workers, combined with the existing Cloudflare Agents SDK work in #1377, positions adblock-compiler to be one of the first production deployments of this new technology on the Cloudflare edge. Given that the project is pre-beta and several weeks from its first public release, the timing is ideal to integrate this from the ground up rather than retrofit it later.
 
 ---
 
@@ -45,13 +45,13 @@ Dynamic Workers allows an existing Cloudflare Worker to **spin up brand-new Work
 
 ## Current Architecture Snapshot (Pre-Pivot)
 
-The bloqr-backend currently deploys as a sophisticated Cloudflare Worker with:
+The adblock-compiler currently deploys as a sophisticated Cloudflare Worker with:
 
 ### Execution Models (Current)
 
 ```
 ┌───────────────────────────────────────────────────────────┐
-│              bloqr-backend (Cloudflare Worker)          │
+│              adblock-compiler (Cloudflare Worker)          │
 │                                                           │
 │  ┌─────────────────┐  ┌──────────────────────────────┐   │
 │  │  Hono App Router│  │  Durable Workflows            │   │
@@ -221,7 +221,7 @@ export async function getOrCreateUserAgent(
   // LOADER binding added to wrangler.toml:
   // [[dynamic_dispatch_namespaces]]
   // binding = "LOADER"
-  // namespace = "bloqr-backend-agents"
+  // namespace = "adblock-compiler-agents"
   const agentWorker = await (env as any).LOADER.get(
     `agent-${userId}`,
     (_id: string) => ({
@@ -259,7 +259,7 @@ To adopt Dynamic Workers, the following binding needs to be added:
 # Dynamic Workers dispatch namespace
 [[dynamic_dispatch_namespaces]]
 binding = "LOADER"
-namespace = "bloqr-backend-dynamic"
+namespace = "adblock-compiler-dynamic"
 ```
 
 And the `Env` interface in `worker/types.ts` needs:
@@ -275,7 +275,7 @@ LOADER?: DynamicDispatchNamespace; // from @cloudflare/workers-types
 
 ### The Positioning
 
-bloqr-backend is being built as **Compiler-as-a-Service** — and Dynamic Workers makes it the first adblock/hostlist compilation platform to offer:
+adblock-compiler is being built as **Compiler-as-a-Service** — and Dynamic Workers makes it the first adblock/hostlist compilation platform to offer:
 
 1. **Platform-native tenant isolation** (V8 isolate per compilation job, not per-server)
 2. **AI-native natural language compilation control** (LLM-generated configs executed in sandboxed workers)
@@ -285,7 +285,7 @@ bloqr-backend is being built as **Compiler-as-a-Service** — and Dynamic Worker
 
 ### The Market Timing
 
-Cloudflare Dynamic Workers entered open beta on **March 24, 2026** — the same day this analysis was written. The bloqr-backend is pre-beta, weeks from its first public release. This is the exact window to integrate a new platform primitive from the ground up, becoming an early adopter and reference implementation while the broader ecosystem is still catching up.
+Cloudflare Dynamic Workers entered open beta on **March 24, 2026** — the same day this analysis was written. The adblock-compiler is pre-beta, weeks from its first public release. This is the exact window to integrate a new platform primitive from the ground up, becoming an early adopter and reference implementation while the broader ecosystem is still catching up.
 
 Projects that ship with Dynamic Workers as a core primitive in 2026 will have a meaningful head start over those that retrofit it in 2027 or later.
 
@@ -312,4 +312,4 @@ Projects that ship with Dynamic Workers as a core primitive in 2026 will have a 
 
 ---
 
-*Document authored with GitHub Copilot on 2026-03-24. Based on live analysis of the bloqr-backend codebase and the Cloudflare Dynamic Workers announcement.*
+*Document authored with GitHub Copilot on 2026-03-24. Based on live analysis of the adblock-compiler codebase and the Cloudflare Dynamic Workers announcement.*

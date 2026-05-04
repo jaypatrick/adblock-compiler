@@ -1,6 +1,6 @@
 # Version Management
 
-This document describes how version strings are managed across the bloqr-backend project to ensure consistency and prevent version drift.
+This document describes how version strings are managed across the adblock-compiler project to ensure consistency and prevent version drift.
 
 ## Single Source of Truth
 

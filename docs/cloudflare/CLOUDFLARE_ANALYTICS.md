@@ -1,10 +1,10 @@
 # Cloudflare Analytics Engine Integration
 
-This document describes the Analytics Engine integration for tracking metrics and telemetry data in the bloqr-backend worker.
+This document describes the Analytics Engine integration for tracking metrics and telemetry data in the adblock-compiler worker.
 
 ## Overview
 
-Cloudflare Analytics Engine provides high-cardinality, real-time analytics with SQL-like querying capabilities. The bloqr-backend uses Analytics Engine to track:
+Cloudflare Analytics Engine provides high-cardinality, real-time analytics with SQL-like querying capabilities. The adblock-compiler uses Analytics Engine to track:
 
 - API request metrics
 - Compilation success/failure rates
