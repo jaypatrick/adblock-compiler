@@ -70,6 +70,20 @@ app = mo.App(
 )
 
 
+@app.cell(hide_code=True)
+def _theme():
+    import sys
+    from pathlib import Path
+
+    import marimo as mo
+
+    _rb_dir = Path(__file__).resolve().parent
+    if str(_rb_dir) not in sys.path:
+        sys.path.insert(0, str(_rb_dir))
+    from shared import bloqr_theme_css
+    return mo.css(bloqr_theme_css())
+
+
 @app.cell
 def _header():
     """Header with key metrics."""

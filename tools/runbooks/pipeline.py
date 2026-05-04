@@ -45,6 +45,7 @@ def _imports():
         TIMESTAMP_FORMAT,
         _repo_root,
         all_tools_health_snapshot,
+        bloqr_theme_css,
         list_log_files,
         load_report,
         read_log_file,
@@ -59,6 +60,7 @@ def _imports():
         TIMESTAMP_FORMAT,
         _repo_root,
         all_tools_health_snapshot,
+        bloqr_theme_css,
         datetime,
         html,
         list_log_files,
@@ -69,6 +71,11 @@ def _imports():
         render_status_badge,
         run_tool,
     )
+
+
+@app.cell(hide_code=True)
+def _theme(mo, bloqr_theme_css):
+    return mo.css(bloqr_theme_css())
 
 
 @app.cell(hide_code=True)
