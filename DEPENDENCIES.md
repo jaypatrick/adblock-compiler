@@ -2,7 +2,7 @@
 
 > **Living Document** — This file must be updated whenever a dependency is added, removed, or has its version pinned/changed. See [Keeping This Document Up to Date](#keeping-this-document-up-to-date) for the update process.
 
-**Project:** `jaypatrick/bloqr-backend`  
+**Project:** `jaypatrick/adblock-compiler`  
 **Description:** Adblock/AdGuard Hostlist & Rules Compiler — run locally, via CLI, or as a Compiler-as-a-Service deployed on Cloudflare Workers, Deno Deploy, Vercel Edge Functions, or AWS Lambda@Edge. Aggregates and compiles host blocklists from disparate sources, with AGTree-powered AST parsing, multi-syntax detection and translation across AdGuard, uBlock.  
 **Version:** `0.62.2`  
 **Package Manager:** `pnpm@10.31.0` (workspace) + `deno` (worker/core)
@@ -219,13 +219,13 @@ Cloudflare services consumed as Worker bindings (configured in `wrangler.toml`).
 | **KV Namespaces** | `COMPILATION_CACHE`, `RATE_LIMIT`, `METRICS`, `RULES_KV` | ✅ Active | Caching, rate limiting, metrics aggregation, rule set storage |
 | **D1 Database** | `DB` | ✅ Active | Compilation history, user records, deployment records (via Prisma) |
 | **R2 Storage** | `FILTER_STORAGE` | ✅ Active | Filter list artifact persistence; pipeline sink |
-| **Queues** | `BLOQR_BACKEND_QUEUE`, `BLOQR_BACKEND_QUEUE_HIGH_PRIORITY` | ✅ Active | Async and batch compilation job processing |
+| **Queues** | `ADBLOCK_COMPILER_QUEUE`, `ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY` | ✅ Active | Async and batch compilation job processing |
 | **Analytics Engine** | `ANALYTICS_ENGINE` | ✅ Active | Request metrics, cache analytics, security event telemetry |
 | **Workflows** | `COMPILATION_WORKFLOW`, `BATCH_COMPILATION_WORKFLOW`, `CACHE_WARMING_WORKFLOW`, `HEALTH_MONITORING_WORKFLOW` | ✅ Active | Durable async execution with retry |
 | **Hyperdrive** | `HYPERDRIVE` | ✅ Active | Accelerated connection pooling to external PostgreSQL |
 | **Browser Rendering** | `BROWSER` | ✅ Active | Headless Playwright-based browser for JS-rendered filter sources |
 | **Pipelines** | `METRICS_PIPELINE` | ✅ Active | Batched metrics and audit event ingestion → R2 |
-| **Tail Worker** | `bloqr-tail` | ✅ Active | Log collection and forwarding to external log sink |
+| **Tail Worker** | `adblock-tail` | ✅ Active | Log collection and forwarding to external log sink |
 | **Containers** | `ADBLOCK_COMPILER` | 🔧 Configured | Durable Object container (production only) |
 | **Turnstile** | `TURNSTILE_SECRET_KEY` *(secret)* | ✅ Active | Bot protection / human verification on compilation endpoints |
 | **API Shield** | *(Dashboard)* | 📋 Dashboard | OpenAPI schema validation at edge |

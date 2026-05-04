@@ -104,7 +104,7 @@
  * - Browser: `API_BASE_URL` is `/api` (relative, same origin). The service strips
  *   the `/api` suffix (using `this.baseUrl.replace(/\/api\/?$/, '') || ''`) so that
  *   `createTrpcClient` can append `/api/trpc` correctly.
- * - SSR: `API_BASE_URL` is an absolute URL (e.g. `https://bloqr-backend.<account>.workers.dev/api`).
+ * - SSR: `API_BASE_URL` is an absolute URL (e.g. `https://adblock-compiler.<account>.workers.dev/api`).
  *   The service strips the `/api` suffix the same way, yielding the Worker origin.
  *
  * @see docs/architecture/trpc.md — full tRPC architecture guide
@@ -166,7 +166,7 @@ export class TrpcClientService {
      *
      * This follows the same pattern as `AuthedApiClientService.workerOrigin`:
      * the `API_BASE_URL` token includes `/api` by default (e.g., '/api' in browser,
-     * 'https://bloqr-backend.<account>.workers.dev/api' in SSR), but
+     * 'https://adblock-compiler.<account>.workers.dev/api' in SSR), but
      * `createTrpcClient` expects a base URL that it can append `/api/trpc` to.
      * We strip the trailing `/api` or `/api/` suffix here so the final URL is
      * `{workerOrigin}/api/trpc`.

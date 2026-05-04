@@ -6,7 +6,7 @@ name: coding-style
 ## Tooling
 
 - `src/`, `worker/`: `deno fmt` + `deno lint` (config: `deno.json`); type-check via `deno task check`
-- `frontend/`: ESLint (`frontend/eslint.config.mjs`) + TypeScript (`frontend/tsconfig.json`); lint via `pnpm --filter bloqr-frontend run lint`
+- `frontend/`: ESLint (`frontend/eslint.config.mjs`) + TypeScript (`frontend/tsconfig.json`); lint via `pnpm --filter adblock-frontend run lint`
 - No Prettier — `deno fmt` is authoritative for `src/`/`worker/`; ESLint for `frontend/`
 
 ## Deno Format Rules (source: `deno.json` `"fmt"` block)

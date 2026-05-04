@@ -15,7 +15,7 @@ flowchart TD
     P2 -- no --> P3{priority=transactional\n+ CF_EMAIL_API_TOKEN\n+ CF_ACCOUNT_ID?}
     P3 -- yes --> CFRestSvc["CfEmailServiceRestService\n(CF Email Service REST)"]
     P3 -- no --> P4{SEND_EMAIL binding?}
-    P4 -- yes --> CFSvc["CfEmailWorkerService\n(bloqr-email worker)"]
+    P4 -- yes --> CFSvc["CfEmailWorkerService\n(adblock-email worker)"]
     P4 -- no --> NullSvc["NullEmailService\n(no-op, logs warning)"]
 
     QSvc --> Queue["EMAIL_QUEUE\n(Cloudflare Queue)"]
@@ -58,15 +58,15 @@ name = "SEND_EMAIL"
 # destination_address = "notifications@bloqr.dev"
 
 [[queues.producers]]
-queue = "bloqr-backend-email-queue"
+queue = "adblock-compiler-email-queue"
 binding = "EMAIL_QUEUE"
 
 [[queues.consumers]]
-queue = "bloqr-backend-email-queue"
+queue = "adblock-compiler-email-queue"
 max_batch_size = 5
 max_batch_timeout = 5  # seconds
 max_retries = 3
-dead_letter_queue = "bloqr-backend-email-dlq"
+dead_letter_queue = "adblock-compiler-email-dlq"
 
 [[workflows]]
 name = "email-delivery-workflow"

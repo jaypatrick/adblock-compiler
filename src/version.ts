@@ -1,5 +1,5 @@
 /**
- * Centralized version management for the bloqr-backend package.
+ * Centralized version management for the adblock-compiler package.
  * This ensures version consistency across all modules.
  */
 

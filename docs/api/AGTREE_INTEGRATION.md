@@ -1,6 +1,6 @@
 # AGTree Integration
 
-This document describes the integration of `@adguard/agtree` into the bloqr-backend project.
+This document describes the integration of `@adguard/agtree` into the adblock-compiler project.
 
 ## Overview
 

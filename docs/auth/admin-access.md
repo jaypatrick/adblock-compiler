@@ -12,7 +12,7 @@ Admin requests require a valid JWT with `role === 'admin'`. The Angular admin pa
 
 ```bash
 # Obtain a session token, then:
-curl -X GET https://bloqr-backend.jk-com.workers.dev/admin/local-users \
+curl -X GET https://adblock-compiler.jk-com.workers.dev/admin/local-users \
   -H "Authorization: Bearer <your-jwt>"
 ```
 
@@ -65,7 +65,7 @@ When setting up a fresh installation with no existing admins:
 
 2. **Option B**: Directly update the D1 database via `wrangler d1 execute`:
    ```bash
-   wrangler d1 execute bloqr-backend-d1-database --command "UPDATE local_auth_users SET role='admin' WHERE identifier='you@example.com'"
+   wrangler d1 execute adblock-compiler-d1-database --command "UPDATE local_auth_users SET role='admin' WHERE identifier='you@example.com'"
    ```
 
 ## Admin Endpoints Reference

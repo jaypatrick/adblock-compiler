@@ -2,7 +2,7 @@
 
 ## Overview
 
-The bloqr-backend Worker exposes a typed [tRPC v11](https://trpc.io) API alongside the
+The adblock-compiler Worker exposes a typed [tRPC v11](https://trpc.io) API alongside the
 existing REST endpoints. All tRPC procedures live at `/api/trpc/*` and share the same global
 middleware chain (timing, Better Auth, unified auth, CORS) that protects REST routes.
 
@@ -161,7 +161,7 @@ import { createTrpcClient } from './worker/trpc/client';
 
 // Manual instantiation (inject auth token from your auth provider):
 const client = createTrpcClient(
-  'https://bloqr-backend.<account>.workers.dev',
+  'https://adblock-compiler.<account>.workers.dev',
   () => authService.getToken(),   // async token getter — attached as Authorization: Bearer ...
 );
 
@@ -474,7 +474,7 @@ The examples below use `deno run` with explicit permission flags to match the De
 import { createTrpcClient } from './worker/trpc/client.ts';
 
 const client = createTrpcClient(
-  'https://bloqr-backend.<account>.workers.dev',
+  'https://adblock-compiler.<account>.workers.dev',
   async () => Deno.env.get('ADBLOCK_API_KEY') ?? null,
 );
 
@@ -502,7 +502,7 @@ import { createTrpcClient } from './worker/trpc/client.ts';
 const sessionToken = await Deno.readTextFile('.adblock-session');
 
 const client = createTrpcClient(
-  'https://bloqr-backend.<account>.workers.dev',
+  'https://adblock-compiler.<account>.workers.dev',
   async () => sessionToken,
 );
 
@@ -614,7 +614,7 @@ import * as Keychain from 'react-native-keychain';
 // Retrieve the token from platform secure storage (Keychain/Keystore),
 // NOT AsyncStorage, which is unencrypted plaintext.
 const client = createTrpcClient(
-  'https://bloqr-backend.<account>.workers.dev',
+  'https://adblock-compiler.<account>.workers.dev',
   async () => {
     const credentials = await Keychain.getGenericPassword({ service: 'adblock-session' });
     return credentials ? credentials.password : null;
@@ -660,7 +660,7 @@ class TrpcClient {
 
 // Usage
 final client = TrpcClient(
-  'https://bloqr-backend.<account>.workers.dev',
+  'https://adblock-compiler.<account>.workers.dev',
   () async => await storage.read(key: 'auth_token'),
 );
 

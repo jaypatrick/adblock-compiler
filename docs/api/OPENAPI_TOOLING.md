@@ -169,7 +169,7 @@ Contract tests validate that your live API conforms to the OpenAPI specification
 deno task test:contract
 
 # Test against production
-API_BASE_URL=https://bloqr-backend.jk-com.workers.dev deno task test:contract
+API_BASE_URL=https://adblock-compiler.jk-com.workers.dev deno task test:contract
 
 # Test specific scenarios
 deno test --allow-read --allow-write --allow-net --allow-env worker/openapi-contract.test.ts --filter "Contract: GET /api"
@@ -539,7 +539,7 @@ Access via: `GET /queue/stats`
 Queues may not be configured in all environments:
 
 ```typescript
-if (!env.BLOQR_BACKEND_QUEUE) {
+if (!env.ADBLOCK_COMPILER_QUEUE) {
     return Response.json({
         success: false,
         error: 'Queue not available. Use synchronous endpoints instead.'

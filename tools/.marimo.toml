@@ -1,4 +1,4 @@
-# Marimo project configuration for bloqr-backend tools
+# Marimo project configuration for adblock-compiler tools
 # https://docs.marimo.io/guides/configuration/
 #
 # This file lives at tools/.marimo.toml so marimo picks it up automatically

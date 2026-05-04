@@ -74,7 +74,7 @@ Click **Download** to open a new browser tab and download the file in the select
 Alternatively, you can fetch the file programmatically:
 
 ```bash
-curl "https://api.bloqr-backend.example.com/api/configuration/download/<id>?format=json" \
+curl "https://api.adblock-compiler.example.com/api/configuration/download/<id>?format=json" \
      --output my-config.json
 ```
 

@@ -67,13 +67,13 @@ The postbuild step is handled by `frontend/scripts/postbuild.js`. If you skip th
 
 #### Pages Deployment (Legacy static UI — Retired)
 
-> **⚠️ Retired:** The `bloqr-backend-ui` Cloudflare Pages project has been retired. The Angular SPA is now served exclusively via the Worker's `[assets]` binding at `https://bloqr-backend.jk-com.workers.dev`. The CI steps that deployed to Pages have been removed.
+> **⚠️ Retired:** The `adblock-compiler-ui` Cloudflare Pages project has been retired. The Angular SPA is now served exclusively via the Worker's `[assets]` binding at `https://adblock-compiler.jk-com.workers.dev`. The CI steps that deployed to Pages have been removed.
 
 The command below is kept for historical reference only and should **not** be used:
 
 ```bash
 # RETIRED — do not use
-# wrangler pages deploy public --project-name=bloqr-backend-ui
+# wrangler pages deploy public --project-name=adblock-compiler-ui
 ```
 
 ## Cloudflare Pages Dashboard Configuration
@@ -164,7 +164,7 @@ After deployment, verify:
    - Should show the admin dashboard
    - Should load without errors
 
-2. **Worker URL**: `https://bloqr-backend.YOUR-SUBDOMAIN.workers.dev`
+2. **Worker URL**: `https://adblock-compiler.YOUR-SUBDOMAIN.workers.dev`
    - API endpoints should respond
    - `/api` should return API documentation
 

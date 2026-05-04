@@ -1,5 +1,5 @@
 /**
- * Email queue consumer — processes messages from `bloqr-backend-email-queue`.
+ * Email queue consumer — processes messages from `adblock-compiler-email-queue`.
  *
  * ## Role in the email delivery pipeline
  *
@@ -31,8 +31,8 @@
  * ## Dead-letter queue
  *
  * Messages that exhaust their retry budget (default: 3 retries) are forwarded
- * to `bloqr-backend-email-dlq`. Administrators can inspect the DLQ via the
- * Cloudflare dashboard or `wrangler queues messages pull bloqr-backend-email-dlq`.
+ * to `adblock-compiler-email-dlq`. Administrators can inspect the DLQ via the
+ * Cloudflare dashboard or `wrangler queues messages pull adblock-compiler-email-dlq`.
  *
  * @see worker/workflows/EmailDeliveryWorkflow.ts — the workflow triggered here
  * @see worker/services/email-service.ts — `QueuedEmailService` that enqueues
@@ -43,7 +43,7 @@ import type { EmailQueueMessage, Env } from '../types.ts';
 import { EmailPayloadSchema } from '../services/email-service.ts';
 
 /**
- * Process a batch of messages from `bloqr-backend-email-queue`.
+ * Process a batch of messages from `adblock-compiler-email-queue`.
  *
  * For each message:
  *  1. Zod-validates the body as an `EmailQueueMessage`.
@@ -128,7 +128,7 @@ export async function handleEmailQueue(batch: MessageBatch<EmailQueueMessage>, e
 // ============================================================================
 
 /**
- * Schema for messages placed on `bloqr-backend-email-queue`.
+ * Schema for messages placed on `adblock-compiler-email-queue`.
  *
  * Mirrors {@link EmailQueueMessage} in `worker/types.ts`.
  * Validated by the queue consumer before creating a Workflow instance.

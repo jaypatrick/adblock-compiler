@@ -1,6 +1,6 @@
 # Scripts
 
-This directory contains operational and maintenance scripts for the bloqr-backend project.
+This directory contains operational and maintenance scripts for the adblock-compiler project.
 
 ## Documentation
 

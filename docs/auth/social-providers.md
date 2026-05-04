@@ -1,6 +1,6 @@
 # Social OAuth Providers
 
-This document describes how to configure social login providers (GitHub, Google) for the bloqr-backend.
+This document describes how to configure social login providers (GitHub, Google) for the adblock-compiler.
 
 ## Currently Active: GitHub
 

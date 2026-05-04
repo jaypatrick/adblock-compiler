@@ -2,7 +2,7 @@
 
 > **Adblock Compiler — Cloudflare Workers + Neon PostgreSQL + Better Auth**
 >
-> This document is the single source of truth for every secret, credential, and environment variable required to deploy and operate the bloqr-backend in production.
+> This document is the single source of truth for every secret, credential, and environment variable required to deploy and operate the adblock-compiler in production.
 
 ---
 
@@ -22,7 +22,7 @@
 
 ## 1. Overview
 
-The bloqr-backend separates sensitive credentials from non-sensitive configuration across four distinct scopes:
+The adblock-compiler separates sensitive credentials from non-sensitive configuration across four distinct scopes:
 
 ```mermaid
 flowchart TD
@@ -141,7 +141,7 @@ Every secret below **must** be set before the first production deployment. The W
 
 set -euo pipefail
 
-echo "Setting Cloudflare Worker secrets for bloqr-backend..."
+echo "Setting Cloudflare Worker secrets for adblock-compiler..."
 
 # Core auth
 echo "<value>" | wrangler secret put BETTER_AUTH_SECRET
@@ -343,7 +343,7 @@ flowchart LR
 
 ```bash
 # 1. Create a personal dev branch in the Neon Console (one-time)
-#    https://console.neon.tech → bloqr-backend project → Branches → New Branch
+#    https://console.neon.tech → adblock-compiler project → Branches → New Branch
 
 # 2. Copy templates
 cp .env.example .env.local
@@ -722,6 +722,6 @@ See [Local Development Setup](../database-setup/local-dev.md) for full Neon bran
 
 ---
 
-> **Last updated:** 2025 · **Maintainer:** bloqr-backend team
+> **Last updated:** 2025 · **Maintainer:** adblock-compiler team
 >
 > This document is part of the [Zero Trust Architecture](../../SECURITY.md) compliance requirements. Every secret and credential listed here must follow the ZTA principles defined in the project's security policy.

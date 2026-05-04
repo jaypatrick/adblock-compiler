@@ -280,12 +280,12 @@ export function buildRawMimeMessage(
 }
 
 // ============================================================================
-// Provider: CF Email Worker binding (bloqr-email)
+// Provider: CF Email Worker binding (adblock-email)
 // ============================================================================
 
 /**
  * Email provider that uses the Cloudflare Email Workers `SEND_EMAIL` binding
- * (the `bloqr-email` email worker).
+ * (the `adblock-email` email worker).
  *
  * Outbound email is routed through Cloudflare Email Routing infrastructure.
  * No third-party HTTP API key is required — delivery authority is granted via
@@ -334,7 +334,7 @@ export class CfEmailWorkerService implements IEmailService {
      * Sends a transactional email via the Cloudflare `SEND_EMAIL` binding.
      *
      * Constructs a RFC 5322 multipart/alternative MIME message (plain-text +
-     * HTML) and dispatches it through the `bloqr-email` Email Worker.
+     * HTML) and dispatches it through the `adblock-email` Email Worker.
      *
      * @param payload - Validated email payload from {@link EmailPayloadSchema}.
      * @throws {Error} `'Invalid email payload'` on Zod validation failure.
@@ -523,7 +523,7 @@ export class CfEmailServiceRestService implements IEmailService {
 // ============================================================================
 
 /**
- * Email provider that enqueues delivery jobs on the `bloqr-backend-email-queue`
+ * Email provider that enqueues delivery jobs on the `adblock-compiler-email-queue`
  * Cloudflare Queue, which is consumed by `handleEmailQueue` and dispatched to
  * `EmailDeliveryWorkflow` for durable, step-checkpointed delivery.
  *
@@ -641,7 +641,7 @@ export const FROM_ADDRESS_TRANSACTIONAL = 'notifications@bloqr.dev';
  *    - `priority === 'transactional'` AND `CF_EMAIL_API_TOKEN` + `CF_ACCOUNT_ID` present →
  *      {@link CfEmailServiceRestService} (CF Email Service REST API).
  *    - `SEND_EMAIL` present (any priority, fallback) →
- *      {@link CfEmailWorkerService} (`bloqr-email` worker).
+ *      {@link CfEmailWorkerService} (`adblock-email` worker).
  * 3. Nothing configured → {@link NullEmailService} (logs a warning, no sends).
  *
  * The `QueuedEmailService` is the preferred production choice for critical
@@ -717,7 +717,7 @@ export function createEmailService(
         return new CfEmailServiceRestService(env.CF_EMAIL_API_TOKEN, env.CF_ACCOUNT_ID, FROM_ADDRESS_TRANSACTIONAL, throwOnFailure);
     }
 
-    // Priority 2 fallback: CF Email Workers binding (bloqr-email worker)
+    // Priority 2 fallback: CF Email Workers binding (adblock-email worker)
     if (env.SEND_EMAIL) {
         return new CfEmailWorkerService(env.SEND_EMAIL, FROM_ADDRESS_TRANSACTIONAL);
     }

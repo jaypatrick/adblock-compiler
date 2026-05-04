@@ -1,6 +1,6 @@
 # Cloudflare Page Shield Integration
 
-This document covers the complete Cloudflare Page Shield integration in bloqr-backend — from the Content Security Policy (CSP) header enforcement, to browser violation ingestion, to the Page Shield script-inventory sync that feeds the compiler's rule pipeline.
+This document covers the complete Cloudflare Page Shield integration in adblock-compiler — from the Content Security Policy (CSP) header enforcement, to browser violation ingestion, to the Page Shield script-inventory sync that feeds the compiler's rule pipeline.
 
 > **Security highlight:** This is a key differentiator. Every browser that loads your app is now a passive sensor that reports unauthorized script execution back to your D1 database, in real time, without any JavaScript instrumentation.
 
@@ -38,7 +38,7 @@ Cloudflare [Page Shield](https://developers.cloudflare.com/page-shield/) is a cl
 2. **Enforces** a Content Security Policy so that only declared origins can execute scripts or load resources.
 3. **Reports** violations back to a configurable endpoint (`report-uri`) so you can detect and triage policy breaches in real time.
 
-The bloqr-backend integrates all three capabilities:
+The adblock-compiler integrates all three capabilities:
 
 | Capability | Implementation |
 |---|---|
@@ -468,7 +468,7 @@ deno task test:worker
 
 > **Passive script threat detection — zero instrumentation required.**
 >
-> bloqr-backend ships with built-in Cloudflare Page Shield integration: every browser that loads your app is a passive sensor. When a third-party script violates your Content Security Policy — whether an injected tracker, a supply-chain compromise, or a typosquatted CDN — the browser reports it to a dedicated endpoint backed by Cloudflare D1. No JavaScript agents, no sampling, no SDK. Every violation is captured, validated with Zod, and persisted in real time. Combine this with Page Shield's AI-scored script inventory to auto-generate adblock allow/block rules and harden your compiled filter lists against the latest supply-chain threats.
+> adblock-compiler ships with built-in Cloudflare Page Shield integration: every browser that loads your app is a passive sensor. When a third-party script violates your Content Security Policy — whether an injected tracker, a supply-chain compromise, or a typosquatted CDN — the browser reports it to a dedicated endpoint backed by Cloudflare D1. No JavaScript agents, no sampling, no SDK. Every violation is captured, validated with Zod, and persisted in real time. Combine this with Page Shield's AI-scored script inventory to auto-generate adblock allow/block rules and harden your compiled filter lists against the latest supply-chain threats.
 
 ---
 

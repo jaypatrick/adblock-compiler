@@ -220,7 +220,7 @@ function emitForTailWorker() {
         // This is how the worker.ts emits to tail worker
         const logData = {
             ...event,
-            source: 'bloqr-backend',
+            source: 'adblock-compiler',
         };
 
         switch (event.severity) {

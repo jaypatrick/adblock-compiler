@@ -3,7 +3,7 @@
 # It adds volume mounts for live code reloading during development
 
 services:
-    bloqr-backend:
+    adblock-compiler:
         volumes:
             # Mount source code for live reloading
             - ./src:/app/src

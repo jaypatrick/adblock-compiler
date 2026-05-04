@@ -1,10 +1,10 @@
 # API Authentication Guide
 
-How to authenticate requests to the bloqr-backend API.
+How to authenticate requests to the adblock-compiler API.
 
 ## Overview
 
-The bloqr-backend API supports three authentication methods:
+The adblock-compiler API supports three authentication methods:
 
 1. **Clerk JWT** — For browser-based users (automatic via the web UI)
 2. **API Key** — For programmatic/CLI access
@@ -16,7 +16,7 @@ The bloqr-backend API supports three authentication methods:
 
 ### Method 1: Clerk JWT (Browser Users)
 
-If you use the web UI at `https://bloqr-backend.jk-com.workers.dev/`, authentication is handled automatically:
+If you use the web UI at `https://adblock-compiler.jk-com.workers.dev/`, authentication is handled automatically:
 
 1. Sign in via the Clerk-powered sign-in page
 2. The Angular frontend obtains a JWT from Clerk
@@ -46,7 +46,7 @@ The key looks like: `blq_a1b2c3d4e5f6...` (`blq_` prefix + 48 hex characters, 52
 Include the key in the `Authorization` header:
 
 ```bash
-curl -X POST https://bloqr-backend.jk-com.workers.dev/compile \
+curl -X POST https://adblock-compiler.jk-com.workers.dev/compile \
   -H "Authorization: Bearer blq_Xk9mP2..." \
   -H "Content-Type: application/json" \
   -d '{
@@ -236,7 +236,7 @@ See [Removing Anonymous Access](removing-anonymous-access.md) for the full migra
 
 ```bash
 # Compile with API key
-curl -X POST https://bloqr-backend.jk-com.workers.dev/compile \
+curl -X POST https://adblock-compiler.jk-com.workers.dev/compile \
   -H "Authorization: Bearer blq_your_api_key_here" \
   -H "Content-Type: application/json" \
   -d '{"sources": ["https://example.com/filters.txt"]}'
@@ -245,7 +245,7 @@ curl -X POST https://bloqr-backend.jk-com.workers.dev/compile \
 ### JavaScript/TypeScript (fetch)
 
 ```typescript
-const response = await fetch('https://bloqr-backend.jk-com.workers.dev/compile', {
+const response = await fetch('https://adblock-compiler.jk-com.workers.dev/compile', {
     method: 'POST',
     headers: {
         'Authorization': `Bearer ${API_KEY}`,
@@ -269,7 +269,7 @@ if (response.status === 429) {
 import requests
 
 response = requests.post(
-    'https://bloqr-backend.jk-com.workers.dev/compile',
+    'https://adblock-compiler.jk-com.workers.dev/compile',
     headers={'Authorization': f'Bearer {API_KEY}'},
     json={
         'sources': ['https://example.com/filters.txt'],

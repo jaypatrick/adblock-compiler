@@ -196,7 +196,7 @@ To replace the inline `AppType` with the real worker type:
 import type { AppType } from '../../../../worker/hono-app';
 
 // Option B: Published types package (recommended for production)
-import type { AppType } from '@bloqr-backend/worker-types';
+import type { AppType } from '@adblock-compiler/worker-types';
 ```
 
 To share types across the monorepo without a published package, add a `paths`
@@ -206,7 +206,7 @@ mapping to the Angular `tsconfig.json`:
 {
   "compilerOptions": {
     "paths": {
-      "@bloqr-backend/worker/*": ["../worker/*"]
+      "@adblock-compiler/worker/*": ["../worker/*"]
     }
   }
 }

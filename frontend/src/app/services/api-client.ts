@@ -40,7 +40,7 @@ import { API_BASE_URL } from '../tokens';
 // Re-exported from the worker's `worker/hono-app.ts`.  During development the
 // worker is compiled with Deno; during Angular builds the type-only import is
 // resolved by TypeScript's cross-project type checking via `tsconfig.json`
-// `"paths"` or a shared `@bloqr-backend/worker-types` package.
+// `"paths"` or a shared `@adblock-compiler/worker-types` package.
 //
 // For the initial rollout we inline a minimal type definition that mirrors the
 // public routes covered by this client (health, version, openapi.json).  Replace

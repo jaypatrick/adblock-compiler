@@ -2,7 +2,7 @@
 # Builds the Angular frontend for the Cloudflare Worker.
 # Skipped when the dist directory already exists (e.g. in CI, where the
 # frontend artifact is downloaded before wrangler runs this script).
-DIST_DIR="frontend/dist/bloqr-backend/browser"
+DIST_DIR="frontend/dist/adblock-compiler/browser"
 
 if [ -d "$DIST_DIR" ]; then
     echo "Frontend assets already present at $DIST_DIR — skipping build."
@@ -79,7 +79,7 @@ fi
 # In Cloudflare Workers, import.meta.url is undefined at script-validation
 # time, causing error 10021.  Replace every bare import.meta.url with a
 # nullish-coalescing fallback so the module initialises safely.
-POLYFILLS_FILE="frontend/dist/bloqr-backend/server/polyfills.server.mjs"
+POLYFILLS_FILE="frontend/dist/adblock-compiler/server/polyfills.server.mjs"
 if [ -f "$POLYFILLS_FILE" ]; then
     if grep -qF "(import.meta.url ?? 'file:///worker')" "$POLYFILLS_FILE"; then
         echo "build-worker.sh: $POLYFILLS_FILE already patched — skipping."

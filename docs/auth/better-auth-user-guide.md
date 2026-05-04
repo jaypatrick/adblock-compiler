@@ -1,7 +1,7 @@
 # Better Auth User Guide
 
 End-user reference for signing up, signing in, managing sessions, enabling two-factor
-authentication, and authenticating API requests in the bloqr-backend.
+authentication, and authenticating API requests in the adblock-compiler.
 
 ---
 
@@ -203,7 +203,7 @@ curl -X POST https://your-worker.workers.dev/api/auth/two-factor/enable \
 
 ```json
 {
-  "totpURI": "otpauth://totp/bloqr-backend:jane@example.com?secret=JBSWY3DPEHPK3PXP&issuer=bloqr-backend",
+  "totpURI": "otpauth://totp/adblock-compiler:jane@example.com?secret=JBSWY3DPEHPK3PXP&issuer=adblock-compiler",
   "backupCodes": ["abc123", "def456", "ghi789", ...]
 }
 ```

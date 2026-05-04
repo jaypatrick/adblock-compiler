@@ -14,7 +14,7 @@ on:
             url:
                 description: 'Target URL to audit'
                 required: false
-                default: 'https://bloqr-backend.jk-com.workers.dev'
+                default: 'https://adblock-compiler.jk-com.workers.dev'
 
 env:
     DENO_VERSION: '2.x'
@@ -63,7 +63,7 @@ jobs:
                   if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
                     TARGET_URL="${{ github.event.inputs.url }}"
                   else
-                    TARGET_URL="https://bloqr-backend.jk-com.workers.dev"
+                    TARGET_URL="https://adblock-compiler.jk-com.workers.dev"
                   fi
                   if [ -z "$TARGET_URL" ]; then
                     echo "❌ TARGET_URL is empty — cannot run Lighthouse audit" >&2

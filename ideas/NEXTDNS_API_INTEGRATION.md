@@ -1,6 +1,6 @@
 # NextDNS API Integration Ideas
 
-Integration ideas for the [NextDNS API](https://nextdns.github.io/api/) and `bloqr-backend`.
+Integration ideas for the [NextDNS API](https://nextdns.github.io/api/) and `adblock-compiler`.
 
 > **Base URL:** `https://api.nextdns.io`
 > **Docs:** [https://nextdns.github.io/api/](https://nextdns.github.io/api/)
@@ -139,7 +139,7 @@ await Promise.all(
 Host your compiled filter list as a public URL and subscribe NextDNS to it — one subscription update instead of per-domain POSTs:
 
 ```typescript
-const compiledUrl = `https://bloqr-backend.jk-com.workers.dev/lists/${listId}`;
+const compiledUrl = `https://adblock-compiler.jk-com.workers.dev/lists/${listId}`;
 
 await fetch(`https://api.nextdns.io/profiles/${profileId}/blocklists`, {
     method: 'POST',
@@ -174,7 +174,7 @@ const batchRequest = {
 };
 
 const compiled = await fetch(
-    'https://bloqr-backend.jk-com.workers.dev/compile/batch',
+    'https://adblock-compiler.jk-com.workers.dev/compile/batch',
     { method: 'POST', body: JSON.stringify(batchRequest) }
 );
 ```
@@ -257,7 +257,7 @@ export default {
 ## 9. Full Pipeline: Compile to NextDNS Sync
 
 ```
-bloqr-backend POST /compile
+adblock-compiler POST /compile
     FiltersDownloader: fetch + resolve !#if / !#include
     AGTree: parse to AST
     Transformations: Deduplicate, Validate, RemoveComments, InvertAllow
@@ -279,10 +279,10 @@ Monitoring
 
 - [NextDNS API Documentation](https://nextdns.github.io/api/)
 - [NextDNS Dashboard](https://my.nextdns.io/)
-- [bloqr-backend API README](../docs/api/README.md)
-- [bloqr-backend OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
-- [bloqr-backend Streaming API](../docs/api/STREAMING_API.md)
-- [bloqr-backend Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
-- [bloqr-backend Zod Validation](../docs/api/ZOD_VALIDATION.md)
+- [adblock-compiler API README](../docs/api/README.md)
+- [adblock-compiler OpenAPI Support](../docs/api/OPENAPI_SUPPORT.md)
+- [adblock-compiler Streaming API](../docs/api/STREAMING_API.md)
+- [adblock-compiler Batch API Guide](../docs/api/BATCH_API_GUIDE.md)
+- [adblock-compiler Zod Validation](../docs/api/ZOD_VALIDATION.md)
 - [AdGuard DNS API Integration](./ADGUARD_DNS_API_INTEGRATION.md)
 - [Pi-hole API Integration](./PIHOLE_API_INTEGRATION.md)

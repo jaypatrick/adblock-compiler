@@ -101,7 +101,7 @@ function makeR2Bucket(): { bucket: R2Bucket; calls: PutCall[] } {
 }
 
 /** Minimal MessageBatch stub. */
-function makeBatch(messages: ErrorQueueMessage[], queueName = 'bloqr-backend-error-queue'): MessageBatch<ErrorQueueMessage> {
+function makeBatch(messages: ErrorQueueMessage[], queueName = 'adblock-compiler-error-queue'): MessageBatch<ErrorQueueMessage> {
     return {
         queue: queueName,
         messages: messages.map((body, i) => ({
@@ -255,7 +255,7 @@ Deno.test('handleErrorQueue - sets customMetadata with batchSize, queueName, and
             makeErrorMessage({ severity: 'critical', category: 'http_error' }),
             makeErrorMessage({ severity: 'error', category: 'validation_error' }),
         ],
-        'bloqr-backend-error-queue',
+        'adblock-compiler-error-queue',
     );
 
     await handleErrorQueue(batch, env);
@@ -263,7 +263,7 @@ Deno.test('handleErrorQueue - sets customMetadata with batchSize, queueName, and
     assertEquals(calls.length >= 1, true);
     const meta = calls[0].customMetadata;
     assertEquals(meta?.batchSize, '2');
-    assertEquals(meta?.queueName, 'bloqr-backend-error-queue');
+    assertEquals(meta?.queueName, 'adblock-compiler-error-queue');
     assertEquals(meta?.criticalCount, '1');
     assertEquals(meta?.errorCount, '1');
 });
@@ -274,7 +274,7 @@ Deno.test('handleErrorQueue - acks all messages even when ERROR_BUCKET is absent
     const messages = [makeErrorMessage({ requestId: 'r1' }), makeErrorMessage({ requestId: 'r2' })];
 
     const batch = {
-        queue: 'bloqr-backend-error-queue',
+        queue: 'adblock-compiler-error-queue',
         messages: messages.map((body, i) => ({
             id: `msg-${i}`,
             body,

@@ -4,7 +4,7 @@ This document describes how diagnostic events are emitted during queue-based com
 
 ## Overview
 
-The bloqr-backend queue system emits comprehensive diagnostic events throughout the compilation lifecycle, providing full observability into asynchronous compilation jobs.
+The adblock-compiler queue system emits comprehensive diagnostic events throughout the compilation lifecycle, providing full observability into asynchronous compilation jobs.
 
 ## Event Flow
 
@@ -112,7 +112,7 @@ function emitDiagnosticsToTailWorker(diagnostics: DiagnosticEvent[]): void {
     for (const event of diagnostics) {
         const logData = {
             ...event,
-            source: 'bloqr-backend',
+            source: 'adblock-compiler',
         };
         
         // Use appropriate log level based on severity
@@ -199,7 +199,7 @@ Configure a tail worker in `wrangler.toml` to export diagnostics:
 
 ```toml
 [[tail_consumers]]
-service = "bloqr-tail"
+service = "adblock-tail"
 ```
 
 The tail worker can:

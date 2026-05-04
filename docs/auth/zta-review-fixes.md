@@ -1,8 +1,8 @@
 # ZTA Review Fixes (PR #1273 Follow-up)
 
-This document describes the six fix areas addressed as follow-up to [PR #1273](https://github.com/nicholasgriffintn/bloqr-backend/pull/1273), which introduced tighter Hono + Better Auth + Neon + Cloudflare integration. Each fix strengthens Zero Trust Architecture compliance, improves telemetry fidelity, or hardens edge-case behavior identified during code review.
+This document describes the six fix areas addressed as follow-up to [PR #1273](https://github.com/nicholasgriffintn/adblock-compiler/pull/1273), which introduced tighter Hono + Better Auth + Neon + Cloudflare integration. Each fix strengthens Zero Trust Architecture compliance, improves telemetry fidelity, or hardens edge-case behavior identified during code review.
 
-Related issue: [#1275](https://github.com/nicholasgriffintn/bloqr-backend/issues/1275)
+Related issue: [#1275](https://github.com/nicholasgriffintn/adblock-compiler/issues/1275)
 
 ---
 

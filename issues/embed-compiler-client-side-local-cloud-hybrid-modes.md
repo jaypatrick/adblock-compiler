@@ -2,7 +2,7 @@
 
 ## Overview
 
-The bloqr-backend is architected in a way that makes it uniquely well-suited to support **three distinct compilation execution modes** — local/in-browser, cloud (existing Worker API), and hybrid. This issue tracks the design and implementation of all three modes, tied to the upcoming Clerk auth/tier system.
+The adblock-compiler is architected in a way that makes it uniquely well-suited to support **three distinct compilation execution modes** — local/in-browser, cloud (existing Worker API), and hybrid. This issue tracks the design and implementation of all three modes, tied to the upcoming Clerk auth/tier system.
 
 The `compiler.component.ts` already has a **Compilation Mode Selector** UI — this issue is about wiring up the backend execution modes behind it.
 

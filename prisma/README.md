@@ -4,7 +4,7 @@ This directory contains the Prisma ORM configuration for the storage backend.
 
 ## Overview
 
-The Prisma storage adapter is the default storage backend for the bloqr-backend, providing flexible database support for scenarios requiring:
+The Prisma storage adapter is the default storage backend for the adblock-compiler, providing flexible database support for scenarios requiring:
 
 - Cross-runtime compatibility (Node.js, Deno, Bun)
 - Multi-instance deployments with shared database
@@ -408,4 +408,4 @@ const prisma = new PrismaClient({
 
 ## License
 
-Part of the bloqr-backend project.
+Part of the adblock-compiler project.

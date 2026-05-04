@@ -31,9 +31,9 @@ describe('app.config.server — API_BASE_URL factory', () => {
     }
 
     it('derives an absolute base URL from a valid request origin', () => {
-        configure(new Request('https://bloqr-backend.workers.dev/compiler'));
+        configure(new Request('https://adblock-compiler.workers.dev/compiler'));
         const url = TestBed.inject(API_BASE_URL);
-        expect(url).toBe('https://bloqr-backend.workers.dev/api');
+        expect(url).toBe('https://adblock-compiler.workers.dev/api');
     });
 
     it('preserves the origin for a localhost wrangler dev URL', () => {

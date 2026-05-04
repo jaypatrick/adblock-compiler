@@ -1,6 +1,6 @@
 # Operations
 
-This directory contains operational documentation for the bloqr-backend production Worker.
+This directory contains operational documentation for the adblock-compiler production Worker.
 
 ## Contents
 

@@ -1,7 +1,7 @@
 # Angular Frontend — Developer Reference
 
 > **Audience:** Contributors and integrators working on the Angular frontend.
-> **Location:** `frontend/` directory of the bloqr-backend monorepo.
+> **Location:** `frontend/` directory of the adblock-compiler monorepo.
 > **Status:** Production-ready reference implementation — Angular 21, zoneless, SSR, Cloudflare Workers.
 
 ---
@@ -1151,7 +1151,7 @@ graph LR
 ### `wrangler.toml` Key Settings
 
 ```toml
-name            = "bloqr-frontend"
+name            = "adblock-frontend"
 main            = "dist/frontend/server/server.mjs"
 compatibility_date = "2025-01-01"
 
@@ -1211,7 +1211,7 @@ import { appConfig } from './app.config';
 const serverConfig: ApplicationConfig = {
     providers: [
         // Absolute URL required in the Worker isolate
-        { provide: API_BASE_URL, useValue: 'https://bloqr-backend.workers.dev/api' },
+        { provide: API_BASE_URL, useValue: 'https://adblock-compiler.workers.dev/api' },
     ],
 };
 

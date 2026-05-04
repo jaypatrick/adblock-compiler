@@ -1,28 +1,28 @@
 # AdGuard Home — Integration Ideas
 
 > Generated: 2026-03-10
-> Context: Analysis of [`AdguardTeam/AdGuardHome`](https://github.com/AdguardTeam/AdGuardHome) and its relevance to `jaypatrick/bloqr-backend`
+> Context: Analysis of [`AdguardTeam/AdGuardHome`](https://github.com/AdguardTeam/AdGuardHome) and its relevance to `jaypatrick/adblock-compiler`
 
 ---
 
 ## Summary
 
-**AdGuard Home is a primary consumer of `bloqr-backend`'s output.** It is a self-hosted, network-wide DNS sinkhole that pulls its vetted filter lists directly from `HostlistsRegistry` — the same registry that `bloqr-backend` is designed to compile from. The integration angle is bidirectional: `bloqr-backend` can both **read from** and **push compiled lists to** a running AdGuard Home instance via its REST API.
+**AdGuard Home is a primary consumer of `adblock-compiler`'s output.** It is a self-hosted, network-wide DNS sinkhole that pulls its vetted filter lists directly from `HostlistsRegistry` — the same registry that `adblock-compiler` is designed to compile from. The integration angle is bidirectional: `adblock-compiler` can both **read from** and **push compiled lists to** a running AdGuard Home instance via its REST API.
 
 ---
 
 ## What Is AdGuard Home?
 
-[`AdguardTeam/AdGuardHome`](https://github.com/AdguardTeam/AdGuardHome) is a free, open-source, network-wide DNS sinkhole — the same category as Pi-hole, which `bloqr-backend` already explicitly targets as a compatible platform.
+[`AdguardTeam/AdGuardHome`](https://github.com/AdguardTeam/AdGuardHome) is a free, open-source, network-wide DNS sinkhole — the same category as Pi-hole, which `adblock-compiler` already explicitly targets as a compatible platform.
 
-Key facts relevant to `bloqr-backend`:
+Key facts relevant to `adblock-compiler`:
 
 - Exposes a full **[REST API](https://github.com/AdguardTeam/AdGuardHome/tree/master/openapi)** (OpenAPI spec) with Basic Auth
 - Its **vetted filter list** is pulled directly from `HostlistsRegistry/assets/filters.json`
 - Its **blocked services list** is pulled directly from `HostlistsRegistry/assets/services.json`
 - Both of those indexes are exactly the ones identified as integration targets in [`HOSTLISTS_REGISTRY_INTEGRATION.md`](./HOSTLISTS_REGISTRY_INTEGRATION.md)
 
-This closes the loop: **AGH pulls from HostlistsRegistry → `bloqr-backend` compiles from HostlistsRegistry-compatible sources → AGH consumes the compiled output.**
+This closes the loop: **AGH pulls from HostlistsRegistry → `adblock-compiler` compiles from HostlistsRegistry-compatible sources → AGH consumes the compiled output.**
 
 ---
 
@@ -32,13 +32,13 @@ This closes the loop: **AGH pulls from HostlistsRegistry → `bloqr-backend` com
 flowchart LR
     HLR["HostlistsRegistry"]
     AGH["AdGuard Home\n(reads filter subscriptions)"]
-    AC["bloqr-backend\n(compiles + pushes via REST API)"]
+    AC["adblock-compiler\n(compiles + pushes via REST API)"]
 
     HLR -->|"vetted-filters script"| AGH
     AC --> AGH
 ```
 
-`bloqr-backend` sits upstream of AdGuard Home in the filter pipeline and can also manage it downstream via the REST API.
+`adblock-compiler` sits upstream of AdGuard Home in the filter pipeline and can also manage it downstream via the REST API.
 
 ---
 
@@ -67,7 +67,7 @@ Authorization: Basic BASE64(username:password)
 
 ### 1. 🚀 Post-Compile Push Hook — `POST /control/filtering/set_rules`
 
-The most immediately actionable idea: after `bloqr-backend` finishes compiling, push the result directly to a running AGH instance as custom user rules.
+The most immediately actionable idea: after `adblock-compiler` finishes compiling, push the result directly to a running AGH instance as custom user rules.
 
 ```typescript
 import { compile } from '@jk-com/adblock-compiler';
@@ -177,9 +177,9 @@ async function refreshFilters(host: string, auth: string) {
 }
 ```
 
-Combined with `bloqr-backend`'s Cloudflare Worker (`POST /compile`), this enables a fully automated workflow:
+Combined with `adblock-compiler`'s Cloudflare Worker (`POST /compile`), this enables a fully automated workflow:
 
-1. `bloqr-backend` compiles a blocklist and stores it (e.g. Cloudflare KV, R2, or a static URL)
+1. `adblock-compiler` compiles a blocklist and stores it (e.g. Cloudflare KV, R2, or a static URL)
 2. AGH is pointed at that URL as a subscription
 3. AGH polls and refreshes on its own schedule, or is triggered via `/control/filtering/refresh`
 
@@ -189,7 +189,7 @@ Combined with `bloqr-backend`'s Cloudflare Worker (`POST /compile`), this enable
 
 ### 4. 📊 Stats-Enriched Diff Reports
 
-AGH's `GET /control/stats` returns query counts per domain. This data could enrich `bloqr-backend`'s existing `DiffGenerator` — showing not just what rules were added/removed, but how many DNS queries each changed rule was blocking (or would block).
+AGH's `GET /control/stats` returns query counts per domain. This data could enrich `adblock-compiler`'s existing `DiffGenerator` — showing not just what rules were added/removed, but how many DNS queries each changed rule was blocking (or would block).
 
 ```typescript
 // Hypothetical enriched diff
@@ -211,7 +211,7 @@ const enrichedDiff = diff.map(entry => ({
 
 ### 5. 🔁 CI/CD Pipeline — Full Loop
 
-The tightest integration is using `bloqr-backend` as a GitHub Actions step that compiles and deploys to AGH automatically:
+The tightest integration is using `adblock-compiler` as a GitHub Actions step that compiles and deploys to AGH automatically:
 
 ```yaml
 # .github/workflows/deploy-blocklist.yml
@@ -254,7 +254,7 @@ jobs:
 
 ### 6. 🌐 `adguard-home://` Source Protocol
 
-Register `adguard-home://` as a first-class URI scheme in `bloqr-backend`'s source resolution, handled by `AdGuardHomeFetcher`. Possible sub-paths:
+Register `adguard-home://` as a first-class URI scheme in `adblock-compiler`'s source resolution, handled by `AdGuardHomeFetcher`. Possible sub-paths:
 
 | URI | Resolves to |
 |---|---|
@@ -281,6 +281,6 @@ Register `adguard-home://` as a first-class URI scheme in `bloqr-backend`'s sour
 
 ## Relationship to Other Integration Ideas
 
-- [`HOSTLISTS_REGISTRY_INTEGRATION.md`](./HOSTLISTS_REGISTRY_INTEGRATION.md) — AGH pulls its vetted filters from HostlistsRegistry; `bloqr-backend` compiles from the same registry
+- [`HOSTLISTS_REGISTRY_INTEGRATION.md`](./HOSTLISTS_REGISTRY_INTEGRATION.md) — AGH pulls its vetted filters from HostlistsRegistry; `adblock-compiler` compiles from the same registry
 - `FILTERS_REGISTRY_INTEGRATION.md` *(future)* — browser-side counterpart
 - `docs/api/PLATFORM_SUPPORT.md` — the `WorkerCompiler` + `IContentFetcher` architecture that makes `AdGuardHomeFetcher` a natural fit

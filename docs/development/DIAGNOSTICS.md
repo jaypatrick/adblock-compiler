@@ -1,6 +1,6 @@
 # Diagnostics and Tracing System
 
-The bloqr-backend includes a comprehensive diagnostics and tracing system that emits structured events throughout the compilation pipeline. These events can be captured by the Cloudflare Tail Worker for monitoring, debugging, and observability.
+The adblock-compiler includes a comprehensive diagnostics and tracing system that emits structured events throughout the compilation pipeline. These events can be captured by the Cloudflare Tail Worker for monitoring, debugging, and observability.
 
 ## Overview
 
@@ -202,7 +202,7 @@ function emitDiagnosticsToTailWorker(diagnostics: DiagnosticEvent[]): void {
     for (const event of diagnostics) {
         const logData = {
             ...event,
-            source: 'bloqr-backend',
+            source: 'adblock-compiler',
         };
 
         switch (event.severity) {

@@ -33,8 +33,8 @@ postman/
 │       ├── admin/
 │       └── keys/
 └── environments/
-    ├── bloqr-backend.environment.yaml         # Cloudflare (production)
-    └── bloqr-backend-local.environment.yaml   # Local dev
+    ├── adblock-compiler.environment.yaml         # Cloudflare (production)
+    └── adblock-compiler-local.environment.yaml   # Local dev
 ```
 
 ## Authentication

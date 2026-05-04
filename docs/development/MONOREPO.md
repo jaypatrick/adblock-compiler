@@ -21,7 +21,7 @@ This repository uses **three co-existing package managers** — Deno, pnpm, and 
 ## Workspace Layout
 
 ```
-bloqr-backend/
+adblock-compiler/
 ├── deno.json                     ← Root Deno workspace config + all task definitions
 ├── pnpm-workspace.yaml           ← pnpm workspace config
 ├── package.json                  ← minimal; bridges npm scripts for pnpm workspace
@@ -52,10 +52,10 @@ bloqr-backend/
 |---|---|---|
 | `worker/` | Deno | `@jk-com/adblock-compiler-worker` (Deno sub-workspace) |
 | `examples/cloudflare-worker/` | Deno + pnpm | `adblock-compiler-worker-example` |
-| `frontend/` | pnpm | `bloqr-frontend` |
+| `frontend/` | pnpm | `adblock-frontend` |
 | `docs-docusaurus/` | pnpm | `@bloqr/docs-docusaurus` |
 | `docs-starlight/` | pnpm | `@bloqr/docs-starlight` |
-| `tools/` | uv | `bloqr-backend-tools` |
+| `tools/` | uv | `adblock-compiler-tools` |
 
 > **Note:** `tools/` is intentionally excluded from the pnpm workspace. It has its own `uv.lock` and is managed entirely by uv. Do not add it to `pnpm-workspace.yaml`.
 
@@ -161,16 +161,16 @@ Individual packages are addressed with `--filter <package-name>`:
 pnpm install
 
 # Build Angular frontend
-pnpm --filter bloqr-frontend run build
+pnpm --filter adblock-frontend run build
 
 # Start Angular dev server
-pnpm --filter bloqr-frontend run start
+pnpm --filter adblock-frontend run start
 
 # Run Angular tests
-pnpm --filter bloqr-frontend run test
+pnpm --filter adblock-frontend run test
 
 # Production build
-pnpm --filter bloqr-frontend run build
+pnpm --filter adblock-frontend run build
 ```
 
 ### Convenience aliases via Deno tasks
@@ -178,10 +178,10 @@ pnpm --filter bloqr-frontend run build
 The root `deno.json` provides `ui:*` aliases that delegate to pnpm under the hood:
 
 ```bash
-deno task ui:build:ng        # pnpm --filter bloqr-frontend run build
-deno task ui:build:ng:dev    # pnpm --filter bloqr-frontend run build:dev
-deno task ui:dev:ng          # pnpm --filter bloqr-frontend run start
-deno task ui:test:ng         # pnpm --filter bloqr-frontend run test
+deno task ui:build:ng        # pnpm --filter adblock-frontend run build
+deno task ui:build:ng:dev    # pnpm --filter adblock-frontend run build:dev
+deno task ui:dev:ng          # pnpm --filter adblock-frontend run start
+deno task ui:test:ng         # pnpm --filter adblock-frontend run test
 deno task ui:deploy:ng:dev   # build:dev + deploy:dev
 ```
 

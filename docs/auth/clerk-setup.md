@@ -14,13 +14,13 @@ Original content preserved below for historical reference.
 -->
 > (see [auth-provider-selection.md](auth-provider-selection.md)).
 
-This guide walks you through creating and configuring a Clerk application for the bloqr-backend.
+This guide walks you through creating and configuring a Clerk application for the adblock-compiler.
 
 ## Prerequisites
 
 - A [Clerk account](https://dashboard.clerk.com/sign-up) (free tier is sufficient to start)
 - Access to your Cloudflare Workers dashboard
-- The bloqr-backend deployed (or running locally)
+- The adblock-compiler deployed (or running locally)
 
 ## Step 1: Create a Clerk Application
 
@@ -73,7 +73,7 @@ By default, Clerk JWTs include standard claims. To include tier information in t
 
 1. Go to **JWT Templates** in the sidebar
 2. Click **"New template"** → **"Blank"**
-3. Name it `bloqr-backend`
+3. Name it `adblock-compiler`
 4. Add custom claims:
 
 ```json
@@ -219,7 +219,7 @@ curl -X GET https://your-worker.workers.dev/api/keys \
 
 ```bash
 # Query via Wrangler (remote D1)
-wrangler d1 execute bloqr-backend-d1-database --remote \
+wrangler d1 execute adblock-compiler-d1-database --remote \
   --command="SELECT id, email, tier, clerk_user_id FROM users ORDER BY created_at DESC LIMIT 5;"
 ```
 
@@ -252,7 +252,7 @@ wrangler d1 execute bloqr-backend-d1-database --remote \
 
 ### JWT Template Not Applied
 
-- Ensure the JWT template name matches what the frontend requests via `getToken({ template: 'bloqr-backend' })`
+- Ensure the JWT template name matches what the frontend requests via `getToken({ template: 'adblock-compiler' })`
 - If no template is specified, Clerk returns a default JWT without custom claims
 
 ## Security Checklist
@@ -284,13 +284,13 @@ The `users` table (used by the Clerk webhook handler) lives in Cloudflare D1. Ap
 
 ```bash
 # Apply the Clerk users migration to the remote D1 database
-wrangler d1 migrations apply bloqr-backend-d1-database --remote
+wrangler d1 migrations apply adblock-compiler-d1-database --remote
 ```
 
 Verify the table was created:
 
 ```bash
-wrangler d1 execute bloqr-backend-d1-database --remote \
+wrangler d1 execute adblock-compiler-d1-database --remote \
   --command="SELECT name FROM sqlite_master WHERE type='table';"
 ```
 
@@ -360,7 +360,7 @@ If you previously used a local dev URL (e.g., from `wrangler dev` or Cloudflare 
 4. Confirm the user appeared in D1:
 
 ```bash
-wrangler d1 execute bloqr-backend-d1-database --remote \
+wrangler d1 execute adblock-compiler-d1-database --remote \
   --command="SELECT id, email, tier FROM users ORDER BY created_at DESC LIMIT 3;"
 ```
 

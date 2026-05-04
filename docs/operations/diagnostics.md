@@ -1,6 +1,6 @@
 # Diagnostic System — Technical Reference
 
-This document covers the architecture of the diagnostic tooling, the `compress()` middleware fix, and operational procedures for the bloqr-backend Cloudflare Worker.
+This document covers the architecture of the diagnostic tooling, the `compress()` middleware fix, and operational procedures for the adblock-compiler Cloudflare Worker.
 
 ## Table of Contents
 
@@ -54,7 +54,7 @@ export interface DiagResult {
 | Probe | Endpoint | What it checks |
 |---|---|---|
 | `probeHealth` | `GET /api/health` | HTTP 200, valid JSON, `services.database.status` ≠ `down`, no gzip corruption |
-| `probeDbSmoke` | `GET /api/health/db-smoke` | HTTP 200, valid JSON `{ ok: true }`, `db_name === 'bloqr-backend'`, latency reported |
+| `probeDbSmoke` | `GET /api/health/db-smoke` | HTTP 200, valid JSON `{ ok: true }`, `db_name === 'adblock-compiler'`, latency reported |
 | `probeMetrics` | `GET /api/metrics` | HTTP 200, valid JSON, response time < 5s |
 | `probeAuthProviders` | `GET /api/auth/providers` | HTTP 200, valid JSON, completes without Worker-hang |
 | `probeCompileSmoke` | `POST /api/compile` | Posts a minimal compile payload, expects 200 or 422 (not 5xx/hang) |
@@ -74,7 +74,7 @@ export interface DiagResult {
 
 | Flag | Default | Description |
 |---|---|---|
-| `--url` | `https://bloqr-frontend.jk-com.workers.dev` | Base URL to probe |
+| `--url` | `https://adblock-frontend.jk-com.workers.dev` | Base URL to probe |
 | `--probe` | `all` | Comma-separated probe names, or `all` |
 | `--timeout` | `15000` | Per-probe timeout in milliseconds |
 | `--ci` | `false` | Non-interactive CI mode |
@@ -83,8 +83,8 @@ export interface DiagResult {
 ### Interactive mode
 
 ```
-📋 bloqr-backend diagnostic CLI
-   URL: https://bloqr-frontend.jk-com.workers.dev
+📋 adblock-compiler diagnostic CLI
+   URL: https://adblock-frontend.jk-com.workers.dev
 
 Select a probe to run:
   1. probeHealth
@@ -107,7 +107,7 @@ After each run, a results table is printed and the menu loops.
 ┌───────────────────────────┬──────────┬────────────┬───────────────────────────────────────────────┐
 │ Probe                     │ Status   │ Latency    │ Detail                                        │
 ├───────────────────────────┼──────────┼────────────┼───────────────────────────────────────────────┤
-│ probeHealth               │  ✅      │  342ms     │ status=healthy db=bloqr-backend            │
+│ probeHealth               │  ✅      │  342ms     │ status=healthy db=adblock-compiler            │
 │ probeResponseEncoding     │  ❌      │  198ms     │ GZIP corruption detected!                     │
 └───────────────────────────┴──────────┴────────────┴───────────────────────────────────────────────┘
 
@@ -138,7 +138,7 @@ deno task diag:prod
 ```bash
 deno run --allow-net --allow-env scripts/diag-cli.ts \
   --probe probeHealth,probeResponseEncoding \
-  --url https://bloqr-frontend.jk-com.workers.dev
+  --url https://adblock-frontend.jk-com.workers.dev
 ```
 
 ### CI mode (all probes, exit 0/1)
@@ -152,7 +152,7 @@ deno task diag:ci
 ```bash
 deno run --allow-net --allow-env scripts/diag-cli.ts \
   --ci \
-  --url https://bloqr-backend-staging.jk-com.workers.dev
+  --url https://adblock-compiler-staging.jk-com.workers.dev
 ```
 
 ---

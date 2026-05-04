@@ -499,7 +499,7 @@
                 </p>
                 <p style="font-size: 0.9rem; opacity: 0.9; margin-top: 5px">
                     Powered by Cloudflare Workers • <a
-                        href="https://bloqr-backend.jk-com.workers.dev/api"
+                        href="https://adblock-compiler.jk-com.workers.dev/api"
                         style="color: white; text-decoration: underline"
                         target="_blank"
                     >API</a>
@@ -701,7 +701,7 @@
                     <h3>API Endpoints</h3>
                     <p>
                         <strong>Base URL:</strong> <code
-                        >https://bloqr-backend.jk-com.workers.dev</code>
+                        >https://adblock-compiler.jk-com.workers.dev</code>
                     </p>
 
                     <div style="margin: 20px 0">
@@ -709,7 +709,7 @@
                         <p>Compile filter lists and return complete results as JSON</p>
                         <pre
                             style="background: #f5f5f5; padding: 15px; border-radius: 6px; overflow-x: auto"
-                        >curl -X POST https://bloqr-backend.jk-com.workers.dev/api/compile \\
+                        >curl -X POST https://adblock-compiler.jk-com.workers.dev/api/compile \\
   -H "Content-Type: application/json" \\
   -d '{
     "configuration": {
@@ -753,7 +753,7 @@ reader.read().then(function process({ done, value }) {
                         <p>Compile multiple filter lists in parallel (max 10 per batch)</p>
                         <pre
                             style="background: #f5f5f5; padding: 15px; border-radius: 6px; overflow-x: auto"
-                        >curl -X POST https://bloqr-backend.jk-com.workers.dev/api/compile/batch \\
+                        >curl -X POST https://adblock-compiler.jk-com.workers.dev/api/compile/batch \\
   -H "Content-Type: application/json" \\
   -d '{
     "requests": [
@@ -852,13 +852,13 @@ reader.read().then(function process({ done, value }) {
                         </p>
                         <p>
                             🌐 <a
-                                href="https://bloqr-backend.jk-com.workers.dev/"
+                                href="https://adblock-compiler.jk-com.workers.dev/"
                                 target="_blank"
                             >Web UI</a>
                         </p>
                         <p>
                             ⚡ <a
-                                href="https://bloqr-backend.jk-com.workers.dev/api"
+                                href="https://adblock-compiler.jk-com.workers.dev/api"
                                 target="_blank"
                             >API Info Endpoint</a>
                         </p>
@@ -904,7 +904,7 @@ reader.read().then(function process({ done, value }) {
             <footer>
                 <p>
                     Powered by <a
-                        href="https://github.com/jayptrick/bloqr-backend"
+                        href="https://github.com/jayptrick/adblock-compiler"
                         target="_blank"
                     >@jk-com/adblock-compiler</a>
                 </p>
@@ -1152,7 +1152,7 @@ reader.read().then(function process({ done, value }) {
                     // Use production API or local dev
                     const apiUrl = window.location.hostname === 'localhost'
                         ? '/compile/stream'
-                        : 'https://bloqr-backend.jk-com.workers.dev/api/compile/stream';
+                        : 'https://adblock-compiler.jk-com.workers.dev/api/compile/stream';
 
                     const response = await fetch(apiUrl, {
                         method: 'POST',

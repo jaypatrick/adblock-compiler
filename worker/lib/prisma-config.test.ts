@@ -87,7 +87,7 @@ Deno.test('PrismaClientConfigSchema validates postgres:// shorthand (Hyperdrive 
 
 Deno.test('PrismaClientConfigSchema validates postgres:// with SSL query param (Hyperdrive + Neon)', () => {
     const result = PrismaClientConfigSchema.safeParse({
-        connectionString: 'postgres://user:pass@ep-xxx-pooler.eastus2.azure.neon.tech:5432/bloqr-backend?sslmode=require',
+        connectionString: 'postgres://user:pass@ep-xxx-pooler.eastus2.azure.neon.tech:5432/adblock-compiler?sslmode=require',
     });
     assertEquals(result.success, true);
 });

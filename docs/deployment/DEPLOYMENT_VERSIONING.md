@@ -1,6 +1,6 @@
 # Deployment Versioning System
 
-The bloqr-backend project includes an automated deployment versioning system that tracks every successful worker deployment with detailed metadata.
+The adblock-compiler project includes an automated deployment versioning system that tracks every successful worker deployment with detailed metadata.
 
 ## Overview
 
@@ -259,17 +259,17 @@ console.log(`Total deployments: ${stats.totalDeployments}`);
 
 ```bash
 # Query latest deployment
-wrangler d1 execute bloqr-backend-d1-database \
+wrangler d1 execute adblock-compiler-d1-database \
   --remote \
   --command "SELECT * FROM deployment_history WHERE status='success' ORDER BY deployed_at DESC LIMIT 1"
 
 # Query deployment count by version
-wrangler d1 execute bloqr-backend-d1-database \
+wrangler d1 execute adblock-compiler-d1-database \
   --remote \
   --command "SELECT version, COUNT(*) as count FROM deployment_history GROUP BY version"
 
 # Query failed deployments
-wrangler d1 execute bloqr-backend-d1-database \
+wrangler d1 execute adblock-compiler-d1-database \
   --remote \
   --command "SELECT * FROM deployment_history WHERE status='failed'"
 ```
@@ -300,7 +300,7 @@ This updates the deployment status to 'rollback' without deleting the record.
 **Solution:**
 1. Verify environment variables are set
 2. Check GitHub Actions secrets
-3. Manually run migrations: `wrangler d1 execute bloqr-backend-d1-database --file=migrations/0002_deployment_history.sql --remote`
+3. Manually run migrations: `wrangler d1 execute adblock-compiler-d1-database --file=migrations/0002_deployment_history.sql --remote`
 
 ### Deployment not recorded
 
@@ -327,7 +327,7 @@ This updates the deployment status to 'rollback' without deleting the record.
 
 **Solution:**
 1. Verify D1 binding in wrangler.toml
-2. Create database if needed: `wrangler d1 create bloqr-backend-d1-database`
+2. Create database if needed: `wrangler d1 create adblock-compiler-d1-database`
 3. Update database_id in wrangler.toml
 
 ## Best Practices

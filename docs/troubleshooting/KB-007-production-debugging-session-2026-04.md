@@ -192,17 +192,17 @@ Use the **direct** (non-pooled) connection string for the production Neon branch
 ```bash
 # Obtain the production direct connection string from:
 #   https://console.neon.tech → project adblock-db → branch: production → Connection Details → Direct
-# It looks like: postgresql://neondb_owner:PASSWORD@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/bloqr-backend?sslmode=require
+# It looks like: postgresql://neondb_owner:PASSWORD@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require
 
-DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/bloqr-backend?sslmode=require" \
+DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require" \
   deno task db:migrate:deploy
 ```
 
 Or using `npx prisma migrate deploy` directly (equivalent, useful if Deno is not available):
 
 ```bash
-DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/bloqr-backend?sslmode=require" \
-  DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/bloqr-backend?sslmode=require" \
+DIRECT_DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9.eastus2.azure.neon.tech/adblock-compiler?sslmode=require" \
+  DATABASE_URL="postgresql://neondb_owner:<password>@ep-winter-term-a8rxh2a9-pooler.eastus2.azure.neon.tech/adblock-compiler?sslmode=require" \
   npx prisma migrate deploy
 ```
 
@@ -253,4 +253,4 @@ flowchart TD
 
 ## Feedback & Contribution
 
-If you discovered a new failure mode while using this article, please open an issue tagged `troubleshooting` and `documentation` in `jaypatrick/bloqr-backend` with the details so it can be captured in a follow-up KB entry.
+If you discovered a new failure mode while using this article, please open an issue tagged `troubleshooting` and `documentation` in `jaypatrick/adblock-compiler` with the details so it can be captured in a follow-up KB entry.

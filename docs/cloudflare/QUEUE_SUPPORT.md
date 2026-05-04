@@ -4,7 +4,7 @@ This document describes how to use the Cloudflare Queue integration for async co
 
 ## Overview
 
-The bloqr-backend worker now supports asynchronous compilation through Cloudflare Queues. This is useful for:
+The adblock-compiler worker now supports asynchronous compilation through Cloudflare Queues. This is useful for:
 
 - **Long-running compilations** - Offload CPU-intensive work to background processing
 - **Batch operations** - Process multiple compilations without blocking
@@ -21,24 +21,24 @@ The worker uses two queues for different priority levels:
 ```toml
 # Standard priority queue
 [[queues.producers]]
- queue = "bloqr-backend-worker-queue"
- binding = "BLOQR_BACKEND_QUEUE"
+ queue = "adblock-compiler-worker-queue"
+ binding = "ADBLOCK_COMPILER_QUEUE"
 
 # High priority queue for premium users
 [[queues.producers]]
- queue = "bloqr-backend-worker-queue-high-priority"
- binding = "BLOQR_BACKEND_QUEUE_HIGH_PRIORITY"
+ queue = "adblock-compiler-worker-queue-high-priority"
+ binding = "ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY"
 
 # Standard queue consumer
 [[queues.consumers]]
- queue = "bloqr-backend-worker-queue"
+ queue = "adblock-compiler-worker-queue"
  max_batch_size = 10
  max_batch_timeout = 5
  dead_letter_queue = "dead-letter-queue"
 
 # High priority queue consumer (faster processing)
 [[queues.consumers]]
- queue = "bloqr-backend-worker-queue-high-priority"
+ queue = "adblock-compiler-worker-queue-high-priority"
  max_batch_size = 5     # smaller batches for faster response
  max_batch_timeout = 2  # shorter timeout for quicker processing
  dead_letter_queue = "dead-letter-queue"
@@ -453,10 +453,10 @@ Ensure both queues are created before deploying:
 
 ```bash
 # Create the standard priority queue (first time only)
-wrangler queues create bloqr-backend-worker-queue
+wrangler queues create adblock-compiler-worker-queue
 
 # Create the high priority queue (first time only)
-wrangler queues create bloqr-backend-worker-queue-high-priority
+wrangler queues create adblock-compiler-worker-queue-high-priority
 
 # Deploy the worker
 deno task wrangler:deploy
@@ -505,8 +505,8 @@ graph TB
     end
 
     subgraph "Cloudflare Queue"
-        QUEUE[(bloqr-backend-worker-queue)]
-        QUEUE_HIGH[(bloqr-backend-worker-queue-high-priority)]
+        QUEUE[(adblock-compiler-worker-queue)]
+        QUEUE_HIGH[(adblock-compiler-worker-queue-high-priority)]
         QUEUE_BATCH[Message Batching]
     end
 

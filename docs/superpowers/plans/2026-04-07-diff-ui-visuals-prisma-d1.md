@@ -1120,7 +1120,7 @@ Create `docs/assets/diagrams/system-architecture.svg`:
   <!-- Tail Worker -->
   <rect x="620" y="380" width="150" height="60" rx="8" fill="#fff7ed" stroke="#fb923c" stroke-width="1.5"/>
   <text x="695" y="407" text-anchor="middle" font-size="12" font-weight="600" fill="#c2410c">Tail Worker</text>
-  <text x="695" y="424" text-anchor="middle" font-size="11" fill="#fb923c">bloqr-tail · Logs</text>
+  <text x="695" y="424" text-anchor="middle" font-size="11" fill="#fb923c">adblock-tail · Logs</text>
 
   <!-- Arrows -->
   <!-- Client → Worker -->
@@ -1743,7 +1743,7 @@ try {
     console.log(`\n✅ Created ${outPath}`);
     console.log(`\nNext steps:`);
     console.log(`  1. Review the generated SQL: cat ${outPath}`);
-    console.log(`  2. Apply locally:  deno task wrangler d1 migrations apply bloqr-backend-d1-database --local`);
+    console.log(`  2. Apply locally:  deno task wrangler d1 migrations apply adblock-compiler-d1-database --local`);
     console.log(`  3. Apply remotely: deno task db:migrate:d1:deploy`);
     console.log(`  4. Commit:         git add ${outPath} && git commit -m "chore(db): add migration ${outFilename}"`);
 
@@ -1758,7 +1758,7 @@ In the `"tasks"` section of `deno.json`, add after the existing `db:` tasks:
 
 ```json
 "db:migrate:d1":        "deno run --allow-read --allow-write --allow-run scripts/generate-d1-migration.ts",
-"db:migrate:d1:deploy": "deno task wrangler d1 migrations apply bloqr-backend-d1-database --remote",
+"db:migrate:d1:deploy": "deno task wrangler d1 migrations apply adblock-compiler-d1-database --remote",
 "db:check:d1":          "deno run --allow-read --allow-write --allow-run scripts/generate-d1-migration.ts __drift-check__ && echo '✅ D1 schema in sync'",
 ```
 

@@ -1,6 +1,6 @@
 ## Overview
 
-Implement a full authentication, authorization, and user registration system for bloqr-backend. Based on architectural review of the existing stack (Cloudflare Workers, Angular SSR, D1, KV, R2, Hyperdrive → PlanetScale, Durable Objects, Queues, Workflows, Turnstile), the recommended approach is **Clerk** for user auth/registration + **Cloudflare Access** for admin protection.
+Implement a full authentication, authorization, and user registration system for adblock-compiler. Based on architectural review of the existing stack (Cloudflare Workers, Angular SSR, D1, KV, R2, Hyperdrive → PlanetScale, Durable Objects, Queues, Workflows, Turnstile), the recommended approach is **Clerk** for user auth/registration + **Cloudflare Access** for admin protection.
 
 > **Do not wait for the PlanetScale backend to be fully built out.** Auth is JWT-based and completely database-agnostic. The D1/PlanetScale backend only stores a `clerk_user_id` FK — the auth flow itself never touches your database.
 

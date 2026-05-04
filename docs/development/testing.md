@@ -10,9 +10,9 @@ This document describes how the project's three test layers work, how to run the
 |---|---|---|---|
 | **Core library** (`src/`) | `src/**/*.test.ts` | Deno + `@std/assert` | `deno task test:src` |
 | **Worker API** (`worker/`) | `worker/**/*.test.ts` | Deno + `@std/assert` | `deno task test:worker` |
-| **Angular frontend** (`frontend/`) | `frontend/src/**/*.spec.ts` | Vitest + Angular TestBed | `pnpm --filter bloqr-frontend run test` |
+| **Angular frontend** (`frontend/`) | `frontend/src/**/*.spec.ts` | Vitest + Angular TestBed | `pnpm --filter adblock-frontend run test` |
 
-Run all layers at once: `deno task test` (runs `test:src` + `test:worker`) and then `pnpm --filter bloqr-frontend run test`.
+Run all layers at once: `deno task test` (runs `test:src` + `test:worker`) and then `pnpm --filter adblock-frontend run test`.
 
 ---
 
@@ -126,13 +126,13 @@ either:
 
 ```sh
 # From the repo root
-pnpm --filter bloqr-frontend run test
+pnpm --filter adblock-frontend run test
 
 # Inside frontend/
 cd frontend && pnpm test
 
 # With coverage
-pnpm --filter bloqr-frontend run test:coverage
+pnpm --filter adblock-frontend run test:coverage
 ```
 
 ### Test structure

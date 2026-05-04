@@ -2,7 +2,7 @@
 
 **Series:** Adblock Compiler Operations & Troubleshooting KB  
 **Component:** `worker/worker.ts` — Cloudflare Worker API entrypoint  
-**Service URL:** `https://bloqr-backend.jk-com.workers.dev`  
+**Service URL:** `https://adblock-compiler.jk-com.workers.dev`  
 **Date Created:** 2026-03-17  
 **Status:** Active  
 
@@ -10,7 +10,7 @@
 
 ## Symptom
 
-The Angular SPA home page shows **"Getting API is not available"** on initial load at `https://bloqr-backend.jk-com.workers.dev`.
+The Angular SPA home page shows **"Getting API is not available"** on initial load at `https://adblock-compiler.jk-com.workers.dev`.
 
 API fetches from the frontend to `/api/version`, `/api/clerk-config`, `/api/turnstile-config`, or `/api/sentry-config` may be returning non-200 responses, causing the Angular app to render the error state.
 
@@ -37,16 +37,16 @@ Run these from any terminal. A healthy deployment returns `200` with a JSON body
 
 ```bash
 # 1. Test root API info (bypasses HTML redirect)
-curl -s "https://bloqr-backend.jk-com.workers.dev/api?format=json" | jq .
+curl -s "https://adblock-compiler.jk-com.workers.dev/api?format=json" | jq .
 
 # 2. Test the version endpoint (hits D1)
-curl -s "https://bloqr-backend.jk-com.workers.dev/api/version" | jq .
+curl -s "https://adblock-compiler.jk-com.workers.dev/api/version" | jq .
 
 # 3. Test health (checks D1, KV, compiler binding, auth, gateway)
-curl -s "https://bloqr-backend.jk-com.workers.dev/health" | jq .
+curl -s "https://adblock-compiler.jk-com.workers.dev/health" | jq .
 
 # 4. Test metrics (hits KV METRICS namespace)
-curl -s "https://bloqr-backend.jk-com.workers.dev/metrics" | jq .
+curl -s "https://adblock-compiler.jk-com.workers.dev/metrics" | jq .
 
 # 5. Tail the live worker log
 wrangler tail
@@ -86,11 +86,11 @@ wrangler tail
 
 This endpoint calls `getLatestDeployment(env.DB)`. A 503 means `env.DB` is null — the `DB` D1 binding is missing from the deployed worker.
 
-**Check:** `wrangler d1 list` — confirm `bloqr-backend-d1-database` exists and the ID matches `wrangler.toml`.
+**Check:** `wrangler d1 list` — confirm `adblock-compiler-d1-database` exists and the ID matches `wrangler.toml`.
 
 ```bash
 wrangler d1 list
-# Should show: bloqr-backend-d1-database  3e8e7dfe-3213-452a-a671-6c18e6e74ce5
+# Should show: adblock-compiler-d1-database  3e8e7dfe-3213-452a-a671-6c18e6e74ce5
 ```
 
 ---
@@ -101,7 +101,7 @@ The worker reads the `CORS_ALLOWED_ORIGINS` value at runtime. There are **two so
 
 | Source | Value | Precedence |
 |---|---|---|
-| `wrangler.toml [vars]` | `"http://localhost:4200,...,https://bloqr-backend.jk-com.workers.dev"` | Lower |
+| `wrangler.toml [vars]` | `"http://localhost:4200,...,https://adblock-compiler.jk-com.workers.dev"` | Lower |
 | `wrangler secret put CORS_ALLOWED_ORIGINS` | Whatever was set when the command was last run | **Higher — overrides [vars]** |
 
 **If a secret was previously set** with an outdated or incorrect value, it silently overrides the `[vars]` entry.
@@ -112,23 +112,23 @@ wrangler secret list
 
 # If CORS_ALLOWED_ORIGINS is listed as a secret, re-set it:
 wrangler secret put CORS_ALLOWED_ORIGINS
-# Enter: http://localhost:4200,http://localhost:8787,https://bloqr-backend.jk-com.workers.dev
+# Enter: http://localhost:4200,http://localhost:8787,https://adblock-compiler.jk-com.workers.dev
 ```
 
 To verify, open Chrome DevTools → Network tab, look for the OPTIONS preflight or the failing GET, and check the `Access-Control-Allow-Origin` response header.
 
 ---
 
-### ❹ Is the `bloqr-tail` worker missing?
+### ❹ Is the `adblock-tail` worker missing?
 
 `wrangler.toml` declares:
 
 ```toml
 [[tail_consumers]]
-service = "bloqr-tail"
+service = "adblock-tail"
 ```
 
-If `bloqr-tail` doesn't exist in your Cloudflare account, `wrangler deploy` **will fail silently** or deploy a broken worker. This is the most common cause of a "everything looks fine in code" deployment that still doesn't work.
+If `adblock-tail` doesn't exist in your Cloudflare account, `wrangler deploy` **will fail silently** or deploy a broken worker. This is the most common cause of a "everything looks fine in code" deployment that still doesn't work.
 
 ```bash
 # Deploy the tail worker first (from wrangler.tail.toml)
@@ -142,7 +142,7 @@ wrangler deploy
 
 ### ❺ Does the Angular build exist in the ASSETS binding?
 
-The `[assets]` binding points to `./frontend/dist/bloqr-backend/browser`. If the Angular build artifact is missing (e.g., the frontend CI step failed or was skipped), the worker deploys without static assets. The SPA shell won't serve, and the Angular app will never initialize.
+The `[assets]` binding points to `./frontend/dist/adblock-compiler/browser`. If the Angular build artifact is missing (e.g., the frontend CI step failed or was skipped), the worker deploys without static assets. The SPA shell won't serve, and the Angular app will never initialize.
 
 ```bash
 # Trigger a fresh build manually
@@ -190,7 +190,7 @@ All four config endpoints are **intentionally pre-auth** — they expose no secr
 |---|---|---|
 | `"API not available"` on home page | D1 DB binding missing | `wrangler deploy` after confirming D1 namespace exists |
 | `"API not available"` on home page | `CORS_ALLOWED_ORIGINS` secret overrides `[vars]` with stale value | `wrangler secret put CORS_ALLOWED_ORIGINS` |
-| `"API not available"` on home page | `bloqr-tail` service not deployed | Deploy tail worker, then re-deploy main worker |
+| `"API not available"` on home page | `adblock-tail` service not deployed | Deploy tail worker, then re-deploy main worker |
 | `"API not available"` on home page | Angular build missing from ASSETS | Run `sh scripts/build-worker.sh` and re-deploy |
 | `GET /api/version` returns 503 | `DB` D1 binding null | Verify D1 database ID in `wrangler.toml` matches dashboard |
 | `GET /health` shows `auth: degraded` | `CLERK_JWKS_URL` and `JWT_SECRET` both unset | Set `JWT_SECRET` secret or configure Clerk |
@@ -208,4 +208,4 @@ All four config endpoints are **intentionally pre-auth** — they expose no secr
 
 ## Feedback & Contribution
 
-If you discovered a new failure mode while using this article, please open an issue tagged `troubleshooting` and `documentation` in `jaypatrick/bloqr-backend` with the details so it can be captured in a follow-up KB entry.
+If you discovered a new failure mode while using this article, please open an issue tagged `troubleshooting` and `documentation` in `jaypatrick/adblock-compiler` with the details so it can be captured in a follow-up KB entry.

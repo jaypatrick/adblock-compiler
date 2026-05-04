@@ -37,7 +37,7 @@ export type WorkflowInstance = globalThis.WorkflowInstance;
  * CF Email Workers binding type.
  *
  * Bound to `env.SEND_EMAIL` via `[[send_email]]` in `wrangler.toml`.
- * The `bloqr-email` email worker handles routing.
+ * The `adblock-email` email worker handles routing.
  *
  * At runtime the Cloudflare Workers runtime provides the concrete `SendEmail`
  * global. We define the interface locally so `types.ts` compiles in Deno
@@ -69,7 +69,7 @@ export type HyperdriveBinding = globalThis.Hyperdrive;
  * Requires wrangler.toml:
  *   [[dynamic_dispatch_namespaces]]
  *   binding = "LOADER"
- *   namespace = "bloqr-backend-dynamic"
+ *   namespace = "adblock-compiler-dynamic"
  *
  * @see https://developers.cloudflare.com/dynamic-workers/
  */
@@ -420,8 +420,8 @@ export interface Env {
     // Static assets (optional — absent when the API worker is deployed without an [assets] binding)
     ASSETS?: Fetcher;
     // Queue bindings (optional - queues must be created in Cloudflare dashboard first)
-    BLOQR_BACKEND_QUEUE?: Queue<QueueMessage>;
-    BLOQR_BACKEND_QUEUE_HIGH_PRIORITY?: Queue<QueueMessage>;
+    ADBLOCK_COMPILER_QUEUE?: Queue<QueueMessage>;
+    ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY?: Queue<QueueMessage>;
     // Dedicated error dead-letter queue — isolated from compile queues.
     // Receives error events from app.onError and persists them to ERROR_BUCKET.
     ERROR_QUEUE?: Queue<ErrorQueueMessage>;
@@ -487,7 +487,7 @@ export interface Env {
      * wrangler.toml:
      * ```toml
      * [[queues.producers]]
-     * queue   = "bloqr-backend-email-queue"
+     * queue   = "adblock-compiler-email-queue"
      * binding = "EMAIL_QUEUE"
      * ```
      *
@@ -542,7 +542,7 @@ export interface Env {
     // @see docs/architecture/durable-objects.md
     WS_HIBERNATION_DO?: DurableObjectNamespace;
     // Dynamic Dispatch Namespace binding (optional — add to wrangler.toml to enable)
-    // [[dynamic_dispatch_namespaces]], binding = "LOADER", namespace = "bloqr-backend-dynamic"
+    // [[dynamic_dispatch_namespaces]], binding = "LOADER", namespace = "adblock-compiler-dynamic"
     // @see https://developers.cloudflare.com/dynamic-workers/
     // @see https://github.com/jaypatrick/adblock-compiler/issues/1386
     LOADER?: DynamicDispatchNamespace;
@@ -578,7 +578,7 @@ export interface Env {
      * Public base URL for Better Auth callbacks and redirects.
      * Defaults to the request origin if not set.
      *
-     * @example `"https://bloqr-backend.example.com"`
+     * @example `"https://adblock-compiler.example.com"`
      */
     BETTER_AUTH_URL?: string;
     /**
@@ -701,11 +701,11 @@ export interface Env {
      * Set in wrangler.toml [vars].
      */
     STRIPE_PAYG_PRICE_ID?: string;
-    // ─── Email (CF Email Workers binding — bloqr-email) ────────────────────
+    // ─── Email (CF Email Workers binding — adblock-email) ────────────────────
     /**
      * Cloudflare Email Workers outbound send binding.
      *
-     * Configured via `[[send_email]]` in `wrangler.toml` with the `bloqr-email`
+     * Configured via `[[send_email]]` in `wrangler.toml` with the `adblock-email`
      * email worker. When present, {@link createEmailService} uses this binding
      * directly as the priority-2 provider.
      *
@@ -933,7 +933,7 @@ export interface CacheWarmQueueMessage extends QueueMessage {
 }
 
 /**
- * Message placed on `bloqr-backend-email-queue` by {@link QueuedEmailService}.
+ * Message placed on `adblock-compiler-email-queue` by {@link QueuedEmailService}.
  *
  * The queue consumer (`handleEmailQueue`) reads these messages and creates an
  * `EmailDeliveryWorkflow` instance for each one, providing durable, retryable

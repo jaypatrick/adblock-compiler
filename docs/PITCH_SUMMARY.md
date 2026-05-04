@@ -1,4 +1,4 @@
-# Pitch Summary: bloqr-backend Agent Platform
+# Pitch Summary: adblock-compiler Agent Platform
 
 *Prepared for business partner presentation — March 2026*
 
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-**bloqr-backend** is a cloud-native content filtering platform built on Cloudflare's global edge network. It compiles, validates, and distributes adblock filter lists at web scale — but the platform has evolved into something far more significant: a foundation for deploying autonomous, persistent AI agents directly at the network edge.
+**adblock-compiler** is a cloud-native content filtering platform built on Cloudflare's global edge network. It compiles, validates, and distributes adblock filter lists at web scale — but the platform has evolved into something far more significant: a foundation for deploying autonomous, persistent AI agents directly at the network edge.
 
 The timing is strategic. On **March 24, 2026** — the same day our agent backend shipped — Cloudflare announced that **Dynamic Workers** entered open beta. This is not a coincidence; it is a reflection of how closely our architecture tracks the cutting edge of serverless infrastructure. We are building with the platform as it is being built.
 
@@ -148,8 +148,8 @@ This is not retrofitted security. Zero Trust Architecture was baked in from the 
 
 > **Your users' browsers are now your security sensors.**
 >
-> bloqr-backend ships with deep Cloudflare Page Shield integration. Every browser that loads your application automatically reports Content Security Policy violations to a dedicated endpoint — no JavaScript agents, no SDK, no sampling. Supply-chain compromises, injected trackers, and typosquatted CDN scripts are captured, Zod-validated, and persisted to Cloudflare D1 in real time. Combine this with Page Shield's AI-scored script inventory to automatically generate adblock block and allow rules, continuously hardening your compiled filter lists against the latest client-side threats. Enterprise-grade client-side security, built in from day one.
+> adblock-compiler ships with deep Cloudflare Page Shield integration. Every browser that loads your application automatically reports Content Security Policy violations to a dedicated endpoint — no JavaScript agents, no SDK, no sampling. Supply-chain compromises, injected trackers, and typosquatted CDN scripts are captured, Zod-validated, and persisted to Cloudflare D1 in real time. Combine this with Page Shield's AI-scored script inventory to automatically generate adblock block and allow rules, continuously hardening your compiled filter lists against the latest client-side threats. Enterprise-grade client-side security, built in from day one.
 
 ---
 
-*bloqr-backend — Edge-native. AI-ready. Enterprise-secure.*
+*adblock-compiler — Edge-native. AI-ready. Enterprise-secure.*

@@ -1,6 +1,6 @@
 # Ops Tools
 
-This chapter documents the operational tooling suite for bloqr-backend / Bloqr. Each tool is a standalone Python script in `tools/` and has a matching interactive Marimo runbook in `tools/runbooks/`.
+This chapter documents the operational tooling suite for adblock-compiler / Bloqr. Each tool is a standalone Python script in `tools/` and has a matching interactive Marimo runbook in `tools/runbooks/`.
 
 > **Admin starting point:** Run `deno task runbook:pipeline` to open the master health dashboard runbook in your browser. Everything you need is inside.
 

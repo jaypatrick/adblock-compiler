@@ -1,6 +1,6 @@
 # Cloudflare D1 Integration Guide
 
-Complete guide for using Prisma with Cloudflare D1 in the bloqr-backend project.
+Complete guide for using Prisma with Cloudflare D1 in the adblock-compiler project.
 
 ## Overview
 
@@ -44,7 +44,7 @@ wrangler d1 create adblock-storage
 Create or update `wrangler.toml` in your project root:
 
 ```toml
-name = "bloqr-backend"
+name = "adblock-compiler"
 main = "src/worker.ts"
 compatibility_date = "2024-01-01"
 
@@ -355,11 +355,11 @@ Migration files live in `migrations/` and are numbered sequentially (e.g., `0004
 
 ```bash
 # Local D1 (development)
-wrangler d1 execute bloqr-backend-d1-database --local \
+wrangler d1 execute adblock-compiler-d1-database --local \
   --file=migrations/0004_users_email_nullable.sql
 
 # Remote D1 (production)
-wrangler d1 execute bloqr-backend-d1-database --remote \
+wrangler d1 execute adblock-compiler-d1-database --remote \
   --file=migrations/0004_users_email_nullable.sql
 ```
 

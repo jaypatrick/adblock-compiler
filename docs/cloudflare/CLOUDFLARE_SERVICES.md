@@ -1,6 +1,6 @@
 # Cloudflare Services Integration
 
-This document describes all Cloudflare services integrated into the bloqr-backend project, their current status, and configuration guidance.
+This document describes all Cloudflare services integrated into the adblock-compiler project, their current status, and configuration guidance.
 
 ---
 
@@ -12,11 +12,11 @@ This document describes all Cloudflare services integrated into the bloqr-backen
 | **R2 Storage** | ✅ Active | `FILTER_STORAGE` | Filter list storage and artifact persistence |
 | **Browser Rendering** | ✅ Active | `BROWSER` | Headless browser fetching for JS-rendered filter sources (see [Browser Rendering](BROWSER_RENDERING.md)) |
 | **D1 Database** | ✅ Active | `DB` | Compilation history, deployment records |
-| **Queues** | ✅ Active | `BLOQR_BACKEND_QUEUE`, `BLOQR_BACKEND_QUEUE_HIGH_PRIORITY` | Async compilation, batch processing |
+| **Queues** | ✅ Active | `ADBLOCK_COMPILER_QUEUE`, `ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY` | Async compilation, batch processing |
 | **Analytics Engine** | ✅ Active | `ANALYTICS_ENGINE` | Request metrics, cache analytics, workflow tracking |
 | **Workflows** | ✅ Active | `COMPILATION_WORKFLOW`, `BATCH_COMPILATION_WORKFLOW`, `CACHE_WARMING_WORKFLOW`, `HEALTH_MONITORING_WORKFLOW` | Durable async execution |
 | **Hyperdrive** | ✅ Active | `HYPERDRIVE` | Accelerated PostgreSQL (PlanetScale) connectivity |
-| **Tail Worker** | ✅ Active | `bloqr-tail` | Log collection, error forwarding |
+| **Tail Worker** | ✅ Active | `adblock-tail` | Log collection, error forwarding |
 | **SSE Streaming** | ✅ Active | — | Real-time compilation progress via `/compile/stream` |
 | **WebSocket** | ✅ Active | — | Real-time bidirectional compile via `/ws/compile` |
 | **Observability** | ✅ Active | — | Built-in logs and traces via `[observability]`; `persist = true` retains logs beyond the live-tail window |
@@ -40,8 +40,8 @@ Pipelines provide scalable, batched HTTP event ingestion — ideal for routing m
 
 ```bash
 # Create the pipeline (routes to R2)
-wrangler pipelines create bloqr-backend-metrics-pipeline \
-  --r2-bucket bloqr-backend-r2-storage \
+wrangler pipelines create adblock-compiler-metrics-pipeline \
+  --r2-bucket adblock-compiler-r2-storage \
   --batch-max-mb 10 \
   --batch-timeout-secs 30
 ```
@@ -70,7 +70,7 @@ The binding is defined in `wrangler.toml`:
 ```toml
 [[pipelines]]
 binding = "METRICS_PIPELINE"
-pipeline = "bloqr-backend-metrics-pipeline"
+pipeline = "adblock-compiler-metrics-pipeline"
 ```
 
 ---
@@ -195,8 +195,8 @@ D1 stores compilation history and deployment records, enabling the admin dashboa
 
 Migrations are in `migrations/`. Apply with:
 ```bash
-wrangler d1 execute bloqr-backend-d1-database --file=migrations/0001_init.sql --remote
-wrangler d1 execute bloqr-backend-d1-database --file=migrations/0002_deployment_history.sql --remote
+wrangler d1 execute adblock-compiler-d1-database --file=migrations/0001_init.sql --remote
+wrangler d1 execute adblock-compiler-d1-database --file=migrations/0002_deployment_history.sql --remote
 ```
 
 ---
@@ -280,7 +280,7 @@ beyond that window, export logs via Logpush or another external sink (see
 ### Querying persistent logs
 
 **Via Cloudflare Dashboard:**
-1. *Workers & Pages → bloqr-backend → Logs*
+1. *Workers & Pages → adblock-compiler → Logs*
 2. Use the time range picker to look back up to 24 hours.
 3. Filter by outcome (`exception`, `exceededCpu`), log level, or log text.
 
@@ -295,7 +295,7 @@ deno run -A npm:wrangler tail --format json | jq '.logs[].message[]'
 **Via Workers Logs REST API:**
 ```bash
 # Requires a Cloudflare API token with Workers:Read permission
-curl -X GET "https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/workers/scripts/bloqr-backend/logs?start=2026-04-01T00:00:00Z&end=2026-04-02T00:00:00Z" \
+curl -X GET "https://api.cloudflare.com/client/v4/accounts/<ACCOUNT_ID>/workers/scripts/adblock-compiler/logs?start=2026-04-01T00:00:00Z&end=2026-04-02T00:00:00Z" \
     -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN"
 ```
 
@@ -355,7 +355,7 @@ sequenceDiagram
 
 ```toml
 [assets]
-directory           = "dist/bloqr-backend/browser"
+directory           = "dist/adblock-compiler/browser"
 binding             = "ASSETS"
 html_handling       = "auto-trailing-slash"
 not_found_handling  = "single-page-application"

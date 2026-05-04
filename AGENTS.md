@@ -38,17 +38,17 @@ deno test --allow-read --allow-write --allow-net --allow-env src/cli/ArgumentPar
 ### Frontend (Angular 21 — `frontend/`)
 
 ```sh
-pnpm --filter bloqr-frontend run start   # Dev server on :4200
-pnpm --filter bloqr-frontend run build   # Production build
-pnpm --filter bloqr-frontend run test    # Vitest unit tests
-pnpm --filter bloqr-frontend run lint    # ESLint
+pnpm --filter adblock-frontend run start   # Dev server on :4200
+pnpm --filter adblock-frontend run build   # Production build
+pnpm --filter adblock-frontend run test    # Vitest unit tests
+pnpm --filter adblock-frontend run lint    # ESLint
 ```
 
 ### Full-Stack Local Dev
 
 ```sh
 deno task wrangler:dev                              # Worker API on :8787
-pnpm --filter bloqr-frontend run start            # Angular on :4200, proxies /api → :8787
+pnpm --filter adblock-frontend run start            # Angular on :4200, proxies /api → :8787
 ```
 
 ### Database (Prisma + Neon PostgreSQL)
@@ -80,7 +80,7 @@ Commit the resulting diff in `docs/api/` and `docs/postman/`. CI checks for drif
 ## Package Manager Rules
 
 - **Backend**: Use `deno` tasks exclusively. Never `npm` or `npx`.
-- **Frontend**: Use `pnpm --filter bloqr-frontend`. Never bare `npm install`.
+- **Frontend**: Use `pnpm --filter adblock-frontend`. Never bare `npm install`.
 - **Wrangler**: Use `deno task wrangler` (wraps `npm:wrangler` via Deno). Never `npx wrangler`.
 - If `package-lock.json` appears, delete it — `pnpm-lock.yaml` is the source of truth.
 

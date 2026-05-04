@@ -31,7 +31,7 @@
 
 ## Current State
 
-The bloqr-backend uses three distinct storage mechanisms:
+The adblock-compiler uses three distinct storage mechanisms:
 
 | Storage | Technology | Purpose | Location |
 |---------|-----------|---------|----------|
@@ -525,7 +525,7 @@ Hyperdrive is already configured in `wrangler.toml`. The steps below show both N
 npm install -g neonctl
 
 # Create a project
-neonctl projects create --name bloqr-backend
+neonctl projects create --name adblock-compiler
 
 # Get connection string
 neonctl connection-string --project-id <PROJECT_ID>

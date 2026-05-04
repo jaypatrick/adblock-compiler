@@ -44,7 +44,7 @@ export class OpenTelemetryExporter implements IDiagnosticsCollector {
      * @param options - Configuration options
      */
     constructor(options: OpenTelemetryExporterOptions = {}) {
-        this.serviceName = options.serviceName ?? 'bloqr-backend';
+        this.serviceName = options.serviceName ?? 'adblock-compiler';
         this.enableConsoleLogging = options.enableConsoleLogging ?? false;
 
         // Use provided tracer or get from global trace provider

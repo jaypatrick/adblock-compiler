@@ -1,6 +1,6 @@
 # Docker Deployment
 
-This page covers building and running the bloqr-backend stack using Docker and Docker Compose.
+This page covers building and running the adblock-compiler stack using Docker and Docker Compose.
 
 ## Prerequisites
 
@@ -17,7 +17,7 @@ docker compose build
 docker compose up -d
 
 # Tail logs
-docker compose logs -f bloqr-backend
+docker compose logs -f adblock-compiler
 ```
 
 The Worker is served at `http://localhost:8787` by default.  Override the port

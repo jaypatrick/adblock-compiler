@@ -1,6 +1,6 @@
 # Adblock Compiler — System Architecture
 
-> A comprehensive breakdown of the **bloqr-backend** system: modules, sub-modules, services, data flow, and deployment targets.
+> A comprehensive breakdown of the **adblock-compiler** system: modules, sub-modules, services, data flow, and deployment targets.
 
 ---
 
@@ -38,7 +38,7 @@
 
 ## High-Level Overview
 
-The **bloqr-backend** is a *compiler-as-a-service* for adblock filter lists. It downloads filter list sources from remote URLs or local files, applies a configurable pipeline of transformations, and produces optimized, deduplicated output. It runs in three modes:
+The **adblock-compiler** is a *compiler-as-a-service* for adblock filter lists. It downloads filter list sources from remote URLs or local files, applies a configurable pipeline of transformations, and produces optimized, deduplicated output. It runs in three modes:
 
 | Mode | Runtime | Entry Point |
 |------|---------|-------------|
@@ -67,7 +67,7 @@ flowchart TD
         AIAG["AI Agent / MCP Client\n(GitHub Copilot, etc.)"]:::client
     end
 
-    subgraph ACS["bloqr-backend System"]
+    subgraph ACS["adblock-compiler System"]
         CLI["CLI App\n(src/cli/)"]:::system
         ANGULAR["Angular Frontend\n(frontend/ — SSR + PWA)"]:::system
         CFW["Cloudflare Worker\n(worker/worker.ts + router.ts)"]:::system
@@ -671,8 +671,8 @@ Long-running, crash-resistant compilation pipelines using Cloudflare Workflows:
 | `COMPILATION_CACHE` | KV | Compiled rule caching |
 | `RATE_LIMIT` | KV | Per-IP rate limit tracking |
 | `METRICS` | KV | Endpoint metrics aggregation |
-| `BLOQR_BACKEND_QUEUE` | Queue | Standard priority async jobs |
-| `BLOQR_BACKEND_QUEUE_HIGH_PRIORITY` | Queue | High priority async jobs |
+| `ADBLOCK_COMPILER_QUEUE` | Queue | Standard priority async jobs |
+| `ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY` | Queue | High priority async jobs |
 | `DB` | D1 | SQLite storage (admin, metadata) |
 | `ANALYTICS_ENGINE` | Analytics Engine | Metrics & analytics |
 | `ASSETS` | Fetcher | Static web UI assets |
@@ -856,7 +856,7 @@ flowchart TD
         CFAC["Cloudflare Access\n(Zero Trust WAF)"]:::auth
         CFPAGES["Cloudflare Pages\n(Angular SSR)"]:::edge
 
-        subgraph CW["Cloudflare Worker — bloqr-backend"]
+        subgraph CW["Cloudflare Worker — adblock-compiler"]
             ROUTER["router.ts\n(HTTP/WS routing)"]:::worker
             WSHANDLER["WebSocket Handler\n(websocket.ts)"]:::worker
             QCONSUMER["Queue Consumer\n(async compile)"]:::worker

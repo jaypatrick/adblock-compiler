@@ -23,7 +23,7 @@ async function copyIfMissing(src: string, dest: string): Promise<void> {
     console.log(`  ✔  Created ${dest} from ${src}`);
 }
 
-console.log('🚀 Setting up bloqr-backend...');
+console.log('🚀 Setting up adblock-compiler...');
 await copyIfMissing('.env.example', '.env.local');
 await copyIfMissing('.dev.vars.example', '.dev.vars');
 console.log('✅ Env files ready. Edit .env.local and .dev.vars with your credentials.');

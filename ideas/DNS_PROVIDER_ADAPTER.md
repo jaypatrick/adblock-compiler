@@ -1,6 +1,6 @@
 # DNS Provider Adapter Pattern
 
-A unified abstraction layer for syncing compiled filter rules from bloqr-backend to any supported DNS provider.
+A unified abstraction layer for syncing compiled filter rules from adblock-compiler to any supported DNS provider.
 
 Supported Providers: AdGuard DNS, NextDNS, Pi-hole  
 Pattern: Compile once, sync anywhere  
@@ -10,7 +10,7 @@ Runtime: Cloudflare Workers (via WorkerCompiler and CompositeFetcher)
 
 ## Overview
 
-bloqr-backend targets three DNS providers, each with different APIs, auth mechanisms, and rule formats:
+adblock-compiler targets three DNS providers, each with different APIs, auth mechanisms, and rule formats:
 
 | Provider | Type | Auth | Rule Format |
 |---|---|---|---|
@@ -205,7 +205,7 @@ export class PiholeAdapter implements DnsProviderAdapter {
             domains.map((domain) =>
                 fetch(`${this.baseUrl}/api/domains/deny`, {
                     method: 'POST', headers: h,
-                    body: JSON.stringify({ domain, comment: 'bloqr-backend' }),
+                    body: JSON.stringify({ domain, comment: 'adblock-compiler' }),
                 })
             )
         );
@@ -223,7 +223,7 @@ export class PiholeAdapter implements DnsProviderAdapter {
         return { provider: this.name, success: true, ruleCount: domains.length, durationMs: Date.now() - start };
     }
 
-    async subscribeBlocklist(url: string, label = 'bloqr-backend managed list'): Promise<DnsSyncResult> {
+    async subscribeBlocklist(url: string, label = 'adblock-compiler managed list'): Promise<DnsSyncResult> {
         const start = Date.now();
         const h = await this.getHeaders();
         const res = await fetch(`${this.baseUrl}/api/lists`, {
@@ -391,7 +391,7 @@ export default {
 
 ## 9. Full Architecture
 
-bloqr-backend POST /compile
+adblock-compiler POST /compile
     FiltersDownloader   resolve !#if / !#include
     AGTree              parse to AST
     Transformations     Deduplicate, Validate, RemoveComments, InvertAllow
@@ -414,8 +414,8 @@ Monitoring
 - AdGuard DNS API Integration: ./ADGUARD_DNS_API_INTEGRATION.md
 - NextDNS API Integration: ./NEXTDNS_API_INTEGRATION.md
 - Pi-hole API Integration: ./PIHOLE_API_INTEGRATION.md
-- bloqr-backend Platform Support: ../docs/api/PLATFORM_SUPPORT.md
-- bloqr-backend Zod Validation: ../docs/api/ZOD_VALIDATION.md
-- bloqr-backend Streaming API: ../docs/api/STREAMING_API.md
-- bloqr-backend Batch API Guide: ../docs/api/BATCH_API_GUIDE.md
-- bloqr-backend OpenAPI Support: ../docs/api/OPENAPI_SUPPORT.md
+- adblock-compiler Platform Support: ../docs/api/PLATFORM_SUPPORT.md
+- adblock-compiler Zod Validation: ../docs/api/ZOD_VALIDATION.md
+- adblock-compiler Streaming API: ../docs/api/STREAMING_API.md
+- adblock-compiler Batch API Guide: ../docs/api/BATCH_API_GUIDE.md
+- adblock-compiler OpenAPI Support: ../docs/api/OPENAPI_SUPPORT.md
