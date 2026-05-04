@@ -14,10 +14,10 @@ Apply it locally or remotely:
 
 ```bash
 # Local development
-wrangler d1 migrations apply bloqr-backend-admin-d1 --local
+wrangler d1 migrations apply adblock-compiler-admin-d1 --local
 
 # Production
-wrangler d1 migrations apply bloqr-backend-admin-d1 --remote
+wrangler d1 migrations apply adblock-compiler-admin-d1 --remote
 ```
 
 ## Tables Overview

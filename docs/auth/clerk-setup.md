@@ -219,7 +219,7 @@ curl -X GET https://your-worker.workers.dev/api/keys \
 
 ```bash
 # Query via Wrangler (remote D1)
-wrangler d1 execute bloqr-backend-d1-database --remote \
+wrangler d1 execute adblock-compiler-d1-database --remote \
   --command="SELECT id, email, tier, clerk_user_id FROM users ORDER BY created_at DESC LIMIT 5;"
 ```
 
@@ -284,13 +284,13 @@ The `users` table (used by the Clerk webhook handler) lives in Cloudflare D1. Ap
 
 ```bash
 # Apply the Clerk users migration to the remote D1 database
-wrangler d1 migrations apply bloqr-backend-d1-database --remote
+wrangler d1 migrations apply adblock-compiler-d1-database --remote
 ```
 
 Verify the table was created:
 
 ```bash
-wrangler d1 execute bloqr-backend-d1-database --remote \
+wrangler d1 execute adblock-compiler-d1-database --remote \
   --command="SELECT name FROM sqlite_master WHERE type='table';"
 ```
 
@@ -360,7 +360,7 @@ If you previously used a local dev URL (e.g., from `wrangler dev` or Cloudflare 
 4. Confirm the user appeared in D1:
 
 ```bash
-wrangler d1 execute bloqr-backend-d1-database --remote \
+wrangler d1 execute adblock-compiler-d1-database --remote \
   --command="SELECT id, email, tier FROM users ORDER BY created_at DESC LIMIT 3;"
 ```
 

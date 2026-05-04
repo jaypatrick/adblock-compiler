@@ -49,7 +49,7 @@ This becomes worth implementing when we are actively building out:
 
 - **Cloudflare Workflows** — `COMPILATION_WORKFLOW`, `BATCH_COMPILATION_WORKFLOW`, `CACHE_WARMING_WORKFLOW`, `HEALTH_MONITORING_WORKFLOW`
 - **Durable Objects** — `AdblockCompiler` (Container DO), `MCP_AGENT` (PlaywrightMcpAgent)
-- **Queue consumers** — `BLOQR_BACKEND_QUEUE`, `BLOQR_BACKEND_QUEUE_HIGH_PRIORITY` with non-trivial retry/ack logic
+- **Queue consumers** — `ADBLOCK_COMPILER_QUEUE`, `ADBLOCK_COMPILER_QUEUE_HIGH_PRIORITY` with non-trivial retry/ack logic
 - **Dynamic Workers** — ephemeral V8 isolate dispatch
 
 The foundational code and architecture needs to be in place first. Adding this testing tier prematurely would be complexity with no payoff.

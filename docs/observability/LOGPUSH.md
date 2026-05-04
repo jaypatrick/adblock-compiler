@@ -21,7 +21,7 @@ giving you **indefinite retention** at low cost.
    logs separate from filter-list storage:
    ```bash
    # Create a dedicated R2 bucket for logs (recommended)
-   wrangler r2 bucket create bloqr-backend-logs
+   wrangler r2 bucket create adblock-compiler-logs
 
    # Alternatively, re-use the existing FILTER_STORAGE bucket (not recommended —
    # mix of application data and logs makes queries harder)
@@ -42,7 +42,7 @@ failures without storing every successful request:
 ```bash
 wrangler logpush create \
   --dataset workers-trace-requests \
-  --destination-conf "r2://bloqr-backend-logs/{DATE}/trace-requests" \
+  --destination-conf "r2://adblock-compiler-logs/{DATE}/trace-requests" \
   --filter '{"where":{"key":"Outcome","operator":"!eq","value":"ok"}}' \
   --fields "Outcome,ScriptName,EventTimestampMs,Logs,Exceptions,RequestUrl,RequestMethod,ResponseStatus"
 ```
@@ -55,7 +55,7 @@ Delivers every structured log statement emitted by the Worker
 ```bash
 wrangler logpush create \
   --dataset workers-logs \
-  --destination-conf "r2://bloqr-backend-logs/{DATE}/worker-logs"
+  --destination-conf "r2://adblock-compiler-logs/{DATE}/worker-logs"
 ```
 
 ### Manage Logpush jobs
@@ -81,7 +81,7 @@ wrangler logpush delete <job-id>
 Logs land in R2 as **NDJSON** (newline-delimited JSON), partitioned by date:
 
 ```
-bloqr-backend-logs/
+adblock-compiler-logs/
   2026-03-15/
     trace-requests/   ← filtered Worker trace events
     worker-logs/      ← all structured log lines
@@ -91,10 +91,10 @@ bloqr-backend-logs/
 
 ```bash
 # List objects for a given date
-wrangler r2 object list bloqr-backend-logs --prefix "2026-03-15/"
+wrangler r2 object list adblock-compiler-logs --prefix "2026-03-15/"
 
 # Download and query errors
-wrangler r2 object get bloqr-backend-logs "2026-03-15/trace-requests/..." \
+wrangler r2 object get adblock-compiler-logs "2026-03-15/trace-requests/..." \
   | jq 'select(.Outcome != "ok") | {ts: .EventTimestampMs, url: .RequestUrl, status: .ResponseStatus}'
 ```
 

@@ -86,11 +86,11 @@ wrangler tail
 
 This endpoint calls `getLatestDeployment(env.DB)`. A 503 means `env.DB` is null — the `DB` D1 binding is missing from the deployed worker.
 
-**Check:** `wrangler d1 list` — confirm `bloqr-backend-d1-database` exists and the ID matches `wrangler.toml`.
+**Check:** `wrangler d1 list` — confirm `adblock-compiler-d1-database` exists and the ID matches `wrangler.toml`.
 
 ```bash
 wrangler d1 list
-# Should show: bloqr-backend-d1-database  3e8e7dfe-3213-452a-a671-6c18e6e74ce5
+# Should show: adblock-compiler-d1-database  3e8e7dfe-3213-452a-a671-6c18e6e74ce5
 ```
 
 ---

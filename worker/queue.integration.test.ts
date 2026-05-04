@@ -137,7 +137,7 @@ interface MockEnv {
     COMPILATION_CACHE: MockKVNamespace;
     RATE_LIMIT: MockKVNamespace;
     METRICS: MockKVNamespace;
-    BLOQR_BACKEND_QUEUE: MockQueue<QueueMessage>;
+    ADBLOCK_COMPILER_QUEUE: MockQueue<QueueMessage>;
 }
 
 function createMockEnv(): MockEnv {
@@ -146,7 +146,7 @@ function createMockEnv(): MockEnv {
         COMPILATION_CACHE: new MockKVNamespace(),
         RATE_LIMIT: new MockKVNamespace(),
         METRICS: new MockKVNamespace(),
-        BLOQR_BACKEND_QUEUE: new MockQueue(),
+        ADBLOCK_COMPILER_QUEUE: new MockQueue(),
     };
 }
 
@@ -165,10 +165,10 @@ Deno.test('Integration - Queue message enqueuing', async () => {
         },
     };
 
-    await env.BLOQR_BACKEND_QUEUE.send(message);
+    await env.ADBLOCK_COMPILER_QUEUE.send(message);
 
-    assertEquals(env.BLOQR_BACKEND_QUEUE.length, 1);
-    const queuedMessage = env.BLOQR_BACKEND_QUEUE.messages[0];
+    assertEquals(env.ADBLOCK_COMPILER_QUEUE.length, 1);
+    const queuedMessage = env.ADBLOCK_COMPILER_QUEUE.messages[0];
     assertEquals(queuedMessage.type, 'compile');
     assertEquals(queuedMessage.requestId, 'test-123');
 });
@@ -198,10 +198,10 @@ Deno.test('Integration - Batch message enqueuing', async () => {
         ],
     };
 
-    await env.BLOQR_BACKEND_QUEUE.send(message);
+    await env.ADBLOCK_COMPILER_QUEUE.send(message);
 
-    assertEquals(env.BLOQR_BACKEND_QUEUE.length, 1);
-    const queuedMessage = env.BLOQR_BACKEND_QUEUE.messages[0] as typeof message;
+    assertEquals(env.ADBLOCK_COMPILER_QUEUE.length, 1);
+    const queuedMessage = env.ADBLOCK_COMPILER_QUEUE.messages[0] as typeof message;
     assertEquals(queuedMessage.type, 'batch-compile');
     assertEquals(queuedMessage.requests.length, 2);
 });
@@ -225,10 +225,10 @@ Deno.test('Integration - Cache warming message enqueuing', async () => {
         ],
     };
 
-    await env.BLOQR_BACKEND_QUEUE.send(message);
+    await env.ADBLOCK_COMPILER_QUEUE.send(message);
 
-    assertEquals(env.BLOQR_BACKEND_QUEUE.length, 1);
-    const queuedMessage = env.BLOQR_BACKEND_QUEUE.messages[0] as typeof message;
+    assertEquals(env.ADBLOCK_COMPILER_QUEUE.length, 1);
+    const queuedMessage = env.ADBLOCK_COMPILER_QUEUE.messages[0] as typeof message;
     assertEquals(queuedMessage.type, 'cache-warm');
     assertEquals(queuedMessage.configurations.length, 2);
 });
@@ -266,12 +266,12 @@ Deno.test('Integration - Multiple messages enqueuing', async () => {
         },
     ];
 
-    await env.BLOQR_BACKEND_QUEUE.sendBatch(messages);
+    await env.ADBLOCK_COMPILER_QUEUE.sendBatch(messages);
 
-    assertEquals(env.BLOQR_BACKEND_QUEUE.length, 3);
-    assertEquals(env.BLOQR_BACKEND_QUEUE.messages[0]!.requestId, 'msg-1');
-    assertEquals(env.BLOQR_BACKEND_QUEUE.messages[1]!.requestId, 'msg-2');
-    assertEquals(env.BLOQR_BACKEND_QUEUE.messages[2]!.requestId, 'msg-3');
+    assertEquals(env.ADBLOCK_COMPILER_QUEUE.length, 3);
+    assertEquals(env.ADBLOCK_COMPILER_QUEUE.messages[0]!.requestId, 'msg-1');
+    assertEquals(env.ADBLOCK_COMPILER_QUEUE.messages[1]!.requestId, 'msg-2');
+    assertEquals(env.ADBLOCK_COMPILER_QUEUE.messages[2]!.requestId, 'msg-3');
 });
 
 Deno.test('Integration - KV cache storage and retrieval', async () => {
@@ -427,7 +427,7 @@ Deno.test('Integration - Queue clearing between tests', async () => {
     const env = createMockEnv();
 
     // Add some messages
-    await env.BLOQR_BACKEND_QUEUE.send({
+    await env.ADBLOCK_COMPILER_QUEUE.send({
         type: 'compile' as const,
         requestId: 'test-1',
         timestamp: Date.now(),
@@ -437,12 +437,12 @@ Deno.test('Integration - Queue clearing between tests', async () => {
         },
     });
 
-    assertEquals(env.BLOQR_BACKEND_QUEUE.length, 1);
+    assertEquals(env.ADBLOCK_COMPILER_QUEUE.length, 1);
 
     // Clear queue
-    env.BLOQR_BACKEND_QUEUE.clear();
+    env.ADBLOCK_COMPILER_QUEUE.clear();
 
-    assertEquals(env.BLOQR_BACKEND_QUEUE.length, 0);
+    assertEquals(env.ADBLOCK_COMPILER_QUEUE.length, 0);
 });
 
 Deno.test('Integration - Cache clearing between tests', async () => {
@@ -513,7 +513,7 @@ Deno.test('Integration - Request ID uniqueness across messages', async () => {
         const requestId = `test-${Date.now()}-${Math.random().toString(36).substring(7)}`;
         requestIds.add(requestId);
 
-        await env.BLOQR_BACKEND_QUEUE.send({
+        await env.ADBLOCK_COMPILER_QUEUE.send({
             type: 'compile' as const,
             requestId,
             timestamp: Date.now(),
@@ -526,5 +526,5 @@ Deno.test('Integration - Request ID uniqueness across messages', async () => {
 
     // All request IDs should be unique
     assertEquals(requestIds.size, 100);
-    assertEquals(env.BLOQR_BACKEND_QUEUE.length, 100);
+    assertEquals(env.ADBLOCK_COMPILER_QUEUE.length, 100);
 });
