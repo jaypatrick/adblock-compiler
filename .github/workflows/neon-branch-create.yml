@@ -37,6 +37,7 @@ on:
     types: [opened, reopened, synchronize]
     paths:
       - 'prisma/**'
+      - '!prisma/generated-d1/**'
       - 'prisma.config.ts'
       - 'worker/lib/auth.ts'
       - 'worker/lib/prisma.ts'
