@@ -39,12 +39,16 @@ app = mo.App(
 
 @app.cell(hide_code=True)
 def _theme():
+    import sys
     from pathlib import Path
 
     import marimo as mo
-    _css_path = Path(__file__).resolve().parent.parent / "theming" / "bloqr-theme.css"
-    _css = _css_path.read_text(encoding="utf-8") if _css_path.exists() else ""
-    return mo.css(_css)
+
+    _rb_dir = Path(__file__).resolve().parent
+    if str(_rb_dir) not in sys.path:
+        sys.path.insert(0, str(_rb_dir))
+    from shared import bloqr_theme_css
+    return mo.css(bloqr_theme_css())
 
 
 @app.cell
